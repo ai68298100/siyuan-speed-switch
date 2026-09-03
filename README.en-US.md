@@ -45,6 +45,17 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 - SiYuan v3.1.20+ (uses the public `getAllTabs` API).
 - Desktop / browser-desktop frontend (tab panes and multi-pane layout).
 
+## Changelog
+
+### v0.1.0 (2026-09-03)
+
+- New plugin settings page: dialog width/height, thumbnail columns & height, default sort order, panel visibility.
+- Pin tabs: pin button on cards; pinned tabs stay on top, remembered per document across restarts.
+- Sort & search: four sort orders (persisted) plus a live search box.
+- Fully theme-aware styles (light/dark themes follow seamlessly).
+- All thumbnails render on first open, including background tabs (via kernel API fallback).
+- Fix MRU history lost after restart (persisted data now preloaded on startup).
+
 ## Development
 
 ```bash
