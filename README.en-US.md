@@ -8,13 +8,15 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Features
 
-- 🌟 **Thumbnail previews** — each tab is rendered as a card with a live document/panel preview, not just a title text.
-- 🖇️ **Dock panel switcher** — the left rail lists every dock (file tree, outline, bookmark, inbox, tag, graph, global graph, backlink, AI chat, custom panels and even docks registered by other plugins). Click one to toggle & focus it.
+- 🌟 **Thumbnail previews** — each tab is rendered as a card with a live document preview; tabs not yet rendered in the background are fetched via the kernel API, so you see thumbnails for everything on first open.
+- 🖇️ **Dock panel switcher** — the left rail lists every dock (file tree, outline, bookmark, graph, backlinks, AI chat…); click one to toggle & focus it. Panels can be hidden in the plugin settings.
+- 📌 **Pin tabs** — pin frequently used tabs with the pin button; pinned tabs always stay on top (remembered per document across restarts).
 - 🔀 **Split-window aware** — tabs are grouped by window pane; switching activates the correct pane automatically.
+- 🔍 **Search & sort** — a live search box filters tabs; four sort orders (recently used / open order / title A→Z / Z→A), switchable right inside the switcher and persisted.
+- ⚙️ **Settings page** — customize dialog width/height, thumbnail columns and height, default sort order, and panel visibility (Settings → Plugins → Speed Switch → Settings).
+- 🎨 **Theme aware** — all styles use SiYuan theme variables, following light/dark themes seamlessly.
 - ⌨️ **Keyboard navigation** — arrow keys / `Tab` to move, `Enter` to switch, `Esc` to close (just like Alt+Tab).
-- 🧠 **MRU focus** — remembers the most recently used tab and focuses it first, so you don't have to scroll every time.
 - 🧩 **Two entry points** — top-bar button + global hotkey.
-- ✨ **Fresh on every open** — thumbnails are freshly cloned from the live editor DOM each time you open the switcher.
 
 ## Entry points
 
@@ -29,7 +31,9 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 2. Press the hotkey or click the top-bar button.
 3. The switcher dialog opens: **left rail = dock panels**, **right area = thumbnail cards grouped by window pane**.
 4. Click any dock item to open that sidebar; or click a thumbnail card / navigate with arrows/Tab and press `Enter` to switch instantly.
-5. Press `Esc` to close without switching.
+5. Type in the search box to filter tabs live; use the dropdown to change the sort order.
+6. Use the pin (top-left of a card) to pin/unpin tabs, and the × (top-right) to close a tab.
+7. Press `Esc` to close without switching.
 
 ## Installation
 

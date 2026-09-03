@@ -1,16 +1,39 @@
-import {Plugin, Dialog, getFrontend, getAllTabs, getActiveTab} from "siyuan";
+import {Plugin, Dialog, Setting, getFrontend, getAllTabs, getActiveTab} from "siyuan";
 import "./index.scss";
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
+// 页签排序方式：mru=最近使用 layout=打开顺序 titleAsc/titleDesc=标题升降序
+type SortBy = "mru" | "layout" | "titleAsc" | "titleDesc";
 
 const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
+const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
+const SETTINGS_KEY = "sw_settings";  // 插件设置
 const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
 const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量，避免一次克隆大量 DOM 卡住界面
 // 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
 // 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
 const DEFAULT_HOTKEY = "⌥⇧S";
 const LEGACY_HOTKEY = "⇧⌥S";         // 旧版本写入的无法匹配的顺序，需在加载时迁移
+
+// 默认设置（可被用户设置覆盖）
+const DEFAULT_SETTINGS: ISwSettings = {
+    dialogWidth: 880,      // 切换器弹窗宽度 px
+    dialogHeight: 600,     // 切换器弹窗高度 px
+    columns: 0,            // 缩略图列数，0=自动
+    thumbHeight: 128,      // 缩略图高度 px
+    sortBy: "mru",         // 页签排序方式
+    excludedDocks: [],     // 不显示在左侧列表的面板类型
+};
+
+interface ISwSettings {
+    dialogWidth: number;
+    dialogHeight: number;
+    columns: number;
+    thumbHeight: number;
+    sortBy: SortBy;
+    excludedDocks: string[];
+}
 
 interface IGroupedTab {
     tab: Tab;
@@ -26,10 +49,17 @@ interface IDockPanel {
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
 
-    onload() {
+    async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
 
         this.fixLegacyHotkey();
+
+        // 预加载持久化数据（loadData 会写入 this.data，之后 getMru 等才能读到旧值）
+        await Promise.all([
+            this.loadData(MRU_KEY),
+            this.loadData(PINNED_KEY),
+            this.loadData(SETTINGS_KEY),
+        ]).catch((e) => console.warn("[speed-switch] load data fail", e));
 
         this.addTopBar({
             icon: "iconLayout",
@@ -62,6 +92,197 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
+    // ==================== 设置 ====================
+
+    // 读取设置：与默认值合并，保证新增字段有默认值
+    private getSettings(): ISwSettings {
+        const saved = this.data[SETTINGS_KEY];
+        if (!saved || typeof saved !== "object") {
+            return {...DEFAULT_SETTINGS};
+        }
+        return {
+            dialogWidth: this.clampNum((saved as any).dialogWidth, 480, 1920, DEFAULT_SETTINGS.dialogWidth),
+            dialogHeight: this.clampNum((saved as any).dialogHeight, 360, 1280, DEFAULT_SETTINGS.dialogHeight),
+            columns: this.clampNum((saved as any).columns, 0, 8, DEFAULT_SETTINGS.columns),
+            thumbHeight: this.clampNum((saved as any).thumbHeight, 72, 360, DEFAULT_SETTINGS.thumbHeight),
+            sortBy: (["mru", "layout", "titleAsc", "titleDesc"].includes((saved as any).sortBy)
+                ? (saved as any).sortBy : DEFAULT_SETTINGS.sortBy) as SortBy,
+            excludedDocks: Array.isArray((saved as any).excludedDocks)
+                ? (saved as any).excludedDocks.filter((t: any) => typeof t === "string")
+                : [],
+        };
+    }
+
+    private updateSettings(patch: Partial<ISwSettings>) {
+        const settings = {...this.getSettings(), ...patch};
+        this.data[SETTINGS_KEY] = settings;
+        this.saveData(SETTINGS_KEY, settings).catch((e) => console.warn("[speed-switch] save settings fail", e));
+    }
+
+    private clampNum(value: any, min: number, max: number, fallback: number): number {
+        const num = typeof value === "number" ? value : parseInt(value, 10);
+        if (Number.isNaN(num)) {
+            return fallback;
+        }
+        return Math.min(max, Math.max(min, num));
+    }
+
+    // 插件设置页（设置 → 插件 → 速切 → 设置图标）
+    openSetting() {
+        const s = this.getSettings();
+        const setting = new Setting({
+            confirmCallback: () => {
+                // 各控件修改时已即时保存，这里无需处理
+            },
+        });
+
+        setting.addItem({
+            title: this.i18n.setWidth,
+            description: this.i18n.setWidthTip,
+            createActionElement: () => {
+                const input = document.createElement("input");
+                input.className = "b3-text-field fn__flex-center";
+                input.type = "number";
+                input.min = "480";
+                input.max = "1920";
+                input.step = "40";
+                input.value = String(s.dialogWidth);
+                input.addEventListener("change", () => {
+                    this.updateSettings({dialogWidth: this.clampNum(input.value, 480, 1920, s.dialogWidth)});
+                });
+                return input;
+            },
+        });
+
+        setting.addItem({
+            title: this.i18n.setHeight,
+            description: this.i18n.setHeightTip,
+            createActionElement: () => {
+                const input = document.createElement("input");
+                input.className = "b3-text-field fn__flex-center";
+                input.type = "number";
+                input.min = "360";
+                input.max = "1280";
+                input.step = "40";
+                input.value = String(s.dialogHeight);
+                input.addEventListener("change", () => {
+                    this.updateSettings({dialogHeight: this.clampNum(input.value, 360, 1280, s.dialogHeight)});
+                });
+                return input;
+            },
+        });
+
+        setting.addItem({
+            title: this.i18n.setColumns,
+            description: this.i18n.setColumnsTip,
+            createActionElement: () => {
+                const select = document.createElement("select");
+                select.className = "b3-select fn__flex-center";
+                [{value: "0", label: this.i18n.columnsAuto}].concat(
+                    [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
+                ).forEach(({value, label}) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = label;
+                    select.appendChild(option);
+                });
+                select.value = String(s.columns);
+                select.addEventListener("change", () => {
+                    this.updateSettings({columns: this.clampNum(select.value, 0, 8, s.columns)});
+                });
+                return select;
+            },
+        });
+
+        setting.addItem({
+            title: this.i18n.setThumbHeight,
+            description: this.i18n.setThumbHeightTip,
+            createActionElement: () => {
+                const input = document.createElement("input");
+                input.className = "b3-text-field fn__flex-center";
+                input.type = "number";
+                input.min = "72";
+                input.max = "360";
+                input.step = "8";
+                input.value = String(s.thumbHeight);
+                input.addEventListener("change", () => {
+                    this.updateSettings({thumbHeight: this.clampNum(input.value, 72, 360, s.thumbHeight)});
+                });
+                return input;
+            },
+        });
+
+        setting.addItem({
+            title: this.i18n.setSortBy,
+            description: this.i18n.setSortByTip,
+            createActionElement: () => {
+                const select = document.createElement("select");
+                select.className = "b3-select fn__flex-center";
+                const options: Array<{value: SortBy, label: string}> = [
+                    {value: "mru", label: this.i18n.sortMru},
+                    {value: "layout", label: this.i18n.sortLayout},
+                    {value: "titleAsc", label: this.i18n.sortTitleAsc},
+                    {value: "titleDesc", label: this.i18n.sortTitleDesc},
+                ];
+                options.forEach(({value, label}) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = label;
+                    select.appendChild(option);
+                });
+                select.value = s.sortBy;
+                select.addEventListener("change", () => {
+                    this.updateSettings({sortBy: select.value as SortBy});
+                });
+                return select;
+            },
+        });
+
+        // 面板显示设置：勾选的面板出现在切换器左侧，取消的隐藏
+        setting.addItem({
+            title: this.i18n.setDocks,
+            description: this.i18n.setDocksTip,
+            direction: "column",
+            createActionElement: () => {
+                const box = document.createElement("div");
+                box.className = "sw-setting__docks b3-label__text";
+                const panels = this.getDockPanels();
+                const excluded = new Set(s.excludedDocks);
+                panels.forEach((panel) => {
+                    const label = document.createElement("label");
+                    label.className = "sw-setting__dock-item";
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "b3-switch";
+                    checkbox.checked = !excluded.has(panel.type);
+                    checkbox.dataset.dockType = panel.type;
+                    checkbox.addEventListener("change", () => {
+                        const next = new Set(this.getSettings().excludedDocks);
+                        if (checkbox.checked) {
+                            next.delete(panel.type);
+                        } else {
+                            next.add(panel.type);
+                        }
+                        this.updateSettings({excludedDocks: Array.from(next)});
+                    });
+                    const title = document.createElement("span");
+                    title.textContent = panel.title;
+                    label.appendChild(checkbox);
+                    label.appendChild(title);
+                    box.appendChild(label);
+                });
+                if (panels.length === 0) {
+                    box.textContent = this.i18n.noDockPanels;
+                }
+                return box;
+            },
+        });
+
+        setting.open(this.i18n.settings);
+    }
+
+    // ==================== 切换器 ====================
+
     // 打开页签切换器
     private showSwitcher() {
         // 移动端不支持 centerLayout，页签切换在移动端无意义，直接提示后返回
@@ -76,6 +297,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
 
+        const settings = this.getSettings();
         const activeTab = this.getActiveTab();
 
         const dialog = new Dialog({
@@ -84,20 +306,45 @@ export default class SpeedSwitchPlugin extends Plugin {
     <div class="sw__hint">${this.i18n.keyboardHintNavigation}</div>
     <div class="sw__main">
         <div class="sw__dock fn__none"></div>
-        <div class="sw__scroll" tabindex="0"></div>
+        <div class="sw__content">
+            <div class="sw__toolbar">
+                <input class="b3-text-field fn__flex-1 sw__search" placeholder="${this.i18n.searchTabs}" />
+                <select class="b3-select sw__sort">
+                    <option value="mru">${this.i18n.sortMru}</option>
+                    <option value="layout">${this.i18n.sortLayout}</option>
+                    <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
+                    <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
+                </select>
+            </div>
+            <div class="sw__scroll" tabindex="0"></div>
+        </div>
     </div>
 </div>`,
-            width: this.isMobile ? "92vw" : "880px",
-            height: this.isMobile ? "78vh" : "72vh",
+            width: this.isMobile ? "92vw" : `${settings.dialogWidth}px`,
+            height: this.isMobile ? "78vh" : `${settings.dialogHeight}px`,
         });
 
-        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），无可面板时自动隐藏
+        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除，无可面板时自动隐藏
         const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
-        this.renderDockList(dockElement, dialog);
+        this.renderDockList(dockElement, dialog, settings.excludedDocks);
+
+        // 工具栏：搜索过滤 + 排序切换（改动会持久化到设置）
+        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
+        sortSelect.value = settings.sortBy;
+        sortSelect.addEventListener("change", () => {
+            this.updateSettings({sortBy: sortSelect.value as SortBy});
+            this.renderList(scrollElement, tabs, activeTab, dialog, sortSelect.value as SortBy);
+            searchInput.value = "";
+            scrollElement.focus();
+        });
+        searchInput.addEventListener("input", () => {
+            this.filterCards(scrollElement, searchInput.value);
+        });
 
         // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-        this.renderList(scrollElement, tabs, activeTab, dialog);
+        this.renderList(scrollElement, tabs, activeTab, dialog, settings.sortBy);
         this.bindKeydown(scrollElement, dialog);
 
         // 让滚动区域获得焦点以接收键盘导航
@@ -114,12 +361,26 @@ export default class SpeedSwitchPlugin extends Plugin {
         return undefined;
     }
 
+    // 按关键字过滤卡片，整组无匹配时隐藏分组
+    private filterCards(scrollElement: HTMLElement, keyword: string) {
+        const kw = keyword.trim().toLowerCase();
+        scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
+            const title = (card.dataset.title || "").toLowerCase();
+            card.classList.toggle("fn__none", !!kw && !title.includes(kw));
+        });
+        scrollElement.querySelectorAll<HTMLElement>(".sw__group").forEach((group) => {
+            const visible = group.querySelectorAll(".sw__card:not(.fn__none)").length;
+            group.classList.toggle("fn__none", visible === 0);
+        });
+    }
+
     // 渲染左侧侧边栏面板列表（文档树/大纲/书签/反链/关系图等，含其他插件注册的面板）
-    private renderDockList(dockElement: HTMLElement | null, dialog: Dialog) {
+    private renderDockList(dockElement: HTMLElement | null, dialog: Dialog, excludedDocks: string[]) {
         if (!dockElement) {
             return;
         }
-        const panels = this.getDockPanels();
+        const excluded = new Set(excludedDocks);
+        const panels = this.getDockPanels().filter((panel) => !excluded.has(panel.type));
         if (panels.length === 0) {
             return;
         }
@@ -224,10 +485,68 @@ export default class SpeedSwitchPlugin extends Plugin {
         return undefined;
     }
 
+    // 页签标题（优先取页签头已渲染文本）
+    private titleOf(tab: Tab): string {
+        return tab.headElement?.querySelector(".item__text")?.textContent?.trim() || tab.title || tab.id;
+    }
+
+    // 置顶键：文档页签用其 rootID（跨会话稳定，重开同一文档置顶状态保留），其余退回页签 id
+    private pinKeyOf(tab: Tab): string {
+        const model: any = (tab as any).model;
+        const rootId = model?.editor?.block?.rootID;
+        return rootId || tab.id;
+    }
+
+    // 读取置顶列表
+    private getPinned(): string[] {
+        const data = this.data[PINNED_KEY];
+        return Array.isArray(data) ? (data as string[]) : [];
+    }
+
+    // 切换置顶状态，返回切换后是否为置顶
+    private togglePinned(tab: Tab): boolean {
+        const key = this.pinKeyOf(tab);
+        const list = this.getPinned();
+        const index = list.indexOf(key);
+        if (index >= 0) {
+            list.splice(index, 1);
+            this.data[PINNED_KEY] = list;
+            this.saveData(PINNED_KEY, list).catch((e) => console.warn("[speed-switch] save pinned fail", e));
+            return false;
+        }
+        list.unshift(key);
+        this.data[PINNED_KEY] = list;
+        this.saveData(PINNED_KEY, list).catch((e) => console.warn("[speed-switch] save pinned fail", e));
+        return true;
+    }
+
+    // 组内排序：置顶页签固定在最前，其余按所选方式排序
+    private sortItems(items: IGroupedTab[], sortBy: SortBy, mru: string[]) {
+        if (sortBy === "titleAsc" || sortBy === "titleDesc") {
+            items.sort((a, b) => {
+                const result = this.titleOf(a.tab).localeCompare(this.titleOf(b.tab), undefined, {numeric: true});
+                return sortBy === "titleAsc" ? result : -result;
+            });
+        } else if (sortBy === "mru") {
+            // MRU 中越靠前越新；不在记录中的页签按打开顺序排在后面
+            items.sort((a, b) => {
+                const ra = mru.indexOf(a.tab.id);
+                const rb = mru.indexOf(b.tab.id);
+                return (ra < 0 ? Number.MAX_SAFE_INTEGER : ra) - (rb < 0 ? Number.MAX_SAFE_INTEGER : rb);
+            });
+        }
+        // layout：保持 getAllTabs 返回的布局顺序，无需处理
+    }
+
     // 按窗口分组并渲染全部页签
-    private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined, dialog: Dialog) {
+    private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined, dialog: Dialog, sortBy: SortBy) {
+        scrollElement.innerHTML = "";
+        const settings = this.getSettings();
+        scrollElement.style.setProperty("--sw-thumb-height", `${settings.thumbHeight}px`);
+
         const activeTabId = activeTab?.id;
         const mru = this.getMru();
+        const pinned = new Set(this.getPinned());
 
         // 按 parent（Wnd）分栏分组，保持 getAllTabs 的布局树顺序
         const groups = new Map<HTMLElement, IGroupedTab[]>();
@@ -245,17 +564,31 @@ export default class SpeedSwitchPlugin extends Plugin {
         let defaultFocusIndex = 0;
 
         grouped.forEach((group) => {
+            // 置顶页签固定在前，其余按排序方式排列
+            const pinnedItems = group.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
+            const restItems = group.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
+            this.sortItems(restItems, sortBy, mru);
+            const ordered = [...pinnedItems, ...restItems];
+
+            const groupEl = document.createElement("div");
+            groupEl.className = "sw__group";
+
             const label = document.createElement("div");
             label.className = "sw__window-label";
-            label.textContent = `${this.i18n.currentWindow} · ${group.length}`;
-            scrollElement.appendChild(label);
+            label.textContent = `${this.i18n.currentWindow} · ${ordered.length}`;
+            groupEl.appendChild(label);
 
             const grid = document.createElement("div");
             grid.className = "sw__grid";
+            if (settings.columns >= 2) {
+                grid.style.gridTemplateColumns = `repeat(${settings.columns}, 1fr)`;
+            }
 
-            group.forEach((item, index) => {
-                const card = this.createCard(item, item.tab.id === activeTabId, (tab) => {
-                    this.activateTab(tab, dialog);
+            ordered.forEach((item) => {
+                const isPinned = pinned.has(this.pinKeyOf(item.tab));
+                const card = this.createCard(item, item.tab.id === activeTabId, isPinned, {
+                    onActivate: (tab) => this.activateTab(tab, dialog),
+                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
                 });
                 grid.appendChild(card);
                 item.card = card;
@@ -265,7 +598,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                     defaultFocusIndex = all.length - 1;
                 }
             });
-            scrollElement.appendChild(grid);
+            groupEl.appendChild(grid);
+            scrollElement.appendChild(groupEl);
         });
 
         if (all.length === 0) {
@@ -278,16 +612,32 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 初始焦点
         this.focusCard(all[defaultFocusIndex]?.card);
 
-        // 分批渲染缩略图
+        // 分批渲染缩略图（首次打开也会读取全部页签内容，含未激活页签）
         this.renderThumbnails(all, THUMB_BATCH);
     }
 
+    // 置顶/取消置顶：更新状态并调整卡片位置（置顶移动到本组最前）
+    private handleTogglePin(tab: Tab, card: HTMLElement) {
+        const isPinned = this.togglePinned(tab);
+        const iconUse = card.querySelector<SVGElement>(".sw__pin use");
+        if (iconUse) {
+            iconUse.setAttribute("xlink:href", isPinned ? "#iconPin" : "#iconUnpin");
+        }
+        card.classList.toggle("sw__pinned", isPinned);
+        if (isPinned) {
+            card.parentElement?.prepend(card);
+            this.focusCard(card);
+        }
+    }
+
     // 构建一张页签卡片（缩略图区域 + 底部信息）
-    private createCard(item: IGroupedTab, isActive: boolean, onActivate: (tab: Tab) => void): HTMLElement {
+    private createCard(item: IGroupedTab, isActive: boolean, isPinned: boolean,
+                       handlers: { onActivate: (tab: Tab) => void, onTogglePin: (tab: Tab, card: HTMLElement) => void }): HTMLElement {
         const tab = item.tab;
         const card = document.createElement("div");
-        card.className = "sw__card" + (isActive ? " sw__active" : "");
+        card.className = "sw__card" + (isActive ? " sw__active" : "") + (isPinned ? " sw__pinned" : "");
         card.dataset.tabId = tab.id;
+        card.dataset.title = this.titleOf(tab);
 
         // 缩略图占位（内容由 renderThumbnails 分批填入）
         const thumb = document.createElement("div");
@@ -318,14 +668,26 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         const titleEl = document.createElement("span");
         titleEl.className = "sw__title";
-        titleEl.textContent = tab.headElement?.querySelector(".item__text")?.textContent?.trim() || tab.title || tab.id;
+        titleEl.textContent = this.titleOf(tab);
         meta.appendChild(iconBox);
         meta.appendChild(titleEl);
         card.appendChild(meta);
 
-        // 关闭按钮
+        // 置顶按钮（左上角）
+        const pinBtn = document.createElement("div");
+        pinBtn.className = "sw__pin";
+        pinBtn.title = this.i18n.pinTab;
+        pinBtn.innerHTML = `<svg><use xlink:href="${isPinned ? "#iconPin" : "#iconUnpin"}"></use></svg>`;
+        pinBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            handlers.onTogglePin(tab, card);
+        });
+        card.appendChild(pinBtn);
+
+        // 关闭按钮（右上角）
         const closeBtn = document.createElement("div");
         closeBtn.className = "sw__close";
+        closeBtn.title = this.i18n.close;
         closeBtn.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
         closeBtn.addEventListener("click", (event) => {
             event.stopPropagation();
@@ -335,7 +697,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         card.appendChild(closeBtn);
 
         // 点击整卡切换到该页签
-        card.addEventListener("click", () => onActivate(tab));
+        card.addEventListener("click", () => handlers.onActivate(tab));
         card.addEventListener("mouseenter", () => {
             this.focusCard(card);
         });
@@ -356,20 +718,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const source = this.getThumbSource(item.tab);
                 thumb.innerHTML = "";
                 if (source) {
-                    const content = document.createElement("div");
-                    content.className = "sw__thumb-content";
-                    content.appendChild(source);
-                    thumb.appendChild(content);
-                    // 依据盒子实际宽度计算缩放比例
-                    const width = thumb.clientWidth || CONTENT_WIDTH;
-                    content.style.transform = `scale(${(width / CONTENT_WIDTH).toFixed(3)})`;
-                    content.setAttribute("aria-label", `${item.tab.title || ""}`);
+                    this.applyThumbContent(thumb, source, item.tab.title || "");
                 } else {
-                    // 无可用内容（非编辑器页签）时显示占位图标，避免空白
+                    // 无可用内容（非编辑器页签）时先显示占位，再尝试通过 API 读取文档内容
                     const placeholder = document.createElement("div");
                     placeholder.className = "sw__thumb-placeholder";
                     placeholder.textContent = item.tab.title || item.tab.id;
                     thumb.appendChild(placeholder);
+                    this.fillThumbByApi(item.tab, thumb);
                 }
             }
             if (index < list.length) {
@@ -377,6 +733,48 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         };
         requestAnimationFrame(runBatch);
+    }
+
+    // 将克隆内容装进缩略图框并按宽度缩放
+    private applyThumbContent(thumb: HTMLElement, source: HTMLElement, title: string) {
+        const content = document.createElement("div");
+        content.className = "sw__thumb-content";
+        content.appendChild(source);
+        thumb.appendChild(content);
+        // 依据盒子实际宽度计算缩放比例
+        const width = thumb.clientWidth || CONTENT_WIDTH;
+        content.style.transform = `scale(${(width / CONTENT_WIDTH).toFixed(3)})`;
+        content.setAttribute("aria-label", title);
+    }
+
+    // 页签 DOM 中暂无内容（如后台未渲染完）时，通过内核 API 读取文档 HTML 作为缩略内容
+    private async fillThumbByApi(tab: Tab, thumb: HTMLElement) {
+        const model: any = (tab as any).model;
+        const rootId = model?.editor?.block?.rootID;
+        if (!rootId) {
+            return; // 非文档页签，保持占位
+        }
+        try {
+            const response = await fetch("/api/filetree/getDoc", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({id: rootId, mode: 0, size: 48}),
+            });
+            const json = await response.json();
+            const html: string | undefined = json?.data?.content;
+            // 弹窗已关闭或内容无效时放弃
+            if (!thumb.isConnected || !html) {
+                return;
+            }
+            const wrap = document.createElement("div");
+            wrap.className = "protyle-wysiwyg";
+            wrap.innerHTML = html;
+            thumb.innerHTML = "";
+            this.applyThumbContent(thumb, wrap, tab.title || "");
+        } catch (e) {
+            // 读取失败保持占位即可
+            console.warn("[speed-switch] fetch doc content fail", e);
+        }
     }
 
     // 获取可克隆的缩略图内容源；文档页签优先取其 WYSIWYG 内容
@@ -420,7 +818,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             const colCount = grid ? Math.max(1, Math.floor(grid.clientWidth / 230)) : 1;
 
             let next = -1;
-            if (key === "ArrowRight" || key === "Tab") {
+            if (key === "ArrowRight" || (key === "Tab" && !event.shiftKey)) {
                 event.preventDefault();
                 next = (focusIndex + 1) % cards.length;
             } else if (key === "ArrowLeft" || (key === "Tab" && event.shiftKey)) {
@@ -482,6 +880,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const mru = this.getMru();
         const list = mru.filter((id) => id !== tab.id);
         list.unshift(tab.id);
+        this.data[MRU_KEY] = list;
         this.saveData(MRU_KEY, list).catch((e) => console.warn("[speed-switch] save mru fail", e));
 
         // 等价于点击该页签：内部会切到目标页签，并通过 setPanelFocus 激活其所在窗口（支持分栏）

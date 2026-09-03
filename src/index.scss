@@ -1,3 +1,21 @@
+// 设置页（Setting 弹窗不在 .speed-switch 容器内，需顶层选择器）
+.sw-setting__docks {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+
+    .sw-setting__dock-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--b3-theme-on-background);
+        cursor: pointer;
+        min-height: 28px;
+    }
+}
+
 .speed-switch {
     // 对话框内部整体布局
     .sw__body {
@@ -18,6 +36,32 @@
         flex: 1;
         display: flex;
         min-height: 0;
+    }
+
+    // 右侧内容：工具栏 + 滚动区
+    .sw__content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+    }
+
+    // 工具栏：搜索 + 排序
+    .sw__toolbar {
+        flex: none;
+        display: flex;
+        gap: 8px;
+        padding: 4px 8px 8px;
+
+        .sw__search {
+            min-width: 0;
+        }
+
+        .sw__sort {
+            flex: none;
+            max-width: 140px;
+        }
     }
 
     // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致）
@@ -89,7 +133,12 @@
         outline: none;
     }
 
-    // 分栏窗口分组标签
+    // 分栏窗口分组（标签 + 网格）
+    .sw__group {
+        display: flex;
+        flex-direction: column;
+    }
+
     .sw__window-label {
         display: flex;
         align-items: center;
@@ -102,7 +151,7 @@
         }
     }
 
-    // 缩略图网格
+    // 缩略图网格（列数可由设置或内联样式覆盖）
     .sw__grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -133,13 +182,25 @@
         &.sw__active {
             border-color: var(--b3-theme-primary);
         }
+
+        // 置顶页签左上角标识条
+        &.sw__pinned::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--b3-theme-primary);
+            z-index: 1;
+        }
     }
 
-    // 缩略图框
+    // 缩略图框（高度可由 --sw-thumb-height 变量控制）
     .sw__thumb {
         position: relative;
         width: 100%;
-        height: 128px;
+        height: var(--sw-thumb-height, 128px);
         overflow: hidden;
         background-color: var(--b3-theme-background);
         border-bottom: 1px solid var(--b3-border-color);
@@ -155,15 +216,15 @@
         }
     }
 
-    // 被缩放的克隆内容（模拟文档/面板预览）
+    // 被缩放的克隆内容：颜色全部跟随当前主题，切换主题即自动变化
     .sw__thumb-content {
         width: 800px;
         transform-origin: top left;
         pointer-events: none;
-        color: #121212; // 内容缩略统一使用浅色主题，避免深浅混杂
+        color: var(--b3-theme-on-background);
         font-size: 14px;
         line-height: 1.7;
-        background: #ffffff;
+        background: var(--b3-theme-background);
         overflow-wrap: break-word;
         word-break: break-word;
 
@@ -222,7 +283,39 @@
         }
     }
 
-    // 关闭按钮
+    // 置顶按钮（左上角）
+    .sw__pin {
+        position: absolute;
+        top: 4px;
+        left: 8px;
+        width: 22px;
+        height: 22px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        background-color: var(--b3-card-background);
+        border: 1px solid var(--b3-border-color);
+        color: var(--b3-theme-on-background);
+        z-index: 2;
+
+        svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        &:hover {
+            background-color: var(--b3-list-icon);
+        }
+    }
+
+    // 置顶的卡片常显图钉按钮
+    .sw__card.sw__pinned .sw__pin {
+        display: flex;
+        color: var(--b3-theme-primary);
+    }
+
+    // 关闭按钮（右上角）
     .sw__close {
         position: absolute;
         top: 4px;
@@ -247,7 +340,8 @@
         }
     }
 
-    .sw__card:hover .sw__close {
+    .sw__card:hover .sw__close,
+    .sw__card:hover .sw__pin {
         display: flex;
     }
 }
