@@ -1,0 +1,12 @@
+{
+  "switchTabs": "Switch Tabs",
+  "switchTabsHotkeyTip": "Open tab switcher",
+  "noOpenedTabs": "No opened tabs",
+  "currentWindow": "Window",
+  "tab": "tab",
+  "keyboardHintNavigation": "Click or press Enter to switch, Esc to close, Tab / arrows to navigate",
+  "switchTo": "Switch to",
+  "close": "Close",
+  "jumpToTab": "Jump to tab",
+  "loadingThumbnail": "Loading thumbnail"
+}

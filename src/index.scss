@@ -1,0 +1,164 @@
+.speed-switch {
+    // 对话框内部整体布局
+    .sw__body {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .sw__hint {
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12px;
+        padding: 4px 8px;
+        flex: none;
+    }
+
+    .sw__scroll {
+        flex: 1;
+        overflow: auto;
+        padding: 4px 8px 12px;
+        outline: none;
+    }
+
+    // 分栏窗口分组标签
+    .sw__window-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 8px 4px 6px;
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+        &:first-child {
+            margin-top: 2px;
+        }
+    }
+
+    // 缩略图网格
+    .sw__grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+    }
+
+    // 单个卡片
+    .sw__card {
+        position: relative;
+        border-radius: 6px;
+        border: 1px solid var(--b3-border-color);
+        background-color: var(--b3-card-background);
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        flex-direction: column;
+        display: flex;
+
+        &:hover {
+            border-color: var(--b3-theme-primary-light);
+        }
+
+        &.sw__focused {
+            border-color: var(--b3-theme-primary);
+            box-shadow: 0 0 0 2px var(--b3-theme-primary-light);
+        }
+
+        &.sw__active {
+            border-color: var(--b3-theme-primary);
+        }
+    }
+
+    // 缩略图框
+    .sw__thumb {
+        position: relative;
+        width: 100%;
+        height: 128px;
+        overflow: hidden;
+        background-color: var(--b3-theme-background);
+        border-bottom: 1px solid var(--b3-border-color);
+
+        .sw__thumb-loading {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--b3-theme-on-surface-light);
+        }
+    }
+
+    // 被缩放的克隆内容（模拟文档/面板预览）
+    .sw__thumb-content {
+        width: 800px;
+        transform-origin: top left;
+        pointer-events: none;
+        color: #121212; // 内容缩略统一使用浅色主题，避免深浅混杂
+        font-size: 14px;
+        line-height: 1.7;
+        background: #ffffff;
+        overflow-wrap: break-word;
+        word-break: break-word;
+
+        img, svg, iframe {
+            max-width: 100%;
+        }
+    }
+
+    // 卡片底部信息
+    .sw__meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        font-size: 13px;
+        color: var(--b3-theme-on-background);
+        min-width: 0;
+
+        .sw__icon {
+            flex: none;
+            display: flex;
+            align-items: center;
+            color: var(--b3-theme-primary);
+            svg {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        .sw__title {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    // 关闭按钮
+    .sw__close {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        background-color: var(--b3-card-background);
+        border: 1px solid var(--b3-border-color);
+        color: var(--b3-theme-on-background);
+
+        svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        &:hover {
+            background-color: var(--b3-list-icon);
+        }
+    }
+
+    .sw__card:hover .sw__close {
+        display: flex;
+    }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "speed-switch",
+  "author": "wish5115",
+  "url": "https://github.com/wish5115/speed-switch",
+  "version": "0.0.1",
+  "minAppVersion": "3.1.20",
+  "disabledInPublish": false,
+  "backends": [
+    "windows",
+    "linux",
+    "darwin",
+    "docker",
+    "all"
+  ],
+  "frontends": [
+    "desktop",
+    "browser-desktop",
+    "desktop-window"
+  ],
+  "displayName": {
+    "default": "Speed Switch",
+    "zh-CN": "速切"
+  },
+  "description": {
+    "default": "Switch opened tabs like Windows Alt+Tab: show tab thumbnails (supports split windows).",
+    "zh-CN": "像 Windows Alt+Tab 一样快速切换已打开的页签，展示页签缩略图（支持分栏）。"
+  },
+  "readme": {
+    "default": "README.md",
+    "zh-CN": "README.zh-CN.md"
+  },
+  "icon": "icon.png",
+  "preview": "preview.png",
+  "funding": {
+    "custom": []
+  },
+  "keywords": [
+    "页签切换",
+    "tab switch",
+    "标签切换",
+    "标签页",
+    "speed switch"
+  ]
+}

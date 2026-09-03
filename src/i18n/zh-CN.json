@@ -1,0 +1,12 @@
+{
+  "switchTabs": "切换页签",
+  "switchTabsHotkeyTip": "打开页签切换器",
+  "noOpenedTabs": "暂无打开的页签",
+  "currentWindow": "窗口",
+  "tab": "页签",
+  "keyboardHintNavigation": "点击或回车切换，Esc 关闭，方向键 / Tab 移动选择",
+  "switchTo": "切换到",
+  "close": "关闭",
+  "jumpToTab": "跳转到页签",
+  "loadingThumbnail": "缩略图加载中"
+}

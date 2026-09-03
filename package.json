@@ -1,0 +1,41 @@
+{
+  "name": "speed-switch",
+  "version": "0.0.1",
+  "description": "SiYuan plugin: switch opened tabs with thumbnails like Windows Alt+Tab.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "webpack --config webpack.config.js --mode development",
+    "build": "webpack --config webpack.config.js --mode production"
+  },
+  "keywords": [
+    "siyuan",
+    "plugin",
+    "tab"
+  ],
+  "author": "wish5115",
+  "license": "MIT",
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@parcel/watcher"
+    ]
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^14.0.0",
+    "css-loader": "^7.1.4",
+    "esbuild-loader": "^4.4.3",
+    "mini-css-extract-plugin": "^2.10.2",
+    "sass": "^1.100.0",
+    "sass-loader": "^17.0.0",
+    "siyuan": "1.2.6",
+    "tslib": "^2.8.1",
+    "typescript": "^5.5.4",
+    "webpack": "^5.107.2",
+    "webpack-cli": "^7.0.3",
+    "zip-webpack-plugin": "^4.0.3"
+  }
+}
