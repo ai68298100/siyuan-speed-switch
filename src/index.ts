@@ -7,11 +7,20 @@ type Tab = ReturnType<typeof getAllTabs>[number];
 const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
 const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
 const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量，避免一次克隆大量 DOM 卡住界面
-const DEFAULT_HOTKEY = "⇧⌥S";        // 默认快捷键 Shift+Alt+S
+// 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
+// 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
+const DEFAULT_HOTKEY = "⌥⇧S";
+const LEGACY_HOTKEY = "⇧⌥S";         // 旧版本写入的无法匹配的顺序，需在加载时迁移
 
 interface IGroupedTab {
     tab: Tab;
     card?: HTMLElement;
+}
+
+interface IDockPanel {
+    type: string;
+    title: string;
+    icon: string;
 }
 
 export default class SpeedSwitchPlugin extends Plugin {
@@ -19,6 +28,8 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
+
+        this.fixLegacyHotkey();
 
         this.addTopBar({
             icon: "iconLayout",
@@ -36,6 +47,19 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.showSwitcher();
             },
         });
+    }
+
+    // 旧版本默认快捷键 "⇧⌥S" 无法被思源热键匹配命中，且可能已持久化到快捷键配置中，
+    // 加载时将其修正为可匹配的 "⌥⇧S"（组合键不变，仍是 Alt+Shift+S）
+    private fixLegacyHotkey() {
+        try {
+            const keymapItem = (window as any).siyuan?.config?.keymap?.plugin?.[this.name]?.switchTabs;
+            if (keymapItem && keymapItem.custom === LEGACY_HOTKEY) {
+                keymapItem.custom = DEFAULT_HOTKEY;
+            }
+        } catch (e) {
+            // 配置不可用时忽略，默认值本身已是正确顺序
+        }
     }
 
     // 打开页签切换器
@@ -58,12 +82,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             title: this.i18n.switchTabs,
             content: `<div class="speed-switch sw__body">
     <div class="sw__hint">${this.i18n.keyboardHintNavigation}</div>
-    <div class="sw__scroll" tabindex="0"></div>
+    <div class="sw__main">
+        <div class="sw__dock fn__none"></div>
+        <div class="sw__scroll" tabindex="0"></div>
+    </div>
 </div>`,
             width: this.isMobile ? "92vw" : "880px",
             height: this.isMobile ? "78vh" : "72vh",
         });
 
+        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），无可面板时自动隐藏
+        const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
+        this.renderDockList(dockElement, dialog);
+
+        // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
         this.renderList(scrollElement, tabs, activeTab, dialog);
         this.bindKeydown(scrollElement, dialog);
@@ -78,6 +110,116 @@ export default class SpeedSwitchPlugin extends Plugin {
             return getActiveTab() || undefined;
         } catch (e) {
             console.warn("[speed-switch] get active tab fail", e);
+        }
+        return undefined;
+    }
+
+    // 渲染左侧侧边栏面板列表（文档树/大纲/书签/反链/关系图等，含其他插件注册的面板）
+    private renderDockList(dockElement: HTMLElement | null, dialog: Dialog) {
+        if (!dockElement) {
+            return;
+        }
+        const panels = this.getDockPanels();
+        if (panels.length === 0) {
+            return;
+        }
+        dockElement.classList.remove("fn__none");
+
+        const label = document.createElement("div");
+        label.className = "sw__dock-label";
+        label.textContent = this.i18n.panels;
+        dockElement.appendChild(label);
+
+        panels.forEach((panel) => {
+            dockElement.appendChild(this.createDockItem(panel, dialog));
+        });
+    }
+
+    // 构建一个面板列表项（图标 + 名称），点击即激活该面板
+    private createDockItem(panel: IDockPanel, dialog: Dialog): HTMLElement {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sw__dock-item";
+        item.dataset.dockType = panel.type;
+
+        // 面板当前已展开时高亮标识
+        try {
+            if (document.querySelector(`.dock__item[data-type="${panel.type}"].dock__item--active`)) {
+                item.classList.add("sw__active");
+            }
+        } catch (e) {
+            // 忽略高亮检测失败
+        }
+
+        const icon = document.createElement("span");
+        icon.className = "sw__dock-icon";
+        icon.innerHTML = `<svg><use xlink:href="#${panel.icon}"></use></svg>`;
+        const title = document.createElement("span");
+        title.className = "sw__dock-title";
+        title.textContent = panel.title;
+        item.appendChild(icon);
+        item.appendChild(title);
+
+        item.addEventListener("click", () => this.activateDock(panel.type, dialog));
+        return item;
+    }
+
+    // 激活侧边栏面板并关闭切换器
+    private activateDock(type: string, dialog: Dialog) {
+        try {
+            const dock = this.getDockByType(type);
+            if (dock) {
+                // 与思源 Ctrl+Tab 切换面板一致：show=true 表示聚焦/展开该面板
+                dock.toggleModel(type, true);
+            }
+        } catch (e) {
+            console.warn("[speed-switch] switch dock fail", e);
+        }
+        dialog.destroy();
+    }
+
+    // 读取布局配置中的全部面板（左/右/下三侧 dock），只保留当前真实存在的面板
+    private getDockPanels(): IDockPanel[] {
+        const panels: IDockPanel[] = [];
+        try {
+            const uiLayout = (window as any).siyuan?.config?.uiLayout;
+            if (!uiLayout) {
+                return panels;
+            }
+            (["left", "right", "bottom"] as const).forEach((position) => {
+                const groups = uiLayout[position]?.data;
+                if (!Array.isArray(groups)) {
+                    return;
+                }
+                groups.forEach((group: any[]) => {
+                    (group || []).forEach((item: any) => {
+                        if (item?.type && this.getDockByType(item.type)) {
+                            panels.push({
+                                type: item.type,
+                                title: item.title || item.type,
+                                icon: item.icon || "iconDock",
+                            });
+                        }
+                    });
+                });
+            });
+        } catch (e) {
+            console.warn("[speed-switch] get dock panels fail", e);
+        }
+        return panels;
+    }
+
+    // 按 type 查找面板所属的 Dock（左侧/右侧/底部），与思源 getDockByType 行为一致
+    private getDockByType(type: string): any {
+        const layout = (window as any).siyuan?.layout;
+        if (!layout) {
+            return undefined;
+        }
+        for (const key of ["leftDock", "rightDock", "bottomDock"]) {
+            const dock = layout[key];
+            if (dock?.data?.[type]) {
+                return dock;
+            }
         }
         return undefined;
     }
@@ -238,10 +380,12 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 获取可克隆的缩略图内容源；文档页签优先取其 WYSIWYG 内容
+    // 注意：每次打开切换器都会重新调用本方法克隆实时 DOM，保证缩略图展示的是页签当前最新状态
     private getThumbSource(tab: Tab): HTMLElement | null {
         try {
+            // Editor 模型的 .editor 即 Protyle 实例，其 wysiwyg.element 为实时文档 DOM
             const model: any = (tab as any).model;
-            const wysiwyg: HTMLElement | undefined = model?.editor?.protyle?.wysiwyg?.element;
+            const wysiwyg: HTMLElement | undefined = model?.editor?.wysiwyg?.element;
             if (wysiwyg && wysiwyg.childElementCount > 0) {
                 return wysiwyg.cloneNode(true) as HTMLElement;
             }
