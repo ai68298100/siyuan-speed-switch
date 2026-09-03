@@ -1,50 +1,59 @@
-# Speed Switch (速切)
+# 速切（Speed Switch）
 
-A SiYuan plugin that lets you switch between opened tabs just like the Windows **Win+Tab / Alt+Tab** task switcher. Hit the top-bar button or a global hotkey, and a dialog pops up showing **thumbnail previews** of every opened tab — pick one and switch instantly. The left rail also lists every dock panel (file tree, outline, bookmark, graph, backlinks, AI chat…) so you can jump directly into any sidebar with a single click. **Split-window (multi-pane) layouts are fully supported.**
+思源笔记插件：像 Windows **Win+Tab / Alt+Tab** 一样快速切换已打开的页签。点击顶部按钮或快捷键即可弹出「页签切换器」，以**缩略图**形式展示所有已打开的页签，点选即可瞬间切换；同时在切换器左侧列出了**文档树 / 大纲 / 书签 / 关系图 / 反链**等所有侧边栏面板，一键直达。**分栏（分屏）布局完全支持**。
 
-<p align="center"><img src="preview.png" width="720" alt="Speed Switch preview"/></p>
+<p align="center"><img src="preview.png" width="720" alt="速切预览"/></p>
 
-## Features
+[English README](./README.en-US.md)
 
-- 🌟 **Thumbnail previews** — each tab is rendered as a card with a live document/panel preview, not just a title text.
-- 🖇️ **Dock panel switcher** — the left rail lists every dock (file tree, outline, bookmark, inbox, tag, graph, global graph, backlink, AI chat, custom panels and even docks registered by other plugins). Click one to toggle & focus it.
-- 🔀 **Split-window aware** — tabs are grouped by window pane; switching activates the correct pane automatically.
-- ⌨️ **Keyboard navigation** — arrow keys / `Tab` to move, `Enter` to switch, `Esc` to close (just like Alt+Tab).
-- 🧠 **MRU focus** — remembers the most recently used tab and focuses it first, so you don't have to scroll every time.
-- 🧩 **Two entry points** — top-bar button + global hotkey.
-- ✨ **Fresh on every open** — thumbnails are freshly cloned from the live editor DOM each time you open the switcher.
+## 功能特性
 
-## Entry points
+- 🌟 **缩略图预览** — 每个页签以卡片形式展示文档实时内容预览，不仅是名字，更能一眼认出目标。
+- 🖇️ **侧边栏面板** — 切换器左侧列出全部 dock 面板（文件树、大纲、书签、关系图、反链、AI 聊天、收集箱、标签、底部自定义面板以及其他插件注册的 dock），点击即展开并聚焦。
+- 🔀 **分栏原生支持** — 页签按窗口（分栏）分组展示，切换时自动激活对应分栏。
+- ⌨️ **键盘操作** — 方向键 / `Tab` 移动，`Enter` 切换，`Esc` 关闭（与 Alt+Tab 完全一致）。
+- 🧠 **MRU 智能聚焦** — 记住最近使用的页签，默认高亮到最近使用的那一个，不用再滚一圈。
+- 🧩 **双入口** — 顶部按钮 + 全局快捷键，鼠标党和键盘党都能爽。
+- ✨ **最新状态渲染** — 每次打开切换器都会重新克隆实时 DOM，缩略图一定是当前内容。
 
-- **Top bar button** — layout icon on the right side of the top bar.
-- **Hotkey** — `Alt+Shift+S` by default, changeable in **Settings → Shortcuts**.
+## 入口
 
-> Note: if the hotkey did nothing before v0.0.3, an older release shipped with the wrong modifier order (`"⇧⌥S"`) which SiYuan's `matchHotKey` never matches. v0.0.3+ fixes this; if the issue persists, reassign it once in Settings → Shortcuts.
+- **顶部按钮**：顶部工具栏右侧的布局图标（`iconLayout`）。
+- **快捷键**：默认 `Alt+Shift+S`，可在 **设置 → 快捷键** 中修改。
 
-## Usage
+> 提示：如果之前版本按了没反应（旧版顺序错误 `"⇧⌥S"` 无法被思源匹配命中），升级到 0.0.3+ 后默认会自动修正，也可到快捷键设置里重新设置一次。
 
-1. Open many tabs (in one or several split panes).
-2. Press the hotkey or click the top-bar button.
-3. The switcher dialog opens: **left rail = dock panels**, **right area = thumbnail cards grouped by window pane**.
-4. Click any dock item to open that sidebar; or click a thumbnail card / navigate with arrows/Tab and press `Enter` to switch instantly.
-5. Press `Esc` to close without switching.
+## 使用方法
 
-## Requirements
+1. 打开多个页签（可以分布在多个分栏中）。
+2. 按快捷键或点击顶部按钮。
+3. 弹出切换器：**左侧是所有侧边栏面板**，**右侧是按分栏分组的页签缩略图**。
+4. 左侧点击任意面板即可打开并聚焦；右侧点击卡片，或用方向键 / `Tab` 移动后按 `Enter`，即可瞬间切换到对应页签。
+5. 按 `Esc` 关闭，不做切换。
 
-- SiYuan v3.1.20+ (uses the public `getAllTabs` API).
-- Desktop / browser-desktop frontend (tab panes and multi-pane layout).
+## 安装
 
-## Development
+- **集市安装**：在思源 **设置 → 集市 → 插件** 中搜索「速切 / Speed Switch」安装（待上架社区集市）。
+- **手动安装**：从 [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases) 下载 `package.zip`，解压到 `<工作空间>/data/plugins/siyuan-speed-switch/` 后重启思源。注意文件夹名必须为 `siyuan-speed-switch`。
+
+## 环境要求
+
+- 思源笔记 v3.1.20 及以上（使用 `getAllTabs` API）。
+- 桌面客户端 / 浏览器桌面端前端（支持页签和分栏）。
+
+## 开发
 
 ```bash
-# install deps
+# 安装依赖
 pnpm install
-# start watch mode (dev)
+# 开发监听
 pnpm dev
-# production build → dist/* + package.zip
+# 生产构建 → dist/* + package.zip
 pnpm build
 ```
 
-## License
+推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
+
+## 许可证
 
 [MIT](./LICENSE)

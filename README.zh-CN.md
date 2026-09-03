@@ -4,6 +4,8 @@
 
 <p align="center"><img src="preview.png" width="720" alt="速切预览"/></p>
 
+[English README](./README.en-US.md)
+
 ## 功能特性
 
 - 🌟 **缩略图预览** — 每个页签以卡片形式展示文档实时内容预览，不仅是名字，更能一眼认出目标。
@@ -28,6 +30,11 @@
 3. 弹出切换器：**左侧是所有侧边栏面板**，**右侧是按分栏分组的页签缩略图**。
 4. 左侧点击任意面板即可打开并聚焦；右侧点击卡片，或用方向键 / `Tab` 移动后按 `Enter`，即可瞬间切换到对应页签。
 5. 按 `Esc` 关闭，不做切换。
+
+## 安装
+
+- **集市安装**：在思源 **设置 → 集市 → 插件** 中搜索「速切 / Speed Switch」安装（待上架社区集市）。
+- **手动安装**：从 [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases) 下载 `package.zip`，解压到 `<工作空间>/data/plugins/siyuan-speed-switch/` 后重启思源。注意文件夹名必须为 `siyuan-speed-switch`。
 
 ## 环境要求
 

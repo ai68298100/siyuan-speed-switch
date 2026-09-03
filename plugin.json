@@ -1,8 +1,8 @@
 {
-  "name": "speed-switch",
+  "name": "siyuan-speed-switch",
   "author": "ai68298100",
-  "url": "https://github.com/ai68298100/speed-switch",
-  "version": "0.0.3",
+  "url": "https://github.com/ai68298100/siyuan-speed-switch",
+  "version": "0.0.4",
   "minAppVersion": "3.1.20",
   "disabledInPublish": false,
   "backends": [
@@ -27,7 +27,8 @@
   },
   "readme": {
     "default": "README.md",
-    "zh-CN": "README.zh-CN.md"
+    "zh-CN": "README.zh-CN.md",
+    "en-US": "README.en-US.md"
   },
   "icon": "icon.png",
   "preview": "preview.png",
