@@ -1,16 +1,20 @@
-import {Plugin, Dialog, Setting, getFrontend, getAllTabs, getActiveTab} from "siyuan";
+import {Plugin, Dialog, Setting, getFrontend, getAllTabs, getActiveTab, openTab} from "siyuan";
 import "./index.scss";
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
-// 页签排序方式：mru=最近使用 layout=打开顺序 titleAsc/titleDesc=标题升降序
-type SortBy = "mru" | "layout" | "titleAsc" | "titleDesc";
+// 页签排序方式：mru=最近使用 layout=打开顺序 layoutDesc=打开倒序 titleAsc/titleDesc=标题升降序 updatedDesc=最近编辑
+type SortBy = "mru" | "layout" | "layoutDesc" | "titleAsc" | "titleDesc" | "updatedDesc";
+const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
 
 const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
 const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
 const SETTINGS_KEY = "sw_settings";  // 插件设置
+const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
 const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量，避免一次克隆大量 DOM 卡住界面
+const THUMB_CACHE_MAX = 40;          // 缓存最多保留的文档数（超出按最旧淘汰）
+const THUMB_HTML_MAX = 200 * 1024;   // 单条缓存 HTML 上限，避免持久化文件膨胀
 // 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
 // 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
 const DEFAULT_HOTKEY = "⌥⇧S";
@@ -46,8 +50,14 @@ interface IDockPanel {
     icon: string;
 }
 
+// 缩略图缓存条目：文档 rootID → 内容快照
+interface IThumbCache {
+    [rootId: string]: { title: string, html: string, ts: number };
+}
+
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
+    private searchSeq = 0;   // 文档搜索请求序号，用于丢弃过期响应
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -59,6 +69,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadData(MRU_KEY),
             this.loadData(PINNED_KEY),
             this.loadData(SETTINGS_KEY),
+            this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => console.warn("[speed-switch] load data fail", e));
 
         this.addTopBar({
@@ -105,7 +116,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialogHeight: this.clampNum((saved as any).dialogHeight, 360, 1280, DEFAULT_SETTINGS.dialogHeight),
             columns: this.clampNum((saved as any).columns, 0, 8, DEFAULT_SETTINGS.columns),
             thumbHeight: this.clampNum((saved as any).thumbHeight, 72, 360, DEFAULT_SETTINGS.thumbHeight),
-            sortBy: (["mru", "layout", "titleAsc", "titleDesc"].includes((saved as any).sortBy)
+            sortBy: (SORT_BY_LIST.includes((saved as any).sortBy)
                 ? (saved as any).sortBy : DEFAULT_SETTINGS.sortBy) as SortBy,
             excludedDocks: Array.isArray((saved as any).excludedDocks)
                 ? (saved as any).excludedDocks.filter((t: any) => typeof t === "string")
@@ -221,6 +232,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const options: Array<{value: SortBy, label: string}> = [
                     {value: "mru", label: this.i18n.sortMru},
                     {value: "layout", label: this.i18n.sortLayout},
+                    {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
+                    {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
                     {value: "titleAsc", label: this.i18n.sortTitleAsc},
                     {value: "titleDesc", label: this.i18n.sortTitleDesc},
                 ];
@@ -312,9 +325,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                 <select class="b3-select sw__sort">
                     <option value="mru">${this.i18n.sortMru}</option>
                     <option value="layout">${this.i18n.sortLayout}</option>
+                    <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
+                    <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
                     <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
                     <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
                 </select>
+                <span class="b3-button b3-button--text sw__settings-btn" title="${this.i18n.settings}">
+                    <svg><use xlink:href="#iconSettings"></use></svg>
+                </span>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
         </div>
@@ -328,27 +346,168 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
         this.renderDockList(dockElement, dialog, settings.excludedDocks);
 
-        // 工具栏：搜索过滤 + 排序切换（改动会持久化到设置）
+        // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
+        this.pruneThumbCache(tabs);
+
+        // 工具栏：搜索过滤 + 排序切换（改动会持久化到设置）+ 快捷设置入口
         const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
         const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
+        dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
+            dialog.destroy();
+            this.openSetting();
+        });
         sortSelect.value = settings.sortBy;
         sortSelect.addEventListener("change", () => {
             this.updateSettings({sortBy: sortSelect.value as SortBy});
-            this.renderList(scrollElement, tabs, activeTab, dialog, sortSelect.value as SortBy);
+            this.renderList(scrollElement, tabs, activeTab, dialog, sortSelect.value as SortBy, updatedMap);
             searchInput.value = "";
+            this.applySearch(scrollElement, searchInput, dialog);
             scrollElement.focus();
-        });
-        searchInput.addEventListener("input", () => {
-            this.filterCards(scrollElement, searchInput.value);
         });
 
         // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-        this.renderList(scrollElement, tabs, activeTab, dialog, settings.sortBy);
+        let updatedMap: {[rootId: string]: string} = {};
+        this.renderList(scrollElement, tabs, activeTab, dialog, settings.sortBy, updatedMap);
         this.bindKeydown(scrollElement, dialog);
+
+        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
+        this.loadUpdatedMap(tabs).then((map) => {
+            updatedMap = map;
+            if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && searchInput.value.trim() === "") {
+                this.renderList(scrollElement, tabs, activeTab, dialog, "updatedDesc", updatedMap);
+            }
+        });
+
+        // 搜索：优先显示已打开页签匹配；无匹配时搜索全库文档标题，可点击直接打开
+        searchInput.addEventListener("input", () => {
+            this.applySearch(scrollElement, searchInput, dialog);
+        });
 
         // 让滚动区域获得焦点以接收键盘导航
         scrollElement.focus();
+    }
+
+    // 执行搜索：先过滤已打开页签；无匹配时（防抖）调 searchDocs 搜索全库文档标题
+    private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, dialog: Dialog) {
+        const keyword = searchInput.value.trim();
+        const visible = this.filterCards(scrollElement, searchInput.value);
+
+        // 已有匹配或关键词为空：恢复纯过滤状态
+        if (keyword === "" || visible > 0) {
+            this.renderDocResults(scrollElement, null, dialog);
+            return;
+        }
+        // 无已打开页签匹配 → 延迟 300ms 再请求，避免每个按键都打内核
+        const seq = ++this.searchSeq;
+        window.setTimeout(async () => {
+            // 期间关键词已变化或弹窗已关闭则放弃本次结果
+            if (seq !== this.searchSeq || !dialog.element.isConnected) {
+                return;
+            }
+            if (this.filterCards(scrollElement, searchInput.value) > 0) {
+                this.renderDocResults(scrollElement, null, dialog);
+                return;
+            }
+            try {
+                const response = await fetch("/api/filetree/searchDocs", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({k: keyword}),
+                });
+                const json = await response.json();
+                if (seq !== this.searchSeq || !dialog.element.isConnected) {
+                    return;
+                }
+                const docs: any[] = Array.isArray(json?.data) ? json.data : [];
+                this.renderDocResults(scrollElement, docs.slice(0, 12), dialog);
+            } catch (e) {
+                console.warn("[speed-switch] search docs fail", e);
+            }
+        }, 300);
+    }
+
+    // 渲染全库文档搜索结果分组（docs 为 null 表示隐藏）
+    private renderDocResults(scrollElement: HTMLElement, docs: any[] | null, dialog: Dialog) {
+        let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
+        if (docs === null) {
+            box?.remove();
+            return;
+        }
+        if (!box) {
+            box = document.createElement("div");
+            box.className = "sw__doc-results sw__group";
+            scrollElement.appendChild(box);
+        }
+        box.innerHTML = "";
+
+        const label = document.createElement("div");
+        label.className = "sw__window-label";
+        label.textContent = this.i18n.docSearchResults;
+        box.appendChild(label);
+
+        if (docs.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__thumb-placeholder";
+            empty.textContent = this.i18n.noDocResults;
+            box.appendChild(empty);
+            return;
+        }
+
+        docs.forEach((doc) => {
+            // 思源文档路径以块 id 命名：/ notebook / rootID .sy
+            const id = String(doc.path || "").split("/").pop()?.replace(/\.sy$/, "");
+            if (!id) {
+                return;
+            }
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__doc-item";
+            const icon = document.createElement("span");
+            icon.className = "sw__dock-icon";
+            icon.innerHTML = '<svg><use xlink:href="#iconFile"></use></svg>';
+            const title = document.createElement("span");
+            title.className = "sw__doc-title";
+            title.textContent = String(doc.hPath || "").split("/").pop() || "";
+            const path = document.createElement("span");
+            path.className = "sw__doc-path";
+            path.textContent = doc.hPath || "";
+            item.appendChild(icon);
+            item.appendChild(title);
+            item.appendChild(path);
+            item.addEventListener("click", () => {
+                dialog.destroy();
+                openTab({
+                    app: (this as any).app,
+                    doc: {id},
+                });
+            });
+            box!.appendChild(item);
+        });
+    }
+
+    // 查询当前打开文档的更新时间（用于「最近编辑」排序），返回 rootID → updated 映射
+    private async loadUpdatedMap(tabs: Tab[]): Promise<{[rootId: string]: string}> {
+        const ids = tabs.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[];
+        if (ids.length === 0) {
+            return {};
+        }
+        try {
+            const response = await fetch("/api/query/sql", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({query: `SELECT root_id, updated FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
+            });
+            const json = await response.json();
+            const map: {[rootId: string]: string} = {};
+            (json?.data || []).forEach((row: any) => {
+                map[row.root_id] = row.updated;
+            });
+            return map;
+        } catch (e) {
+            console.warn("[speed-switch] query updated fail", e);
+            return {};
+        }
     }
 
     // 获取当前活动页签（可能为 undefined）
@@ -361,17 +520,23 @@ export default class SpeedSwitchPlugin extends Plugin {
         return undefined;
     }
 
-    // 按关键字过滤卡片，整组无匹配时隐藏分组
-    private filterCards(scrollElement: HTMLElement, keyword: string) {
+    // 按关键字过滤卡片，整组无匹配时隐藏分组；返回可见卡片数
+    private filterCards(scrollElement: HTMLElement, keyword: string): number {
         const kw = keyword.trim().toLowerCase();
+        let visible = 0;
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             const title = (card.dataset.title || "").toLowerCase();
-            card.classList.toggle("fn__none", !!kw && !title.includes(kw));
+            const match = !kw || title.includes(kw);
+            card.classList.toggle("fn__none", !match);
+            if (match) {
+                visible++;
+            }
         });
         scrollElement.querySelectorAll<HTMLElement>(".sw__group").forEach((group) => {
-            const visible = group.querySelectorAll(".sw__card:not(.fn__none)").length;
-            group.classList.toggle("fn__none", visible === 0);
+            const count = group.querySelectorAll(".sw__card:not(.fn__none)").length;
+            group.classList.toggle("fn__none", count === 0);
         });
+        return visible;
     }
 
     // 渲染左侧侧边栏面板列表（文档树/大纲/书签/反链/关系图等，含其他插件注册的面板）
@@ -490,11 +655,15 @@ export default class SpeedSwitchPlugin extends Plugin {
         return tab.headElement?.querySelector(".item__text")?.textContent?.trim() || tab.title || tab.id;
     }
 
+    // 文档页签的 rootID（非文档页签返回空）
+    private rootIdOf(tab: Tab): string | null {
+        const model: any = (tab as any).model;
+        return model?.editor?.block?.rootID || null;
+    }
+
     // 置顶键：文档页签用其 rootID（跨会话稳定，重开同一文档置顶状态保留），其余退回页签 id
     private pinKeyOf(tab: Tab): string {
-        const model: any = (tab as any).model;
-        const rootId = model?.editor?.block?.rootID;
-        return rootId || tab.id;
+        return this.rootIdOf(tab) || tab.id;
     }
 
     // 读取置顶列表
@@ -521,11 +690,20 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 组内排序：置顶页签固定在最前，其余按所选方式排序
-    private sortItems(items: IGroupedTab[], sortBy: SortBy, mru: string[]) {
+    private sortItems(items: IGroupedTab[], sortBy: SortBy, mru: string[], updatedMap: {[rootId: string]: string}) {
         if (sortBy === "titleAsc" || sortBy === "titleDesc") {
             items.sort((a, b) => {
                 const result = this.titleOf(a.tab).localeCompare(this.titleOf(b.tab), undefined, {numeric: true});
                 return sortBy === "titleAsc" ? result : -result;
+            });
+        } else if (sortBy === "layoutDesc") {
+            items.reverse(); // 打开顺序倒序：反转 getAllTabs 的布局顺序
+        } else if (sortBy === "updatedDesc") {
+            // 最近编辑：按文档 updated 时间倒序，无数据的排后面
+            items.sort((a, b) => {
+                const ua = updatedMap[this.rootIdOf(a.tab) || ""] || "";
+                const ub = updatedMap[this.rootIdOf(b.tab) || ""] || "";
+                return ua < ub ? 1 : ua > ub ? -1 : 0;
             });
         } else if (sortBy === "mru") {
             // MRU 中越靠前越新；不在记录中的页签按打开顺序排在后面
@@ -539,7 +717,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 按窗口分组并渲染全部页签
-    private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined, dialog: Dialog, sortBy: SortBy) {
+    private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined, dialog: Dialog, sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
         scrollElement.innerHTML = "";
         const settings = this.getSettings();
         scrollElement.style.setProperty("--sw-thumb-height", `${settings.thumbHeight}px`);
@@ -567,7 +745,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             // 置顶页签固定在前，其余按排序方式排列
             const pinnedItems = group.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
             const restItems = group.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
-            this.sortItems(restItems, sortBy, mru);
+            this.sortItems(restItems, sortBy, mru, updatedMap);
             const ordered = [...pinnedItems, ...restItems];
 
             const groupEl = document.createElement("div");
@@ -704,8 +882,62 @@ export default class SpeedSwitchPlugin extends Plugin {
         return card;
     }
 
-    // 分批克隆真实内容生成缩略图
+    // ==================== 缩略图缓存 ====================
+    // 缓存按文档 rootID 索引：只要该文档页签还开着（哪怕重启/重置布局后重新恢复），
+    // 缓存就保留并在页签 DOM 未就绪时直接渲染；页签关闭后由 pruneThumbCache 清除。
+
+    private getThumbCache(): IThumbCache {
+        const data = this.data[THUMB_CACHE_KEY];
+        return data && typeof data === "object" ? data as IThumbCache : {};
+    }
+
+    private saveThumbCache(cache: IThumbCache) {
+        this.data[THUMB_CACHE_KEY] = cache;
+        this.saveData(THUMB_CACHE_KEY, cache).catch((e) => console.warn("[speed-switch] save thumb cache fail", e));
+    }
+
+    // 写入一条缓存（实时 DOM 优先更新），超过上限时按最旧淘汰；不立即写盘，由调用方批量 flush
+    private setThumbCache(cache: IThumbCache, rootId: string, title: string, html: string) {
+        if (html.length > THUMB_HTML_MAX) {
+            return;
+        }
+        cache[rootId] = {title, html, ts: Date.now()};
+        // 容量控制：超出上限时删最旧的条目
+        const keys = Object.keys(cache);
+        if (keys.length > THUMB_CACHE_MAX) {
+            keys.sort((a, b) => cache[a].ts - cache[b].ts);
+            keys.slice(0, keys.length - THUMB_CACHE_MAX).forEach((key) => delete cache[key]);
+        }
+    }
+
+    // 清理缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
+    private pruneThumbCache(tabs: Tab[]) {
+        const openIds = new Set<string>();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId) {
+                openIds.add(rootId);
+            }
+        });
+        const cache = this.getThumbCache();
+        let dirty = false;
+        Object.keys(cache).forEach((key) => {
+            if (!openIds.has(key)) {
+                delete cache[key];
+                dirty = true;
+            }
+        });
+        if (dirty) {
+            this.saveThumbCache(cache);
+        }
+    }
+
+    // ==================== 缩略图渲染 ====================
+
+    // 分批克隆真实内容生成缩略图；有实时 DOM 时更新缓存，无 DOM 时用缓存或 API 兜底
     private renderThumbnails(list: IGroupedTab[], batch: number) {
+        const cache = this.getThumbCache();
+        let dirty = false;
         let index = 0;
         const runBatch = () => {
             const end = Math.min(index + batch, list.length);
@@ -715,21 +947,40 @@ export default class SpeedSwitchPlugin extends Plugin {
                 if (!thumb) {
                     continue;
                 }
+                const title = item.tab.title || "";
+                const rootId = this.rootIdOf(item.tab);
                 const source = this.getThumbSource(item.tab);
                 thumb.innerHTML = "";
                 if (source) {
-                    this.applyThumbContent(thumb, source, item.tab.title || "");
-                } else {
-                    // 无可用内容（非编辑器页签）时先显示占位，再尝试通过 API 读取文档内容
-                    const placeholder = document.createElement("div");
-                    placeholder.className = "sw__thumb-placeholder";
-                    placeholder.textContent = item.tab.title || item.tab.id;
-                    thumb.appendChild(placeholder);
-                    this.fillThumbByApi(item.tab, thumb);
+                    this.applyThumbContent(thumb, source, title);
+                    // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
+                    if (rootId) {
+                        this.setThumbCache(cache, rootId, title, source.innerHTML);
+                        dirty = true;
+                    }
+                    continue;
                 }
+                // 无实时 DOM：尝试命中持久化缓存（跨重启/重置保留）
+                const cached = rootId ? cache[rootId] : undefined;
+                if (cached) {
+                    const wrap = document.createElement("div");
+                    wrap.className = "protyle-wysiwyg";
+                    wrap.innerHTML = cached.html;
+                    this.applyThumbContent(thumb, wrap, title);
+                    continue;
+                }
+                // 缓存也未命中：先占位，再通过内核 API 读取文档内容（成功后写入缓存）
+                const placeholder = document.createElement("div");
+                placeholder.className = "sw__thumb-placeholder";
+                placeholder.textContent = title || item.tab.id;
+                thumb.appendChild(placeholder);
+                this.fillThumbByApi(item.tab, thumb);
             }
             if (index < list.length) {
                 requestAnimationFrame(runBatch);
+            } else if (dirty) {
+                // 全部批次完成后统一写盘一次
+                this.saveThumbCache(cache);
             }
         };
         requestAnimationFrame(runBatch);
@@ -747,10 +998,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         content.setAttribute("aria-label", title);
     }
 
-    // 页签 DOM 中暂无内容（如后台未渲染完）时，通过内核 API 读取文档 HTML 作为缩略内容
+    // 页签 DOM 中暂无内容（如后台未渲染完）时，通过内核 API 读取文档 HTML 作为缩略内容，并写入缓存
     private async fillThumbByApi(tab: Tab, thumb: HTMLElement) {
-        const model: any = (tab as any).model;
-        const rootId = model?.editor?.block?.rootID;
+        const rootId = this.rootIdOf(tab);
         if (!rootId) {
             return; // 非文档页签，保持占位
         }
@@ -771,6 +1021,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             wrap.innerHTML = html;
             thumb.innerHTML = "";
             this.applyThumbContent(thumb, wrap, tab.title || "");
+            // API 读取成功：写入缓存，下次（含重启后）直接命中
+            const cache = this.getThumbCache();
+            this.setThumbCache(cache, rootId, tab.title || "", html);
+            this.saveThumbCache(cache);
         } catch (e) {
             // 读取失败保持占位即可
             console.warn("[speed-switch] fetch doc content fail", e);

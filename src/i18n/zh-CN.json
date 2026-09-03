@@ -27,8 +27,12 @@
   "columnsAuto": "自动",
   "sortMru": "最近使用",
   "sortLayout": "打开顺序",
+  "sortLayoutDesc": "打开倒序",
+  "sortUpdatedDesc": "最近编辑",
   "sortTitleAsc": "标题 A→Z",
   "sortTitleDesc": "标题 Z→A",
-  "searchTabs": "搜索页签…",
-  "pinTab": "置顶 / 取消置顶"
+  "searchTabs": "搜索页签，无匹配时搜全库文档…",
+  "pinTab": "置顶 / 取消置顶",
+  "docSearchResults": "全库文档",
+  "noDocResults": "未找到匹配的文档"
 }

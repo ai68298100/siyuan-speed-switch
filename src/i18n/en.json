@@ -27,8 +27,12 @@
   "columnsAuto": "Auto",
   "sortMru": "Recently used",
   "sortLayout": "Open order",
+  "sortLayoutDesc": "Open order (reversed)",
+  "sortUpdatedDesc": "Recently edited",
   "sortTitleAsc": "Title A→Z",
   "sortTitleDesc": "Title Z→A",
-  "searchTabs": "Search tabs…",
-  "pinTab": "Pin / unpin"
+  "searchTabs": "Search tabs, then all docs…",
+  "pinTab": "Pin / unpin",
+  "docSearchResults": "Documents",
+  "noDocResults": "No matching documents"
 }

@@ -62,6 +62,27 @@
             flex: none;
             max-width: 140px;
         }
+
+        // 快捷设置入口（打开插件设置页）
+        .sw__settings-btn {
+            flex: none;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--b3-theme-on-surface);
+            cursor: pointer;
+
+            svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            &:hover {
+                background-color: var(--b3-list-hover);
+            }
+        }
     }
 
     // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致）
@@ -137,6 +158,49 @@
     .sw__group {
         display: flex;
         flex-direction: column;
+    }
+
+    // 全库文档搜索结果分组（已打开页签无匹配时展示）
+    .sw__doc-results {
+        margin-top: 12px;
+
+        .sw__doc-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 6px 8px;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            text-align: left;
+            font-size: 13px;
+            cursor: pointer;
+
+            &:hover {
+                background-color: var(--b3-list-hover);
+            }
+
+            .sw__doc-title {
+                flex: none;
+                max-width: 40%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-weight: 500;
+                color: var(--b3-theme-on-background);
+            }
+
+            .sw__doc-path {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 12px;
+                color: var(--b3-theme-on-surface-light);
+            }
+        }
     }
 
     .sw__window-label {

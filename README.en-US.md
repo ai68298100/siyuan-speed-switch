@@ -12,8 +12,9 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 - 🖇️ **Dock panel switcher** — the left rail lists every dock (file tree, outline, bookmark, graph, backlinks, AI chat…); click one to toggle & focus it. Panels can be hidden in the plugin settings.
 - 📌 **Pin tabs** — pin frequently used tabs with the pin button; pinned tabs always stay on top (remembered per document across restarts).
 - 🔀 **Split-window aware** — tabs are grouped by window pane; switching activates the correct pane automatically.
-- 🔍 **Search & sort** — a live search box filters tabs; four sort orders (recently used / open order / title A→Z / Z→A), switchable right inside the switcher and persisted.
-- ⚙️ **Settings page** — customize dialog width/height, thumbnail columns and height, default sort order, and panel visibility (Settings → Plugins → Speed Switch → Settings).
+- 🔍 **Search & sort** — the search box first filters opened tabs; if nothing matches, it searches document titles across the whole workspace (click a result to open it). Six sort orders (recently used / open order / open order reversed / recently edited / title A→Z / Z→A), switchable right inside the switcher and persisted.
+- 💾 **Thumbnail cache** — thumbnails are cached per document; as long as the tab stays open, the cache survives layout resets and app restarts, and is pruned when the tab closes.
+- ⚙️ **Settings page** — customize dialog width/height, thumbnail columns and height, default sort order, and panel visibility (Settings → Plugins → Speed Switch → Settings); a gear button inside the switcher opens it instantly.
 - 🎨 **Theme aware** — all styles use SiYuan theme variables, following light/dark themes seamlessly.
 - ⌨️ **Keyboard navigation** — arrow keys / `Tab` to move, `Enter` to switch, `Esc` to close (just like Alt+Tab).
 - 🧩 **Two entry points** — top-bar button + global hotkey.
@@ -46,6 +47,13 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 - Desktop / browser-desktop frontend (tab panes and multi-pane layout).
 
 ## Changelog
+
+### v0.2.0 (2026-09-03)
+
+- Persistent thumbnail cache: snapshots are stored per document root ID — as long as the tab stays open, the cache survives layout resets and restarts; entries are pruned when tabs close.
+- Quick settings entry (gear button in the switcher toolbar) to jump straight into the plugin settings page.
+- Sort orders extended to six: recently used / open order / **open order reversed** / **recently edited** (by document update time) / title A→Z / Z→A.
+- Search upgrade: opened tabs are matched first; when nothing matches, document titles across the workspace are searched and results can be opened with one click.
 
 ### v0.1.0 (2026-09-03)
 
