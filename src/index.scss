@@ -511,10 +511,12 @@
         }
     }
 
-    // ==================== 卡片悬浮操作按钮（纯图标无边框，hover 变主色） ====================
-    .sw__pin,
-    .sw__fav,
-    .sw__close {
+    // ==================== 卡片悬浮操作按钮（带毛玻璃底，避免与缩略图内容混淆） ====================
+    // 注意：规则限定在 .sw__card 内。顶栏收藏下拉框的类名是 .sw__fav（select），
+    // 卡片收藏按钮使用独立类名 .sw__fav-btn，避免同名样式互相覆盖导致下拉框被隐藏
+    .sw__card .sw__pin,
+    .sw__card .sw__fav-btn,
+    .sw__card .sw__close {
         position: absolute;
         top: 6px;
         width: 22px;
@@ -522,10 +524,12 @@
         display: none;
         align-items: center;
         justify-content: center;
-        background: transparent;
+        background: var(--b3-theme-surface);
+        background: color-mix(in srgb, var(--b3-theme-background) 80%, transparent);
+        backdrop-filter: blur(4px);
         border: none;
         border-radius: 50%;
-        color: var(--b3-theme-on-surface-light);
+        color: var(--b3-theme-on-surface);
         z-index: 2;
         cursor: pointer;
         transition: color 0.12s;
@@ -537,32 +541,45 @@
 
         &:hover {
             color: var(--b3-theme-primary);
+            background: var(--b3-theme-surface);
         }
     }
 
-    .sw__pin {
+    .sw__card .sw__pin {
         left: 8px;
     }
 
-    // 收藏按钮紧邻置顶按钮右侧
-    .sw__fav {
+    // 收藏按钮紧邻置顶按钮右侧；未收藏空心星（思源星标图标通过 --b3-icon-star-fill 控制填充）
+    .sw__card .sw__fav-btn {
         left: 32px;
+
+        svg {
+            --b3-icon-star-fill: none;
+        }
     }
 
-    .sw__close {
+    .sw__card .sw__close {
         right: 8px;
     }
 
-    // 置顶/收藏的卡片常显对应按钮（主色标识）
-    .sw__card.sw__pinned .sw__pin,
-    .sw__card.sw__faved .sw__fav {
+    // 置顶/收藏的卡片常显对应按钮，并高亮为主色（实心图钉 / 实心星）
+    .sw__card.sw__pinned .sw__pin {
         display: flex;
         color: var(--b3-theme-primary);
     }
 
+    .sw__card.sw__faved .sw__fav-btn {
+        display: flex;
+        color: var(--b3-theme-primary);
+
+        svg {
+            --b3-icon-star-fill: currentColor;
+        }
+    }
+
     .sw__card:hover .sw__close,
     .sw__card:hover .sw__pin,
-    .sw__card:hover .sw__fav {
+    .sw__card:hover .sw__fav-btn {
         display: flex;
     }
 
@@ -579,11 +596,14 @@
             .sw__search-wrap {
                 flex: 1 1 100%;
             }
-        }
 
-        .sw__fav {
-            flex: 1;
-            min-width: 0;
+            // 收藏与排序下拉平分第二行
+            .sw__fav,
+            .sw__sort {
+                flex: 1 1 auto;
+                min-width: 0;
+                max-width: none;
+            }
         }
     }
 }

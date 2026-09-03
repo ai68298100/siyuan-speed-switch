@@ -48,6 +48,15 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Changelog
 
+### v0.3.1 (2026-09-04)
+
+- Favorite groups: right-click a favorited card to "Set group" (pick from existing groups or type a new one; leave empty to ungroup). The favorites dropdown shows a two-level structure — pick the group first, then the tab.
+- Clearer pin/favorite states: hollow star when unfavorited, filled primary-color star when favorited (same approach as SiYuan's star icon); pinned tabs keep a filled pin always visible.
+- Pin/favorite/close buttons get a frosted-glass backdrop, staying readable even over thumbnail content.
+- Fixed the toolbar favorites dropdown not showing (class-name collision between the card favorite button and the select).
+- Buttons now use SiYuan's standard tooltips, fixing empty white boxes with no text on hover.
+- Sidebar thumbnails scale with the panel size (live rescale while dragging the splitter, no full list rebuild); the sidebar also gains the sort dropdown, matching the dialog.
+
 ### v0.3.0 (2026-09-03)
 
 - Two-section search results: matched open tabs show in the upper section, workspace-wide documents in the lower one (already-open docs excluded; click to open).
