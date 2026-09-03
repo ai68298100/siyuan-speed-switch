@@ -1,5 +1,5 @@
 // ============================================================
-// Speed Switch —— 极简风格。尽量不用背景色，仅用文字色 / 边框 / 阴影
+// 小驴速切（LvSpeed Switch）—— 极简风格。尽量不用背景色，仅用文字色 / 边框 / 阴影
 // 随思源主题变量自动适配明暗主题，避免与各类主题产生冲突
 // ============================================================
 
@@ -47,7 +47,7 @@
     padding-top: 0;
 }
 
-// 设置页收藏管理：分组重命名行 + 收藏项分组调整列表
+// 设置页收藏管理：新建分组 + 分组列表（重命名/删除）+ 收藏项分组调整列表
 .sw-setting__favs {
     display: flex;
     flex-direction: column;
@@ -59,12 +59,12 @@
         color: var(--b3-theme-on-surface-light);
     }
 
-    .sw-setting__fav-rename {
+    // 新建分组行：输入框弹性伸缩 + 按钮
+    .sw-setting__fav-create {
         display: flex;
         align-items: center;
         gap: 8px;
 
-        .b3-select,
         .b3-text-field {
             flex: 1;
             min-width: 0;
@@ -72,6 +72,63 @@
 
         .b3-button {
             flex: none;
+        }
+    }
+
+    // 分组列表：每行 名称 + 数量徽标 + 重命名 + 删除
+    .sw-setting__group-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .sw-setting__group-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+
+        .sw-setting__group-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--b3-theme-on-background);
+        }
+
+        .sw-setting__group-count {
+            flex: none;
+            min-width: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: var(--b3-theme-primary-lightest);
+            color: var(--b3-theme-primary);
+            font-size: 11px;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        .sw-setting__group-btn {
+            flex: none;
+            font-size: 12px;
+        }
+
+        // 删除按钮弱化为错误色文字， hover 加重
+        .sw-setting__group-del {
+            color: var(--b3-card-error-color);
+
+            &:hover {
+                background: var(--b3-card-error-background);
+            }
+        }
+
+        // 行内重命名编辑态：输入框占满剩余空间
+        .b3-text-field {
+            flex: 1;
+            min-width: 0;
         }
     }
 
@@ -278,12 +335,12 @@
                 }
             }
 
-            // 浮层面板：分组标题 + 组内项
+            // 浮层面板：分组标题 + 组内项。
+            // fixed 定位 + JS 计算坐标（positionFavPanel）：脱离侧边栏 dock 的 overflow 裁剪，
+            // 窄侧边栏下自动收窄宽度并夹紧在宿主与视口内，下方空间不足时翻转到上方
             .sw__fav-panel {
-                position: absolute;
-                top: calc(100% + 6px);
-                right: 0;
-                z-index: 99;
+                position: fixed;
+                z-index: 999;
                 width: 248px;
                 max-height: 320px;
                 overflow: auto;

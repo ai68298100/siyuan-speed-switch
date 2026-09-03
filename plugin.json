@@ -2,7 +2,7 @@
   "name": "siyuan-speed-switch",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "minAppVersion": "3.1.20",
   "disabledInPublish": false,
   "backends": [
@@ -18,12 +18,12 @@
     "desktop-window"
   ],
   "displayName": {
-    "default": "Speed Switch",
+    "default": "LvSpeed Switch",
     "zh-CN": "小驴速切"
   },
   "description": {
-    "default": "Switch opened tabs like Windows Alt+Tab: show tab thumbnails (supports split windows).",
-    "zh-CN": "像 Windows Alt+Tab 一样快速切换已打开的页签，展示页签缩略图（支持分栏）。"
+    "default": "LvSpeed Switch: flip through open tabs like Windows Alt+Tab — live thumbnails, grouped favorites, workspace search, sidebar mode (split windows supported).",
+    "zh-CN": "像 Windows Alt+Tab 一样快速切换已打开的页签，展示页签缩略图，支持收藏分组、全库搜索与侧边栏模式（支持分栏）。"
   },
   "readme": {
     "default": "README.md",
@@ -40,6 +40,8 @@
     "tab switch",
     "标签切换",
     "标签页",
-    "speed switch"
+    "speed switch",
+    "lv speed switch",
+    "小驴速切"
   ]
 }

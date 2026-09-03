@@ -1,52 +1,86 @@
-# Speed Switch (小驴速切)
+# LvSpeed Switch
 
-A SiYuan plugin that lets you switch between opened tabs just like the Windows **Win+Tab / Alt+Tab** task switcher. Hit the top-bar button or a global hotkey, and a dialog pops up showing **thumbnail previews** of every opened tab — pick one and switch instantly. The left rail also lists every dock panel (file tree, outline, bookmark, graph, backlinks, AI chat…) so you can jump directly into any sidebar with a single click. **Split-window (multi-pane) layouts are fully supported.**
+[![Version](https://img.shields.io/badge/version-0.6.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
-<p align="center"><img src="preview.png" width="720" alt="Speed Switch preview"/></p>
+A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, and a **dockable sidebar mode**. Split windows (panes) are fully supported.
+
+<p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
 [中文说明](./README.zh-CN.md)
 
-## Features
+## ✨ Features
 
-- 🌟 **Thumbnail previews** — each tab is rendered as a card with a live document preview; tabs not yet rendered in the background are fetched via the kernel API, so you see thumbnails for everything on first open.
-- 🖇️ **Dock panel switcher** — the left rail lists every dock (file tree, outline, bookmark, graph, backlinks, AI chat…); click one to toggle & focus it. Panels can be hidden in the plugin settings.
-- 📌 **Pin tabs** — pin frequently used tabs with the pin button; pinned tabs always stay on top (remembered per document across restarts).
-- 🔀 **Split-window aware** — tabs are grouped by window pane; switching activates the correct pane automatically.
-- 🔍 **Search & sort** — the search box first filters opened tabs; if nothing matches, it searches document titles across the whole workspace (click a result to open it). Six sort orders (recently used / open order / open order reversed / recently edited / title A→Z / Z→A), switchable right inside the switcher and persisted.
-- 💾 **Thumbnail cache** — thumbnails are cached per document; as long as the tab stays open, the cache survives layout resets and app restarts, and is pruned when the tab closes.
-- ⚙️ **Settings page** — customize dialog width/height, thumbnail columns and height, default sort order, and panel visibility (Settings → Plugins → Speed Switch → Settings); a gear button inside the switcher opens it instantly.
-- 🎨 **Theme aware** — all styles use SiYuan theme variables, following light/dark themes seamlessly.
-- ⌨️ **Keyboard navigation** — arrow keys / `Tab` to move, `Enter` to switch, `Esc` to close (just like Alt+Tab).
-- 🧩 **Two entry points** — top-bar button + global hotkey.
+### Switching
+- 🌟 **Live thumbnails** — One card per tab showing real document content; background tabs are fetched via the kernel API, so every thumbnail is visible on first open.
+- 🔀 **Split-window native** — Tabs are grouped by window (pane); switching activates the right pane automatically.
+- ⌨️ **Full keyboard control** — Arrows / `Tab` move the selection across the real grid, `Enter` switches, `Esc` closes — same muscle memory as Alt+Tab.
+- 📌 **Pin tabs** — Pin frequently used tabs to the front of their group; remembered per document across restarts.
 
-## Entry points
+### Favorites & Groups
+- ⭐ **One-click favorite** — Star any tab; document tabs are remembered by rootID, so you can **reopen them from favorites even after the tab closes**, surviving restarts.
+- 🗂️ **Group management** — File favorites into groups on star click, or create groups on the fly; settings let you **create / inline-rename / delete groups** and reassign favorites per item — all saved instantly.
+- 📂 **Grouped dropdown** — The favorites dropdown is a custom component: group headers with count badges, **click to collapse / expand**; auto-narrows and clamps inside narrow sidebars, never overflows.
 
-- **Top bar button** — layout icon on the right side of the top bar.
-- **Hotkey** — `Alt+Shift+S` by default, changeable in **Settings → Shortcuts**.
+### Search & Sort
+- 🔍 **Two-section search** — Matching open tabs on top, **workspace-wide document results** below (already-open docs excluded, click to open); 180ms debounce + result cache + stale-request aborting.
+- 🔃 **Six sort orders** — Recently used / open order / reversed / recently edited / title asc/desc, switchable in-place and persisted.
 
-> Note: if the hotkey did nothing before v0.0.3, an older release shipped with the wrong modifier order (`"⇧⌥S"`) which SiYuan's `matchHotKey` never matches. v0.0.3+ fixes this; if the issue persists, reassign it once in Settings → Shortcuts.
+### Panels & Sidebar
+- 🖇️ **Panel quick access** — All dock panels (file tree, outline, bookmarks, graph, backlinks, tags, inbox, AI chat…) listed on the left rail; click to open and focus. Hide unwanted ones in settings.
+- 📎 **Sidebar mode** — Pin the tab list to a right dock panel: single-column cards that resize with the panel, always at hand.
 
-## Usage
+### Performance & Look
+- 💾 **Thumbnail cache** — Content snapshots cached per document; layout resets and app restarts load instantly. Cache is pruned on tab close, capped at 200KB per entry.
+- ⚡ **Debounced writes** — High-frequency data (favorites / pins / MRU) is kept in memory and flushed to disk in merged batches — rapid actions never stall. Pending writes are flushed on unload.
+- 🎨 **Theme aware** — Every style rides on SiYuan theme variables, following light/dark themes seamlessly; pin/star/close buttons get a frosted backdrop for readability over thumbnails.
 
-1. Open many tabs (in one or several split panes).
-2. Press the hotkey or click the top-bar button.
-3. The switcher dialog opens: **left rail = dock panels**, **right area = thumbnail cards grouped by window pane**.
-4. Click any dock item to open that sidebar; or click a thumbnail card / navigate with arrows/Tab and press `Enter` to switch instantly.
-5. Type in the search box to filter tabs live; use the dropdown to change the sort order.
-6. Use the pin (top-left of a card) to pin/unpin tabs, and the × (top-right) to close a tab.
-7. Press `Esc` to close without switching.
+## 🚀 Quick Start
 
-## Installation
+1. **Open**: the layout icon on the top toolbar, or the hotkey `Alt+Shift+S` (changeable in **Settings → Keymap**).
+2. **Switch**: click a card, or move with arrows / `Tab` and hit `Enter`; click a panel on the left rail to jump to it.
+3. **Manage**: pin with the pin button, favorite with the star (group menu pops up); close tabs with × on the card, or right-click for the full menu.
+4. **Search**: type in the toolbar — tab and document results appear together.
+5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
 
-- **Marketplace**: search "Speed Switch / 小驴速切" in **Settings → Marketplace → Plugins** (pending listing on the community bazaar).
-- **Manual**: download `package.zip` from [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases), extract it into `<workspace>/data/plugins/siyuan-speed-switch/` and restart SiYuan. The folder must be named `siyuan-speed-switch`.
+## ⌨️ Shortcuts
+
+| Key | Action |
+| --- | --- |
+| `Alt+Shift+S` | Toggle the switcher (global, configurable) |
+| `↑` `↓` `←` `→` | Move selection across the grid |
+| `Tab` / `Shift+Tab` | Next / previous |
+| `Enter` | Switch to the selected tab |
+| `Esc` | Close the switcher |
+
+## ⚙️ Settings
+
+**Settings → Plugins → LvSpeed Switch → Settings** (or the gear button inside the switcher), in four sections:
+
+| Section | Options |
+| --- | --- |
+| Appearance | Switcher width/height (480–1920 × 360–1280), thumbnail columns (auto / 2–8), thumbnail height (72–360) |
+| Behavior | Default sort order |
+| Panels | Show / hide left-rail panels |
+| Favorites | Create / rename / delete groups, reassign favorites |
+
+## 📦 Install
+
+- **Marketplace**: search "小驴速切 / LvSpeed Switch" in **Settings → Marketplace → Plugins** (community bazaar listing pending).
+- **Manual**: download `package.zip` from [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases), extract into `<workspace>/data/plugins/siyuan-speed-switch/` and restart SiYuan (the folder must be named `siyuan-speed-switch`).
 
 ## Requirements
 
-- SiYuan v3.1.20+ (uses the public `getAllTabs` API).
-- Desktop / browser-desktop frontend (tab panes and multi-pane layout).
+- SiYuan v3.1.20+ (uses the `getAllTabs` API).
+- Desktop client / browser-desktop frontend (tabs and split panes).
 
 ## Changelog
+
+### v0.6.0 (2026-09-04)
+
+- Favorites management in settings: **create groups** (empty groups are kept and selectable when favoriting), **inline rename**, and **delete** (members move to ungrouped); each group row shows a count badge.
+- Fixed the favorites dropdown overflowing the narrow sidebar: the panel is now fixed-positioned and clamped to the host and viewport — auto-narrowed in narrow panels, flipped upward when space below is tight, and repositioned on scroll/resize.
+- English name unified as **LvSpeed Switch**; README fully rewritten.
+- New preview image.
 
 ### v0.5.0 (2026-09-04)
 
@@ -84,46 +118,56 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ### v0.2.2 (2026-09-03)
 
-- Modernized UI: search field with magnifier icon, unified control height and border radius, cards lift with shadow on hover, active tab highlighted in the theme primary color, group labels with divider lines, tinted active dock item, slimmer scrollbars. All colors use SiYuan theme variables and adapt to light/dark themes automatically.
-- Fixed cards/pin/close buttons having no background (the plugin referenced a non-existent `--b3-card-background` variable).
-- Fixed workspace-wide doc search result items missing a text color (could be invisible on dark themes).
-- Thumbnail loading now shows a spinning refresh icon; empty states use a dedicated style; the back-to-top button fades/slides in.
-- Settings panel visibility list now sits in a tinted rounded container for clearer interaction.
+- Modernized UI: search box with magnifier icon, unified control heights and radii, card hover elevation, primary-color highlight for the current tab, separator under group headers, subtle left-rail highlight, slim scrollbars — all via SiYuan theme variables for automatic light/dark adaptation.
+- Fixed broken card/pin/close button backgrounds (a non-existent `--b3-card-background` variable was used).
+- Fixed document search results lacking a text color (potentially invisible in dark themes).
+- Thumbnail loading state now a spinning refresh icon; dedicated empty-state style; back-to-top button fades in with a lift animation.
+- Settings panel switches restyled into a light rounded container.
 
 ### v0.2.1 (2026-09-03)
 
-- Fixed thumbnails not loading after restart/layout reset: SiYuan lazily creates models for inactive tabs on restore, so the root ID is now also parsed from the tab header's `data-initdata` attribute — the cache (or kernel API fallback) now works on first open.
-- Sticky toolbar: name / search / sort / settings merged into one row that stays visible while scrolling thumbnails.
-- New back-to-top button: appears at the bottom-right corner after scrolling down; click for a smooth scroll to the top.
+- Fixed the thumbnail cache not surviving restarts/layout resets: models of inactive tabs are lazy-loaded when SiYuan restores the layout; rootIDs are now also parsed from the tab header's `data-initdata` so the cache or kernel API kicks in on first open.
+- Sticky toolbar: name / search / sort / settings in one row, always visible while scrolling thumbnails.
+- New back-to-top button: appears after scrolling deep, smooth-scrolls to the top.
 
 ### v0.2.0 (2026-09-03)
 
-- Persistent thumbnail cache: snapshots are stored per document root ID — as long as the tab stays open, the cache survives layout resets and restarts; entries are pruned when tabs close.
-- Quick settings entry (gear button in the switcher toolbar) to jump straight into the plugin settings page.
-- Sort orders extended to six: recently used / open order / **open order reversed** / **recently edited** (by document update time) / title A→Z / Z→A.
-- Search upgrade: opened tabs are matched first; when nothing matches, document titles across the workspace are searched and results can be opened with one click.
+- Persistent thumbnail cache: content snapshots keyed by document rootID survive layout resets and restarts while tabs stay open; pruned automatically on tab close.
+- Quick settings entry inside the switcher (toolbar gear button).
+- Six sort orders: recently used / open order / **reversed** / **recently edited** (by document update time) / title asc/desc.
+- Search upgraded: open tabs match first; with no tab matches, **workspace-wide document titles** are searched — click a result to open it.
 
 ### v0.1.0 (2026-09-03)
 
-- New plugin settings page: dialog width/height, thumbnail columns & height, default sort order, panel visibility.
-- Pin tabs: pin button on cards; pinned tabs stay on top, remembered per document across restarts.
-- Sort & search: four sort orders (persisted) plus a live search box.
-- Fully theme-aware styles (light/dark themes follow seamlessly).
-- All thumbnails render on first open, including background tabs (via kernel API fallback).
-- Fix MRU history lost after restart (persisted data now preloaded on startup).
+- Plugin settings page: switcher width/height, thumbnail columns and height, default sort, panel visibility (Settings → Plugins → 小驴速切 → Settings).
+- Tab pinning: pin button on cards; pinned tabs stay at the front of their group, remembered per document.
+- Sorting & search: four sort orders (recently used / open order / title asc/desc) switchable in the switcher and persisted; live filtering in the search box.
+- Theme-aware styles: thumbnails and cards use theme variables for seamless light/dark switching.
+- All thumbnails visible on first open: background tabs fetched via the kernel API.
+- Fixed recent-use records lost after restart (persistent data preloaded on startup).
+
+<details>
+<summary>History</summary>
+
+- v0.0.4 (2026-09-03): repo renamed to siyuan-speed-switch; GitHub Actions auto packaging & release; README localized.
+- v0.0.3 (2026-09-03): fixed the default hotkey not responding; added the left panel list; thumbnails re-render on every open.
+- v0.0.2 (2026-09-03): fixed tab titles and thumbnails not showing.
+- v0.0.1 (2026-09-03): first release, basic thumbnail tab switching.
+
+</details>
 
 ## Development
 
 ```bash
-# install deps
+# Install dependencies
 pnpm install
-# start watch mode (dev)
+# Dev watch
 pnpm dev
-# production build → dist/* + package.zip
+# Production build → dist/* + package.zip
 pnpm build
 ```
 
-Pushing a `v*` tag triggers GitHub Actions to build and publish the Release automatically.
+Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
 
 ## License
 

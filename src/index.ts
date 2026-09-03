@@ -12,6 +12,7 @@ type IOverlayClose = () => void;
 const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
 const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
 const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
+const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
 const SETTINGS_KEY = "sw_settings";  // 插件设置
 const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 const SIDEBAR_DOCK_TYPE = "sidebar"; // 侧边栏 dock 的 type（实际注册为 插件名+type）
@@ -87,6 +88,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadData(MRU_KEY),
             this.loadData(PINNED_KEY),
             this.loadData(FAV_KEY),
+            this.loadData(FAV_GROUPS_KEY),
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => console.warn("[speed-switch] load data fail", e));
@@ -387,7 +389,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         // ===== 收藏 =====
         setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secFavorites}</span>`});
 
-        // 收藏管理：重命名分组、调整收藏项所属分组
+        // 收藏管理：新建分组、分组重命名/删除、调整收藏项所属分组
         setting.addItem({
             title: this.i18n.manageFavorites,
             description: this.i18n.manageFavoritesTip,
@@ -400,6 +402,114 @@ export default class SpeedSwitchPlugin extends Plugin {
                     const groupNames = this.getFavoriteGroupNames();
                     box.innerHTML = "";
 
+                    // 新建分组：输入名称即创建（空分组保留，收藏时可选用）
+                    const createRow = document.createElement("div");
+                    createRow.className = "sw-setting__fav-create";
+                    const nameInput = document.createElement("input");
+                    nameInput.className = "b3-text-field";
+                    nameInput.placeholder = this.i18n.groupName;
+                    const createBtn = document.createElement("button");
+                    createBtn.className = "b3-button b3-button--outline";
+                    createBtn.textContent = this.i18n.createGroup;
+                    const doCreate = () => {
+                        if (this.createFavoriteGroup(nameInput.value)) {
+                            nameInput.value = "";
+                            render();
+                        }
+                    };
+                    createBtn.addEventListener("click", doCreate);
+                    nameInput.addEventListener("keydown", (event) => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            doCreate();
+                        }
+                    });
+                    createRow.appendChild(nameInput);
+                    createRow.appendChild(createBtn);
+                    box.appendChild(createRow);
+
+                    // 分组列表：每个分组一行（名称 + 收藏数 + 重命名 + 删除）
+                    if (groupNames.length > 0) {
+                        const groupList = document.createElement("div");
+                        groupList.className = "sw-setting__group-list";
+                        groupNames.forEach((name) => {
+                            const row = document.createElement("div");
+                            row.className = "sw-setting__group-row";
+
+                            const label = document.createElement("span");
+                            label.className = "sw-setting__group-name";
+                            label.textContent = name;
+                            label.title = name;
+
+                            const count = document.createElement("span");
+                            count.className = "sw-setting__group-count";
+                            count.textContent = String(favorites.filter((fav) => fav.group === name).length);
+                            count.title = this.i18n.groupCountTip;
+
+                            // 重命名：行内切换为输入框，确认后整组迁移
+                            const renameBtn = document.createElement("button");
+                            renameBtn.type = "button";
+                            renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
+                            renameBtn.textContent = this.i18n.rename;
+                            renameBtn.addEventListener("click", () => {
+                                row.innerHTML = "";
+                                const input = document.createElement("input");
+                                input.className = "b3-text-field";
+                                input.value = name;
+                                const okBtn = document.createElement("button");
+                                okBtn.type = "button";
+                                okBtn.className = "b3-button b3-button--small b3-button--text";
+                                okBtn.textContent = this.i18n.confirm;
+                                const cancelBtn = document.createElement("button");
+                                cancelBtn.type = "button";
+                                cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
+                                cancelBtn.textContent = this.i18n.cancel;
+                                const apply = () => {
+                                    const to = input.value.trim();
+                                    if (to && to !== name) {
+                                        this.renameFavoriteGroup(name, to);
+                                    }
+                                    render();
+                                };
+                                okBtn.addEventListener("click", apply);
+                                input.addEventListener("keydown", (event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        apply();
+                                    } else if (event.key === "Escape") {
+                                        render();
+                                    }
+                                });
+                                cancelBtn.addEventListener("click", () => render());
+                                row.appendChild(input);
+                                row.appendChild(okBtn);
+                                row.appendChild(cancelBtn);
+                                input.focus();
+                                input.select();
+                            });
+
+                            // 删除分组：组内收藏项移出到未分组
+                            const deleteBtn = document.createElement("button");
+                            deleteBtn.type = "button";
+                            deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
+                            deleteBtn.textContent = this.i18n.deleteGroup;
+                            deleteBtn.addEventListener("click", () => {
+                                if (confirm(this.i18n.deleteGroupConfirm)) {
+                                    this.deleteFavoriteGroup(name);
+                                    render();
+                                }
+                            });
+
+                            row.appendChild(label);
+                            row.appendChild(count);
+                            row.appendChild(renameBtn);
+                            row.appendChild(deleteBtn);
+                            groupList.appendChild(row);
+                        });
+                        box.appendChild(groupList);
+                    }
+
+                    // 收藏列表：每行标题 + 分组下拉（改动即保存）
                     if (favorites.length === 0) {
                         const empty = document.createElement("div");
                         empty.className = "sw-setting__fav-empty";
@@ -407,40 +517,6 @@ export default class SpeedSwitchPlugin extends Plugin {
                         box.appendChild(empty);
                         return;
                     }
-
-                    // 分组重命名：选择分组 → 输入新名称
-                    if (groupNames.length > 0) {
-                        const renameRow = document.createElement("div");
-                        renameRow.className = "sw-setting__fav-rename";
-                        const fromSelect = document.createElement("select");
-                        fromSelect.className = "b3-select";
-                        groupNames.forEach((name) => fromSelect.appendChild(new Option(name, name)));
-                        const toInput = document.createElement("input");
-                        toInput.className = "b3-text-field";
-                        toInput.placeholder = this.i18n.newGroupName;
-                        const renameBtn = document.createElement("button");
-                        renameBtn.className = "b3-button b3-button--outline";
-                        renameBtn.textContent = this.i18n.rename;
-                        renameBtn.addEventListener("click", () => {
-                            const to = toInput.value.trim();
-                            if (fromSelect.value && to && to !== fromSelect.value) {
-                                this.renameFavoriteGroup(fromSelect.value, to);
-                                render();
-                            }
-                        });
-                        toInput.addEventListener("keydown", (event) => {
-                            if (event.key === "Enter") {
-                                event.preventDefault();
-                                renameBtn.dispatchEvent(new Event("click"));
-                            }
-                        });
-                        renameRow.appendChild(fromSelect);
-                        renameRow.appendChild(toInput);
-                        renameRow.appendChild(renameBtn);
-                        box.appendChild(renameRow);
-                    }
-
-                    // 收藏列表：每行标题 + 分组下拉（改动即保存）
                     const list = document.createElement("div");
                     list.className = "sw-setting__fav-list";
                     favorites.forEach((fav) => {
@@ -1013,10 +1089,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         };
         document.addEventListener("pointerdown", onDocPointerDown, true);
+        // 视口尺寸/滚动变化时重新贴位（fixed 定位不随文档流移动）
+        const onReposition = () => {
+            if (!panel.classList.contains("fn__none") && container.isConnected) {
+                this.positionFavPanel(trigger, panel);
+            }
+        };
+        window.addEventListener("resize", onReposition);
+        document.addEventListener("scroll", onReposition, true);
         // 容器从 DOM 移除时解绑全局监听（弹窗销毁/侧边栏重渲染都会移除旧容器）
         const observer = new MutationObserver(() => {
             if (!container.isConnected) {
                 document.removeEventListener("pointerdown", onDocPointerDown, true);
+                window.removeEventListener("resize", onReposition);
+                document.removeEventListener("scroll", onReposition, true);
                 observer.disconnect();
             }
         });
@@ -1030,6 +1116,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                     onClose();
                 });
                 panel.classList.remove("fn__none");
+                this.positionFavPanel(trigger, panel);
             } else {
                 panel.classList.add("fn__none");
             }
@@ -1038,12 +1125,46 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavDropdown(container);
     }
 
+    // 计算收藏下拉面板坐标：fixed 定位脱离侧边栏/弹窗的 overflow 裁剪，
+    // 宽度按宿主（切换器弹窗或侧边栏面板）与视口的可用空间收缩，
+    // 优先与触发器右对齐、出现在下方；左侧越界贴宿主左缘，下方空间不足翻转到上方
+    private positionFavPanel(trigger: HTMLElement, panel: HTMLElement) {
+        const rect = trigger.getBoundingClientRect();
+        const margin = 6;
+        let minLeft = margin;
+        let maxRight = window.innerWidth - margin;
+        const host = trigger.closest<HTMLElement>(".speed-switch");
+        if (host) {
+            const hostRect = host.getBoundingClientRect();
+            minLeft = Math.max(minLeft, hostRect.left + 2);
+            maxRight = Math.min(maxRight, hostRect.right - 2);
+        }
+        // 宽度：理想 248px，按宿主/视口可用空间收缩；宿主过窄（<180px）时随宿主收窄，确保不超出侧边栏
+        const avail = Math.max(0, maxRight - minLeft);
+        const width = Math.max(Math.min(180, avail), Math.min(248, avail));
+        let left = Math.min(Math.max(rect.right - width, minLeft), maxRight - width);
+        // 垂直：默认在触发器下方，剩余空间不足时翻转到触发器上方
+        let top = rect.bottom + margin;
+        let maxHeight = window.innerHeight - margin - top;
+        if (maxHeight < 180) {
+            const over = Math.min(320, rect.top - margin * 2);
+            top = Math.max(margin, rect.top - margin - over);
+            maxHeight = rect.top - margin - top;
+        }
+        panel.style.width = `${width}px`;
+        panel.style.left = `${Math.round(left)}px`;
+        panel.style.top = `${Math.round(top)}px`;
+        panel.style.maxHeight = `${Math.max(140, Math.round(maxHeight))}px`;
+    }
+
     // 渲染下拉面板内容：分组标题（点击折叠/展开）+ 组内收藏项（点击跳转）
     private renderFavPanel(panel: HTMLElement, onPick: () => void) {
         panel.innerHTML = "";
         const favorites = this.getFavorites();
+        const groupNames = this.getFavoriteGroupNames();
 
-        if (favorites.length === 0) {
+        // 既无收藏也无分组才提示空态；仅有空分组时仍展示分组（数量 0），与设置页保持一致
+        if (favorites.length === 0 && groupNames.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__fav-empty";
             empty.textContent = this.i18n.noFavorites;
@@ -1051,8 +1172,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
 
-        // 按分组归类（保持收藏顺序，未分组的归入 ""）
+        // 按分组归类（分组顺序 = 注册表新建顺序在前；注册表中的空分组也占位，数量显示 0）
         const groups = new Map<string, IFavoriteItem[]>();
+        groupNames.forEach((name) => groups.set(name, []));
         favorites.forEach((fav) => {
             const name = fav.group || "";
             if (!groups.has(name)) {
@@ -1171,12 +1293,58 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavSelects();
     }
 
-    // 获取全部分组名（按首次收藏出现顺序，去重、排除未分组）
-    private getFavoriteGroupNames(): string[] {
-        return Array.from(new Set(this.getFavorites().map((item) => item.group).filter(Boolean)));
+    // 分组注册表（允许存在空分组：设置页新建后尚未收藏任何页签的分组）
+    private getFavGroupRegistry(): string[] {
+        const data = this.data[FAV_GROUPS_KEY];
+        return Array.isArray(data) ? (data as unknown[]).filter((name): name is string => typeof name === "string" && !!name) : [];
     }
 
-    // 重命名分组：该组全部收藏项迁移到新名称
+    private saveFavGroupRegistry(names: string[]) {
+        this.data[FAV_GROUPS_KEY] = names;
+        this.saveDataDebounced(FAV_GROUPS_KEY);
+    }
+
+    // 全部分组名：注册表在前保持新建顺序，再并入收藏项上出现过的分组名，去重
+    private getFavoriteGroupNames(): string[] {
+        const merged: string[] = [];
+        this.getFavGroupRegistry()
+            .concat(this.getFavorites().map((item) => item.group || ""))
+            .forEach((name) => {
+                if (name && !merged.includes(name)) {
+                    merged.push(name);
+                }
+            });
+        return merged;
+    }
+
+    // 新建分组（重名直接忽略，返回是否创建成功）
+    private createFavoriteGroup(name: string): boolean {
+        const trimmed = name.trim();
+        if (!trimmed || this.getFavoriteGroupNames().includes(trimmed)) {
+            return false;
+        }
+        this.saveFavGroupRegistry(this.getFavGroupRegistry().concat(trimmed));
+        return true;
+    }
+
+    // 删除分组：注册表移除，组内收藏项移出到未分组
+    private deleteFavoriteGroup(name: string) {
+        this.saveFavGroupRegistry(this.getFavGroupRegistry().filter((item) => item !== name));
+        const list = this.getFavorites();
+        let dirty = false;
+        list.forEach((item) => {
+            if (item.group === name) {
+                item.group = "";
+                dirty = true;
+            }
+        });
+        if (dirty) {
+            this.saveFavorites(list);
+        }
+        this.refreshFavSelects();
+    }
+
+    // 重命名分组：该组全部收藏项迁移到新名称，注册表同步改名（空分组也可重命名）
     private renameFavoriteGroup(from: string, to: string) {
         const list = this.getFavorites();
         let dirty = false;
@@ -1188,8 +1356,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         if (dirty) {
             this.saveFavorites(list);
-            this.refreshFavSelects();
         }
+        const registry = this.getFavGroupRegistry();
+        const index = registry.indexOf(from);
+        if (index >= 0) {
+            registry[index] = to;
+            this.saveFavGroupRegistry(registry);
+        }
+        this.refreshFavSelects();
     }
 
     // 刷新卡片收藏状态标识（实心/空心星与提示文案）
