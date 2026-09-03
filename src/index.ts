@@ -158,14 +158,25 @@ export default class SpeedSwitchPlugin extends Plugin {
         item.card = card;
 
         // 底部：图标 + 标题
+        // 图标与标题：直接复用思源页签头已渲染好的内容，保证与真实页签一致
         const meta = document.createElement("div");
         meta.className = "sw__meta";
         const iconBox = document.createElement("span");
         iconBox.className = "sw__icon";
-        iconBox.innerHTML = `<svg><use xlink:href="#${tab.icon || "iconFile"}"></use></svg>`;
+        const graphic = tab.headElement?.querySelector<SVGElement>(".item__graphic use");
+        const emoji = tab.headElement?.querySelector(".item__icon");
+        if (graphic) {
+            const href = graphic.getAttribute("xlink:href");
+            iconBox.innerHTML = href ? `<svg><use xlink:href="${href}"></use></svg>` : "";
+        } else if (emoji) {
+            iconBox.textContent = emoji.textContent || "";
+            iconBox.classList.add("sw__icon-emoji");
+        } else {
+            iconBox.innerHTML = `<svg><use xlink:href="#${tab.icon || "iconFile"}"></use></svg>`;
+        }
         const titleEl = document.createElement("span");
         titleEl.className = "sw__title";
-        titleEl.textContent = tab.docIcon || tab.title || tab.id;
+        titleEl.textContent = tab.headElement?.querySelector(".item__text")?.textContent?.trim() || tab.title || tab.id;
         meta.appendChild(iconBox);
         meta.appendChild(titleEl);
         card.appendChild(meta);
@@ -201,23 +212,23 @@ export default class SpeedSwitchPlugin extends Plugin {
                     continue;
                 }
                 const source = this.getThumbSource(item.tab);
-                if (!source) {
-                    const loading = thumb.querySelector(".sw__thumb-loading");
-                    if (loading) {
-                        loading.textContent = "";
-                    }
-                    continue;
-                }
-                const content = document.createElement("div");
-                content.className = "sw__thumb-content";
-                content.appendChild(source);
-                // 清空 loading 占位
                 thumb.innerHTML = "";
-                thumb.appendChild(content);
-                // 依据盒子实际宽度计算缩放比例
-                const width = thumb.clientWidth || CONTENT_WIDTH;
-                content.style.transform = `scale(${(width / CONTENT_WIDTH).toFixed(3)})`;
-                content.setAttribute("aria-label", `${item.tab.title || ""}`);
+                if (source) {
+                    const content = document.createElement("div");
+                    content.className = "sw__thumb-content";
+                    content.appendChild(source);
+                    thumb.appendChild(content);
+                    // 依据盒子实际宽度计算缩放比例
+                    const width = thumb.clientWidth || CONTENT_WIDTH;
+                    content.style.transform = `scale(${(width / CONTENT_WIDTH).toFixed(3)})`;
+                    content.setAttribute("aria-label", `${item.tab.title || ""}`);
+                } else {
+                    // 无可用内容（非编辑器页签）时显示占位图标，避免空白
+                    const placeholder = document.createElement("div");
+                    placeholder.className = "sw__thumb-placeholder";
+                    placeholder.textContent = item.tab.title || item.tab.id;
+                    thumb.appendChild(placeholder);
+                }
             }
             if (index < list.length) {
                 requestAnimationFrame(runBatch);
@@ -234,6 +245,12 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (wysiwyg && wysiwyg.childElementCount > 0) {
                 return wysiwyg.cloneNode(true) as HTMLElement;
             }
+            // 兜底：从面板容器里直接找 WYSIWYG 内容（不依赖 model 内部结构）
+            const panelWysiwyg = tab.panelElement?.querySelector<HTMLElement>(".protyle-wysiwyg");
+            if (panelWysiwyg && panelWysiwyg.childElementCount > 0) {
+                return panelWysiwyg.cloneNode(true) as HTMLElement;
+            }
+            // 最后再退回整个面板内容
             if (tab.panelElement && tab.panelElement.childElementCount > 0) {
                 return tab.panelElement.cloneNode(true) as HTMLElement;
             }
