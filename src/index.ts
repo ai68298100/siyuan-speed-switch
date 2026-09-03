@@ -70,6 +70,8 @@ interface IFavoriteItem {
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private searchSeq = 0;   // 文档搜索请求序号，用于丢弃过期响应
+    private docSearchCache = new Map<string, any[]>(); // 关键词 → 全库文档结果缓存（删除重输等场景秒出）
+    private docSearchAbort: AbortController | null = null; // 进行中的文档搜索请求（新请求发起前取消旧的）
     private sidebarElement: HTMLElement | null = null; // 侧边栏 dock 面板内容元素
     private sidebarResizeObserver: ResizeObserver | null = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
 
@@ -120,8 +122,11 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
-        // 文档切换时刷新侧边栏列表（保持与当前页签一致）
-        this.eventBus.on("switch-protyle", () => this.refreshSidebar());
+        // 文档切换时仅更新侧边栏卡片高亮（高频事件，避免整列表重建导致闪烁与滚动位置丢失）
+        this.eventBus.on("switch-protyle", () => this.refreshSidebarActive());
+        // 页签增减（文档打开/关闭）时全量刷新侧边栏列表
+        this.eventBus.on("loaded-protyle-static", () => this.refreshSidebar());
+        this.eventBus.on("destroy-protyle", () => this.refreshSidebar());
 
         this.addCommand({
             langKey: "switchTabs",
@@ -133,6 +138,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     onunload() {
+        this.docSearchAbort?.abort();
+        this.docSearchAbort = null;
+        this.docSearchCache.clear();
         this.sidebarResizeObserver?.disconnect();
         this.sidebarResizeObserver = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
@@ -195,6 +203,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 // 各控件修改时已即时保存，这里无需处理
             },
         });
+
+        // ===== 外观 =====
+        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secAppearance}</span>`});
 
         setting.addItem({
             title: this.i18n.setWidth,
@@ -272,6 +283,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
+        // ===== 行为 =====
+        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secBehavior}</span>`});
+
         setting.addItem({
             title: this.i18n.setSortBy,
             description: this.i18n.setSortByTip,
@@ -299,6 +313,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return select;
             },
         });
+
+        // ===== 面板 =====
+        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secPanels}</span>`});
 
         // 面板显示设置：勾选的面板出现在切换器左侧，取消的隐藏
         setting.addItem({
@@ -340,6 +357,92 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
+        // ===== 收藏 =====
+        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secFavorites}</span>`});
+
+        // 收藏管理：重命名分组、调整收藏项所属分组
+        setting.addItem({
+            title: this.i18n.manageFavorites,
+            description: this.i18n.manageFavoritesTip,
+            direction: "row",
+            createActionElement: () => {
+                const box = document.createElement("div");
+                box.className = "sw-setting__favs";
+                const render = () => {
+                    const favorites = this.getFavorites();
+                    const groupNames = this.getFavoriteGroupNames();
+                    box.innerHTML = "";
+
+                    if (favorites.length === 0) {
+                        const empty = document.createElement("div");
+                        empty.className = "sw-setting__fav-empty";
+                        empty.textContent = this.i18n.noFavorites;
+                        box.appendChild(empty);
+                        return;
+                    }
+
+                    // 分组重命名：选择分组 → 输入新名称
+                    if (groupNames.length > 0) {
+                        const renameRow = document.createElement("div");
+                        renameRow.className = "sw-setting__fav-rename";
+                        const fromSelect = document.createElement("select");
+                        fromSelect.className = "b3-select";
+                        groupNames.forEach((name) => fromSelect.appendChild(new Option(name, name)));
+                        const toInput = document.createElement("input");
+                        toInput.className = "b3-text-field";
+                        toInput.placeholder = this.i18n.newGroupName;
+                        const renameBtn = document.createElement("button");
+                        renameBtn.className = "b3-button b3-button--outline";
+                        renameBtn.textContent = this.i18n.rename;
+                        renameBtn.addEventListener("click", () => {
+                            const to = toInput.value.trim();
+                            if (fromSelect.value && to && to !== fromSelect.value) {
+                                this.renameFavoriteGroup(fromSelect.value, to);
+                                render();
+                            }
+                        });
+                        toInput.addEventListener("keydown", (event) => {
+                            if (event.key === "Enter") {
+                                event.preventDefault();
+                                renameBtn.dispatchEvent(new Event("click"));
+                            }
+                        });
+                        renameRow.appendChild(fromSelect);
+                        renameRow.appendChild(toInput);
+                        renameRow.appendChild(renameBtn);
+                        box.appendChild(renameRow);
+                    }
+
+                    // 收藏列表：每行标题 + 分组下拉（改动即保存）
+                    const list = document.createElement("div");
+                    list.className = "sw-setting__fav-list";
+                    favorites.forEach((fav) => {
+                        const row = document.createElement("div");
+                        row.className = "sw-setting__fav-row";
+                        const name = document.createElement("span");
+                        name.className = "sw-setting__fav-name";
+                        name.textContent = fav.title;
+                        name.title = fav.title;
+                        const select = document.createElement("select");
+                        select.className = "b3-select";
+                        select.appendChild(new Option(this.i18n.ungrouped, ""));
+                        groupNames.forEach((group) => select.appendChild(new Option(group, group)));
+                        select.value = fav.group || "";
+                        select.addEventListener("change", () => {
+                            this.setFavoriteGroup(fav.key, select.value);
+                            render();
+                        });
+                        row.appendChild(name);
+                        row.appendChild(select);
+                        list.appendChild(row);
+                    });
+                    box.appendChild(list);
+                };
+                render();
+                return box;
+            },
+        });
+
         setting.open(this.i18n.settings);
     }
 
@@ -374,15 +477,21 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
                     <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
                 </div>
-                <select class="b3-select sw__fav b3-tooltips b3-tooltips__s" aria-label="${this.i18n.favorites}"></select>
-                <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
-                    <option value="mru">${this.i18n.sortMru}</option>
-                    <option value="layout">${this.i18n.sortLayout}</option>
-                    <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
-                    <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
-                    <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
-                    <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
-                </select>
+                <div class="sw__select-wrap">
+                    <span class="sw__select-label">${this.i18n.favorites}</span>
+                    <select class="b3-select sw__fav b3-tooltips b3-tooltips__s" aria-label="${this.i18n.favorites}"></select>
+                </div>
+                <div class="sw__select-wrap">
+                    <span class="sw__select-label">${this.i18n.sortLabel}</span>
+                    <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
+                        <option value="mru">${this.i18n.sortMru}</option>
+                        <option value="layout">${this.i18n.sortLayout}</option>
+                        <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
+                        <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
+                        <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
+                        <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
+                    </select>
+                </div>
                 <span class="b3-button b3-button--text sw__icon-btn sw__sidebar-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.openSidebar}">
                     <svg><use xlink:href="#iconLayoutRight"></use></svg>
                 </span>
@@ -442,7 +551,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         sortSelect.value = settings.sortBy;
         sortSelect.addEventListener("change", () => {
             this.updateSettings({sortBy: sortSelect.value as SortBy});
-            this.renderList(scrollElement, tabs, activeTab, listOpts, sortSelect.value as SortBy, updatedMap);
+            // 弹窗存活期间页签可能已增减，重取最新列表
+            this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, sortSelect.value as SortBy, updatedMap);
             searchInput.value = "";
             this.applySearch(scrollElement, searchInput, closeOverlay);
             scrollElement.focus();
@@ -458,7 +568,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.loadUpdatedMap(tabs).then((map) => {
             updatedMap = map;
             if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && searchInput.value.trim() === "") {
-                this.renderList(scrollElement, tabs, activeTab, listOpts, "updatedDesc", updatedMap);
+                // 弹窗存活期间页签可能已增减，重取最新列表
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
             }
         });
 
@@ -492,7 +603,13 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.renderDocResults(scrollElement, null, onClose);
             return;
         }
-        // 延迟 300ms 再请求全库文档，避免每个按键都打内核
+        // 命中缓存直接渲染（已打开文档在渲染时排除，缓存结果可安全复用）
+        const cached = this.docSearchCache.get(keyword);
+        if (cached) {
+            this.renderDocResults(scrollElement, cached.slice(0, 12), onClose);
+            return;
+        }
+        // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核
         const seq = ++this.searchSeq;
         window.setTimeout(async () => {
             // 期间关键词已变化或容器已销毁则放弃本次结果
@@ -504,21 +621,34 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return;
             }
             try {
+                // 取消上一次仍在进行的请求，避免过期请求占用内核
+                this.docSearchAbort?.abort();
+                const controller = new AbortController();
+                this.docSearchAbort = controller;
                 const response = await fetch("/api/filetree/searchDocs", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({k: keyword}),
+                    signal: controller.signal,
                 });
                 const json = await response.json();
                 if (seq !== this.searchSeq || !scrollElement.isConnected) {
                     return;
                 }
                 const docs: any[] = Array.isArray(json?.data) ? json.data : [];
+                // 简单容量控制：超 50 条整体清空（关键词极少复现，无需严格 LRU）
+                if (this.docSearchCache.size > 50) {
+                    this.docSearchCache.clear();
+                }
+                this.docSearchCache.set(keyword, docs);
                 this.renderDocResults(scrollElement, docs.slice(0, 12), onClose);
             } catch (e) {
-                console.warn("[speed-switch] search docs fail", e);
+                // 主动取消的请求不算异常
+                if ((e as DOMException)?.name !== "AbortError") {
+                    console.warn("[speed-switch] search docs fail", e);
+                }
             }
-        }, 300);
+        }, 180);
     }
 
     // 渲染全库文档搜索结果分组（docs 为 null 表示隐藏）；已打开的文档不再重复列出
@@ -533,6 +663,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             box.className = "sw__doc-results sw__group";
             scrollElement.appendChild(box);
         }
+        // 兜底移除可能残留的隐藏类（历史 bug 防御），确保文档区始终可见
+        box.classList.remove("fn__none");
         box.innerHTML = "";
 
         const label = document.createElement("div");
@@ -631,7 +763,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 visible++;
             }
         });
-        scrollElement.querySelectorAll<HTMLElement>(".sw__group").forEach((group) => {
+        // 只处理页签卡片分组；全库文档结果区（.sw__doc-results）内部无卡片，
+        // 误判为空组会导致继续输入时文档区被 fn__none 永久隐藏
+        scrollElement.querySelectorAll<HTMLElement>(".sw__group:not(.sw__doc-results)").forEach((group) => {
             const count = group.querySelectorAll(".sw__card:not(.fn__none)").length;
             group.classList.toggle("fn__none", count === 0);
         });
@@ -856,7 +990,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             select.innerHTML = "";
             const placeholder = document.createElement("option");
             placeholder.value = "";
-            placeholder.textContent = favorites.length > 0 ? this.i18n.favorites : this.i18n.noFavorites;
+            placeholder.textContent = favorites.length > 0 ? this.i18n.favPlaceholder : this.i18n.noFavorites;
             select.appendChild(placeholder);
 
             const appendItems = (items: IFavoriteItem[], parent: HTMLElement) => {
@@ -902,25 +1036,138 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavSelects();
     }
 
-    // 转义 HTML 属性值（分组名等用户输入拼入模板时防注入）
+    // 收藏页签到指定分组（已收藏则仅调整分组），用于菜单快速收藏到组
+    private addFavoriteToGroup(tab: Tab, group: string) {
+        const key = this.pinKeyOf(tab);
+        const list = this.getFavorites();
+        const item = list.find((fav) => fav.key === key);
+        if (item) {
+            item.group = group.trim();
+        } else {
+            list.unshift({key, title: this.titleOf(tab), rootId: this.rootIdOf(tab), group: group.trim()});
+        }
+        this.saveFavorites(list);
+        this.refreshFavSelects();
+    }
+
+    // 获取全部分组名（按首次收藏出现顺序，去重、排除未分组）
+    private getFavoriteGroupNames(): string[] {
+        return Array.from(new Set(this.getFavorites().map((item) => item.group).filter(Boolean)));
+    }
+
+    // 重命名分组：该组全部收藏项迁移到新名称
+    private renameFavoriteGroup(from: string, to: string) {
+        const list = this.getFavorites();
+        let dirty = false;
+        list.forEach((item) => {
+            if (item.group === from) {
+                item.group = to;
+                dirty = true;
+            }
+        });
+        if (dirty) {
+            this.saveFavorites(list);
+            this.refreshFavSelects();
+        }
+    }
+
+    // 刷新卡片收藏状态标识（实心/空心星与提示文案）
+    private refreshCardFavState(tab: Tab, card: HTMLElement) {
+        const isFaved = this.getFavorites().some((item) => item.key === this.pinKeyOf(tab));
+        card.classList.toggle("sw__faved", isFaved);
+        card.querySelector<HTMLElement>(".sw__fav-btn")
+            ?.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+    }
+
+    // 星标点击菜单：未收藏时选择收藏方式（快速收藏 / 收藏到分组 / 新建分组收藏），
+    // 已收藏时管理分组（切换分组 / 移出分组 / 取消收藏）
+    private openFavMenu(tab: Tab, card: HTMLElement, event: MouseEvent) {
+        const key = this.pinKeyOf(tab);
+        const favorite = this.getFavorites().find((item) => item.key === key);
+        const groupNames = this.getFavoriteGroupNames();
+        const menu = new Menu("swFavMenu");
+
+        if (!favorite) {
+            menu.addItem({
+                label: this.i18n.favoriteTab,
+                icon: "iconStar",
+                click: () => {
+                    this.toggleFavorite(tab);
+                    this.refreshCardFavState(tab, card);
+                    this.refreshFavSelects();
+                },
+            });
+            if (groupNames.length > 0) {
+                menu.addSeparator();
+                groupNames.forEach((name) => {
+                    menu.addItem({
+                        label: this.escapeAttr(name),
+                        icon: "iconFolder",
+                        click: () => {
+                            this.addFavoriteToGroup(tab, name);
+                            this.refreshCardFavState(tab, card);
+                        },
+                    });
+                });
+            }
+            menu.addSeparator();
+            menu.addItem({
+                label: this.i18n.newGroupFav,
+                icon: "iconAdd",
+                click: () => this.openGroupDialog(tab, card),
+            });
+        } else {
+            if (groupNames.length > 0) {
+                groupNames.forEach((name) => {
+                    menu.addItem({
+                        label: this.escapeAttr(name),
+                        icon: favorite.group === name ? "iconSelect" : "iconFolder",
+                        click: () => this.setFavoriteGroup(key, name),
+                    });
+                });
+                if (favorite.group) {
+                    menu.addItem({
+                        label: this.i18n.removeFromGroup,
+                        icon: "iconUnpin",
+                        click: () => this.setFavoriteGroup(key, ""),
+                    });
+                }
+                menu.addSeparator();
+            }
+            menu.addItem({
+                label: this.i18n.newGroupFav,
+                icon: "iconAdd",
+                click: () => this.openGroupDialog(tab, card),
+            });
+            menu.addSeparator();
+            menu.addItem({
+                label: this.i18n.unfavoriteTab,
+                icon: "iconClose",
+                click: () => {
+                    this.toggleFavorite(tab);
+                    this.refreshCardFavState(tab, card);
+                    this.refreshFavSelects();
+                },
+            });
+        }
+        menu.open({x: event.clientX, y: event.clientY});
+    }
+
+    // 转义 HTML 属性值（分组名等用户输入拼入模板时防注入；Menu label 为 innerHTML 亦需转义）
     private escapeAttr(text: string): string {
         return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // 弹窗设置收藏项的分组：输入分组名（留空移出分组），datalist 列出已有分组便于快速选择
-    private openGroupDialog(tab: Tab) {
+    // 弹窗设置收藏项的分组：输入分组名（留空移出分组），datalist 列出已有分组便于快速选择；
+    // 未收藏的页签确认后自动收藏到该分组
+    private openGroupDialog(tab: Tab, card?: HTMLElement) {
         const key = this.pinKeyOf(tab);
         const favorite = this.getFavorites().find((item) => item.key === key);
-        if (!favorite) {
-            return;
-        }
-        const groupNames = Array.from(new Set(
-            this.getFavorites().map((item) => item.group).filter(Boolean),
-        ));
+        const groupNames = this.getFavoriteGroupNames();
         const dialog = new Dialog({
-            title: `${this.i18n.setGroup} · ${this.titleOf(tab)}`,
+            title: `${this.i18n.setGroup} · ${this.escapeAttr(this.titleOf(tab))}`,
             content: `<div class="b3-dialog__content">
-    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(favorite.group || "")}" />
+    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(favorite?.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
     <div class="fn__hr"></div>
     <div class="b3-label__text">${this.i18n.groupTip}</div>
@@ -934,7 +1181,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         const input = dialog.element.querySelector<HTMLInputElement>(".sw__group-input");
         const confirm = () => {
-            this.setFavoriteGroup(key, input.value);
+            // 未收藏时一并收藏；已收藏时仅调整分组（留空移出分组）
+            this.addFavoriteToGroup(tab, input.value);
+            if (card) {
+                this.refreshCardFavState(tab, card);
+            }
             dialog.destroy();
         };
         input.addEventListener("keydown", (event) => {
@@ -1099,12 +1350,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // 收藏/取消收藏：更新卡片标识与提示文案，并刷新顶栏收藏下拉
+    // 收藏/取消收藏（右键菜单入口）：更新卡片标识与提示文案，并刷新顶栏收藏下拉
     private handleToggleFav(tab: Tab, card: HTMLElement) {
-        const isFaved = this.toggleFavorite(tab);
-        card.classList.toggle("sw__faved", isFaved);
-        card.querySelector<HTMLElement>(".sw__fav-btn")
-            ?.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+        this.toggleFavorite(tab);
+        this.refreshCardFavState(tab, card);
         this.refreshFavSelects();
     }
 
@@ -1115,7 +1364,29 @@ export default class SpeedSwitchPlugin extends Plugin {
         } catch (e) {
             console.warn("[speed-switch] close tab fail", e);
         }
+        // 先取引用再移除卡片（remove 后 closest 返回 null）
+        const group = card.closest(".sw__group");
+        const scroll = card.closest(".sw__scroll");
         card.remove();
+        // 同步所在分组：更新计数，组内清空则移除分组容器（弹窗模式不整列表重建）
+        if (group) {
+            const count = group.querySelectorAll(".sw__card").length;
+            if (count === 0) {
+                group.remove();
+            } else {
+                const label = group.querySelector<HTMLElement>(".sw__window-label");
+                if (label) {
+                    label.textContent = `${this.i18n.currentWindow} · ${count}`;
+                }
+            }
+        }
+        // 全部页签关闭后展示空态（弹窗保持打开，用户可搜索全库文档打开新的）
+        if (scroll && scroll.querySelectorAll(".sw__card").length === 0 && !scroll.querySelector(".sw__doc-results")) {
+            const empty = document.createElement("div");
+            empty.className = "sw__empty";
+            empty.textContent = this.i18n.noOpenedTabs;
+            scroll.appendChild(empty);
+        }
         onTabsChanged();
     }
 
@@ -1188,7 +1459,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         favBtn.innerHTML = '<svg><use xlink:href="#iconStar"></use></svg>';
         favBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            handlers.onToggleFav(tab, card);
+            // 点击星标弹出分组菜单：收藏时可直接选分组/新建分组，已收藏时可切换分组或取消收藏
+            this.openFavMenu(tab, card, event);
         });
         card.appendChild(favBtn);
 
@@ -1220,14 +1492,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                 icon: "iconStar",
                 click: () => handlers.onToggleFav(tab, card),
             });
-            // 已收藏时提供分组管理：设置/调整所属分组
-            if (nowFaved) {
-                menu.addItem({
-                    label: this.i18n.setGroup,
-                    icon: "iconFolder",
-                    click: () => this.openGroupDialog(tab),
-                });
-            }
+            // 分组管理：已收藏时调整分组；未收藏时收藏到指定/新建分组
+            menu.addItem({
+                label: nowFaved ? this.i18n.setGroup : this.i18n.newGroupFav,
+                icon: "iconFolder",
+                click: () => this.openGroupDialog(tab, card),
+            });
             menu.addItem({
                 label: this.i18n.close,
                 icon: "iconClose",
@@ -1438,9 +1708,15 @@ export default class SpeedSwitchPlugin extends Plugin {
             const current = cards.findIndex((el) => el.classList.contains("sw__focused"));
             const focusIndex = current >= 0 ? current : 0;
 
-            // 估算网格列数用于上下导航
+            // 读取网格真实列数用于上下导航（设置列数或自动时均准确）
             const grid = scrollElement.querySelector(".sw__grid") as HTMLElement | null;
-            const colCount = grid ? Math.max(1, Math.floor(grid.clientWidth / 230)) : 1;
+            let colCount = 1;
+            if (grid) {
+                const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter((c) => c && c !== "none");
+                if (cols.length > 0) {
+                    colCount = cols.length;
+                }
+            }
 
             let next = -1;
             if (key === "ArrowRight" || (key === "Tab" && !event.shiftKey)) {
@@ -1535,15 +1811,21 @@ export default class SpeedSwitchPlugin extends Plugin {
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
         </div>
-        <select class="b3-select sw__fav b3-tooltips b3-tooltips__s" aria-label="${this.i18n.favorites}"></select>
-        <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
-            <option value="mru">${this.i18n.sortMru}</option>
-            <option value="layout">${this.i18n.sortLayout}</option>
-            <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
-            <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
-            <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
-            <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
-        </select>
+        <div class="sw__select-wrap">
+            <span class="sw__select-label">${this.i18n.favorites}</span>
+            <select class="b3-select sw__fav b3-tooltips b3-tooltips__s" aria-label="${this.i18n.favorites}"></select>
+        </div>
+        <div class="sw__select-wrap">
+            <span class="sw__select-label">${this.i18n.sortLabel}</span>
+            <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
+                <option value="mru">${this.i18n.sortMru}</option>
+                <option value="layout">${this.i18n.sortLayout}</option>
+                <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
+                <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
+                <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
+                <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
+            </select>
+        </div>
         <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
             <svg><use xlink:href="#iconSettings"></use></svg>
         </span>
@@ -1623,6 +1905,18 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (this.sidebarElement?.isConnected) {
             this.renderSidebarPanel(this.sidebarElement);
         }
+    }
+
+    // 轻量刷新：仅更新侧边栏卡片的当前页签高亮（switch-protyle 高频触发，避免重建列表）
+    private refreshSidebarActive() {
+        const element = this.sidebarElement;
+        if (!element?.isConnected) {
+            return;
+        }
+        const activeId = this.getActiveTab()?.id;
+        element.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
+            card.classList.toggle("sw__active", card.dataset.tabId === activeId);
+        });
     }
 
     // 打开（或聚焦已打开的）侧边栏面板

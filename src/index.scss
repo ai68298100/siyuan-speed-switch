@@ -27,6 +27,75 @@
     }
 }
 
+// 设置页分区标题（外观/行为/面板/收藏）：主色小字 + 顶部细分隔线，与普通设置项区分
+.config-name .sw-setting__sec {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--b3-theme-primary);
+    border-top: 1px solid var(--b3-border-color);
+    padding-top: 12px;
+    width: 100%;
+}
+
+// 设置页收藏管理：分组重命名行 + 收藏项分组调整列表
+.sw-setting__favs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+
+    .sw-setting__fav-empty {
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .sw-setting__fav-rename {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .b3-select,
+        .b3-text-field {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .b3-button {
+            flex: none;
+        }
+    }
+
+    .sw-setting__fav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .sw-setting__fav-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .sw-setting__fav-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--b3-theme-on-background);
+        }
+
+        .b3-select {
+            flex: none;
+            width: 150px;
+        }
+    }
+}
+
 // 锁定思源 Dialog body 滚动（JS 打开弹窗时给 .b3-dialog__body 加 sw-scroll-locked 类）。
 // 思源默认 .b3-dialog__body { overflow:auto }，内容一高会整体滚动把顶栏滚走；
 // 这里改为 overflow:hidden + .sw__body 绝对定位铺满 body，
@@ -76,16 +145,17 @@
     .sw__toolbar {
         flex: none;
         display: flex;
+        flex-wrap: wrap; // 窄弹窗下自动换行，避免工具栏溢出
         align-items: center;
         gap: 8px;
         padding: 10px 12px;
         border-bottom: 1px solid var(--b3-border-color);
 
-        // 搜索框（带前置搜索图标，无边框透明底，聚焦时仅底部主色线）
+        // 搜索框（带前置搜索图标，无边框透明底，聚焦时仅底部主色线）：基准 240px 可伸缩占满剩余
         .sw__search-wrap {
             position: relative;
-            flex: 1;
-            min-width: 0;
+            flex: 1 1 240px;
+            min-width: 120px;
             display: flex;
             align-items: center;
 
@@ -120,25 +190,31 @@
             }
         }
 
-        .sw__sort {
-            flex: none;
-            height: 28px;
-            max-width: 128px;
-            border: 1px solid var(--b3-border-color);
-            background: transparent;
-            color: var(--b3-theme-on-background);
-            border-radius: 6px;
-        }
+        // 带标签的下拉框组：左侧小字标签「收藏」「排序」，右侧 select；窄弹窗下可收缩
+        .sw__select-wrap {
+            flex: 0 1 auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
 
-        // 收藏快速跳转下拉，与排序下拉同款式
-        .sw__fav {
-            flex: none;
-            height: 28px;
-            max-width: 120px;
-            border: 1px solid var(--b3-border-color);
-            background: transparent;
-            color: var(--b3-theme-on-background);
-            border-radius: 6px;
+            .sw__select-label {
+                flex: none;
+                font-size: 12px;
+                color: var(--b3-theme-on-surface-light);
+                white-space: nowrap;
+            }
+
+            .sw__sort,
+            .sw__fav {
+                flex: 0 1 132px;
+                height: 28px;
+                min-width: 96px;
+                border: 1px solid var(--b3-border-color);
+                background: transparent;
+                color: var(--b3-theme-on-background);
+                border-radius: 6px;
+            }
         }
 
         // 顶栏图标按钮：无边框无背景，hover 仅文字变主色
@@ -597,12 +673,17 @@
                 flex: 1 1 100%;
             }
 
-            // 收藏与排序下拉平分第二行
-            .sw__fav,
-            .sw__sort {
-                flex: 1 1 auto;
+            // 收藏与排序下拉组平分第二行（select 弹性伸缩，标签常显）
+            .sw__select-wrap {
+                flex: 1 1 0;
                 min-width: 0;
-                max-width: none;
+
+                .sw__fav,
+                .sw__sort {
+                    flex: 1 1 auto;
+                    width: auto;
+                    min-width: 0;
+                }
             }
         }
     }

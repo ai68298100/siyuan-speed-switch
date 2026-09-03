@@ -48,6 +48,17 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Changelog
 
+### v0.4.0 (2026-09-04)
+
+- Favorite groups polished: clicking the star opens a group menu — pick an existing group, create a new one, switch/remove groups, or unfavorite.
+- Settings page reorganized into sections (Appearance / Behavior / Panels / Favorites) with a favorites manager: rename groups and reassign favorites per item (saved instantly).
+- Toolbar dropdowns now labeled "Favorites" / "Sort" and widened; the search box is narrower; the toolbar wraps gracefully in narrow dialogs.
+- Search performance: debounce lowered to 180ms, result caching (instant on repeated keywords), stale requests aborted.
+- Fixed workspace document results occasionally disappearing while typing (root cause fixed).
+- Fixed stale group counts, leftover empty groups, and missing empty state after closing tabs inside the dialog.
+- Arrow-key navigation now uses the real grid column count (previously a fixed estimate that broke with custom columns).
+- Sidebar highlight-only refresh on document switch (no more flicker or scroll position loss).
+
 ### v0.3.1 (2026-09-04)
 
 - Favorite groups: right-click a favorited card to "Set group" (pick from existing groups or type a new one; leave empty to ungroup). The favorites dropdown shows a two-level structure — pick the group first, then the tab.
