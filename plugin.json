@@ -2,14 +2,10 @@
   "name": "siyuan-speed-switch",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "minAppVersion": "3.1.20",
   "disabledInPublish": false,
   "backends": [
-    "windows",
-    "linux",
-    "darwin",
-    "docker",
     "all"
   ],
   "frontends": [
