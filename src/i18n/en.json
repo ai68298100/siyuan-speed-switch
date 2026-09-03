@@ -34,5 +34,6 @@
   "searchTabs": "Search tabs, then all docs…",
   "pinTab": "Pin / unpin",
   "docSearchResults": "Documents",
-  "noDocResults": "No matching documents"
+  "noDocResults": "No matching documents",
+  "backTop": "Back to top"
 }

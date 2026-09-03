@@ -48,6 +48,12 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Changelog
 
+### v0.2.1 (2026-09-03)
+
+- Fixed thumbnails not loading after restart/layout reset: SiYuan lazily creates models for inactive tabs on restore, so the root ID is now also parsed from the tab header's `data-initdata` attribute — the cache (or kernel API fallback) now works on first open.
+- Sticky toolbar: name / search / sort / settings merged into one row that stays visible while scrolling thumbnails.
+- New back-to-top button: appears at the bottom-right corner after scrolling down; click for a smooth scroll to the top.
+
 ### v0.2.0 (2026-09-03)
 
 - Persistent thumbnail cache: snapshots are stored per document root ID — as long as the tab stays open, the cache survives layout resets and restarts; entries are pruned when tabs close.

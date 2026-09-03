@@ -17,18 +17,12 @@
 }
 
 .speed-switch {
-    // 对话框内部整体布局
+    // 对话框内部整体布局（min-height:0 防止内容把 flex 撑爆导致 dialog body 滚动）
     .sw__body {
         display: flex;
         flex-direction: column;
         height: 100%;
-    }
-
-    .sw__hint {
-        color: var(--b3-theme-on-surface-light);
-        font-size: 12px;
-        padding: 4px 8px;
-        flex: none;
+        min-height: 0;
     }
 
     // 主体区域：左侧面板列表 + 右侧页签缩略图
@@ -38,21 +32,34 @@
         min-height: 0;
     }
 
-    // 右侧内容：工具栏 + 滚动区
+    // 右侧内容：工具栏 + 滚动区 + 回顶按钮
     .sw__content {
         flex: 1;
         display: flex;
         flex-direction: column;
+        position: relative;
         min-width: 0;
         min-height: 0;
     }
 
-    // 工具栏：搜索 + 排序
+    // 固定顶栏：名称 + 搜索 + 排序 + 设置（不在滚动区内，始终可见）
     .sw__toolbar {
         flex: none;
         display: flex;
+        align-items: center;
         gap: 8px;
-        padding: 4px 8px 8px;
+        padding: 8px 8px;
+        border-bottom: 1px solid var(--b3-border-color);
+        background-color: var(--b3-theme-surface);
+        z-index: 1;
+
+        .sw__name {
+            flex: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--b3-theme-on-background);
+            cursor: default;
+        }
 
         .sw__search {
             min-width: 0;
@@ -152,6 +159,35 @@
         overflow: auto;
         padding: 4px 8px 12px;
         outline: none;
+    }
+
+    // 一键回到顶部按钮（滚动后浮现于右下角）
+    .sw__back-top {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background-color: var(--b3-theme-surface);
+        border: 1px solid var(--b3-border-color);
+        box-shadow: var(--b3-dialog-shadow);
+        color: var(--b3-theme-on-surface);
+        cursor: pointer;
+        z-index: 2;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        &:hover {
+            background-color: var(--b3-list-hover);
+            color: var(--b3-theme-primary);
+        }
     }
 
     // 分栏窗口分组（标签 + 网格）

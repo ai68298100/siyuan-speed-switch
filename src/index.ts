@@ -316,11 +316,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dialog = new Dialog({
             title: this.i18n.switchTabs,
             content: `<div class="speed-switch sw__body">
-    <div class="sw__hint">${this.i18n.keyboardHintNavigation}</div>
     <div class="sw__main">
         <div class="sw__dock fn__none"></div>
         <div class="sw__content">
             <div class="sw__toolbar">
+                <span class="sw__name" title="${this.i18n.keyboardHintNavigation}">${this.i18n.switchTabs}</span>
                 <input class="b3-text-field fn__flex-1 sw__search" placeholder="${this.i18n.searchTabs}" />
                 <select class="b3-select sw__sort">
                     <option value="mru">${this.i18n.sortMru}</option>
@@ -335,12 +335,22 @@ export default class SpeedSwitchPlugin extends Plugin {
                 </span>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
+            <span class="sw__back-top fn__none" title="${this.i18n.backTop}">
+                <svg><use xlink:href="#iconUp"></use></svg>
+            </span>
         </div>
     </div>
 </div>`,
             width: this.isMobile ? "92vw" : `${settings.dialogWidth}px`,
             height: this.isMobile ? "78vh" : `${settings.dialogHeight}px`,
         });
+
+        // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
+        // 这里锁定它，保证只有 .sw__scroll 滚动、顶栏始终固定
+        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
+        if (dialogBody) {
+            dialogBody.style.overflow = "hidden";
+        }
 
         // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除，无可面板时自动隐藏
         const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
@@ -386,6 +396,17 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // 让滚动区域获得焦点以接收键盘导航
         scrollElement.focus();
+
+        // 回到顶部按钮：下拉超过一屏左右时出现，点击平滑回顶
+        const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
+        if (backTopBtn) {
+            scrollElement.addEventListener("scroll", () => {
+                backTopBtn.classList.toggle("fn__none", scrollElement.scrollTop < 240);
+            });
+            backTopBtn.addEventListener("click", () => {
+                scrollElement.scrollTo({top: 0, behavior: "smooth"});
+            });
+        }
     }
 
     // 执行搜索：先过滤已打开页签；无匹配时（防抖）调 searchDocs 搜索全库文档标题
@@ -658,7 +679,23 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 文档页签的 rootID（非文档页签返回空）
     private rootIdOf(tab: Tab): string | null {
         const model: any = (tab as any).model;
-        return model?.editor?.block?.rootID || null;
+        if (model?.editor?.block?.rootID) {
+            return model.editor.block.rootID;
+        }
+        // 重启/重置布局后，未激活页签的 model 是懒加载的（切换到该页签才创建）：
+        // 思源把 Editor 初始化数据存在 headElement 的 data-initdata 属性中（含 rootId）
+        try {
+            const initData = tab.headElement?.getAttribute("data-initdata");
+            if (initData) {
+                const json = JSON.parse(initData);
+                if (json?.instance === "Editor" && json.rootId) {
+                    return json.rootId;
+                }
+            }
+        } catch (e) {
+            // 解析失败忽略
+        }
+        return null;
     }
 
     // 置顶键：文档页签用其 rootID（跨会话稳定，重开同一文档置顶状态保留），其余退回页签 id

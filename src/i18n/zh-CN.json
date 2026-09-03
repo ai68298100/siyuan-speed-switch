@@ -34,5 +34,6 @@
   "searchTabs": "搜索页签，无匹配时搜全库文档…",
   "pinTab": "置顶 / 取消置顶",
   "docSearchResults": "全库文档",
-  "noDocResults": "未找到匹配的文档"
+  "noDocResults": "未找到匹配的文档",
+  "backTop": "回到顶部"
 }
