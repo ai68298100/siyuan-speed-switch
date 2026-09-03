@@ -320,9 +320,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         <div class="sw__dock fn__none"></div>
         <div class="sw__content">
             <div class="sw__toolbar">
-                <span class="sw__name" title="${this.i18n.keyboardHintNavigation}">${this.i18n.switchTabs}</span>
-                <input class="b3-text-field fn__flex-1 sw__search" placeholder="${this.i18n.searchTabs}" />
-                <select class="b3-select sw__sort">
+                <div class="sw__search-wrap">
+                    <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
+                    <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+                </div>
+                <select class="b3-select sw__sort" title="${this.i18n.setSortBy}">
                     <option value="mru">${this.i18n.sortMru}</option>
                     <option value="layout">${this.i18n.sortLayout}</option>
                     <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
@@ -330,12 +332,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
                     <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
                 </select>
-                <span class="b3-button b3-button--text sw__settings-btn" title="${this.i18n.settings}">
+                <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" title="${this.i18n.settings}">
                     <svg><use xlink:href="#iconSettings"></use></svg>
                 </span>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
-            <span class="sw__back-top fn__none" title="${this.i18n.backTop}">
+            <span class="sw__back-top" title="${this.i18n.backTop}">
                 <svg><use xlink:href="#iconUp"></use></svg>
             </span>
         </div>
@@ -346,10 +348,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
 
         // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
-        // 这里锁定它，保证只有 .sw__scroll 滚动、顶栏始终固定
+        // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
         const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
         if (dialogBody) {
-            dialogBody.style.overflow = "hidden";
+            dialogBody.classList.add("sw-scroll-locked");
         }
 
         // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除，无可面板时自动隐藏
@@ -397,11 +399,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 让滚动区域获得焦点以接收键盘导航
         scrollElement.focus();
 
-        // 回到顶部按钮：下拉超过一屏左右时出现，点击平滑回顶
+        // 回到顶部按钮：下拉超过一屏左右时淡入，点击平滑回顶
         const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
         if (backTopBtn) {
             scrollElement.addEventListener("scroll", () => {
-                backTopBtn.classList.toggle("fn__none", scrollElement.scrollTop < 240);
+                backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
             });
             backTopBtn.addEventListener("click", () => {
                 scrollElement.scrollTo({top: 0, behavior: "smooth"});
@@ -469,7 +471,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         if (docs.length === 0) {
             const empty = document.createElement("div");
-            empty.className = "sw__thumb-placeholder";
+            empty.className = "sw__empty";
             empty.textContent = this.i18n.noDocResults;
             box.appendChild(empty);
             return;
@@ -819,6 +821,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         if (all.length === 0) {
             const empty = document.createElement("div");
+            empty.className = "sw__empty";
             empty.textContent = this.i18n.noOpenedTabs;
             scrollElement.appendChild(empty);
             return;
@@ -859,7 +862,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         thumb.className = "sw__thumb";
         const loading = document.createElement("div");
         loading.className = "sw__thumb-loading";
-        loading.textContent = this.i18n.loadingThumbnail;
+        loading.innerHTML = `<svg class="sw__spin"><use xlink:href="#iconRefresh"></use></svg><span>${this.i18n.loadingThumbnail}</span>`;
         thumb.appendChild(loading);
         card.appendChild(thumb);
         item.card = card;

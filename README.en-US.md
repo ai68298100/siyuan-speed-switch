@@ -48,6 +48,14 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Changelog
 
+### v0.2.2 (2026-09-03)
+
+- Modernized UI: search field with magnifier icon, unified control height and border radius, cards lift with shadow on hover, active tab highlighted in the theme primary color, group labels with divider lines, tinted active dock item, slimmer scrollbars. All colors use SiYuan theme variables and adapt to light/dark themes automatically.
+- Fixed cards/pin/close buttons having no background (the plugin referenced a non-existent `--b3-card-background` variable).
+- Fixed workspace-wide doc search result items missing a text color (could be invisible on dark themes).
+- Thumbnail loading now shows a spinning refresh icon; empty states use a dedicated style; the back-to-top button fades/slides in.
+- Settings panel visibility list now sits in a tinted rounded container for clearer interaction.
+
 ### v0.2.1 (2026-09-03)
 
 - Fixed thumbnails not loading after restart/layout reset: SiYuan lazily creates models for inactive tabs on restore, so the root ID is now also parsed from the tab header's `data-initdata` attribute — the cache (or kernel API fallback) now works on first open.

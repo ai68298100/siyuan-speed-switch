@@ -1,9 +1,22 @@
-// 设置页（Setting 弹窗不在 .speed-switch 容器内，需顶层选择器）
+// ============================================================
+// Speed Switch —— 所有颜色/阴影/圆角均使用思源主题变量，随主题自动适配
+// ============================================================
+
+// 旋转动画（缩略图加载中）
+@keyframes sw-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+// 设置页：面板可见性开关列表（Setting 弹窗不在 .speed-switch 容器内，需顶层选择器）
 .sw-setting__docks {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     width: 100%;
+    padding: 8px 10px;
+    background-color: var(--b3-theme-surface-lighter);
+    border-radius: var(--b3-border-radius-b, 6px);
 
     .sw-setting__dock-item {
         display: flex;
@@ -12,13 +25,38 @@
         font-size: 13px;
         color: var(--b3-theme-on-background);
         cursor: pointer;
-        min-height: 28px;
+        min-height: 30px;
+        padding: 0 6px;
+        border-radius: var(--b3-border-radius-a, 4px);
+
+        &:hover {
+            background-color: var(--b3-list-hover);
+        }
+    }
+}
+
+// 锁定思源 Dialog body 滚动（JS 打开弹窗时给 .b3-dialog__body 加 sw-scroll-locked 类）。
+// 思源默认 .b3-dialog__body { overflow:auto }，内容一高会整体滚动把顶栏滚走；
+// 这里改为 overflow:hidden + .sw__body 绝对定位铺满 body，
+// 使 .sw__scroll 成为唯一滚动容器（顶栏固定、回顶按钮依赖它的 scroll 事件）
+.b3-dialog__body.sw-scroll-locked {
+    overflow: hidden;
+    position: relative;
+
+    .sw__body {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: auto;
     }
 }
 
 .speed-switch {
-    // 对话框内部整体布局（min-height:0 防止内容把 flex 撑爆导致 dialog body 滚动）
-    .sw__body {
+    // 对话框内部整体布局。注意：根元素同时挂 speed-switch 和 sw__body 两个类，
+    // 必须用 & 复合选择器（.speed-switch.sw__body），后代选择器匹配不到自身导致布局全断
+    &.sw__body {
         display: flex;
         flex-direction: column;
         height: 100%;
@@ -42,44 +80,62 @@
         min-height: 0;
     }
 
-    // 固定顶栏：名称 + 搜索 + 排序 + 设置（不在滚动区内，始终可见）
+    // ==================== 固定顶栏 ====================
     .sw__toolbar {
         flex: none;
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 8px;
+        padding: 10px 12px;
         border-bottom: 1px solid var(--b3-border-color);
         background-color: var(--b3-theme-surface);
         z-index: 1;
 
-        .sw__name {
-            flex: none;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--b3-theme-on-background);
-            cursor: default;
-        }
-
-        .sw__search {
+        // 搜索框（带前置搜索图标）
+        .sw__search-wrap {
+            position: relative;
+            flex: 1;
             min-width: 0;
+            display: flex;
+            align-items: center;
+
+            .sw__search-icon {
+                position: absolute;
+                left: 9px;
+                width: 14px;
+                height: 14px;
+                color: var(--b3-theme-on-surface-light);
+                pointer-events: none;
+            }
+
+            .sw__search {
+                width: 100%;
+                height: 30px;
+                padding-left: 30px;
+                border-radius: var(--b3-border-radius-b, 6px);
+            }
         }
 
         .sw__sort {
             flex: none;
-            max-width: 140px;
+            height: 30px;
+            max-width: 132px;
+            border-radius: var(--b3-border-radius-b, 6px);
         }
 
-        // 快捷设置入口（打开插件设置页）
-        .sw__settings-btn {
+        // 顶栏圆形图标按钮（排序旁的快捷设置入口）
+        .sw__icon-btn {
             flex: none;
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
+            padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            border-radius: var(--b3-border-radius-b, 6px);
             color: var(--b3-theme-on-surface);
             cursor: pointer;
+            transition: background-color 0.15s, color 0.15s;
 
             svg {
                 width: 16px;
@@ -88,22 +144,26 @@
 
             &:hover {
                 background-color: var(--b3-list-hover);
+                color: var(--b3-theme-primary);
             }
         }
     }
 
-    // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致）
+    // ==================== 左侧面板列表 ====================
     .sw__dock {
         flex: none;
-        width: 176px;
+        width: 168px;
         overflow: auto;
         border-right: 1px solid var(--b3-border-color);
-        padding: 2px 0 8px;
+        background-color: var(--b3-theme-surface-lighter);
+        padding: 8px 6px;
     }
 
     .sw__dock-label {
-        margin: 6px 12px 4px;
-        font-size: 12px;
+        margin: 2px 8px 6px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
         color: var(--b3-theme-on-surface-light);
     }
 
@@ -111,25 +171,28 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        width: calc(100% - 12px);
-        margin: 0 6px;
+        width: 100%;
         padding: 6px 8px;
+        margin-bottom: 2px;
         border: none;
-        border-radius: 4px;
+        border-radius: var(--b3-border-radius-b, 6px);
         background: transparent;
         color: var(--b3-theme-on-background);
         font-size: 13px;
         line-height: 1.4;
         text-align: left;
         cursor: pointer;
+        transition: background-color 0.12s, color 0.12s;
 
         &:hover,
         &:focus {
-            background-color: var(--b3-list-icon);
+            background-color: var(--b3-list-hover);
             outline: none;
         }
 
+        // 当前已展开的面板：主色浅底 + 主色文字
         &.sw__active {
+            background-color: var(--b3-theme-primary-light);
             color: var(--b3-theme-primary);
         }
     }
@@ -146,6 +209,10 @@
         }
     }
 
+    .sw__dock-item.sw__active .sw__dock-icon {
+        color: var(--b3-theme-primary);
+    }
+
     .sw__dock-title {
         flex: 1;
         min-width: 0;
@@ -154,20 +221,34 @@
         white-space: nowrap;
     }
 
+    // ==================== 滚动区 ====================
     .sw__scroll {
         flex: 1;
         overflow: auto;
-        padding: 4px 8px 12px;
+        padding: 10px 12px 14px;
         outline: none;
+
+        // 细滚动条，跟随思源主题色
+        &::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        &::-webkit-scrollbar-thumb {
+            background-color: var(--b3-scroll-color);
+            border-radius: 4px;
+        }
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
     }
 
     // 一键回到顶部按钮（滚动后浮现于右下角）
     .sw__back-top {
         position: absolute;
-        right: 16px;
-        bottom: 16px;
-        width: 32px;
-        height: 32px;
+        right: 18px;
+        bottom: 18px;
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -178,6 +259,11 @@
         color: var(--b3-theme-on-surface);
         cursor: pointer;
         z-index: 2;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(6px);
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s, background-color 0.15s, color 0.15s;
+        pointer-events: none;
 
         svg {
             width: 16px;
@@ -188,30 +274,76 @@
             background-color: var(--b3-list-hover);
             color: var(--b3-theme-primary);
         }
+
+        // 滚动后淡入上浮显现
+        &.sw__show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
     }
 
-    // 分栏窗口分组（标签 + 网格）
+    // 空态提示（无页签 / 无搜索结果）
+    .sw__empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 16px;
+        font-size: 13px;
+        color: var(--b3-theme-on-surface-light);
+        text-align: center;
+    }
+
+    // ==================== 分组 ====================
     .sw__group {
         display: flex;
         flex-direction: column;
     }
 
-    // 全库文档搜索结果分组（已打开页签无匹配时展示）
+    // 分栏窗口 / 全库文档结果的分组标题
+    .sw__window-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--b3-theme-on-surface-light);
+
+        &:first-child {
+            margin-top: 0;
+        }
+
+        // 标题后的细分隔线
+        &::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background-color: var(--b3-border-color);
+        }
+    }
+
+    // ==================== 全库文档搜索结果 ====================
     .sw__doc-results {
-        margin-top: 12px;
+        margin-top: 14px;
 
         .sw__doc-item {
             display: flex;
             align-items: center;
             gap: 8px;
             width: 100%;
-            padding: 6px 8px;
+            padding: 7px 10px;
+            margin-bottom: 2px;
             border: none;
-            border-radius: 4px;
+            border-radius: var(--b3-border-radius-b, 6px);
             background: transparent;
+            color: var(--b3-theme-on-background);
             text-align: left;
             font-size: 13px;
             cursor: pointer;
+            transition: background-color 0.12s;
 
             &:hover {
                 background-color: var(--b3-list-hover);
@@ -219,7 +351,7 @@
 
             .sw__doc-title {
                 flex: none;
-                max-width: 40%;
+                max-width: 42%;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
@@ -239,48 +371,40 @@
         }
     }
 
-    .sw__window-label {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin: 8px 4px 6px;
-        font-size: 12px;
-        color: var(--b3-theme-on-surface-light);
-        &:first-child {
-            margin-top: 2px;
-        }
-    }
-
-    // 缩略图网格（列数可由设置或内联样式覆盖）
+    // ==================== 缩略图网格与卡片 ====================
     .sw__grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 10px;
+        gap: 12px;
     }
 
-    // 单个卡片
     .sw__card {
         position: relative;
-        border-radius: 6px;
+        border-radius: var(--b3-border-radius-b, 8px);
         border: 1px solid var(--b3-border-color);
-        background-color: var(--b3-card-background);
+        background-color: var(--b3-theme-surface);
         overflow: hidden;
         cursor: pointer;
-        transition: border-color 0.15s, box-shadow 0.15s;
+        transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background-color 0.15s;
         flex-direction: column;
         display: flex;
 
         &:hover {
             border-color: var(--b3-theme-primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--b3-dialog-shadow);
         }
 
+        // 键盘导航焦点：主色光环
         &.sw__focused {
             border-color: var(--b3-theme-primary);
             box-shadow: 0 0 0 2px var(--b3-theme-primary-light);
         }
 
+        // 当前活动页签：主色边框 + 极浅主色底
         &.sw__active {
             border-color: var(--b3-theme-primary);
+            background-color: var(--b3-theme-primary-light);
         }
 
         // 置顶页签左上角标识条
@@ -309,10 +433,18 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             font-size: 12px;
             color: var(--b3-theme-on-surface-light);
+
+            .sw__spin {
+                width: 18px;
+                height: 18px;
+                animation: sw-spin 1s linear infinite;
+            }
         }
     }
 
@@ -353,7 +485,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 8px;
+        padding: 7px 10px;
         font-size: 13px;
         color: var(--b3-theme-on-background);
         min-width: 0;
@@ -364,8 +496,8 @@
             align-items: center;
             color: var(--b3-theme-primary);
             svg {
-                width: 16px;
-                height: 16px;
+                width: 15px;
+                height: 15px;
             }
             &.sw__icon-emoji {
                 font-size: 15px;
@@ -383,61 +515,49 @@
         }
     }
 
-    // 置顶按钮（左上角）
-    .sw__pin {
+    // ==================== 卡片悬浮操作按钮 ====================
+    // 置顶 / 关闭按钮：半透明主题底色，悬浮于缩略图上方
+    .sw__pin,
+    .sw__close {
         position: absolute;
-        top: 4px;
-        left: 8px;
-        width: 22px;
-        height: 22px;
+        top: 6px;
+        width: 24px;
+        height: 24px;
         display: none;
         align-items: center;
         justify-content: center;
-        border-radius: 4px;
-        background-color: var(--b3-card-background);
+        border-radius: 50%;
+        background-color: var(--b3-theme-surface);
         border: 1px solid var(--b3-border-color);
-        color: var(--b3-theme-on-background);
+        box-shadow: var(--b3-dialog-shadow);
+        color: var(--b3-theme-on-surface);
         z-index: 2;
+        cursor: pointer;
+        transition: background-color 0.12s, color 0.12s;
 
         svg {
-            width: 14px;
-            height: 14px;
+            width: 13px;
+            height: 13px;
         }
 
         &:hover {
-            background-color: var(--b3-list-icon);
+            background-color: var(--b3-list-hover);
+            color: var(--b3-theme-primary);
         }
+    }
+
+    .sw__pin {
+        left: 8px;
+    }
+
+    .sw__close {
+        right: 8px;
     }
 
     // 置顶的卡片常显图钉按钮
     .sw__card.sw__pinned .sw__pin {
         display: flex;
         color: var(--b3-theme-primary);
-    }
-
-    // 关闭按钮（右上角）
-    .sw__close {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        width: 22px;
-        height: 22px;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        background-color: var(--b3-card-background);
-        border: 1px solid var(--b3-border-color);
-        color: var(--b3-theme-on-background);
-
-        svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        &:hover {
-            background-color: var(--b3-list-icon);
-        }
     }
 
     .sw__card:hover .sw__close,
