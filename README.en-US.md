@@ -1,4 +1,4 @@
-# Speed Switch (速切)
+# Speed Switch (小驴速切)
 
 A SiYuan plugin that lets you switch between opened tabs just like the Windows **Win+Tab / Alt+Tab** task switcher. Hit the top-bar button or a global hotkey, and a dialog pops up showing **thumbnail previews** of every opened tab — pick one and switch instantly. The left rail also lists every dock panel (file tree, outline, bookmark, graph, backlinks, AI chat…) so you can jump directly into any sidebar with a single click. **Split-window (multi-pane) layouts are fully supported.**
 
@@ -38,7 +38,7 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Installation
 
-- **Marketplace**: search "Speed Switch / 速切" in **Settings → Marketplace → Plugins** (pending listing on the community bazaar).
+- **Marketplace**: search "Speed Switch / 小驴速切" in **Settings → Marketplace → Plugins** (pending listing on the community bazaar).
 - **Manual**: download `package.zip` from [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases), extract it into `<workspace>/data/plugins/siyuan-speed-switch/` and restart SiYuan. The folder must be named `siyuan-speed-switch`.
 
 ## Requirements
@@ -47,6 +47,13 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 - Desktop / browser-desktop frontend (tab panes and multi-pane layout).
 
 ## Changelog
+
+### v0.5.0 (2026-09-04)
+
+- Performance: favorites, pins and tab switches now use an in-memory cache with debounced writes — no more lag on rapid favoriting.
+- Favorites dropdown rebuilt as a custom component: prominent group headers with separators, and groups can be collapsed/expanded by clicking the header.
+- Settings section headers enhanced: primary-color small caps with separators; the first section sits flush with the dialog top.
+- Plugin display name unified as "小驴速切" in Chinese (Settings → Plugins → 小驴速切).
 
 ### v0.4.0 (2026-09-04)
 

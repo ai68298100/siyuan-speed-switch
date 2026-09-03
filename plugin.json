@@ -2,7 +2,7 @@
   "name": "siyuan-speed-switch",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "minAppVersion": "3.1.20",
   "disabledInPublish": false,
   "backends": [
@@ -19,7 +19,7 @@
   ],
   "displayName": {
     "default": "Speed Switch",
-    "zh-CN": "速切"
+    "zh-CN": "小驴速切"
   },
   "description": {
     "default": "Switch opened tabs like Windows Alt+Tab: show tab thumbnails (supports split windows).",

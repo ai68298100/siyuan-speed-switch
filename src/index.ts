@@ -74,6 +74,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private docSearchAbort: AbortController | null = null; // 进行中的文档搜索请求（新请求发起前取消旧的）
     private sidebarElement: HTMLElement | null = null; // 侧边栏 dock 面板内容元素
     private sidebarResizeObserver: ResizeObserver | null = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
+    private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
+    private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -138,6 +140,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     onunload() {
+        this.flushPendingSaves();
         this.docSearchAbort?.abort();
         this.docSearchAbort = null;
         this.docSearchCache.clear();
@@ -145,6 +148,30 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarResizeObserver = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
         this.sidebarElement = null;
+    }
+
+    // ==================== 持久化性能 ====================
+
+    // 去抖写盘：高频数据（MRU/置顶/收藏）每次操作只更新内存，合并后延迟落盘，
+    // 避免连续收藏/置顶/切换页签时每个动作都触发一次内核文件写入（交互卡顿的根因）
+    private saveDataDebounced(key: string) {
+        const timer = this.saveTimers.get(key);
+        if (timer) {
+            clearTimeout(timer);
+        }
+        this.saveTimers.set(key, window.setTimeout(() => {
+            this.saveTimers.delete(key);
+            this.saveData(key, this.data[key]).catch((e) => console.warn("[speed-switch] save data fail", e));
+        }, 500));
+    }
+
+    // 立即落盘全部待写数据（卸载时调用，避免丢失最近一次去抖窗口内的改动）
+    private flushPendingSaves() {
+        this.saveTimers.forEach((timer, key) => {
+            clearTimeout(timer);
+            this.saveData(key, this.data[key]).catch((e) => console.warn("[speed-switch] save data fail", e));
+        });
+        this.saveTimers.clear();
     }
 
     // 旧版本默认快捷键 "⇧⌥S" 无法被思源热键匹配命中，且可能已持久化到快捷键配置中，
@@ -195,7 +222,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         return Math.min(max, Math.max(min, num));
     }
 
-    // 插件设置页（设置 → 插件 → 速切 → 设置图标）
+    // 插件设置页（设置 → 插件 → 小驴速切 → 设置图标）
     openSetting() {
         const s = this.getSettings();
         const setting = new Setting({
@@ -479,7 +506,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 </div>
                 <div class="sw__select-wrap">
                     <span class="sw__select-label">${this.i18n.favorites}</span>
-                    <select class="b3-select sw__fav b3-tooltips b3-tooltips__s" aria-label="${this.i18n.favorites}"></select>
+                    <div class="sw__fav-dd"></div>
                 </div>
                 <div class="sw__select-wrap">
                     <span class="sw__select-label">${this.i18n.sortLabel}</span>
@@ -537,17 +564,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.destroy();
             this.toggleSidebar();
         });
-        // 收藏下拉：选择即跳转（页签已开则切换，文档已收藏但页签关闭则重新打开）
-        const favSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__fav");
-        this.refreshFavSelects();
-        favSelect.addEventListener("change", () => {
-            const key = favSelect.value;
-            favSelect.value = "";
-            const favorite = this.getFavorites().find((item) => item.key === key);
-            if (favorite) {
-                this.jumpToFavorite(favorite, closeOverlay);
-            }
-        });
+        // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
+        const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
+        this.setupFavDropdown(favDd, closeOverlay);
         sortSelect.value = settings.sortBy;
         sortSelect.addEventListener("change", () => {
             this.updateSettings({sortBy: sortSelect.value as SortBy});
@@ -929,12 +948,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (index >= 0) {
             list.splice(index, 1);
             this.data[PINNED_KEY] = list;
-            this.saveData(PINNED_KEY, list).catch((e) => console.warn("[speed-switch] save pinned fail", e));
+            this.saveDataDebounced(PINNED_KEY);
             return false;
         }
         list.unshift(key);
         this.data[PINNED_KEY] = list;
-        this.saveData(PINNED_KEY, list).catch((e) => console.warn("[speed-switch] save pinned fail", e));
+        this.saveDataDebounced(PINNED_KEY);
         return true;
     }
 
@@ -948,7 +967,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private saveFavorites(list: IFavoriteItem[]) {
         this.data[FAV_KEY] = list;
-        this.saveData(FAV_KEY, list).catch((e) => console.warn("[speed-switch] save favorites fail", e));
+        this.saveDataDebounced(FAV_KEY);
     }
 
     // 切换收藏状态，返回切换后是否为已收藏
@@ -970,9 +989,68 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.saveFavorites(this.getFavorites().filter((item) => item.key !== key));
     }
 
-    // 刷新所有收藏下拉框（切换器弹窗与侧边栏）的选项：先选分组，再选分组内的页签
-    private refreshFavSelects() {
+    // ==================== 收藏下拉组件 ====================
+    // 原生 select 的 optgroup 无法折叠且样式简陋，改为自定义下拉：
+    // 触发按钮（星标 + 数量徽标）+ 浮层面板（分组标题可折叠/展开，组内项点击跳转）
+
+    // 初始化一个收藏下拉组件（弹窗与侧边栏各一份）
+    // onClose：选择收藏项后的收尾（弹窗销毁 / 侧边栏刷新），组件内部还会同时收起面板
+    private setupFavDropdown(container: HTMLElement, onClose: IOverlayClose) {
+        container.innerHTML = `<button type="button" class="sw__fav-trigger">
+    <svg><use xlink:href="#iconStar"></use></svg>
+    <span class="sw__fav-trigger-text">${this.i18n.favorites}</span>
+    <span class="sw__fav-badge fn__none"></span>
+</button>
+<div class="sw__fav-panel fn__none"></div>`;
+
+        const trigger = container.querySelector<HTMLElement>(".sw__fav-trigger");
+        const panel = container.querySelector<HTMLElement>(".sw__fav-panel");
+
+        // 点击外部收起面板
+        const onDocPointerDown = (event: PointerEvent) => {
+            if (!container.contains(event.target as Node)) {
+                panel.classList.add("fn__none");
+            }
+        };
+        document.addEventListener("pointerdown", onDocPointerDown, true);
+        // 容器从 DOM 移除时解绑全局监听（弹窗销毁/侧边栏重渲染都会移除旧容器）
+        const observer = new MutationObserver(() => {
+            if (!container.isConnected) {
+                document.removeEventListener("pointerdown", onDocPointerDown, true);
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, {childList: true, subtree: true});
+
+        trigger.addEventListener("click", () => {
+            const willOpen = panel.classList.contains("fn__none");
+            if (willOpen) {
+                this.renderFavPanel(panel, () => {
+                    panel.classList.add("fn__none");
+                    onClose();
+                });
+                panel.classList.remove("fn__none");
+            } else {
+                panel.classList.add("fn__none");
+            }
+        });
+
+        this.refreshFavDropdown(container);
+    }
+
+    // 渲染下拉面板内容：分组标题（点击折叠/展开）+ 组内收藏项（点击跳转）
+    private renderFavPanel(panel: HTMLElement, onPick: () => void) {
+        panel.innerHTML = "";
         const favorites = this.getFavorites();
+
+        if (favorites.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__fav-empty";
+            empty.textContent = this.i18n.noFavorites;
+            panel.appendChild(empty);
+            return;
+        }
+
         // 按分组归类（保持收藏顺序，未分组的归入 ""）
         const groups = new Map<string, IFavoriteItem[]>();
         favorites.forEach((fav) => {
@@ -982,45 +1060,88 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
             groups.get(name)!.push(fav);
         });
+
+        const appendGroup = (name: string, items: IFavoriteItem[]) => {
+            const groupEl = document.createElement("div");
+            groupEl.className = "sw__fav-group" + (this.favCollapsed.has(name) ? " sw__fav-collapsed" : "");
+
+            const head = document.createElement("button");
+            head.type = "button";
+            head.className = "sw__fav-group-head";
+            head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
+<span class="sw__fav-group-name"></span>
+<span class="sw__fav-count">${items.length}</span>`;
+            head.querySelector<HTMLElement>(".sw__fav-group-name")!.textContent = name;
+            head.addEventListener("click", () => {
+                groupEl.classList.toggle("sw__fav-collapsed");
+                if (this.favCollapsed.has(name)) {
+                    this.favCollapsed.delete(name);
+                } else {
+                    this.favCollapsed.add(name);
+                }
+            });
+            groupEl.appendChild(head);
+
+            const list = document.createElement("div");
+            list.className = "sw__fav-items";
+            items.forEach((fav) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__fav-item";
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
+                item.querySelector("span")!.textContent = fav.title;
+                item.title = fav.title;
+                item.addEventListener("click", () => {
+                    this.jumpToFavorite(fav, onPick);
+                });
+                list.appendChild(item);
+            });
+            groupEl.appendChild(list);
+            panel.appendChild(groupEl);
+        };
+
+        // 有分组时未分组的置底显示为「未分组」；无任何分组时平铺不显示组头
         const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
         const ungrouped = groups.get("") || [];
-        const hasGrouped = groupedNames.length > 0;
-
-        document.querySelectorAll<HTMLSelectElement>("select.sw__fav").forEach((select) => {
-            select.innerHTML = "";
-            const placeholder = document.createElement("option");
-            placeholder.value = "";
-            placeholder.textContent = favorites.length > 0 ? this.i18n.favPlaceholder : this.i18n.noFavorites;
-            select.appendChild(placeholder);
-
-            const appendItems = (items: IFavoriteItem[], parent: HTMLElement) => {
-                items.forEach((fav) => {
-                    const option = document.createElement("option");
-                    option.value = fav.key;
-                    option.textContent = fav.title;
-                    parent.appendChild(option);
+        if (!groupedNames.length) {
+            const list = document.createElement("div");
+            list.className = "sw__fav-items sw__fav-items--flat";
+            ungrouped.forEach((fav) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__fav-item";
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
+                item.querySelector("span")!.textContent = fav.title;
+                item.title = fav.title;
+                item.addEventListener("click", () => {
+                    this.jumpToFavorite(fav, onPick);
                 });
-            };
-
-            if (hasGrouped) {
-                // 存在分组：每组渲染为 optgroup，未分组的归入「未分组」置底
-                groupedNames.forEach((name) => {
-                    const optgroup = document.createElement("optgroup");
-                    optgroup.label = name;
-                    appendItems(groups.get(name)!, optgroup);
-                    select.appendChild(optgroup);
-                });
-                if (ungrouped.length > 0) {
-                    const optgroup = document.createElement("optgroup");
-                    optgroup.label = this.i18n.ungrouped;
-                    appendItems(ungrouped, optgroup);
-                    select.appendChild(optgroup);
-                }
-            } else {
-                // 无任何分组：平铺显示
-                appendItems(favorites, select);
+                list.appendChild(item);
+            });
+            panel.appendChild(list);
+        } else {
+            groupedNames.forEach((name) => appendGroup(name, groups.get(name)!));
+            if (ungrouped.length > 0) {
+                appendGroup(this.i18n.ungrouped, ungrouped);
             }
-            select.value = "";
+        }
+    }
+
+    // 刷新单个下拉组件的触发按钮徽标；面板展开中则收起（内容在下次打开时重建）
+    private refreshFavDropdown(container: HTMLElement) {
+        const count = this.getFavorites().length;
+        const badge = container.querySelector<HTMLElement>(".sw__fav-badge");
+        if (badge) {
+            badge.textContent = String(count);
+            badge.classList.toggle("fn__none", count === 0);
+        }
+        container.querySelector<HTMLElement>(".sw__fav-panel")?.classList.add("fn__none");
+    }
+
+    // 刷新所有收藏下拉组件（弹窗与侧边栏）的徽标与面板
+    private refreshFavSelects() {
+        document.querySelectorAll<HTMLElement>(".sw__fav-dd").forEach((container) => {
+            this.refreshFavDropdown(container);
         });
     }
 
@@ -1782,7 +1903,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const list = mru.filter((id) => id !== tab.id);
         list.unshift(tab.id);
         this.data[MRU_KEY] = list;
-        this.saveData(MRU_KEY, list).catch((e) => console.warn("[speed-switch] save mru fail", e));
+        this.saveDataDebounced(MRU_KEY);
 
         // 等价于点击该页签：内部会切到目标页签，并通过 setPanelFocus 激活其所在窗口（支持分栏）
         try {
@@ -1813,7 +1934,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         </div>
         <div class="sw__select-wrap">
             <span class="sw__select-label">${this.i18n.favorites}</span>
-            <select class="b3-select sw__fav b3-tooltips b3-tooltips__s" aria-label="${this.i18n.favorites}"></select>
+            <div class="sw__fav-dd"></div>
         </div>
         <div class="sw__select-wrap">
             <span class="sw__select-label">${this.i18n.sortLabel}</span>
@@ -1856,17 +1977,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.applySearch(scrollElement, searchInput, refresh);
         });
 
-        // 收藏下拉：选择即跳转（侧边栏保持显示，仅刷新列表）
-        const favSelect = element.querySelector<HTMLSelectElement>(".sw__fav");
-        this.refreshFavSelects();
-        favSelect.addEventListener("change", () => {
-            const key = favSelect.value;
-            favSelect.value = "";
-            const favorite = this.getFavorites().find((item) => item.key === key);
-            if (favorite) {
-                this.jumpToFavorite(favorite, refresh);
-            }
-        });
+        // 收藏下拉组件：星标触发 + 分组面板（侧边栏跳转后仅刷新列表）
+        const favDd = element.querySelector<HTMLElement>(".sw__fav-dd");
+        this.setupFavDropdown(favDd, refresh);
 
         // 排序切换：持久化设置并重渲染列表
         const sortSelect = element.querySelector<HTMLSelectElement>(".sw__sort");

@@ -40,6 +40,13 @@
     width: 100%;
 }
 
+// 首个分区标题紧贴弹窗顶部，无需分隔线
+.b3-dialog__content .config-item:first-child .sw-setting__sec {
+    margin-top: 0;
+    border-top: none;
+    padding-top: 0;
+}
+
 // 设置页收藏管理：分组重命名行 + 收藏项分组调整列表
 .sw-setting__favs {
     display: flex;
@@ -190,7 +197,7 @@
             }
         }
 
-        // 带标签的下拉框组：左侧小字标签「收藏」「排序」，右侧 select；窄弹窗下可收缩
+        // 带标签的下拉框组：左侧小字标签「收藏」「排序」，右侧控件；窄弹窗下可收缩
         .sw__select-wrap {
             flex: 0 1 auto;
             display: flex;
@@ -205,8 +212,7 @@
                 white-space: nowrap;
             }
 
-            .sw__sort,
-            .sw__fav {
+            .sw__sort {
                 flex: 0 1 132px;
                 height: 28px;
                 min-width: 96px;
@@ -214,6 +220,191 @@
                 background: transparent;
                 color: var(--b3-theme-on-background);
                 border-radius: 6px;
+            }
+
+            // ===== 收藏下拉组件（自定义，替代原生 select：分组可折叠/展开） =====
+            .sw__fav-dd {
+                position: relative;
+                flex: 0 1 auto;
+                min-width: 0;
+            }
+
+            .sw__fav-trigger {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                height: 28px;
+                padding: 0 8px;
+                min-width: 96px;
+                border: 1px solid var(--b3-border-color);
+                background: transparent;
+                color: var(--b3-theme-on-background);
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 12px;
+
+                svg {
+                    width: 13px;
+                    height: 13px;
+                    flex: none;
+                    color: var(--b3-theme-on-surface-light);
+                }
+
+                .sw__fav-trigger-text {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .sw__fav-badge {
+                    flex: none;
+                    min-width: 15px;
+                    padding: 0 4px;
+                    border-radius: 8px;
+                    background: var(--b3-theme-primary);
+                    color: var(--b3-theme-on-primary);
+                    font-size: 10px;
+                    line-height: 15px;
+                    text-align: center;
+                }
+
+                &:hover {
+                    border-color: var(--b3-theme-primary-light);
+                    color: var(--b3-theme-primary);
+
+                    svg {
+                        color: var(--b3-theme-primary);
+                    }
+                }
+            }
+
+            // 浮层面板：分组标题 + 组内项
+            .sw__fav-panel {
+                position: absolute;
+                top: calc(100% + 6px);
+                right: 0;
+                z-index: 99;
+                width: 248px;
+                max-height: 320px;
+                overflow: auto;
+                padding: 4px;
+                background: var(--b3-theme-surface);
+                border: 1px solid var(--b3-border-color);
+                border-radius: 8px;
+                box-shadow: var(--b3-dialog-shadow);
+
+                .sw__fav-empty {
+                    padding: 14px 10px;
+                    font-size: 12px;
+                    color: var(--b3-theme-on-surface-light);
+                    text-align: center;
+                }
+
+                .sw__fav-group + .sw__fav-group {
+                    margin-top: 2px;
+                }
+
+                .sw__fav-group-head {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    width: 100%;
+                    padding: 6px 8px;
+                    border: none;
+                    background: transparent;
+                    border-radius: 4px;
+                    color: var(--b3-theme-on-surface);
+                    font-size: 12px;
+                    font-weight: 600;
+                    cursor: pointer;
+
+                    .sw__fav-arrow {
+                        width: 10px;
+                        height: 10px;
+                        flex: none;
+                        transition: transform 0.15s ease;
+                    }
+
+                    .sw__fav-group-name {
+                        flex: 1;
+                        min-width: 0;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        text-align: left;
+                    }
+
+                    .sw__fav-count {
+                        flex: none;
+                        font-size: 10px;
+                        font-weight: 400;
+                        color: var(--b3-theme-on-surface-light);
+                        background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
+                        border-radius: 8px;
+                        padding: 0 6px;
+                        line-height: 15px;
+                    }
+
+                    &:hover {
+                        background: var(--b3-list-hover);
+                    }
+                }
+
+                .sw__fav-items {
+                    display: flex;
+                    flex-direction: column;
+                    padding-bottom: 2px;
+                }
+
+                .sw__fav-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    width: 100%;
+                    padding: 5px 8px 5px 24px;
+                    border: none;
+                    background: transparent;
+                    border-radius: 4px;
+                    color: var(--b3-theme-on-background);
+                    font-size: 12px;
+                    cursor: pointer;
+                    text-align: left;
+
+                    svg {
+                        width: 12px;
+                        height: 12px;
+                        flex: none;
+                        color: var(--b3-theme-on-surface-light);
+                    }
+
+                    span {
+                        min-width: 0;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    &:hover {
+                        background: var(--b3-list-hover);
+                        color: var(--b3-theme-primary);
+                    }
+                }
+
+                // 无分组时的平铺列表：不缩进
+                .sw__fav-items--flat .sw__fav-item {
+                    padding-left: 8px;
+                }
+
+                // 折叠状态：隐藏组内项，箭头转向
+                .sw__fav-collapsed {
+                    .sw__fav-items {
+                        display: none;
+                    }
+
+                    .sw__fav-arrow {
+                        transform: rotate(-90deg);
+                    }
+                }
             }
         }
 
@@ -673,15 +864,23 @@
                 flex: 1 1 100%;
             }
 
-            // 收藏与排序下拉组平分第二行（select 弹性伸缩，标签常显）
+            // 收藏与排序下拉组平分第二行（控件弹性伸缩，标签常显）
             .sw__select-wrap {
                 flex: 1 1 0;
                 min-width: 0;
 
-                .sw__fav,
                 .sw__sort {
                     flex: 1 1 auto;
                     width: auto;
+                    min-width: 0;
+                }
+
+                .sw__fav-dd {
+                    flex: 1 1 auto;
+                }
+
+                .sw__fav-trigger {
+                    width: 100%;
                     min-width: 0;
                 }
             }
