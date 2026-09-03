@@ -12,17 +12,11 @@
     "plugin",
     "tab"
   ],
-  "author": "wish5115",
+  "author": "ai68298100",
   "license": "MIT",
   "packageManager": "pnpm@11.4.0",
   "engines": {
     "node": ">=18.0.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "@parcel/watcher"
-    ]
   },
   "devDependencies": {
     "copy-webpack-plugin": "^14.0.0",
