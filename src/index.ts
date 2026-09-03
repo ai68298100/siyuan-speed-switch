@@ -1,4 +1,4 @@
-import {Plugin, Dialog, Setting, getFrontend, getAllTabs, getActiveTab, openTab} from "siyuan";
+import {Plugin, Dialog, Setting, Menu, getFrontend, getAllTabs, getActiveTab, openTab} from "siyuan";
 import "./index.scss";
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
@@ -6,11 +6,15 @@ type Tab = ReturnType<typeof getAllTabs>[number];
 // 页签排序方式：mru=最近使用 layout=打开顺序 layoutDesc=打开倒序 titleAsc/titleDesc=标题升降序 updatedDesc=最近编辑
 type SortBy = "mru" | "layout" | "layoutDesc" | "titleAsc" | "titleDesc" | "updatedDesc";
 const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
+// 页签卡片操作完成后的收尾动作（弹窗模式销毁弹窗，侧边栏模式刷新列表）
+type IOverlayClose = () => void;
 
 const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
 const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
+const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
 const SETTINGS_KEY = "sw_settings";  // 插件设置
 const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
+const SIDEBAR_DOCK_TYPE = "sidebar"; // 侧边栏 dock 的 type（实际注册为 插件名+type）
 const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
 const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量，避免一次克隆大量 DOM 卡住界面
 const THUMB_CACHE_MAX = 40;          // 缓存最多保留的文档数（超出按最旧淘汰）
@@ -55,9 +59,17 @@ interface IThumbCache {
     [rootId: string]: { title: string, html: string, ts: number };
 }
 
+// 收藏条目：文档页签存 rootId（关闭后仍可重开），非文档页签仅存页签 id（关闭后失效自动清理）
+interface IFavoriteItem {
+    key: string;       // pinKeyOf：rootId || tab.id
+    title: string;
+    rootId: string | null;
+}
+
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private searchSeq = 0;   // 文档搜索请求序号，用于丢弃过期响应
+    private sidebarElement: HTMLElement | null = null; // 侧边栏 dock 面板内容元素
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -68,6 +80,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         await Promise.all([
             this.loadData(MRU_KEY),
             this.loadData(PINNED_KEY),
+            this.loadData(FAV_KEY),
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => console.warn("[speed-switch] load data fail", e));
@@ -81,6 +94,30 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
+        // 注册侧边栏 dock 面板：与切换器同样的卡片列表，常驻侧边栏便于快速切换
+        const self = this;
+        this.addDock({
+            config: {
+                position: "RightBottom",
+                size: {width: 340, height: 0},
+                icon: "iconLayout",
+                title: this.i18n.switchTabs,
+                show: false,
+            },
+            data: {},
+            type: SIDEBAR_DOCK_TYPE,
+            init() {
+                self.renderSidebarPanel((this as any).element as HTMLElement);
+            },
+            resize() {
+                // 面板尺寸变化时重渲染，重算缩略图缩放比例
+                self.renderSidebarPanel((this as any).element as HTMLElement);
+            },
+        });
+
+        // 文档切换时刷新侧边栏列表（保持与当前页签一致）
+        this.eventBus.on("switch-protyle", () => this.refreshSidebar());
+
         this.addCommand({
             langKey: "switchTabs",
             hotkey: DEFAULT_HOTKEY,
@@ -88,6 +125,11 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.showSwitcher();
             },
         });
+    }
+
+    onunload() {
+        this.removeDock(SIDEBAR_DOCK_TYPE);
+        this.sidebarElement = null;
     }
 
     // 旧版本默认快捷键 "⇧⌥S" 无法被思源热键匹配命中，且可能已持久化到快捷键配置中，
@@ -314,7 +356,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         const activeTab = this.getActiveTab();
 
         const dialog = new Dialog({
-            title: this.i18n.switchTabs,
+            // 极简：隐藏原生标题栏，顶栏内置于内容区最上方
+            title: "",
             content: `<div class="speed-switch sw__body">
     <div class="sw__main">
         <div class="sw__dock fn__none"></div>
@@ -324,6 +367,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
                     <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
                 </div>
+                <select class="b3-select sw__fav" title="${this.i18n.favorites}"></select>
                 <select class="b3-select sw__sort" title="${this.i18n.setSortBy}">
                     <option value="mru">${this.i18n.sortMru}</option>
                     <option value="layout">${this.i18n.sortLayout}</option>
@@ -332,6 +376,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
                     <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
                 </select>
+                <span class="b3-button b3-button--text sw__icon-btn sw__sidebar-btn" title="${this.i18n.openSidebar}">
+                    <svg><use xlink:href="#iconLayoutRight"></use></svg>
+                </span>
                 <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" title="${this.i18n.settings}">
                     <svg><use xlink:href="#iconSettings"></use></svg>
                 </span>
@@ -361,39 +408,56 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
         this.pruneThumbCache(tabs);
 
-        // 工具栏：搜索过滤 + 排序切换（改动会持久化到设置）+ 快捷设置入口
+        // 工具栏：搜索过滤 + 收藏快速跳转 + 排序切换（持久化）+ 侧边栏/设置入口
         const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
         const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
+        const closeOverlay = () => dialog.destroy();
+        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: () => undefined};
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.openSetting();
         });
+        dialog.element.querySelector(".sw__sidebar-btn")?.addEventListener("click", () => {
+            dialog.destroy();
+            this.toggleSidebar();
+        });
+        // 收藏下拉：选择即跳转（页签已开则切换，文档已收藏但页签关闭则重新打开）
+        const favSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__fav");
+        this.refreshFavSelects();
+        favSelect.addEventListener("change", () => {
+            const key = favSelect.value;
+            favSelect.value = "";
+            const favorite = this.getFavorites().find((item) => item.key === key);
+            if (favorite) {
+                this.jumpToFavorite(favorite, closeOverlay);
+            }
+        });
         sortSelect.value = settings.sortBy;
         sortSelect.addEventListener("change", () => {
             this.updateSettings({sortBy: sortSelect.value as SortBy});
-            this.renderList(scrollElement, tabs, activeTab, dialog, sortSelect.value as SortBy, updatedMap);
+            this.renderList(scrollElement, tabs, activeTab, listOpts, sortSelect.value as SortBy, updatedMap);
             searchInput.value = "";
-            this.applySearch(scrollElement, searchInput, dialog);
+            this.applySearch(scrollElement, searchInput, closeOverlay);
             scrollElement.focus();
         });
 
         // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
         let updatedMap: {[rootId: string]: string} = {};
-        this.renderList(scrollElement, tabs, activeTab, dialog, settings.sortBy, updatedMap);
-        this.bindKeydown(scrollElement, dialog);
+        this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
+        this.bindKeydown(scrollElement, closeOverlay);
 
         // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
         this.loadUpdatedMap(tabs).then((map) => {
             updatedMap = map;
             if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && searchInput.value.trim() === "") {
-                this.renderList(scrollElement, tabs, activeTab, dialog, "updatedDesc", updatedMap);
+                this.renderList(scrollElement, tabs, activeTab, listOpts, "updatedDesc", updatedMap);
             }
         });
 
-        // 搜索：优先显示已打开页签匹配；无匹配时搜索全库文档标题，可点击直接打开
+        // 搜索：已打开页签匹配显示在上半部分，同时全库文档结果显示在下半部分
         searchInput.addEventListener("input", () => {
-            this.applySearch(scrollElement, searchInput, dialog);
+            this.applySearch(scrollElement, searchInput, closeOverlay);
         });
 
         // 让滚动区域获得焦点以接收键盘导航
@@ -411,25 +475,25 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // 执行搜索：先过滤已打开页签；无匹配时（防抖）调 searchDocs 搜索全库文档标题
-    private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, dialog: Dialog) {
+    // 执行搜索：已打开页签匹配卡片显示在上半部分，同时（防抖）搜索全库文档标题显示在下半部分
+    private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
         const keyword = searchInput.value.trim();
-        const visible = this.filterCards(scrollElement, searchInput.value);
+        this.filterCards(scrollElement, searchInput.value);
 
-        // 已有匹配或关键词为空：恢复纯过滤状态
-        if (keyword === "" || visible > 0) {
-            this.renderDocResults(scrollElement, null, dialog);
+        // 关键词为空：隐藏文档结果，恢复纯列表
+        if (keyword === "") {
+            this.renderDocResults(scrollElement, null, onClose);
             return;
         }
-        // 无已打开页签匹配 → 延迟 300ms 再请求，避免每个按键都打内核
+        // 延迟 300ms 再请求全库文档，避免每个按键都打内核
         const seq = ++this.searchSeq;
         window.setTimeout(async () => {
-            // 期间关键词已变化或弹窗已关闭则放弃本次结果
-            if (seq !== this.searchSeq || !dialog.element.isConnected) {
+            // 期间关键词已变化或容器已销毁则放弃本次结果
+            if (seq !== this.searchSeq || !scrollElement.isConnected) {
                 return;
             }
-            if (this.filterCards(scrollElement, searchInput.value) > 0) {
-                this.renderDocResults(scrollElement, null, dialog);
+            if (searchInput.value.trim() === "") {
+                this.renderDocResults(scrollElement, null, onClose);
                 return;
             }
             try {
@@ -439,19 +503,19 @@ export default class SpeedSwitchPlugin extends Plugin {
                     body: JSON.stringify({k: keyword}),
                 });
                 const json = await response.json();
-                if (seq !== this.searchSeq || !dialog.element.isConnected) {
+                if (seq !== this.searchSeq || !scrollElement.isConnected) {
                     return;
                 }
                 const docs: any[] = Array.isArray(json?.data) ? json.data : [];
-                this.renderDocResults(scrollElement, docs.slice(0, 12), dialog);
+                this.renderDocResults(scrollElement, docs.slice(0, 12), onClose);
             } catch (e) {
                 console.warn("[speed-switch] search docs fail", e);
             }
         }, 300);
     }
 
-    // 渲染全库文档搜索结果分组（docs 为 null 表示隐藏）
-    private renderDocResults(scrollElement: HTMLElement, docs: any[] | null, dialog: Dialog) {
+    // 渲染全库文档搜索结果分组（docs 为 null 表示隐藏）；已打开的文档不再重复列出
+    private renderDocResults(scrollElement: HTMLElement, docs: any[] | null, onClose: IOverlayClose) {
         let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
         if (docs === null) {
             box?.remove();
@@ -469,6 +533,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         label.textContent = this.i18n.docSearchResults;
         box.appendChild(label);
 
+        // 排除当前已打开的文档（上半部分已有对应卡片）
+        const openRootIds = new Set(
+            getAllTabs().map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
+        );
+
         if (docs.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__empty";
@@ -480,7 +549,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         docs.forEach((doc) => {
             // 思源文档路径以块 id 命名：/ notebook / rootID .sy
             const id = String(doc.path || "").split("/").pop()?.replace(/\.sy$/, "");
-            if (!id) {
+            if (!id || openRootIds.has(id)) {
                 return;
             }
             const item = document.createElement("button");
@@ -499,7 +568,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             item.appendChild(title);
             item.appendChild(path);
             item.addEventListener("click", () => {
-                dialog.destroy();
+                onClose();
                 openTab({
                     app: (this as any).app,
                     doc: {id},
@@ -728,6 +797,77 @@ export default class SpeedSwitchPlugin extends Plugin {
         return true;
     }
 
+    // ==================== 收藏 ====================
+
+    // 读取收藏列表（最近收藏在前）
+    private getFavorites(): IFavoriteItem[] {
+        const data = this.data[FAV_KEY];
+        return Array.isArray(data) ? (data as IFavoriteItem[]) : [];
+    }
+
+    private saveFavorites(list: IFavoriteItem[]) {
+        this.data[FAV_KEY] = list;
+        this.saveData(FAV_KEY, list).catch((e) => console.warn("[speed-switch] save favorites fail", e));
+    }
+
+    // 切换收藏状态，返回切换后是否为已收藏
+    private toggleFavorite(tab: Tab): boolean {
+        const key = this.pinKeyOf(tab);
+        const list = this.getFavorites();
+        const index = list.findIndex((item) => item.key === key);
+        if (index >= 0) {
+            list.splice(index, 1);
+            this.saveFavorites(list);
+            return false;
+        }
+        list.unshift({key, title: this.titleOf(tab), rootId: this.rootIdOf(tab)});
+        this.saveFavorites(list);
+        return true;
+    }
+
+    private removeFavorite(key: string) {
+        this.saveFavorites(this.getFavorites().filter((item) => item.key !== key));
+    }
+
+    // 刷新所有收藏下拉框（切换器弹窗与侧边栏）的选项
+    private refreshFavSelects() {
+        const favorites = this.getFavorites();
+        document.querySelectorAll<HTMLSelectElement>("select.sw__fav").forEach((select) => {
+            select.innerHTML = "";
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = favorites.length > 0 ? this.i18n.favorites : this.i18n.noFavorites;
+            select.appendChild(placeholder);
+            favorites.forEach((fav) => {
+                const option = document.createElement("option");
+                option.value = fav.key;
+                option.textContent = fav.title;
+                select.appendChild(option);
+            });
+            select.value = "";
+        });
+    }
+
+    // 跳转到收藏项：页签已开则切换过去；文档已收藏但页签关闭则重新打开；非文档页签已失效则移除收藏
+    private jumpToFavorite(favorite: IFavoriteItem, onClose: IOverlayClose) {
+        const tab = getAllTabs().find((item) => this.pinKeyOf(item) === favorite.key);
+        if (tab) {
+            this.activateTab(tab, onClose);
+            return;
+        }
+        if (favorite.rootId) {
+            onClose();
+            openTab({
+                app: (this as any).app,
+                doc: {id: favorite.rootId},
+            });
+            return;
+        }
+        // 非文档页签已关闭：收藏失效，清理并刷新下拉
+        this.removeFavorite(favorite.key);
+        this.refreshFavSelects();
+    }
+
     // 组内排序：置顶页签固定在最前，其余按所选方式排序
     private sortItems(items: IGroupedTab[], sortBy: SortBy, mru: string[], updatedMap: {[rootId: string]: string}) {
         if (sortBy === "titleAsc" || sortBy === "titleDesc") {
@@ -756,7 +896,11 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 按窗口分组并渲染全部页签
-    private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined, dialog: Dialog, sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
+    // onOverlayClose：激活页签/打开文档后的收尾（弹窗销毁；侧边栏刷新）
+    // onTabsChanged：关闭页签后的收尾（弹窗保持打开；侧边栏刷新）
+    private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined,
+                       opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
+                       sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
         scrollElement.innerHTML = "";
         const settings = this.getSettings();
         scrollElement.style.setProperty("--sw-thumb-height", `${settings.thumbHeight}px`);
@@ -764,6 +908,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const activeTabId = activeTab?.id;
         const mru = this.getMru();
         const pinned = new Set(this.getPinned());
+        const favorites = new Set(this.getFavorites().map((item) => item.key));
 
         // 按 parent（Wnd）分栏分组，保持 getAllTabs 的布局树顺序
         const groups = new Map<HTMLElement, IGroupedTab[]>();
@@ -803,9 +948,12 @@ export default class SpeedSwitchPlugin extends Plugin {
 
             ordered.forEach((item) => {
                 const isPinned = pinned.has(this.pinKeyOf(item.tab));
-                const card = this.createCard(item, item.tab.id === activeTabId, isPinned, {
-                    onActivate: (tab) => this.activateTab(tab, dialog),
+                const isFaved = favorites.has(this.pinKeyOf(item.tab));
+                const card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
+                    onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
                     onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
                 });
                 grid.appendChild(card);
                 item.card = card;
@@ -848,12 +996,38 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // 构建一张页签卡片（缩略图区域 + 底部信息）
-    private createCard(item: IGroupedTab, isActive: boolean, isPinned: boolean,
-                       handlers: { onActivate: (tab: Tab) => void, onTogglePin: (tab: Tab, card: HTMLElement) => void }): HTMLElement {
+    // 收藏/取消收藏：更新卡片标识并刷新顶栏收藏下拉
+    private handleToggleFav(tab: Tab, card: HTMLElement) {
+        const isFaved = this.toggleFavorite(tab);
+        card.classList.toggle("sw__faved", isFaved);
+        this.refreshFavSelects();
+    }
+
+    // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
+    private handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
+        try {
+            tab.parent.removeTab(tab.id);
+        } catch (e) {
+            console.warn("[speed-switch] close tab fail", e);
+        }
+        card.remove();
+        onTabsChanged();
+    }
+
+    // 构建一张页签卡片（缩略图区域 + 底部信息 + 置顶/收藏/关闭按钮 + 右键菜单）
+    private createCard(item: IGroupedTab, isActive: boolean, isPinned: boolean, isFaved: boolean,
+                       handlers: {
+                           onActivate: (tab: Tab) => void,
+                           onTogglePin: (tab: Tab, card: HTMLElement) => void,
+                           onToggleFav: (tab: Tab, card: HTMLElement) => void,
+                           onCloseTab: (tab: Tab, card: HTMLElement) => void,
+                       }): HTMLElement {
         const tab = item.tab;
         const card = document.createElement("div");
-        card.className = "sw__card" + (isActive ? " sw__active" : "") + (isPinned ? " sw__pinned" : "");
+        card.className = "sw__card"
+            + (isActive ? " sw__active" : "")
+            + (isPinned ? " sw__pinned" : "")
+            + (isFaved ? " sw__faved" : "");
         card.dataset.tabId = tab.id;
         card.dataset.title = this.titleOf(tab);
 
@@ -902,6 +1076,17 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         card.appendChild(pinBtn);
 
+        // 收藏按钮（左上角，紧邻置顶）
+        const favBtn = document.createElement("div");
+        favBtn.className = "sw__fav";
+        favBtn.title = this.i18n.favoriteTab;
+        favBtn.innerHTML = '<svg><use xlink:href="#iconStar"></use></svg>';
+        favBtn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            handlers.onToggleFav(tab, card);
+        });
+        card.appendChild(favBtn);
+
         // 关闭按钮（右上角）
         const closeBtn = document.createElement("div");
         closeBtn.className = "sw__close";
@@ -909,10 +1094,34 @@ export default class SpeedSwitchPlugin extends Plugin {
         closeBtn.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
         closeBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            tab.parent.removeTab(tab.id);
-            card.remove();
+            handlers.onCloseTab(tab, card);
         });
         card.appendChild(closeBtn);
+
+        // 右键菜单：置顶 / 收藏 / 关闭
+        card.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const menu = new Menu("swCardMenu");
+            const nowPinned = card.classList.contains("sw__pinned");
+            const nowFaved = card.classList.contains("sw__faved");
+            menu.addItem({
+                label: nowPinned ? this.i18n.unpinTab : this.i18n.pinTab,
+                icon: nowPinned ? "iconUnpin" : "iconPin",
+                click: () => handlers.onTogglePin(tab, card),
+            });
+            menu.addItem({
+                label: nowFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab,
+                icon: "iconStar",
+                click: () => handlers.onToggleFav(tab, card),
+            });
+            menu.addItem({
+                label: this.i18n.close,
+                icon: "iconClose",
+                click: () => handlers.onCloseTab(tab, card),
+            });
+            menu.open({x: event.clientX, y: event.clientY});
+        });
 
         // 点击整卡切换到该页签
         card.addEventListener("click", () => handlers.onActivate(tab));
@@ -1096,8 +1305,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         return null;
     }
 
-    // 键盘导航：方向键 / Tab 移动，Enter 切换，Esc 关闭
-    private bindKeydown(scrollElement: HTMLElement, dialog: Dialog) {
+    // 键盘导航：方向键 / Tab 移动，Enter 切换，Esc 关闭（仅弹窗模式使用）
+    private bindKeydown(scrollElement: HTMLElement, closeOverlay: IOverlayClose) {
         scrollElement.addEventListener("keydown", (event) => {
             const key = event.key;
             const cards = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"));
@@ -1130,12 +1339,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const tabId = target?.dataset.tabId;
                 const tab = getAllTabs().find((item) => item.id === tabId);
                 if (tab) {
-                    this.activateTab(tab, dialog);
+                    this.activateTab(tab, closeOverlay);
                 }
                 return;
             } else if (key === "Escape") {
                 event.stopPropagation();
-                dialog.destroy();
+                closeOverlay();
                 return;
             }
 
@@ -1168,8 +1377,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // 切换到目标页签并关闭切换器
-    private activateTab(tab: Tab, dialog: Dialog) {
+    // 切换到目标页签；弹窗模式随后销毁弹窗，侧边栏模式随后刷新列表
+    private activateTab(tab: Tab, onClose?: IOverlayClose) {
         // 记录 MRU
         const mru = this.getMru();
         const list = mru.filter((id) => id !== tab.id);
@@ -1186,7 +1395,92 @@ export default class SpeedSwitchPlugin extends Plugin {
         } catch (e) {
             console.warn("[speed-switch] switch tab fail", e);
         }
-        dialog.destroy();
+        onClose?.();
+    }
+
+    // ==================== 侧边栏模式 ====================
+
+    // 在 dock 面板内渲染紧凑版切换器（单列卡片，常驻侧边栏便于快速切换）
+    private renderSidebarPanel(element: HTMLElement) {
+        if (!element) {
+            return;
+        }
+        this.sidebarElement = element;
+        element.classList.add("speed-switch", "sw__body", "sw--sidebar");
+        element.innerHTML = `<div class="sw__content">
+    <div class="sw__toolbar">
+        <div class="sw__search-wrap">
+            <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+        </div>
+        <select class="b3-select sw__fav" title="${this.i18n.favorites}"></select>
+        <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" title="${this.i18n.settings}">
+            <svg><use xlink:href="#iconSettings"></use></svg>
+        </span>
+    </div>
+    <div class="sw__scroll" tabindex="0"></div>
+    <span class="sw__back-top" title="${this.i18n.backTop}">
+        <svg><use xlink:href="#iconUp"></use></svg>
+    </span>
+</div>`;
+
+        const tabs = getAllTabs();
+        this.pruneThumbCache(tabs);
+        const activeTab = this.getActiveTab();
+        const refresh = () => this.refreshSidebar();
+        const scrollElement = element.querySelector<HTMLDivElement>(".sw__scroll");
+        this.renderList(scrollElement, tabs, activeTab, {onOverlayClose: refresh, onTabsChanged: refresh}, this.getSettings().sortBy, {});
+
+        // 搜索：与弹窗一致，页签匹配在上、全库文档在下
+        const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
+        searchInput.addEventListener("input", () => {
+            this.applySearch(scrollElement, searchInput, refresh);
+        });
+
+        // 收藏下拉：选择即跳转（侧边栏保持显示，仅刷新列表）
+        const favSelect = element.querySelector<HTMLSelectElement>(".sw__fav");
+        this.refreshFavSelects();
+        favSelect.addEventListener("change", () => {
+            const key = favSelect.value;
+            favSelect.value = "";
+            const favorite = this.getFavorites().find((item) => item.key === key);
+            if (favorite) {
+                this.jumpToFavorite(favorite, refresh);
+            }
+        });
+
+        element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
+            this.openSetting();
+        });
+
+        const backTopBtn = element.querySelector<HTMLElement>(".sw__back-top");
+        scrollElement.addEventListener("scroll", () => {
+            backTopBtn?.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
+        });
+        backTopBtn?.addEventListener("click", () => {
+            scrollElement.scrollTo({top: 0, behavior: "smooth"});
+        });
+    }
+
+    // 刷新侧边栏列表（面板仍连接在 DOM 上时）
+    private refreshSidebar() {
+        if (this.sidebarElement?.isConnected) {
+            this.renderSidebarPanel(this.sidebarElement);
+        }
+    }
+
+    // 打开（或聚焦已打开的）侧边栏面板
+    private toggleSidebar() {
+        const type = this.name + SIDEBAR_DOCK_TYPE;
+        try {
+            const dock = this.getDockByType(type);
+            if (dock) {
+                dock.toggleModel(type, true);
+                this.refreshSidebar();
+            }
+        } catch (e) {
+            console.warn("[speed-switch] toggle sidebar fail", e);
+        }
     }
 
     // 读取 MRU 记录

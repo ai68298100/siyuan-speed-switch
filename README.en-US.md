@@ -48,6 +48,13 @@ A SiYuan plugin that lets you switch between opened tabs just like the Windows *
 
 ## Changelog
 
+### v0.3.0 (2026-09-03)
+
+- Two-section search results: matched open tabs show in the upper section, workspace-wide documents in the lower one (already-open docs excluded; click to open).
+- New sidebar mode: pin the tab list to a right dock panel from the switcher toolbar — single-column cards that adapt to the panel size, staying in sync for quick tab switching.
+- New favorites: star a tab from its card; jump from the favorites dropdown in the toolbar. Favorited documents reopen from favorites even after their tabs close (remembered per document, survives restarts).
+- Card context menu: right-click a card to pin/unpin, favorite/unfavorite, or close the tab.
+
 ### v0.2.2 (2026-09-03)
 
 - Modernized UI: search field with magnifier icon, unified control height and border radius, cards lift with shadow on hover, active tab highlighted in the theme primary color, group labels with divider lines, tinted active dock item, slimmer scrollbars. All colors use SiYuan theme variables and adapt to light/dark themes automatically.

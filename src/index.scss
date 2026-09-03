@@ -1,5 +1,6 @@
 // ============================================================
-// Speed Switch —— 所有颜色/阴影/圆角均使用思源主题变量，随主题自动适配
+// Speed Switch —— 极简风格。尽量不用背景色，仅用文字色 / 边框 / 阴影
+// 随思源主题变量自动适配明暗主题，避免与各类主题产生冲突
 // ============================================================
 
 // 旋转动画（缩略图加载中）
@@ -14,9 +15,6 @@
     flex-direction: column;
     gap: 2px;
     width: 100%;
-    padding: 8px 10px;
-    background-color: var(--b3-theme-surface-lighter);
-    border-radius: var(--b3-border-radius-b, 6px);
 
     .sw-setting__dock-item {
         display: flex;
@@ -25,13 +23,7 @@
         font-size: 13px;
         color: var(--b3-theme-on-background);
         cursor: pointer;
-        min-height: 30px;
-        padding: 0 6px;
-        border-radius: var(--b3-border-radius-a, 4px);
-
-        &:hover {
-            background-color: var(--b3-list-hover);
-        }
+        min-height: 28px;
     }
 }
 
@@ -80,7 +72,7 @@
         min-height: 0;
     }
 
-    // ==================== 固定顶栏 ====================
+    // ==================== 顶栏（弹窗最顶端，极简无背景，仅底部细分隔线） ====================
     .sw__toolbar {
         flex: none;
         display: flex;
@@ -88,10 +80,8 @@
         gap: 8px;
         padding: 10px 12px;
         border-bottom: 1px solid var(--b3-border-color);
-        background-color: var(--b3-theme-surface);
-        z-index: 1;
 
-        // 搜索框（带前置搜索图标）
+        // 搜索框（带前置搜索图标，无边框透明底，聚焦时仅底部主色线）
         .sw__search-wrap {
             position: relative;
             flex: 1;
@@ -101,7 +91,7 @@
 
             .sw__search-icon {
                 position: absolute;
-                left: 9px;
+                left: 8px;
                 width: 14px;
                 height: 14px;
                 color: var(--b3-theme-on-surface-light);
@@ -110,32 +100,62 @@
 
             .sw__search {
                 width: 100%;
-                height: 30px;
-                padding-left: 30px;
-                border-radius: var(--b3-border-radius-b, 6px);
+                height: 32px;
+                padding-left: 28px;
+                border: none;
+                background: transparent;
+                box-shadow: none;
+                border-radius: 0;
+                border-bottom: 1px solid transparent;
+                color: var(--b3-theme-on-background);
+
+                &::placeholder {
+                    color: var(--b3-theme-on-surface-light);
+                }
+
+                &:focus {
+                    outline: none;
+                    border-bottom-color: var(--b3-theme-primary);
+                }
             }
         }
 
         .sw__sort {
             flex: none;
-            height: 30px;
-            max-width: 132px;
-            border-radius: var(--b3-border-radius-b, 6px);
+            height: 28px;
+            max-width: 128px;
+            border: 1px solid var(--b3-border-color);
+            background: transparent;
+            color: var(--b3-theme-on-background);
+            border-radius: 6px;
         }
 
-        // 顶栏圆形图标按钮（排序旁的快捷设置入口）
+        // 收藏快速跳转下拉，与排序下拉同款式
+        .sw__fav {
+            flex: none;
+            height: 28px;
+            max-width: 120px;
+            border: 1px solid var(--b3-border-color);
+            background: transparent;
+            color: var(--b3-theme-on-background);
+            border-radius: 6px;
+        }
+
+        // 顶栏图标按钮：无边框无背景，hover 仅文字变主色
         .sw__icon-btn {
             flex: none;
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--b3-border-radius-b, 6px);
+            background: transparent;
+            border: none;
+            border-radius: 6px;
             color: var(--b3-theme-on-surface);
             cursor: pointer;
-            transition: background-color 0.15s, color 0.15s;
+            transition: color 0.15s;
 
             svg {
                 width: 16px;
@@ -143,27 +163,24 @@
             }
 
             &:hover {
-                background-color: var(--b3-list-hover);
                 color: var(--b3-theme-primary);
+                background: transparent;
             }
         }
     }
 
-    // ==================== 左侧面板列表 ====================
+    // ==================== 左侧面板列表（极简：无背景无边框，靠留白与文字色区分） ====================
     .sw__dock {
         flex: none;
-        width: 168px;
+        width: 156px;
         overflow: auto;
-        border-right: 1px solid var(--b3-border-color);
-        background-color: var(--b3-theme-surface-lighter);
-        padding: 8px 6px;
+        padding: 10px 8px 10px 12px;
     }
 
     .sw__dock-label {
-        margin: 2px 8px 6px;
+        margin: 0 0 6px;
         font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
     }
 
@@ -172,27 +189,24 @@
         align-items: center;
         gap: 8px;
         width: 100%;
-        padding: 6px 8px;
-        margin-bottom: 2px;
+        padding: 5px 6px;
         border: none;
-        border-radius: var(--b3-border-radius-b, 6px);
         background: transparent;
         color: var(--b3-theme-on-background);
         font-size: 13px;
         line-height: 1.4;
         text-align: left;
         cursor: pointer;
-        transition: background-color 0.12s, color 0.12s;
+        transition: color 0.12s;
 
         &:hover,
         &:focus {
-            background-color: var(--b3-list-hover);
+            color: var(--b3-theme-primary);
             outline: none;
         }
 
-        // 当前已展开的面板：主色浅底 + 主色文字
+        // 当前展开的面板：仅文字与图标变主色
         &.sw__active {
-            background-color: var(--b3-theme-primary-light);
             color: var(--b3-theme-primary);
         }
     }
@@ -204,8 +218,8 @@
         color: var(--b3-theme-on-surface-light);
 
         svg {
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
         }
     }
 
@@ -225,10 +239,9 @@
     .sw__scroll {
         flex: 1;
         overflow: auto;
-        padding: 10px 12px 14px;
+        padding: 10px 12px 16px;
         outline: none;
 
-        // 细滚动条，跟随思源主题色
         &::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -242,40 +255,37 @@
         }
     }
 
-    // 一键回到顶部按钮（滚动后浮现于右下角）
+    // 一键回到顶部按钮（无边框无背景纯图标，hover 显主色，滚动后淡入上浮）
     .sw__back-top {
         position: absolute;
-        right: 18px;
-        bottom: 18px;
-        width: 34px;
-        height: 34px;
+        right: 16px;
+        bottom: 16px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background-color: var(--b3-theme-surface);
-        border: 1px solid var(--b3-border-color);
-        box-shadow: var(--b3-dialog-shadow);
-        color: var(--b3-theme-on-surface);
+        background: transparent;
+        border: none;
+        color: var(--b3-theme-on-surface-light);
         cursor: pointer;
         z-index: 2;
         opacity: 0;
         visibility: hidden;
         transform: translateY(6px);
-        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s, background-color 0.15s, color 0.15s;
+        transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s, color 0.15s;
         pointer-events: none;
 
         svg {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
         }
 
         &:hover {
-            background-color: var(--b3-list-hover);
             color: var(--b3-theme-primary);
         }
 
-        // 滚动后淡入上浮显现
         &.sw__show {
             opacity: 1;
             visibility: visible;
@@ -295,33 +305,23 @@
         text-align: center;
     }
 
-    // ==================== 分组 ====================
+    // ==================== 分组（极简：仅弱化文字标签，无分隔线） ====================
     .sw__group {
         display: flex;
         flex-direction: column;
     }
 
-    // 分栏窗口 / 全库文档结果的分组标题
     .sw__window-label {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin: 6px 2px 8px;
+        margin: 4px 2px 8px;
         font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
         color: var(--b3-theme-on-surface-light);
 
         &:first-child {
             margin-top: 0;
-        }
-
-        // 标题后的细分隔线
-        &::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background-color: var(--b3-border-color);
         }
     }
 
@@ -334,15 +334,14 @@
             align-items: center;
             gap: 8px;
             width: 100%;
-            padding: 7px 10px;
-            margin-bottom: 2px;
+            padding: 6px 8px;
             border: none;
-            border-radius: var(--b3-border-radius-b, 6px);
             background: transparent;
             color: var(--b3-theme-on-background);
             text-align: left;
             font-size: 13px;
             cursor: pointer;
+            border-radius: 6px;
             transition: background-color 0.12s;
 
             &:hover {
@@ -356,7 +355,6 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 font-weight: 500;
-                color: var(--b3-theme-on-background);
             }
 
             .sw__doc-path {
@@ -378,36 +376,34 @@
         gap: 12px;
     }
 
+    // 卡片：极简细边框，hover 轻微上浮+阴影；当前页签仅主色细边框（无底色填充）
     .sw__card {
         position: relative;
-        border-radius: var(--b3-border-radius-b, 8px);
+        border-radius: 8px;
         border: 1px solid var(--b3-border-color);
         background-color: var(--b3-theme-surface);
         overflow: hidden;
         cursor: pointer;
-        transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background-color 0.15s;
+        transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
         flex-direction: column;
         display: flex;
 
         &:hover {
-            border-color: var(--b3-theme-primary-light);
+            border-color: var(--b3-theme-primary);
             transform: translateY(-2px);
             box-shadow: var(--b3-dialog-shadow);
         }
 
-        // 键盘导航焦点：主色光环
         &.sw__focused {
             border-color: var(--b3-theme-primary);
-            box-shadow: 0 0 0 2px var(--b3-theme-primary-light);
+            box-shadow: 0 0 0 1px var(--b3-theme-primary);
         }
 
-        // 当前活动页签：主色边框 + 极浅主色底
         &.sw__active {
             border-color: var(--b3-theme-primary);
-            background-color: var(--b3-theme-primary-light);
         }
 
-        // 置顶页签左上角标识条
+        // 置顶页签：左上角主色细条
         &.sw__pinned::before {
             content: "";
             position: absolute;
@@ -485,7 +481,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 7px 10px;
+        padding: 6px 10px;
         font-size: 13px;
         color: var(--b3-theme-on-background);
         min-width: 0;
@@ -494,13 +490,13 @@
             flex: none;
             display: flex;
             align-items: center;
-            color: var(--b3-theme-primary);
+            color: var(--b3-theme-on-surface-light);
             svg {
-                width: 15px;
-                height: 15px;
+                width: 14px;
+                height: 14px;
             }
             &.sw__icon-emoji {
-                font-size: 15px;
+                font-size: 14px;
                 line-height: 1;
                 color: inherit;
             }
@@ -515,33 +511,31 @@
         }
     }
 
-    // ==================== 卡片悬浮操作按钮 ====================
-    // 置顶 / 关闭按钮：半透明主题底色，悬浮于缩略图上方
+    // ==================== 卡片悬浮操作按钮（纯图标无边框，hover 变主色） ====================
     .sw__pin,
+    .sw__fav,
     .sw__close {
         position: absolute;
         top: 6px;
-        width: 24px;
-        height: 24px;
+        width: 22px;
+        height: 22px;
         display: none;
         align-items: center;
         justify-content: center;
+        background: transparent;
+        border: none;
         border-radius: 50%;
-        background-color: var(--b3-theme-surface);
-        border: 1px solid var(--b3-border-color);
-        box-shadow: var(--b3-dialog-shadow);
-        color: var(--b3-theme-on-surface);
+        color: var(--b3-theme-on-surface-light);
         z-index: 2;
         cursor: pointer;
-        transition: background-color 0.12s, color 0.12s;
+        transition: color 0.12s;
 
         svg {
-            width: 13px;
-            height: 13px;
+            width: 14px;
+            height: 14px;
         }
 
         &:hover {
-            background-color: var(--b3-list-hover);
             color: var(--b3-theme-primary);
         }
     }
@@ -550,18 +544,46 @@
         left: 8px;
     }
 
+    // 收藏按钮紧邻置顶按钮右侧
+    .sw__fav {
+        left: 32px;
+    }
+
     .sw__close {
         right: 8px;
     }
 
-    // 置顶的卡片常显图钉按钮
-    .sw__card.sw__pinned .sw__pin {
+    // 置顶/收藏的卡片常显对应按钮（主色标识）
+    .sw__card.sw__pinned .sw__pin,
+    .sw__card.sw__faved .sw__fav {
         display: flex;
         color: var(--b3-theme-primary);
     }
 
     .sw__card:hover .sw__close,
-    .sw__card:hover .sw__pin {
+    .sw__card:hover .sw__pin,
+    .sw__card:hover .sw__fav {
         display: flex;
+    }
+
+    // ==================== 侧边栏紧凑模式（dock 面板内） ====================
+    &.sw--sidebar {
+        // 单列卡片，匹配侧边栏窄宽度
+        .sw__grid {
+            grid-template-columns: 1fr;
+        }
+
+        .sw__toolbar {
+            flex-wrap: wrap;
+
+            .sw__search-wrap {
+                flex: 1 1 100%;
+            }
+        }
+
+        .sw__fav {
+            flex: 1;
+            min-width: 0;
+        }
     }
 }
