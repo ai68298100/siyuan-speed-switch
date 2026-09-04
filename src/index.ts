@@ -124,7 +124,6 @@ export default class SpeedSwitchPlugin extends Plugin {
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
-    private mobileJournalButton: HTMLElement | null = null; // 手机端顶栏日记按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
 
@@ -149,16 +148,6 @@ export default class SpeedSwitchPlugin extends Plugin {
             position: "right",
             callback: () => {
                 this.showSwitcher();
-            },
-        });
-
-        // 日记快捷入口：一键打开/创建当日日记（默认日记本未设置时首次点击弹出选择）
-        this.addTopBar({
-            icon: "iconDate",
-            title: this.i18n.journalBtn,
-            position: "right",
-            callback: () => {
-                this.openJournal();
             },
         });
 
@@ -245,8 +234,6 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
-        this.mobileJournalButton?.remove();
-        this.mobileJournalButton = null;
     }
 
     // ==================== 持久化性能 ====================
@@ -979,6 +966,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 <span class="b3-button b3-button--text sw__icon-btn sw__sidebar-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.openSidebar}">
                     <svg><use xlink:href="#iconLayoutRight"></use></svg>
                 </span>
+                <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.journalBtn}">
+                    <svg><use xlink:href="#iconDate"></use></svg>
+                </span>
                 <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
                     <svg><use xlink:href="#iconSettings"></use></svg>
                 </span>
@@ -1052,6 +1042,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         dialog.element.querySelector(".sw__sidebar-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.toggleSidebar();
+        });
+        // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
+        dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
+            dialog.destroy();
+            this.openJournal();
         });
         // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
@@ -2992,6 +2987,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         <span class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
             <svg><use xlink:href="#iconStar"></use></svg>
         </span>
+        <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}">
+            <svg><use xlink:href="#iconDate"></use></svg>
+        </span>
         <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
             <svg><use xlink:href="#iconSettings"></use></svg>
         </span>
@@ -3048,6 +3046,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 收藏按钮 → 底部弹窗
         dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
             this.showMobileFavSheet(dialog, closeOverlay);
+        });
+
+        // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）
+        dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
+            dialog.destroy();
+            this.fabElement?.classList.remove("sw__fab--hidden");
+            this.openJournal();
         });
 
         sortSelect.value = settings.sortBy;
@@ -3365,7 +3370,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (!topBar) {
             return;
         }
-        // 切换器入口
+        // 切换器入口（外部只有一个入口按钮；日记按钮位于切换器弹窗顶栏内）
         if (!this.mobileTopBarButton?.isConnected && !topBar.querySelector("#swMobileTopBarBtn")) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -3378,20 +3383,6 @@ export default class SpeedSwitchPlugin extends Plugin {
             });
             topBar.appendChild(btn);
             this.mobileTopBarButton = btn;
-        }
-        // 日记入口
-        if (!this.mobileJournalButton?.isConnected && !topBar.querySelector("#swMobileJournalBtn")) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.id = "swMobileJournalBtn";
-            btn.className = "toolbar__button";
-            btn.setAttribute("aria-label", this.i18n.journalBtn);
-            btn.innerHTML = `<svg><use xlink:href="#iconDate"></use></svg>`;
-            btn.addEventListener("click", () => {
-                this.openJournal();
-            });
-            topBar.appendChild(btn);
-            this.mobileJournalButton = btn;
         }
     }
 

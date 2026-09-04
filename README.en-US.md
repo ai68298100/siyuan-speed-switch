@@ -30,7 +30,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 ### Panels & Sidebar
 - 🖇️ **Panel quick access** — All dock panels (file tree, outline, bookmarks, graph, backlinks, tags, inbox, AI chat…) listed on the left rail; click to open and focus. Hide unwanted ones in settings.
 - 📎 **Sidebar mode** — Pin the tab list to a right dock panel: cards that resize with the panel, always at hand; when stretched wider, choose between **enlarging thumbnails** or **auto-adding columns**.
-- 📅 **Today's journal** — A journal button is added to the top bar on both desktop and mobile: one-click to open/create today's journal; pick the default notebook under **Settings → Journal**, or a picker pops up on first click if unset.
+- 📅 **Today's journal** — A journal button in the switcher's top bar opens/creates today's journal with one click once you've opened the switcher; pick the default notebook under **Settings → Journal**, or a picker pops up on first click if unset.
 
 ### Mobile
 - 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (off by default, enable it in settings); thumbnails, favorites and search work just like on desktop.
@@ -86,6 +86,10 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.13.1 (2026-09-04)
+
+- **Journal button moves into the switcher**: the top bar no longer takes an extra slot — desktop and mobile each keep a single switcher entry; the journal button now lives in the **switcher's top bar**, opening/creating today's journal right after you open the switcher.
 
 ### v0.13.0 (2026-09-04)
 
