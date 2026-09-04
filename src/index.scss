@@ -27,6 +27,36 @@
     }
 }
 
+// 设置页开关强化：部分主题下原生 b3-switch 开/关两态视觉接近，无法分辨状态。
+// 插件自建开关统一加 sw-switch 类强制明确对比——
+// 关闭 = 透明轨道 + 边框描边 + 灰点；开启 = 主色实心轨道 + 白点，圆点位置随状态移动
+.b3-dialog .b3-switch.sw-switch {
+    span {
+        background-color: transparent;
+        box-shadow: inset 0 0 0 2px var(--b3-border-color);
+        transition: background-color 0.2s, box-shadow 0.2s;
+
+        &::before {
+            background-color: var(--b3-theme-on-surface-light);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        }
+    }
+
+    input:checked + span {
+        background-color: var(--b3-theme-primary);
+        box-shadow: none;
+
+        &::before {
+            background-color: var(--b3-theme-on-primary);
+        }
+    }
+
+    // 键盘可达性：聚焦时轨道描边转主色
+    input:focus-visible + span {
+        box-shadow: inset 0 0 0 2px var(--b3-theme-primary);
+    }
+}
+
 // 设置页分区标题（外观/行为/面板/收藏）：主色小字 + 顶部细分隔线，与普通设置项区分
 .config-name .sw-setting__sec {
     display: inline-block;
@@ -489,6 +519,17 @@
             &:hover {
                 color: var(--b3-theme-primary);
                 background: transparent;
+            }
+        }
+
+        // 全屏 ⇄ 普通切换按钮：普通模式显示"进入全屏"角标外扩图标（默认态）
+        .sw__fullscreen-btn {
+            .sw__fs-enter {
+                display: block;
+            }
+
+            .sw__fs-exit {
+                display: none;
             }
         }
     }
@@ -1284,9 +1325,24 @@
 
 // ==================== 电脑端全屏模式（设置 → 行为 → 全屏模式） ====================
 
-// 弹窗容器铺满视口：去掉圆角/边框/阴影，解除思源默认 max-width: 88vw 限制
+// 全屏模式下切换按钮改显"退出全屏"角标内收图标
+// （sw--fullscreen 与 .speed-switch 在同一元素上，必须写复合类选择器而非后代选择器）
+.speed-switch.sw--fullscreen {
+    .sw__toolbar .sw__fullscreen-btn {
+        .sw__fs-enter {
+            display: none;
+        }
+
+        .sw__fs-exit {
+            display: block;
+        }
+    }
+}
+
+// 弹窗容器铺满视口：去掉圆角/边框/阴影，解除思源默认 max-width / max-height 限制
 .b3-dialog__container.sw-dialog--fullscreen {
     max-width: none;
+    max-height: none;
     width: 100vw;
     height: 100vh;
     border-radius: 0;

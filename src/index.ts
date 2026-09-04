@@ -426,7 +426,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             description: this.i18n.fullScreenTip,
             createActionElement: () => {
                 const label = document.createElement("label");
-                label.className = "b3-switch";
+                label.className = "b3-switch sw-switch";
                 const input = document.createElement("input");
                 input.type = "checkbox";
                 input.checked = s.fullscreen;
@@ -482,11 +482,13 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const panels = this.getDockPanels();
                 const excluded = new Set(s.excludedDocks);
                 panels.forEach((panel) => {
-                    const label = document.createElement("label");
-                    label.className = "sw-setting__dock-item";
+                    // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
+                    const row = document.createElement("div");
+                    row.className = "sw-setting__dock-item";
+                    const toggle = document.createElement("label");
+                    toggle.className = "b3-switch sw-switch";
                     const checkbox = document.createElement("input");
                     checkbox.type = "checkbox";
-                    checkbox.className = "b3-switch";
                     checkbox.checked = !excluded.has(panel.type);
                     checkbox.dataset.dockType = panel.type;
                     checkbox.addEventListener("change", () => {
@@ -498,11 +500,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                         }
                         this.updateSettings({excludedDocks: Array.from(next)});
                     });
+                    const knob = document.createElement("span");
+                    toggle.appendChild(checkbox);
+                    toggle.appendChild(knob);
                     const title = document.createElement("span");
                     title.textContent = panel.title;
-                    label.appendChild(checkbox);
-                    label.appendChild(title);
-                    box.appendChild(label);
+                    row.appendChild(toggle);
+                    row.appendChild(title);
+                    box.appendChild(row);
                 });
                 if (panels.length === 0) {
                     box.textContent = this.i18n.noDockPanels;
@@ -679,7 +684,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             description: this.i18n.fabEnabledTip,
             createActionElement: () => {
                 const label = document.createElement("label");
-                label.className = "b3-switch";
+                label.className = "b3-switch sw-switch";
                 const input = document.createElement("input");
                 input.type = "checkbox";
                 input.checked = s.fabEnabled;
@@ -761,6 +766,10 @@ export default class SpeedSwitchPlugin extends Plugin {
                         <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
                     </select>
                 </div>
+                <span class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn b3-tooltips b3-tooltips__s" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
+                    <svg class="sw__fs-enter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sw__fs-exit" viewBox="0 0 24 24"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
                 <span class="b3-button b3-button--text sw__icon-btn sw__sidebar-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.openSidebar}">
                     <svg><use xlink:href="#iconLayoutRight"></use></svg>
                 </span>
@@ -783,6 +792,33 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (fullscreen) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
+
+        // 全屏 ⇄ 普通 原地切换：直接改容器 inline 尺寸与类，不重建弹窗（缩略图/搜索状态全保留）。
+        // 初始模式仍由设置项决定，按钮只作用于本次会话
+        let isFullscreen = fullscreen;
+        const fsBtn = dialog.element.querySelector<HTMLElement>(".sw__fullscreen-btn");
+        const swBody = dialog.element.querySelector<HTMLElement>(".sw__body");
+        const toggleFullscreen = (toFullscreen: boolean) => {
+            const container = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
+            if (!container || toFullscreen === isFullscreen) {
+                return;
+            }
+            isFullscreen = toFullscreen;
+            if (toFullscreen) {
+                container.style.width = "100vw";
+                container.style.height = "100vh";
+                container.classList.add("sw-dialog--fullscreen");
+                swBody?.classList.add("sw--fullscreen");
+                fsBtn?.setAttribute("aria-label", this.i18n.exitFullscreen);
+            } else {
+                container.style.width = `${settings.dialogWidth}px`;
+                container.style.height = `${settings.dialogHeight}px`;
+                container.classList.remove("sw-dialog--fullscreen");
+                swBody?.classList.remove("sw--fullscreen");
+                fsBtn?.setAttribute("aria-label", this.i18n.enterFullscreen);
+            }
+        };
+        fsBtn?.addEventListener("click", () => toggleFullscreen(!isFullscreen));
 
         // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
         // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定

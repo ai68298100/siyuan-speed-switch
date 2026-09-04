@@ -24,6 +24,8 @@
   "fullScreen": "Fullscreen mode",
   "fullScreenTip": "The switcher fills the whole window; press Esc to exit (off by default)",
   "fullScreenOn": "Fullscreen mode enabled. Press Esc to exit",
+  "enterFullscreen": "Fullscreen",
+  "exitFullscreen": "Exit fullscreen",
   "setDocks": "Panel visibility",
   "setDocksTip": "Unchecked panels are hidden from the left rail of the switcher",
   "noDockPanels": "No dock panels detected",

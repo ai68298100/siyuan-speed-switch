@@ -76,6 +76,11 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.10.0 (2026-09-04)
+
+- **Fullscreen mode improved (desktop)**: a fullscreen toggle button is added to the switcher toolbar — click to enter fullscreen in normal mode, click again to exit; the switch happens in place without rebuilding the dialog, keeping thumbnails and search state. The setting still decides the initial mode; Esc still closes.
+- **Settings switches enhanced**: fixed switches looking identical on/off under some themes — off shows an outlined track with a gray knob, on shows a solid primary track with a white knob; also fixed a broken switch markup in the "Panel visibility" list.
+
 ### v0.9.0 (2026-09-04)
 
 - **Fullscreen mode (desktop, Settings → Behavior)**: the switcher can fill the whole window; press Esc to exit. Off by default, with a hint when enabled.

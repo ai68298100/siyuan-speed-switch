@@ -24,6 +24,8 @@
   "fullScreen": "全屏模式",
   "fullScreenTip": "切换器铺满整个窗口，按 Esc 退出（默认关闭）",
   "fullScreenOn": "已开启全屏模式，按 Esc 退出",
+  "enterFullscreen": "全屏模式",
+  "exitFullscreen": "退出全屏",
   "setDocks": "面板显示设置",
   "setDocksTip": "取消勾选的面板不会出现在切换器左侧列表中",
   "noDockPanels": "当前未检测到可用的侧边栏面板",
