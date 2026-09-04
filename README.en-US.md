@@ -1,12 +1,12 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.11.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
-A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, and a **dockable sidebar mode**. Split windows (panes) are fully supported.
+A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
 <p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
-[中文说明](./README.zh-CN.md)
+[中文说明](./README.md)
 
 ## ✨ Features
 
@@ -15,6 +15,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - 🔀 **Split-window native** — Tabs are grouped by window (pane); switching activates the right pane automatically.
 - ⌨️ **Full keyboard control** — Arrows / `Tab` move the selection across the real grid, `Enter` switches, `Esc` closes — same muscle memory as Alt+Tab.
 - 📌 **Pin tabs** — Pin frequently used tabs to the front of their group; remembered per document across restarts.
+- 🖥️ **Fullscreen mode** — One toolbar button toggles fullscreen ⇄ normal; the thumbnail wall fills the whole window. Persist a default in settings; `Esc` exits.
 
 ### Favorites & Groups
 - ⭐ **One-click favorite** — Star any tab; document tabs are remembered by rootID, so you can **reopen them from favorites even after the tab closes**, surviving restarts.
@@ -29,18 +30,24 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - 🖇️ **Panel quick access** — All dock panels (file tree, outline, bookmarks, graph, backlinks, tags, inbox, AI chat…) listed on the left rail; click to open and focus. Hide unwanted ones in settings.
 - 📎 **Sidebar mode** — Pin the tab list to a right dock panel: single-column cards that resize with the panel, always at hand.
 
+### Mobile
+- 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (on by default); thumbnails, favorites and search work just like on desktop.
+- 👆 **Touch interactions** — Long-press a card for pin / favorite / group / close (the mobile equivalent of right-click); the floating button hides on swipe up and returns on swipe down, matching SiYuan's own toolbar.
+- 🗂️ **Adaptive layout** — Card layout supports single / double / auto columns (single in portrait, double in landscape); one setting syncs across devices.
+
 ### Performance & Look
 - 💾 **Thumbnail cache** — Content snapshots cached per document; layout resets and app restarts load instantly. Cache is pruned on tab close, capped at 200KB per entry.
-- ⚡ **Debounced writes** — High-frequency data (favorites / pins / MRU) is kept in memory and flushed to disk in merged batches — rapid actions never stall. Pending writes are flushed on unload.
-- 🎨 **Theme aware** — Every style rides on SiYuan theme variables, following light/dark themes seamlessly; pin/star/close buttons get a frosted backdrop for readability over thumbnails.
+- ⚡ **Lazy viewport rendering** — Only thumbnails scrolled into view are generated, so the switcher opens instantly with many tabs; re-sorting reuses cards and keeps rendered thumbnails.
+- 🎨 **Theme aware** — Every style rides on SiYuan theme variables, following light/dark and **third-party themes** seamlessly; settings switches enforce high-contrast on/off states under any theme.
 
 ## 🚀 Quick Start
 
-1. **Open**: the layout icon on the top toolbar, or the hotkey `Alt+Shift+S` (changeable in **Settings → Keymap**).
+1. **Open**: the layout icon on the top toolbar, or the hotkey `Alt+Shift+S` (changeable in **Settings → Keymap**); on mobile, tap the top-bar entry or the floating button.
 2. **Switch**: click a card, or move with arrows / `Tab` and hit `Enter`; click a panel on the left rail to jump to it.
-3. **Manage**: pin with the pin button, favorite with the star (group menu pops up); close tabs with × on the card, or right-click for the full menu.
+3. **Manage**: pin with the pin button, favorite with the star (group menu pops up); close tabs with × on the card, or right-click for the full menu (long-press on mobile).
 4. **Search**: type in the toolbar — tab and document results appear together.
 5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
+6. **Fullscreen**: hit the fullscreen toolbar button to fill the window; click again or `Esc` to restore.
 
 ## ⌨️ Shortcuts
 
@@ -54,14 +61,15 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## ⚙️ Settings
 
-**Settings → Plugins → LvSpeed Switch → Settings** (or the gear button inside the switcher), in four sections:
+**Settings → Plugins → LvSpeed Switch → Settings** (or the gear button inside the switcher), in five sections:
 
 | Section | Options |
 | --- | --- |
 | Appearance | Switcher width/height (480–1920 × 360–1280), thumbnail columns (auto / 2–8), thumbnail height (72–360) |
-| Behavior | Default sort order |
-| Panels | Show / hide left-rail panels |
+| Behavior | Default sort order, fullscreen mode (off by default; opens filling the window) |
+| Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden) |
 | Favorites | Create / rename / delete groups, reassign favorites |
+| Mobile | Floating button toggle (on by default), card layout (single / double / auto) |
 
 ## 📦 Install
 
@@ -75,6 +83,12 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.11.0 (2026-09-04)
+
+- **Fixed mobile styles silently broken (major)**: a stylesheet nesting error made all 39 mobile-specific rules (compact toolbar, card layout, always-visible action buttons, touch feedback) compile into selectors that could never match, so the mobile dialog had been falling back to desktop styles. Mobile now renders as designed — toolbar sizing, single/double/auto card layouts, thumbnail height, always-visible pin/favorite/close buttons and press feedback all take effect.
+- **README overhauled**: features now cover fullscreen mode and a Mobile section; settings table updated to five sections; quick start covers mobile and fullscreen entries; old changelog entries collapsed; the outdated README.zh-CN.md removed (Chinese readme is the main README).
+- Plugin description (marketplace) mentions fullscreen mode.
 
 ### v0.10.1 (2026-09-04)
 
@@ -130,6 +144,9 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - **Bottom-sheet favorites**: on mobile, tapping the star button opens a bottom sheet that lists favorites by group, touch-friendly.
 - Optimized mobile card styling: more compact thumbnails, always-visible action buttons, ≥44px touch targets.
 - Compatible with SiYuan on Android/iOS/HarmonyOS; uses CSS variables for automatic theme adaptation.
+
+<details>
+<summary>History</summary>
 
 ### v0.6.1 (2026-09-04)
 
@@ -205,9 +222,6 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Theme-aware styles: thumbnails and cards use theme variables for seamless light/dark switching.
 - All thumbnails visible on first open: background tabs fetched via the kernel API.
 - Fixed recent-use records lost after restart (persistent data preloaded on startup).
-
-<details>
-<summary>History</summary>
 
 - v0.0.4 (2026-09-03): repo renamed to siyuan-speed-switch; GitHub Actions auto packaging & release; README localized.
 - v0.0.3 (2026-09-03): fixed the default hotkey not responding; added the left panel list; thumbnails re-render on every open.
