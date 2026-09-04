@@ -91,5 +91,15 @@
   "unitPx": "px",
   "expandDock": "展开面板列表",
   "collapseDock": "折叠面板列表",
-  "emptyHint": "在上方搜索框输入关键词，可搜索并打开全库文档"
+  "emptyHint": "在上方搜索框输入关键词，可搜索并打开全库文档",
+  "journalBtn": "打开当日日记",
+  "secJournal": "日记",
+  "journalNotebook": "默认日记笔记本",
+  "journalNotebookTip": "点击顶栏日记按钮时，当日日记创建于该笔记本；未设置时首次点击会弹出选择",
+  "journalChoose": "选择默认日记笔记本",
+  "journalChooseTip": "首次使用日记功能，请选择一个默认笔记本，之后可随时在「设置 → 日记」中更改",
+  "notebookLoading": "笔记本加载中…",
+  "notebookPlaceholder": "请选择笔记本",
+  "journalNoNotebook": "暂无可用笔记本，请先到思源中创建或打开笔记本",
+  "journalFailed": "打开日记失败，请检查默认笔记本设置"
 }

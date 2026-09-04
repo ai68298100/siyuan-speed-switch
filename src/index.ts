@@ -62,6 +62,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
     mobileColumns: 2,      // 2=自动（竖屏单列，横屏双列），默认自动
     mobileThumbHeight: 80, // 手机端缩略图高度
+    journalNotebook: "",   // 默认日记笔记本 id，空=未设置（首次点击日记按钮时弹出选择）
 };
 
 // 左侧面板显示方式
@@ -85,6 +86,7 @@ interface ISwSettings {
     fabEnabled: boolean;       // 是否启用悬浮按钮
     mobileColumns: number;     // 0=单列 1=双列 2=自动
     mobileThumbHeight: number; // 手机端缩略图高度
+    journalNotebook: string;   // 默认日记笔记本 id，空=未设置
 }
 
 interface IGroupedTab {
@@ -121,7 +123,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
-    private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏入口按钮（自行注入 mobileTopBar）
+    private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
+    private mobileJournalButton: HTMLElement | null = null; // 手机端顶栏日记按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
 
@@ -146,6 +149,16 @@ export default class SpeedSwitchPlugin extends Plugin {
             position: "right",
             callback: () => {
                 this.showSwitcher();
+            },
+        });
+
+        // 日记快捷入口：一键打开/创建当日日记（默认日记本未设置时首次点击弹出选择）
+        this.addTopBar({
+            icon: "iconDate",
+            title: this.i18n.journalBtn,
+            position: "right",
+            callback: () => {
+                this.openJournal();
             },
         });
 
@@ -232,6 +245,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
+        this.mobileJournalButton?.remove();
+        this.mobileJournalButton = null;
     }
 
     // ==================== 持久化性能 ====================
@@ -299,6 +314,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 ? (saved as any).fabEnabled : DEFAULT_SETTINGS.fabEnabled,
             mobileColumns: this.clampNum((saved as any).mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
             mobileThumbHeight: this.clampNum((saved as any).mobileThumbHeight, 48, 200, DEFAULT_SETTINGS.mobileThumbHeight),
+            journalNotebook: typeof (saved as any).journalNotebook === "string"
+                ? (saved as any).journalNotebook : DEFAULT_SETTINGS.journalNotebook,
         };
     }
 
@@ -392,16 +409,164 @@ export default class SpeedSwitchPlugin extends Plugin {
         return item;
     }
 
+    // 拉取已打开的笔记本列表（id + name），用于默认日记笔记本下拉
+    private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
+        try {
+            const response = await fetch("/api/notebook/lsNotebooks", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: "{}",
+            });
+            const json = await response.json();
+            const notebooks = (json?.data?.notebooks ?? []) as Array<{id: string, name: string, closed?: number}>;
+            return notebooks
+                .filter((nb) => nb && nb.id && !nb.closed)
+                .map((nb) => ({id: nb.id, name: nb.name}));
+        } catch (e) {
+            console.warn("[speed-switch] load notebooks fail", e);
+            return [];
+        }
+    }
+
+    // 默认日记笔记本下拉（异步填充已打开笔记本，当前值命中时回填选中）
+    private notebookSelect(current: string, onPick: (id: string) => void): HTMLElement {
+        const wrap = document.createElement("div");
+        wrap.className = "sw-settings__journal-sel";
+        const sel = document.createElement("select");
+        sel.className = "b3-select fn__flex-center";
+        sel.disabled = true; // 加载完成前禁用
+        sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+        wrap.appendChild(sel);
+        this.loadNotebooks().then((notebooks) => {
+            sel.innerHTML = "";
+            sel.appendChild(new Option(this.i18n.notebookPlaceholder, ""));
+            notebooks.forEach((nb) => {
+                const opt = new Option(nb.name, nb.id);
+                opt.title = nb.name;
+                sel.appendChild(opt);
+            });
+            sel.value = notebooks.some((nb) => nb.id === current) ? current : "";
+            sel.disabled = false;
+        });
+        sel.addEventListener("change", () => onPick(sel.value));
+        return wrap;
+    }
+
+    // 打开/创建当日日记：默认日记本未设置时先弹出下拉选择
+    private async openJournal() {
+        let notebook = this.getSettings().journalNotebook;
+        if (!notebook) {
+            notebook = await this.promptJournalNotebook();
+            if (!notebook) {
+                return; // 用户取消选择
+            }
+        }
+        const id = await this.ensureTodayJournal(notebook);
+        if (!id) {
+            showMessage(this.i18n.journalFailed, 3000, "error");
+            return;
+        }
+        if (this.isMobile) {
+            // openTab 在手机端是空实现，走 MobileTabs.open
+            this.mobileOpenDoc(id);
+        } else {
+            openTab({app: (this as any).app, doc: {id}});
+        }
+    }
+
+    // 调用内核 createDailyNote：已有当日日记时返回其 id（不重复创建）
+    private async ensureTodayJournal(notebook: string): Promise<string | null> {
+        try {
+            const response = await fetch("/api/filetree/createDailyNote", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({notebook}),
+            });
+            const json = await response.json();
+            if (json?.code === 0 && json?.data?.id) {
+                return json.data.id;
+            }
+            console.warn("[speed-switch] createDailyNote fail", json);
+            return null;
+        } catch (e) {
+            console.warn("[speed-switch] createDailyNote fail", e);
+            return null;
+        }
+    }
+
+    // 首次点击日记按钮：弹窗选择默认日记笔记本，选择后保存并返回
+    private promptJournalNotebook(): Promise<string> {
+        return new Promise((resolve) => {
+            const dialog = new Dialog({
+                title: this.i18n.journalChoose,
+                content: `<div class="b3-dialog__content sw-journal-prompt">
+    <div class="b3-label__text sw-journal-prompt__tip">${this.i18n.journalChooseTip}</div>
+    <div class="sw-journal-prompt__sel"></div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text sw-journal-prompt__confirm">${this.i18n.confirm}</button>
+</div>`,
+                width: "min(460px, 90vw)",
+            });
+            const selBox = dialog.element.querySelector<HTMLElement>(".sw-journal-prompt__sel");
+            const confirmBtn = dialog.element.querySelector<HTMLButtonElement>(".sw-journal-prompt__confirm");
+            const sel = document.createElement("select");
+            sel.className = "b3-select fn__flex-center fn__block";
+            sel.disabled = true;
+            sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+            selBox?.appendChild(sel);
+            confirmBtn && (confirmBtn.disabled = true);
+
+            this.loadNotebooks().then((notebooks) => {
+                if (notebooks.length === 0) {
+                    sel.disabled = true;
+                    sel.innerHTML = "";
+                    sel.appendChild(new Option(this.i18n.journalNoNotebook, ""));
+                    return;
+                }
+                sel.disabled = false;
+                sel.innerHTML = "";
+                notebooks.forEach((nb) => {
+                    const opt = new Option(nb.name, nb.id);
+                    opt.title = nb.name;
+                    sel.appendChild(opt);
+                });
+                sel.value = notebooks[0].id;
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                }
+            });
+
+            const apply = () => {
+                const picked = sel.value;
+                if (!picked) {
+                    return;
+                }
+                this.updateSettings({journalNotebook: picked});
+                dialog.destroy();
+                resolve(picked);
+            };
+            confirmBtn?.addEventListener("click", apply);
+            dialog.element.querySelector(".b3-button--cancel")?.addEventListener("click", () => {
+                dialog.destroy();
+                resolve("");
+            });
+        });
+    }
+
     // 插件设置页（设置 → 插件 → 小驴速切 → 设置图标）
     // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
     openSetting() {
         const s = this.getSettings();
-        const panelKeys = ["appearance", "behavior", "panels", "favorites", "mobile"] as const;
+        const panelKeys = ["appearance", "behavior", "panels", "favorites", "journal", "mobile"] as const;
         const panelLabels: Record<string, string> = {
             appearance: this.i18n.secAppearance,
             behavior: this.i18n.secBehavior,
             panels: this.i18n.secPanels,
             favorites: this.i18n.secFavorites,
+            journal: this.i18n.secJournal,
             mobile: this.i18n.secMobile,
         };
 
@@ -716,11 +881,22 @@ export default class SpeedSwitchPlugin extends Plugin {
             return wrapper;
         };
 
+        // ===== 日记 =====
+        const buildJournal = () => {
+            const wrapper = document.createElement("div");
+            wrapper.append(
+                this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip,
+                    this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({journalNotebook: id}))),
+            );
+            return wrapper;
+        };
+
         const builders: Record<string, () => HTMLElement> = {
             appearance: buildAppearance,
             behavior: buildBehavior,
             panels: buildPanels,
             favorites: buildFavorites,
+            journal: buildJournal,
             mobile: buildMobile,
         };
 
@@ -3182,26 +3358,41 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 手机端顶栏入口按钮：思源 3.8.x 手机端 addTopBar 只会进右侧菜单"扩展"分组，
-    // 这里直接插入 mobileTopBar（旧版无此元素时静默跳过，不影响其他入口）
+    // 这里直接插入 mobileTopBar（旧版无此元素时静默跳过，不影响其他入口）。
+    // 切换器入口 + 日记入口各自独立注入，常规运行每个在首次时插入一次即可。
     private ensureMobileTopBarButton() {
-        if (this.mobileTopBarButton?.isConnected) {
-            return;
-        }
         const topBar = document.getElementById("mobileTopBar") || document.getElementById("toolbar");
-        if (!topBar || topBar.querySelector("#swMobileTopBarBtn")) {
+        if (!topBar) {
             return;
         }
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.id = "swMobileTopBarBtn";
-        btn.className = "toolbar__button";
-        btn.setAttribute("aria-label", this.i18n.switchTabs);
-        btn.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
-        btn.addEventListener("click", () => {
-            this.showSwitcher();
-        });
-        topBar.appendChild(btn);
-        this.mobileTopBarButton = btn;
+        // 切换器入口
+        if (!this.mobileTopBarButton?.isConnected && !topBar.querySelector("#swMobileTopBarBtn")) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.id = "swMobileTopBarBtn";
+            btn.className = "toolbar__button";
+            btn.setAttribute("aria-label", this.i18n.switchTabs);
+            btn.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
+            btn.addEventListener("click", () => {
+                this.showSwitcher();
+            });
+            topBar.appendChild(btn);
+            this.mobileTopBarButton = btn;
+        }
+        // 日记入口
+        if (!this.mobileJournalButton?.isConnected && !topBar.querySelector("#swMobileJournalBtn")) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.id = "swMobileJournalBtn";
+            btn.className = "toolbar__button";
+            btn.setAttribute("aria-label", this.i18n.journalBtn);
+            btn.innerHTML = `<svg><use xlink:href="#iconDate"></use></svg>`;
+            btn.addEventListener("click", () => {
+                this.openJournal();
+            });
+            topBar.appendChild(btn);
+            this.mobileJournalButton = btn;
+        }
     }
 
     // ==================== 侧边栏模式 ====================

@@ -295,6 +295,12 @@
         }
     }
 
+    // 默认日记笔记本下拉：设置内占满可用宽
+    .sw-settings__journal-sel {
+        width: 100%;
+        min-width: 220px;
+    }
+
     // 窄屏（手机端打开设置）：标签栏收窄、条目改上下排，给控件留足宽度
     @media (max-width: 560px) {
         .sw-settings__tabs {
@@ -310,6 +316,18 @@
                 width: 100%;
             }
         }
+    }
+}
+
+// 首次点击日记按钮选择默认笔记本的弹窗
+.sw-journal-prompt {
+    .sw-journal-prompt__tip {
+        margin-bottom: 10px;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .sw-journal-prompt__sel {
+        margin-top: 4px;
     }
 }
 

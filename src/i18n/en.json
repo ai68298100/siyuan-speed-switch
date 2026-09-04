@@ -91,5 +91,15 @@
   "unitPx": "px",
   "expandDock": "Expand panel list",
   "collapseDock": "Collapse panel list",
-  "emptyHint": "Type keywords in the search box above to find and open documents from the whole workspace"
+  "emptyHint": "Type keywords in the search box above to find and open documents from the whole workspace",
+  "journalBtn": "Open today's journal",
+  "secJournal": "Journal",
+  "journalNotebook": "Default journal notebook",
+  "journalNotebookTip": "The notebook where today's journal is created when the top-bar journal button is clicked; opens a picker on first use if unset",
+  "journalChoose": "Choose default journal notebook",
+  "journalChooseTip": "Pick a default notebook for the journal feature; you can change it anytime under Settings → Journal",
+  "notebookLoading": "Loading notebooks…",
+  "notebookPlaceholder": "Select a notebook",
+  "journalNoNotebook": "No available notebooks. Create or open one in SiYuan first.",
+  "journalFailed": "Failed to open the journal. Check the default notebook setting."
 }

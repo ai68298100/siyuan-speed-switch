@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.12.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.13.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -30,6 +30,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 ### Panels & Sidebar
 - 🖇️ **Panel quick access** — All dock panels (file tree, outline, bookmarks, graph, backlinks, tags, inbox, AI chat…) listed on the left rail; click to open and focus. Hide unwanted ones in settings.
 - 📎 **Sidebar mode** — Pin the tab list to a right dock panel: cards that resize with the panel, always at hand; when stretched wider, choose between **enlarging thumbnails** or **auto-adding columns**.
+- 📅 **Today's journal** — A journal button is added to the top bar on both desktop and mobile: one-click to open/create today's journal; pick the default notebook under **Settings → Journal**, or a picker pops up on first click if unset.
 
 ### Mobile
 - 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (off by default, enable it in settings); thumbnails, favorites and search work just like on desktop.
@@ -70,6 +71,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 | Behavior | Default sort order, fullscreen mode (off by default; opens filling the window) |
 | Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden), sidebar thumbnail layout (enlarge / auto columns) |
 | Favorites | Create / rename / delete groups, reassign favorites |
+| Journal | Default journal notebook (dropdown; first click of the journal button also prompts a picker) |
 | Mobile | Floating button toggle (off by default), card layout (single / double / auto) |
 
 ## 📦 Install
@@ -84,6 +86,12 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.13.0 (2026-09-04)
+
+- **Today's journal, one click away**: a journal button on both the desktop and mobile top bars opens or creates **today's journal** (idempotent — no duplicates per day).
+- **Default journal notebook**: a new **Settings → Journal** tab lets you pick the default notebook; if unset, the first journal click pops up a notebook picker before opening.
+- Opening an existing journal or creating a new one always happens in the configured notebook; the setting saves instantly and syncs across devices.
 
 ### v0.12.1 (2026-09-04)
 
