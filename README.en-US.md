@@ -76,6 +76,16 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.9.0 (2026-09-04)
+
+- **Fullscreen mode (desktop, Settings → Behavior)**: the switcher can fill the whole window; press Esc to exit. Off by default, with a hint when enabled.
+- **Mobile top bar entry**: SiYuan 3.8.x mobile does not open the top bar to plugins, so an entry button is now inserted directly into the top bar — always visible, one tap to open.
+- **Mobile UX improvements**:
+  - The switcher no longer auto-focuses the search box, so the on-screen keyboard no longer pops up on open; tap the box to search.
+  - Rebuilt the top toolbar: the search icon is back to normal size, laid out in a single row (search + sort + favorites + settings), compact and pinned to the top.
+  - The floating button moved up to avoid the bottom capsule toolbar; it hides while the switcher is open and restores on close.
+- **Fixed**: the "floating button" toggle in settings not taking effect; the default mobile card layout is now "Auto" (single column in portrait, two in landscape).
+
 ### v0.8.0 (2026-09-04)
 
 - **Performance (desktop & mobile)**:

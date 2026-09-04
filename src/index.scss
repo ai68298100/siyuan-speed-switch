@@ -1041,65 +1041,41 @@
 
         // ==================== 手机端切换器弹窗内部样式 ====================
         &.sw__mobile {
-            // 手机端工具栏：搜索框 + 操作按钮紧凑排列，纵向堆叠
+            // 手机端工具栏：复用桌面 sw__toolbar 基础样式（搜索图标/输入框/图标按钮尺寸由此而来），
+            // 仅做紧凑化覆盖——单行排列：搜索框弹性伸缩 + 排序 + 收藏 + 设置，窄屏自动换行
             .sw__mobile-toolbar {
-                flex: none;
-                display: flex;
-                flex-direction: column;
+                padding: 8px 10px;
                 gap: 6px;
-                padding: 8px 12px;
-                border-bottom: 1px solid var(--b3-border-color);
 
                 .sw__search-wrap {
-                    width: 100%;
+                    flex: 1 1 128px;
+                    min-width: 0;
                 }
 
-                .sw__mobile-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    width: 100%;
+                .sw__sort {
+                    flex: 0 1 auto;
+                    width: auto;
+                    max-width: 40vw;
+                    height: 32px;
+                    min-width: 0;
+                    padding: 0 2px;
+                    border: 1px solid var(--b3-border-color);
+                    background: transparent;
+                    color: var(--b3-theme-on-background);
+                    border-radius: 6px;
+                    font-size: 12px;
+                }
 
-                    .sw__sort {
-                        flex: 1;
-                        height: 32px;
-                        min-width: 0;
-                        border: 1px solid var(--b3-border-color);
-                        background: transparent;
-                        color: var(--b3-theme-on-background);
-                        border-radius: 6px;
-                        font-size: 13px;
-                    }
+                .sw__mobile-fav-btn,
+                .sw__settings-btn {
+                    flex: none;
+                    width: 34px;
+                    height: 32px;
+                    color: var(--b3-theme-on-surface);
+                    -webkit-tap-highlight-color: transparent;
 
-                    .sw__mobile-fav-btn {
-                        flex: none;
-                        width: 36px;
-                        height: 32px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border: 1px solid var(--b3-border-color);
-                        border-radius: 6px;
-                        background: transparent;
-                        color: var(--b3-theme-on-surface);
-                        cursor: pointer;
-                        -webkit-tap-highlight-color: transparent;
-
-                        svg {
-                            width: 16px;
-                            height: 16px;
-                        }
-
-                        &:active {
-                            color: var(--b3-theme-primary);
-                            border-color: var(--b3-theme-primary);
-                        }
-                    }
-
-                    .sw__settings-btn {
-                        flex: none;
-                        width: 36px;
-                        height: 32px;
+                    &:active {
+                        color: var(--b3-theme-primary);
                     }
                 }
             }
@@ -1241,13 +1217,13 @@
 
 // ==================== 手机端全局样式（直接挂载到 document.body） ====================
 
-// 悬浮按钮（FAB）
+// 悬浮按钮（FAB）：底部抬高避开思源手机端悬浮胶囊工具条（约 48px 高 + 间距 + 安全区）
 .sw__fab {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 56px;
-    height: 56px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+    right: 16px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background-color: var(--b3-theme-primary);
     color: var(--b3-theme-on-primary);
@@ -1261,8 +1237,8 @@
     transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 
     svg {
-        width: 24px;
-        height: 24px;
+        width: 22px;
+        height: 22px;
         color: var(--b3-theme-on-primary);
     }
 
@@ -1276,6 +1252,46 @@
         transform: scale(0.7) translateY(10px);
         pointer-events: none;
     }
+}
+
+// 手机端顶栏入口按钮：思源 3.8.x 手机端不向插件开放顶栏（addTopBar 只进右侧菜单"扩展"分组），
+// 由 JS 直接插入 #mobileTopBar，这里只负责尺寸与按压反馈
+#swMobileTopBarBtn {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin-left: 2px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    svg {
+        width: 19px;
+        height: 19px;
+    }
+
+    &:active {
+        color: var(--b3-theme-primary);
+    }
+}
+
+// ==================== 电脑端全屏模式（设置 → 行为 → 全屏模式） ====================
+
+// 弹窗容器铺满视口：去掉圆角/边框/阴影，解除思源默认 max-width: 88vw 限制
+.b3-dialog__container.sw-dialog--fullscreen {
+    max-width: none;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
 }
 
 // 收藏底部弹窗遮罩

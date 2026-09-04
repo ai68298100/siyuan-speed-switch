@@ -57,8 +57,9 @@ const DEFAULT_SETTINGS: ISwSettings = {
     sortBy: "mru",         // 页签排序方式
     excludedDocks: [],     // 不显示在左侧列表的面板类型
     dockDisplay: "full",   // 左侧面板显示方式：hidden 隐藏 / collapsed 折叠图标条 / full 完整列表
+    fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
     fabEnabled: true,      // 手机端悬浮按钮默认开启
-    mobileColumns: 0,      // 0=单列
+    mobileColumns: 2,      // 2=自动（竖屏单列，横屏双列），默认自动
     mobileThumbHeight: 80, // 手机端缩略图高度
 };
 
@@ -74,6 +75,7 @@ interface ISwSettings {
     sortBy: SortBy;
     excludedDocks: string[];
     dockDisplay: DockDisplay;
+    fullscreen: boolean;       // 全屏模式：切换器铺满整个窗口，Esc 退出
     // 手机端
     fabEnabled: boolean;       // 是否启用悬浮按钮
     mobileColumns: number;     // 0=单列 1=双列 2=自动
@@ -114,6 +116,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
+    private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏入口按钮（自行注入 mobileTopBar）
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -165,13 +168,22 @@ export default class SpeedSwitchPlugin extends Plugin {
             });
         }
 
-        // 手机端初始化悬浮按钮
+        // 手机端初始化入口：顶栏按钮（常驻）+ 悬浮按钮（可选）。
+        // 思源 3.8.x 手机端不向插件开放顶栏（addTopBar 只进右侧菜单"扩展"分组，不易发现），
+        // 因此自行把入口按钮插入 mobileTopBar，保证一眼可见
         if (this.isMobile) {
+            this.ensureMobileTopBarButton();
             this.updateFABVisibility();
         }
 
-        // 文档切换时仅更新侧边栏卡片高亮（高频事件，避免整列表重建导致闪烁与滚动位置丢失）
-        this.eventBus.on("switch-protyle", () => this.refreshSidebarActive());
+        // 文档切换时仅更新侧边栏卡片高亮（高频事件，避免整列表重建导致闪烁与滚动位置丢失）；
+        // 手机端顺带确认入口按钮仍在（内核个别场景会重建顶栏 DOM）
+        this.eventBus.on("switch-protyle", () => {
+            this.refreshSidebarActive();
+            if (this.isMobile) {
+                this.ensureMobileTopBarButton();
+            }
+        });
         // 页签增减（文档打开/关闭）时全量刷新侧边栏列表
         this.eventBus.on("loaded-protyle-static", () => this.refreshSidebar());
         this.eventBus.on("destroy-protyle", () => this.refreshSidebar());
@@ -185,6 +197,15 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
+    // 布局就绪后再次确认手机端入口：部分机型上 onload 执行时顶栏尚未构建完成，
+    // 插件按钮会插入失败；这里兜底重试一次
+    onLayoutReady() {
+        if (this.isMobile) {
+            this.ensureMobileTopBarButton();
+            this.updateFABVisibility();
+        }
+    }
+
     onunload() {
         this.flushPendingSaves();
         this.docSearchAbort?.abort();
@@ -196,6 +217,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarElement = null;
         this.fabElement?.remove();
         this.fabElement = null;
+        this.mobileTopBarButton?.remove();
+        this.mobileTopBarButton = null;
     }
 
     // ==================== 持久化性能 ====================
@@ -255,6 +278,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 : [],
             dockDisplay: (DOCK_DISPLAY_LIST.includes((saved as any).dockDisplay)
                 ? (saved as any).dockDisplay : DEFAULT_SETTINGS.dockDisplay) as DockDisplay,
+            fullscreen: typeof (saved as any).fullscreen === "boolean"
+                ? (saved as any).fullscreen : DEFAULT_SETTINGS.fullscreen,
             fabEnabled: typeof (saved as any).fabEnabled === "boolean"
                 ? (saved as any).fabEnabled : DEFAULT_SETTINGS.fabEnabled,
             mobileColumns: this.clampNum((saved as any).mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
@@ -392,6 +417,28 @@ export default class SpeedSwitchPlugin extends Plugin {
                     this.updateSettings({sortBy: select.value as SortBy});
                 });
                 return select;
+            },
+        });
+
+        // 全屏模式：切换器铺满整个窗口，按 Esc 退出（开启时给出提示）
+        setting.addItem({
+            title: this.i18n.fullScreen,
+            description: this.i18n.fullScreenTip,
+            createActionElement: () => {
+                const label = document.createElement("label");
+                label.className = "b3-switch";
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.checked = s.fullscreen;
+                input.addEventListener("change", () => {
+                    this.updateSettings({fullscreen: input.checked});
+                    if (input.checked) {
+                        showMessage(this.i18n.fullScreenOn);
+                    }
+                });
+                label.appendChild(input);
+                label.appendChild(document.createElement("span"));
+                return label;
             },
         });
 
@@ -684,11 +731,13 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const settings = this.getSettings();
         const activeTab = this.getActiveTab();
+        // 全屏模式：切换器铺满整个窗口（Esc 退出由思源 Dialog 默认行为提供）
+        const fullscreen = settings.fullscreen;
 
         const dialog = new Dialog({
             // 极简：隐藏原生标题栏，顶栏内置于内容区最上方
             title: "",
-            content: `<div class="speed-switch sw__body">
+            content: `<div class="speed-switch sw__body${fullscreen ? " sw--fullscreen" : ""}">
     <div class="sw__main">
         <div class="sw__dock fn__none"></div>
         <div class="sw__content">
@@ -726,9 +775,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         </div>
     </div>
 </div>`,
-            width: this.isMobile ? "92vw" : `${settings.dialogWidth}px`,
-            height: this.isMobile ? "78vh" : `${settings.dialogHeight}px`,
+            width: fullscreen ? "100vw" : `${settings.dialogWidth}px`,
+            height: fullscreen ? "100vh" : `${settings.dialogHeight}px`,
         });
+
+        // 全屏模式下给弹窗容器加类：去掉圆角/边框/最大宽度限制，真正铺满视口
+        if (fullscreen) {
+            dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
+        }
 
         // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
         // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
@@ -2583,27 +2637,25 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dialog = new Dialog({
             title: "",
             content: `<div class="speed-switch sw__body sw__mobile">
-    <div class="sw__mobile-toolbar">
+    <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
         </div>
-        <div class="sw__mobile-actions">
-            <select class="b3-select sw__sort">
-                <option value="mru">${this.i18n.sortMru}</option>
-                <option value="layout">${this.i18n.sortLayout}</option>
-                <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
-                <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
-                <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
-                <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
-            </select>
-            <span class="b3-button b3-button--text sw__mobile-fav-btn">
-                <svg><use xlink:href="#iconStar"></use></svg>
-            </span>
-            <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn">
-                <svg><use xlink:href="#iconSettings"></use></svg>
-            </span>
-        </div>
+        <select class="b3-select sw__sort" aria-label="${this.i18n.setSortBy}">
+            <option value="mru">${this.i18n.sortMru}</option>
+            <option value="layout">${this.i18n.sortLayout}</option>
+            <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
+            <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
+            <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
+            <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
+        </select>
+        <span class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
+            <svg><use xlink:href="#iconStar"></use></svg>
+        </span>
+        <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
+            <svg><use xlink:href="#iconSettings"></use></svg>
+        </span>
     </div>
     <div class="sw__scroll" tabindex="0"></div>
 </div>`,
@@ -2665,7 +2717,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
 
         renderMobileList();
-        searchInput.focus();
+        // 手机端不自动聚焦搜索框：避免一打开就弹出输入法，需要搜索时点击输入框
 
         // 排序切换
         sortSelect.addEventListener("change", () => {
@@ -2673,7 +2725,6 @@ export default class SpeedSwitchPlugin extends Plugin {
             renderMobileList();
             searchInput.value = "";
             this.filterCards(scrollElement, searchInput.value);
-            searchInput.focus();
         });
 
         // 搜索
@@ -2886,12 +2937,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
-    // ==================== 手机端悬浮按钮（FAB） ====================
+    // ==================== 手机端悬浮按钮（FAB）与顶栏入口 ====================
 
     private createFAB() {
-        if (this.fabElement) {
+        // 已在文档中则跳过；仅存在引用但已脱挂（被外部移除）时重建
+        if (this.fabElement?.isConnected) {
             return;
         }
+        this.fabElement?.remove();
         this.fabElement = document.createElement("div");
         this.fabElement.className = "sw__fab";
         this.fabElement.setAttribute("role", "button");
@@ -2911,6 +2964,29 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.fabElement?.remove();
             this.fabElement = null;
         }
+    }
+
+    // 手机端顶栏入口按钮：思源 3.8.x 手机端 addTopBar 只会进右侧菜单"扩展"分组，
+    // 这里直接插入 mobileTopBar（旧版无此元素时静默跳过，不影响其他入口）
+    private ensureMobileTopBarButton() {
+        if (this.mobileTopBarButton?.isConnected) {
+            return;
+        }
+        const topBar = document.getElementById("mobileTopBar") || document.getElementById("toolbar");
+        if (!topBar || topBar.querySelector("#swMobileTopBarBtn")) {
+            return;
+        }
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.id = "swMobileTopBarBtn";
+        btn.className = "toolbar__button";
+        btn.setAttribute("aria-label", this.i18n.switchTabs);
+        btn.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
+        btn.addEventListener("click", () => {
+            this.showSwitcher();
+        });
+        topBar.appendChild(btn);
+        this.mobileTopBarButton = btn;
     }
 
     // ==================== 侧边栏模式 ====================
