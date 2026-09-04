@@ -1333,45 +1333,70 @@
                     z-index: 1;
                 }
 
-                // 手机端操作按钮：不悬浮在缩略图上，改为落在底部 meta 行右侧（关闭/收藏/置顶），
-                // 弱化为纯图标（无底色圆形），缩略图完整无遮挡；激活态才显示主色。
-                // 28px 视觉 + 透明伪元素热区（28→36px），按钮中心距 36px 恰好互不侵占
-                .sw__pin,
-                .sw__fav-btn,
-                .sw__close {
+            // 手机端操作按钮：不悬浮在缩略图上，改为落在底部 meta 行右侧（关闭/收藏/置顶），
+            // 弱化为纯图标（无底色圆形），缩略图完整无遮挡；激活态才显示主色。
+            // 28px 视觉 + 透明伪元素热区（28→36px），按钮中心距 36px 恰好互不侵占。
+            // 选择器保持在 .sw__mobile-card 内（不写 &），由 SCSS 拼成
+            // .speed-switch.sw__mobile .sw__mobile-card .sw__pin 等 5 类选择器，
+            // 比桌面 .speed-switch .sw__card .sw__pin（4 类）多 1 类，确保手机端规则始终胜出。
+            .sw__pin,
+            .sw__fav-btn,
+            .sw__close {
+                position: absolute;
+                top: auto;
+                bottom: 0;
+                width: 28px;
+                height: 28px;
+                min-width: 28px;
+                min-height: 28px;
+                max-width: 28px;
+                max-height: 28px;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                background: transparent;
+                -webkit-backdrop-filter: none;
+                backdrop-filter: none;
+                border: none;
+                border-radius: 6px;
+                color: var(--b3-theme-on-surface-light);
+                z-index: 2;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+                padding: 0;
+                margin: 0;
+                box-sizing: border-box !important;
+                line-height: 0;
+                font-size: 0;
+                text-indent: 0;
+                letter-spacing: 0;
+                user-select: none;
+                -webkit-user-select: none;
+                outline: none;
+                -webkit-appearance: none;
+                appearance: none;
+
+                &::after {
+                    content: "";
                     position: absolute;
-                    top: auto;
-                    bottom: 0;
-                    width: 28px;
-                    height: 28px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: transparent;
-                    -webkit-backdrop-filter: none;
-                    backdrop-filter: none;
-                    border: none;
-                    border-radius: 6px;
-                    color: var(--b3-theme-on-surface-light);
-                    z-index: 2;
-                    cursor: pointer;
-                    -webkit-tap-highlight-color: transparent;
-
-                    &::after {
-                        content: "";
-                        position: absolute;
-                        inset: -4px;
-                    }
-
-                    svg {
-                        width: 14px;
-                        height: 14px;
-                    }
-
-                    &:active {
-                        color: var(--b3-theme-primary);
-                    }
+                    inset: -4px;
                 }
+
+                svg {
+                    display: block;
+                    width: 14px !important;
+                    height: 14px !important;
+                    min-width: 14px;
+                    min-height: 14px;
+                    max-width: 14px;
+                    max-height: 14px;
+                    flex: 0 0 auto;
+                }
+
+                &:active {
+                    color: var(--b3-theme-primary);
+                }
+            }
 
                 .sw__pin { left: auto; right: 80px; }
                 .sw__fav-btn { left: auto; right: 44px; }
@@ -1600,6 +1625,42 @@
         font-size: 12px;
         font-weight: 600;
         color: var(--b3-theme-on-surface-light);
+
+        > span:first-child {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    // 分组右侧 ⋯ 按钮：触发「一键开启/关闭组内页签」嵌套底部弹窗
+    .sw__mobile-sheet-more {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        margin-right: -8px; // 抵消内边距，确保视觉对齐右侧边缘
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        color: var(--b3-theme-on-surface-light);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        &:active {
+            color: var(--b3-theme-primary);
+            background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
+        }
     }
 
     .sw__mobile-sheet-count {

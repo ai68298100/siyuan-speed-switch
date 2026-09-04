@@ -994,7 +994,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <svg><use xlink:href="#iconLayoutRight"></use></svg>
                 </span>
                 <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.journalBtn}">
-                    <svg><use xlink:href="#iconDate"></use></svg>
+                    <svg><use xlink:href="#iconCalendar"></use></svg>
                 </span>
                 <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
                     <svg><use xlink:href="#iconSettings"></use></svg>
@@ -1703,6 +1703,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             const head = document.createElement("button");
             head.type = "button";
             head.className = "sw__fav-group-head";
+            head.title = this.i18n.favGroupTip;
             head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
 <span class="sw__fav-group-name"></span>
 <span class="sw__fav-count">${items.length}</span>`;
@@ -1715,6 +1716,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                     this.favCollapsed.add(name);
                 }
                 this.saveFavCollapsed();
+            });
+            // 右键弹出「一键开启/关闭组内页签」菜单，与 v0.14.0 changelog 描述对齐
+            head.addEventListener("contextmenu", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.openFavGroupMenu(items, event);
             });
             groupEl.appendChild(head);
 
@@ -1969,6 +1976,26 @@ export default class SpeedSwitchPlugin extends Plugin {
                 },
             });
         }
+        menu.open({x: event.clientX, y: event.clientY});
+    }
+
+    // 收藏分组右键菜单：一键开启/关闭组内页签
+    private openFavGroupMenu(items: IFavoriteItem[], event: MouseEvent) {
+        const menu = new Menu("swFavGroupMenu");
+        menu.addItem({
+            label: this.i18n.openGroupTabs,
+            icon: "iconAdd",
+            click: () => {
+                this.openGroupTabs(items);
+            },
+        });
+        menu.addItem({
+            label: this.i18n.closeGroupTabs,
+            icon: "iconClose",
+            click: () => {
+                this.closeGroupTabs(items);
+            },
+        });
         menu.open({x: event.clientX, y: event.clientY});
     }
 
@@ -3097,12 +3124,12 @@ export default class SpeedSwitchPlugin extends Plugin {
             <svg><use xlink:href="#iconStar"></use></svg>
         </span>
         <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}">
-            <svg><use xlink:href="#iconDate"></use></svg>
-        </span>
-        <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
-            <svg><use xlink:href="#iconSettings"></use></svg>
-        </span>
-    </div>
+                    <svg><use xlink:href="#iconCalendar"></use></svg>
+                </span>
+                <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
+                    <svg><use xlink:href="#iconSettings"></use></svg>
+                </span>
+            </div>
     <div class="sw__scroll" tabindex="0"></div>
 </div>`,
             width: "92vw",
@@ -3152,9 +3179,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.openSetting();
         });
 
-        // 收藏按钮 → 底部弹窗
+        // 收藏按钮 → 底部弹窗（onTabsChanged 用于组内批量开/关后刷新背后列表）
         dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
-            this.showMobileFavSheet(dialog, closeOverlay);
+            this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList());
         });
 
         // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）
@@ -3331,7 +3358,22 @@ export default class SpeedSwitchPlugin extends Plugin {
                 section.className = "sw__mobile-sheet-section";
                 const header = document.createElement("div");
                 header.className = "sw__mobile-sheet-section-header";
-                header.innerHTML = `<span>${this.escapeAttr(name)}</span><span class="sw__mobile-sheet-count">${items.length}</span>`;
+                // ⋯ 按钮：触发组内批量开/关（嵌套底部弹窗）
+                header.innerHTML = `<span>${this.escapeAttr(name)}</span>
+<span class="sw__mobile-sheet-count">${items.length}</span>
+<button type="button" class="sw__mobile-sheet-more" aria-label="${this.escapeAttr(this.i18n.favGroupTip)}">
+    <svg><use xlink:href="#iconMore"></use></svg>
+</button>`;
+                const moreBtn = header.querySelector<HTMLButtonElement>(".sw__mobile-sheet-more");
+                moreBtn?.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    this.openMobileGroupActions(name, items, () => {
+                        // 批量操作完成后：关闭嵌套弹窗 → 关闭收藏弹窗 → 刷新背后切换器列表
+                        document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
+                        overlay.remove();
+                        onTabsChanged?.();
+                    });
+                });
                 section.appendChild(header);
                 const list = document.createElement("div");
                 list.className = "sw__mobile-sheet-list";
@@ -3354,7 +3396,20 @@ export default class SpeedSwitchPlugin extends Plugin {
                 section.className = "sw__mobile-sheet-section";
                 const header = document.createElement("div");
                 header.className = "sw__mobile-sheet-section-header";
-                header.innerHTML = `<span>${this.escapeAttr(this.i18n.ungrouped)}</span><span class="sw__mobile-sheet-count">${ungrouped.length}</span>`;
+                header.innerHTML = `<span>${this.escapeAttr(this.i18n.ungrouped)}</span>
+<span class="sw__mobile-sheet-count">${ungrouped.length}</span>
+<button type="button" class="sw__mobile-sheet-more" aria-label="${this.escapeAttr(this.i18n.favGroupTip)}">
+    <svg><use xlink:href="#iconMore"></use></svg>
+</button>`;
+                const moreBtn = header.querySelector<HTMLButtonElement>(".sw__mobile-sheet-more");
+                moreBtn?.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    this.openMobileGroupActions(this.i18n.ungrouped, ungrouped, () => {
+                        document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
+                        overlay.remove();
+                        onTabsChanged?.();
+                    });
+                });
                 section.appendChild(header);
                 const list = document.createElement("div");
                 list.className = "sw__mobile-sheet-list";

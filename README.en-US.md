@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,13 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.1 (2026-09-04)
+
+- **Top-bar "Open today's diary" icon fixed**: the desktop and mobile top-bar buttons previously referenced the non-existent `#iconDate` symbol (no such symbol in SiYuan's litheness icon sprite), so the icon rendered blank. Switched to `#iconCalendar` (the calendar symbol shipped with SiYuan); both desktop and mobile now show the icon correctly.
+- **Favorites panel — right-click batch open/close (desktop)**: right-click any favorites group header to open every favorited tab in that group at once, or close all opened tabs belonging to it — matching the mobile ⋯ button behavior.
+- **Favorites panel — ⋯ button (mobile)**: every group header in the mobile favorites bottom sheet now has a ⋯ button that opens an action sheet with the same batch open/close actions. After the action completes the underlying switcher list auto-refreshes.
+- **Defensive hardening for mobile card bottom buttons**: further tightened `.sw__pin / .sw__fav-btn / .sw__close` box-model and text styles (`box-sizing:border-box`, `line-height:0`, `font-size:0`, `appearance:none`, `svg{display:block}`, etc.) to defend against any path that could abnormally enlarge the buttons — e.g. SVG sprite not yet injected, inline-SVG intrinsic 300×150, or WebView default button appearance.
 
 ### v0.15.0 (2026-09-04)
 

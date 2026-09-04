@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,13 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.1（2026-09-04）
+
+- **顶栏"打开今日日记"图标修复**：电脑端与手机端顶栏的"打开今日日记"按钮之前引用了不存在的 `#iconDate`（思源 litheness 图标精灵中无此符号），图标实际为空白。现已改为 `#iconCalendar`（思源自带日历符号），电脑端、手机端均正常显示。
+- **收藏面板右键打开 / 关闭组内页签（电脑端）**：右键任意收藏分组标题，即可一键开启该分组内全部收藏页签，或一键关闭组内已打开的页签，与手机端 ⋯ 按钮对齐。
+- **收藏面板 ⋯ 按钮（手机端）**：收藏底部弹窗每个分组标题旁新增 ⋯ 按钮，点击弹出"一键开启 / 一键关闭"操作单；操作完成后自动刷新底层切换器列表。
+- **手机端卡片底部按钮防御性硬化**：进一步收紧 `.sw__pin / .sw__fav-btn / .sw__close` 的盒模型与文本样式（`box-sizing:border-box`、`line-height:0`、`font-size:0`、`appearance:none`、`svg{display:block}` 等），对抗潜在的 SVG 精灵未及时注入、内联 SVG 默认 300×150、WebView 按钮默认外观等导致按钮被异常放大的路径。
 
 ### v0.15.0（2026-09-04）
 
