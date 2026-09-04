@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.4-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,14 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.4（2026-09-04）
+
+- **手机端切换器 `showMobileSwitcher()` 拆分**：138 行 → 12 行的 orchestrator + 5 个 helper（`createMobileSwitcherDialog` / `buildMobileSwitcherHtml` / `bindMobileSwitcherToolbarActions` / `renderMobileSwitcherList` / `openMobileSwitcherDialog`），顶栏按钮、搜索、排序、FAB 恢复等职责清晰分离。
+- **手机端收藏弹窗 `showMobileFavSheet()` 拆分**：151 行 → 30 行的 orchestrator + 6 个 helper；HTML 生成、分组聚合、单列表/分组列表渲染、背景关闭等拆开后更易于定位移动端问题。
+- **卡片构建 `createCard()` 拆分**：152 行 → 38 行的 orchestrator + 5 个 helper（`buildCardThumb` / `buildCardMeta` / `buildCardIcon` / `buildCardActions` / `bindCardLongPress`），图标渲染路径独立为 `buildCardIcon`，便于单独调试手机端图标问题。
+- **新增 `groupFavoritesByGroup` 纯函数**：上提到 `src/util.js`，保留注册表空分组、未命名兜底到 `""` 组、返回 Map 保持插入顺序；新增 4 个单元测试覆盖边界场景，当前共 14/14 通过。
+- **开发依赖**：加入 `jsdom@30.0.1` 用于移动端 UI 抽测。
 
 ### v0.15.3（2026-09-04）
 

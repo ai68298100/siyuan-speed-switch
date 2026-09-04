@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.4-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,14 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.4 (2026-09-04)
+
+- **Mobile switcher `showMobileSwitcher()` split**: 138 lines → 12-line orchestrator + 5 helpers (`createMobileSwitcherDialog`, `buildMobileSwitcherHtml`, `bindMobileSwitcherToolbarActions`, `renderMobileSwitcherList`, `openMobileSwitcherDialog`), cleanly separating top-bar buttons, search, sort, and FAB restore logic.
+- **Mobile favorites sheet `showMobileFavSheet()` split**: 151 lines → 30-line orchestrator + 6 helpers; HTML generation, grouping, flat/grouped list rendering, and backdrop-close are now isolated for easier mobile debugging.
+- **Card builder `createCard()` split**: 152 lines → 38-line orchestrator + 5 helpers (`buildCardThumb`, `buildCardMeta`, `buildCardIcon`, `buildCardActions`, `bindCardLongPress`); icon rendering is now isolated in `buildCardIcon` so the mobile icon issue can be debugged independently.
+- **New pure `groupFavoritesByGroup` function**: moved to `src/util.js`; preserves empty groups from the registry, drops ungrouped items into `""`, and returns a Map that keeps insertion order. Added 4 unit tests covering registry order, empty groups, defensive unregistered groups, and fully ungrouped favorites; total now 14/14 passing.
+- **Dev dependency**: added `jsdom@30.0.1` for mobile UI smoke tests.
 
 ### v0.15.3 (2026-09-04)
 

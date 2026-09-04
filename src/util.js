@@ -47,4 +47,27 @@ function normalizeSortBy(value, allowed, fallback) {
     return allowed.includes(String(value)) ? String(value) : fallback;
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy};
+/**
+ * 收藏按 group 分组聚合：
+ * - 注册表中的空分组会被保留（"先建组再添加"工作流）
+ * - 未命名项（fav.group 为空）收纳到 "" 组
+ * - 返回的 Map 保持插入顺序：先注册表分组、后未注册组（来自 fav.group），便于分组 UI 按序渲染
+ * @template {{group?: string}} T
+ * @param {T[]} favorites
+ * @param {string[]} groupNames
+ * @returns {Map<string, T[]>}
+ */
+function groupFavoritesByGroup(favorites, groupNames) {
+    const groups = new Map();
+    groupNames.forEach((name) => groups.set(name, []));
+    favorites.forEach((fav) => {
+        const name = fav.group || "";
+        if (!groups.has(name)) {
+            groups.set(name, []);
+        }
+        groups.get(name).push(fav);
+    });
+    return groups;
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup};

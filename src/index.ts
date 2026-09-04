@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup} from "./util";
 import {
     getSiyuan,
     IMobileTabsState,
@@ -22,6 +22,7 @@ declare module "./util" {
     export function clampNum(value: unknown, min: number, max: number, fallback: number): number;
     export function stableSortBy<T>(arr: T[], keyFn: (item: T) => string | number): T[];
     export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
+    export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
 }
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
@@ -2502,20 +2503,52 @@ export default class SpeedSwitchPlugin extends Plugin {
         card.dataset.tabId = tab.id;
         card.dataset.title = this.titleOf(tab);
 
-        // 缩略图占位（内容由 renderThumbnails 分批填入）
+        card.appendChild(this.buildCardThumb());
+        card.appendChild(this.buildCardMeta(tab));
+        card.appendChild(this.buildCardActions(tab, card, isPinned, isFaved, handlers));
+        item.card = card;
+
+        // 桌面右键 / 手机长按：均弹同一操作菜单（pin / fav / 分组 / close）
+        card.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openCardMenu(tab, card, handlers, event.clientX, event.clientY);
+        });
+        if (this.isMobile) {
+            this.bindCardLongPress(card, tab, handlers);
+        }
+
+        // 点击整卡切换到该页签；mouseenter 用于键盘导航的悬浮聚焦
+        card.addEventListener("click", () => handlers.onActivate(tab));
+        card.addEventListener("mouseenter", () => this.focusCard(card));
+        return card;
+    }
+
+    // 缩略图占位（内容由 renderThumbnails 分批填入）
+    private buildCardThumb(): HTMLElement {
         const thumb = document.createElement("div");
         thumb.className = "sw__thumb";
         const loading = document.createElement("div");
         loading.className = "sw__thumb-loading";
         loading.innerHTML = `<svg class="sw__spin"><use xlink:href="#iconRefresh"></use></svg><span>${this.i18n.loadingThumbnail}</span>`;
         thumb.appendChild(loading);
-        card.appendChild(thumb);
-        item.card = card;
+        return thumb;
+    }
 
-        // 底部：图标 + 标题
-        // 图标与标题：直接复用思源页签头已渲染好的内容，保证与真实页签一致
+    // 底部：图标 + 标题；图标复用页签头已渲染好的内容，保证与真实页签一致
+    private buildCardMeta(tab: Tab): HTMLElement {
         const meta = document.createElement("div");
         meta.className = "sw__meta";
+        meta.appendChild(this.buildCardIcon(tab));
+        const titleEl = document.createElement("span");
+        titleEl.className = "sw__title";
+        titleEl.textContent = this.titleOf(tab);
+        meta.appendChild(titleEl);
+        return meta;
+    }
+
+    // 卡片图标：思源 svg sprite > emoji 字符 > tab.icon 兜底
+    private buildCardIcon(tab: Tab): HTMLElement {
         const iconBox = document.createElement("span");
         iconBox.className = "sw__icon";
         const graphic = tab.headElement?.querySelector<SVGElement>(".item__graphic use");
@@ -2527,7 +2560,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             iconBox.textContent = emoji.textContent || "";
             iconBox.classList.add("sw__icon-emoji");
         } else {
-            // 兜底图标：思源图标名走 svg use；emoji 字符（手机端文档自定义图标）按文本渲染
+            // 兜底：思源图标名走 svg use；emoji 字符（手机端文档自定义图标）按文本渲染
             const fallback = tab.icon || "";
             if (fallback && !fallback.startsWith("icon")) {
                 iconBox.textContent = fallback;
@@ -2536,12 +2569,22 @@ export default class SpeedSwitchPlugin extends Plugin {
                 iconBox.innerHTML = `<svg><use xlink:href="#${fallback || "iconFile"}"></use></svg>`;
             }
         }
-        const titleEl = document.createElement("span");
-        titleEl.className = "sw__title";
-        titleEl.textContent = this.titleOf(tab);
-        meta.appendChild(iconBox);
-        meta.appendChild(titleEl);
-        card.appendChild(meta);
+        return iconBox;
+    }
+
+    // 角标按钮（置顶 + 收藏 + 关闭），统一返回 Fragment 便于一次性插入
+    private buildCardActions(
+        tab: Tab,
+        card: HTMLElement,
+        isPinned: boolean,
+        isFaved: boolean,
+        handlers: {
+            onTogglePin: (tab: Tab, card: HTMLElement) => void,
+            onToggleFav: (tab: Tab, card: HTMLElement) => void,
+            onCloseTab: (tab: Tab, card: HTMLElement) => void,
+        },
+    ): DocumentFragment {
+        const frag = document.createDocumentFragment();
 
         // 置顶按钮（左上角）：已置顶显示实心图钉，tooltip 提示当前可执行的操作
         const pinBtn = document.createElement("div");
@@ -2552,7 +2595,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             event.stopPropagation();
             handlers.onTogglePin(tab, card);
         });
-        card.appendChild(pinBtn);
+        frag.appendChild(pinBtn);
 
         // 收藏按钮（左上角，紧邻置顶）：未收藏空心星、已收藏实心星（CSS 变量 --b3-icon-star-fill 切换填充）
         const favBtn = document.createElement("div");
@@ -2564,7 +2607,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             // 点击星标弹出分组菜单：收藏时可直接选分组/新建分组，已收藏时可切换分组或取消收藏
             this.openFavMenu(tab, card, event);
         });
-        card.appendChild(favBtn);
+        frag.appendChild(favBtn);
 
         // 关闭按钮（右上角）
         const closeBtn = document.createElement("div");
@@ -2575,66 +2618,63 @@ export default class SpeedSwitchPlugin extends Plugin {
             event.stopPropagation();
             handlers.onCloseTab(tab, card);
         });
-        card.appendChild(closeBtn);
+        frag.appendChild(closeBtn);
 
-        // 右键菜单：置顶 / 收藏 / 关闭
-        card.addEventListener("contextmenu", (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            this.openCardMenu(tab, card, handlers, event.clientX, event.clientY);
-        });
+        return frag;
+    }
 
-        // 手机端长按（≈500ms）弹出与桌面右键一致的操作菜单；
-        // 拦截 click 必须注册在 activate 之前（目标节点按注册顺序触发）
-        if (this.isMobile) {
-            let timer: number | undefined;
-            let longPressed = false;
-            let menuX = 0;
-            let menuY = 0;
-            const start = (event: TouchEvent) => {
-                const touch = event.touches[0];
-                if (touch) {
-                    menuX = touch.clientX;
-                    menuY = touch.clientY;
-                }
+    // 手机端长按（≈500ms）弹出与桌面右键一致的操作菜单；
+    // 拦截 click 必须注册在 activate 之前（目标节点按注册顺序触发）
+    private bindCardLongPress(
+        card: HTMLElement,
+        tab: Tab,
+        handlers: {
+            onActivate: (tab: Tab) => void,
+            onTogglePin: (tab: Tab, card: HTMLElement) => void,
+            onToggleFav: (tab: Tab, card: HTMLElement) => void,
+            onCloseTab: (tab: Tab, card: HTMLElement) => void,
+        },
+    ) {
+        let timer: number | undefined;
+        let longPressed = false;
+        let menuX = 0;
+        let menuY = 0;
+        const start = (event: TouchEvent) => {
+            const touch = event.touches[0];
+            if (touch) {
+                menuX = touch.clientX;
+                menuY = touch.clientY;
+            }
+            longPressed = false;
+            timer = window.setTimeout(() => {
+                longPressed = true;
+                this.openCardMenu(tab, card, handlers, menuX, menuY);
+            }, 500);
+        };
+        const cancel = () => {
+            if (timer !== undefined) {
+                window.clearTimeout(timer);
+                timer = undefined;
+            }
+        };
+        const end = (event: TouchEvent) => {
+            cancel();
+            if (longPressed) {
+                // 阻止长按结束后合成 click 触发页签切换
+                event.preventDefault();
+            }
+        };
+        card.addEventListener("click", (event) => {
+            if (longPressed) {
                 longPressed = false;
-                timer = window.setTimeout(() => {
-                    longPressed = true;
-                    this.openCardMenu(tab, card, handlers, menuX, menuY);
-                }, 500);
-            };
-            const cancel = () => {
-                if (timer !== undefined) {
-                    window.clearTimeout(timer);
-                    timer = undefined;
-                }
-            };
-            const end = (event: TouchEvent) => {
-                cancel();
-                if (longPressed) {
-                    // 阻止长按结束后合成 click 触发页签切换
-                    event.preventDefault();
-                }
-            };
-            card.addEventListener("click", (event) => {
-                if (longPressed) {
-                    longPressed = false;
-                    event.stopImmediatePropagation();
-                    event.preventDefault();
-                }
-            }, true);
-            card.addEventListener("touchstart", start, {passive: true});
-            card.addEventListener("touchmove", cancel, {passive: true});
-            card.addEventListener("touchend", end, {passive: false});
-            card.addEventListener("touchcancel", cancel);
-        }
-
-        // 点击整卡切换到该页签
-        card.addEventListener("click", () => handlers.onActivate(tab));
-        card.addEventListener("mouseenter", () => {
-            this.focusCard(card);
-        });
-        return card;
+                event.stopImmediatePropagation();
+                event.preventDefault();
+            }
+        }, true);
+        card.addEventListener("touchstart", start, {passive: true});
+        card.addEventListener("touchmove", cancel, {passive: true});
+        card.addEventListener("touchend", end, {passive: false});
+        card.addEventListener("touchcancel", cancel);
     }
 
     // 卡片操作菜单（桌面右键 / 手机长按共用）：置顶 / 收藏 / 分组 / 关闭
@@ -3189,16 +3229,74 @@ export default class SpeedSwitchPlugin extends Plugin {
             showMessage(this.hasMobileTabsApi() ? this.i18n.noOpenedTabs : this.i18n.mobileNeedsNewer);
             return;
         }
+        this.openMobileSwitcherDialog(tabs);
+    }
 
+    // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
+    private openMobileSwitcherDialog(tabs: Tab[]) {
         const settings = this.getSettings();
         // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
-        const activeTab = this.isMobile
+        const activeTab: Tab | undefined = this.isMobile
             ? ({id: this.getMobileActiveTabId()} as Tab)
             : this.getActiveTab();
 
-        const dialog = new Dialog({
+        const dialog = this.createMobileSwitcherDialog();
+        // 关键修复：Dialog 先把元素挂到 DOM，b3-dialog--open 类要等 50ms 超时才补上，
+        // 期间容器处于 transform: scale(.8) 过渡态；手机 WebView 中带 backdrop-filter 的
+        // 子元素在该动画窗口内会渲染错乱（图标巨大/位置错位），动画结束又自愈——
+        // 即"刚打开闪一下错乱"的根因。禁用动画让容器同步进入最终态，彻底消除该窗口
+        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
+        if (dialogBody) {
+            dialogBody.classList.add("sw-scroll-locked");
+        }
+
+        // 清理缩略图缓存中已无对应打开页签的孤儿条目
+        this.pruneThumbCache(tabs);
+
+        // 隐藏 FAB 避免遮挡弹窗；任何关闭路径都需要恢复 FAB
+        this.fabElement?.classList.add("sw__fab--hidden");
+        const restoreFAB = () => this.fabElement?.classList.remove("sw__fab--hidden");
+        const closeOverlay = () => {
+            restoreFAB();
+            dialog.destroy();
+        };
+        // 钩住 Dialog.destroy（Escape/点击外部/程序调用）所有关闭路径都恢复 FAB
+        const origDestroy = dialog.destroy.bind(dialog);
+        dialog.destroy = () => {
+            restoreFAB();
+            origDestroy();
+        };
+
+        // 装配工具栏与列表渲染
+        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
+        const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+        if (!searchInput || !sortSelect || !scrollElement) {
+            return;
+        }
+        this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, settings);
+        const {renderMobileList} = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
+
+        // 把 FAB 关闭时的 FAB 恢复优先级插在 destroy 之后；保证打开收藏弹窗关闭后会回到列表
+        dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
+            this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList());
+        });
+        // 手机端不自动聚焦搜索框：避免一打开就弹出输入法，需要搜索时点击输入框
+    }
+
+    // 构造手机端切换器 Dialog（极简：搜索 + 排序 + 收藏 + 日记 + 设置 + 滚动区）
+    private createMobileSwitcherDialog(): Dialog {
+        return new Dialog({
             title: "",
-            content: `<div class="speed-switch sw__body sw__mobile">
+            content: this.buildMobileSwitcherHtml(),
+            width: "92vw",
+            height: "85vh",
+            disableAnimation: true,
+        });
+    }
+
+    private buildMobileSwitcherHtml(): string {
+        return `<div class="speed-switch sw__body sw__mobile">
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
@@ -3223,99 +3321,72 @@ export default class SpeedSwitchPlugin extends Plugin {
                 </span>
             </div>
     <div class="sw__scroll" tabindex="0"></div>
-</div>`,
-            width: "92vw",
-            height: "85vh",
-            // 关键修复：思源 Dialog 先把元素挂到 DOM，b3-dialog--open 类要等 50ms 超时才补上，
-            // 期间容器处于 transform: scale(.8) 过渡态；手机 WebView 中带 backdrop-filter 的
-            // 子元素在该动画窗口内会渲染错乱（图标巨大/位置错位），动画结束又自愈——
-            // 即"刚打开闪一下错乱"的根因。禁用动画让容器同步进入最终态，彻底消除该窗口
-            disableAnimation: true,
-        });
+</div>`;
+    }
 
-        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
-        if (dialogBody) {
-            dialogBody.classList.add("sw-scroll-locked");
-        }
-
-        // 清理缩略图缓存中已无对应打开页签的孤儿条目
-        this.pruneThumbCache(tabs);
-
-        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
-        const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-        // 隐藏 FAB 避免遮挡弹窗
-        this.fabElement?.classList.add("sw__fab--hidden");
-
-        // 统一恢复 FAB 的函数
-        const restoreFAB = () => {
-            this.fabElement?.classList.remove("sw__fab--hidden");
-        };
-
-        const closeOverlay = () => {
-            restoreFAB();
-            dialog.destroy();
-        };
-
-        // 钩住 Dialog 的 destroy 方法，确保无论何种方式关闭（Escape/点击外部/程序调用）都恢复 FAB
-        const origDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
-            restoreFAB();
-            origDestroy();
-        };
-
-        // 设置按钮
+    // 手机端顶栏按钮：设置 / 日记（收藏由 renderMobileSwitcherList 处理是因为它要绑定 renderMobileList）
+    private bindMobileSwitcherToolbarActions(
+        dialog: Dialog,
+        searchInput: HTMLInputElement,
+        sortSelect: HTMLSelectElement,
+        scrollElement: HTMLDivElement,
+        closeOverlay: () => void,
+        settings: ISwSettings,
+    ) {
+        // 隐藏 FAB 推迟到按钮 click 处是因为 openSetting 可能也关闭原 dialog
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.fabElement?.classList.remove("sw__fab--hidden");
             this.openSetting();
         });
-
-        // 收藏按钮 → 底部弹窗（onTabsChanged 用于组内批量开/关后刷新背后列表）
-        dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
-            this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList());
-        });
-
         // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.fabElement?.classList.remove("sw__fab--hidden");
             this.openJournal();
         });
-
         sortSelect.value = settings.sortBy;
-        // 手机端关闭页签后整列表重渲染（数据源是 MobileTabs 状态，需重新读取）
-        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: () => renderMobileList()};
-        let updatedMap: {[rootId: string]: string} = {};
+        sortSelect.addEventListener("change", () => {
+            this.updateSettings({sortBy: sortSelect.value as SortBy});
+            // 排序切换：重读最新列表、清除搜索词、重过滤
+            this.renderMobileList(scrollElement, this.getMobileTabs(),
+                {id: this.getMobileActiveTabId()} as Tab,
+                {onOverlayClose: closeOverlay, onTabsChanged: closeOverlay},
+                sortSelect.value as SortBy, {});
+            searchInput.value = "";
+            this.filterCards(scrollElement, searchInput.value);
+        });
+        searchInput.addEventListener("input", () => {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        });
+    }
 
+    // 装配手机端列表渲染：返回 renderMobileList 函数以便收藏弹窗的 onTabsChanged 回调触发刷新
+    private renderMobileSwitcherList(
+        dialog: Dialog,
+        scrollElement: HTMLDivElement,
+        sortSelect: HTMLSelectElement,
+        settings: ISwSettings,
+    ) {
+        const listOpts = {
+            onOverlayClose: () => dialog.destroy(),
+            onTabsChanged: () => renderMobileList(),
+        };
+        let updatedMap: {[rootId: string]: string} = {};
         const renderMobileList = () => {
             this.renderMobileList(scrollElement, this.getMobileTabs(),
                 {id: this.getMobileActiveTabId()} as Tab, listOpts, sortSelect.value as SortBy, updatedMap);
         };
-
         renderMobileList();
-        // 手机端不自动聚焦搜索框：避免一打开就弹出输入法，需要搜索时点击输入框
-
-        // 排序切换
-        sortSelect.addEventListener("change", () => {
-            this.updateSettings({sortBy: sortSelect.value as SortBy});
-            renderMobileList();
-            searchInput.value = "";
-            this.filterCards(scrollElement, searchInput.value);
-        });
-
-        // 搜索
-        searchInput.addEventListener("input", () => {
-            this.applySearch(scrollElement, searchInput, closeOverlay);
-        });
-
-        // 最近编辑排序
-        this.loadUpdatedMap(tabs).then((map) => {
-            updatedMap = map;
-            if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && searchInput.value.trim() === "") {
+        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
+        const mergedMap = updatedMap;
+        this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
+            Object.assign(mergedMap, map);
+            if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && document.activeElement !== sortSelect) {
                 renderMobileList();
             }
         });
+        return {renderMobileList};
     }
 
     // 手机端渲染页签卡片列表
@@ -3404,136 +3475,128 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 构建底部弹窗
         const overlay = document.createElement("div");
         overlay.className = "sw__mobile-sheet-overlay";
-        overlay.innerHTML = `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(this.i18n.mobileFavTitle)}">
-    <div class="sw__mobile-sheet-handle"></div>
-    <div class="sw__mobile-sheet-title">${this.i18n.mobileFavTitle}</div>
-    <div class="sw__mobile-sheet-body"></div>
-</div>`;
+        overlay.innerHTML = this.buildMobileFavSheetHtml();
         document.body.appendChild(overlay);
 
         const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
         const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
+        if (!sheet || !body) {
+            return;
+        }
 
-        // 渲染收藏内容（复用分组逻辑）
-        const groups = new Map<string, IFavoriteItem[]>();
-        groupNames.forEach((name) => groups.set(name, []));
-        favorites.forEach((fav) => {
-            const name = fav.group || "";
-            if (!groups.has(name)) {
-                groups.set(name, []);
-            }
-            groups.get(name)!.push(fav);
-        });
+        // 渲染分组/单列表/空态
+        this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay);
 
+        // 动画：下一帧滑入
+        requestAnimationFrame(() => sheet.classList.add("sw__mobile-sheet--open"));
+        // 点击背景关闭
+        this.bindMobileFavSheetBackdropClose(overlay, sheet);
+    }
+
+    // 收藏底部弹窗 DOM 骨架：抽屉 + 拖把柄 + 标题 + 内容容器
+    private buildMobileFavSheetHtml(): string {
+        return `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(this.i18n.mobileFavTitle)}">
+    <div class="sw__mobile-sheet-handle"></div>
+    <div class="sw__mobile-sheet-title">${this.i18n.mobileFavTitle}</div>
+    <div class="sw__mobile-sheet-body"></div>
+</div>`;
+    }
+
+    // 渲染收藏内容：分组（带 ⋯ 批量按钮）/ 单列表（无分组命名空间时）/ 空态
+    private renderMobileFavSheetBody(
+        body: HTMLElement,
+        favorites: IFavoriteItem[],
+        groupNames: string[],
+        closeOverlay: IOverlayClose,
+        onTabsChanged: (() => void) | undefined,
+        overlay: HTMLElement,
+    ) {
+        const groups = groupFavoritesByGroup(favorites, groupNames);
         const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
         const ungrouped = groups.get("") || [];
 
         if (groupedNames.length === 0) {
-            const list = document.createElement("div");
-            list.className = "sw__mobile-sheet-list";
-            ungrouped.forEach((fav) => {
-                const item = document.createElement("button");
-                item.type = "button";
-                item.className = "sw__mobile-sheet-item";
-                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
-                item.addEventListener("click", () => {
-                    overlay.remove();
-                    this.jumpToFavorite(fav, closeOverlay);
-                });
-                list.appendChild(item);
-            });
-            body.appendChild(list);
+            body.appendChild(this.buildMobileFavSheetList(ungrouped, overlay, closeOverlay));
         } else {
             groupedNames.forEach((name) => {
-                const items = groups.get(name) || [];
-                const section = document.createElement("div");
-                section.className = "sw__mobile-sheet-section";
-                const header = document.createElement("div");
-                header.className = "sw__mobile-sheet-section-header";
-                // ⋯ 按钮：触发组内批量开/关（嵌套底部弹窗）
-                header.innerHTML = `<span>${this.escapeAttr(name)}</span>
-<span class="sw__mobile-sheet-count">${items.length}</span>
-<button type="button" class="sw__mobile-sheet-more" aria-label="${this.escapeAttr(this.i18n.favGroupTip)}">
-    <svg><use xlink:href="#iconMore"></use></svg>
-</button>`;
-                const moreBtn = header.querySelector<HTMLButtonElement>(".sw__mobile-sheet-more");
-                moreBtn?.addEventListener("click", (event) => {
-                    event.stopPropagation();
-                    this.openMobileGroupActions(name, items, () => {
-                        // 批量操作完成后：关闭嵌套弹窗 → 关闭收藏弹窗 → 刷新背后切换器列表
-                        document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
-                        overlay.remove();
-                        onTabsChanged?.();
-                    });
-                });
-                section.appendChild(header);
-                const list = document.createElement("div");
-                list.className = "sw__mobile-sheet-list";
-                items.forEach((fav) => {
-                    const item = document.createElement("button");
-                    item.type = "button";
-                    item.className = "sw__mobile-sheet-item";
-                    item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
-                    item.addEventListener("click", () => {
-                        overlay.remove();
-                        this.jumpToFavorite(fav, closeOverlay);
-                    });
-                    list.appendChild(item);
-                });
-                section.appendChild(list);
-                body.appendChild(section);
+                this.appendMobileFavSheetSection(body, name, groups.get(name) || [], false,
+                    overlay, closeOverlay, onTabsChanged);
             });
             if (ungrouped.length > 0) {
-                const section = document.createElement("div");
-                section.className = "sw__mobile-sheet-section";
-                const header = document.createElement("div");
-                header.className = "sw__mobile-sheet-section-header";
-                header.innerHTML = `<span>${this.escapeAttr(this.i18n.ungrouped)}</span>
-<span class="sw__mobile-sheet-count">${ungrouped.length}</span>
-<button type="button" class="sw__mobile-sheet-more" aria-label="${this.escapeAttr(this.i18n.favGroupTip)}">
-    <svg><use xlink:href="#iconMore"></use></svg>
-</button>`;
-                const moreBtn = header.querySelector<HTMLButtonElement>(".sw__mobile-sheet-more");
-                moreBtn?.addEventListener("click", (event) => {
-                    event.stopPropagation();
-                    this.openMobileGroupActions(this.i18n.ungrouped, ungrouped, () => {
-                        document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
-                        overlay.remove();
-                        onTabsChanged?.();
-                    });
-                });
-                section.appendChild(header);
-                const list = document.createElement("div");
-                list.className = "sw__mobile-sheet-list";
-                ungrouped.forEach((fav) => {
-                    const item = document.createElement("button");
-                    item.type = "button";
-                    item.className = "sw__mobile-sheet-item";
-                    item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
-                    item.addEventListener("click", () => {
-                        overlay.remove();
-                        this.jumpToFavorite(fav, closeOverlay);
-                    });
-                    list.appendChild(item);
-                });
-                section.appendChild(list);
-                body.appendChild(section);
+                this.appendMobileFavSheetSection(body, this.i18n.ungrouped, ungrouped, true,
+                    overlay, closeOverlay, onTabsChanged);
             }
         }
 
+        // favorites 为空（仅有空分组注册）时追加空态
         if (favorites.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__mobile-sheet-empty";
             empty.textContent = this.i18n.mobileNoFav;
             body.appendChild(empty);
         }
+    }
 
-        // 动画：下一帧滑入
-        requestAnimationFrame(() => {
-            sheet.classList.add("sw__mobile-sheet--open");
+    // 渲染单个分组区块：标题（组名 + 数量 + ⋯）+ 项列表
+    private appendMobileFavSheetSection(
+        body: HTMLElement,
+        name: string,
+        items: IFavoriteItem[],
+        isUngrouped: boolean,
+        overlay: HTMLElement,
+        closeOverlay: IOverlayClose,
+        onTabsChanged: (() => void) | undefined,
+    ) {
+        const section = document.createElement("div");
+        section.className = "sw__mobile-sheet-section";
+        const header = document.createElement("div");
+        header.className = "sw__mobile-sheet-section-header";
+        // ⋯ 按钮：触发组内批量开/关（嵌套底部弹窗）
+        header.innerHTML = `<span>${this.escapeAttr(name)}</span>
+<span class="sw__mobile-sheet-count">${items.length}</span>
+<button type="button" class="sw__mobile-sheet-more" aria-label="${this.escapeAttr(this.i18n.favGroupTip)}">
+    <svg><use xlink:href="#iconMore"></use></svg>
+</button>`;
+        const moreBtn = header.querySelector<HTMLButtonElement>(".sw__mobile-sheet-more");
+        moreBtn?.addEventListener("click", (event) => {
+            event.stopPropagation();
+            // 批量操作完成后：关闭嵌套弹窗 → 关闭收藏弹窗 → 刷新背后切换器列表
+            const onNestedClosed = () => {
+                document.querySelectorAll(".sw__mobile-sheet-overlay--nested").forEach((el) => el.remove());
+                overlay.remove();
+                onTabsChanged?.();
+            };
+            this.openMobileGroupActions(name, items, onNestedClosed);
         });
+        section.appendChild(header);
+        section.appendChild(this.buildMobileFavSheetList(items, overlay, closeOverlay));
+        body.appendChild(section);
+    }
 
-        // 点击背景关闭（sheet 下滑 + 遮罩淡出后再移除）
+    // 单列表：每项是文件图标 + 标题，点击关闭弹窗并跳转
+    private buildMobileFavSheetList(
+        favorites: IFavoriteItem[],
+        overlay: HTMLElement,
+        closeOverlay: IOverlayClose,
+    ): HTMLElement {
+        const list = document.createElement("div");
+        list.className = "sw__mobile-sheet-list";
+        favorites.forEach((fav) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__mobile-sheet-item";
+            item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
+            item.addEventListener("click", () => {
+                overlay.remove();
+                this.jumpToFavorite(fav, closeOverlay);
+            });
+            list.appendChild(item);
+        });
+        return list;
+    }
+
+    // 点击背景关闭：抽屉下滑 + 遮罩淡出，250ms 后移除
+    private bindMobileFavSheetBackdropClose(overlay: HTMLElement, sheet: HTMLElement) {
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) {
                 sheet.classList.remove("sw__mobile-sheet--open");
