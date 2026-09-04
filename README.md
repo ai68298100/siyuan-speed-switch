@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.2-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,13 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.2（2026-09-04）
+
+- **类型安全大重构**：新增 `src/types.ts`，集中定义思源全局对象（`window.siyuan`）、Protyle 懒挂 model、MobileTabs API、layout dock 等反推类型；引入 `getSiyuan()` helper，业务代码中 `(window as any).siyuan` 全部消失。`getSettings()` 内 23 处 `(saved as any).xxx` 收窄为 1 处 `as Partial<ISwSettings>` 整体断言。`as any` 实际使用从 44 处降至 0 处（其余 6 处为 TS 官方推荐的 `as unknown as X` 双步窄化）。
+- **结构化 logger**：新增 `src/logger.ts`，21 处 `console.warn("[speed-switch] xxx fail", e)` 全部替换为 `logger.warn(...)`，统一 `[speed-switch]` 前缀与单一 `ENABLED` 开关；保留 `error/info/debug` 接口方便后续扩展。
+- **`mobileOpenDoc` 三路径兜底**：原 `// TODO: Mobile` 占位实现完整化——优先 `MobileTabs.open(rootId)`，调用 300ms 后轮询 `activeTabID` 是否变化确认生效；未生效自动降级到 `plugin.openTab({app, doc})`；双失败时通过新增 i18n key `openDocFailed` 提示用户。
+- **重构细节**：`dock` 回调的 `(this as any).element` 改用强类型 `IDockHandlerSelf`；HTMLElement 自挂私有属性 `__swThumbObserver` 改用模块级 `WeakMap` 持有，杜绝 element 上的侵入式赋值。无用户可见 UI 变化。
 
 ### v0.15.1（2026-09-04）
 

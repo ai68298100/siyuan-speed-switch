@@ -1,24 +1,31 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
+import {logger} from "./logger";
+import {
+    getSiyuan,
+    IMobileTabsState,
+    IMobileTabsAPI,
+    ISiyuanGlobal,
+    ISiyuanKeymap,
+    ISiyuanLayout,
+    ISiyuanLayoutDock,
+    ISiyuanUiLayout,
+    ISiyuanMobile,
+    ISiyuanConfig,
+    IProtyleTabModel,
+    IElementStorage,
+} from "./types";
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
 
-// 手机端 MobileTabs 状态（思源 3.8+，window.siyuan.mobile.tabs.state）
-interface IMobileTabEntry {
-    id: string;
-    rootID: string;
-    notebookID: string;
-    path: string;
-    title: string;
-    icon?: string;
-}
-interface IMobileTabsState {
-    version: number;
-    activeTabID?: string;
-    tabs: Array<{id: string; current?: IMobileTabEntry; activeAt: number}>;
-}
+// IMobileTabEntry / IMobileTabsState 已迁移至 ./types.ts（思源全局对象的相关结构）
 // 页签排序方式：mru=最近使用 layout=打开顺序 layoutDesc=打开倒序 titleAsc/titleDesc=标题升降序 updatedDesc=最近编辑
+
+// addDock 回调里的 this 类型（思源把面板元素挂到回调自身的 .element 上）
+interface IDockHandlerSelf {
+    element?: HTMLElement;
+}
 type SortBy = "mru" | "layout" | "layoutDesc" | "titleAsc" | "titleDesc" | "updatedDesc";
 const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
 // 页签卡片操作完成后的收尾动作（弹窗模式销毁弹窗，侧边栏模式刷新列表）
@@ -108,6 +115,9 @@ interface IThumbCache {
     [rootId: string]: { title: string, html: string, ts: number };
 }
 
+// 模块级 WeakMap：滚动容器 → 已挂的 IntersectionObserver，避免在 HTMLElement 上自挂私有属性
+const thumbObserverCache = new WeakMap<HTMLElement, IntersectionObserver>();
+
 // 收藏条目：文档页签存 rootId（关闭后仍可重开），非文档页签仅存页签 id（关闭后失效自动清理）
 interface IFavoriteItem {
     key: string;       // pinKeyOf：rootId || tab.id
@@ -129,6 +139,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
+    private rootIdCache = new Map<string, string | null>();
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -144,7 +155,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadData(FAV_COLLAPSED_KEY),
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
-        ]).catch((e) => console.warn("[speed-switch] load data fail", e));
+        ]).catch((e) => logger.warn("load data fail", e));
         // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
         this.initFavCollapsed();
 
@@ -171,11 +182,13 @@ export default class SpeedSwitchPlugin extends Plugin {
                 data: {},
                 type: SIDEBAR_DOCK_TYPE,
                 init() {
-                    self.renderSidebarPanel((this as any).element as HTMLElement);
+                    const handler = this as unknown as IDockHandlerSelf;
+                    self.renderSidebarPanel(handler.element as HTMLElement);
                 },
                 resize() {
                     // 面板尺寸变化时仅重算缩略图缩放比例，不重建列表（避免闪烁与滚动位置丢失）
-                    const element = (this as any).element as HTMLElement;
+                    const handler = this as unknown as IDockHandlerSelf;
+                    const element = handler.element;
                     if (element?.isConnected) {
                         self.rescaleThumbs(element);
                     }
@@ -253,7 +266,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.saveTimers.set(key, window.setTimeout(() => {
             this.saveTimers.delete(key);
-            this.saveData(key, this.data[key]).catch((e) => console.warn("[speed-switch] save data fail", e));
+            this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e));
         }, 500));
     }
 
@@ -261,7 +274,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private flushPendingSaves() {
         this.saveTimers.forEach((timer, key) => {
             clearTimeout(timer);
-            this.saveData(key, this.data[key]).catch((e) => console.warn("[speed-switch] save data fail", e));
+            this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e));
         });
         this.saveTimers.clear();
     }
@@ -270,7 +283,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 加载时将其修正为可匹配的 "⌥⇧S"（组合键不变，仍是 Alt+Shift+S）
     private fixLegacyHotkey() {
         try {
-            const keymapItem = (window as any).siyuan?.config?.keymap?.plugin?.[this.name]?.switchTabs;
+            const siyuan = getSiyuan();
+            const keymapItem = siyuan?.config?.keymap?.plugin?.[this.name]?.switchTabs;
             if (keymapItem && keymapItem.custom === LEGACY_HOTKEY) {
                 keymapItem.custom = DEFAULT_HOTKEY;
             }
@@ -283,41 +297,43 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 读取设置：与默认值合并，保证新增字段有默认值
     private getSettings(): ISwSettings {
-        const saved = this.data[SETTINGS_KEY];
+        // 磁盘读取的是 unknown，老版本/异常数据字段可能缺失，全部按字段逐一降级到默认值。
+        // 用 Partial<ISwSettings> 把整个 saved 一次性收窄，后续字段访问就不再需要每行断言。
+        const saved = this.data[SETTINGS_KEY] as Partial<ISwSettings> | null | undefined;
         if (!saved || typeof saved !== "object") {
             return {...DEFAULT_SETTINGS};
         }
         return {
-            dialogWidth: this.clampNum((saved as any).dialogWidth, 480, 1920, DEFAULT_SETTINGS.dialogWidth),
-            dialogHeight: this.clampNum((saved as any).dialogHeight, 360, 1280, DEFAULT_SETTINGS.dialogHeight),
-            columns: this.clampNum((saved as any).columns, 0, 8, DEFAULT_SETTINGS.columns),
-            thumbHeight: this.clampNum((saved as any).thumbHeight, 72, 360, DEFAULT_SETTINGS.thumbHeight),
-            sortBy: (SORT_BY_LIST.includes((saved as any).sortBy)
-                ? (saved as any).sortBy : DEFAULT_SETTINGS.sortBy) as SortBy,
-            excludedDocks: Array.isArray((saved as any).excludedDocks)
-                ? (saved as any).excludedDocks.filter((t: any) => typeof t === "string")
+            dialogWidth: this.clampNum(saved.dialogWidth, 480, 1920, DEFAULT_SETTINGS.dialogWidth),
+            dialogHeight: this.clampNum(saved.dialogHeight, 360, 1280, DEFAULT_SETTINGS.dialogHeight),
+            columns: this.clampNum(saved.columns, 0, 8, DEFAULT_SETTINGS.columns),
+            thumbHeight: this.clampNum(saved.thumbHeight, 72, 360, DEFAULT_SETTINGS.thumbHeight),
+            sortBy: SORT_BY_LIST.includes(saved.sortBy as SortBy)
+                ? (saved.sortBy as SortBy) : DEFAULT_SETTINGS.sortBy,
+            excludedDocks: Array.isArray(saved.excludedDocks)
+                ? saved.excludedDocks.filter((t) => typeof t === "string")
                 : [],
-            dockDisplay: (DOCK_DISPLAY_LIST.includes((saved as any).dockDisplay)
-                ? (saved as any).dockDisplay : DEFAULT_SETTINGS.dockDisplay) as DockDisplay,
-            sidebarLayout: (SIDEBAR_LAYOUT_LIST.includes((saved as any).sidebarLayout)
-                ? (saved as any).sidebarLayout : DEFAULT_SETTINGS.sidebarLayout) as SidebarLayout,
-            fullscreen: typeof (saved as any).fullscreen === "boolean"
-                ? (saved as any).fullscreen : DEFAULT_SETTINGS.fullscreen,
-            fabEnabled: typeof (saved as any).fabEnabled === "boolean"
-                ? (saved as any).fabEnabled : DEFAULT_SETTINGS.fabEnabled,
-            mobileColumns: this.clampNum((saved as any).mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
-            mobileThumbHeight: this.clampNum((saved as any).mobileThumbHeight, 48, 200, DEFAULT_SETTINGS.mobileThumbHeight),
-            journalNotebook: typeof (saved as any).journalNotebook === "string"
-                ? (saved as any).journalNotebook : DEFAULT_SETTINGS.journalNotebook,
-            lastSettingsTab: typeof (saved as any).lastSettingsTab === "string"
-                ? (saved as any).lastSettingsTab : DEFAULT_SETTINGS.lastSettingsTab,
+            dockDisplay: DOCK_DISPLAY_LIST.includes(saved.dockDisplay as DockDisplay)
+                ? (saved.dockDisplay as DockDisplay) : DEFAULT_SETTINGS.dockDisplay,
+            sidebarLayout: SIDEBAR_LAYOUT_LIST.includes(saved.sidebarLayout as SidebarLayout)
+                ? (saved.sidebarLayout as SidebarLayout) : DEFAULT_SETTINGS.sidebarLayout,
+            fullscreen: typeof saved.fullscreen === "boolean"
+                ? saved.fullscreen : DEFAULT_SETTINGS.fullscreen,
+            fabEnabled: typeof saved.fabEnabled === "boolean"
+                ? saved.fabEnabled : DEFAULT_SETTINGS.fabEnabled,
+            mobileColumns: this.clampNum(saved.mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
+            mobileThumbHeight: this.clampNum(saved.mobileThumbHeight, 48, 200, DEFAULT_SETTINGS.mobileThumbHeight),
+            journalNotebook: typeof saved.journalNotebook === "string"
+                ? saved.journalNotebook : DEFAULT_SETTINGS.journalNotebook,
+            lastSettingsTab: typeof saved.lastSettingsTab === "string"
+                ? saved.lastSettingsTab : DEFAULT_SETTINGS.lastSettingsTab,
         };
     }
 
     private updateSettings(patch: Partial<ISwSettings>) {
         const settings = {...this.getSettings(), ...patch};
         this.data[SETTINGS_KEY] = settings;
-        this.saveData(SETTINGS_KEY, settings).catch((e) => console.warn("[speed-switch] save settings fail", e));
+        this.saveData(SETTINGS_KEY, settings).catch((e) => logger.warn("save settings fail", e));
     }
 
     private clampNum(value: any, min: number, max: number, fallback: number): number {
@@ -422,7 +438,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 .filter((nb) => nb && nb.id && !nb.closed)
                 .map((nb) => ({id: nb.id, name: nb.name}));
         } catch (e) {
-            console.warn("[speed-switch] load notebooks fail", e);
+            logger.warn("load notebooks fail", e);
             return [];
         }
     }
@@ -469,7 +485,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             // openTab 在手机端是空实现，走 MobileTabs.open
             this.mobileOpenDoc(id);
         } else {
-            openTab({app: (this as any).app, doc: {id}});
+            openTab({app: this.app, doc: {id}});
         }
     }
 
@@ -485,10 +501,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (json?.code === 0 && json?.data?.id) {
                 return json.data.id;
             }
-            console.warn("[speed-switch] createDailyNote fail", json);
+            logger.warn("createDailyNote fail", json);
             return null;
         } catch (e) {
-            console.warn("[speed-switch] createDailyNote fail", e);
+            logger.warn("createDailyNote fail", e);
             return null;
         }
     }
@@ -930,7 +946,8 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // 打开时直接跳转到上次所在的标签页（默认外观）；activate 内部会记录切换，下次进入保持
         const lastTab = this.getSettings().lastSettingsTab;
-        const initial = panelKeys.includes(lastTab as any) ? lastTab : panelKeys[0];
+        const panelKeysArr: string[] = [...panelKeys];
+        const initial = panelKeysArr.includes(lastTab) ? lastTab : panelKeys[0];
         activate(initial);
         if (initial !== panelKeys[0]) {
             // 非默认时需要滚动到选中标签可见（连续打开时标签栏不会滚动错位）
@@ -1175,7 +1192,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             } catch (e) {
                 // 主动取消的请求不算异常
                 if ((e as DOMException)?.name !== "AbortError") {
-                    console.warn("[speed-switch] search docs fail", e);
+                    logger.warn("search docs fail", e);
                 }
             }
         }, 180);
@@ -1244,7 +1261,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                     this.mobileOpenDoc(id);
                 } else {
                     openTab({
-                        app: (this as any).app,
+                        app: this.app,
                         doc: {id},
                     });
                 }
@@ -1282,7 +1299,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.updatedMapCache = {key, ts: Date.now(), map};
             return map;
         } catch (e) {
-            console.warn("[speed-switch] query updated fail", e);
+            logger.warn("query updated fail", e);
             return {};
         }
     }
@@ -1292,7 +1309,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         try {
             return getActiveTab() || undefined;
         } catch (e) {
-            console.warn("[speed-switch] get active tab fail", e);
+            logger.warn("get active tab fail", e);
         }
         return undefined;
     }
@@ -1400,7 +1417,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 dock.toggleModel(type, true);
             }
         } catch (e) {
-            console.warn("[speed-switch] switch dock fail", e);
+            logger.warn("switch dock fail", e);
         }
         dialog.destroy();
     }
@@ -1409,7 +1426,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private getDockPanels(): IDockPanel[] {
         const panels: IDockPanel[] = [];
         try {
-            const uiLayout = (window as any).siyuan?.config?.uiLayout;
+            const uiLayout = getSiyuan()?.config?.uiLayout;
             if (!uiLayout) {
                 return panels;
             }
@@ -1431,19 +1448,19 @@ export default class SpeedSwitchPlugin extends Plugin {
                 });
             });
         } catch (e) {
-            console.warn("[speed-switch] get dock panels fail", e);
+            logger.warn("get dock panels fail", e);
         }
         return panels;
     }
 
     // 按 type 查找面板所属的 Dock（左侧/右侧/底部），与思源 getDockByType 行为一致
-    private getDockByType(type: string): any {
-        const layout = (window as any).siyuan?.layout;
+    private getDockByType(type: string): ISiyuanLayoutDock | undefined {
+        const layout = getSiyuan()?.layout;
         if (!layout) {
             return undefined;
         }
-        for (const key of ["leftDock", "rightDock", "bottomDock"]) {
-            const dock = layout[key];
+        const sides: Array<ISiyuanLayoutDock | undefined> = [layout.leftDock, layout.rightDock, layout.bottomDock];
+        for (const dock of sides) {
             if (dock?.data?.[type]) {
                 return dock;
             }
@@ -1459,8 +1476,6 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 文档页签的 rootID（非文档页签返回空）
     // rootId 映射会话级缓存：懒加载页签每次解析 data-initdata 都要 JSON.parse，
     // 渲染/排序/MRU/收藏多处高频调用，按页签 id 缓存后只解析一次
-    private rootIdCache = new Map<string, string | null>();
-
     private rootIdOf(tab: Tab): string | null {
         const cached = this.rootIdCache.get(tab.id);
         if (cached !== undefined) {
@@ -1476,7 +1491,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     private computeRootId(tab: Tab): string | null {
-        const model: any = (tab as any).model;
+        const model = (tab as unknown as { model?: IProtyleTabModel }).model;
         if (model?.editor?.block?.rootID) {
             return model.editor.block.rootID;
         }
@@ -2138,7 +2153,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.mobileOpenDoc(favorite.rootId);
             } else {
                 openTab({
-                    app: (this as any).app,
+                    app: this.app,
                     doc: {id: favorite.rootId},
                 });
             }
@@ -2168,7 +2183,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.mobileOpenDoc(fav.rootId);
             } else {
                 openTab({
-                    app: (this as any).app,
+                    app: this.app,
                     doc: {id: fav.rootId},
                 });
             }
@@ -2381,16 +2396,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (this.isMobile) {
             // 手机端：MobileTabs.close 关闭页签，随后由 onTabsChanged 整列表重渲染
             try {
-                (window as any).siyuan?.mobile?.tabs?.close(tab.id);
+                getSiyuan()?.mobile?.tabs?.close?.(tab.id);
             } catch (e) {
-                console.warn("[speed-switch] mobile close tab fail", e);
+                logger.warn("mobile close tab fail", e);
             }
             return;
         }
         try {
             tab.parent.removeTab(tab.id);
         } catch (e) {
-            console.warn("[speed-switch] close tab fail", e);
+            logger.warn("close tab fail", e);
         }
     }
 
@@ -2636,7 +2651,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private saveThumbCache(cache: IThumbCache) {
         this.data[THUMB_CACHE_KEY] = cache;
-        this.saveData(THUMB_CACHE_KEY, cache).catch((e) => console.warn("[speed-switch] save thumb cache fail", e));
+        this.saveData(THUMB_CACHE_KEY, cache).catch((e) => logger.warn("save thumb cache fail", e));
     }
 
     // 写入一条缓存（实时 DOM 优先更新），超过上限时按最旧淘汰；不立即写盘，由调用方批量 flush
@@ -2722,9 +2737,11 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 视口外保持加载占位。打开切换器从"全量克隆"降为"首屏克隆"，大列表秒开
     private renderThumbnails(list: IGroupedTab[], scrollElement: HTMLElement, batch: number) {
         // 同一容器重复渲染时（排序切换/列表刷新）先断开旧观察器，防止泄漏与重复渲染
-        const prev = (scrollElement as any).__swThumbObserver as IntersectionObserver | undefined;
+        // 用 WeakMap 把 IntersectionObserver 绑在元素上，替代 (el as any).__swThumbObserver 的自挂私有属性写法
+        const prev = thumbObserverCache.get(scrollElement);
         if (prev) {
             prev.disconnect();
+            thumbObserverCache.delete(scrollElement);
         }
 
         // 环境不支持 IntersectionObserver 时退回原分批全量渲染（思源内核均为 Chromium，仅防御）
@@ -2747,7 +2764,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 }
             });
         }, {root: scrollElement, rootMargin: "240px 0px"});
-        (scrollElement as any).__swThumbObserver = observer;
+        thumbObserverCache.set(scrollElement, observer);
 
         list.forEach((item) => {
             const thumb = item.card?.querySelector<HTMLElement>(".sw__thumb");
@@ -2890,7 +2907,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.saveThumbCache(cache);
         } catch (e) {
             // 读取失败保持占位即可
-            console.warn("[speed-switch] fetch doc content fail", e);
+            logger.warn("fetch doc content fail", e);
         } finally {
             this.releaseThumbApi();
         }
@@ -2909,8 +2926,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private getThumbSource(tab: Tab): HTMLElement | null {
         try {
             // Editor 模型的 .editor 即 Protyle 实例，其 wysiwyg.element 为实时文档 DOM
-            const model: any = (tab as any).model;
-            const wysiwyg: HTMLElement | undefined = model?.editor?.wysiwyg?.element;
+            const model = (tab as unknown as { model?: IProtyleTabModel }).model;
+            const wysiwyg = model?.editor?.wysiwyg?.element;
             if (wysiwyg && wysiwyg.childElementCount > 0) {
                 const clone = wysiwyg.cloneNode(true) as HTMLElement;
                 this.limitCloneChildren(clone, THUMB_CLONE_MAX);
@@ -2930,7 +2947,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return clone;
             }
         } catch (e) {
-            console.warn("[speed-switch] build thumbnail fail", e);
+            logger.warn("build thumbnail fail", e);
         }
         return null;
     }
@@ -3027,9 +3044,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (this.isMobile) {
             // 手机端：MobileTabs.switchTo 切换页签
             try {
-                (window as any).siyuan?.mobile?.tabs?.switchTo(tab.id);
+                getSiyuan()?.mobile?.tabs?.switchTo?.(tab.id);
             } catch (e) {
-                console.warn("[speed-switch] mobile switch tab fail", e);
+                logger.warn("mobile switch tab fail", e);
             }
             onClose?.();
             return;
@@ -3038,11 +3055,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 等价于点击该页签：内部会切到目标页签，并通过 setPanelFocus 激活其所在窗口（支持分栏）
         try {
             tab.parent.switchTab(tab.headElement, true);
-            if (typeof (tab.parent as any).showHeading === "function") {
-                (tab.parent as any).showHeading();
+            // 偶发场景下 showHeading 不是必暴露的方法，思源历史版本不一定存在，做能力检测
+            const parentWithHeading = tab.parent as unknown as { showHeading?: () => void };
+            if (typeof parentWithHeading.showHeading === "function") {
+                parentWithHeading.showHeading();
             }
         } catch (e) {
-            console.warn("[speed-switch] switch tab fail", e);
+            logger.warn("switch tab fail", e);
         }
         onClose?.();
     }
@@ -3053,7 +3072,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 页签数据需从 window.siyuan.mobile.tabs（思源 3.8+ MobileTabs）读取，
     // 包装成与桌面端 Tab 兼容的伪 Tab，使 rootIdOf/titleOf/pinKeyOf/createCard 等直接复用
     private getMobileTabs(): Tab[] {
-        const state = (window as any).siyuan?.mobile?.tabs?.state as IMobileTabsState | undefined;
+        const state = getSiyuan()?.mobile?.tabs?.state;
         if (!state?.tabs) {
             return [];
         }
@@ -3070,21 +3089,44 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 手机端 MobileTabs 状态是否可用（思源 3.8+ 才有；旧版手机端无多页签概念）
     private hasMobileTabsApi(): boolean {
-        return !!(window as any).siyuan?.mobile?.tabs?.state;
+        return !!getSiyuan()?.mobile?.tabs?.state;
     }
 
     // 手机端当前激活页签 id（无激活时返回 undefined）
     private getMobileActiveTabId(): string | undefined {
-        return (window as any).siyuan?.mobile?.tabs?.state?.activeTabID as string | undefined;
+        return getSiyuan()?.mobile?.tabs?.state?.activeTabID;
     }
 
-    // 手机端打开文档：openTab 插件 API 在手机端是空实现（TODO: Mobile），
-    // 需调用 MobileTabs.open(rootID)
-    private mobileOpenDoc(rootId: string) {
+    // 手机端打开文档（思源 plugin API openTab 在移动端是空实现）：
+    // 1) 优先 MobileTabs.open(rootID)（思源 3.8+），调用后等几百毫秒轮询 activeTabID 变化确认生效；
+    // 2) 若 MobileTabs 不可用或 open 未触发切换，自动降级到 plugin.openTab（桌面/旧 mobile 通用通道）；
+    // 3) 仍失败再回退到死链文档提示。
+    private async mobileOpenDoc(rootId: string) {
+        const siyuan = getSiyuan();
+        const mobileOpen = siyuan?.mobile?.tabs?.open;
+        const initialActive = siyuan?.mobile?.tabs?.state?.activeTabID;
+
+        // 路径 1：MobileTabs.open
+        if (typeof mobileOpen === "function") {
+            try {
+                mobileOpen(rootId);
+                // 兜底：300ms 后若 activeTabID 还是没变，认作调用失活，进入路径 2
+                await new Promise((r) => setTimeout(r, 300));
+                const afterActive = getSiyuan()?.mobile?.tabs?.state?.activeTabID;
+                if (afterActive && afterActive !== initialActive) {
+                    return; // 切换已生效
+                }
+            } catch (e) {
+                logger.warn("mobile open doc fail (path 1)", e);
+            }
+        }
+
+        // 路径 2：降级到 plugin openTab（移动端理论上无效，但兜底保留）
         try {
-            (window as any).siyuan?.mobile?.tabs?.open(rootId);
+            await openTab({app: this.app, doc: {id: rootId}});
         } catch (e) {
-            console.warn("[speed-switch] mobile open doc fail", e);
+            logger.warn("mobile open doc fail (path 2)", e);
+            showMessage(this.i18n.openDocFailed);
         }
     }
 
@@ -3736,7 +3778,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.refreshSidebar();
             }
         } catch (e) {
-            console.warn("[speed-switch] toggle sidebar fail", e);
+            logger.warn("toggle sidebar fail", e);
         }
     }
 

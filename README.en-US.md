@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.2-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,13 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.2 (2026-09-04)
+
+- **Type-safety refactor**: added `src/types.ts` with a single home for all inferred types of SiYuan global objects (`window.siyuan`), lazily-mounted Protyle models, the MobileTabs API, layout docks, etc.; added the `getSiyuan()` helper so every `(window as any).siyuan` in business code is gone. The 23 `(saved as any).xxx` accesses inside `getSettings()` collapsed into one `as Partial<ISwSettings>` overall cast. Real `as any` usage dropped from 44 occurrences to 0 (remaining 6 are TS-recommended `as unknown as X` double-step narrowing).
+- **Structured logger**: added `src/logger.ts`; all 21 `console.warn("[speed-switch] xxx fail", e)` calls now go through `logger.warn(...)` with a unified `[speed-switch]` prefix and one `ENABLED` switch; `error/info/debug` are exposed too for future use.
+- **`mobileOpenDoc` three-path fallback**: the previous `// TODO: Mobile` placeholder is now a complete chain — call `MobileTabs.open(rootId)` first, poll `activeTabID` after 300ms to confirm the switch took effect; on no change fall back to `plugin.openTab({app, doc})`; if both fail show a user-friendly message via the new i18n key `openDocFailed` (added in both `zh-CN` and `en`).
+- **Refactor details**: `(this as any).element` inside dock callbacks now goes through the strongly-typed `IDockHandlerSelf`; the custom `__swThumbObserver` property hung on `HTMLElement` is now held via a module-level `WeakMap`, eliminating invasive element property assignment. No user-visible UI change.
 
 ### v0.15.1 (2026-09-04)
 

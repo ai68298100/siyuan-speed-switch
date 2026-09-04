@@ -106,5 +106,6 @@
   "notebookLoading": "Loading notebooks…",
   "notebookPlaceholder": "Select a notebook",
   "journalNoNotebook": "No available notebooks. Create or open one in SiYuan first.",
-  "journalFailed": "Failed to open the journal. Check the default notebook setting."
+  "journalFailed": "Failed to open the journal. Check the default notebook setting.",
+  "openDocFailed": "Failed to open the document. Please try again later."
 }
