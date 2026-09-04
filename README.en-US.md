@@ -75,6 +75,14 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.7.0 (2026-09-04)
+
+- **Mobile support**: floating action button (FAB, toggleable in settings), full-screen tab switcher with bottom-sheet favorites, responsive card layout (single column / two columns / auto).
+- Mobile settings: FAB toggle, card layout selector (single/double/auto); all settings, favorite groups, and content sync via plugin-level storage — works with SiYuan's built-in sync to keep mobile and desktop in sync.
+- **Bottom-sheet favorites**: on mobile, tapping the star button opens a bottom sheet that lists favorites by group, touch-friendly.
+- Optimized mobile card styling: more compact thumbnails, always-visible action buttons, ≥44px touch targets.
+- Compatible with SiYuan on Android/iOS/HarmonyOS; uses CSS variables for automatic theme adaptation.
+
 ### v0.6.1 (2026-09-04)
 
 - Fixed the `backends` manifest field (`all` no longer mixed with concrete platforms) to pass the SiYuan bazaar listing check.

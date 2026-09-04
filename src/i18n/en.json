@@ -61,5 +61,15 @@
   "openSidebar": "Sidebar mode",
   "docSearchResults": "Workspace documents",
   "noDocResults": "No matching documents found",
-  "backTop": "Back to top"
+  "backTop": "Back to top",
+  "secMobile": "Mobile",
+  "fabEnabled": "Floating button",
+  "fabEnabledTip": "Show a floating action button on the bottom-right of the mobile screen to open the tab switcher",
+  "mobileLayout": "Card layout",
+  "mobileLayoutTip": "Arrangement of tab cards on mobile",
+  "mobileSingle": "Single column",
+  "mobileDouble": "Two columns",
+  "mobileAuto": "Auto (portrait single, landscape double)",
+  "mobileFavTitle": "Favorites",
+  "mobileNoFav": "No favorites yet. Star a tab from the switcher to add it here."
 }

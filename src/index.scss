@@ -942,5 +942,373 @@
                 }
             }
         }
+
+        // ==================== 手机端切换器弹窗内部样式 ====================
+        &.sw__mobile {
+            // 手机端工具栏：搜索框 + 操作按钮紧凑排列，纵向堆叠
+            .sw__mobile-toolbar {
+                flex: none;
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                padding: 8px 12px;
+                border-bottom: 1px solid var(--b3-border-color);
+
+                .sw__search-wrap {
+                    width: 100%;
+                }
+
+                .sw__mobile-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    width: 100%;
+
+                    .sw__sort {
+                        flex: 1;
+                        height: 32px;
+                        min-width: 0;
+                        border: 1px solid var(--b3-border-color);
+                        background: transparent;
+                        color: var(--b3-theme-on-background);
+                        border-radius: 6px;
+                        font-size: 13px;
+                    }
+
+                    .sw__mobile-fav-btn {
+                        flex: none;
+                        width: 36px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border: 1px solid var(--b3-border-color);
+                        border-radius: 6px;
+                        background: transparent;
+                        color: var(--b3-theme-on-surface);
+                        cursor: pointer;
+                        -webkit-tap-highlight-color: transparent;
+
+                        svg {
+                            width: 16px;
+                            height: 16px;
+                        }
+
+                        &:active {
+                            color: var(--b3-theme-primary);
+                            border-color: var(--b3-theme-primary);
+                        }
+                    }
+
+                    .sw__settings-btn {
+                        flex: none;
+                        width: 36px;
+                        height: 32px;
+                    }
+                }
+            }
+
+            // 手机端网格：默认单列，双列模式双列，自动模式竖屏单列横屏双列
+            .sw__mobile-grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 10px;
+
+                &.sw__mobile-grid--double {
+                    grid-template-columns: 1fr 1fr;
+                }
+
+                &.sw__mobile-grid--auto {
+                    grid-template-columns: 1fr;
+
+                    @media (min-width: 480px) and (orientation: landscape) {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                }
+            }
+
+            // 手机端卡片：缩略图更紧凑，卡片间距更小
+            .sw__mobile-card {
+                border-radius: 8px;
+                border: 1px solid var(--b3-border-color);
+                overflow: hidden;
+                cursor: pointer;
+                transition: border-color 0.15s;
+                display: flex;
+                flex-direction: column;
+                -webkit-tap-highlight-color: transparent;
+                position: relative;
+
+                &:active {
+                    border-color: var(--b3-theme-primary);
+                }
+
+                &.sw__active {
+                    border-color: var(--b3-theme-primary);
+                    box-shadow: 0 0 0 1px var(--b3-theme-primary);
+                }
+
+                &.sw__pinned::before {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    bottom: 0;
+                    width: 3px;
+                    background-color: var(--b3-theme-primary);
+                    z-index: 1;
+                }
+
+                // 手机端操作按钮：始终显示，更大触控区域
+                .sw__pin,
+                .sw__fav-btn,
+                .sw__close {
+                    position: absolute;
+                    top: 6px;
+                    width: 28px;
+                    height: 28px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: color-mix(in srgb, var(--b3-theme-background) 80%, transparent);
+                    -webkit-backdrop-filter: blur(4px);
+                    backdrop-filter: blur(4px);
+                    border: none;
+                    border-radius: 50%;
+                    color: var(--b3-theme-on-surface);
+                    z-index: 2;
+                    cursor: pointer;
+                    -webkit-tap-highlight-color: transparent;
+
+                    svg {
+                        width: 15px;
+                        height: 15px;
+                    }
+
+                    &:active {
+                        color: var(--b3-theme-primary);
+                        background: var(--b3-theme-surface);
+                    }
+                }
+
+                .sw__pin { left: 6px; }
+                .sw__fav-btn { left: 36px; }
+                .sw__close { right: 6px; }
+
+                &.sw__pinned .sw__pin {
+                    display: flex;
+                    color: var(--b3-theme-primary);
+                }
+                &.sw__faved .sw__fav-btn {
+                    display: flex;
+                    color: var(--b3-theme-primary);
+                    svg { --b3-icon-star-fill: currentColor; }
+                }
+
+                .sw__pin, .sw__fav-btn, .sw__close {
+                    display: flex;
+                }
+
+                // 手机端缩略图和元信息更紧凑
+                .sw__thumb {
+                    height: var(--sw-thumb-height, 80px);
+                    border-bottom: 1px solid var(--b3-border-color);
+
+                    .sw__thumb-loading .sw__spin {
+                        width: 16px;
+                        height: 16px;
+                    }
+                }
+
+                .sw__meta {
+                    padding: 4px 8px;
+                    font-size: 12px;
+                    gap: 4px;
+
+                    .sw__icon svg {
+                        width: 12px;
+                        height: 12px;
+                    }
+                    .sw__icon.sw__icon-emoji {
+                        font-size: 12px;
+                    }
+                }
+            }
+
+            // 手机端滚动区：减少内边距
+            .sw__scroll {
+                padding: 8px 10px 12px;
+            }
+        }
+    }
+}
+
+// ==================== 手机端全局样式（直接挂载到 document.body） ====================
+
+// 悬浮按钮（FAB）
+.sw__fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--b3-theme-primary);
+    color: var(--b3-theme-on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12);
+    z-index: 999;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+
+    svg {
+        width: 24px;
+        height: 24px;
+        color: var(--b3-theme-on-primary);
+    }
+
+    &:active {
+        transform: scale(0.92);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    &.sw__fab--hidden {
+        opacity: 0;
+        transform: scale(0.7) translateY(10px);
+        pointer-events: none;
+    }
+}
+
+// 收藏底部弹窗遮罩
+.sw__mobile-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+// 收藏底部弹窗
+.sw__mobile-sheet {
+    width: 100%;
+    max-width: 100%;
+    max-height: 65vh;
+    background: var(--b3-theme-surface);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.25s ease;
+    overflow: hidden;
+
+    &.sw__mobile-sheet--open {
+        transform: translateY(0);
+    }
+
+    .sw__mobile-sheet-handle {
+        flex: none;
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--b3-theme-on-surface-light);
+        opacity: 0.3;
+        margin: 8px auto 4px;
+    }
+
+    .sw__mobile-sheet-title {
+        flex: none;
+        padding: 8px 16px 6px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--b3-theme-on-background);
+        text-align: center;
+    }
+
+    .sw__mobile-sheet-body {
+        flex: 1;
+        overflow: auto;
+        padding: 4px 0 12px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .sw__mobile-sheet-section + .sw__mobile-sheet-section {
+        border-top: 1px solid var(--b3-border-color);
+        margin-top: 4px;
+        padding-top: 4px;
+    }
+
+    .sw__mobile-sheet-section-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .sw__mobile-sheet-count {
+        flex: none;
+        min-width: 16px;
+        padding: 0 4px;
+        border-radius: 8px;
+        background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
+        font-size: 10px;
+        line-height: 16px;
+        text-align: center;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .sw__mobile-sheet-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sw__mobile-sheet-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        font-size: 14px;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        min-height: 44px;
+
+        svg {
+            width: 16px;
+            height: 16px;
+            flex: none;
+            color: var(--b3-theme-on-surface-light);
+        }
+
+        span {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        &:active {
+            background: var(--b3-list-hover);
+        }
+    }
+
+    .sw__mobile-sheet-empty {
+        padding: 32px 16px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--b3-theme-on-surface-light);
     }
 }

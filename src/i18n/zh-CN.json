@@ -61,5 +61,15 @@
   "openSidebar": "侧边栏模式",
   "docSearchResults": "全库文档",
   "noDocResults": "未找到匹配的文档",
-  "backTop": "回到顶部"
+  "backTop": "回到顶部",
+  "secMobile": "手机端",
+  "fabEnabled": "启用悬浮按钮",
+  "fabEnabledTip": "在手机屏幕右下角显示一个悬浮按钮，轻触即可打开页签切换器",
+  "mobileLayout": "卡片布局",
+  "mobileLayoutTip": "手机端页签卡片的排列方式",
+  "mobileSingle": "单列",
+  "mobileDouble": "双列",
+  "mobileAuto": "自动（竖屏单列，横屏双列）",
+  "mobileFavTitle": "收藏页签",
+  "mobileNoFav": "暂无收藏，可在页签上点击星标收藏"
 }

@@ -20,6 +20,9 @@ const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px）�
 const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量，避免一次克隆大量 DOM 卡住界面
 const THUMB_CACHE_MAX = 40;          // 缓存最多保留的文档数（超出按最旧淘汰）
 const THUMB_HTML_MAX = 200 * 1024;   // 单条缓存 HTML 上限，避免持久化文件膨胀
+const THUMB_BATCH_MOBILE = 2;        // 手机端并发渲染数（性能更弱）
+const THUMB_CACHE_MAX_MOBILE = 20;   // 手机端缓存上限
+const THUMB_HTML_MAX_MOBILE = 80 * 1024; // 手机端单条缓存上限
 // 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
 // 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
 const DEFAULT_HOTKEY = "⌥⇧S";
@@ -33,6 +36,9 @@ const DEFAULT_SETTINGS: ISwSettings = {
     thumbHeight: 128,      // 缩略图高度 px
     sortBy: "mru",         // 页签排序方式
     excludedDocks: [],     // 不显示在左侧列表的面板类型
+    fabEnabled: true,      // 手机端悬浮按钮默认开启
+    mobileColumns: 0,      // 0=单列
+    mobileThumbHeight: 80, // 手机端缩略图高度
 };
 
 interface ISwSettings {
@@ -42,6 +48,10 @@ interface ISwSettings {
     thumbHeight: number;
     sortBy: SortBy;
     excludedDocks: string[];
+    // 手机端
+    fabEnabled: boolean;       // 是否启用悬浮按钮
+    mobileColumns: number;     // 0=单列 1=双列 2=自动
+    mobileThumbHeight: number; // 手机端缩略图高度
 }
 
 interface IGroupedTab {
@@ -77,6 +87,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private sidebarResizeObserver: ResizeObserver | null = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
     private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
+    private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -104,27 +115,34 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // 注册侧边栏 dock 面板：与切换器同样的卡片列表，常驻侧边栏便于快速切换
         const self = this;
-        this.addDock({
-            config: {
-                position: "RightBottom",
-                size: {width: 340, height: 0},
-                icon: "iconLayout",
-                title: this.i18n.switchTabs,
-                show: false,
-            },
-            data: {},
-            type: SIDEBAR_DOCK_TYPE,
-            init() {
-                self.renderSidebarPanel((this as any).element as HTMLElement);
-            },
-            resize() {
-                // 面板尺寸变化时仅重算缩略图缩放比例，不重建列表（避免闪烁与滚动位置丢失）
-                const element = (this as any).element as HTMLElement;
-                if (element?.isConnected) {
-                    self.rescaleThumbs(element);
-                }
-            },
-        });
+        if (!this.isMobile) {
+            this.addDock({
+                config: {
+                    position: "RightBottom",
+                    size: {width: 340, height: 0},
+                    icon: "iconLayout",
+                    title: this.i18n.switchTabs,
+                    show: false,
+                },
+                data: {},
+                type: SIDEBAR_DOCK_TYPE,
+                init() {
+                    self.renderSidebarPanel((this as any).element as HTMLElement);
+                },
+                resize() {
+                    // 面板尺寸变化时仅重算缩略图缩放比例，不重建列表（避免闪烁与滚动位置丢失）
+                    const element = (this as any).element as HTMLElement;
+                    if (element?.isConnected) {
+                        self.rescaleThumbs(element);
+                    }
+                },
+            });
+        }
+
+        // 手机端初始化悬浮按钮
+        if (this.isMobile) {
+            this.updateFABVisibility();
+        }
 
         // 文档切换时仅更新侧边栏卡片高亮（高频事件，避免整列表重建导致闪烁与滚动位置丢失）
         this.eventBus.on("switch-protyle", () => this.refreshSidebarActive());
@@ -150,6 +168,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarResizeObserver = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
         this.sidebarElement = null;
+        this.fabElement?.remove();
+        this.fabElement = null;
     }
 
     // ==================== 持久化性能 ====================
@@ -207,6 +227,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             excludedDocks: Array.isArray((saved as any).excludedDocks)
                 ? (saved as any).excludedDocks.filter((t: any) => typeof t === "string")
                 : [],
+            fabEnabled: typeof (saved as any).fabEnabled === "boolean"
+                ? (saved as any).fabEnabled : DEFAULT_SETTINGS.fabEnabled,
+            mobileColumns: this.clampNum((saved as any).mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
+            mobileThumbHeight: this.clampNum((saved as any).mobileThumbHeight, 48, 200, DEFAULT_SETTINGS.mobileThumbHeight),
         };
     }
 
@@ -546,6 +570,45 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
+        // ===== 手机端 =====
+        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secMobile}</span>`});
+
+        setting.addItem({
+            title: this.i18n.fabEnabled,
+            description: this.i18n.fabEnabledTip,
+            createActionElement: () => {
+                const label = document.createElement("label");
+                label.className = "b3-switch";
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.checked = s.fabEnabled;
+                input.addEventListener("change", () => {
+                    this.updateSettings({fabEnabled: input.checked});
+                    this.updateFABVisibility();
+                });
+                label.appendChild(input);
+                label.appendChild(document.createElement("span"));
+                return label;
+            },
+        });
+
+        setting.addItem({
+            title: this.i18n.mobileLayout,
+            description: this.i18n.mobileLayoutTip,
+            createActionElement: () => {
+                const select = document.createElement("select");
+                select.className = "b3-select";
+                select.appendChild(new Option(this.i18n.mobileSingle, "0"));
+                select.appendChild(new Option(this.i18n.mobileDouble, "1"));
+                select.appendChild(new Option(this.i18n.mobileAuto, "2"));
+                select.value = String(s.mobileColumns);
+                select.addEventListener("change", () => {
+                    this.updateSettings({mobileColumns: parseInt(select.value, 10)});
+                });
+                return select;
+            },
+        });
+
         setting.open(this.i18n.settings);
     }
 
@@ -553,9 +616,9 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 打开页签切换器
     private showSwitcher() {
-        // 移动端不支持 centerLayout，页签切换在移动端无意义，直接提示后返回
+        // 手机端走独立适配
         if (this.isMobile) {
-            alert(this.i18n.switchTabs + ": " + this.i18n.noOpenedTabs);
+            this.showMobileSwitcher();
             return;
         }
 
@@ -2089,6 +2152,339 @@ export default class SpeedSwitchPlugin extends Plugin {
             console.warn("[speed-switch] switch tab fail", e);
         }
         onClose?.();
+    }
+
+    // ==================== 手机端 ====================
+
+    // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作
+    private showMobileSwitcher() {
+        const tabs = getAllTabs();
+        if (tabs.length === 0) {
+            alert(this.i18n.noOpenedTabs);
+            return;
+        }
+
+        const settings = this.getSettings();
+        const activeTab = this.getActiveTab();
+
+        const dialog = new Dialog({
+            title: "",
+            content: `<div class="speed-switch sw__body sw__mobile">
+    <div class="sw__mobile-toolbar">
+        <div class="sw__search-wrap">
+            <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+        </div>
+        <div class="sw__mobile-actions">
+            <select class="b3-select sw__sort">
+                <option value="mru">${this.i18n.sortMru}</option>
+                <option value="layout">${this.i18n.sortLayout}</option>
+                <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
+                <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
+                <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
+                <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
+            </select>
+            <span class="b3-button b3-button--text sw__mobile-fav-btn">
+                <svg><use xlink:href="#iconStar"></use></svg>
+            </span>
+            <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn">
+                <svg><use xlink:href="#iconSettings"></use></svg>
+            </span>
+        </div>
+    </div>
+    <div class="sw__scroll" tabindex="0"></div>
+</div>`,
+            width: "92vw",
+            height: "85vh",
+        });
+
+        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
+        if (dialogBody) {
+            dialogBody.classList.add("sw-scroll-locked");
+        }
+
+        // 清理缩略图缓存中已无对应打开页签的孤儿条目
+        this.pruneThumbCache(tabs);
+
+        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
+        const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+        // 隐藏 FAB 避免遮挡弹窗
+        this.fabElement?.classList.add("sw__fab--hidden");
+
+        // 统一恢复 FAB 的函数
+        const restoreFAB = () => {
+            this.fabElement?.classList.remove("sw__fab--hidden");
+        };
+
+        const closeOverlay = () => {
+            restoreFAB();
+            dialog.destroy();
+        };
+
+        // 钩住 Dialog 的 destroy 方法，确保无论何种方式关闭（Escape/点击外部/程序调用）都恢复 FAB
+        const origDestroy = dialog.destroy.bind(dialog);
+        dialog.destroy = () => {
+            restoreFAB();
+            origDestroy();
+        };
+
+        // 设置按钮
+        dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
+            dialog.destroy();
+            this.fabElement?.classList.remove("sw__fab--hidden");
+            this.openSetting();
+        });
+
+        // 收藏按钮 → 底部弹窗
+        dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
+            this.showMobileFavSheet(dialog, closeOverlay);
+        });
+
+        sortSelect.value = settings.sortBy;
+        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: () => undefined};
+        let updatedMap: {[rootId: string]: string} = {};
+
+        const renderMobileList = () => {
+            this.renderMobileList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, sortSelect.value as SortBy, updatedMap);
+        };
+
+        renderMobileList();
+        searchInput.focus();
+
+        // 排序切换
+        sortSelect.addEventListener("change", () => {
+            this.updateSettings({sortBy: sortSelect.value as SortBy});
+            renderMobileList();
+            searchInput.value = "";
+            this.filterCards(scrollElement, searchInput.value);
+            searchInput.focus();
+        });
+
+        // 搜索
+        searchInput.addEventListener("input", () => {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        });
+
+        // 最近编辑排序
+        this.loadUpdatedMap(tabs).then((map) => {
+            updatedMap = map;
+            if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && searchInput.value.trim() === "") {
+                renderMobileList();
+            }
+        });
+    }
+
+    // 手机端渲染页签卡片列表
+    private renderMobileList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined,
+                             opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
+                             sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
+        scrollElement.innerHTML = "";
+        const settings = this.getSettings();
+        scrollElement.style.setProperty("--sw-thumb-height", `${settings.mobileThumbHeight}px`);
+
+        const activeTabId = activeTab?.id;
+        const mru = this.getMru();
+        const pinned = new Set(this.getPinned());
+        const favorites = new Set(this.getFavorites().map((item) => item.key));
+
+        // 手机端不分窗口分组，全部扁平化
+        const items: IGroupedTab[] = tabs.map((tab) => ({tab}));
+        const pinnedItems = items.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
+        const restItems = items.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
+        this.sortItems(restItems, sortBy, mru, updatedMap);
+        const ordered = [...pinnedItems, ...restItems];
+
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__group";
+
+        const grid = document.createElement("div");
+        grid.className = "sw__grid sw__mobile-grid";
+        if (settings.mobileColumns === 1) {
+            grid.classList.add("sw__mobile-grid--double");
+        } else if (settings.mobileColumns === 2) {
+            // auto: portrait=single, landscape=double (handled by CSS media query)
+            grid.classList.add("sw__mobile-grid--auto");
+        }
+
+        const all: IGroupedTab[] = [];
+        ordered.forEach((item) => {
+            const isPinned = pinned.has(this.pinKeyOf(item.tab));
+            const isFaved = favorites.has(this.pinKeyOf(item.tab));
+            const card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
+                onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
+                onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
+            });
+            card.classList.add("sw__mobile-card");
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+        });
+
+        groupEl.appendChild(grid);
+        scrollElement.appendChild(groupEl);
+
+        if (all.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__empty";
+            empty.textContent = this.i18n.noOpenedTabs;
+            scrollElement.appendChild(empty);
+            return;
+        }
+
+        // 手机端缩略图使用更保守的缓存限制
+        this.renderThumbnails(all, THUMB_BATCH_MOBILE);
+    }
+
+    // 手机端收藏底部弹窗
+    private showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose) {
+        const favorites = this.getFavorites();
+        const groupNames = this.getFavoriteGroupNames();
+
+        if (favorites.length === 0 && groupNames.length === 0) {
+            return;
+        }
+
+        // 构建底部弹窗
+        const overlay = document.createElement("div");
+        overlay.className = "sw__mobile-sheet-overlay";
+        overlay.innerHTML = `<div class="sw__mobile-sheet">
+    <div class="sw__mobile-sheet-handle"></div>
+    <div class="sw__mobile-sheet-title">${this.i18n.mobileFavTitle}</div>
+    <div class="sw__mobile-sheet-body"></div>
+</div>`;
+        document.body.appendChild(overlay);
+
+        const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
+        const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
+
+        // 渲染收藏内容（复用分组逻辑）
+        const groups = new Map<string, IFavoriteItem[]>();
+        groupNames.forEach((name) => groups.set(name, []));
+        favorites.forEach((fav) => {
+            const name = fav.group || "";
+            if (!groups.has(name)) {
+                groups.set(name, []);
+            }
+            groups.get(name)!.push(fav);
+        });
+
+        const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
+        const ungrouped = groups.get("") || [];
+
+        if (groupedNames.length === 0) {
+            const list = document.createElement("div");
+            list.className = "sw__mobile-sheet-list";
+            ungrouped.forEach((fav) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__mobile-sheet-item";
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
+                item.addEventListener("click", () => {
+                    overlay.remove();
+                    this.jumpToFavorite(fav, closeOverlay);
+                });
+                list.appendChild(item);
+            });
+            body.appendChild(list);
+        } else {
+            groupedNames.forEach((name) => {
+                const items = groups.get(name) || [];
+                const section = document.createElement("div");
+                section.className = "sw__mobile-sheet-section";
+                const header = document.createElement("div");
+                header.className = "sw__mobile-sheet-section-header";
+                header.innerHTML = `<span>${this.escapeAttr(name)}</span><span class="sw__mobile-sheet-count">${items.length}</span>`;
+                section.appendChild(header);
+                const list = document.createElement("div");
+                list.className = "sw__mobile-sheet-list";
+                items.forEach((fav) => {
+                    const item = document.createElement("button");
+                    item.type = "button";
+                    item.className = "sw__mobile-sheet-item";
+                    item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
+                    item.addEventListener("click", () => {
+                        overlay.remove();
+                        this.jumpToFavorite(fav, closeOverlay);
+                    });
+                    list.appendChild(item);
+                });
+                section.appendChild(list);
+                body.appendChild(section);
+            });
+            if (ungrouped.length > 0) {
+                const section = document.createElement("div");
+                section.className = "sw__mobile-sheet-section";
+                const header = document.createElement("div");
+                header.className = "sw__mobile-sheet-section-header";
+                header.innerHTML = `<span>${this.escapeAttr(this.i18n.ungrouped)}</span><span class="sw__mobile-sheet-count">${ungrouped.length}</span>`;
+                section.appendChild(header);
+                const list = document.createElement("div");
+                list.className = "sw__mobile-sheet-list";
+                ungrouped.forEach((fav) => {
+                    const item = document.createElement("button");
+                    item.type = "button";
+                    item.className = "sw__mobile-sheet-item";
+                    item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span>${this.escapeAttr(fav.title)}</span>`;
+                    item.addEventListener("click", () => {
+                        overlay.remove();
+                        this.jumpToFavorite(fav, closeOverlay);
+                    });
+                    list.appendChild(item);
+                });
+                section.appendChild(list);
+                body.appendChild(section);
+            }
+        }
+
+        if (favorites.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__mobile-sheet-empty";
+            empty.textContent = this.i18n.mobileNoFav;
+            body.appendChild(empty);
+        }
+
+        // 动画：下一帧滑入
+        requestAnimationFrame(() => {
+            sheet.classList.add("sw__mobile-sheet--open");
+        });
+
+        // 点击背景关闭
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                sheet.classList.remove("sw__mobile-sheet--open");
+                setTimeout(() => overlay.remove(), 250);
+            }
+        });
+    }
+
+    // ==================== 手机端悬浮按钮（FAB） ====================
+
+    private createFAB() {
+        if (this.fabElement) {
+            return;
+        }
+        this.fabElement = document.createElement("div");
+        this.fabElement.className = "sw__fab";
+        this.fabElement.setAttribute("role", "button");
+        this.fabElement.setAttribute("aria-label", this.i18n.switchTabs);
+        this.fabElement.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
+        this.fabElement.addEventListener("click", () => {
+            this.showSwitcher();
+        });
+        document.body.appendChild(this.fabElement);
+    }
+
+    private updateFABVisibility() {
+        const settings = this.getSettings();
+        if (this.isMobile && settings.fabEnabled) {
+            this.createFAB();
+        } else {
+            this.fabElement?.remove();
+            this.fabElement = null;
+        }
     }
 
     // ==================== 侧边栏模式 ====================
