@@ -1,0 +1,22 @@
+# ADR-0001 · 大方法拆分
+
+- **状态**：已采纳（v0.15.4 起持续推进）
+- **背景**：`src/index.ts` 单文件类结构在 v0.13.0 时已超过 3500 行；单个方法体（`openSetting` 385 行、`renderList` 100 行、`onload` 86 行等）难以阅读、测试、调试。
+- **决策**：把 50+ 行的方法拆成 **orchestrator + helpers**：
+  - Orchestrator：10-30 行的"菜单式"调用，读者一眼能看清流程
+  - Helpers：以动词或 `buildXxx` / `bindXxx` / `appendXxx` 命名的单一职责函数
+  - 必要时引入 `IXxxRenderCtx` 接口避免 helper 形参膨胀
+- **结果（截至 v0.15.6）**：
+  - `showSwitcher` 181→22 行
+  - `showMobileSwitcher` 138→12 行
+  - `showMobileFavSheet` 151→30 行
+  - `createCard` 152→38 行
+  - `renderList` 100→44 行
+  - `renderMobileList` 74→42 行
+  - `renderSidebarPanel` 85→27 行
+  - `assembleSwitcherParts` 82→47 行
+  - `renderFavPanel` 82→31 行
+  - `openFavMenu` 73→16 行
+  - `openSetting` 385→90 行
+- **代价**：函数数量变多、调用栈加深；通过命名规范和 IDE "Go to Definition" 缓解。
+- **反模式**：不引入 `class XxxBuilder` 等包装类，避免与 TS 类体系重复；helper 一律保持类成员方法（`private`），便于访问 `this.i18n` 等。

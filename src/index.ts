@@ -3,6 +3,29 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent} from "./util";
 import {
+    SEARCH_DEBOUNCE_MS,
+    DOC_RESULT_LIMIT,
+    DOC_SEARCH_CACHE_LIMIT,
+    SAVE_DEBOUNCE_MS,
+    FAB_HIDE_DELAY_MS,
+    BACK_TOP_THRESHOLD_PX,
+    MESSAGE_DEFAULT_MS,
+    UPDATED_CACHE_MS,
+    DIALOG_WIDTH_MIN_PX,
+    DIALOG_WIDTH_MAX_PX,
+    DIALOG_HEIGHT_MIN_PX,
+    DIALOG_HEIGHT_MAX_PX,
+    THUMB_HEIGHT_MIN_PX,
+    THUMB_HEIGHT_MAX_PX,
+    MOBILE_THUMB_HEIGHT_MIN_PX,
+    MOBILE_THUMB_HEIGHT_MAX_PX,
+    COLUMNS_MIN,
+    COLUMNS_MAX,
+    MOBILE_COLUMNS_MIN,
+    MOBILE_COLUMNS_MAX,
+    SIDEBAR_DEFAULT_WIDTH_PX,
+} from "./constants";
+import {
     getSiyuan,
     IMobileTabsState,
     IMobileTabsAPI,
@@ -73,7 +96,6 @@ const THUMB_HTML_MAX_MOBILE = 80 * 1024; // 手机端单条缓存上限
 const THUMB_CLONE_MAX = 30;          // 缩略图克隆块数上限：只取文档首屏内容，避免大文档整篇克隆卡顿
 const THUMB_API_MAX = 4;             // getDoc 回源并发上限（桌面端）
 const THUMB_API_MAX_MOBILE = 2;      // getDoc 回源并发上限（手机端，弱网弱机保护）
-const UPDATED_CACHE_MS = 3000;       // 「最近编辑」排序 SQL 结果的短缓存有效期
 const ROOT_ID_CACHE_MAX = 512;       // rootId 映射缓存上限（超出整体清空，页签 id 稳定重复率高）
 // 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
 // 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
@@ -169,8 +191,37 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
 
         this.fixLegacyHotkey();
+        await this.initPersistentData();
 
-        // 预加载持久化数据（loadData 会写入 this.data，之后 getMru 等才能读到旧值）
+        this.addTopBar({
+            icon: "iconLayout",
+            title: this.i18n.switchTabs,
+            position: "right",
+            callback: () => {
+                this.showSwitcher();
+            },
+        });
+
+        // 注册侧边栏 dock 面板（桌面）与手机端入口（顶栏 + FAB），互斥
+        if (!this.isMobile) {
+            this.registerDesktopDock();
+        }
+        if (this.isMobile) {
+            this.registerMobileEntries();
+        }
+
+        this.bindGlobalEvents();
+        this.addCommand({
+            langKey: "switchTabs",
+            hotkey: DEFAULT_HOTKEY,
+            callback: () => {
+                this.showSwitcher();
+            },
+        });
+    }
+
+    // 预加载 7 个持久化 key：loadData 写入 this.data，让 getMru 等能读到旧值
+    private async initPersistentData() {
         await Promise.all([
             this.loadData(MRU_KEY),
             this.loadData(PINNED_KEY),
@@ -182,54 +233,46 @@ export default class SpeedSwitchPlugin extends Plugin {
         ]).catch((e) => logger.warn("load data fail", e));
         // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
         this.initFavCollapsed();
+    }
 
-        this.addTopBar({
-            icon: "iconLayout",
-            title: this.i18n.switchTabs,
-            position: "right",
-            callback: () => {
-                this.showSwitcher();
+    // 桌面侧边栏 dock：与切换器同样的卡片列表，常驻便于快速切换；
+    // resize 只重算缩略图缩放比例，不重建列表（避免闪烁与滚动位置丢失）
+    private registerDesktopDock() {
+        const self = this;
+        this.addDock({
+            config: {
+                position: "RightBottom",
+                size: {width: SIDEBAR_DEFAULT_WIDTH_PX, height: 0},
+                icon: "iconLayout",
+                title: this.i18n.switchTabs,
+                show: false,
+            },
+            data: {},
+            type: SIDEBAR_DOCK_TYPE,
+            init() {
+                const handler = this as unknown as IDockHandlerSelf;
+                self.renderSidebarPanel(handler.element as HTMLElement);
+            },
+            resize() {
+                const handler = this as unknown as IDockHandlerSelf;
+                const element = handler.element;
+                if (element?.isConnected) {
+                    self.rescaleThumbs(element);
+                }
             },
         });
+    }
 
-        // 注册侧边栏 dock 面板：与切换器同样的卡片列表，常驻侧边栏便于快速切换
-        const self = this;
-        if (!this.isMobile) {
-            this.addDock({
-                config: {
-                    position: "RightBottom",
-                    size: {width: 340, height: 0},
-                    icon: "iconLayout",
-                    title: this.i18n.switchTabs,
-                    show: false,
-                },
-                data: {},
-                type: SIDEBAR_DOCK_TYPE,
-                init() {
-                    const handler = this as unknown as IDockHandlerSelf;
-                    self.renderSidebarPanel(handler.element as HTMLElement);
-                },
-                resize() {
-                    // 面板尺寸变化时仅重算缩略图缩放比例，不重建列表（避免闪烁与滚动位置丢失）
-                    const handler = this as unknown as IDockHandlerSelf;
-                    const element = handler.element;
-                    if (element?.isConnected) {
-                        self.rescaleThumbs(element);
-                    }
-                },
-            });
-        }
+    // 手机端入口：顶栏按钮（常驻，思源 3.8.x 不开放插件顶栏，自行插入）
+    // + 悬浮按钮（可选，设置里可关）
+    private registerMobileEntries() {
+        this.ensureMobileTopBarButton();
+        this.updateFABVisibility();
+    }
 
-        // 手机端初始化入口：顶栏按钮（常驻）+ 悬浮按钮（可选）。
-        // 思源 3.8.x 手机端不向插件开放顶栏（addTopBar 只进右侧菜单"扩展"分组，不易发现），
-        // 因此自行把入口按钮插入 mobileTopBar，保证一眼可见
-        if (this.isMobile) {
-            this.ensureMobileTopBarButton();
-            this.updateFABVisibility();
-        }
-
-        // 文档切换时仅更新侧边栏卡片高亮（高频事件，避免整列表重建导致闪烁与滚动位置丢失）；
-        // 手机端顺带确认入口按钮仍在（内核个别场景会重建顶栏 DOM）
+    // 全局事件：切换 / 打开 / 关闭页签时同步侧边栏高亮或全量刷新；
+    // 手机端顺带确认入口按钮仍在（内核个别场景会重建顶栏 DOM）
+    private bindGlobalEvents() {
         this.eventBus.on("switch-protyle", () => {
             this.refreshSidebarActive();
             if (this.isMobile) {
@@ -239,14 +282,6 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 页签增减（文档打开/关闭）时全量刷新侧边栏列表
         this.eventBus.on("loaded-protyle-static", () => this.refreshSidebar());
         this.eventBus.on("destroy-protyle", () => this.refreshSidebar());
-
-        this.addCommand({
-            langKey: "switchTabs",
-            hotkey: DEFAULT_HOTKEY,
-            callback: () => {
-                this.showSwitcher();
-            },
-        });
     }
 
     // 布局就绪后再次确认手机端入口：部分机型上 onload 执行时顶栏尚未构建完成，
@@ -291,7 +326,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.saveTimers.set(key, window.setTimeout(() => {
             this.saveTimers.delete(key);
             this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e));
-        }, 500));
+        }, SAVE_DEBOUNCE_MS));
     }
 
     // 立即落盘全部待写数据（卸载时调用，避免丢失最近一次去抖窗口内的改动）
@@ -328,10 +363,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             return {...DEFAULT_SETTINGS};
         }
         return {
-            dialogWidth: this.clampNum(saved.dialogWidth, 480, 1920, DEFAULT_SETTINGS.dialogWidth),
-            dialogHeight: this.clampNum(saved.dialogHeight, 360, 1280, DEFAULT_SETTINGS.dialogHeight),
-            columns: this.clampNum(saved.columns, 0, 8, DEFAULT_SETTINGS.columns),
-            thumbHeight: this.clampNum(saved.thumbHeight, 72, 360, DEFAULT_SETTINGS.thumbHeight),
+            dialogWidth: this.clampNum(saved.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DEFAULT_SETTINGS.dialogWidth),
+            dialogHeight: this.clampNum(saved.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, DEFAULT_SETTINGS.dialogHeight),
+            columns: this.clampNum(saved.columns, COLUMNS_MIN, COLUMNS_MAX, DEFAULT_SETTINGS.columns),
+            thumbHeight: this.clampNum(saved.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, DEFAULT_SETTINGS.thumbHeight),
             sortBy: normalizeSortBy(saved.sortBy, SORT_BY_LIST, DEFAULT_SETTINGS.sortBy) as SortBy,
             excludedDocks: Array.isArray(saved.excludedDocks)
                 ? saved.excludedDocks.filter((t) => typeof t === "string")
@@ -342,8 +377,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 ? saved.fullscreen : DEFAULT_SETTINGS.fullscreen,
             fabEnabled: typeof saved.fabEnabled === "boolean"
                 ? saved.fabEnabled : DEFAULT_SETTINGS.fabEnabled,
-            mobileColumns: this.clampNum(saved.mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
-            mobileThumbHeight: this.clampNum(saved.mobileThumbHeight, 48, 200, DEFAULT_SETTINGS.mobileThumbHeight),
+            mobileColumns: this.clampNum(saved.mobileColumns, MOBILE_COLUMNS_MIN, MOBILE_COLUMNS_MAX, DEFAULT_SETTINGS.mobileColumns),
+            mobileThumbHeight: this.clampNum(saved.mobileThumbHeight, MOBILE_THUMB_HEIGHT_MIN_PX, MOBILE_THUMB_HEIGHT_MAX_PX, DEFAULT_SETTINGS.mobileThumbHeight),
             journalNotebook: typeof saved.journalNotebook === "string"
                 ? saved.journalNotebook : DEFAULT_SETTINGS.journalNotebook,
             lastSettingsTab: typeof saved.lastSettingsTab === "string"
@@ -496,7 +531,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         const id = await this.ensureTodayJournal(notebook);
         if (!id) {
-            showMessage(this.i18n.journalFailed, 3000, "error");
+            showMessage(this.i18n.journalFailed, MESSAGE_DEFAULT_MS, "error");
             return;
         }
         if (this.isMobile) {
@@ -532,7 +567,25 @@ export default class SpeedSwitchPlugin extends Plugin {
         return new Promise((resolve) => {
             const dialog = new Dialog({
                 title: this.i18n.journalChoose,
-                content: `<div class="b3-dialog__content sw-journal-prompt">
+                content: this.buildJournalPromptHtml(),
+                width: "min(460px, 90vw)",
+            });
+            const sel = dialog.element.querySelector<HTMLSelectElement>(".sw-journal-prompt__sel > select")
+                ?? this.createJournalSelect(dialog);
+            const confirmBtn = dialog.element.querySelector<HTMLButtonElement>(".sw-journal-prompt__confirm");
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+            }
+            this.loadNotebooks().then((notebooks) => {
+                this.populateJournalNotebookSelect(sel, confirmBtn, notebooks);
+            });
+            this.bindJournalPromptEvents(dialog, sel, confirmBtn, resolve);
+        });
+    }
+
+    // 笔记本选择弹窗 HTML：提示文本 + select 占位 + 取消/确认按钮
+    private buildJournalPromptHtml(): string {
+        return `<div class="b3-dialog__content sw-journal-prompt">
     <div class="b3-label__text sw-journal-prompt__tip">${this.i18n.journalChooseTip}</div>
     <div class="sw-journal-prompt__sel"></div>
 </div>
@@ -540,52 +593,63 @@ export default class SpeedSwitchPlugin extends Plugin {
     <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
     <div class="fn__space"></div>
     <button class="b3-button b3-button--text sw-journal-prompt__confirm">${this.i18n.confirm}</button>
-</div>`,
-                width: "min(460px, 90vw)",
-            });
-            const selBox = dialog.element.querySelector<HTMLElement>(".sw-journal-prompt__sel");
-            const confirmBtn = dialog.element.querySelector<HTMLButtonElement>(".sw-journal-prompt__confirm");
-            const sel = document.createElement("select");
-            sel.className = "b3-select fn__flex-center fn__block";
+</div>`;
+    }
+
+    // select 不存在时（DOM 未找到占位 div）动态创建一个；正常情况下 HTML 里已有占位
+    private createJournalSelect(dialog: Dialog): HTMLSelectElement {
+        const sel = document.createElement("select");
+        sel.className = "b3-select fn__flex-center fn__block";
+        sel.disabled = true;
+        sel.appendChild(new Option(this.i18n.notebookLoading, ""));
+        dialog.element.querySelector(".sw-journal-prompt__sel")?.appendChild(sel);
+        return sel;
+    }
+
+    // 加载到笔记本列表后填充选项：无笔记本显示空态；否则默认选中第一项
+    private populateJournalNotebookSelect(
+        sel: HTMLSelectElement,
+        confirmBtn: HTMLButtonElement | null,
+        notebooks: Array<{id: string, name: string}>,
+    ) {
+        if (notebooks.length === 0) {
             sel.disabled = true;
-            sel.appendChild(new Option(this.i18n.notebookLoading, ""));
-            selBox?.appendChild(sel);
-            confirmBtn && (confirmBtn.disabled = true);
+            sel.innerHTML = "";
+            sel.appendChild(new Option(this.i18n.journalNoNotebook, ""));
+            return;
+        }
+        sel.disabled = false;
+        sel.innerHTML = "";
+        notebooks.forEach((nb) => {
+            const opt = new Option(nb.name, nb.id);
+            opt.title = nb.name;
+            sel.appendChild(opt);
+        });
+        sel.value = notebooks[0].id;
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+        }
+    }
 
-            this.loadNotebooks().then((notebooks) => {
-                if (notebooks.length === 0) {
-                    sel.disabled = true;
-                    sel.innerHTML = "";
-                    sel.appendChild(new Option(this.i18n.journalNoNotebook, ""));
-                    return;
-                }
-                sel.disabled = false;
-                sel.innerHTML = "";
-                notebooks.forEach((nb) => {
-                    const opt = new Option(nb.name, nb.id);
-                    opt.title = nb.name;
-                    sel.appendChild(opt);
-                });
-                sel.value = notebooks[0].id;
-                if (confirmBtn) {
-                    confirmBtn.disabled = false;
-                }
-            });
-
-            const apply = () => {
-                const picked = sel.value;
-                if (!picked) {
-                    return;
-                }
-                this.updateSettings({journalNotebook: picked});
-                dialog.destroy();
-                resolve(picked);
-            };
-            confirmBtn?.addEventListener("click", apply);
-            dialog.element.querySelector(".b3-button--cancel")?.addEventListener("click", () => {
-                dialog.destroy();
-                resolve("");
-            });
+    // 确认：写入设置 + 关闭弹窗 + resolve(id)；取消：resolve("")（调用方按空值兜底）
+    private bindJournalPromptEvents(
+        dialog: Dialog,
+        sel: HTMLSelectElement,
+        confirmBtn: HTMLButtonElement | null,
+        resolve: (id: string) => void,
+    ) {
+        confirmBtn?.addEventListener("click", () => {
+            const picked = sel.value;
+            if (!picked) {
+                return;
+            }
+            this.updateSettings({journalNotebook: picked});
+            dialog.destroy();
+            resolve(picked);
+        });
+        dialog.element.querySelector(".b3-button--cancel")?.addEventListener("click", () => {
+            dialog.destroy();
+            resolve("");
         });
     }
 
@@ -685,15 +749,15 @@ export default class SpeedSwitchPlugin extends Plugin {
         const wrapper = document.createElement("div");
         wrapper.append(
             this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
-                this.num(s.dialogWidth, 480, 1920, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
+                this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
             this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
-                this.num(s.dialogHeight, 360, 1280, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
+                this.num(s.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
             this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
                 this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
                     [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
                 ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
             this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
-                this.num(s.thumbHeight, 72, 360, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
+                this.num(s.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
         );
         return wrapper;
     }
@@ -874,80 +938,91 @@ export default class SpeedSwitchPlugin extends Plugin {
         const groupList = document.createElement("div");
         groupList.className = "sw-setting__group-list";
         groupNames.forEach((name) => {
-            const row = document.createElement("div");
-            row.className = "sw-setting__group-row";
-
-            const label = document.createElement("span");
-            label.className = "sw-setting__group-name";
-            label.textContent = name;
-            label.title = name;
-
-            const count = document.createElement("span");
-            count.className = "sw-setting__group-count";
-            count.textContent = String(favorites.filter((fav) => fav.group === name).length);
-            count.title = this.i18n.groupCountTip;
-
-            // 重命名：行内切换为输入框，确认后整组迁移
-            const renameBtn = document.createElement("button");
-            renameBtn.type = "button";
-            renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
-            renameBtn.textContent = this.i18n.rename;
-            renameBtn.addEventListener("click", () => {
-                row.innerHTML = "";
-                const input = document.createElement("input");
-                input.className = "b3-text-field";
-                input.value = name;
-                const okBtn = document.createElement("button");
-                okBtn.type = "button";
-                okBtn.className = "b3-button b3-button--small b3-button--text";
-                okBtn.textContent = this.i18n.confirm;
-                const cancelBtn = document.createElement("button");
-                cancelBtn.type = "button";
-                cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
-                cancelBtn.textContent = this.i18n.cancel;
-                const apply = () => {
-                    const to = input.value.trim();
-                    if (to && to !== name) {
-                        this.renameFavoriteGroup(name, to);
-                    }
-                    render();
-                };
-                okBtn.addEventListener("click", apply);
-                input.addEventListener("keydown", (event) => {
-                    if (event.key === "Enter") {
-                        event.preventDefault();
-                        apply();
-                    } else if (event.key === "Escape") {
-                        render();
-                    }
-                });
-                cancelBtn.addEventListener("click", () => render());
-                row.appendChild(input);
-                row.appendChild(okBtn);
-                row.appendChild(cancelBtn);
-                input.focus();
-                input.select();
-            });
-
-            // 删除分组：组内收藏项移出到未分组
-            const deleteBtn = document.createElement("button");
-            deleteBtn.type = "button";
-            deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
-            deleteBtn.textContent = this.i18n.deleteGroup;
-            deleteBtn.addEventListener("click", () => {
-                if (confirm(this.i18n.deleteGroupConfirm)) {
-                    this.deleteFavoriteGroup(name);
-                    render();
-                }
-            });
-
-            row.appendChild(label);
-            row.appendChild(count);
-            row.appendChild(renameBtn);
-            row.appendChild(deleteBtn);
-            groupList.appendChild(row);
+            const count = favorites.filter((fav) => fav.group === name).length;
+            groupList.appendChild(this.buildFavGroupRow(name, count, render));
         });
         return groupList;
+    }
+
+    // 单个分组行：名称 + 收藏数 + 重命名按钮 + 删除按钮
+    private buildFavGroupRow(name: string, count: number, render: () => void): HTMLElement {
+        const row = document.createElement("div");
+        row.className = "sw-setting__group-row";
+
+        const label = document.createElement("span");
+        label.className = "sw-setting__group-name";
+        label.textContent = name;
+        label.title = name;
+
+        const countEl = document.createElement("span");
+        countEl.className = "sw-setting__group-count";
+        countEl.textContent = String(count);
+        countEl.title = this.i18n.groupCountTip;
+
+        // 重命名：行内切换为输入框，确认后整组迁移
+        const renameBtn = document.createElement("button");
+        renameBtn.type = "button";
+        renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
+        renameBtn.textContent = this.i18n.rename;
+        renameBtn.addEventListener("click", () => {
+            this.replaceFavGroupRowWithRenameControls(row, name, render);
+        });
+
+        // 删除分组：组内收藏项移出到未分组
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
+        deleteBtn.textContent = this.i18n.deleteGroup;
+        deleteBtn.addEventListener("click", () => {
+            if (confirm(this.i18n.deleteGroupConfirm)) {
+                this.deleteFavoriteGroup(name);
+                render();
+            }
+        });
+
+        row.appendChild(label);
+        row.appendChild(countEl);
+        row.appendChild(renameBtn);
+        row.appendChild(deleteBtn);
+        return row;
+    }
+
+    // 行内重命名 UI：清空行内容 → 输入框 + 确认/取消按钮 + 事件绑定
+    private replaceFavGroupRowWithRenameControls(row: HTMLElement, name: string, render: () => void) {
+        row.innerHTML = "";
+        const input = document.createElement("input");
+        input.className = "b3-text-field";
+        input.value = name;
+        const okBtn = document.createElement("button");
+        okBtn.type = "button";
+        okBtn.className = "b3-button b3-button--small b3-button--text";
+        okBtn.textContent = this.i18n.confirm;
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
+        cancelBtn.textContent = this.i18n.cancel;
+        const apply = () => {
+            const to = input.value.trim();
+            if (to && to !== name) {
+                this.renameFavoriteGroup(name, to);
+            }
+            render();
+        };
+        okBtn.addEventListener("click", apply);
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                apply();
+            } else if (event.key === "Escape") {
+                render();
+            }
+        });
+        cancelBtn.addEventListener("click", () => render());
+        row.appendChild(input);
+        row.appendChild(okBtn);
+        row.appendChild(cancelBtn);
+        input.focus();
+        input.select();
     }
 
     // 收藏项列表：每行标题 + 分组下拉（改动即保存）；无收藏时追加空态
@@ -1173,7 +1248,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         scrollElement.addEventListener("scroll", () => {
-            backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
+            backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= BACK_TOP_THRESHOLD_PX);
         });
         backTopBtn.addEventListener("click", () => {
             scrollElement.scrollTo({top: 0, behavior: "smooth"});
@@ -1258,83 +1333,73 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 命中缓存直接渲染（已打开文档在渲染时排除，缓存结果可安全复用）
         const cached = this.docSearchCache.get(keyword);
         if (cached) {
-            this.renderDocResults(scrollElement, cached.slice(0, 12), onClose);
+            this.renderDocResults(scrollElement, cached.slice(0, DOC_RESULT_LIMIT), onClose);
             return;
         }
         // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核
         const seq = ++this.searchSeq;
-        window.setTimeout(async () => {
-            // 期间关键词已变化或容器已销毁则放弃本次结果
+        window.setTimeout(() => {
+            this.runDocSearchFetch(scrollElement, searchInput, keyword, seq, onClose);
+        }, SEARCH_DEBOUNCE_MS);
+    }
+
+    // 全库文档搜索远程请求：带取消、防过期、AbortController 复用 searchSeq
+    private async runDocSearchFetch(
+        scrollElement: HTMLElement,
+        searchInput: HTMLInputElement,
+        keyword: string,
+        seq: number,
+        onClose: IOverlayClose,
+    ) {
+        // 期间关键词已变化或容器已销毁则放弃本次结果
+        if (seq !== this.searchSeq || !scrollElement.isConnected) {
+            return;
+        }
+        if (searchInput.value.trim() === "") {
+            this.renderDocResults(scrollElement, null, onClose);
+            return;
+        }
+        try {
+            // 取消上一次仍在进行的请求，避免过期请求占用内核
+            this.docSearchAbort?.abort();
+            const controller = new AbortController();
+            this.docSearchAbort = controller;
+            const response = await fetch("/api/filetree/searchDocs", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({k: keyword}),
+                signal: controller.signal,
+            });
+            const json = await response.json();
             if (seq !== this.searchSeq || !scrollElement.isConnected) {
                 return;
             }
-            if (searchInput.value.trim() === "") {
-                this.renderDocResults(scrollElement, null, onClose);
-                return;
+            const docs: any[] = Array.isArray(json?.data) ? json.data : [];
+            // 简单容量控制：超 50 条整体清空（关键词极少复现，无需严格 LRU）
+            if (this.docSearchCache.size > DOC_SEARCH_CACHE_LIMIT) {
+                this.docSearchCache.clear();
             }
-            try {
-                // 取消上一次仍在进行的请求，避免过期请求占用内核
-                this.docSearchAbort?.abort();
-                const controller = new AbortController();
-                this.docSearchAbort = controller;
-                const response = await fetch("/api/filetree/searchDocs", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({k: keyword}),
-                    signal: controller.signal,
-                });
-                const json = await response.json();
-                if (seq !== this.searchSeq || !scrollElement.isConnected) {
-                    return;
-                }
-                const docs: any[] = Array.isArray(json?.data) ? json.data : [];
-                // 简单容量控制：超 50 条整体清空（关键词极少复现，无需严格 LRU）
-                if (this.docSearchCache.size > 50) {
-                    this.docSearchCache.clear();
-                }
-                this.docSearchCache.set(keyword, docs);
-                this.renderDocResults(scrollElement, docs.slice(0, 12), onClose);
-            } catch (e) {
-                // 主动取消的请求不算异常
-                if ((e as DOMException)?.name !== "AbortError") {
-                    logger.warn("search docs fail", e);
-                }
+            this.docSearchCache.set(keyword, docs);
+            this.renderDocResults(scrollElement, docs.slice(0, DOC_RESULT_LIMIT), onClose);
+        } catch (e) {
+            // 主动取消的请求不算异常
+            if ((e as DOMException)?.name !== "AbortError") {
+                logger.warn("search docs fail", e);
             }
-        }, 180);
+        }
     }
 
     // 渲染全库文档搜索结果分组（docs 为 null 表示隐藏）；已打开的文档不再重复列出
     private renderDocResults(scrollElement: HTMLElement, docs: any[] | null, onClose: IOverlayClose) {
-        let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
-        if (docs === null) {
-            box?.remove();
+        const box = this.ensureDocResultsBox(scrollElement, docs);
+        if (!box) {
             return;
         }
-        if (!box) {
-            box = document.createElement("div");
-            box.className = "sw__doc-results sw__group";
-            scrollElement.appendChild(box);
-        }
-        // 兜底移除可能残留的隐藏类（历史 bug 防御），确保文档区始终可见
-        box.classList.remove("fn__none");
-        box.innerHTML = "";
-
-        const label = document.createElement("div");
-        label.className = "sw__window-label";
-        label.textContent = this.i18n.docSearchResults;
-        box.appendChild(label);
-
         // 排除当前已打开的文档（上半部分已有对应卡片）；手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
-        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
-        const openRootIds = new Set(
-            opened.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
-        );
+        const openRootIds = this.collectOpenRootIds();
 
         if (docs.length === 0) {
-            const empty = document.createElement("div");
-            empty.className = "sw__empty";
-            empty.textContent = this.i18n.noDocResults;
-            box.appendChild(empty);
+            this.appendDocResultsEmpty(box);
             return;
         }
 
@@ -1344,35 +1409,79 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (!id || openRootIds.has(id)) {
                 return;
             }
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "sw__doc-item";
-            const icon = document.createElement("span");
-            icon.className = "sw__dock-icon";
-            icon.innerHTML = '<svg><use xlink:href="#iconFile"></use></svg>';
-            const title = document.createElement("span");
-            title.className = "sw__doc-title";
-            title.textContent = String(doc.hPath || "").split("/").pop() || "";
-            const path = document.createElement("span");
-            path.className = "sw__doc-path";
-            path.textContent = doc.hPath || "";
-            item.appendChild(icon);
-            item.appendChild(title);
-            item.appendChild(path);
-            item.addEventListener("click", () => {
-                onClose();
-                if (this.isMobile) {
-                    // openTab 在手机端是空实现，走 MobileTabs.open
-                    this.mobileOpenDoc(id);
-                } else {
-                    openTab({
-                        app: this.app,
-                        doc: {id},
-                    });
-                }
-            });
-            box!.appendChild(item);
+            box.appendChild(this.buildDocResultItem(doc, id, onClose));
         });
+    }
+
+    // 复用现有 .sw__doc-results 容器；docs===null 时直接移除并返回 null
+    private ensureDocResultsBox(scrollElement: HTMLElement, docs: any[] | null): HTMLElement | null {
+        let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
+        if (docs === null) {
+            box?.remove();
+            return null;
+        }
+        if (!box) {
+            box = document.createElement("div");
+            box.className = "sw__doc-results sw__group";
+            scrollElement.appendChild(box);
+        }
+        // 兜底移除可能残留的隐藏类（历史 bug 防御），确保文档区始终可见
+        box.classList.remove("fn__none");
+
+        const label = document.createElement("div");
+        label.className = "sw__window-label";
+        label.textContent = this.i18n.docSearchResults;
+        box.innerHTML = "";
+        box.appendChild(label);
+        return box;
+    }
+
+    // 当前已打开页签的 rootId 集合（去重）；手机端走 MobileTabs，桌面端走 getAllTabs
+    private collectOpenRootIds(): Set<string> {
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        return new Set(
+            opened.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
+        );
+    }
+
+    // 空态：无可显示的搜索结果
+    private appendDocResultsEmpty(box: HTMLElement) {
+        const empty = document.createElement("div");
+        empty.className = "sw__empty";
+        empty.textContent = this.i18n.noDocResults;
+        box.appendChild(empty);
+    }
+
+    // 单个文档搜索结果按钮（图标 + 标题 + 路径）；点击直开文档（手机端走 MobileTabs.open）
+    private buildDocResultItem(doc: any, id: string, onClose: IOverlayClose): HTMLButtonElement {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sw__doc-item";
+        const icon = document.createElement("span");
+        icon.className = "sw__dock-icon";
+        icon.innerHTML = '<svg><use xlink:href="#iconFile"></use></svg>';
+        const title = document.createElement("span");
+        title.className = "sw__doc-title";
+        title.textContent = String(doc.hPath || "").split("/").pop() || "";
+        const path = document.createElement("span");
+        path.className = "sw__doc-path";
+        path.textContent = doc.hPath || "";
+        item.appendChild(icon);
+        item.appendChild(title);
+        item.appendChild(path);
+        item.addEventListener("click", () => {
+            onClose();
+            if (this.isMobile) {
+                // openTab 在手机端是空实现，走 MobileTabs.open
+                this.mobileOpenDoc(id);
+            } else {
+                openTab({
+                    app: this.app,
+                    doc: {id},
+                });
+            }
+        });
+        return item;
     }
 
     // 「最近编辑」排序的 SQL 结果短缓存：排序方式来回切换 / 列表重渲染时不重复打内核
@@ -3721,7 +3830,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (e.target === overlay) {
                 sheet.classList.remove("sw__mobile-sheet--open");
                 overlay.style.opacity = "0";
-                setTimeout(() => overlay.remove(), 250);
+                setTimeout(() => overlay.remove(), FAB_HIDE_DELAY_MS);
             }
         });
     }
@@ -3744,7 +3853,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const closeSelf = () => {
             sheet.classList.remove("sw__mobile-sheet--open");
             overlay.style.opacity = "0";
-            setTimeout(() => overlay.remove(), 250);
+            setTimeout(() => overlay.remove(), FAB_HIDE_DELAY_MS);
         };
 
         const appendAction = (label: string, action: () => Promise<number>) => {
@@ -3982,7 +4091,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const backTopBtn = element.querySelector<HTMLElement>(".sw__back-top");
         scrollElement.addEventListener("scroll", () => {
-            backTopBtn?.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
+            backTopBtn?.classList.toggle("sw__show", scrollElement.scrollTop >= BACK_TOP_THRESHOLD_PX);
         });
         backTopBtn?.addEventListener("click", () => {
             scrollElement.scrollTo({top: 0, behavior: "smooth"});

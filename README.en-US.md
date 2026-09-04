@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.6-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,30 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.16.0 (2026-09-05)
+
+- **Architecture & docs**:
+  - README now includes `docs/architecture.svg` — a five-layer diagram (entry points → switcher main → subsystems → persistence → infrastructure).
+  - README "Development" section expanded: "How to add a setting / dock panel / sort order" with copy-pasteable code patterns.
+  - Three new ADRs in `docs/adr/`: `0001-method-splitting.md` / `0002-constants-module.md` / `0003-testing-strategy.md` — for future refactors to look back on.
+- **New `src/constants.ts`**: centralised every magic number / threshold, grouped by domain with `_MS` / `_PX` / `_MIN/MAX` naming conventions:
+  - Timing: `SEARCH_DEBOUNCE_MS` / `SAVE_DEBOUNCE_MS` / `FAB_HIDE_DELAY_MS` / `MESSAGE_DEFAULT_MS` / `UPDATED_CACHE_MS`
+  - Pixels: `DIALOG_WIDTH_MIN_PX/MAX_PX` / `DIALOG_HEIGHT_MIN_PX/MAX_PX` / `THUMB_HEIGHT_MIN_PX/MAX_PX` / `MOBILE_THUMB_HEIGHT_MIN_PX/MAX_PX` / `BACK_TOP_THRESHOLD_PX` / `SIDEBAR_DEFAULT_WIDTH_PX`
+  - Ranges: `COLUMNS_MIN/MAX` / `MOBILE_COLUMNS_MIN/MAX`
+  - `src/index.ts` updated in sync: debounce timings, UI bounds, column limits, favorites / FAB / back-top thresholds — future tweaks need only one place.
+- **5 more giant methods split** (continuing the v0.15.6 refactor streak):
+  - `onload` 83 → 25 lines — extracted `initPersistentData()` / `registerDesktopDock()` / `registerMobileEntries()` / `bindGlobalEvents()`; lifecycle phases cleanly separated.
+  - `applySearch` 56 → 22 lines — extracted `runDocSearchFetch()`; cache hit path and remote fetch path separated, easier to test timeout/cancel branches individually.
+  - `renderDocResults` 70 → 17 lines — extracted `ensureDocResultsBox()` / `collectOpenRootIds()` / `appendDocResultsEmpty()` / `buildDocResultItem()`; each helper single-responsibility.
+  - `buildSettingsFavGroupList` 79 → 16 lines — extracted `buildFavGroupRow()` / `replaceFavGroupRowWithRenameControls()`; row construction vs inline rename UI separated.
+  - `promptJournalNotebook` 60 → 16 lines — extracted `buildJournalPromptHtml()` / `createJournalSelect()` / `populateJournalNotebookSelect()` / `bindJournalPromptEvents()`; HTML / option population / event binding in three layers.
+  - Not split: `openSetting`(88) — closure-captured locals make extraction harmful; queued for next round.
+- **Tests extended**:
+  - New `tests/constants.test.cjs`: validates MIN/MAX/range self-consistency + debounce timing sanity, **3 cases / 5.7ms**.
+  - `tests/mobile-card-smoke.cjs` grew from 3 button sizes to 7 CSS invariants: 3 28×28 buttons + `.sw__icon` collapse defence + `.sw__mobile-card` present + `.sw__mobile-grid` single-column + `.sw__thumb` placeholder.
+  - `npm test` runs all in one shot — **26 cases / ~1s all green**.
+- **Quality gates**: tsc 0 errors, build OK (152 KiB package.zip), zero `console` / `debugger` / `alert` / `@ts-ignore` residuals, the only `as any` occurrence is in a comment (not code).
 
 ### v0.15.6 (2026-09-04)
 
@@ -336,18 +360,84 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 </details>
 
+## 🏗️ Architecture
+
+<p align="center"><img src="docs/architecture.svg" width="720" alt="LvSpeed Switch architecture"/></p>
+
+The plugin is organized into 5 layers with clear responsibilities and strictly downward dependencies:
+
+| Layer | Entry file / class | Responsibility |
+| --- | --- | --- |
+| Entry points | `index.ts → onload` | Top-bar button, sidebar dock, command-palette shortcut, mobile FAB |
+| Switcher main | `showSwitcher` / `showMobileSwitcher` / `renderSidebarPanel` | Three switch entry modes (dialog / sidebar / fullscreen) unified |
+| Subsystems | `renderList` / `applySearch` / `openFavMenu` / `promptJournalNotebook` / `openSetting` | Card rendering, search, favorites, journal, settings |
+| Persistence | `loadData` / `saveDataDebounced` (this.data) | 7 storage keys read/write (500ms debounced) |
+| Infrastructure | `util.js` / `types.ts` / `constants.ts` / `logger.ts` | Pure functions, TS types, constants, structured logging |
+
+**Pure functions first**: any logic that can escape `this` (clamping, sorting, grouping, icon parsing, tab tree) is extracted to `src/util.js` and covered by `node:test` (23 cases). `src/constants.ts` centralises every threshold (debounce duration, cache caps, UI bounds).
+
+**Test matrix** (`npm test` runs all in one shot):
+
+| File | Scope | Cases |
+| --- | --- | --- |
+| `tests/util.test.cjs` | 6 `util.js` pure functions | 23 |
+| `tests/constants.test.cjs` | Constant MIN/MAX/range sanity | 3 |
+| `tests/mobile-card-smoke.cjs` | Mobile card UI rendering + 7 CSS invariants (jsdom) | 7 |
+
 ## Development
 
+### Quick commands
+
 ```bash
-# Install dependencies
-pnpm install
-# Dev watch
-pnpm dev
-# Production build → dist/* + package.zip
-pnpm build
+pnpm install      # install deps
+pnpm dev          # dev watch (outputs dev dist/)
+pnpm build        # production build → dist/* + package.zip
+pnpm test         # unit + constant tests
+npm run test:smoke # mobile UI smoke test (requires `pnpm build` first)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
+
+### How to add a new setting
+
+1. **`src/types.ts`** — add the field + default to `ISwSettings`:
+   ```ts
+   export interface ISwSettings {
+       myNewOption: boolean;     // new field
+       // ...
+   }
+   ```
+
+2. **`src/constants.ts`** — add bounds (`MY_NEW_MIN` / `MY_NEW_MAX`) if applicable.
+
+3. **`src/index.ts → DEFAULT_SETTINGS`** — provide a default:
+   ```ts
+   const DEFAULT_SETTINGS: ISwSettings = {
+       myNewOption: false,
+       // ...
+   };
+   ```
+
+4. **`src/index.ts → buildSettingsXxx`** — render the input control (switch / select / number) in the matching tab; saved on every change.
+
+5. **i18n** — add the key to both `src/i18n/zh-CN.json` and `src/i18n/en.json` (keep 109/109 parity).
+
+### How to add a new dock panel
+
+1. Append `{key, icon, label}` to the `DOCK_ITEMS` array inside `renderDockList`.
+2. If the panel needs special activation (not a plain `openTab`), add a branch in `openDockByKey`.
+
+### How to add a new sort order
+
+1. Add the sort key to the `SORT_BY_LIST` constant array.
+2. Add a member to the `SortBy` union type.
+3. Add the sort branch inside `sortGroupItems` (extract to `util.js` for unit testing).
+
+## 📜 Architecture Decision Records
+
+- [ADR-0001 Method splitting](docs/adr/0001-method-splitting.md) — why we split `onload` / `applySearch` etc. into orchestrator + helpers
+- [ADR-0002 Constants in `src/constants.ts`](docs/adr/0002-constants-module.md) — why we centralised magic numbers into a single module in v0.16.0
+- [ADR-0003 Pure functions + jsdom test matrix](docs/adr/0003-testing-strategy.md) — why `util.js` must stay zero-dep + Node built-in `node:test`
 
 ## License
 

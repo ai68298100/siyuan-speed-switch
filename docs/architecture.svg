@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="12">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#888"/>
+    </marker>
+    <linearGradient id="layerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#eef4ff"/>
+      <stop offset="100%" stop-color="#dde7ff"/>
+    </linearGradient>
+    <style>
+      .title { font-weight: 700; font-size: 13px; fill: #1a3a6b; }
+      .subtitle { fill: #5a6a85; font-size: 11px; }
+      .node { fill: white; stroke: #5a8acc; stroke-width: 1.4; rx: 6; ry: 6; }
+      .nodeGroup { fill: url(#layerBg); stroke: #5a8acc; stroke-width: 1.2; rx: 8; ry: 8; stroke-dasharray: 4 3; }
+      .subNode { fill: #f8fafe; stroke: #7a9ccc; stroke-width: 0.8; rx: 4; ry: 4; }
+      .code { fill: #3a4a6a; font-size: 10px; font-family: 'Menlo', 'Consolas', monospace; }
+      .arrow { stroke: #888; stroke-width: 1.2; fill: none; }
+      .layerLabel { fill: #1a3a6b; font-size: 10px; font-weight: 600; letter-spacing: 1px; }
+    </style>
+  </defs>
+
+  <text x="360" y="22" text-anchor="middle" class="title">LvSpeed Switch · Architecture</text>
+  <text x="360" y="38" text-anchor="middle" class="subtitle">5-layer, top-down dependency, pure functions at the bottom</text>
+
+  <!-- Layer 1: Entry Points -->
+  <g>
+    <rect x="40" y="58" width="640" height="50" class="nodeGroup"/>
+    <text x="50" y="76" class="layerLabel">LAYER 1 · ENTRY POINTS</text>
+    <rect x="60" y="82" width="135" height="20" class="node"/>
+    <text x="127" y="96" text-anchor="middle" class="code">onload()</text>
+    <rect x="205" y="82" width="160" height="20" class="node"/>
+    <text x="285" y="96" text-anchor="middle" class="code">addTopBar / addDock</text>
+    <rect x="375" y="82" width="155" height="20" class="node"/>
+    <text x="452" y="96" text-anchor="middle" class="code">addCommand (Alt+Shift+S)</text>
+    <rect x="540" y="82" width="120" height="20" class="node"/>
+    <text x="600" y="96" text-anchor="middle" class="code">FAB (mobile)</text>
+  </g>
+
+  <line x1="360" y1="108" x2="360" y2="125" class="arrow" marker-end="url(#arr)"/>
+
+  <!-- Layer 2: Switcher Main -->
+  <g>
+    <rect x="40" y="128" width="640" height="50" class="nodeGroup"/>
+    <text x="50" y="146" class="layerLabel">LAYER 2 · SWITCHER MAIN (3 entry modes)</text>
+    <rect x="60" y="152" width="190" height="20" class="node"/>
+    <text x="155" y="166" text-anchor="middle" class="code">showSwitcher() · dialog</text>
+    <rect x="260" y="152" width="180" height="20" class="node"/>
+    <text x="350" y="166" text-anchor="middle" class="code">showMobileSwitcher()</text>
+    <rect x="450" y="152" width="210" height="20" class="node"/>
+    <text x="555" y="166" text-anchor="middle" class="code">renderSidebarPanel() · dock</text>
+  </g>
+
+  <line x1="360" y1="178" x2="360" y2="195" class="arrow" marker-end="url(#arr)"/>
+
+  <!-- Layer 3: Subsystems -->
+  <g>
+    <rect x="40" y="198" width="640" height="60" class="nodeGroup"/>
+    <text x="50" y="216" class="layerLabel">LAYER 3 · SUBSYSTEMS</text>
+    <rect x="60" y="222" width="120" height="20" class="subNode"/>
+    <text x="120" y="236" text-anchor="middle" class="code">card rendering</text>
+    <rect x="190" y="222" width="120" height="20" class="subNode"/>
+    <text x="250" y="236" text-anchor="middle" class="code">search (debounced)</text>
+    <rect x="320" y="222" width="120" height="20" class="subNode"/>
+    <text x="380" y="236" text-anchor="middle" class="code">favorites + groups</text>
+    <rect x="450" y="222" width="120" height="20" class="subNode"/>
+    <text x="510" y="236" text-anchor="middle" class="code">journal notebook</text>
+    <rect x="580" y="222" width="80" height="20" class="subNode"/>
+    <text x="620" y="236" text-anchor="middle" class="code">settings</text>
+  </g>
+
+  <line x1="360" y1="258" x2="360" y2="275" class="arrow" marker-end="url(#arr)"/>
+
+  <!-- Layer 4: Persistence -->
+  <g>
+    <rect x="40" y="278" width="640" height="50" class="nodeGroup"/>
+    <text x="50" y="296" class="layerLabel">LAYER 4 · PERSISTENCE (7 storage keys, 500ms debounced save)</text>
+    <rect x="60" y="302" width="86" height="20" class="subNode"/>
+    <text x="103" y="316" text-anchor="middle" class="code">sw_mru</text>
+    <rect x="156" y="302" width="86" height="20" class="subNode"/>
+    <text x="199" y="316" text-anchor="middle" class="code">sw_pinned</text>
+    <rect x="252" y="302" width="100" height="20" class="subNode"/>
+    <text x="302" y="316" text-anchor="middle" class="code">sw_favorites</text>
+    <rect x="362" y="302" width="110" height="20" class="subNode"/>
+    <text x="417" y="316" text-anchor="middle" class="code">sw_fav_groups</text>
+    <rect x="482" y="302" width="80" height="20" class="subNode"/>
+    <text x="522" y="316" text-anchor="middle" class="code">sw_settings</text>
+    <rect x="572" y="302" width="86" height="20" class="subNode"/>
+    <text x="615" y="316" text-anchor="middle" class="code">sw_thumb_cache</text>
+  </g>
+
+  <line x1="360" y1="328" x2="360" y2="345" class="arrow" marker-end="url(#arr)"/>
+
+  <!-- Layer 5: Infrastructure -->
+  <g>
+    <rect x="40" y="348" width="640" height="22" class="nodeGroup"/>
+    <rect x="55" y="354" width="100" height="14" class="node"/>
+    <text x="105" y="364" text-anchor="middle" class="code">util.js (pure)</text>
+    <rect x="165" y="354" width="80" height="14" class="node"/>
+    <text x="205" y="364" text-anchor="middle" class="code">types.ts</text>
+    <rect x="255" y="354" width="100" height="14" class="node"/>
+    <text x="305" y="364" text-anchor="middle" class="code">constants.ts</text>
+    <rect x="365" y="354" width="80" height="14" class="node"/>
+    <text x="405" y="364" text-anchor="middle" class="code">logger.ts</text>
+    <rect x="455" y="354" width="200" height="14" class="node"/>
+    <text x="555" y="364" text-anchor="middle" class="code">node:test + jsdom (zero-dep test)</text>
+  </g>
+</svg>

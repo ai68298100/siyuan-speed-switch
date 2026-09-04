@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.6-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,30 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.16.0（2026-09-05）
+
+- **架构与文档**：
+  - README 加 `docs/architecture.svg` 五层架构图（入口 → 切换器主层 → 子系统 → 持久化 → 基础设施）。
+  - README "开发"小节扩展："如何新增设置项 / dock 面板 / 排序方式" 三段实战指南。
+  - 新增 `docs/adr/0001-method-splitting.md` / `0002-constants-module.md` / `0003-testing-strategy.md` 三份决策记录，给未来重构时回溯。
+- **新建 `src/constants.ts`**：集中所有 magic number / 阈值（按域分组 + `_MS` / `_PX` / `_MIN/MAX` 命名约定）：
+  - 时间：`SEARCH_DEBOUNCE_MS` / `SAVE_DEBOUNCE_MS` / `FAB_HIDE_DELAY_MS` / `MESSAGE_DEFAULT_MS` / `UPDATED_CACHE_MS`
+  - 像素：`DIALOG_WIDTH_MIN_PX/MAX_PX` / `DIALOG_HEIGHT_MIN_PX/MAX_PX` / `THUMB_HEIGHT_MIN_PX/MAX_PX` / `MOBILE_THUMB_HEIGHT_MIN_PX/MAX_PX` / `BACK_TOP_THRESHOLD_PX` / `SIDEBAR_DEFAULT_WIDTH_PX`
+  - 范围：`COLUMNS_MIN/MAX` / `MOBILE_COLUMNS_MIN/MAX`
+  - `src/index.ts` 同步替换：防抖时长、UI 边界、列数上下限、收藏 / FAB / 回顶阈值；后续调整只改一处。
+- **5 个大方法继续拆分**（延续 v0.15.6 攒批）：
+  - `onload` 83 → 25 行 — 抽出 `initPersistentData()` / `registerDesktopDock()` / `registerMobileEntries()` / `bindGlobalEvents()`，按 4 个生命周期阶段清晰分层。
+  - `applySearch` 56 → 22 行 — 抽出 `runDocSearchFetch()`，本地缓存路径与远程 fetch 路径分离，便于单独测试超时 / 取消分支。
+  - `renderDocResults` 70 → 17 行 — 抽出 `ensureDocResultsBox()` / `collectOpenRootIds()` / `appendDocResultsEmpty()` / `buildDocResultItem()`，每个 helper 单一职责；以后单条搜索结果 DOM 改动只需改 `buildDocResultItem`。
+  - `buildSettingsFavGroupList` 79 → 16 行 — 抽出 `buildFavGroupRow()` / `replaceFavGroupRowWithRenameControls()`，单行构造与行内重命名 UI 分离。
+  - `promptJournalNotebook` 60 → 16 行 — 抽出 `buildJournalPromptHtml()` / `createJournalSelect()` / `populateJournalNotebookSelect()` / `bindJournalPromptEvents()`，弹窗 HTML / 选项填充 / 事件绑定三层清晰。
+  - 未拆分：`openSetting`(88) — 闭包持有局部变量，硬拆会破坏可读性，留作下一轮。
+- **测试扩展**：
+  - 新增 `tests/constants.test.cjs`：校验常量 MIN/MAX/范围自洽 + 防抖时长合理性，**3 用例 / 5.7ms**。
+  - `tests/mobile-card-smoke.cjs` 从 3 个按钮尺寸扩展到 7 个 CSS 不变量：3 个 28×28 按钮 + `.sw__icon` 防御塌陷 + `.sw__mobile-card` 存在 + `.sw__mobile-grid` 单列 + `.sw__thumb` 占位。
+  - `npm test` 一键跑全部，**总 26 用例 / ~1s 全过**。
+- **质量门**：tsc 0 错、build 成功（152 KiB package.zip）、零 console / debugger / alert / `@ts-ignore` 残留、`as any` 仅 1 处（在注释里，非代码）。
 
 ### v0.15.6（2026-09-04）
 
@@ -336,18 +360,84 @@
 
 </details>
 
+## 🏗️ 架构
+
+<p align="center"><img src="docs/architecture.svg" width="720" alt="LvSpeed Switch 架构"/></p>
+
+插件按 5 层组织，每层职责清晰、向下单向依赖：
+
+| 层 | 入口文件 / 类 | 职责 |
+| --- | --- | --- |
+| 入口层 | `index.ts → onload` | 顶栏按钮、侧边栏 dock、命令面板快捷键、手机端 FAB |
+| 切换器主层 | `showSwitcher` / `showMobileSwitcher` / `renderSidebarPanel` | 三种切换入口（弹窗 / 侧边栏 / 全屏）的统一编排 |
+| 子系统层 | `renderList` / `applySearch` / `openFavMenu` / `promptJournalNotebook` / `openSetting` | 卡片渲染、搜索、收藏、日记、设置 |
+| 持久化层 | `loadData` / `saveDataDebounced` (this.data) | 7 个 storage key 的读 / 写（去抖 500ms） |
+| 基础设施 | `util.js` / `types.ts` / `constants.ts` / `logger.ts` | 纯函数、TS 类型、常量、结构化日志 |
+
+**纯函数优先**：所有能脱离 `this` 的逻辑（裁剪、排序、分组、图标解析、tab 树）一律抽到 `src/util.js` 并用 `node:test` 覆盖（23 用例）。`src/constants.ts` 集中所有阈值（防抖时长、缓存上限、UI 边界）。
+
+**测试矩阵**（在 `npm test` 一键跑）：
+
+| 文件 | 覆盖范围 | 用例 |
+| --- | --- | --- |
+| `tests/util.test.cjs` | 6 个 `util.js` 纯函数 | 23 |
+| `tests/constants.test.cjs` | 常量 MIN/MAX/范围自洽 | 3 |
+| `tests/mobile-card-smoke.cjs` | 移动端卡片 UI 渲染 + 7 个 CSS 不变量（jsdom） | 7 |
+
 ## 开发
 
+### 快速命令
+
 ```bash
-# 安装依赖
-pnpm install
-# 开发监听
-pnpm dev
-# 生产构建 → dist/* + package.zip
-pnpm build
+pnpm install      # 安装依赖
+pnpm dev          # 开发监听（产出 dev 版 dist/）
+pnpm build        # 生产构建 → dist/* + package.zip
+pnpm test         # 单元 + 常量测试
+npm run test:smoke # 移动端 UI 烟雾测试（需先 pnpm build）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
+
+### 如何新增一个设置项
+
+1. **`src/types.ts`** — 在 `ISwSettings` 加字段 + 默认值：
+   ```ts
+   export interface ISwSettings {
+       myNewOption: boolean;     // 新字段
+       // ...
+   }
+   ```
+
+2. **`src/constants.ts`** — 若有边界，加常量（`MY_NEW_MIN` / `MY_NEW_MAX`）。
+
+3. **`src/index.ts → DEFAULT_SETTINGS`** — 加默认值：
+   ```ts
+   const DEFAULT_SETTINGS: ISwSettings = {
+       myNewOption: false,
+       // ...
+   };
+   ```
+
+4. **`src/index.ts → buildSettingsXxx`** — 在对应标签页 builder 加输入控件（开关 / 下拉 / 数字），改动即写盘。
+
+5. **i18n** — 在 `src/i18n/zh-CN.json` 与 `src/i18n/en.json` 同步加 key（保持 109/109 对齐）。
+
+### 如何新增一个 dock 面板
+
+1. 在 `renderDockList` 内的 `DOCK_ITEMS` 数组追加 `{key, icon, label}` 三元组。
+2. 若面板需要特殊激活逻辑（不是简单 `openTab`），在 `openDockByKey` 中加分支。
+
+### 如何新增一个排序方式
+
+1. `SORT_BY_LIST` 常量数组追加排序键。
+2. `SortBy` 联合类型追加成员。
+3. `sortGroupItems` 内追加排序分支（建议抽到 `util.js` 以便单测）。
+
+## 📜 决策记录
+
+- [ADR-0001 大方法拆分](docs/adr/0001-method-splitting.md) — 为什么把 `onload` / `applySearch` 等 50+ 行的方法按职责拆成 orchestrator + helpers
+- [ADR-0002 集中常量到 `src/constants.ts`](docs/adr/0002-constants-module.md) — 为什么 v0.16.0 把 magic numbers 抽到独立模块
+- [ADR-0003 纯函数 + jsdom 测试矩阵](docs/adr/0003-testing-strategy.md) — 为什么 `util.js` 必须是零依赖纯函数 + Node 内置 `node:test`
 
 ## 许可证
 
