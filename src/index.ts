@@ -322,17 +322,21 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // ==================== 设置页本地控件工厂（统一格式、减少重复） ====================
 
-    // 数字输入：右侧带单位标签，change 时经 clampNum 校验后回调
-    private num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void): HTMLElement {
+    // 数字输入：右侧带单位标签，change 时经 clampNum 校验后回调；label 用于读屏与移动端语义
+    private num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement {
         const wrap = document.createElement("div");
         wrap.className = "sw-settings__num";
         const input = document.createElement("input");
         input.className = "b3-text-field fn__flex-center";
         input.type = "number";
+        input.inputMode = "numeric";
         input.min = String(min);
         input.max = String(max);
         input.step = String(step);
         input.value = String(value);
+        if (label) {
+            input.setAttribute("aria-label", label);
+        }
         input.addEventListener("change", () => {
             onChange(this.clampNum(input.value, min, max, value));
         });
@@ -572,13 +576,16 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const tabs = document.createElement("div");
         tabs.className = "sw-settings__tabs";
+        tabs.setAttribute("role", "tablist");
         const panels = document.createElement("div");
         panels.className = "sw-settings__panels";
 
-        // 切换分组：仅激活对应标签与面板
+        // 切换分组：仅激活对应标签与面板，同步 aria-selected 供读屏感知
         const activate = (key: string) => {
             tabs.querySelectorAll<HTMLElement>(".sw-settings__tab").forEach((tab) => {
-                tab.classList.toggle("is-active", tab.dataset.panel === key);
+                const active = tab.dataset.panel === key;
+                tab.classList.toggle("is-active", active);
+                tab.setAttribute("aria-selected", active ? "true" : "false");
             });
             panels.querySelectorAll<HTMLElement>(".sw-settings__panel").forEach((p) => {
                 p.classList.toggle("is-active", p.dataset.panel === key);
@@ -590,15 +597,15 @@ export default class SpeedSwitchPlugin extends Plugin {
             const wrapper = document.createElement("div");
             wrapper.append(
                 this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
-                    this.num(s.dialogWidth, 480, 1920, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}))),
+                    this.num(s.dialogWidth, 480, 1920, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
                 this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
-                    this.num(s.dialogHeight, 360, 1280, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}))),
+                    this.num(s.dialogHeight, 360, 1280, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
                 this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
                     this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
                         [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
                     ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
                 this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
-                    this.num(s.thumbHeight, 72, 360, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}))),
+                    this.num(s.thumbHeight, 72, 360, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
             );
             return wrapper;
         };
@@ -892,6 +899,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             const tab = document.createElement("button");
             tab.type = "button";
             tab.className = "sw-settings__tab";
+            tab.setAttribute("role", "tab");
             tab.dataset.panel = key;
             tab.textContent = panelLabels[key];
             tab.addEventListener("click", () => activate(key));
@@ -899,6 +907,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
             const panelEl = document.createElement("div");
             panelEl.className = "sw-settings__panel";
+            panelEl.setAttribute("role", "tabpanel");
             panelEl.dataset.panel = key;
             panelEl.appendChild(builders[key]());
             panels.appendChild(panelEl);
@@ -942,7 +951,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             <div class="sw__toolbar">
                 <div class="sw__search-wrap">
                     <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
-                    <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+                    <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
                 </div>
                 <div class="sw__select-wrap">
                     <span class="sw__select-label">${this.i18n.favorites}</span>
@@ -2974,7 +2983,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
-            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
         </div>
         <select class="b3-select sw__sort" aria-label="${this.i18n.setSortBy}">
             <option value="mru">${this.i18n.sortMru}</option>
@@ -3176,7 +3185,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 构建底部弹窗
         const overlay = document.createElement("div");
         overlay.className = "sw__mobile-sheet-overlay";
-        overlay.innerHTML = `<div class="sw__mobile-sheet">
+        overlay.innerHTML = `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(this.i18n.mobileFavTitle)}">
     <div class="sw__mobile-sheet-handle"></div>
     <div class="sw__mobile-sheet-title">${this.i18n.mobileFavTitle}</div>
     <div class="sw__mobile-sheet-body"></div>
@@ -3277,10 +3286,11 @@ export default class SpeedSwitchPlugin extends Plugin {
             sheet.classList.add("sw__mobile-sheet--open");
         });
 
-        // 点击背景关闭
+        // 点击背景关闭（sheet 下滑 + 遮罩淡出后再移除）
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) {
                 sheet.classList.remove("sw__mobile-sheet--open");
+                overlay.style.opacity = "0";
                 setTimeout(() => overlay.remove(), 250);
             }
         });

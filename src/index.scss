@@ -1260,12 +1260,21 @@
                 }
 
                 .sw__mobile-fav-btn,
+                .sw__journal-btn,
                 .sw__settings-btn {
+                    position: relative;
                     flex: none;
                     width: 34px;
                     height: 32px;
                     color: var(--b3-theme-on-surface);
                     -webkit-tap-highlight-color: transparent;
+
+                    // 透明伪元素扩大触控热区（34×32 → 44×42），视觉尺寸不变保持极简
+                    &::after {
+                        content: "";
+                        position: absolute;
+                        inset: -5px;
+                    }
 
                     &:active {
                         color: var(--b3-theme-primary);
@@ -1325,15 +1334,16 @@
                 }
 
                 // 手机端操作按钮：不悬浮在缩略图上，改为落在底部 meta 行右侧（关闭/收藏/置顶），
-                // 弱化为纯图标（无底色圆形），缩略图完整无遮挡；激活态才显示主色
+                // 弱化为纯图标（无底色圆形），缩略图完整无遮挡；激活态才显示主色。
+                // 28px 视觉 + 透明伪元素热区（28→36px），按钮中心距 36px 恰好互不侵占
                 .sw__pin,
                 .sw__fav-btn,
                 .sw__close {
                     position: absolute;
                     top: auto;
-                    bottom: 2px;
-                    width: 26px;
-                    height: 26px;
+                    bottom: 0;
+                    width: 28px;
+                    height: 28px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -1347,6 +1357,12 @@
                     cursor: pointer;
                     -webkit-tap-highlight-color: transparent;
 
+                    &::after {
+                        content: "";
+                        position: absolute;
+                        inset: -4px;
+                    }
+
                     svg {
                         width: 14px;
                         height: 14px;
@@ -1357,9 +1373,9 @@
                     }
                 }
 
-                .sw__pin { left: auto; right: 66px; }
-                .sw__fav-btn { left: auto; right: 36px; }
-                .sw__close { right: 6px; }
+                .sw__pin { left: auto; right: 80px; }
+                .sw__fav-btn { left: auto; right: 44px; }
+                .sw__close { right: 8px; }
 
                 &.sw__pinned .sw__pin {
                     display: flex;
@@ -1387,7 +1403,7 @@
                 }
 
                 .sw__meta {
-                    padding: 4px 98px 4px 8px;
+                    padding: 4px 114px 4px 8px;
                     font-size: 12px;
                     gap: 4px;
 
@@ -1415,8 +1431,8 @@
     position: fixed;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
     right: 14px;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background-color: var(--b3-theme-primary);
     color: var(--b3-theme-on-primary);
@@ -1512,7 +1528,7 @@
     box-shadow: none;
 }
 
-// 收藏底部弹窗遮罩
+// 收藏底部弹窗遮罩：半透明背板给出模态状态感知（黑色遮罩为标准做法，明暗主题均适用）
 .sw__mobile-sheet-overlay {
     position: fixed;
     inset: 0;
@@ -1520,6 +1536,8 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    background: rgba(0, 0, 0, 0.32);
+    transition: opacity 0.25s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -1563,7 +1581,8 @@
     .sw__mobile-sheet-body {
         flex: 1;
         overflow: auto;
-        padding: 4px 0 12px;
+        // 底部内边距叠加安全区，避免最后一项被 iPhone 手势条 / 安卓导航栏遮挡
+        padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px));
         -webkit-overflow-scrolling: touch;
     }
 
@@ -1640,5 +1659,20 @@
         text-align: center;
         font-size: 13px;
         color: var(--b3-theme-on-surface-light);
+    }
+}
+
+// ==================== 减少动态效果（系统"减弱动态效果"开启时） ====================
+// 尊重用户系统设置：关闭插件自身的过渡与动画（不波及思源宿主元素）
+@media (prefers-reduced-motion: reduce) {
+    .speed-switch,
+    .speed-switch *,
+    .sw__fab,
+    .sw__fab *,
+    .sw__mobile-sheet-overlay,
+    .sw__mobile-sheet-overlay *,
+    #swMobileTopBarBtn {
+        transition: none !important;
+        animation: none !important;
     }
 }

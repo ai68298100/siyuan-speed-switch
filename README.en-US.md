@@ -87,6 +87,11 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.13.2 (2026-09-04)
+
+- **Mobile UX improvements**: the favorites bottom sheet gains a subtle scrim and respects bottom safe-area insets (home indicator / nav bar); the top-bar favorites, journal and settings buttons are now uniform in size, and card action buttons plus the floating button got larger touch targets.
+- **Cross-platform polish**: search inputs disable spellcheck; numeric settings inputs expose a numeric keyboard and screen-reader labels; settings tabs now carry proper ARIA state, and the plugin respects the system "reduce motion" setting.
+
 ### v0.13.1 (2026-09-04)
 
 - **Journal button moves into the switcher**: the top bar no longer takes an extra slot — desktop and mobile each keep a single switcher entry; the journal button now lives in the **switcher's top bar**, opening/creating today's journal right after you open the switcher.
