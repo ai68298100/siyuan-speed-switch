@@ -84,6 +84,13 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.11.1 (2026-09-04)
+
+- **Fixed the mobile flash of oversized icons and scrambled layout on first open**: SiYuan mounts the dialog DOM first and adds `b3-dialog--open` only after a 50ms timeout, leaving the container mid-transform during that window, where the mobile WebView mis-renders card buttons. The animation window is now disabled — the dialog enters its final state synchronously and opens crisply.
+- **Mobile card action buttons relocated**: pin / favorite / close no longer float over the thumbnail; they now sit at the right end of the bottom meta row as plain icons (primary color only when active), leaving the thumbnail fully unobstructed.
+- **Floating button moved further up** (96→120px incl. safe area) to fully clear SiYuan's bottom toolbar; the swipe gesture now requires vertical-dominant movement, so horizontal panning no longer hides it by accident.
+- Also removed `backdrop-filter` from mobile buttons (a trigger of the WebView animation glitch, and a perf win).
+
 ### v0.11.0 (2026-09-04)
 
 - **Fixed mobile styles silently broken (major)**: a stylesheet nesting error made all 39 mobile-specific rules (compact toolbar, card layout, always-visible action buttons, touch feedback) compile into selectors that could never match, so the mobile dialog had been falling back to desktop styles. Mobile now renders as designed — toolbar sizing, single/double/auto card layouts, thumbnail height, always-visible pin/favorite/close buttons and press feedback all take effect.

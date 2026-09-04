@@ -2705,6 +2705,11 @@ export default class SpeedSwitchPlugin extends Plugin {
 </div>`,
             width: "92vw",
             height: "85vh",
+            // 关键修复：思源 Dialog 先把元素挂到 DOM，b3-dialog--open 类要等 50ms 超时才补上，
+            // 期间容器处于 transform: scale(.8) 过渡态；手机 WebView 中带 backdrop-filter 的
+            // 子元素在该动画窗口内会渲染错乱（图标巨大/位置错位），动画结束又自愈——
+            // 即"刚打开闪一下错乱"的根因。禁用动画让容器同步进入最终态，彻底消除该窗口
+            disableAnimation: true,
         });
 
         const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
@@ -3010,9 +3015,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.fabGestureBound = true;
         const THRESHOLD = 12; // 位移超过该值才判定方向，避免抖动误触发
+        let startX = 0;
         let startY = 0;
         this.fabGestureHandlers = {
             touchstart: (event: TouchEvent) => {
+                startX = event.touches[0]?.clientX ?? 0;
                 startY = event.touches[0]?.clientY ?? 0;
             },
             touchmove: (event: TouchEvent) => {
@@ -3023,13 +3030,16 @@ export default class SpeedSwitchPlugin extends Plugin {
                 if (this.fabElement.contains(event.target as Node)) {
                     return;
                 }
+                const x = event.touches[0].clientX;
                 const y = event.touches[0].clientY;
-                const delta = y - startY;
-                if (Math.abs(delta) < THRESHOLD) {
+                const deltaX = x - startX;
+                const deltaY = y - startY;
+                // 仅垂直主导的滑动才触发显隐，横向滑动（如查看宽表格）不误触
+                if (Math.abs(deltaY) < THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX)) {
                     return;
                 }
                 startY = y; // 重置起点，连续滑动可多次触发
-                if (delta < 0) {
+                if (deltaY < 0) {
                     // 手指上滑 → 隐藏
                     this.fabElement.classList.add("sw__fab--scroll-hidden");
                 } else {

@@ -1175,40 +1175,41 @@
                     z-index: 1;
                 }
 
-                // 手机端操作按钮：始终显示，更大触控区域
+                // 手机端操作按钮：不悬浮在缩略图上，改为落在底部 meta 行右侧（关闭/收藏/置顶），
+                // 弱化为纯图标（无底色圆形），缩略图完整无遮挡；激活态才显示主色
                 .sw__pin,
                 .sw__fav-btn,
                 .sw__close {
                     position: absolute;
-                    top: 6px;
-                    width: 28px;
-                    height: 28px;
+                    top: auto;
+                    bottom: 2px;
+                    width: 26px;
+                    height: 26px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background: color-mix(in srgb, var(--b3-theme-background) 80%, transparent);
-                    -webkit-backdrop-filter: blur(4px);
-                    backdrop-filter: blur(4px);
+                    background: transparent;
+                    -webkit-backdrop-filter: none;
+                    backdrop-filter: none;
                     border: none;
-                    border-radius: 50%;
-                    color: var(--b3-theme-on-surface);
+                    border-radius: 6px;
+                    color: var(--b3-theme-on-surface-light);
                     z-index: 2;
                     cursor: pointer;
                     -webkit-tap-highlight-color: transparent;
 
                     svg {
-                        width: 15px;
-                        height: 15px;
+                        width: 14px;
+                        height: 14px;
                     }
 
                     &:active {
                         color: var(--b3-theme-primary);
-                        background: var(--b3-theme-surface);
                     }
                 }
 
-                .sw__pin { left: 6px; }
-                .sw__fav-btn { left: 36px; }
+                .sw__pin { left: auto; right: 66px; }
+                .sw__fav-btn { left: auto; right: 36px; }
                 .sw__close { right: 6px; }
 
                 &.sw__pinned .sw__pin {
@@ -1237,7 +1238,7 @@
                 }
 
                 .sw__meta {
-                    padding: 4px 8px;
+                    padding: 4px 98px 4px 8px;
                     font-size: 12px;
                     gap: 4px;
 
@@ -1260,10 +1261,10 @@
 
 // ==================== 手机端全局样式（直接挂载到 document.body） ====================
 
-// 悬浮按钮（FAB）：上移至单手拇指自然活动区，避开底部胶囊工具条；缩小 + 半透明降低存在感
+// 悬浮按钮（FAB）：继续上移避开思源底部工具条（含编辑态加高的情况），落在单手拇指区；缩小 + 半透明
 .sw__fab {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
     right: 14px;
     width: 40px;
     height: 40px;
