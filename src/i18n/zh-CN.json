@@ -69,7 +69,7 @@
   "backTop": "回到顶部",
   "secMobile": "手机端",
   "fabEnabled": "启用悬浮按钮",
-  "fabEnabledTip": "在手机屏幕右下角显示一个悬浮按钮，轻触即可打开页签切换器",
+  "fabEnabledTip": "在手机屏幕右下角显示一个悬浮按钮，轻触即可打开页签切换器；上滑隐藏、下滑出现",
   "mobileLayout": "卡片布局",
   "mobileLayoutTip": "手机端页签卡片的排列方式",
   "mobileSingle": "单列",

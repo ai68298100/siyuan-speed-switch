@@ -117,6 +117,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏入口按钮（自行注入 mobileTopBar）
+    private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
+    private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -217,6 +219,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarElement = null;
         this.fabElement?.remove();
         this.fabElement = null;
+        if (this.fabGestureHandlers) {
+            document.removeEventListener("touchstart", this.fabGestureHandlers.touchstart);
+            document.removeEventListener("touchmove", this.fabGestureHandlers.touchmove);
+            this.fabGestureHandlers = null;
+            this.fabGestureBound = false;
+        }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
     }
@@ -2990,6 +2998,48 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.showSwitcher();
         });
         document.body.appendChild(this.fabElement);
+        this.bindFABScrollGesture();
+    }
+
+    // 滚动手势控制 FAB 显隐（与思源手机端底部工具条行为一致）：
+    // 手指上滑（内容向下滚）隐藏、下滑出现。用独立类 sw__fab--scroll-hidden，
+    // 与打开切换器时的 sw__fab--hidden 互不干扰
+    private bindFABScrollGesture() {
+        if (this.fabGestureBound) {
+            return;
+        }
+        this.fabGestureBound = true;
+        const THRESHOLD = 12; // 位移超过该值才判定方向，避免抖动误触发
+        let startY = 0;
+        this.fabGestureHandlers = {
+            touchstart: (event: TouchEvent) => {
+                startY = event.touches[0]?.clientY ?? 0;
+            },
+            touchmove: (event: TouchEvent) => {
+                if (!this.fabElement || event.touches.length !== 1) {
+                    return;
+                }
+                // 触点落在 FAB 自身上不处理（点击按钮时不应触发隐藏）
+                if (this.fabElement.contains(event.target as Node)) {
+                    return;
+                }
+                const y = event.touches[0].clientY;
+                const delta = y - startY;
+                if (Math.abs(delta) < THRESHOLD) {
+                    return;
+                }
+                startY = y; // 重置起点，连续滑动可多次触发
+                if (delta < 0) {
+                    // 手指上滑 → 隐藏
+                    this.fabElement.classList.add("sw__fab--scroll-hidden");
+                } else {
+                    // 手指下滑 → 出现
+                    this.fabElement.classList.remove("sw__fab--scroll-hidden");
+                }
+            },
+        };
+        document.addEventListener("touchstart", this.fabGestureHandlers.touchstart, {passive: true});
+        document.addEventListener("touchmove", this.fabGestureHandlers.touchmove, {passive: true});
     }
 
     private updateFABVisibility() {

@@ -69,7 +69,7 @@
   "backTop": "Back to top",
   "secMobile": "Mobile",
   "fabEnabled": "Floating button",
-  "fabEnabledTip": "Show a floating action button on the bottom-right of the mobile screen to open the tab switcher",
+  "fabEnabledTip": "Show a floating action button on the bottom-right of the mobile screen to open the tab switcher; swipe up to hide, swipe down to show",
   "mobileLayout": "Card layout",
   "mobileLayoutTip": "Arrangement of tab cards on mobile",
   "mobileSingle": "Single column",

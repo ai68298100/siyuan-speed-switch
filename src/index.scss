@@ -1258,39 +1258,49 @@
 
 // ==================== 手机端全局样式（直接挂载到 document.body） ====================
 
-// 悬浮按钮（FAB）：底部抬高避开思源手机端悬浮胶囊工具条（约 48px 高 + 间距 + 安全区）
+// 悬浮按钮（FAB）：上移至单手拇指自然活动区，避开底部胶囊工具条；缩小 + 半透明降低存在感
 .sw__fab {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
-    right: 16px;
-    width: 48px;
-    height: 48px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+    right: 14px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background-color: var(--b3-theme-primary);
     color: var(--b3-theme-on-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.12);
+    opacity: 0.88;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2), 0 1px 4px rgba(0, 0, 0, 0.1);
     z-index: 999;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.25s ease, opacity 0.25s ease, box-shadow 0.2s ease;
 
     svg {
-        width: 22px;
-        height: 22px;
+        width: 18px;
+        height: 18px;
         color: var(--b3-theme-on-primary);
     }
 
     &:active {
         transform: scale(0.92);
+        opacity: 1;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
 
+    // 打开切换器时隐藏（缩放淡出）
     &.sw__fab--hidden {
         opacity: 0;
         transform: scale(0.7) translateY(10px);
+        pointer-events: none;
+    }
+
+    // 滚动手势隐藏（上滑隐藏，下滑出现）：下滑移出屏幕 + 淡出，与思源底部工具条动效一致
+    &.sw__fab--scroll-hidden {
+        opacity: 0;
+        transform: translateY(140%);
         pointer-events: none;
     }
 }

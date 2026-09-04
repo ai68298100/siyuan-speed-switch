@@ -76,6 +76,13 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.10.1 (2026-09-04)
+
+- **Mobile floating button improved**:
+  - Moved up to the natural one-handed thumb zone for easier reach.
+  - Smaller (48→40px) with slight transparency to obstruct less content.
+  - Swipe up to hide, swipe down to show — consistent with SiYuan's built-in toolbar.
+
 ### v0.10.0 (2026-09-04)
 
 - **Fullscreen mode improved (desktop)**: a fullscreen toggle button is added to the switcher toolbar — click to enter fullscreen in normal mode, click again to exit; the switch happens in place without rebuilding the dialog, keeping thumbnails and search state. The setting still decides the initial mode; Esc still closes.
