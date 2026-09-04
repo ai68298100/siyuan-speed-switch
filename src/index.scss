@@ -57,26 +57,6 @@
     }
 }
 
-// 设置页分区标题（外观/行为/面板/收藏）：主色小字 + 顶部细分隔线，与普通设置项区分
-.config-name .sw-setting__sec {
-    display: inline-block;
-    margin-top: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    color: var(--b3-theme-primary);
-    border-top: 1px solid var(--b3-border-color);
-    padding-top: 12px;
-    width: 100%;
-}
-
-// 首个分区标题紧贴弹窗顶部，无需分隔线
-.b3-dialog__content .config-item:first-child .sw-setting__sec {
-    margin-top: 0;
-    border-top: none;
-    padding-top: 0;
-}
-
 // 设置页收藏管理：新建分组 + 分组列表（重命名/删除）+ 收藏项分组调整列表
 .sw-setting__favs {
     display: flex;
@@ -186,6 +166,149 @@
         .b3-select {
             flex: none;
             width: 150px;
+        }
+    }
+}
+
+// ==================== 设置页标签页布局（左侧标签栏 + 右侧分组面板） ====================
+.sw-settings {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+
+    // 左侧标签栏：固定宽度、竖排按钮，右侧细分隔线
+    .sw-settings__tabs {
+        flex: none;
+        width: 132px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 6px;
+        border-right: 1px solid var(--b3-theme-surface-lighter);
+        overflow: auto;
+    }
+
+    .sw-settings__tab {
+        flex: none;
+        padding: 8px 10px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--b3-theme-on-surface);
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+        transition: background-color 0.12s, color 0.12s;
+
+        &:hover {
+            color: var(--b3-theme-primary);
+            background: var(--b3-theme-surface-lighter);
+        }
+
+        // 激活标签：主色浅底 + 主色文字
+        &.is-active {
+            background: var(--b3-theme-primary-lightest);
+            color: var(--b3-theme-primary);
+            font-weight: 600;
+        }
+    }
+
+    // 右侧分组面板区：面板内滚动
+    .sw-settings__panels {
+        flex: 1;
+        min-width: 0;
+        overflow: auto;
+        padding: 12px 16px;
+    }
+
+    // 面板默认隐藏，仅激活显示
+    .sw-settings__panel {
+        display: none;
+
+        &.is-active {
+            display: block;
+        }
+    }
+
+    // 设置条目：默认横排（左侧标题+描述，右侧控件），条目间用 surface-lighter 分隔
+    .sw-settings__item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        .sw-settings__item-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sw-settings__item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--b3-theme-on-background);
+        }
+
+        .sw-settings__item-desc {
+            margin-top: 3px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--b3-theme-on-surface-light);
+        }
+
+        .sw-settings__item-action {
+            flex: none;
+            min-width: 0;
+        }
+    }
+
+    // 列布局条目：标题在上，控件占满整行（面板勾选、收藏管理）
+    .sw-settings__item--column {
+        flex-direction: column;
+        align-items: stretch;
+
+        .sw-settings__item-action {
+            flex: 1;
+            width: 100%;
+        }
+    }
+
+    // 数字输入 + 右侧单位标签
+    .sw-settings__num {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .b3-text-field {
+            width: 96px;
+        }
+
+        .sw-settings__num-unit {
+            flex: none;
+            font-size: 12px;
+            color: var(--b3-theme-on-surface-light);
+        }
+    }
+
+    // 窄屏（手机端打开设置）：标签栏收窄、条目改上下排，给控件留足宽度
+    @media (max-width: 560px) {
+        .sw-settings__tabs {
+            width: 92px;
+        }
+
+        .sw-settings__item {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+
+            .sw-settings__item-action {
+                width: 100%;
+            }
         }
     }
 }
@@ -1046,9 +1169,17 @@
 
     // ==================== 侧边栏紧凑模式（dock 面板内） ====================
     &.sw--sidebar {
-        // 单列卡片，匹配侧边栏窄宽度
+        // 单列卡片，匹配侧边栏窄宽度（sidebarLayout=enlarge 默认）
         .sw__grid {
             grid-template-columns: 1fr;
+        }
+
+        // sidebarLayout=columns：随侧边栏拉伸自动增列，显示更多缩略图（auto-fill 随宽度实时重排；
+        // min(200px,100%) 保证侧边栏过窄时回退为单列填满，避免横向溢出）
+        &.sw--sidebar-columns {
+            .sw__grid {
+                grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+            }
         }
 
         .sw__toolbar {

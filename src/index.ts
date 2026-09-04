@@ -1,4 +1,4 @@
-import {Plugin, Dialog, Setting, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
+import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
@@ -58,6 +58,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     excludedDocks: [],     // 不显示在左侧列表的面板类型
     dockDisplay: "full",   // 左侧面板显示方式：hidden 隐藏 / collapsed 折叠图标条 / full 完整列表
     fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
+    sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
     fabEnabled: true,      // 手机端悬浮按钮默认开启
     mobileColumns: 2,      // 2=自动（竖屏单列，横屏双列），默认自动
     mobileThumbHeight: 80, // 手机端缩略图高度
@@ -66,6 +67,9 @@ const DEFAULT_SETTINGS: ISwSettings = {
 // 左侧面板显示方式
 type DockDisplay = "hidden" | "collapsed" | "full";
 const DOCK_DISPLAY_LIST: DockDisplay[] = ["hidden", "collapsed", "full"];
+// 侧边栏缩略图布局：enlarge 放大填满栏宽（默认） / columns 按宽度自动增加列数
+type SidebarLayout = "enlarge" | "columns";
+const SIDEBAR_LAYOUT_LIST: SidebarLayout[] = ["enlarge", "columns"];
 
 interface ISwSettings {
     dialogWidth: number;
@@ -76,6 +80,7 @@ interface ISwSettings {
     excludedDocks: string[];
     dockDisplay: DockDisplay;
     fullscreen: boolean;       // 全屏模式：切换器铺满整个窗口，Esc 退出
+    sidebarLayout: SidebarLayout; // 侧边栏缩略图布局：enlarge 放大 / columns 自动加列
     // 手机端
     fabEnabled: boolean;       // 是否启用悬浮按钮
     mobileColumns: number;     // 0=单列 1=双列 2=自动
@@ -286,6 +291,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 : [],
             dockDisplay: (DOCK_DISPLAY_LIST.includes((saved as any).dockDisplay)
                 ? (saved as any).dockDisplay : DEFAULT_SETTINGS.dockDisplay) as DockDisplay,
+            sidebarLayout: (SIDEBAR_LAYOUT_LIST.includes((saved as any).sidebarLayout)
+                ? (saved as any).sidebarLayout : DEFAULT_SETTINGS.sidebarLayout) as SidebarLayout,
             fullscreen: typeof (saved as any).fullscreen === "boolean"
                 ? (saved as any).fullscreen : DEFAULT_SETTINGS.fullscreen,
             fabEnabled: typeof (saved as any).fabEnabled === "boolean"
@@ -309,421 +316,436 @@ export default class SpeedSwitchPlugin extends Plugin {
         return Math.min(max, Math.max(min, num));
     }
 
+    // ==================== 设置页本地控件工厂（统一格式、减少重复） ====================
+
+    // 数字输入：右侧带单位标签，change 时经 clampNum 校验后回调
+    private num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void): HTMLElement {
+        const wrap = document.createElement("div");
+        wrap.className = "sw-settings__num";
+        const input = document.createElement("input");
+        input.className = "b3-text-field fn__flex-center";
+        input.type = "number";
+        input.min = String(min);
+        input.max = String(max);
+        input.step = String(step);
+        input.value = String(value);
+        input.addEventListener("change", () => {
+            onChange(this.clampNum(input.value, min, max, value));
+        });
+        const unitEl = document.createElement("span");
+        unitEl.className = "sw-settings__num-unit";
+        unitEl.textContent = unit;
+        wrap.appendChild(input);
+        wrap.appendChild(unitEl);
+        return wrap;
+    }
+
+    // 下拉选择控件
+    private select(options: Array<{value: string, label: string}>, value: string, onChange: (v: string) => void): HTMLElement {
+        const selectEl = document.createElement("select");
+        selectEl.className = "b3-select fn__flex-center";
+        options.forEach(({value: v, label}) => {
+            const option = document.createElement("option");
+            option.value = v;
+            option.textContent = label;
+            selectEl.appendChild(option);
+        });
+        selectEl.value = value;
+        selectEl.addEventListener("change", () => onChange(selectEl.value));
+        return selectEl;
+    }
+
+    // 开关（b3-switch + 插件自建 sw-switch 强化两态对比）
+    private switcher(checked: boolean, onChange: (v: boolean) => void): HTMLElement {
+        const label = document.createElement("label");
+        label.className = "b3-switch sw-switch";
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = checked;
+        input.addEventListener("change", () => onChange(input.checked));
+        label.appendChild(input);
+        label.appendChild(document.createElement("span"));
+        return label;
+    }
+
+    // 设置条目：左侧标题+可选描述，右侧控件；column 时控件占满整行
+    private settingItem(title: string, description: string | undefined, action: HTMLElement, column = false): HTMLElement {
+        const item = document.createElement("div");
+        item.className = column ? "sw-settings__item sw-settings__item--column" : "sw-settings__item";
+        const main = document.createElement("div");
+        main.className = "sw-settings__item-main";
+        const titleEl = document.createElement("div");
+        titleEl.className = "sw-settings__item-title";
+        titleEl.textContent = title;
+        main.appendChild(titleEl);
+        if (description) {
+            const desc = document.createElement("div");
+            desc.className = "sw-settings__item-desc";
+            desc.textContent = description;
+            main.appendChild(desc);
+        }
+        const actionEl = document.createElement("div");
+        actionEl.className = "sw-settings__item-action";
+        actionEl.appendChild(action);
+        item.appendChild(main);
+        item.appendChild(actionEl);
+        return item;
+    }
+
     // 插件设置页（设置 → 插件 → 小驴速切 → 设置图标）
+    // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
     openSetting() {
         const s = this.getSettings();
-        const setting = new Setting({
-            confirmCallback: () => {
-                // 各控件修改时已即时保存，这里无需处理
-            },
+        const panelKeys = ["appearance", "behavior", "panels", "favorites", "mobile"] as const;
+        const panelLabels: Record<string, string> = {
+            appearance: this.i18n.secAppearance,
+            behavior: this.i18n.secBehavior,
+            panels: this.i18n.secPanels,
+            favorites: this.i18n.secFavorites,
+            mobile: this.i18n.secMobile,
+        };
+
+        const dialog = new Dialog({
+            title: this.i18n.settings,
+            content: '<div class="sw-settings"></div>',
+            // 桌面 720×560；手机端（含横屏矮视口）按视口收缩，避免溢出屏幕
+            width: "min(720px, 88vw)",
+            height: "min(560px, 85vh)",
         });
+
+        const root = dialog.element.querySelector<HTMLElement>(".sw-settings");
+        if (!root) {
+            return;
+        }
+
+        const tabs = document.createElement("div");
+        tabs.className = "sw-settings__tabs";
+        const panels = document.createElement("div");
+        panels.className = "sw-settings__panels";
+
+        // 切换分组：仅激活对应标签与面板
+        const activate = (key: string) => {
+            tabs.querySelectorAll<HTMLElement>(".sw-settings__tab").forEach((tab) => {
+                tab.classList.toggle("is-active", tab.dataset.panel === key);
+            });
+            panels.querySelectorAll<HTMLElement>(".sw-settings__panel").forEach((p) => {
+                p.classList.toggle("is-active", p.dataset.panel === key);
+            });
+        };
 
         // ===== 外观 =====
-        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secAppearance}</span>`});
-
-        setting.addItem({
-            title: this.i18n.setWidth,
-            description: this.i18n.setWidthTip,
-            createActionElement: () => {
-                const input = document.createElement("input");
-                input.className = "b3-text-field fn__flex-center";
-                input.type = "number";
-                input.min = "480";
-                input.max = "1920";
-                input.step = "40";
-                input.value = String(s.dialogWidth);
-                input.addEventListener("change", () => {
-                    this.updateSettings({dialogWidth: this.clampNum(input.value, 480, 1920, s.dialogWidth)});
-                });
-                return input;
-            },
-        });
-
-        setting.addItem({
-            title: this.i18n.setHeight,
-            description: this.i18n.setHeightTip,
-            createActionElement: () => {
-                const input = document.createElement("input");
-                input.className = "b3-text-field fn__flex-center";
-                input.type = "number";
-                input.min = "360";
-                input.max = "1280";
-                input.step = "40";
-                input.value = String(s.dialogHeight);
-                input.addEventListener("change", () => {
-                    this.updateSettings({dialogHeight: this.clampNum(input.value, 360, 1280, s.dialogHeight)});
-                });
-                return input;
-            },
-        });
-
-        setting.addItem({
-            title: this.i18n.setColumns,
-            description: this.i18n.setColumnsTip,
-            createActionElement: () => {
-                const select = document.createElement("select");
-                select.className = "b3-select fn__flex-center";
-                [{value: "0", label: this.i18n.columnsAuto}].concat(
-                    [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
-                ).forEach(({value, label}) => {
-                    const option = document.createElement("option");
-                    option.value = value;
-                    option.textContent = label;
-                    select.appendChild(option);
-                });
-                select.value = String(s.columns);
-                select.addEventListener("change", () => {
-                    this.updateSettings({columns: this.clampNum(select.value, 0, 8, s.columns)});
-                });
-                return select;
-            },
-        });
-
-        setting.addItem({
-            title: this.i18n.setThumbHeight,
-            description: this.i18n.setThumbHeightTip,
-            createActionElement: () => {
-                const input = document.createElement("input");
-                input.className = "b3-text-field fn__flex-center";
-                input.type = "number";
-                input.min = "72";
-                input.max = "360";
-                input.step = "8";
-                input.value = String(s.thumbHeight);
-                input.addEventListener("change", () => {
-                    this.updateSettings({thumbHeight: this.clampNum(input.value, 72, 360, s.thumbHeight)});
-                });
-                return input;
-            },
-        });
+        const buildAppearance = () => {
+            const wrapper = document.createElement("div");
+            wrapper.append(
+                this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
+                    this.num(s.dialogWidth, 480, 1920, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}))),
+                this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
+                    this.num(s.dialogHeight, 360, 1280, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}))),
+                this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
+                    this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
+                        [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
+                    ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
+                this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
+                    this.num(s.thumbHeight, 72, 360, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}))),
+            );
+            return wrapper;
+        };
 
         // ===== 行为 =====
-        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secBehavior}</span>`});
-
-        setting.addItem({
-            title: this.i18n.setSortBy,
-            description: this.i18n.setSortByTip,
-            createActionElement: () => {
-                const select = document.createElement("select");
-                select.className = "b3-select fn__flex-center";
-                const options: Array<{value: SortBy, label: string}> = [
-                    {value: "mru", label: this.i18n.sortMru},
-                    {value: "layout", label: this.i18n.sortLayout},
-                    {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
-                    {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
-                    {value: "titleAsc", label: this.i18n.sortTitleAsc},
-                    {value: "titleDesc", label: this.i18n.sortTitleDesc},
-                ];
-                options.forEach(({value, label}) => {
-                    const option = document.createElement("option");
-                    option.value = value;
-                    option.textContent = label;
-                    select.appendChild(option);
-                });
-                select.value = s.sortBy;
-                select.addEventListener("change", () => {
-                    this.updateSettings({sortBy: select.value as SortBy});
-                });
-                return select;
-            },
-        });
-
-        // 全屏模式：切换器铺满整个窗口，按 Esc 退出（开启时给出提示）
-        setting.addItem({
-            title: this.i18n.fullScreen,
-            description: this.i18n.fullScreenTip,
-            createActionElement: () => {
-                const label = document.createElement("label");
-                label.className = "b3-switch sw-switch";
-                const input = document.createElement("input");
-                input.type = "checkbox";
-                input.checked = s.fullscreen;
-                input.addEventListener("change", () => {
-                    this.updateSettings({fullscreen: input.checked});
-                    if (input.checked) {
-                        showMessage(this.i18n.fullScreenOn);
-                    }
-                });
-                label.appendChild(input);
-                label.appendChild(document.createElement("span"));
-                return label;
-            },
-        });
+        const buildBehavior = () => {
+            const wrapper = document.createElement("div");
+            const sortOptions: Array<{value: SortBy, label: string}> = [
+                {value: "mru", label: this.i18n.sortMru},
+                {value: "layout", label: this.i18n.sortLayout},
+                {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
+                {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
+                {value: "titleAsc", label: this.i18n.sortTitleAsc},
+                {value: "titleDesc", label: this.i18n.sortTitleDesc},
+            ];
+            wrapper.append(
+                this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
+                    this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))),
+                // 全屏模式：切换器铺满整个窗口，按 Esc 退出（开启时给出提示）
+                this.settingItem(this.i18n.fullScreen, this.i18n.fullScreenTip,
+                    this.switcher(s.fullscreen, (v) => {
+                        this.updateSettings({fullscreen: v});
+                        if (v) {
+                            showMessage(this.i18n.fullScreenOn);
+                        }
+                    })),
+            );
+            return wrapper;
+        };
 
         // ===== 面板 =====
-        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secPanels}</span>`});
+        const buildPanels = () => {
+            const wrapper = document.createElement("div");
+            const dockOptions: Array<{value: DockDisplay, label: string}> = [
+                {value: "hidden", label: this.i18n.dockDisplayHidden},
+                {value: "collapsed", label: this.i18n.dockDisplayCollapsed},
+                {value: "full", label: this.i18n.dockDisplayFull},
+            ];
+            const sidebarOptions: Array<{value: SidebarLayout, label: string}> = [
+                {value: "enlarge", label: this.i18n.sidebarEnlarge},
+                {value: "columns", label: this.i18n.sidebarColumnsAuto},
+            ];
 
-        // 左侧面板显示方式：完全隐藏 / 折叠图标条 / 完整列表
-        setting.addItem({
-            title: this.i18n.setDockDisplay,
-            description: this.i18n.setDockDisplayTip,
-            createActionElement: () => {
-                const select = document.createElement("select");
-                select.className = "b3-select fn__flex-center fn__size200";
-                const options: Array<{value: DockDisplay, label: string}> = [
-                    {value: "hidden", label: this.i18n.dockDisplayHidden},
-                    {value: "collapsed", label: this.i18n.dockDisplayCollapsed},
-                    {value: "full", label: this.i18n.dockDisplayFull},
-                ];
-                options.forEach(({value, label}) => {
-                    const option = document.createElement("option");
-                    option.value = value;
-                    option.textContent = label;
-                    select.appendChild(option);
+            // 面板显示设置：勾选的面板出现在切换器左侧，取消的隐藏（原 createActionElement 逻辑原样搬移）
+            const box = document.createElement("div");
+            box.className = "sw-setting__docks b3-label__text";
+            const dockPanels = this.getDockPanels();
+            const excluded = new Set(s.excludedDocks);
+            dockPanels.forEach((panel) => {
+                // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
+                const row = document.createElement("div");
+                row.className = "sw-setting__dock-item";
+                const toggle = document.createElement("label");
+                toggle.className = "b3-switch sw-switch";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = !excluded.has(panel.type);
+                checkbox.dataset.dockType = panel.type;
+                checkbox.addEventListener("change", () => {
+                    const next = new Set(this.getSettings().excludedDocks);
+                    if (checkbox.checked) {
+                        next.delete(panel.type);
+                    } else {
+                        next.add(panel.type);
+                    }
+                    this.updateSettings({excludedDocks: Array.from(next)});
                 });
-                select.value = s.dockDisplay;
-                select.addEventListener("change", () => {
-                    this.updateSettings({dockDisplay: select.value as DockDisplay});
-                });
-                return select;
-            },
-        });
+                const knob = document.createElement("span");
+                toggle.appendChild(checkbox);
+                toggle.appendChild(knob);
+                const title = document.createElement("span");
+                title.textContent = panel.title;
+                row.appendChild(toggle);
+                row.appendChild(title);
+                box.appendChild(row);
+            });
+            if (dockPanels.length === 0) {
+                box.textContent = this.i18n.noDockPanels;
+            }
 
-        // 面板显示设置：勾选的面板出现在切换器左侧，取消的隐藏
-        setting.addItem({
-            title: this.i18n.setDocks,
-            description: this.i18n.setDocksTip,
-            direction: "column",
-            createActionElement: () => {
-                const box = document.createElement("div");
-                box.className = "sw-setting__docks b3-label__text";
-                const panels = this.getDockPanels();
-                const excluded = new Set(s.excludedDocks);
-                panels.forEach((panel) => {
-                    // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
-                    const row = document.createElement("div");
-                    row.className = "sw-setting__dock-item";
-                    const toggle = document.createElement("label");
-                    toggle.className = "b3-switch sw-switch";
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.checked = !excluded.has(panel.type);
-                    checkbox.dataset.dockType = panel.type;
-                    checkbox.addEventListener("change", () => {
-                        const next = new Set(this.getSettings().excludedDocks);
-                        if (checkbox.checked) {
-                            next.delete(panel.type);
-                        } else {
-                            next.add(panel.type);
+            wrapper.append(
+                this.settingItem(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip,
+                    this.select(dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay}))),
+                // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
+                this.settingItem(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip,
+                    this.select(sidebarOptions, s.sidebarLayout, (v) => {
+                        this.updateSettings({sidebarLayout: v as SidebarLayout});
+                        // 侧边栏开着时即时刷新，让布局立即生效
+                        if (this.sidebarElement?.isConnected) {
+                            this.refreshSidebar();
                         }
-                        this.updateSettings({excludedDocks: Array.from(next)});
-                    });
-                    const knob = document.createElement("span");
-                    toggle.appendChild(checkbox);
-                    toggle.appendChild(knob);
-                    const title = document.createElement("span");
-                    title.textContent = panel.title;
-                    row.appendChild(toggle);
-                    row.appendChild(title);
-                    box.appendChild(row);
-                });
-                if (panels.length === 0) {
-                    box.textContent = this.i18n.noDockPanels;
-                }
-                return box;
-            },
-        });
+                    })),
+                this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, box, true),
+            );
+            return wrapper;
+        };
 
         // ===== 收藏 =====
-        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secFavorites}</span>`});
+        const buildFavorites = () => {
+            // 收藏管理：新建分组、分组重命名/删除、调整收藏项所属分组（原收藏管理盒逻辑原样搬移）
+            const box = document.createElement("div");
+            box.className = "sw-setting__favs";
+            const render = () => {
+                const favorites = this.getFavorites();
+                const groupNames = this.getFavoriteGroupNames();
+                box.innerHTML = "";
 
-        // 收藏管理：新建分组、分组重命名/删除、调整收藏项所属分组
-        setting.addItem({
-            title: this.i18n.manageFavorites,
-            description: this.i18n.manageFavoritesTip,
-            direction: "row",
-            createActionElement: () => {
-                const box = document.createElement("div");
-                box.className = "sw-setting__favs";
-                const render = () => {
-                    const favorites = this.getFavorites();
-                    const groupNames = this.getFavoriteGroupNames();
-                    box.innerHTML = "";
+                // 新建分组：输入名称即创建（空分组保留，收藏时可选用）
+                const createRow = document.createElement("div");
+                createRow.className = "sw-setting__fav-create";
+                const nameInput = document.createElement("input");
+                nameInput.className = "b3-text-field";
+                nameInput.placeholder = this.i18n.groupName;
+                const createBtn = document.createElement("button");
+                createBtn.className = "b3-button b3-button--outline";
+                createBtn.textContent = this.i18n.createGroup;
+                const doCreate = () => {
+                    if (this.createFavoriteGroup(nameInput.value)) {
+                        nameInput.value = "";
+                        render();
+                    }
+                };
+                createBtn.addEventListener("click", doCreate);
+                nameInput.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        doCreate();
+                    }
+                });
+                createRow.appendChild(nameInput);
+                createRow.appendChild(createBtn);
+                box.appendChild(createRow);
 
-                    // 新建分组：输入名称即创建（空分组保留，收藏时可选用）
-                    const createRow = document.createElement("div");
-                    createRow.className = "sw-setting__fav-create";
-                    const nameInput = document.createElement("input");
-                    nameInput.className = "b3-text-field";
-                    nameInput.placeholder = this.i18n.groupName;
-                    const createBtn = document.createElement("button");
-                    createBtn.className = "b3-button b3-button--outline";
-                    createBtn.textContent = this.i18n.createGroup;
-                    const doCreate = () => {
-                        if (this.createFavoriteGroup(nameInput.value)) {
-                            nameInput.value = "";
-                            render();
-                        }
-                    };
-                    createBtn.addEventListener("click", doCreate);
-                    nameInput.addEventListener("keydown", (event) => {
-                        if (event.key === "Enter") {
-                            event.preventDefault();
-                            doCreate();
-                        }
-                    });
-                    createRow.appendChild(nameInput);
-                    createRow.appendChild(createBtn);
-                    box.appendChild(createRow);
+                // 分组列表：每个分组一行（名称 + 收藏数 + 重命名 + 删除）
+                if (groupNames.length > 0) {
+                    const groupList = document.createElement("div");
+                    groupList.className = "sw-setting__group-list";
+                    groupNames.forEach((name) => {
+                        const row = document.createElement("div");
+                        row.className = "sw-setting__group-row";
 
-                    // 分组列表：每个分组一行（名称 + 收藏数 + 重命名 + 删除）
-                    if (groupNames.length > 0) {
-                        const groupList = document.createElement("div");
-                        groupList.className = "sw-setting__group-list";
-                        groupNames.forEach((name) => {
-                            const row = document.createElement("div");
-                            row.className = "sw-setting__group-row";
+                        const label = document.createElement("span");
+                        label.className = "sw-setting__group-name";
+                        label.textContent = name;
+                        label.title = name;
 
-                            const label = document.createElement("span");
-                            label.className = "sw-setting__group-name";
-                            label.textContent = name;
-                            label.title = name;
+                        const count = document.createElement("span");
+                        count.className = "sw-setting__group-count";
+                        count.textContent = String(favorites.filter((fav) => fav.group === name).length);
+                        count.title = this.i18n.groupCountTip;
 
-                            const count = document.createElement("span");
-                            count.className = "sw-setting__group-count";
-                            count.textContent = String(favorites.filter((fav) => fav.group === name).length);
-                            count.title = this.i18n.groupCountTip;
-
-                            // 重命名：行内切换为输入框，确认后整组迁移
-                            const renameBtn = document.createElement("button");
-                            renameBtn.type = "button";
-                            renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
-                            renameBtn.textContent = this.i18n.rename;
-                            renameBtn.addEventListener("click", () => {
-                                row.innerHTML = "";
-                                const input = document.createElement("input");
-                                input.className = "b3-text-field";
-                                input.value = name;
-                                const okBtn = document.createElement("button");
-                                okBtn.type = "button";
-                                okBtn.className = "b3-button b3-button--small b3-button--text";
-                                okBtn.textContent = this.i18n.confirm;
-                                const cancelBtn = document.createElement("button");
-                                cancelBtn.type = "button";
-                                cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
-                                cancelBtn.textContent = this.i18n.cancel;
-                                const apply = () => {
-                                    const to = input.value.trim();
-                                    if (to && to !== name) {
-                                        this.renameFavoriteGroup(name, to);
-                                    }
-                                    render();
-                                };
-                                okBtn.addEventListener("click", apply);
-                                input.addEventListener("keydown", (event) => {
-                                    if (event.key === "Enter") {
-                                        event.preventDefault();
-                                        apply();
-                                    } else if (event.key === "Escape") {
-                                        render();
-                                    }
-                                });
-                                cancelBtn.addEventListener("click", () => render());
-                                row.appendChild(input);
-                                row.appendChild(okBtn);
-                                row.appendChild(cancelBtn);
-                                input.focus();
-                                input.select();
-                            });
-
-                            // 删除分组：组内收藏项移出到未分组
-                            const deleteBtn = document.createElement("button");
-                            deleteBtn.type = "button";
-                            deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
-                            deleteBtn.textContent = this.i18n.deleteGroup;
-                            deleteBtn.addEventListener("click", () => {
-                                if (confirm(this.i18n.deleteGroupConfirm)) {
-                                    this.deleteFavoriteGroup(name);
+                        // 重命名：行内切换为输入框，确认后整组迁移
+                        const renameBtn = document.createElement("button");
+                        renameBtn.type = "button";
+                        renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
+                        renameBtn.textContent = this.i18n.rename;
+                        renameBtn.addEventListener("click", () => {
+                            row.innerHTML = "";
+                            const input = document.createElement("input");
+                            input.className = "b3-text-field";
+                            input.value = name;
+                            const okBtn = document.createElement("button");
+                            okBtn.type = "button";
+                            okBtn.className = "b3-button b3-button--small b3-button--text";
+                            okBtn.textContent = this.i18n.confirm;
+                            const cancelBtn = document.createElement("button");
+                            cancelBtn.type = "button";
+                            cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
+                            cancelBtn.textContent = this.i18n.cancel;
+                            const apply = () => {
+                                const to = input.value.trim();
+                                if (to && to !== name) {
+                                    this.renameFavoriteGroup(name, to);
+                                }
+                                render();
+                            };
+                            okBtn.addEventListener("click", apply);
+                            input.addEventListener("keydown", (event) => {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    apply();
+                                } else if (event.key === "Escape") {
                                     render();
                                 }
                             });
-
-                            row.appendChild(label);
-                            row.appendChild(count);
-                            row.appendChild(renameBtn);
-                            row.appendChild(deleteBtn);
-                            groupList.appendChild(row);
+                            cancelBtn.addEventListener("click", () => render());
+                            row.appendChild(input);
+                            row.appendChild(okBtn);
+                            row.appendChild(cancelBtn);
+                            input.focus();
+                            input.select();
                         });
-                        box.appendChild(groupList);
-                    }
 
-                    // 收藏列表：每行标题 + 分组下拉（改动即保存）
-                    if (favorites.length === 0) {
-                        const empty = document.createElement("div");
-                        empty.className = "sw-setting__fav-empty";
-                        empty.textContent = this.i18n.noFavorites;
-                        box.appendChild(empty);
-                        return;
-                    }
-                    const list = document.createElement("div");
-                    list.className = "sw-setting__fav-list";
-                    favorites.forEach((fav) => {
-                        const row = document.createElement("div");
-                        row.className = "sw-setting__fav-row";
-                        const name = document.createElement("span");
-                        name.className = "sw-setting__fav-name";
-                        name.textContent = fav.title;
-                        name.title = fav.title;
-                        const select = document.createElement("select");
-                        select.className = "b3-select";
-                        select.appendChild(new Option(this.i18n.ungrouped, ""));
-                        groupNames.forEach((group) => select.appendChild(new Option(group, group)));
-                        select.value = fav.group || "";
-                        select.addEventListener("change", () => {
-                            this.setFavoriteGroup(fav.key, select.value);
-                            render();
+                        // 删除分组：组内收藏项移出到未分组
+                        const deleteBtn = document.createElement("button");
+                        deleteBtn.type = "button";
+                        deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
+                        deleteBtn.textContent = this.i18n.deleteGroup;
+                        deleteBtn.addEventListener("click", () => {
+                            if (confirm(this.i18n.deleteGroupConfirm)) {
+                                this.deleteFavoriteGroup(name);
+                                render();
+                            }
                         });
-                        row.appendChild(name);
-                        row.appendChild(select);
-                        list.appendChild(row);
+
+                        row.appendChild(label);
+                        row.appendChild(count);
+                        row.appendChild(renameBtn);
+                        row.appendChild(deleteBtn);
+                        groupList.appendChild(row);
                     });
-                    box.appendChild(list);
-                };
-                render();
-                return box;
-            },
-        });
+                    box.appendChild(groupList);
+                }
+
+                // 收藏列表：每行标题 + 分组下拉（改动即保存）
+                if (favorites.length === 0) {
+                    const empty = document.createElement("div");
+                    empty.className = "sw-setting__fav-empty";
+                    empty.textContent = this.i18n.noFavorites;
+                    box.appendChild(empty);
+                    return;
+                }
+                const list = document.createElement("div");
+                list.className = "sw-setting__fav-list";
+                favorites.forEach((fav) => {
+                    const row = document.createElement("div");
+                    row.className = "sw-setting__fav-row";
+                    const name = document.createElement("span");
+                    name.className = "sw-setting__fav-name";
+                    name.textContent = fav.title;
+                    name.title = fav.title;
+                    const selectEl = document.createElement("select");
+                    selectEl.className = "b3-select";
+                    selectEl.appendChild(new Option(this.i18n.ungrouped, ""));
+                    groupNames.forEach((group) => selectEl.appendChild(new Option(group, group)));
+                    selectEl.value = fav.group || "";
+                    selectEl.addEventListener("change", () => {
+                        this.setFavoriteGroup(fav.key, selectEl.value);
+                        render();
+                    });
+                    row.appendChild(name);
+                    row.appendChild(selectEl);
+                    list.appendChild(row);
+                });
+                box.appendChild(list);
+            };
+            render();
+            return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
+        };
 
         // ===== 手机端 =====
-        setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secMobile}</span>`});
+        const buildMobile = () => {
+            const wrapper = document.createElement("div");
+            wrapper.append(
+                this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
+                    this.switcher(s.fabEnabled, (v) => {
+                        this.updateSettings({fabEnabled: v});
+                        this.updateFABVisibility();
+                    })),
+                this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,
+                    this.select([
+                        {value: "0", label: this.i18n.mobileSingle},
+                        {value: "1", label: this.i18n.mobileDouble},
+                        {value: "2", label: this.i18n.mobileAuto},
+                    ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)}))),
+            );
+            return wrapper;
+        };
 
-        setting.addItem({
-            title: this.i18n.fabEnabled,
-            description: this.i18n.fabEnabledTip,
-            createActionElement: () => {
-                const label = document.createElement("label");
-                label.className = "b3-switch sw-switch";
-                const input = document.createElement("input");
-                input.type = "checkbox";
-                input.checked = s.fabEnabled;
-                input.addEventListener("change", () => {
-                    this.updateSettings({fabEnabled: input.checked});
-                    this.updateFABVisibility();
-                });
-                label.appendChild(input);
-                label.appendChild(document.createElement("span"));
-                return label;
-            },
+        const builders: Record<string, () => HTMLElement> = {
+            appearance: buildAppearance,
+            behavior: buildBehavior,
+            panels: buildPanels,
+            favorites: buildFavorites,
+            mobile: buildMobile,
+        };
+
+        // 构建标签栏与分组面板
+        panelKeys.forEach((key) => {
+            const tab = document.createElement("button");
+            tab.type = "button";
+            tab.className = "sw-settings__tab";
+            tab.dataset.panel = key;
+            tab.textContent = panelLabels[key];
+            tab.addEventListener("click", () => activate(key));
+            tabs.appendChild(tab);
+
+            const panelEl = document.createElement("div");
+            panelEl.className = "sw-settings__panel";
+            panelEl.dataset.panel = key;
+            panelEl.appendChild(builders[key]());
+            panels.appendChild(panelEl);
         });
 
-        setting.addItem({
-            title: this.i18n.mobileLayout,
-            description: this.i18n.mobileLayoutTip,
-            createActionElement: () => {
-                const select = document.createElement("select");
-                select.className = "b3-select";
-                select.appendChild(new Option(this.i18n.mobileSingle, "0"));
-                select.appendChild(new Option(this.i18n.mobileDouble, "1"));
-                select.appendChild(new Option(this.i18n.mobileAuto, "2"));
-                select.value = String(s.mobileColumns);
-                select.addEventListener("change", () => {
-                    this.updateSettings({mobileColumns: parseInt(select.value, 10)});
-                });
-                return select;
-            },
-        });
+        root.appendChild(tabs);
+        root.appendChild(panels);
 
-        setting.open(this.i18n.settings);
+        // 默认激活第一个标签（外观）
+        activate(panelKeys[0]);
     }
 
     // ==================== 切换器 ====================
@@ -1478,16 +1500,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             const list = document.createElement("div");
             list.className = "sw__fav-items";
             items.forEach((fav) => {
-                const item = document.createElement("button");
-                item.type = "button";
-                item.className = "sw__fav-item";
-                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
-                item.querySelector("span")!.textContent = fav.title;
-                item.title = fav.title;
-                item.addEventListener("click", () => {
-                    this.jumpToFavorite(fav, onPick);
-                });
-                list.appendChild(item);
+                list.appendChild(this.makeFavItem(panel, fav, onPick));
             });
             groupEl.appendChild(list);
             panel.appendChild(groupEl);
@@ -1500,16 +1513,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             const list = document.createElement("div");
             list.className = "sw__fav-items sw__fav-items--flat";
             ungrouped.forEach((fav) => {
-                const item = document.createElement("button");
-                item.type = "button";
-                item.className = "sw__fav-item";
-                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
-                item.querySelector("span")!.textContent = fav.title;
-                item.title = fav.title;
-                item.addEventListener("click", () => {
-                    this.jumpToFavorite(fav, onPick);
-                });
-                list.appendChild(item);
+                list.appendChild(this.makeFavItem(panel, fav, onPick));
             });
             panel.appendChild(list);
         } else {
@@ -1518,6 +1522,25 @@ export default class SpeedSwitchPlugin extends Plugin {
                 appendGroup(this.i18n.ungrouped, ungrouped);
             }
         }
+    }
+
+    // 生成单个收藏项按钮：点击跳转；右键弹出操作菜单（移动至分组 / 取消收藏）
+    private makeFavItem(panel: HTMLElement, fav: IFavoriteItem, onPick: () => void): HTMLButtonElement {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sw__fav-item";
+        item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
+        item.querySelector("span")!.textContent = fav.title;
+        item.title = fav.title;
+        item.addEventListener("click", () => {
+            this.jumpToFavorite(fav, onPick);
+        });
+        item.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openFavItemMenu(panel, fav, onPick, event);
+        });
+        return item;
     }
 
     // 刷新单个下拉组件的触发按钮徽标；面板展开中则收起（内容在下次打开时重建）
@@ -1719,6 +1742,46 @@ export default class SpeedSwitchPlugin extends Plugin {
         menu.open({x: event.clientX, y: event.clientY});
     }
 
+    // 收藏下拉项右键菜单：移动到既有分组（子菜单，当前分组勾选）/ 取消收藏。
+    // 操作后保持面板展开并就地重建，方便连续处理多个收藏项。
+    private openFavItemMenu(panel: HTMLElement, fav: IFavoriteItem, onPick: () => void, event: MouseEvent) {
+        const menu = new Menu("swFavItemMenu");
+        const moveSub = [{checked: !fav.group, label: this.escapeAttr(this.i18n.ungrouped),
+            click: () => this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, ""), panel, onPick)}];
+        this.getFavoriteGroupNames().forEach((name) => {
+            moveSub.push({checked: fav.group === name, label: this.escapeAttr(name),
+                click: () => this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, name), panel, onPick)});
+        });
+        menu.addItem({type: "submenu", label: this.i18n.moveToGroup, icon: "iconFolder", submenu: moveSub});
+        // 新建分组并移动：弹窗输入分组名（新名称自动新建，留空移出分组）
+        menu.addItem({
+            label: this.i18n.newGroupFav,
+            icon: "iconAdd",
+            click: () => this.openFavoriteGroupDialog(panel, fav, onPick),
+        });
+        menu.addSeparator();
+        menu.addItem({
+            label: this.i18n.unfavoriteTab,
+            icon: "iconClose",
+            click: () => this.applyFavItemChange(() => this.removeFavorite(fav.key), panel, onPick),
+        });
+        menu.open({x: event.clientX, y: event.clientY});
+    }
+
+    // 执行收藏项变更：先落盘并同步所有下拉的徽标（refreshFavSelects 会收起展开中的面板），
+    // 再让当前面板保持展开并就地重建，最后按新内容高度重新贴位
+    private applyFavItemChange(mutate: () => void, panel: HTMLElement, onPick: () => void) {
+        mutate();
+        this.refreshFavSelects();
+        panel.classList.remove("fn__none");
+        this.renderFavPanel(panel, onPick);
+        const dd = panel.closest<HTMLElement>(".sw__fav-dd");
+        const trigger = dd?.querySelector<HTMLElement>(".sw__fav-trigger");
+        if (dd && trigger) {
+            this.positionFavPanel(trigger, panel);
+        }
+    }
+
     // 转义 HTML 属性值（分组名等用户输入拼入模板时防注入；Menu label 为 innerHTML 亦需转义）
     private escapeAttr(text: string): string {
         return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1752,6 +1815,42 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (card) {
                 this.refreshCardFavState(tab, card);
             }
+            dialog.destroy();
+        };
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                confirm();
+            }
+        });
+        dialog.element.querySelector(".sw__group-confirm")?.addEventListener("click", confirm);
+        dialog.element.querySelector(".b3-button--cancel")?.addEventListener("click", () => dialog.destroy());
+        input.focus();
+        input.select();
+    }
+
+    // 收藏下拉项：新建分组并移动。弹窗输入分组名（新名称自动新建，留空移出分组），
+    // datalist 列出既有分组便于快速选择；确认后就地刷新下拉面板
+    private openFavoriteGroupDialog(panel: HTMLElement, fav: IFavoriteItem, onPick: () => void) {
+        const groupNames = this.getFavoriteGroupNames();
+        const dialog = new Dialog({
+            title: `${this.i18n.setGroup} · ${this.escapeAttr(fav.title)}`,
+            content: `<div class="b3-dialog__content">
+    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(fav.group || "")}" />
+    <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
+    <div class="fn__hr"></div>
+    <div class="b3-label__text">${this.i18n.groupTip}</div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--text sw__group-confirm">${this.i18n.confirm}</button>
+</div>`,
+            width: "420px",
+        });
+        const input = dialog.element.querySelector<HTMLInputElement>(".sw__group-input");
+        const confirm = () => {
+            this.applyFavItemChange(() => this.setFavoriteGroup(fav.key, input.value), panel, onPick);
             dialog.destroy();
         };
         input.addEventListener("keydown", (event) => {
@@ -1876,7 +1975,9 @@ export default class SpeedSwitchPlugin extends Plugin {
 
             const grid = document.createElement("div");
             grid.className = "sw__grid";
-            if (settings.columns >= 2) {
+            // 侧边栏由专用设置 sidebarLayout 控制列数（CSS 自动响应宽度）；弹窗仍用全局 columns 设置
+            const isSidebar = !!scrollElement.closest(".sw--sidebar");
+            if (!isSidebar && settings.columns >= 2) {
                 grid.style.gridTemplateColumns = `repeat(${settings.columns}, 1fr)`;
             }
 
@@ -2185,12 +2286,30 @@ export default class SpeedSwitchPlugin extends Plugin {
             icon: "iconStar",
             click: () => handlers.onToggleFav(tab, card),
         });
-        // 分组管理：已收藏时调整分组；未收藏时收藏到指定/新建分组
-        menu.addItem({
-            label: nowFaved ? this.i18n.setGroup : this.i18n.newGroupFav,
-            icon: "iconFolder",
-            click: () => this.openGroupDialog(tab, card),
-        });
+        // 分组管理：已收藏时快速移动至分组（子菜单，当前分组勾选）+ 新建分组并移动；
+        // 未收藏时收进收藏并选择分组
+        if (nowFaved) {
+            const key = this.pinKeyOf(tab);
+            const favorite = this.getFavorites().find((item) => item.key === key);
+            const moveSub = [{checked: !favorite?.group, label: this.escapeAttr(this.i18n.ungrouped),
+                click: () => { this.setFavoriteGroup(key, ""); this.refreshCardFavState(tab, card); }}];
+            this.getFavoriteGroupNames().forEach((name) => {
+                moveSub.push({checked: favorite?.group === name, label: this.escapeAttr(name),
+                    click: () => { this.setFavoriteGroup(key, name); this.refreshCardFavState(tab, card); }});
+            });
+            menu.addItem({type: "submenu", label: this.i18n.moveToGroup, icon: "iconFolder", submenu: moveSub});
+            menu.addItem({
+                label: this.i18n.newGroupFav,
+                icon: "iconAdd",
+                click: () => this.openGroupDialog(tab, card),
+            });
+        } else {
+            menu.addItem({
+                label: this.i18n.newGroupFav,
+                icon: "iconFolder",
+                click: () => this.openGroupDialog(tab, card),
+            });
+        }
         menu.addItem({
             label: this.i18n.close,
             icon: "iconClose",
@@ -3094,6 +3213,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.sidebarElement = element;
         element.classList.add("speed-switch", "sw__body", "sw--sidebar");
+        // 侧边栏缩略图布局：enlarge（默认）放大填满栏宽；columns 按宽度自动增加列数
+        element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");
         element.innerHTML = `<div class="sw__content">
     <div class="sw__toolbar">
         <div class="sw__search-wrap">

@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.11.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.12.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -20,6 +20,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 ### Favorites & Groups
 - ⭐ **One-click favorite** — Star any tab; document tabs are remembered by rootID, so you can **reopen them from favorites even after the tab closes**, surviving restarts.
 - 🗂️ **Group management** — File favorites into groups on star click, or create groups on the fly; settings let you **create / inline-rename / delete groups** and reassign favorites per item — all saved instantly.
+- 🖱️ **Right-click shortcuts** — Both cards and dropdown favorites support right-click: **move to group** (submenu with one click), **new group & move**, unfavorite — bulk organizing without opening settings.
 - 📂 **Grouped dropdown** — The favorites dropdown is a custom component: group headers with count badges, **click to collapse / expand**; auto-narrows and clamps inside narrow sidebars, never overflows.
 
 ### Search & Sort
@@ -28,7 +29,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ### Panels & Sidebar
 - 🖇️ **Panel quick access** — All dock panels (file tree, outline, bookmarks, graph, backlinks, tags, inbox, AI chat…) listed on the left rail; click to open and focus. Hide unwanted ones in settings.
-- 📎 **Sidebar mode** — Pin the tab list to a right dock panel: single-column cards that resize with the panel, always at hand.
+- 📎 **Sidebar mode** — Pin the tab list to a right dock panel: cards that resize with the panel, always at hand; when stretched wider, choose between **enlarging thumbnails** or **auto-adding columns**.
 
 ### Mobile
 - 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (on by default); thumbnails, favorites and search work just like on desktop.
@@ -61,13 +62,13 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## ⚙️ Settings
 
-**Settings → Plugins → LvSpeed Switch → Settings** (or the gear button inside the switcher), in five sections:
+**Settings → Plugins → LvSpeed Switch → Settings** (or the gear button inside the switcher), organized as five tabs on the left rail; every change saves instantly:
 
-| Section | Options |
+| Tab | Options |
 | --- | --- |
 | Appearance | Switcher width/height (480–1920 × 360–1280), thumbnail columns (auto / 2–8), thumbnail height (72–360) |
 | Behavior | Default sort order, fullscreen mode (off by default; opens filling the window) |
-| Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden) |
+| Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden), sidebar thumbnail layout (enlarge / auto columns) |
 | Favorites | Create / rename / delete groups, reassign favorites |
 | Mobile | Floating button toggle (on by default), card layout (single / double / auto) |
 
@@ -83,6 +84,14 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.12.0 (2026-09-04)
+
+- **Tabbed settings redesign**: the long single-page settings are now a left tab rail + grouped panels — Appearance / Behavior / Panels / Favorites / Mobile switch in one click; number inputs carry unit labels, switches and selects share a unified format, and every change still saves instantly.
+- **Favorites dropdown right-click (desktop)**: every favorited tab supports right-click — **move to group** (submenu with the current group checked), **new group & move**, and **unfavorite**; the panel stays open and refreshes in place so you can organize several favorites in a row.
+- **Card context menu enhanced**: favorited tabs gain a "Move to group" submenu (current group checked) plus a "New group" entry; unfavorited tabs offer "New group…" to favorite straight into a new group.
+- **Sidebar thumbnail layout setting (Settings → Panels)**: when the sidebar is stretched wider, thumbnails enlarge to fill the width by default, or auto-add columns to show more tabs; switching applies instantly.
+- **Mobile settings fit**: the settings dialog now scales with the viewport (no overflow in landscape anymore); on narrow screens the tab rail narrows and setting rows stack vertically.
 
 ### v0.11.1 (2026-09-04)
 
