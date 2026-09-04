@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.13.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,12 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.0（2026-09-04）
+
+- **收藏分组折叠状态持久化**：收藏面板中每个分组的展开 / 折叠状态会记忆下来并跨会话保留，重启思源后仍保持上次的折叠状态；删除 / 重命名分组时自动清理对应记忆。
+- **设置面板记住上次标签页**：打开设置弹窗默认定位到上次使用的标签页（如上次停留在「手机端」，下次直接跳到该分组），无需每次重新点击。
+- 构建与工程化小改进：`tsconfig` 编译目标提升至 `es2017`（消除数组 `includes` 类型报错），README 版本徽章与插件版本三处同步。
 
 ### v0.14.0（2026-09-04）
 

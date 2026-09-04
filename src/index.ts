@@ -30,6 +30,7 @@ const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID �
 const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
 const SETTINGS_KEY = "sw_settings";  // 插件设置
 const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
+const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
 const SIDEBAR_DOCK_TYPE = "sidebar"; // 侧边栏 dock 的 type（实际注册为 插件名+type）
 const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
 const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量（IntersectionObserver 不可用时的兜底路径）
@@ -63,6 +64,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     mobileColumns: 2,      // 2=自动（竖屏单列，横屏双列），默认自动
     mobileThumbHeight: 80, // 手机端缩略图高度
     journalNotebook: "",   // 默认日记笔记本 id，空=未设置（首次点击日记按钮时弹出选择）
+    lastSettingsTab: "appearance", // 设置面板上次所在标签页（打开时直接跳转，提升反复进入设置的操作效率）
 };
 
 // 左侧面板显示方式
@@ -87,6 +89,7 @@ interface ISwSettings {
     mobileColumns: number;     // 0=单列 1=双列 2=自动
     mobileThumbHeight: number; // 手机端缩略图高度
     journalNotebook: string;   // 默认日记笔记本 id，空=未设置
+    lastSettingsTab: string;   // 设置面板上次所在标签页（appearance/behavior/panels/favorites/journal/mobile）
 }
 
 interface IGroupedTab {
@@ -138,9 +141,12 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadData(PINNED_KEY),
             this.loadData(FAV_KEY),
             this.loadData(FAV_GROUPS_KEY),
+            this.loadData(FAV_COLLAPSED_KEY),
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => console.warn("[speed-switch] load data fail", e));
+        // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
+        this.initFavCollapsed();
 
         this.addTopBar({
             icon: "iconLayout",
@@ -303,6 +309,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             mobileThumbHeight: this.clampNum((saved as any).mobileThumbHeight, 48, 200, DEFAULT_SETTINGS.mobileThumbHeight),
             journalNotebook: typeof (saved as any).journalNotebook === "string"
                 ? (saved as any).journalNotebook : DEFAULT_SETTINGS.journalNotebook,
+            lastSettingsTab: typeof (saved as any).lastSettingsTab === "string"
+                ? (saved as any).lastSettingsTab : DEFAULT_SETTINGS.lastSettingsTab,
         };
     }
 
@@ -580,8 +588,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         const panels = document.createElement("div");
         panels.className = "sw-settings__panels";
 
-        // 切换分组：仅激活对应标签与面板，同步 aria-selected 供读屏感知
-        const activate = (key: string) => {
+        // 切换分组：仅激活对应标签与面板，同步 aria-selected 供读屏感知；
+        // persist=true 时记录最近选中的标签页（仅用户主动点击时写盘，避免打开设置就产生一次无效写入）
+        const activate = (key: string, persist = false) => {
             tabs.querySelectorAll<HTMLElement>(".sw-settings__tab").forEach((tab) => {
                 const active = tab.dataset.panel === key;
                 tab.classList.toggle("is-active", active);
@@ -590,6 +599,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             panels.querySelectorAll<HTMLElement>(".sw-settings__panel").forEach((p) => {
                 p.classList.toggle("is-active", p.dataset.panel === key);
             });
+            if (persist) {
+                this.updateSettings({lastSettingsTab: key});
+            }
         };
 
         // ===== 外观 =====
@@ -902,7 +914,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             tab.setAttribute("role", "tab");
             tab.dataset.panel = key;
             tab.textContent = panelLabels[key];
-            tab.addEventListener("click", () => activate(key));
+            tab.addEventListener("click", () => activate(key, true));
             tabs.appendChild(tab);
 
             const panelEl = document.createElement("div");
@@ -916,8 +928,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         root.appendChild(tabs);
         root.appendChild(panels);
 
-        // 默认激活第一个标签（外观）
-        activate(panelKeys[0]);
+        // 打开时直接跳转到上次所在的标签页（默认外观）；activate 内部会记录切换，下次进入保持
+        const lastTab = this.getSettings().lastSettingsTab;
+        const initial = panelKeys.includes(lastTab as any) ? lastTab : panelKeys[0];
+        activate(initial);
+        if (initial !== panelKeys[0]) {
+            // 非默认时需要滚动到选中标签可见（连续打开时标签栏不会滚动错位）
+            tabs.querySelector<HTMLElement>(`.sw-settings__tab[data-panel="${initial}"]`)?.scrollIntoView({block: "nearest"});
+        }
     }
 
     // ==================== 切换器 ====================
@@ -1043,7 +1061,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
         const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
         const closeOverlay = () => dialog.destroy();
-        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: () => undefined};
+        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: (): void => undefined};
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.openSetting();
@@ -1538,6 +1556,28 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.saveFavorites(this.getFavorites().filter((item) => item.key !== key));
     }
 
+    // ==================== 收藏分组折叠状态持久化 ====================
+    // 分组折叠偏好此前是会话级的（重启即全部展开）；改为持久化，重启后保持用户上次的展开/折叠习惯
+
+    // 从持久化数据初始化 favCollapsed 集合
+    private initFavCollapsed() {
+        const saved = this.data[FAV_COLLAPSED_KEY];
+        if (!Array.isArray(saved)) {
+            return;
+        }
+        saved.forEach((name) => {
+            if (typeof name === "string" && name) {
+                this.favCollapsed.add(name);
+            }
+        });
+    }
+
+    // 折叠/展开状态变化后去抖写入持久化
+    private saveFavCollapsed() {
+        this.data[FAV_COLLAPSED_KEY] = Array.from(this.favCollapsed);
+        this.saveDataDebounced(FAV_COLLAPSED_KEY);
+    }
+
     // ==================== 收藏下拉组件 ====================
     // 原生 select 的 optgroup 无法折叠且样式简陋，改为自定义下拉：
     // 触发按钮（星标 + 数量徽标）+ 浮层面板（分组标题可折叠/展开，组内项点击跳转）
@@ -1674,6 +1714,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 } else {
                     this.favCollapsed.add(name);
                 }
+                this.saveFavCollapsed();
             });
             groupEl.appendChild(head);
 
@@ -1815,6 +1856,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (dirty) {
             this.saveFavorites(list);
         }
+        // 分组被删后清理其折叠状态
+        if (this.favCollapsed.delete(name)) {
+            this.saveFavCollapsed();
+        }
         this.refreshFavSelects();
     }
 
@@ -1836,6 +1881,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (index >= 0) {
             registry[index] = to;
             this.saveFavGroupRegistry(registry);
+        }
+        // 分组重命名后同步迁移其折叠状态
+        if (this.favCollapsed.delete(from)) {
+            this.favCollapsed.add(to);
+            this.saveFavCollapsed();
         }
         this.refreshFavSelects();
     }

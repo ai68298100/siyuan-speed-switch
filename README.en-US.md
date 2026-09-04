@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.13.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,12 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.0 (2026-09-04)
+
+- **Persist favorite-group collapse state**: each group's expanded/collapsed state in the favorites panel is remembered across sessions — it survives a SiYuan restart. Deleting or renaming a group automatically clears its remembered state.
+- **Remember last settings tab**: opening the settings dialog lands on the tab you used last time (e.g. "Mobile"), so you no longer have to click your way back each time.
+- **Build & tooling polish**: `tsconfig` compile target raised to ES2017 (fixes `Array.includes` type-check compatibility); README version badge kept in sync with the three version-number files.
 
 ### v0.14.0 (2026-09-04)
 
