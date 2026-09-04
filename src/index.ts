@@ -1,6 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
+import {clampNum, stableSortBy, normalizeSortBy} from "./util";
 import {
     getSiyuan,
     IMobileTabsState,
@@ -15,6 +16,13 @@ import {
     IProtyleTabModel,
     IElementStorage,
 } from "./types";
+
+declare module "./util" {
+    // 让 TS 仍能从 ./util.js 拿到函数签名；运行时 import.js 走 Node CJS
+    export function clampNum(value: unknown, min: number, max: number, fallback: number): number;
+    export function stableSortBy<T>(arr: T[], keyFn: (item: T) => string | number): T[];
+    export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
+}
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
@@ -308,15 +316,12 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialogHeight: this.clampNum(saved.dialogHeight, 360, 1280, DEFAULT_SETTINGS.dialogHeight),
             columns: this.clampNum(saved.columns, 0, 8, DEFAULT_SETTINGS.columns),
             thumbHeight: this.clampNum(saved.thumbHeight, 72, 360, DEFAULT_SETTINGS.thumbHeight),
-            sortBy: SORT_BY_LIST.includes(saved.sortBy as SortBy)
-                ? (saved.sortBy as SortBy) : DEFAULT_SETTINGS.sortBy,
+            sortBy: normalizeSortBy(saved.sortBy, SORT_BY_LIST, DEFAULT_SETTINGS.sortBy) as SortBy,
             excludedDocks: Array.isArray(saved.excludedDocks)
                 ? saved.excludedDocks.filter((t) => typeof t === "string")
                 : [],
-            dockDisplay: DOCK_DISPLAY_LIST.includes(saved.dockDisplay as DockDisplay)
-                ? (saved.dockDisplay as DockDisplay) : DEFAULT_SETTINGS.dockDisplay,
-            sidebarLayout: SIDEBAR_LAYOUT_LIST.includes(saved.sidebarLayout as SidebarLayout)
-                ? (saved.sidebarLayout as SidebarLayout) : DEFAULT_SETTINGS.sidebarLayout,
+            dockDisplay: normalizeSortBy(saved.dockDisplay, DOCK_DISPLAY_LIST, DEFAULT_SETTINGS.dockDisplay) as DockDisplay,
+            sidebarLayout: normalizeSortBy(saved.sidebarLayout, SIDEBAR_LAYOUT_LIST, DEFAULT_SETTINGS.sidebarLayout) as SidebarLayout,
             fullscreen: typeof saved.fullscreen === "boolean"
                 ? saved.fullscreen : DEFAULT_SETTINGS.fullscreen,
             fabEnabled: typeof saved.fabEnabled === "boolean"
@@ -337,11 +342,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     private clampNum(value: any, min: number, max: number, fallback: number): number {
-        const num = typeof value === "number" ? value : parseInt(value, 10);
-        if (Number.isNaN(num)) {
-            return fallback;
-        }
-        return Math.min(max, Math.max(min, num));
+        // 委派到 util.clampNum（pure，便于单元测试）；class 内保留方法签名以便现有调用点不变
+        return clampNum(value, min, max, fallback);
     }
 
     // ==================== 设置页本地控件工厂（统一格式、减少重复） ====================
@@ -976,10 +978,25 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 全屏模式：切换器铺满整个窗口（Esc 退出由思源 Dialog 默认行为提供）
         const fullscreen = settings.fullscreen;
 
-        const dialog = new Dialog({
+        const dialog = this.createSwitcherDialog(settings, fullscreen);
+        // 工具栏/列表/回到顶部/缩略图懒加载 等子模块装配
+        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab);
+    }
+
+    // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
+    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean): Dialog {
+        return new Dialog({
             // 极简：隐藏原生标题栏，顶栏内置于内容区最上方
             title: "",
-            content: `<div class="speed-switch sw__body${fullscreen ? " sw--fullscreen" : ""}">
+            content: this.buildSwitcherHtml(fullscreen),
+            width: fullscreen ? "100vw" : `${settings.dialogWidth}px`,
+            height: fullscreen ? "100vh" : `${settings.dialogHeight}px`,
+        });
+    }
+
+    // 切换器主体 HTML 字符串（结构：顶栏搜索/收藏下拉/排序/全屏按钮 + 滚动区 + 回到顶部）
+    private buildSwitcherHtml(fullscreen: boolean): string {
+        return `<div class="speed-switch sw__body${fullscreen ? " sw--fullscreen" : ""}">
     <div class="sw__main">
         <div class="sw__dock fn__none"></div>
         <div class="sw__content">
@@ -1023,21 +1040,96 @@ export default class SpeedSwitchPlugin extends Plugin {
             </span>
         </div>
     </div>
-</div>`,
-            width: fullscreen ? "100vw" : `${settings.dialogWidth}px`,
-            height: fullscreen ? "100vh" : `${settings.dialogHeight}px`,
-        });
+</div>`;
+    }
 
+    // 装配：全屏切换、工具栏事件、收藏下拉、列表渲染、搜索过滤、回到顶部、缩略图懒加载
+    private assembleSwitcherParts(
+        dialog: Dialog,
+        settings: ISwSettings,
+        fullscreen: boolean,
+        tabs: Tab[],
+        activeTab: Tab | undefined,
+    ) {
         // 全屏模式下给弹窗容器加类：去掉圆角/边框/最大宽度限制，真正铺满视口
         if (fullscreen) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
 
-        // 全屏 ⇄ 普通 原地切换：直接改容器 inline 尺寸与类，不重建弹窗（缩略图/搜索状态全保留）。
-        // 初始模式仍由设置项决定，按钮只作用于本次会话
-        let isFullscreen = fullscreen;
+        // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
+        // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
+        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
+        if (dialogBody) {
+            dialogBody.classList.add("sw-scroll-locked");
+        }
+
+        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除与显示方式渲染，无可面板时自动隐藏
+        const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
+        this.renderDockList(dockElement, dialog, settings.excludedDocks, settings.dockDisplay);
+
+        // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
+        this.pruneThumbCache(tabs);
+
+        // 工具栏引用
+        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
+        const closeOverlay = () => dialog.destroy();
+        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: (): void => undefined};
+
+        this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
+        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay);
+
+        // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
+        const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
+        this.setupFavDropdown(favDd, closeOverlay);
+        if (sortSelect) {
+            sortSelect.value = settings.sortBy;
+        }
+
+        // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
+        const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+        if (!scrollElement) {
+            return;
+        }
+        let updatedMap: {[rootId: string]: string} = {};
+        this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
+        this.bindKeydown(scrollElement, closeOverlay);
+
+        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
+        const mergedMap = updatedMap;
+        this.loadUpdatedMap(tabs).then((map) => {
+            Object.assign(mergedMap, map);
+            if (dialog.element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                // 弹窗存活期间页签可能已增减，重取最新列表
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", mergedMap);
+            }
+        });
+
+        // 搜索：已打开页签匹配显示在上半部分，同时全库文档结果显示在下半部分
+        searchInput?.addEventListener("input", () => {
+            this.applySearch(scrollElement, searchInput, closeOverlay);
+        });
+
+        // 让滚动区域获得焦点以接收键盘导航
+        scrollElement.focus();
+
+        // 回到顶部按钮
+        const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
+        if (backTopBtn) {
+            scrollElement.addEventListener("scroll", () => {
+                backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
+            });
+            backTopBtn.addEventListener("click", () => {
+                scrollElement.scrollTo({top: 0, behavior: "smooth"});
+            });
+        }
+    }
+
+    // 绑定"全屏 ⇄ 普通"原地切换按钮（与关闭弹窗不同：原地切换可以保留搜索/缩略图状态）
+    private bindSwitcherFullscreenToggle(dialog: Dialog, settings: ISwSettings, initialFullscreen: boolean) {
         const fsBtn = dialog.element.querySelector<HTMLElement>(".sw__fullscreen-btn");
         const swBody = dialog.element.querySelector<HTMLElement>(".sw__body");
+        let isFullscreen = initialFullscreen;
         const toggleFullscreen = (toFullscreen: boolean) => {
             const container = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
             if (!container || toFullscreen === isFullscreen) {
@@ -1059,26 +1151,16 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         };
         fsBtn?.addEventListener("click", () => toggleFullscreen(!isFullscreen));
+    }
 
-        // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
-        // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
-        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
-        if (dialogBody) {
-            dialogBody.classList.add("sw-scroll-locked");
-        }
-
-        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除与显示方式渲染，无可面板时自动隐藏
-        const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
-        this.renderDockList(dockElement, dialog, settings.excludedDocks, settings.dockDisplay);
-
-        // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
-        this.pruneThumbCache(tabs);
-
-        // 工具栏：搜索过滤 + 收藏快速跳转 + 排序切换（持久化）+ 侧边栏/设置入口
-        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
-        const closeOverlay = () => dialog.destroy();
-        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: (): void => undefined};
+    // 工具栏顶栏按钮：设置 / 侧边栏 / 日记按钮 + 排序切换
+    private bindSwitcherToolbarActions(
+        dialog: Dialog,
+        searchInput: HTMLInputElement | null,
+        sortSelect: HTMLSelectElement | null,
+        listOpts: {onOverlayClose: () => void, onTabsChanged: () => void},
+        closeOverlay: () => void,
+    ) {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.openSetting();
@@ -1092,52 +1174,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialog.destroy();
             this.openJournal();
         });
-        // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
-        const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
-        this.setupFavDropdown(favDd, closeOverlay);
-        sortSelect.value = settings.sortBy;
-        sortSelect.addEventListener("change", () => {
-            this.updateSettings({sortBy: sortSelect.value as SortBy});
+        sortSelect?.addEventListener("change", () => {
+            const nextSort = sortSelect.value as SortBy;
+            this.updateSettings({sortBy: nextSort});
+            const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
             // 弹窗存活期间页签可能已增减，重取最新列表
-            this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, sortSelect.value as SortBy, updatedMap);
-            searchInput.value = "";
-            this.applySearch(scrollElement, searchInput, closeOverlay);
-            scrollElement.focus();
-        });
-
-        // 右侧页签缩略图网格：每次打开都重新克隆渲染，展示各页签的最新状态
-        const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-        let updatedMap: {[rootId: string]: string} = {};
-        this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
-        this.bindKeydown(scrollElement, closeOverlay);
-
-        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
-        this.loadUpdatedMap(tabs).then((map) => {
-            updatedMap = map;
-            if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && searchInput.value.trim() === "") {
-                // 弹窗存活期间页签可能已增减，重取最新列表
-                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+            if (scrollElement) {
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, nextSort, {});
             }
+            if (searchInput) {
+                searchInput.value = "";
+                this.applySearch(scrollElement, searchInput, closeOverlay);
+            }
+            scrollElement?.focus();
         });
-
-        // 搜索：已打开页签匹配显示在上半部分，同时全库文档结果显示在下半部分
-        searchInput.addEventListener("input", () => {
-            this.applySearch(scrollElement, searchInput, closeOverlay);
-        });
-
-        // 让滚动区域获得焦点以接收键盘导航
-        scrollElement.focus();
-
-        // 回到顶部按钮：下拉超过一屏左右时淡入，点击平滑回顶
-        const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
-        if (backTopBtn) {
-            scrollElement.addEventListener("scroll", () => {
-                backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
-            });
-            backTopBtn.addEventListener("click", () => {
-                scrollElement.scrollTo({top: 0, behavior: "smooth"});
-            });
-        }
     }
 
     // 执行搜索：已打开页签匹配卡片显示在上半部分，同时（防抖）搜索全库文档标题显示在下半部分
@@ -2663,11 +2713,11 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         cache[rootId] = {title, html, ts: Date.now()};
-        // 容量控制：超出上限时删最旧的条目
+        // 容量控制：超出上限时删最旧的条目；用稳定排序让 ts 相同时按插入顺序淘汰，行为可预测
         const keys = Object.keys(cache);
         if (keys.length > cacheMax) {
-            keys.sort((a, b) => cache[a].ts - cache[b].ts);
-            keys.slice(0, keys.length - cacheMax).forEach((key) => delete cache[key]);
+            const sorted = stableSortBy(keys, (k) => cache[k].ts);
+            sorted.slice(0, sorted.length - cacheMax).forEach((key) => delete cache[key]);
         }
     }
 

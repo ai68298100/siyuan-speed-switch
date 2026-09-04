@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.2-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,12 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.3 (2026-09-04)
+
+- **Desktop switcher main split**: the 181-line `showSwitcher()` was broken into five clearly-scoped helpers — `createSwitcherDialog`, `buildSwitcherHtml`, `assembleSwitcherParts`, `bindSwitcherFullscreenToggle`, `bindSwitcherToolbarActions` — with the top-level method compressed to a 22-line "menu" of calls. Each helper can now be read, tested and reasoned about in isolation.
+- **New `src/util.js` pure-function utility module**: exports `clampNum`, `stableSortBy` and `normalizeSortBy` with zero dependencies. The three `*_LIST.includes(x as T) ? x as T : DEFAULT` patterns inside `getSettings()` collapse to single `normalizeSortBy(...)` calls; the thumbnail LRU eviction now goes through `stableSortBy`, making the intent explicit and self-documenting.
+- **Unit-test / UI smoke-test foundation**: added `tests/util.test.cjs` (Node 22's built-in `node:test`, 10 assertions, all passing under 6ms) and `tests/mobile-card-smoke.cjs` (jsdom loads SiYuan's mobile base CSS plus the `litheness` icon sprite, then verifies the three card buttons are still 28×28px). Added two commands to `package.json` — `npm test` and `npm run test:smoke`. No new production dependencies.
 
 ### v0.15.2 (2026-09-04)
 

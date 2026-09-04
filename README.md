@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.2-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,12 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.3（2026-09-04）
+
+- **桌面切换器主体拆分**：`showSwitcher()` 从 181 行的巨型方法拆成 5 个语义清晰的 helper：`createSwitcherDialog` / `buildSwitcherHtml` / `assembleSwitcherParts` / `bindSwitcherFullscreenToggle` / `bindSwitcherToolbarActions`，主体压缩到 22 行的"菜单式"调用。每个 helper 可单独读、单独测，单一职责清晰。
+- **新增 `src/util.js` 纯函数工具模块**：导出 `clampNum` / `stableSortBy` / `normalizeSortBy` 三个零依赖工具。`getSettings()` 中三处"`*_LIST.includes(x as T) ? x as T : DEFAULT`"模式替换为单行 `normalizeSortBy(...)`，缩略图 LRU 缓存淘汰改用 `stableSortBy`，业务逻辑更声明式。
+- **单元测试 / UI 抽测基建**：新增 `tests/util.test.cjs`（Node 22 内置 `node:test`，10 个 assertion，6ms 内全过）和 `tests/mobile-card-smoke.cjs`（jsdom 加载思源移动端 base CSS + litheness sprite 后抽测三按钮仍是 28×28px）。`package.json` 增加 `npm test` 与 `npm run test:smoke` 两条命令；零新依赖。
 
 ### v0.15.2（2026-09-04）
 
