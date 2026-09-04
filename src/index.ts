@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     dockDisplay: "full",   // 左侧面板显示方式：hidden 隐藏 / collapsed 折叠图标条 / full 完整列表
     fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
-    fabEnabled: true,      // 手机端悬浮按钮默认开启
+    fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
     mobileColumns: 2,      // 2=自动（竖屏单列，横屏双列），默认自动
     mobileThumbHeight: 80, // 手机端缩略图高度
 };

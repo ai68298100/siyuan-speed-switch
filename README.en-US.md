@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.12.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.12.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -32,7 +32,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - 📎 **Sidebar mode** — Pin the tab list to a right dock panel: cards that resize with the panel, always at hand; when stretched wider, choose between **enlarging thumbnails** or **auto-adding columns**.
 
 ### Mobile
-- 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (on by default); thumbnails, favorites and search work just like on desktop.
+- 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (off by default, enable it in settings); thumbnails, favorites and search work just like on desktop.
 - 👆 **Touch interactions** — Long-press a card for pin / favorite / group / close (the mobile equivalent of right-click); the floating button hides on swipe up and returns on swipe down, matching SiYuan's own toolbar.
 - 🗂️ **Adaptive layout** — Card layout supports single / double / auto columns (single in portrait, double in landscape); one setting syncs across devices.
 
@@ -70,7 +70,7 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 | Behavior | Default sort order, fullscreen mode (off by default; opens filling the window) |
 | Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden), sidebar thumbnail layout (enlarge / auto columns) |
 | Favorites | Create / rename / delete groups, reassign favorites |
-| Mobile | Floating button toggle (on by default), card layout (single / double / auto) |
+| Mobile | Floating button toggle (off by default), card layout (single / double / auto) |
 
 ## 📦 Install
 
@@ -84,6 +84,10 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.12.1 (2026-09-04)
+
+- **Mobile floating button is off by default** — keeps the bottom free from a redundant FAB; enable it anytime under **Settings → Mobile → Floating button**. The top-bar entry always stays available, so the switcher experience is unchanged.
 
 ### v0.12.0 (2026-09-04)
 
