@@ -76,6 +76,23 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.8.0 (2026-09-04)
+
+- **Performance (desktop & mobile)**:
+  - Thumbnail **viewport lazy rendering**: only cards scrolled into view (240px preload margin) get thumbnails, so opening the switcher renders just the first screen instead of everything.
+  - Clone size is decoupled from document length: only the first 30 blocks are cloned (thumbnails show the first screen anyway).
+  - Sorting and list refreshes now **reuse existing cards** (DOM moves instead of rebuilds); rendered thumbnails are kept, making re-sorting instant.
+  - A **concurrency gate** for `getDoc` fetches (desktop 4 / mobile 2) prevents hammering the kernel; smaller fetch payload.
+  - Session-level cache for rootID parsing (no repeated `JSON.parse`) and a 3-second cache for the "recently edited" SQL query.
+  - Mobile thumbnail cache limit raised from 20 to 30.
+- **Dock panel display modes (desktop, Settings → Panels)**:
+  - **Hidden**: no dock list; the content area takes the full dialog width.
+  - **Collapsed**: a 44px icon rail; hover shows the panel name, click activates; a top button expands/collapses anytime.
+  - **Full**: the current list (icon + name).
+- **Mobile long-press menu**: press and hold a tab card (~0.5s) to open the pin/favorite/group/close menu, same as desktop right-click.
+- **Empty-state guidance**: when no tabs are open, a hint suggests searching the whole workspace from the search box.
+- Fixed: the default focused card under "Recently used" sorting used a stale matching key (MRU is keyed by document rootID), breaking focus placement.
+
 ### v0.7.1 (2026-09-04)
 
 - **Fixed mobile switcher not working**: the SiYuan `getAllTabs` plugin API always returns an empty array on mobile (mobile is a separate build), so tapping the floating button did nothing. Mobile now reads tabs from `window.siyuan.mobile.tabs` (MobileTabs, SiYuan 3.8+); switching and closing tabs also go through MobileTabs.

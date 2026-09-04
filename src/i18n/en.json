@@ -72,5 +72,13 @@
   "mobileAuto": "Auto (portrait single, landscape double)",
   "mobileFavTitle": "Favorites",
   "mobileNoFav": "No favorites yet. Star a tab from the switcher to add it here.",
-  "mobileNeedsNewer": "Tab switching on mobile requires SiYuan 3.8.0 or later. Please upgrade."
+  "mobileNeedsNewer": "Tab switching on mobile requires SiYuan 3.8.0 or later. Please upgrade.",
+  "setDockDisplay": "Dock panel display",
+  "setDockDisplayTip": "How the dock panel list shows on the left of the switcher: hidden gives the content full width; collapsed shows an icon rail with names on hover, expandable anytime",
+  "dockDisplayHidden": "Hidden",
+  "dockDisplayCollapsed": "Collapsed (icon rail)",
+  "dockDisplayFull": "Full list",
+  "expandDock": "Expand panel list",
+  "collapseDock": "Collapse panel list",
+  "emptyHint": "Type keywords in the search box above to find and open documents from the whole workspace"
 }

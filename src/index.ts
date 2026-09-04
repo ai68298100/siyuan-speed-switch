@@ -32,12 +32,17 @@ const SETTINGS_KEY = "sw_settings";  // 插件设置
 const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 const SIDEBAR_DOCK_TYPE = "sidebar"; // 侧边栏 dock 的 type（实际注册为 插件名+type）
 const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
-const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量，避免一次克隆大量 DOM 卡住界面
+const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量（IntersectionObserver 不可用时的兜底路径）
 const THUMB_CACHE_MAX = 40;          // 缓存最多保留的文档数（超出按最旧淘汰）
 const THUMB_HTML_MAX = 200 * 1024;   // 单条缓存 HTML 上限，避免持久化文件膨胀
 const THUMB_BATCH_MOBILE = 2;        // 手机端并发渲染数（性能更弱）
-const THUMB_CACHE_MAX_MOBILE = 20;   // 手机端缓存上限
+const THUMB_CACHE_MAX_MOBILE = 30;   // 手机端缓存上限
 const THUMB_HTML_MAX_MOBILE = 80 * 1024; // 手机端单条缓存上限
+const THUMB_CLONE_MAX = 30;          // 缩略图克隆块数上限：只取文档首屏内容，避免大文档整篇克隆卡顿
+const THUMB_API_MAX = 4;             // getDoc 回源并发上限（桌面端）
+const THUMB_API_MAX_MOBILE = 2;      // getDoc 回源并发上限（手机端，弱网弱机保护）
+const UPDATED_CACHE_MS = 3000;       // 「最近编辑」排序 SQL 结果的短缓存有效期
+const ROOT_ID_CACHE_MAX = 512;       // rootId 映射缓存上限（超出整体清空，页签 id 稳定重复率高）
 // 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
 // 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
 const DEFAULT_HOTKEY = "⌥⇧S";
@@ -51,10 +56,15 @@ const DEFAULT_SETTINGS: ISwSettings = {
     thumbHeight: 128,      // 缩略图高度 px
     sortBy: "mru",         // 页签排序方式
     excludedDocks: [],     // 不显示在左侧列表的面板类型
+    dockDisplay: "full",   // 左侧面板显示方式：hidden 隐藏 / collapsed 折叠图标条 / full 完整列表
     fabEnabled: true,      // 手机端悬浮按钮默认开启
     mobileColumns: 0,      // 0=单列
     mobileThumbHeight: 80, // 手机端缩略图高度
 };
+
+// 左侧面板显示方式
+type DockDisplay = "hidden" | "collapsed" | "full";
+const DOCK_DISPLAY_LIST: DockDisplay[] = ["hidden", "collapsed", "full"];
 
 interface ISwSettings {
     dialogWidth: number;
@@ -63,6 +73,7 @@ interface ISwSettings {
     thumbHeight: number;
     sortBy: SortBy;
     excludedDocks: string[];
+    dockDisplay: DockDisplay;
     // 手机端
     fabEnabled: boolean;       // 是否启用悬浮按钮
     mobileColumns: number;     // 0=单列 1=双列 2=自动
@@ -242,6 +253,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             excludedDocks: Array.isArray((saved as any).excludedDocks)
                 ? (saved as any).excludedDocks.filter((t: any) => typeof t === "string")
                 : [],
+            dockDisplay: (DOCK_DISPLAY_LIST.includes((saved as any).dockDisplay)
+                ? (saved as any).dockDisplay : DEFAULT_SETTINGS.dockDisplay) as DockDisplay,
             fabEnabled: typeof (saved as any).fabEnabled === "boolean"
                 ? (saved as any).fabEnabled : DEFAULT_SETTINGS.fabEnabled,
             mobileColumns: this.clampNum((saved as any).mobileColumns, 0, 2, DEFAULT_SETTINGS.mobileColumns),
@@ -384,6 +397,32 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // ===== 面板 =====
         setting.addItem({title: `<span class="sw-setting__sec">${this.i18n.secPanels}</span>`});
+
+        // 左侧面板显示方式：完全隐藏 / 折叠图标条 / 完整列表
+        setting.addItem({
+            title: this.i18n.setDockDisplay,
+            description: this.i18n.setDockDisplayTip,
+            createActionElement: () => {
+                const select = document.createElement("select");
+                select.className = "b3-select fn__flex-center fn__size200";
+                const options: Array<{value: DockDisplay, label: string}> = [
+                    {value: "hidden", label: this.i18n.dockDisplayHidden},
+                    {value: "collapsed", label: this.i18n.dockDisplayCollapsed},
+                    {value: "full", label: this.i18n.dockDisplayFull},
+                ];
+                options.forEach(({value, label}) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = label;
+                    select.appendChild(option);
+                });
+                select.value = s.dockDisplay;
+                select.addEventListener("change", () => {
+                    this.updateSettings({dockDisplay: select.value as DockDisplay});
+                });
+                return select;
+            },
+        });
 
         // 面板显示设置：勾选的面板出现在切换器左侧，取消的隐藏
         setting.addItem({
@@ -698,9 +737,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             dialogBody.classList.add("sw-scroll-locked");
         }
 
-        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除，无可面板时自动隐藏
+        // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除与显示方式渲染，无可面板时自动隐藏
         const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
-        this.renderDockList(dockElement, dialog, settings.excludedDocks);
+        this.renderDockList(dockElement, dialog, settings.excludedDocks, settings.dockDisplay);
 
         // 清理缩略图缓存中已无对应打开页签的孤儿条目（页签关闭即失效）
         this.pruneThumbCache(tabs);
@@ -896,11 +935,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
+    // 「最近编辑」排序的 SQL 结果短缓存：排序方式来回切换 / 列表重渲染时不重复打内核
+    private updatedMapCache: {key: string, ts: number, map: {[rootId: string]: string}} | null = null;
+
     // 查询当前打开文档的更新时间（用于「最近编辑」排序），返回 rootID → updated 映射
     private async loadUpdatedMap(tabs: Tab[]): Promise<{[rootId: string]: string}> {
         const ids = tabs.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[];
         if (ids.length === 0) {
             return {};
+        }
+        // 打开的文档集合没变且缓存未过期时直接复用（返回副本防外部误改）
+        const key = [...ids].sort().join(",");
+        if (this.updatedMapCache && this.updatedMapCache.key === key
+            && Date.now() - this.updatedMapCache.ts < UPDATED_CACHE_MS) {
+            return {...this.updatedMapCache.map};
         }
         try {
             const response = await fetch("/api/query/sql", {
@@ -913,6 +961,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             (json?.data || []).forEach((row: any) => {
                 map[row.root_id] = row.updated;
             });
+            this.updatedMapCache = {key, ts: Date.now(), map};
             return map;
         } catch (e) {
             console.warn("[speed-switch] query updated fail", e);
@@ -952,8 +1001,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 渲染左侧侧边栏面板列表（文档树/大纲/书签/反链/关系图等，含其他插件注册的面板）
-    private renderDockList(dockElement: HTMLElement | null, dialog: Dialog, excludedDocks: string[]) {
-        if (!dockElement) {
+    // mode：hidden 完全隐藏（保持 fn__none，内容区占满全宽）/ collapsed 折叠图标条 / full 完整列表
+    private renderDockList(dockElement: HTMLElement | null, dialog: Dialog, excludedDocks: string[], mode: DockDisplay) {
+        if (!dockElement || mode === "hidden") {
             return;
         }
         const excluded = new Set(excludedDocks);
@@ -962,6 +1012,22 @@ export default class SpeedSwitchPlugin extends Plugin {
             return;
         }
         dockElement.classList.remove("fn__none");
+        dockElement.innerHTML = "";
+
+        // 折叠 ⇄ 完整 切换按钮：弹窗内即时切换（不写回设置，设置只决定初始形态）
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "sw__dock-toggle b3-tooltips b3-tooltips__e";
+        const setToggleState = (collapsed: boolean) => {
+            toggle.setAttribute("aria-label", collapsed ? this.i18n.expandDock : this.i18n.collapseDock);
+            toggle.innerHTML = `<svg><use xlink:href="#${collapsed ? "iconRight" : "iconLeft"}"></use></svg>`;
+            dockElement.classList.toggle("sw__dock--collapsed", collapsed);
+        };
+        toggle.addEventListener("click", () => {
+            setToggleState(!dockElement.classList.contains("sw__dock--collapsed"));
+        });
+        setToggleState(mode === "collapsed");
+        dockElement.appendChild(toggle);
 
         const label = document.createElement("div");
         label.className = "sw__dock-label";
@@ -997,6 +1063,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         title.textContent = panel.title;
         item.appendChild(icon);
         item.appendChild(title);
+        // 折叠模式下 hover 浮出的面板名称（完整模式由 CSS 隐藏）
+        const flyout = document.createElement("span");
+        flyout.className = "sw__dock-flyout";
+        flyout.textContent = panel.title;
+        item.appendChild(flyout);
 
         item.addEventListener("click", () => this.activateDock(panel.type, dialog));
         return item;
@@ -1068,7 +1139,25 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 文档页签的 rootID（非文档页签返回空）
+    // rootId 映射会话级缓存：懒加载页签每次解析 data-initdata 都要 JSON.parse，
+    // 渲染/排序/MRU/收藏多处高频调用，按页签 id 缓存后只解析一次
+    private rootIdCache = new Map<string, string | null>();
+
     private rootIdOf(tab: Tab): string | null {
+        const cached = this.rootIdCache.get(tab.id);
+        if (cached !== undefined) {
+            return cached;
+        }
+        const rootId = this.computeRootId(tab);
+        if (this.rootIdCache.size >= ROOT_ID_CACHE_MAX) {
+            // 页签 id 在一次会话内稳定，整体清空代价可忽略
+            this.rootIdCache.clear();
+        }
+        this.rootIdCache.set(tab.id, rootId);
+        return rootId;
+    }
+
+    private computeRootId(tab: Tab): string | null {
         const model: any = (tab as any).model;
         if (model?.editor?.block?.rootID) {
             return model.editor.block.rootID;
@@ -1640,6 +1729,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined,
                        opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
                        sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
+        // 清空前收集旧卡片：排序切换/列表刷新时同页签卡片直接复用（移动 DOM 而非重建），
+        // 已渲染的缩略图原样保留，重排瞬时完成
+        const reusable = new Map<string, HTMLElement>();
+        scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
+            if (card.dataset.tabId) {
+                reusable.set(card.dataset.tabId, card);
+            }
+        });
         scrollElement.innerHTML = "";
         const settings = this.getSettings();
         scrollElement.style.setProperty("--sw-thumb-height", `${settings.thumbHeight}px`);
@@ -1688,17 +1785,25 @@ export default class SpeedSwitchPlugin extends Plugin {
             ordered.forEach((item) => {
                 const isPinned = pinned.has(this.pinKeyOf(item.tab));
                 const isFaved = favorites.has(this.pinKeyOf(item.tab));
-                const card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
-                    onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
-                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
-                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
-                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
-                });
+                let card = reusable.get(item.tab.id);
+                if (card) {
+                    // 复用旧卡片：同步状态类/图标/标题（缩略图不动），事件沿旧闭包（同页签等价对象）
+                    this.syncCardState(card, item.tab, item.tab.id === activeTabId, isPinned, isFaved);
+                    reusable.delete(item.tab.id);
+                } else {
+                    card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
+                        onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
+                        onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                        onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                        onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
+                    });
+                }
                 grid.appendChild(card);
                 item.card = card;
                 all.push(item);
                 // 默认聚焦 MRU 里最近使用的（非当前活动）页签，更贴近 win+tab 体验
-                if (item.tab.id !== activeTabId && mru.indexOf(item.tab.id) === 0) {
+                // MRU 按 pinKey（文档页签为 rootID）记录，需同键匹配
+                if (item.tab.id !== activeTabId && mru.indexOf(this.pinKeyOf(item.tab)) === 0) {
                     defaultFocusIndex = all.length - 1;
                 }
             });
@@ -1707,18 +1812,44 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
 
         if (all.length === 0) {
-            const empty = document.createElement("div");
-            empty.className = "sw__empty";
-            empty.textContent = this.i18n.noOpenedTabs;
-            scrollElement.appendChild(empty);
+            scrollElement.appendChild(this.buildEmptyState());
             return;
         }
 
         // 初始焦点
         this.focusCard(all[defaultFocusIndex]?.card);
 
-        // 分批渲染缩略图（首次打开也会读取全部页签内容，含未激活页签）
-        this.renderThumbnails(all, THUMB_BATCH);
+        // 视口懒渲染缩略图：复用卡片跳过，新卡片滚入可视区时才生成
+        this.renderThumbnails(all, scrollElement, THUMB_BATCH);
+    }
+
+    // 复用旧卡片时同步状态：置顶/收藏/激活类名与图标、标题文本
+    private syncCardState(card: HTMLElement, tab: Tab, isActive: boolean, isPinned: boolean, isFaved: boolean) {
+        card.className = "sw__card"
+            + (isActive ? " sw__active" : "")
+            + (isPinned ? " sw__pinned" : "")
+            + (isFaved ? " sw__faved" : "");
+        const title = this.titleOf(tab);
+        card.dataset.title = title;
+        card.querySelector<HTMLElement>(".sw__title")!.textContent = title;
+        const iconUse = card.querySelector<SVGElement>(".sw__pin use");
+        if (iconUse) {
+            iconUse.setAttribute("xlink:href", isPinned ? "#iconPin" : "#iconUnpin");
+        }
+        card.querySelector<HTMLElement>(".sw__pin")
+            ?.setAttribute("aria-label", isPinned ? this.i18n.unpinTab : this.i18n.pinTab);
+        card.querySelector<HTMLElement>(".sw__fav-btn")
+            ?.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+    }
+
+    // 空态：主文案 + 引导副文案（提示可搜索全库文档）
+    private buildEmptyState(): HTMLElement {
+        const empty = document.createElement("div");
+        empty.className = "sw__empty";
+        empty.innerHTML = `<div class="sw__empty-title"></div><div class="sw__empty-sub"></div>`;
+        empty.querySelector(".sw__empty-title")!.textContent = this.i18n.noOpenedTabs;
+        empty.querySelector(".sw__empty-sub")!.textContent = this.i18n.emptyHint;
+        return empty;
     }
 
     // 置顶/取消置顶：更新状态、图标与提示文案，并调整卡片位置（置顶移动到本组最前）
@@ -1778,10 +1909,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         // 全部页签关闭后展示空态（弹窗保持打开，用户可搜索全库文档打开新的）
         if (scroll && scroll.querySelectorAll(".sw__card").length === 0 && !scroll.querySelector(".sw__doc-results")) {
-            const empty = document.createElement("div");
-            empty.className = "sw__empty";
-            empty.textContent = this.i18n.noOpenedTabs;
-            scroll.appendChild(empty);
+            scroll.appendChild(this.buildEmptyState());
         }
         onTabsChanged();
     }
@@ -1882,32 +2010,53 @@ export default class SpeedSwitchPlugin extends Plugin {
         card.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            const menu = new Menu("swCardMenu");
-            const nowPinned = card.classList.contains("sw__pinned");
-            const nowFaved = card.classList.contains("sw__faved");
-            menu.addItem({
-                label: nowPinned ? this.i18n.unpinTab : this.i18n.pinTab,
-                icon: nowPinned ? "iconUnpin" : "iconPin",
-                click: () => handlers.onTogglePin(tab, card),
-            });
-            menu.addItem({
-                label: nowFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab,
-                icon: "iconStar",
-                click: () => handlers.onToggleFav(tab, card),
-            });
-            // 分组管理：已收藏时调整分组；未收藏时收藏到指定/新建分组
-            menu.addItem({
-                label: nowFaved ? this.i18n.setGroup : this.i18n.newGroupFav,
-                icon: "iconFolder",
-                click: () => this.openGroupDialog(tab, card),
-            });
-            menu.addItem({
-                label: this.i18n.close,
-                icon: "iconClose",
-                click: () => handlers.onCloseTab(tab, card),
-            });
-            menu.open({x: event.clientX, y: event.clientY});
+            this.openCardMenu(tab, card, handlers, event.clientX, event.clientY);
         });
+
+        // 手机端长按（≈500ms）弹出与桌面右键一致的操作菜单；
+        // 拦截 click 必须注册在 activate 之前（目标节点按注册顺序触发）
+        if (this.isMobile) {
+            let timer: number | undefined;
+            let longPressed = false;
+            let menuX = 0;
+            let menuY = 0;
+            const start = (event: TouchEvent) => {
+                const touch = event.touches[0];
+                if (touch) {
+                    menuX = touch.clientX;
+                    menuY = touch.clientY;
+                }
+                longPressed = false;
+                timer = window.setTimeout(() => {
+                    longPressed = true;
+                    this.openCardMenu(tab, card, handlers, menuX, menuY);
+                }, 500);
+            };
+            const cancel = () => {
+                if (timer !== undefined) {
+                    window.clearTimeout(timer);
+                    timer = undefined;
+                }
+            };
+            const end = (event: TouchEvent) => {
+                cancel();
+                if (longPressed) {
+                    // 阻止长按结束后合成 click 触发页签切换
+                    event.preventDefault();
+                }
+            };
+            card.addEventListener("click", (event) => {
+                if (longPressed) {
+                    longPressed = false;
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                }
+            }, true);
+            card.addEventListener("touchstart", start, {passive: true});
+            card.addEventListener("touchmove", cancel, {passive: true});
+            card.addEventListener("touchend", end, {passive: false});
+            card.addEventListener("touchcancel", cancel);
+        }
 
         // 点击整卡切换到该页签
         card.addEventListener("click", () => handlers.onActivate(tab));
@@ -1915,6 +2064,41 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.focusCard(card);
         });
         return card;
+    }
+
+    // 卡片操作菜单（桌面右键 / 手机长按共用）：置顶 / 收藏 / 分组 / 关闭
+    private openCardMenu(tab: Tab, card: HTMLElement,
+                         handlers: {
+                             onActivate: (tab: Tab) => void,
+                             onTogglePin: (tab: Tab, card: HTMLElement) => void,
+                             onToggleFav: (tab: Tab, card: HTMLElement) => void,
+                             onCloseTab: (tab: Tab, card: HTMLElement) => void,
+                         }, x: number, y: number) {
+        const menu = new Menu("swCardMenu");
+        const nowPinned = card.classList.contains("sw__pinned");
+        const nowFaved = card.classList.contains("sw__faved");
+        menu.addItem({
+            label: nowPinned ? this.i18n.unpinTab : this.i18n.pinTab,
+            icon: nowPinned ? "iconUnpin" : "iconPin",
+            click: () => handlers.onTogglePin(tab, card),
+        });
+        menu.addItem({
+            label: nowFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab,
+            icon: "iconStar",
+            click: () => handlers.onToggleFav(tab, card),
+        });
+        // 分组管理：已收藏时调整分组；未收藏时收藏到指定/新建分组
+        menu.addItem({
+            label: nowFaved ? this.i18n.setGroup : this.i18n.newGroupFav,
+            icon: "iconFolder",
+            click: () => this.openGroupDialog(tab, card),
+        });
+        menu.addItem({
+            label: this.i18n.close,
+            icon: "iconClose",
+            click: () => handlers.onCloseTab(tab, card),
+        });
+        menu.open({x, y});
     }
 
     // ==================== 缩略图缓存 ====================
@@ -1933,15 +2117,18 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 写入一条缓存（实时 DOM 优先更新），超过上限时按最旧淘汰；不立即写盘，由调用方批量 flush
     private setThumbCache(cache: IThumbCache, rootId: string, title: string, html: string) {
-        if (html.length > THUMB_HTML_MAX) {
+        // 手机端使用更保守的缓存上限（存储/内存更紧张）
+        const htmlMax = this.isMobile ? THUMB_HTML_MAX_MOBILE : THUMB_HTML_MAX;
+        const cacheMax = this.isMobile ? THUMB_CACHE_MAX_MOBILE : THUMB_CACHE_MAX;
+        if (html.length > htmlMax) {
             return;
         }
         cache[rootId] = {title, html, ts: Date.now()};
         // 容量控制：超出上限时删最旧的条目
         const keys = Object.keys(cache);
-        if (keys.length > THUMB_CACHE_MAX) {
+        if (keys.length > cacheMax) {
             keys.sort((a, b) => cache[a].ts - cache[b].ts);
-            keys.slice(0, keys.length - THUMB_CACHE_MAX).forEach((key) => delete cache[key]);
+            keys.slice(0, keys.length - cacheMax).forEach((key) => delete cache[key]);
         }
     }
 
@@ -1969,8 +2156,91 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // ==================== 缩略图渲染 ====================
 
-    // 分批克隆真实内容生成缩略图；有实时 DOM 时更新缓存，无 DOM 时用缓存或 API 兜底
-    private renderThumbnails(list: IGroupedTab[], batch: number) {
+    // 渲染单个页签缩略图：实时 DOM 克隆 → 持久化缓存 → 内核 API 回源（带并发闸门）
+    private renderThumbItem(item: IGroupedTab) {
+        const thumb = item.card?.querySelector<HTMLElement>(".sw__thumb");
+        if (!thumb || !thumb.isConnected) {
+            return;
+        }
+        const title = item.tab.title || "";
+        const rootId = this.rootIdOf(item.tab);
+        const source = this.getThumbSource(item.tab);
+        thumb.innerHTML = "";
+        if (source) {
+            this.applyThumbContent(thumb, source, title);
+            // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
+            if (rootId) {
+                const cache = this.getThumbCache();
+                this.setThumbCache(cache, rootId, title, source.innerHTML);
+                this.saveThumbCache(cache);
+            }
+            return;
+        }
+        // 无实时 DOM：尝试命中持久化缓存（跨重启/重置保留）
+        const cache = this.getThumbCache();
+        const cached = rootId ? cache[rootId] : undefined;
+        if (cached) {
+            const wrap = document.createElement("div");
+            wrap.className = "protyle-wysiwyg";
+            wrap.innerHTML = cached.html;
+            this.applyThumbContent(thumb, wrap, title);
+            return;
+        }
+        // 缓存也未命中：先占位，再通过内核 API 读取文档内容（成功后写入缓存）
+        const placeholder = document.createElement("div");
+        placeholder.className = "sw__thumb-placeholder";
+        placeholder.textContent = title || item.tab.id;
+        thumb.appendChild(placeholder);
+        this.fillThumbByApi(item.tab, thumb);
+    }
+
+    // 视口懒渲染：只给滚动到可视区（含 240px 预载边距）的卡片生成缩略图，
+    // 视口外保持加载占位。打开切换器从"全量克隆"降为"首屏克隆"，大列表秒开
+    private renderThumbnails(list: IGroupedTab[], scrollElement: HTMLElement, batch: number) {
+        // 同一容器重复渲染时（排序切换/列表刷新）先断开旧观察器，防止泄漏与重复渲染
+        const prev = (scrollElement as any).__swThumbObserver as IntersectionObserver | undefined;
+        if (prev) {
+            prev.disconnect();
+        }
+
+        // 环境不支持 IntersectionObserver 时退回原分批全量渲染（思源内核均为 Chromium，仅防御）
+        if (typeof IntersectionObserver === "undefined") {
+            this.renderThumbBatch(list, batch);
+            return;
+        }
+
+        const thumbItems = new Map<HTMLElement, IGroupedTab>();
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) {
+                    return;
+                }
+                observer.unobserve(entry.target);
+                const item = thumbItems.get(entry.target as HTMLElement);
+                if (item) {
+                    thumbItems.delete(entry.target as HTMLElement);
+                    this.renderThumbItem(item);
+                }
+            });
+        }, {root: scrollElement, rootMargin: "240px 0px"});
+        (scrollElement as any).__swThumbObserver = observer;
+
+        list.forEach((item) => {
+            const thumb = item.card?.querySelector<HTMLElement>(".sw__thumb");
+            if (!thumb) {
+                return;
+            }
+            // 复用的旧卡片已渲染过（无加载占位）：跳过观察，避免重克隆
+            if (!thumb.querySelector(".sw__thumb-loading")) {
+                return;
+            }
+            thumbItems.set(thumb, item);
+            observer.observe(thumb);
+        });
+    }
+
+    // 分批全量渲染（IntersectionObserver 不可用时的兜底路径）
+    private renderThumbBatch(list: IGroupedTab[], batch: number) {
         const cache = this.getThumbCache();
         let dirty = false;
         let index = 0;
@@ -1988,14 +2258,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                 thumb.innerHTML = "";
                 if (source) {
                     this.applyThumbContent(thumb, source, title);
-                    // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
                     if (rootId) {
                         this.setThumbCache(cache, rootId, title, source.innerHTML);
                         dirty = true;
                     }
                     continue;
                 }
-                // 无实时 DOM：尝试命中持久化缓存（跨重启/重置保留）
                 const cached = rootId ? cache[rootId] : undefined;
                 if (cached) {
                     const wrap = document.createElement("div");
@@ -2004,7 +2272,6 @@ export default class SpeedSwitchPlugin extends Plugin {
                     this.applyThumbContent(thumb, wrap, title);
                     continue;
                 }
-                // 缓存也未命中：先占位，再通过内核 API 读取文档内容（成功后写入缓存）
                 const placeholder = document.createElement("div");
                 placeholder.className = "sw__thumb-placeholder";
                 placeholder.textContent = title || item.tab.id;
@@ -2014,7 +2281,6 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (index < list.length) {
                 requestAnimationFrame(runBatch);
             } else if (dirty) {
-                // 全部批次完成后统一写盘一次
                 this.saveThumbCache(cache);
             }
         };
@@ -2042,17 +2308,46 @@ export default class SpeedSwitchPlugin extends Plugin {
         content.setAttribute("aria-label", title);
     }
 
+    // getDoc 回源并发闸门：视口懒渲染下仍可能同时暴露多张缺图卡片，
+    // 限制同时在途请求数，手机端更保守，避免打开瞬间打爆内核/网络
+    private thumbApiActive = 0;
+    private thumbApiQueue: Array<() => void> = [];
+
+    private async acquireThumbApi(): Promise<void> {
+        const max = this.isMobile ? THUMB_API_MAX_MOBILE : THUMB_API_MAX;
+        if (this.thumbApiActive < max) {
+            this.thumbApiActive++;
+            return;
+        }
+        await new Promise<void>((resolve) => {
+            this.thumbApiQueue.push(() => {
+                this.thumbApiActive++;
+                resolve();
+            });
+        });
+    }
+
+    private releaseThumbApi() {
+        this.thumbApiActive--;
+        const next = this.thumbApiQueue.shift();
+        if (next) {
+            next();
+        }
+    }
+
     // 页签 DOM 中暂无内容（如后台未渲染完）时，通过内核 API 读取文档 HTML 作为缩略内容，并写入缓存
     private async fillThumbByApi(tab: Tab, thumb: HTMLElement) {
         const rootId = this.rootIdOf(tab);
         if (!rootId) {
             return; // 非文档页签，保持占位
         }
+        await this.acquireThumbApi();
         try {
+            // size=32：缩略图只需首屏内容，减小响应体与解析开销
             const response = await fetch("/api/filetree/getDoc", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({id: rootId, mode: 0, size: 48}),
+                body: JSON.stringify({id: rootId, mode: 0, size: 32}),
             });
             const json = await response.json();
             const html: string | undefined = json?.data?.content;
@@ -2072,6 +2367,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         } catch (e) {
             // 读取失败保持占位即可
             console.warn("[speed-switch] fetch doc content fail", e);
+        } finally {
+            this.releaseThumbApi();
+        }
+    }
+
+    // 裁剪克隆内容：只保留前 max 个子块。缩略图仅显示文档首屏，
+    // 大文档整篇 cloneNode 是切换器打开卡顿的主因，裁剪后克隆量与文档大小解耦
+    private limitCloneChildren(clone: HTMLElement, max: number) {
+        while (clone.children.length > max) {
+            clone.removeChild(clone.lastChild as ChildNode);
         }
     }
 
@@ -2083,16 +2388,22 @@ export default class SpeedSwitchPlugin extends Plugin {
             const model: any = (tab as any).model;
             const wysiwyg: HTMLElement | undefined = model?.editor?.wysiwyg?.element;
             if (wysiwyg && wysiwyg.childElementCount > 0) {
-                return wysiwyg.cloneNode(true) as HTMLElement;
+                const clone = wysiwyg.cloneNode(true) as HTMLElement;
+                this.limitCloneChildren(clone, THUMB_CLONE_MAX);
+                return clone;
             }
             // 兜底：从面板容器里直接找 WYSIWYG 内容（不依赖 model 内部结构）
             const panelWysiwyg = tab.panelElement?.querySelector<HTMLElement>(".protyle-wysiwyg");
             if (panelWysiwyg && panelWysiwyg.childElementCount > 0) {
-                return panelWysiwyg.cloneNode(true) as HTMLElement;
+                const clone = panelWysiwyg.cloneNode(true) as HTMLElement;
+                this.limitCloneChildren(clone, THUMB_CLONE_MAX);
+                return clone;
             }
             // 最后再退回整个面板内容
             if (tab.panelElement && tab.panelElement.childElementCount > 0) {
-                return tab.panelElement.cloneNode(true) as HTMLElement;
+                const clone = tab.panelElement.cloneNode(true) as HTMLElement;
+                this.limitCloneChildren(clone, THUMB_CLONE_MAX);
+                return clone;
             }
         } catch (e) {
             console.warn("[speed-switch] build thumbnail fail", e);
@@ -2383,6 +2694,13 @@ export default class SpeedSwitchPlugin extends Plugin {
     private renderMobileList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined,
                              opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
                              sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
+        // 复用旧卡片（同 renderList）：关闭页签/排序切换后重排不重建缩略图
+        const reusable = new Map<string, HTMLElement>();
+        scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
+            if (card.dataset.tabId) {
+                reusable.set(card.dataset.tabId, card);
+            }
+        });
         scrollElement.innerHTML = "";
         const settings = this.getSettings();
         scrollElement.style.setProperty("--sw-thumb-height", `${settings.mobileThumbHeight}px`);
@@ -2415,13 +2733,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         ordered.forEach((item) => {
             const isPinned = pinned.has(this.pinKeyOf(item.tab));
             const isFaved = favorites.has(this.pinKeyOf(item.tab));
-            const card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
-                onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
-                onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
-                onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
-                onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
-            });
-            card.classList.add("sw__mobile-card");
+            let card = reusable.get(item.tab.id);
+            if (card) {
+                this.syncCardState(card, item.tab, item.tab.id === activeTabId, isPinned, isFaved);
+                card.classList.add("sw__mobile-card");
+                reusable.delete(item.tab.id);
+            } else {
+                card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
+                    onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
+                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
+                });
+                card.classList.add("sw__mobile-card");
+            }
             grid.appendChild(card);
             item.card = card;
             all.push(item);
@@ -2431,15 +2756,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         scrollElement.appendChild(groupEl);
 
         if (all.length === 0) {
-            const empty = document.createElement("div");
-            empty.className = "sw__empty";
-            empty.textContent = this.i18n.noOpenedTabs;
-            scrollElement.appendChild(empty);
+            scrollElement.appendChild(this.buildEmptyState());
             return;
         }
 
-        // 手机端缩略图使用更保守的缓存限制
-        this.renderThumbnails(all, THUMB_BATCH_MOBILE);
+        // 手机端缩略图：视口懒渲染 + 更保守的回源并发
+        this.renderThumbnails(all, scrollElement, THUMB_BATCH_MOBILE);
     }
 
     // 手机端收藏底部弹窗

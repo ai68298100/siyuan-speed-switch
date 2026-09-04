@@ -72,5 +72,13 @@
   "mobileAuto": "自动（竖屏单列，横屏双列）",
   "mobileFavTitle": "收藏页签",
   "mobileNoFav": "暂无收藏，可在页签上点击星标收藏",
-  "mobileNeedsNewer": "手机端页签切换需要思源 3.8.0 及以上版本，请升级后使用"
+  "mobileNeedsNewer": "手机端页签切换需要思源 3.8.0 及以上版本，请升级后使用",
+  "setDockDisplay": "左侧面板显示方式",
+  "setDockDisplayTip": "切换器左侧面板列表的显示方式：隐藏后内容区占满全宽；折叠仅显示一排图标，悬停查看名称，需要时展开",
+  "dockDisplayHidden": "完全隐藏",
+  "dockDisplayCollapsed": "折叠显示（仅图标）",
+  "dockDisplayFull": "完整显示",
+  "expandDock": "展开面板列表",
+  "collapseDock": "折叠面板列表",
+  "emptyHint": "在上方搜索框输入关键词，可搜索并打开全库文档"
 }
