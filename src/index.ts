@@ -1,8 +1,23 @@
-import {Plugin, Dialog, Setting, Menu, getFrontend, getAllTabs, getActiveTab, openTab} from "siyuan";
+import {Plugin, Dialog, Setting, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
 type Tab = ReturnType<typeof getAllTabs>[number];
+
+// 手机端 MobileTabs 状态（思源 3.8+，window.siyuan.mobile.tabs.state）
+interface IMobileTabEntry {
+    id: string;
+    rootID: string;
+    notebookID: string;
+    path: string;
+    title: string;
+    icon?: string;
+}
+interface IMobileTabsState {
+    version: number;
+    activeTabID?: string;
+    tabs: Array<{id: string; current?: IMobileTabEntry; activeAt: number}>;
+}
 // 页签排序方式：mru=最近使用 layout=打开顺序 layoutDesc=打开倒序 titleAsc/titleDesc=标题升降序 updatedDesc=最近编辑
 type SortBy = "mru" | "layout" | "layoutDesc" | "titleAsc" | "titleDesc" | "updatedDesc";
 const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
@@ -624,7 +639,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const tabs = getAllTabs();
         if (tabs.length === 0) {
-            alert(this.i18n.noOpenedTabs);
+            showMessage(this.i18n.noOpenedTabs);
             return;
         }
 
@@ -830,9 +845,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         label.textContent = this.i18n.docSearchResults;
         box.appendChild(label);
 
-        // 排除当前已打开的文档（上半部分已有对应卡片）
+        // 排除当前已打开的文档（上半部分已有对应卡片）；手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openRootIds = new Set(
-            getAllTabs().map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
+            opened.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
         );
 
         if (docs.length === 0) {
@@ -866,10 +882,15 @@ export default class SpeedSwitchPlugin extends Plugin {
             item.appendChild(path);
             item.addEventListener("click", () => {
                 onClose();
-                openTab({
-                    app: (this as any).app,
-                    doc: {id},
-                });
+                if (this.isMobile) {
+                    // openTab 在手机端是空实现，走 MobileTabs.open
+                    this.mobileOpenDoc(id);
+                } else {
+                    openTab({
+                        app: (this as any).app,
+                        doc: {id},
+                    });
+                }
             });
             box!.appendChild(item);
         });
@@ -1560,17 +1581,24 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 跳转到收藏项：页签已开则切换过去；文档已收藏但页签关闭则重新打开；非文档页签已失效则移除收藏
     private jumpToFavorite(favorite: IFavoriteItem, onClose: IOverlayClose) {
-        const tab = getAllTabs().find((item) => this.pinKeyOf(item) === favorite.key);
+        // 手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const tab = opened.find((item) => this.pinKeyOf(item) === favorite.key);
         if (tab) {
             this.activateTab(tab, onClose);
             return;
         }
         if (favorite.rootId) {
             onClose();
-            openTab({
-                app: (this as any).app,
-                doc: {id: favorite.rootId},
-            });
+            if (this.isMobile) {
+                // openTab 在手机端是空实现，走 MobileTabs.open
+                this.mobileOpenDoc(favorite.rootId);
+            } else {
+                openTab({
+                    app: (this as any).app,
+                    doc: {id: favorite.rootId},
+                });
+            }
             return;
         }
         // 非文档页签已关闭：收藏失效，清理并刷新下拉
@@ -1595,10 +1623,11 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return ua < ub ? 1 : ua > ub ? -1 : 0;
             });
         } else if (sortBy === "mru") {
-            // MRU 中越靠前越新；不在记录中的页签按打开顺序排在后面
+            // MRU 中越靠前越新；不在记录中的页签按打开顺序排在后面。
+            // 按 pinKey（文档页签为 rootID）匹配，与 activateTab 的记录键一致，手机端/桌面端共用同一份 MRU
             items.sort((a, b) => {
-                const ra = mru.indexOf(a.tab.id);
-                const rb = mru.indexOf(b.tab.id);
+                const ra = mru.indexOf(this.pinKeyOf(a.tab));
+                const rb = mru.indexOf(this.pinKeyOf(b.tab));
                 return (ra < 0 ? Number.MAX_SAFE_INTEGER : ra) - (rb < 0 ? Number.MAX_SAFE_INTEGER : rb);
             });
         }
@@ -1717,10 +1746,19 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
     private handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
-        try {
-            tab.parent.removeTab(tab.id);
-        } catch (e) {
-            console.warn("[speed-switch] close tab fail", e);
+        if (this.isMobile) {
+            // 手机端：MobileTabs.close 关闭页签，随后由 onTabsChanged 整列表重渲染
+            try {
+                (window as any).siyuan?.mobile?.tabs?.close(tab.id);
+            } catch (e) {
+                console.warn("[speed-switch] mobile close tab fail", e);
+            }
+        } else {
+            try {
+                tab.parent.removeTab(tab.id);
+            } catch (e) {
+                console.warn("[speed-switch] close tab fail", e);
+            }
         }
         // 先取引用再移除卡片（remove 后 closest 返回 null）
         const group = card.closest(".sw__group");
@@ -1790,7 +1828,14 @@ export default class SpeedSwitchPlugin extends Plugin {
             iconBox.textContent = emoji.textContent || "";
             iconBox.classList.add("sw__icon-emoji");
         } else {
-            iconBox.innerHTML = `<svg><use xlink:href="#${tab.icon || "iconFile"}"></use></svg>`;
+            // 兜底图标：思源图标名走 svg use；emoji 字符（手机端文档自定义图标）按文本渲染
+            const fallback = tab.icon || "";
+            if (fallback && !fallback.startsWith("icon")) {
+                iconBox.textContent = fallback;
+                iconBox.classList.add("sw__icon-emoji");
+            } else {
+                iconBox.innerHTML = `<svg><use xlink:href="#${fallback || "iconFile"}"></use></svg>`;
+            }
         }
         const titleEl = document.createElement("span");
         titleEl.className = "sw__title";
@@ -2135,12 +2180,25 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 切换到目标页签；弹窗模式随后销毁弹窗，侧边栏模式随后刷新列表
     private activateTab(tab: Tab, onClose?: IOverlayClose) {
-        // 记录 MRU
+        // 记录 MRU：按 pinKey（文档页签为 rootID）记录，手机端与桌面端使用同一份 MRU 数据，
+        // 通过插件数据同步后两端「最近使用」保持一致
+        const key = this.pinKeyOf(tab);
         const mru = this.getMru();
-        const list = mru.filter((id) => id !== tab.id);
-        list.unshift(tab.id);
+        const list = mru.filter((id) => id !== key);
+        list.unshift(key);
         this.data[MRU_KEY] = list;
         this.saveDataDebounced(MRU_KEY);
+
+        if (this.isMobile) {
+            // 手机端：MobileTabs.switchTo 切换页签
+            try {
+                (window as any).siyuan?.mobile?.tabs?.switchTo(tab.id);
+            } catch (e) {
+                console.warn("[speed-switch] mobile switch tab fail", e);
+            }
+            onClose?.();
+            return;
+        }
 
         // 等价于点击该页签：内部会切到目标页签，并通过 setPanelFocus 激活其所在窗口（支持分栏）
         try {
@@ -2156,16 +2214,60 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // ==================== 手机端 ====================
 
+    // 手机端数据源适配：思源 getAllTabs() 在手机端（MOBILE 构建）恒返回空数组，
+    // 页签数据需从 window.siyuan.mobile.tabs（思源 3.8+ MobileTabs）读取，
+    // 包装成与桌面端 Tab 兼容的伪 Tab，使 rootIdOf/titleOf/pinKeyOf/createCard 等直接复用
+    private getMobileTabs(): Tab[] {
+        const state = (window as any).siyuan?.mobile?.tabs?.state as IMobileTabsState | undefined;
+        if (!state?.tabs) {
+            return [];
+        }
+        return state.tabs
+            .filter((t) => t.current?.rootID)
+            .map((t) => ({
+                id: t.id,                       // MobileTabs 页签 id（switchTo/close 使用）
+                title: t.current!.title,
+                icon: t.current!.icon || "",
+                // 兼容 rootIdOf()：直接命中 model.editor.block.rootID 分支
+                model: {editor: {block: {rootID: t.current!.rootID}}},
+            } as unknown as Tab));
+    }
+
+    // 手机端 MobileTabs 状态是否可用（思源 3.8+ 才有；旧版手机端无多页签概念）
+    private hasMobileTabsApi(): boolean {
+        return !!(window as any).siyuan?.mobile?.tabs?.state;
+    }
+
+    // 手机端当前激活页签 id（无激活时返回 undefined）
+    private getMobileActiveTabId(): string | undefined {
+        return (window as any).siyuan?.mobile?.tabs?.state?.activeTabID as string | undefined;
+    }
+
+    // 手机端打开文档：openTab 插件 API 在手机端是空实现（TODO: Mobile），
+    // 需调用 MobileTabs.open(rootID)
+    private mobileOpenDoc(rootId: string) {
+        try {
+            (window as any).siyuan?.mobile?.tabs?.open(rootId);
+        } catch (e) {
+            console.warn("[speed-switch] mobile open doc fail", e);
+        }
+    }
+
     // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作
     private showMobileSwitcher() {
-        const tabs = getAllTabs();
+        const tabs = this.getMobileTabs();
         if (tabs.length === 0) {
-            alert(this.i18n.noOpenedTabs);
+            // 手机端 WebView 会拦截原生 alert，必须用思源 showMessage 才有可见反馈；
+            // 旧版思源（<3.8）无 MobileTabs API，需提示升级而不是误报"无页签"
+            showMessage(this.hasMobileTabsApi() ? this.i18n.noOpenedTabs : this.i18n.mobileNeedsNewer);
             return;
         }
 
         const settings = this.getSettings();
-        const activeTab = this.getActiveTab();
+        // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
+        const activeTab = this.isMobile
+            ? ({id: this.getMobileActiveTabId()} as Tab)
+            : this.getActiveTab();
 
         const dialog = new Dialog({
             title: "",
@@ -2242,11 +2344,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
 
         sortSelect.value = settings.sortBy;
-        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: () => undefined};
+        // 手机端关闭页签后整列表重渲染（数据源是 MobileTabs 状态，需重新读取）
+        const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: () => renderMobileList()};
         let updatedMap: {[rootId: string]: string} = {};
 
         const renderMobileList = () => {
-            this.renderMobileList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, sortSelect.value as SortBy, updatedMap);
+            this.renderMobileList(scrollElement, this.getMobileTabs(),
+                {id: this.getMobileActiveTabId()} as Tab, listOpts, sortSelect.value as SortBy, updatedMap);
         };
 
         renderMobileList();

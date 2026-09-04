@@ -72,8 +72,17 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 - SiYuan v3.1.20+ (uses the `getAllTabs` API).
 - Desktop client / browser-desktop frontend (tabs and split panes).
+- Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.7.1 (2026-09-04)
+
+- **Fixed mobile switcher not working**: the SiYuan `getAllTabs` plugin API always returns an empty array on mobile (mobile is a separate build), so tapping the floating button did nothing. Mobile now reads tabs from `window.siyuan.mobile.tabs` (MobileTabs, SiYuan 3.8+); switching and closing tabs also go through MobileTabs.
+- **Fixed opening documents on mobile**: the `openTab` plugin API is a no-op on mobile; workspace search results and favorite jumps now use `MobileTabs.open`.
+- **Fixed invisible prompts on mobile**: the mobile WebView blocks native `alert`; all prompts now use SiYuan `showMessage`. On SiYuan < 3.8 (no MobileTabs), a clear upgrade hint is shown instead of failing silently.
+- "Recently used" sorting is now keyed by document rootID, so mobile and desktop share one MRU list and stay consistent after sync.
+- Mobile card icons support per-document custom emoji icons.
 
 ### v0.7.0 (2026-09-04)
 

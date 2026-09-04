@@ -71,5 +71,6 @@
   "mobileDouble": "双列",
   "mobileAuto": "自动（竖屏单列，横屏双列）",
   "mobileFavTitle": "收藏页签",
-  "mobileNoFav": "暂无收藏，可在页签上点击星标收藏"
+  "mobileNoFav": "暂无收藏，可在页签上点击星标收藏",
+  "mobileNeedsNewer": "手机端页签切换需要思源 3.8.0 及以上版本，请升级后使用"
 }
