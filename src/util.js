@@ -99,4 +99,25 @@ function resolveIconFallback(raw) {
     return {type: "svg", value: "iconFile"};
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback};
+/**
+ * 按 tab.parent 分组页签，保持 getAllTabs 返回的布局顺序：
+ * - 同一 Wnd 的页签聚合到一组（支持分栏布局）
+ * - 没有 parent 时退到 scrollElement（手机端伪 Tab）
+ * @template {{parent?: {element?: HTMLElement, headersElement?: HTMLElement}}} T
+ * @param {T[]} tabs
+ * @param {HTMLElement} fallbackKey
+ * @returns {Map<HTMLElement, Array<{tab: T}>>}
+ */
+function buildTabGroupsByParent(tabs, fallbackKey) {
+    const groups = new Map();
+    tabs.forEach((tab) => {
+        const key = (tab.parent && (tab.parent.element || tab.parent.headersElement)) || fallbackKey;
+        if (!groups.has(key)) {
+            groups.set(key, []);
+        }
+        groups.get(key).push({tab});
+    });
+    return groups;
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent};

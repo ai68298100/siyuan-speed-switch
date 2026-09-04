@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.5-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.6-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,22 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.6（2026-09-04）
+
+- **巨型方法专项拆分（纯重构，零行为变化）**：把 `src/index.ts` 中所有超过 70 行的单方法拆成 10-50 行的 orchestrator + 单一职责的 helper，全部测试通过，构建产物不变：
+  - `renderList()` **100→44 行** — 抽出 `sortGroupItems` / `renderTabGroup` / `buildTabGroupGrid`，引入 `ITabGroupRenderCtx` 接口约束 helper 形参，避免参数爆炸。
+  - `renderMobileList()` **74→42 行** — 抽出 `buildMobileGroupGrid` / `renderMobileCardsInGroup`，手机端页签网格渲染解耦。
+  - `renderSidebarPanel()` **85→27 行** — 抽出 `buildSidebarHtml` / `observeSidebarResize` / `bindSidebarToolbarEvents`，侧边栏壳层/自适应 ResizeObserver/工具栏交互分层。
+  - `assembleSwitcherParts()` **82→47 行** — 抽出 `prepareSwitcherChrome` / `bindSwitcherListArea` / `bindSwitcherBackTop`，切换器骨架/列表区事件/回顶按钮三者分离。
+  - `renderFavPanel()` **82→31 行** — 抽出 `appendFavGroup` / `appendFavFlatList`，开始复用上一轮提取的 `groupFavoritesByGroup` 纯函数。
+  - `openFavMenu()` **73→16 行** — 抽出 `buildFavMenuUnfavorited` / `buildFavMenuFavorited`，未收藏/已收藏两种菜单构造分支彻底分离。
+  - `openSetting()` **385→90 行** — 抽出 `buildSettingsAppearance` / `buildSettingsBehavior` / `buildSettingsPanels` + `buildSettingsDockToggles` / `buildSettingsMobile` / `buildSettingsJournal` / `buildSettingsFavorites` + `buildSettingsFavCreateRow` / `buildSettingsFavGroupList` / `appendSettingsFavItems`，设置页五个标签页（外观/行为/面板/收藏/手机端）的构建代码各自独立，新增配置项不会再让主方法涨回去。
+- **`src/util.js` 新增两个纯函数**：
+  - `resolveIconFallback` —— 配合上一轮手机端图标 bug 修复，固化 5 种 case 的回退策略；
+  - `buildTabGroupsByParent(tabs, fallbackKey)` —— 给 `renderList` / `renderMobileList` 共用，桌面/手机端页签按父窗口分组的逻辑收敛成可测函数。
+- **单测增量**：`buildTabGroupsByParent` 4 个用例（jsdom 中验证 Map 顺序与 fallback window key），`resolveIconFallback` 5 个，`groupFavoritesByGroup` 4 个，总计 **23/23 通过**。
+- **后续候选**：`onload`(86) / `buildSettingsFavGroupList`(81) / `renderDocResults`(75) / `promptJournalNotebook`(63) / `openMobileGroupActions`(59) / `applySearch`(58) / `setupFavDropdown`(57) / `openCardMenu`(56) / `bindKeydown`(55) 仍偏长，留待下几轮继续拆。
 
 ### v0.15.5（2026-09-04）
 

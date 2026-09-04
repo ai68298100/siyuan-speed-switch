@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.5-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.6-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,22 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.6 (2026-09-04)
+
+- **Giant-method split (pure refactor, zero behavior change)**: every method over 70 lines in `src/index.ts` was split into a 10–50-line orchestrator plus single-purpose helpers. All tests pass; build artifact is identical:
+  - `renderList()` **100→44 lines** — extracted `sortGroupItems` / `renderTabGroup` / `buildTabGroupGrid`; introduced `ITabGroupRenderCtx` interface to constrain helper parameters and avoid parameter sprawl.
+  - `renderMobileList()` **74→42 lines** — extracted `buildMobileGroupGrid` / `renderMobileCardsInGroup`; mobile grid rendering is now decoupled.
+  - `renderSidebarPanel()` **85→27 lines** — extracted `buildSidebarHtml` / `observeSidebarResize` / `bindSidebarToolbarEvents`; sidebar shell / responsive `ResizeObserver` / toolbar interactions are layered.
+  - `assembleSwitcherParts()` **82→47 lines** — extracted `prepareSwitcherChrome` / `bindSwitcherListArea` / `bindSwitcherBackTop`; switcher chrome / list-area events / back-to-top button live in three clean layers.
+  - `renderFavPanel()` **82→31 lines** — extracted `appendFavGroup` / `appendFavFlatList`; reusing the pure `groupFavoritesByGroup` from the last round.
+  - `openFavMenu()` **73→16 lines** — extracted `buildFavMenuUnfavorited` / `buildFavMenuFavorited`; the unfavorited vs favorited menu-construction branches are now fully separated.
+  - `openSetting()` **385→90 lines** — extracted `buildSettingsAppearance` / `buildSettingsBehavior` / `buildSettingsPanels` + `buildSettingsDockToggles` / `buildSettingsMobile` / `buildSettingsJournal` / `buildSettingsFavorites` + `buildSettingsFavCreateRow` / `buildSettingsFavGroupList` / `appendSettingsFavItems`. The five settings tabs (Appearance / Behavior / Panels / Favorites / Mobile) now build independently, so adding a new option no longer bloats the central method.
+- **Two new pure helpers in `src/util.js`**:
+  - `resolveIconFallback` — locks in the 5-case fallback strategy from the previous mobile icon fix.
+  - `buildTabGroupsByParent(tabs, fallbackKey)` — shared by `renderList` / `renderMobileList`; desktop and mobile's parent-window grouping logic collapses into a testable function.
+- **Unit tests**: 4 new cases for `buildTabGroupsByParent` (jsdom verifies Map order + fallback window key), 5 for `resolveIconFallback`, 4 for `groupFavoritesByGroup` — total **23/23 passing**.
+- **Next candidates**: `onload` (86) / `buildSettingsFavGroupList` (81) / `renderDocResults` (75) / `promptJournalNotebook` (63) / `openMobileGroupActions` (59) / `applySearch` (58) / `setupFavDropdown` (57) / `openCardMenu` (56) / `bindKeydown` (55) are still long — queued for future rounds.
 
 ### v0.15.5 (2026-09-04)
 

@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent} from "./util";
 import {
     getSiyuan,
     IMobileTabsState,
@@ -24,6 +24,20 @@ declare module "./util" {
     export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
     export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
     export function resolveIconFallback(raw: string): {type: "svg", value: string} | {type: "emoji", value: string};
+    export function buildTabGroupsByParent<T extends {parent?: {element?: HTMLElement, headersElement?: HTMLElement}}>(
+        tabs: T[], fallbackKey: HTMLElement,
+    ): Map<HTMLElement, Array<{tab: T}>>;
+}
+
+// 单分组渲染上下文：避免 renderTabGroup 形参列表爆炸，所有共享字段打包到一个对象
+interface ITabGroupRenderCtx {
+    reusable: Map<string, HTMLElement>;
+    activeTabId: string | undefined;
+    pinned: Set<string>;
+    favorites: Set<string>;
+    mru: string[];
+    settings: ISwSettings;
+    opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose};
 }
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
@@ -624,306 +638,13 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         };
 
-        // ===== 外观 =====
-        const buildAppearance = () => {
-            const wrapper = document.createElement("div");
-            wrapper.append(
-                this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
-                    this.num(s.dialogWidth, 480, 1920, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
-                this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
-                    this.num(s.dialogHeight, 360, 1280, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
-                this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
-                    this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
-                        [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
-                    ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
-                this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
-                    this.num(s.thumbHeight, 72, 360, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
-            );
-            return wrapper;
-        };
-
-        // ===== 行为 =====
-        const buildBehavior = () => {
-            const wrapper = document.createElement("div");
-            const sortOptions: Array<{value: SortBy, label: string}> = [
-                {value: "mru", label: this.i18n.sortMru},
-                {value: "layout", label: this.i18n.sortLayout},
-                {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
-                {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
-                {value: "titleAsc", label: this.i18n.sortTitleAsc},
-                {value: "titleDesc", label: this.i18n.sortTitleDesc},
-            ];
-            wrapper.append(
-                this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
-                    this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))),
-                // 全屏模式：切换器铺满整个窗口，按 Esc 退出（开启时给出提示）
-                this.settingItem(this.i18n.fullScreen, this.i18n.fullScreenTip,
-                    this.switcher(s.fullscreen, (v) => {
-                        this.updateSettings({fullscreen: v});
-                        if (v) {
-                            showMessage(this.i18n.fullScreenOn);
-                        }
-                    })),
-            );
-            return wrapper;
-        };
-
-        // ===== 面板 =====
-        const buildPanels = () => {
-            const wrapper = document.createElement("div");
-            const dockOptions: Array<{value: DockDisplay, label: string}> = [
-                {value: "hidden", label: this.i18n.dockDisplayHidden},
-                {value: "collapsed", label: this.i18n.dockDisplayCollapsed},
-                {value: "full", label: this.i18n.dockDisplayFull},
-            ];
-            const sidebarOptions: Array<{value: SidebarLayout, label: string}> = [
-                {value: "enlarge", label: this.i18n.sidebarEnlarge},
-                {value: "columns", label: this.i18n.sidebarColumnsAuto},
-            ];
-
-            // 面板显示设置：勾选的面板出现在切换器左侧，取消的隐藏（原 createActionElement 逻辑原样搬移）
-            const box = document.createElement("div");
-            box.className = "sw-setting__docks b3-label__text";
-            const dockPanels = this.getDockPanels();
-            const excluded = new Set(s.excludedDocks);
-            dockPanels.forEach((panel) => {
-                // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
-                const row = document.createElement("div");
-                row.className = "sw-setting__dock-item";
-                const toggle = document.createElement("label");
-                toggle.className = "b3-switch sw-switch";
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.checked = !excluded.has(panel.type);
-                checkbox.dataset.dockType = panel.type;
-                checkbox.addEventListener("change", () => {
-                    const next = new Set(this.getSettings().excludedDocks);
-                    if (checkbox.checked) {
-                        next.delete(panel.type);
-                    } else {
-                        next.add(panel.type);
-                    }
-                    this.updateSettings({excludedDocks: Array.from(next)});
-                });
-                const knob = document.createElement("span");
-                toggle.appendChild(checkbox);
-                toggle.appendChild(knob);
-                const title = document.createElement("span");
-                title.textContent = panel.title;
-                row.appendChild(toggle);
-                row.appendChild(title);
-                box.appendChild(row);
-            });
-            if (dockPanels.length === 0) {
-                box.textContent = this.i18n.noDockPanels;
-            }
-
-            wrapper.append(
-                this.settingItem(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip,
-                    this.select(dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay}))),
-                // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
-                this.settingItem(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip,
-                    this.select(sidebarOptions, s.sidebarLayout, (v) => {
-                        this.updateSettings({sidebarLayout: v as SidebarLayout});
-                        // 侧边栏开着时即时刷新，让布局立即生效
-                        if (this.sidebarElement?.isConnected) {
-                            this.refreshSidebar();
-                        }
-                    })),
-                this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, box, true),
-            );
-            return wrapper;
-        };
-
-        // ===== 收藏 =====
-        const buildFavorites = () => {
-            // 收藏管理：新建分组、分组重命名/删除、调整收藏项所属分组（原收藏管理盒逻辑原样搬移）
-            const box = document.createElement("div");
-            box.className = "sw-setting__favs";
-            const render = () => {
-                const favorites = this.getFavorites();
-                const groupNames = this.getFavoriteGroupNames();
-                box.innerHTML = "";
-
-                // 新建分组：输入名称即创建（空分组保留，收藏时可选用）
-                const createRow = document.createElement("div");
-                createRow.className = "sw-setting__fav-create";
-                const nameInput = document.createElement("input");
-                nameInput.className = "b3-text-field";
-                nameInput.placeholder = this.i18n.groupName;
-                const createBtn = document.createElement("button");
-                createBtn.className = "b3-button b3-button--outline";
-                createBtn.textContent = this.i18n.createGroup;
-                const doCreate = () => {
-                    if (this.createFavoriteGroup(nameInput.value)) {
-                        nameInput.value = "";
-                        render();
-                    }
-                };
-                createBtn.addEventListener("click", doCreate);
-                nameInput.addEventListener("keydown", (event) => {
-                    if (event.key === "Enter") {
-                        event.preventDefault();
-                        doCreate();
-                    }
-                });
-                createRow.appendChild(nameInput);
-                createRow.appendChild(createBtn);
-                box.appendChild(createRow);
-
-                // 分组列表：每个分组一行（名称 + 收藏数 + 重命名 + 删除）
-                if (groupNames.length > 0) {
-                    const groupList = document.createElement("div");
-                    groupList.className = "sw-setting__group-list";
-                    groupNames.forEach((name) => {
-                        const row = document.createElement("div");
-                        row.className = "sw-setting__group-row";
-
-                        const label = document.createElement("span");
-                        label.className = "sw-setting__group-name";
-                        label.textContent = name;
-                        label.title = name;
-
-                        const count = document.createElement("span");
-                        count.className = "sw-setting__group-count";
-                        count.textContent = String(favorites.filter((fav) => fav.group === name).length);
-                        count.title = this.i18n.groupCountTip;
-
-                        // 重命名：行内切换为输入框，确认后整组迁移
-                        const renameBtn = document.createElement("button");
-                        renameBtn.type = "button";
-                        renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
-                        renameBtn.textContent = this.i18n.rename;
-                        renameBtn.addEventListener("click", () => {
-                            row.innerHTML = "";
-                            const input = document.createElement("input");
-                            input.className = "b3-text-field";
-                            input.value = name;
-                            const okBtn = document.createElement("button");
-                            okBtn.type = "button";
-                            okBtn.className = "b3-button b3-button--small b3-button--text";
-                            okBtn.textContent = this.i18n.confirm;
-                            const cancelBtn = document.createElement("button");
-                            cancelBtn.type = "button";
-                            cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
-                            cancelBtn.textContent = this.i18n.cancel;
-                            const apply = () => {
-                                const to = input.value.trim();
-                                if (to && to !== name) {
-                                    this.renameFavoriteGroup(name, to);
-                                }
-                                render();
-                            };
-                            okBtn.addEventListener("click", apply);
-                            input.addEventListener("keydown", (event) => {
-                                if (event.key === "Enter") {
-                                    event.preventDefault();
-                                    apply();
-                                } else if (event.key === "Escape") {
-                                    render();
-                                }
-                            });
-                            cancelBtn.addEventListener("click", () => render());
-                            row.appendChild(input);
-                            row.appendChild(okBtn);
-                            row.appendChild(cancelBtn);
-                            input.focus();
-                            input.select();
-                        });
-
-                        // 删除分组：组内收藏项移出到未分组
-                        const deleteBtn = document.createElement("button");
-                        deleteBtn.type = "button";
-                        deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
-                        deleteBtn.textContent = this.i18n.deleteGroup;
-                        deleteBtn.addEventListener("click", () => {
-                            if (confirm(this.i18n.deleteGroupConfirm)) {
-                                this.deleteFavoriteGroup(name);
-                                render();
-                            }
-                        });
-
-                        row.appendChild(label);
-                        row.appendChild(count);
-                        row.appendChild(renameBtn);
-                        row.appendChild(deleteBtn);
-                        groupList.appendChild(row);
-                    });
-                    box.appendChild(groupList);
-                }
-
-                // 收藏列表：每行标题 + 分组下拉（改动即保存）
-                if (favorites.length === 0) {
-                    const empty = document.createElement("div");
-                    empty.className = "sw-setting__fav-empty";
-                    empty.textContent = this.i18n.noFavorites;
-                    box.appendChild(empty);
-                    return;
-                }
-                const list = document.createElement("div");
-                list.className = "sw-setting__fav-list";
-                favorites.forEach((fav) => {
-                    const row = document.createElement("div");
-                    row.className = "sw-setting__fav-row";
-                    const name = document.createElement("span");
-                    name.className = "sw-setting__fav-name";
-                    name.textContent = fav.title;
-                    name.title = fav.title;
-                    const selectEl = document.createElement("select");
-                    selectEl.className = "b3-select";
-                    selectEl.appendChild(new Option(this.i18n.ungrouped, ""));
-                    groupNames.forEach((group) => selectEl.appendChild(new Option(group, group)));
-                    selectEl.value = fav.group || "";
-                    selectEl.addEventListener("change", () => {
-                        this.setFavoriteGroup(fav.key, selectEl.value);
-                        render();
-                    });
-                    row.appendChild(name);
-                    row.appendChild(selectEl);
-                    list.appendChild(row);
-                });
-                box.appendChild(list);
-            };
-            render();
-            return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
-        };
-
-        // ===== 手机端 =====
-        const buildMobile = () => {
-            const wrapper = document.createElement("div");
-            wrapper.append(
-                this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
-                    this.switcher(s.fabEnabled, (v) => {
-                        this.updateSettings({fabEnabled: v});
-                        this.updateFABVisibility();
-                    })),
-                this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,
-                    this.select([
-                        {value: "0", label: this.i18n.mobileSingle},
-                        {value: "1", label: this.i18n.mobileDouble},
-                        {value: "2", label: this.i18n.mobileAuto},
-                    ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)}))),
-            );
-            return wrapper;
-        };
-
-        // ===== 日记 =====
-        const buildJournal = () => {
-            const wrapper = document.createElement("div");
-            wrapper.append(
-                this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip,
-                    this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({journalNotebook: id}))),
-            );
-            return wrapper;
-        };
-
         const builders: Record<string, () => HTMLElement> = {
-            appearance: buildAppearance,
-            behavior: buildBehavior,
-            panels: buildPanels,
-            favorites: buildFavorites,
-            journal: buildJournal,
-            mobile: buildMobile,
+            appearance: () => this.buildSettingsAppearance(s),
+            behavior: () => this.buildSettingsBehavior(s),
+            panels: () => this.buildSettingsPanels(s),
+            favorites: () => this.buildSettingsFavorites(),
+            journal: () => this.buildSettingsJournal(s),
+            mobile: () => this.buildSettingsMobile(s),
         };
 
         // 构建标签栏与分组面板
@@ -957,6 +678,315 @@ export default class SpeedSwitchPlugin extends Plugin {
             // 非默认时需要滚动到选中标签可见（连续打开时标签栏不会滚动错位）
             tabs.querySelector<HTMLElement>(`.sw-settings__tab[data-panel="${initial}"]`)?.scrollIntoView({block: "nearest"});
         }
+    }
+
+    // ===== 设置页 · 外观：弹窗宽高、缩略图列数与高度 =====
+    private buildSettingsAppearance(s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        wrapper.append(
+            this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
+                this.num(s.dialogWidth, 480, 1920, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
+            this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
+                this.num(s.dialogHeight, 360, 1280, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
+            this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
+                this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
+                    [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
+                ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
+            this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
+                this.num(s.thumbHeight, 72, 360, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
+        );
+        return wrapper;
+    }
+
+    // ===== 设置页 · 行为：默认排序、全屏模式 =====
+    private buildSettingsBehavior(s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const sortOptions: Array<{value: SortBy, label: string}> = [
+            {value: "mru", label: this.i18n.sortMru},
+            {value: "layout", label: this.i18n.sortLayout},
+            {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
+            {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
+            {value: "titleAsc", label: this.i18n.sortTitleAsc},
+            {value: "titleDesc", label: this.i18n.sortTitleDesc},
+        ];
+        wrapper.append(
+            this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
+                this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))),
+            // 全屏模式：切换器铺满整个窗口，按 Esc 退出（开启时给出提示）
+            this.settingItem(this.i18n.fullScreen, this.i18n.fullScreenTip,
+                this.switcher(s.fullscreen, (v) => {
+                    this.updateSettings({fullscreen: v});
+                    if (v) {
+                        showMessage(this.i18n.fullScreenOn);
+                    }
+                })),
+        );
+        return wrapper;
+    }
+
+    // ===== 设置页 · 面板：显示方式、侧边栏布局、各 dock 面板开关 =====
+    private buildSettingsPanels(s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const dockOptions: Array<{value: DockDisplay, label: string}> = [
+            {value: "hidden", label: this.i18n.dockDisplayHidden},
+            {value: "collapsed", label: this.i18n.dockDisplayCollapsed},
+            {value: "full", label: this.i18n.dockDisplayFull},
+        ];
+        const sidebarOptions: Array<{value: SidebarLayout, label: string}> = [
+            {value: "enlarge", label: this.i18n.sidebarEnlarge},
+            {value: "columns", label: this.i18n.sidebarColumnsAuto},
+        ];
+        wrapper.append(
+            this.settingItem(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip,
+                this.select(dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay}))),
+            // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
+            this.settingItem(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip,
+                this.select(sidebarOptions, s.sidebarLayout, (v) => {
+                    this.updateSettings({sidebarLayout: v as SidebarLayout});
+                    // 侧边栏开着时即时刷新，让布局立即生效
+                    if (this.sidebarElement?.isConnected) {
+                        this.refreshSidebar();
+                    }
+                })),
+            this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, this.buildSettingsDockToggles(s), true),
+        );
+        return wrapper;
+    }
+
+    // dock 面板开关列表：勾选的面板出现在切换器左侧，取消的隐藏
+    private buildSettingsDockToggles(s: ISwSettings): HTMLElement {
+        const box = document.createElement("div");
+        box.className = "sw-setting__docks b3-label__text";
+        const dockPanels = this.getDockPanels();
+        const excluded = new Set(s.excludedDocks);
+        dockPanels.forEach((panel) => {
+            // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
+            const row = document.createElement("div");
+            row.className = "sw-setting__dock-item";
+            const toggle = document.createElement("label");
+            toggle.className = "b3-switch sw-switch";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = !excluded.has(panel.type);
+            checkbox.dataset.dockType = panel.type;
+            checkbox.addEventListener("change", () => {
+                const next = new Set(this.getSettings().excludedDocks);
+                if (checkbox.checked) {
+                    next.delete(panel.type);
+                } else {
+                    next.add(panel.type);
+                }
+                this.updateSettings({excludedDocks: Array.from(next)});
+            });
+            const knob = document.createElement("span");
+            toggle.appendChild(checkbox);
+            toggle.appendChild(knob);
+            const title = document.createElement("span");
+            title.textContent = panel.title;
+            row.appendChild(toggle);
+            row.appendChild(title);
+            box.appendChild(row);
+        });
+        if (dockPanels.length === 0) {
+            box.textContent = this.i18n.noDockPanels;
+        }
+        return box;
+    }
+
+    // ===== 设置页 · 手机端：悬浮按钮开关、卡片布局 =====
+    private buildSettingsMobile(s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        wrapper.append(
+            this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
+                this.switcher(s.fabEnabled, (v) => {
+                    this.updateSettings({fabEnabled: v});
+                    this.updateFABVisibility();
+                })),
+            this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,
+                this.select([
+                    {value: "0", label: this.i18n.mobileSingle},
+                    {value: "1", label: this.i18n.mobileDouble},
+                    {value: "2", label: this.i18n.mobileAuto},
+                ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)}))),
+        );
+        return wrapper;
+    }
+
+    // ===== 设置页 · 日记：默认日记笔记本 =====
+    private buildSettingsJournal(s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        wrapper.append(
+            this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip,
+                this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({journalNotebook: id}))),
+        );
+        return wrapper;
+    }
+
+    // ===== 设置页 · 收藏：新建分组、分组重命名/删除、调整收藏项所属分组 =====
+    // 内容随增删实时重建，故 render 回调在内部定义后传给各渲染 helper
+    private buildSettingsFavorites(): HTMLElement {
+        const box = document.createElement("div");
+        box.className = "sw-setting__favs";
+        const render = () => {
+            const favorites = this.getFavorites();
+            const groupNames = this.getFavoriteGroupNames();
+            box.innerHTML = "";
+            box.appendChild(this.buildSettingsFavCreateRow(render));
+            if (groupNames.length > 0) {
+                box.appendChild(this.buildSettingsFavGroupList(groupNames, favorites, render));
+            }
+            this.appendSettingsFavItems(box, favorites, groupNames, render);
+        };
+        render();
+        return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
+    }
+
+    // 新建分组行：输入名称即创建（空分组保留，收藏时可选用）
+    private buildSettingsFavCreateRow(render: () => void): HTMLElement {
+        const createRow = document.createElement("div");
+        createRow.className = "sw-setting__fav-create";
+        const nameInput = document.createElement("input");
+        nameInput.className = "b3-text-field";
+        nameInput.placeholder = this.i18n.groupName;
+        const createBtn = document.createElement("button");
+        createBtn.className = "b3-button b3-button--outline";
+        createBtn.textContent = this.i18n.createGroup;
+        const doCreate = () => {
+            if (this.createFavoriteGroup(nameInput.value)) {
+                nameInput.value = "";
+                render();
+            }
+        };
+        createBtn.addEventListener("click", doCreate);
+        nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                doCreate();
+            }
+        });
+        createRow.appendChild(nameInput);
+        createRow.appendChild(createBtn);
+        return createRow;
+    }
+
+    // 分组列表：每行 名称 + 收藏数 + 行内重命名 + 删除（组内收藏项移出到未分组）
+    private buildSettingsFavGroupList(groupNames: string[], favorites: IFavoriteItem[], render: () => void): HTMLElement {
+        const groupList = document.createElement("div");
+        groupList.className = "sw-setting__group-list";
+        groupNames.forEach((name) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__group-row";
+
+            const label = document.createElement("span");
+            label.className = "sw-setting__group-name";
+            label.textContent = name;
+            label.title = name;
+
+            const count = document.createElement("span");
+            count.className = "sw-setting__group-count";
+            count.textContent = String(favorites.filter((fav) => fav.group === name).length);
+            count.title = this.i18n.groupCountTip;
+
+            // 重命名：行内切换为输入框，确认后整组迁移
+            const renameBtn = document.createElement("button");
+            renameBtn.type = "button";
+            renameBtn.className = "b3-button b3-button--small sw-setting__group-btn";
+            renameBtn.textContent = this.i18n.rename;
+            renameBtn.addEventListener("click", () => {
+                row.innerHTML = "";
+                const input = document.createElement("input");
+                input.className = "b3-text-field";
+                input.value = name;
+                const okBtn = document.createElement("button");
+                okBtn.type = "button";
+                okBtn.className = "b3-button b3-button--small b3-button--text";
+                okBtn.textContent = this.i18n.confirm;
+                const cancelBtn = document.createElement("button");
+                cancelBtn.type = "button";
+                cancelBtn.className = "b3-button b3-button--small b3-button--cancel";
+                cancelBtn.textContent = this.i18n.cancel;
+                const apply = () => {
+                    const to = input.value.trim();
+                    if (to && to !== name) {
+                        this.renameFavoriteGroup(name, to);
+                    }
+                    render();
+                };
+                okBtn.addEventListener("click", apply);
+                input.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        apply();
+                    } else if (event.key === "Escape") {
+                        render();
+                    }
+                });
+                cancelBtn.addEventListener("click", () => render());
+                row.appendChild(input);
+                row.appendChild(okBtn);
+                row.appendChild(cancelBtn);
+                input.focus();
+                input.select();
+            });
+
+            // 删除分组：组内收藏项移出到未分组
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
+            deleteBtn.textContent = this.i18n.deleteGroup;
+            deleteBtn.addEventListener("click", () => {
+                if (confirm(this.i18n.deleteGroupConfirm)) {
+                    this.deleteFavoriteGroup(name);
+                    render();
+                }
+            });
+
+            row.appendChild(label);
+            row.appendChild(count);
+            row.appendChild(renameBtn);
+            row.appendChild(deleteBtn);
+            groupList.appendChild(row);
+        });
+        return groupList;
+    }
+
+    // 收藏项列表：每行标题 + 分组下拉（改动即保存）；无收藏时追加空态
+    private appendSettingsFavItems(
+        box: HTMLElement,
+        favorites: IFavoriteItem[],
+        groupNames: string[],
+        render: () => void,
+    ) {
+        if (favorites.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw-setting__fav-empty";
+            empty.textContent = this.i18n.noFavorites;
+            box.appendChild(empty);
+            return;
+        }
+        const list = document.createElement("div");
+        list.className = "sw-setting__fav-list";
+        favorites.forEach((fav) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__fav-row";
+            const name = document.createElement("span");
+            name.className = "sw-setting__fav-name";
+            name.textContent = fav.title;
+            name.title = fav.title;
+            const selectEl = document.createElement("select");
+            selectEl.className = "b3-select";
+            selectEl.appendChild(new Option(this.i18n.ungrouped, ""));
+            groupNames.forEach((group) => selectEl.appendChild(new Option(group, group)));
+            selectEl.value = fav.group || "";
+            selectEl.addEventListener("change", () => {
+                this.setFavoriteGroup(fav.key, selectEl.value);
+                render();
+            });
+            row.appendChild(name);
+            row.appendChild(selectEl);
+            list.appendChild(row);
+        });
+        box.appendChild(list);
     }
 
     // ==================== 切换器 ====================
@@ -1053,17 +1083,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         tabs: Tab[],
         activeTab: Tab | undefined,
     ) {
-        // 全屏模式下给弹窗容器加类：去掉圆角/边框/最大宽度限制，真正铺满视口
-        if (fullscreen) {
-            dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
-        }
-
-        // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
-        // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
-        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
-        if (dialogBody) {
-            dialogBody.classList.add("sw-scroll-locked");
-        }
+        this.prepareSwitcherChrome(dialog, fullscreen);
 
         // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除与显示方式渲染，无可面板时自动隐藏
         const dockElement = dialog.element.querySelector<HTMLDivElement>(".sw__dock");
@@ -1093,17 +1113,50 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (!scrollElement) {
             return;
         }
-        let updatedMap: {[rootId: string]: string} = {};
+        this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay);
+
+        // 让滚动区域获得焦点以接收键盘导航
+        scrollElement.focus();
+
+        // 回到顶部按钮
+        this.bindSwitcherBackTop(dialog, scrollElement);
+    }
+
+    // 弹窗外观准备：全屏模式下给容器加类（去圆角/边框/最大宽度），并锁定 .b3-dialog__body 不整体滚动
+    private prepareSwitcherChrome(dialog: Dialog, fullscreen: boolean) {
+        if (fullscreen) {
+            dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
+        }
+        // 思源 .b3-dialog__body 默认 overflow:auto，内容一高就会整体滚动把工具栏滚走，
+        // 加类锁定它（配套 SCSS 规则见 .sw-scroll-locked），保证只有 .sw__scroll 滚动、顶栏始终固定
+        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
+        if (dialogBody) {
+            dialogBody.classList.add("sw-scroll-locked");
+        }
+    }
+
+    // 绑定切换器列表区：初次渲染 + 键盘导航 + 「最近编辑」排序回源 + 搜索输入
+    private bindSwitcherListArea(
+        dialog: Dialog,
+        scrollElement: HTMLDivElement,
+        tabs: Tab[],
+        activeTab: Tab | undefined,
+        listOpts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
+        settings: ISwSettings,
+        searchInput: HTMLInputElement | null,
+        sortSelect: HTMLSelectElement | null,
+        closeOverlay: IOverlayClose,
+    ) {
+        const updatedMap: {[rootId: string]: string} = {};
         this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
         this.bindKeydown(scrollElement, closeOverlay);
 
         // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
-        const mergedMap = updatedMap;
         this.loadUpdatedMap(tabs).then((map) => {
-            Object.assign(mergedMap, map);
+            Object.assign(updatedMap, map);
             if (dialog.element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
                 // 弹窗存活期间页签可能已增减，重取最新列表
-                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", mergedMap);
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
             }
         });
 
@@ -1111,20 +1164,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         searchInput?.addEventListener("input", () => {
             this.applySearch(scrollElement, searchInput, closeOverlay);
         });
+    }
 
-        // 让滚动区域获得焦点以接收键盘导航
-        scrollElement.focus();
-
-        // 回到顶部按钮
+    // 绑定回到顶部按钮：滚动超过 240px 显示，点击平滑回顶
+    private bindSwitcherBackTop(dialog: Dialog, scrollElement: HTMLElement) {
         const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
-        if (backTopBtn) {
-            scrollElement.addEventListener("scroll", () => {
-                backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
-            });
-            backTopBtn.addEventListener("click", () => {
-                scrollElement.scrollTo({top: 0, behavior: "smooth"});
-            });
+        if (!backTopBtn) {
+            return;
         }
+        scrollElement.addEventListener("scroll", () => {
+            backTopBtn.classList.toggle("sw__show", scrollElement.scrollTop >= 240);
+        });
+        backTopBtn.addEventListener("click", () => {
+            scrollElement.scrollTo({top: 0, behavior: "smooth"});
+        });
     }
 
     // 绑定"全屏 ⇄ 普通"原地切换按钮（与关闭弹窗不同：原地切换可以保留搜索/缩略图状态）
@@ -1753,70 +1806,68 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
 
         // 按分组归类（分组顺序 = 注册表新建顺序在前；注册表中的空分组也占位，数量显示 0）
-        const groups = new Map<string, IFavoriteItem[]>();
-        groupNames.forEach((name) => groups.set(name, []));
-        favorites.forEach((fav) => {
-            const name = fav.group || "";
-            if (!groups.has(name)) {
-                groups.set(name, []);
-            }
-            groups.get(name)!.push(fav);
-        });
-
-        const appendGroup = (name: string, items: IFavoriteItem[]) => {
-            const groupEl = document.createElement("div");
-            groupEl.className = "sw__fav-group" + (this.favCollapsed.has(name) ? " sw__fav-collapsed" : "");
-
-            const head = document.createElement("button");
-            head.type = "button";
-            head.className = "sw__fav-group-head";
-            head.title = this.i18n.favGroupTip;
-            head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
-<span class="sw__fav-group-name"></span>
-<span class="sw__fav-count">${items.length}</span>`;
-            head.querySelector<HTMLElement>(".sw__fav-group-name")!.textContent = name;
-            head.addEventListener("click", () => {
-                groupEl.classList.toggle("sw__fav-collapsed");
-                if (this.favCollapsed.has(name)) {
-                    this.favCollapsed.delete(name);
-                } else {
-                    this.favCollapsed.add(name);
-                }
-                this.saveFavCollapsed();
-            });
-            // 右键弹出「一键开启/关闭组内页签」菜单，与 v0.14.0 changelog 描述对齐
-            head.addEventListener("contextmenu", (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                this.openFavGroupMenu(items, event);
-            });
-            groupEl.appendChild(head);
-
-            const list = document.createElement("div");
-            list.className = "sw__fav-items";
-            items.forEach((fav) => {
-                list.appendChild(this.makeFavItem(panel, fav, onPick));
-            });
-            groupEl.appendChild(list);
-            panel.appendChild(groupEl);
-        };
+        const groups = groupFavoritesByGroup(favorites, groupNames);
 
         // 有分组时未分组的置底显示为「未分组」；无任何分组时平铺不显示组头
         const groupedNames = Array.from(groups.keys()).filter((name) => name !== "");
         const ungrouped = groups.get("") || [];
         if (!groupedNames.length) {
-            const list = document.createElement("div");
-            list.className = "sw__fav-items sw__fav-items--flat";
-            ungrouped.forEach((fav) => {
-                list.appendChild(this.makeFavItem(panel, fav, onPick));
-            });
-            panel.appendChild(list);
+            this.appendFavFlatList(panel, ungrouped, onPick);
         } else {
-            groupedNames.forEach((name) => appendGroup(name, groups.get(name)!));
+            groupedNames.forEach((name) => this.appendFavGroup(panel, name, groups.get(name) || [], onPick));
             if (ungrouped.length > 0) {
-                appendGroup(this.i18n.ungrouped, ungrouped);
+                this.appendFavGroup(panel, this.i18n.ungrouped, ungrouped, onPick);
             }
         }
+    }
+
+    // 渲染单个收藏分组：可折叠组头（右键弹出一键开/关菜单）+ 组内项列表
+    private appendFavGroup(panel: HTMLElement, name: string, items: IFavoriteItem[], onPick: () => void) {
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__fav-group" + (this.favCollapsed.has(name) ? " sw__fav-collapsed" : "");
+
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "sw__fav-group-head";
+        head.title = this.i18n.favGroupTip;
+        head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
+<span class="sw__fav-group-name"></span>
+<span class="sw__fav-count">${items.length}</span>`;
+        head.querySelector<HTMLElement>(".sw__fav-group-name")!.textContent = name;
+        head.addEventListener("click", () => {
+            groupEl.classList.toggle("sw__fav-collapsed");
+            if (this.favCollapsed.has(name)) {
+                this.favCollapsed.delete(name);
+            } else {
+                this.favCollapsed.add(name);
+            }
+            this.saveFavCollapsed();
+        });
+        // 右键弹出「一键开启/关闭组内页签」菜单，与 v0.14.0 changelog 描述对齐
+        head.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.openFavGroupMenu(items, event);
+        });
+        groupEl.appendChild(head);
+
+        const list = document.createElement("div");
+        list.className = "sw__fav-items";
+        items.forEach((fav) => {
+            list.appendChild(this.makeFavItem(panel, fav, onPick));
+        });
+        groupEl.appendChild(list);
+        panel.appendChild(groupEl);
+    }
+
+    // 无任何分组时的平铺列表（不显示组头）
+    private appendFavFlatList(panel: HTMLElement, items: IFavoriteItem[], onPick: () => void) {
+        const list = document.createElement("div");
+        list.className = "sw__fav-items sw__fav-items--flat";
+        items.forEach((fav) => {
+            list.appendChild(this.makeFavItem(panel, fav, onPick));
+        });
+        panel.appendChild(list);
     }
 
     // 生成单个收藏项按钮：点击跳转；右键弹出操作菜单（移动至分组 / 取消收藏）
@@ -1980,70 +2031,88 @@ export default class SpeedSwitchPlugin extends Plugin {
         const groupNames = this.getFavoriteGroupNames();
         const menu = new Menu("swFavMenu");
 
+        // 未收藏 / 已收藏两套菜单项，分支差异很大故拆开各自构建
         if (!favorite) {
-            menu.addItem({
-                label: this.i18n.favoriteTab,
-                icon: "iconStar",
-                click: () => {
-                    this.toggleFavorite(tab);
-                    this.refreshCardFavState(tab, card);
-                    this.refreshFavSelects();
-                },
-            });
-            if (groupNames.length > 0) {
-                menu.addSeparator();
-                groupNames.forEach((name) => {
-                    menu.addItem({
-                        label: this.escapeAttr(name),
-                        icon: "iconFolder",
-                        click: () => {
-                            this.addFavoriteToGroup(tab, name);
-                            this.refreshCardFavState(tab, card);
-                        },
-                    });
-                });
-            }
-            menu.addSeparator();
-            menu.addItem({
-                label: this.i18n.newGroupFav,
-                icon: "iconAdd",
-                click: () => this.openGroupDialog(tab, card),
-            });
+            this.buildFavMenuUnfavorited(menu, tab, card, groupNames);
         } else {
-            if (groupNames.length > 0) {
-                groupNames.forEach((name) => {
-                    menu.addItem({
-                        label: this.escapeAttr(name),
-                        icon: favorite.group === name ? "iconSelect" : "iconFolder",
-                        click: () => this.setFavoriteGroup(key, name),
-                    });
-                });
-                if (favorite.group) {
-                    menu.addItem({
-                        label: this.i18n.removeFromGroup,
-                        icon: "iconUnpin",
-                        click: () => this.setFavoriteGroup(key, ""),
-                    });
-                }
-                menu.addSeparator();
-            }
-            menu.addItem({
-                label: this.i18n.newGroupFav,
-                icon: "iconAdd",
-                click: () => this.openGroupDialog(tab, card),
-            });
-            menu.addSeparator();
-            menu.addItem({
-                label: this.i18n.unfavoriteTab,
-                icon: "iconClose",
-                click: () => {
-                    this.toggleFavorite(tab);
-                    this.refreshCardFavState(tab, card);
-                    this.refreshFavSelects();
-                },
-            });
+            this.buildFavMenuFavorited(menu, tab, card, key, favorite, groupNames);
         }
         menu.open({x: event.clientX, y: event.clientY});
+    }
+
+    // 未收藏菜单：先收藏（无分组），再列已有分组可直接归入，最后新建分组
+    private buildFavMenuUnfavorited(menu: Menu, tab: Tab, card: HTMLElement, groupNames: string[]) {
+        menu.addItem({
+            label: this.i18n.favoriteTab,
+            icon: "iconStar",
+            click: () => {
+                this.toggleFavorite(tab);
+                this.refreshCardFavState(tab, card);
+                this.refreshFavSelects();
+            },
+        });
+        if (groupNames.length > 0) {
+            menu.addSeparator();
+            groupNames.forEach((name) => {
+                menu.addItem({
+                    label: this.escapeAttr(name),
+                    icon: "iconFolder",
+                    click: () => {
+                        this.addFavoriteToGroup(tab, name);
+                        this.refreshCardFavState(tab, card);
+                    },
+                });
+            });
+        }
+        menu.addSeparator();
+        menu.addItem({
+            label: this.i18n.newGroupFav,
+            icon: "iconAdd",
+            click: () => this.openGroupDialog(tab, card),
+        });
+    }
+
+    // 已收藏菜单：分组列表（当前分组打勾）+ 移出分组 + 新建分组 + 取消收藏
+    private buildFavMenuFavorited(
+        menu: Menu,
+        tab: Tab,
+        card: HTMLElement,
+        key: string,
+        favorite: IFavoriteItem,
+        groupNames: string[],
+    ) {
+        if (groupNames.length > 0) {
+            groupNames.forEach((name) => {
+                menu.addItem({
+                    label: this.escapeAttr(name),
+                    icon: favorite.group === name ? "iconSelect" : "iconFolder",
+                    click: () => this.setFavoriteGroup(key, name),
+                });
+            });
+            if (favorite.group) {
+                menu.addItem({
+                    label: this.i18n.removeFromGroup,
+                    icon: "iconUnpin",
+                    click: () => this.setFavoriteGroup(key, ""),
+                });
+            }
+            menu.addSeparator();
+        }
+        menu.addItem({
+            label: this.i18n.newGroupFav,
+            icon: "iconAdd",
+            click: () => this.openGroupDialog(tab, card),
+        });
+        menu.addSeparator();
+        menu.addItem({
+            label: this.i18n.unfavoriteTab,
+            icon: "iconClose",
+            click: () => {
+                this.toggleFavorite(tab);
+                this.refreshCardFavState(tab, card);
+                this.refreshFavSelects();
+            },
+        });
     }
 
     // 收藏分组右键菜单：一键开启/关闭组内页签
@@ -2318,70 +2387,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         const favorites = new Set(this.getFavorites().map((item) => item.key));
 
         // 按 parent（Wnd）分栏分组，保持 getAllTabs 的布局树顺序
-        const groups = new Map<HTMLElement, IGroupedTab[]>();
-        tabs.forEach((tab) => {
-            const key: HTMLElement = tab.parent?.element || tab.parent?.headersElement || scrollElement;
-            if (!groups.has(key)) {
-                groups.set(key, []);
-            }
-            groups.get(key)!.push({tab});
-        });
-        const grouped: IGroupedTab[][] = Array.from(groups.values());
+        const groups = buildTabGroupsByParent(tabs, scrollElement);
+        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
 
-        // 扁平化，用于键盘导航的顺序集合
         const all: IGroupedTab[] = [];
-        let defaultFocusIndex = 0;
-
-        grouped.forEach((group) => {
-            // 置顶页签固定在前，其余按排序方式排列
-            const pinnedItems = group.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
-            const restItems = group.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
-            this.sortItems(restItems, sortBy, mru, updatedMap);
-            const ordered = [...pinnedItems, ...restItems];
-
-            const groupEl = document.createElement("div");
-            groupEl.className = "sw__group";
-
-            const label = document.createElement("div");
-            label.className = "sw__window-label";
-            label.textContent = `${this.i18n.currentWindow} · ${ordered.length}`;
-            groupEl.appendChild(label);
-
-            const grid = document.createElement("div");
-            grid.className = "sw__grid";
-            // 侧边栏由专用设置 sidebarLayout 控制列数（CSS 自动响应宽度）；弹窗仍用全局 columns 设置
-            const isSidebar = !!scrollElement.closest(".sw--sidebar");
-            if (!isSidebar && settings.columns >= 2) {
-                grid.style.gridTemplateColumns = `repeat(${settings.columns}, 1fr)`;
-            }
-
-            ordered.forEach((item) => {
-                const isPinned = pinned.has(this.pinKeyOf(item.tab));
-                const isFaved = favorites.has(this.pinKeyOf(item.tab));
-                let card = reusable.get(item.tab.id);
-                if (card) {
-                    // 复用旧卡片：同步状态类/图标/标题（缩略图不动），事件沿旧闭包（同页签等价对象）
-                    this.syncCardState(card, item.tab, item.tab.id === activeTabId, isPinned, isFaved);
-                    reusable.delete(item.tab.id);
-                } else {
-                    card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
-                        onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
-                        onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
-                        onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
-                        onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
-                    });
-                }
-                grid.appendChild(card);
-                item.card = card;
-                all.push(item);
-                // 默认聚焦 MRU 里最近使用的（非当前活动）页签，更贴近 win+tab 体验
-                // MRU 按 pinKey（文档页签为 rootID）记录，需同键匹配
-                if (item.tab.id !== activeTabId && mru.indexOf(this.pinKeyOf(item.tab)) === 0) {
-                    defaultFocusIndex = all.length - 1;
-                }
-            });
-            groupEl.appendChild(grid);
-            scrollElement.appendChild(groupEl);
+        const focusState: {defaultFocusIndex: number} = {defaultFocusIndex: 0};
+        groups.forEach((group) => {
+            const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
+            this.renderTabGroup(scrollElement, ordered, ctx, all, focusState);
         });
 
         if (all.length === 0) {
@@ -2390,10 +2403,81 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
 
         // 初始焦点
-        this.focusCard(all[defaultFocusIndex]?.card);
+        this.focusCard(all[focusState.defaultFocusIndex]?.card);
 
         // 视口懒渲染缩略图：复用卡片跳过，新卡片滚入可视区时才生成
         this.renderThumbnails(all, scrollElement, THUMB_BATCH);
+    }
+
+    // 单一分组排序：置顶页签固定在前，其余按 sortBy 排列（restItems 内部 sort 走 stable 排序）
+    private sortGroupItems(
+        group: IGroupedTab[],
+        sortBy: SortBy,
+        mru: string[],
+        pinned: Set<string>,
+        updatedMap: {[rootId: string]: string},
+    ): IGroupedTab[] {
+        const pinnedItems = group.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
+        const restItems = group.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
+        this.sortItems(restItems, sortBy, mru, updatedMap);
+        return [...pinnedItems, ...restItems];
+    }
+
+    // 渲染单一分组：label + grid + 各卡片；同步复用旧卡片或新建；累积 defaultFocusIndex
+    private renderTabGroup(
+        scrollElement: HTMLElement,
+        ordered: IGroupedTab[],
+        ctx: ITabGroupRenderCtx,
+        all: IGroupedTab[],
+        focusState: {defaultFocusIndex: number},
+    ) {
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__group";
+        const label = document.createElement("div");
+        label.className = "sw__window-label";
+        label.textContent = `${this.i18n.currentWindow} · ${ordered.length}`;
+        groupEl.appendChild(label);
+
+        const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
+
+        ordered.forEach((item) => {
+            const isPinned = ctx.pinned.has(this.pinKeyOf(item.tab));
+            const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
+            let card = ctx.reusable.get(item.tab.id);
+            if (card) {
+                // 复用旧卡片：同步状态类/图标/标题（缩略图不动），事件沿旧闭包（同页签等价对象）
+                this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
+                ctx.reusable.delete(item.tab.id);
+            } else {
+                card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, {
+                    onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
+                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, ctx.opts.onTabsChanged),
+                });
+            }
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+            // 默认聚焦 MRU 里最近使用的（非当前活动）页签，更贴近 win+tab 体验
+            // MRU 按 pinKey（文档页签为 rootID）记录，需同键匹配
+            if (item.tab.id !== ctx.activeTabId && ctx.mru.indexOf(this.pinKeyOf(item.tab)) === 0) {
+                focusState.defaultFocusIndex = all.length - 1;
+            }
+        });
+        groupEl.appendChild(grid);
+        scrollElement.appendChild(groupEl);
+    }
+
+    // 构造分组卡片网格；侧边栏由专用设置 sidebarLayout 控制列数（CSS 自动响应宽度），弹窗仍用全局 columns
+    private buildTabGroupGrid(scrollElement: HTMLElement, count: number, settings: ISwSettings): HTMLElement {
+        const grid = document.createElement("div");
+        grid.className = "sw__grid";
+        const isSidebar = !!scrollElement.closest(".sw--sidebar");
+        if (!isSidebar && settings.columns >= 2) {
+            grid.style.gridTemplateColumns = `repeat(${settings.columns}, 1fr)`;
+        }
+        return grid;
     }
 
     // 复用旧卡片时同步状态：置顶/收藏/激活类名与图标、标题文本
@@ -3435,45 +3519,13 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // 手机端不分窗口分组，全部扁平化
         const items: IGroupedTab[] = tabs.map((tab) => ({tab}));
-        const pinnedItems = items.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
-        const restItems = items.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
-        this.sortItems(restItems, sortBy, mru, updatedMap);
-        const ordered = [...pinnedItems, ...restItems];
+        const ordered = this.sortGroupItems(items, sortBy, mru, pinned, updatedMap);
 
         const groupEl = document.createElement("div");
         groupEl.className = "sw__group";
-
-        const grid = document.createElement("div");
-        grid.className = "sw__grid sw__mobile-grid";
-        if (settings.mobileColumns === 1) {
-            grid.classList.add("sw__mobile-grid--double");
-        } else if (settings.mobileColumns === 2) {
-            // auto: portrait=single, landscape=double (handled by CSS media query)
-            grid.classList.add("sw__mobile-grid--auto");
-        }
-
-        const all: IGroupedTab[] = [];
-        ordered.forEach((item) => {
-            const isPinned = pinned.has(this.pinKeyOf(item.tab));
-            const isFaved = favorites.has(this.pinKeyOf(item.tab));
-            let card = reusable.get(item.tab.id);
-            if (card) {
-                this.syncCardState(card, item.tab, item.tab.id === activeTabId, isPinned, isFaved);
-                card.classList.add("sw__mobile-card");
-                reusable.delete(item.tab.id);
-            } else {
-                card = this.createCard(item, item.tab.id === activeTabId, isPinned, isFaved, {
-                    onActivate: (tab) => this.activateTab(tab, opts.onOverlayClose),
-                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
-                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
-                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, opts.onTabsChanged),
-                });
-                card.classList.add("sw__mobile-card");
-            }
-            grid.appendChild(card);
-            item.card = card;
-            all.push(item);
-        });
+        const grid = this.buildMobileGroupGrid(settings);
+        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
+        const all: IGroupedTab[] = this.renderMobileCardsInGroup(grid, ordered, ctx);
 
         groupEl.appendChild(grid);
         scrollElement.appendChild(groupEl);
@@ -3485,6 +3537,50 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // 手机端缩略图：视口懒渲染 + 更保守的回源并发
         this.renderThumbnails(all, scrollElement, THUMB_BATCH_MOBILE);
+    }
+
+    // 构造手机端分组卡片网格：根据 settings.mobileColumns 决定单列/双列/自适应
+    private buildMobileGroupGrid(settings: ISwSettings): HTMLElement {
+        const grid = document.createElement("div");
+        grid.className = "sw__grid sw__mobile-grid";
+        if (settings.mobileColumns === 1) {
+            grid.classList.add("sw__mobile-grid--double");
+        } else if (settings.mobileColumns === 2) {
+            // auto: portrait=single, landscape=double (handled by CSS media query)
+            grid.classList.add("sw__mobile-grid--auto");
+        }
+        return grid;
+    }
+
+    // 复用/创建页签卡片，附带手机端 sw__mobile-card 类；返回 all 列表供缩略图懒渲染
+    private renderMobileCardsInGroup(
+        grid: HTMLElement,
+        ordered: IGroupedTab[],
+        ctx: ITabGroupRenderCtx,
+    ): IGroupedTab[] {
+        const all: IGroupedTab[] = [];
+        ordered.forEach((item) => {
+            const isPinned = ctx.pinned.has(this.pinKeyOf(item.tab));
+            const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
+            let card = ctx.reusable.get(item.tab.id);
+            if (card) {
+                this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
+                card.classList.add("sw__mobile-card");
+                ctx.reusable.delete(item.tab.id);
+            } else {
+                card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, {
+                    onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
+                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, ctx.opts.onTabsChanged),
+                });
+                card.classList.add("sw__mobile-card");
+            }
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+        });
+        return all;
     }
 
     // 手机端收藏底部弹窗；onTabsChanged：组内页签批量开/关后刷新背后的切换器列表
@@ -3799,7 +3895,27 @@ export default class SpeedSwitchPlugin extends Plugin {
         element.classList.add("speed-switch", "sw__body", "sw--sidebar");
         // 侧边栏缩略图布局：enlarge（默认）放大填满栏宽；columns 按宽度自动增加列数
         element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");
-        element.innerHTML = `<div class="sw__content">
+        element.innerHTML = this.buildSidebarHtml();
+
+        const tabs = getAllTabs();
+        this.pruneThumbCache(tabs);
+        const activeTab = this.getActiveTab();
+        const refresh = () => this.refreshSidebar();
+        const scrollElement = element.querySelector<HTMLDivElement>(".sw__scroll");
+        if (!scrollElement) {
+            return;
+        }
+        this.renderList(scrollElement, tabs, activeTab, {onOverlayClose: refresh, onTabsChanged: refresh}, this.getSettings().sortBy, {});
+
+        // 面板尺寸变化时仅重算缩略图缩放比例（ResizeObserver 覆盖拖动分隔条等所有场景）
+        this.observeSidebarResize(element);
+        // 顶栏交互：搜索 / 收藏下拉 / 排序 / 设置 / 回到顶部
+        this.bindSidebarToolbarEvents(element, scrollElement, refresh);
+    }
+
+    // 侧边栏 DOM 骨架：搜索 + 收藏下拉 + 排序 + 设置 + 滚动区 + 回到顶部
+    private buildSidebarHtml(): string {
+        return `<div class="sw__content">
     <div class="sw__toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
@@ -3829,21 +3945,19 @@ export default class SpeedSwitchPlugin extends Plugin {
         <svg><use xlink:href="#iconUp"></use></svg>
     </span>
 </div>`;
+    }
 
-        const tabs = getAllTabs();
-        this.pruneThumbCache(tabs);
-        const activeTab = this.getActiveTab();
-        const refresh = () => this.refreshSidebar();
-        const scrollElement = element.querySelector<HTMLDivElement>(".sw__scroll");
-        this.renderList(scrollElement, tabs, activeTab, {onOverlayClose: refresh, onTabsChanged: refresh}, this.getSettings().sortBy, {});
-
-        // 面板尺寸变化时仅重算缩略图缩放比例（ResizeObserver 覆盖拖动分隔条等所有场景）
+    // 侧边栏尺寸监听：拖动分隔条等场景只重算缩略图缩放，不重建 DOM
+    private observeSidebarResize(element: HTMLElement) {
         if (this.sidebarResizeObserver) {
             this.sidebarResizeObserver.disconnect();
         }
         this.sidebarResizeObserver = new ResizeObserver(() => this.rescaleThumbs(element));
         this.sidebarResizeObserver.observe(element);
+    }
 
+    // 侧边栏顶栏事件：搜索 / 收藏下拉 / 排序切换 / 设置 / 回到顶部
+    private bindSidebarToolbarEvents(element: HTMLElement, scrollElement: HTMLDivElement, refresh: IOverlayClose) {
         // 搜索：与弹窗一致，页签匹配在上、全库文档在下
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
         searchInput.addEventListener("input", () => {

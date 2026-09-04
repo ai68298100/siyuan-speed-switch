@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -138,4 +138,55 @@ test('resolveIconFallback: hex codepoints converted to emoji', () => {
 test('resolveIconFallback: invalid multi-char string falls back to iconFile', () => {
     assert.deepEqual(resolveIconFallback('not-an-icon'), {type: 'svg', value: 'iconFile'});
     assert.deepEqual(resolveIconFallback('icon'), {type: 'svg', value: 'iconFile'}); // 只有前缀没有名字
+});
+
+// ── buildTabGroupsByParent ──
+// 在 jsdom 下构造 HTMLElement 作 key，避免 node:test 无 DOM 的环境失败
+function makeEl() {
+    const { JSDOM } = require('jsdom');
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    return dom.window.document.body;
+}
+
+test('buildTabGroupsByParent: groups by parent.element', () => {
+    const fallback = makeEl();
+    const w1 = makeEl();
+    const w2 = makeEl();
+    const tabs = [
+        {id: 'a', parent: {element: w1, headersElement: w1}},
+        {id: 'b', parent: {element: w2, headersElement: w2}},
+        {id: 'c', parent: {element: w1, headersElement: w1}},
+    ];
+    const groups = buildTabGroupsByParent(tabs, fallback);
+    assert.equal(groups.size, 2, 'two windows → two groups');
+    assert.equal(groups.get(w1).length, 2);
+    assert.equal(groups.get(w2).length, 1);
+    assert.equal(groups.get(w1)[0].tab.id, 'a');
+    assert.equal(groups.get(w1)[1].tab.id, 'c');
+});
+
+test('buildTabGroupsByParent: falls back to headersElement when element missing', () => {
+    const fallback = makeEl();
+    const h = makeEl();
+    const tabs = [{id: 'x', parent: {headersElement: h}}];
+    const groups = buildTabGroupsByParent(tabs, fallback);
+    assert.equal(groups.size, 1);
+    assert.equal(groups.get(h).length, 1);
+});
+
+test('buildTabGroupsByParent: missing parent uses fallback key (mobile pseudo tabs)', () => {
+    const fallback = makeEl();
+    const tabs = [
+        {id: 'a'},                       // 无 parent
+        {id: 'b', parent: {}},
+    ];
+    const groups = buildTabGroupsByParent(tabs, fallback);
+    assert.equal(groups.size, 1);
+    assert.equal(groups.get(fallback).length, 2);
+});
+
+test('buildTabGroupsByParent: empty tabs returns empty map', () => {
+    const fallback = makeEl();
+    const groups = buildTabGroupsByParent([], fallback);
+    assert.equal(groups.size, 0);
 });
