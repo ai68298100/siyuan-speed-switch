@@ -2072,6 +2072,51 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavSelects();
     }
 
+    // 一键开启组内全部页签：仅打开可重开（rootId 非空）且未打开的收藏，返回实际打开数
+    private openGroupTabs(items: IFavoriteItem[]): number {
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
+        let count = 0;
+        const seen = new Set<string>();
+        items.forEach((fav) => {
+            if (seen.has(fav.key)) {
+                return;
+            }
+            seen.add(fav.key);
+            if (!fav.rootId || openedKeys.has(fav.key)) {
+                return;
+            }
+            if (this.isMobile) {
+                // openTab 在手机端是空实现，走 MobileTabs.open
+                this.mobileOpenDoc(fav.rootId);
+            } else {
+                openTab({
+                    app: (this as any).app,
+                    doc: {id: fav.rootId},
+                });
+            }
+            count++;
+        });
+        if (count > 0) {
+            showMessage(this.i18n.groupTabsOpened.replace("{x}", String(count)));
+        }
+        return count;
+    }
+
+    // 一键关闭组内已打开的页签：按 pinKey 匹配当前打开页签，返回实际关闭数
+    private closeGroupTabs(items: IFavoriteItem[]): number {
+        const keys = new Set(items.map((fav) => fav.key));
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const targets = opened.filter((tab) => keys.has(this.pinKeyOf(tab)));
+        targets.forEach((tab) => {
+            this.closeTabQuietly(tab);
+        });
+        if (targets.length > 0) {
+            showMessage(this.i18n.groupTabsClosed.replace("{x}", String(targets.length)));
+        }
+        return targets.length;
+    }
+
     // 组内排序：置顶页签固定在最前，其余按所选方式排序
     private sortItems(items: IGroupedTab[], sortBy: SortBy, mru: string[], updatedMap: {[rootId: string]: string}) {
         if (sortBy === "titleAsc" || sortBy === "titleDesc") {
@@ -2254,8 +2299,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavSelects();
     }
 
-    // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
-    private handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
+    // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）
+    private closeTabQuietly(tab: Tab) {
         if (this.isMobile) {
             // 手机端：MobileTabs.close 关闭页签，随后由 onTabsChanged 整列表重渲染
             try {
@@ -2263,13 +2308,18 @@ export default class SpeedSwitchPlugin extends Plugin {
             } catch (e) {
                 console.warn("[speed-switch] mobile close tab fail", e);
             }
-        } else {
-            try {
-                tab.parent.removeTab(tab.id);
-            } catch (e) {
-                console.warn("[speed-switch] close tab fail", e);
-            }
+            return;
         }
+        try {
+            tab.parent.removeTab(tab.id);
+        } catch (e) {
+            console.warn("[speed-switch] close tab fail", e);
+        }
+    }
+
+    // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
+    private handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
+        this.closeTabQuietly(tab);
         // 先取引用再移除卡片（remove 后 closest 返回 null）
         const group = card.closest(".sw__group");
         const scroll = card.closest(".sw__scroll");
@@ -3173,8 +3223,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.renderThumbnails(all, scrollElement, THUMB_BATCH_MOBILE);
     }
 
-    // 手机端收藏底部弹窗
-    private showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose) {
+    // 手机端收藏底部弹窗；onTabsChanged：组内页签批量开/关后刷新背后的切换器列表
+    private showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void) {
         const favorites = this.getFavorites();
         const groupNames = this.getFavoriteGroupNames();
 
@@ -3292,6 +3342,64 @@ export default class SpeedSwitchPlugin extends Plugin {
                 sheet.classList.remove("sw__mobile-sheet--open");
                 overlay.style.opacity = "0";
                 setTimeout(() => overlay.remove(), 250);
+            }
+        });
+    }
+
+    // 手机端分组批量操作单（嵌套于收藏弹窗之上、层级更高）：一键开启/关闭组内页签
+    private openMobileGroupActions(groupName: string, items: IFavoriteItem[], onChanged: () => void) {
+        const overlay = document.createElement("div");
+        overlay.className = "sw__mobile-sheet-overlay sw__mobile-sheet-overlay--nested";
+        overlay.innerHTML = `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(groupName)}">
+    <div class="sw__mobile-sheet-handle"></div>
+    <div class="sw__mobile-sheet-title">${this.escapeAttr(groupName)}</div>
+    <div class="sw__mobile-sheet-body"></div>
+</div>`;
+        document.body.appendChild(overlay);
+
+        const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
+        const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
+
+        // 与收藏弹窗一致的下滑收起动画
+        const closeSelf = () => {
+            sheet.classList.remove("sw__mobile-sheet--open");
+            overlay.style.opacity = "0";
+            setTimeout(() => overlay.remove(), 250);
+        };
+
+        const appendAction = (label: string, action: () => number) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__mobile-sheet-item";
+            item.textContent = label;
+            item.addEventListener("click", () => {
+                const count = action();
+                closeSelf();
+                // 仅在确实发生变更时刷新背后的切换器列表
+                if (count > 0) {
+                    onChanged();
+                }
+            });
+            body.appendChild(item);
+        };
+
+        appendAction(this.i18n.openGroupTabs, () => this.openGroupTabs(items));
+        appendAction(this.i18n.closeGroupTabs, () => this.closeGroupTabs(items));
+
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "sw__mobile-sheet-item sw__mobile-sheet-item--cancel";
+        cancel.textContent = this.i18n.cancel;
+        cancel.addEventListener("click", closeSelf);
+        body.appendChild(cancel);
+
+        // 动画：下一帧滑入
+        requestAnimationFrame(() => {
+            sheet.classList.add("sw__mobile-sheet--open");
+        });
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                closeSelf();
             }
         });
     }

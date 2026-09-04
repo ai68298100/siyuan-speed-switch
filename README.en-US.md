@@ -87,6 +87,12 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.14.0 (2026-09-04)
+
+- **Batch open/close by favorite group (desktop)**: right-click a favorites group header to open every favorited tab in that group at once, or close all opened tabs belonging to it.
+- **Batch open/close by favorite group (mobile)**: in the favorites bottom sheet, each group header gains a ⋯ button that opens an action sheet with the same batch open/close actions.
+- After the operation a toast reports "Opened / Closed N tab(s)"; silent when nothing changed.
+
 ### v0.13.2 (2026-09-04)
 
 - **Mobile UX improvements**: the favorites bottom sheet gains a subtle scrim and respects bottom safe-area insets (home indicator / nav bar); the top-bar favorites, journal and settings buttons are now uniform in size, and card action buttons plus the floating button got larger touch targets.

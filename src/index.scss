@@ -1654,6 +1654,15 @@
         }
     }
 
+    // 操作单中的「取消」：居中 + 顶部细分隔线
+    .sw__mobile-sheet-item--cancel {
+        justify-content: center;
+        text-align: center;
+        color: var(--b3-theme-on-surface);
+        border-top: 1px solid var(--b3-border-color);
+        margin-top: 4px;
+    }
+
     .sw__mobile-sheet-empty {
         padding: 32px 16px;
         text-align: center;
