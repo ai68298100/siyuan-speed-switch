@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.15.4-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.5-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,19 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.15.5（2026-09-04）
+
+- **修复手机端页签卡片图标显示问题**：
+  - `getMobileTabs()` 现在同时读取思源不同版本里页签图标字段的可能存放位置——优先 `t.icon`，再回退 `t.current.icon`；
+  - 抽出 `resolveIconFallback(raw)` 纯函数到 `src/util.js`，覆盖空值 / `icon*` 图标名 / emoji 字符 / 4-6 位 hex codepoint / 非法字符串 5 种情况，全部测试用例就位；
+  - SCSS 给 `.sw__icon` 加上 `min-width/height: 14px`、svg `display:block`、空值占位符，杜绝 SVG 加载失败导致空白塌陷与后续标题错位。
+- **修复桌面/手机收藏分组一键开/关不全**：
+  - `openGroupTabs()` / `closeGroupTabs()` 改为 `async`，串行等待每次 `openTab` / `mobileOpenDoc` / `MobileTabs.close` 完成后再进行下一步，杜绝并发丢调用；
+  - `closeTabQuietly()` 改为 `async`，会 await `MobileTabs.close` 返回的 Promise，桌面端 `removeTab` 后额外 sleep 30ms 让思源 DOM/状态沉降；
+  - 新增 `sleep(ms)` 工具方法；
+  - `openFavGroupMenu` / `openMobileGroupActions` 的 click 回调改为 async/await，操作完成后再关菜单/弹窗并刷新背后切换器列表，避免"列表提前刷新而操作尚未生效"。
+- **单测增量**：`resolveIconFallback` 5 个用例，总计 19/19 通过（10.5ms）。
 
 ### v0.15.4（2026-09-04）
 

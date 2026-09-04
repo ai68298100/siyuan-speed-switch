@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.15.4-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.15.5-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,19 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.15.5 (2026-09-04)
+
+- **Fixed mobile tab card icon display**:
+  - `getMobileTabs()` now reads SiYuan's tab-icon field from both possible locations: `t.icon` first, then falls back to `t.current.icon` (different SiYuan builds store it differently).
+  - Extracted `resolveIconFallback(raw)` as a pure function in `src/util.js`, covering five cases — empty value, `icon*` SVG name, emoji character, 4-6 digit hex codepoint, invalid string — all with unit tests.
+  - SCSS adds `min-width/height: 14px`, `svg{display:block}` and an empty placeholder to `.sw__icon`, so an SVG load failure no longer collapses the icon and shifts the title.
+- **Fixed favorite-group batch open/close dropping items on desktop and mobile**:
+  - `openGroupTabs()` and `closeGroupTabs()` are now `async`: each `openTab` / `mobileOpenDoc` / `MobileTabs.close` is awaited in sequence, so the next call never races against the previous state.
+  - `closeTabQuietly()` is now `async` — awaits the `MobileTabs.close` Promise when present, otherwise sleeps 80ms; desktop `removeTab` gets a 30ms settle delay before the next tab closes.
+  - New `sleep(ms)` helper.
+  - `openFavGroupMenu` and `openMobileGroupActions` `click` handlers are now `async`/`await`, so the menu/sheet stays open until the batch finishes — no more "list refreshed before the action took effect".
+- **Unit tests**: 5 new cases for `resolveIconFallback`; total now **19/19 passing** (10.5ms).
 
 ### v0.15.4 (2026-09-04)
 

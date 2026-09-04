@@ -70,4 +70,33 @@ function groupFavoritesByGroup(favorites, groupNames) {
     return groups;
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup};
+/**
+ * 解析思源页签图标字符串：svg 图标名 / emoji 字符 / 十六进制 codepoint / 空值兜底
+ * @param {string} raw
+ * @returns {{type: "svg", value: string} | {type: "emoji", value: string}}
+ */
+function resolveIconFallback(raw) {
+    const trimmed = (raw || "").trim();
+    if (!trimmed) {
+        return {type: "svg", value: "iconFile"};
+    }
+    // 思源 svg 图标名统一以 "icon" 开头且后面跟着具体名字（如 iconFile）
+    if (trimmed.startsWith("icon") && trimmed.length > 4) {
+        return {type: "svg", value: trimmed};
+    }
+    // 4-6 位十六进制视为 emoji codepoint（思源部分存储格式）
+    if (/^[0-9a-fA-F]{4,6}$/.test(trimmed)) {
+        try {
+            return {type: "emoji", value: String.fromCodePoint(parseInt(trimmed, 16))};
+        } catch {
+            // 解析失败继续走兜底
+        }
+    }
+    // 单个字符按 emoji 渲染；多位非法字符串回退文件图标
+    if ([...trimmed].length === 1) {
+        return {type: "emoji", value: trimmed};
+    }
+    return {type: "svg", value: "iconFile"};
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback};

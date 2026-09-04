@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback} from "./util";
 import {
     getSiyuan,
     IMobileTabsState,
@@ -23,6 +23,7 @@ declare module "./util" {
     export function stableSortBy<T>(arr: T[], keyFn: (item: T) => string | number): T[];
     export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
     export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
+    export function resolveIconFallback(raw: string): {type: "svg", value: string} | {type: "emoji", value: string};
 }
 
 // siyuan 包未将 Tab 作为顶层命名导出，这里从 getAllTabs 返回类型推导
@@ -2051,15 +2052,15 @@ export default class SpeedSwitchPlugin extends Plugin {
         menu.addItem({
             label: this.i18n.openGroupTabs,
             icon: "iconAdd",
-            click: () => {
-                this.openGroupTabs(items);
+            click: async () => {
+                await this.openGroupTabs(items);
             },
         });
         menu.addItem({
             label: this.i18n.closeGroupTabs,
             icon: "iconClose",
-            click: () => {
-                this.closeGroupTabs(items);
+            click: async () => {
+                await this.closeGroupTabs(items);
             },
         });
         menu.open({x: event.clientX, y: event.clientY});
@@ -2216,30 +2217,33 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 一键开启组内全部页签：仅打开可重开（rootId 非空）且未打开的收藏，返回实际打开数
-    private openGroupTabs(items: IFavoriteItem[]): number {
+    private async openGroupTabs(items: IFavoriteItem[]): Promise<number> {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
         let count = 0;
         const seen = new Set<string>();
-        items.forEach((fav) => {
+        for (const fav of items) {
             if (seen.has(fav.key)) {
-                return;
+                continue;
             }
             seen.add(fav.key);
             if (!fav.rootId || openedKeys.has(fav.key)) {
-                return;
+                continue;
             }
             if (this.isMobile) {
-                // openTab 在手机端是空实现，走 MobileTabs.open
-                this.mobileOpenDoc(fav.rootId);
+                // openTab 在手机端是空实现，串行等待 mobileOpenDoc 完成，避免并发丢调用
+                await this.mobileOpenDoc(fav.rootId);
             } else {
-                openTab({
+                await openTab({
                     app: this.app,
                     doc: {id: fav.rootId},
                 });
+                // 桌面端连续 openTab 时稍作等待，让思源完成页签创建与状态更新
+                await this.sleep(30);
             }
+            openedKeys.add(fav.key);
             count++;
-        });
+        }
         if (count > 0) {
             showMessage(this.i18n.groupTabsOpened.replace("{x}", String(count)));
         }
@@ -2247,17 +2251,19 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 一键关闭组内已打开的页签：按 pinKey 匹配当前打开页签，返回实际关闭数
-    private closeGroupTabs(items: IFavoriteItem[]): number {
+    private async closeGroupTabs(items: IFavoriteItem[]): Promise<number> {
         const keys = new Set(items.map((fav) => fav.key));
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const targets = opened.filter((tab) => keys.has(this.pinKeyOf(tab)));
-        targets.forEach((tab) => {
-            this.closeTabQuietly(tab);
-        });
-        if (targets.length > 0) {
-            showMessage(this.i18n.groupTabsClosed.replace("{x}", String(targets.length)));
+        let closed = 0;
+        for (const tab of targets) {
+            await this.closeTabQuietly(tab);
+            closed++;
         }
-        return targets.length;
+        if (closed > 0) {
+            showMessage(this.i18n.groupTabsClosed.replace("{x}", String(closed)));
+        }
+        return closed;
     }
 
     // 组内排序：置顶页签固定在最前，其余按所选方式排序
@@ -2443,11 +2449,21 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）
-    private closeTabQuietly(tab: Tab) {
+    private async closeTabQuietly(tab: Tab): Promise<void> {
         if (this.isMobile) {
-            // 手机端：MobileTabs.close 关闭页签，随后由 onTabsChanged 整列表重渲染
+            // 手机端：MobileTabs.close 关闭页签；返回 Promise 以便批量关闭时串行等待
             try {
-                getSiyuan()?.mobile?.tabs?.close?.(tab.id);
+                const mobile = getSiyuan()?.mobile;
+                const closeFn = mobile?.tabs?.close;
+                if (typeof closeFn === "function") {
+                    const result: unknown = closeFn(tab.id);
+                    if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+                        await result;
+                    } else {
+                        // 旧版 API 不同步返回，等待状态沉降
+                        await this.sleep(80);
+                    }
+                }
             } catch (e) {
                 logger.warn("mobile close tab fail", e);
             }
@@ -2455,9 +2471,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         try {
             tab.parent.removeTab(tab.id);
+            // 连续 removeTab 时给思源 DOM/状态一帧沉降时间，降低漏关概率
+            await this.sleep(30);
         } catch (e) {
             logger.warn("close tab fail", e);
         }
+    }
+
+    // 小睡工具：批量开/关页签时避免竞态
+    private sleep(ms: number): Promise<void> {
+        return new Promise((resolve) => window.setTimeout(resolve, ms));
     }
 
     // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
@@ -2555,18 +2578,18 @@ export default class SpeedSwitchPlugin extends Plugin {
         const emoji = tab.headElement?.querySelector(".item__icon");
         if (graphic) {
             const href = graphic.getAttribute("xlink:href");
-            iconBox.innerHTML = href ? `<svg><use xlink:href="${href}"></use></svg>` : "";
+            iconBox.innerHTML = href ? `<svg aria-hidden="true"><use xlink:href="${href}"></use></svg>` : "";
         } else if (emoji) {
             iconBox.textContent = emoji.textContent || "";
             iconBox.classList.add("sw__icon-emoji");
         } else {
             // 兜底：思源图标名走 svg use；emoji 字符（手机端文档自定义图标）按文本渲染
-            const fallback = tab.icon || "";
-            if (fallback && !fallback.startsWith("icon")) {
-                iconBox.textContent = fallback;
+            const fallback = resolveIconFallback(tab.icon || "");
+            if (fallback.type === "emoji") {
+                iconBox.textContent = fallback.value;
                 iconBox.classList.add("sw__icon-emoji");
             } else {
-                iconBox.innerHTML = `<svg><use xlink:href="#${fallback || "iconFile"}"></use></svg>`;
+                iconBox.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${fallback.value}"></use></svg>`;
             }
         }
         return iconBox;
@@ -3171,7 +3194,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             .map((t) => ({
                 id: t.id,                       // MobileTabs 页签 id（switchTo/close 使用）
                 title: t.current!.title,
-                icon: t.current!.icon || "",
+                // 手机端页签图标可能在 t.icon 或 t.current.icon，优先 t.icon（思源不同版本字段不同）
+                icon: (t as unknown as {icon?: string}).icon || t.current!.icon || "",
                 // 兼容 rootIdOf()：直接命中 model.editor.block.rootID 分支
                 model: {editor: {block: {rootID: t.current!.rootID}}},
             } as unknown as Tab));
@@ -3627,13 +3651,13 @@ export default class SpeedSwitchPlugin extends Plugin {
             setTimeout(() => overlay.remove(), 250);
         };
 
-        const appendAction = (label: string, action: () => number) => {
+        const appendAction = (label: string, action: () => Promise<number>) => {
             const item = document.createElement("button");
             item.type = "button";
             item.className = "sw__mobile-sheet-item";
             item.textContent = label;
-            item.addEventListener("click", () => {
-                const count = action();
+            item.addEventListener("click", async () => {
+                const count = await action();
                 closeSelf();
                 // 仅在确实发生变更时刷新背后的切换器列表
                 if (count > 0) {

@@ -1092,15 +1092,30 @@
             flex: none;
             display: flex;
             align-items: center;
+            justify-content: center;
+            min-width: 14px;
+            min-height: 14px;
             color: var(--b3-theme-on-surface-light);
+
             svg {
+                display: block;
                 width: 14px;
                 height: 14px;
+                fill: currentColor;
             }
+
             &.sw__icon-emoji {
                 font-size: 14px;
                 line-height: 1;
                 color: inherit;
+            }
+
+            // 图标未成功加载时仍保留占位，避免标题偏移或按钮错位
+            &:empty::before {
+                content: "";
+                display: block;
+                width: 14px;
+                height: 14px;
             }
         }
 
