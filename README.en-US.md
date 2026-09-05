@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.7-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.8-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,15 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.16.8 (2026-09-05)
+
+- Fixed stale document IDs after navigating an existing tab to another document; card titles, icons, thumbnails, and favorite actions now follow the current document.
+- Reworked one-click favorite group open/close with document deduplication, duplicate-trigger protection, shared state verification, and accurate success/failure/no-change feedback.
+- Fixed stale settings writes overwriting newer values during rapid changes; unload now waits for all writes queued for each data key.
+- Favorites dropdown global listeners now exist only while the panel is open and are released immediately on close.
+- Replaced card actions with semantic buttons isolated from host tooltip styles, and unified switch styling for mobile themes including Neo.
+- Added root ID, batch-operation, source-constant, and Chromium theme regression tests; CI smoke tests no longer depend on developer-specific paths.
 
 ### v0.16.7 (2026-09-05)
 
@@ -416,9 +425,11 @@ The plugin is organized into 5 layers with clear responsibilities and strictly d
 
 | File | Scope | Cases |
 | --- | --- | --- |
-| `tests/util.test.cjs` | 6 `util.js` pure functions | 23 |
-| `tests/constants.test.cjs` | Constant MIN/MAX/range sanity | 3 |
-| `tests/mobile-card-smoke.cjs` | Mobile card UI rendering + 7 CSS invariants (jsdom) | 7 |
+| `tests/util.test.cjs` | 13 `util.js` pure functions | 52 |
+| `tests/constants.test.cjs` | Source constant range and format checks | 6 |
+| `tests/i18n.test.cjs` | Locale parity, static references, and value validation | 10 |
+| `tests/mobile-card-smoke.cjs` | Mobile card and settings-switch CSS invariants (jsdom) | 8 |
+| `tests/chromium-style-smoke.cjs` | Real Chromium with optional host/theme computed CSS | 4 |
 
 ## Development
 
@@ -428,8 +439,9 @@ The plugin is organized into 5 layers with clear responsibilities and strictly d
 pnpm install      # install deps
 pnpm dev          # dev watch (outputs dev dist/)
 pnpm build        # production build → dist/* + package.zip
-pnpm test         # unit + constant tests
-npm run test:smoke # mobile UI smoke test (requires `pnpm build` first)
+pnpm test               # unit + constant + i18n tests
+pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
+pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.

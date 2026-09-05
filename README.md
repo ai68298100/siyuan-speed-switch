@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.7-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.8-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,15 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.16.8（2026-09-05）
+
+- 修复同一页签切换文档后仍使用旧文档 ID 的问题，卡片标题、图标、缩略图与收藏操作始终跟随当前文档。
+- 重构收藏分组一键打开/关闭：按文档去重、阻止重复触发、统一等待状态落地，并准确提示成功、失败或无需变更。
+- 修复设置项快速连续修改时旧保存请求覆盖新值的竞态，卸载前会等待同一数据项的全部写入完成。
+- 收藏下拉仅在展开期间注册全局监听，关闭后立即释放，避免侧边栏反复刷新造成监听残留。
+- 卡片操作改为原生语义按钮并隔离主题 tooltip 样式；设置开关样式统一，兼容 Neo 等主题的移动端显示。
+- 增加 rootID、批量操作、真实源码常量和 Chromium 主题样式回归测试，CI 冒烟测试不再依赖开发者本机路径。
 
 ### v0.16.7（2026-09-05）
 
@@ -416,9 +425,11 @@
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
-| `tests/util.test.cjs` | 6 个 `util.js` 纯函数 | 23 |
-| `tests/constants.test.cjs` | 常量 MIN/MAX/范围自洽 | 3 |
-| `tests/mobile-card-smoke.cjs` | 移动端卡片 UI 渲染 + 7 个 CSS 不变量（jsdom） | 7 |
+| `tests/util.test.cjs` | 13 个 `util.js` 纯函数 | 52 |
+| `tests/constants.test.cjs` | 真实源码常量的范围与格式自洽 | 6 |
+| `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 | 10 |
+| `tests/mobile-card-smoke.cjs` | 移动端卡片和设置开关 CSS 不变量（jsdom） | 8 |
+| `tests/chromium-style-smoke.cjs` | 实际 Chromium + 可选宿主/主题 CSS 计算样式 | 4 |
 
 ## 开发
 
@@ -428,8 +439,9 @@
 pnpm install      # 安装依赖
 pnpm dev          # 开发监听（产出 dev 版 dist/）
 pnpm build        # 生产构建 → dist/* + package.zip
-pnpm test         # 单元 + 常量测试
-npm run test:smoke # 移动端 UI 烟雾测试（需先 pnpm build）
+pnpm test               # 单元 + 常量 + i18n 测试
+pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
+pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

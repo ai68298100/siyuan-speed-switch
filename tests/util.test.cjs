@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -201,6 +201,56 @@ test('buildTabGroupsByParent: empty tabs returns empty map', () => {
     const fallback = makeEl();
     const groups = buildTabGroupsByParent([], fallback);
     assert.equal(groups.size, 0);
+});
+
+// ── resolveTabRootId ──
+test('resolveTabRootId: current loaded model wins over stale init data', () => {
+    const tab = {
+        model: {editor: {block: {rootID: '20240101120001-current'}}},
+        headElement: {getAttribute: () => JSON.stringify({instance: 'Editor', rootId: '20240101120000-stale'})},
+    };
+    assert.equal(resolveTabRootId(tab), '20240101120001-current');
+    tab.model.editor.block.rootID = '20240101120002-nextdoc';
+    assert.equal(resolveTabRootId(tab), '20240101120002-nextdoc');
+});
+
+test('resolveTabRootId: supports nested protyle model and lazy init data', () => {
+    assert.equal(resolveTabRootId({model: {editor: {protyle: {block: {rootID: '20240101120000-nested1'}}}}}),
+        '20240101120000-nested1');
+    assert.equal(resolveTabRootId({
+        headElement: {getAttribute: () => JSON.stringify({instance: 'Editor', blockId: '20240101120000-lazy001'})},
+    }), '20240101120000-lazy001');
+});
+
+test('resolveTabRootId: rejects malformed and non-editor init data', () => {
+    assert.equal(resolveTabRootId({headElement: {getAttribute: () => '{broken'}}), null);
+    assert.equal(resolveTabRootId({headElement: {getAttribute: () => JSON.stringify({instance: 'Asset', rootId: 'x'})}}), null);
+    assert.equal(resolveTabRootId({headElement: {getAttribute: () => JSON.stringify({instance: 'Editor', rootId: 123})}}), null);
+    assert.equal(resolveTabRootId({}), null);
+});
+
+// ── planGroupOpenFavorites ──
+test('planGroupOpenFavorites: dedupes roots and excludes opened legacy/root keys', () => {
+    const favorites = [
+        {key: 'legacy-open', rootId: 'root-a'},
+        {key: 'root-b', rootId: 'root-b'},
+        {key: 'new-1', rootId: 'root-c'},
+        {key: 'new-duplicate', rootId: 'root-c'},
+    ];
+    const result = planGroupOpenFavorites(favorites, new Set(['legacy-open', 'root-b']), (favorite) => favorite.rootId);
+    assert.deepEqual(result, {targets: [{favorite: favorites[2], rootId: 'root-c'}], invalid: 0});
+});
+
+test('planGroupOpenFavorites: reports invalid entries without counting duplicates as failures', () => {
+    const favorites = [
+        {key: 'invalid-1', rootId: ''},
+        {key: 'valid-1', rootId: 'root-a'},
+        {key: 'valid-2', rootId: 'root-a'},
+        {key: 'invalid-2', rootId: ''},
+    ];
+    const result = planGroupOpenFavorites(favorites, new Set(), (favorite) => favorite.rootId);
+    assert.deepEqual(result.targets, [{favorite: favorites[1], rootId: 'root-a'}]);
+    assert.equal(result.invalid, 2);
 });
 
 // ── sanitizeDocIds ──

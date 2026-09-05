@@ -133,6 +133,64 @@ function buildTabGroupsByParent(tabs, fallbackKey) {
 }
 
 /**
+ * 解析页签当前文档 rootID：已加载模型优先于懒加载初始化数据。
+ * 每次调用都读取当前对象，确保同一 tab 导航到另一文档后不会沿用旧值。
+ * @param {{model?: object, headElement?: {getAttribute?: (name: string) => string|null}}} tab
+ * @returns {string|null}
+ */
+function resolveTabRootId(tab) {
+    const model = tab && tab.model;
+    const loadedRootId = model?.editor?.protyle?.block?.rootID || model?.editor?.block?.rootID;
+    if (typeof loadedRootId === "string" && loadedRootId) {
+        return loadedRootId;
+    }
+    try {
+        const initData = tab?.headElement?.getAttribute?.("data-initdata");
+        if (!initData) {
+            return null;
+        }
+        const data = JSON.parse(initData);
+        if (data?.instance !== "Editor") {
+            return null;
+        }
+        const rootId = data.rootId || data.blockId;
+        return typeof rootId === "string" && rootId ? rootId : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * 生成收藏分组的待打开项：按 rootID 去重，并排除已打开、无法解析的条目。
+ * @template {{key: string}} T
+ * @param {T[]} favorites
+ * @param {Set<string>} openedKeys
+ * @param {(favorite: T) => string} resolveRootId
+ * @returns {{targets: Array<{favorite: T, rootId: string}>, invalid: number}}
+ */
+function planGroupOpenFavorites(favorites, openedKeys, resolveRootId) {
+    const seen = new Set();
+    const targets = [];
+    let invalid = 0;
+    favorites.forEach((favorite) => {
+        const rootId = resolveRootId(favorite);
+        if (!rootId) {
+            invalid++;
+            return;
+        }
+        if (seen.has(rootId)) {
+            return;
+        }
+        seen.add(rootId);
+        if (openedKeys.has(favorite.key) || openedKeys.has(rootId)) {
+            return;
+        }
+        targets.push({favorite, rootId});
+    });
+    return {targets, invalid};
+}
+
+/**
  * SQL IN 白名单净化：仅保留思源文档 ID 格式（14 位时间戳-7 位小写串）的条目并去重（保序）。
  * 用于拼接 SQL 前过滤输入，杜绝引号等特殊字符破坏查询结构；全非法时返回空数组（调用方跳过查询）
  * @param {unknown[]} values
@@ -249,4 +307,4 @@ function isSuccessfulMobileTabsResult(result) {
     return result === undefined || result === "success";
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult};

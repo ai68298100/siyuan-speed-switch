@@ -30,33 +30,6 @@
 // 设置页开关强化：部分主题下原生 b3-switch 开/关两态视觉接近，无法分辨状态。
 // 插件自建开关统一加 sw-switch 类强制明确对比——
 // 关闭 = 透明轨道 + 边框描边 + 灰点；开启 = 主色实心轨道 + 白点，圆点位置随状态移动
-.b3-dialog .b3-switch.sw-switch {
-    span {
-        background-color: transparent;
-        box-shadow: inset 0 0 0 2px var(--b3-border-color);
-        transition: background-color 0.2s, box-shadow 0.2s;
-
-        &::before {
-            background-color: var(--b3-theme-on-surface-light);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-        }
-    }
-
-    input:checked + span {
-        background-color: var(--b3-theme-primary);
-        box-shadow: none;
-
-        &::before {
-            background-color: var(--b3-theme-on-primary);
-        }
-    }
-
-    // 键盘可达性：聚焦时轨道描边转主色
-    input:focus-visible + span {
-        box-shadow: inset 0 0 0 2px var(--b3-theme-primary);
-    }
-}
-
 // Stable plugin switch: keep the control independent from SiYuan's input-based b3-switch rules.
 .sw-switch {
     position: relative;
@@ -1213,6 +1186,12 @@
         border: none;
         border-radius: 50%;
         color: var(--b3-theme-on-surface);
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        line-height: 0;
+        -webkit-appearance: none;
+        appearance: none;
         z-index: 2;
         cursor: pointer;
         transition: color 0.12s;

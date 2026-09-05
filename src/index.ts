@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -40,7 +40,6 @@ import {
     THUMB_CLONE_MAX,
     THUMB_API_MAX,
     THUMB_API_MAX_MOBILE,
-    ROOT_ID_CACHE_MAX,
     MRU_MAX,
     BLOCK_ID_RE,
     FAV_PANEL_WIDTH_PX,
@@ -82,6 +81,10 @@ declare module "./util" {
     export function buildTabGroupsByParent<T extends {parent?: {element?: HTMLElement, headersElement?: HTMLElement}}>(
         tabs: T[], fallbackKey: HTMLElement,
     ): Map<HTMLElement, Array<{tab: T}>>;
+    export function resolveTabRootId(tab: {model?: IProtyleTabModel, headElement?: HTMLElement}): string | null;
+    export function planGroupOpenFavorites<T extends {key: string}>(
+        favorites: T[], openedKeys: Set<string>, resolveRootId: (favorite: T) => string,
+    ): {targets: Array<{favorite: T, rootId: string}>, invalid: number};
     export function sanitizeFavorites(values: unknown): {items: IFavoriteItem[], changed: boolean};
     export function sanitizeStringList(values: unknown): {items: string[], changed: boolean};
     export function isSuccessfulMobileTabsResult(result: unknown): boolean;
@@ -204,12 +207,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     private sidebarElement: HTMLElement | null = null; // 侧边栏 dock 面板内容元素
     private sidebarResizeObserver: ResizeObserver | null = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
     private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
+    private saveChains = new Map<string, Promise<void>>(); // 同一 key 的写入严格串行，避免旧请求覆盖新数据
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（已持久化，重启后恢复）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
-    private rootIdCache = new Map<string, string | null>();
+    private cardTabs = new WeakMap<HTMLElement, Tab>(); // 复用卡片始终指向最新的 Tab 对象
+    private groupOperationBusy = false;
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
@@ -374,19 +379,32 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.saveTimers.set(key, window.setTimeout(() => {
             this.saveTimers.delete(key);
-            this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e));
+            this.queueSave(key, this.data[key]);
         }, SAVE_DEBOUNCE_MS));
+    }
+
+    private queueSave(key: string, value: unknown): Promise<void> {
+        const previous = this.saveChains.get(key) || Promise.resolve();
+        const next = previous
+            .then(() => this.saveData(key, value))
+            .catch((e) => logger.warn("save data fail", e));
+        this.saveChains.set(key, next);
+        void next.then(() => {
+            if (this.saveChains.get(key) === next) {
+                this.saveChains.delete(key);
+            }
+        });
+        return next;
     }
 
     // 立即落盘全部待写数据（卸载时调用，避免丢失最近一次去抖窗口内的改动）
     private flushPendingSaves(): Promise<void> {
-        const pending: Promise<unknown>[] = [];
         this.saveTimers.forEach((timer, key) => {
             clearTimeout(timer);
-            pending.push(this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e)));
+            this.queueSave(key, this.data[key]);
         });
         this.saveTimers.clear();
-        return Promise.all(pending).then((): void => undefined);
+        return Promise.all(Array.from(this.saveChains.values())).then((): void => undefined);
     }
 
     // 旧版本默认快捷键 "⇧⌥S" 无法被思源热键匹配命中，且可能已持久化到快捷键配置中，
@@ -440,7 +458,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private updateSettings(patch: Partial<ISwSettings>) {
         const settings = {...this.getSettings(), ...patch};
         this.data[SETTINGS_KEY] = settings;
-        this.saveData(SETTINGS_KEY, settings).catch((e) => logger.warn("save settings fail", e));
+        this.saveDataDebounced(SETTINGS_KEY);
     }
 
     private clampNum(value: any, min: number, max: number, fallback: number): number {
@@ -1783,47 +1801,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         return tab.headElement?.querySelector(".item__text")?.textContent?.trim() || tab.title || tab.id;
     }
 
-    // 文档页签的 rootID（非文档页签返回空）
-    // rootId 映射会话级缓存：懒加载页签每次解析 data-initdata 都要 JSON.parse，
-    // 渲染/排序/MRU/收藏多处高频调用，按页签 id 缓存后只解析一次
+    // 每次读取当前模型，避免同一页签导航到新文档后继续使用旧 rootID。
     private rootIdOf(tab: Tab): string | null {
-        const cached = this.rootIdCache.get(tab.id);
-        if (cached) {
-            return cached;
-        }
-        const rootId = this.computeRootId(tab);
-        if (!rootId) {
-            this.rootIdCache.delete(tab.id);
-            return null;
-        }
-        if (this.rootIdCache.size >= ROOT_ID_CACHE_MAX) {
-            // 页签 id 在一次会话内稳定，整体清空代价可忽略
-            this.rootIdCache.clear();
-        }
-        this.rootIdCache.set(tab.id, rootId);
-        return rootId;
-    }
-
-    private computeRootId(tab: Tab): string | null {
-        const model = (tab as unknown as { model?: IProtyleTabModel }).model;
-        const loadedRootId = model?.editor?.protyle?.block?.rootID || model?.editor?.block?.rootID;
-        if (loadedRootId) {
-            return loadedRootId;
-        }
-        // 重启/重置布局后，未激活页签的 model 是懒加载的（切换到该页签才创建）：
-        // 思源把 Editor 初始化数据存在 headElement 的 data-initdata 属性中（含 rootId）
-        try {
-            const initData = tab.headElement?.getAttribute("data-initdata");
-            if (initData) {
-                const json = JSON.parse(initData);
-                if (json?.instance === "Editor") {
-                    return json.rootId || json.blockId || null;
-                }
-            }
-        } catch (e) {
-            // 解析失败忽略
-        }
-        return null;
+        return resolveTabRootId(tab as unknown as {model?: IProtyleTabModel, headElement?: HTMLElement});
     }
 
     // 置顶键：文档页签用其 rootID（跨会话稳定，重开同一文档置顶状态保留），其余退回页签 id
@@ -1973,12 +1953,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）
         const closePanel = () => {
             panel.classList.add("fn__none");
-            observer.disconnect();
-            // 收起这一刻宿主已被移除（弹窗销毁/侧边栏重渲染）则立即解绑全部全局监听，
-            // 否则需等下一次全局 pointerdown 才由兜底路径清理
-            if (!container.isConnected) {
-                unbindGlobal();
-            }
+            // 全局监听仅在面板展开期间存在，关闭后立即释放。
+            unbindGlobal();
         };
         // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
         // 宿主容器被移除后由这次全局点击兜底解绑全部监听
@@ -1991,16 +1967,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                 closePanel();
             }
         };
-        document.addEventListener("pointerdown", onDocPointerDown, true);
         // 视口尺寸/滚动变化时重新贴位（fixed 定位不随文档流移动）
         const onReposition = () => {
             if (!panel.classList.contains("fn__none") && container.isConnected) {
                 this.positionFavPanel(trigger, panel);
             }
         };
-        window.addEventListener("resize", onReposition);
-        document.addEventListener("scroll", onReposition, true);
-
         trigger.addEventListener("click", () => {
             const willOpen = panel.classList.contains("fn__none");
             if (willOpen) {
@@ -2010,6 +1982,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 });
                 panel.classList.remove("fn__none");
                 this.positionFavPanel(trigger, panel);
+                document.addEventListener("pointerdown", onDocPointerDown, true);
+                window.addEventListener("resize", onReposition);
+                document.addEventListener("scroll", onReposition, true);
                 observer.observe(document.body, {childList: true, subtree: true});
             } else {
                 closePanel();
@@ -2286,8 +2261,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     private refreshCardFavState(tab: Tab, card: HTMLElement) {
         const isFaved = this.getFavorites().some((item) => item.key === this.pinKeyOf(tab));
         card.classList.toggle("sw__faved", isFaved);
-        card.querySelector<HTMLElement>(".sw__fav-btn")
-            ?.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+        const favoriteButton = card.querySelector<HTMLElement>(".sw__fav-btn");
+        const label = isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab;
+        favoriteButton?.setAttribute("aria-label", label);
+        favoriteButton?.setAttribute("title", label);
     }
 
     // 星标点击菜单：未收藏时选择收藏方式（快速收藏 / 收藏到分组 / 新建分组收藏），
@@ -2568,26 +2545,30 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 一键开启组内全部页签：打开未打开的收藏（rootId 校验与 jumpToFavorite 一致，
     // 无效历史条目跳过），返回实际打开数
     private async openGroupTabs(items: IFavoriteItem[]): Promise<number> {
+        if (this.groupOperationBusy) {
+            showMessage(this.i18n.groupTabsInProgress);
+            return 0;
+        }
+        this.groupOperationBusy = true;
+        try {
+            return await this.openGroupTabsInternal(items);
+        } finally {
+            this.groupOperationBusy = false;
+        }
+    }
+
+    private async openGroupTabsInternal(items: IFavoriteItem[]): Promise<number> {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
-        let count = 0;
-        const seen = new Set<string>();
-        for (const fav of items) {
-            if (seen.has(fav.key)) {
-                continue;
-            }
-            seen.add(fav.key);
-            if (openedKeys.has(fav.key)) {
-                continue;
-            }
-            const rootId = this.resolveFavRootId(fav);
-            if (!rootId) {
-                continue;
-            }
+        const plan = planGroupOpenFavorites(items, openedKeys, (favorite) => this.resolveFavRootId(favorite));
+        let failed = plan.invalid;
+        const attempted: string[] = [];
+        for (const {favorite: fav, rootId} of plan.targets) {
             if (this.isMobile) {
                 // openTab 在手机端是空实现，串行等待 mobileOpenDoc 完成，避免并发丢调用；
                 // 按返回结果计数（文档已删除等失败不计入，不虚报提示）
                 if (!(await this.mobileOpenDoc(rootId))) {
+                    failed++;
                     continue;
                 }
             } else {
@@ -2598,38 +2579,73 @@ export default class SpeedSwitchPlugin extends Plugin {
                     });
                 } catch (e) {
                     logger.warn("desktop open tab fail", e);
+                    failed++;
                     continue;
                 }
                 // 桌面端连续 openTab 时稍作等待，让思源完成页签创建与状态更新
                 await this.sleep(TAB_SETTLE_MS);
             }
-            if (await this.waitForTabState(rootId, true)) {
-                openedKeys.add(rootId);
-                openedKeys.add(fav.key);
-                count++;
-            }
+            attempted.push(rootId);
+            openedKeys.add(rootId);
+            openedKeys.add(fav.key);
         }
+        const verified = await this.waitForTabStates(attempted, true);
+        const count = verified.size;
+        failed += attempted.length - count;
         if (count > 0) {
-            showMessage(this.i18n.groupTabsOpened.replace("{x}", String(count)));
+            const message = failed > 0
+                ? this.i18n.groupTabsOpenedPartial.replace("{x}", String(count)).replace("{y}", String(failed))
+                : this.i18n.groupTabsOpened.replace("{x}", String(count));
+            showMessage(message, MESSAGE_DEFAULT_MS, failed > 0 ? "error" : "info");
+        } else if (failed > 0) {
+            showMessage(this.i18n.groupTabsPartial.replace("{x}", String(failed)), MESSAGE_DEFAULT_MS, "error");
+        } else {
+            showMessage(this.i18n.groupTabsNoChanges);
         }
         return count;
     }
 
     // 一键关闭组内已打开的页签：按 pinKey 匹配当前打开页签，返回实际关闭数
     private async closeGroupTabs(items: IFavoriteItem[]): Promise<number> {
-        const keys = new Set(items.map((fav) => fav.key));
+        if (this.groupOperationBusy) {
+            showMessage(this.i18n.groupTabsInProgress);
+            return 0;
+        }
+        this.groupOperationBusy = true;
+        try {
+            return await this.closeGroupTabsInternal(items);
+        } finally {
+            this.groupOperationBusy = false;
+        }
+    }
+
+    private async closeGroupTabsInternal(items: IFavoriteItem[]): Promise<number> {
+        const keys = new Set(items.map((fav) => this.resolveFavRootId(fav)).filter(Boolean));
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const targets = opened.filter((tab) => keys.has(this.pinKeyOf(tab)));
-        let closed = 0;
+        let failed = 0;
+        const attempted: string[] = [];
         for (const tab of targets) {
             // 仅统计真正关闭成功的页签，失败不计入提示数
             const rootId = this.rootIdOf(tab);
-            if (rootId && await this.closeTabQuietly(tab) && await this.waitForTabState(rootId, false)) {
-                closed++;
+            if (rootId && await this.closeTabQuietly(tab)) {
+                attempted.push(tab.id);
+            } else {
+                failed++;
             }
         }
+        const verified = await this.waitForTabStates(attempted, false, true);
+        const closed = verified.size;
+        failed += attempted.length - closed;
         if (closed > 0) {
-            showMessage(this.i18n.groupTabsClosed.replace("{x}", String(closed)));
+            const message = failed > 0
+                ? this.i18n.groupTabsClosedPartial.replace("{x}", String(closed)).replace("{y}", String(failed))
+                : this.i18n.groupTabsClosed.replace("{x}", String(closed));
+            showMessage(message, MESSAGE_DEFAULT_MS, failed > 0 ? "error" : "info");
+        } else if (failed > 0) {
+            showMessage(this.i18n.groupTabsPartial.replace("{x}", String(failed)), MESSAGE_DEFAULT_MS, "error");
+        } else {
+            showMessage(this.i18n.groupTabsNoChanges);
         }
         return closed;
     }
@@ -2790,21 +2806,36 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 复用旧卡片时同步状态：置顶/收藏/激活类名与图标、标题文本
     private syncCardState(card: HTMLElement, tab: Tab, isActive: boolean, isPinned: boolean, isFaved: boolean) {
+        this.cardTabs.set(card, tab);
+        const previousRootId = card.dataset.rootId || "";
+        const rootId = this.rootIdOf(tab) || "";
         card.className = "sw__card"
             + (isActive ? " sw__active" : "")
             + (isPinned ? " sw__pinned" : "")
             + (isFaved ? " sw__faved" : "");
         const title = this.titleOf(tab);
         card.dataset.title = title;
+        card.dataset.rootId = rootId;
         card.querySelector<HTMLElement>(".sw__title")!.textContent = title;
+        const icon = card.querySelector<HTMLElement>(".sw__icon");
+        if (icon) {
+            icon.replaceWith(this.buildCardIcon(tab));
+        }
+        if (previousRootId !== rootId) {
+            card.querySelector<HTMLElement>(".sw__thumb")?.replaceWith(this.buildCardThumb());
+        }
         const iconUse = card.querySelector<SVGElement>(".sw__pin use");
         if (iconUse) {
             iconUse.setAttribute("xlink:href", isPinned ? "#iconPin" : "#iconUnpin");
         }
-        card.querySelector<HTMLElement>(".sw__pin")
-            ?.setAttribute("aria-label", isPinned ? this.i18n.unpinTab : this.i18n.pinTab);
-        card.querySelector<HTMLElement>(".sw__fav-btn")
-            ?.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+        const pinButton = card.querySelector<HTMLElement>(".sw__pin");
+        const pinLabel = isPinned ? this.i18n.unpinTab : this.i18n.pinTab;
+        pinButton?.setAttribute("aria-label", pinLabel);
+        pinButton?.setAttribute("title", pinLabel);
+        const favButton = card.querySelector<HTMLElement>(".sw__fav-btn");
+        const favLabel = isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab;
+        favButton?.setAttribute("aria-label", favLabel);
+        favButton?.setAttribute("title", favLabel);
     }
 
     // 空态：主文案 + 引导副文案（提示可搜索全库文档）
@@ -2824,8 +2855,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (iconUse) {
             iconUse.setAttribute("xlink:href", isPinned ? "#iconPin" : "#iconUnpin");
         }
-        card.querySelector<HTMLElement>(".sw__pin")
-            ?.setAttribute("aria-label", isPinned ? this.i18n.unpinTab : this.i18n.pinTab);
+        const pinButton = card.querySelector<HTMLElement>(".sw__pin");
+        const pinLabel = isPinned ? this.i18n.unpinTab : this.i18n.pinTab;
+        pinButton?.setAttribute("aria-label", pinLabel);
+        pinButton?.setAttribute("title", pinLabel);
         card.classList.toggle("sw__pinned", isPinned);
         if (isPinned) {
             card.parentElement?.prepend(card);
@@ -2873,18 +2906,29 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // 确认批量操作已经反映到思源页签状态，避免 API 返回成功但 UI 尚未更新时继续发起下一项。
-    private async waitForTabState(rootId: string, shouldBeOpen: boolean): Promise<boolean> {
+    // 在统一时间窗内核对整组结果，避免逐项等待导致批量操作随页签数线性变慢。
+    private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId = false): Promise<Set<string>> {
+        const pending = new Set(ids);
+        const verified = new Set<string>();
+        if (pending.size === 0) {
+            return verified;
+        }
         const deadline = Date.now() + TAB_VERIFY_TIMEOUT_MS;
         do {
             const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
-            const present = tabs.some((tab) => this.rootIdOf(tab) === rootId || this.pinKeyOf(tab) === rootId);
-            if (present === shouldBeOpen) {
-                return true;
+            const opened = new Set(tabs.map((tab) => matchTabId ? tab.id : this.pinKeyOf(tab)));
+            pending.forEach((id) => {
+                if (opened.has(id) === shouldBeOpen) {
+                    verified.add(id);
+                    pending.delete(id);
+                }
+            });
+            if (pending.size === 0) {
+                return verified;
             }
             await this.sleep(TAB_SETTLE_MS);
         } while (Date.now() < deadline);
-        return false;
+        return verified;
     }
 
     // 小睡工具：批量开/关页签时避免竞态
@@ -2933,12 +2977,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                        }): HTMLElement {
         const tab = item.tab;
         const card = document.createElement("div");
+        this.cardTabs.set(card, tab);
         card.className = "sw__card"
             + (isActive ? " sw__active" : "")
             + (isPinned ? " sw__pinned" : "")
             + (isFaved ? " sw__faved" : "");
         card.dataset.tabId = tab.id;
         card.dataset.title = this.titleOf(tab);
+        card.dataset.rootId = this.rootIdOf(tab) || "";
 
         card.appendChild(this.buildCardThumb());
         card.appendChild(this.buildCardMeta(tab));
@@ -2949,14 +2995,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         card.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            this.openCardMenu(tab, card, handlers, event.clientX, event.clientY);
+            this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, event.clientX, event.clientY);
         });
         if (this.isMobile) {
             this.bindCardLongPress(card, tab, handlers);
         }
 
         // 点击整卡切换到该页签；mouseenter 用于键盘导航的悬浮聚焦
-        card.addEventListener("click", () => handlers.onActivate(tab));
+        card.addEventListener("click", () => handlers.onActivate(this.cardTabs.get(card) || tab));
         card.addEventListener("mouseenter", () => this.focusCard(card));
         return card;
     }
@@ -3024,36 +3070,42 @@ export default class SpeedSwitchPlugin extends Plugin {
         const frag = document.createDocumentFragment();
 
         // 置顶按钮（左上角）：已置顶显示实心图钉，tooltip 提示当前可执行的操作
-        const pinBtn = document.createElement("div");
-        pinBtn.className = "sw__pin b3-tooltips b3-tooltips__s";
+        const pinBtn = document.createElement("button");
+        pinBtn.type = "button";
+        pinBtn.className = "sw__pin";
         pinBtn.setAttribute("aria-label", isPinned ? this.i18n.unpinTab : this.i18n.pinTab);
+        pinBtn.title = isPinned ? this.i18n.unpinTab : this.i18n.pinTab;
         pinBtn.innerHTML = `<svg><use xlink:href="${isPinned ? "#iconPin" : "#iconUnpin"}"></use></svg>`;
         pinBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            handlers.onTogglePin(tab, card);
+            handlers.onTogglePin(this.cardTabs.get(card) || tab, card);
         });
         frag.appendChild(pinBtn);
 
         // 收藏按钮（左上角，紧邻置顶）：未收藏空心星、已收藏实心星（CSS 变量 --b3-icon-star-fill 切换填充）
-        const favBtn = document.createElement("div");
-        favBtn.className = "sw__fav-btn b3-tooltips b3-tooltips__s";
+        const favBtn = document.createElement("button");
+        favBtn.type = "button";
+        favBtn.className = "sw__fav-btn";
         favBtn.setAttribute("aria-label", isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab);
+        favBtn.title = isFaved ? this.i18n.unfavoriteTab : this.i18n.favoriteTab;
         favBtn.innerHTML = '<svg><use xlink:href="#iconStar"></use></svg>';
         favBtn.addEventListener("click", (event) => {
             event.stopPropagation();
             // 点击星标弹出分组菜单：收藏时可直接选分组/新建分组，已收藏时可切换分组或取消收藏
-            this.openFavMenu(tab, card, event);
+            this.openFavMenu(this.cardTabs.get(card) || tab, card, event);
         });
         frag.appendChild(favBtn);
 
         // 关闭按钮（右上角）
-        const closeBtn = document.createElement("div");
-        closeBtn.className = "sw__close b3-tooltips b3-tooltips__s";
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "sw__close";
         closeBtn.setAttribute("aria-label", this.i18n.close);
+        closeBtn.title = this.i18n.close;
         closeBtn.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
         closeBtn.addEventListener("click", (event) => {
             event.stopPropagation();
-            handlers.onCloseTab(tab, card);
+            handlers.onCloseTab(this.cardTabs.get(card) || tab, card);
         });
         frag.appendChild(closeBtn);
 
@@ -3085,7 +3137,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             longPressed = false;
             timer = window.setTimeout(() => {
                 longPressed = true;
-                this.openCardMenu(tab, card, handlers, menuX, menuY);
+                this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, menuX, menuY);
             }, 500);
         };
         const cancel = () => {
@@ -3485,8 +3537,12 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 键盘导航：方向键 / Tab 移动，Enter 切换，Esc 关闭（仅弹窗模式使用）
     private bindKeydown(scrollElement: HTMLElement, closeOverlay: IOverlayClose) {
         scrollElement.addEventListener("keydown", (event) => {
+            if ((event.target as HTMLElement).closest("button, input, select, textarea")) {
+                return;
+            }
             const key = event.key;
-            const cards = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"));
+            const cards = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"))
+                .filter((card) => !card.closest(".fn__none"));
             if (cards.length === 0) {
                 return;
             }
@@ -3520,7 +3576,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 event.preventDefault();
                 const target = cards[focusIndex];
                 const tabId = target?.dataset.tabId;
-                const tab = getAllTabs().find((item) => item.id === tabId);
+                const tab = this.cardTabs.get(target) || (this.isMobile
+                    ? this.getMobileTabs().find((item) => item.id === tabId)
+                    : getAllTabs().find((item) => item.id === tabId));
                 if (tab) {
                     this.activateTab(tab, closeOverlay);
                 }
@@ -3542,9 +3600,12 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (!card) {
             return;
         }
-        const container = card.parentElement;
+        const container = card.closest(".sw__scroll") || card.parentElement;
         if (container) {
-            container.querySelectorAll(".sw__card").forEach((el) => el.classList.remove("sw__focused"));
+            container.querySelectorAll<HTMLElement>(".sw__card").forEach((el) => {
+                el.classList.remove("sw__focused");
+                el.removeAttribute("aria-current");
+            });
         }
         card.classList.add("sw__focused");
         card.setAttribute("aria-current", "true");
@@ -4062,6 +4123,10 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
         const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
+        if (!sheet || !body) {
+            overlay.remove();
+            return;
+        }
 
         // 与收藏弹窗一致的下滑收起动画
         const closeSelf = () => {
@@ -4076,11 +4141,27 @@ export default class SpeedSwitchPlugin extends Plugin {
             item.className = "sw__mobile-sheet-item";
             item.textContent = label;
             item.addEventListener("click", async () => {
-                const count = await action();
-                closeSelf();
-                // 仅在确实发生变更时刷新背后的切换器列表
-                if (count > 0) {
-                    onChanged();
+                if (overlay.dataset.busy === "true") {
+                    return;
+                }
+                overlay.dataset.busy = "true";
+                body.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+                    button.disabled = true;
+                });
+                try {
+                    const count = await action();
+                    closeSelf();
+                    // 仅在确实发生变更时刷新背后的切换器列表
+                    if (count > 0) {
+                        onChanged();
+                    }
+                } finally {
+                    delete overlay.dataset.busy;
+                    if (overlay.isConnected) {
+                        body.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+                            button.disabled = false;
+                        });
+                    }
                 }
             });
             body.appendChild(item);

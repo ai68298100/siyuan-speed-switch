@@ -105,9 +105,6 @@ export const FAV_PANEL_MIN_HEIGHT_PX = 140;
 
 // ==================== 内部缓存 ====================
 
-// rootId 映射缓存上限（超出整体清空，页签 id 稳定重复率高）
-export const ROOT_ID_CACHE_MAX = 512;
-
 // MRU（最近使用页签）列表上限：每次激活页签都会置顶一条并全量持久化+双端同步，
 // 不设上限会随使用时间无限膨胀；超出后从尾部丢弃最旧条目
 export const MRU_MAX = 200;

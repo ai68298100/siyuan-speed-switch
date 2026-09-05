@@ -1,13 +1,14 @@
 {
   "name": "siyuan-speed-switch",
-  "version": "0.16.7",
+  "version": "0.16.8",
   "description": "SiYuan plugin: switch opened tabs with thumbnails like Windows Alt+Tab.",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --config webpack.config.js --mode development",
     "build": "webpack --config webpack.config.js --mode production",
     "test": "node tests/constants.test.cjs && node tests/util.test.cjs && node tests/i18n.test.cjs",
-    "test:smoke": "node tests/mobile-card-smoke.cjs"
+    "test:smoke": "node tests/mobile-card-smoke.cjs",
+    "test:smoke:browser": "node tests/chromium-style-smoke.cjs"
   },
   "keywords": [
     "siyuan",

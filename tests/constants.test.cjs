@@ -2,25 +2,28 @@
 // 用法: node tests/constants.test.cjs
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
 
-// 动态 require 让本文件能在没有 TS 编译环境下加载 .ts 也行——但 .ts 不能直接 require，
-// 所以这里复制一组常量校验值；如果将来 constants.ts 改动，本文件需要同步更新。
-// 简化方案：直接 require util.js 风格——通过读源码 + 简单 eval，或集中抽常量。
-//
-// 为保持轻量：本测试只验证我们在 src/index.ts 中硬编码的范围假设：
-//   - MIN/MAX 必须 MIN < MAX
-//   - 同一域内的 MIN/MAX 应与源码中显式出现的数字保持一致
-//
-// 该文件作为 lint 风格检查存在，主要价值是改动 constants.ts 时人为一眼确认没有破坏范围。
+const constantsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'constants.ts'), 'utf8');
+const compiled = ts.transpileModule(constantsSource, {
+    compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017},
+}).outputText;
+const constantsModule = {exports: {}};
+new Function('module', 'exports', compiled)(constantsModule, constantsModule.exports);
+const constants = constantsModule.exports;
+
+// 在内存中编译真实 constants.ts，确保测试断言不会与源码常量漂移；不生成临时文件。
 
 const ranges = [
     // [min, max, label]
-    [480, 1920, "DIALOG_WIDTH"],
-    [360, 1280, "DIALOG_HEIGHT"],
-    [72, 360, "THUMB_HEIGHT"],
-    [48, 200, "MOBILE_THUMB_HEIGHT"],
-    [0, 8, "COLUMNS"],
-    [0, 2, "MOBILE_COLUMNS"],
+    [constants.DIALOG_WIDTH_MIN_PX, constants.DIALOG_WIDTH_MAX_PX, "DIALOG_WIDTH"],
+    [constants.DIALOG_HEIGHT_MIN_PX, constants.DIALOG_HEIGHT_MAX_PX, "DIALOG_HEIGHT"],
+    [constants.THUMB_HEIGHT_MIN_PX, constants.THUMB_HEIGHT_MAX_PX, "THUMB_HEIGHT"],
+    [constants.MOBILE_THUMB_HEIGHT_MIN_PX, constants.MOBILE_THUMB_HEIGHT_MAX_PX, "MOBILE_THUMB_HEIGHT"],
+    [constants.COLUMNS_MIN, constants.COLUMNS_MAX, "COLUMNS"],
+    [constants.MOBILE_COLUMNS_MIN, constants.MOBILE_COLUMNS_MAX, "MOBILE_COLUMNS"],
 ];
 
 test("range constants: MIN < MAX for all pairs", () => {
@@ -32,7 +35,16 @@ test("range constants: MIN < MAX for all pairs", () => {
 });
 
 test("debounce/timing constants are positive integers", () => {
-    const timing = [180, 500, 250, 240, 3000, 512, 30];
+    const timing = [
+        constants.SEARCH_DEBOUNCE_MS,
+        constants.SAVE_DEBOUNCE_MS,
+        constants.FAB_HIDE_DELAY_MS,
+        constants.BACK_TOP_THRESHOLD_PX,
+        constants.MESSAGE_DEFAULT_MS,
+        constants.UPDATED_CACHE_MS,
+        constants.TAB_SETTLE_MS,
+        constants.TAB_VERIFY_TIMEOUT_MS,
+    ];
     for (const v of timing) {
         assert.ok(Number.isInteger(v) && v > 0, `timing value ${v} should be positive integer`);
     }
@@ -40,8 +52,7 @@ test("debounce/timing constants are positive integers", () => {
 
 test("document search constants are reasonable", () => {
     // DOC_RESULT_LIMIT (12) < DOC_SEARCH_CACHE_LIMIT (50) — 渲染上限小于缓存上限才有意义
-    const DOC_RESULT_LIMIT = 12;
-    const DOC_SEARCH_CACHE_LIMIT = 50;
+    const {DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT} = constants;
     assert.ok(DOC_RESULT_LIMIT < DOC_SEARCH_CACHE_LIMIT,
         `DOC_RESULT_LIMIT (${DOC_RESULT_LIMIT}) should be < DOC_SEARCH_CACHE_LIMIT (${DOC_SEARCH_CACHE_LIMIT})`);
     assert.ok(DOC_RESULT_LIMIT >= 1, "DOC_RESULT_LIMIT should be >= 1");
@@ -50,14 +61,14 @@ test("document search constants are reasonable", () => {
 
 test("mru constants are reasonable", () => {
     // MRU_MAX (200)：最近使用页签列表上限，必须有界防止插件数据无限膨胀
-    const MRU_MAX = 200;
+    const {MRU_MAX} = constants;
     assert.ok(Number.isInteger(MRU_MAX) && MRU_MAX > 0, "MRU_MAX should be a positive integer");
     assert.ok(MRU_MAX >= 50 && MRU_MAX <= 2000, "MRU_MAX should be within a reasonable range (50-2000)");
 });
 
-// BLOCK_ID_RE（源码中的正则字面量复制）：区分思源块 ID 与一次性 tab.id（UUID）。
+// BLOCK_ID_RE：区分思源块 ID 与一次性 tab.id（UUID）。
 // 收藏跳转只信任块 ID，此正则误判会导致有效条目被拒或 UUID 条目被放行
-const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
+const {BLOCK_ID_RE} = constants;
 
 test("BLOCK_ID_RE accepts siyuan block ids", () => {
     assert.ok(BLOCK_ID_RE.test("20260721173719-zlynli0"), "14-digit ts + lowercase suffix should match");

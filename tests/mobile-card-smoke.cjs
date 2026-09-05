@@ -10,29 +10,19 @@ const { JSDOM } = require('jsdom');
 
 const REPO = path.resolve(__dirname, '..');
 const distCss = path.join(REPO, 'dist', 'index.css');
-const baseCssPath = process.env.SIYUAN_BASE_CSS || 'D:/RJ/SiYuan/resources/stage/build/mobile/base.7c9f8bcbae72971c5e48.css';
-const iconJsPath = process.env.SIYUAN_ICON_JS || 'D:/RJ/SiYuan/resources/appearance/icons/litheness/icon.js';
+const baseCssPath = process.env.SIYUAN_BASE_CSS || path.join(__dirname, 'fixtures', 'siyuan-mobile-base.css');
 
 if (!fs.existsSync(distCss)) {
     console.error('❌ dist/index.css not found. Run `npm run build` first.');
     process.exit(1);
 }
 if (!fs.existsSync(baseCssPath)) {
-    console.error(`⚠️  SiYuan base CSS not found at: ${baseCssPath}`);
-    console.error('   Set env SIYUAN_BASE_CSS to override. Skipping smoke test.');
-    process.exit(0);
-}
-if (!fs.existsSync(iconJsPath)) {
-    console.error(`⚠️  litheness icon.js not found at: ${iconJsPath}`);
-    console.error('   Set env SIYUAN_ICON_JS to override.');
+    console.error(`❌ SiYuan CSS fixture not found at: ${baseCssPath}`);
     process.exit(1);
 }
-
 const pluginCss = fs.readFileSync(distCss, 'utf-8');
 const baseCss = fs.readFileSync(baseCssPath, 'utf-8');
-const iconJs = fs.readFileSync(iconJsPath, 'utf-8');
-const m = iconJs.match(/document\.body\.insertAdjacentHTML\('afterbegin',\s*`([^`]+)`\)/);
-const sprite = m ? m[1] : '';
+const sprite = '<svg aria-hidden="true" style="display:none"><symbol id="iconPin" viewBox="0 0 24 24"><path d="M12 2v20"/></symbol><symbol id="iconStar" viewBox="0 0 24 24"><path d="M12 2l3 7h7l-6 5 2 8-6-4-6 4 2-8-6-5h7z"/></symbol><symbol id="iconClose" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol></svg>';
 
 const html = `<!DOCTYPE html><html><body>${sprite}
 <div class="speed-switch sw__body sw__mobile">
@@ -44,9 +34,9 @@ const html = `<!DOCTYPE html><html><body>${sprite}
         <span class="sw__title">Test doc</span>
       </div>
       <div class="sw__actions">
-        <span class="b3-tooltips b3-tooltips__n sw__pin"><svg><use xlink:href="#iconPin"></use></svg></span>
-        <span class="b3-tooltips b3-tooltips__n sw__fav-btn"><svg><use xlink:href="#iconStar"></use></svg></span>
-        <span class="b3-tooltips b3-tooltips__n sw__close"><svg><use xlink:href="#iconClose"></use></svg></span>
+        <button type="button" class="sw__pin"><svg><use xlink:href="#iconPin"></use></svg></button>
+        <button type="button" class="sw__fav-btn"><svg><use xlink:href="#iconStar"></use></svg></button>
+        <button type="button" class="sw__close"><svg><use xlink:href="#iconClose"></use></svg></button>
       </div>
     </div>
   </div>
@@ -93,7 +83,8 @@ const actionTargets = [
 let allPassed = true;
 for (const [name, el] of actionTargets) {
     const r = rect(el);
-    const passed = r.width === expected && r.height === expected && r.position === 'absolute';
+    const passed = el.tagName === 'BUTTON' && !el.classList.contains('b3-tooltips')
+        && r.width === expected && r.height === expected && r.position === 'absolute';
     console.log(`${passed ? '✅' : '❌'} action ${name}: ${r.width}x${r.height} ${r.position}`);
     if (!passed) allPassed = false;
 }
