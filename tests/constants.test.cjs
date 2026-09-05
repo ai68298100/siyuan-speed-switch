@@ -32,7 +32,7 @@ test("range constants: MIN < MAX for all pairs", () => {
 });
 
 test("debounce/timing constants are positive integers", () => {
-    const timing = [180, 500, 250, 240, 3000, 512];
+    const timing = [180, 500, 250, 240, 3000, 512, 30];
     for (const v of timing) {
         assert.ok(Number.isInteger(v) && v > 0, `timing value ${v} should be positive integer`);
     }
@@ -46,4 +46,30 @@ test("document search constants are reasonable", () => {
         `DOC_RESULT_LIMIT (${DOC_RESULT_LIMIT}) should be < DOC_SEARCH_CACHE_LIMIT (${DOC_SEARCH_CACHE_LIMIT})`);
     assert.ok(DOC_RESULT_LIMIT >= 1, "DOC_RESULT_LIMIT should be >= 1");
     assert.ok(DOC_SEARCH_CACHE_LIMIT >= DOC_RESULT_LIMIT, "DOC_SEARCH_CACHE_LIMIT should be >= DOC_RESULT_LIMIT");
+});
+
+test("mru constants are reasonable", () => {
+    // MRU_MAX (200)：最近使用页签列表上限，必须有界防止插件数据无限膨胀
+    const MRU_MAX = 200;
+    assert.ok(Number.isInteger(MRU_MAX) && MRU_MAX > 0, "MRU_MAX should be a positive integer");
+    assert.ok(MRU_MAX >= 50 && MRU_MAX <= 2000, "MRU_MAX should be within a reasonable range (50-2000)");
+});
+
+// BLOCK_ID_RE（源码中的正则字面量复制）：区分思源块 ID 与一次性 tab.id（UUID）。
+// 收藏跳转只信任块 ID，此正则误判会导致有效条目被拒或 UUID 条目被放行
+const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
+
+test("BLOCK_ID_RE accepts siyuan block ids", () => {
+    assert.ok(BLOCK_ID_RE.test("20260721173719-zlynli0"), "14-digit ts + lowercase suffix should match");
+    assert.ok(BLOCK_ID_RE.test("20260721173719-ZLYNLI0"), "suffix case-insensitive should match");
+    assert.ok(BLOCK_ID_RE.test("20260101000000-0123456"), "digit-only suffix should match");
+});
+
+test("BLOCK_ID_RE rejects uuid tab ids and malformed input", () => {
+    assert.ok(!BLOCK_ID_RE.test("00bf168c-ec61-4722-abb8-757a1a296c6a"), "uuid tab.id must not match");
+    assert.ok(!BLOCK_ID_RE.test(""), "empty string must not match");
+    assert.ok(!BLOCK_ID_RE.test("20260721173719"), "missing suffix must not match");
+    assert.ok(!BLOCK_ID_RE.test("1234-abc"), "short timestamp must not match");
+    assert.ok(!BLOCK_ID_RE.test("20260721173719-"), "empty suffix must not match");
+    assert.ok(!BLOCK_ID_RE.test("abc20260721173719-zlynli0"), "leading garbage must not match");
 });

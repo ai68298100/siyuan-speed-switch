@@ -18,6 +18,11 @@ const packageImagePatterns = [
 module.exports = (env, argv) => {
     const production = argv.mode === "production";
     const plugins = [
+        new webpack.DefinePlugin({
+            // 构建时注入日志开关：开发构建开启；生产构建默认关闭（配合 logger 死代码消除实现量产静音），
+            // 真机排查时可 SW_LOG=1 显式打开生产日志
+            __LOG_ENABLED__: JSON.stringify(!production || process.env.SW_LOG === "1"),
+        }),
         new MiniCssExtractPlugin({
             filename: production ? "dist/index.css" : "index.css",
         }),

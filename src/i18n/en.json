@@ -107,5 +107,7 @@
   "notebookPlaceholder": "Select a notebook",
   "journalNoNotebook": "No available notebooks. Create or open one in SiYuan first.",
   "journalFailed": "Failed to open the journal. Check the default notebook setting.",
-  "openDocFailed": "Failed to open the document. Please try again later."
+  "openDocFailed": "Failed to open the document. Please try again later.",
+  "favNeedActivate": "This tab is not fully loaded. Switch to it first, then favorite it.",
+  "favInvalidEntry": "This favorite lacks valid document info. Open its tab once to repair it automatically."
 }

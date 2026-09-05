@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru} from "./util";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -11,6 +11,8 @@ import {
     BACK_TOP_THRESHOLD_PX,
     MESSAGE_DEFAULT_MS,
     UPDATED_CACHE_MS,
+    NOTEBOOK_FETCH_TIMEOUT_MS,
+    TAB_SETTLE_MS,
     DIALOG_WIDTH_MIN_PX,
     DIALOG_WIDTH_MAX_PX,
     DIALOG_HEIGHT_MIN_PX,
@@ -23,7 +25,26 @@ import {
     COLUMNS_MAX,
     MOBILE_COLUMNS_MIN,
     MOBILE_COLUMNS_MAX,
+    MOBILE_COLUMNS_SINGLE,
+    MOBILE_COLUMNS_DOUBLE,
+    MOBILE_COLUMNS_AUTO,
     SIDEBAR_DEFAULT_WIDTH_PX,
+    CONTENT_WIDTH_PX,
+    THUMB_BATCH,
+    THUMB_CACHE_MAX,
+    THUMB_HTML_MAX,
+    THUMB_BATCH_MOBILE,
+    THUMB_CACHE_MAX_MOBILE,
+    THUMB_HTML_MAX_MOBILE,
+    THUMB_CLONE_MAX,
+    THUMB_API_MAX,
+    THUMB_API_MAX_MOBILE,
+    ROOT_ID_CACHE_MAX,
+    MRU_MAX,
+    BLOCK_ID_RE,
+    FAV_PANEL_WIDTH_PX,
+    FAV_PANEL_MAX_HEIGHT_PX,
+    FAV_PANEL_MIN_HEIGHT_PX,
 } from "./constants";
 import {
     getSiyuan,
@@ -51,6 +72,15 @@ declare module "./util" {
         tabs: T[], fallbackKey: HTMLElement,
     ): Map<HTMLElement, Array<{tab: T}>>;
 }
+
+// 卡片三按钮所需图标 symbol（与官方 litheness sprite 同名同形）：
+// 手机端模板不含内联 symbol，官方 sprite 由 loadAssets 异步注入且依赖 App 版本，
+// 首帧 <use> 引用到空 symbol 时按钮渲染为空白（三按钮"隐形"根因），插件须自带兜底
+const CARD_ICON_SPRITE =
+    '<symbol id="iconUnpin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/></symbol>' +
+    '<symbol id="iconPin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>' +
+    '<symbol id="iconStar" viewBox="0 0 24 24" fill="var(--b3-icon-star-fill, none)" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>' +
+    '<symbol id="iconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>';
 
 // 单分组渲染上下文：避免 renderTabGroup 形参列表爆炸，所有共享字段打包到一个对象
 interface ITabGroupRenderCtx {
@@ -86,17 +116,6 @@ const SETTINGS_KEY = "sw_settings";  // 插件设置
 const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
 const SIDEBAR_DOCK_TYPE = "sidebar"; // 侧边栏 dock 的 type（实际注册为 插件名+type）
-const CONTENT_WIDTH = 800;           // 缩略图内容的模拟宽度（px），用于计算缩放比例
-const THUMB_BATCH = 4;               // 批量渲染缩略图的并发数量（IntersectionObserver 不可用时的兜底路径）
-const THUMB_CACHE_MAX = 40;          // 缓存最多保留的文档数（超出按最旧淘汰）
-const THUMB_HTML_MAX = 200 * 1024;   // 单条缓存 HTML 上限，避免持久化文件膨胀
-const THUMB_BATCH_MOBILE = 2;        // 手机端并发渲染数（性能更弱）
-const THUMB_CACHE_MAX_MOBILE = 30;   // 手机端缓存上限
-const THUMB_HTML_MAX_MOBILE = 80 * 1024; // 手机端单条缓存上限
-const THUMB_CLONE_MAX = 30;          // 缩略图克隆块数上限：只取文档首屏内容，避免大文档整篇克隆卡顿
-const THUMB_API_MAX = 4;             // getDoc 回源并发上限（桌面端）
-const THUMB_API_MAX_MOBILE = 2;      // getDoc 回源并发上限（手机端，弱网弱机保护）
-const ROOT_ID_CACHE_MAX = 512;       // rootId 映射缓存上限（超出整体清空，页签 id 稳定重复率高）
 // 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
 // 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
 const DEFAULT_HOTKEY = "⌥⇧S";
@@ -114,7 +133,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
     fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
-    mobileColumns: 2,      // 2=自动（竖屏单列，横屏双列），默认自动
+    mobileColumns: MOBILE_COLUMNS_AUTO, // 默认自动（竖屏单列，横屏双列）
     mobileThumbHeight: 80, // 手机端缩略图高度
     journalNotebook: "",   // 默认日记笔记本 id，空=未设置（首次点击日记按钮时弹出选择）
     lastSettingsTab: "appearance", // 设置面板上次所在标签页（打开时直接跳转，提升反复进入设置的操作效率）
@@ -164,7 +183,8 @@ interface IThumbCache {
 // 模块级 WeakMap：滚动容器 → 已挂的 IntersectionObserver，避免在 HTMLElement 上自挂私有属性
 const thumbObserverCache = new WeakMap<HTMLElement, IntersectionObserver>();
 
-// 收藏条目：文档页签存 rootId（关闭后仍可重开），非文档页签仅存页签 id（关闭后失效自动清理）
+// 收藏条目：文档页签存 rootId（关闭后仍可重开）；非文档页签仅存页签 id。
+// 收藏项永久留存直到用户主动删除；rootId 缺失时跳转/批量打开用 key 兜底（见 jumpToFavorite）
 interface IFavoriteItem {
     key: string;       // pinKeyOf：rootId || tab.id
     title: string;
@@ -177,6 +197,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private searchSeq = 0;   // 文档搜索请求序号，用于丢弃过期响应
     private docSearchCache = new Map<string, any[]>(); // 关键词 → 全库文档结果缓存（删除重输等场景秒出）
     private docSearchAbort: AbortController | null = null; // 进行中的文档搜索请求（新请求发起前取消旧的）
+    private docSearchTimer: number | null = null; // 搜索防抖定时器（新一轮输入前清掉旧回调，避免过期请求空打内核）
     private sidebarElement: HTMLElement | null = null; // 侧边栏 dock 面板内容元素
     private sidebarResizeObserver: ResizeObserver | null = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
     private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
@@ -189,6 +210,9 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     async onload() {
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
+
+        // 尽早注入卡片按钮图标：官方 sprite 为异步注入，首帧渲染的三按钮可能引用到空 symbol
+        this.addIcons(CARD_ICON_SPRITE);
 
         this.fixLegacyHotkey();
         await this.initPersistentData();
@@ -479,11 +503,15 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 拉取已打开的笔记本列表（id + name），用于默认日记笔记本下拉
     private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
+        // 内核无响应时超时中断请求，避免设置页下拉一直停在加载中
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), NOTEBOOK_FETCH_TIMEOUT_MS);
         try {
             const response = await fetch("/api/notebook/lsNotebooks", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: "{}",
+                signal: controller.signal,
             });
             const json = await response.json();
             const notebooks = (json?.data?.notebooks ?? []) as Array<{id: string, name: string, closed?: number}>;
@@ -493,6 +521,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         } catch (e) {
             logger.warn("load notebooks fail", e);
             return [];
+        } finally {
+            window.clearTimeout(timer);
         }
     }
 
@@ -868,9 +898,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 })),
             this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,
                 this.select([
-                    {value: "0", label: this.i18n.mobileSingle},
-                    {value: "1", label: this.i18n.mobileDouble},
-                    {value: "2", label: this.i18n.mobileAuto},
+                    {value: String(MOBILE_COLUMNS_SINGLE), label: this.i18n.mobileSingle},
+                    {value: String(MOBILE_COLUMNS_DOUBLE), label: this.i18n.mobileDouble},
+                    {value: String(MOBILE_COLUMNS_AUTO), label: this.i18n.mobileAuto},
                 ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)}))),
         );
         return wrapper;
@@ -1325,22 +1355,35 @@ export default class SpeedSwitchPlugin extends Plugin {
         const keyword = searchInput.value.trim();
         this.filterCards(scrollElement, searchInput.value);
 
-        // 关键词为空：隐藏文档结果，恢复纯列表
+        // 关键词为空：隐藏文档结果，恢复纯列表（同时取消尚未触发的防抖请求）
         if (keyword === "") {
+            this.clearDocSearchTimer();
             this.renderDocResults(scrollElement, null, onClose);
             return;
         }
         // 命中缓存直接渲染（已打开文档在渲染时排除，缓存结果可安全复用）
         const cached = this.docSearchCache.get(keyword);
         if (cached) {
+            this.clearDocSearchTimer();
             this.renderDocResults(scrollElement, cached.slice(0, DOC_RESULT_LIMIT), onClose);
             return;
         }
-        // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核
+        // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核；
+        // 定时器保存到字段，新一轮输入/清空时清掉旧回调
         const seq = ++this.searchSeq;
-        window.setTimeout(() => {
+        this.clearDocSearchTimer();
+        this.docSearchTimer = window.setTimeout(() => {
+            this.docSearchTimer = null;
             this.runDocSearchFetch(scrollElement, searchInput, keyword, seq, onClose);
         }, SEARCH_DEBOUNCE_MS);
+    }
+
+    // 取消尚未触发的搜索防抖回调（若已触发则为空操作）
+    private clearDocSearchTimer() {
+        if (this.docSearchTimer !== null) {
+            window.clearTimeout(this.docSearchTimer);
+            this.docSearchTimer = null;
+        }
     }
 
     // 全库文档搜索远程请求：带取消、防过期、AbortController 复用 searchSeq
@@ -1489,7 +1532,8 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 查询当前打开文档的更新时间（用于「最近编辑」排序），返回 rootID → updated 映射
     private async loadUpdatedMap(tabs: Tab[]): Promise<{[rootId: string]: string}> {
-        const ids = tabs.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[];
+        // 白名单净化：仅保留标准文档 ID（时间戳-7位）并去重，非常规值不进 SQL（防注入/防结构破坏）
+        const ids = sanitizeDocIds(tabs.map((tab) => this.rootIdOf(tab)));
         if (ids.length === 0) {
             return {};
         }
@@ -1768,15 +1812,47 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 切换收藏状态，返回切换后是否为已收藏
     private toggleFavorite(tab: Tab): boolean {
-        const key = this.pinKeyOf(tab);
         const list = this.getFavorites();
-        const index = list.findIndex((item) => item.key === key);
+        const rootId = this.rootIdOf(tab);
+        if (!rootId) {
+            // 未解析页签（懒加载未激活）：key 会退化为一次性 tab.id，收藏后必然无法跳转，
+            // 星标还会在页签激活后错乱引发重复收藏。此处仅允许移除同键历史脏数据，拒绝新增
+            const index = list.findIndex((item) => item.key === tab.id);
+            if (index >= 0) {
+                list.splice(index, 1);
+                this.saveFavorites(list);
+                return false;
+            }
+            showMessage(this.i18n.favNeedActivate);
+            return false;
+        }
+        if (this.migrateFavoriteKey(list, tab, rootId)) {
+            return true;
+        }
+        const index = list.findIndex((item) => item.key === rootId);
         if (index >= 0) {
             list.splice(index, 1);
             this.saveFavorites(list);
             return false;
         }
-        list.unshift({key, title: this.titleOf(tab), rootId: this.rootIdOf(tab), group: ""});
+        list.unshift({key: rootId, title: this.titleOf(tab), rootId, group: ""});
+        this.saveFavorites(list);
+        return true;
+    }
+
+    // 迁移历史脏收藏条目：旧版本曾把未解析页签的 tab.id（UUID）当作收藏 key，
+    // 此类条目 rootId 为空、跳转必然失效。页签激活解析出 rootId 后将其改写为稳定键；
+    // 若同文档已存在正常条目则脏条目属于历史重复，直接移除。返回是否发生了迁移
+    private migrateFavoriteKey(list: IFavoriteItem[], tab: Tab, rootId: string): boolean {
+        const index = list.findIndex((item) => item.key === tab.id && item.key !== rootId);
+        if (index < 0) {
+            return false;
+        }
+        if (list.some((item) => item.key === rootId)) {
+            list.splice(index, 1);
+        } else {
+            list[index] = {...list[index], key: rootId, rootId};
+        }
         this.saveFavorites(list);
         return true;
     }
@@ -1824,10 +1900,33 @@ export default class SpeedSwitchPlugin extends Plugin {
         const trigger = container.querySelector<HTMLElement>(".sw__fav-trigger");
         const panel = container.querySelector<HTMLElement>(".sw__fav-panel");
 
-        // 点击外部收起面板
+        // 面板打开期间才监听 DOM 变化：容器被移除（弹窗销毁/侧边栏重渲染）时解绑全局监听；
+        // 面板关闭即 disconnect，避免 body 级 MutationObserver 随编辑操作全局常驻
+        const observer = new MutationObserver(() => {
+            if (!container.isConnected) {
+                unbindGlobal();
+            }
+        });
+        const unbindGlobal = () => {
+            document.removeEventListener("pointerdown", onDocPointerDown, true);
+            window.removeEventListener("resize", onReposition);
+            document.removeEventListener("scroll", onReposition, true);
+            observer.disconnect();
+        };
+        // 收起面板并停止 DOM 观察（三条收起路径共用：再次点击触发器 / 点击外部 / 选中收藏项）
+        const closePanel = () => {
+            panel.classList.add("fn__none");
+            observer.disconnect();
+        };
+        // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
+        // 宿主容器被移除后由这次全局点击兜底解绑全部监听
         const onDocPointerDown = (event: PointerEvent) => {
+            if (!container.isConnected) {
+                unbindGlobal();
+                return;
+            }
             if (!container.contains(event.target as Node)) {
-                panel.classList.add("fn__none");
+                closePanel();
             }
         };
         document.addEventListener("pointerdown", onDocPointerDown, true);
@@ -1839,28 +1938,19 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
         window.addEventListener("resize", onReposition);
         document.addEventListener("scroll", onReposition, true);
-        // 容器从 DOM 移除时解绑全局监听（弹窗销毁/侧边栏重渲染都会移除旧容器）
-        const observer = new MutationObserver(() => {
-            if (!container.isConnected) {
-                document.removeEventListener("pointerdown", onDocPointerDown, true);
-                window.removeEventListener("resize", onReposition);
-                document.removeEventListener("scroll", onReposition, true);
-                observer.disconnect();
-            }
-        });
-        observer.observe(document.body, {childList: true, subtree: true});
 
         trigger.addEventListener("click", () => {
             const willOpen = panel.classList.contains("fn__none");
             if (willOpen) {
                 this.renderFavPanel(panel, () => {
-                    panel.classList.add("fn__none");
+                    closePanel();
                     onClose();
                 });
                 panel.classList.remove("fn__none");
                 this.positionFavPanel(trigger, panel);
+                observer.observe(document.body, {childList: true, subtree: true});
             } else {
-                panel.classList.add("fn__none");
+                closePanel();
             }
         });
 
@@ -1881,22 +1971,22 @@ export default class SpeedSwitchPlugin extends Plugin {
             minLeft = Math.max(minLeft, hostRect.left + 2);
             maxRight = Math.min(maxRight, hostRect.right - 2);
         }
-        // 宽度：理想 248px，按宿主/视口可用空间收缩；宿主过窄（<180px）时随宿主收窄，确保不超出侧边栏
+        // 宽度：理想 FAV_PANEL_WIDTH_PX，按宿主/视口可用空间收缩，确保不超出侧边栏
         const avail = Math.max(0, maxRight - minLeft);
-        const width = Math.max(Math.min(180, avail), Math.min(248, avail));
+        const width = Math.min(FAV_PANEL_WIDTH_PX, avail);
         let left = Math.min(Math.max(rect.right - width, minLeft), maxRight - width);
         // 垂直：默认在触发器下方，剩余空间不足时翻转到触发器上方
         let top = rect.bottom + margin;
         let maxHeight = window.innerHeight - margin - top;
         if (maxHeight < 180) {
-            const over = Math.min(320, rect.top - margin * 2);
+            const over = Math.min(FAV_PANEL_MAX_HEIGHT_PX, rect.top - margin * 2);
             top = Math.max(margin, rect.top - margin - over);
             maxHeight = rect.top - margin - top;
         }
         panel.style.width = `${width}px`;
         panel.style.left = `${Math.round(left)}px`;
         panel.style.top = `${Math.round(top)}px`;
-        panel.style.maxHeight = `${Math.max(140, Math.round(maxHeight))}px`;
+        panel.style.maxHeight = `${Math.max(FAV_PANEL_MIN_HEIGHT_PX, Math.round(maxHeight))}px`;
     }
 
     // 渲染下拉面板内容：分组标题（点击折叠/展开）+ 组内收藏项（点击跳转）
@@ -2030,13 +2120,19 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 收藏页签到指定分组（已收藏则仅调整分组），用于菜单快速收藏到组
     private addFavoriteToGroup(tab: Tab, group: string) {
-        const key = this.pinKeyOf(tab);
         const list = this.getFavorites();
-        const item = list.find((fav) => fav.key === key);
+        const rootId = this.rootIdOf(tab);
+        if (!rootId) {
+            // 与 toggleFavorite 一致：未解析页签拒绝入组，避免产生无法跳转的脏条目
+            showMessage(this.i18n.favNeedActivate);
+            return;
+        }
+        this.migrateFavoriteKey(list, tab, rootId);
+        const item = list.find((fav) => fav.key === rootId);
         if (item) {
             item.group = group.trim();
         } else {
-            list.unshift({key, title: this.titleOf(tab), rootId: this.rootIdOf(tab), group: group.trim()});
+            list.unshift({key: rootId, title: this.titleOf(tab), rootId, group: group.trim()});
         }
         this.saveFavorites(list);
         this.refreshFavSelects();
@@ -2286,7 +2382,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 转义 HTML 属性值（分组名等用户输入拼入模板时防注入；Menu label 为 innerHTML 亦需转义）
     private escapeAttr(text: string): string {
-        return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     // 弹窗设置收藏项的分组：输入分组名（留空移出分组），datalist 列出已有分组便于快速选择；
@@ -2367,8 +2463,19 @@ export default class SpeedSwitchPlugin extends Plugin {
         input.select();
     }
 
-    // 跳转到收藏项：页签已开则切换过去；文档已收藏但页签关闭则重新打开；非文档页签已失效则移除收藏
-    private jumpToFavorite(favorite: IFavoriteItem, onClose: IOverlayClose) {
+    // 收藏条目的可跳转 rootId：优先取 rootId 字段，缺失时回退 key；两者都必须是
+    // 块 ID 格式——历史脏条目的 key 是一次性 tab.id（UUID），openTab 无法解析只会静默失败
+    private resolveFavRootId(favorite: IFavoriteItem): string {
+        if (favorite.rootId && BLOCK_ID_RE.test(favorite.rootId)) {
+            return favorite.rootId;
+        }
+        return BLOCK_ID_RE.test(favorite.key) ? favorite.key : "";
+    }
+
+    // 跳转到收藏项：页签已开则切换过去；页签已关闭则按 rootId 重开。
+    // 收藏项永久留存（直到用户主动删除）：无法定位文档的历史脏条目仅提示、不自动清理，
+    // 用户打开对应页签后星标操作会自动将其迁移修复
+    private async jumpToFavorite(favorite: IFavoriteItem, onClose: IOverlayClose) {
         // 手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const tab = opened.find((item) => this.pinKeyOf(item) === favorite.key);
@@ -2376,25 +2483,28 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.activateTab(tab, onClose);
             return;
         }
-        if (favorite.rootId) {
-            onClose();
-            if (this.isMobile) {
-                // openTab 在手机端是空实现，走 MobileTabs.open
-                this.mobileOpenDoc(favorite.rootId);
-            } else {
-                openTab({
-                    app: this.app,
-                    doc: {id: favorite.rootId},
-                });
-            }
+        const rootId = this.resolveFavRootId(favorite);
+        if (!rootId) {
+            showMessage(this.i18n.favInvalidEntry);
             return;
         }
-        // 非文档页签已关闭：收藏失效，清理并刷新下拉
-        this.removeFavorite(favorite.key);
-        this.refreshFavSelects();
+        onClose();
+        if (this.isMobile) {
+            // openTab 在手机端是空实现，走 MobileTabs.open
+            const ok = await this.mobileOpenDoc(rootId);
+            if (!ok) {
+                showMessage(this.i18n.openDocFailed);
+            }
+        } else {
+            openTab({
+                app: this.app,
+                doc: {id: rootId},
+            });
+        }
     }
 
-    // 一键开启组内全部页签：仅打开可重开（rootId 非空）且未打开的收藏，返回实际打开数
+    // 一键开启组内全部页签：打开未打开的收藏（rootId 校验与 jumpToFavorite 一致，
+    // 无效历史条目跳过），返回实际打开数
     private async openGroupTabs(items: IFavoriteItem[]): Promise<number> {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
@@ -2405,19 +2515,31 @@ export default class SpeedSwitchPlugin extends Plugin {
                 continue;
             }
             seen.add(fav.key);
-            if (!fav.rootId || openedKeys.has(fav.key)) {
+            if (openedKeys.has(fav.key)) {
+                continue;
+            }
+            const rootId = this.resolveFavRootId(fav);
+            if (!rootId) {
                 continue;
             }
             if (this.isMobile) {
-                // openTab 在手机端是空实现，串行等待 mobileOpenDoc 完成，避免并发丢调用
-                await this.mobileOpenDoc(fav.rootId);
+                // openTab 在手机端是空实现，串行等待 mobileOpenDoc 完成，避免并发丢调用；
+                // 按返回结果计数（文档已删除等失败不计入，不虚报提示）
+                if (!(await this.mobileOpenDoc(rootId))) {
+                    continue;
+                }
             } else {
-                await openTab({
-                    app: this.app,
-                    doc: {id: fav.rootId},
-                });
+                try {
+                    await openTab({
+                        app: this.app,
+                        doc: {id: rootId},
+                    });
+                } catch (e) {
+                    logger.warn("desktop open tab fail", e);
+                    continue;
+                }
                 // 桌面端连续 openTab 时稍作等待，让思源完成页签创建与状态更新
-                await this.sleep(30);
+                await this.sleep(TAB_SETTLE_MS);
             }
             openedKeys.add(fav.key);
             count++;
@@ -2532,7 +2654,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         return [...pinnedItems, ...restItems];
     }
 
-    // 渲染单一分组：label + grid + 各卡片；同步复用旧卡片或新建；累积 defaultFocusIndex
+    // 渲染单一分组：label + grid + 各卡片；卡片获取委托 acquireGroupCard；累积 defaultFocusIndex
     private renderTabGroup(
         scrollElement: HTMLElement,
         ordered: IGroupedTab[],
@@ -2550,21 +2672,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
 
         ordered.forEach((item) => {
-            const isPinned = ctx.pinned.has(this.pinKeyOf(item.tab));
-            const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
-            let card = ctx.reusable.get(item.tab.id);
-            if (card) {
-                // 复用旧卡片：同步状态类/图标/标题（缩略图不动），事件沿旧闭包（同页签等价对象）
-                this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
-                ctx.reusable.delete(item.tab.id);
-            } else {
-                card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, {
-                    onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
-                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
-                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
-                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, ctx.opts.onTabsChanged),
-                });
-            }
+            const card = this.acquireGroupCard(item, ctx, false);
             grid.appendChild(card);
             item.card = card;
             all.push(item);
@@ -2576,6 +2684,29 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         groupEl.appendChild(grid);
         scrollElement.appendChild(groupEl);
+    }
+
+    // 取得分组内单张卡片：优先复用旧卡片（同步状态类/图标/标题，缩略图不动，事件沿旧闭包），否则新建；
+    // 双端分组渲染共用（renderTabGroup/renderMobileCardsInGroup），手机端追加 sw__mobile-card 修饰类
+    private acquireGroupCard(item: IGroupedTab, ctx: ITabGroupRenderCtx, mobile: boolean): HTMLElement {
+        const isPinned = ctx.pinned.has(this.pinKeyOf(item.tab));
+        const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
+        let card = ctx.reusable.get(item.tab.id);
+        if (card) {
+            this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
+            ctx.reusable.delete(item.tab.id);
+        } else {
+            card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, {
+                onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
+                onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
+                onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
+                onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, ctx.opts.onTabsChanged),
+            });
+        }
+        if (mobile) {
+            card.classList.add("sw__mobile-card");
+        }
+        return card;
     }
 
     // 构造分组卡片网格；侧边栏由专用设置 sidebarLayout 控制列数（CSS 自动响应宽度），弹窗仍用全局 columns
@@ -2644,18 +2775,16 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）
     private async closeTabQuietly(tab: Tab): Promise<void> {
         if (this.isMobile) {
-            // 手机端：MobileTabs.close 关闭页签；返回 Promise 以便批量关闭时串行等待
+            // 手机端：MobileTabs.close 关闭页签；必须保持宿主对象调用（裸调用丢 this），
+            // await 返回值以便批量关闭时串行等待，完成后给状态一小段沉降时间
             try {
-                const mobile = getSiyuan()?.mobile;
-                const closeFn = mobile?.tabs?.close;
-                if (typeof closeFn === "function") {
-                    const result: unknown = closeFn(tab.id);
-                    if (result && typeof (result as PromiseLike<unknown>).then === "function") {
-                        await result;
-                    } else {
-                        // 旧版 API 不同步返回，等待状态沉降
-                        await this.sleep(80);
+                const tabs = getSiyuan()?.mobile?.tabs;
+                if (typeof tabs?.close === "function") {
+                    const result = await tabs.close(tab.id);
+                    if (result && result !== "success") {
+                        logger.warn("mobile close tab non-success result", result);
                     }
+                    await this.sleep(TAB_SETTLE_MS);
                 }
             } catch (e) {
                 logger.warn("mobile close tab fail", e);
@@ -2665,7 +2794,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         try {
             tab.parent.removeTab(tab.id);
             // 连续 removeTab 时给思源 DOM/状态一帧沉降时间，降低漏关概率
-            await this.sleep(30);
+            await this.sleep(TAB_SETTLE_MS);
         } catch (e) {
             logger.warn("close tab fail", e);
         }
@@ -3144,11 +3273,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 后续尺寸变化由侧边栏的 ResizeObserver 兜底重算
         const width = thumb.clientWidth;
         if (width > 0) {
-            content.style.transform = `scale(${(width / CONTENT_WIDTH).toFixed(3)})`;
+            content.style.transform = `scale(${(width / CONTENT_WIDTH_PX).toFixed(3)})`;
         } else {
             requestAnimationFrame(() => {
                 if (thumb.isConnected && thumb.clientWidth > 0) {
-                    content.style.transform = `scale(${(thumb.clientWidth / CONTENT_WIDTH).toFixed(3)})`;
+                    content.style.transform = `scale(${(thumb.clientWidth / CONTENT_WIDTH_PX).toFixed(3)})`;
                 }
             });
         }
@@ -3344,7 +3473,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         const mru = this.getMru();
         const list = mru.filter((id) => id !== key);
         list.unshift(key);
-        this.data[MRU_KEY] = list;
+        // 上限收敛：超出 MRU_MAX 从尾部丢弃最旧条目，防止插件数据随使用无限膨胀
+        this.data[MRU_KEY] = capMru(list, MRU_MAX);
         this.saveDataDebounced(MRU_KEY);
 
         if (this.isMobile) {
@@ -3404,36 +3534,37 @@ export default class SpeedSwitchPlugin extends Plugin {
         return getSiyuan()?.mobile?.tabs?.state?.activeTabID;
     }
 
-    // 手机端打开文档（思源 plugin API openTab 在移动端是空实现）：
-    // 1) 优先 MobileTabs.open(rootID)（思源 3.8+），调用后等几百毫秒轮询 activeTabID 变化确认生效；
-    // 2) 若 MobileTabs 不可用或 open 未触发切换，自动降级到 plugin.openTab（桌面/旧 mobile 通用通道）；
-    // 3) 仍失败再回退到死链文档提示。
-    private async mobileOpenDoc(rootId: string) {
-        const siyuan = getSiyuan();
-        const mobileOpen = siyuan?.mobile?.tabs?.open;
-        const initialActive = siyuan?.mobile?.tabs?.state?.activeTabID;
+    // 手机端打开文档（思源 plugin API openTab 在移动端是空实现），返回是否成功：
+    // 1) 优先 MobileTabs.open(rootID)（思源 3.8+）：必须保持宿主对象调用（抽成裸函数调用会丢 this，
+    //    内部 abortController/navigationEpoch 访问直接抛错），await 返回值判断结果而非固定延时轮询；
+    //    open 明确返回失败（invalid/cancelled/failed）时不降级——openTab 在移动端是空实现，降级无意义；
+    // 2) 仅当 MobileTabs API 不存在（思源 <3.8）才降级到 plugin.openTab 兜底通道
+    private async mobileOpenDoc(rootId: string): Promise<boolean> {
+        const tabs = getSiyuan()?.mobile?.tabs;
 
-        // 路径 1：MobileTabs.open
-        if (typeof mobileOpen === "function") {
+        // 路径 1：MobileTabs.open（旧版本无返回值时为 undefined，视作已生效；新版本 "success" 才算成功）
+        if (typeof tabs?.open === "function") {
             try {
-                mobileOpen(rootId);
-                // 兜底：300ms 后若 activeTabID 还是没变，认作调用失活，进入路径 2
-                await new Promise((r) => setTimeout(r, 300));
-                const afterActive = getSiyuan()?.mobile?.tabs?.state?.activeTabID;
-                if (afterActive && afterActive !== initialActive) {
-                    return; // 切换已生效
+                const result = await tabs.open(rootId);
+                if (result === undefined || result === "success") {
+                    return true;
                 }
+                logger.warn("mobile open doc non-success result", result);
+                return false;
             } catch (e) {
                 logger.warn("mobile open doc fail (path 1)", e);
+                return false;
             }
         }
 
-        // 路径 2：降级到 plugin openTab（移动端理论上无效，但兜底保留）
+        // 路径 2：旧版思源（无 MobileTabs API）降级到 plugin openTab（移动端空实现，静默返回）
         try {
             await openTab({app: this.app, doc: {id: rootId}});
+            return true;
         } catch (e) {
             logger.warn("mobile open doc fail (path 2)", e);
             showMessage(this.i18n.openDocFailed);
+            return false;
         }
     }
 
@@ -3652,16 +3783,16 @@ export default class SpeedSwitchPlugin extends Plugin {
     private buildMobileGroupGrid(settings: ISwSettings): HTMLElement {
         const grid = document.createElement("div");
         grid.className = "sw__grid sw__mobile-grid";
-        if (settings.mobileColumns === 1) {
+        if (settings.mobileColumns === MOBILE_COLUMNS_DOUBLE) {
             grid.classList.add("sw__mobile-grid--double");
-        } else if (settings.mobileColumns === 2) {
+        } else if (settings.mobileColumns === MOBILE_COLUMNS_AUTO) {
             // auto: portrait=single, landscape=double (handled by CSS media query)
             grid.classList.add("sw__mobile-grid--auto");
         }
         return grid;
     }
 
-    // 复用/创建页签卡片，附带手机端 sw__mobile-card 类；返回 all 列表供缩略图懒渲染
+    // 手机端分组卡片渲染：委托 acquireGroupCard（mobile=true 附带 sw__mobile-card）；返回 all 列表供缩略图懒渲染
     private renderMobileCardsInGroup(
         grid: HTMLElement,
         ordered: IGroupedTab[],
@@ -3669,22 +3800,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     ): IGroupedTab[] {
         const all: IGroupedTab[] = [];
         ordered.forEach((item) => {
-            const isPinned = ctx.pinned.has(this.pinKeyOf(item.tab));
-            const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
-            let card = ctx.reusable.get(item.tab.id);
-            if (card) {
-                this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
-                card.classList.add("sw__mobile-card");
-                ctx.reusable.delete(item.tab.id);
-            } else {
-                card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, {
-                    onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
-                    onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
-                    onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
-                    onCloseTab: (tab, cardEl) => this.handleCloseTab(tab, cardEl, ctx.opts.onTabsChanged),
-                });
-                card.classList.add("sw__mobile-card");
-            }
+            const card = this.acquireGroupCard(item, ctx, true);
             grid.appendChild(card);
             item.card = card;
             all.push(item);
@@ -4104,7 +4220,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             const content = thumb.querySelector<HTMLElement>(".sw__thumb-content");
             const width = thumb.clientWidth;
             if (content && width > 0) {
-                content.style.transform = `scale(${(width / CONTENT_WIDTH).toFixed(3)})`;
+                content.style.transform = `scale(${(width / CONTENT_WIDTH_PX).toFixed(3)})`;
             }
         });
     }
@@ -4142,9 +4258,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // 读取 MRU 记录
+    // 读取 MRU 记录；防御性收敛（过滤非字符串/去重/截断），兼容历史已膨胀的存量数据
     private getMru(): string[] {
         const data = this.data[MRU_KEY];
-        return Array.isArray(data) ? (data as string[]) : [];
+        return capMru(Array.isArray(data) ? data : [], MRU_MAX);
     }
 }

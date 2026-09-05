@@ -120,4 +120,44 @@ function buildTabGroupsByParent(tabs, fallbackKey) {
     return groups;
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent};
+/**
+ * SQL IN 白名单净化：仅保留思源文档 ID 格式（14 位时间戳-7 位小写串）的条目并去重（保序）。
+ * 用于拼接 SQL 前过滤输入，杜绝引号等特殊字符破坏查询结构；全非法时返回空数组（调用方跳过查询）
+ * @param {unknown[]} values
+ * @returns {string[]}
+ */
+function sanitizeDocIds(values) {
+    const seen = new Set();
+    const out = [];
+    (values || []).forEach((value) => {
+        const id = typeof value === "string" ? value : "";
+        if (id && !seen.has(id) && /^[0-9]{14}-[0-9a-z]{7}$/.test(id)) {
+            seen.add(id);
+            out.push(id);
+        }
+    });
+    return out;
+}
+
+/**
+ * MRU 列表收敛：过滤非字符串/空值并去重（保序），超出上限时从尾部丢弃最旧条目。
+ * 用于 activateTab 写入侧与 getMru 读取侧（兼容历史已膨胀的存量数据），防止插件数据无限增长
+ * @param {unknown[]} values
+ * @param {number} max
+ * @returns {string[]}
+ */
+function capMru(values, max) {
+    const limit = typeof max === "number" && max > 0 ? Math.floor(max) : 0;
+    const seen = new Set();
+    const out = [];
+    (values || []).forEach((value) => {
+        if (typeof value !== "string" || !value || seen.has(value)) {
+            return;
+        }
+        seen.add(value);
+        out.push(value);
+    });
+    return limit > 0 && out.length > limit ? out.slice(0, limit) : out;
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru};

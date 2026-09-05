@@ -1,0 +1,42 @@
+name: CI
+
+# 每次 push / PR 都跑类型检查 + 构建 + 测试，坏改动在合入前暴露
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 根据 package.json 的 packageManager 字段自动安装对应版本 pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 类型错误先行：tsc 比构建快，失败时省去后续步骤
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Smoke test
+        run: pnpm test:smoke

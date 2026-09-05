@@ -87,6 +87,19 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.16.4 (2026-09-05)
+
+- **Fixed favorites disappearing after clicking**: favoriting a lazy-loaded (never-activated) tab failed to resolve the doc ID, so the favorite key degraded to a one-off tab ID — jumps silently failed, star states desynced and caused duplicates, and repeated cleanup eventually emptied the list.
+- Favoriting a not-yet-loaded tab now shows a "switch to the tab first" hint instead of creating a broken entry.
+- Legacy broken favorite entries are auto-migrated (one-off tab ID → stable doc ID) once the tab is opened; no manual cleanup needed.
+- Clicking a favorite / opening a group now reports entries that cannot be located instead of failing silently; favorites persist until explicitly removed.
+
+### v0.16.3 (2026-09-05)
+
+- Fixed the pin / favorite / close action buttons at the bottom-right of mobile tab cards.
+- Fixed "open all / close all favorites" not applying to the whole group.
+- MRU (most recently used) list now caps at 200 entries to prevent unbounded plugin data growth.
+
 ### v0.16.0 (2026-09-05)
 
 - **Architecture & docs**:

@@ -26,6 +26,12 @@ export const SAVE_DEBOUNCE_MS = 500;
 // 「最近编辑」排序 SQL 结果短缓存有效期
 export const UPDATED_CACHE_MS = 3000;
 
+// 笔记本列表拉取超时：内核无响应时中断请求，避免设置页下拉一直停在加载中
+export const NOTEBOOK_FETCH_TIMEOUT_MS = 5000;
+
+// 批量开/关页签后给思源 DOM/状态一帧沉降时间：连续 removeTab/MobileTabs 操作降低漏关/漏开概率
+export const TAB_SETTLE_MS = 30;
+
 // ==================== UI 反馈 ====================
 
 // 悬浮按钮（FAB）隐藏动画时长；与 CSS transition 配合，timeout 后再 remove 节点避免动画闪断
@@ -81,6 +87,12 @@ export const COLUMNS_MAX = 8;
 export const MOBILE_COLUMNS_MIN = 0;
 export const MOBILE_COLUMNS_MAX = 2;
 
+// 手机端卡片列数枚举（settings.mobileColumns 存储值）：单列=固定一列，双列=固定两列，
+// 自动=竖屏单列横屏双列（由 CSS media query 决定，见 sw__mobile-grid--auto）
+export const MOBILE_COLUMNS_SINGLE = 0;
+export const MOBILE_COLUMNS_DOUBLE = 1;
+export const MOBILE_COLUMNS_AUTO = 2;
+
 // 侧边栏默认宽度（注册 dock 时使用）
 export const SIDEBAR_DEFAULT_WIDTH_PX = 340;
 
@@ -93,3 +105,12 @@ export const FAV_PANEL_MIN_HEIGHT_PX = 140;
 
 // rootId 映射缓存上限（超出整体清空，页签 id 稳定重复率高）
 export const ROOT_ID_CACHE_MAX = 512;
+
+// MRU（最近使用页签）列表上限：每次激活页签都会置顶一条并全量持久化+双端同步，
+// 不设上限会随使用时间无限膨胀；超出后从尾部丢弃最旧条目
+export const MRU_MAX = 200;
+
+// 思源块 ID 格式（14 位时间戳-随机后缀，如 20260721173719-zlynli0）。
+// 用于区分文档 rootId 与一次性 tab.id（UUID）：收藏跳转只信任块 ID，
+// 避免拿 UUID 调 openTab 静默失败
+export const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;

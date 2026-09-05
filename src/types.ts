@@ -18,10 +18,14 @@ export interface IMobileTabsState {
     tabs: Array<{ id: string; current?: IMobileTabEntry; activeAt: number }>;
 }
 
+// open/close 实际返回 Promise（结果：success/cancelled/invalid/failed）；旧版本可能同步无返回，
+// 按本文件"宽进宽出"约定写成联合签名，调用方对结果做 undefined 兜底
+export type IMobileTabsResult = "success" | "cancelled" | "invalid" | "failed";
+
 export interface IMobileTabsAPI {
     state?: IMobileTabsState;
-    open?: (rootId: string) => void;
-    close?: (tabId: string) => void;
+    open?: (rootId: string) => Promise<IMobileTabsResult> | void;
+    close?: (tabId: string) => Promise<IMobileTabsResult> | void;
     switchTo?: (tabId: string) => void;
 }
 

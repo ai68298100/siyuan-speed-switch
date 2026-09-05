@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -189,4 +189,54 @@ test('buildTabGroupsByParent: empty tabs returns empty map', () => {
     const fallback = makeEl();
     const groups = buildTabGroupsByParent([], fallback);
     assert.equal(groups.size, 0);
+});
+
+// ── sanitizeDocIds ──
+test('sanitizeDocIds: standard siyuan doc ids pass through', () => {
+    assert.deepEqual(sanitizeDocIds(['20240101120000-abcdefg']), ['20240101120000-abcdefg']);
+});
+
+test('sanitizeDocIds: filters non-id strings (injection chars)', () => {
+    const out = sanitizeDocIds(["x'--", "20240101120000-abcdefg')", '2024010112000-abcdefg', '20240101120000-ABCDEFG', 'DROP TABLE']);
+    assert.deepEqual(out, []);
+});
+
+test('sanitizeDocIds: dedupes while keeping first-seen order', () => {
+    const out = sanitizeDocIds(['20240101120000-abcdefg', '20240101120001-hijklmn', '20240101120000-abcdefg']);
+    assert.deepEqual(out, ['20240101120000-abcdefg', '20240101120001-hijklmn']);
+});
+
+test('sanitizeDocIds: skips null / undefined / non-string entries', () => {
+    const out = sanitizeDocIds([null, undefined, 123, {}, '20240101120000-abcdefg']);
+    assert.deepEqual(out, ['20240101120000-abcdefg']);
+});
+
+test('sanitizeDocIds: empty or null input returns empty array', () => {
+    assert.deepEqual(sanitizeDocIds([]), []);
+    assert.deepEqual(sanitizeDocIds(null), []);
+    assert.deepEqual(sanitizeDocIds(undefined), []);
+});
+
+// ── capMru ──
+test('capMru: filters non-string / empty entries and dedupes keeping first-seen order', () => {
+    const out = capMru(['b', 'a', null, undefined, 123, '', 'b', 'a', 'c'], 100);
+    assert.deepEqual(out, ['b', 'a', 'c']);
+});
+
+test('capMru: truncates from the tail beyond max (newest first)', () => {
+    const out = capMru(['n3', 'n2', 'n1', 'n0'], 3);
+    assert.deepEqual(out, ['n3', 'n2', 'n1']);
+});
+
+test('capMru: non-positive / non-number max disables truncation', () => {
+    assert.deepEqual(capMru(['a', 'b'], 0), ['a', 'b']);
+    assert.deepEqual(capMru(['a', 'b'], -1), ['a', 'b']);
+    assert.deepEqual(capMru(['a', 'b'], NaN), ['a', 'b']);
+    assert.deepEqual(capMru(['a', 'b'], undefined), ['a', 'b']);
+});
+
+test('capMru: empty or null input returns empty array', () => {
+    assert.deepEqual(capMru([], 200), []);
+    assert.deepEqual(capMru(null, 200), []);
+    assert.deepEqual(capMru(undefined, 200), []);
 });
