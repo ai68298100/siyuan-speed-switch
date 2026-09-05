@@ -160,4 +160,71 @@ function capMru(values, max) {
     return limit > 0 && out.length > limit ? out.slice(0, limit) : out;
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru};
+/**
+ * 字符串列表净化：过滤非字符串/空值并去重（保序）。
+ * 用于置顶列表、收藏分组注册表等纯字符串持久化数据的加载期清理；
+ * 入参不是数组时返回空列表且不标记 changed（首次运行无数据，避免无谓回写）
+ * @param {unknown} values
+ * @returns {{items: string[], changed: boolean}}
+ */
+function sanitizeStringList(values) {
+    if (!Array.isArray(values)) {
+        return {items: [], changed: false};
+    }
+    const seen = new Set();
+    const items = [];
+    values.forEach((value) => {
+        if (typeof value !== "string" || !value || seen.has(value)) {
+            return;
+        }
+        seen.add(value);
+        items.push(value);
+    });
+    return {items, changed: items.length !== values.length};
+}
+
+/**
+ * 收藏列表结构校验与净化（加载期，与 0.16.4 的运行时迁移互补清理历史脏数据）：
+ * - 丢弃非对象条目与 key 为空的条目（无法定位/跳转的废数据）
+ * - title 非 string 归一为 ""（渲染侧已有兜底）
+ * - rootId 非 string 或空串归一为 null（规范"无 rootId"表示；空串等价于没有）
+ * - group 非 string 归一为 ""（未分组）
+ * - 按 key 去重保序（历史数据可能因页签 id 退化对同一文档重复收藏）
+ * 入参不是数组时返回空列表且不标记 changed（首次运行无数据，避免无谓回写）
+ * @param {unknown} values
+ * @returns {{items: Array<{key: string, title: string, rootId: string|null, group: string}>, changed: boolean}}
+ */
+function sanitizeFavorites(values) {
+    if (!Array.isArray(values)) {
+        return {items: [], changed: false};
+    }
+    const seen = new Set();
+    const items = [];
+    let changed = false;
+    values.forEach((value) => {
+        if (!value || typeof value !== "object") {
+            changed = true;
+            return;
+        }
+        const key = typeof value.key === "string" ? value.key : "";
+        if (!key) {
+            changed = true;
+            return;
+        }
+        if (seen.has(key)) {
+            changed = true;
+            return;
+        }
+        seen.add(key);
+        const title = typeof value.title === "string" ? value.title : "";
+        const rootId = typeof value.rootId === "string" && value.rootId ? value.rootId : null;
+        const group = typeof value.group === "string" ? value.group : "";
+        if (title !== value.title || rootId !== value.rootId || group !== value.group) {
+            changed = true;
+        }
+        items.push({key, title, rootId, group});
+    });
+    return {items, changed};
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites};

@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -239,4 +239,86 @@ test('capMru: empty or null input returns empty array', () => {
     assert.deepEqual(capMru([], 200), []);
     assert.deepEqual(capMru(null, 200), []);
     assert.deepEqual(capMru(undefined, 200), []);
+});
+
+// ── sanitizeStringList ──
+test('sanitizeStringList: filters non-string / empty entries and dedupes keeping order', () => {
+    const out = sanitizeStringList(['b', 'a', null, undefined, 123, '', 'b', 'a', 'c']);
+    assert.deepEqual(out, {items: ['b', 'a', 'c'], changed: true});
+});
+
+test('sanitizeStringList: clean list passes through unchanged', () => {
+    assert.deepEqual(sanitizeStringList(['a', 'b', 'c']), {items: ['a', 'b', 'c'], changed: false});
+});
+
+test('sanitizeStringList: empty array unchanged', () => {
+    assert.deepEqual(sanitizeStringList([]), {items: [], changed: false});
+});
+
+test('sanitizeStringList: non-array returns empty list without changed (first run, avoid write-back)', () => {
+    assert.deepEqual(sanitizeStringList(undefined), {items: [], changed: false});
+    assert.deepEqual(sanitizeStringList(null), {items: [], changed: false});
+    assert.deepEqual(sanitizeStringList('x'), {items: [], changed: false});
+    assert.deepEqual(sanitizeStringList({}), {items: [], changed: false});
+});
+
+// ── sanitizeFavorites ──
+test('sanitizeFavorites: valid entries pass through unchanged', () => {
+    const input = [
+        {key: '20240101120000-abcdefg', title: '文档 A', rootId: '20240101120000-abcdefg', group: '工作'},
+        {key: 'tab-1', title: '页签 B', rootId: null, group: ''},
+    ];
+    assert.deepEqual(sanitizeFavorites(input), {items: input, changed: false});
+});
+
+test('sanitizeFavorites: drops non-object entries and entries with empty/non-string key', () => {
+    const out = sanitizeFavorites([
+        null,
+        42,
+        'str',
+        {title: 'no key'},
+        {key: '', title: 'empty key'},
+        {key: 'ok', title: 'kept'},
+    ]);
+    assert.deepEqual(out.items, [{key: 'ok', title: 'kept', rootId: null, group: ''}]);
+    assert.equal(out.changed, true);
+});
+
+test('sanitizeFavorites: dedupes by key keeping first occurrence', () => {
+    const out = sanitizeFavorites([
+        {key: 'k1', title: 'first', rootId: 'r1', group: 'g'},
+        {key: 'k1', title: 'second', rootId: 'r2', group: ''},
+    ]);
+    assert.deepEqual(out.items, [{key: 'k1', title: 'first', rootId: 'r1', group: 'g'}]);
+    assert.equal(out.changed, true);
+});
+
+test('sanitizeFavorites: normalizes missing / malformed fields', () => {
+    const out = sanitizeFavorites([
+        {key: 'k1'},                                   // title/rootId/group 全缺
+        {key: 'k2', title: 123, rootId: '', group: 0}, // 类型错误
+    ]);
+    assert.deepEqual(out.items, [
+        {key: 'k1', title: '', rootId: null, group: ''},
+        {key: 'k2', title: '', rootId: null, group: ''},
+    ]);
+    assert.equal(out.changed, true);
+});
+
+test('sanitizeFavorites: empty rootId string normalizes to null, rootId null stays null', () => {
+    const out = sanitizeFavorites([
+        {key: 'k1', title: 't', rootId: '', group: 'g'},
+        {key: 'k2', title: 't', rootId: null, group: 'g'},
+    ]);
+    assert.deepEqual(out.items, [
+        {key: 'k1', title: 't', rootId: null, group: 'g'},
+        {key: 'k2', title: 't', rootId: null, group: 'g'},
+    ]);
+    assert.equal(out.changed, true); // 第一条 rootId 被归一
+});
+
+test('sanitizeFavorites: non-array returns empty list without changed (first run, avoid write-back)', () => {
+    assert.deepEqual(sanitizeFavorites(undefined), {items: [], changed: false});
+    assert.deepEqual(sanitizeFavorites(null), {items: [], changed: false});
+    assert.deepEqual(sanitizeFavorites({}), {items: [], changed: false});
 });

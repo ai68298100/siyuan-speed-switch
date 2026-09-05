@@ -114,3 +114,25 @@ export const MRU_MAX = 200;
 // 用于区分文档 rootId 与一次性 tab.id（UUID）：收藏跳转只信任块 ID，
 // 避免拿 UUID 调 openTab 静默失败
 export const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
+
+// ==================== 存储键与注册标识 ====================
+
+// 插件持久化数据的 storage key（loadData/saveData 的 key，对应 storage/petal/<插件名>/ 分文件存储）。
+// ADR-0002 的遗留闭环项：storage key 改名即数据"丢失"（旧文件残留 + 新文件空白），
+// 集中后重命名风险一目了然；业务代码禁止手写这些字符串字面量
+export const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
+export const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
+export const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
+export const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
+export const SETTINGS_KEY = "sw_settings";  // 插件设置
+export const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
+export const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
+
+// 侧边栏 dock 的 type（实际注册为 插件名+type）
+export const SIDEBAR_DOCK_TYPE = "sidebar";
+
+// 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
+// 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
+export const DEFAULT_HOTKEY = "⌥⇧S";
+// 旧版本写入的无法匹配的顺序，需在加载时迁移
+export const LEGACY_HOTKEY = "⇧⌥S";

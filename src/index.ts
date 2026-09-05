@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList} from "./util";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -45,6 +45,16 @@ import {
     FAV_PANEL_WIDTH_PX,
     FAV_PANEL_MAX_HEIGHT_PX,
     FAV_PANEL_MIN_HEIGHT_PX,
+    MRU_KEY,
+    PINNED_KEY,
+    FAV_KEY,
+    FAV_GROUPS_KEY,
+    SETTINGS_KEY,
+    THUMB_CACHE_KEY,
+    FAV_COLLAPSED_KEY,
+    SIDEBAR_DOCK_TYPE,
+    DEFAULT_HOTKEY,
+    LEGACY_HOTKEY,
 } from "./constants";
 import {
     getSiyuan,
@@ -71,6 +81,8 @@ declare module "./util" {
     export function buildTabGroupsByParent<T extends {parent?: {element?: HTMLElement, headersElement?: HTMLElement}}>(
         tabs: T[], fallbackKey: HTMLElement,
     ): Map<HTMLElement, Array<{tab: T}>>;
+    export function sanitizeFavorites(values: unknown): {items: IFavoriteItem[], changed: boolean};
+    export function sanitizeStringList(values: unknown): {items: string[], changed: boolean};
 }
 
 // 卡片三按钮所需图标 symbol（与官方 litheness sprite 同名同形）：
@@ -108,18 +120,7 @@ const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titl
 // 页签卡片操作完成后的收尾动作（弹窗模式销毁弹窗，侧边栏模式刷新列表）
 type IOverlayClose = () => void;
 
-const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
-const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
-const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
-const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
-const SETTINGS_KEY = "sw_settings";  // 插件设置
-const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
-const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
-const SIDEBAR_DOCK_TYPE = "sidebar"; // 侧边栏 dock 的 type（实际注册为 插件名+type）
-// 默认快捷键 Alt+Shift+S。思源的 matchHotKey 对修饰键顺序有要求：⌥ 必须在 ⇧ 之前，
-// 写成 "⇧⌥S" 时永远无法匹配（按键无反应），务必保持 "⌥⇧S" 顺序。
-const DEFAULT_HOTKEY = "⌥⇧S";
-const LEGACY_HOTKEY = "⇧⌥S";         // 旧版本写入的无法匹配的顺序，需在加载时迁移
+// 存储 key / dock type / 快捷键等注册常量已集中到 ./constants.ts（ADR-0002 遗留闭环，v0.16.5）
 
 // 默认设置（可被用户设置覆盖）
 const DEFAULT_SETTINGS: ISwSettings = {
@@ -255,8 +256,29 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => logger.warn("load data fail", e));
+        // 加载期 sanitize：清理历史脏数据（0.16.5），仅在确实变化时回写，避免每次启动重写文件
+        this.sanitizePersistentData();
         // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
         this.initFavCollapsed();
+    }
+
+    // 加载期数据净化：收藏列表结构校验/按 key 去重，置顶与分组注册表过滤非法字符串
+    private sanitizePersistentData() {
+        const favorites = sanitizeFavorites(this.data[FAV_KEY]);
+        if (favorites.changed) {
+            this.data[FAV_KEY] = favorites.items;
+            this.saveDataDebounced(FAV_KEY);
+        }
+        const pinned = sanitizeStringList(this.data[PINNED_KEY]);
+        if (pinned.changed) {
+            this.data[PINNED_KEY] = pinned.items;
+            this.saveDataDebounced(PINNED_KEY);
+        }
+        const groups = sanitizeStringList(this.data[FAV_GROUPS_KEY]);
+        if (groups.changed) {
+            this.data[FAV_GROUPS_KEY] = groups.items;
+            this.saveDataDebounced(FAV_GROUPS_KEY);
+        }
     }
 
     // 桌面侧边栏 dock：与切换器同样的卡片列表，常驻便于快速切换；

@@ -16,3 +16,10 @@
   - 不放已存在的 storage key 常量（仍留在 index.ts 顶部以减少 churn）
 - **测试**：新增 `tests/constants.test.cjs` 校验范围自洽（MIN<MAX）作为防回归网。
 - **代价**：跨模块 import 增加一行；可接受。
+
+## 后记（v0.16.5 · 2026-09-05）
+
+本 ADR 原规则「storage key 常量仍留在 index.ts 顶部」已被 **P2-2** 闭环：全部 10 个存储键
+（`FAV_KEY`、`PINNED_KEY`、`FAV_GROUPS_KEY`、`MRU_KEY`、`THUMB_CACHE_KEY` 等）已迁移至
+`src/constants.ts` 集中管理，`index.ts` 顶部的 key 常量块随之删除。迁移仅移动常量定义位置，
+key 字符串值不变，旧存储文件无需任何迁移。数据治理侧的后续演进见 ADR-0004。
