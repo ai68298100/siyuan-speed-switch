@@ -87,6 +87,11 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.16.5 (2026-09-05)
+
+- **Auto-sanitize persisted data on startup**: favorites are deduped by key, corrupted entries are dropped and fields normalized; pinned/group lists filter invalid entries — legacy dirty data no longer amplifies over time.
+- Sanitization writes back to storage only when data actually changed, so normal startups perform zero extra disk writes.
+
 ### v0.16.4 (2026-09-05)
 
 - **Fixed favorites disappearing after clicking**: favoriting a lazy-loaded (never-activated) tab failed to resolve the doc ID, so the favorite key degraded to a one-off tab ID — jumps silently failed, star states desynced and caused duplicates, and repeated cleanup eventually emptied the list.
