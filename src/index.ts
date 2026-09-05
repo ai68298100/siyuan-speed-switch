@@ -202,7 +202,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private sidebarElement: HTMLElement | null = null; // 侧边栏 dock 面板内容元素
     private sidebarResizeObserver: ResizeObserver | null = null; // 侧边栏尺寸监听，变化时重算缩略图缩放
     private saveTimers = new Map<string, number>(); // 去抖写盘定时器：MRU/置顶/收藏等高频数据合并落盘
-    private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（会话级，重启后默认展开）
+    private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（已持久化，重启后恢复）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
@@ -1224,9 +1224,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
         const closeOverlay = () => dialog.destroy();
         const listOpts = {onOverlayClose: closeOverlay, onTabsChanged: (): void => undefined};
+        // 列表区与工具栏排序切换共享的「最近编辑」更新时间映射（loadUpdatedMap 异步回填）
+        const updatedMap: {[rootId: string]: string} = {};
 
         this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
-        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay);
+        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap);
 
         // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
@@ -1240,7 +1242,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (!scrollElement) {
             return;
         }
-        this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay);
+        this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
 
         // 让滚动区域获得焦点以接收键盘导航
         scrollElement.focus();
@@ -1273,8 +1275,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         searchInput: HTMLInputElement | null,
         sortSelect: HTMLSelectElement | null,
         closeOverlay: IOverlayClose,
+        updatedMap: {[rootId: string]: string},
     ) {
-        const updatedMap: {[rootId: string]: string} = {};
         this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
         this.bindKeydown(scrollElement, closeOverlay);
 
@@ -1342,6 +1344,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         sortSelect: HTMLSelectElement | null,
         listOpts: {onOverlayClose: () => void, onTabsChanged: () => void},
         closeOverlay: () => void,
+        updatedMap: {[rootId: string]: string},
     ) {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -1360,10 +1363,20 @@ export default class SpeedSwitchPlugin extends Plugin {
             const nextSort = sortSelect.value as SortBy;
             this.updateSettings({sortBy: nextSort});
             const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-            // 弹窗存活期间页签可能已增减，重取最新列表
+            // 弹窗存活期间页签可能已增减，重取最新列表；沿用共享 updatedMap，已回源的更新时间不丢
             if (scrollElement) {
-                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, nextSort, {});
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, nextSort, updatedMap);
             }
+            // 排序切换时文档可能又有更新：补查一次更新时间，仍在「最近编辑」排序且未搜索时重排
+            this.loadUpdatedMap(getAllTabs()).then((map) => {
+                Object.assign(updatedMap, map);
+                if (dialog.element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                    const el = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+                    if (el) {
+                        this.renderList(el, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+                    }
+                }
+            });
             if (searchInput) {
                 searchInput.value = "";
                 this.applySearch(scrollElement, searchInput, closeOverlay);
@@ -1939,6 +1952,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         const closePanel = () => {
             panel.classList.add("fn__none");
             observer.disconnect();
+            // 收起这一刻宿主已被移除（弹窗销毁/侧边栏重渲染）则立即解绑全部全局监听，
+            // 否则需等下一次全局 pointerdown 才由兜底路径清理
+            if (!container.isConnected) {
+                unbindGlobal();
+            }
         };
         // 点击外部收起面板；面板关闭期间 MutationObserver 已停止，
         // 宿主容器被移除后由这次全局点击兜底解绑全部监听
@@ -2579,8 +2597,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         const targets = opened.filter((tab) => keys.has(this.pinKeyOf(tab)));
         let closed = 0;
         for (const tab of targets) {
-            await this.closeTabQuietly(tab);
-            closed++;
+            // 仅统计真正关闭成功的页签，失败不计入提示数
+            if (await this.closeTabQuietly(tab)) {
+                closed++;
+            }
         }
         if (closed > 0) {
             showMessage(this.i18n.groupTabsClosed.replace("{x}", String(closed)));
@@ -2794,31 +2814,36 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavSelects();
     }
 
-    // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）
-    private async closeTabQuietly(tab: Tab): Promise<void> {
+    // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）；
+    // 返回是否真正关闭成功，供批量关闭准确计数
+    private async closeTabQuietly(tab: Tab): Promise<boolean> {
         if (this.isMobile) {
             // 手机端：MobileTabs.close 关闭页签；必须保持宿主对象调用（裸调用丢 this），
             // await 返回值以便批量关闭时串行等待，完成后给状态一小段沉降时间
             try {
                 const tabs = getSiyuan()?.mobile?.tabs;
-                if (typeof tabs?.close === "function") {
-                    const result = await tabs.close(tab.id);
-                    if (result && result !== "success") {
-                        logger.warn("mobile close tab non-success result", result);
-                    }
-                    await this.sleep(TAB_SETTLE_MS);
+                if (typeof tabs?.close !== "function") {
+                    return false;
                 }
+                const result = await tabs.close(tab.id);
+                if (result && result !== "success") {
+                    logger.warn("mobile close tab non-success result", result);
+                }
+                await this.sleep(TAB_SETTLE_MS);
+                return true;
             } catch (e) {
                 logger.warn("mobile close tab fail", e);
+                return false;
             }
-            return;
         }
         try {
             tab.parent.removeTab(tab.id);
             // 连续 removeTab 时给思源 DOM/状态一帧沉降时间，降低漏关概率
             await this.sleep(TAB_SETTLE_MS);
+            return true;
         } catch (e) {
             logger.warn("close tab fail", e);
+            return false;
         }
     }
 
@@ -2828,8 +2853,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
-    private handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
-        this.closeTabQuietly(tab);
+    private async handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
+        // 等待页签真正关闭后再移除卡片，保证 onTabsChanged（侧边栏刷新）触发时读到最新列表
+        await this.closeTabQuietly(tab);
         // 先取引用再移除卡片（remove 后 closest 返回 null）
         const group = card.closest(".sw__group");
         const scroll = card.closest(".sw__scroll");
@@ -3644,8 +3670,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (!searchInput || !sortSelect || !scrollElement) {
             return;
         }
-        this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, settings);
+        // 先装配列表拿到 renderMobileList，再绑定工具栏（排序切换复用装配期 renderMobileList）；
+        // 列表首渲染只依赖 sortSelect 值，不依赖工具栏绑定，对调安全
+        sortSelect.value = settings.sortBy;
         const {renderMobileList} = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
+        this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
 
         // 把 FAB 关闭时的 FAB 恢复优先级插在 destroy 之后；保证打开收藏弹窗关闭后会回到列表
         dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
@@ -3694,14 +3723,14 @@ export default class SpeedSwitchPlugin extends Plugin {
 </div>`;
     }
 
-    // 手机端顶栏按钮：设置 / 日记（收藏由 renderMobileSwitcherList 处理是因为它要绑定 renderMobileList）
+    // 手机端顶栏按钮：设置 / 日记 + 排序切换（排序切换复用装配期 renderMobileList 与 updatedMap）
     private bindMobileSwitcherToolbarActions(
         dialog: Dialog,
         searchInput: HTMLInputElement,
         sortSelect: HTMLSelectElement,
         scrollElement: HTMLDivElement,
         closeOverlay: () => void,
-        settings: ISwSettings,
+        renderMobileList: () => void,
     ) {
         // 隐藏 FAB 推迟到按钮 click 处是因为 openSetting 可能也关闭原 dialog
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
@@ -3715,14 +3744,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.fabElement?.classList.remove("sw__fab--hidden");
             this.openJournal();
         });
-        sortSelect.value = settings.sortBy;
         sortSelect.addEventListener("change", () => {
             this.updateSettings({sortBy: sortSelect.value as SortBy});
-            // 排序切换：重读最新列表、清除搜索词、重过滤
-            this.renderMobileList(scrollElement, this.getMobileTabs(),
-                {id: this.getMobileActiveTabId()} as Tab,
-                {onOverlayClose: closeOverlay, onTabsChanged: closeOverlay},
-                sortSelect.value as SortBy, {});
+            // 排序切换：复用装配期 renderMobileList（重读最新列表 + 共享 updatedMap），再清搜索词重过滤
+            renderMobileList();
             searchInput.value = "";
             this.filterCards(scrollElement, searchInput.value);
         });
@@ -3836,6 +3861,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         const groupNames = this.getFavoriteGroupNames();
 
         if (favorites.length === 0 && groupNames.length === 0) {
+            // 无任何收藏时给出反馈而非静默无响应
+            showMessage(this.i18n.mobileNoFav);
             return;
         }
 
@@ -3848,6 +3875,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
         const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
         if (!sheet || !body) {
+            // 骨架异常时不能把空遮罩留在 body 上挡住整屏交互
+            overlay.remove();
             return;
         }
 
@@ -4148,11 +4177,23 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.pruneThumbCache(tabs);
         const activeTab = this.getActiveTab();
         const refresh = () => this.refreshSidebar();
+        const listOpts = {onOverlayClose: refresh, onTabsChanged: refresh};
+        const updatedMap: {[rootId: string]: string} = {};
         const scrollElement = element.querySelector<HTMLDivElement>(".sw__scroll");
         if (!scrollElement) {
             return;
         }
-        this.renderList(scrollElement, tabs, activeTab, {onOverlayClose: refresh, onTabsChanged: refresh}, this.getSettings().sortBy, {});
+        this.renderList(scrollElement, tabs, activeTab, listOpts, this.getSettings().sortBy, updatedMap);
+
+        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序且未搜索则重排
+        this.loadUpdatedMap(tabs).then((map) => {
+            Object.assign(updatedMap, map);
+            const sortSelect = element.querySelector<HTMLSelectElement>(".sw__sort");
+            const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
+            if (element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+            }
+        });
 
         // 面板尺寸变化时仅重算缩略图缩放比例（ResizeObserver 覆盖拖动分隔条等所有场景）
         this.observeSidebarResize(element);

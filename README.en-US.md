@@ -87,6 +87,14 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## Changelog
 
+### v0.16.6 (2026-09-05)
+
+- **Sort switches reflect up-to-date edit times**: desktop popup, sidebar and mobile share & backfill the updated-time map when switching to "Recently edited", so ordering is correct on first paint and stable after switches.
+- **Accurate batch close counts**: only tabs that were actually closed successfully count toward the summary message.
+- **Mobile sort switching keeps state**: reuses the assembled list closure, re-sorts with the latest data immediately and clears the search box.
+- **Better emoji icon detection**: composed emoji (e.g. 👨‍👩‍👧) and skin-tone emoji (e.g. 👍🏽) now render as emoji correctly.
+- Fixed listener leaks when the favorites dropdown is destroyed mid-collapse; the mobile favorites sheet shows a hint when empty instead of staying silent.
+
 ### v0.16.5 (2026-09-05)
 
 - **Auto-sanitize persisted data on startup**: favorites are deduped by key, corrupted entries are dropped and fields normalized; pinned/group lists filter invalid entries — legacy dirty data no longer amplifies over time.

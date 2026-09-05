@@ -135,6 +135,18 @@ test('resolveIconFallback: hex codepoints converted to emoji', () => {
     assert.deepEqual(resolveIconFallback('2b50'), {type: 'emoji', value: '⭐'});
 });
 
+test('resolveIconFallback: ZWJ family emoji counts as single grapheme', () => {
+    assert.deepEqual(resolveIconFallback('👨‍👩‍👧'), {type: 'emoji', value: '👨‍👩‍👧'});
+});
+
+test('resolveIconFallback: skin-tone emoji counts as single grapheme', () => {
+    assert.deepEqual(resolveIconFallback('👍🏽'), {type: 'emoji', value: '👍🏽'});
+});
+
+test('resolveIconFallback: regular two-char strings still fall back to iconFile', () => {
+    assert.deepEqual(resolveIconFallback('ab'), {type: 'svg', value: 'iconFile'});
+});
+
 test('resolveIconFallback: invalid multi-char string falls back to iconFile', () => {
     assert.deepEqual(resolveIconFallback('not-an-icon'), {type: 'svg', value: 'iconFile'});
     assert.deepEqual(resolveIconFallback('icon'), {type: 'svg', value: 'iconFile'}); // 只有前缀没有名字

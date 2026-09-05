@@ -70,6 +70,18 @@ function groupFavoritesByGroup(favorites, groupNames) {
     return groups;
 }
 
+// 字素计数器：ZWJ 组合 emoji（👨‍👩‍👧）与肤色修饰（👍🏽）算 1 个图素；
+// Node 18+/现代 WebView 均支持 Intl.Segmenter，缺失环境退回码点展开
+const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter()
+    : null;
+function graphemeLength(str) {
+    if (GRAPHEME_SEGMENTER) {
+        return [...GRAPHEME_SEGMENTER.segment(str)].length;
+    }
+    return [...str].length;
+}
+
 /**
  * 解析思源页签图标字符串：svg 图标名 / emoji 字符 / 十六进制 codepoint / 空值兜底
  * @param {string} raw
@@ -92,8 +104,8 @@ function resolveIconFallback(raw) {
             // 解析失败继续走兜底
         }
     }
-    // 单个字符按 emoji 渲染；多位非法字符串回退文件图标
-    if ([...trimmed].length === 1) {
+    // 单个字素按 emoji 渲染（ZWJ 组合/肤色修饰算 1 个）；多位非法字符串回退文件图标
+    if (graphemeLength(trimmed) === 1) {
         return {type: "emoji", value: trimmed};
     }
     return {type: "svg", value: "iconFile"};
