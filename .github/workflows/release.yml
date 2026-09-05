@@ -29,6 +29,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify tag version
+        run: node -e "const p=require('./package.json'), m=require('./plugin.json'), tag=process.env.GITHUB_REF_NAME; if ('v'+p.version !== tag || m.version !== p.version) { console.error('Tag/package/plugin version mismatch'); process.exit(1); }"
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Smoke test
+        run: pnpm test:smoke
+
       - name: Build package.zip
         run: pnpm build
 

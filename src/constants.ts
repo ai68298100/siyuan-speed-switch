@@ -31,6 +31,8 @@ export const NOTEBOOK_FETCH_TIMEOUT_MS = 5000;
 
 // 批量开/关页签后给思源 DOM/状态一帧沉降时间：连续 removeTab/MobileTabs 操作降低漏关/漏开概率
 export const TAB_SETTLE_MS = 30;
+// 批量开关页签后的最长状态确认时间，超时的操作不计入成功数量
+export const TAB_VERIFY_TIMEOUT_MS = 1500;
 
 // ==================== UI 反馈 ====================
 

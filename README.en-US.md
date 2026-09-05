@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.7-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
 
@@ -86,6 +86,16 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.16.7 (2026-09-05)
+
+- Fixed favoriting unloaded tabs by resolving document IDs from SiYuan's lazy-loaded tab data and retrying after loading.
+- Fixed incomplete one-click favorite group open/close actions by confirming tab state after each operation.
+- Fixed Neo and similar themes enlarging the mobile favorite, pin, and close buttons by enforcing stable button and icon dimensions.
+- Fixed mobile close failures being counted as successful closes; failed single closes now keep their cards and show an error.
+- Fixed the mobile "Recently edited" sorting race caused by asynchronous timestamp loading.
+- Debounced thumbnail cache writes, awaited pending saves during unload, and added HTTP error handling for kernel requests.
+- Added version consistency, type-check, unit-test, and smoke-test gates to the release workflow.
 
 ### v0.16.6 (2026-09-05)
 

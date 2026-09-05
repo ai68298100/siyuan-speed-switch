@@ -103,6 +103,7 @@
   "journalNoNotebook": "暂无可用笔记本，请先到思源中创建或打开笔记本",
   "journalFailed": "打开日记失败，请检查默认笔记本设置",
   "openDocFailed": "打开文档失败，请稍后再试",
+  "closeTabFailed": "关闭页签失败，请稍后再试",
   "favNeedActivate": "该页签尚未加载完成，请先切换到该页签再收藏",
   "favInvalidEntry": "该收藏项缺少有效文档信息，打开对应页签后会自动修复"
 }

@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -333,4 +333,16 @@ test('sanitizeFavorites: non-array returns empty list without changed (first run
     assert.deepEqual(sanitizeFavorites(undefined), {items: [], changed: false});
     assert.deepEqual(sanitizeFavorites(null), {items: [], changed: false});
     assert.deepEqual(sanitizeFavorites({}), {items: [], changed: false});
+});
+
+// ── isSuccessfulMobileTabsResult ──
+test('isSuccessfulMobileTabsResult: supports old undefined and new success results', () => {
+    assert.equal(isSuccessfulMobileTabsResult(undefined), true);
+    assert.equal(isSuccessfulMobileTabsResult('success'), true);
+});
+
+test('isSuccessfulMobileTabsResult: rejects explicit MobileTabs failures', () => {
+    for (const result of ['cancelled', 'invalid', 'failed', null, 'unexpected']) {
+        assert.equal(isSuccessfulMobileTabsResult(result), false);
+    }
 });

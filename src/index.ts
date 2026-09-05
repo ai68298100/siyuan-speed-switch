@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -13,6 +13,7 @@ import {
     UPDATED_CACHE_MS,
     NOTEBOOK_FETCH_TIMEOUT_MS,
     TAB_SETTLE_MS,
+    TAB_VERIFY_TIMEOUT_MS,
     DIALOG_WIDTH_MIN_PX,
     DIALOG_WIDTH_MAX_PX,
     DIALOG_HEIGHT_MIN_PX,
@@ -83,6 +84,7 @@ declare module "./util" {
     ): Map<HTMLElement, Array<{tab: T}>>;
     export function sanitizeFavorites(values: unknown): {items: IFavoriteItem[], changed: boolean};
     export function sanitizeStringList(values: unknown): {items: string[], changed: boolean};
+    export function isSuccessfulMobileTabsResult(result: unknown): boolean;
 }
 
 // 卡片三按钮所需图标 symbol（与官方 litheness sprite 同名同形）：
@@ -339,8 +341,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    onunload() {
-        this.flushPendingSaves();
+    async onunload() {
+        const pendingSaves = this.flushPendingSaves();
         this.docSearchAbort?.abort();
         this.docSearchAbort = null;
         this.docSearchCache.clear();
@@ -358,6 +360,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
+        await pendingSaves;
     }
 
     // ==================== 持久化性能 ====================
@@ -376,12 +379,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 立即落盘全部待写数据（卸载时调用，避免丢失最近一次去抖窗口内的改动）
-    private flushPendingSaves() {
+    private flushPendingSaves(): Promise<void> {
+        const pending: Promise<unknown>[] = [];
         this.saveTimers.forEach((timer, key) => {
             clearTimeout(timer);
-            this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e));
+            pending.push(this.saveData(key, this.data[key]).catch((e) => logger.warn("save data fail", e)));
         });
         this.saveTimers.clear();
+        return Promise.all(pending).then((): void => undefined);
     }
 
     // 旧版本默认快捷键 "⇧⌥S" 无法被思源热键匹配命中，且可能已持久化到快捷键配置中，
@@ -535,6 +540,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 body: "{}",
                 signal: controller.signal,
             });
+            if (!response.ok) {
+                throw new Error(`lsNotebooks HTTP ${response.status}`);
+            }
             const json = await response.json();
             const notebooks = (json?.data?.notebooks ?? []) as Array<{id: string, name: string, closed?: number}>;
             return notebooks
@@ -602,6 +610,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({notebook}),
             });
+            if (!response.ok) {
+                throw new Error(`createDailyNote HTTP ${response.status}`);
+            }
             const json = await response.json();
             if (json?.code === 0 && json?.data?.id) {
                 return json.data.id;
@@ -1448,6 +1459,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 body: JSON.stringify({k: keyword}),
                 signal: controller.signal,
             });
+            if (!response.ok) {
+                throw new Error(`searchDocs HTTP ${response.status}`);
+            }
             const json = await response.json();
             if (seq !== this.searchSeq || !scrollElement.isConnected) {
                 return;
@@ -1584,6 +1598,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({query: `SELECT root_id, updated FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
             });
+            if (!response.ok) {
+                throw new Error(`query/sql HTTP ${response.status}`);
+            }
             const json = await response.json();
             const map: {[rootId: string]: string} = {};
             (json?.data || []).forEach((row: any) => {
@@ -1771,10 +1788,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 渲染/排序/MRU/收藏多处高频调用，按页签 id 缓存后只解析一次
     private rootIdOf(tab: Tab): string | null {
         const cached = this.rootIdCache.get(tab.id);
-        if (cached !== undefined) {
+        if (cached) {
             return cached;
         }
         const rootId = this.computeRootId(tab);
+        if (!rootId) {
+            this.rootIdCache.delete(tab.id);
+            return null;
+        }
         if (this.rootIdCache.size >= ROOT_ID_CACHE_MAX) {
             // 页签 id 在一次会话内稳定，整体清空代价可忽略
             this.rootIdCache.clear();
@@ -1785,8 +1806,9 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private computeRootId(tab: Tab): string | null {
         const model = (tab as unknown as { model?: IProtyleTabModel }).model;
-        if (model?.editor?.block?.rootID) {
-            return model.editor.block.rootID;
+        const loadedRootId = model?.editor?.protyle?.block?.rootID || model?.editor?.block?.rootID;
+        if (loadedRootId) {
+            return loadedRootId;
         }
         // 重启/重置布局后，未激活页签的 model 是懒加载的（切换到该页签才创建）：
         // 思源把 Editor 初始化数据存在 headElement 的 data-initdata 属性中（含 rootId）
@@ -1794,8 +1816,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             const initData = tab.headElement?.getAttribute("data-initdata");
             if (initData) {
                 const json = JSON.parse(initData);
-                if (json?.instance === "Editor" && json.rootId) {
-                    return json.rootId;
+                if (json?.instance === "Editor") {
+                    return json.rootId || json.blockId || null;
                 }
             }
         } catch (e) {
@@ -2581,8 +2603,11 @@ export default class SpeedSwitchPlugin extends Plugin {
                 // 桌面端连续 openTab 时稍作等待，让思源完成页签创建与状态更新
                 await this.sleep(TAB_SETTLE_MS);
             }
-            openedKeys.add(fav.key);
-            count++;
+            if (await this.waitForTabState(rootId, true)) {
+                openedKeys.add(rootId);
+                openedKeys.add(fav.key);
+                count++;
+            }
         }
         if (count > 0) {
             showMessage(this.i18n.groupTabsOpened.replace("{x}", String(count)));
@@ -2598,7 +2623,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         let closed = 0;
         for (const tab of targets) {
             // 仅统计真正关闭成功的页签，失败不计入提示数
-            if (await this.closeTabQuietly(tab)) {
+            const rootId = this.rootIdOf(tab);
+            if (rootId && await this.closeTabQuietly(tab) && await this.waitForTabState(rootId, false)) {
                 closed++;
             }
         }
@@ -2826,11 +2852,11 @@ export default class SpeedSwitchPlugin extends Plugin {
                     return false;
                 }
                 const result = await tabs.close(tab.id);
-                if (result && result !== "success") {
+                if (!isSuccessfulMobileTabsResult(result)) {
                     logger.warn("mobile close tab non-success result", result);
                 }
                 await this.sleep(TAB_SETTLE_MS);
-                return true;
+                return isSuccessfulMobileTabsResult(result);
             } catch (e) {
                 logger.warn("mobile close tab fail", e);
                 return false;
@@ -2847,6 +2873,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
+    // 确认批量操作已经反映到思源页签状态，避免 API 返回成功但 UI 尚未更新时继续发起下一项。
+    private async waitForTabState(rootId: string, shouldBeOpen: boolean): Promise<boolean> {
+        const deadline = Date.now() + TAB_VERIFY_TIMEOUT_MS;
+        do {
+            const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+            const present = tabs.some((tab) => this.rootIdOf(tab) === rootId || this.pinKeyOf(tab) === rootId);
+            if (present === shouldBeOpen) {
+                return true;
+            }
+            await this.sleep(TAB_SETTLE_MS);
+        } while (Date.now() < deadline);
+        return false;
+    }
+
     // 小睡工具：批量开/关页签时避免竞态
     private sleep(ms: number): Promise<void> {
         return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -2855,7 +2895,11 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）
     private async handleCloseTab(tab: Tab, card: HTMLElement, onTabsChanged: IOverlayClose) {
         // 等待页签真正关闭后再移除卡片，保证 onTabsChanged（侧边栏刷新）触发时读到最新列表
-        await this.closeTabQuietly(tab);
+        const closed = await this.closeTabQuietly(tab);
+        if (!closed) {
+            showMessage(this.i18n.closeTabFailed, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
         // 先取引用再移除卡片（remove 后 closest 返回 null）
         const group = card.closest(".sw__group");
         const scroll = card.closest(".sw__scroll");
@@ -3134,7 +3178,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private saveThumbCache(cache: IThumbCache) {
         this.data[THUMB_CACHE_KEY] = cache;
-        this.saveData(THUMB_CACHE_KEY, cache).catch((e) => logger.warn("save thumb cache fail", e));
+        this.saveDataDebounced(THUMB_CACHE_KEY);
     }
 
     // 写入一条缓存（实时 DOM 优先更新），超过上限时按最旧淘汰；不立即写盘，由调用方批量 flush
@@ -3373,6 +3417,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({id: rootId, mode: 0, size: 32}),
             });
+            if (!response.ok) {
+                throw new Error(`getDoc HTTP ${response.status}`);
+            }
             const json = await response.json();
             const html: string | undefined = json?.data?.content;
             // 弹窗已关闭或内容无效时放弃
@@ -3777,7 +3824,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const mergedMap = updatedMap;
         this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
             Object.assign(mergedMap, map);
-            if (dialog.element.isConnected && sortSelect.value === "updatedDesc" && document.activeElement !== sortSelect) {
+            if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
                 renderMobileList();
             }
         });

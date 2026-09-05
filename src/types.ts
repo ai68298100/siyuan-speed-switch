@@ -108,6 +108,9 @@ export interface IProtyleBlock {
 
 export interface IProtyleEditor {
     block?: IProtyleBlock;
+    protyle?: {
+        block?: IProtyleBlock;
+    };
     wysiwyg?: IProtyleWysiwyg;
 }
 

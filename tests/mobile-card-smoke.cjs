@@ -51,8 +51,16 @@ const html = `<!DOCTYPE html><html><body>${sprite}
     </div>
   </div>
 </div>
+<div class="b3-dialog"><div class="sw-settings__item">
+  <div class="sw-settings__item-main"><div class="sw-settings__item-title">Setting</div></div>
+  <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
+</div></div>
 <style>${baseCss}</style>
 <style>${pluginCss}</style>
+<style>
+  /* Simulate a theme loaded after the plugin with broad tooltip rules. */
+  .b3-tooltips { width: 100%; height: 88px; min-width: 100%; padding: 20px; line-height: 4; }
+</style>
 </body></html>`;
 
 const dom = new JSDOM(html, {pretendToBeVisual: true});
@@ -119,4 +127,10 @@ console.log(`${thumbOk ? '✅' : '❌'} thumb .sw__thumb present: ${thumbR.width
 if (!thumbOk) allPassed = false;
 
 console.log(`\n${allPassed ? '✅ mobile card smoke passed' : '❌ mobile card smoke failed'}`);
+const settingSwitch = doc.querySelector('.sw-settings__item-action .sw-switch');
+const switchCs = dom.window.getComputedStyle(settingSwitch);
+const switchOk = switchCs.width === '42px' && switchCs.height === '24px' && switchCs.position === 'relative';
+console.log(`${switchOk ? 'PASS' : 'FAIL'} settings switch: ${switchCs.width}x${switchCs.height} ${switchCs.position}`);
+if (!switchOk) allPassed = false;
+
 process.exit(allPassed ? 0 : 1);

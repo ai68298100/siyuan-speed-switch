@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.7-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 思源笔记页签切换器：像 Windows **Win+Tab / Alt+Tab** 一样，以**实时缩略图**快速切换已打开的页签；内置**收藏分组**、**全库搜索**、**面板速达**、**侧边栏常驻**、**全屏模式**五种效率武器，**分栏（分屏）布局完全支持**，**手机端完整适配**。
 
@@ -86,6 +86,16 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.16.7（2026-09-05）
+
+- 修复未激活页签无法收藏的问题，兼容思源懒加载页签的文档 ID，并允许加载完成后重新解析。
+- 修复收藏分组一键打开/关闭执行不完整的问题，增加页签状态确认后再继续批量操作。
+- 修复 Neo 等主题把手机端收藏、置顶、关闭按钮撑大的问题，强制固定按钮与图标尺寸。
+- 修复移动端关闭失败仍被计入成功数量的问题，单个关闭失败时保留卡片并提示。
+- 修复移动端“最近编辑”排序的异步更新时间竞态。
+- 缩略图缓存改为防抖写盘，卸载时等待待保存数据完成，并补充内核请求错误处理。
+- 发布工作流增加版本一致性、类型检查、单元测试和冒烟测试门禁。
 
 ### v0.16.6（2026-09-05）
 

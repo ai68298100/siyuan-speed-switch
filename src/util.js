@@ -239,4 +239,14 @@ function sanitizeFavorites(values) {
     return {items, changed};
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites};
+/**
+ * MobileTabs.open/close compatibility result: older SiYuan versions return
+ * undefined, while newer versions return an explicit success/failure value.
+ * @param {unknown} result
+ * @returns {boolean}
+ */
+function isSuccessfulMobileTabsResult(result) {
+    return result === undefined || result === "success";
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult};
