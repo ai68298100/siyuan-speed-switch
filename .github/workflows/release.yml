@@ -38,11 +38,11 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Smoke test
-        run: pnpm test:smoke
-
       - name: Build package.zip
         run: pnpm build
+
+      - name: Smoke test
+        run: pnpm test:smoke
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
