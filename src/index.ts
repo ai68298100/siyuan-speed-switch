@@ -52,11 +52,13 @@ import {
     THUMB_API_MAX,
     THUMB_API_MAX_MOBILE,
     MRU_MAX,
+    HISTORY_MAX,
     BLOCK_ID_RE,
     FAV_PANEL_WIDTH_PX,
     FAV_PANEL_MAX_HEIGHT_PX,
     FAV_PANEL_MIN_HEIGHT_PX,
     MRU_KEY,
+    HISTORY_KEY,
     PINNED_KEY,
     FAV_KEY,
     FAV_GROUPS_KEY,
@@ -333,6 +335,13 @@ interface IFavoriteItem {
     group: string;     // 鍒嗙粍鍚嶏紝绌哄瓧绗︿覆琛ㄧず鏈垎缁勶紙鏃ф暟鎹棤姝ゅ瓧娈垫寜鏈垎缁勫鐞嗭級
 }
 
+interface IOpenHistoryEntry {
+    key: string;
+    rootId: string | null;
+    title: string;
+    ts: number;
+}
+
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
@@ -396,6 +405,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private async initPersistentData() {
         await Promise.all([
             this.loadData(MRU_KEY),
+            this.loadData(HISTORY_KEY),
             this.loadData(PINNED_KEY),
             this.loadData(FAV_KEY),
             this.loadData(FAV_GROUPS_KEY),
@@ -426,6 +436,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (groups.changed) {
             this.data[FAV_GROUPS_KEY] = groups.items;
             this.saveDataDebounced(FAV_GROUPS_KEY);
+        }
+        const history = this.sanitizeOpenHistory(this.data[HISTORY_KEY]);
+        if (history.changed) {
+            this.data[HISTORY_KEY] = history.items;
+            this.saveDataDebounced(HISTORY_KEY);
         }
         const quickActions = sanitizeQuickActions(this.data[QUICK_ACTIONS_KEY], QUICK_ACTIONS_MAX);
         if (quickActions.changed) {
@@ -1645,6 +1660,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <div class="sw__fav-dd"></div>
                 </div>
                 <div class="sw__select-wrap">
+                    <div class="sw__history-dd"></div>
+                </div>
+                <div class="sw__select-wrap">
                     <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
                         <option value="mru">${this.i18n.sortMru}</option>
                         <option value="layout">${this.i18n.sortLayout}</option>
@@ -1743,8 +1761,10 @@ const updatedMap: {[rootId: string]: string} = {};
         this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap);
 
         // 鏀惰棌涓嬫媺缁勪欢锛氭槦鏍囪Е鍙?+ 鍒嗙粍闈㈡澘锛堝垎缁勫彲鎶樺彔/灞曞紑锛岄」鐐瑰嚮璺宠浆锛?
-const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
+        const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
         this.setupFavDropdown(favDd, closeOverlay, refreshList);
+        const historyDd = dialog.element.querySelector<HTMLElement>(".sw__history-dd");
+        this.setupOpenHistoryDropdown(historyDd, closeOverlay);
         if (sortSelect) {
             sortSelect.value = settings.sortBy;
         }
@@ -3238,6 +3258,104 @@ private rootIdOf(tab: Tab): string | null {
     private saveFavCollapsed() {
         this.data[FAV_COLLAPSED_KEY] = Array.from(this.favCollapsed);
         this.saveDataDebounced(FAV_COLLAPSED_KEY);
+    }
+
+    // 桌面端顶部的最近打开记录。历史与 MRU 分离，保留关闭页签后仍可重开的文档。
+    private setupOpenHistoryDropdown(container: HTMLElement | null, onClose: IOverlayClose) {
+        if (!container) return;
+        container.innerHTML = `<button type="button" class="sw__history-trigger" aria-label="${this.i18n.openHistory}">
+    <svg><use xlink:href="#iconClock"></use></svg><span class="sw__history-trigger-text">${this.i18n.openHistory}</span><span class="sw__history-badge"></span>
+</button><div class="sw__history-panel fn__none" role="menu"></div>`;
+        const trigger = container.querySelector<HTMLElement>(".sw__history-trigger");
+        const panel = container.querySelector<HTMLElement>(".sw__history-panel");
+        if (!trigger || !panel) return;
+        let outsideHandler: ((event: PointerEvent) => void) | null = null;
+        const close = () => {
+            panel.classList.add("fn__none");
+            if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
+            outsideHandler = null;
+        };
+        trigger.addEventListener("click", () => {
+            if (!panel.classList.contains("fn__none")) { close(); return; }
+            this.renderOpenHistoryPanel(panel, (entry) => {
+                close();
+                onClose();
+                void this.openHistoryEntry(entry);
+            });
+            panel.classList.remove("fn__none");
+            this.positionOpenHistoryPanel(trigger, panel);
+            outsideHandler = (event) => { if (!container.contains(event.target as Node)) close(); };
+            document.addEventListener("pointerdown", outsideHandler, true);
+        });
+        window.addEventListener("resize", () => {
+            if (!panel.classList.contains("fn__none")) this.positionOpenHistoryPanel(trigger, panel);
+        });
+        this.refreshOpenHistoryDropdown(container);
+    }
+
+    private positionOpenHistoryPanel(trigger: HTMLElement, panel: HTMLElement) {
+        const rect = trigger.getBoundingClientRect();
+        const margin = 6;
+        const width = Math.min(300, Math.max(220, window.innerWidth - margin * 2));
+        const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin));
+        const top = rect.bottom + margin;
+        panel.style.width = `${Math.round(width)}px`;
+        panel.style.left = `${Math.round(left)}px`;
+        panel.style.top = `${Math.round(Math.min(top, window.innerHeight - 180))}px`;
+        panel.style.maxHeight = `${Math.max(140, window.innerHeight - top - margin)}px`;
+    }
+
+    private renderOpenHistoryPanel(panel: HTMLElement, onPick: (entry: IOpenHistoryEntry) => void) {
+        panel.innerHTML = "";
+        const entries = this.getOpenHistory();
+        if (entries.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__history-empty";
+            empty.textContent = this.i18n.noOpenHistory;
+            panel.appendChild(empty);
+            return;
+        }
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
+        entries.forEach((entry) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__history-item";
+            item.setAttribute("role", "menuitem");
+            item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span class="sw__history-copy"><span class="sw__history-title"></span><span class="sw__history-meta"></span></span>`;
+            item.querySelector<HTMLElement>(".sw__history-title")!.textContent = entry.title;
+            item.querySelector<HTMLElement>(".sw__history-meta")!.textContent = openedKeys.has(entry.key) ? this.i18n.historyOpen : this.i18n.historyClosed;
+            item.title = entry.title;
+            item.addEventListener("click", () => onPick(entry));
+            panel.appendChild(item);
+        });
+    }
+
+    private async openHistoryEntry(entry: IOpenHistoryEntry) {
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const current = opened.find((tab) => this.pinKeyOf(tab) === entry.key);
+        if (current) { this.activateTab(current); return; }
+        if (!entry.rootId || !BLOCK_ID_RE.test(entry.rootId)) { showMessage(this.i18n.historyInvalid); return; }
+        if (this.isMobile) {
+            await this.mobileOpenDoc(entry.rootId);
+        } else {
+            try { await openTab({app: this.app, doc: {id: entry.rootId}}); }
+            catch (e) { logger.warn("open history entry fail", e); showMessage(this.i18n.openDocFailed); }
+        }
+    }
+
+    private refreshOpenHistoryDropdowns() {
+        document.querySelectorAll<HTMLElement>(".sw__history-dd").forEach((container) => this.refreshOpenHistoryDropdown(container));
+    }
+
+    private refreshOpenHistoryDropdown(container: HTMLElement) {
+        const badge = container.querySelector<HTMLElement>(".sw__history-badge");
+        if (badge) {
+            const count = this.getOpenHistory().length;
+            badge.textContent = String(count);
+            badge.classList.toggle("fn__none", count === 0);
+        }
+        container.querySelector<HTMLElement>(".sw__history-panel")?.classList.add("fn__none");
     }
 
     // ==================== 鏀惰棌涓嬫媺缁勪欢 ====================
@@ -4960,6 +5078,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 涓婇檺鏀舵暃锛氳秴鍑?MRU_MAX 浠庡熬閮ㄤ涪寮冩渶鏃ф潯鐩紝闃叉鎻掍欢鏁版嵁闅忎娇鐢ㄦ棤闄愯啫鑳€
         this.data[MRU_KEY] = capMru(list, MRU_MAX);
         this.saveDataDebounced(MRU_KEY);
+        this.recordOpenHistory(tab);
 
         if (this.isMobile) {
             // 鎵嬫満绔細MobileTabs.switchTo 鍒囨崲椤电
@@ -5931,5 +6050,43 @@ if (count > 0) {
     private getMru(): string[] {
         const data = this.data[MRU_KEY];
         return capMru(Array.isArray(data) ? data : [], MRU_MAX);
+    }
+
+    private sanitizeOpenHistory(value: unknown): {items: IOpenHistoryEntry[], changed: boolean} {
+        if (!Array.isArray(value)) {
+            return {items: [], changed: value !== undefined};
+        }
+        const items: IOpenHistoryEntry[] = [];
+        const seen = new Set<string>();
+        for (const raw of value) {
+            if (!raw || typeof raw !== "object") continue;
+            const item = raw as Partial<IOpenHistoryEntry>;
+            const key = typeof item.key === "string" ? item.key.trim() : "";
+            if (!key || seen.has(key)) continue;
+            const rootId = typeof item.rootId === "string" && BLOCK_ID_RE.test(item.rootId) ? item.rootId : null;
+            const title = typeof item.title === "string" && item.title.trim() ? item.title.trim().slice(0, 200) : key;
+            const ts = typeof item.ts === "number" && Number.isFinite(item.ts) ? item.ts : 0;
+            seen.add(key);
+            items.push({key, rootId, title, ts});
+            if (items.length >= HISTORY_MAX) break;
+        }
+        const changed = items.length !== value.length || items.some((item, index) => JSON.stringify(item) !== JSON.stringify(value[index]));
+        return {items, changed};
+    }
+
+    private getOpenHistory(): IOpenHistoryEntry[] {
+        return this.sanitizeOpenHistory(this.data[HISTORY_KEY]).items;
+    }
+
+    private recordOpenHistory(tab: Tab) {
+        const key = this.pinKeyOf(tab);
+        if (!key) return;
+        const rootId = this.rootIdOf(tab);
+        const title = this.titleOf(tab) || key;
+        const history = this.getOpenHistory().filter((item) => item.key !== key);
+        history.unshift({key, rootId, title: title.slice(0, 200), ts: Date.now()});
+        this.data[HISTORY_KEY] = history.slice(0, HISTORY_MAX);
+        this.saveDataDebounced(HISTORY_KEY);
+        this.refreshOpenHistoryDropdowns();
     }
 }

@@ -173,4 +173,9 @@
   ,"quickBuiltinJournal": "日记"
   ,"quickBuiltinSettings": "设置"
   ,"mobileLayoutFailed": "切换器初始化失败，请关闭后重试"
+  ,"openHistory": "最近打开"
+  ,"noOpenHistory": "暂无最近打开记录"
+  ,"historyOpen": "已打开"
+  ,"historyClosed": "已关闭，点击重开"
+  ,"historyInvalid": "该历史记录已失效"
 }

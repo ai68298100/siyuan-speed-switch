@@ -108,6 +108,8 @@ export const FAV_PANEL_MIN_HEIGHT_PX = 140;
 // MRU（最近使用页签）列表上限：每次激活页签都会置顶一条并全量持久化+双端同步，
 // 不设上限会随使用时间无限膨胀；超出后从尾部丢弃最旧条目
 export const MRU_MAX = 200;
+// 最近打开记录上限，避免历史数据无限增长
+export const HISTORY_MAX = 50;
 
 // 思源块 ID 格式（14 位时间戳-随机后缀，如 20260721173719-zlynli0）。
 // 用于区分文档 rootId 与一次性 tab.id（UUID）：收藏跳转只信任块 ID，
@@ -120,6 +122,7 @@ export const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
 // ADR-0002 的遗留闭环项：storage key 改名即数据"丢失"（旧文件残留 + 新文件空白），
 // 集中后重命名风险一目了然；业务代码禁止手写这些字符串字面量
 export const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
+export const HISTORY_KEY = "sw_open_history"; // 最近打开文档记录，按最近在前排列
 export const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
 export const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
 export const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
