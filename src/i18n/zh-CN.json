@@ -117,10 +117,10 @@
   "favNeedActivate": "该页签尚未加载完成，请先切换到该页签再收藏",
   "favInvalidEntry": "该收藏项缺少有效文档信息，打开对应页签后会自动修复",
   "quickActions": "快捷入口",
-  "quickActionsTip": "桌面端切换器底部显示的快捷动作，可按端侧分别启用",
+  "quickActionsTip": "管理快捷动作的名称、图标、显示端、顺序和启用状态",
   "secQuickActions": "快捷入口",
   "noQuickActions": "暂无可用快捷入口"
-  ,"addQuickAction": "添加面板入口"
+  ,"addQuickAction": "添加入口"
   ,"quickDesktop": "桌面"
   ,"quickSidebar": "侧栏"
   ,"quickMobile": "手机"
@@ -128,8 +128,6 @@
   ,"quickMoveDown": "下移"
   ,"quickRemove": "删除"
   ,"quickIcon": "图标"
-  ,"quickActionsRightRail": "右侧入口栏"
-  ,"quickActionsRightRailTip": "桌面切换器中将快捷入口放到右侧栏，关闭时显示在底部"
   ,"quickExport": "导出配置"
   ,"quickImport": "导入配置"
   ,"quickImportDone": "快捷入口配置已导入"
@@ -137,11 +135,25 @@
   ,"quickColumnLabel": "名称"
   ,"quickColumnIcon": "图标"
   ,"quickColumnTargets": "显示端"
-  ,"quickColumnOrder": "排序"
   ,"quickColumnEnabled": "启用"
   ,"quickAddTip": "可恢复内置入口、添加 Dock 面板，或调用其他插件命令"
   ,"quickBuiltin": "内置"
   ,"quickDock": "面板"
   ,"quickTransfer": "配置迁移"
   ,"quickTransferTip": "导出配置可备份或同步到另一台设备，导入会覆盖当前快捷入口"
+  ,"quickDisplayDesktop": "电脑端显示"
+  ,"quickDisplaySidebar": "侧栏显示"
+  ,"quickDisplayMobile": "手机端显示"
+  ,"quickDisplayTip": "完整显示图标与文字，只显示图标可节省空间，隐藏后不保留入口栏"
+  ,"quickDisplayFull": "完整显示"
+  ,"quickDisplayIcons": "只显示图标"
+  ,"quickDisplayHidden": "完全不显示"
+  ,"quickPosition": "电脑端位置"
+  ,"quickPositionTip": "快捷入口默认放在底部，也可切换到更紧凑的右侧栏"
+  ,"quickPositionBottom": "底部"
+  ,"quickPositionRight": "右侧"
+  ,"quickCollapse": "收起快捷入口"
+  ,"quickExpand": "展开快捷入口"
+  ,"quickColumnActions": "操作"
+  ,"quickPluginCommands": "插件命令"
 }

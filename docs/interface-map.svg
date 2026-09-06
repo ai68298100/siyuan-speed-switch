@@ -19,7 +19,7 @@
   </defs>
 
   <rect width="960" height="610" fill="#ffffff"/>
-  <text x="480" y="28" text-anchor="middle" class="title">LvSpeed Switch 0.16.9 - Three Surface Model</text>
+  <text x="480" y="28" text-anchor="middle" class="title">LvSpeed Switch 0.16.10 - Three Surface Model</text>
   <text x="480" y="47" text-anchor="middle" class="subtitle">Shared content and commands; placement follows desktop, sidebar and touch constraints</text>
 
   <text x="42" y="72" class="heading">Desktop dialog</text>
@@ -58,7 +58,7 @@
   <text x="818" y="207" text-anchor="middle" class="small">SiYuan dock panels</text>
   <text x="818" y="224" text-anchor="middle" class="small">Other plugin commands</text>
   <text x="818" y="241" text-anchor="middle" class="small">Runtime adapters</text>
-  <text x="818" y="258" text-anchor="middle" class="small">+ opens action settings</text>
+  <text x="818" y="258" text-anchor="middle" class="small">full / icons / hidden / collapse</text>
   <rect x="55" y="286" width="663" height="25" class="actions"/>
   <text x="386" y="302" text-anchor="middle" class="text">Default location: bottom quick action bar (switchable to the right rail)</text>
 
@@ -73,7 +73,7 @@
   <rect x="53" y="495" width="384" height="30" class="search"/>
   <text x="245" y="514" text-anchor="middle" class="small">Workspace cards collapse to available width</text>
   <rect x="53" y="537" width="384" height="22" class="actions"/>
-  <text x="245" y="552" text-anchor="middle" class="small">Selected sidebar quick actions + add</text>
+  <text x="245" y="552" text-anchor="middle" class="small">Sidebar actions: full / icons / hidden / collapse</text>
 
   <text x="502" y="366" class="heading">Mobile dialog</text>
   <rect x="500" y="377" width="420" height="196" class="frame"/>
@@ -88,6 +88,6 @@
   <rect x="513" y="509" width="394" height="30" class="search"/>
   <text x="710" y="528" text-anchor="middle" class="small">Search results become a single-column card list</text>
   <rect x="513" y="547" width="394" height="18" class="actions"/>
-  <text x="710" y="560" text-anchor="middle" class="small">Journal / Settings / custom actions / +</text>
+  <text x="710" y="560" text-anchor="middle" class="small">Journal / Settings / custom actions / + / collapse</text>
   <text x="480" y="598" text-anchor="middle" class="note">The core tab path stays local and immediate; workspace search and plugin actions are optional layers.</text>
 </svg>

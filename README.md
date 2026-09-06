@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.9-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.10-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,7 +8,7 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> `v0.16.9` 是一次较大的界面与能力升级：搜索、收藏管理、快捷入口、设置页和手机端布局均有调整。核心页签切换仍保持本地优先，不等待全库搜索或第三方插件。
+> `v0.16.10` 继续收紧三端布局和快捷入口设置：桌面、侧栏与手机共享能力，但分别适配空间和输入方式。核心页签切换始终保持本地优先，不等待全库搜索或第三方插件。
 
 [English README](./README.en-US.md)
 
@@ -114,6 +114,18 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.16.10（2026-09-06）
+
+- 修复电脑端开启右侧快捷入口后顶部工具栏换行的问题，搜索框和选择控件会在单行内自适应收缩。
+- 手机端排序改为固定图标按钮，顶部搜索、排序、收藏、日记和设置保持单行显示。
+- 快捷入口新增电脑、侧栏、手机三端独立的“完整显示 / 只显示图标 / 完全不显示”，电脑端默认位于底部。
+- 底部、右侧、侧栏和手机快捷入口均可临时收起并记忆状态；电脑右侧入口栏进一步缩窄。
+- 新安装默认仅保留日记和设置入口，不再重复放置切换与搜索；旧用户已有配置继续保留。
+- 切换与搜索仍可从“添加入口 → 内置功能”主动恢复；插件命令使用思源现有图标兜底，避免空白图标。
+- 快捷入口设置表头与数据列统一对齐，新增入口改为按内置功能、思源面板和插件命令分类选择。
+- 重做手机设置页：弹窗限制在视口内，标签横向滚动、内容独立纵向滚动，快捷入口按卡片分行编辑，避免横向裁切和拖动冲突。
+- 快捷入口配置修改与导入会立即刷新三端已打开界面；手机端插件弹窗统一隐藏悬浮按钮，关闭后再恢复。
 
 ### v0.16.9（2026-09-06）
 
@@ -464,20 +476,22 @@
 
 **数据边界**：`sw_mru`、`sw_pinned`、`sw_favorites`、`sw_fav_groups`、`sw_fav_collapsed`、`sw_quick_actions`、`sw_settings` 和 `sw_thumb_cache` 分项保存。可重新查询的搜索结果和临时界面状态不写入插件数据。
 
-**测试矩阵**：`pnpm test` 当前运行 82 项单元测试；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 当前运行 87 项单元测试；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
 | `tests/util.test.cjs` | 13 个 `util.js` 纯函数 | 52 |
 | `tests/constants.test.cjs` | 真实源码常量的范围与格式自洽 | 6 |
 | `tests/search-session.test.cjs` | 会话隔离、取消、版本与缓存上限 | 6 |
-| `tests/quick-actions.test.cjs` | 默认值、清理、命令/适配器与字素边界 | 8 |
+| `tests/quick-actions.test.cjs` | 默认值、可选内置项、清理、命令/适配器与字素边界 | 13 |
 | `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 | 10 |
 
 | UI 测试 | 覆盖范围 |
 | --- | --- |
 | `tests/mobile-card-smoke.cjs` | 移动端卡片、操作按钮、单列布局、缩略图和设置开关 CSS 不变量 |
 | `tests/chromium-style-smoke.cjs` | 实际 Chromium 中的移动卡片、开关和全库搜索卡片计算样式，可叠加宿主/主题 CSS |
+| `tests/live-siyuan-smoke.cjs` | 连接测试浏览器中的真实思源桌面前端，检查工具栏、快捷入口和响应式设置页 |
+| `tests/live-siyuan-mobile-smoke.cjs` | 连接思源移动前端，检查移动分支、单行工具栏、弹窗边界和设置页溢出 |
 
 ## 开发
 
@@ -487,7 +501,7 @@
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 82 项单元、常量、搜索、快捷入口和 i18n 测试
+pnpm test               # 87 项单元、常量、搜索、快捷入口和 i18n 测试
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
 ```

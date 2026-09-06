@@ -1,12 +1,13 @@
 // 快捷入口配置的纯函数层：持久化数据不可信，所有字段在进入 UI 前统一清理。
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
 const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings"]);
-const DEFAULT_QUICK_ACTIONS = [
+const BUILTIN_QUICK_ACTIONS = [
     {id: "switcher", label: "切换", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "search", label: "搜索", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
-    {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "mobile"], order: 30, enabled: true},
-    {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 40, enabled: true},
+    {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "mobile"], order: 10, enabled: true},
+    {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
 ];
+const DEFAULT_QUICK_ACTIONS = BUILTIN_QUICK_ACTIONS.filter((item) => item.value === "journal" || item.value === "settings");
 
 function graphemeLength(value) {
     const text = String(value ?? "");
@@ -26,6 +27,7 @@ function normalizeLabel(value) {
 
 function normalizeIcon(value, fallback) {
     const text = typeof value === "string" ? value.trim() : "";
+    if (text === "iconCommand") return fallback;
     if (/^icon[A-Za-z0-9_-]+$/.test(text)) return text;
     if (graphemeLength(text) === 1) return text;
     return fallback;
@@ -48,13 +50,17 @@ function sanitizeQuickActions(value, max = 12) {
         if (!validValue || seen.has(id)) { changed = true; return; }
         seen.add(id);
         const targets = Array.isArray(raw.targets) ? raw.targets.filter((target) => ["desktop", "sidebar", "mobile"].includes(target)) : ["desktop"];
+        const label = normalizeLabel(raw.label) || normalizeLabel(valueId);
         const item = {
             id,
-            label: normalizeLabel(raw.label),
-            icon: normalizeIcon(raw.icon, kind === "dock" || kind === "command" ? "iconDock" : "iconCommand"),
+            label,
+            icon: normalizeIcon(raw.icon, kind === "dock" ? "iconDock" : (kind === "command" || kind === "adapter" ? "iconPlugin" : "iconLayout")),
             kind,
             value: valueId,
-            targets: targets.length > 0 ? targets : ["desktop"],
+            // An explicit empty list means the action is configured but not
+            // currently placed on any surface. Only legacy missing data falls
+            // back to desktop.
+            targets,
             order: Number.isFinite(raw.order) ? raw.order : (index + 1) * 10,
             enabled: raw.enabled !== false,
         };
@@ -69,4 +75,8 @@ function getDefaultQuickActions() {
     return DEFAULT_QUICK_ACTIONS.map((item) => ({...item}));
 }
 
-module.exports = {sanitizeQuickActions, getDefaultQuickActions, graphemeLength};
+function getBuiltinQuickActions() {
+    return BUILTIN_QUICK_ACTIONS.map((item) => ({...item}));
+}
+
+module.exports = {sanitizeQuickActions, getDefaultQuickActions, getBuiltinQuickActions, graphemeLength};

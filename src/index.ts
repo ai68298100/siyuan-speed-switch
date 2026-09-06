@@ -3,7 +3,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {sanitizeQuickActions, getDefaultQuickActions} from "./quick-actions";
+import {sanitizeQuickActions, getDefaultQuickActions, getBuiltinQuickActions} from "./quick-actions";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -94,6 +94,7 @@ declare module "./util" {
     export function isSuccessfulMobileTabsResult(result: unknown): boolean;
     export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
     export function getDefaultQuickActions(): IQuickAction[];
+    export function getBuiltinQuickActions(): IQuickAction[];
 }
 
 // 鍗＄墖涓夋寜閽墍闇€鍥炬爣 symbol锛堜笌瀹樻柟 litheness sprite 鍚屽悕鍚屽舰锛夛細
@@ -151,6 +152,7 @@ interface IDockHandlerSelf {
     element?: HTMLElement;
 }
 type SortBy = "mru" | "layout" | "layoutDesc" | "titleAsc" | "titleDesc" | "updatedDesc";
+type QuickActionDisplay = "full" | "icons" | "hidden";
 const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
 // 椤电鍗＄墖鎿嶄綔瀹屾垚鍚庣殑鏀跺熬鍔ㄤ綔锛堝脊绐楁ā寮忛攢姣佸脊绐楋紝渚ц竟鏍忔ā寮忓埛鏂板垪琛級
 type IOverlayClose = () => void;
@@ -175,6 +177,13 @@ const DEFAULT_SETTINGS: ISwSettings = {
     lastSettingsTab: "appearance", // 璁剧疆闈㈡澘涓婃鎵€鍦ㄦ爣绛鹃〉锛堟墦寮€鏃剁洿鎺ヨ烦杞紝鎻愬崌鍙嶅杩涘叆璁剧疆鐨勬搷浣滄晥鐜囷級
     quickActions: getDefaultQuickActions() as IQuickAction[],
     quickActionsRightRail: false,
+    quickActionsDisplayDesktop: "full",
+    quickActionsDisplaySidebar: "full",
+    quickActionsDisplayMobile: "full",
+    quickActionsCollapsedDesktopBottom: false,
+    quickActionsCollapsedDesktopRight: false,
+    quickActionsCollapsedSidebar: false,
+    quickActionsCollapsedMobile: false,
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -202,6 +211,13 @@ interface ISwSettings {
     lastSettingsTab: string;   // 璁剧疆闈㈡澘涓婃鎵€鍦ㄦ爣绛鹃〉锛坅ppearance/behavior/panels/favorites/journal/mobile锛?
     quickActions: IQuickAction[];
     quickActionsRightRail: boolean;
+    quickActionsDisplayDesktop: QuickActionDisplay;
+    quickActionsDisplaySidebar: QuickActionDisplay;
+    quickActionsDisplayMobile: QuickActionDisplay;
+    quickActionsCollapsedDesktopBottom: boolean;
+    quickActionsCollapsedDesktopRight: boolean;
+    quickActionsCollapsedSidebar: boolean;
+    quickActionsCollapsedMobile: boolean;
 }
 
 interface IGroupedTab {
@@ -279,6 +295,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private saveChains = new Map<string, Promise<void>>(); // 鍚屼竴 key 鐨勫啓鍏ヤ弗鏍间覆琛岋紝閬垮厤鏃ц姹傝鐩栨柊鏁版嵁
     private favCollapsed = new Set<string>(); // 鏀惰棌涓嬫媺涓凡鎶樺彔鐨勫垎缁勫悕锛堝凡鎸佷箙鍖栵紝閲嶅惎鍚庢仮澶嶏級
     private fabElement: HTMLElement | null = null; // 鎵嬫満绔偓娴寜閽?
+    private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
     private mobileTopBarButton: HTMLElement | null = null; // 鎵嬫満绔《鏍忓垏鎹㈠櫒鍏ュ彛鎸夐挳锛堣嚜琛屾敞鍏?mobileTopBar锛?
     private fabGestureBound = false; // FAB 婊氬姩鎵嬪娍鐩戝惉鏄惁宸茬粦瀹氾紙document 绾э紝鍙粦涓€娆★級
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
@@ -454,6 +471,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarElement = null;
         this.fabElement?.remove();
         this.fabElement = null;
+        this.fabModalDepth = 0;
         if (this.fabGestureHandlers) {
             document.removeEventListener("touchstart", this.fabGestureHandlers.touchstart);
             document.removeEventListener("touchmove", this.fabGestureHandlers.touchmove);
@@ -551,7 +569,18 @@ export default class SpeedSwitchPlugin extends Plugin {
                 ? saved.lastSettingsTab : DEFAULT_SETTINGS.lastSettingsTab,
             quickActions: sanitizeQuickActions(this.data[QUICK_ACTIONS_KEY], QUICK_ACTIONS_MAX).items,
             quickActionsRightRail: typeof saved.quickActionsRightRail === "boolean" ? saved.quickActionsRightRail : DEFAULT_SETTINGS.quickActionsRightRail,
+            quickActionsDisplayDesktop: this.normalizeQuickActionDisplay(saved.quickActionsDisplayDesktop, DEFAULT_SETTINGS.quickActionsDisplayDesktop),
+            quickActionsDisplaySidebar: this.normalizeQuickActionDisplay(saved.quickActionsDisplaySidebar, DEFAULT_SETTINGS.quickActionsDisplaySidebar),
+            quickActionsDisplayMobile: this.normalizeQuickActionDisplay(saved.quickActionsDisplayMobile, DEFAULT_SETTINGS.quickActionsDisplayMobile),
+            quickActionsCollapsedDesktopBottom: typeof saved.quickActionsCollapsedDesktopBottom === "boolean" ? saved.quickActionsCollapsedDesktopBottom : false,
+            quickActionsCollapsedDesktopRight: typeof saved.quickActionsCollapsedDesktopRight === "boolean" ? saved.quickActionsCollapsedDesktopRight : false,
+            quickActionsCollapsedSidebar: typeof saved.quickActionsCollapsedSidebar === "boolean" ? saved.quickActionsCollapsedSidebar : false,
+            quickActionsCollapsedMobile: typeof saved.quickActionsCollapsedMobile === "boolean" ? saved.quickActionsCollapsedMobile : false,
         };
+    }
+
+    private normalizeQuickActionDisplay(value: unknown, fallback: QuickActionDisplay): QuickActionDisplay {
+        return value === "full" || value === "icons" || value === "hidden" ? value : fallback;
     }
 
     private updateSettings(patch: Partial<ISwSettings>) {
@@ -753,11 +782,18 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 棣栨鐐瑰嚮鏃ヨ鎸夐挳锛氬脊绐楅€夋嫨榛樿鏃ヨ绗旇鏈紝閫夋嫨鍚庝繚瀛樺苟杩斿洖
     private promptJournalNotebook(): Promise<string> {
         return new Promise((resolve) => {
+            let settled = false;
+            const finish = (value: string) => {
+                if (settled) return;
+                settled = true;
+                resolve(value);
+            };
             const dialog = new Dialog({
                 title: this.i18n.journalChoose,
                 content: this.buildJournalPromptHtml(),
                 width: "min(460px, 90vw)",
             });
+            this.suspendFABForDialog(dialog, () => finish(""));
             const sel = dialog.element.querySelector<HTMLSelectElement>(".sw-journal-prompt__sel > select")
                 ?? this.createJournalSelect(dialog);
             const confirmBtn = dialog.element.querySelector<HTMLButtonElement>(".sw-journal-prompt__confirm");
@@ -767,7 +803,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadNotebooks().then((notebooks) => {
                 this.populateJournalNotebookSelect(sel, confirmBtn, notebooks);
             });
-            this.bindJournalPromptEvents(dialog, sel, confirmBtn, resolve);
+            this.bindJournalPromptEvents(dialog, sel, confirmBtn, finish);
         });
     }
 
@@ -832,8 +868,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return;
             }
             this.updateSettings({journalNotebook: picked});
-            dialog.destroy();
             resolve(picked);
+            dialog.destroy();
         });
         dialog.element.querySelector(".b3-button--cancel")?.addEventListener("click", () => {
             dialog.destroy();
@@ -863,11 +899,13 @@ export default class SpeedSwitchPlugin extends Plugin {
             width: "min(720px, 88vw)",
             height: "min(560px, 85vh)",
         });
+        this.suspendFABForDialog(dialog);
 
         const root = dialog.element.querySelector<HTMLElement>(".sw-settings");
         if (!root) {
             return;
         }
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-settings-dialog");
 
         const tabs = document.createElement("div");
         tabs.className = "sw-settings__tabs";
@@ -1603,7 +1641,22 @@ const updatedMap: {[rootId: string]: string} = {};
                 this.applySearch(scrollElement, searchInput, closeOverlay);
             }
         };
-        const unregisterRefresh = this.registerSwitcherRefresh(refreshList);
+        const refreshQuickActions = () => {
+            if (!dialog.element.isConnected) return;
+            const currentSettings = this.getSettings();
+            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-actions");
+            this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-rail");
+            const useRightRail = currentSettings.quickActionsRightRail
+                && currentSettings.quickActionsDisplayDesktop !== "hidden";
+            dialog.element.querySelector<HTMLElement>(".sw__body")?.classList.toggle("sw--quick-rail", useRightRail);
+            dialog.element.querySelector<HTMLElement>(".sw__quick-actions")?.classList.toggle("fn__none", currentSettings.quickActionsRightRail);
+            dialog.element.querySelector<HTMLElement>(".sw__quick-rail")?.classList.toggle("fn__none", !currentSettings.quickActionsRightRail);
+        };
+        const refreshSurface = () => {
+            refreshList();
+            refreshQuickActions();
+        };
+        const unregisterRefresh = this.registerSwitcherRefresh(refreshSurface);
         const originalDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
             unregisterRefresh();
@@ -1623,10 +1676,7 @@ const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
 
         // 鍙充晶椤电缂╃暐鍥剧綉鏍硷細姣忔鎵撳紑閮介噸鏂板厠闅嗘覆鏌擄紝灞曠ず鍚勯〉绛剧殑鏈€鏂扮姸鎬?
         this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
-        this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-actions");
-        this.renderQuickActions(dialog.element, "desktop", searchInput, closeOverlay, ".sw__quick-rail");
-        dialog.element.querySelector<HTMLElement>(".sw__quick-actions")?.classList.toggle("fn__none", settings.quickActionsRightRail);
-        dialog.element.querySelector<HTMLElement>(".sw__quick-rail")?.classList.toggle("fn__none", !settings.quickActionsRightRail);
+        refreshQuickActions();
 
         // 璁╂粴鍔ㄥ尯鍩熻幏寰楃劍鐐逛互鎺ユ敹閿洏瀵艰埅
         scrollElement.focus();
@@ -1804,6 +1854,8 @@ const cached = session.cache.get(keyword);
     private saveQuickActions(actions: IQuickAction[]) {
         this.data[QUICK_ACTIONS_KEY] = sanitizeQuickActions(actions, QUICK_ACTIONS_MAX).items;
         this.saveDataDebounced(QUICK_ACTIONS_KEY);
+        this.refreshOpenSwitchers();
+        this.refreshSidebar();
     }
 
     /**
@@ -1844,25 +1896,27 @@ const cached = session.cache.get(keyword);
         if (existing) {
             existing.label = options.label;
             existing.icon = options.icon || existing.icon;
-            existing.targets = options.targets?.length ? options.targets : existing.targets;
+            existing.targets = Array.isArray(options.targets) ? options.targets : existing.targets;
             this.saveQuickActions(actions);
         } else if (actions.length < QUICK_ACTIONS_MAX) {
+            const baseId = `adapter-${safeActionId}`;
+            let actionId = baseId;
+            let suffix = 2;
+            while (actions.some((item) => item.id === actionId)) actionId = `${baseId}-${suffix++}`;
             actions.push({
-                id: `adapter-${safeActionId}`,
+                id: actionId,
                 label: options.label,
-                icon: options.icon || "iconDock",
+                icon: options.icon || "iconPlugin",
                 kind: "adapter",
                 value: actionValue,
-                targets: options.targets?.length ? options.targets : ["desktop", "sidebar", "mobile"],
+                targets: Array.isArray(options.targets) ? options.targets : ["desktop", "sidebar", "mobile"],
                 order: (actions.length + 1) * 10,
                 enabled: true,
             });
             this.saveQuickActions(actions);
         }
-        this.refreshOpenSwitchers();
         return () => {
             unregisterAdapter();
-            this.refreshOpenSwitchers();
         };
     }
 
@@ -1875,6 +1929,7 @@ const cached = session.cache.get(keyword);
             const pluginName = typeof plugin?.name === "string" ? plugin.name : "";
             if (!pluginName || pluginName === this.name || !Array.isArray(plugin.commands)) return;
             plugin.commands.forEach((command) => {
+                if (!command || typeof command !== "object") return;
                 const commandKey = typeof command?.langKey === "string" ? command.langKey : "";
                 if (!commandKey || (!command.callback && !command.globalCallback)) return;
                 const value = `${pluginName}::${commandKey}`;
@@ -1885,7 +1940,7 @@ const cached = session.cache.get(keyword);
                     id: `command-${safeId}`,
                     value,
                     label: command.langText || plugin.i18n?.[commandKey] || commandKey,
-                    icon: /^icon[A-Za-z0-9_-]+$/.test(command.icon || "") ? command.icon as string : "iconCommand",
+                    icon: /^icon[A-Za-z0-9_-]+$/.test(command.icon || "") && command.icon !== "iconCommand" ? command.icon as string : "iconPlugin",
                     pluginName,
                     commandKey,
                 });
@@ -1898,19 +1953,38 @@ const cached = session.cache.get(keyword);
         const host = container.querySelector<HTMLElement>(selector);
         if (!host) return;
         host.innerHTML = "";
+        const settings = this.getSettings();
+        const display = surface === "desktop" ? settings.quickActionsDisplayDesktop
+            : surface === "sidebar" ? settings.quickActionsDisplaySidebar : settings.quickActionsDisplayMobile;
+        const isRightRail = surface === "desktop" && selector === ".sw__quick-rail";
+        const collapsed = surface === "desktop"
+            ? (isRightRail ? settings.quickActionsCollapsedDesktopRight : settings.quickActionsCollapsedDesktopBottom)
+            : surface === "sidebar" ? settings.quickActionsCollapsedSidebar : settings.quickActionsCollapsedMobile;
+        host.classList.toggle("sw__quick-actions--icons", display === "icons");
+        host.classList.toggle("sw__quick-actions--hidden", display === "hidden");
+        host.classList.toggle("sw__quick-actions--collapsed", collapsed && display !== "hidden");
+        if (display === "hidden") return;
+
+        const collapseButton = document.createElement("button");
+        collapseButton.type = "button";
+        collapseButton.className = "sw__quick-action sw__quick-action--collapse";
+        collapseButton.setAttribute("aria-label", collapsed ? this.i18n.quickExpand : this.i18n.quickCollapse);
+        collapseButton.title = collapsed ? this.i18n.quickExpand : this.i18n.quickCollapse;
+        collapseButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#${collapsed ? (isRightRail ? "iconLeft" : "iconUp") : (isRightRail ? "iconRight" : "iconDown")}"></use></svg></span>`;
+        collapseButton.addEventListener("click", () => {
+            if (surface === "desktop" && isRightRail) this.updateSettings({quickActionsCollapsedDesktopRight: !collapsed});
+            else if (surface === "desktop") this.updateSettings({quickActionsCollapsedDesktopBottom: !collapsed});
+            else if (surface === "sidebar") this.updateSettings({quickActionsCollapsedSidebar: !collapsed});
+            else this.updateSettings({quickActionsCollapsedMobile: !collapsed});
+        });
+        host.appendChild(collapseButton);
+        if (collapsed) return;
         const actions = this.getQuickActions()
             .filter((action) => action.enabled && action.targets.includes(surface))
-            // The bottom rail already has dedicated search/switcher affordances
-            // on desktop and mobile. Keep the right rail configurable so users
-            // can still place those actions there when desired.
-            .filter((action) => selector === ".sw__quick-actions"
-                ? !(action.value === "switcher" || action.value === "search")
-                : true)
             .sort((a, b) => a.order - b.order);
         // The same action host is used by desktop, sidebar, and mobile. Only
         // hide it when the current surface has no enabled actions; hiding all
         // non-desktop surfaces made the newly added entries unreachable there.
-        host.classList.remove("fn__none");
         actions.forEach((action) => {
             const button = document.createElement("button");
             button.type = "button";
@@ -1974,7 +2048,7 @@ const cached = session.cache.get(keyword);
             const plugins = (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins;
             const plugin = Array.isArray(plugins) ? plugins.find((item) => item?.name === pluginName) : undefined;
             const command = plugin?.commands?.find((item) => item.langKey === commandKey);
-            const callback = command?.globalCallback || command?.callback;
+            const callback = command?.callback || command?.globalCallback;
             if (!callback) {
                 logger.warn("quick plugin command unavailable", action.value);
                 return;
@@ -2016,7 +2090,7 @@ const cached = session.cache.get(keyword);
                 const header = document.createElement("div");
                 header.className = "sw-setting__quick-header";
                 [this.i18n.quickColumnLabel, this.i18n.quickColumnIcon, this.i18n.quickColumnTargets,
-                    this.i18n.quickColumnOrder, this.i18n.quickColumnEnabled].forEach((label) => {
+                    this.i18n.quickColumnActions, this.i18n.quickColumnEnabled].forEach((label) => {
                     const cell = document.createElement("span");
                     cell.textContent = label;
                     header.appendChild(cell);
@@ -2054,34 +2128,36 @@ const cached = session.cache.get(keyword);
                         next.forEach((item, itemIndex) => item.order = (itemIndex + 1) * 10);
                         this.saveQuickActions(next);
                         render();
-                        this.refreshOpenSwitchers();
                     });
                 }
                 const text = document.createElement("input");
                 text.className = "b3-text-field";
                 text.value = action.label || action.value;
-                text.maxLength = 4;
                 text.setAttribute("aria-label", action.label || action.value);
                 text.addEventListener("change", () => {
+                    const label = text.value.trim();
+                    if (!label) {
+                        text.value = action.label || action.value;
+                        return;
+                    }
                     const next = this.getQuickActions().map((item) => item.id === action.id
-                        ? {...item, label: text.value.trim().slice(0, 4)} : item);
+                        ? {...item, label} : item);
                     this.saveQuickActions(next);
-                    this.refreshOpenSwitchers();
+                    text.value = this.getQuickActions().find((item) => item.id === action.id)?.label || action.label || action.value;
                 });
                 const iconSelect = document.createElement("select");
                 iconSelect.className = "b3-select sw-setting__quick-icon";
                 iconSelect.setAttribute("aria-label", this.i18n.quickIcon);
-                ["iconLayout", "iconSearch", "iconCalendar", "iconSettings", "iconFile", "iconFolder", "iconDock", "⭐", "📅", "🔍"].forEach((iconValue) => {
+                Array.from(new Set([action.icon, "iconLayout", "iconSearch", "iconCalendar", "iconSettings", "iconFile", "iconFolder", "iconDock", "iconPlugin", "⭐", "📅", "🔍"])).forEach((iconValue) => {
                     const option = document.createElement("option");
                     option.value = iconValue;
                     option.textContent = /^icon/.test(iconValue) ? iconValue.replace(/^icon/, "") : iconValue;
                     iconSelect.appendChild(option);
                 });
-                iconSelect.value = Array.from(iconSelect.options).some((option) => option.value === action.icon) ? action.icon : "iconDock";
+                iconSelect.value = action.icon;
                 iconSelect.addEventListener("change", () => {
                     const next = this.getQuickActions().map((item) => item.id === action.id ? {...item, icon: iconSelect.value} : item);
                     this.saveQuickActions(next);
-                    this.refreshOpenSwitchers();
                 });
                 const toggle = document.createElement("label");
                 toggle.className = "b3-switch sw-switch";
@@ -2093,7 +2169,6 @@ const cached = session.cache.get(keyword);
                         ? {...item, enabled: input.checked} : item);
                     this.saveQuickActions(next);
                     render();
-                    this.refreshOpenSwitchers();
                 });
                 toggle.append(input, document.createElement("span"));
                 const targets = document.createElement("div");
@@ -2117,7 +2192,6 @@ const cached = session.cache.get(keyword);
                             return {...item, targets: nextTargets as QuickActionTarget[]};
                         });
                         this.saveQuickActions(next);
-                        this.refreshOpenSwitchers();
                     });
                     targetLabel.append(targetInput, document.createTextNode(String(label)));
                     targets.appendChild(targetLabel);
@@ -2133,7 +2207,6 @@ const cached = session.cache.get(keyword);
                     next.forEach((item, itemIndex) => item.order = (itemIndex + 1) * 10);
                     this.saveQuickActions(next);
                     render();
-                    this.refreshOpenSwitchers();
                 };
                 const button = (iconName: string, label: string, onClick: () => void) => {
                     const actionButton = document.createElement("button");
@@ -2151,89 +2224,83 @@ const cached = session.cache.get(keyword);
                     button("iconClose", this.i18n.quickRemove, () => {
                         this.saveQuickActions(this.getQuickActions().filter((item) => item.id !== action.id));
                         render();
-                        this.refreshOpenSwitchers();
                     }),
                 );
                 row.append(text, iconSelect, targets, controls, toggle);
                 box.appendChild(row);
             });
-            const availableBuiltins = getDefaultQuickActions().filter((item) => !actions.some((action) => action.kind === "builtin" && action.value === item.value));
+            const availableBuiltins = getBuiltinQuickActions().filter((item) => !actions.some((action) => action.kind === "builtin" && action.value === item.value));
             const availableDocks = this.getDockPanels().filter((panel) => !actions.some((item) => item.kind === "dock" && item.value === panel.type));
             const availableCommands = this.getPluginCommands().filter((command) => !actions.some((item) => item.kind === "command" && item.value === command.value));
             if ((availableBuiltins.length > 0 || availableDocks.length > 0 || availableCommands.length > 0) && actions.length < QUICK_ACTIONS_MAX) {
                 const addRow = document.createElement("div");
                 addRow.className = "sw-setting__quick-action sw-setting__quick-action--add";
-                const select = document.createElement("select");
-                select.className = "b3-select sw-setting__quick-add-select";
-                availableBuiltins.forEach((item) => {
-                    const option = document.createElement("option");
-                    option.value = `builtin:${item.value}`;
-                    option.textContent = `${item.label} 路 ${this.i18n.quickBuiltin}`;
-                    select.appendChild(option);
-                });
-                availableDocks.forEach((panel) => {
-                    const option = document.createElement("option");
-                    option.value = `dock:${panel.type}`;
-                    option.textContent = `${panel.title} 路 ${this.i18n.quickDock}`;
-                    select.appendChild(option);
-                });
-                availableCommands.forEach((command) => {
-                    const option = document.createElement("option");
-                    option.value = `command:${command.value}`;
-                    option.textContent = `${command.label} 路 ${command.pluginName}`;
-                    select.appendChild(option);
-                });
                 const tip = document.createElement("span");
                 tip.className = "sw-setting__quick-add-tip";
                 tip.textContent = this.i18n.quickAddTip;
                 const add = document.createElement("button");
                 add.type = "button";
                 add.className = "b3-button b3-button--text";
-                add.textContent = this.i18n.addQuickAction;
+                add.innerHTML = `<svg><use xlink:href="#iconAdd"></use></svg><span>${this.i18n.addQuickAction}</span>`;
                 add.addEventListener("click", () => {
-                    const next = this.getQuickActions();
-                    const separator = select.value.indexOf(":");
-                    const kind = separator > 0 ? select.value.slice(0, separator) : "";
-                    const value = separator > 0 ? select.value.slice(separator + 1) : "";
-                    if (kind === "builtin") {
-                        const item = availableBuiltins.find((candidate) => candidate.value === value) as IQuickAction | undefined;
-                        if (!item) return;
+                    const menu = new Menu("swQuickActionPicker");
+                    const append = (item: IQuickAction) => {
+                        const next = this.getQuickActions();
                         next.push({...item, order: (next.length + 1) * 10});
-                    } else if (kind === "dock") {
-                        const panel = availableDocks.find((candidate) => candidate.type === value);
-                        if (!panel) return;
-                        next.push({id: `dock-${panel.type}`, label: panel.title.slice(0, 4), icon: panel.icon, kind: "dock", value: panel.type, targets: ["desktop"], order: (next.length + 1) * 10, enabled: true});
-                    } else if (kind === "command") {
-                        const command = availableCommands.find((candidate) => candidate.value === value);
-                        if (!command) return;
-                        next.push({id: command.id, label: command.label.slice(0, 4), icon: command.icon, kind: "command", value: command.value, targets: ["desktop", "sidebar", "mobile"], order: (next.length + 1) * 10, enabled: true});
-                    } else {
-                        return;
-                    }
-                    this.saveQuickActions(next);
-                    render();
-                    this.refreshOpenSwitchers();
+                        this.saveQuickActions(next);
+                        render();
+                    };
+                    const builtinSub = availableBuiltins.map((item) => ({
+                        label: item.label,
+                        icon: item.icon,
+                        click: () => append(item as IQuickAction),
+                    }));
+                    const dockSub = availableDocks.map((panel) => ({
+                        label: panel.title,
+                        icon: panel.icon,
+                        click: () => append({id: `dock-${panel.type}`, label: panel.title.slice(0, 4), icon: panel.icon, kind: "dock", value: panel.type, targets: ["desktop", "sidebar"], order: 0, enabled: true}),
+                    }));
+                    const commandSub = availableCommands.map((command) => ({
+                        label: `${command.label} · ${command.pluginName}`,
+                        icon: command.icon,
+                        click: () => append({id: command.id, label: command.label.slice(0, 4), icon: command.icon, kind: "command", value: command.value, targets: ["desktop", "sidebar", "mobile"], order: 0, enabled: true}),
+                    }));
+                    if (builtinSub.length) menu.addItem({type: "submenu", label: this.i18n.quickBuiltin, icon: "iconAdd", submenu: builtinSub});
+                    if (dockSub.length) menu.addItem({type: "submenu", label: this.i18n.quickDock, icon: "iconDock", submenu: dockSub});
+                    if (commandSub.length) menu.addItem({type: "submenu", label: this.i18n.quickPluginCommands, icon: "iconPlugin", submenu: commandSub});
+                    const rect = add.getBoundingClientRect();
+                    menu.open({x: rect.left, y: rect.bottom + 4});
                 });
-                addRow.append(select, add, tip);
+                addRow.append(add, tip);
                 box.appendChild(addRow);
             }
             if (actions.length === 0 && availableBuiltins.length === 0 && availableDocks.length === 0 && availableCommands.length === 0) box.textContent = this.i18n.noQuickActions;
         };
         render();
         const wrapper = document.createElement("div");
+        const displayOptions = [
+            {value: "full", label: this.i18n.quickDisplayFull},
+            {value: "icons", label: this.i18n.quickDisplayIcons},
+            {value: "hidden", label: this.i18n.quickDisplayHidden},
+        ];
+        const settings = this.getSettings();
         wrapper.append(
             this.settingItem(this.i18n.quickActions, this.i18n.quickActionsTip, box, true),
-            this.settingItem(this.i18n.quickActionsRightRail, this.i18n.quickActionsRightRailTip,
-                this.switcher(this.getSettings().quickActionsRightRail, (value) => {
-                    this.updateSettings({quickActionsRightRail: value});
-                    this.refreshOpenSwitchers();
-                })),
-            this.settingItem(this.i18n.quickTransfer, this.i18n.quickTransferTip, this.buildQuickActionsTransferControls(), true),
+            this.settingItem(this.i18n.quickPosition, this.i18n.quickPositionTip,
+                this.select([{value: "bottom", label: this.i18n.quickPositionBottom}, {value: "right", label: this.i18n.quickPositionRight}],
+                    settings.quickActionsRightRail ? "right" : "bottom", (value) => this.updateSettings({quickActionsRightRail: value === "right"}))),
+            this.settingItem(this.i18n.quickDisplayDesktop, this.i18n.quickDisplayTip,
+                this.select(displayOptions, settings.quickActionsDisplayDesktop, (value) => this.updateSettings({quickActionsDisplayDesktop: value as QuickActionDisplay}))),
+            this.settingItem(this.i18n.quickDisplaySidebar, this.i18n.quickDisplayTip,
+                this.select(displayOptions, settings.quickActionsDisplaySidebar, (value) => this.updateSettings({quickActionsDisplaySidebar: value as QuickActionDisplay}))),
+            this.settingItem(this.i18n.quickDisplayMobile, this.i18n.quickDisplayTip,
+                this.select(displayOptions, settings.quickActionsDisplayMobile, (value) => this.updateSettings({quickActionsDisplayMobile: value as QuickActionDisplay}))),
+            this.settingItem(this.i18n.quickTransfer, this.i18n.quickTransferTip, this.buildQuickActionsTransferControls(render), true),
         );
         return wrapper;
     }
 
-    private buildQuickActionsTransferControls(): HTMLElement {
+    private buildQuickActionsTransferControls(onImported: () => void): HTMLElement {
         const box = document.createElement("div");
         box.className = "sw-setting__quick-transfer";
         const exportButton = document.createElement("button");
@@ -2273,7 +2340,7 @@ const cached = session.cache.get(keyword);
                     return;
                 }
                 this.saveQuickActions(result.items);
-                this.refreshOpenSwitchers();
+                onImported();
                 showMessage(this.i18n.quickImportDone);
             } catch (error) {
                 logger.warn("import quick actions fail", error);
@@ -4677,6 +4744,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             : this.getActiveTab();
 
         const dialog = this.createMobileSwitcherDialog();
+        this.suspendFABForDialog(dialog);
         const mobileBody = dialog.element.querySelector<HTMLElement>(".sw__mobile");
         mobileBody?.classList.add("sw__mobile--initializing");
         let readyFrame = requestAnimationFrame(() => {
@@ -4697,9 +4765,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 娓呯悊缂╃暐鍥剧紦瀛樹腑宸叉棤瀵瑰簲鎵撳紑椤电鐨勫鍎挎潯鐩?
         this.pruneThumbCache(tabs);
 
-        // 闅愯棌 FAB 閬垮厤閬尅寮圭獥锛涗换浣曞叧闂矾寰勯兘闇€瑕佹仮澶?FAB
-        this.fabElement?.classList.add("sw__fab--hidden");
-        const restoreFAB = () => this.fabElement?.classList.remove("sw__fab--hidden");
         let unregisterRefresh: () => void = () => undefined;
         // 閽╀綇 Dialog.destroy锛圗scape/鐐瑰嚮澶栭儴/绋嬪簭璋冪敤锛夋墍鏈夊叧闂矾寰勯兘鎭㈠ FAB
         const origDestroy = dialog.destroy.bind(dialog);
@@ -4709,7 +4774,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             if (scrollElement) {
                 this.disposeDocSearchSession(scrollElement);
             }
-            restoreFAB();
             origDestroy();
         };
         const closeOverlay = () => dialog.destroy();
@@ -4722,7 +4786,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 鍒楄〃棣栨覆鏌撳彧渚濊禆 sortSelect 鍊硷紝涓嶄緷璧栧伐鍏锋爮缁戝畾锛屽璋冨畨鍏?
         sortSelect.value = settings.sortBy;
         const {renderMobileList} = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
-        unregisterRefresh = this.registerSwitcherRefresh(renderMobileList);
+        const refreshMobileSurface = () => {
+            renderMobileList();
+            this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
+        };
+        unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
         this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
 
@@ -4787,7 +4855,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 闅愯棌 FAB 鎺ㄨ繜鍒版寜閽?click 澶勬槸鍥犱负 openSetting 鍙兘涔熷叧闂師 dialog
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
-            this.fabElement?.classList.remove("sw__fab--hidden");
             this.openSetting();
         });
         // 椤舵爮鏃ヨ鎸夐挳锛氭墦寮€/鏂板缓褰撴棩鏃ヨ锛堝叧闂脊绐楀苟鎭㈠ FAB锛屾湭璁鹃粯璁ゆ棩璁版湰鏃堕娆＄偣鍑诲脊鍑洪€夋嫨锛?
@@ -4807,8 +4874,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         };
         const updateSortButton = () => {
             if (!sortButton) return;
-            sortButton.textContent = sortLabels[sortSelect.value] || this.i18n.sortMru;
-            sortButton.title = sortButton.textContent;
+            const label = sortLabels[sortSelect.value] || this.i18n.sortMru;
+            sortButton.innerHTML = '<svg><use xlink:href="#iconSort"></use></svg>';
+            sortButton.title = label;
+            sortButton.setAttribute("aria-label", `${this.i18n.setSortBy}: ${label}`);
         };
         updateSortButton();
         sortButton?.addEventListener("click", () => {
@@ -5174,12 +5243,36 @@ if (count > 0) {
         this.fabElement.className = "sw__fab";
         this.fabElement.setAttribute("role", "button");
         this.fabElement.setAttribute("aria-label", this.i18n.switchTabs);
+        this.fabElement.tabIndex = 0;
         this.fabElement.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
         this.fabElement.addEventListener("click", () => {
             this.showSwitcher();
         });
+        this.fabElement.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            this.showSwitcher();
+        });
         document.body.appendChild(this.fabElement);
         this.bindFABScrollGesture();
+    }
+
+    private suspendFABForDialog(dialog: Dialog, onDestroy?: () => void) {
+        if (!this.isMobile) return;
+        this.fabModalDepth += 1;
+        this.fabElement?.classList.add("sw__fab--hidden");
+        const originalDestroy = dialog.destroy.bind(dialog);
+        let destroyed = false;
+        dialog.destroy = () => {
+            if (destroyed) return;
+            destroyed = true;
+            this.fabModalDepth = Math.max(0, this.fabModalDepth - 1);
+            originalDestroy();
+            onDestroy?.();
+            if (this.fabModalDepth === 0) {
+                this.fabElement?.classList.remove("sw__fab--hidden", "sw__fab--scroll-hidden");
+            }
+        };
     }
 
     // 婊氬姩鎵嬪娍鎺у埗 FAB 鏄鹃殣锛堜笌鎬濇簮鎵嬫満绔簳閮ㄥ伐鍏锋潯琛屼负涓€鑷达級锛?
@@ -5199,7 +5292,7 @@ if (count > 0) {
                 startY = event.touches[0]?.clientY ?? 0;
             },
             touchmove: (event: TouchEvent) => {
-                if (!this.fabElement || event.touches.length !== 1) {
+                if (!this.fabElement || this.fabModalDepth > 0 || event.touches.length !== 1) {
                     return;
                 }
                 // 瑙︾偣钀藉湪 FAB 鑷韩涓婁笉澶勭悊锛堢偣鍑绘寜閽椂涓嶅簲瑙﹀彂闅愯棌锛?
@@ -5232,6 +5325,7 @@ if (count > 0) {
         const settings = this.getSettings();
         if (this.isMobile && settings.fabEnabled) {
             this.createFAB();
+            this.fabElement?.classList.toggle("sw__fab--hidden", this.fabModalDepth > 0);
         } else {
             this.fabElement?.remove();
             this.fabElement = null;

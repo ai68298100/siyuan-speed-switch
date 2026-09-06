@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.9-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.10-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> `v0.16.9` is a substantial UI and capability update covering search, favorite management, quick actions, settings, and mobile layout. The core tab path remains local-first and never waits for workspace search or third-party plugins.
+> `v0.16.10` further tightens the three-surface layout and quick-action settings. Desktop, sidebar, and mobile share capabilities while adapting to their own space and input methods. The core tab path remains local-first and never waits for workspace search or third-party plugins.
 
 [中文说明](./README.md)
 
@@ -114,6 +114,18 @@ Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.16.10 (2026-09-06)
+
+- Prevented the desktop toolbar from wrapping when the optional right action rail is enabled; search and selectors now shrink within one row.
+- Replaced the mobile sort text button with a fixed icon button so search, sort, favorites, journal, and settings remain on one row.
+- Added independent Full / Icons only / Hidden modes for desktop, sidebar, and mobile quick actions; desktop defaults to the bottom position.
+- Bottom, right, sidebar, and mobile action bars can now collapse and remember their state; the desktop right rail is narrower.
+- Fresh installs default to Journal and Settings only, without duplicate Switch and Search actions; existing user configurations remain valid.
+- Switch and Search can still be restored from Add action > Built-in; plugin commands use an icon available in SiYuan instead of rendering a missing fallback.
+- Aligned quick-action headers with their data columns and replaced the persistent add selector with categorized Built-in, Dock, and Plugin Command menus.
+- Rebuilt mobile settings around the viewport: horizontally scrollable tabs, independently scrolling content, and card-like quick-action editors prevent clipping and drag/scroll conflicts.
+- Quick-action edits and imports now refresh every open surface immediately; plugin dialogs on mobile hide the floating button until they close.
 
 ### v0.16.9 (2026-09-06)
 
@@ -464,20 +476,22 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 
 **Data boundaries**: `sw_mru`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_quick_actions`, `sw_settings`, and `sw_thumb_cache` persist independently. Re-queryable search results and temporary UI state are never written to plugin data.
 
-**Test matrix**: `pnpm test` currently runs 82 unit cases; UI smoke tests run separately:
+**Test matrix**: `pnpm test` currently runs 87 unit cases; UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
 | `tests/util.test.cjs` | 13 `util.js` pure functions | 52 |
 | `tests/constants.test.cjs` | Source constant range and format checks | 6 |
 | `tests/search-session.test.cjs` | Session isolation, cancellation, versions, and cache limits | 6 |
-| `tests/quick-actions.test.cjs` | Defaults, sanitization, command/adapter, and grapheme boundaries | 8 |
+| `tests/quick-actions.test.cjs` | Defaults, optional built-ins, sanitization, command/adapter, and grapheme boundaries | 13 |
 | `tests/i18n.test.cjs` | Locale parity, static references, and value validation | 10 |
 
 | UI test | Scope |
 | --- | --- |
 | `tests/mobile-card-smoke.cjs` | Mobile card, action buttons, single-column grid, thumbnail, and settings-switch CSS invariants |
 | `tests/chromium-style-smoke.cjs` | Computed styles for mobile cards, switches, and workspace search cards in real Chromium, optionally layered with host/theme CSS |
+| `tests/live-siyuan-smoke.cjs` | Connects to a test browser running the real SiYuan desktop frontend and checks the toolbar, quick actions, and responsive settings |
+| `tests/live-siyuan-mobile-smoke.cjs` | Connects to SiYuan's mobile frontend and checks the mobile branch, single-line toolbar, dialog bounds, and settings overflow |
 
 ## Development
 
@@ -487,7 +501,7 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # 82 unit, constant, search, quick-action, and i18n cases
+pnpm test               # 87 unit, constant, search, quick-action, and i18n cases
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 ```

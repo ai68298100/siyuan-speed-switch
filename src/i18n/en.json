@@ -117,10 +117,10 @@
   "favNeedActivate": "This tab is not fully loaded. Switch to it first, then favorite it.",
   "favInvalidEntry": "This favorite lacks valid document info. Open its tab once to repair it automatically.",
   "quickActions": "Quick actions",
-  "quickActionsTip": "Actions shown at the bottom of the desktop switcher; visibility is per surface",
+  "quickActionsTip": "Manage each action's name, icon, surfaces, order, and enabled state",
   "secQuickActions": "Quick actions",
   "noQuickActions": "No quick actions available"
-  ,"addQuickAction": "Add panel action"
+  ,"addQuickAction": "Add action"
   ,"quickDesktop": "Desktop"
   ,"quickSidebar": "Sidebar"
   ,"quickMobile": "Mobile"
@@ -128,8 +128,6 @@
   ,"quickMoveDown": "Move down"
   ,"quickRemove": "Remove"
   ,"quickIcon": "Icon"
-  ,"quickActionsRightRail": "Right action rail"
-  ,"quickActionsRightRailTip": "Place desktop switcher actions in a right rail; when off they stay at the bottom"
   ,"quickExport": "Export config"
   ,"quickImport": "Import config"
   ,"quickImportDone": "Quick action config imported"
@@ -137,11 +135,25 @@
   ,"quickColumnLabel": "Name"
   ,"quickColumnIcon": "Icon"
   ,"quickColumnTargets": "Surface"
-  ,"quickColumnOrder": "Order"
   ,"quickColumnEnabled": "On"
   ,"quickAddTip": "Restore built-ins, add a Dock panel, or call another plugin command"
   ,"quickBuiltin": "Built-in"
   ,"quickDock": "Panel"
   ,"quickTransfer": "Config transfer"
   ,"quickTransferTip": "Export to back up or sync; import replaces the current quick actions"
+  ,"quickDisplayDesktop": "Desktop display"
+  ,"quickDisplaySidebar": "Sidebar display"
+  ,"quickDisplayMobile": "Mobile display"
+  ,"quickDisplayTip": "Show icon and label, use icons only to save space, or hide the action bar completely"
+  ,"quickDisplayFull": "Full"
+  ,"quickDisplayIcons": "Icons only"
+  ,"quickDisplayHidden": "Hidden"
+  ,"quickPosition": "Desktop position"
+  ,"quickPositionTip": "Actions stay at the bottom by default, or can use a compact right rail"
+  ,"quickPositionBottom": "Bottom"
+  ,"quickPositionRight": "Right"
+  ,"quickCollapse": "Collapse quick actions"
+  ,"quickExpand": "Expand quick actions"
+  ,"quickColumnActions": "Actions"
+  ,"quickPluginCommands": "Plugin commands"
 }

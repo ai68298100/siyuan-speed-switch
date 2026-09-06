@@ -18,7 +18,7 @@
   </defs>
 
   <rect width="960" height="620" fill="#ffffff"/>
-  <text x="480" y="29" text-anchor="middle" class="title">LvSpeed Switch 0.16.9 - Runtime Architecture</text>
+  <text x="480" y="29" text-anchor="middle" class="title">LvSpeed Switch 0.16.10 - Runtime Architecture</text>
   <text x="480" y="48" text-anchor="middle" class="subtitle">One navigation model, three surface-specific interfaces, isolated async work</text>
 
   <rect x="32" y="70" width="896" height="90" fill="#eef6ff" stroke="#75a7d8" class="box"/>

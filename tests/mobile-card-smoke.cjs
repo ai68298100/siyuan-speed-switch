@@ -124,4 +124,13 @@ const switchOk = switchCs.width === '42px' && switchCs.height === '24px' && swit
 console.log(`${switchOk ? 'PASS' : 'FAIL'} settings switch: ${switchCs.width}x${switchCs.height} ${switchCs.position}`);
 if (!switchOk) allPassed = false;
 
+const source = fs.readFileSync(path.join(REPO, 'src', 'index.ts'), 'utf8');
+const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
+    && pluginCss.includes('.sw__quick-actions--hidden')
+    && pluginCss.includes('.sw-settings-dialog')
+    && pluginCss.includes('.sw__mobile-toolbar')
+    && source.includes("sortButton.innerHTML = '<svg><use xlink:href=\"#iconSort\"></use></svg>'");
+console.log(`${responsiveRulesOk ? 'PASS' : 'FAIL'} responsive quick actions, mobile settings, and icon sort rules`);
+if (!responsiveRulesOk) allPassed = false;
+
 process.exit(allPassed ? 0 : 1);
