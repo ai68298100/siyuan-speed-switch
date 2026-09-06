@@ -583,6 +583,31 @@ function buildFullTextSearchRequest(input = {}) {
     };
 }
 
+/**
+ * SiYuan has returned block-search payloads in a few compatible wrappers
+ * across versions. Keep the transport quirk out of the UI adapter and only
+ * accept arrays from known result containers. The first non-empty container
+ * wins so an empty `data` array cannot hide a populated `blocks` payload.
+ */
+function extractSearchRecords(payload) {
+    const containers = [];
+    const seen = new Set();
+    const add = (value) => {
+        if (Array.isArray(value) && !seen.has(value)) {
+            seen.add(value);
+            containers.push(value);
+        }
+    };
+    add(payload);
+    const queue = [payload, payload?.data, payload?.result, payload?.results];
+    queue.forEach((container) => {
+        if (!container || typeof container !== "object") return;
+        add(container);
+        ["data", "blocks", "items", "results", "records"].forEach((key) => add(container[key]));
+    });
+    return containers.find((items) => items.length > 0) || containers[0] || [];
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -597,4 +622,5 @@ module.exports = {
     mergeSearchLayers,
     shouldSearchRemote,
     buildFullTextSearchRequest,
+    extractSearchRecords,
 };
