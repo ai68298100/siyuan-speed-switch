@@ -1,6 +1,15 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {sanitizeQuickActions, getDefaultQuickActions, getBuiltinQuickActions, graphemeLength} = require("../src/quick-actions.js");
+const {
+    sanitizeQuickActions,
+    getDefaultQuickActions,
+    getBuiltinQuickActions,
+    getDefaultQuickActionTargets,
+    resolveQuickActionSupport,
+    shouldRenderQuickAction,
+    appendQuickAction,
+    graphemeLength,
+} = require("../src/quick-actions.js");
 
 test("quick actions: missing storage returns safe defaults", () => {
     const result = sanitizeQuickActions(undefined);
@@ -89,4 +98,65 @@ test("quick actions: an explicit empty list stays empty", () => {
     const result = sanitizeQuickActions([]);
     assert.equal(result.changed, false);
     assert.deepEqual(result.items, []);
+});
+
+test("quick actions: invalid and duplicate entries do not consume the cap", () => {
+    const journal = {id: "journal", kind: "builtin", value: "journal", label: "日记", targets: ["desktop"]};
+    const settings = {id: "settings", kind: "builtin", value: "settings", label: "设置", targets: ["desktop"]};
+    const result = sanitizeQuickActions([
+        null,
+        {id: "invalid", kind: "builtin", value: "invalid"},
+        journal,
+        {...journal},
+        settings,
+        {id: "search", kind: "builtin", value: "search", label: "搜索", targets: ["desktop"]},
+    ], 2);
+    assert.deepEqual(result.items.map((item) => item.value), ["journal", "settings"]);
+    assert.equal(result.changed, true);
+});
+
+test("quick actions: truncating valid entries reports a change", () => {
+    const result = sanitizeQuickActions(getBuiltinQuickActions(), 2);
+    assert.deepEqual(result.items.map((item) => item.value), ["switcher", "search"]);
+    assert.equal(result.changed, true);
+});
+
+test("quick actions: support matrix keeps unknown mobile commands explicit", () => {
+    assert.equal(resolveQuickActionSupport("dock", "outline", "desktop"), "supported");
+    assert.equal(resolveQuickActionSupport("dock", "outline", "sidebar"), "supported");
+    assert.equal(resolveQuickActionSupport("dock", "outline", "mobile"), "unsupported");
+    assert.equal(resolveQuickActionSupport("command", "clock::open", "mobile"), "unknown");
+    assert.equal(resolveQuickActionSupport("adapter", "checkin/open", "mobile", ["desktop", "mobile"]), "supported");
+    assert.equal(resolveQuickActionSupport("adapter", "checkin/open", "sidebar", ["desktop", "mobile"]), "unsupported");
+});
+
+test("quick actions: third-party defaults are conservative and cloned", () => {
+    const commandTargets = getDefaultQuickActionTargets("command", "clock::open");
+    assert.deepEqual(commandTargets, ["desktop", "sidebar"]);
+    commandTargets.push("mobile");
+    assert.deepEqual(getDefaultQuickActionTargets("command", "clock::open"), ["desktop", "sidebar"]);
+    assert.deepEqual(getDefaultQuickActionTargets("adapter", "checkin/open", ["desktop", "mobile"]), ["desktop", "mobile"]);
+});
+
+test("quick actions: redundant switch/search are suppressed only in switcher surfaces", () => {
+    const switcher = {kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], enabled: true};
+    const search = {kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], enabled: true};
+    const journal = {kind: "builtin", value: "journal", targets: ["desktop", "mobile"], enabled: true};
+    assert.equal(shouldRenderQuickAction(switcher, "desktop", "switcher"), false);
+    assert.equal(shouldRenderQuickAction(search, "mobile", "switcher"), false);
+    assert.equal(shouldRenderQuickAction(search, "sidebar", "switcher"), true);
+    assert.equal(shouldRenderQuickAction(journal, "mobile", "switcher"), true);
+});
+
+test("quick actions: append rejects duplicates and does not default commands to mobile", () => {
+    const original = getDefaultQuickActions();
+    const candidate = {id: "command-clock-open", kind: "command", value: "clock::open", label: "打卡", icon: "iconPlugin"};
+    const added = appendQuickAction(original, candidate, 12);
+    assert.equal(added.added, true);
+    assert.deepEqual(added.items.at(-1).targets, ["desktop", "sidebar"]);
+    assert.equal(added.items.at(-1).order, 30);
+    assert.equal(original.length, 2);
+    const duplicate = appendQuickAction(added.items, candidate, 12);
+    assert.equal(duplicate.added, false);
+    assert.equal(duplicate.reason, "duplicate");
 });

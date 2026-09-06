@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.10-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.11-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> `v0.16.10` further tightens the three-surface layout and quick-action settings. Desktop, sidebar, and mobile share capabilities while adapting to their own space and input methods. The core tab path remains local-first and never waits for workspace search or third-party plugins.
+> `v0.16.11` fixes mobile sort-sheet layering and desktop plugin-icon fallbacks. Sorting now uses a stable bottom sheet, and unavailable external icons fall back to a native SiYuan file icon.
 
 [中文说明](./README.md)
 
@@ -114,6 +114,13 @@ Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.16.11 (2026-09-07)
+
+- Fixed the mobile sort panel appearing behind the dialog, at the bottom of the page, or being clipped by the tab list by using the same full-screen overlay and bottom sheet pattern as Favorites.
+- All six sort modes are visible on mobile, with a check mark for the current mode and immediate list refresh after selection.
+- Strengthened quick-action icon detection so external plugins such as Siyubo and Siyue use the native SiYuan file icon when their SVG symbol is unavailable.
+- Unified icon fallbacks across the quick-action bar, settings picker cards, and icon selector.
 
 ### v0.16.10 (2026-09-06)
 

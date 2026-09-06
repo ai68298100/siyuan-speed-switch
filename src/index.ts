@@ -3,7 +3,16 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {sanitizeQuickActions, getDefaultQuickActions, getBuiltinQuickActions} from "./quick-actions";
+import {
+    sanitizeQuickActions,
+    getDefaultQuickActions,
+    getBuiltinQuickActions,
+    getDefaultQuickActionTargets,
+    resolveQuickActionSupport,
+    shouldRenderQuickAction,
+    appendQuickAction,
+} from "./quick-actions";
+import {mountQuickActionPicker} from "./quick-actions-ui";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -95,6 +104,27 @@ declare module "./util" {
     export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
     export function getDefaultQuickActions(): IQuickAction[];
     export function getBuiltinQuickActions(): IQuickAction[];
+}
+
+declare module "./quick-actions" {
+    export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
+    export function getDefaultQuickActions(): IQuickAction[];
+    export function getBuiltinQuickActions(): IQuickAction[];
+    export function getDefaultQuickActionTargets(kind: string, value: string, declaredTargets?: string[]): string[];
+    export function resolveQuickActionSupport(kind: string, value: string, target: string, declaredTargets?: string[]): "supported" | "unsupported" | "unknown";
+    export function shouldRenderQuickAction(action: IQuickAction, surface: string, context?: string, declaredTargets?: string[]): boolean;
+    export function appendQuickAction(actions: IQuickAction[], candidate: Partial<IQuickAction> & {declaredTargets?: string[]}, max?: number): {items: IQuickAction[], added: boolean, reason: string};
+}
+
+declare module "./quick-actions-ui" {
+    export function mountQuickActionPicker(options: {
+        trigger: HTMLElement;
+        host: HTMLElement;
+        candidates: Array<{id: string, label: string, icon: string, group?: string, secondary?: string, searchText?: string}>;
+        searchPlaceholder?: string;
+        emptyText?: string;
+        onSelect: (candidate: any) => void;
+    }): HTMLElement | null;
 }
 
 // 鍗＄墖涓夋寜閽墍闇€鍥炬爣 symbol锛堜笌瀹樻柟 litheness sprite 鍚屽悕鍚屽舰锛夛細
@@ -233,6 +263,7 @@ interface IDockPanel {
 
 type QuickActionTarget = "desktop" | "sidebar" | "mobile";
 type QuickActionKind = "builtin" | "dock" | "adapter" | "command";
+type QuickActionSupport = "supported" | "unsupported" | "unknown";
 interface IQuickAction {
     id: string;
     label: string;
@@ -242,6 +273,25 @@ interface IQuickAction {
     targets: QuickActionTarget[];
     order: number;
     enabled: boolean;
+}
+
+interface IQuickActionProvider {
+    id: string;
+    label: string;
+    icon: string;
+    value: string;
+    targets: QuickActionTarget[];
+    declaredTargets?: QuickActionTarget[];
+}
+
+interface IQuickActionPickerCandidate {
+    id: string;
+    label: string;
+    icon: string;
+    group: string;
+    secondary: string;
+    searchText: string;
+    action: IQuickAction;
 }
 
 interface IQuickActionPluginCommand {
@@ -289,6 +339,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
+    private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
+    private quickActionProviders = new Map<string, IQuickActionProvider>();
+    private switcherRefreshFrame: number | null = null;
     private sidebarElement: HTMLElement | null = null; // 渚ц竟鏍?dock 闈㈡澘鍐呭鍏冪礌
     private sidebarResizeObserver: ResizeObserver | null = null; // 渚ц竟鏍忓昂瀵哥洃鍚紝鍙樺寲鏃堕噸绠楃缉鐣ュ浘缂╂斁
     private saveTimers = new Map<string, number>(); // 鍘绘姈鍐欑洏瀹氭椂鍣細MRU/缃《/鏀惰棌绛夐珮棰戞暟鎹悎骞惰惤鐩?
@@ -421,6 +474,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private bindGlobalEvents() {
         this.eventBus.on("switch-protyle", () => {
             this.refreshSidebarActive();
+            this.scheduleOpenSwitchersRefresh();
             if (this.isMobile) {
                 this.ensureMobileTopBarButton();
             }
@@ -428,11 +482,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 椤电澧炲噺锛堟枃妗ｆ墦寮€/鍏抽棴锛夋椂鍒锋柊鎵€鏈夊凡鎵撳紑瑙嗗浘
         this.eventBus.on("loaded-protyle-static", () => {
             this.refreshSidebar();
-            this.refreshOpenSwitchers();
+            this.scheduleOpenSwitchersRefresh();
         });
         this.eventBus.on("destroy-protyle", () => {
             this.refreshSidebar();
-            this.refreshOpenSwitchers();
+            this.scheduleOpenSwitchersRefresh();
         });
     }
 
@@ -451,6 +505,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
+    private scheduleOpenSwitchersRefresh() {
+        if (this.switcherRefreshFrame !== null || this.switcherRefreshers.size === 0) return;
+        this.switcherRefreshFrame = requestAnimationFrame(() => {
+            this.switcherRefreshFrame = null;
+            this.refreshOpenSwitchers();
+        });
+    }
+
     // 甯冨眬灏辩华鍚庡啀娆＄‘璁ゆ墜鏈虹鍏ュ彛锛氶儴鍒嗘満鍨嬩笂 onload 鎵ц鏃堕《鏍忓皻鏈瀯寤哄畬鎴愶紝
     // 鎻掍欢鎸夐挳浼氭彃鍏ュけ璐ワ紱杩欓噷鍏滃簳閲嶈瘯涓€娆?
     onLayoutReady() {
@@ -465,6 +527,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
         this.activeDocSearchSessions.clear();
         this.switcherRefreshers.clear();
+        this.quickActionAdapters.clear();
+        this.quickActionAdapterTargets.clear();
+        this.quickActionProviders.clear();
+        if (this.switcherRefreshFrame !== null) {
+            cancelAnimationFrame(this.switcherRefreshFrame);
+            this.switcherRefreshFrame = null;
+        }
         this.sidebarResizeObserver?.disconnect();
         this.sidebarResizeObserver = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
@@ -645,10 +714,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         return selectEl;
     }
 
-    // 寮€鍏筹紙b3-switch + 鎻掍欢鑷缓 sw-switch 寮哄寲涓ゆ€佸姣旓級
+    // 寮€鍏筹紙鐢辨彃浠剁嫭绔嬫牱寮忔帶鍒讹紝閬垮厤涓婚 b3-switch 浼厓绱犲彔鍔狅級
     private switcher(checked: boolean, onChange: (v: boolean) => void): HTMLElement {
         const label = document.createElement("label");
-        label.className = "b3-switch sw-switch";
+        label.className = "sw-switch";
         const input = document.createElement("input");
         input.type = "checkbox";
         input.checked = checked;
@@ -994,10 +1063,21 @@ export default class SpeedSwitchPlugin extends Plugin {
         const panelKeysArr: string[] = [...panelKeys];
         const initial = panelKeysArr.includes(lastTab) ? lastTab : panelKeys[0];
         activate(initial);
-        if (initial !== panelKeys[0]) {
-            // 闈為粯璁ゆ椂闇€瑕佹粴鍔ㄥ埌閫変腑鏍囩鍙锛堣繛缁墦寮€鏃舵爣绛炬爮涓嶄細婊氬姩閿欎綅锛?
-            tabs.querySelector<HTMLElement>(`.sw-settings__tab[data-panel="${initial}"]`)?.scrollIntoView({block: "nearest"});
-        }
+        // Only move the horizontal tab strip. scrollIntoView also scrolls
+        // Dialog ancestors in Android WebView and can shift the entire settings
+        // page off screen when opening the quick-action panel directly.
+        requestAnimationFrame(() => {
+            root.scrollLeft = 0;
+            panels.scrollLeft = 0;
+            const activeTab = tabs.querySelector<HTMLElement>(`.sw-settings__tab[data-panel="${initial}"]`);
+            if (!activeTab || tabs.scrollWidth <= tabs.clientWidth) return;
+            const itemLeft = activeTab.offsetLeft;
+            const itemRight = itemLeft + activeTab.offsetWidth;
+            let nextLeft = tabs.scrollLeft;
+            if (itemLeft < tabs.scrollLeft) nextLeft = itemLeft;
+            else if (itemRight > tabs.scrollLeft + tabs.clientWidth) nextLeft = itemRight - tabs.clientWidth;
+            tabs.scrollLeft = Math.max(0, Math.min(nextLeft, tabs.scrollWidth - tabs.clientWidth));
+        });
     }
 
     // ===== 璁剧疆椤?路 澶栬锛氬脊绐楀楂樸€佺缉鐣ュ浘鍒楁暟涓庨珮搴?=====
@@ -1562,11 +1642,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
                 </div>
                 <div class="sw__select-wrap">
-                    <span class="sw__select-label">${this.i18n.favorites}</span>
                     <div class="sw__fav-dd"></div>
                 </div>
                 <div class="sw__select-wrap">
-                    <span class="sw__select-label">${this.i18n.sortLabel}</span>
                     <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
                         <option value="mru">${this.i18n.sortMru}</option>
                         <option value="layout">${this.i18n.sortLayout}</option>
@@ -1579,9 +1657,6 @@ export default class SpeedSwitchPlugin extends Plugin {
                 <span class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn b3-tooltips b3-tooltips__s" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
                     <svg class="sw__fs-enter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <svg class="sw__fs-exit" viewBox="0 0 24 24"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </span>
-                <span class="b3-button b3-button--text sw__icon-btn sw__sidebar-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.openSidebar}">
-                    <svg><use xlink:href="#iconLayoutRight"></use></svg>
                 </span>
                 <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.journalBtn}">
                     <svg><use xlink:href="#iconCalendar"></use></svg>
@@ -1784,10 +1859,6 @@ const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
             dialog.destroy();
             this.openSetting();
         });
-        dialog.element.querySelector(".sw__sidebar-btn")?.addEventListener("click", () => {
-            dialog.destroy();
-            this.toggleSidebar();
-        });
         // 椤舵爮鏃ヨ鎸夐挳锛氭墦寮€/鏂板缓褰撴棩鏃ヨ锛堟湭璁鹃粯璁ゆ棩璁版湰鏃堕娆＄偣鍑诲脊鍑洪€夋嫨锛?
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -1860,14 +1931,21 @@ const cached = session.cache.get(keyword);
 
     /**
      * 渚涚涓夋柟鎻掍欢娉ㄥ唽绋冲畾鐨勫叕寮€鍔ㄤ綔銆傛寔涔呭寲閰嶇疆鍙繚瀛?adapter id/value锛?     * 涓嶄繚瀛樺嚱鏁版垨 DOM 閫夋嫨鍣紱鎻掍欢鍗歌浇鍚庡搴斿叆鍙ｄ細瀹夊叏鍦板彉涓烘棤鍔ㄤ綔銆?     */
-    public registerQuickActionAdapter(id: string, handler: (value: string) => void | Promise<void>): () => void {
+    public registerQuickActionAdapter(id: string, handler: (value: string) => void | Promise<void>, targets?: QuickActionTarget[]): () => void {
         if (!/^[A-Za-z0-9._:-]+$/.test(id) || typeof handler !== "function") {
             return () => undefined;
         }
         this.quickActionAdapters.set(id, handler);
+        if (Array.isArray(targets)) {
+            this.quickActionAdapterTargets.set(id, targets.filter((target, index, list) =>
+                ["desktop", "sidebar", "mobile"].includes(target) && list.indexOf(target) === index));
+        } else {
+            this.quickActionAdapterTargets.delete(id);
+        }
         return () => {
             if (this.quickActionAdapters.get(id) === handler) {
                 this.quickActionAdapters.delete(id);
+                this.quickActionAdapterTargets.delete(id);
             }
         };
     }
@@ -1890,13 +1968,22 @@ const cached = session.cache.get(keyword);
         const adapterId = options.id;
         const actionValue = options.value ? `${adapterId}/${options.value}` : adapterId;
         const safeActionId = `${adapterId}-${options.value || "action"}`.replace(/[^A-Za-z0-9_-]/g, "-");
-        const unregisterAdapter = this.registerQuickActionAdapter(adapterId, options.handler);
+        const declaredTargets = Array.isArray(options.targets) ? options.targets : undefined;
+        const unregisterAdapter = this.registerQuickActionAdapter(adapterId, options.handler, declaredTargets);
+        this.quickActionProviders.set(actionValue, {
+            id: adapterId,
+            label: options.label,
+            icon: options.icon || "iconPlugin",
+            value: actionValue,
+            targets: (declaredTargets ? [...declaredTargets] : getDefaultQuickActionTargets("adapter", actionValue)) as QuickActionTarget[],
+            declaredTargets: declaredTargets ? [...declaredTargets] : undefined,
+        });
         const actions = this.getQuickActions();
         const existing = actions.find((item) => item.kind === "adapter" && item.value === actionValue);
         if (existing) {
             existing.label = options.label;
             existing.icon = options.icon || existing.icon;
-            existing.targets = Array.isArray(options.targets) ? options.targets : existing.targets;
+            existing.targets = declaredTargets ? [...declaredTargets] : existing.targets;
             this.saveQuickActions(actions);
         } else if (actions.length < QUICK_ACTIONS_MAX) {
             const baseId = `adapter-${safeActionId}`;
@@ -1909,7 +1996,7 @@ const cached = session.cache.get(keyword);
                 icon: options.icon || "iconPlugin",
                 kind: "adapter",
                 value: actionValue,
-                targets: Array.isArray(options.targets) ? options.targets : ["desktop", "sidebar", "mobile"],
+                targets: declaredTargets ? [...declaredTargets] : getDefaultQuickActionTargets("adapter", actionValue) as QuickActionTarget[],
                 order: (actions.length + 1) * 10,
                 enabled: true,
             });
@@ -1917,6 +2004,7 @@ const cached = session.cache.get(keyword);
         }
         return () => {
             unregisterAdapter();
+            this.quickActionProviders.delete(actionValue);
         };
     }
 
@@ -1949,6 +2037,17 @@ const cached = session.cache.get(keyword);
         return commands;
     }
 
+    private getQuickActionDeclaredTargets(action: IQuickAction): QuickActionTarget[] | undefined {
+        if (action.kind !== "adapter") return undefined;
+        const adapterId = action.value.split("/", 1)[0];
+        return this.quickActionAdapterTargets.get(adapterId);
+    }
+
+    private getQuickActionSupport(action: IQuickAction, target: QuickActionTarget): QuickActionSupport {
+        return resolveQuickActionSupport(action.kind, action.value, target,
+            this.getQuickActionDeclaredTargets(action)) as QuickActionSupport;
+    }
+
     private renderQuickActions(container: HTMLElement, surface: "desktop" | "sidebar" | "mobile", searchInput: HTMLInputElement | null, close: () => void, selector = ".sw__quick-actions") {
         const host = container.querySelector<HTMLElement>(selector);
         if (!host) return;
@@ -1960,7 +2059,7 @@ const cached = session.cache.get(keyword);
         const collapsed = surface === "desktop"
             ? (isRightRail ? settings.quickActionsCollapsedDesktopRight : settings.quickActionsCollapsedDesktopBottom)
             : surface === "sidebar" ? settings.quickActionsCollapsedSidebar : settings.quickActionsCollapsedMobile;
-        host.classList.toggle("sw__quick-actions--icons", display === "icons");
+        host.classList.toggle("sw__quick-actions--icons", display === "icons" || (collapsed && isRightRail));
         host.classList.toggle("sw__quick-actions--hidden", display === "hidden");
         host.classList.toggle("sw__quick-actions--collapsed", collapsed && display !== "hidden");
         if (display === "hidden") return;
@@ -1978,9 +2077,9 @@ const cached = session.cache.get(keyword);
             else this.updateSettings({quickActionsCollapsedMobile: !collapsed});
         });
         host.appendChild(collapseButton);
-        if (collapsed) return;
+        if (collapsed && !isRightRail) return;
         const actions = this.getQuickActions()
-            .filter((action) => action.enabled && action.targets.includes(surface))
+            .filter((action) => shouldRenderQuickAction(action, surface, "switcher", this.getQuickActionDeclaredTargets(action)))
             .sort((a, b) => a.order - b.order);
         // The same action host is used by desktop, sidebar, and mobile. Only
         // hide it when the current surface has no enabled actions; hiding all
@@ -1993,10 +2092,10 @@ const cached = session.cache.get(keyword);
             button.title = action.label;
             const icon = document.createElement("span");
             icon.className = "sw__quick-action-icon";
-            if (/^icon[A-Za-z0-9_-]+$/.test(action.icon)) {
+            if (/^icon[A-Za-z0-9_-]+$/.test(action.icon) && document.getElementById(action.icon)) {
                 icon.innerHTML = `<svg><use xlink:href="#${action.icon}"></use></svg>`;
             } else {
-                icon.textContent = action.icon;
+                icon.innerHTML = '<svg><use xlink:href="#iconFile"></use></svg>';
             }
             const label = document.createElement("span");
             label.className = "sw__quick-action-label";
@@ -2030,15 +2129,29 @@ const cached = session.cache.get(keyword);
             const handler = this.quickActionAdapters.get(adapterId);
             if (!handler) {
                 logger.warn("quick action adapter unavailable", action.value);
+                showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
                 return;
             }
             close();
-            Promise.resolve(handler(action.value.slice(adapterId.length + 1))).catch((error) => logger.warn("quick action adapter failed", error));
+            Promise.resolve(handler(action.value.slice(adapterId.length + 1))).catch((error) => {
+                logger.warn("quick action adapter failed", error);
+                showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
+            });
             return;
         }
         if (action.kind === "dock") {
-            try { this.getDockByType(action.value)?.toggleModel?.(action.value, true); } catch (e) { logger.warn("quick dock action fail", e); }
-            close();
+            const dock = this.getDockByType(action.value);
+            if (!dock?.toggleModel) {
+                showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+                return;
+            }
+            try {
+                dock.toggleModel(action.value, true);
+                close();
+            } catch (e) {
+                logger.warn("quick dock action fail", e);
+                showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
+            }
             return;
         }
         if (action.kind === "command") {
@@ -2051,13 +2164,18 @@ const cached = session.cache.get(keyword);
             const callback = command?.callback || command?.globalCallback;
             if (!callback) {
                 logger.warn("quick plugin command unavailable", action.value);
+                showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
                 return;
             }
             close();
             try {
-                Promise.resolve(callback.call(plugin)).catch((error) => logger.warn("quick plugin command failed", error));
+                Promise.resolve(callback.call(plugin)).catch((error) => {
+                    logger.warn("quick plugin command failed", error);
+                    showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
+                });
             } catch (error) {
                 logger.warn("quick plugin command failed", error);
+                showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
             }
             return;
         }
@@ -2078,6 +2196,216 @@ const cached = session.cache.get(keyword);
                 this.openSetting();
                 break;
         }
+    }
+
+    private getQuickActionPickerCandidates(actions: IQuickAction[]): IQuickActionPickerCandidate[] {
+        const existing = new Set(actions.map((action) => `${action.kind}:${action.value}`));
+        const targetNames: Record<QuickActionTarget, string> = {
+            desktop: this.i18n.quickDesktop,
+            sidebar: this.i18n.quickSidebar,
+            mobile: this.i18n.quickMobile,
+        };
+        const describe = (kind: QuickActionKind, value: string, targets: QuickActionTarget[], declared?: QuickActionTarget[]) => {
+            const supported = targets.filter((target) =>
+                resolveQuickActionSupport(kind, value, target, declared) !== "unsupported");
+            const parts = supported.map((target) => targetNames[target]);
+            if (resolveQuickActionSupport(kind, value, "mobile", declared) === "unknown" && !supported.includes("mobile")) {
+                parts.push(this.i18n.quickMobileUnknown);
+            }
+            return parts.join(" · ");
+        };
+        const candidates: IQuickActionPickerCandidate[] = [];
+        const builtinLabels: Record<string, string> = {
+            switcher: this.i18n.quickBuiltinSwitcher,
+            search: this.i18n.quickBuiltinSearch,
+            journal: this.i18n.quickBuiltinJournal,
+            settings: this.i18n.quickBuiltinSettings,
+        };
+        getBuiltinQuickActions().forEach((raw) => {
+            const action = raw as IQuickAction;
+            if (existing.has(`builtin:${action.value}`)) return;
+            action.label = builtinLabels[action.value] || action.label;
+            candidates.push({
+                id: action.id,
+                label: action.label,
+                icon: action.icon,
+                group: this.i18n.quickBuiltin,
+                secondary: describe(action.kind, action.value, action.targets),
+                searchText: `${action.label} ${action.value} ${this.i18n.quickBuiltin}`,
+                action,
+            });
+        });
+        this.getDockPanels().forEach((panel) => {
+            if (existing.has(`dock:${panel.type}`)) return;
+            const targets = getDefaultQuickActionTargets("dock", panel.type) as QuickActionTarget[];
+            const safeType = panel.type.replace(/[^A-Za-z0-9_-]/g, "-");
+            const action: IQuickAction = {
+                id: `dock-${safeType}`,
+                label: panel.title,
+                icon: panel.icon || "iconDock",
+                kind: "dock",
+                value: panel.type,
+                targets,
+                order: 0,
+                enabled: true,
+            };
+            candidates.push({
+                id: action.id,
+                label: panel.title,
+                icon: action.icon,
+                group: this.i18n.quickDock,
+                secondary: describe(action.kind, action.value, targets),
+                searchText: `${panel.title} ${panel.type} ${this.i18n.quickDock}`,
+                action,
+            });
+        });
+        this.quickActionProviders.forEach((provider) => {
+            if (existing.has(`adapter:${provider.value}`)) return;
+            const safeValue = provider.value.replace(/[^A-Za-z0-9_-]/g, "-");
+            const action: IQuickAction = {
+                id: `adapter-${safeValue}`,
+                label: provider.label,
+                icon: provider.icon,
+                kind: "adapter",
+                value: provider.value,
+                targets: [...provider.targets],
+                order: 0,
+                enabled: true,
+            };
+            candidates.push({
+                id: action.id,
+                label: provider.label,
+                icon: provider.icon,
+                group: this.i18n.quickPluginActions,
+                secondary: describe(action.kind, action.value, action.targets, provider.declaredTargets),
+                searchText: `${provider.label} ${provider.id} ${provider.value} ${this.i18n.quickPluginActions}`,
+                action,
+            });
+        });
+        this.getPluginCommands().forEach((command) => {
+            if (existing.has(`command:${command.value}`)) return;
+            const targets = getDefaultQuickActionTargets("command", command.value) as QuickActionTarget[];
+            const displayLabel = command.label.trim().replace(/\s+/g, " ").slice(0, 24) || command.value;
+            const action: IQuickAction = {
+                id: command.id,
+                label: displayLabel,
+                icon: command.icon,
+                kind: "command",
+                value: command.value,
+                targets,
+                order: 0,
+                enabled: true,
+            };
+            candidates.push({
+                id: action.id,
+                label: displayLabel,
+                icon: command.icon,
+                group: this.i18n.quickPluginCommands,
+                secondary: `${command.pluginName} · ${describe(action.kind, action.value, targets)}`,
+                searchText: `${displayLabel} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
+                action,
+            });
+        });
+        return candidates;
+    }
+
+    private renderQuickActionIconButton(button: HTMLButtonElement, icon: string) {
+        button.innerHTML = "";
+        const preview = document.createElement("span");
+        preview.className = "sw-setting__quick-icon-preview";
+        if (/^icon[A-Za-z0-9_-]+$/.test(icon) && document.getElementById(icon)) {
+            preview.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${icon}"></use></svg>`;
+        } else {
+            preview.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
+        }
+        const name = document.createElement("span");
+        name.className = "sw-setting__quick-icon-name";
+        name.textContent = /^icon/.test(icon) ? icon.slice(4) : icon;
+        const arrow = document.createElement("svg");
+        arrow.className = "sw-setting__quick-icon-arrow";
+        arrow.innerHTML = '<use xlink:href="#iconDown"></use>';
+        button.append(preview, name, arrow);
+    }
+
+    private getAvailableQuickActionIcons(current: string): string[] {
+        const fallback = [
+            "iconLayout", "iconSearch", "iconCalendar", "iconSettings", "iconFile", "iconFolder",
+            "iconDock", "iconPlugin", "iconAdd", "iconClock", "iconTask", "iconBookmark",
+        ];
+        const loaded = Array.from(document.querySelectorAll<SVGSymbolElement>('symbol[id^="icon"]'))
+            .map((symbol) => symbol.id)
+            .filter((id) => /^icon[A-Za-z0-9_-]+$/.test(id));
+        const emoji = ["⭐", "📅", "🔍", "✅", "⚡"];
+        return Array.from(new Set([current, ...fallback, ...loaded, ...emoji].filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    }
+
+    private openQuickActionIconPicker(action: IQuickAction, onPick: (icon: string) => void) {
+        document.querySelector(".sw-quick-icon-picker-overlay")?.remove();
+        const overlay = document.createElement("div");
+        overlay.className = "sw-quick-icon-picker-overlay";
+        const sheet = document.createElement("div");
+        sheet.className = "sw-quick-icon-picker";
+        sheet.setAttribute("role", "dialog");
+        sheet.setAttribute("aria-modal", "true");
+        sheet.setAttribute("aria-label", this.i18n.quickChooseIcon);
+        const header = document.createElement("div");
+        header.className = "sw-quick-icon-picker__header";
+        const title = document.createElement("strong");
+        title.textContent = this.i18n.quickChooseIcon;
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "b3-button b3-button--text sw-quick-icon-picker__close";
+        closeButton.setAttribute("aria-label", this.i18n.close);
+        closeButton.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        header.append(title, closeButton);
+        const search = document.createElement("input");
+        search.type = "search";
+        search.className = "b3-text-field sw-quick-icon-picker__search";
+        search.placeholder = this.i18n.quickIconSearch;
+        search.setAttribute("aria-label", this.i18n.quickIconSearch);
+        const grid = document.createElement("div");
+        grid.className = "sw-quick-icon-picker__grid";
+        const icons = this.getAvailableQuickActionIcons(action.icon);
+        const renderIcons = () => {
+            const keyword = search.value.trim().toLocaleLowerCase();
+            grid.innerHTML = "";
+            icons.filter((icon) => !keyword || icon.toLocaleLowerCase().includes(keyword)).forEach((icon) => {
+                const option = document.createElement("button");
+                option.type = "button";
+                option.className = "sw-quick-icon-picker__item";
+                option.classList.toggle("is-selected", icon === action.icon);
+                option.title = icon;
+                option.setAttribute("aria-label", icon);
+                if (/^icon[A-Za-z0-9_-]+$/.test(icon) && document.getElementById(icon)) {
+                    option.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${icon}"></use></svg>`;
+                } else {
+                    option.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
+                }
+                option.addEventListener("click", () => {
+                    cleanup();
+                    onPick(icon);
+                });
+                grid.appendChild(option);
+            });
+        };
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") cleanup();
+        };
+        const cleanup = () => {
+            document.removeEventListener("keydown", onKeyDown);
+            overlay.remove();
+        };
+        closeButton.addEventListener("click", cleanup);
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) cleanup();
+        });
+        search.addEventListener("input", renderIcons);
+        document.addEventListener("keydown", onKeyDown);
+        sheet.append(header, search, grid);
+        overlay.appendChild(sheet);
+        document.body.appendChild(overlay);
+        renderIcons();
+        if (!this.isMobile) search.focus({preventScroll: true});
     }
 
     private buildSettingsQuickActions(): HTMLElement {
@@ -2145,22 +2473,21 @@ const cached = session.cache.get(keyword);
                     this.saveQuickActions(next);
                     text.value = this.getQuickActions().find((item) => item.id === action.id)?.label || action.label || action.value;
                 });
-                const iconSelect = document.createElement("select");
-                iconSelect.className = "b3-select sw-setting__quick-icon";
-                iconSelect.setAttribute("aria-label", this.i18n.quickIcon);
-                Array.from(new Set([action.icon, "iconLayout", "iconSearch", "iconCalendar", "iconSettings", "iconFile", "iconFolder", "iconDock", "iconPlugin", "⭐", "📅", "🔍"])).forEach((iconValue) => {
-                    const option = document.createElement("option");
-                    option.value = iconValue;
-                    option.textContent = /^icon/.test(iconValue) ? iconValue.replace(/^icon/, "") : iconValue;
-                    iconSelect.appendChild(option);
-                });
-                iconSelect.value = action.icon;
-                iconSelect.addEventListener("change", () => {
-                    const next = this.getQuickActions().map((item) => item.id === action.id ? {...item, icon: iconSelect.value} : item);
-                    this.saveQuickActions(next);
+                const iconButton = document.createElement("button");
+                iconButton.type = "button";
+                iconButton.className = "b3-button b3-button--text sw-setting__quick-icon";
+                iconButton.setAttribute("aria-label", this.i18n.quickChooseIcon);
+                iconButton.title = this.i18n.quickChooseIcon;
+                this.renderQuickActionIconButton(iconButton, action.icon);
+                iconButton.addEventListener("click", () => {
+                    this.openQuickActionIconPicker(action, (icon) => {
+                        const next = this.getQuickActions().map((item) => item.id === action.id ? {...item, icon} : item);
+                        this.saveQuickActions(next);
+                        render();
+                    });
                 });
                 const toggle = document.createElement("label");
-                toggle.className = "b3-switch sw-switch";
+                toggle.className = "sw-switch";
                 const input = document.createElement("input");
                 input.type = "checkbox";
                 input.checked = action.enabled;
@@ -2178,22 +2505,36 @@ const cached = session.cache.get(keyword);
                     ["sidebar", this.i18n.quickSidebar],
                     ["mobile", this.i18n.quickMobile],
                 ].forEach(([target, label]) => {
+                    const typedTarget = target as QuickActionTarget;
+                    const support = this.getQuickActionSupport(action, typedTarget);
                     const targetLabel = document.createElement("label");
                     targetLabel.className = "sw-setting__quick-target";
+                    targetLabel.classList.toggle("is-unsupported", support === "unsupported");
+                    targetLabel.classList.toggle("is-unknown", support === "unknown");
+                    if (support === "unsupported") targetLabel.title = this.i18n.quickSupportUnsupported;
+                    else if (support === "unknown") targetLabel.title = this.i18n.quickSupportUnknown;
                     const targetInput = document.createElement("input");
                     targetInput.type = "checkbox";
-                    targetInput.checked = action.targets.includes(target as QuickActionTarget);
+                    targetInput.checked = support !== "unsupported" && action.targets.includes(typedTarget);
+                    targetInput.disabled = support === "unsupported";
                     targetInput.addEventListener("change", () => {
                         const next = this.getQuickActions().map((item) => {
                             if (item.id !== action.id) return item;
                             const nextTargets = targetInput.checked
-                                ? Array.from(new Set([...item.targets, target as QuickActionTarget]))
+                                ? Array.from(new Set([...item.targets, typedTarget]))
                                 : item.targets.filter((itemTarget) => itemTarget !== target);
                             return {...item, targets: nextTargets as QuickActionTarget[]};
                         });
                         this.saveQuickActions(next);
                     });
                     targetLabel.append(targetInput, document.createTextNode(String(label)));
+                    if (support === "unknown") {
+                        const marker = document.createElement("span");
+                        marker.className = "sw-setting__quick-support-marker";
+                        marker.textContent = "?";
+                        marker.setAttribute("aria-label", this.i18n.quickSupportUnknown);
+                        targetLabel.appendChild(marker);
+                    }
                     targets.appendChild(targetLabel);
                 });
                 const controls = document.createElement("div");
@@ -2226,13 +2567,11 @@ const cached = session.cache.get(keyword);
                         render();
                     }),
                 );
-                row.append(text, iconSelect, targets, controls, toggle);
+                row.append(text, iconButton, targets, controls, toggle);
                 box.appendChild(row);
             });
-            const availableBuiltins = getBuiltinQuickActions().filter((item) => !actions.some((action) => action.kind === "builtin" && action.value === item.value));
-            const availableDocks = this.getDockPanels().filter((panel) => !actions.some((item) => item.kind === "dock" && item.value === panel.type));
-            const availableCommands = this.getPluginCommands().filter((command) => !actions.some((item) => item.kind === "command" && item.value === command.value));
-            if ((availableBuiltins.length > 0 || availableDocks.length > 0 || availableCommands.length > 0) && actions.length < QUICK_ACTIONS_MAX) {
+            const candidates = this.getQuickActionPickerCandidates(actions);
+            if (candidates.length > 0 && actions.length < QUICK_ACTIONS_MAX) {
                 const addRow = document.createElement("div");
                 addRow.className = "sw-setting__quick-action sw-setting__quick-action--add";
                 const tip = document.createElement("span");
@@ -2241,40 +2580,30 @@ const cached = session.cache.get(keyword);
                 const add = document.createElement("button");
                 add.type = "button";
                 add.className = "b3-button b3-button--text";
+                add.setAttribute("aria-expanded", "false");
                 add.innerHTML = `<svg><use xlink:href="#iconAdd"></use></svg><span>${this.i18n.addQuickAction}</span>`;
                 add.addEventListener("click", () => {
-                    const menu = new Menu("swQuickActionPicker");
-                    const append = (item: IQuickAction) => {
-                        const next = this.getQuickActions();
-                        next.push({...item, order: (next.length + 1) * 10});
-                        this.saveQuickActions(next);
-                        render();
-                    };
-                    const builtinSub = availableBuiltins.map((item) => ({
-                        label: item.label,
-                        icon: item.icon,
-                        click: () => append(item as IQuickAction),
-                    }));
-                    const dockSub = availableDocks.map((panel) => ({
-                        label: panel.title,
-                        icon: panel.icon,
-                        click: () => append({id: `dock-${panel.type}`, label: panel.title.slice(0, 4), icon: panel.icon, kind: "dock", value: panel.type, targets: ["desktop", "sidebar"], order: 0, enabled: true}),
-                    }));
-                    const commandSub = availableCommands.map((command) => ({
-                        label: `${command.label} · ${command.pluginName}`,
-                        icon: command.icon,
-                        click: () => append({id: command.id, label: command.label.slice(0, 4), icon: command.icon, kind: "command", value: command.value, targets: ["desktop", "sidebar", "mobile"], order: 0, enabled: true}),
-                    }));
-                    if (builtinSub.length) menu.addItem({type: "submenu", label: this.i18n.quickBuiltin, icon: "iconAdd", submenu: builtinSub});
-                    if (dockSub.length) menu.addItem({type: "submenu", label: this.i18n.quickDock, icon: "iconDock", submenu: dockSub});
-                    if (commandSub.length) menu.addItem({type: "submenu", label: this.i18n.quickPluginCommands, icon: "iconPlugin", submenu: commandSub});
-                    const rect = add.getBoundingClientRect();
-                    menu.open({x: rect.left, y: rect.bottom + 4});
+                    mountQuickActionPicker({
+                        trigger: add,
+                        host: addRow,
+                        candidates,
+                        searchPlaceholder: this.i18n.quickPickerSearch,
+                        emptyText: this.i18n.quickPickerEmpty,
+                        onSelect: (candidate: IQuickActionPickerCandidate) => {
+                            const result = appendQuickAction(this.getQuickActions(), candidate.action, QUICK_ACTIONS_MAX);
+                            if (!result.added) {
+                                showMessage(result.reason === "full" ? this.i18n.quickActionLimit : this.i18n.quickActionDuplicate);
+                                return;
+                            }
+                            this.saveQuickActions(result.items);
+                            render();
+                        },
+                    });
                 });
                 addRow.append(add, tip);
                 box.appendChild(addRow);
             }
-            if (actions.length === 0 && availableBuiltins.length === 0 && availableDocks.length === 0 && availableCommands.length === 0) box.textContent = this.i18n.noQuickActions;
+            if (actions.length === 0 && candidates.length === 0) box.textContent = this.i18n.noQuickActions;
         };
         render();
         const wrapper = document.createElement("div");
@@ -4746,10 +5075,42 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const dialog = this.createMobileSwitcherDialog();
         this.suspendFABForDialog(dialog);
         const mobileBody = dialog.element.querySelector<HTMLElement>(".sw__mobile");
-        mobileBody?.classList.add("sw__mobile--initializing");
-        let readyFrame = requestAnimationFrame(() => {
-            requestAnimationFrame(() => mobileBody?.classList.remove("sw__mobile--initializing"));
-        });
+        let readyFrame: number | null = null;
+        let revealCancelled = false;
+        let rendered = false;
+        let stableFrames = 0;
+        let previousWidth = 0;
+        let previousHeight = 0;
+        const revealWhenReady = (attempt = 0) => {
+            if (revealCancelled || !mobileBody?.isConnected) return;
+            const bodyRect = mobileBody.getBoundingClientRect();
+            const toolbar = mobileBody.querySelector<HTMLElement>(".sw__mobile-toolbar");
+            const scroll = mobileBody.querySelector<HTMLElement>(".sw__scroll");
+            const toolbarRect = toolbar?.getBoundingClientRect();
+            const hasStableGeometry = rendered
+                && bodyRect.width > 0 && bodyRect.height > 0
+                && !!toolbarRect && toolbarRect.width > 0
+                && (!scroll || scroll.clientWidth > 0)
+                && toolbarRect.width <= bodyRect.width + 2;
+            if (hasStableGeometry && Math.abs(bodyRect.width - previousWidth) < 1 && Math.abs(bodyRect.height - previousHeight) < 1) {
+                stableFrames += 1;
+            } else {
+                stableFrames = 0;
+            }
+            previousWidth = bodyRect.width;
+            previousHeight = bodyRect.height;
+            if (stableFrames >= 2 || attempt >= 12) {
+                mobileBody.classList.remove("sw__mobile--initializing");
+                mobileBody.style.removeProperty("visibility");
+                if (!hasStableGeometry && attempt >= 12) {
+                    logger.warn("mobile switcher revealed after layout timeout", {width: bodyRect.width, height: bodyRect.height});
+                }
+                readyFrame = null;
+                return;
+            }
+            readyFrame = requestAnimationFrame(() => revealWhenReady(attempt + 1));
+        };
+        readyFrame = requestAnimationFrame(() => revealWhenReady());
         const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
         const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
@@ -4769,7 +5130,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 閽╀綇 Dialog.destroy锛圗scape/鐐瑰嚮澶栭儴/绋嬪簭璋冪敤锛夋墍鏈夊叧闂矾寰勯兘鎭㈠ FAB
         const origDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
-            cancelAnimationFrame(readyFrame);
+            revealCancelled = true;
+            if (readyFrame !== null) cancelAnimationFrame(readyFrame);
+            readyFrame = null;
             unregisterRefresh();
             if (scrollElement) {
                 this.disposeDocSearchSession(scrollElement);
@@ -4780,6 +5143,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
         // 瑁呴厤宸ュ叿鏍忎笌鍒楄〃娓叉煋
         if (!searchInput || !sortSelect || !scrollElement) {
+            showMessage(this.i18n.mobileLayoutFailed, MESSAGE_DEFAULT_MS, "error");
+            dialog.destroy();
             return;
         }
         // 鍏堣閰嶅垪琛ㄦ嬁鍒?renderMobileList锛屽啀缁戝畾宸ュ叿鏍忥紙鎺掑簭鍒囨崲澶嶇敤瑁呴厤鏈?renderMobileList锛夛紱
@@ -4793,6 +5158,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
         this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
+        rendered = true;
 
         // 鎶?FAB 鍏抽棴鏃剁殑 FAB 鎭㈠浼樺厛绾ф彃鍦?destroy 涔嬪悗锛涗繚璇佹墦寮€鏀惰棌寮圭獥鍏抽棴鍚庝細鍥炲埌鍒楄〃
         dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
@@ -4813,7 +5179,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     private buildMobileSwitcherHtml(): string {
-        return `<div class="speed-switch sw__body sw__mobile">
+        return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing" style="visibility:hidden">
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
@@ -4881,20 +5247,45 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         };
         updateSortButton();
         sortButton?.addEventListener("click", () => {
-            const menu = new Menu("swMobileSortMenu");
-            Object.entries(sortLabels).forEach(([value, label]) => menu.addItem({
-                label,
-                icon: value === sortSelect.value ? "iconCheck" : undefined,
-                click: () => {
+            document.querySelector(".sw__mobile-sort-overlay")?.remove();
+            const overlay = document.createElement("div");
+            overlay.className = "sw__mobile-sort-overlay";
+            const sheet = document.createElement("div");
+            sheet.className = "sw__mobile-sort-sheet";
+            sheet.setAttribute("role", "dialog");
+            sheet.setAttribute("aria-modal", "true");
+            sheet.innerHTML = `<div class="sw__mobile-sheet-handle"></div><div class="sw__mobile-sheet-title">${this.i18n.setSortBy}</div>`;
+            const list = document.createElement("div");
+            list.className = "sw__mobile-sort-list";
+            Object.entries(sortLabels).forEach(([value, label]) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__mobile-sort-option";
+                item.setAttribute("role", "menuitemradio");
+                item.setAttribute("aria-checked", String(value === sortSelect.value));
+                item.innerHTML = `<span>${label}</span>${value === sortSelect.value ? '<svg><use xlink:href="#iconCheck"></use></svg>' : ""}`;
+                item.addEventListener("click", () => {
                     sortSelect.value = value;
-                    updateSortButton();
+                    overlay.remove();
                     sortSelect.dispatchEvent(new Event("change"));
-                },
-            }));
-            const rect = sortButton.getBoundingClientRect();
-            menu.open({x: rect.left, y: rect.bottom + 4});
+                });
+                list.appendChild(item);
+            });
+            sheet.appendChild(list);
+            overlay.appendChild(sheet);
+            document.body.appendChild(overlay);
+            overlay.addEventListener("click", (event) => {
+                if (event.target === overlay) overlay.remove();
+            });
+            requestAnimationFrame(() => sheet.classList.add("sw__mobile-sort-sheet--open"));
         });
         sortSelect.addEventListener("change", () => {
+            sortSelect.size = 0;
+            sortSelect.classList.add("fn__none");
+            sortSelect.style.removeProperty("position");
+            sortSelect.style.removeProperty("left");
+            sortSelect.style.removeProperty("top");
+            sortSelect.style.removeProperty("z-index");
             updateSortButton();
             this.updateSettings({sortBy: sortSelect.value as SortBy});
             // 鎺掑簭鍒囨崲锛氬鐢ㄨ閰嶆湡 renderMobileList锛堥噸璇绘渶鏂板垪琛?+ 鍏变韩 updatedMap锛夛紝鍐嶆竻鎼滅储璇嶉噸杩囨护

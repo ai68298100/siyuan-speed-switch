@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.10-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.11-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,7 +8,7 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> `v0.16.10` 继续收紧三端布局和快捷入口设置：桌面、侧栏与手机共享能力，但分别适配空间和输入方式。核心页签切换始终保持本地优先，不等待全库搜索或第三方插件。
+> `v0.16.11` 修复手机端排序面板层级和电脑端插件图标兜底：排序选择改为稳定的底部面板，无法识别的外部图标自动使用思源默认图标。
 
 [English README](./README.en-US.md)
 
@@ -114,6 +114,13 @@
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
 
 ## 更新日志
+
+### v0.16.11（2026-09-07）
+
+- 修复手机端排序面板被 Dialog 内容区裁剪、落到底部或显示异常的问题，改用与收藏一致的全屏遮罩和底部 sheet。
+- 手机端排序面板完整显示六种排序方式，当前方式带勾选状态，点击后立即刷新页签列表。
+- 加强快捷入口图标识别，思播、思阅等外部插件未注册可用 SVG 图标时自动使用思源文件默认图标。
+- 统一快捷入口主界面、设置候选卡片和图标选择器的图标兜底逻辑。
 
 ### v0.16.10（2026-09-06）
 

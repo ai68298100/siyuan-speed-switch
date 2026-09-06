@@ -1,5 +1,6 @@
 // 快捷入口配置的纯函数层：持久化数据不可信，所有字段在进入 UI 前统一清理。
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
+const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings"]);
 const BUILTIN_QUICK_ACTIONS = [
     {id: "switcher", label: "切换", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
@@ -8,6 +9,75 @@ const BUILTIN_QUICK_ACTIONS = [
     {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
 ];
 const DEFAULT_QUICK_ACTIONS = BUILTIN_QUICK_ACTIONS.filter((item) => item.value === "journal" || item.value === "settings");
+
+function normalizeTargets(value) {
+    if (!Array.isArray(value)) return [];
+    return Array.from(new Set(value.filter((target) => QUICK_ACTION_TARGETS.includes(target))));
+}
+
+/**
+ * Returns whether an action is known to work on a surface. Third-party
+ * commands have no mobile capability metadata in SiYuan's command API, so
+ * mobile remains "unknown" instead of being guessed from the callback shape.
+ */
+function resolveQuickActionSupport(kind, value, target, declaredTargets) {
+    if (!QUICK_ACTION_TARGETS.includes(target)) return "unsupported";
+    if (kind === "builtin") {
+        const builtin = BUILTIN_QUICK_ACTIONS.find((item) => item.value === value);
+        return builtin?.targets.includes(target) ? "supported" : "unsupported";
+    }
+    if (kind === "dock") return target === "mobile" ? "unsupported" : "supported";
+    if (kind === "command") return target === "mobile" ? "unknown" : "supported";
+    if (kind === "adapter") {
+        if (Array.isArray(declaredTargets)) {
+            return normalizeTargets(declaredTargets).includes(target) ? "supported" : "unsupported";
+        }
+        return target === "mobile" ? "unknown" : "supported";
+    }
+    return "unsupported";
+}
+
+function getDefaultQuickActionTargets(kind, value, declaredTargets) {
+    if (Array.isArray(declaredTargets)) return normalizeTargets(declaredTargets);
+    if (kind === "builtin") {
+        const builtin = BUILTIN_QUICK_ACTIONS.find((item) => item.value === value);
+        return builtin ? [...builtin.targets] : ["desktop"];
+    }
+    // Dock panels and ordinary plugin commands are not guaranteed to exist in
+    // the Android WebView. Providers can opt in to mobile via declaredTargets.
+    return ["desktop", "sidebar"];
+}
+
+function shouldRenderQuickAction(action, surface, context = "switcher", declaredTargets) {
+    if (!action || action.enabled === false || !normalizeTargets(action.targets).includes(surface)) return false;
+    if (resolveQuickActionSupport(action.kind, action.value, surface, declaredTargets) === "unsupported") return false;
+    // The switcher already is the switching/search surface. Keeping these two
+    // buttons in its desktop/mobile footer duplicates controls without adding a
+    // useful action. Preserve their stored config for sidebar/legacy use.
+    if (context === "switcher" && action.kind === "builtin"
+        && (action.value === "switcher" || action.value === "search")
+        && (surface === "desktop" || surface === "mobile")) return false;
+    return true;
+}
+
+function appendQuickAction(actions, candidate, max = 12) {
+    const current = Array.isArray(actions) ? actions.map((item) => ({...item, targets: normalizeTargets(item.targets)})) : [];
+    if (!candidate || current.length >= max) return {items: current, added: false, reason: "full"};
+    if (current.some((item) => item.kind === candidate.kind && item.value === candidate.value)) {
+        return {items: current, added: false, reason: "duplicate"};
+    }
+    const targets = Array.isArray(candidate.targets)
+        ? normalizeTargets(candidate.targets)
+        : getDefaultQuickActionTargets(candidate.kind, candidate.value, candidate.declaredTargets);
+    const next = {
+        ...candidate,
+        targets,
+        order: (current.length + 1) * 10,
+        enabled: candidate.enabled !== false,
+    };
+    delete next.declaredTargets;
+    return {items: [...current, next], added: true, reason: "added"};
+}
 
 function graphemeLength(value) {
     const text = String(value ?? "");
@@ -40,7 +110,8 @@ function sanitizeQuickActions(value, max = 12) {
     const seen = new Set();
     const items = [];
     let changed = false;
-    value.slice(0, max).forEach((raw, index) => {
+    value.forEach((raw, index) => {
+        if (items.length >= max) { changed = true; return; }
         if (!raw || typeof raw !== "object") { changed = true; return; }
         const kind = QUICK_ACTION_KINDS.has(raw.kind) ? raw.kind : "builtin";
         const valueId = typeof raw.value === "string" ? raw.value : "";
@@ -49,7 +120,7 @@ function sanitizeQuickActions(value, max = 12) {
         const id = typeof raw.id === "string" && /^[A-Za-z0-9_-]+$/.test(raw.id) ? raw.id : `${kind}-${valueId || index}`;
         if (!validValue || seen.has(id)) { changed = true; return; }
         seen.add(id);
-        const targets = Array.isArray(raw.targets) ? raw.targets.filter((target) => ["desktop", "sidebar", "mobile"].includes(target)) : ["desktop"];
+        const targets = Array.isArray(raw.targets) ? normalizeTargets(raw.targets) : ["desktop"];
         const label = normalizeLabel(raw.label) || normalizeLabel(valueId);
         const item = {
             id,
@@ -72,11 +143,20 @@ function sanitizeQuickActions(value, max = 12) {
 }
 
 function getDefaultQuickActions() {
-    return DEFAULT_QUICK_ACTIONS.map((item) => ({...item}));
+    return DEFAULT_QUICK_ACTIONS.map((item) => ({...item, targets: [...item.targets]}));
 }
 
 function getBuiltinQuickActions() {
-    return BUILTIN_QUICK_ACTIONS.map((item) => ({...item}));
+    return BUILTIN_QUICK_ACTIONS.map((item) => ({...item, targets: [...item.targets]}));
 }
 
-module.exports = {sanitizeQuickActions, getDefaultQuickActions, getBuiltinQuickActions, graphemeLength};
+module.exports = {
+    sanitizeQuickActions,
+    getDefaultQuickActions,
+    getBuiltinQuickActions,
+    getDefaultQuickActionTargets,
+    resolveQuickActionSupport,
+    shouldRenderQuickAction,
+    appendQuickAction,
+    graphemeLength,
+};
