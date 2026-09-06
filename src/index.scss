@@ -2599,17 +2599,26 @@
 .sw__mobile-sort-overlay {
     position: fixed;
     inset: 0;
-    z-index: 1002;
+    // 思源移动端 Dialog 可能建立独立 stacking context；使用高层级保证排序面板位于 Dialog 之上。
+    z-index: 2147483000;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     background: rgba(0, 0, 0, .32);
+    pointer-events: auto;
+    isolation: isolate;
+    contain: layout paint;
     -webkit-tap-highlight-color: transparent;
 }
 
 .sw__mobile-sort-sheet {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 520px;
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
     border-radius: 16px 16px 0 0;
     background: var(--b3-theme-surface);

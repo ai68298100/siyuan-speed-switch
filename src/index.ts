@@ -5087,9 +5087,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             const toolbar = mobileBody.querySelector<HTMLElement>(".sw__mobile-toolbar");
             const scroll = mobileBody.querySelector<HTMLElement>(".sw__scroll");
             const toolbarRect = toolbar?.getBoundingClientRect();
+            const icon = mobileBody.querySelector<SVGElement>(".sw__search-icon");
+            const iconRect = icon?.getBoundingClientRect();
+            const toolbarStyle = toolbar ? getComputedStyle(toolbar) : null;
             const hasStableGeometry = rendered
                 && bodyRect.width > 0 && bodyRect.height > 0
                 && !!toolbarRect && toolbarRect.width > 0
+                && toolbarStyle?.display === "flex"
+                && !!iconRect && iconRect.width > 0 && iconRect.width <= 32
+                && iconRect.height > 0 && iconRect.height <= 32
                 && (!scroll || scroll.clientWidth > 0)
                 && toolbarRect.width <= bodyRect.width + 2;
             if (hasStableGeometry && Math.abs(bodyRect.width - previousWidth) < 1 && Math.abs(bodyRect.height - previousHeight) < 1) {
@@ -5099,10 +5105,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
             previousWidth = bodyRect.width;
             previousHeight = bodyRect.height;
-            if (stableFrames >= 2 || attempt >= 12) {
+            if (stableFrames >= 2 || attempt >= 30) {
                 mobileBody.classList.remove("sw__mobile--initializing");
                 mobileBody.style.removeProperty("visibility");
-                if (!hasStableGeometry && attempt >= 12) {
+                mobileBody.style.removeProperty("opacity");
+                mobileBody.style.removeProperty("pointer-events");
+                if (!hasStableGeometry && attempt >= 30) {
                     logger.warn("mobile switcher revealed after layout timeout", {width: bodyRect.width, height: bodyRect.height});
                 }
                 readyFrame = null;
@@ -5179,7 +5187,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     private buildMobileSwitcherHtml(): string {
-        return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing" style="visibility:hidden">
+        return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing" style="visibility:hidden;opacity:0;pointer-events:none">
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
@@ -5250,6 +5258,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             document.querySelector(".sw__mobile-sort-overlay")?.remove();
             const overlay = document.createElement("div");
             overlay.className = "sw__mobile-sort-overlay";
+            // WebView 里的思源 Dialog 可能建立新的 stacking context，内联层级作为最后一道兜底。
+            overlay.style.position = "fixed";
+            overlay.style.inset = "0";
+            overlay.style.zIndex = "2147483000";
             const sheet = document.createElement("div");
             sheet.className = "sw__mobile-sort-sheet";
             sheet.setAttribute("role", "dialog");
