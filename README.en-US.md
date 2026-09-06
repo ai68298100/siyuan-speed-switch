@@ -20,6 +20,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 - **Native split panes**: tabs remain grouped by SiYuan window/pane and switching activates the correct pane. Opening, closing, or batch-changing tabs refreshes every active plugin view immediately.
 - **Keyboard and pointer control**: arrows and `Tab` move across the real grid, `Enter` opens, and `Esc` closes. Cards provide pin, favorite, close, and context-menu actions.
 - **Six sort modes**: recent use, open order, reversed open order, recently edited, title ascending, and title descending; the choice persists.
+- **Recently opened history**: the desktop clock button keeps recently opened documents; open entries switch directly, while closed entries can be reopened.
 - **Desktop fullscreen**: fullscreen belongs only to the desktop dialog. Sidebar and mobile do not render an action that cannot apply there.
 
 ### Favorite Folders And Ordering
@@ -53,7 +54,7 @@ Workspace requests use a 180 ms debounce, bounded in-memory cache, request-versi
 
 | Surface | Primary controls and behavior |
 | --- | --- |
-| Desktop dialog | Search, favorites, sort, fullscreen, sidebar, journal, and settings; left panel rail; bottom or right quick actions |
+| Desktop dialog | Search, favorites, recent history, sort, fullscreen, sidebar, journal, and settings; left panel rail; bottom or right quick actions |
 | Right sidebar | Compact search and toolbar; responsive tab/search cards; sidebar actions; no fullscreen |
 | Mobile | Compact sort menu, favorites, journal, and settings; one/two/auto columns; bottom custom actions and `+`; no fullscreen |
 
@@ -93,7 +94,7 @@ Open **Settings → Plugins → LvSpeed Switch → Settings**, or use the gear i
 | Tab | Options |
 | --- | --- |
 | Appearance | Switcher width/height (480–1920 × 360–1280), thumbnail columns (auto / 2–8), thumbnail height (72–360) |
-| Behavior | Default sort order, fullscreen mode (off by default; opens filling the window) |
+| Behavior | Default sort order, recently opened history, fullscreen mode (off by default; opens filling the window) |
 | Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden), sidebar thumbnail layout (enlarge / auto columns) |
 | Favorites | Collapse and order folders, create / rename / delete, order items, and reassign favorites |
 | Quick Actions | Label, icon, surface targets, enable state, drag/button ordering, right action rail, and import/export |
