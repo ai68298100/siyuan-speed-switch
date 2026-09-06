@@ -3270,10 +3270,13 @@ private rootIdOf(tab: Tab): string | null {
         const panel = container.querySelector<HTMLElement>(".sw__history-panel");
         if (!trigger || !panel) return;
         let outsideHandler: ((event: PointerEvent) => void) | null = null;
+        let resizeHandler: (() => void) | null = null;
         const close = () => {
             panel.classList.add("fn__none");
             if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
+            if (resizeHandler) window.removeEventListener("resize", resizeHandler);
             outsideHandler = null;
+            resizeHandler = null;
         };
         trigger.addEventListener("click", () => {
             if (!panel.classList.contains("fn__none")) { close(); return; }
@@ -3286,9 +3289,10 @@ private rootIdOf(tab: Tab): string | null {
             this.positionOpenHistoryPanel(trigger, panel);
             outsideHandler = (event) => { if (!container.contains(event.target as Node)) close(); };
             document.addEventListener("pointerdown", outsideHandler, true);
-        });
-        window.addEventListener("resize", () => {
-            if (!panel.classList.contains("fn__none")) this.positionOpenHistoryPanel(trigger, panel);
+            resizeHandler = () => {
+                if (!panel.classList.contains("fn__none")) this.positionOpenHistoryPanel(trigger, panel);
+            };
+            window.addEventListener("resize", resizeHandler);
         });
         this.refreshOpenHistoryDropdown(container);
     }
