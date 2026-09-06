@@ -12,6 +12,7 @@ const {
     mergeSearchLayers,
     shouldSearchRemote,
     buildFullTextSearchRequest,
+    extractSearchRecords,
 } = require("../src/search-model.js");
 
 const ROOT_A = "20260906120000-aaaaaaa";
@@ -284,4 +285,12 @@ test("search model: semantic method uses the native semantic endpoint", () => {
 test("search model: empty native requests are skipped", () => {
     assert.equal(buildFullTextSearchRequest({query: "   ", method: 0}), null);
     assert.equal(buildFullTextSearchRequest(null), null);
+});
+
+test("search model: extracts compatible native result wrappers", () => {
+    const blocks = [{rootId: "20260906120001-aaaaaaa", content: "命中"}];
+    assert.strictEqual(extractSearchRecords({data: [], blocks}), blocks);
+    assert.strictEqual(extractSearchRecords({data: {items: blocks}}), blocks);
+    assert.deepEqual(extractSearchRecords({data: []}), []);
+    assert.deepEqual(extractSearchRecords(null), []);
 });

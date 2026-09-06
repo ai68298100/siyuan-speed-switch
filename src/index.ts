@@ -3,6 +3,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
+import {aggregateSearchResults, buildFullTextSearchRequest, extractSearchRecords} from "./search-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -154,9 +155,13 @@ type Tab = ReturnType<typeof getAllTabs>[number];
 
 interface IDocSearchResult {
     id?: string;
+    rootId?: string;
     name?: string;
+    title?: string;
     path?: string;
     hPath?: string;
+    snippets?: Array<{text?: string; blockId?: string | null}>;
+    source?: string;
 }
 
 interface ISearchSession<T> {
@@ -172,6 +177,25 @@ declare module "./search-session" {
     export function beginSearch<T>(session: ISearchSession<T>): number;
     export function cacheSearchResult<T>(session: ISearchSession<T>, key: string, value: T): void;
     export function disposeSearchSession<T>(session: ISearchSession<T>): void;
+}
+
+declare module "./search-model" {
+    export function aggregateSearchResults(results: unknown[], options?: {
+        documents?: number;
+        snippets?: number;
+        blockIds?: number;
+        source?: string;
+    }): {cards: Array<{
+        rootId: string;
+        title: string;
+        path: string;
+        snippets: Array<{text: string; blockId?: string | null}>;
+    }>};
+    export function buildFullTextSearchRequest(input?: Record<string, unknown>): {
+        endpoint: string;
+        body: Record<string, unknown>;
+    } | null;
+    export function extractSearchRecords(payload: unknown): unknown[];
 }
 
 type DocSearchRenderState = "results" | "loading" | "error";
@@ -2766,9 +2790,15 @@ const cached = session.cache.get(keyword);
             if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
                 return;
             }
-            const docs: IDocSearchResult[] = Array.isArray(json?.data)
+            let docs: IDocSearchResult[] = Array.isArray(json?.data)
                 ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
                 : [];
+            // Keep title search as the fast path. Only ask the native block
+            // endpoint when it found no documents, preserving existing
+            // ordering and request cost for the common case.
+            if (docs.length === 0) {
+                docs = await this.runFullTextSearchFallback(keyword, controller.signal);
+            }
             cacheSearchResult(session, keyword, docs);
             this.renderDocResults(scrollElement, docs, onClose);
         } catch (e) {
@@ -2790,7 +2820,55 @@ if ((e as DOMException)?.name !== "AbortError") {
     }
 
     // 娓叉煋鍏ㄥ簱鏂囨。鎼滅储缁撴灉鍒嗙粍锛坉ocs 涓?null 琛ㄧず闅愯棌锛夛紱宸叉墦寮€鐨勬枃妗ｄ笉鍐嶉噸澶嶅垪鍑?
-private renderDocResults(
+    private async runFullTextSearchFallback(keyword: string, signal: AbortSignal): Promise<IDocSearchResult[]> {
+        const request = buildFullTextSearchRequest({
+            query: keyword,
+            method: "keyword",
+            groupBy: "document",
+            pageSize: Math.max(DOC_RESULT_LIMIT * 2, 24),
+        });
+        if (!request) {
+            return [];
+        }
+        try {
+            const response = await fetch(request.endpoint, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(request.body),
+                signal,
+            });
+            if (!response.ok) {
+                throw new Error(`full text search HTTP ${response.status}`);
+            }
+            const payload = await response.json();
+            const aggregate = aggregateSearchResults(extractSearchRecords(payload), {
+                source: "global",
+                documents: DOC_RESULT_LIMIT,
+                snippets: 2,
+                blockIds: 8,
+            });
+            return aggregate.cards.map((card) => ({
+                id: card.rootId,
+                rootId: card.rootId,
+                name: card.title,
+                title: card.title,
+                path: card.path,
+                hPath: card.path,
+                snippets: card.snippets,
+                source: "global",
+            }));
+        } catch (error) {
+            if ((error as DOMException)?.name === "AbortError") {
+                throw error;
+            }
+            // Full-text search is optional. Older SiYuan versions keep the
+            // title-search empty state when this endpoint is unavailable.
+            logger.warn("full text search fallback unavailable", error);
+            return [];
+        }
+    }
+
+    private renderDocResults(
         scrollElement: HTMLElement,
         docs: IDocSearchResult[] | null,
         onClose: IOverlayClose,
@@ -2893,6 +2971,10 @@ const openRootIds = this.collectOpenRootIds();
     }
 
     private docSearchResultId(doc: IDocSearchResult): string {
+        const rootId = String(doc.rootId || "");
+        if (BLOCK_ID_RE.test(rootId)) {
+            return rootId;
+        }
         const directId = String(doc.id || "");
         if (BLOCK_ID_RE.test(directId)) {
             return directId;
@@ -2915,8 +2997,17 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         const title = document.createElement("span");
         title.className = "sw__doc-title";
         const hPath = String(doc.hPath || "");
-        const docTitle = hPath.split("/").filter(Boolean).pop() || String(doc.name || "") || id;
+        const docTitle = hPath.split("/").filter(Boolean).pop() || String(doc.title || doc.name || "") || id;
         title.textContent = docTitle;
+        const snippets = Array.isArray(doc.snippets)
+            ? doc.snippets.map((snippet) => String(snippet?.text || "").trim()).filter(Boolean).join(" · ")
+            : "";
+        if (snippets) {
+            const snippet = document.createElement("span");
+            snippet.className = "sw__doc-snippet";
+            snippet.textContent = snippets;
+            copy.appendChild(snippet);
+        }
         const path = document.createElement("span");
         path.className = "sw__doc-path";
         path.textContent = hPath || docTitle;
