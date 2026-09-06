@@ -59,6 +59,9 @@
   "deleteGroupConfirm": "删除该分组？组内收藏将移入未分组",
   "groupCountTip": "组内收藏数",
   "favGroupTip": "一键开启或关闭该分组内的页签",
+  "favCollapseTip": "展开或折叠该收藏夹",
+  "favMoveUp": "上移收藏",
+  "favMoveDown": "下移收藏",
   "openGroupTabs": "一键开启组内页签",
   "closeGroupTabs": "一键关闭组内页签",
   "groupTabsOpened": "已开启 {x} 个页签",
@@ -71,6 +74,8 @@
   "rename": "重命名",
   "openSidebar": "侧边栏模式",
   "docSearchResults": "全库文档",
+  "docSearchLoading": "正在搜索全库文档…",
+  "docSearchFailed": "搜索失败，请稍后重试",
   "noDocResults": "未找到匹配的文档",
   "backTop": "回到顶部",
   "secMobile": "手机端",
@@ -110,5 +115,33 @@
   "openDocFailed": "打开文档失败，请稍后再试",
   "closeTabFailed": "关闭页签失败，请稍后再试",
   "favNeedActivate": "该页签尚未加载完成，请先切换到该页签再收藏",
-  "favInvalidEntry": "该收藏项缺少有效文档信息，打开对应页签后会自动修复"
+  "favInvalidEntry": "该收藏项缺少有效文档信息，打开对应页签后会自动修复",
+  "quickActions": "快捷入口",
+  "quickActionsTip": "桌面端切换器底部显示的快捷动作，可按端侧分别启用",
+  "secQuickActions": "快捷入口",
+  "noQuickActions": "暂无可用快捷入口"
+  ,"addQuickAction": "添加面板入口"
+  ,"quickDesktop": "桌面"
+  ,"quickSidebar": "侧栏"
+  ,"quickMobile": "手机"
+  ,"quickMoveUp": "上移"
+  ,"quickMoveDown": "下移"
+  ,"quickRemove": "删除"
+  ,"quickIcon": "图标"
+  ,"quickActionsRightRail": "右侧入口栏"
+  ,"quickActionsRightRailTip": "桌面切换器中将快捷入口放到右侧栏，关闭时显示在底部"
+  ,"quickExport": "导出配置"
+  ,"quickImport": "导入配置"
+  ,"quickImportDone": "快捷入口配置已导入"
+  ,"quickImportFailed": "配置文件无效，导入失败"
+  ,"quickColumnLabel": "名称"
+  ,"quickColumnIcon": "图标"
+  ,"quickColumnTargets": "显示端"
+  ,"quickColumnOrder": "排序"
+  ,"quickColumnEnabled": "启用"
+  ,"quickAddTip": "可恢复内置入口、添加 Dock 面板，或调用其他插件命令"
+  ,"quickBuiltin": "内置"
+  ,"quickDock": "面板"
+  ,"quickTransfer": "配置迁移"
+  ,"quickTransferTip": "导出配置可备份或同步到另一台设备，导入会覆盖当前快捷入口"
 }

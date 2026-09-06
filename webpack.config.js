@@ -40,6 +40,8 @@ module.exports = (env, argv) => {
                 patterns: [
                     ...packageImagePatterns,
                     {from: "README*.md", to: "./dist/"},
+                    {from: "ROADMAP.md", to: "./dist/"},
+                    {from: "docs/*.svg", to: "./dist/docs/[name][ext]"},
                     {from: "plugin.json", to: "./dist/"},
                     {from: "src/i18n/", to: "./dist/i18n/"},
                 ],

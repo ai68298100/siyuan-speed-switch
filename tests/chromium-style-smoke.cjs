@@ -61,6 +61,18 @@ ${links}
       </div>
     </div>
   </div>
+  <div class="sw__doc-results sw__group">
+    <div class="sw__window-label">Workspace documents · 1</div>
+    <div class="sw__doc-grid">
+      <button type="button" class="sw__doc-item">
+        <span class="sw__doc-icon"><svg><use href="#iconFile"></use></svg></span>
+        <span class="sw__doc-copy">
+          <span class="sw__doc-title">A long document title that can wrap across lines</span>
+          <span class="sw__doc-path">/Notebook/Projects/A long document title</span>
+        </span>
+      </button>
+    </div>
+  </div>
 </div>
 <div class="b3-dialog"><div class="sw-settings__item">
   <div class="sw-settings__item-main"><div class="sw-settings__item-title">Setting</div></div>
@@ -72,13 +84,16 @@ window.addEventListener('load', () => {
   const measure = (selector) => {
     const element = document.querySelector(selector);
     const style = getComputedStyle(element);
-    return {tag: element.tagName, width: style.width, height: style.height, position: style.position, display: style.display, visibility: style.visibility, opacity: style.opacity};
+    return {tag: element.tagName, width: style.width, height: style.height, minHeight: style.minHeight, position: style.position, display: style.display, visibility: style.visibility, opacity: style.opacity};
   };
   const result = {
     pin: measure('.sw__pin'),
     favorite: measure('.sw__fav-btn'),
     close: measure('.sw__close'),
     settingSwitch: measure('.sw-switch'),
+    docGrid: measure('.sw__doc-grid'),
+    docItem: measure('.sw__doc-item'),
+    docTitleClamp: getComputedStyle(document.querySelector('.sw__doc-title')).webkitLineClamp,
   };
   document.body.dataset.result = btoa(JSON.stringify(result));
 });
@@ -117,10 +132,16 @@ try {
     const switchOk = result.settingSwitch.width === '42px'
         && result.settingSwitch.height === '24px'
         && result.settingSwitch.position === 'relative';
+    const docCardsOk = result.docGrid.display === 'grid'
+        && result.docItem.tag === 'BUTTON'
+        && result.docItem.display === 'grid'
+        && result.docItem.minHeight === '76px'
+        && result.docTitleClamp === '2';
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);
     console.log(`${switchOk ? 'PASS' : 'FAIL'} Chromium settings switch`);
-    process.exitCode = actionOk && switchOk ? 0 : 1;
+    console.log(`${docCardsOk ? 'PASS' : 'FAIL'} Chromium document search cards`);
+    process.exitCode = actionOk && switchOk && docCardsOk ? 0 : 1;
 } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

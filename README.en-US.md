@@ -1,57 +1,82 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.8-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.9-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
-A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open tabs with **live thumbnails** just like Windows **Win+Tab / Alt+Tab** — plus **grouped favorites**, **workspace-wide search**, **one-click dock panels**, a **dockable sidebar mode**, and a **fullscreen mode**. Split windows (panes) are fully supported, and **mobile is fully adapted**.
+LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
 <p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
+<p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
+
+> `v0.16.9` is a substantial UI and capability update covering search, favorite management, quick actions, settings, and mobile layout. The core tab path remains local-first and never waits for workspace search or third-party plugins.
+
 [中文说明](./README.md)
 
-## ✨ Features
+## Core Capabilities
 
-### Switching
-- 🌟 **Live thumbnails** — One card per tab showing real document content; background tabs are fetched via the kernel API, so every thumbnail is visible on first open.
-- 🔀 **Split-window native** — Tabs are grouped by window (pane); switching activates the right pane automatically.
-- ⌨️ **Full keyboard control** — Arrows / `Tab` move the selection across the real grid, `Enter` switches, `Esc` closes — same muscle memory as Alt+Tab.
-- 📌 **Pin tabs** — Pin frequently used tabs to the front of their group; remembered per document across restarts.
-- 🖥️ **Fullscreen mode** — One toolbar button toggles fullscreen ⇄ normal; the thumbnail wall fills the whole window. Persist a default in settings; `Esc` exits.
+### Tab Switching And Live Refresh
 
-### Favorites & Groups
-- ⭐ **One-click favorite** — Star any tab; document tabs are remembered by rootID, so you can **reopen them from favorites even after the tab closes**, surviving restarts.
-- 🗂️ **Group management** — File favorites into groups on star click, or create groups on the fly; settings let you **create / inline-rename / delete groups** and reassign favorites per item — all saved instantly.
-- 🖱️ **Right-click shortcuts** — Both cards and dropdown favorites support right-click: **move to group** (submenu with one click), **new group & move**, unfavorite — bulk organizing without opening settings.
-- 📂 **Grouped dropdown** — The favorites dropdown is a custom component: group headers with count badges, **click to collapse / expand**; auto-narrows and clamps inside narrow sidebars, never overflows.
+- **Live thumbnails**: each tab card shows current document content; background documents are filled through the kernel API when needed, while off-screen content is rendered lazily.
+- **Native split panes**: tabs remain grouped by SiYuan window/pane and switching activates the correct pane. Opening, closing, or batch-changing tabs refreshes every active plugin view immediately.
+- **Keyboard and pointer control**: arrows and `Tab` move across the real grid, `Enter` opens, and `Esc` closes. Cards provide pin, favorite, close, and context-menu actions.
+- **Six sort modes**: recent use, open order, reversed open order, recently edited, title ascending, and title descending; the choice persists.
+- **Desktop fullscreen**: fullscreen belongs only to the desktop dialog. Sidebar and mobile do not render an action that cannot apply there.
 
-### Search & Sort
-- 🔍 **Two-section search** — Matching open tabs on top, **workspace-wide document results** below (already-open docs excluded, click to open); 180ms debounce + result cache + stale-request aborting.
-- 🔃 **Six sort orders** — Recently used / open order / reversed / recently edited / title asc/desc, switchable in-place and persisted.
+### Favorite Folders And Ordering
 
-### Panels & Sidebar
-- 🖇️ **Panel quick access** — All dock panels (file tree, outline, bookmarks, graph, backlinks, tags, inbox, AI chat…) listed on the left rail; click to open and focus. Hide unwanted ones in settings.
-- 📎 **Sidebar mode** — Pin the tab list to a right dock panel: cards that resize with the panel, always at hand; when stretched wider, choose between **enlarging thumbnails** or **auto-adding columns**.
-- 📅 **Today's journal** — A journal button in the switcher's top bar opens/creates today's journal with one click once you've opened the switcher; pick the default notebook under **Settings → Journal**, or a picker pops up on first click if unset.
+- Favorites use stable document root IDs, so they can reopen after a tab closes or SiYuan restarts.
+- Favorite folders show order and item count, and support collapse, rename, delete, move up, and move down. Desktop also supports dragging folders into order.
+- Favorite items live inside their folder, show an in-folder order number, and can move between folders or up/down within one. Desktop supports in-folder drag sorting.
+- Mobile settings disable whole-row drag to avoid stealing vertical scrolling; explicit move controls provide the same result.
+- A folder can open or close all its tabs, with separate handling for duplicate documents, failed items, and no-op states.
 
-### Mobile
-- 📱 **Fully adapted** — A permanent top-bar entry plus an optional floating button (off by default, enable it in settings); thumbnails, favorites and search work just like on desktop.
-- 👆 **Touch interactions** — Long-press a card for pin / favorite / group / close (the mobile equivalent of right-click); the floating button hides on swipe up and returns on swipe down, matching SiYuan's own toolbar.
-- 🗂️ **Adaptive layout** — Card layout supports single / double / auto columns (single in portrait, double in landscape); one setting syncs across devices.
+### Two-Section Card Search
 
-### Performance & Look
-- 💾 **Thumbnail cache** — Content snapshots cached per document; layout resets and app restarts load instantly. Cache is pruned on tab close, capped at 200KB per entry.
-- ⚡ **Lazy viewport rendering** — Only thumbnails scrolled into view are generated, so the switcher opens instantly with many tabs; re-sorting reuses cards and keeps rendered thumbnails.
-- 🎨 **Theme aware** — Every style rides on SiYuan theme variables, following light/dark and **third-party themes** seamlessly; settings switches enforce high-contrast on/off states under any theme.
+Search always uses this priority:
 
-## 🚀 Quick Start
+1. **Open tabs**: filtered locally and immediately while preserving pane grouping, pinning, sorting, and keyboard navigation.
+2. **Workspace documents**: queried by document title, excluding already-open documents, and presented as title/path cards that open directly.
+
+Workspace requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. This release provides workspace **document-title search**; it does not claim block-level full-text snippets or the native filter set yet. See [ROADMAP.md](./ROADMAP.md) for that work.
+
+### Panels, Journal, And Quick Actions
+
+- **Left panel rail**: open the file tree, outline, bookmarks, tags, graph, backlinks, and plugin docks. Choose a full list, icon-only rail, or complete hiding.
+- **Right sidebar mode**: keep tab cards in a SiYuan right Dock. Thumbnails resize with available width and can either enlarge to fill or add columns automatically.
+- **Today's journal**: desktop and mobile toolbars retain a dedicated journal action. Select a default notebook or choose one on first use.
+- **Quick action workspace**: desktop uses a bottom bar by default and can move it into a narrower right rail; sidebar and mobile render their own selected actions.
+- **Four action sources**: built-in actions, SiYuan Dock panels, commands exposed by other plugins, and runtime adapters registered through `registerQuickAction()`.
+- **Configuration**: labels up to four graphemes, icon, desktop/sidebar/mobile targets, enabled state, ordering, and JSON import/export. The `+` action opens Quick Actions settings directly.
+- If an external plugin is absent, its configuration is retained and skipped safely. No polling or DOM injection is used, so optional integrations do not slow the core tab path.
+
+### Three Surface Strategy
+
+| Surface | Primary controls and behavior |
+| --- | --- |
+| Desktop dialog | Search, favorites, sort, fullscreen, sidebar, journal, and settings; left panel rail; bottom or right quick actions |
+| Right sidebar | Compact search and toolbar; responsive tab/search cards; sidebar actions; no fullscreen |
+| Mobile | Compact sort menu, favorites, journal, and settings; one/two/auto columns; bottom custom actions and `+`; no fullscreen |
+
+On mobile, the first frame waits for the WebView to reach a stable size before cards become visible, then scales thumbnails from the container's measured width. Mobile settings use a horizontally scrollable top tab row and single-column controls. Favorite and quick-action ordering use buttons instead of row dragging, avoiding gesture conflicts with page scrolling.
+
+### Performance, Data, And Themes
+
+- Local tab filtering and switching never wait for workspace APIs or third-party plugins; a search failure leaves open-tab results intact.
+- Thumbnails render by viewport and cache per document with a per-entry size limit; orphaned cache entries are pruned after tabs close.
+- MRU, favorites, pins, settings, and quick actions are validated and deduplicated on read. Writes are debounced and pending saves are flushed before unload.
+- UI uses SiYuan theme variables and native icons, with stable button, card, switch, and text dimensions for default themes and third-party themes such as Neo.
+
+## Quick Start
 
 1. **Open**: the layout icon on the top toolbar, or the hotkey `Alt+Shift+S` (changeable in **Settings → Keymap**); on mobile, tap the top-bar entry or the floating button.
 2. **Switch**: click a card, or move with arrows / `Tab` and hit `Enter`; click a panel on the left rail to jump to it.
 3. **Manage**: pin with the pin button, favorite with the star (group menu pops up); close tabs with × on the card, or right-click for the full menu (long-press on mobile).
-4. **Search**: type in the toolbar — tab and document results appear together.
+4. **Search**: use one field to see matching open tabs first and workspace document-title cards second.
 5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
-6. **Fullscreen**: hit the fullscreen toolbar button to fill the window; click again or `Esc` to restore.
+6. **Customize**: use `+` in the bottom/right action area to add Docks, plugin commands, or change per-surface visibility.
+7. **Fullscreen**: on desktop only, fill the window and restore with the button or `Esc`.
 
-## ⌨️ Shortcuts
+## Shortcuts
 
 | Key | Action |
 | --- | --- |
@@ -61,23 +86,26 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 | `Enter` | Switch to the selected tab |
 | `Esc` | Close the switcher |
 
-## ⚙️ Settings
+## Settings
 
-**Settings → Plugins → LvSpeed Switch → Settings** (or the gear button inside the switcher), organized as five tabs on the left rail; every change saves instantly:
+Open **Settings → Plugins → LvSpeed Switch → Settings**, or use the gear inside the switcher. Desktop uses a left tab rail; mobile uses a horizontally scrollable top tab row. Changes save immediately:
 
 | Tab | Options |
 | --- | --- |
 | Appearance | Switcher width/height (480–1920 × 360–1280), thumbnail columns (auto / 2–8), thumbnail height (72–360) |
 | Behavior | Default sort order, fullscreen mode (off by default; opens filling the window) |
 | Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden), sidebar thumbnail layout (enlarge / auto columns) |
-| Favorites | Create / rename / delete groups, reassign favorites |
+| Favorites | Collapse and order folders, create / rename / delete, order items, and reassign favorites |
+| Quick Actions | Label, icon, surface targets, enable state, drag/button ordering, right action rail, and import/export |
 | Journal | Default journal notebook (dropdown; first click of the journal button also prompts a picker) |
-| Mobile | Floating button toggle (off by default), card layout (single / double / auto) |
+| Mobile | Floating button toggle (off by default), card layout (single / double / auto), and thumbnail height |
 
-## 📦 Install
+## Install And Upgrade
 
 - **Marketplace**: search "小驴速切 / LvSpeed Switch" in **Settings → Marketplace → Plugins** (community bazaar listing pending).
 - **Manual**: download `package.zip` from [Releases](https://github.com/ai68298100/siyuan-speed-switch/releases), extract into `<workspace>/data/plugins/siyuan-speed-switch/` and restart SiYuan (the folder must be named `siyuan-speed-switch`).
+
+Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.9` load, quick-action fields are validated; invalid entries are ignored, while valid configurations remain even if their third-party provider is temporarily unavailable.
 
 ## Requirements
 
@@ -86,6 +114,18 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
 
 ## Changelog
+
+### v0.16.9 (2026-09-06)
+
+- **Reworked all three surfaces**: the desktop dialog keeps a larger high-frequency toolbar and fullscreen, the right sidebar uses compact controls, and mobile uses a touch sort menu. They share command semantics without forcing controls that do not apply to every surface.
+- **Upgraded two-section search**: open tabs remain immediate and first; workspace document titles appear as responsive title/path cards with loading, empty, and error states, excluding documents already open.
+- **Isolated search sessions**: desktop, sidebar, and mobile independently own debounce, request version, cancellation, and bounded cache state. Closing a surface or unloading the plugin releases pending work, and stale responses cannot replace newer input.
+- **Live tab-change refresh**: every active plugin surface receives the same refresh notification, including after desktop batch open/close operations.
+- **Rebuilt favorite management**: folders collapse and show order/count, with reorder, rename, and delete actions. Items have in-folder order, reassignment, and movement. Desktop supports drag sorting; mobile uses explicit controls to avoid scroll conflicts.
+- **Added the quick action workspace**: place actions at the desktop bottom or right rail and target desktop, sidebar, and mobile independently. Sources include built-ins, SiYuan Docks, other plugin commands, and `registerQuickAction()` runtime adapters, with icons, short labels, ordering, and import/export.
+- **Overhauled settings**: seven sections now cover Appearance, Behavior, Panels, Favorites, Quick Actions, Journal, and Mobile. Panel toggles use responsive columns; favorite and quick-action editors have narrow-screen layouts, column labels, and explanatory copy.
+- **Stabilized mobile first paint**: unnecessary dialog animation is disabled, cards wait for stable WebView layout, and thumbnails scale from measured width with a no-width fallback to reduce first-open flashing, blank cards, and misalignment.
+- **Quality and documentation**: search-session and quick-action pure-function tests bring the unit suite to 82 cases; Chromium style smoke coverage now includes search cards, and both the three-surface map and six-layer runtime architecture diagrams were redrawn.
 
 ### v0.16.8 (2026-09-05)
 
@@ -407,39 +447,47 @@ A tab switcher for [SiYuan Note](https://b3log.org/siyuan): flip through open ta
 
 ## 🏗️ Architecture
 
-<p align="center"><img src="docs/architecture.svg" width="720" alt="LvSpeed Switch architecture"/></p>
+<p align="center"><img src="docs/architecture.svg" width="860" alt="LvSpeed Switch six-layer runtime architecture"/></p>
 
-The plugin is organized into 5 layers with clear responsibilities and strictly downward dependencies:
+The plugin uses six layers. Its three surfaces share navigation services and persistence, while each surface owns its DOM, search session, and lifecycle:
 
 | Layer | Entry file / class | Responsibility |
 | --- | --- | --- |
-| Entry points | `index.ts → onload` | Top-bar button, sidebar dock, command-palette shortcut, mobile FAB |
-| Switcher main | `showSwitcher` / `showMobileSwitcher` / `renderSidebarPanel` | Three switch entry modes (dialog / sidebar / fullscreen) unified |
-| Subsystems | `renderList` / `applySearch` / `openFavMenu` / `promptJournalNotebook` / `openSetting` | Card rendering, search, favorites, journal, settings |
-| Persistence | `loadData` / `saveDataDebounced` (this.data) | 7 storage keys read/write (500ms debounced) |
-| Infrastructure | `util.js` / `types.ts` / `constants.ts` / `logger.ts` | Pure functions, TS types, constants, structured logging |
+| Surface | `showSwitcher` / `renderSidebarPanel` / `showMobileSwitcher` | Surface-specific layout and interaction for desktop/fullscreen, right sidebar, and mobile |
+| Orchestration | `registerSwitcherRefresh` / SearchSession / action executor | View refresh broadcasting, isolated async state, shared command routing |
+| Navigation services | Tabs / favorites / search / quick actions / journal / panels | Sorting, deduplication, batch behavior, and progressive feature composition |
+| SiYuan integration | `getAllTabs` / MobileTabs / kernel API / Dock / plugin commands | Encapsulates host capabilities and third-party plugin boundaries |
+| Persistence | `loadData` / `saveDataDebounced` | Eight validated storage keys, debounced writes, unload flush, and configuration transfer |
+| Infrastructure | `util.js` / `search-session.js` / `quick-actions.js` / types and constants | Host-independent pure functions, types, boundaries, logging, and tests |
 
-**Pure functions first**: any logic that can escape `this` (clamping, sorting, grouping, icon parsing, tab tree) is extracted to `src/util.js` and covered by `node:test` (23 cases). `src/constants.ts` centralises every threshold (debounce duration, cache caps, UI bounds).
+**Performance isolation**: open-tab switching uses local state only. Workspace requests, thumbnail backfill, and third-party actions are optional layers that may fail independently. Every search surface owns its request version, abort controller, timer, and cache, all released on destruction.
 
-**Test matrix** (`npm test` runs all in one shot):
+**Data boundaries**: `sw_mru`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_quick_actions`, `sw_settings`, and `sw_thumb_cache` persist independently. Re-queryable search results and temporary UI state are never written to plugin data.
+
+**Test matrix**: `pnpm test` currently runs 82 unit cases; UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
 | `tests/util.test.cjs` | 13 `util.js` pure functions | 52 |
 | `tests/constants.test.cjs` | Source constant range and format checks | 6 |
+| `tests/search-session.test.cjs` | Session isolation, cancellation, versions, and cache limits | 6 |
+| `tests/quick-actions.test.cjs` | Defaults, sanitization, command/adapter, and grapheme boundaries | 8 |
 | `tests/i18n.test.cjs` | Locale parity, static references, and value validation | 10 |
-| `tests/mobile-card-smoke.cjs` | Mobile card and settings-switch CSS invariants (jsdom) | 8 |
-| `tests/chromium-style-smoke.cjs` | Real Chromium with optional host/theme computed CSS | 4 |
+
+| UI test | Scope |
+| --- | --- |
+| `tests/mobile-card-smoke.cjs` | Mobile card, action buttons, single-column grid, thumbnail, and settings-switch CSS invariants |
+| `tests/chromium-style-smoke.cjs` | Computed styles for mobile cards, switches, and workspace search cards in real Chromium, optionally layered with host/theme CSS |
 
 ## Development
 
 ### Quick commands
 
 ```bash
-pnpm install      # install deps
-pnpm dev          # dev watch (outputs dev dist/)
-pnpm build        # production build → dist/* + package.zip
-pnpm test               # unit + constant + i18n tests
+pnpm install            # install dependencies
+pnpm dev                # dev watch (outputs dev dist/)
+pnpm build              # production build → dist/* + package.zip
+pnpm test               # 82 unit, constant, search, quick-action, and i18n cases
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 ```
@@ -468,12 +516,36 @@ Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
 
 4. **`src/index.ts → buildSettingsXxx`** — render the input control (switch / select / number) in the matching tab; saved on every change.
 
-5. **i18n** — add the key to both `src/i18n/zh-CN.json` and `src/i18n/en.json` (keep 109/109 parity).
+5. **i18n** — add the key to both `src/i18n/zh-CN.json` and `src/i18n/en.json`, keeping both key sets identical.
 
 ### How to add a new dock panel
 
 1. Append `{key, icon, label}` to the `DOCK_ITEMS` array inside `renderDockList`.
 2. If the panel needs special activation (not a plain `openTab`), add a branch in `openDockByKey`.
+
+### Third-party quick action adapters
+
+Commands already registered through SiYuan's `addCommand()` appear automatically in the Quick Actions add list and need no additional adapter. For parameters or a custom workflow, locate the LvSpeed Switch plugin instance and register a visible entry directly:
+
+```ts
+const speedSwitch = this.app.plugins.find(
+    (plugin) => plugin.name === "siyuan-speed-switch",
+);
+
+this.unregisterSpeedSwitchAction = speedSwitch?.registerQuickAction({
+    id: "xiaolv-checkin",
+    label: "Time",
+    icon: "iconCalendar",
+    value: "open",
+    targets: ["desktop", "sidebar", "mobile"],
+    handler: (value) => openClock(value),
+});
+
+// Call from the provider plugin's onunload():
+this.unregisterSpeedSwitchAction?.();
+```
+
+The entry is persisted in Quick Actions settings and can target surfaces independently. Its callback stays in memory; no function is serialized. When the provider unloads, configuration remains but execution is skipped safely. The lower-level `registerQuickActionAdapter(id, handler)` API can take over a pre-existing `adapter` configuration. DOM-click simulation and synthetic global shortcuts are intentionally unnecessary.
 
 ### How to add a new sort order
 
@@ -481,11 +553,16 @@ Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
 2. Add a member to the `SortBy` union type.
 3. Add the sort branch inside `sortGroupItems` (extract to `util.js` for unit testing).
 
+## Development Roadmap
+
+See [ROADMAP.md](./ROADMAP.md) for planned phases, design constraints, and release gates.
+
 ## 📜 Architecture Decision Records
 
 - [ADR-0001 Method splitting](docs/adr/0001-method-splitting.md) — why we split `onload` / `applySearch` etc. into orchestrator + helpers
 - [ADR-0002 Constants in `src/constants.ts`](docs/adr/0002-constants-module.md) — why we centralised magic numbers into a single module in v0.16.0
 - [ADR-0003 Pure functions + jsdom test matrix](docs/adr/0003-testing-strategy.md) — why `util.js` must stay zero-dep + Node built-in `node:test`
+- [ADR-0004 Persistent data sanitization](docs/adr/0004-data-sanitization.md) — why historical configuration is validated, deduplicated, and capped before entering UI code
 
 ## License
 

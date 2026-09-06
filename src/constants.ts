@@ -124,8 +124,10 @@ export const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文
 export const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
 export const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
 export const SETTINGS_KEY = "sw_settings";  // 插件设置
+export const QUICK_ACTIONS_KEY = "sw_quick_actions"; // 快捷入口配置
 export const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 export const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
+export const QUICK_ACTIONS_MAX = 12;
 
 // 侧边栏 dock 的 type（实际注册为 插件名+type）
 export const SIDEBAR_DOCK_TYPE = "sidebar";

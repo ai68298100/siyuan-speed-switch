@@ -1,107 +1,87 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="12">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
+  <title id="title">LvSpeed Switch architecture</title>
+  <desc id="desc">Six layers connect desktop, sidebar and mobile surfaces to shared navigation services, SiYuan integration, persistence and testable infrastructure.</desc>
   <defs>
-    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0,0 L10,5 L0,10 z" fill="#888"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#667085"/>
     </marker>
-    <linearGradient id="layerBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#eef4ff"/>
-      <stop offset="100%" stop-color="#dde7ff"/>
-    </linearGradient>
     <style>
-      .title { font-weight: 700; font-size: 13px; fill: #1a3a6b; }
-      .subtitle { fill: #5a6a85; font-size: 11px; }
-      .node { fill: white; stroke: #5a8acc; stroke-width: 1.4; rx: 6; ry: 6; }
-      .nodeGroup { fill: url(#layerBg); stroke: #5a8acc; stroke-width: 1.2; rx: 8; ry: 8; stroke-dasharray: 4 3; }
-      .subNode { fill: #f8fafe; stroke: #7a9ccc; stroke-width: 0.8; rx: 4; ry: 4; }
-      .code { fill: #3a4a6a; font-size: 10px; font-family: 'Menlo', 'Consolas', monospace; }
-      .arrow { stroke: #888; stroke-width: 1.2; fill: none; }
-      .layerLabel { fill: #1a3a6b; font-size: 10px; font-weight: 600; letter-spacing: 1px; }
+      .title{font:700 22px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#101828}
+      .subtitle{font:400 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#667085}
+      .label{font:700 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#344054;letter-spacing:0}
+      .text{font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#1d2939}
+      .small{font:400 10px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#475467}
+      .code{font:500 10px Consolas,Menlo,monospace;fill:#344054}
+      .box{stroke-width:1.2;rx:7;ry:7}
+      .arrow{stroke:#667085;stroke-width:1.3;fill:none;marker-end:url(#arrow)}
     </style>
   </defs>
 
-  <text x="360" y="22" text-anchor="middle" class="title">LvSpeed Switch · Architecture</text>
-  <text x="360" y="38" text-anchor="middle" class="subtitle">5-layer, top-down dependency, pure functions at the bottom</text>
+  <rect width="960" height="620" fill="#ffffff"/>
+  <text x="480" y="29" text-anchor="middle" class="title">LvSpeed Switch 0.16.9 - Runtime Architecture</text>
+  <text x="480" y="48" text-anchor="middle" class="subtitle">One navigation model, three surface-specific interfaces, isolated async work</text>
 
-  <!-- Layer 1: Entry Points -->
-  <g>
-    <rect x="40" y="58" width="640" height="50" class="nodeGroup"/>
-    <text x="50" y="76" class="layerLabel">LAYER 1 · ENTRY POINTS</text>
-    <rect x="60" y="82" width="135" height="20" class="node"/>
-    <text x="127" y="96" text-anchor="middle" class="code">onload()</text>
-    <rect x="205" y="82" width="160" height="20" class="node"/>
-    <text x="285" y="96" text-anchor="middle" class="code">addTopBar / addDock</text>
-    <rect x="375" y="82" width="155" height="20" class="node"/>
-    <text x="452" y="96" text-anchor="middle" class="code">addCommand (Alt+Shift+S)</text>
-    <rect x="540" y="82" width="120" height="20" class="node"/>
-    <text x="600" y="96" text-anchor="middle" class="code">FAB (mobile)</text>
-  </g>
+  <rect x="32" y="70" width="896" height="90" fill="#eef6ff" stroke="#75a7d8" class="box"/>
+  <text x="48" y="91" class="label">1  SURFACES</text>
+  <rect x="55" y="105" width="255" height="38" fill="#ffffff" stroke="#75a7d8" class="box"/>
+  <text x="182" y="121" text-anchor="middle" class="text">Desktop dialog / fullscreen</text>
+  <text x="182" y="136" text-anchor="middle" class="small">large toolbar + panels + bottom/right actions</text>
+  <rect x="352" y="105" width="255" height="38" fill="#ffffff" stroke="#75a7d8" class="box"/>
+  <text x="479" y="121" text-anchor="middle" class="text">Right sidebar</text>
+  <text x="479" y="136" text-anchor="middle" class="small">compact toolbar + responsive card grid</text>
+  <rect x="649" y="105" width="255" height="38" fill="#ffffff" stroke="#75a7d8" class="box"/>
+  <text x="776" y="121" text-anchor="middle" class="text">Mobile dialog</text>
+  <text x="776" y="136" text-anchor="middle" class="small">touch sorting + stable first frame + actions</text>
 
-  <line x1="360" y1="108" x2="360" y2="125" class="arrow" marker-end="url(#arr)"/>
+  <path d="M480 160 V178" class="arrow"/>
+  <rect x="32" y="181" width="896" height="76" fill="#f4f5f7" stroke="#98a2b3" class="box"/>
+  <text x="48" y="202" class="label">2  SHARED ORCHESTRATION</text>
+  <rect x="55" y="216" width="255" height="25" fill="#ffffff" stroke="#98a2b3" class="box"/>
+  <text x="182" y="232" text-anchor="middle" class="code">registerSwitcherRefresh()</text>
+  <rect x="352" y="216" width="255" height="25" fill="#ffffff" stroke="#98a2b3" class="box"/>
+  <text x="479" y="232" text-anchor="middle" class="code">per-surface SearchSession</text>
+  <rect x="649" y="216" width="255" height="25" fill="#ffffff" stroke="#98a2b3" class="box"/>
+  <text x="776" y="232" text-anchor="middle" class="code">shared action execution</text>
 
-  <!-- Layer 2: Switcher Main -->
-  <g>
-    <rect x="40" y="128" width="640" height="50" class="nodeGroup"/>
-    <text x="50" y="146" class="layerLabel">LAYER 2 · SWITCHER MAIN (3 entry modes)</text>
-    <rect x="60" y="152" width="190" height="20" class="node"/>
-    <text x="155" y="166" text-anchor="middle" class="code">showSwitcher() · dialog</text>
-    <rect x="260" y="152" width="180" height="20" class="node"/>
-    <text x="350" y="166" text-anchor="middle" class="code">showMobileSwitcher()</text>
-    <rect x="450" y="152" width="210" height="20" class="node"/>
-    <text x="555" y="166" text-anchor="middle" class="code">renderSidebarPanel() · dock</text>
-  </g>
+  <path d="M480 257 V275" class="arrow"/>
+  <rect x="32" y="278" width="896" height="104" fill="#eef8f1" stroke="#69a87a" class="box"/>
+  <text x="48" y="299" class="label">3  NAVIGATION SERVICES</text>
+  <rect x="49" y="315" width="158" height="48" fill="#ffffff" stroke="#69a87a" class="box"/>
+  <text x="128" y="334" text-anchor="middle" class="text">Tabs + MRU</text>
+  <text x="128" y="350" text-anchor="middle" class="small">group, sort, pin, open, close</text>
+  <rect x="225" y="315" width="158" height="48" fill="#ffffff" stroke="#69a87a" class="box"/>
+  <text x="304" y="334" text-anchor="middle" class="text">Favorites</text>
+  <text x="304" y="350" text-anchor="middle" class="small">groups, ordering, batch actions</text>
+  <rect x="401" y="315" width="158" height="48" fill="#ffffff" stroke="#69a87a" class="box"/>
+  <text x="480" y="334" text-anchor="middle" class="text">Card search</text>
+  <text x="480" y="350" text-anchor="middle" class="small">open tabs first, workspace next</text>
+  <rect x="577" y="315" width="158" height="48" fill="#ffffff" stroke="#69a87a" class="box"/>
+  <text x="656" y="334" text-anchor="middle" class="text">Quick actions</text>
+  <text x="656" y="350" text-anchor="middle" class="small">built-in, dock, command, adapter</text>
+  <rect x="753" y="315" width="158" height="48" fill="#ffffff" stroke="#69a87a" class="box"/>
+  <text x="832" y="334" text-anchor="middle" class="text">Journal + panels</text>
+  <text x="832" y="350" text-anchor="middle" class="small">daily note and dock navigation</text>
 
-  <line x1="360" y1="178" x2="360" y2="195" class="arrow" marker-end="url(#arr)"/>
+  <path d="M480 382 V400" class="arrow"/>
+  <rect x="32" y="403" width="896" height="72" fill="#fff6e8" stroke="#d59b45" class="box"/>
+  <text x="48" y="424" class="label">4  SIYUAN AND PLUGIN INTEGRATION</text>
+  <rect x="55" y="438" width="190" height="23" fill="#ffffff" stroke="#d59b45" class="box"/>
+  <text x="150" y="453" text-anchor="middle" class="code">getAllTabs / MobileTabs</text>
+  <rect x="267" y="438" width="190" height="23" fill="#ffffff" stroke="#d59b45" class="box"/>
+  <text x="362" y="453" text-anchor="middle" class="code">kernel document API</text>
+  <rect x="479" y="438" width="190" height="23" fill="#ffffff" stroke="#d59b45" class="box"/>
+  <text x="574" y="453" text-anchor="middle" class="code">Dock + plugin commands</text>
+  <rect x="691" y="438" width="190" height="23" fill="#ffffff" stroke="#d59b45" class="box"/>
+  <text x="786" y="453" text-anchor="middle" class="code">registerQuickAction()</text>
 
-  <!-- Layer 3: Subsystems -->
-  <g>
-    <rect x="40" y="198" width="640" height="60" class="nodeGroup"/>
-    <text x="50" y="216" class="layerLabel">LAYER 3 · SUBSYSTEMS</text>
-    <rect x="60" y="222" width="120" height="20" class="subNode"/>
-    <text x="120" y="236" text-anchor="middle" class="code">card rendering</text>
-    <rect x="190" y="222" width="120" height="20" class="subNode"/>
-    <text x="250" y="236" text-anchor="middle" class="code">search (debounced)</text>
-    <rect x="320" y="222" width="120" height="20" class="subNode"/>
-    <text x="380" y="236" text-anchor="middle" class="code">favorites + groups</text>
-    <rect x="450" y="222" width="120" height="20" class="subNode"/>
-    <text x="510" y="236" text-anchor="middle" class="code">journal notebook</text>
-    <rect x="580" y="222" width="80" height="20" class="subNode"/>
-    <text x="620" y="236" text-anchor="middle" class="code">settings</text>
-  </g>
+  <path d="M480 475 V493" class="arrow"/>
+  <rect x="32" y="496" width="896" height="57" fill="#f7f1fc" stroke="#9b78b5" class="box"/>
+  <text x="48" y="517" class="label">5  PERSISTENCE</text>
+  <text x="160" y="517" class="small">8 validated storage keys, debounced writes, unload flush, import/export</text>
+  <text x="54" y="538" class="code">sw_mru  sw_pinned  sw_favorites  sw_fav_groups  sw_fav_collapsed  sw_quick_actions  sw_settings  sw_thumb_cache</text>
 
-  <line x1="360" y1="258" x2="360" y2="275" class="arrow" marker-end="url(#arr)"/>
-
-  <!-- Layer 4: Persistence -->
-  <g>
-    <rect x="40" y="278" width="640" height="50" class="nodeGroup"/>
-    <text x="50" y="296" class="layerLabel">LAYER 4 · PERSISTENCE (7 storage keys, 500ms debounced save)</text>
-    <rect x="60" y="302" width="86" height="20" class="subNode"/>
-    <text x="103" y="316" text-anchor="middle" class="code">sw_mru</text>
-    <rect x="156" y="302" width="86" height="20" class="subNode"/>
-    <text x="199" y="316" text-anchor="middle" class="code">sw_pinned</text>
-    <rect x="252" y="302" width="100" height="20" class="subNode"/>
-    <text x="302" y="316" text-anchor="middle" class="code">sw_favorites</text>
-    <rect x="362" y="302" width="110" height="20" class="subNode"/>
-    <text x="417" y="316" text-anchor="middle" class="code">sw_fav_groups</text>
-    <rect x="482" y="302" width="80" height="20" class="subNode"/>
-    <text x="522" y="316" text-anchor="middle" class="code">sw_settings</text>
-    <rect x="572" y="302" width="86" height="20" class="subNode"/>
-    <text x="615" y="316" text-anchor="middle" class="code">sw_thumb_cache</text>
-  </g>
-
-  <line x1="360" y1="328" x2="360" y2="345" class="arrow" marker-end="url(#arr)"/>
-
-  <!-- Layer 5: Infrastructure -->
-  <g>
-    <rect x="40" y="348" width="640" height="22" class="nodeGroup"/>
-    <rect x="55" y="354" width="100" height="14" class="node"/>
-    <text x="105" y="364" text-anchor="middle" class="code">util.js (pure)</text>
-    <rect x="165" y="354" width="80" height="14" class="node"/>
-    <text x="205" y="364" text-anchor="middle" class="code">types.ts</text>
-    <rect x="255" y="354" width="100" height="14" class="node"/>
-    <text x="305" y="364" text-anchor="middle" class="code">constants.ts</text>
-    <rect x="365" y="354" width="80" height="14" class="node"/>
-    <text x="405" y="364" text-anchor="middle" class="code">logger.ts</text>
-    <rect x="455" y="354" width="200" height="14" class="node"/>
-    <text x="555" y="364" text-anchor="middle" class="code">node:test + jsdom (zero-dep test)</text>
-  </g>
+  <path d="M480 553 V570" class="arrow"/>
+  <rect x="32" y="573" width="896" height="31" fill="#f2f4f7" stroke="#98a2b3" class="box"/>
+  <text x="48" y="593" class="label">6  TESTABLE INFRASTRUCTURE</text>
+  <text x="224" y="593" class="code">util.js  search-session.js  quick-actions.js  constants.ts  types.ts  logger.ts  node:test  jsdom</text>
 </svg>

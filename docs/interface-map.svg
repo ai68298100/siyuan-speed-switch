@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 610" role="img" aria-labelledby="title desc">
+  <title id="title">LvSpeed Switch surface map</title>
+  <desc id="desc">Desktop, sidebar and mobile layouts share tab, search, favorites and quick action data while adapting controls to available space.</desc>
+  <defs>
+    <style>
+      .title{font:700 22px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#101828}
+      .subtitle{font:400 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#667085}
+      .frame{fill:#ffffff;stroke:#344054;stroke-width:1.5;rx:9;ry:9}
+      .bar{fill:#f2f4f7;stroke:#d0d5dd;stroke-width:1;rx:5;ry:5}
+      .panel{fill:#eef6ff;stroke:#75a7d8;stroke-width:1;rx:5;ry:5}
+      .card{fill:#ffffff;stroke:#98a2b3;stroke-width:1;rx:6;ry:6}
+      .search{fill:#eef8f1;stroke:#69a87a;stroke-width:1;rx:6;ry:6}
+      .actions{fill:#fff6e8;stroke:#d59b45;stroke-width:1;rx:5;ry:5}
+      .heading{font:700 14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#1d2939}
+      .text{font:600 10px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#344054}
+      .small{font:400 9px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#475467}
+      .note{font:600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#344054}
+    </style>
+  </defs>
+
+  <rect width="960" height="610" fill="#ffffff"/>
+  <text x="480" y="28" text-anchor="middle" class="title">LvSpeed Switch 0.16.9 - Three Surface Model</text>
+  <text x="480" y="47" text-anchor="middle" class="subtitle">Shared content and commands; placement follows desktop, sidebar and touch constraints</text>
+
+  <text x="42" y="72" class="heading">Desktop dialog</text>
+  <rect x="40" y="82" width="880" height="245" class="frame"/>
+  <rect x="55" y="98" width="850" height="38" class="bar"/>
+  <rect x="68" y="106" width="275" height="22" class="card"/>
+  <text x="205" y="121" text-anchor="middle" class="text">Search open tabs or workspace documents</text>
+  <rect x="355" y="106" width="92" height="22" class="card"/>
+  <text x="401" y="121" text-anchor="middle" class="text">Favorites</text>
+  <rect x="457" y="106" width="82" height="22" class="card"/>
+  <text x="498" y="121" text-anchor="middle" class="text">Sort</text>
+  <text x="555" y="121" class="small">Fullscreen</text>
+  <text x="623" y="121" class="small">Sidebar</text>
+  <text x="681" y="121" class="small">Journal</text>
+  <text x="733" y="121" class="small">Settings</text>
+  <rect x="55" y="148" width="130" height="126" class="panel"/>
+  <text x="120" y="168" text-anchor="middle" class="text">Panel rail</text>
+  <text x="120" y="188" text-anchor="middle" class="small">full / icons / hidden</text>
+  <text x="120" y="211" text-anchor="middle" class="small">Files, bookmarks, tags</text>
+  <text x="120" y="227" text-anchor="middle" class="small">Outline, graph, backlinks</text>
+  <text x="120" y="243" text-anchor="middle" class="small">Plugin dock panels</text>
+  <rect x="198" y="148" width="520" height="126" fill="#f8fafc" stroke="#d0d5dd" class="card"/>
+  <text x="214" y="167" class="text">Open tabs - immediate and grouped by pane</text>
+  <rect x="214" y="179" width="152" height="37" class="card"/>
+  <rect x="382" y="179" width="152" height="37" class="card"/>
+  <rect x="550" y="179" width="152" height="37" class="card"/>
+  <text x="290" y="202" text-anchor="middle" class="small">Live thumbnail</text>
+  <text x="458" y="202" text-anchor="middle" class="small">Live thumbnail</text>
+  <text x="626" y="202" text-anchor="middle" class="small">Live thumbnail</text>
+  <rect x="214" y="226" width="488" height="34" class="search"/>
+  <text x="458" y="241" text-anchor="middle" class="text">Workspace search cards</text>
+  <text x="458" y="254" text-anchor="middle" class="small">title + path, cached and cancelable</text>
+  <rect x="731" y="148" width="174" height="126" class="actions"/>
+  <text x="818" y="169" text-anchor="middle" class="text">Optional right action rail</text>
+  <text x="818" y="190" text-anchor="middle" class="small">Built-in actions</text>
+  <text x="818" y="207" text-anchor="middle" class="small">SiYuan dock panels</text>
+  <text x="818" y="224" text-anchor="middle" class="small">Other plugin commands</text>
+  <text x="818" y="241" text-anchor="middle" class="small">Runtime adapters</text>
+  <text x="818" y="258" text-anchor="middle" class="small">+ opens action settings</text>
+  <rect x="55" y="286" width="663" height="25" class="actions"/>
+  <text x="386" y="302" text-anchor="middle" class="text">Default location: bottom quick action bar (switchable to the right rail)</text>
+
+  <text x="42" y="366" class="heading">Right sidebar</text>
+  <rect x="40" y="377" width="410" height="196" class="frame"/>
+  <rect x="53" y="391" width="384" height="31" class="bar"/>
+  <text x="245" y="411" text-anchor="middle" class="text">Search  |  Favorites  |  Sort  |  Settings</text>
+  <rect x="53" y="434" width="184" height="49" class="card"/>
+  <rect x="253" y="434" width="184" height="49" class="card"/>
+  <text x="145" y="463" text-anchor="middle" class="small">Responsive tab card</text>
+  <text x="345" y="463" text-anchor="middle" class="small">Responsive tab card</text>
+  <rect x="53" y="495" width="384" height="30" class="search"/>
+  <text x="245" y="514" text-anchor="middle" class="small">Workspace cards collapse to available width</text>
+  <rect x="53" y="537" width="384" height="22" class="actions"/>
+  <text x="245" y="552" text-anchor="middle" class="small">Selected sidebar quick actions + add</text>
+
+  <text x="502" y="366" class="heading">Mobile dialog</text>
+  <rect x="500" y="377" width="420" height="196" class="frame"/>
+  <rect x="513" y="391" width="394" height="31" class="bar"/>
+  <text x="710" y="411" text-anchor="middle" class="text">Search  |  Sort menu  |  Favorites  |  Journal  |  Settings</text>
+  <rect x="513" y="434" width="184" height="63" class="card"/>
+  <rect x="713" y="434" width="194" height="63" class="card"/>
+  <text x="605" y="463" text-anchor="middle" class="small">One/two column card</text>
+  <text x="605" y="479" text-anchor="middle" class="small">stable first-frame scale</text>
+  <text x="810" y="463" text-anchor="middle" class="small">Touch actions</text>
+  <text x="810" y="479" text-anchor="middle" class="small">no row drag conflict</text>
+  <rect x="513" y="509" width="394" height="30" class="search"/>
+  <text x="710" y="528" text-anchor="middle" class="small">Search results become a single-column card list</text>
+  <rect x="513" y="547" width="394" height="18" class="actions"/>
+  <text x="710" y="560" text-anchor="middle" class="small">Journal / Settings / custom actions / +</text>
+  <text x="480" y="598" text-anchor="middle" class="note">The core tab path stays local and immediate; workspace search and plugin actions are optional layers.</text>
+</svg>

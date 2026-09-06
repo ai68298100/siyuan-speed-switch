@@ -2,26 +2,18 @@
   "name": "siyuan-speed-switch",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
-  "version": "0.16.8",
+  "version": "0.16.9",
   "minAppVersion": "3.1.20",
   "disabledInPublish": false,
-  "backends": [
-    "all"
-  ],
-  "frontends": [
-    "desktop",
-    "browser-desktop",
-    "desktop-window",
-    "mobile",
-    "browser-mobile"
-  ],
+  "backends": ["all"],
+  "frontends": ["desktop", "browser-desktop", "desktop-window", "mobile", "browser-mobile"],
   "displayName": {
     "default": "LvSpeed Switch",
     "zh-CN": "小驴速切"
   },
   "description": {
-    "default": "LvSpeed Switch: flip through open tabs like Windows Alt+Tab — live thumbnails, grouped favorites, workspace search, sidebar mode, fullscreen mode, mobile support (split windows supported).",
-    "zh-CN": "像 Windows Alt+Tab 一样快速切换已打开的页签，展示页签缩略图，支持收藏分组、全库搜索、侧边栏模式、全屏模式与手机端适配（支持分栏）。"
+    "default": "A local-first SiYuan navigation workspace with live tab thumbnails, favorite folders, document card search, cross-plugin quick actions, sidebar mode, fullscreen, and mobile support.",
+    "zh-CN": "本地优先的思源导航工作区，支持页签缩略图、收藏夹、文档卡片搜索、跨插件快捷入口、侧边栏、全屏与手机端。"
   },
   "readme": {
     "default": "README.md",
@@ -30,14 +22,12 @@
   },
   "icon": "icon.png",
   "preview": "preview.png",
-  "funding": {
-    "custom": []
-  },
+  "funding": {"custom": []},
   "keywords": [
     "页签切换",
     "tab switch",
-    "标签切换",
     "标签页",
+    "快捷入口",
     "speed switch",
     "lv speed switch",
     "小驴速切"

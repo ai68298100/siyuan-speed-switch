@@ -59,6 +59,9 @@
   "deleteGroupConfirm": "Delete this group? Its favorites will move to ungrouped",
   "groupCountTip": "Favorites in this group",
   "favGroupTip": "Batch open or close tabs in this group",
+  "favCollapseTip": "Expand or collapse this group",
+  "favMoveUp": "Move favorite up",
+  "favMoveDown": "Move favorite down",
   "openGroupTabs": "Open all tabs in group",
   "closeGroupTabs": "Close opened tabs in group",
   "groupTabsOpened": "Opened {x} tab(s)",
@@ -71,6 +74,8 @@
   "rename": "Rename",
   "openSidebar": "Sidebar mode",
   "docSearchResults": "Workspace documents",
+  "docSearchLoading": "Searching workspace documents…",
+  "docSearchFailed": "Search failed. Please try again.",
   "noDocResults": "No matching documents found",
   "backTop": "Back to top",
   "secMobile": "Mobile",
@@ -110,5 +115,33 @@
   "openDocFailed": "Failed to open the document. Please try again later.",
   "closeTabFailed": "Failed to close the tab. Please try again later.",
   "favNeedActivate": "This tab is not fully loaded. Switch to it first, then favorite it.",
-  "favInvalidEntry": "This favorite lacks valid document info. Open its tab once to repair it automatically."
+  "favInvalidEntry": "This favorite lacks valid document info. Open its tab once to repair it automatically.",
+  "quickActions": "Quick actions",
+  "quickActionsTip": "Actions shown at the bottom of the desktop switcher; visibility is per surface",
+  "secQuickActions": "Quick actions",
+  "noQuickActions": "No quick actions available"
+  ,"addQuickAction": "Add panel action"
+  ,"quickDesktop": "Desktop"
+  ,"quickSidebar": "Sidebar"
+  ,"quickMobile": "Mobile"
+  ,"quickMoveUp": "Move up"
+  ,"quickMoveDown": "Move down"
+  ,"quickRemove": "Remove"
+  ,"quickIcon": "Icon"
+  ,"quickActionsRightRail": "Right action rail"
+  ,"quickActionsRightRailTip": "Place desktop switcher actions in a right rail; when off they stay at the bottom"
+  ,"quickExport": "Export config"
+  ,"quickImport": "Import config"
+  ,"quickImportDone": "Quick action config imported"
+  ,"quickImportFailed": "Invalid config file; import failed"
+  ,"quickColumnLabel": "Name"
+  ,"quickColumnIcon": "Icon"
+  ,"quickColumnTargets": "Surface"
+  ,"quickColumnOrder": "Order"
+  ,"quickColumnEnabled": "On"
+  ,"quickAddTip": "Restore built-ins, add a Dock panel, or call another plugin command"
+  ,"quickBuiltin": "Built-in"
+  ,"quickDock": "Panel"
+  ,"quickTransfer": "Config transfer"
+  ,"quickTransferTip": "Export to back up or sync; import replaces the current quick actions"
 }
