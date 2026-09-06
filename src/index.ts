@@ -300,6 +300,7 @@ interface IQuickActionPluginCommand {
     label: string;
     icon: string;
     pluginName: string;
+    pluginTitle: string;
     commandKey: string;
 }
 
@@ -2016,6 +2017,9 @@ const cached = session.cache.get(keyword);
         plugins.forEach((plugin) => {
             const pluginName = typeof plugin?.name === "string" ? plugin.name : "";
             if (!pluginName || pluginName === this.name || !Array.isArray(plugin.commands)) return;
+            const pluginTitle = typeof plugin.displayName === "string" && plugin.displayName.trim()
+                ? plugin.displayName.trim().replace(/\s+/g, " ").slice(0, 40)
+                : pluginName;
             plugin.commands.forEach((command) => {
                 if (!command || typeof command !== "object") return;
                 const commandKey = typeof command?.langKey === "string" ? command.langKey : "";
@@ -2024,12 +2028,15 @@ const cached = session.cache.get(keyword);
                 if (seen.has(value)) return;
                 seen.add(value);
                 const safeId = `${pluginName}-${commandKey}`.replace(/[^A-Za-z0-9_-]/g, "-");
+                const commandLabel = String(command.langText || plugin.i18n?.[commandKey] || commandKey)
+                    .trim().replace(/\s+/g, " ").slice(0, 24) || commandKey;
                 commands.push({
                     id: `command-${safeId}`,
                     value,
-                    label: command.langText || plugin.i18n?.[commandKey] || commandKey,
+                    label: commandLabel,
                     icon: /^icon[A-Za-z0-9_-]+$/.test(command.icon || "") && command.icon !== "iconCommand" ? command.icon as string : "iconPlugin",
                     pluginName,
+                    pluginTitle,
                     commandKey,
                 });
             });
@@ -2301,8 +2308,8 @@ const cached = session.cache.get(keyword);
                 label: displayLabel,
                 icon: command.icon,
                 group: this.i18n.quickPluginCommands,
-                secondary: `${command.pluginName} · ${describe(action.kind, action.value, targets)}`,
-                searchText: `${displayLabel} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
+                secondary: `${command.pluginTitle} · ${describe(action.kind, action.value, targets)}`,
+                searchText: `${displayLabel} ${command.pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
                 action,
             });
         });
