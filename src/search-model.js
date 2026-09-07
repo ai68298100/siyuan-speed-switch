@@ -645,6 +645,32 @@ function buildOpenedDocumentSearchRequest(input = {}) {
     return {...request, scope};
 }
 
+/**
+ * Build bounded requests for the currently opened documents. This is a pure
+ * planning layer: callers decide whether and when to issue the requests.
+ * Duplicate roots and malformed/stale tabs are skipped before the cap.
+ */
+function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
+    const maxDocuments = Math.max(1, Math.min(12, Number(options.maxDocuments) || 6));
+    const seen = new Set();
+    const requests = [];
+    (Array.isArray(tabs) ? tabs : []).forEach((tab) => {
+        if (requests.length >= maxDocuments) return;
+        const scope = buildOpenedDocumentScope(tab);
+        if (!scope || seen.has(scope.rootId)) return;
+        const request = buildOpenedDocumentSearchRequest({
+            query,
+            tab,
+            method: options.method,
+            pageSize: options.pageSize,
+        });
+        if (!request) return;
+        seen.add(scope.rootId);
+        requests.push(request);
+    });
+    return requests;
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -662,4 +688,5 @@ module.exports = {
     extractSearchRecords,
     buildOpenedDocumentScope,
     buildOpenedDocumentSearchRequest,
+    buildOpenedDocumentSearchRequests,
 };

@@ -15,6 +15,7 @@ const {
     extractSearchRecords,
     buildOpenedDocumentScope,
     buildOpenedDocumentSearchRequest,
+    buildOpenedDocumentSearchRequests,
 } = require("../src/search-model.js");
 
 const ROOT_A = "20260906120000-aaaaaaa";
@@ -314,4 +315,18 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentScope({rootId: "tab-1", notebookId: "box-a", path: "box-a/root.sy"}), null);
     assert.equal(buildOpenedDocumentScope({rootId: ROOT_A, notebookId: "box-a", path: "box-a/hidden';--.sy"}), null);
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
+});
+
+test("search model: plans bounded opened-document requests without duplicates", () => {
+    const tabs = [
+        {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/a.sy"},
+        {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/a.sy"},
+        {rootId: ROOT_B, notebookId: "box-a", path: "box-a/docs/b.sy"},
+        {rootId: "tab-not-a-root", notebookId: "box-a", path: "box-a/docs/no.sy"},
+    ];
+    const requests = buildOpenedDocumentSearchRequests(tabs, "正文", {maxDocuments: 1});
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].scope.rootId, ROOT_A);
+    assert.deepEqual(requests[0].body.paths, ["box-a/docs/a.sy"]);
+    assert.equal(buildOpenedDocumentSearchRequests(tabs, " ").length, 0);
 });

@@ -198,6 +198,11 @@ declare module "./search-model" {
         body: Record<string, unknown>;
     } | null;
     export function extractSearchRecords(payload: unknown): unknown[];
+    export function buildOpenedDocumentSearchRequests(tabs: unknown[], query: string, options?: Record<string, unknown>): Array<{
+        endpoint: string;
+        body: Record<string, unknown>;
+        scope: {rootId: string; notebook: string; path: string};
+    }>;
 }
 
 type DocSearchRenderState = "results" | "loading" | "error";
