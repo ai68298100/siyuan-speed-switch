@@ -1,10 +1,24 @@
-function appendIcon(document, host, icon) {
+const {resolveIconReference} = require("./util.js");
+
+function getAvailableSymbolIds(document) {
+    return new Set(Array.from(document.querySelectorAll("symbol[id]")).map((symbol) => symbol.id));
+}
+
+function appendIcon(document, host, icon, fallback = "iconFile") {
     const iconHost = document.createElement("span");
     iconHost.className = "sw-setting__picker-icon";
-    if (/^icon[A-Za-z0-9_-]+$/.test(icon || "") && document.getElementById(icon)) {
-        iconHost.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${icon}"></use></svg>`;
+    const resolved = resolveIconReference(icon, getAvailableSymbolIds(document), fallback);
+    if (resolved.type === "emoji") {
+        iconHost.textContent = resolved.value;
+        iconHost.classList.add("sw-setting__picker-icon--emoji");
     } else {
-        iconHost.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `#${resolved.value}`);
+        use.setAttribute("xlink:href", `#${resolved.value}`);
+        svg.appendChild(use);
+        iconHost.appendChild(svg);
     }
     host.appendChild(iconHost);
 }
@@ -71,7 +85,7 @@ function mountQuickActionPicker(options) {
                 button.type = "button";
                 button.className = "sw-setting__quick-picker-item";
                 button.dataset.candidateId = candidate.id;
-                appendIcon(document, button, candidate.icon);
+                appendIcon(document, button, candidate.icon, candidate.fallbackIcon || "iconFile");
                 const copy = document.createElement("span");
                 copy.className = "sw-setting__quick-picker-copy";
                 const label = document.createElement("span");

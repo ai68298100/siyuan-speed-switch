@@ -98,7 +98,13 @@ function normalizeLabel(value) {
 function normalizeIcon(value, fallback) {
     const text = typeof value === "string" ? value.trim() : "";
     if (text === "iconCommand") return fallback;
-    if (/^icon[A-Za-z0-9_-]+$/.test(text)) return text;
+    // SiYuan core icons use the `icon*` convention, while several plugins
+    // register `lucide-*` or `siyuan-*-icon` symbols. Keep those serializable
+    // identifiers so the renderer can resolve them when the plugin is loaded;
+    // an unavailable symbol still falls back visually at render time.
+    if (/^icon[A-Za-z0-9_-]+$/.test(text)
+        || /^lucide-[A-Za-z0-9_-]+$/.test(text)
+        || /^siyuan-[A-Za-z0-9_-]*icon$/.test(text)) return text;
     if (graphemeLength(text) === 1) return text;
     return fallback;
 }

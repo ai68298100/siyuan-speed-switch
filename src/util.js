@@ -112,6 +112,45 @@ function resolveIconFallback(raw) {
 }
 
 /**
+ * Resolve an icon reference against the SVG symbols that are actually
+ * available in the current document.  Plugin icons are not required to use
+ * SiYuan's `icon*` prefix (for example `siyuan-media-player-icon` or
+ * `lucide-book-search`), so the persisted value must remain permissive while
+ * rendering must remain strict.  A Set of symbol ids keeps this function
+ * pure and prevents arbitrary element ids from being treated as SVG icons.
+ *
+ * @param {unknown} raw
+ * @param {Iterable<string>|null|undefined} availableSymbols
+ * @param {string|string[]} fallback
+ * @returns {{type: "svg", value: string} | {type: "emoji", value: string}}
+ */
+function resolveIconReference(raw, availableSymbols, fallback = "iconFile") {
+    const value = typeof raw === "string" ? raw.trim() : "";
+    const symbols = availableSymbols == null ? null : new Set(availableSymbols);
+    const isSafeSymbolId = (candidate) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(candidate);
+
+    if (value && isSafeSymbolId(value) && (!symbols || symbols.has(value))) {
+        return {type: "svg", value};
+    }
+
+    // Preserve user-selected emoji/codepoint icons when no valid SVG symbol
+    // exists for the stored value.
+    const parsed = resolveIconFallback(value);
+    if (parsed.type === "emoji") {
+        return parsed;
+    }
+
+    const fallbacks = Array.isArray(fallback) ? fallback : [fallback];
+    for (const candidate of fallbacks) {
+        if (typeof candidate === "string" && isSafeSymbolId(candidate)
+            && (!symbols || symbols.has(candidate))) {
+            return {type: "svg", value: candidate};
+        }
+    }
+    return {type: "svg", value: "iconFile"};
+}
+
+/**
  * 按 tab.parent 分组页签，保持 getAllTabs 返回的布局顺序：
  * - 同一 Wnd 的页签聚合到一组（支持分栏布局）
  * - 没有 parent 时退到 scrollElement（手机端伪 Tab）
@@ -307,4 +346,4 @@ function isSuccessfulMobileTabsResult(result) {
     return result === undefined || result === "success";
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult};

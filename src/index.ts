@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {aggregateSearchResults, buildFullTextSearchRequest, extractSearchRecords} from "./search-model";
 import {
@@ -94,6 +94,7 @@ declare module "./util" {
     export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
     export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
     export function resolveIconFallback(raw: string): {type: "svg", value: string} | {type: "emoji", value: string};
+    export function resolveIconReference(raw: unknown, availableSymbols: Iterable<string> | null | undefined, fallback?: string | string[]): {type: "svg", value: string} | {type: "emoji", value: string};
     export function buildTabGroupsByParent<T extends {parent?: {element?: HTMLElement, headersElement?: HTMLElement}}>(
         tabs: T[], fallbackKey: HTMLElement,
     ): Map<HTMLElement, Array<{tab: T}>>;
@@ -123,7 +124,7 @@ declare module "./quick-actions-ui" {
     export function mountQuickActionPicker(options: {
         trigger: HTMLElement;
         host: HTMLElement;
-        candidates: Array<{id: string, label: string, icon: string, group?: string, secondary?: string, searchText?: string}>;
+        candidates: Array<{id: string, label: string, icon: string, group?: string, secondary?: string, searchText?: string, fallbackIcon?: string | string[]}>;
         searchPlaceholder?: string;
         emptyText?: string;
         onSelect: (candidate: any) => void;
@@ -317,6 +318,7 @@ interface IQuickActionPickerCandidate {
     group: string;
     secondary: string;
     searchText: string;
+    fallbackIcon?: string | string[];
     action: IQuickAction;
 }
 
@@ -2078,7 +2080,10 @@ const cached = session.cache.get(keyword);
                     id: `command-${safeId}`,
                     value,
                     label: commandLabel,
-                    icon: /^icon[A-Za-z0-9_-]+$/.test(command.icon || "") && command.icon !== "iconCommand" ? command.icon as string : "iconPlugin",
+                    icon: typeof command.icon === "string"
+                        && /^[A-Za-z][A-Za-z0-9_-]*$/.test(command.icon)
+                        && command.icon !== "iconCommand"
+                        ? command.icon : "iconPlugin",
                     pluginName,
                     pluginTitle,
                     commandKey,
@@ -2097,6 +2102,35 @@ const cached = session.cache.get(keyword);
     private getQuickActionSupport(action: IQuickAction, target: QuickActionTarget): QuickActionSupport {
         return resolveQuickActionSupport(action.kind, action.value, target,
             this.getQuickActionDeclaredTargets(action)) as QuickActionSupport;
+    }
+
+    /**
+     * Return only SVG symbol ids from the current document.  Plugin DOM
+     * elements can legitimately share an id with an icon-like value, so
+     * getElementById alone is not sufficient for deciding whether a symbol
+     * reference is renderable.
+     */
+    private getAvailableIconSymbols(): Set<string> {
+        return new Set(Array.from(document.querySelectorAll<SVGSymbolElement>("symbol[id]"))
+            .map((symbol) => symbol.id)
+            .filter((id) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(id)));
+    }
+
+    private renderQuickActionIcon(host: HTMLElement, raw: string, fallback: string | string[] = "iconFile") {
+        host.innerHTML = "";
+        const resolved = resolveIconReference(raw, this.getAvailableIconSymbols(), fallback);
+        if (resolved.type === "emoji") {
+            host.textContent = resolved.value;
+            host.classList.add("sw__quick-action-icon--emoji");
+            return;
+        }
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `#${resolved.value}`);
+        use.setAttribute("xlink:href", `#${resolved.value}`);
+        svg.appendChild(use);
+        host.appendChild(svg);
     }
 
     private renderQuickActions(container: HTMLElement, surface: "desktop" | "sidebar" | "mobile", searchInput: HTMLInputElement | null, close: () => void, selector = ".sw__quick-actions") {
@@ -2143,11 +2177,9 @@ const cached = session.cache.get(keyword);
             button.title = action.label;
             const icon = document.createElement("span");
             icon.className = "sw__quick-action-icon";
-            if (/^icon[A-Za-z0-9_-]+$/.test(action.icon) && document.getElementById(action.icon)) {
-                icon.innerHTML = `<svg><use xlink:href="#${action.icon}"></use></svg>`;
-            } else {
-                icon.innerHTML = '<svg><use xlink:href="#iconFile"></use></svg>';
-            }
+            const pluginFallback = action.kind === "adapter" || action.kind === "command"
+                ? ["iconPlugin", "iconFile"] : "iconFile";
+            this.renderQuickActionIcon(icon, action.icon, pluginFallback);
             const label = document.createElement("span");
             label.className = "sw__quick-action-label";
             label.textContent = action.label;
@@ -2328,6 +2360,7 @@ const cached = session.cache.get(keyword);
                 label: provider.label,
                 icon: provider.icon,
                 group: this.i18n.quickPluginActions,
+                fallbackIcon: ["iconPlugin", "iconFile"],
                 secondary: describe(action.kind, action.value, action.targets, provider.declaredTargets),
                 searchText: `${provider.label} ${provider.id} ${provider.value} ${this.i18n.quickPluginActions}`,
                 action,
@@ -2352,6 +2385,7 @@ const cached = session.cache.get(keyword);
                 label: displayLabel,
                 icon: command.icon,
                 group: this.i18n.quickPluginCommands,
+                fallbackIcon: ["iconPlugin", "iconFile"],
                 secondary: `${command.pluginTitle} · ${describe(action.kind, action.value, targets)}`,
                 searchText: `${displayLabel} ${command.pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
                 action,
@@ -2364,11 +2398,7 @@ const cached = session.cache.get(keyword);
         button.innerHTML = "";
         const preview = document.createElement("span");
         preview.className = "sw-setting__quick-icon-preview";
-        if (/^icon[A-Za-z0-9_-]+$/.test(icon) && document.getElementById(icon)) {
-            preview.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${icon}"></use></svg>`;
-        } else {
-            preview.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
-        }
+        this.renderQuickActionIcon(preview, icon, ["iconPlugin", "iconFile"]);
         const name = document.createElement("span");
         name.className = "sw-setting__quick-icon-name";
         name.textContent = /^icon/.test(icon) ? icon.slice(4) : icon;
@@ -2383,9 +2413,9 @@ const cached = session.cache.get(keyword);
             "iconLayout", "iconSearch", "iconCalendar", "iconSettings", "iconFile", "iconFolder",
             "iconDock", "iconPlugin", "iconAdd", "iconClock", "iconTask", "iconBookmark",
         ];
-        const loaded = Array.from(document.querySelectorAll<SVGSymbolElement>('symbol[id^="icon"]'))
+        const loaded = Array.from(document.querySelectorAll<SVGSymbolElement>("symbol[id]"))
             .map((symbol) => symbol.id)
-            .filter((id) => /^icon[A-Za-z0-9_-]+$/.test(id));
+            .filter((id) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(id));
         const emoji = ["⭐", "📅", "🔍", "✅", "⚡"];
         return Array.from(new Set([current, ...fallback, ...loaded, ...emoji].filter(Boolean))).sort((a, b) => a.localeCompare(b));
     }
@@ -2427,11 +2457,7 @@ const cached = session.cache.get(keyword);
                 option.classList.toggle("is-selected", icon === action.icon);
                 option.title = icon;
                 option.setAttribute("aria-label", icon);
-                if (/^icon[A-Za-z0-9_-]+$/.test(icon) && document.getElementById(icon)) {
-                    option.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${icon}"></use></svg>`;
-                } else {
-                    option.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
-                }
+                this.renderQuickActionIcon(option, icon, ["iconPlugin", "iconFile"]);
                 option.addEventListener("click", () => {
                     cleanup();
                     onPick(icon);

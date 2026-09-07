@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -150,6 +150,30 @@ test('resolveIconFallback: regular two-char strings still fall back to iconFile'
 test('resolveIconFallback: invalid multi-char string falls back to iconFile', () => {
     assert.deepEqual(resolveIconFallback('not-an-icon'), {type: 'svg', value: 'iconFile'});
     assert.deepEqual(resolveIconFallback('icon'), {type: 'svg', value: 'iconFile'}); // 只有前缀没有名字
+});
+
+test('resolveIconReference: accepts custom plugin symbols only when registered', () => {
+    const available = new Set(['iconFile', 'iconPlugin', 'siyuan-media-player-icon', 'lucide-book-search']);
+    assert.deepEqual(resolveIconReference('siyuan-media-player-icon', available), {
+        type: 'svg', value: 'siyuan-media-player-icon',
+    });
+    assert.deepEqual(resolveIconReference('lucide-book-search', available), {
+        type: 'svg', value: 'lucide-book-search',
+    });
+    assert.deepEqual(resolveIconReference('missing-plugin-icon', available, ['iconPlugin', 'iconFile']), {
+        type: 'svg', value: 'iconPlugin',
+    });
+});
+
+test('resolveIconReference: never treats arbitrary element ids as icons', () => {
+    const available = new Set(['iconFile', 'plugin-panel']);
+    assert.deepEqual(resolveIconReference('plugin-panel', new Set(['iconFile']), ['iconPlugin', 'iconFile']), {
+        type: 'svg', value: 'iconFile',
+    });
+});
+
+test('resolveIconReference: preserves emoji values', () => {
+    assert.deepEqual(resolveIconReference('⭐', new Set(['iconFile'])), {type: 'emoji', value: '⭐'});
 });
 
 // ── buildTabGroupsByParent ──
