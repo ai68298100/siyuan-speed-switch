@@ -147,6 +147,11 @@ const sortLifecycleOk = [
 ].every((line) => source.includes(line))
     && source.includes('document.addEventListener("keydown", onDocumentKeyDown, true)')
     && source.includes('document.removeEventListener("keydown", onDocumentKeyDown, true)')
+    && source.includes('list.setAttribute("role", "menu")')
+    && source.includes('item.setAttribute("role", "menuitemradio")')
+    && source.includes('item.tabIndex = value === sortSelect.value ? 0 : -1')
+    && source.includes('event.key !== "ArrowDown" && event.key !== "ArrowUp"')
+    && source.includes('overlay.addEventListener("click", (event) =>')
     && source.includes('return () => {');
 console.log(`${sortLifecycleOk ? 'PASS' : 'FAIL'} mobile sort options and lifecycle cleanup`);
 if (!sortLifecycleOk) allPassed = false;
