@@ -5592,17 +5592,29 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             sheet.innerHTML = `<div class="sw__mobile-sheet-handle"></div><div class="sw__mobile-sheet-title">${this.i18n.setSortBy}</div>`;
             const list = document.createElement("div");
             list.className = "sw__mobile-sort-list";
+            list.setAttribute("role", "menu");
+            list.setAttribute("aria-label", this.i18n.setSortBy);
             Object.entries(sortLabels).forEach(([value, label]) => {
                 const item = document.createElement("button");
                 item.type = "button";
                 item.className = "sw__mobile-sort-option";
                 item.setAttribute("role", "menuitemradio");
+                item.tabIndex = value === sortSelect.value ? 0 : -1;
                 item.setAttribute("aria-checked", String(value === sortSelect.value));
                 item.innerHTML = `<span>${label}</span>${value === sortSelect.value ? '<svg><use xlink:href="#iconCheck"></use></svg>' : ""}`;
                 item.addEventListener("click", () => {
                     sortSelect.value = value;
                     closeSortOverlay();
                     sortSelect.dispatchEvent(new Event("change"));
+                });
+                item.addEventListener("keydown", (event) => {
+                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                    event.preventDefault();
+                    const options = Array.from(list.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
+                    const index = options.indexOf(item);
+                    const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
+                    options.forEach((option) => option.tabIndex = option === next ? 0 : -1);
+                    next.focus();
                 });
                 list.appendChild(item);
             });
