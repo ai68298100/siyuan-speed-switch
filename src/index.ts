@@ -2835,7 +2835,16 @@ const cached = session.cache.get(keyword);
             // endpoint when it found no documents, preserving existing
             // ordering and request cost for the common case.
             if (docs.length === 0) {
-                docs = await this.runFullTextSearchFallback(keyword, controller.signal);
+                const fallbackDocs = await this.runFullTextSearchFallback(keyword, controller.signal);
+                if (fallbackDocs === null) {
+                    if (openedContentRoots.size === 0) {
+                        this.renderDocResults(scrollElement, [], onClose, "error");
+                    } else {
+                        this.renderDocResults(scrollElement, null, onClose);
+                    }
+                    return;
+                }
+                docs = fallbackDocs;
             }
             cacheSearchResult(session, keyword, docs);
             this.renderDocResults(scrollElement, docs, onClose);
@@ -2892,7 +2901,7 @@ if ((e as DOMException)?.name !== "AbortError") {
         return roots;
     }
 
-    private async runFullTextSearchFallback(keyword: string, signal: AbortSignal): Promise<IDocSearchResult[]> {
+    private async runFullTextSearchFallback(keyword: string, signal: AbortSignal): Promise<IDocSearchResult[] | null> {
         const request = buildFullTextSearchRequest({
             query: keyword,
             method: "keyword",
@@ -2900,7 +2909,7 @@ if ((e as DOMException)?.name !== "AbortError") {
             pageSize: Math.max(DOC_RESULT_LIMIT * 2, 24),
         });
         if (!request) {
-            return [];
+            return null;
         }
         try {
             const response = await fetch(request.endpoint, {
@@ -2936,7 +2945,7 @@ if ((e as DOMException)?.name !== "AbortError") {
             // Full-text search is optional. Older SiYuan versions keep the
             // title-search empty state when this endpoint is unavailable.
             logger.warn("full text search fallback unavailable", error);
-            return [];
+            return null;
         }
     }
 
