@@ -2863,22 +2863,29 @@ if ((e as DOMException)?.name !== "AbortError") {
         const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {maxDocuments: 6, pageSize: 8});
         const roots = new Set<string>();
         if (requests.length === 0) return roots;
-        const results = await Promise.all(requests.map(async (request) => {
-            try {
-                const response = await fetch(request.endpoint, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify(request.body),
-                    signal,
-                });
-                if (!response.ok) return false;
-                const payload = await response.json();
-                return extractSearchRecords(payload).some((record) => Boolean(normalizeSearchResult(record, "opened")));
-            } catch (error) {
-                if ((error as DOMException)?.name === "AbortError") throw error;
-                return false;
+        const results = new Array<boolean>(requests.length).fill(false);
+        let nextIndex = 0;
+        const worker = async () => {
+            while (nextIndex < requests.length) {
+                const index = nextIndex++;
+                const request = requests[index];
+                try {
+                    const response = await fetch(request.endpoint, {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify(request.body),
+                        signal,
+                    });
+                    if (!response.ok) continue;
+                    const payload = await response.json();
+                    results[index] = extractSearchRecords(payload)
+                        .some((record) => Boolean(normalizeSearchResult(record, "opened")));
+                } catch (error) {
+                    if ((error as DOMException)?.name === "AbortError") throw error;
+                }
             }
-        }));
+        };
+        await Promise.all(Array.from({length: Math.min(3, requests.length)}, () => worker()));
         results.forEach((matched, index) => {
             if (matched) roots.add(requests[index].scope.rootId);
         });
