@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -413,6 +413,28 @@ test('sanitizeFavorites: non-array returns empty list without changed (first run
     assert.deepEqual(sanitizeFavorites(undefined), {items: [], changed: false});
     assert.deepEqual(sanitizeFavorites(null), {items: [], changed: false});
     assert.deepEqual(sanitizeFavorites({}), {items: [], changed: false});
+});
+
+test('sanitizeOpenHistory: migrates root keys and removes duplicate document entries', () => {
+    const root = '20240101120000-abcdefg';
+    const out = sanitizeOpenHistory([
+        {key: 'tab-1', rootId: root, title: '文档', ts: 3},
+        {key: root, rootId: root, title: '重复', ts: 2},
+        {key: 'tab-2', title: '插件页签', ts: 1},
+    ], 50);
+    assert.deepEqual(out.items, [
+        {key: root, rootId: root, title: '文档', ts: 3},
+        {key: 'tab-2', rootId: null, title: '插件页签', ts: 1},
+    ]);
+    assert.equal(out.changed, true);
+});
+
+test('sanitizeOpenHistory: caps entries and preserves first-seen order', () => {
+    const out = sanitizeOpenHistory([
+        {key: 'a', title: 'A'}, {key: 'b', title: 'B'}, {key: 'c', title: 'C'},
+    ], 2);
+    assert.deepEqual(out.items.map((item) => item.key), ['a', 'b']);
+    assert.equal(out.changed, true);
 });
 
 // ── isSuccessfulMobileTabsResult ──

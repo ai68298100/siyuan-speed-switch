@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, extractSearchRecords, normalizeSearchResult} from "./search-model";
 import {
@@ -104,6 +104,7 @@ declare module "./util" {
         favorites: T[], openedKeys: Set<string>, resolveRootId: (favorite: T) => string,
     ): {targets: Array<{favorite: T, rootId: string}>, invalid: number};
     export function sanitizeFavorites(values: unknown): {items: IFavoriteItem[], changed: boolean};
+    export function sanitizeOpenHistory(values: unknown, max?: number): {items: IOpenHistoryEntry[], changed: boolean};
     export function sanitizeStringList(values: unknown): {items: string[], changed: boolean};
     export function isSuccessfulMobileTabsResult(result: unknown): boolean;
     export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
@@ -471,7 +472,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.data[FAV_GROUPS_KEY] = groups.items;
             this.saveDataDebounced(FAV_GROUPS_KEY);
         }
-        const history = this.sanitizeOpenHistory(this.data[HISTORY_KEY]);
+        const history = sanitizeOpenHistory(this.data[HISTORY_KEY], HISTORY_MAX);
         if (history.changed) {
             this.data[HISTORY_KEY] = history.items;
             this.saveDataDebounced(HISTORY_KEY);
@@ -6306,30 +6307,8 @@ if (count > 0) {
         return capMru(Array.isArray(data) ? data : [], MRU_MAX);
     }
 
-    private sanitizeOpenHistory(value: unknown): {items: IOpenHistoryEntry[], changed: boolean} {
-        if (!Array.isArray(value)) {
-            return {items: [], changed: value !== undefined};
-        }
-        const items: IOpenHistoryEntry[] = [];
-        const seen = new Set<string>();
-        for (const raw of value) {
-            if (!raw || typeof raw !== "object") continue;
-            const item = raw as Partial<IOpenHistoryEntry>;
-            const key = typeof item.key === "string" ? item.key.trim() : "";
-            if (!key || seen.has(key)) continue;
-            const rootId = typeof item.rootId === "string" && BLOCK_ID_RE.test(item.rootId) ? item.rootId : null;
-            const title = typeof item.title === "string" && item.title.trim() ? item.title.trim().slice(0, 200) : key;
-            const ts = typeof item.ts === "number" && Number.isFinite(item.ts) ? item.ts : 0;
-            seen.add(key);
-            items.push({key, rootId, title, ts});
-            if (items.length >= HISTORY_MAX) break;
-        }
-        const changed = items.length !== value.length || items.some((item, index) => JSON.stringify(item) !== JSON.stringify(value[index]));
-        return {items, changed};
-    }
-
     private getOpenHistory(): IOpenHistoryEntry[] {
-        return this.sanitizeOpenHistory(this.data[HISTORY_KEY]).items;
+        return sanitizeOpenHistory(this.data[HISTORY_KEY], HISTORY_MAX).items;
     }
 
     private recordOpenHistory(tab: Tab) {

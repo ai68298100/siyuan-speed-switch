@@ -356,4 +356,55 @@ function isSuccessfulMobileTabsResult(result) {
     return result === undefined || result === "success";
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+/**
+ * Open-history storage normalization. Document roots are stable across tab
+ * instances, so old tab-id entries are migrated to the root key when one is
+ * available; non-document/plugin entries retain their original key.
+ * @param {unknown} values
+ * @param {number} max
+ * @returns {{items: Array<{key: string, rootId: string|null, title: string, ts: number}>, changed: boolean}}
+ */
+function sanitizeOpenHistory(values, max = 50) {
+    if (!Array.isArray(values)) return {items: [], changed: false};
+    const limit = Number.isFinite(max) && max > 0 ? Math.floor(max) : 50;
+    const seenKeys = new Set();
+    const seenRoots = new Set();
+    const items = [];
+    let changed = false;
+    for (let index = 0; index < values.length; index += 1) {
+        if (items.length >= limit) {
+            changed = true;
+            break;
+        }
+        const value = values[index];
+        if (!value || typeof value !== "object") {
+            changed = true;
+            continue;
+        }
+        const raw = value;
+        const rawKey = typeof raw.key === "string" ? raw.key.trim() : "";
+        if (!rawKey) {
+            changed = true;
+            continue;
+        }
+        let rootId = typeof raw.rootId === "string" && /^\d{14}-[0-9a-z]+$/i.test(raw.rootId.trim())
+            ? raw.rootId.trim() : null;
+        if (!rootId && /^\d{14}-[0-9a-z]+$/i.test(rawKey)) rootId = rawKey;
+        const key = rootId || rawKey;
+        if (seenKeys.has(key) || (rootId && seenRoots.has(rootId))) {
+            changed = true;
+            continue;
+        }
+        const title = typeof raw.title === "string" && raw.title.trim()
+            ? raw.title.trim().slice(0, 200) : key;
+        const ts = typeof raw.ts === "number" && Number.isFinite(raw.ts) ? raw.ts : 0;
+        if (key !== raw.key || rootId !== (raw.rootId || null) || title !== raw.title || ts !== raw.ts) changed = true;
+        seenKeys.add(key);
+        if (rootId) seenRoots.add(rootId);
+        items.push({key, rootId, title, ts});
+    }
+    if (items.length !== values.length) changed = true;
+    return {items: items.slice(0, limit), changed};
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
