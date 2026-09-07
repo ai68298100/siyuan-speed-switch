@@ -92,16 +92,16 @@ test("quick action picker keeps normalized metadata in bounded text nodes", () =
         host,
         candidates: [{
             id: "plugin",
-            label: "插件\\n命令",
+            label: "插件\n命令",
             icon: "iconPlugin",
             group: "插件",
-            secondary: "电脑\\n侧栏",
+            secondary: "电脑\n侧栏",
         }],
         onSelect: () => undefined,
     });
     const item = host.querySelector("[data-candidate-id=plugin]");
     assert.equal(item.classList.contains("sw-setting__quick-picker-item"), true);
     assert.ok(item.querySelector(".sw-setting__quick-picker-copy"));
-    assert.equal(item.querySelector(".sw-setting__quick-picker-label").textContent, "插件\\n命令");
+    assert.equal(item.querySelector(".sw-setting__quick-picker-label").textContent, "插件 命令");
     assert.equal(item.querySelector(".sw-setting__picker-icon svg use").getAttribute("href"), "#iconPlugin");
 });

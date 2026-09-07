@@ -1,4 +1,4 @@
-const {resolveIconReference} = require("./util.js");
+const {normalizeQuickActionText, resolveIconReference} = require("./util.js");
 
 function getAvailableSymbolIds(document) {
     return new Set(Array.from(document.querySelectorAll("symbol[id]")).map((symbol) => symbol.id));
@@ -29,6 +29,13 @@ function appendIcon(document, host, icon, fallback = "iconFile") {
  */
 function mountQuickActionPicker(options) {
     const {trigger, host, candidates, searchPlaceholder, emptyText, onSelect} = options;
+    const normalizedCandidates = (Array.isArray(candidates) ? candidates : []).map((candidate) => ({
+        ...candidate,
+        label: normalizeQuickActionText(candidate?.label, 24) || normalizeQuickActionText(candidate?.id, 24),
+        group: normalizeQuickActionText(candidate?.group, 32),
+        secondary: normalizeQuickActionText(candidate?.secondary, 80),
+        searchText: normalizeQuickActionText(candidate?.searchText, 160),
+    }));
     const existing = host.querySelector(".sw-setting__quick-picker");
     if (existing) {
         existing.remove();
@@ -52,7 +59,7 @@ function mountQuickActionPicker(options) {
 
     const render = () => {
         const keyword = search.value.trim().toLocaleLowerCase();
-        const visible = candidates.filter((candidate) => !keyword
+        const visible = normalizedCandidates.filter((candidate) => !keyword
             || String(candidate.searchText || `${candidate.label} ${candidate.secondary || ""}`)
                 .toLocaleLowerCase().includes(keyword));
         results.innerHTML = "";
