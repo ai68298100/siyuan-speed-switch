@@ -87,6 +87,15 @@ test("quick actions: removed iconCommand fallback migrates to a real plugin icon
     assert.equal(result.changed, true);
 });
 
+test("quick actions: plugin-registered symbol ids survive sanitization", () => {
+    const result = sanitizeQuickActions([
+        {id: "media", kind: "dock", value: "SiyuanMediaSidebar", label: "思播", icon: "siyuan-media-player-icon"},
+        {id: "reader", kind: "adapter", value: "reader/open", label: "思阅", icon: "lucide-book-search"},
+    ]);
+    assert.equal(result.items[0].icon, "siyuan-media-player-icon");
+    assert.equal(result.items[1].icon, "lucide-book-search");
+});
+
 test("quick actions: external plugin commands are retained", () => {
     const result = sanitizeQuickActions([{id: "command-clock-open", kind: "command", value: "siyuan-clock::open", label: "打卡", targets: ["desktop", "mobile"], order: 5, enabled: true}]);
     assert.equal(result.items.length, 1);
