@@ -3,7 +3,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, extractSearchRecords} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, extractSearchRecords, normalizeSearchResult} from "./search-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -198,6 +198,7 @@ declare module "./search-model" {
         body: Record<string, unknown>;
     } | null;
     export function extractSearchRecords(payload: unknown): unknown[];
+    export function normalizeSearchResult(value: unknown, source?: string): {rootId: string; blockId?: string; title?: string; path?: string} | null;
     export function buildOpenedDocumentSearchRequests(tabs: unknown[], query: string, options?: Record<string, unknown>): Array<{
         endpoint: string;
         body: Record<string, unknown>;
@@ -2872,7 +2873,7 @@ if ((e as DOMException)?.name !== "AbortError") {
                 });
                 if (!response.ok) return false;
                 const payload = await response.json();
-                return extractSearchRecords(payload).length > 0;
+                return extractSearchRecords(payload).some((record) => Boolean(normalizeSearchResult(record, "opened")));
             } catch (error) {
                 if ((error as DOMException)?.name === "AbortError") throw error;
                 return false;
