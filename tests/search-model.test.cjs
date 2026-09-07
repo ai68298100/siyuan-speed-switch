@@ -13,6 +13,8 @@ const {
     shouldSearchRemote,
     buildFullTextSearchRequest,
     extractSearchRecords,
+    buildOpenedDocumentScope,
+    buildOpenedDocumentSearchRequest,
 } = require("../src/search-model.js");
 
 const ROOT_A = "20260906120000-aaaaaaa";
@@ -293,4 +295,23 @@ test("search model: extracts compatible native result wrappers", () => {
     assert.strictEqual(extractSearchRecords({data: {items: blocks}}), blocks);
     assert.deepEqual(extractSearchRecords({data: []}), []);
     assert.deepEqual(extractSearchRecords(null), []);
+});
+
+test("search model: scopes opened-document search to one safe notebook path", () => {
+    const scope = buildOpenedDocumentScope({rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"});
+    assert.deepEqual(scope, {rootId: ROOT_A, notebook: "box-a", path: "box-a/docs/root.sy"});
+    const request = buildOpenedDocumentSearchRequest({
+        query: "正文", tab: {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"}, pageSize: 12,
+    });
+    assert.equal(request.endpoint, "/api/search/fullTextSearchBlock");
+    assert.equal(request.body.groupBy, 0);
+    assert.equal(request.body.searchHPath, false);
+    assert.deepEqual(request.body.paths, ["box-a/docs/root.sy"]);
+    assert.equal(request.scope.rootId, ROOT_A);
+});
+
+test("search model: rejects stale or unsafe opened-document scopes", () => {
+    assert.equal(buildOpenedDocumentScope({rootId: "tab-1", notebookId: "box-a", path: "box-a/root.sy"}), null);
+    assert.equal(buildOpenedDocumentScope({rootId: ROOT_A, notebookId: "box-a", path: "box-a/hidden';--.sy"}), null);
+    assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
 });
