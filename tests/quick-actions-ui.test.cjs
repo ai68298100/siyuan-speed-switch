@@ -78,3 +78,30 @@ test("quick action picker resolves plugin symbols and ignores non-symbol ids", (
     assert.equal(items[1].querySelector("use").getAttribute("href"), "#iconPlugin");
     assert.equal(items[1].textContent.includes("not an svg icon"), false);
 });
+
+test("quick action picker keeps normalized metadata in bounded text nodes", () => {
+    const dom = new JSDOM(`
+        <svg aria-hidden="true"><symbol id="iconFile"></symbol><symbol id="iconPlugin"></symbol></svg>
+        <button id="add"></button><div id="host"></div>
+    `);
+    const document = dom.window.document;
+    const trigger = document.querySelector("#add");
+    const host = document.querySelector("#host");
+    mountQuickActionPicker({
+        trigger,
+        host,
+        candidates: [{
+            id: "plugin",
+            label: "插件\\n命令",
+            icon: "iconPlugin",
+            group: "插件",
+            secondary: "电脑\\n侧栏",
+        }],
+        onSelect: () => undefined,
+    });
+    const item = host.querySelector("[data-candidate-id=plugin]");
+    assert.equal(item.classList.contains("sw-setting__quick-picker-item"), true);
+    assert.ok(item.querySelector(".sw-setting__quick-picker-copy"));
+    assert.equal(item.querySelector(".sw-setting__quick-picker-label").textContent, "插件\\n命令");
+    assert.equal(item.querySelector(".sw-setting__picker-icon svg use").getAttribute("href"), "#iconPlugin");
+});

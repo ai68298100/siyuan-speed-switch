@@ -365,10 +365,14 @@
     min-width: 0;
     min-height: 42px;
     padding: 6px 8px;
+    box-sizing: border-box;
     border: 1px solid var(--b3-border-color);
     border-radius: 6px;
     background: var(--b3-theme-background);
     color: var(--b3-theme-on-background);
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.25;
     cursor: pointer;
     text-align: left;
     overflow: hidden;
@@ -401,6 +405,7 @@
     flex: 1;
     min-width: 0;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .sw-setting__quick-picker-label,
@@ -411,6 +416,8 @@
 }
 
 .sw-setting__quick-picker-label {
+    display: block;
+    min-width: 0;
     font-size: 12px;
     line-height: 1.3;
 }
