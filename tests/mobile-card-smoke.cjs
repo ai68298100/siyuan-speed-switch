@@ -136,7 +136,10 @@ if (!responsiveRulesOk) allPassed = false;
 
 const searchSourceUiOk = pluginCss.includes('.sw__doc-source')
     && source.includes('this.i18n.docSearchSourceOpened')
-    && source.includes('this.i18n.docSearchSourceGlobal');
+    && source.includes('this.i18n.docSearchSourceGlobal')
+    && source.includes('docSearchHitId')
+    && source.includes('cb-get-scroll')
+    && source.includes('falling back to root');
 console.log(`${searchSourceUiOk ? 'PASS' : 'FAIL'} search result source labels`);
 if (!searchSourceUiOk) allPassed = false;
 

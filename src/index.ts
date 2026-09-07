@@ -163,6 +163,7 @@ interface IDocSearchResult {
     title?: string;
     path?: string;
     hPath?: string;
+    blockIds?: string[];
     snippets?: Array<{text?: string; blockId?: string | null}>;
     source?: string;
 }
@@ -192,6 +193,7 @@ declare module "./search-model" {
         rootId: string;
         title: string;
         path: string;
+        blockIds?: string[];
         snippets: Array<{text: string; blockId?: string | null}>;
     }>};
     export function buildFullTextSearchRequest(input?: Record<string, unknown>): {
@@ -2936,6 +2938,7 @@ if ((e as DOMException)?.name !== "AbortError") {
                 title: card.title,
                 path: card.path,
                 hPath: card.path,
+                blockIds: card.blockIds,
                 snippets: card.snippets,
                 source: "global",
             }));
@@ -3066,6 +3069,52 @@ const openRootIds = this.collectOpenRootIds();
         return BLOCK_ID_RE.test(pathId) ? pathId : "";
     }
 
+    /**
+     * Return one safe block target from a card. The root document remains the
+     * fallback because older search responses may only contain document IDs.
+     */
+    private docSearchHitId(doc: IDocSearchResult, rootId: string): string | null {
+        const candidates = [
+            ...(Array.isArray(doc.blockIds) ? doc.blockIds : []),
+            ...(Array.isArray(doc.snippets) ? doc.snippets.map((snippet) => snippet?.blockId || "") : []),
+        ];
+        const hit = candidates.find((value) => {
+            const id = String(value || "");
+            return BLOCK_ID_RE.test(id) && id !== rootId;
+        });
+        return hit ? String(hit) : null;
+    }
+
+    private async openDocSearchResult(rootId: string, hitId: string | null): Promise<void> {
+        if (this.isMobile) {
+            // MobileTabs only accepts a root document ID. Keep block targeting
+            // desktop-only until SiYuan exposes a stable mobile equivalent.
+            await this.mobileOpenDoc(rootId);
+            return;
+        }
+        const targetId = hitId && BLOCK_ID_RE.test(hitId) ? hitId : rootId;
+        try {
+            await openTab({
+                app: this.app,
+                doc: targetId === rootId ? {id: rootId} : {id: targetId, action: ["cb-get-scroll"]},
+            });
+        } catch (error) {
+            if (targetId === rootId) {
+                logger.warn("open document search result fail", error);
+                showMessage(this.i18n.openDocFailed);
+                return;
+            }
+            // A stale block ID should never make a valid document card unusable.
+            logger.warn("open document search hit fail, falling back to root", error);
+            try {
+                await openTab({app: this.app, doc: {id: rootId}});
+            } catch (fallbackError) {
+                logger.warn("open document search root fallback fail", fallbackError);
+                showMessage(this.i18n.openDocFailed);
+            }
+        }
+    }
+
     // 鍗曚釜鏂囨。鎼滅储缁撴灉鍗＄墖锛堝浘鏍?+ 鏍囬 + 璺緞锛夛紱鐐瑰嚮鐩村紑鏂囨。锛堟墜鏈虹璧?MobileTabs.open锛?
 private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayClose): HTMLButtonElement {
         const item = document.createElement("button");
@@ -3108,15 +3157,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         item.setAttribute("aria-label", hPath || docTitle);
         item.addEventListener("click", () => {
             onClose();
-            if (this.isMobile) {
-                // openTab 鍦ㄦ墜鏈虹鏄┖瀹炵幇锛岃蛋 MobileTabs.open
-                this.mobileOpenDoc(id);
-            } else {
-                openTab({
-                    app: this.app,
-                    doc: {id},
-                });
-            }
+            void this.openDocSearchResult(id, this.docSearchHitId(doc, id));
         });
         return item;
     }
