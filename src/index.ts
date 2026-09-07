@@ -5350,7 +5350,23 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
             previousWidth = bodyRect.width;
             previousHeight = bodyRect.height;
-            if (stableFrames >= 2 || attempt >= 30) {
+            // Never reveal a zero-sized or structurally collapsed dialog.  The
+            // bounded retry is only a last-resort guard for WebViews that do
+            // not deliver a second animation frame; it still requires the
+            // body/toolbar geometry to be usable.
+            const hasFallbackGeometry = bodyRect.width > 0 && bodyRect.height > 0
+                && !!toolbarRect && toolbarRect.width > 0
+                && toolbarStyle?.display === "flex"
+                && (!scroll || scroll.clientWidth > 0)
+                && toolbarRect.width <= bodyRect.width + 2;
+            if (stableFrames >= 2 || (attempt >= 30 && hasFallbackGeometry)) {
+                // A late SVG sprite/style load can leave the search icon at
+                // its intrinsic size.  Clamp it before the first visible
+                // frame so the fallback cannot flash a giant icon.
+                if (!hasStableGeometry && icon) {
+                    icon.style.setProperty("width", "18px", "important");
+                    icon.style.setProperty("height", "18px", "important");
+                }
                 mobileBody.classList.remove("sw__mobile--initializing");
                 mobileBody.style.removeProperty("visibility");
                 mobileBody.style.removeProperty("opacity");
@@ -5380,12 +5396,18 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.pruneThumbCache(tabs);
 
         let unregisterRefresh: () => void = () => undefined;
+        let disposeMobileToolbar: () => void = () => undefined;
         // 閽╀綇 Dialog.destroy锛圗scape/鐐瑰嚮澶栭儴/绋嬪簭璋冪敤锛夋墍鏈夊叧闂矾寰勯兘鎭㈠ FAB
         const origDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
             revealCancelled = true;
             if (readyFrame !== null) cancelAnimationFrame(readyFrame);
             readyFrame = null;
+            // Sorting is rendered in a body-level portal so it can escape the
+            // host Dialog's clipping/stacking context.  Always tear that
+            // portal down with its owner, including Escape and route changes.
+            document.querySelectorAll<HTMLElement>(".sw__mobile-sort-overlay").forEach((overlay) => overlay.remove());
+            disposeMobileToolbar();
             unregisterRefresh();
             if (scrollElement) {
                 this.disposeDocSearchSession(scrollElement);
@@ -5409,7 +5431,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         };
         unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
-        this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
+        disposeMobileToolbar = this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         rendered = true;
 
@@ -5470,7 +5492,19 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         scrollElement: HTMLDivElement,
         closeOverlay: () => void,
         renderMobileList: () => void,
-    ) {
+    ): () => void {
+        let activeSortOverlay: HTMLElement | null = null;
+        const closeSortOverlay = () => {
+            activeSortOverlay?.remove();
+            activeSortOverlay = null;
+        };
+        const onDocumentKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== "Escape" || !activeSortOverlay) return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeSortOverlay();
+        };
+        document.addEventListener("keydown", onDocumentKeyDown, true);
         // 闅愯棌 FAB 鎺ㄨ繜鍒版寜閽?click 澶勬槸鍥犱负 openSetting 鍙兘涔熷叧闂師 dialog
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -5500,13 +5534,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         };
         updateSortButton();
         sortButton?.addEventListener("click", () => {
-            document.querySelector(".sw__mobile-sort-overlay")?.remove();
+            closeSortOverlay();
             const overlay = document.createElement("div");
             overlay.className = "sw__mobile-sort-overlay";
             // WebView 里的思源 Dialog 可能建立新的 stacking context，内联层级作为最后一道兜底。
             overlay.style.position = "fixed";
             overlay.style.inset = "0";
-            overlay.style.zIndex = "2147483000";
+            overlay.style.zIndex = "2147483647";
             const sheet = document.createElement("div");
             sheet.className = "sw__mobile-sort-sheet";
             sheet.setAttribute("role", "dialog");
@@ -5523,7 +5557,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 item.innerHTML = `<span>${label}</span>${value === sortSelect.value ? '<svg><use xlink:href="#iconCheck"></use></svg>' : ""}`;
                 item.addEventListener("click", () => {
                     sortSelect.value = value;
-                    overlay.remove();
+                    closeSortOverlay();
                     sortSelect.dispatchEvent(new Event("change"));
                 });
                 list.appendChild(item);
@@ -5531,9 +5565,20 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             sheet.appendChild(list);
             overlay.appendChild(sheet);
             document.body.appendChild(overlay);
+            activeSortOverlay = overlay;
             overlay.addEventListener("click", (event) => {
-                if (event.target === overlay) overlay.remove();
+                if (event.target === overlay) closeSortOverlay();
             });
+            // Android back/Escape should close only the transient sort sheet;
+            // do not leave a body-level portal intercepting later taps.
+            overlay.addEventListener("keydown", (event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                event.stopPropagation();
+                closeSortOverlay();
+            });
+            overlay.tabIndex = -1;
+            requestAnimationFrame(() => overlay.focus({preventScroll: true}));
             requestAnimationFrame(() => sheet.classList.add("sw__mobile-sort-sheet--open"));
         });
         sortSelect.addEventListener("change", () => {
@@ -5553,6 +5598,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         searchInput.addEventListener("input", () => {
             this.applySearch(scrollElement, searchInput, closeOverlay);
         });
+        return () => {
+            document.removeEventListener("keydown", onDocumentKeyDown, true);
+            closeSortOverlay();
+        };
     }
 
     // 瑁呴厤鎵嬫満绔垪琛ㄦ覆鏌擄細杩斿洖 renderMobileList 鍑芥暟浠ヤ究鏀惰棌寮圭獥鐨?onTabsChanged 鍥炶皟瑙﹀彂鍒锋柊

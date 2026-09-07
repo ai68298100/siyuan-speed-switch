@@ -2689,7 +2689,9 @@
     position: fixed;
     inset: 0;
     // 思源移动端 Dialog 可能建立独立 stacking context；使用高层级保证排序面板位于 Dialog 之上。
-    z-index: 2147483000;
+    // 2147483647 是 CSS 32-bit z-index 的最大常用值。排序层挂在 body
+    // 下，必须高于宿主 Dialog 的 stacking context，避免弹层落到卡片后面。
+    z-index: 2147483647;
     display: flex;
     align-items: flex-end;
     justify-content: center;

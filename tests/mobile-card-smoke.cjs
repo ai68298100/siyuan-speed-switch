@@ -129,8 +129,26 @@ const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')
     && pluginCss.includes('.sw__mobile-toolbar')
+    && pluginCss.includes('z-index:2147483647')
     && source.includes("sortButton.innerHTML = '<svg><use xlink:href=\"#iconSort\"></use></svg>'");
 console.log(`${responsiveRulesOk ? 'PASS' : 'FAIL'} responsive quick actions, mobile settings, and icon sort rules`);
 if (!responsiveRulesOk) allPassed = false;
+
+// Sort is presented by a body-level sheet on touch devices. Keep a structural
+// guard for the six native sort values and the owner-lifecycle cleanup so a
+// host Dialog cannot leave a stale, lower-layer portal behind.
+const sortLifecycleOk = [
+    'mru: this.i18n.sortMru',
+    'layout: this.i18n.sortLayout',
+    'layoutDesc: this.i18n.sortLayoutDesc',
+    'updatedDesc: this.i18n.sortUpdatedDesc',
+    'titleAsc: this.i18n.sortTitleAsc',
+    'titleDesc: this.i18n.sortTitleDesc',
+].every((line) => source.includes(line))
+    && source.includes('document.addEventListener("keydown", onDocumentKeyDown, true)')
+    && source.includes('document.removeEventListener("keydown", onDocumentKeyDown, true)')
+    && source.includes('return () => {');
+console.log(`${sortLifecycleOk ? 'PASS' : 'FAIL'} mobile sort options and lifecycle cleanup`);
+if (!sortLifecycleOk) allPassed = false;
 
 process.exit(allPassed ? 0 : 1);
