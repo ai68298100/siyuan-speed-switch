@@ -317,6 +317,18 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
 });
 
+test("search model: cache keys isolate notebook and path filters", () => {
+    const base = buildSearchCacheKey({query: "项目", scope: "global", filters: {}});
+    const notebook = buildSearchCacheKey({query: "项目", scope: "global", filters: {notebook: "box-a"}});
+    const path = buildSearchCacheKey({query: "项目", scope: "global", filters: {paths: ["box-a/work"]}});
+    assert.notEqual(base, notebook);
+    assert.notEqual(notebook, path);
+    assert.equal(
+        buildSearchCacheKey({query: "项目", scope: "global", filters: {paths: ["box-a/work"], notebook: "box-a"}}),
+        buildSearchCacheKey({query: " 项目 ", scope: "global", filters: {notebook: "box-a", paths: ["box-a/work"]}}),
+    );
+});
+
 test("search model: duplicate snippets are removed before snippet limit", () => {
     const aggregate = aggregateSearchResults([
         {rootId: ROOT_A, blockId: "20260906120003-hit0001", snippet: "相同片段"},

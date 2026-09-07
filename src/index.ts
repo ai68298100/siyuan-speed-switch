@@ -3,7 +3,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, extractSearchRecords, normalizeSearchResult} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, buildSearchCacheKey, extractSearchRecords, normalizeSearchResult} from "./search-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -168,6 +168,11 @@ interface IDocSearchResult {
     source?: string;
 }
 
+interface IDocSearchFilters {
+    notebook?: string;
+    paths?: string[];
+}
+
 interface ISearchSession<T> {
     version: number;
     cache: Map<string, T>;
@@ -200,6 +205,7 @@ declare module "./search-model" {
         endpoint: string;
         body: Record<string, unknown>;
     } | null;
+    export function buildSearchCacheKey(input?: Record<string, unknown>): string;
     export function extractSearchRecords(payload: unknown): unknown[];
     export function normalizeSearchResult(value: unknown, source?: string): {rootId: string; blockId?: string; title?: string; path?: string} | null;
     export function buildOpenedDocumentSearchRequests(tabs: unknown[], query: string, options?: Record<string, unknown>): Array<{
@@ -383,6 +389,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
     private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
+    private docSearchFilters = new WeakMap<HTMLElement, IDocSearchFilters>();
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
@@ -1952,6 +1959,7 @@ const updatedMap: {[rootId: string]: string} = {};
         const keyword = searchInput.value.trim();
         this.filterCards(scrollElement, searchInput.value);
         const session = this.getDocSearchSession(scrollElement);
+        const filters = this.docSearchFilters.get(scrollElement) || {};
 
         // 姣忔杈撳叆閮借涓婁竴杞姹傚け鏁堛€傜┖鍏抽敭璇嶆垨缂撳瓨鍛戒腑涔熷繀椤婚€掑搴忓彿锛?        // 鍚﹀垯杈冩參鐨勬棫璇锋眰杩斿洖鍚庝細瑕嗙洊褰撳墠鐣岄潰銆?
 const version = beginSearch(session);
@@ -1962,7 +1970,8 @@ const version = beginSearch(session);
             return;
         }
         // 鍛戒腑缂撳瓨鐩存帴娓叉煋锛堝凡鎵撳紑鏂囨。鍦ㄦ覆鏌撴椂鎺掗櫎锛岀紦瀛樼粨鏋滃彲瀹夊叏澶嶇敤锛?
-const cached = session.cache.get(keyword);
+        const cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters});
+        const cached = session.cache.get(cacheKey);
         if (cached) {
             this.renderDocResults(scrollElement, cached, onClose);
             return;
@@ -1971,7 +1980,7 @@ const cached = session.cache.get(keyword);
         // 寤惰繜 180ms 鍐嶈姹傚叏搴撴枃妗ｏ紙闃叉姈锛夛紝閬垮厤姣忎釜鎸夐敭閮芥墦鍐呮牳锛?        // 瀹氭椂鍣ㄤ繚瀛樺埌瀛楁锛屾柊涓€杞緭鍏?娓呯┖鏃舵竻鎺夋棫鍥炶皟
         session.timer = window.setTimeout(() => {
             session.timer = null;
-            this.runDocSearchFetch(scrollElement, searchInput, keyword, version, onClose);
+            this.runDocSearchFetch(scrollElement, searchInput, keyword, version, onClose, filters, cacheKey);
         }, SEARCH_DEBOUNCE_MS);
     }
 
@@ -2767,6 +2776,9 @@ const cached = session.cache.get(keyword);
     }
 
     private getDocSearchSession(scrollElement: HTMLElement): ISearchSession<IDocSearchResult[]> {
+        if (!this.docSearchFilters.has(scrollElement)) {
+            this.docSearchFilters.set(scrollElement, Object.freeze({}));
+        }
         let session = this.docSearchSessions.get(scrollElement);
         if (!session) {
             session = createSearchSession<IDocSearchResult[]>(DOC_SEARCH_CACHE_LIMIT);
@@ -2793,6 +2805,8 @@ const cached = session.cache.get(keyword);
         keyword: string,
         version: number,
         onClose: IOverlayClose,
+        filters: IDocSearchFilters = {},
+        cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters}),
     ) {
         const session = this.getDocSearchSession(scrollElement);
         // 鏈熼棿鍏抽敭璇嶅凡鍙樺寲鎴栧鍣ㄥ凡閿€姣佸垯鏀惧純鏈缁撴灉
@@ -2826,6 +2840,7 @@ const cached = session.cache.get(keyword);
             let docs: IDocSearchResult[] = Array.isArray(json?.data)
                 ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
                 : [];
+            docs = this.filterDocSearchResults(docs, filters);
             let openedContentRoots = new Set<string>();
             if (docs.length === 0) {
                 openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, controller.signal);
@@ -2838,7 +2853,7 @@ const cached = session.cache.get(keyword);
             // endpoint when it found no documents, preserving existing
             // ordering and request cost for the common case.
             if (docs.length === 0) {
-                const fallbackDocs = await this.runFullTextSearchFallback(keyword, controller.signal);
+                const fallbackDocs = await this.runFullTextSearchFallback(keyword, controller.signal, filters);
                 if (fallbackDocs === null) {
                     if (openedContentRoots.size === 0) {
                         this.renderDocResults(scrollElement, [], onClose, "error");
@@ -2849,7 +2864,7 @@ const cached = session.cache.get(keyword);
                 }
                 docs = fallbackDocs;
             }
-            cacheSearchResult(session, keyword, docs);
+            cacheSearchResult(session, cacheKey, docs);
             this.renderDocResults(scrollElement, docs, onClose);
         } catch (e) {
             // 涓诲姩鍙栨秷鐨勮姹備笉绠楀紓甯?
@@ -2904,12 +2919,24 @@ if ((e as DOMException)?.name !== "AbortError") {
         return roots;
     }
 
-    private async runFullTextSearchFallback(keyword: string, signal: AbortSignal): Promise<IDocSearchResult[] | null> {
+    private filterDocSearchResults(docs: IDocSearchResult[], filters: IDocSearchFilters): IDocSearchResult[] {
+        const notebook = typeof filters.notebook === "string" ? filters.notebook.trim() : "";
+        const paths = Array.isArray(filters.paths) ? filters.paths.filter(Boolean) : [];
+        if (!notebook && paths.length === 0) return docs;
+        return docs.filter((doc) => {
+            const path = String(doc.path || doc.hPath || "").replace(/\\/g, "/");
+            if (notebook && path.split("/")[0] !== notebook) return false;
+            return paths.length === 0 || paths.some((candidate) => path === candidate || path.startsWith(`${candidate}/`));
+        });
+    }
+
+    private async runFullTextSearchFallback(keyword: string, signal: AbortSignal, filters: IDocSearchFilters = {}): Promise<IDocSearchResult[] | null> {
         const request = buildFullTextSearchRequest({
             query: keyword,
             method: "keyword",
             groupBy: "document",
             pageSize: Math.max(DOC_RESULT_LIMIT * 2, 24),
+            filters,
         });
         if (!request) {
             return null;
