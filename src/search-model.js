@@ -608,6 +608,43 @@ function extractSearchRecords(payload) {
     return containers.find((items) => items.length > 0) || containers[0] || [];
 }
 
+/**
+ * Build a bounded path scope for an already-open document. Native search
+ * expects notebook/path pairs in `paths`; malformed or mismatched entries are
+ * rejected so a stale tab cannot broaden a search to the whole workspace.
+ */
+function buildOpenedDocumentScope(tab) {
+    const source = tab && typeof tab === "object" ? tab : {};
+    const rootId = normalizeText(source.rootId || source.rootID || source.documentId || "", MAX_PATH_LENGTH);
+    if (!BLOCK_ID_RE.test(rootId)) return null;
+    const notebook = normalizeText(source.notebookId || source.notebookID || source.box || "", MAX_PATH_LENGTH);
+    const rawPath = normalizeText(source.path || source.hPath || "", MAX_PATH_LENGTH).replace(/\\/g, "/");
+    const pathParts = rawPath.split("/").filter(Boolean);
+    if (pathParts[0] === notebook) pathParts.shift();
+    const docPath = pathParts.join("/") || `${rootId}.sy`;
+    if (!notebook || !isSafeSearchBoxId(notebook) || !/^[-A-Za-z0-9_./]+\.sy$/i.test(docPath)) return null;
+    return {rootId, notebook, path: `${notebook}/${docPath}`};
+}
+
+function buildOpenedDocumentSearchRequest(input = {}) {
+    const source = input && typeof input === "object" ? input : {};
+    const scope = buildOpenedDocumentScope(source.tab || source);
+    if (!scope) return null;
+    const request = buildFullTextSearchRequest({
+        query: source.query || source.k,
+        method: source.method || "keyword",
+        orderBy: source.orderBy || "relevanceDesc",
+        groupBy: "none",
+        page: source.page,
+        pageSize: source.pageSize,
+        searchHPath: false,
+        paths: [scope.path],
+        notebook: scope.notebook,
+    });
+    if (!request) return null;
+    return {...request, scope};
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -623,4 +660,6 @@ module.exports = {
     shouldSearchRemote,
     buildFullTextSearchRequest,
     extractSearchRecords,
+    buildOpenedDocumentScope,
+    buildOpenedDocumentSearchRequest,
 };
