@@ -2697,8 +2697,6 @@
     justify-content: center;
     background: rgba(0, 0, 0, .32);
     pointer-events: auto;
-    isolation: isolate;
-    contain: layout paint;
     -webkit-tap-highlight-color: transparent;
 }
 
