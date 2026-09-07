@@ -317,6 +317,16 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
 });
 
+test("search model: duplicate snippets are removed before snippet limit", () => {
+    const aggregate = aggregateSearchResults([
+        {rootId: ROOT_A, blockId: "20260906120003-hit0001", snippet: "相同片段"},
+        {rootId: ROOT_A, blockId: "20260906120004-hit0002", snippet: "相同片段"},
+        {rootId: ROOT_A, blockId: "20260906120005-hit0003", snippet: "第二片段"},
+    ], {snippets: 2});
+    assert.deepEqual(aggregate.cards[0].snippets.map((item) => item.text), ["相同片段", "第二片段"]);
+    assert.equal(aggregate.cards[0].hitCount, 3);
+});
+
 test("search model: accepts desktop and MobileTabs metadata aliases", () => {
     const mobile = buildOpenedDocumentScope({
         current: {rootID: ROOT_B, notebookID: "box-a", path: "box-a/docs/b.sy"},
