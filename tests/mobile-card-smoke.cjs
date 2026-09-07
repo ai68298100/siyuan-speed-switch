@@ -129,7 +129,7 @@ const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')
     && pluginCss.includes('.sw__mobile-toolbar')
-    && pluginCss.includes('z-index:2147483647')
+    && /z-index:\s*2147483647/.test(pluginCss)
     && source.includes("sortButton.innerHTML = '<svg><use xlink:href=\"#iconSort\"></use></svg>'");
 console.log(`${responsiveRulesOk ? 'PASS' : 'FAIL'} responsive quick actions, mobile settings, and icon sort rules`);
 if (!responsiveRulesOk) allPassed = false;
