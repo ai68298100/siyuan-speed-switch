@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -174,6 +174,12 @@ test('resolveIconReference: never treats arbitrary element ids as icons', () => 
 
 test('resolveIconReference: preserves emoji values', () => {
     assert.deepEqual(resolveIconReference('⭐', new Set(['iconFile'])), {type: 'emoji', value: '⭐'});
+});
+
+test('normalizeQuickActionText: collapses controls and bounds metadata', () => {
+    assert.equal(normalizeQuickActionText('  思播\n\u0000播放器  ', 80), '思播 播放器');
+    assert.equal(normalizeQuickActionText('abcdefgh', 4), 'abcd');
+    assert.equal(normalizeQuickActionText(null), '');
 });
 
 // ── buildTabGroupsByParent ──

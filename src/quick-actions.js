@@ -1,4 +1,5 @@
 // 快捷入口配置的纯函数层：持久化数据不可信，所有字段在进入 UI 前统一清理。
+const {normalizeQuickActionText} = require("./util.js");
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings"]);
@@ -71,6 +72,8 @@ function appendQuickAction(actions, candidate, max = 12) {
         : getDefaultQuickActionTargets(candidate.kind, candidate.value, candidate.declaredTargets);
     const next = {
         ...candidate,
+        label: normalizeLabel(candidate.label) || normalizeLabel(candidate.value),
+        icon: normalizeIcon(candidate.icon, candidate.kind === "dock" ? "iconDock" : (candidate.kind === "command" || candidate.kind === "adapter" ? "iconPlugin" : "iconLayout")),
         targets,
         order: (current.length + 1) * 10,
         enabled: candidate.enabled !== false,
@@ -88,7 +91,7 @@ function graphemeLength(value) {
 }
 
 function normalizeLabel(value) {
-    const text = typeof value === "string" ? value.trim() : "";
+    const text = normalizeQuickActionText(value, 80);
     if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
         return [...new Intl.Segmenter().segment(text)].slice(0, 4).map((part) => part.segment).join("");
     }

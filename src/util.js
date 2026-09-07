@@ -82,6 +82,16 @@ function graphemeLength(str) {
     return [...str].length;
 }
 
+/** Normalize untrusted Dock/plugin metadata for compact controls. */
+function normalizeQuickActionText(value, max = 80) {
+    const text = typeof value === "string" ? value : "";
+    const normalized = text
+        .replace(/[\u0000-\u001F\u007F\uFFFD]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    return Array.from(normalized).slice(0, Math.max(1, max)).join("");
+}
+
 /**
  * 解析思源页签图标字符串：svg 图标名 / emoji 字符 / 十六进制 codepoint / 空值兜底
  * @param {string} raw
@@ -346,4 +356,4 @@ function isSuccessfulMobileTabsResult(result) {
     return result === undefined || result === "success";
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, isSuccessfulMobileTabsResult, normalizeQuickActionText};

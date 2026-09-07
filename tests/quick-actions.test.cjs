@@ -169,3 +169,17 @@ test("quick actions: append rejects duplicates and does not default commands to 
     assert.equal(duplicate.added, false);
     assert.equal(duplicate.reason, "duplicate");
 });
+
+test("quick actions: append normalizes external labels and icons", () => {
+    const result = appendQuickAction([], {
+        id: "plugin-task",
+        kind: "command",
+        value: "plugin::open\nTask",
+        label: "  新建\n任务  ",
+        icon: "iconCommand",
+    });
+    assert.equal(result.added, true);
+    assert.equal(result.items[0].label, "新建 任");
+    assert.equal(result.items[0].icon, "iconPlugin");
+    assert.deepEqual(result.items[0].targets, ["desktop", "sidebar"]);
+});

@@ -1,7 +1,7 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {aggregateSearchResults, buildFullTextSearchRequest, extractSearchRecords} from "./search-model";
 import {
@@ -95,6 +95,7 @@ declare module "./util" {
     export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
     export function resolveIconFallback(raw: string): {type: "svg", value: string} | {type: "emoji", value: string};
     export function resolveIconReference(raw: unknown, availableSymbols: Iterable<string> | null | undefined, fallback?: string | string[]): {type: "svg", value: string} | {type: "emoji", value: string};
+    export function normalizeQuickActionText(value: unknown, max?: number): string;
     export function buildTabGroupsByParent<T extends {parent?: {element?: HTMLElement, headersElement?: HTMLElement}}>(
         tabs: T[], fallbackKey: HTMLElement,
     ): Map<HTMLElement, Array<{tab: T}>>;
@@ -2019,7 +2020,7 @@ const cached = session.cache.get(keyword);
         const unregisterAdapter = this.registerQuickActionAdapter(adapterId, options.handler, declaredTargets);
         this.quickActionProviders.set(actionValue, {
             id: adapterId,
-            label: options.label,
+            label: normalizeQuickActionText(options.label, 80),
             icon: options.icon || "iconPlugin",
             value: actionValue,
             targets: (declaredTargets ? [...declaredTargets] : getDefaultQuickActionTargets("adapter", actionValue)) as QuickActionTarget[],
@@ -2028,7 +2029,7 @@ const cached = session.cache.get(keyword);
         const actions = this.getQuickActions();
         const existing = actions.find((item) => item.kind === "adapter" && item.value === actionValue);
         if (existing) {
-            existing.label = options.label;
+            existing.label = normalizeQuickActionText(options.label, 80) || existing.label;
             existing.icon = options.icon || existing.icon;
             existing.targets = declaredTargets ? [...declaredTargets] : existing.targets;
             this.saveQuickActions(actions);
@@ -2039,7 +2040,7 @@ const cached = session.cache.get(keyword);
             while (actions.some((item) => item.id === actionId)) actionId = `${baseId}-${suffix++}`;
             actions.push({
                 id: actionId,
-                label: options.label,
+                label: normalizeQuickActionText(options.label, 80) || adapterId,
                 icon: options.icon || "iconPlugin",
                 kind: "adapter",
                 value: actionValue,
@@ -2063,9 +2064,7 @@ const cached = session.cache.get(keyword);
         plugins.forEach((plugin) => {
             const pluginName = typeof plugin?.name === "string" ? plugin.name : "";
             if (!pluginName || pluginName === this.name || !Array.isArray(plugin.commands)) return;
-            const pluginTitle = typeof plugin.displayName === "string" && plugin.displayName.trim()
-                ? plugin.displayName.trim().replace(/\s+/g, " ").slice(0, 40)
-                : pluginName;
+            const pluginTitle = normalizeQuickActionText(plugin.displayName, 40) || pluginName;
             plugin.commands.forEach((command) => {
                 if (!command || typeof command !== "object") return;
                 const commandKey = typeof command?.langKey === "string" ? command.langKey : "";
@@ -2074,8 +2073,7 @@ const cached = session.cache.get(keyword);
                 if (seen.has(value)) return;
                 seen.add(value);
                 const safeId = `${pluginName}-${commandKey}`.replace(/[^A-Za-z0-9_-]/g, "-");
-                const commandLabel = String(command.langText || plugin.i18n?.[commandKey] || commandKey)
-                    .trim().replace(/\s+/g, " ").slice(0, 24) || commandKey;
+                const commandLabel = normalizeQuickActionText(command.langText || plugin.i18n?.[commandKey] || commandKey, 24) || commandKey;
                 commands.push({
                     id: `command-${safeId}`,
                     value,
@@ -3232,7 +3230,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         if (item?.type && this.getDockByType(item.type)) {
                             panels.push({
                                 type: item.type,
-                                title: item.title || item.type,
+                                title: normalizeQuickActionText(item.title || item.type, 80) || item.type,
                                 icon: item.icon || "iconDock",
                             });
                         }
