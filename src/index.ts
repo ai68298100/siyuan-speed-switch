@@ -3,7 +3,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, extractSearchRecords} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, extractSearchRecords} from "./search-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -2822,6 +2822,14 @@ const cached = session.cache.get(keyword);
             let docs: IDocSearchResult[] = Array.isArray(json?.data)
                 ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
                 : [];
+            let openedContentRoots = new Set<string>();
+            if (docs.length === 0) {
+                openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, controller.signal);
+                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
+                    return;
+                }
+                this.filterCards(scrollElement, keyword, openedContentRoots);
+            }
             // Keep title search as the fast path. Only ask the native block
             // endpoint when it found no documents, preserving existing
             // ordering and request cost for the common case.
@@ -2849,6 +2857,33 @@ if ((e as DOMException)?.name !== "AbortError") {
     }
 
     // 娓叉煋鍏ㄥ簱鏂囨。鎼滅储缁撴灉鍒嗙粍锛坉ocs 涓?null 琛ㄧず闅愯棌锛夛紱宸叉墦寮€鐨勬枃妗ｄ笉鍐嶉噸澶嶅垪鍑?
+    private async runOpenedDocumentContentSearch(keyword: string, signal: AbortSignal): Promise<Set<string>> {
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {maxDocuments: 6, pageSize: 8});
+        const roots = new Set<string>();
+        if (requests.length === 0) return roots;
+        const results = await Promise.all(requests.map(async (request) => {
+            try {
+                const response = await fetch(request.endpoint, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(request.body),
+                    signal,
+                });
+                if (!response.ok) return false;
+                const payload = await response.json();
+                return extractSearchRecords(payload).length > 0;
+            } catch (error) {
+                if ((error as DOMException)?.name === "AbortError") throw error;
+                return false;
+            }
+        }));
+        results.forEach((matched, index) => {
+            if (matched) roots.add(requests[index].scope.rootId);
+        });
+        return roots;
+    }
+
     private async runFullTextSearchFallback(keyword: string, signal: AbortSignal): Promise<IDocSearchResult[]> {
         const request = buildFullTextSearchRequest({
             query: keyword,
@@ -3110,12 +3145,13 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
     }
 
     // 鎸夊叧閿瓧杩囨护鍗＄墖锛屾暣缁勬棤鍖归厤鏃堕殣钘忓垎缁勶紱杩斿洖鍙鍗＄墖鏁?
-    private filterCards(scrollElement: HTMLElement, keyword: string): number {
+    private filterCards(scrollElement: HTMLElement, keyword: string, contentRoots: Set<string> = new Set()): number {
         const kw = keyword.trim().toLowerCase();
         let visible = 0;
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             const title = (card.dataset.title || "").toLowerCase();
-            const match = !kw || title.includes(kw);
+            const rootId = card.dataset.rootId || "";
+            const match = !kw || title.includes(kw) || contentRoots.has(rootId);
             card.classList.toggle("fn__none", !match);
             if (match) {
                 visible++;
