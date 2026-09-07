@@ -74,6 +74,8 @@
   "rename": "Rename",
   "openSidebar": "Sidebar mode",
   "docSearchResults": "Workspace documents",
+  "docSearchSourceGlobal": "Workspace",
+  "docSearchSourceOpened": "Opened content",
   "docSearchLoading": "Searching workspace documents…",
   "docSearchFailed": "Search failed. Please try again.",
   "noDocResults": "No matching documents found",

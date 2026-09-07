@@ -74,6 +74,8 @@
   "rename": "重命名",
   "openSidebar": "侧边栏模式",
   "docSearchResults": "全库文档",
+  "docSearchSourceGlobal": "全库",
+  "docSearchSourceOpened": "已打开内容",
   "docSearchLoading": "正在搜索全库文档…",
   "docSearchFailed": "搜索失败，请稍后重试",
   "noDocResults": "未找到匹配的文档",

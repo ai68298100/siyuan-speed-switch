@@ -1811,6 +1811,14 @@
                 overflow-wrap: anywhere;
             }
 
+            .sw__doc-source {
+                align-self: flex-start;
+                color: var(--b3-theme-primary);
+                font-size: 11px;
+                line-height: 1.2;
+                opacity: .86;
+            }
+
             .sw__doc-path {
                 display: block;
                 min-width: 0;

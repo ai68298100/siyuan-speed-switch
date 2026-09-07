@@ -3080,19 +3080,26 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         const hPath = String(doc.hPath || "");
         const docTitle = hPath.split("/").filter(Boolean).pop() || String(doc.title || doc.name || "") || id;
         title.textContent = docTitle;
+        const source = document.createElement("span");
+        source.className = "sw__doc-source";
+        source.textContent = doc.source === "opened"
+            ? this.i18n.docSearchSourceOpened
+            : this.i18n.docSearchSourceGlobal;
+        let snippetElement: HTMLSpanElement | null = null;
         const snippets = Array.isArray(doc.snippets)
             ? doc.snippets.map((snippet) => String(snippet?.text || "").trim()).filter(Boolean).join(" · ")
             : "";
         if (snippets) {
-            const snippet = document.createElement("span");
-            snippet.className = "sw__doc-snippet";
-            snippet.textContent = snippets;
-            copy.appendChild(snippet);
+            snippetElement = document.createElement("span");
+            snippetElement.className = "sw__doc-snippet";
+            snippetElement.textContent = snippets;
         }
         const path = document.createElement("span");
         path.className = "sw__doc-path";
         path.textContent = hPath || docTitle;
         copy.appendChild(title);
+        copy.appendChild(source);
+        if (snippetElement) copy.appendChild(snippetElement);
         copy.appendChild(path);
         item.appendChild(icon);
         item.appendChild(copy);

@@ -134,6 +134,12 @@ const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
 console.log(`${responsiveRulesOk ? 'PASS' : 'FAIL'} responsive quick actions, mobile settings, and icon sort rules`);
 if (!responsiveRulesOk) allPassed = false;
 
+const searchSourceUiOk = pluginCss.includes('.sw__doc-source')
+    && source.includes('this.i18n.docSearchSourceOpened')
+    && source.includes('this.i18n.docSearchSourceGlobal');
+console.log(`${searchSourceUiOk ? 'PASS' : 'FAIL'} search result source labels`);
+if (!searchSourceUiOk) allPassed = false;
+
 // Sort is presented by a body-level sheet on touch devices. Keep a structural
 // guard for the six native sort values and the owner-lifecycle cleanup so a
 // host Dialog cannot leave a stale, lower-layer portal behind.
