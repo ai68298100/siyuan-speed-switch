@@ -10,6 +10,8 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > `v0.16.11` fixes mobile sort-sheet layering and desktop plugin-icon fallbacks. Sorting now uses a stable bottom sheet, and unavailable external icons fall back to a native SiYuan file icon.
 
+> The current candidate package also includes a bounded full-text fallback when title search returns no documents. Results are grouped into document cards and do not replace SiYuan's native search page.
+
 [中文说明](./README.md)
 
 ## Core Capabilities
@@ -122,6 +124,9 @@ Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.
 - All six sort modes are visible on mobile, with a check mark for the current mode and immediate list refresh after selection.
 - Strengthened quick-action icon detection so external plugins such as Siyubo and Siyue use the native SiYuan file icon when their SVG symbol is unavailable.
 - Unified icon fallbacks across the quick-action bar, settings picker cards, and icon selector.
+- Adapted mobile tab metadata for SiYuan 3.8.3 `MobileTabs`, preserving root document, notebook, and path fields.
+- Normalized plugin quick-action metadata and multiline labels; unknown platform capabilities remain visible without being incorrectly marked as mobile-safe.
+- Added a bounded full-text block-search fallback after an empty title search, aggregating hits by root document with a small snippet limit.
 
 ### v0.16.10 (2026-09-06)
 
