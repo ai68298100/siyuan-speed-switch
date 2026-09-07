@@ -151,4 +151,9 @@ const sortLifecycleOk = [
 console.log(`${sortLifecycleOk ? 'PASS' : 'FAIL'} mobile sort options and lifecycle cleanup`);
 if (!sortLifecycleOk) allPassed = false;
 
+const mobileTabMetadataOk = source.includes("notebookId: t.current!.notebookID")
+    && source.includes("path: t.current!.path");
+console.log(`${mobileTabMetadataOk ? 'PASS' : 'FAIL'} SiYuan 3.8.3 MobileTabs search metadata`);
+if (!mobileTabMetadataOk) allPassed = false;
+
 process.exit(allPassed ? 0 : 1);

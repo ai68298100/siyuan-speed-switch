@@ -5251,6 +5251,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             .map((t) => ({
                 id: t.id,                       // MobileTabs 椤电 id锛坰witchTo/close 浣跨敤锛?
                 title: t.current!.title,
+                notebookId: t.current!.notebookID,
+                path: t.current!.path,
                 // 鎵嬫満绔〉绛惧浘鏍囧彲鑳藉湪 t.icon 鎴?t.current.icon锛屼紭鍏?t.icon锛堟€濇簮涓嶅悓鐗堟湰瀛楁涓嶅悓锛?
                 icon: (t as unknown as {icon?: string}).icon || t.current!.icon || "",
                 // 鍏煎 rootIdOf()锛氱洿鎺ュ懡涓?model.editor.block.rootID 鍒嗘敮
