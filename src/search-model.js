@@ -615,10 +615,27 @@ function extractSearchRecords(payload) {
  */
 function buildOpenedDocumentScope(tab) {
     const source = tab && typeof tab === "object" ? tab : {};
-    const rootId = normalizeText(source.rootId || source.rootID || source.documentId || "", MAX_PATH_LENGTH);
+    let initData = null;
+    try {
+        const rawInit = source.headElement?.getAttribute?.("data-initdata")
+            || source.headElement?.dataset?.initdata;
+        if (rawInit) initData = JSON.parse(rawInit);
+    } catch {
+        initData = null;
+    }
+    const current = source.current && typeof source.current === "object" ? source.current : {};
+    const model = source.model && typeof source.model === "object" ? source.model : {};
+    const rootId = normalizeText(
+        source.rootId || source.rootID || source.documentId || current.rootID || current.rootId
+        || initData?.rootId || initData?.rootID || "", MAX_PATH_LENGTH);
     if (!BLOCK_ID_RE.test(rootId)) return null;
-    const notebook = normalizeText(source.notebookId || source.notebookID || source.box || "", MAX_PATH_LENGTH);
-    const rawPath = normalizeText(source.path || source.hPath || "", MAX_PATH_LENGTH).replace(/\\/g, "/");
+    const notebook = normalizeText(
+        source.notebookId || source.notebookID || source.box || current.notebookID || current.notebookId
+        || current.box || model.notebookID || model.notebookId || model.box || initData?.notebookId
+        || initData?.notebookID || initData?.box || "", MAX_PATH_LENGTH);
+    const rawPath = normalizeText(
+        source.path || source.hPath || current.path || current.hPath || model.path || model.hPath
+        || initData?.path || initData?.hPath || "", MAX_PATH_LENGTH).replace(/\\/g, "/");
     const pathParts = rawPath.split("/").filter(Boolean);
     if (pathParts[0] === notebook) pathParts.shift();
     const docPath = pathParts.join("/") || `${rootId}.sy`;

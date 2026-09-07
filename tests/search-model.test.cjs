@@ -317,6 +317,19 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
 });
 
+test("search model: accepts desktop and MobileTabs metadata aliases", () => {
+    const mobile = buildOpenedDocumentScope({
+        current: {rootID: ROOT_B, notebookID: "box-a", path: "box-a/docs/b.sy"},
+    });
+    assert.deepEqual(mobile, {rootId: ROOT_B, notebook: "box-a", path: "box-a/docs/b.sy"});
+    const desktop = buildOpenedDocumentScope({
+        rootId: ROOT_A,
+        headElement: {getAttribute: (name) => name === "data-initdata"
+            ? JSON.stringify({notebookId: "box-a", path: "box-a/docs/a.sy"}) : null},
+    });
+    assert.deepEqual(desktop, {rootId: ROOT_A, notebook: "box-a", path: "box-a/docs/a.sy"});
+});
+
 test("search model: plans bounded opened-document requests without duplicates", () => {
     const tabs = [
         {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/a.sy"},
