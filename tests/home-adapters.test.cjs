@@ -102,6 +102,20 @@ test("home adapter agent cache and cancellation remain isolated", async () => {
     assert.equal(forced.snapshot.title, "desktop-3");
 });
 
+test("home adapter recovery reuses cache after re-entry and cancels rotation request", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "reenter", supportedDevices: ["mobile"], read: () => ({title: String(++reads)})}]);
+    await adapters.readHomeModule(map, "reenter", "mobile", {}, {cacheTtlMs: 1000});
+    const reentered = await adapters.readHomeModule(map, "reenter", "mobile", {}, {cacheTtlMs: 1000});
+    assert.equal(reentered.cached, true);
+    assert.equal(reads, 1);
+    const controller = new AbortController();
+    const pending = adapters.readHomeModule(map, "reenter", "mobile", {}, {force: true, signal: controller.signal, timeoutMs: 50});
+    controller.abort();
+    assert.equal((await pending).reason, "aborted");
+});
+
 test("home adapter agent error states expose stable retryable reasons", async () => {
     adapters.clearHomeSnapshotCache();
     const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");
