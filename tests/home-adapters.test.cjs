@@ -88,6 +88,18 @@ test("home adapter agent cache and cancellation remain isolated", async () => {
     assert.equal(forced.snapshot.title, "desktop-3");
 });
 
+test("home adapter agent error states expose stable retryable reasons", async () => {
+    adapters.clearHomeSnapshotCache();
+    const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");
+    assert.equal(denied.reason, "unsupported");
+    const map = adapters.registerHomeAdapters([{moduleId: "agent-retry", supportedDevices: ["desktop"], read: () => { throw new Error("permission denied"); }}]);
+    const failed = await adapters.readHomeModule(map, "agent-retry", "desktop", {}, {timeoutMs: 5});
+    assert.equal(failed.reason, "failed");
+    assert.equal(failed.snapshot.empty, true);
+    adapters.unregisterHomeAdapter(map, "agent-retry");
+    assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.moduleId === "agent-retry"), false);
+});
+
 test("home adapter bridge isolates cancellation and force refresh across devices", async () => {
     adapters.clearHomeSnapshotCache();
     const controller = new AbortController();
