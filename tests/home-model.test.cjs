@@ -87,3 +87,12 @@ test("home model mobile layouts stay single-column and touch-safe", () => {
     assert.equal(model.mobile.every((entry) => entry.w >= 1 && entry.w <= 12), true);
     assert.equal(model.mobile.every((entry) => entry.y >= 0), true);
 });
+
+test("home model restores mobile collapse state without persisting scroll offsets", () => {
+    const state = home.normalizeHomeState({instances: [{moduleId: "today-tasks", instanceId: "tasks"}], layouts: {
+        mobile: [{instanceId: "tasks", collapsed: true, scrollTop: 9999}],
+    }});
+    assert.equal(state.layouts.mobile[0].collapsed, true);
+    assert.equal(Object.prototype.hasOwnProperty.call(state.layouts.mobile[0], "scrollTop"), false);
+    assert.deepEqual(home.normalizeHomeState(state), state);
+});
