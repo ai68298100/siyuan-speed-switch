@@ -43,6 +43,9 @@ documents isolated from valid entries.
 surface support filtering, icon fallback, duplicate rejection, and safe
 inertness after a provider unloads.
 
+The compatibility matrix also covers SVG icon availability and the default icon
+fallback used when a plugin does not expose a renderable symbol.
+
 `tests/host/release-quality.test.cjs` is a fast release gate. It validates the
 isolated host configuration, the Android-versus-browser testing boundary,
 metadata version alignment, and the built JavaScript size budget. It does not
