@@ -100,6 +100,16 @@ test("home adapter agent error states expose stable retryable reasons", async ()
     assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.moduleId === "agent-retry"), false);
 });
 
+test("home adapter diagnostics expose only UI-safe error codes", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "safe-errors", supportedDevices: ["desktop"], read: () => { throw new Error("permission token=secret"); }}]);
+    await adapters.readHomeModule(map, "safe-errors", "desktop", {}, {timeoutMs: 5});
+    const entries = adapters.consumeHomeAdapterDiagnostics();
+    assert.deepEqual(entries.map((item) => item.type), ["failed"]);
+    assert.equal(JSON.stringify(entries).includes("secret"), false);
+    assert.equal(JSON.stringify(entries).includes("permission"), false);
+});
+
 test("home adapter bridge isolates cancellation and force refresh across devices", async () => {
     adapters.clearHomeSnapshotCache();
     const controller = new AbortController();
