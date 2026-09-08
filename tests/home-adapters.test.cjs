@@ -246,3 +246,11 @@ guarded("home adapters: lifecycle events produce consistent refresh plans", () =
     assert.equal(adapters.planHomeLifecycleRefresh({type: "force-refresh"}, {visible: false}).shouldRefresh, true);
     assert.equal(adapters.planHomeLifecycleRefresh({type: "recovered"}, {visible: true, failure: true}).reason, "stale");
 });
+
+guarded("home adapters: high frequency lifecycle events are coalesced with a bounded tail", () => {
+    const events = Array.from({length: 40}, () => ({type: "tab-changed"}));
+    const plan = adapters.coalesceHomeRefreshEvents(events, {visible: true, device: "mobile"}, 4);
+    assert.equal(plan.shouldRefresh, true);
+    assert.equal(plan.delayMs, 500);
+    assert.equal(adapters.coalesceHomeRefreshEvents([], {visible: false}).reason, "hidden");
+});

@@ -164,6 +164,15 @@ function planHomeLifecycleRefresh(event = {}, state = {}) {
     return planHomeRefresh(next);
 }
 
+function coalesceHomeRefreshEvents(events = [], state = {}, max = 8) {
+    const list = Array.isArray(events) ? events.slice(-Math.max(1, max)) : [];
+    let plan = planHomeRefresh(state);
+    list.forEach((event) => {
+        plan = planHomeLifecycleRefresh(event, {...state, ...plan, stale: plan.reason === "stale" || plan.shouldRefresh});
+    });
+    return plan;
+}
+
 function consumeHomeAdapterDiagnostics(device) {
     const hasDeviceFilter = DEVICES.includes(device);
     const filtered = hasDeviceFilter ? diagnostics.filter((item) => item.device === device) : diagnostics.slice();
@@ -174,4 +183,4 @@ function consumeHomeAdapterDiagnostics(device) {
     return filtered.map((item) => ({...item}));
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh};
+module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};
