@@ -74,4 +74,14 @@ function applyRecentEvent(state, event, max = 50) {
     return {open, closed, changed: false};
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, applyRecentEvent};
+function buildRecentRefreshNotice(previous, next) {
+    const before = previous && typeof previous === "object" ? previous : {};
+    const after = next && typeof next === "object" ? next : {};
+    const openBefore = Array.isArray(before.open) ? before.open.length : 0;
+    const openAfter = Array.isArray(after.open) ? after.open.length : 0;
+    const closedBefore = Array.isArray(before.closed) ? before.closed.length : 0;
+    const closedAfter = Array.isArray(after.closed) ? after.closed.length : 0;
+    return {changed: openBefore !== openAfter || closedBefore !== closedAfter, openCount: openAfter, closedCount: closedAfter};
+}
+
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, applyRecentEvent, buildRecentRefreshNotice};
