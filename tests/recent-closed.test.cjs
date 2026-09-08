@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, applyRecentEvent, buildRecentRefreshNotice} = require("../src/recent-closed.js");
+const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice} = require("../src/recent-closed.js");
 
 function capClosed(entries, max = 50) {
     return (Array.isArray(entries) ? entries : [])
@@ -112,4 +112,18 @@ test("recent history: large event streams remain bounded", () => {
     assert.ok(state.open.length <= 50);
     assert.ok(state.closed.length <= 50);
     assert.ok(state.open.length + state.closed.length <= 100);
+});
+
+test("recent recovery: bounded batch isolates failures and cancellation", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const output = await runRecoveryPlanBounded(Array.from({length: 120}, (_, i) => ({rootId: `r${i}`})), async (rootId) => {
+        calls += 1;
+        if (rootId === "r3") throw new Error("missing");
+        if (calls === 5) controller.abort();
+        return true;
+    }, {max: 100, signal: controller.signal});
+    assert.equal(output.attempted, 5);
+    assert.equal(output.cancelled, true);
+    assert.deepEqual(output.failed, ["r3"]);
 });

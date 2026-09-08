@@ -57,6 +57,19 @@ async function runRecoveryPlan(entries, openRoot) {
     };
 }
 
+async function runRecoveryPlanBounded(entries, openRoot, options = {}) {
+    const limit = Number.isFinite(options.max) && options.max > 0 ? Math.floor(options.max) : 50;
+    const signal = options.signal;
+    const source = Array.isArray(entries) ? entries.slice(0, limit) : [];
+    const results = [];
+    for (const entry of source) {
+        if (signal?.aborted) break;
+        try { results.push({rootId: entry.rootId, ok: (await openRoot(entry.rootId, entry)) !== false}); }
+        catch (error) { results.push({rootId: entry.rootId, ok: false, error: error instanceof Error ? error.message : String(error)}); }
+    }
+    return {succeeded: results.filter((x) => x.ok).map((x) => x.rootId), failed: results.filter((x) => !x.ok).map((x) => x.rootId), attempted: results.length, cancelled: Boolean(signal?.aborted)};
+}
+
 function applyRecentEvent(state, event, max = 50) {
     const current = state && typeof state === "object" ? state : {};
     const open = Array.isArray(current.open) ? current.open.slice() : [];
@@ -84,4 +97,4 @@ function buildRecentRefreshNotice(previous, next) {
     return {changed: openBefore !== openAfter || closedBefore !== closedAfter, openCount: openAfter, closedCount: closedAfter};
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, applyRecentEvent, buildRecentRefreshNotice};
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice};
