@@ -2390,9 +2390,10 @@ const version = beginSearch(session);
         this.quickActionProviders.forEach((provider) => {
             if (existing.has(`adapter:${provider.value}`)) return;
             const safeValue = provider.value.replace(/[^A-Za-z0-9_-]/g, "-");
+            const providerLabel = normalizeQuickActionText(provider.label, 24) || provider.id;
             const action: IQuickAction = {
                 id: `adapter-${safeValue}`,
-                label: provider.label,
+                label: providerLabel,
                 icon: provider.icon,
                 kind: "adapter",
                 value: provider.value,
@@ -2402,12 +2403,12 @@ const version = beginSearch(session);
             };
             candidates.push({
                 id: action.id,
-                label: provider.label,
+                label: providerLabel,
                 icon: provider.icon,
                 group: this.i18n.quickPluginActions,
                 fallbackIcon: ["iconPlugin", "iconFile"],
                 secondary: describe(action.kind, action.value, action.targets, provider.declaredTargets),
-                searchText: `${provider.label} ${provider.id} ${provider.value} ${this.i18n.quickPluginActions}`,
+                searchText: `${providerLabel} ${provider.id} ${provider.value} ${this.i18n.quickPluginActions}`,
                 action,
             });
         });
