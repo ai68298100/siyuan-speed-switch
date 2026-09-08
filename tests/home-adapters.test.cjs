@@ -217,3 +217,10 @@ guarded("home adapters: unload during pending read remains safe", async () => {
     assert.equal(result.ok, true);
     assert.equal(map.has("pending"), false);
 });
+
+guarded("home adapters: refresh planner is device-aware and never refreshes hidden modules", () => {
+    assert.deepEqual(adapters.planHomeRefresh({visible: false, stale: true}), {shouldRefresh: false, reason: "hidden", device: "desktop", delayMs: 0});
+    assert.equal(adapters.planHomeRefresh({visible: true, stale: true, device: "mobile"}).delayMs, 500);
+    assert.equal(adapters.planHomeRefresh({visible: true, stale: true, failure: true, device: "mobile"}).shouldRefresh, false);
+    assert.equal(adapters.planHomeRefresh({force: true, visible: false}).shouldRefresh, true);
+});
