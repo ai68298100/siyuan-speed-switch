@@ -24,4 +24,18 @@ function planClosedRecovery(entries, availableRoots, max = 50) {
     return normalizeClosedEntries(entries, max).items.filter((entry) => available.has(entry.rootId));
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery};
+function mergeRecentDocumentRecords(openEntries, closedEntries, max = 50) {
+    const limit = Number.isFinite(max) && max > 0 ? Math.floor(max) : 50;
+    const merged = [];
+    const seen = new Set();
+    const add = (entry, source, timestamp) => {
+        if (!entry?.rootId || seen.has(entry.rootId)) return;
+        seen.add(entry.rootId);
+        merged.push({rootId: entry.rootId, title: entry.title || entry.rootId, source, timestamp: Number.isFinite(timestamp) ? timestamp : 0});
+    };
+    for (const entry of Array.isArray(openEntries) ? openEntries : []) add(entry, "open", entry.ts);
+    for (const entry of normalizeClosedEntries(closedEntries, max).items) add(entry, "closed", entry.closedAt);
+    return merged.slice(0, limit);
+}
+
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords};
