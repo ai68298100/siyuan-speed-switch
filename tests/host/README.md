@@ -17,7 +17,7 @@ dedicated workspace and port, and refuse to stop an occupied target.
 - Desktop browser automation is valid for desktop behavior only. Mobile
   browser emulation is a structural smoke test, not Android acceptance.
 
-The first suite should cover plugin load/unload, tab refresh after open/close,
+The host compatibility baseline is SiYuan 3.8.3. The suite should cover plugin load/unload, tab refresh after open/close,
 layered search fallback, settings restoration, quick-entry persistence, and
 Agent capability registration. See `config.example.json` for the required
 environment contract.
@@ -42,3 +42,8 @@ documents isolated from valid entries.
 `tests/quick-actions-compat.test.cjs` covers extension-entry compatibility:
 surface support filtering, icon fallback, duplicate rejection, and safe
 inertness after a provider unloads.
+
+`tests/host/release-quality.test.cjs` is a fast release gate. It validates the
+isolated host configuration, the Android-versus-browser testing boundary,
+metadata version alignment, and the built JavaScript size budget. It does not
+start or stop SiYuan and is safe to run in CI before managed-host tests.
