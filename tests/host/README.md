@@ -34,3 +34,7 @@ normalization and recovery planning without requiring a running host.
 `tests/home-adapters.test.cjs` covers the second-panel module contract. It is
 skipped in older checkout snapshots that predate `src/home-model.js`, and runs
 fully once the main integration branch provides that pure model module.
+
+`tests/recent-closed.test.cjs` defines the closed-document recovery contract:
+bounded records, de-duplicated recovery, no fabricated close state, and invalid
+documents isolated from valid entries.
