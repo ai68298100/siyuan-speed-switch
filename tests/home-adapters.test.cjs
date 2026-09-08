@@ -111,6 +111,20 @@ test("home adapter provider replacement and unload clear stale state", async () 
     assert.equal((await adapters.readHomeModule(map, "replace", "desktop")).reason, "unsupported");
 });
 
+test("home adapter repeated provider replacement stays bounded", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = new Map();
+    for (let index = 0; index < 20; index += 1) {
+        const id = `rotating-${index}`;
+        const provider = adapters.registerHomeAdapters([{moduleId: id, supportedDevices: ["desktop"], read: () => ({title: id})}]);
+        map.set(id, provider.get(id));
+        await adapters.readHomeModule(map, id, "desktop", {}, {cacheTtlMs: 1000});
+        adapters.unregisterHomeAdapter(map, id);
+    }
+    assert.equal(map.size, 0);
+    assert.equal(adapters.getHomeAdapterDiagnostics().length <= adapters.MAX_DIAGNOSTICS, true);
+});
+
 test("home adapter layout persistence keeps device-specific entries separate", () => {
     const instances = [{instanceId: "a"}, {instanceId: "b"}];
     const layouts = adapters ? {
