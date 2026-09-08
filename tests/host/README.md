@@ -21,3 +21,9 @@ The first suite should cover plugin load/unload, tab refresh after open/close,
 layered search fallback, settings restoration, quick-entry persistence, and
 Agent capability registration. See `config.example.json` for the required
 environment contract.
+
+`tests/search-orchestration.test.cjs` is the host-independent contract for the
+same layered search flow. It uses a mock transport to verify title-hit
+short-circuiting, opened-document ordering, global fallback, cancellation, and
+deduplication/limits. A managed-host suite should mirror these cases against
+the real SiYuan endpoints once the host harness is available.
