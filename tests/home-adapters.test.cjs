@@ -66,6 +66,19 @@ test("home adapter agent source missing API and timeout degrade safely", async (
     assert.equal(result.snapshot.empty, true);
 });
 
+test("home adapter external plugin providers interoperate through one contract", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([
+        {moduleId: "checkin", supportedDevices: ["desktop", "mobile"], read: () => ({title: "打卡", items: [{label: "今日", value: "完成"}]})},
+        {moduleId: "data-assets", supportedDevices: ["desktop"], read: () => ({title: "数据资产", items: []})},
+        {moduleId: "light-talk", supportedDevices: ["desktop", "mobile"], read: () => ({title: "轻语", items: [{label: "今日说说"}]})},
+    ]);
+    assert.equal((await adapters.readHomeModule(map, "checkin", "mobile")).ok, true);
+    assert.equal((await adapters.readHomeModule(map, "data-assets", "mobile")).reason, "unsupported");
+    adapters.unregisterHomeAdapter(map, "light-talk");
+    assert.equal((await adapters.readHomeModule(map, "light-talk", "desktop")).reason, "unsupported");
+});
+
 test("home adapter layout persistence keeps device-specific entries separate", () => {
     const instances = [{instanceId: "a"}, {instanceId: "b"}];
     const layouts = adapters ? {
