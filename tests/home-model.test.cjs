@@ -77,3 +77,13 @@ test("home model bounds large persisted layouts for rendering", () => {
     assert.equal(state.layouts.desktop.length, 1);
     assert.equal(state.layouts.desktop.every((entry) => entry.x <= 99 && entry.y <= 999), true);
 });
+
+test("home model mobile layouts stay single-column and touch-safe", () => {
+    const model = home.resolveLayoutConflicts({mobile: [
+        {instanceId: "a", x: 8, y: 0, w: 12, h: 1},
+        {instanceId: "b", x: 99, y: 1, w: 12, h: 12},
+    ]}, [{instanceId: "a"}, {instanceId: "b"}]);
+    assert.equal(model.mobile.every((entry) => entry.x >= 0 && entry.x <= 99), true);
+    assert.equal(model.mobile.every((entry) => entry.w >= 1 && entry.w <= 12), true);
+    assert.equal(model.mobile.every((entry) => entry.y >= 0), true);
+});
