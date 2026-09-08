@@ -127,3 +127,9 @@ test("recent recovery: bounded batch isolates failures and cancellation", async 
     assert.equal(output.cancelled, true);
     assert.deepEqual(output.failed, ["r3"]);
 });
+
+test("recent recovery: legacy callers remain compatible without options", async () => {
+    const output = await runRecoveryPlan([{rootId: "legacy"}], async () => undefined);
+    assert.deepEqual(output.succeeded, ["legacy"]);
+    assert.deepEqual(output.failed, []);
+});
