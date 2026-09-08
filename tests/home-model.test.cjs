@@ -68,3 +68,12 @@ test("home model migration is stable across repeated persistence cycles", () => 
     assert.equal(second.layouts.desktop.length, 1);
     assert.equal(second.layouts.desktop[0].collapsed, true);
 });
+
+test("home model bounds large persisted layouts for rendering", () => {
+    const instances = Array.from({length: 80}, (_, index) => ({moduleId: "today-tasks", instanceId: `task-${index}`}));
+    const layouts = Array.from({length: 100}, (_, index) => ({instanceId: `task-${index}`, x: index, y: index, w: 2, h: 2}));
+    const state = home.normalizeHomeState({instances, layouts: {desktop: layouts}});
+    assert.equal(state.instances.length, 80);
+    assert.equal(state.layouts.desktop.length, 64);
+    assert.equal(state.layouts.desktop.every((entry) => entry.x <= 99 && entry.y <= 999), true);
+});
