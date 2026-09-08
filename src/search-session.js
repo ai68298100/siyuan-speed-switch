@@ -6,12 +6,14 @@
  * @returns {{version: number, cache: Map<string, T>, controller: AbortController|null, timer: number|null, cacheLimit: number}}
  */
 function createSearchSession(cacheLimit) {
+    const normalizedLimit = Number.isFinite(cacheLimit) && cacheLimit > 0
+        ? Math.max(1, Math.floor(cacheLimit)) : 20;
     return {
         version: 0,
         cache: new Map(),
         controller: null,
         timer: null,
-        cacheLimit,
+        cacheLimit: normalizedLimit,
     };
 }
 
@@ -39,10 +41,15 @@ function beginSearch(session) {
  * @param {T} value
  */
 function cacheSearchResult(session, key, value) {
-    if (!session.cache.has(key) && session.cache.size >= session.cacheLimit) {
+    if (!session || !(session.cache instanceof Map)) return;
+    const safeKey = typeof key === "string" ? key : String(key ?? "");
+    if (!safeKey) return;
+    const limit = Number.isFinite(session.cacheLimit) && session.cacheLimit > 0
+        ? Math.max(1, Math.floor(session.cacheLimit)) : 20;
+    if (!session.cache.has(safeKey) && session.cache.size >= limit) {
         session.cache.clear();
     }
-    session.cache.set(key, value);
+    session.cache.set(safeKey, value);
 }
 
 /**

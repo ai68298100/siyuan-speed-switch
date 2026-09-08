@@ -61,6 +61,17 @@ test('cacheSearchResult enforces the configured cache limit', () => {
     assert.deepEqual([...session.cache.entries()], [['c', [3]]]);
 });
 
+test('search session normalizes invalid cache limits and keys', () => {
+    const session = createSearchSession(0);
+    assert.equal(session.cacheLimit, 20);
+    cacheSearchResult(session, 42, 'value');
+    assert.equal(session.cache.get('42'), 'value');
+    cacheSearchResult(session, '', 'ignored');
+    assert.equal(session.cache.size, 1);
+    const fallback = createSearchSession(Number.NaN);
+    assert.equal(fallback.cacheLimit, 20);
+});
+
 test('versions increase monotonically so callers can reject stale results', () => {
     const session = createSearchSession(2);
     const staleVersion = beginSearch(session);
