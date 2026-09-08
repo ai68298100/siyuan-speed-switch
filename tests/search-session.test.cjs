@@ -72,6 +72,15 @@ test('search session normalizes invalid cache limits and keys', () => {
     assert.equal(fallback.cacheLimit, 20);
 });
 
+test('search session lifecycle tolerates missing state', () => {
+    assert.equal(beginSearch(null), 0);
+    assert.doesNotThrow(() => disposeSearchSession(null));
+    const session = {version: 'bad', timer: null, controller: null, cache: new Map()};
+    assert.equal(beginSearch(session), 1);
+    disposeSearchSession(session);
+    assert.equal(session.cache.size, 0);
+});
+
 test('versions increase monotonically so callers can reject stale results', () => {
     const session = createSearchSession(2);
     const staleVersion = beginSearch(session);

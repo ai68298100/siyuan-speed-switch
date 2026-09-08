@@ -23,6 +23,8 @@ function createSearchSession(cacheLimit) {
  * @returns {number}
  */
 function beginSearch(session) {
+    if (!session || typeof session !== "object") return 0;
+    if (!Number.isFinite(session.version)) session.version = 0;
     session.version += 1;
     if (session.timer !== null) {
         globalThis.clearTimeout(session.timer);
@@ -57,8 +59,9 @@ function cacheSearchResult(session, key, value) {
  * @param {{version: number, cache: Map<string, unknown>, controller: AbortController|null, timer: number|null}} session
  */
 function disposeSearchSession(session) {
+    if (!session || typeof session !== "object") return;
     beginSearch(session);
-    session.cache.clear();
+    if (session.cache instanceof Map) session.cache.clear();
 }
 
 module.exports = {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession};
