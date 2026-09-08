@@ -96,3 +96,14 @@ test("home model restores mobile collapse state without persisting scroll offset
     assert.equal(Object.prototype.hasOwnProperty.call(state.layouts.mobile[0], "scrollTop"), false);
     assert.deepEqual(home.normalizeHomeState(state), state);
 });
+
+test("home model migrates mobile legacy fields without leaking UI-only state", () => {
+    const state = home.migrateHomeState({widgets: [{moduleId: "today-tasks", instanceId: "tasks"}], layouts: {
+        mobile: [{instanceId: "tasks", x: 1, y: 2, collapsed: true, viewportWidth: 360, scrollTop: 88}],
+    }});
+    const entry = state.layouts.mobile[0];
+    assert.equal(entry.collapsed, true);
+    assert.equal(Object.prototype.hasOwnProperty.call(entry, "viewportWidth"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(entry, "scrollTop"), false);
+    assert.deepEqual(home.migrateHomeState(state), state);
+});
