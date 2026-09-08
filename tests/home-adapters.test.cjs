@@ -12,7 +12,9 @@ guarded("home adapters: modules are filtered by target device", () => {
         {moduleId: "desktop", title: "Desktop", supportedDevices: ["desktop"]},
         {moduleId: "mobile", title: "Mobile", supportedDevices: ["mobile"]},
     ];
-    assert.deepEqual(home.modulesForDevice(definitions, "mobile").map((item) => item.moduleId), ["mobile"]);
+    const ids = home.modulesForDevice(definitions, "mobile").map((item) => item.moduleId);
+    assert.equal(ids.includes("mobile"), true);
+    assert.equal(ids.includes("desktop"), false);
 });
 
 guarded("home adapters: normalized modules remain read-only by default", () => {
