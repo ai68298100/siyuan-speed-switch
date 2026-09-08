@@ -126,3 +126,12 @@ test("home model preserves mobile module order and collapse across orientation",
     assert.deepEqual(landscape.layouts.mobile.map((entry) => entry.instanceId), ["j", "t"]);
     assert.equal(landscape.layouts.mobile[0].collapsed, true);
 });
+
+test("home model treats scroll position as transient while collapse is durable", () => {
+    const state = home.normalizeHomeState({instances: [{moduleId: "today-journal", instanceId: "j"}], layouts: {
+        mobile: [{instanceId: "j", y: 4, collapsed: true, scrollTop: 420, scrollY: 12}],
+    }});
+    assert.equal(state.layouts.mobile[0].collapsed, true);
+    assert.equal("scrollTop" in state.layouts.mobile[0], false);
+    assert.equal("scrollY" in state.layouts.mobile[0], false);
+});
