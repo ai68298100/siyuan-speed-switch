@@ -43,3 +43,19 @@ test("home model migration keeps device layouts isolated and bounded", () => {
     assert.deepEqual(state.layouts.sidebar.map((item) => item.x), [2]);
     assert.deepEqual(state.layouts.mobile, []);
 });
+
+test("home model keeps module order deterministic and unknown modules isolated", () => {
+    const modules = home.registerModules([
+        {moduleId: "custom-b", title: "B", supportedDevices: ["desktop"]},
+        {moduleId: "custom-a", title: "A", supportedDevices: ["desktop"]},
+        {moduleId: "custom-b", title: "B2", supportedDevices: ["mobile"]},
+    ]);
+    assert.equal(modules.find((item) => item.moduleId === "custom-b").title, "B2");
+    assert.deepEqual(home.modulesForDevice(modules, "mobile").map((item) => item.moduleId).filter((id) => id.startsWith("custom")), ["custom-b"]);
+    assert.deepEqual(home.normalizeInstances([{moduleId: "unknown", instanceId: "u"}]), []);
+});
+
+test("home model clamps layout dimensions and preserves collapse state", () => {
+    const layout = home.normalizeLayout({x: 999, y: 9999, w: 999, h: -2, collapsed: true});
+    assert.deepEqual(layout, {x: 99, y: 999, w: 12, h: 1, collapsed: true});
+});

@@ -22,6 +22,11 @@ diagnostic capacity, concurrent reads, unregister cleanup, and malformed input.
 Any future adapter integration should add tests for its declared devices and
 failure behavior before touching the UI integration layer.
 
+The module orchestration contract also requires deterministic registration
+order, device-isolated layouts, bounded coordinates, and safe omission of
+unknown modules. These properties are covered in the home model regression
+suite.
+
 ## Performance budget
 
 Snapshots are capped at 24 items, diagnostics at 32 records, reads have a
