@@ -49,6 +49,9 @@ fallback used when a plugin does not expose a renderable symbol.
 Release diagnostics use stable bounded categories: `BUILD_FAILED`,
 `RESOURCE_MISSING`, `MANIFEST_MISMATCH`, and `ENVIRONMENT_DRIFT`.
 
+The GitHub CLI (`gh`) is optional; release preflight only performs
+non-destructive checks and never mutates repositories or releases.
+
 `tests/host/release-quality.test.cjs` is a fast release gate. It validates the
 isolated host configuration, the Android-versus-browser testing boundary,
 metadata version alignment, and the built JavaScript size budget. It does not
