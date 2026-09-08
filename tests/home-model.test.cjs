@@ -18,6 +18,15 @@ test("home model normalizes layout and rejects invalid instances", () => {
     assert.deepEqual(home.normalizeInstances([{moduleId: "recent-documents"}, {moduleId: "bad"}, {moduleId: "recent-documents"}]), [{instanceId: "recent-documents", moduleId: "recent-documents", enabled: true, config: {}}]);
 });
 
+test("home model bounds third-party config and instance ids", () => {
+    const state = home.normalizeInstances([
+        {moduleId: "recent-documents", instanceId: "shared", config: {safe: "ok", "bad key": "drop", nested: {deep: {value: "kept"}}}},
+        {moduleId: "today-tasks", instanceId: "shared"},
+    ]);
+    assert.equal(state.length, 1);
+    assert.deepEqual(state[0].config, {safe: "ok", nested: {deep: {value: "kept"}}});
+});
+
 test("home model migrates legacy widgets and emits schema version", () => {
     const state = home.migrateHomeState({widgets: [{moduleId: "today-tasks"}], layout: [{instanceId: "today-tasks", x: 2}]});
     assert.equal(state.schemaVersion, 1);

@@ -16,6 +16,20 @@ function text(value, max = 128) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
 }
 
+function normalizeConfig(value, depth = 0) {
+    if (depth > 3 || !value || typeof value !== "object" || Array.isArray(value)) return {};
+    const result = {};
+    Object.keys(value).slice(0, 32).forEach((key) => {
+        if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(key)) return;
+        const item = value[key];
+        if (typeof item === "string") result[key] = item.replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, 512);
+        else if (typeof item === "number" && Number.isFinite(item)) result[key] = item;
+        else if (typeof item === "boolean") result[key] = item;
+        else if (item && typeof item === "object" && !Array.isArray(item)) result[key] = normalizeConfig(item, depth + 1);
+    });
+    return result;
+}
+
 function normalizeDevice(value) {
     return DEVICES.includes(value) ? value : "desktop";
 }
@@ -58,12 +72,16 @@ function modulesForDevice(definitions, device) {
 function normalizeInstances(value, definitions = DEFAULT_MODULES) {
     const known = new Map(registerModules(definitions).map((item) => [item.moduleId, item]));
     const seen = new Set();
+    const seenInstanceIds = new Set();
     return (Array.isArray(value) ? value : []).reduce((items, item) => {
         if (!item || typeof item !== "object") return items;
         const moduleId = text(item.moduleId, 64);
         if (!known.has(moduleId) || seen.has(moduleId)) return items;
+        const instanceId = text(item.instanceId, 64) || moduleId;
+        if (seenInstanceIds.has(instanceId)) return items;
         seen.add(moduleId);
-        items.push({instanceId: text(item.instanceId, 64) || moduleId, moduleId, enabled: item.enabled !== false, config: item.config && typeof item.config === "object" ? item.config : {}});
+        seenInstanceIds.add(instanceId);
+        items.push({instanceId, moduleId, enabled: item.enabled !== false, config: normalizeConfig(item.config)});
         return items;
     }, []);
 }
