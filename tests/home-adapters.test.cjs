@@ -66,6 +66,20 @@ test("home adapter agent source missing API and timeout degrade safely", async (
     assert.equal(result.snapshot.empty, true);
 });
 
+test("home adapter layout persistence keeps device-specific entries separate", () => {
+    const instances = [{instanceId: "a"}, {instanceId: "b"}];
+    const layouts = adapters ? {
+        desktop: [{instanceId: "a", x: 0}],
+        sidebar: [{instanceId: "b", x: 1}],
+        mobile: [{instanceId: "ghost", x: 2}],
+    } : {};
+    const model = require("../src/home-model.js");
+    const normalized = model.resolveLayoutConflicts(layouts, instances);
+    assert.deepEqual(normalized.desktop.map((item) => item.instanceId), ["a"]);
+    assert.deepEqual(normalized.sidebar.map((item) => item.instanceId), ["b"]);
+    assert.deepEqual(normalized.mobile, []);
+});
+
 test("home adapter agent snapshots strip sensitive fields and bound text", () => {
     const snapshot = adapters.normalizeSnapshot({title: "x".repeat(200), secret: "token", items: [{label: "l".repeat(500), value: "v", href: "/safe", token: "hidden"}]});
     assert.equal(snapshot.title.length, 64);

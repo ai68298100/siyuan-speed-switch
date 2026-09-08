@@ -27,6 +27,10 @@ order, device-isolated layouts, bounded coordinates, and safe omission of
 unknown modules. These properties are covered in the home model regression
 suite.
 
+Persisted layouts are migrated through the same normalization path on every
+load. Legacy `layout`/`widgets` fields are accepted once, orphan instances are
+removed, and a second migration pass is idempotent.
+
 ## Performance budget
 
 Snapshots are capped at 24 items, diagnostics at 32 records, reads have a
