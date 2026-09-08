@@ -57,4 +57,21 @@ async function runRecoveryPlan(entries, openRoot) {
     };
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan};
+function applyRecentEvent(state, event, max = 50) {
+    const current = state && typeof state === "object" ? state : {};
+    const open = Array.isArray(current.open) ? current.open.slice() : [];
+    const closed = Array.isArray(current.closed) ? current.closed.slice() : [];
+    const rootId = typeof event?.rootId === "string" ? event.rootId.trim() : "";
+    if (!rootId) return {open, closed, changed: false};
+    if (event.type === "open") {
+        const nextOpen = [{rootId, title: typeof event.title === "string" ? event.title : rootId, ts: Number.isFinite(event.ts) ? event.ts : Date.now()}, ...open.filter((item) => item?.rootId !== rootId)];
+        return {open: nextOpen.slice(0, max), closed: closed.filter((item) => item?.rootId !== rootId), changed: true};
+    }
+    if (event.type === "close") {
+        const nextClosed = [{rootId, title: typeof event.title === "string" ? event.title : rootId, closedAt: Number.isFinite(event.closedAt) ? event.closedAt : Date.now()}, ...closed.filter((item) => item?.rootId !== rootId)];
+        return {open: open.filter((item) => item?.rootId !== rootId), closed: nextClosed.slice(0, max), changed: true};
+    }
+    return {open, closed, changed: false};
+}
+
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, applyRecentEvent};

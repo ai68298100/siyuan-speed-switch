@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan} = require("../src/recent-closed.js");
+const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, applyRecentEvent} = require("../src/recent-closed.js");
 
 function capClosed(entries, max = 50) {
     return (Array.isArray(entries) ? entries : [])
@@ -80,4 +80,14 @@ test("recent recovery: one failed open does not block later entries", async () =
     assert.deepEqual(output.succeeded, ["a", "c"]);
     assert.deepEqual(output.failed, ["b"]);
     assert.equal(output.results.length, 3);
+});
+
+test("recent events: open and close events are idempotent and mutually exclusive", () => {
+    let state = applyRecentEvent({}, {type: "open", rootId: "a", ts: 1});
+    state = applyRecentEvent(state, {type: "open", rootId: "a", ts: 2});
+    state = applyRecentEvent(state, {type: "close", rootId: "a", closedAt: 3});
+    assert.deepEqual(state.open, []);
+    assert.deepEqual(state.closed.map((item) => item.rootId), ["a"]);
+    const unchanged = applyRecentEvent(state, {type: "unknown", rootId: "a"});
+    assert.equal(unchanged.changed, false);
 });
