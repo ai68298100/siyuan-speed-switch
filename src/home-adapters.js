@@ -44,6 +44,12 @@ function registerHomeAdapters(adapters = []) {
     return result;
 }
 
+function unregisterHomeAdapter(adapters, moduleId) {
+    const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
+    map.delete(safeText(moduleId, 64));
+    return map;
+}
+
 function canReadAdapter(adapter, device) {
     return !!adapter && DEVICES.includes(device) && adapter.supportedDevices.includes(device);
 }
@@ -70,4 +76,4 @@ async function readHomeModule(adapters, moduleId, device, config = {}) {
     }
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, registerHomeAdapters, canReadAdapter, normalizeSnapshot, readHomeModule};
+module.exports = {MAX_SNAPSHOT_ITEMS, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule};

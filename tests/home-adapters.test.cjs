@@ -57,3 +57,18 @@ guarded("home adapters: failed readers return an empty safe snapshot", async () 
     assert.equal(result.reason, "failed");
     assert.deepEqual(result.snapshot.items, []);
 });
+
+guarded("home adapters: registry replacement and removal are deterministic", () => {
+    const first = {moduleId: "tasks", supportedDevices: ["desktop"], read: () => ({})};
+    const second = {moduleId: "tasks", supportedDevices: ["mobile"], read: () => ({})};
+    const map = adapters.registerHomeAdapters([first, second]);
+    assert.deepEqual(map.get("tasks").supportedDevices, ["mobile"]);
+    adapters.unregisterHomeAdapter(map, "tasks");
+    assert.equal(map.has("tasks"), false);
+});
+
+guarded("home adapters: layout conflicts and orphan entries are removed idempotently", () => {
+    const state = home.normalizeHomeState({instances: [{moduleId: "today-tasks", instanceId: "a"}], layouts: {desktop: [{instanceId: "a", x: 1}, {instanceId: "a", x: 2}, {instanceId: "orphan"}]}});
+    assert.deepEqual(state.layouts.desktop.map((item) => item.instanceId), ["a"]);
+    assert.deepEqual(home.normalizeHomeState(state), state);
+});

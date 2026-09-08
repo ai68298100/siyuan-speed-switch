@@ -96,21 +96,43 @@ function normalizeHomeState(value) {
     });
     const activeIds = new Set(instances.map((item) => item.instanceId));
     DEVICES.forEach((device) => {
-        layouts[device] = layouts[device].filter((entry) => activeIds.has(entry.instanceId));
+        const occupied = new Set();
+        layouts[device] = layouts[device].filter((entry) => {
+            if (!activeIds.has(entry.instanceId) || occupied.has(entry.instanceId)) return false;
+            occupied.add(entry.instanceId);
+            return true;
+        });
     });
     return {schemaVersion: HOME_SCHEMA_VERSION, instances, layouts};
 }
 
 function migrateHomeState(value) {
     const source = value && typeof value === "object" ? value : {};
-    return normalizeHomeState({
+    const migrated = normalizeHomeState({
         instances: source.instances || source.widgets || [],
         layouts: source.layouts || {desktop: source.layout || []},
     });
+    return migrated;
+}
+
+function resolveLayoutConflicts(layouts, instances = []) {
+    const allowed = new Set((Array.isArray(instances) ? instances : []).map((item) => text(item?.instanceId, 64)).filter(Boolean));
+    const result = {};
+    DEVICES.forEach((device) => {
+        const occupied = new Set();
+        result[device] = (Array.isArray(layouts?.[device]) ? layouts[device] : []).map((entry) => ({
+            instanceId: text(entry?.instanceId, 64), ...normalizeLayout(entry),
+        })).filter((entry) => {
+            if (!allowed.has(entry.instanceId) || occupied.has(entry.instanceId)) return false;
+            occupied.add(entry.instanceId);
+            return true;
+        });
+    });
+    return result;
 }
 
 function getModuleDefinition(definitions, moduleId) {
     return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState};
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
