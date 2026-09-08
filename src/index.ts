@@ -3806,12 +3806,16 @@ private rootIdOf(tab: Tab): string | null {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const current = opened.find((tab) => this.pinKeyOf(tab) === entry.key);
         if (current) { this.activateTab(current); return; }
-        if (!entry.rootId || !BLOCK_ID_RE.test(entry.rootId)) { showMessage(this.i18n.historyInvalid); return; }
+        if (!entry.rootId || !BLOCK_ID_RE.test(entry.rootId)) {
+            this.removeOpenHistoryEntry(entry.key);
+            showMessage(this.i18n.historyInvalid);
+            return;
+        }
         if (this.isMobile) {
             await this.mobileOpenDoc(entry.rootId);
         } else {
             try { await openTab({app: this.app, doc: {id: entry.rootId}}); }
-            catch (e) { logger.warn("open history entry fail", e); showMessage(this.i18n.openDocFailed); }
+            catch (e) { logger.warn("open history entry fail", e); this.removeOpenHistoryEntry(entry.key); showMessage(this.i18n.openDocFailed); }
         }
     }
 
@@ -6588,6 +6592,16 @@ if (count > 0) {
 
     private getOpenHistory(): IOpenHistoryEntry[] {
         return sanitizeOpenHistory(this.data[HISTORY_KEY], HISTORY_MAX).items;
+    }
+
+    private removeOpenHistoryEntry(key: string) {
+        if (typeof key !== "string" || !key) return;
+        const history = this.getOpenHistory();
+        const next = history.filter((item) => item.key !== key);
+        if (next.length === history.length) return;
+        this.data[HISTORY_KEY] = next;
+        this.saveDataDebounced(HISTORY_KEY);
+        this.refreshOpenHistoryDropdowns();
     }
 
     private recordOpenHistory(tab: Tab) {
