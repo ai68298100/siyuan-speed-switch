@@ -26,6 +26,7 @@ const snapshotCache = new Map();
 const failureBackoff = new Map();
 const diagnostics = [];
 const MAX_DIAGNOSTICS = 32;
+const inFlightReads = new Map();
 function recordDiagnostic(type, moduleId, device) {
     diagnostics.push({type: safeText(type, 24), moduleId: safeText(moduleId, 64), device: DEVICES.includes(device) ? device : "desktop", at: Date.now()});
     if (diagnostics.length > MAX_DIAGNOSTICS) diagnostics.splice(0, diagnostics.length - MAX_DIAGNOSTICS);
@@ -113,6 +114,8 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
             return {ok: true, cached: true, snapshot: cached.snapshot};
         }
     }
+    if (options.dedupe !== false && inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
+    const run = (async () => {
     try {
         const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : DEFAULT_READ_TIMEOUT_MS;
         const value = await Promise.race([
@@ -133,11 +136,16 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         recordDiagnostic(reason, moduleId, device);
         return {ok: false, reason, snapshot: cached?.snapshot || normalizeSnapshot(null)};
     }
+    })();
+    inFlightReads.set(cacheKey, run);
+    try { return await run; } finally { inFlightReads.delete(cacheKey); }
 }
 
 function clearHomeSnapshotCache() {
     snapshotCache.clear();
     failureBackoff.clear();
+    inFlightReads.clear();
+    diagnostics.length = 0;
 }
 
 function getHomeAdapterDiagnostics() {

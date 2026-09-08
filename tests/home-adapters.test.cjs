@@ -29,6 +29,15 @@ test("home adapter snapshots keep fields consistent across devices", () => {
     assert.equal(snapshot.empty, false);
 });
 
+test("home adapter bridge deduplicates concurrent reads by device and config", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "bridge", supportedDevices: ["desktop"], read: async () => { reads += 1; await new Promise((resolve) => setTimeout(resolve, 5)); return {items: [{label: "ok"}]}; }}]);
+    const results = await Promise.all(Array.from({length: 5}, () => adapters.readHomeModule(map, "bridge", "desktop", {a: true}, {cacheTtlMs: 0})));
+    assert.equal(reads, 1);
+    assert.equal(results.every((item) => item.ok), true);
+});
+
 guarded("home adapters: modules are filtered by target device", () => {
     const definitions = [
         {moduleId: "desktop", title: "Desktop", supportedDevices: ["desktop"]},
@@ -297,4 +306,5 @@ guarded("home adapters: diagnostic capacity stays bounded under repeated empty r
     await Promise.all(Array.from({length: 80}, () => adapters.readHomeModule(map, "empty-stress", "mobile", {}, {cacheTtlMs: 0, force: true})));
     assert.equal(adapters.getHomeAdapterDiagnostics().length <= adapters.MAX_DIAGNOSTICS, true);
     assert.equal(adapters.consumeHomeAdapterDiagnostics("desktop").length, 0);
+    adapters.consumeHomeAdapterDiagnostics("mobile");
 });
