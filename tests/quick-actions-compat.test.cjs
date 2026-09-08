@@ -9,7 +9,9 @@ const {
 
 test("quick action compatibility: unknown plugin icons fall back to iconFile at render boundary", () => {
     const item = sanitizeQuickActions([{id: "x", kind: "command", value: "plugin::open", label: "打开", icon: "bad icon"}]).items[0];
-    const icon = /^icon[A-Za-z0-9_-]+$/.test(item.icon) ? item.icon : "iconFile";
+    assert.equal(item.icon, "iconPlugin");
+    const resolved = new Set(["iconCalendar", "iconSettings"]);
+    const icon = resolved.has(item.icon) ? item.icon : "iconFile";
     assert.equal(icon, "iconFile");
 });
 
