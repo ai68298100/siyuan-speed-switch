@@ -94,6 +94,10 @@ function normalizeHomeState(value) {
         const entries = source.layouts?.[device];
         layouts[device] = Array.isArray(entries) ? entries.slice(0, 64).map((entry) => ({instanceId: text(entry?.instanceId, 64), ...normalizeLayout(entry)})).filter((entry) => entry.instanceId) : [];
     });
+    const activeIds = new Set(instances.map((item) => item.instanceId));
+    DEVICES.forEach((device) => {
+        layouts[device] = layouts[device].filter((entry) => activeIds.has(entry.instanceId));
+    });
     return {schemaVersion: HOME_SCHEMA_VERSION, instances, layouts};
 }
 
@@ -105,4 +109,8 @@ function migrateHomeState(value) {
     });
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeModuleDefinition, registerModules, modulesForDevice, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState};
+function getModuleDefinition(definitions, moduleId) {
+    return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
+}
+
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState};
