@@ -79,6 +79,15 @@ test("home adapter external plugin providers interoperate through one contract",
     assert.equal((await adapters.readHomeModule(map, "light-talk", "desktop")).reason, "unsupported");
 });
 
+test("home adapter provider snapshots tolerate schema versions and malformed payloads", () => {
+    const legacy = adapters.normalizeSnapshot({schemaVersion: 0, title: "打卡", data: [{text: "旧"}]});
+    assert.equal(legacy.empty, true);
+    const current = adapters.normalizeSnapshot({schemaVersion: 1, title: "轻语", items: [{label: "说说", value: "ok"}]});
+    assert.equal(current.empty, false);
+    const malformed = adapters.normalizeSnapshot({schemaVersion: 99, items: [null, "bad", {label: "safe"}]});
+    assert.equal(malformed.items.length, 1);
+});
+
 test("home adapter layout persistence keeps device-specific entries separate", () => {
     const instances = [{instanceId: "a"}, {instanceId: "b"}];
     const layouts = adapters ? {
