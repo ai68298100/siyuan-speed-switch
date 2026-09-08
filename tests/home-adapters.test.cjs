@@ -74,6 +74,20 @@ test("home adapter agent snapshots strip sensitive fields and bound text", () =>
     assert.equal(Object.prototype.hasOwnProperty.call(snapshot, "secret"), false);
 });
 
+test("home adapter agent cache and cancellation remain isolated", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "agent-cache", supportedDevices: ["desktop", "mobile"], read: async (_, device) => ({title: `${device}-${++reads}`})}]);
+    const first = await adapters.readHomeModule(map, "agent-cache", "desktop", {}, {cacheTtlMs: 1000});
+    const cached = await adapters.readHomeModule(map, "agent-cache", "desktop", {}, {cacheTtlMs: 1000});
+    const mobile = await adapters.readHomeModule(map, "agent-cache", "mobile", {}, {cacheTtlMs: 1000});
+    const forced = await adapters.readHomeModule(map, "agent-cache", "desktop", {}, {cacheTtlMs: 1000, force: true});
+    assert.equal(first.snapshot.title, "desktop-1");
+    assert.equal(cached.cached, true);
+    assert.equal(mobile.snapshot.title, "mobile-2");
+    assert.equal(forced.snapshot.title, "desktop-3");
+});
+
 test("home adapter bridge isolates cancellation and force refresh across devices", async () => {
     adapters.clearHomeSnapshotCache();
     const controller = new AbortController();
