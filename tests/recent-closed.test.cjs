@@ -94,5 +94,5 @@ test("recent events: open and close events are idempotent and mutually exclusive
 
 test("recent events: refresh notice exposes stable counts", () => {
     const notice = buildRecentRefreshNotice({open: [{rootId: "a"}], closed: []}, {open: [], closed: [{rootId: "a"}]});
-    assert.deepEqual(notice, {changed: false, openCount: 0, closedCount: 1});
+    assert.deepEqual(notice, {changed: true, openCount: 0, closedCount: 1});
 });
