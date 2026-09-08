@@ -96,3 +96,10 @@ test("recent events: refresh notice exposes stable counts", () => {
     const notice = buildRecentRefreshNotice({open: [{rootId: "a"}], closed: []}, {open: [], closed: [{rootId: "a"}]});
     assert.deepEqual(notice, {changed: true, openCount: 0, closedCount: 1});
 });
+
+test("recent events: out-of-order open after close restores open precedence", () => {
+    let state = applyRecentEvent({}, {type: "close", rootId: "a", closedAt: 3});
+    state = applyRecentEvent(state, {type: "open", rootId: "a", ts: 4});
+    assert.deepEqual(state.open.map((item) => item.rootId), ["a"]);
+    assert.deepEqual(state.closed, []);
+});
