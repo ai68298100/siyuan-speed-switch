@@ -44,7 +44,11 @@ function createQuickActionRegistry() {
             handlers.delete(id);
             return providers.delete(id);
         },
-        list() { return [...providers.values()].flatMap((provider) => provider.actions.map((action) => ({...action, declaredTargets: [...provider.targets]}))); },
+        list(max = 64) {
+            const limit = Number.isFinite(max) && max > 0 ? Math.floor(max) : 64;
+            return [...providers.values()].flatMap((provider) => provider.actions.map((action) => ({...action, declaredTargets: [...provider.targets]}))).slice(0, limit);
+        },
+        snapshot() { return [...providers.values()].map((provider) => ({...provider, targets: [...provider.targets], actions: provider.actions.map((action) => ({...action}))})); },
         invoke(action, context) {
             const providerId = normalizeQuickActionText(action?.providerId, 64);
             const handler = handlers.get(providerId);

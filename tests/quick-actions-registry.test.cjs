@@ -51,3 +51,33 @@ test("quick action registry: repeated identical registration is idempotent", () 
     assert.equal(second.unchanged, true);
     assert.equal(registry.list().length, 1);
 });
+
+test("quick action registry: legacy surface fields migrate to declared targets", () => {
+    const registry = createQuickActionRegistry();
+    registry.register({id: "legacy", name: "Legacy", supportedDevices: ["sidebar", "mobile"], actions: [{value: "open"}]});
+    assert.deepEqual(registry.list()[0].declaredTargets, ["sidebar", "mobile"]);
+});
+
+test("quick action registry: later registration replaces provider metadata atomically", () => {
+    const registry = createQuickActionRegistry();
+    registry.register({id: "p", name: "Old", actions: [{value: "old"}]});
+    registry.register({id: "p", name: "New", targets: ["mobile"], actions: [{value: "new"}]});
+    assert.deepEqual(registry.list().map((item) => item.value), ["new"]);
+    assert.equal(registry.snapshot()[0].name, "New");
+});
+
+test("quick action registry: snapshot is detached and unregister clears it", () => {
+    const registry = createQuickActionRegistry();
+    registry.register({id: "p", name: "P", actions: [{value: "open"}]});
+    const snapshot = registry.snapshot();
+    snapshot[0].actions[0].value = "mutated";
+    assert.equal(registry.list()[0].value, "open");
+    registry.unregister("p");
+    assert.deepEqual(registry.snapshot(), []);
+});
+
+test("quick action registry: candidate snapshot is bounded", () => {
+    const registry = createQuickActionRegistry();
+    registry.register({id: "p", name: "P", actions: Array.from({length: 5}, (_, i) => ({value: `a${i}`}))});
+    assert.equal(registry.list(3).length, 3);
+});
