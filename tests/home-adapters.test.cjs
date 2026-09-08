@@ -23,6 +23,12 @@ test("home adapter API normalizes invalid device and refresh arguments", () => {
     assert.deepEqual(adapters.coalesceHomeRefreshEvents("bad", {visible: true, stale: false}), {shouldRefresh: false, reason: "fresh", device: "desktop", delayMs: 0});
 });
 
+test("home adapter snapshots keep fields consistent across devices", () => {
+    const snapshot = adapters.normalizeSnapshot({title: "T", items: [{label: "L", value: "V", href: "/x"}], updatedAt: 1});
+    for (const key of ["title", "items", "updatedAt", "empty"]) assert.equal(Object.prototype.hasOwnProperty.call(snapshot, key), true);
+    assert.equal(snapshot.empty, false);
+});
+
 guarded("home adapters: modules are filtered by target device", () => {
     const definitions = [
         {moduleId: "desktop", title: "Desktop", supportedDevices: ["desktop"]},

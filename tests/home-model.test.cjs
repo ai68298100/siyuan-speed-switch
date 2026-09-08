@@ -34,3 +34,12 @@ test("home model migrates legacy widgets and emits schema version", () => {
     assert.equal(state.layouts.desktop[0].x, 2);
     assert.deepEqual(state.layouts.mobile, []);
 });
+
+test("home model migration keeps device layouts isolated and bounded", () => {
+    const state = home.migrateHomeState({widgets: [{moduleId: "today-tasks", instanceId: "task"}], layouts: {
+        desktop: [{instanceId: "task", x: 1}], sidebar: [{instanceId: "task", x: 2}], mobile: [{instanceId: "other", x: 3}],
+    }});
+    assert.deepEqual(state.layouts.desktop.map((item) => item.x), [1]);
+    assert.deepEqual(state.layouts.sidebar.map((item) => item.x), [2]);
+    assert.deepEqual(state.layouts.mobile, []);
+});
