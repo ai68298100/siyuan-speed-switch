@@ -30,3 +30,7 @@ the real SiYuan endpoints once the host harness is available.
 
 `tests/recent-history.test.cjs` similarly covers recent-document storage
 normalization and recovery planning without requiring a running host.
+
+`tests/home-adapters.test.cjs` covers the second-panel module contract. It is
+skipped in older checkout snapshots that predate `src/home-model.js`, and runs
+fully once the main integration branch provides that pure model module.
