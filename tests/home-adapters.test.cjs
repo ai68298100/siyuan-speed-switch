@@ -66,6 +66,14 @@ test("home adapter agent source missing API and timeout degrade safely", async (
     assert.equal(result.snapshot.empty, true);
 });
 
+test("home adapter agent snapshots strip sensitive fields and bound text", () => {
+    const snapshot = adapters.normalizeSnapshot({title: "x".repeat(200), secret: "token", items: [{label: "l".repeat(500), value: "v", href: "/safe", token: "hidden"}]});
+    assert.equal(snapshot.title.length, 64);
+    assert.equal(snapshot.items[0].label.length, 256);
+    assert.equal(Object.prototype.hasOwnProperty.call(snapshot.items[0], "token"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(snapshot, "secret"), false);
+});
+
 test("home adapter bridge isolates cancellation and force refresh across devices", async () => {
     adapters.clearHomeSnapshotCache();
     const controller = new AbortController();
