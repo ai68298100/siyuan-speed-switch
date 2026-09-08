@@ -9,6 +9,13 @@ function guarded(name, fn) {
     return home ? test(name, fn) : test(name, {skip: "home-model is supplied by the main integration branch"}, fn);
 }
 
+test("home adapter regression matrix remains discoverable", () => {
+    assert.equal(typeof adapters?.planHomeRefresh, "function");
+    assert.equal(typeof adapters?.planHomeLifecycleRefresh, "function");
+    assert.equal(typeof adapters?.getHomeAdapterDiagnostics, "function");
+    assert.equal(typeof adapters?.consumeHomeAdapterDiagnostics, "function");
+});
+
 guarded("home adapters: modules are filtered by target device", () => {
     const definitions = [
         {moduleId: "desktop", title: "Desktop", supportedDevices: ["desktop"]},
