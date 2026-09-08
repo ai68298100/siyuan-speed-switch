@@ -1,0 +1,13 @@
+{
+  "baseUrl": "http://127.0.0.1:6807",
+  "workspace": "%TEMP%/siyuan-speed-switch-test",
+  "appDir": "../siyuan",
+  "kernel": "../siyuan/app/kernel/SiYuan-Kernel",
+  "workers": 1,
+  "allowRemote": false,
+  "preserveFailedData": true,
+  "readiness": {
+    "pluginName": "siyuan-speed-switch",
+    "timeoutMs": 30000
+  }
+}
