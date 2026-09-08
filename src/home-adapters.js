@@ -153,6 +153,17 @@ function planHomeRefresh({visible = true, device = "desktop", stale = false, for
     return {shouldRefresh: true, reason: "stale", device: target, delayMs: target === "mobile" ? 500 : 0};
 }
 
+function planHomeLifecycleRefresh(event = {}, state = {}) {
+    const type = safeText(event.type, 32);
+    const next = {...state};
+    if (type === "panel-hidden") next.visible = false;
+    else if (type === "panel-visible") next.visible = true;
+    else if (type === "tab-changed" || type === "device-changed") next.stale = true;
+    else if (type === "force-refresh") next.force = true;
+    else if (type === "recovered") { next.failure = false; next.stale = true; }
+    return planHomeRefresh(next);
+}
+
 function consumeHomeAdapterDiagnostics(device) {
     const filtered = DEVICES.includes(device)
         ? diagnostics.filter((item) => item.device === device)
@@ -161,4 +172,4 @@ function consumeHomeAdapterDiagnostics(device) {
     return filtered.map((item) => ({...item}));
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh};
+module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh};
