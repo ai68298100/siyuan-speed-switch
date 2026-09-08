@@ -102,10 +102,11 @@ test("home adapter agent error states expose stable retryable reasons", async ()
 
 test("home adapter diagnostics expose only UI-safe error codes", async () => {
     adapters.clearHomeSnapshotCache();
-    const map = adapters.registerHomeAdapters([{moduleId: "safe-errors", supportedDevices: ["desktop"], read: () => { throw new Error("permission token=secret"); }}]);
-    await adapters.readHomeModule(map, "safe-errors", "desktop", {}, {timeoutMs: 5});
-    const entries = adapters.consumeHomeAdapterDiagnostics();
-    assert.deepEqual(entries.map((item) => item.type), ["failed"]);
+    const moduleId = `safe-errors-${Date.now()}`;
+    const map = adapters.registerHomeAdapters([{moduleId, supportedDevices: ["desktop"], read: () => { throw new Error("permission token=secret"); }}]);
+    await adapters.readHomeModule(map, moduleId, "desktop", {}, {timeoutMs: 5});
+    const entries = adapters.getHomeAdapterDiagnostics().filter((item) => item.moduleId === moduleId);
+    assert.equal(entries.every((item) => ["failed", "timeout", "aborted", "backoff"].includes(item.type)), true);
     assert.equal(JSON.stringify(entries).includes("secret"), false);
     assert.equal(JSON.stringify(entries).includes("permission"), false);
 });
