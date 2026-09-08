@@ -136,6 +136,12 @@ test("home adapter mobile refresh state remains bounded over long runs", async (
     assert.equal(reads, 100);
 });
 
+test("home adapter performance matrix exposes mobile long-run guard", () => {
+    assert.equal(adapters.MAX_DIAGNOSTICS <= 32, true);
+    assert.equal(adapters.DEFAULT_CACHE_TTL_MS > 0, true);
+    assert.equal(adapters.planHomeRefresh({device: "mobile", visible: true, stale: true}).delayMs >= 500, true);
+});
+
 test("home adapter agent error states expose stable retryable reasons", async () => {
     adapters.clearHomeSnapshotCache();
     const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");

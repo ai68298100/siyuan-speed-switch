@@ -36,3 +36,7 @@ removed, and a second migration pass is idempotent.
 Snapshots are capped at 24 items, diagnostics at 32 records, reads have a
 bounded timeout, and repeated refresh events are coalesced. Mobile refreshes
 use a conservative delay and hidden panels never refresh.
+
+The mobile long-run regression also exercises repeated forced refreshes with
+periodic cache cleanup. It is the guard against unbounded memory or diagnostic
+growth during long sessions and after repeated rotation/re-entry cycles.
