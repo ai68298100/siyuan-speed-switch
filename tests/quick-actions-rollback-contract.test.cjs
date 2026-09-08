@@ -4,7 +4,7 @@ const {sanitizeQuickActions} = require("../src/quick-actions.js");
 
 test("rollback contract: failed import keeps previous valid snapshot", () => {
     const previous = sanitizeQuickActions([{id: "ok", kind: "builtin", value: "journal", label: "日记"}]).items;
-    const imported = sanitizeQuickActions({bad: true});
+    const imported = sanitizeQuickActions([null, {bad: true}]);
     const effective = imported.changed && imported.items.length === 0 ? previous : imported.items;
     assert.deepEqual(effective.map((item) => item.id), ["ok"]);
 });
