@@ -46,6 +46,9 @@ inertness after a provider unloads.
 The compatibility matrix also covers SVG icon availability and the default icon
 fallback used when a plugin does not expose a renderable symbol.
 
+Release diagnostics use stable bounded categories: `BUILD_FAILED`,
+`RESOURCE_MISSING`, `MANIFEST_MISMATCH`, and `ENVIRONMENT_DRIFT`.
+
 `tests/host/release-quality.test.cjs` is a fast release gate. It validates the
 isolated host configuration, the Android-versus-browser testing boundary,
 metadata version alignment, and the built JavaScript size budget. It does not
