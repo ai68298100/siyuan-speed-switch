@@ -72,3 +72,21 @@ guarded("home adapters: layout conflicts and orphan entries are removed idempote
     assert.deepEqual(state.layouts.desktop.map((item) => item.instanceId), ["a"]);
     assert.deepEqual(home.normalizeHomeState(state), state);
 });
+
+guarded("home adapters: slow readers are isolated by a timeout", async () => {
+    const map = adapters.registerHomeAdapters([{moduleId: "slow", supportedDevices: ["desktop"], read: () => new Promise(() => {})}]);
+    const result = await adapters.readHomeModule(map, "slow", "desktop", {}, {timeoutMs: 5});
+    assert.equal(result.reason, "timeout");
+});
+
+guarded("home adapters: refreshes are cached and can be forced", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "cached", supportedDevices: ["mobile"], read: () => ({title: String(++reads)})}]);
+    const first = await adapters.readHomeModule(map, "cached", "mobile", {}, {cacheTtlMs: 1000});
+    const second = await adapters.readHomeModule(map, "cached", "mobile", {}, {cacheTtlMs: 1000});
+    const forced = await adapters.readHomeModule(map, "cached", "mobile", {}, {cacheTtlMs: 1000, force: true});
+    assert.equal(first.snapshot.title, "1");
+    assert.equal(second.cached, true);
+    assert.equal(forced.snapshot.title, "2");
+});

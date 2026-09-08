@@ -20,6 +20,9 @@ const {DEVICES, getModuleDefinition, normalizeConfig} = (() => {
 
 const MAX_SNAPSHOT_ITEMS = 24;
 const MAX_TEXT = 256;
+const DEFAULT_READ_TIMEOUT_MS = 800;
+const DEFAULT_CACHE_TTL_MS = 3000;
+const snapshotCache = new Map();
 
 function safeText(value, max = MAX_TEXT) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
@@ -64,16 +67,33 @@ function normalizeSnapshot(value) {
     return {title: safeText(value.title, 64), items, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0};
 }
 
-async function readHomeModule(adapters, moduleId, device, config = {}) {
+async function readHomeModule(adapters, moduleId, device, config = {}, options = {}) {
     const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
     const adapter = map.get(safeText(moduleId, 64));
     if (!canReadAdapter(adapter, device)) return {ok: false, reason: "unsupported", snapshot: normalizeSnapshot(null)};
+    const cacheKey = `${adapter.moduleId}:${device}:${JSON.stringify(normalizeConfig(config))}`;
+    const now = Date.now();
+    const ttl = Number.isFinite(options.cacheTtlMs) ? Math.max(0, options.cacheTtlMs) : DEFAULT_CACHE_TTL_MS;
+    if (options.force !== true && ttl > 0) {
+        const cached = snapshotCache.get(cacheKey);
+        if (cached && now - cached.at < ttl) return {ok: true, cached: true, snapshot: cached.snapshot};
+    }
     try {
-        const value = await Promise.resolve(adapter.read(normalizeConfig(config), device));
-        return {ok: true, snapshot: normalizeSnapshot(value)};
+        const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : DEFAULT_READ_TIMEOUT_MS;
+        const value = await Promise.race([
+            Promise.resolve(adapter.read(normalizeConfig(config), device)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
+        ]);
+        const snapshot = normalizeSnapshot(value);
+        snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
+        return {ok: true, cached: false, snapshot};
     } catch (error) {
-        return {ok: false, reason: "failed", snapshot: normalizeSnapshot(null)};
+        return {ok: false, reason: error?.message === "timeout" ? "timeout" : "failed", snapshot: normalizeSnapshot(null)};
     }
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule};
+function clearHomeSnapshotCache() {
+    snapshotCache.clear();
+}
+
+module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache};

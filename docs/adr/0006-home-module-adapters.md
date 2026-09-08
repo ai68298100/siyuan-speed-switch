@@ -24,3 +24,5 @@ assets, light talk, SQL summaries, and task lists one consistent entry point.
 - Adapter registration is last-write-wins and removal is explicit, so plugin
   reloads do not leave stale providers behind.
 - Layout normalization is idempotent and removes duplicate or orphan entries.
+- Reads have a bounded timeout and short per-device/config caching so a slow
+  plugin cannot block the panel or cause repeated refresh storms.
