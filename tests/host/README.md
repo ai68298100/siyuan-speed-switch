@@ -38,3 +38,7 @@ fully once the main integration branch provides that pure model module.
 `tests/recent-closed.test.cjs` defines the closed-document recovery contract:
 bounded records, de-duplicated recovery, no fabricated close state, and invalid
 documents isolated from valid entries.
+
+`tests/quick-actions-compat.test.cjs` covers extension-entry compatibility:
+surface support filtering, icon fallback, duplicate rejection, and safe
+inertness after a provider unloads.
