@@ -128,3 +128,12 @@ guarded("home adapters: diagnostics are bounded and do not expose errors", async
     assert.equal(JSON.stringify(entries).includes("secret token"), false);
     assert.equal(entries.length <= adapters.MAX_DIAGNOSTICS, true);
 });
+
+guarded("home adapters: diagnostics can be consumed by device without leaking the store", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "diag-mobile", supportedDevices: ["mobile"], read: () => ({})}]);
+    await adapters.readHomeModule(map, "diag-mobile", "mobile", {}, {cacheTtlMs: 0});
+    const mobile = adapters.consumeHomeAdapterDiagnostics("mobile");
+    assert.equal(mobile.every((item) => item.device === "mobile"), true);
+    assert.deepEqual(adapters.getHomeAdapterDiagnostics(), []);
+});

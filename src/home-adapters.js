@@ -138,4 +138,12 @@ function getHomeAdapterDiagnostics() {
     return diagnostics.map((item) => ({...item}));
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics};
+function consumeHomeAdapterDiagnostics(device) {
+    const filtered = DEVICES.includes(device)
+        ? diagnostics.filter((item) => item.device === device)
+        : diagnostics;
+    diagnostics.length = 0;
+    return filtered.map((item) => ({...item}));
+}
+
+module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics};
