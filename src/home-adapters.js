@@ -165,10 +165,12 @@ function planHomeLifecycleRefresh(event = {}, state = {}) {
 }
 
 function consumeHomeAdapterDiagnostics(device) {
-    const filtered = DEVICES.includes(device)
-        ? diagnostics.filter((item) => item.device === device)
-        : diagnostics;
-    diagnostics.length = 0;
+    const hasDeviceFilter = DEVICES.includes(device);
+    const filtered = hasDeviceFilter ? diagnostics.filter((item) => item.device === device) : diagnostics.slice();
+    if (hasDeviceFilter) {
+        const retained = diagnostics.filter((item) => item.device !== device);
+        diagnostics.splice(0, diagnostics.length, ...retained);
+    } else diagnostics.length = 0;
     return filtered.map((item) => ({...item}));
 }
 

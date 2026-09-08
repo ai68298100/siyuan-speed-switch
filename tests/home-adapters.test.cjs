@@ -135,7 +135,20 @@ guarded("home adapters: diagnostics can be consumed by device without leaking th
     await adapters.readHomeModule(map, "diag-mobile", "mobile", {}, {cacheTtlMs: 0});
     const mobile = adapters.consumeHomeAdapterDiagnostics("mobile");
     assert.equal(mobile.every((item) => item.device === "mobile"), true);
-    assert.deepEqual(adapters.getHomeAdapterDiagnostics(), []);
+    assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.device === "mobile"), false);
+    adapters.consumeHomeAdapterDiagnostics();
+});
+
+guarded("home adapters: consuming one device preserves other diagnostics", async () => {
+    adapters.clearHomeSnapshotCache();
+    adapters.consumeHomeAdapterDiagnostics();
+    const map = adapters.registerHomeAdapters([{moduleId: "multi", supportedDevices: ["desktop", "mobile"], read: () => ({})}]);
+    await adapters.readHomeModule(map, "multi", "desktop", {}, {cacheTtlMs: 0});
+    await adapters.readHomeModule(map, "multi", "mobile", {}, {cacheTtlMs: 0});
+    const mobile = adapters.consumeHomeAdapterDiagnostics("mobile");
+    assert.equal(mobile.length, 1);
+    assert.equal(adapters.getHomeAdapterDiagnostics().length, 1);
+    assert.equal(adapters.getHomeAdapterDiagnostics()[0].device, "desktop");
 });
 
 guarded("home adapters: repeated consumption is empty and old references stay detached", async () => {
