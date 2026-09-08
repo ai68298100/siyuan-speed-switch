@@ -142,6 +142,14 @@ test("home adapter performance matrix exposes mobile long-run guard", () => {
     assert.equal(adapters.planHomeRefresh({device: "mobile", visible: true, stale: true}).delayMs >= 500, true);
 });
 
+test("home adapter final mobile budget matrix stays within all bounds", () => {
+    const plan = adapters.planHomeRefresh({visible: true, device: "mobile", stale: true});
+    assert.equal(plan.delayMs >= 500, true);
+    assert.equal(adapters.MAX_SNAPSHOT_ITEMS <= 24, true);
+    assert.equal(adapters.MAX_DIAGNOSTICS <= 32, true);
+    assert.equal(adapters.DEFAULT_READ_TIMEOUT_MS <= 1000, true);
+});
+
 test("home adapter agent error states expose stable retryable reasons", async () => {
     adapters.clearHomeSnapshotCache();
     const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");
