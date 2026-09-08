@@ -88,6 +88,16 @@ test("home adapter provider snapshots tolerate schema versions and malformed pay
     assert.equal(malformed.items.length, 1);
 });
 
+test("home adapter external providers enforce text and cache budgets", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "bounded-provider", supportedDevices: ["desktop"], read: () => ({title: "x".repeat(200), items: [{label: "l".repeat(400), value: "v"}]})}]);
+    const result = await adapters.readHomeModule(map, "bounded-provider", "desktop", {}, {cacheTtlMs: 1000});
+    assert.equal(result.snapshot.title.length, 64);
+    assert.equal(result.snapshot.items[0].label.length, 256);
+    const cached = await adapters.readHomeModule(map, "bounded-provider", "desktop", {}, {cacheTtlMs: 1000});
+    assert.equal(cached.cached, true);
+});
+
 test("home adapter layout persistence keeps device-specific entries separate", () => {
     const instances = [{instanceId: "a"}, {instanceId: "b"}];
     const layouts = adapters ? {
