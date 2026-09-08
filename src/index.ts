@@ -2366,9 +2366,10 @@ const version = beginSearch(session);
             if (existing.has(`dock:${panel.type}`)) return;
             const targets = getDefaultQuickActionTargets("dock", panel.type) as QuickActionTarget[];
             const safeType = panel.type.replace(/[^A-Za-z0-9_-]/g, "-");
+            const dockLabel = normalizeQuickActionText(panel.title, 24) || panel.type;
             const action: IQuickAction = {
                 id: `dock-${safeType}`,
-                label: panel.title,
+                label: dockLabel,
                 icon: panel.icon || "iconDock",
                 kind: "dock",
                 value: panel.type,
@@ -2378,11 +2379,11 @@ const version = beginSearch(session);
             };
             candidates.push({
                 id: action.id,
-                label: panel.title,
+                label: dockLabel,
                 icon: action.icon,
                 group: this.i18n.quickDock,
                 secondary: describe(action.kind, action.value, targets),
-                searchText: `${panel.title} ${panel.type} ${this.i18n.quickDock}`,
+                searchText: `${dockLabel} ${panel.type} ${this.i18n.quickDock}`,
                 action,
             });
         });
@@ -2413,7 +2414,8 @@ const version = beginSearch(session);
         this.getPluginCommands().forEach((command) => {
             if (existing.has(`command:${command.value}`)) return;
             const targets = getDefaultQuickActionTargets("command", command.value) as QuickActionTarget[];
-            const displayLabel = command.label.trim().replace(/\s+/g, " ").slice(0, 24) || command.value;
+            const displayLabel = normalizeQuickActionText(command.label, 24) || normalizeQuickActionText(command.value, 24);
+            const pluginTitle = normalizeQuickActionText(command.pluginTitle, 32) || command.pluginName;
             const action: IQuickAction = {
                 id: command.id,
                 label: displayLabel,
@@ -2430,8 +2432,8 @@ const version = beginSearch(session);
                 icon: command.icon,
                 group: this.i18n.quickPluginCommands,
                 fallbackIcon: ["iconPlugin", "iconFile"],
-                secondary: `${command.pluginTitle} · ${describe(action.kind, action.value, targets)}`,
-                searchText: `${displayLabel} ${command.pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
+                secondary: `${pluginTitle} · ${describe(action.kind, action.value, targets)}`,
+                searchText: `${displayLabel} ${pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
                 action,
             });
         });
