@@ -111,6 +111,7 @@ test("home adapter recovery reuses cache after re-entry and cancels rotation req
     assert.equal(reentered.cached, true);
     assert.equal(reads, 1);
     const controller = new AbortController();
+    map.get("reenter").read = () => new Promise((resolve) => setTimeout(() => resolve({title: "late"}), 20));
     const pending = adapters.readHomeModule(map, "reenter", "mobile", {}, {force: true, signal: controller.signal, timeoutMs: 50});
     controller.abort();
     assert.equal((await pending).reason, "aborted");
