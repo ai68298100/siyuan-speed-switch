@@ -12,6 +12,7 @@ import {
     resolveQuickActionSupport,
     shouldRenderQuickAction,
     appendQuickAction,
+    createQuickActionRegistry,
 } from "./quick-actions";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {
@@ -130,6 +131,7 @@ declare module "./quick-actions" {
     export function resolveQuickActionSupport(kind: string, value: string, target: string, declaredTargets?: string[]): "supported" | "unsupported" | "unknown";
     export function shouldRenderQuickAction(action: IQuickAction, surface: string, context?: string, declaredTargets?: string[]): boolean;
     export function appendQuickAction(actions: IQuickAction[], candidate: Partial<IQuickAction> & {declaredTargets?: string[]}, max?: number): {items: IQuickAction[], added: boolean, reason: string};
+    export function createQuickActionRegistry(): any;
 }
 
 declare module "./quick-actions-ui" {
@@ -419,6 +421,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
     private quickActionProviders = new Map<string, IQuickActionProvider>();
+    private quickActionRegistry = createQuickActionRegistry();
     private switcherRefreshFrame: number | null = null;
     private sidebarElement: HTMLElement | null = null; // 渚ц竟鏍?dock 闈㈡澘鍐呭鍏冪礌
     private sidebarResizeObserver: ResizeObserver | null = null; // 渚ц竟鏍忓昂瀵哥洃鍚紝鍙樺寲鏃堕噸绠楃缉鐣ュ浘缂╂斁
@@ -617,6 +620,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.quickActionAdapters.clear();
         this.quickActionAdapterTargets.clear();
         this.quickActionProviders.clear();
+        this.quickActionRegistry = createQuickActionRegistry();
         if (this.switcherRefreshFrame !== null) {
             cancelAnimationFrame(this.switcherRefreshFrame);
             this.switcherRefreshFrame = null;
@@ -2063,6 +2067,12 @@ const version = beginSearch(session);
         const actionValue = options.value ? `${adapterId}/${options.value}` : adapterId;
         const safeActionId = `${adapterId}-${options.value || "action"}`.replace(/[^A-Za-z0-9_-]/g, "-");
         const declaredTargets = Array.isArray(options.targets) ? options.targets : undefined;
+        this.quickActionRegistry.register({
+            id: adapterId,
+            name: options.label,
+            targets: declaredTargets,
+            actions: [{value: options.value || "action", label: options.label, icon: options.icon || "iconPlugin", kind: "adapter"}],
+        }, (action: {value?: string}) => options.handler(String(action?.value || "").replace(`${adapterId}/`, "")));
         const unregisterAdapter = this.registerQuickActionAdapter(adapterId, options.handler, declaredTargets);
         this.quickActionProviders.set(actionValue, {
             id: adapterId,
@@ -2099,6 +2109,7 @@ const version = beginSearch(session);
         return () => {
             unregisterAdapter();
             this.quickActionProviders.delete(actionValue);
+            this.quickActionRegistry.unregister(adapterId);
         };
     }
 
@@ -2255,6 +2266,11 @@ const version = beginSearch(session);
             const adapterId = action.value.split("/", 1)[0];
             const handler = this.quickActionAdapters.get(adapterId);
             if (!handler) {
+                const result = this.quickActionRegistry.invoke({providerId: adapterId, value: action.value});
+                if (result.ok) {
+                    close();
+                    return;
+                }
                 logger.warn("quick action adapter unavailable", action.value);
                 showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
                 return;
