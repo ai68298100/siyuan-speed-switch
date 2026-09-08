@@ -26,3 +26,6 @@ assets, light talk, SQL summaries, and task lists one consistent entry point.
 - Layout normalization is idempotent and removes duplicate or orphan entries.
 - Reads have a bounded timeout and short per-device/config caching so a slow
   plugin cannot block the panel or cause repeated refresh storms.
+- Built-in and plugin data sources expose the same read-only contract and an
+  explicit empty placeholder, so UI code never needs source-specific shape
+  checks.

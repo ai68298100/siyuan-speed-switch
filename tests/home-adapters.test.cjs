@@ -90,3 +90,15 @@ guarded("home adapters: refreshes are cached and can be forced", async () => {
     assert.equal(second.cached, true);
     assert.equal(forced.snapshot.title, "2");
 });
+
+guarded("home adapters: built-in data sources expose a read-only device contract", () => {
+    const contract = adapters.getHomeDataSourceContract("today-tasks");
+    assert.deepEqual(contract.supportedDevices, ["desktop", "sidebar", "mobile"]);
+    assert.equal(contract.readOnly, true);
+    assert.equal(adapters.getHomeDataSourceContract("missing"), null);
+});
+
+guarded("home adapters: empty snapshots are explicit placeholders", () => {
+    assert.equal(adapters.normalizeSnapshot(null).empty, true);
+    assert.equal(adapters.normalizeSnapshot({items: [{label: "ok"}]}).empty, false);
+});

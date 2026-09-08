@@ -58,13 +58,26 @@ function canReadAdapter(adapter, device) {
 }
 
 function normalizeSnapshot(value) {
-    if (!value || typeof value !== "object") return {title: "", items: [], updatedAt: 0};
+    if (!value || typeof value !== "object") return {title: "", items: [], updatedAt: 0, empty: true};
     const rawItems = Array.isArray(value.items) ? value.items : [];
     const items = rawItems.slice(0, MAX_SNAPSHOT_ITEMS).map((item) => {
         if (!item || typeof item !== "object") return null;
         return {label: safeText(item.label), value: safeText(item.value), href: safeText(item.href, 512)};
     }).filter(Boolean);
-    return {title: safeText(value.title, 64), items, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0};
+    return {title: safeText(value.title, 64), items, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
+}
+
+const HOME_DATA_SOURCES = Object.freeze({
+    "today-tasks": {kind: "siyuan", supportedDevices: ["desktop", "sidebar", "mobile"]},
+    "today-journal": {kind: "siyuan", supportedDevices: ["desktop", "sidebar", "mobile"]},
+    "recent-documents": {kind: "siyuan", supportedDevices: ["desktop", "sidebar", "mobile"]},
+    "plugin-data": {kind: "plugin", supportedDevices: ["desktop", "sidebar", "mobile"]},
+});
+
+function getHomeDataSourceContract(sourceId) {
+    const id = safeText(sourceId, 64);
+    const source = HOME_DATA_SOURCES[id];
+    return source ? {sourceId: id, kind: source.kind, supportedDevices: [...source.supportedDevices], readOnly: true} : null;
 }
 
 async function readHomeModule(adapters, moduleId, device, config = {}, options = {}) {
@@ -96,4 +109,4 @@ function clearHomeSnapshotCache() {
     snapshotCache.clear();
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache};
+module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache};
