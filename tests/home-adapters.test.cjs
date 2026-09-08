@@ -369,6 +369,12 @@ guarded("home adapters: refresh planner is device-aware and never refreshes hidd
     assert.equal(adapters.planHomeRefresh({force: true, visible: false}).shouldRefresh, true);
 });
 
+guarded("home adapters: mobile collapsed or hidden modules do not refresh", () => {
+    assert.equal(adapters.planHomeRefresh({visible: false, device: "mobile", stale: true}).reason, "hidden");
+    assert.equal(adapters.planHomeLifecycleRefresh({type: "panel-hidden"}, {visible: true, device: "mobile", stale: true}).shouldRefresh, false);
+    assert.equal(adapters.planHomeLifecycleRefresh({type: "device-changed"}, {visible: true, device: "mobile", stale: false}).delayMs, 500);
+});
+
 guarded("home adapters: lifecycle events produce consistent refresh plans", () => {
     assert.equal(adapters.planHomeLifecycleRefresh({type: "panel-hidden"}, {visible: true, stale: true}).reason, "hidden");
     assert.equal(adapters.planHomeLifecycleRefresh({type: "panel-visible"}, {visible: false, stale: true}).shouldRefresh, true);
