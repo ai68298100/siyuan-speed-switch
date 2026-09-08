@@ -194,3 +194,26 @@ guarded("home adapters: device changes do not reuse another device cache", async
     assert.equal(desktop.snapshot.title, "desktop-1");
     assert.equal(mobile.snapshot.title, "mobile-2");
 });
+
+guarded("home adapters: concurrent forced refreshes remain bounded", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "stress", supportedDevices: ["desktop"], read: async () => ({title: String(++reads)})}]);
+    const results = await Promise.all(Array.from({length: 12}, () => adapters.readHomeModule(map, "stress", "desktop", {}, {force: true, cacheTtlMs: 0})));
+    assert.equal(results.length, 12);
+    assert.equal(results.every((item) => item.ok), true);
+    assert.equal(adapters.getHomeAdapterDiagnostics().length <= adapters.MAX_DIAGNOSTICS, true);
+});
+
+guarded("home adapters: unload during pending read remains safe", async () => {
+    adapters.clearHomeSnapshotCache();
+    let resolve;
+    const pending = new Promise((done) => { resolve = done; });
+    const map = adapters.registerHomeAdapters([{moduleId: "pending", supportedDevices: ["mobile"], read: () => pending}]);
+    const read = adapters.readHomeModule(map, "pending", "mobile", {}, {timeoutMs: 50});
+    adapters.unregisterHomeAdapter(map, "pending");
+    resolve({items: [{label: "late"}]});
+    const result = await read;
+    assert.equal(result.ok, true);
+    assert.equal(map.has("pending"), false);
+});
