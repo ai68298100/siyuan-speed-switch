@@ -264,3 +264,17 @@ guarded("home adapters: refresh coalescing preserves force priority and ignores 
     const malformed = adapters.coalesceHomeRefreshEvents([null, {}, {type: "unknown"}], {visible: true, stale: false});
     assert.equal(malformed.reason, "fresh");
 });
+
+guarded("home adapters: coalescing truncates long sequences without changing the final plan", () => {
+    const events = [{type: "tab-changed"}, ...Array.from({length: 200}, () => ({type: "unknown"})), {type: "force-refresh"}];
+    const plan = adapters.coalesceHomeRefreshEvents(events, {visible: true, device: "mobile"}, 3);
+    assert.deepEqual(plan, {shouldRefresh: true, reason: "force", device: "mobile", delayMs: 0});
+});
+
+guarded("home adapters: diagnostic capacity stays bounded under repeated empty reads", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "empty-stress", supportedDevices: ["mobile"], read: () => ({items: []})}]);
+    await Promise.all(Array.from({length: 80}, () => adapters.readHomeModule(map, "empty-stress", "mobile", {}, {cacheTtlMs: 0, force: true})));
+    assert.equal(adapters.getHomeAdapterDiagnostics().length <= adapters.MAX_DIAGNOSTICS, true);
+    assert.equal(adapters.consumeHomeAdapterDiagnostics("desktop").length, 0);
+});
