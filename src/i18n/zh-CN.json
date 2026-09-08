@@ -177,6 +177,8 @@
   ,"mobileLayoutFailed": "切换器初始化失败，请关闭后重试"
   ,"openHistory": "最近打开"
   ,"noOpenHistory": "暂无最近打开记录"
+  ,"clearOpenHistory": "清空记录"
+  ,"clearOpenHistoryConfirm": "确定清空最近打开记录吗？"
   ,"historyOpen": "已打开"
   ,"historyClosed": "已关闭，点击重开"
   ,"historyInvalid": "该历史记录已失效"

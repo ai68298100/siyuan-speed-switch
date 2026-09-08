@@ -177,6 +177,8 @@
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
   ,"noOpenHistory": "No recent documents"
+  ,"clearOpenHistory": "Clear history"
+  ,"clearOpenHistoryConfirm": "Clear all recent documents?"
   ,"historyOpen": "Open"
   ,"historyClosed": "Closed · click to reopen"
   ,"historyInvalid": "This history entry is no longer available"

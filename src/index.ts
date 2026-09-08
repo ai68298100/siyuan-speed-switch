@@ -3786,6 +3786,18 @@ private rootIdOf(tab: Tab): string | null {
             panel.appendChild(empty);
             return;
         }
+        const clear = document.createElement("button");
+        clear.type = "button";
+        clear.className = "sw__history-clear";
+        clear.textContent = this.i18n.clearOpenHistory;
+        clear.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (!confirm(this.i18n.clearOpenHistoryConfirm)) return;
+            this.data[HISTORY_KEY] = [];
+            this.saveDataDebounced(HISTORY_KEY);
+            this.refreshOpenHistoryDropdowns();
+        });
+        panel.appendChild(clear);
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
         entries.forEach((entry) => {

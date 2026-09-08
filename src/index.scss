@@ -1744,6 +1744,19 @@
             }
 
             .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
+            .sw__history-clear {
+                display: block;
+                width: 100%;
+                padding: 6px 8px;
+                border: 0;
+                border-bottom: 1px solid var(--b3-border-color);
+                background: transparent;
+                color: var(--b3-theme-on-surface-light);
+                font-size: 11px;
+                text-align: right;
+                cursor: pointer;
+                &:hover { color: var(--b3-theme-primary); }
+            }
             .sw__history-item {
                 display: flex;
                 align-items: center;
