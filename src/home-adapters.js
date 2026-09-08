@@ -56,7 +56,13 @@ function registerHomeAdapters(adapters = []) {
 
 function unregisterHomeAdapter(adapters, moduleId) {
     const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
-    map.delete(safeText(moduleId, 64));
+    const id = safeText(moduleId, 64);
+    map.delete(id);
+    for (const key of snapshotCache.keys()) if (key.startsWith(`${id}:`)) snapshotCache.delete(key);
+    for (const key of failureBackoff.keys()) if (key.startsWith(`${id}:`)) failureBackoff.delete(key);
+    for (let index = diagnostics.length - 1; index >= 0; index -= 1) {
+        if (diagnostics[index].moduleId === id) diagnostics.splice(index, 1);
+    }
     return map;
 }
 

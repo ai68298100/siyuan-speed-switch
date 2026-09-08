@@ -161,3 +161,14 @@ guarded("home adapters: concurrent device reads keep diagnostics device-scoped",
     assert.equal(desktop.every((item) => item.device === "desktop"), true);
     assert.equal(adapters.getHomeAdapterDiagnostics().every((item) => item.device === "mobile"), true);
 });
+
+guarded("home adapters: unregister removes provider state and tolerates missing APIs", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "lifecycle", supportedDevices: ["desktop"], read: () => ({items: [{label: "x"}]})}]);
+    await adapters.readHomeModule(map, "lifecycle", "desktop", {}, {cacheTtlMs: 1000});
+    adapters.unregisterHomeAdapter(map, "lifecycle");
+    const result = await adapters.readHomeModule(map, "lifecycle", "desktop");
+    assert.equal(result.reason, "unsupported");
+    assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.moduleId === "lifecycle"), false);
+    assert.doesNotThrow(() => adapters.unregisterHomeAdapter(map, "missing"));
+});
