@@ -102,3 +102,19 @@ guarded("home adapters: empty snapshots are explicit placeholders", () => {
     assert.equal(adapters.normalizeSnapshot(null).empty, true);
     assert.equal(adapters.normalizeSnapshot({items: [{label: "ok"}]}).empty, false);
 });
+
+guarded("home adapters: failed reads back off and force can recover", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "flaky", supportedDevices: ["desktop"], read: () => {
+        reads += 1;
+        if (reads === 1) throw new Error("offline");
+        return {items: [{label: "ok"}]};
+    }}]);
+    const failed = await adapters.readHomeModule(map, "flaky", "desktop", {}, {cacheTtlMs: 0});
+    const backedOff = await adapters.readHomeModule(map, "flaky", "desktop", {}, {cacheTtlMs: 0});
+    const recovered = await adapters.readHomeModule(map, "flaky", "desktop", {}, {cacheTtlMs: 0, force: true});
+    assert.equal(failed.reason, "failed");
+    assert.equal(backedOff.reason, "backoff");
+    assert.equal(recovered.ok, true);
+});

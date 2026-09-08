@@ -23,6 +23,7 @@ const MAX_TEXT = 256;
 const DEFAULT_READ_TIMEOUT_MS = 800;
 const DEFAULT_CACHE_TTL_MS = 3000;
 const snapshotCache = new Map();
+const failureBackoff = new Map();
 
 function safeText(value, max = MAX_TEXT) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
@@ -86,6 +87,11 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     if (!canReadAdapter(adapter, device)) return {ok: false, reason: "unsupported", snapshot: normalizeSnapshot(null)};
     const cacheKey = `${adapter.moduleId}:${device}:${JSON.stringify(normalizeConfig(config))}`;
     const now = Date.now();
+    const failedUntil = failureBackoff.get(cacheKey) || 0;
+    if (options.force !== true && failedUntil > now) {
+        const cached = snapshotCache.get(cacheKey);
+        return {ok: false, reason: "backoff", snapshot: cached?.snapshot || normalizeSnapshot(null)};
+    }
     const ttl = Number.isFinite(options.cacheTtlMs) ? Math.max(0, options.cacheTtlMs) : DEFAULT_CACHE_TTL_MS;
     if (options.force !== true && ttl > 0) {
         const cached = snapshotCache.get(cacheKey);
@@ -99,14 +105,21 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         ]);
         const snapshot = normalizeSnapshot(value);
         snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
+        failureBackoff.delete(cacheKey);
         return {ok: true, cached: false, snapshot};
     } catch (error) {
-        return {ok: false, reason: error?.message === "timeout" ? "timeout" : "failed", snapshot: normalizeSnapshot(null)};
+        const reason = error?.message === "timeout" ? "timeout" : "failed";
+        const previous = failureBackoff.get(cacheKey) || 0;
+        const delay = Math.min(30000, previous > now ? Math.max(1000, (previous - now) * 2) : 1000);
+        failureBackoff.set(cacheKey, now + delay);
+        const cached = snapshotCache.get(cacheKey);
+        return {ok: false, reason, snapshot: cached?.snapshot || normalizeSnapshot(null)};
     }
 }
 
 function clearHomeSnapshotCache() {
     snapshotCache.clear();
+    failureBackoff.clear();
 }
 
 module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache};

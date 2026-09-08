@@ -29,3 +29,5 @@ assets, light talk, SQL summaries, and task lists one consistent entry point.
 - Built-in and plugin data sources expose the same read-only contract and an
   explicit empty placeholder, so UI code never needs source-specific shape
   checks.
+- Failed reads enter a bounded per-module/device backoff. Explicit refresh can
+  bypass that backoff, while the last good or empty snapshot remains stable.
