@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const {normalizeClosedEntries, planClosedRecovery} = require("../src/recent-closed.js");
 
 function capClosed(entries, max = 50) {
     return (Array.isArray(entries) ? entries : [])
@@ -41,4 +42,24 @@ test("recent closed: invalid documents do not block valid recovery entries", () 
         {rootId: "missing", closedAt: 3}, {rootId: "valid", closedAt: 2},
     ], new Set(["valid"]));
     assert.deepEqual(plan.map((item) => item.rootId), ["valid"]);
+});
+
+test("recent closed: shared normalizer filters malformed records and bounds titles", () => {
+    const output = normalizeClosedEntries([
+        {rootId: "a", closedAt: 4, title: " A "},
+        {rootId: "a", closedAt: 3},
+        {rootId: "b", closedAt: 0},
+        {rootId: "c", closedAt: 2, title: "x".repeat(240)},
+    ], 2);
+    assert.deepEqual(output.items.map((item) => item.rootId), ["a", "c"]);
+    assert.equal(output.items[0].title, "A");
+    assert.equal(output.items[1].title.length, 200);
+    assert.equal(output.changed, true);
+});
+
+test("recent closed: recovery only returns currently available roots", () => {
+    const output = planClosedRecovery([
+        {rootId: "missing", closedAt: 4}, {rootId: "b", closedAt: 3}, {rootId: "a", closedAt: 2},
+    ], new Set(["a", "b"]));
+    assert.deepEqual(output.map((item) => item.rootId), ["b", "a"]);
 });
