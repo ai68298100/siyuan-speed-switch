@@ -18,7 +18,7 @@ function normalizeProvider(provider) {
     if (!id || !name) return null;
     const targets = normalizeTargets(provider.targets || provider.supportedSurfaces || provider.supportedDevices);
     const actions = Array.isArray(provider.actions) ? provider.actions
-        .map((action) => ({...action, providerId: id, kind: action?.kind || "adapter"}))
+        .map((action) => ({value: action?.value, label: action?.label, icon: action?.icon, kind: action?.kind || "adapter", providerId: id}))
         .filter((action) => typeof action.value === "string" && action.value.trim()) : [];
     return {id, name, targets, actions};
 }
