@@ -137,3 +137,27 @@ guarded("home adapters: diagnostics can be consumed by device without leaking th
     assert.equal(mobile.every((item) => item.device === "mobile"), true);
     assert.deepEqual(adapters.getHomeAdapterDiagnostics(), []);
 });
+
+guarded("home adapters: repeated consumption is empty and old references stay detached", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "repeat", supportedDevices: ["desktop"], read: () => ({})}]);
+    await adapters.readHomeModule(map, "repeat", "desktop", {}, {cacheTtlMs: 0});
+    const first = adapters.consumeHomeAdapterDiagnostics();
+    first.push({type: "tampered"});
+    assert.deepEqual(adapters.consumeHomeAdapterDiagnostics(), []);
+});
+
+guarded("home adapters: concurrent device reads keep diagnostics device-scoped", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([
+        {moduleId: "desktop-read", supportedDevices: ["desktop"], read: async () => ({})},
+        {moduleId: "mobile-read", supportedDevices: ["mobile"], read: async () => ({})},
+    ]);
+    await Promise.all([
+        adapters.readHomeModule(map, "desktop-read", "desktop", {}, {cacheTtlMs: 0}),
+        adapters.readHomeModule(map, "mobile-read", "mobile", {}, {cacheTtlMs: 0}),
+    ]);
+    const desktop = adapters.consumeHomeAdapterDiagnostics("desktop");
+    assert.equal(desktop.every((item) => item.device === "desktop"), true);
+    assert.equal(adapters.getHomeAdapterDiagnostics().every((item) => item.device === "mobile"), true);
+});
