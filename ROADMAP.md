@@ -306,6 +306,8 @@ pnpm build
 - 退出条件：完整门禁通过、安装升级卸载验证清晰、用户明确确认后才发布正式版本。
 - 最终发布一致性门禁交叉扫描回滚、GitHub CLI 预检和 dry-run 文档，并确认
   workflow 仍按标签预检、测试、构建和仅发布 `package.zip` 的顺序执行。
+- 发版前最终审计：`tests/host/final-package-audit.test.cjs` 只读对照插件清单、
+  README、release workflow 和实际 `package.zip` 条目数量。
 
 ### AI 能力专项：接入思源原生 Agent
 
