@@ -291,6 +291,9 @@ pnpm build
 - 发布质量：宿主配置、版本一致性、产物体积和 Android 验收边界由
   `tests/host/release-quality.test.cjs` 作为快速门禁；真实 Android SiYuan
   验收仍需在受控设备上执行，浏览器模拟只作为结构检查。
+- 发布包门禁：构建后运行 `tests/host/package-integrity.test.cjs`，检查
+  `package.zip` 白名单、资源引用、版本元数据和失败诊断路径；未生成产物时
+  允许快速测试跳过，正式发布必须先构建再执行。
 - 质量层：桌面自动化仅作结构门禁；手机必须由真实 Android 思源验收，浏览器模拟不作为证据。
 - 退出条件：首次进入无错乱，弹层不落到底层，三端核心入口稳定可用。
 

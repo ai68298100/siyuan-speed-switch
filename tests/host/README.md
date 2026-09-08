@@ -47,3 +47,9 @@ inertness after a provider unloads.
 isolated host configuration, the Android-versus-browser testing boundary,
 metadata version alignment, and the built JavaScript size budget. It does not
 start or stop SiYuan and is safe to run in CI before managed-host tests.
+
+`tests/host/package-integrity.test.cjs` validates a generated `package.zip`
+when present. It rejects unexpected files, remote runtime dependencies, and
+missing release metadata. A missing build artifact is intentionally skipped so
+the fast unit gate can run before `pnpm run build`; the release workflow must
+run the build first and then execute this test.
