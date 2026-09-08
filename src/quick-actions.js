@@ -16,7 +16,7 @@ function normalizeProvider(provider) {
     const id = normalizeQuickActionText(provider.id, 64).replace(/[^A-Za-z0-9._:-]/g, "");
     const name = normalizeQuickActionText(provider.name || provider.id, 80);
     if (!id || !name) return null;
-    const targets = normalizeTargets(provider.targets);
+    const targets = normalizeTargets(provider.targets || provider.supportedSurfaces || provider.supportedDevices);
     const actions = Array.isArray(provider.actions) ? provider.actions
         .map((action) => ({...action, providerId: id, kind: action?.kind || "adapter"}))
         .filter((action) => typeof action.value === "string" && action.value.trim()) : [];
@@ -30,6 +30,11 @@ function createQuickActionRegistry() {
         register(provider, handler) {
             const normalized = normalizeProvider(provider);
             if (!normalized) return {registered: false, reason: "invalid"};
+            const existing = providers.get(normalized.id);
+            if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
+                if (typeof handler === "function") handlers.set(normalized.id, handler);
+                return {registered: true, provider: existing, unchanged: true};
+            }
             providers.set(normalized.id, normalized);
             if (typeof handler === "function") handlers.set(normalized.id, handler);
             return {registered: true, provider: normalized};
@@ -39,7 +44,7 @@ function createQuickActionRegistry() {
             handlers.delete(id);
             return providers.delete(id);
         },
-        list() { return [...providers.values()].flatMap((provider) => provider.actions.map((action) => ({...action}))); },
+        list() { return [...providers.values()].flatMap((provider) => provider.actions.map((action) => ({...action, declaredTargets: [...provider.targets]}))); },
         invoke(action, context) {
             const providerId = normalizeQuickActionText(action?.providerId, 64);
             const handler = handlers.get(providerId);

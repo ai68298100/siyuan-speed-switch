@@ -9,6 +9,9 @@ held in memory and removed when a provider unregisters.
 Providers declare supported surfaces (`desktop`, `sidebar`, `mobile`). Unknown
 surfaces are discarded during normalization. An invocation after unload returns
 `{ok:false, reason:"unavailable"}` and never throws into the switcher UI.
+Legacy providers may use `supportedSurfaces` or `supportedDevices`; both are
+accepted as aliases and normalized to the same serializable `declaredTargets`
+metadata exposed to candidate pickers.
 
 ## Consequences
 

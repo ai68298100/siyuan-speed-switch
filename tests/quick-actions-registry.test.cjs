@@ -24,3 +24,30 @@ test("quick action registry: handler failures are contained", () => {
     registry.register({id: "bad", name: "Bad", actions: [{value: "open"}]}, () => { throw new Error("boom"); });
     assert.deepEqual(registry.invoke(registry.list()[0]), {ok: false, reason: "failed"});
 });
+
+test("quick action registry: candidates expose serializable provider capability metadata", () => {
+    const registry = createQuickActionRegistry();
+    registry.register({id: "checkin", name: "打卡", supportedSurfaces: ["desktop", "mobile"], actions: [{value: "open"}]});
+    const candidate = registry.list()[0];
+    assert.deepEqual(candidate.declaredTargets, ["desktop", "mobile"]);
+    assert.equal(typeof candidate.providerId, "string");
+    assert.equal(typeof candidate.value, "string");
+    assert.doesNotThrow(() => JSON.stringify(candidate));
+});
+
+test("quick action registry: unregister removes all provider candidates", () => {
+    const registry = createQuickActionRegistry();
+    registry.register({id: "a", name: "A", actions: [{value: "one"}, {value: "two"}]});
+    assert.equal(registry.list().length, 2);
+    registry.unregister("a");
+    assert.deepEqual(registry.list(), []);
+});
+
+test("quick action registry: repeated identical registration is idempotent", () => {
+    const registry = createQuickActionRegistry();
+    const provider = {id: "a", name: "A", targets: ["desktop"], actions: [{value: "one"}]};
+    assert.equal(registry.register(provider).registered, true);
+    const second = registry.register(provider);
+    assert.equal(second.unchanged, true);
+    assert.equal(registry.list().length, 1);
+});
