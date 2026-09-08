@@ -107,3 +107,12 @@ test("home model migrates mobile legacy fields without leaking UI-only state", (
     assert.equal(Object.prototype.hasOwnProperty.call(entry, "scrollTop"), false);
     assert.deepEqual(home.migrateHomeState(state), state);
 });
+
+test("home model ignores unknown mobile render fields at narrow widths", () => {
+    const state = home.normalizeHomeState({instances: [{moduleId: "today-journal", instanceId: "j"}], layouts: {
+        mobile: [{instanceId: "j", x: -10, y: -1, w: 0, h: 99, collapsed: false, gridColumns: 99, dragHandle: "bad"}],
+    }});
+    const entry = state.layouts.mobile[0];
+    assert.deepEqual(entry, {instanceId: "j", x: 0, y: 0, w: 1, h: 12, collapsed: false});
+    assert.deepEqual(home.normalizeHomeState(state), state);
+});
