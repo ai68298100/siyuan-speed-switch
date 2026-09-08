@@ -116,3 +116,13 @@ test("home model ignores unknown mobile render fields at narrow widths", () => {
     assert.deepEqual(entry, {instanceId: "j", x: 0, y: 0, w: 1, h: 12, collapsed: false});
     assert.deepEqual(home.normalizeHomeState(state), state);
 });
+
+test("home model preserves mobile module order and collapse across orientation", () => {
+    const input = {instances: [{moduleId: "today-journal", instanceId: "j"}, {moduleId: "today-tasks", instanceId: "t"}], layouts: {
+        mobile: [{instanceId: "j", x: 0, y: 0, collapsed: true}, {instanceId: "t", x: 0, y: 1, collapsed: false}],
+    }};
+    const portrait = home.normalizeHomeState(input);
+    const landscape = home.normalizeHomeState({...portrait, layouts: {mobile: portrait.layouts.mobile.map((entry) => ({...entry, x: 0, w: 1}))}});
+    assert.deepEqual(landscape.layouts.mobile.map((entry) => entry.instanceId), ["j", "t"]);
+    assert.equal(landscape.layouts.mobile[0].collapsed, true);
+});
