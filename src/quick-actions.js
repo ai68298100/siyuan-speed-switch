@@ -11,6 +11,49 @@ const BUILTIN_QUICK_ACTIONS = [
 ];
 const DEFAULT_QUICK_ACTIONS = BUILTIN_QUICK_ACTIONS.filter((item) => item.value === "journal" || item.value === "settings");
 
+function normalizeProvider(provider) {
+    if (!provider || typeof provider !== "object") return null;
+    const id = normalizeQuickActionText(provider.id, 64).replace(/[^A-Za-z0-9._:-]/g, "");
+    const name = normalizeQuickActionText(provider.name || provider.id, 80);
+    if (!id || !name) return null;
+    const targets = normalizeTargets(provider.targets);
+    const actions = Array.isArray(provider.actions) ? provider.actions
+        .map((action) => ({...action, providerId: id, kind: action?.kind || "adapter"}))
+        .filter((action) => typeof action.value === "string" && action.value.trim()) : [];
+    return {id, name, targets, actions};
+}
+
+function createQuickActionRegistry() {
+    const providers = new Map();
+    const handlers = new Map();
+    return {
+        register(provider, handler) {
+            const normalized = normalizeProvider(provider);
+            if (!normalized) return {registered: false, reason: "invalid"};
+            providers.set(normalized.id, normalized);
+            if (typeof handler === "function") handlers.set(normalized.id, handler);
+            return {registered: true, provider: normalized};
+        },
+        unregister(providerId) {
+            const id = normalizeQuickActionText(providerId, 64);
+            handlers.delete(id);
+            return providers.delete(id);
+        },
+        list() { return [...providers.values()].flatMap((provider) => provider.actions.map((action) => ({...action}))); },
+        invoke(action, context) {
+            const providerId = normalizeQuickActionText(action?.providerId, 64);
+            const handler = handlers.get(providerId);
+            if (!handler || !providers.has(providerId)) return {ok: false, reason: "unavailable"};
+            try {
+                const result = handler(action, context);
+                return {ok: true, result};
+            } catch {
+                return {ok: false, reason: "failed"};
+            }
+        },
+    };
+}
+
 function normalizeTargets(value) {
     if (!Array.isArray(value)) return [];
     return Array.from(new Set(value.filter((target) => QUICK_ACTION_TARGETS.includes(target))));
@@ -160,6 +203,8 @@ function getBuiltinQuickActions() {
 }
 
 module.exports = {
+    normalizeProvider,
+    createQuickActionRegistry,
     sanitizeQuickActions,
     getDefaultQuickActions,
     getBuiltinQuickActions,
