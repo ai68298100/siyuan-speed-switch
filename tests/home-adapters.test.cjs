@@ -48,6 +48,21 @@ test("home adapter bridge supports cancellation without poisoning cache", async 
     assert.equal(result.reason, "aborted");
 });
 
+test("home adapter bridge isolates cancellation and force refresh across devices", async () => {
+    adapters.clearHomeSnapshotCache();
+    const controller = new AbortController();
+    let calls = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "cross", supportedDevices: ["desktop", "mobile"], read: (_, device) => new Promise((resolve) => setTimeout(() => resolve({title: `${device}-${++calls}`}), 10))}]);
+    const cancelled = adapters.readHomeModule(map, "cross", "desktop", {}, {signal: controller.signal, timeoutMs: 50});
+    const mobile = adapters.readHomeModule(map, "cross", "mobile", {}, {force: true, timeoutMs: 50});
+    controller.abort();
+    const [first, second] = await Promise.all([cancelled, mobile]);
+    assert.equal(first.reason, "aborted");
+    assert.equal(second.ok, true);
+    const desktopAgain = await adapters.readHomeModule(map, "cross", "desktop", {}, {force: true, timeoutMs: 50});
+    assert.equal(desktopAgain.ok, true);
+});
+
 guarded("home adapters: modules are filtered by target device", () => {
     const definitions = [
         {moduleId: "desktop", title: "Desktop", supportedDevices: ["desktop"]},
