@@ -27,6 +27,7 @@ const failureBackoff = new Map();
 const diagnostics = [];
 const MAX_DIAGNOSTICS = 32;
 const inFlightReads = new Map();
+const readGenerations = new Map();
 function recordDiagnostic(type, moduleId, device) {
     diagnostics.push({type: safeText(type, 24), moduleId: safeText(moduleId, 64), device: DEVICES.includes(device) ? device : "desktop", at: Date.now()});
     if (diagnostics.length > MAX_DIAGNOSTICS) diagnostics.splice(0, diagnostics.length - MAX_DIAGNOSTICS);
@@ -99,6 +100,8 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     const adapter = map.get(safeText(moduleId, 64));
     if (!canReadAdapter(adapter, device)) return {ok: false, reason: "unsupported", snapshot: normalizeSnapshot(null)};
     const cacheKey = `${adapter.moduleId}:${device}:${JSON.stringify(normalizeConfig(config))}`;
+    const generation = (readGenerations.get(cacheKey) || 0) + 1;
+    readGenerations.set(cacheKey, generation);
     const now = Date.now();
     const failedUntil = failureBackoff.get(cacheKey) || 0;
     if (options.force !== true && failedUntil > now) {
@@ -121,17 +124,21 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         const value = await Promise.race([
             Promise.resolve(adapter.read(normalizeConfig(config), device)),
             new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
+            ...(options.signal ? [new Promise((_, reject) => {
+                if (options.signal.aborted) reject(new Error("aborted"));
+                else options.signal.addEventListener("abort", () => reject(new Error("aborted")), {once: true});
+            })] : []),
         ]);
         const snapshot = normalizeSnapshot(value);
-        snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
+        if (readGenerations.get(cacheKey) === generation) snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
         failureBackoff.delete(cacheKey);
         if (snapshot.empty) recordDiagnostic("empty", moduleId, device);
         return {ok: true, cached: false, snapshot};
     } catch (error) {
-        const reason = error?.message === "timeout" ? "timeout" : "failed";
+        const reason = error?.message === "timeout" ? "timeout" : error?.message === "aborted" ? "aborted" : "failed";
         const previous = failureBackoff.get(cacheKey) || 0;
         const delay = Math.min(30000, previous > now ? Math.max(1000, (previous - now) * 2) : 1000);
-        failureBackoff.set(cacheKey, now + delay);
+        if (reason !== "aborted" && readGenerations.get(cacheKey) === generation) failureBackoff.set(cacheKey, now + delay);
         const cached = snapshotCache.get(cacheKey);
         recordDiagnostic(reason, moduleId, device);
         return {ok: false, reason, snapshot: cached?.snapshot || normalizeSnapshot(null)};
@@ -145,6 +152,7 @@ function clearHomeSnapshotCache() {
     snapshotCache.clear();
     failureBackoff.clear();
     inFlightReads.clear();
+    readGenerations.clear();
     diagnostics.length = 0;
 }
 

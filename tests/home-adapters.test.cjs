@@ -38,6 +38,16 @@ test("home adapter bridge deduplicates concurrent reads by device and config", a
     assert.equal(results.every((item) => item.ok), true);
 });
 
+test("home adapter bridge supports cancellation without poisoning cache", async () => {
+    adapters.clearHomeSnapshotCache();
+    const controller = new AbortController();
+    const map = adapters.registerHomeAdapters([{moduleId: "cancel", supportedDevices: ["desktop"], read: () => new Promise((resolve) => setTimeout(() => resolve({title: "late"}), 20))}]);
+    const pending = adapters.readHomeModule(map, "cancel", "desktop", {}, {signal: controller.signal, timeoutMs: 50});
+    controller.abort();
+    const result = await pending;
+    assert.equal(result.reason, "aborted");
+});
+
 guarded("home adapters: modules are filtered by target device", () => {
     const definitions = [
         {moduleId: "desktop", title: "Desktop", supportedDevices: ["desktop"]},
