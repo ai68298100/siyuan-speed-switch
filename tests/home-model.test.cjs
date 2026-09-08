@@ -135,3 +135,12 @@ test("home model treats scroll position as transient while collapse is durable",
     assert.equal("scrollTop" in state.layouts.mobile[0], false);
     assert.equal("scrollY" in state.layouts.mobile[0], false);
 });
+
+test("home model mobile recovery remains stable over repeated rotations", () => {
+    let state = {instances: [{moduleId: "today-tasks", instanceId: "tasks"}], layouts: {mobile: [{instanceId: "tasks", y: 2, collapsed: true}]}};
+    const baseline = home.normalizeHomeState(state);
+    for (let index = 0; index < 20; index += 1) {
+        state = home.normalizeHomeState({...baseline, layouts: {mobile: baseline.layouts.mobile.map((entry) => ({...entry, viewport: index, scrollTop: index * 10}))}});
+    }
+    assert.deepEqual(state, baseline);
+});
