@@ -98,6 +98,19 @@ test("home adapter external providers enforce text and cache budgets", async () 
     assert.equal(cached.cached, true);
 });
 
+test("home adapter provider replacement and unload clear stale state", async () => {
+    adapters.clearHomeSnapshotCache();
+    let version = "v1";
+    const map = adapters.registerHomeAdapters([{moduleId: "replace", supportedDevices: ["desktop"], read: () => ({title: version})}]);
+    const first = await adapters.readHomeModule(map, "replace", "desktop", {}, {cacheTtlMs: 1000});
+    assert.equal(first.snapshot.title, "v1");
+    version = "v2";
+    const replacement = adapters.registerHomeAdapters([{moduleId: "replace", supportedDevices: ["desktop"], read: () => ({title: version})}]);
+    map.set("replace", replacement.get("replace"));
+    adapters.unregisterHomeAdapter(map, "replace");
+    assert.equal((await adapters.readHomeModule(map, "replace", "desktop")).reason, "unsupported");
+});
+
 test("home adapter layout persistence keeps device-specific entries separate", () => {
     const instances = [{instanceId: "a"}, {instanceId: "b"}];
     const layouts = adapters ? {
