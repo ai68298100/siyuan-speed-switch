@@ -154,7 +154,7 @@ function planHomeRefresh({visible = true, device = "desktop", stale = false, for
 }
 
 function planHomeLifecycleRefresh(event = {}, state = {}) {
-    const type = safeText(event.type, 32);
+    const type = safeText(event && typeof event === "object" ? event.type : "", 32);
     const next = {...state};
     if (type === "panel-hidden") next.visible = false;
     else if (type === "panel-visible") next.visible = true;
