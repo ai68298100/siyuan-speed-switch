@@ -31,3 +31,5 @@ assets, light talk, SQL summaries, and task lists one consistent entry point.
   checks.
 - Failed reads enter a bounded per-module/device backoff. Explicit refresh can
   bypass that backoff, while the last good or empty snapshot remains stable.
+- Diagnostics contain only bounded type, module, device, and timestamp fields;
+  raw errors and provider payloads never cross the adapter boundary.

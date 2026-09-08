@@ -24,6 +24,12 @@ const DEFAULT_READ_TIMEOUT_MS = 800;
 const DEFAULT_CACHE_TTL_MS = 3000;
 const snapshotCache = new Map();
 const failureBackoff = new Map();
+const diagnostics = [];
+const MAX_DIAGNOSTICS = 32;
+function recordDiagnostic(type, moduleId, device) {
+    diagnostics.push({type: safeText(type, 24), moduleId: safeText(moduleId, 64), device: DEVICES.includes(device) ? device : "desktop", at: Date.now()});
+    if (diagnostics.length > MAX_DIAGNOSTICS) diagnostics.splice(0, diagnostics.length - MAX_DIAGNOSTICS);
+}
 
 function safeText(value, max = MAX_TEXT) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
@@ -90,12 +96,16 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     const failedUntil = failureBackoff.get(cacheKey) || 0;
     if (options.force !== true && failedUntil > now) {
         const cached = snapshotCache.get(cacheKey);
+        recordDiagnostic("backoff", moduleId, device);
         return {ok: false, reason: "backoff", snapshot: cached?.snapshot || normalizeSnapshot(null)};
     }
     const ttl = Number.isFinite(options.cacheTtlMs) ? Math.max(0, options.cacheTtlMs) : DEFAULT_CACHE_TTL_MS;
     if (options.force !== true && ttl > 0) {
         const cached = snapshotCache.get(cacheKey);
-        if (cached && now - cached.at < ttl) return {ok: true, cached: true, snapshot: cached.snapshot};
+        if (cached && now - cached.at < ttl) {
+            recordDiagnostic("cache", moduleId, device);
+            return {ok: true, cached: true, snapshot: cached.snapshot};
+        }
     }
     try {
         const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : DEFAULT_READ_TIMEOUT_MS;
@@ -106,6 +116,7 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         const snapshot = normalizeSnapshot(value);
         snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
         failureBackoff.delete(cacheKey);
+        if (snapshot.empty) recordDiagnostic("empty", moduleId, device);
         return {ok: true, cached: false, snapshot};
     } catch (error) {
         const reason = error?.message === "timeout" ? "timeout" : "failed";
@@ -113,6 +124,7 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         const delay = Math.min(30000, previous > now ? Math.max(1000, (previous - now) * 2) : 1000);
         failureBackoff.set(cacheKey, now + delay);
         const cached = snapshotCache.get(cacheKey);
+        recordDiagnostic(reason, moduleId, device);
         return {ok: false, reason, snapshot: cached?.snapshot || normalizeSnapshot(null)};
     }
 }
@@ -122,4 +134,8 @@ function clearHomeSnapshotCache() {
     failureBackoff.clear();
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache};
+function getHomeAdapterDiagnostics() {
+    return diagnostics.map((item) => ({...item}));
+}
+
+module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics};

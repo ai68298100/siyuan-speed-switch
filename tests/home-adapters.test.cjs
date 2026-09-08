@@ -118,3 +118,13 @@ guarded("home adapters: failed reads back off and force can recover", async () =
     assert.equal(backedOff.reason, "backoff");
     assert.equal(recovered.ok, true);
 });
+
+guarded("home adapters: diagnostics are bounded and do not expose errors", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "diag", supportedDevices: ["desktop"], read: () => { throw new Error("secret token"); }}]);
+    await adapters.readHomeModule(map, "diag", "desktop", {}, {timeoutMs: 5});
+    const entries = adapters.getHomeAdapterDiagnostics();
+    assert.equal(entries.some((item) => item.type === "failed"), true);
+    assert.equal(JSON.stringify(entries).includes("secret token"), false);
+    assert.equal(entries.length <= adapters.MAX_DIAGNOSTICS, true);
+});
