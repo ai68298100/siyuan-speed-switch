@@ -27,3 +27,6 @@ same layered search flow. It uses a mock transport to verify title-hit
 short-circuiting, opened-document ordering, global fallback, cancellation, and
 deduplication/limits. A managed-host suite should mirror these cases against
 the real SiYuan endpoints once the host harness is available.
+
+`tests/recent-history.test.cjs` similarly covers recent-document storage
+normalization and recovery planning without requiring a running host.
