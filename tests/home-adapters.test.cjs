@@ -14,6 +14,13 @@ test("home adapter regression matrix remains discoverable", () => {
     assert.equal(typeof adapters?.planHomeLifecycleRefresh, "function");
     assert.equal(typeof adapters?.getHomeAdapterDiagnostics, "function");
     assert.equal(typeof adapters?.consumeHomeAdapterDiagnostics, "function");
+    assert.equal(typeof adapters?.coalesceHomeRefreshEvents, "function");
+});
+
+test("home adapter API normalizes invalid device and refresh arguments", () => {
+    assert.deepEqual(adapters.planHomeRefresh({device: "tablet", stale: true}), {shouldRefresh: true, reason: "stale", device: "desktop", delayMs: 0});
+    assert.deepEqual(adapters.planHomeLifecycleRefresh(null, {visible: true, stale: false}), {shouldRefresh: false, reason: "fresh", device: "desktop", delayMs: 0});
+    assert.deepEqual(adapters.coalesceHomeRefreshEvents("bad", {visible: true, stale: false}), {shouldRefresh: false, reason: "fresh", device: "desktop", delayMs: 0});
 });
 
 guarded("home adapters: modules are filtered by target device", () => {
