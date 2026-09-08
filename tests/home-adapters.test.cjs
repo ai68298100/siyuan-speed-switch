@@ -172,3 +172,25 @@ guarded("home adapters: unregister removes provider state and tolerates missing 
     assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.moduleId === "lifecycle"), false);
     assert.doesNotThrow(() => adapters.unregisterHomeAdapter(map, "missing"));
 });
+
+guarded("home adapters: interleaved registration and unregister remains idempotent", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "race", supportedDevices: ["desktop"], read: () => ({title: "old"})}]);
+    await adapters.readHomeModule(map, "race", "desktop", {}, {cacheTtlMs: 1000});
+    adapters.unregisterHomeAdapter(map, "race");
+    adapters.registerHomeAdapters([{moduleId: "race", supportedDevices: ["mobile"], read: () => ({title: "new"})}]).forEach((value, key) => map.set(key, value));
+    adapters.unregisterHomeAdapter(map, "race");
+    adapters.unregisterHomeAdapter(map, "race");
+    assert.equal(map.has("race"), false);
+    assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.moduleId === "race"), false);
+});
+
+guarded("home adapters: device changes do not reuse another device cache", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "switch", supportedDevices: ["desktop", "mobile"], read: (_, device) => ({title: `${device}-${++reads}`})}]);
+    const desktop = await adapters.readHomeModule(map, "switch", "desktop", {}, {cacheTtlMs: 1000});
+    const mobile = await adapters.readHomeModule(map, "switch", "mobile", {}, {cacheTtlMs: 1000});
+    assert.equal(desktop.snapshot.title, "desktop-1");
+    assert.equal(mobile.snapshot.title, "mobile-2");
+});
