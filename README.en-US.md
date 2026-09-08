@@ -12,6 +12,10 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > The current candidate package also includes a bounded full-text fallback when title search returns no documents. Results are grouped into document cards and do not replace SiYuan's native search page.
 
+### Native SiYuan Agent capabilities
+
+On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers two read-only capabilities after a runtime check: navigation state (current tabs, recent documents, and favorites) and bounded document search (with a limited native block-search fallback when title search is empty). Input, output, and text sizes are bounded. Both capabilities declare `localRead` only, with no writes, data egress, or external cost. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; future open-tab, journal, and cross-plugin actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
+
 [中文说明](./README.md)
 
 ## Core Capabilities
@@ -489,14 +493,17 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 
 **Data boundaries**: `sw_mru`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_quick_actions`, `sw_settings`, and `sw_thumb_cache` persist independently. Re-queryable search results and temporary UI state are never written to plugin data.
 
-**Test matrix**: `pnpm test` currently runs 87 unit cases; UI smoke tests run separately:
+**Test matrix**: `pnpm test` currently runs 144 unit cases; UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
 | `tests/util.test.cjs` | 13 `util.js` pure functions | 52 |
 | `tests/constants.test.cjs` | Source constant range and format checks | 6 |
 | `tests/search-session.test.cjs` | Session isolation, cancellation, versions, and cache limits | 6 |
-| `tests/quick-actions.test.cjs` | Defaults, optional built-ins, sanitization, command/adapter, and grapheme boundaries | 13 |
+| `tests/quick-actions.test.cjs` | Defaults, optional built-ins, sanitization, command/adapter, and grapheme boundaries | 21 |
+| `tests/quick-actions-ui.test.cjs` | Quick-action picker and icon-symbol boundaries | 4 |
+| `tests/search-model.test.cjs` | Search aggregation, request normalization, scopes, and cache keys | 29 |
+| `tests/agent-capabilities.test.cjs` | Agent schemas, input normalization, output bounds, registration fallback, and JSON Schema validation | 10 |
 | `tests/i18n.test.cjs` | Locale parity, static references, and value validation | 10 |
 
 | UI test | Scope |
@@ -514,7 +521,7 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # 87 unit, constant, search, quick-action, and i18n cases
+pnpm test               # 144 unit, constant, search, quick-action, Agent, and i18n cases
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 ```

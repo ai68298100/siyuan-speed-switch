@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
       copy-webpack-plugin:
         specifier: ^14.0.0
         version: 14.0.0(webpack@5.110.3)
@@ -40,7 +43,7 @@ importers:
         version: 5.9.3
       webpack:
         specifier: ^5.107.2
-        version: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+        version: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-cli:
         specifier: ^7.0.3
         version: 7.2.3(json5@2.2.3)(webpack@5.110.3)
@@ -1482,7 +1485,7 @@ snapshots:
       schema-utils: 4.3.3
       serialize-javascript: 7.1.1
       tinyglobby: 0.2.17
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
   cross-spawn@7.0.6:
     dependencies:
@@ -1501,7 +1504,7 @@ snapshots:
       postcss-value-parser: 4.2.0
       semver: 7.8.5
     optionalDependencies:
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
   css-tree@3.2.1:
     dependencies:
@@ -1544,7 +1547,7 @@ snapshots:
       esbuild: 0.28.2
       get-tsconfig: 4.14.3
       loader-utils: 2.0.4
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-sources: 3.5.1
 
   esbuild@0.28.2:
@@ -1712,16 +1715,17 @@ snapshots:
     dependencies:
       schema-utils: 4.3.3
       tapable: 2.3.3
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
-  minimizer-webpack-plugin@5.8.0(postcss@8.5.26)(webpack@5.110.3):
+  minimizer-webpack-plugin@5.8.0(esbuild@0.28.2)(postcss@8.5.26)(webpack@5.110.3):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.3.3
       terser: 5.51.2
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
     optionalDependencies:
+      esbuild: 0.28.2
       postcss: 8.5.26
 
   nanoid@3.3.18: {}
@@ -1825,7 +1829,7 @@ snapshots:
   sass-loader@17.0.1(sass@1.103.1)(webpack@5.110.3):
     optionalDependencies:
       sass: 1.103.1
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
 
   sass@1.103.1:
     dependencies:
@@ -1947,7 +1951,7 @@ snapshots:
       import-local: 3.2.0
       interpret: 3.1.1
       rechoir: 0.8.0
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-merge: 6.0.1
     optionalDependencies:
       json5: 2.2.3
@@ -1960,7 +1964,7 @@ snapshots:
 
   webpack-sources@3.5.1: {}
 
-  webpack@5.110.3(postcss@8.5.26)(webpack-cli@7.2.3):
+  webpack@5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3):
     dependencies:
       '@types/estree': 1.0.9
       '@types/json-schema': 7.0.15
@@ -1975,7 +1979,7 @@ snapshots:
       events: 3.3.0
       graceful-fs: 4.2.11
       mime-db: 1.54.0
-      minimizer-webpack-plugin: 5.8.0(postcss@8.5.26)(webpack@5.110.3)
+      minimizer-webpack-plugin: 5.8.0(esbuild@0.28.2)(postcss@8.5.26)(webpack@5.110.3)
       neo-async: 2.6.2
       schema-utils: 4.3.3
       tapable: 2.3.3
@@ -2031,7 +2035,7 @@ snapshots:
 
   zip-webpack-plugin@4.0.3(webpack-sources@3.5.1)(webpack@5.110.3):
     dependencies:
-      webpack: 5.110.3(postcss@8.5.26)(webpack-cli@7.2.3)
+      webpack: 5.110.3(esbuild@0.28.2)(postcss@8.5.26)(webpack-cli@7.2.3)
       webpack-sources: 3.5.1
       yazl: 2.5.1
 

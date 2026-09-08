@@ -6,6 +6,9 @@ const {
     normalizeSearchFilters,
     buildSearchCacheKey,
     normalizeSearchResult,
+    searchResultNotebookId,
+    normalizeTitleSearchDocuments,
+    filterSearchDocuments,
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,
@@ -315,6 +318,48 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentScope({rootId: "tab-1", notebookId: "box-a", path: "box-a/root.sy"}), null);
     assert.equal(buildOpenedDocumentScope({rootId: ROOT_A, notebookId: "box-a", path: "box-a/hidden';--.sy"}), null);
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
+});
+
+test("search model: notebook-only filters produce a native path scope", () => {
+    const request = buildFullTextSearchRequest({query: "项目", filters: {notebook: "box-a"}});
+    assert.deepEqual(request.body.paths, ["box-a"]);
+    assert.equal(request.body.notebook, "box-a");
+});
+
+test("search model: accepts native searchDocs box metadata", () => {
+    const native = {
+        box: "box-a",
+        path: `/${ROOT_A}.sy`,
+        hPath: "/工作/项目文档",
+    };
+    assert.equal(searchResultNotebookId(native), "box-a");
+    assert.equal(normalizeSearchResult(native, "global").notebookId, "box-a");
+    assert.deepEqual(normalizeTitleSearchDocuments([native]).map((item) => ({
+        id: item.id,
+        rootId: item.rootId,
+        title: item.title,
+        notebookId: item.notebookId,
+        source: item.source,
+    })), [{
+        id: ROOT_A,
+        rootId: ROOT_A,
+        title: "项目文档",
+        notebookId: "box-a",
+        source: "title",
+    }]);
+    assert.deepEqual(filterSearchDocuments([native], {notebook: "box-a"}), [native]);
+    assert.deepEqual(filterSearchDocuments([native], {notebook: "box-b"}), []);
+    assert.deepEqual(filterSearchDocuments([{...native, box: undefined}], {notebook: "box-a"}), []);
+});
+
+test("search model: filters native document paths inside an explicit notebook", () => {
+    const docs = [
+        {id: ROOT_A, box: "box-a", path: "/work/a.sy"},
+        {id: ROOT_B, box: "box-a", path: "/other/b.sy"},
+        {id: ROOT_C, box: "box-b", path: "/work/c.sy"},
+    ];
+    assert.deepEqual(filterSearchDocuments(docs, {paths: ["box-a/work"]}), [docs[0]]);
+    assert.deepEqual(filterSearchDocuments(docs, {notebook: "box-a", paths: ["box-a/work"]}), [docs[0]]);
 });
 
 test("search model: cache keys isolate notebook and path filters", () => {

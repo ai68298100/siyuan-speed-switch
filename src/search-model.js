@@ -244,7 +244,7 @@ function normalizeSearchResult(raw, source) {
     const blockId = directId || null;
     const snippet = resultSnippet(raw);
     const updated = firstText(...nestedValues(raw, ["updated", "updatedAt", "updated_at"]));
-    const notebookId = firstText(...nestedValues(raw, ["notebookId", "notebookID", "notebook_id"]));
+    const notebookId = firstText(...nestedValues(raw, ["notebookId", "notebookID", "notebook_id", "box"]));
     const type = firstText(...nestedValues(raw, ["type"]));
     const subType = firstText(...nestedValues(raw, ["subType", "subtype", "sub_type"]));
     return {
@@ -560,7 +560,13 @@ function buildFullTextSearchRequest(input = {}) {
     if (method === 2) method = 0;
     const semanticAvailable = source.capabilities?.semanticSearch === true || get("semanticAvailable", false) === true;
     if (method === 4 && !semanticAvailable) method = 0;
+    const notebook = normalizeText(get("notebook", ""), 64);
     const paths = normalizeSearchPaths(get("paths", get("idPath", [])));
+    if (isSafeSearchBoxId(notebook) && paths.length === 0) {
+        // SiYuan 3.8.x derives ordinary notebook scope from `paths`; the
+        // standalone `notebook` field is reserved for special notebook modes.
+        paths.push(notebook);
+    }
     const body = {
         query,
         method,
@@ -573,7 +579,6 @@ function buildFullTextSearchRequest(input = {}) {
         pageSize: normalizePositiveInt(get("pageSize", DEFAULT_SEARCH_PAGE_SIZE), DEFAULT_SEARCH_PAGE_SIZE, 1, 100),
         searchHPath: get("searchHPath", true) !== false,
     };
-    const notebook = normalizeText(get("notebook", ""), MAX_PATH_LENGTH);
     if (isSafeSearchBoxId(notebook) && (paths.length === 0 || paths.every((path) => path.split("/", 1)[0] === notebook))) {
         body.notebook = notebook;
     }
@@ -629,10 +634,7 @@ function buildOpenedDocumentScope(tab) {
         source.rootId || source.rootID || source.documentId || current.rootID || current.rootId
         || initData?.rootId || initData?.rootID || "", MAX_PATH_LENGTH);
     if (!BLOCK_ID_RE.test(rootId)) return null;
-    const notebook = normalizeText(
-        source.notebookId || source.notebookID || source.box || current.notebookID || current.notebookId
-        || current.box || model.notebookID || model.notebookId || model.box || initData?.notebookId
-        || initData?.notebookID || initData?.box || "", MAX_PATH_LENGTH);
+    const notebook = resolveSearchNotebookId(source, current, model, initData);
     const rawPath = normalizeText(
         source.path || source.hPath || current.path || current.hPath || model.path || model.hPath
         || initData?.path || initData?.hPath || "", MAX_PATH_LENGTH).replace(/\\/g, "/");
@@ -660,6 +662,77 @@ function buildOpenedDocumentSearchRequest(input = {}) {
     });
     if (!request) return null;
     return {...request, scope};
+}
+
+function resolveSearchNotebookId(tab, currentOverride, modelOverride, initDataOverride) {
+    const source = tab && typeof tab === "object" ? tab : {};
+    const current = currentOverride || (source.current && typeof source.current === "object" ? source.current : {});
+    const model = modelOverride || (source.model && typeof source.model === "object" ? source.model : {});
+    let initData = initDataOverride;
+    if (!initData) {
+        try {
+            const rawInit = source.headElement?.getAttribute?.("data-initdata")
+                || source.headElement?.dataset?.initdata;
+            if (rawInit) initData = JSON.parse(rawInit);
+        } catch {
+            initData = null;
+        }
+    }
+    return firstText(
+        source.notebookId, source.notebookID, source.notebook_id, source.box,
+        current.notebookID, current.notebookId, current.notebook_id, current.box,
+        model.notebookID, model.notebookId, model.notebook_id, model.box,
+        initData?.notebookId, initData?.notebookID, initData?.notebook_id, initData?.box,
+    );
+}
+
+function searchResultNotebookId(raw) {
+    return firstText(...nestedValues(raw, ["notebookId", "notebookID", "notebook_id", "box"]));
+}
+
+function normalizeTitleSearchDocuments(documents) {
+    return (Array.isArray(documents) ? documents : []).reduce((output, document) => {
+        if (!document || typeof document !== "object") return output;
+        const normalized = normalizeSearchResult(document, "global");
+        if (!normalized) return output;
+        output.push({
+            ...document,
+            id: normalized.rootId,
+            rootId: normalized.rootId,
+            title: normalized.title,
+            path: document.path || normalized.path,
+            hPath: document.hPath || normalized.path,
+            notebookId: normalized.notebookId || searchResultNotebookId(document),
+            source: "title",
+        });
+        return output;
+    }, []);
+}
+
+/**
+ * Keep title-search filtering compatible with SiYuan's native `searchDocs`
+ * records. Current hosts expose the notebook as `box`, while older adapters
+ * may use a notebookId alias. When a notebook is requested, records without
+ * an explicit notebook signal are rejected instead of broadening the search.
+ */
+function filterSearchDocuments(documents, filters = {}) {
+    const source = filters && typeof filters === "object" ? filters : {};
+    const notebook = normalizeText(source.notebook, 64);
+    const paths = normalizeSearchPaths(source.paths);
+    if (!notebook && paths.length === 0) return Array.isArray(documents) ? documents : [];
+    return (Array.isArray(documents) ? documents : []).filter((document) => {
+        if (!document || typeof document !== "object") return false;
+        const documentNotebook = searchResultNotebookId(document);
+        if (notebook && documentNotebook !== notebook) return false;
+        if (paths.length === 0) return true;
+        const rawPath = normalizeText(
+            document.path || document.rootPath || document.root_path || document.idPath || document.hPath || "",
+            MAX_PATH_LENGTH,
+        ).replace(/\\/g, "/").replace(/^\/+/, "");
+        if (!rawPath) return false;
+        const scopedPath = documentNotebook ? `${documentNotebook}/${rawPath}` : rawPath;
+        return paths.some((path) => scopedPath === path || scopedPath.startsWith(`${path}/`));
+    });
 }
 
 /**
@@ -696,6 +769,9 @@ module.exports = {
     normalizeSearchLimits,
     buildSearchCacheKey,
     normalizeSearchResult,
+    searchResultNotebookId,
+    normalizeTitleSearchDocuments,
+    filterSearchDocuments,
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,
@@ -704,6 +780,7 @@ module.exports = {
     buildFullTextSearchRequest,
     extractSearchRecords,
     buildOpenedDocumentScope,
+    resolveSearchNotebookId,
     buildOpenedDocumentSearchRequest,
     buildOpenedDocumentSearchRequests,
 };

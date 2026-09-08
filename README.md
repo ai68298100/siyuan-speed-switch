@@ -12,6 +12,10 @@
 
 > 当前候选包已包含受限的搜索增量：标题没有命中时，会在容量和字段受限的前提下回退到思源全文块搜索并聚合为文档卡片；这不是原生搜索页的完整替代，也不会改变已打开页签优先的顺序。
 
+### 思源原生 Agent 能力
+
+在支持 `addAgentCapability` 的思源版本（当前按 3.8.3 源码适配）中，插件会按宿主能力检测注册两项只读能力：导航状态（当前页签、最近打开和收藏摘要）以及受限文档搜索（标题无结果时使用容量受限的原生块搜索回退）。能力输入、输出和文本长度均有边界，声明 `localRead` 且不声明写入、外传或外部成本；旧版思源会自动跳过注册，不影响页签切换和手机端加载。能力由思源 Agent 的策略和生命周期统一管理，插件卸载时由宿主清理。后续的打开页签、日记和跨插件动作会在完成人工确认、取消和权限拒绝测试后再逐步开放，详见 [ROADMAP.md](./ROADMAP.md) 的 AI 能力专项。
+
 [English README](./README.en-US.md)
 
 ## 核心能力
@@ -489,14 +493,17 @@
 
 **数据边界**：`sw_mru`、`sw_pinned`、`sw_favorites`、`sw_fav_groups`、`sw_fav_collapsed`、`sw_quick_actions`、`sw_settings` 和 `sw_thumb_cache` 分项保存。可重新查询的搜索结果和临时界面状态不写入插件数据。
 
-**测试矩阵**：`pnpm test` 当前运行 87 项单元测试；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 当前运行 144 项单元测试；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
 | `tests/util.test.cjs` | 13 个 `util.js` 纯函数 | 52 |
 | `tests/constants.test.cjs` | 真实源码常量的范围与格式自洽 | 6 |
 | `tests/search-session.test.cjs` | 会话隔离、取消、版本与缓存上限 | 6 |
-| `tests/quick-actions.test.cjs` | 默认值、可选内置项、清理、命令/适配器与字素边界 | 13 |
+| `tests/quick-actions.test.cjs` | 默认值、可选内置项、清理、命令/适配器与字素边界 | 21 |
+| `tests/quick-actions-ui.test.cjs` | 快捷入口选择器和图标符号边界 | 4 |
+| `tests/search-model.test.cjs` | 搜索聚合、请求归一化、范围和缓存 key | 29 |
+| `tests/agent-capabilities.test.cjs` | Agent 能力 schema、输入归一化、输出边界、注册降级和 JSON Schema 验证 | 10 |
 | `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 | 10 |
 
 | UI 测试 | 覆盖范围 |
@@ -514,7 +521,7 @@
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 87 项单元、常量、搜索、快捷入口和 i18n 测试
+pnpm test               # 144 项单元、常量、搜索、快捷入口、Agent 和 i18n 测试
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
 ```

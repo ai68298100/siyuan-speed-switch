@@ -3,7 +3,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, buildSearchCacheKey, extractSearchRecords, normalizeSearchResult} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, buildSearchCacheKey, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -14,6 +14,16 @@ import {
     appendQuickAction,
 } from "./quick-actions";
 import {mountQuickActionPicker} from "./quick-actions-ui";
+import {
+    AGENT_CAPABILITY_SPECS,
+    MAX_SEARCH_ITEMS,
+    buildAgentNavigationResult,
+    buildAgentSearchResult,
+    normalizeAgentLimit,
+    normalizeAgentNotebook,
+    normalizeAgentQuery,
+    registerReadOnlyAgentCapabilities,
+} from "./agent-capabilities";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -163,6 +173,9 @@ interface IDocSearchResult {
     title?: string;
     path?: string;
     hPath?: string;
+    notebookId?: string;
+    notebookID?: string;
+    box?: string;
     blockIds?: string[];
     snippets?: Array<{text?: string; blockId?: string | null}>;
     source?: string;
@@ -195,10 +208,11 @@ declare module "./search-model" {
         blockIds?: number;
         source?: string;
     }): {cards: Array<{
-        rootId: string;
-        title: string;
-        path: string;
-        blockIds?: string[];
+         rootId: string;
+         title: string;
+         path: string;
+         notebookId?: string;
+         blockIds?: string[];
         snippets: Array<{text: string; blockId?: string | null}>;
     }>};
     export function buildFullTextSearchRequest(input?: Record<string, unknown>): {
@@ -207,7 +221,17 @@ declare module "./search-model" {
     } | null;
     export function buildSearchCacheKey(input?: Record<string, unknown>): string;
     export function extractSearchRecords(payload: unknown): unknown[];
-    export function normalizeSearchResult(value: unknown, source?: string): {rootId: string; blockId?: string; title?: string; path?: string} | null;
+    export function normalizeSearchResult(value: unknown, source?: string): {
+        rootId: string;
+        blockId?: string;
+        title?: string;
+        path?: string;
+        notebookId?: string;
+    } | null;
+    export function filterSearchDocuments(value: unknown[], filters?: Record<string, unknown>): unknown[];
+    export function normalizeTitleSearchDocuments(value: unknown[]): unknown[];
+    export function resolveSearchNotebookId(value: unknown, current?: unknown, model?: unknown, initData?: unknown): string;
+    export function buildOpenedDocumentScope(value: unknown): {rootId: string; notebook: string; path: string} | null;
     export function buildOpenedDocumentSearchRequests(tabs: unknown[], query: string, options?: Record<string, unknown>): Array<{
         endpoint: string;
         body: Record<string, unknown>;
@@ -389,6 +413,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
     private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
+    private activeAgentSearchControllers = new Set<AbortController>();
     private docSearchFilters = new WeakMap<HTMLElement, IDocSearchFilters>();
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
@@ -443,6 +468,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.showSwitcher();
             },
         });
+        this.registerAgentCapabilities();
     }
 
     // 棰勫姞杞?7 涓寔涔呭寲 key锛歭oadData 鍐欏叆 this.data锛岃 getMru 绛夎兘璇诲埌鏃у€?
@@ -585,6 +611,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         const pendingSaves = this.flushPendingSaves();
         this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
         this.activeDocSearchSessions.clear();
+        this.activeAgentSearchControllers.forEach((controller) => controller.abort());
+        this.activeAgentSearchControllers.clear();
         this.switcherRefreshers.clear();
         this.quickActionAdapters.clear();
         this.quickActionAdapterTargets.clear();
@@ -2920,22 +2948,23 @@ if ((e as DOMException)?.name !== "AbortError") {
     }
 
     private filterDocSearchResults(docs: IDocSearchResult[], filters: IDocSearchFilters): IDocSearchResult[] {
-        const notebook = typeof filters.notebook === "string" ? filters.notebook.trim() : "";
-        const paths = Array.isArray(filters.paths) ? filters.paths.filter(Boolean) : [];
-        if (!notebook && paths.length === 0) return docs;
-        return docs.filter((doc) => {
-            const path = String(doc.path || doc.hPath || "").replace(/\\/g, "/");
-            if (notebook && path.split("/")[0] !== notebook) return false;
-            return paths.length === 0 || paths.some((candidate) => path === candidate || path.startsWith(`${candidate}/`));
-        });
+        return filterNativeSearchDocuments(docs, filters) as IDocSearchResult[];
     }
 
-    private async runFullTextSearchFallback(keyword: string, signal: AbortSignal, filters: IDocSearchFilters = {}): Promise<IDocSearchResult[] | null> {
+    private async runFullTextSearchFallback(
+        keyword: string,
+        signal: AbortSignal,
+        filters: IDocSearchFilters = {},
+        documents = DOC_RESULT_LIMIT,
+    ): Promise<IDocSearchResult[] | null> {
+        // Keep one overflow card available for Agent callers to report a
+        // truthful `truncated` flag. UI callers still pass DOC_RESULT_LIMIT.
+        const documentLimit = Math.min(33, Math.max(1, Math.floor(Number(documents) || DOC_RESULT_LIMIT)));
         const request = buildFullTextSearchRequest({
             query: keyword,
             method: "keyword",
             groupBy: "document",
-            pageSize: Math.max(DOC_RESULT_LIMIT * 2, 24),
+            pageSize: Math.max(documentLimit * 2, 24),
             filters,
         });
         if (!request) {
@@ -2954,21 +2983,26 @@ if ((e as DOMException)?.name !== "AbortError") {
             const payload = await response.json();
             const aggregate = aggregateSearchResults(extractSearchRecords(payload), {
                 source: "global",
-                documents: DOC_RESULT_LIMIT,
+                documents: documentLimit,
                 snippets: 2,
                 blockIds: 8,
             });
-            return aggregate.cards.map((card) => ({
+            const mapped = aggregate.cards.map((card) => ({
                 id: card.rootId,
                 rootId: card.rootId,
                 name: card.title,
                 title: card.title,
                 path: card.path,
                 hPath: card.path,
+                notebookId: card.notebookId,
                 blockIds: card.blockIds,
                 snippets: card.snippets,
                 source: "global",
             }));
+            const scoped = filters.notebook
+                ? mapped.filter((doc) => doc.notebookId === filters.notebook)
+                : mapped;
+            return scoped.slice(0, documentLimit);
         } catch (error) {
             if ((error as DOMException)?.name === "AbortError") {
                 throw error;
@@ -3235,6 +3269,183 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             logger.warn("get active tab fail", e);
         }
         return undefined;
+    }
+
+    /**
+     * Register only bounded, read-only Agent capabilities. The method is
+     * deliberately runtime-gated so the plugin remains compatible with older
+     * SiYuan releases whose Plugin base class predates addAgentCapability.
+     */
+    private registerAgentCapabilities() {
+        const pluginWithAgent = this as unknown as {
+            addAgentCapability?: (options: Record<string, unknown>) => string;
+        };
+        registerReadOnlyAgentCapabilities(pluginWithAgent, [
+            {
+                spec: AGENT_CAPABILITY_SPECS.navigation,
+                handler: async (args: Record<string, unknown>) => {
+                    try {
+                        const limit = normalizeAgentLimit(args?.limit, 12);
+                        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+                        const active = this.isMobile
+                            ? opened.find((tab) => tab.id === this.getMobileActiveTabId())
+                            : this.getActiveTab();
+                        const activeTabId = active?.id || "";
+                        const activeId = active ? (this.rootIdOf(active) || activeTabId) : null;
+                        const tabs = opened.map((tab) => ({
+                            id: tab.id,
+                            rootId: this.rootIdOf(tab) || undefined,
+                            title: this.titleOf(tab),
+                            path: (tab as unknown as {path?: string; hPath?: string}).path
+                                || (tab as unknown as {hPath?: string}).hPath || undefined,
+                            notebookId: resolveSearchNotebookId(tab as unknown) || undefined,
+                            active: activeTabId ? tab.id === activeTabId : (this.rootIdOf(tab) || tab.id) === activeId,
+                        }));
+                        const recent = this.getOpenHistory().map((entry) => ({
+                            id: entry.key,
+                            rootId: entry.rootId || undefined,
+                            title: entry.title,
+                            ts: entry.ts,
+                            source: "recent",
+                        }));
+                        const favorites = this.getFavorites().map((entry) => ({
+                            id: entry.key,
+                            rootId: this.resolveFavRootId(entry) || undefined,
+                            title: entry.title,
+                            group: entry.group,
+                            source: "favorite",
+                        }));
+                        const content = buildAgentNavigationResult({
+                            activeId: activeId || "",
+                            mobile: this.isMobile,
+                            tabs,
+                            recent,
+                            favorites,
+                            limit,
+                        });
+                        return {structuredContent: content, result: JSON.stringify(content)};
+                    } catch (error) {
+                        logger.warn("Agent navigation unavailable", error);
+                        return {error: "navigation unavailable"};
+                    }
+                },
+            },
+            {
+                spec: AGENT_CAPABILITY_SPECS.search,
+                handler: async (args: Record<string, unknown>) => this.searchAgentDocuments(args),
+            },
+        ], (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+    }
+
+    private async searchAgentDocuments(args: Record<string, unknown> = {}) {
+        const query = normalizeAgentQuery(args.query);
+        if (!query) {
+            return {error: "query is required"};
+        }
+        const filters: IDocSearchFilters = {};
+        const hasNotebookArgument = args.notebook !== undefined && args.notebook !== null
+            && String(args.notebook).trim() !== "";
+        const notebook = normalizeAgentNotebook(args.notebook);
+        if (hasNotebookArgument && !notebook) {
+            return {error: "invalid notebook id"};
+        }
+        if (notebook) filters.notebook = notebook;
+        const limit = normalizeAgentLimit(args.limit, DOC_RESULT_LIMIT);
+        const controller = new AbortController();
+        this.activeAgentSearchControllers.add(controller);
+        const timer = window.setTimeout(() => controller.abort(), NOTEBOOK_FETCH_TIMEOUT_MS);
+        try {
+            const localTabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+            const queryLower = query.toLocaleLowerCase();
+            const localItems = localTabs.map((tab) => {
+                const rootId = this.rootIdOf(tab) || "";
+                const title = this.titleOf(tab);
+                const path = String((tab as unknown as {path?: string; hPath?: string}).path
+                    || (tab as unknown as {hPath?: string}).hPath || "");
+                const notebookId = resolveSearchNotebookId(tab as unknown);
+                if (notebook && notebookId !== notebook) return null;
+                if (!`${title} ${path}`.toLocaleLowerCase().includes(queryLower)) return null;
+                return {
+                    id: rootId || tab.id,
+                    rootId: rootId || undefined,
+                    title,
+                    path: path || undefined,
+                    notebookId: notebookId || undefined,
+                    source: "tabs",
+                };
+            }).filter(Boolean) as Array<Record<string, unknown>>;
+
+            // A local tab match already satisfies the requested bound. Avoid
+            // waking the file tree or full-text endpoint in that case.
+            if (localItems.length >= limit) {
+                const content = buildAgentSearchResult(query, localItems, {source: "tabs", limit});
+                return {structuredContent: content, result: JSON.stringify(content)};
+            }
+
+            let docs: IDocSearchResult[] = [];
+            let titleSearchAvailable = true;
+            try {
+                const response = await fetch("/api/filetree/searchDocs", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({k: query}),
+                    signal: controller.signal,
+                });
+                if (!response.ok) throw new Error(`searchDocs HTTP ${response.status}`);
+                const json = await response.json();
+                const rawDocs = Array.isArray(json?.data)
+                    ? json.data.slice(0, MAX_SEARCH_ITEMS * 2).filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
+                    : [];
+                // Native v3.8.x searchDocs records commonly contain only
+                // {path, hPath, box, boxIcon}. Normalize the root/title
+                // before applying Agent bounds, otherwise valid title hits
+                // would be discarded as unidentifiable objects.
+                docs = normalizeTitleSearchDocuments(rawDocs) as IDocSearchResult[];
+                docs = this.filterDocSearchResults(docs, filters);
+            } catch (error) {
+                if ((error as DOMException)?.name === "AbortError") throw error;
+                titleSearchAvailable = false;
+                logger.warn("Agent title search unavailable", error);
+            }
+
+            let source = localItems.length > 0 ? "tabs" : "title";
+            if (docs.length === 0) {
+                const fallback = await this.runFullTextSearchFallback(query, controller.signal, filters, Math.min(33, limit + 1));
+                if (fallback !== null) {
+                    docs = fallback;
+                    source = localItems.length > 0 ? "tabs+global" : "global";
+                } else if (localItems.length === 0) {
+                    if (!titleSearchAvailable) return {error: "search unavailable"};
+                    const content = buildAgentSearchResult(query, [], {source: "title", limit});
+                    return {structuredContent: content, result: JSON.stringify(content)};
+                }
+            } else if (localItems.length > 0) {
+                source = "tabs+title";
+            }
+            const items = localItems.concat(docs.map((doc) => ({
+                id: doc.id || doc.rootId,
+                rootId: doc.rootId || doc.id,
+                title: doc.title || doc.name,
+                path: doc.path || doc.hPath,
+                notebookId: doc.notebookId || doc.notebookID || doc.box,
+                source: doc.source || (source.includes("title") ? "title" : source.includes("global") ? "global" : source),
+                blockIds: doc.blockIds,
+                snippets: doc.snippets?.map((snippet) => snippet?.text || "").filter(Boolean),
+            })));
+            const content = buildAgentSearchResult(query, items, {
+                source,
+                limit,
+                truncated: docs.length > limit,
+            });
+            return {structuredContent: content, result: JSON.stringify(content)};
+        } catch (error) {
+            if ((error as DOMException)?.name === "AbortError") return {error: "search timed out or was cancelled"};
+            logger.warn("Agent search fail", error);
+            return {error: "search unavailable"};
+        } finally {
+            window.clearTimeout(timer);
+            this.activeAgentSearchControllers.delete(controller);
+        }
     }
 
     // 鎸夊叧閿瓧杩囨护鍗＄墖锛屾暣缁勬棤鍖归厤鏃堕殣钘忓垎缁勶紱杩斿洖鍙鍗＄墖鏁?
