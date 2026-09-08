@@ -52,6 +52,8 @@ Release diagnostics use stable bounded categories: `BUILD_FAILED`,
 The GitHub CLI (`gh`) is optional; release preflight only performs
 non-destructive checks and never mutates repositories or releases.
 
+Rollback preflight validates a recoverable release reference before any upload.
+
 `tests/host/release-quality.test.cjs` is a fast release gate. It validates the
 isolated host configuration, the Android-versus-browser testing boundary,
 metadata version alignment, and the built JavaScript size budget. It does not
