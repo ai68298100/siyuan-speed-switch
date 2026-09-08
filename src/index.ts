@@ -421,6 +421,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
     private quickActionProviders = new Map<string, IQuickActionProvider>();
+    private quickActionProviderTokens = new Map<string, symbol>();
     private quickActionRegistry = createQuickActionRegistry();
     private switcherRefreshFrame: number | null = null;
     private sidebarElement: HTMLElement | null = null; // 渚ц竟鏍?dock 闈㈡澘鍐呭鍏冪礌
@@ -620,6 +621,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.quickActionAdapters.clear();
         this.quickActionAdapterTargets.clear();
         this.quickActionProviders.clear();
+        this.quickActionProviderTokens.clear();
         this.quickActionRegistry = createQuickActionRegistry();
         if (this.switcherRefreshFrame !== null) {
             cancelAnimationFrame(this.switcherRefreshFrame);
@@ -2065,6 +2067,8 @@ const version = beginSearch(session);
         }
         const adapterId = options.id;
         const actionValue = options.value ? `${adapterId}/${options.value}` : adapterId;
+        const registrationToken = Symbol(actionValue);
+        this.quickActionProviderTokens.set(actionValue, registrationToken);
         const safeActionId = `${adapterId}-${options.value || "action"}`.replace(/[^A-Za-z0-9_-]/g, "-");
         const declaredTargets = Array.isArray(options.targets) ? options.targets : undefined;
         this.quickActionRegistry.register({
@@ -2107,6 +2111,8 @@ const version = beginSearch(session);
             this.saveQuickActions(actions);
         }
         return () => {
+            if (this.quickActionProviderTokens.get(actionValue) !== registrationToken) return;
+            this.quickActionProviderTokens.delete(actionValue);
             unregisterAdapter();
             this.quickActionProviders.delete(actionValue);
             this.quickActionRegistry.unregister(adapterId);
