@@ -304,6 +304,8 @@ pnpm build
 - 工程层：更新 README、截图、迁移说明、测试统计、版本号、打包和 GitHub CLI 发布流程。
 - 宿主测试层：参考 `siyuan-testing` 建立托管思源实例、隔离工作区、单 worker UI、等待公开状态和失败保留诊断数据的端到端门禁（见 `docs/adr/0005-host-e2e-testing.md`）。
 - 退出条件：完整门禁通过、安装升级卸载验证清晰、用户明确确认后才发布正式版本。
+- 最终发布一致性门禁交叉扫描回滚、GitHub CLI 预检和 dry-run 文档，并确认
+  workflow 仍按标签预检、测试、构建和仅发布 `package.zip` 的顺序执行。
 
 ### AI 能力专项：接入思源原生 Agent
 
