@@ -17,6 +17,9 @@ test('package.zip, when present, contains only release files', () => {
     const allowed = /^(index\.js|index\.css|icon\.png|preview\.png|README(?:\.en-US)?\.md|ROADMAP\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg)$/;
     const files = filesInZip(zip);
     assert.ok(files.length > 0);
+    assert.equal(new Set(files).size, files.length, 'package.zip must not contain duplicate entries');
+    assert.equal(files.some((file) => file.startsWith('/') || /^[A-Za-z]:/.test(file)), false,
+        'package.zip entries must be relative paths');
     assert.deepEqual(files.filter((file) => !allowed.test(file)), [], 'unexpected files in package.zip');
 });
 
