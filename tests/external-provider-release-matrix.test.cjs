@@ -16,3 +16,15 @@ test("external provider release matrix covers checkin, assets and light-talk", a
     ids.forEach((id) => adapters.unregisterHomeAdapter(map, id));
     assert.equal(map.size, 0);
 });
+
+test("external provider matrix respects declared device differences", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([
+        {moduleId: "checkin", supportedDevices: ["desktop", "mobile"], read: () => ({items: [{label: "ok"}]})},
+        {moduleId: "data-assets", supportedDevices: ["desktop"], read: () => ({items: [{label: "ok"}]})},
+        {moduleId: "light-talk", supportedDevices: ["desktop", "sidebar", "mobile"], read: () => ({items: [{label: "ok"}]})},
+    ]);
+    assert.equal((await adapters.readHomeModule(map, "checkin", "mobile")).ok, true);
+    assert.equal((await adapters.readHomeModule(map, "data-assets", "mobile")).reason, "unsupported");
+    assert.equal((await adapters.readHomeModule(map, "light-talk", "mobile")).ok, true);
+});
