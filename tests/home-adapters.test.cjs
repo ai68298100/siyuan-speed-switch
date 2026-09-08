@@ -254,3 +254,13 @@ guarded("home adapters: high frequency lifecycle events are coalesced with a bou
     assert.equal(plan.delayMs, 500);
     assert.equal(adapters.coalesceHomeRefreshEvents([], {visible: false}).reason, "hidden");
 });
+
+guarded("home adapters: refresh coalescing preserves force priority and ignores malformed events", () => {
+    const forced = adapters.coalesceHomeRefreshEvents([{type: "panel-hidden"}, {type: "force-refresh"}], {visible: true, device: "desktop"});
+    assert.equal(forced.shouldRefresh, true);
+    assert.equal(forced.reason, "force");
+    const hidden = adapters.coalesceHomeRefreshEvents([{type: "tab-changed"}, {type: "panel-hidden"}], {visible: true, stale: false});
+    assert.equal(hidden.reason, "hidden");
+    const malformed = adapters.coalesceHomeRefreshEvents([null, {}, {type: "unknown"}], {visible: true, stale: false});
+    assert.equal(malformed.reason, "fresh");
+});
