@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords} = require("../src/recent-closed.js");
+const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan} = require("../src/recent-closed.js");
 
 function capClosed(entries, max = 50) {
     return (Array.isArray(entries) ? entries : [])
@@ -70,4 +70,14 @@ test("recent records: merge keeps open records first and removes duplicate roots
         [{rootId: "b", title: "Closed B", closedAt: 7}, {rootId: "c", title: "Closed C", closedAt: 6}],
     );
     assert.deepEqual(output.map((item) => [item.rootId, item.source]), [["a", "open"], ["b", "open"], ["c", "closed"]]);
+});
+
+test("recent recovery: one failed open does not block later entries", async () => {
+    const output = await runRecoveryPlan([{rootId: "a"}, {rootId: "b"}, {rootId: "c"}], async (rootId) => {
+        if (rootId === "b") throw new Error("missing");
+        return true;
+    });
+    assert.deepEqual(output.succeeded, ["a", "c"]);
+    assert.deepEqual(output.failed, ["b"]);
+    assert.equal(output.results.length, 3);
 });

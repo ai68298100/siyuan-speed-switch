@@ -38,4 +38,23 @@ function mergeRecentDocumentRecords(openEntries, closedEntries, max = 50) {
     return merged.slice(0, limit);
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords};
+async function runRecoveryPlan(entries, openRoot) {
+    const results = [];
+    if (typeof openRoot !== "function") return {succeeded: [], failed: [], results};
+    for (const entry of Array.isArray(entries) ? entries : []) {
+        try {
+            const value = await openRoot(entry.rootId, entry);
+            const ok = value !== false;
+            results.push({rootId: entry.rootId, ok});
+        } catch (error) {
+            results.push({rootId: entry.rootId, ok: false, error: error instanceof Error ? error.message : String(error)});
+        }
+    }
+    return {
+        succeeded: results.filter((item) => item.ok).map((item) => item.rootId),
+        failed: results.filter((item) => !item.ok).map((item) => item.rootId),
+        results,
+    };
+}
+
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan};
