@@ -103,3 +103,13 @@ test("recent events: out-of-order open after close restores open precedence", ()
     assert.deepEqual(state.open.map((item) => item.rootId), ["a"]);
     assert.deepEqual(state.closed, []);
 });
+
+test("recent history: large event streams remain bounded", () => {
+    let state = {open: [], closed: []};
+    for (let i = 0; i < 5000; i += 1) {
+        state = applyRecentEvent(state, {type: i % 2 ? "open" : "close", rootId: `root-${i % 300}`, ts: i, closedAt: i + 1});
+    }
+    assert.ok(state.open.length <= 50);
+    assert.ok(state.closed.length <= 50);
+    assert.ok(state.open.length + state.closed.length <= 100);
+});
