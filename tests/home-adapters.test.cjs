@@ -48,6 +48,24 @@ test("home adapter bridge supports cancellation without poisoning cache", async 
     assert.equal(result.reason, "aborted");
 });
 
+test("home adapter agent sources remain read-only and device isolated", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "agent", supportedDevices: ["desktop", "mobile"], read: (_, device) => ({title: device, items: []})}]);
+    const desktop = await adapters.readHomeModule(map, "agent", "desktop", {notebook: "safe"}, {cacheTtlMs: 0});
+    const mobile = await adapters.readHomeModule(map, "agent", "mobile", {notebook: "safe"}, {cacheTtlMs: 0});
+    assert.equal(desktop.snapshot.empty, true);
+    assert.equal(mobile.snapshot.title, "mobile");
+});
+
+test("home adapter agent source missing API and timeout degrade safely", async () => {
+    const missing = adapters.registerHomeAdapters([{moduleId: "agent-missing", supportedDevices: ["desktop"]}]);
+    assert.equal(missing.size, 0);
+    const slow = adapters.registerHomeAdapters([{moduleId: "agent-slow", supportedDevices: ["mobile"], read: () => new Promise(() => {})}]);
+    const result = await adapters.readHomeModule(slow, "agent-slow", "mobile", {}, {timeoutMs: 5});
+    assert.equal(result.reason, "timeout");
+    assert.equal(result.snapshot.empty, true);
+});
+
 test("home adapter bridge isolates cancellation and force refresh across devices", async () => {
     adapters.clearHomeSnapshotCache();
     const controller = new AbortController();
