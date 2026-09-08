@@ -117,6 +117,13 @@ test("home adapter recovery reuses cache after re-entry and cancels rotation req
     assert.equal((await pending).reason, "aborted");
 });
 
+test("home adapter mobile refresh plan keeps conservative rotation budget", () => {
+    const plan = adapters.planHomeRefresh({visible: true, device: "mobile", stale: true});
+    assert.equal(plan.shouldRefresh, true);
+    assert.equal(plan.delayMs >= 500, true);
+    assert.equal(adapters.planHomeRefresh({visible: true, device: "mobile", stale: false}).shouldRefresh, false);
+});
+
 test("home adapter agent error states expose stable retryable reasons", async () => {
     adapters.clearHomeSnapshotCache();
     const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");
