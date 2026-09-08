@@ -124,6 +124,18 @@ test("home adapter mobile refresh plan keeps conservative rotation budget", () =
     assert.equal(adapters.planHomeRefresh({visible: true, device: "mobile", stale: false}).shouldRefresh, false);
 });
 
+test("home adapter mobile refresh state remains bounded over long runs", async () => {
+    adapters.clearHomeSnapshotCache();
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "long-mobile", supportedDevices: ["mobile"], read: () => ({title: String(++reads), items: []})}]);
+    for (let index = 0; index < 100; index += 1) {
+        await adapters.readHomeModule(map, "long-mobile", "mobile", {}, {force: true, cacheTtlMs: 0});
+        if (index % 10 === 0) adapters.clearHomeSnapshotCache();
+    }
+    assert.equal(adapters.getHomeAdapterDiagnostics().length <= adapters.MAX_DIAGNOSTICS, true);
+    assert.equal(reads, 100);
+});
+
 test("home adapter agent error states expose stable retryable reasons", async () => {
     adapters.clearHomeSnapshotCache();
     const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");
