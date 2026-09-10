@@ -40,15 +40,16 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --noEmit
 
-      - name: Unit tests
-        run: pnpm test
-
+      # 先构建再跑测试：兼容性矩阵等用例要求 dist/ 产物存在，
+      # 顺带让包体预算与归档审计门禁校验的是本次构建的真实产物
       - name: Build package.zip
         run: pnpm build
 
-      # The full test suite runs before the build; execute archive checks again
-      # after the artifact exists so release-only size and manifest gates cannot
-      # silently skip on a clean checkout.
+      - name: Unit tests
+        run: pnpm test
+
+      # Archive checks run again on the clean-checkout artifact so release-only
+      # size and manifest gates cannot silently skip.
       - name: Package integrity gate
         env:
           SW_REQUIRE_PACKAGE: "1"
