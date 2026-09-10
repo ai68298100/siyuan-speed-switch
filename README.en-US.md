@@ -170,6 +170,12 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.29 (2026-09-12)
+
+- Performance: memoized settings normalization (hot paths get a zero-cost cached read, invalidated on write).
+- Sidebar refresh coalescing: bursts of loaded/destroy-protyle events (batch open/close) now merge into one sidebar rebuild on a 150ms trailing edge.
+- Today's tasks full-library scan defaults to a 30-day updated-since window (7–365 configurable); verified against the latest SiYuan kernel sources (`kernel/api/block.go`, `kernel/model/block.go`, `kernel/api/search.go`) and the frontend event bus (`app/src/plugin/EventBusCore.ts`).
+
 ### v0.16.28 (2026-09-12)
 
 - Independent widget panel size settings: a new "Widget panel" tab in settings offers follow-first-panel (default) / fit-to-screen (90%) / fixed size / fullscreen modes; fixed mode exposes separate panel width/height (480–1920 × 360–1280) independent of the first panel.

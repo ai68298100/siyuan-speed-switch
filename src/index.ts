@@ -878,12 +878,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 椤电澧炲噺锛堟枃妗ｆ墦寮€/鍏抽棴锛夋椂鍒锋柊鎵€鏈夊凡鎵撳紑瑙嗗浘
         const loadedProtyle = () => {
             this.captureRecentOpenSnapshot();
-            this.refreshSidebar();
+            // 侧栏全量重建合并调度：批量开关文档时不再逐事件重建
+            this.scheduleSidebarRefresh();
             this.scheduleOpenSwitchersRefresh();
         };
         const destroyProtyle = () => {
             this.scheduleRecentClosedSync();
-            this.refreshSidebar();
+            this.scheduleSidebarRefresh();
             this.scheduleOpenSwitchersRefresh();
         };
         this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle};
@@ -962,6 +963,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.quickActionProviders.clear();
         this.quickActionProviderTokens.clear();
         this.quickActionRegistry = createQuickActionRegistry();
+        if (this.sidebarRefreshTimer) {
+            window.clearTimeout(this.sidebarRefreshTimer);
+            this.sidebarRefreshTimer = 0;
+        }
         this.groupFlowObserver?.disconnect();
         this.groupFlowObserver = null;
         this.homeRuntime.dispose();
@@ -1057,7 +1062,18 @@ export default class SpeedSwitchPlugin extends Plugin {
     // ==================== 璁剧疆 ====================
 
     // 璇诲彇璁剧疆锛氫笌榛樿鍊煎悎骞讹紝淇濊瘉鏂板瀛楁鏈夐粯璁ゅ€?
+    private settingsCache: ISwSettings | null = null;
+
+    // 设置对象记忆化：规范化成本虽小但调用频次高（渲染/绑定路径每次都会读取），
+    // 命中缓存时零开销返回；updateSettings 写入后统一失效
     private getSettings(): ISwSettings {
+        if (!this.settingsCache) {
+            this.settingsCache = this.computeSettings();
+        }
+        return this.settingsCache;
+    }
+
+    private computeSettings(): ISwSettings {
         // 纾佺洏璇诲彇鐨勬槸 unknown锛岃€佺増鏈?寮傚父鏁版嵁瀛楁鍙兘缂哄け锛屽叏閮ㄦ寜瀛楁閫愪竴闄嶇骇鍒伴粯璁ゅ€笺€?
         // 鐢?Partial<ISwSettings> 鎶婃暣涓?saved 涓€娆℃€ф敹绐勶紝鍚庣画瀛楁璁块棶灏变笉鍐嶉渶瑕佹瘡琛屾柇瑷€銆?
         const saved = this.data[SETTINGS_KEY];
@@ -1091,6 +1107,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private updateSettings(patch: Partial<ISwSettings>) {
         const settings = {...this.getSettings(), ...patch};
         this.data[SETTINGS_KEY] = settings;
+        this.settingsCache = null; // 设置已变更，下一次读取重新规范化
         this.saveDataDebounced(SETTINGS_KEY);
         if (Object.keys(patch).some((key) => key !== "lastSettingsTab")) {
             this.refreshOpenSwitchers();
@@ -7226,6 +7243,7 @@ private rootIdOf(tab: Tab): string | null {
     private groupFlowObserver: ResizeObserver | null = null;
     private homeRefreshTimer = 0;
     private homeRefreshCleanup: (() => void) | null = null;
+    private sidebarRefreshTimer = 0;
     private groupFlowLastWidth = 0;
 
     // 分组流式布局度量：用标准网格自己的公式反推列数与 1fr 实际像素宽，
@@ -9481,6 +9499,16 @@ if (count > 0) {
     }
 
     // 閲嶇畻瀹瑰櫒鍐呭叏閮ㄧ缉鐣ュ浘鐨勭缉鏀炬瘮渚嬶紙渚ц竟鏍忓昂瀵稿彉鍖栨椂璋冪敤锛屽唴瀹归殢闈㈡澘瀹藉害鑷姩浼哥缉锛?
+    // 侧栏刷新合并：loaded/destroy 事件连发（如批量打开/关闭）时合并为一次重建，
+    // 避免逐事件全量重建侧栏 DOM；150ms 尾沿触发
+    private scheduleSidebarRefresh() {
+        if (this.sidebarRefreshTimer) return;
+        this.sidebarRefreshTimer = window.setTimeout(() => {
+            this.sidebarRefreshTimer = 0;
+            if (this.sidebarElement?.isConnected) this.refreshSidebar();
+        }, 150);
+    }
+
     private rescaleThumbs(container: HTMLElement) {
         container.querySelectorAll<HTMLElement>(".sw__thumb").forEach((thumb) => {
             const content = thumb.querySelector<HTMLElement>(".sw__thumb-content");
