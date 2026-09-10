@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.17-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.18-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -31,7 +31,16 @@
 
 ## 思源原生 Agent 能力
 
-在支持 `addAgentCapability` 的思源版本（当前按 3.8.3 源码适配）中，插件会按宿主能力检测注册两项只读能力：导航状态（当前页签、最近打开和收藏摘要）以及受限文档搜索（支持笔记本、内容类型、子类型、搜索方式和结果排序筛选，必要时使用容量受限的原生块搜索）。能力输入、输出和文本长度均有边界，声明 `localRead` 且不声明写入、外传或外部成本；旧版思源会自动跳过注册，不影响页签切换和手机端加载。能力由思源 Agent 的策略和生命周期统一管理，插件卸载时由宿主清理。后续的打开页签、日记和跨插件动作会在完成人工确认、取消和权限拒绝测试后再逐步开放，详见 [ROADMAP.md](./ROADMAP.md) 的 AI 能力专项。
+在支持 `addAgentCapability` 的思源版本（当前按 3.8.3 源码适配）中，插件会按宿主能力检测注册四项能力：
+
+| 能力 | 类型 | 说明 |
+| --- | --- | --- |
+| `navigation-state` | 只读 | 当前页签、最近打开和收藏摘要 |
+| `search-documents` | 只读 | 受限文档搜索（笔记本、内容类型、子类型、搜索方式、结果排序筛选） |
+| `home-widget-snapshot` | 只读 | 组件面板数据快照：按 `moduleId` 查询任意已注册组件（含第三方接入组件）的有界条目 |
+| `open-document` | 受控导航 | 打开指定文档并定位（仅切换页签，不修改任何笔记数据） |
+
+只读能力声明 `localRead` 且不声明写入、外传或外部成本；`open-document` 不声明任何数据读写。所有能力的输入、输出和文本长度均有边界；旧版思源会自动跳过注册，不影响页签切换和手机端加载。能力由思源 Agent 的策略和生命周期统一管理，插件卸载时由宿主清理。受控写操作（如修改任务状态）会在只读层完成人工确认、取消和权限拒绝测试后再逐步开放，详见 [ROADMAP.md](./ROADMAP.md) 的 AI 能力专项。
 
 [English README](./README.en-US.md)
 
@@ -170,12 +179,13 @@ pnpm verify:release
 
 ## 更新日志
 
-### v0.16.17（2026-09-11）
+### v0.16.18（2026-09-11）
 
 - **协议 v2**：`registerHomeModule` 新增四组声明式能力——条目级 `command`（点击执行指定插件命令）、模块级 `clickCommand`（失败态跳转的声明式写法）、`configSchema`（声明配置字段，面板自动渲染配置表单，值传入 read）、`refreshOn`（订阅页签切换/打开/关闭事件自动刷新，防抖 500ms）；另含 `protocolVersion` 握手与商店卡片作者/协议版本元数据。
 - 配置化组件示范：**指定文档**可直接填写文档 ID 与显示名称；**今日待办**支持条数上限与“扫描全部文档”开关；**插件命令**支持条数上限与关键词过滤。
 - **智能体结合**：新增只读智能体能力 `home-widget-snapshot`，思源 AI 可按 moduleId 查询任意已注册组件的有界数据快照（含第三方组件），受条数与缓存约束。
 - 修复内置组件尺寸型号白名单未随 7 档扩展更新的问题（此前迷你/高/全幅会被静默降级）。
+- 智能体能力补全受控导航动作 `open-document`（按块 ID 打开文档定位），与 `home-widget-snapshot` 组成"查询 → 直达"闭环；发布第三方组件邀请文案草稿 [docs/widget-invite-drafts.md](docs/widget-invite-drafts.md)。
 
 ### v0.16.16（2026-09-11）
 

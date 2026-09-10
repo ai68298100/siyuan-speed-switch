@@ -198,6 +198,33 @@ const AGENT_ITEMS_SCHEMA = Object.freeze({
 });
 
 const AGENT_CAPABILITY_SPECS = Object.freeze({
+    openDocument: Object.freeze({
+        name: "open-document",
+        title: "小驴速切打开文档",
+        description: "受控导航动作：在思源界面打开指定文档并定位（只切换页签，不修改任何笔记内容）。用于把查询结果变成可直达的页面。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                id: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 64,
+                    pattern: "^[0-9]{14}-[0-9a-z]+$",
+                },
+            },
+            required: ["id"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                ok: {type: "boolean"},
+                id: {type: "string", maxLength: 64},
+            },
+            required: ["ok", "id"],
+            additionalProperties: false,
+        }),
+    }),
     homeWidgets: Object.freeze({
         name: "home-widget-snapshot",
         title: "小驴速切组件面板数据",
@@ -325,6 +352,28 @@ function registerReadOnlyAgentCapabilities(host, definitions, onError = (_error,
     return registered;
 }
 
+
+// 受控导航动作的文档 ID 校验：与块 ID 同格式（14 位时间戳-后缀）
+function normalizeAgentDocumentId(value) {
+    const id = asText(value, 64);
+    return /^\d{14}-[0-9a-z]+$/i.test(id) ? id : "";
+}
+
+// 动作类能力注册器：effects 由定义如实给出（区别于只读注册器的 localRead:true）
+function registerAgentActionCapability(host, definition, onError = (_error, _spec) => {}) {
+    if (!host || typeof host.addAgentCapability !== "function" || !definition?.spec || typeof definition.handler !== "function") return null;
+    try {
+        return host.addAgentCapability({
+            ...definition.spec,
+            effects: definition.effects || {},
+            handler: definition.handler,
+        });
+    } catch (error) {
+        onError(error, definition.spec);
+        return null;
+    }
+}
+
 module.exports = {
     MAX_QUERY_LENGTH,
     MAX_NOTEBOOK_LENGTH,
@@ -340,6 +389,8 @@ module.exports = {
     normalizeAgentSearchType,
     normalizeAgentSearchSubType,
     normalizeAgentRootId,
+    normalizeAgentDocumentId,
+    registerAgentActionCapability,
     limitAgentItems,
     buildAgentNavigationResult,
     buildAgentSearchResult,

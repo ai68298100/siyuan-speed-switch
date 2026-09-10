@@ -42,6 +42,8 @@ import {
     normalizeAgentNotebook,
     normalizeAgentQuery,
     registerReadOnlyAgentCapabilities,
+    normalizeAgentDocumentId,
+    registerAgentActionCapability,
 } from "./agent-capabilities";
 import {
     SEARCH_DEBOUNCE_MS,
@@ -651,6 +653,29 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
         this.registerAgentCapabilities();
+        // 受控导航动作：Agent 可把查询结果直接打开为页面（不修改任何笔记数据）
+        const pluginWithAgentAction = this as unknown as {
+            addAgentCapability?: (options: Record<string, unknown>) => string;
+        };
+        registerAgentActionCapability(pluginWithAgentAction, {
+            spec: AGENT_CAPABILITY_SPECS.openDocument,
+            effects: {},
+            handler: async (args: Record<string, unknown>) => {
+                const id = normalizeAgentDocumentId(args?.id);
+                if (!id) return {error: "invalid document id"};
+                try {
+                    if (this.isMobile) {
+                        await this.mobileOpenDoc(id);
+                    } else {
+                        await openTab({app: this.app, doc: {id}});
+                    }
+                    return {structuredContent: {ok: true, id}, result: JSON.stringify({ok: true, id})};
+                } catch (error) {
+                    logger.warn("Agent open document fail", error);
+                    return {error: "open failed"};
+                }
+            },
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
         this.registerBuiltinHomeAdapters();
     }
 

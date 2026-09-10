@@ -17,6 +17,8 @@ const {
     buildAgentNavigationResult,
     buildAgentSearchResult,
     registerReadOnlyAgentCapabilities,
+    normalizeAgentDocumentId,
+    registerAgentActionCapability,
 } = require("../src/agent-capabilities.js");
 
 const ROOT = "20260906120000-aaaaaaa";
@@ -160,4 +162,30 @@ test("agent capability registration is read-only and tolerates old hosts", () =>
     assert.deepEqual(errors, [["partial host", "navigation-state"]]);
     assert.deepEqual(calls[1].effects, READ_ONLY_EFFECTS);
     assert.equal(calls[1].handler, handler);
+});
+
+
+test("agent capability specs include widget snapshot and controlled open", () => {
+    assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.name, "home-widget-snapshot");
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.required, ["moduleId"]);
+    assert.equal(AGENT_CAPABILITY_SPECS.openDocument.name, "open-document");
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
+});
+
+test("open-document declares honest effects and normalizes ids", () => {
+    assert.equal(normalizeAgentDocumentId("20260911083000-abcdef"), "20260911083000-abcdef");
+    assert.equal(normalizeAgentDocumentId(" javascript:alert(1)"), "");
+    assert.equal(normalizeAgentDocumentId("../../etc"), "");
+    const host = {registered: [], addAgentCapability: (options) => { host.registered.push(options); return "id"; }};
+    registerAgentActionCapability(host, {
+        spec: AGENT_CAPABILITY_SPECS.openDocument,
+        effects: {},
+        handler: async () => ({ok: true}),
+    });
+    assert.equal(host.registered.length, 1);
+    // 动作能力不得沿用只读 effects 声明
+    assert.deepEqual(host.registered[0].effects, {});
+    // 非法宿主/缺 handler 时安静跳过
+    assert.equal(registerAgentActionCapability(null, {spec: {}}), null);
+    assert.equal(registerAgentActionCapability(host, {spec: {}}), null);
 });
