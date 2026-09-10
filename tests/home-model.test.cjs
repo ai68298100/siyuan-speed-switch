@@ -14,7 +14,9 @@ test("home model filters modules by device", () => {
 });
 
 test("home model normalizes layout and rejects invalid instances", () => {
-    assert.deepEqual(home.normalizeLayout({x: -1, w: 0, h: 20, collapsed: true}), {x: 0, y: 0, w: 1, h: 12, collapsed: true});
+    assert.deepEqual(home.normalizeLayout({x: -1, w: 0, h: 20, collapsed: true}), {x: 0, y: 0, w: 1, h: 12, collapsed: true, size: ""});
+    assert.equal(home.normalizeLayout({w: 4, h: 4, size: "medium"}).size, "medium");
+    assert.equal(home.normalizeLayout({w: 4, h: 4, size: "bogus"}).size, "");
     assert.deepEqual(home.normalizeInstances([{moduleId: "recent-documents"}, {moduleId: "bad"}, {moduleId: "recent-documents"}]), [{instanceId: "recent-documents", moduleId: "recent-documents", enabled: true, config: {}}]);
 });
 
@@ -57,7 +59,7 @@ test("home model keeps module order deterministic and unknown modules isolated",
 
 test("home model clamps layout dimensions and preserves collapse state", () => {
     const layout = home.normalizeLayout({x: 999, y: 9999, w: 999, h: -2, collapsed: true});
-    assert.deepEqual(layout, {x: 99, y: 999, w: 12, h: 1, collapsed: true});
+    assert.deepEqual(layout, {x: 99, y: 999, w: 12, h: 1, collapsed: true, size: ""});
 });
 
 test("home model migration is stable across repeated persistence cycles", () => {
@@ -113,7 +115,7 @@ test("home model ignores unknown mobile render fields at narrow widths", () => {
         mobile: [{instanceId: "j", x: -10, y: -1, w: 0, h: 99, collapsed: false, gridColumns: 99, dragHandle: "bad"}],
     }});
     const entry = state.layouts.mobile[0];
-    assert.deepEqual(entry, {instanceId: "j", x: 0, y: 0, w: 1, h: 12, collapsed: false});
+    assert.deepEqual(entry, {instanceId: "j", x: 0, y: 0, w: 1, h: 12, collapsed: false, size: ""});
     assert.deepEqual(home.normalizeHomeState(state), state);
 });
 

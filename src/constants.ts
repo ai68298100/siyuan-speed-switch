@@ -162,7 +162,26 @@ export const PANEL_SCALE_DEFAULT = 90;
 export const PANEL_SIZE_MIN_PX = 420; // 自适应计算的像素下限，避免小窗口下面板过小
 export const SETTINGS_PANEL_SCALE = 70; // 设置页桌面端独立自适应比例（不随面板比例设置联动）
 
+// 列表分组流式布局：卡片最小宽与块间距，与 .sw__grid 的 minmax(220px, 1fr)/12px 保持一致
+export const GROUP_FLOW_MIN_CARD_PX = 220;
+export const GROUP_FLOW_GAP_PX = 12;
+
 // 列表分组方式：none=按窗口平铺（旧行为）/ notebook=按笔记本（默认）/ favorites=按收藏 / createdMonth=按创建月份
 export type TabGroupMode = "none" | "notebook" | "favorites" | "createdMonth";
 export const TAB_GROUP_MODES: TabGroupMode[] = ["none", "notebook", "favorites", "createdMonth"];
 export const TAB_GROUP_MODE_DEFAULT: TabGroupMode = "notebook";
+
+// 第二面板小组件固定尺寸型号：宽×高（12 列网格，行高 40px）
+export type HomeWidgetSize = "small" | "medium" | "wide" | "large";
+export const HOME_WIDGET_SIZES: Record<HomeWidgetSize, {w: number; h: number}> = {
+    small: {w: 4, h: 3},
+    medium: {w: 4, h: 4},
+    wide: {w: 8, h: 3},
+    large: {w: 8, h: 5},
+};
+export const HOME_WIDGET_SIZE_LABELS: Record<HomeWidgetSize, string> = {
+    small: "小 4×3",
+    medium: "中 4×4",
+    wide: "宽 8×3",
+    large: "大 8×5",
+};

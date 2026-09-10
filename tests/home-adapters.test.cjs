@@ -318,7 +318,7 @@ guarded("home adapters: layout coordinates are bounded and malformed entries dis
     assert.equal(first.x >= 0, true);
     assert.equal(first.w <= 12, true);
     assert.equal(first.h >= 1, true);
-    assert.deepEqual(second, {x: 2, y: 3, w: 4, h: 5, collapsed: false});
+    assert.deepEqual(second, {x: 2, y: 3, w: 4, h: 5, collapsed: false, size: ""});
 });
 
 guarded("home adapters: third-party readers are device-scoped and bounded", async () => {

@@ -5,13 +5,13 @@ const DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const DEFAULT_LAYOUT = Object.freeze({x: 0, y: 0, w: 1, h: 1, collapsed: false});
 
 const DEFAULT_MODULES = Object.freeze([
-    {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
-    {moduleId: "today-journal", title: "今日日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
-    {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
-    {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
-    {moduleId: "favorites", title: "收藏", icon: "iconStar", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
-    {moduleId: "document-sets", title: "文档集", icon: "iconLayout", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
-    {moduleId: "checkin-summary", title: "打卡摘要", icon: "iconCalendar", category: "plugin", supportedDevices: DEVICES, readOnly: true},
+    {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
+    {moduleId: "today-journal", title: "今日日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small"]},
+    {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "large"]},
+    {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"]},
+    {moduleId: "favorites", title: "收藏", icon: "iconStar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
+    {moduleId: "document-sets", title: "文档集", icon: "iconLayout", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "large"]},
+    {moduleId: "checkin-summary", title: "打卡摘要", icon: "iconCalendar", category: "plugin", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"]},
 ]);
 
 function text(value, max = 128) {
@@ -42,7 +42,8 @@ function normalizeLayout(value) {
         const n = Number(source[key]);
         return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.floor(n))) : fallback;
     };
-    return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true};
+    const size = ["small", "medium", "wide", "large"].includes(source.size) ? source.size : "";
+    return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
 }
 
 function normalizeModuleDefinition(value) {
@@ -54,7 +55,17 @@ function normalizeModuleDefinition(value) {
         ? DEVICES.filter((device) => value.supportedDevices.includes(device))
         : ["desktop"];
     if (supportedDevices.length === 0) return null;
-    return {moduleId, title, icon: text(value.icon, 64) || "iconFile", category: text(value.category, 32) || "custom", supportedDevices, readOnly: value.readOnly !== false};
+    const sizeKeys = ["small", "medium", "wide", "large"];
+    const sizes = Array.isArray(value.sizes) ? sizeKeys.filter((key) => value.sizes.includes(key)) : [];
+    return {
+        moduleId, title,
+        icon: text(value.icon, 64) || "iconFile",
+        category: text(value.category, 32) || "custom",
+        supportedDevices,
+        readOnly: value.readOnly !== false,
+        sizes: sizes.length > 0 ? sizes : ["medium"],
+        description: text(value.description, 96),
+    };
 }
 
 function registerModules(definitions = []) {

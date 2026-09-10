@@ -115,6 +115,11 @@ import {
     PANEL_SCALE_DEFAULT,
     PANEL_SIZE_MIN_PX,
     SETTINGS_PANEL_SCALE,
+    GROUP_FLOW_MIN_CARD_PX,
+    GROUP_FLOW_GAP_PX,
+    HOME_WIDGET_SIZES,
+    HOME_WIDGET_SIZE_LABELS,
+    HomeWidgetSize,
     TabGroupMode,
     TAB_GROUP_MODES,
     TAB_GROUP_MODE_DEFAULT,
@@ -858,6 +863,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.quickActionProviders.clear();
         this.quickActionProviderTokens.clear();
         this.quickActionRegistry = createQuickActionRegistry();
+        this.groupFlowObserver?.disconnect();
+        this.groupFlowObserver = null;
         this.homeRuntime.dispose();
         this.closeHistoryMenu();
         this.sidebarHistoryDropdownDispose?.();
@@ -2314,13 +2321,16 @@ const updatedMap: {[rootId: string]: string} = {};
         let panel: HTMLElement | null = null;
         let outsideHandler: ((event: PointerEvent) => void) | null = null;
         let keyHandler: ((event: KeyboardEvent) => void) | null = null;
+        let resizeHandler: (() => void) | null = null;
         const closePanel = () => {
             panel?.remove();
             panel = null;
             if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
             if (keyHandler) document.removeEventListener("keydown", keyHandler, true);
+            if (resizeHandler) window.removeEventListener("resize", resizeHandler);
             outsideHandler = null;
             keyHandler = null;
+            resizeHandler = null;
         };
         const radioRow = (label: string, checked: boolean, onClick: () => void) => {
             const item = document.createElement("button");
@@ -2375,10 +2385,15 @@ const updatedMap: {[rootId: string]: string} = {};
                     applySortChange(value);
                 }));
             });
-            scope.appendChild(panel);
-            const rect = trigger.getBoundingClientRect();
-            panel.style.top = `${Math.round(rect.bottom + 6)}px`;
-            panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+            // 挂到 body：dialog.element 不在 .speed-switch 内容容器内，挂这里样式选择器会失配，
+            // 浮层退化为文档流裸块；body + fixed + 高 z-index 与手机端排序面板同模式
+            document.body.appendChild(panel);
+            const positionPanel = () => {
+                const rect = trigger.getBoundingClientRect();
+                panel.style.top = `${Math.round(rect.bottom + 6)}px`;
+                panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+            };
+            positionPanel();
             outsideHandler = (event) => {
                 if (!panel?.contains(event.target as Node) && event.target !== trigger && !trigger.contains(event.target as Node)) closePanel();
             };
@@ -2391,6 +2406,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 }
             };
             document.addEventListener("keydown", keyHandler, true);
+            resizeHandler = positionPanel;
         });
     }
 
@@ -2831,37 +2847,38 @@ const version = beginSearch(session);
             moduleId: string,
             title: string,
             icon: string,
+            description: string,
             read: (config: Record<string, unknown>) => { title?: string; items: Array<{ label: string; value: string }> },
         ) => {
             const result = this.homeRuntime.registerAdapter({
-                moduleId, title, icon, category: "siyuan",
+                moduleId, title, icon, description, category: "siyuan",
                 supportedDevices: ["desktop", "sidebar", "mobile"],
                 read,
             });
             if (result.registered) this.homeBuiltinAdapterIds.add(moduleId);
         };
-        register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", () => ({
+        register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", this.i18n.homeDescRecent, () => ({
             items: this.getOpenHistory().slice(0, 8).map((entry) => ({
                 label: entry.title || entry.rootId,
                 value: entry.rootId || "",
             })).filter((item) => !!item.value),
         }));
-        register("favorites", this.i18n.homeFavorites, "iconStar", () => ({
+        register("favorites", this.i18n.homeFavorites, "iconStar", this.i18n.homeDescFav, () => ({
             items: this.getFavorites().slice(0, 8).map((fav) => ({
                 label: fav.title || fav.key,
                 value: fav.key,
             })),
         }));
-        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", () => ({
+        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", this.i18n.homeDescJournal, () => ({
             items: [{label: this.i18n.homeTodayJournalOpen, value: "action:journal"}],
         }));
-        register("document-sets", this.i18n.homeDocumentSets, "iconLayout", () => ({
+        register("document-sets", this.i18n.homeDocumentSets, "iconLayout", this.i18n.homeDescDocSets, () => ({
             items: this.getDocumentSets().slice(0, 8).map((set: any) => ({
                 label: String(set?.name || ""),
                 value: "set:" + String(set?.setId || ""),
             })).filter((item) => !!item.value && !!item.label),
         }));
-        register("fixed-document", this.i18n.homeFixedDocument, "iconFile", (config) => {
+        register("fixed-document", this.i18n.homeFixedDocument, "iconFile", this.i18n.homeDescFixed, (config) => {
             const docId = typeof config.docId === "string" ? config.docId : "";
             const title = typeof config.title === "string" && config.title ? config.title : docId;
             return {items: docId && BLOCK_ID_RE.test(docId) ? [{label: title, value: docId}] : []};
@@ -2947,6 +2964,117 @@ const version = beginSearch(session);
         return steps[(index + 1) % steps.length];
     }
 
+    // 旧宽度档 → 新固定型号就近映射（一次迁移，迁移后 layout.size 非空即视为已迁移）
+    private migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string {
+        if (entry.size && sizes.includes(entry.size)) return entry.size;
+        const w = Number(entry.w) || 6;
+        const fallback = w <= 5 ? "small" : w <= 7 ? "medium" : w <= 9 ? "wide" : "large";
+        return sizes.includes(fallback) ? fallback : (sizes[0] || "medium");
+    }
+
+    // 小组件商店：画廊式添加入口，内置/插件分区；卡片带型号瓦片，点瓦片添加（或调整已添加实例的型号）
+    private openHomeWidgetStore(
+        defs: Map<string, any>,
+        catalogIds: Set<string>,
+        device: "desktop" | "sidebar" | "mobile",
+        onChanged: () => void,
+    ) {
+        const storeDialog = new Dialog({
+            title: this.i18n.homeStoreTitle,
+            content: '<div class="speed-switch sw-home-store"></div>',
+            width: this.isMobile ? "min(680px, 94vw)" : `${Math.min(680, Math.round(window.innerWidth * 0.7))}px`,
+            height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(560, Math.round(window.innerHeight * 0.7))}px`,
+        });
+        const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
+        if (!root) return;
+        const state = this.getHomeState();
+        const instanceByModule = new Map<string, any>();
+        ((state.layouts[device] || []) as Array<any>).forEach((entry) => {
+            const inst = state.instances.find((candidate: any) => candidate.instanceId === entry.instanceId);
+            if (inst) instanceByModule.set(inst.moduleId, entry);
+        });
+        const sections: Array<{label: string, category: string}> = [
+            {label: this.i18n.homeStoreSectionBuiltin, category: "siyuan"},
+            {label: this.i18n.homeStoreSectionPlugin, category: "plugin"},
+        ];
+        let offered = 0;
+        sections.forEach((section) => {
+            const ids = [...catalogIds].filter((moduleId) => {
+                const def = defs.get(moduleId);
+                return def && (section.category === "siyuan" ? (def.category === "siyuan") : (def.category !== "siyuan"));
+            });
+            if (ids.length === 0) return;
+            offered += ids.length;
+            const heading = document.createElement("h3");
+            heading.className = "sw-home-store__section";
+            heading.textContent = section.label;
+            root.appendChild(heading);
+            const grid = document.createElement("div");
+            grid.className = "sw-home-store__grid";
+            ids.forEach((moduleId) => {
+                const def = defs.get(moduleId);
+                const card = document.createElement("section");
+                card.className = "sw-home-store__card";
+                const head = document.createElement("div");
+                head.className = "sw-home-store__card-head";
+                const icon = document.createElement("svg");
+                icon.innerHTML = `<use xlink:href="#${def.icon || "iconFile"}"></use>`;
+                icon.setAttribute("viewBox", "0 0 24 24");
+                icon.setAttribute("aria-hidden", "true");
+                const copy = document.createElement("div");
+                const title = document.createElement("strong");
+                title.textContent = def.title || moduleId;
+                const desc = document.createElement("span");
+                desc.textContent = def.description || "";
+                copy.append(title, desc);
+                head.append(icon, copy);
+                card.appendChild(head);
+                const tiles = document.createElement("div");
+                tiles.className = "sw-home-store__sizes";
+                const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                supported.forEach((sizeKey) => {
+                    const added = instanceByModule.get(moduleId);
+                    const tile = document.createElement("button");
+                    tile.type = "button";
+                    tile.className = "sw-home-store__size";
+                    tile.textContent = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
+                    if (added) {
+                        tile.classList.add("sw-home-store__size--added");
+                        tile.setAttribute("aria-label", `${this.i18n.homeSize}: ${tile.textContent} (${this.i18n.homeStoreAdded})`);
+                    }
+                    tile.addEventListener("click", () => {
+                        const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                        const next = this.getHomeState();
+                        const layoutList = (next.layouts[device] || []) as Array<any>;
+                        const existing = (next.instances as Array<any>).find((candidate) => candidate.moduleId === moduleId);
+                        if (existing) {
+                            const entry = layoutList.find((candidate) => candidate.instanceId === existing.instanceId);
+                            if (entry) {
+                                entry.size = sizeKey;
+                                entry.w = preset.w;
+                                entry.h = preset.h;
+                            }
+                        } else {
+                            next.instances = [...next.instances, {instanceId: moduleId, moduleId, enabled: true, config: {}}];
+                            layoutList.push({instanceId: moduleId, x: 0, y: 0, w: preset.w, h: preset.h, collapsed: false, size: sizeKey});
+                        }
+                        next.layouts[device] = layoutList;
+                        this.saveHomeState(next);
+                        storeDialog.destroy();
+                        onChanged();
+                    });
+                    tiles.appendChild(tile);
+                });
+                card.appendChild(tiles);
+                grid.appendChild(card);
+            });
+            root.appendChild(grid);
+        });
+        if (offered === 0) {
+            root.textContent = this.i18n.homeNoMoreModules;
+        }
+    }
+
     private openSecondPanel() {
         const settings = this.getSettings();
         const size = this.resolvePanelDialogSize(settings, settings.fullscreen);
@@ -2962,37 +3090,24 @@ const version = beginSearch(session);
         let editing = false;
 
         const defs = new Map<string, any>();
-        const modules = this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
-            .concat(this.homeRuntime.listModules("sidebar"));
-        modules.forEach((def: any) => defs.set(def.moduleId, def));
+        this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
+            .concat(this.homeRuntime.listModules("sidebar"))
+            .forEach((def: any) => defs.set(def.moduleId, def));
         const catalogIds = new Set<string>();
-        modules.forEach((def: any) => {
-            if (this.homeBuiltinAdapterIds.has(def.moduleId) || this.homeModuleOpens.has(def.moduleId)) {
-                catalogIds.add(def.moduleId);
-            }
+        defs.forEach((_def, moduleId) => {
+            if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeModuleOpens.has(moduleId)) catalogIds.add(moduleId);
         });
 
-        const saveState = (state: ReturnType<typeof this.getHomeState>) => this.saveHomeState(state);
-        const buildCells = (state: ReturnType<typeof this.getHomeState>, deviceKey: string) => {
+        const renderPanel = () => {
+            root.innerHTML = "";
+            const state = this.getHomeState();
+            const layoutList = (state.layouts[device] || []) as Array<any>;
             const byId = new Map(state.instances.map((inst: any) => [inst.instanceId, inst]));
-            const layoutList = (state.layouts[deviceKey] || []) as Array<any>;
             const cells: Array<{ inst: any; layout: any }> = [];
             layoutList.forEach((entry) => {
                 const inst = byId.get(entry.instanceId);
                 if (inst) cells.push({inst, layout: entry});
             });
-            state.instances.forEach((inst: any) => {
-                if (!layoutList.some((entry) => entry.instanceId === inst.instanceId)) {
-                    cells.push({inst, layout: {...{x: 0, y: 0, w: 6, h: 1, collapsed: false}}});
-                }
-            });
-            return cells;
-        };
-
-        const renderPanel = () => {
-            root.innerHTML = "";
-            const state = this.getHomeState();
-            const cells = buildCells(state, device);
 
             const bar = document.createElement("div");
             bar.className = "sw-home__bar";
@@ -3011,36 +3126,7 @@ const version = beginSearch(session);
                 addButton.className = "b3-button b3-button--text sw-home__add";
                 addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeAddModule + '</span>';
                 addButton.addEventListener("click", () => {
-                    const menu = new Menu("swHomeModulePicker");
-                    let offered = 0;
-                    catalogIds.forEach((moduleId) => {
-                        if (state.instances.some((inst: any) => inst.moduleId === moduleId)) return;
-                        const def = defs.get(moduleId);
-                        if (!def) return;
-                        offered += 1;
-                        menu.addItem({
-                            label: def.title || moduleId,
-                            icon: def.icon || "iconFile",
-                            iconHTML: "",
-                            click: () => {
-                                const next = this.getHomeState();
-                                next.instances = [...next.instances, {
-                                    instanceId: moduleId, moduleId, enabled: true, config: {},
-                                }];
-                                const layoutList = (next.layouts[device] || []) as Array<any>;
-                                layoutList.push({instanceId: moduleId, x: 0, y: 0, w: device === "mobile" ? 12 : 6, h: 1, collapsed: false});
-                                next.layouts[device] = layoutList;
-                                saveState(next);
-                                renderPanel();
-                            },
-                        });
-                    });
-                    if (offered === 0) {
-                        showMessage(this.i18n.homeNoMoreModules);
-                        return;
-                    }
-                    const rect = addButton.getBoundingClientRect();
-                    menu.open({x: rect.left, y: rect.bottom + 4});
+                    this.openHomeWidgetStore(defs, catalogIds, device, renderPanel);
                 });
                 bar.appendChild(addButton);
             }
@@ -3055,14 +3141,32 @@ const version = beginSearch(session);
                 empty.textContent = this.i18n.homeEmpty;
                 grid.appendChild(empty);
             }
-            const controllers: Array<{ moduleId: string; refresh: (config?: unknown, options?: unknown) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
+            const controllers: Array<{ moduleId: string; refresh: () => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
 
             cells.forEach(({inst, layout}) => {
                 const def = defs.get(inst.moduleId);
                 if (!def) return;
+                // 型号迁移与解析：旧宽度档就近映射，再限定到该模块声明的型号集合
+                const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                const sizeKey = this.migrateHomeLayoutSize(layout, supported);
+                const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                if (layout.size !== sizeKey || layout.w !== preset.w || layout.h !== preset.h) {
+                    layout.size = sizeKey;
+                    layout.w = preset.w;
+                    layout.h = preset.h;
+                    const persist = this.getHomeState();
+                    const target = ((persist.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
+                    if (target) {
+                        Object.assign(target, {size: sizeKey, w: preset.w, h: preset.h});
+                        this.saveHomeState(persist);
+                    }
+                }
+
                 const cell = document.createElement("section");
                 cell.className = "sw-home__cell";
-                cell.style.setProperty("--sw-home-span", String(Math.max(4, Math.min(12, Number(layout.w) || 6))));
+                cell.dataset.size = sizeKey;
+                cell.style.gridColumn = `span ${Math.min(12, preset.w)}`;
+                cell.style.gridRow = `span ${Math.max(1, preset.h)}`;
                 const body = document.createElement("div");
                 body.className = "sw-home__cell-body";
                 cell.appendChild(body);
@@ -3070,7 +3174,7 @@ const version = beginSearch(session);
                 const controller = createHomeModuleController({
                     document: window.document,
                     container: body,
-                    module: {...def, openable: this.homeModuleOpens.has(inst.moduleId)},
+                    module: {...def},
                     collapsed: layout.collapsed === true,
                     labels: {
                         loading: this.i18n.homeLoading,
@@ -3085,33 +3189,61 @@ const version = beginSearch(session);
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
                     onToggle: () => {
                         const next = this.getHomeState();
-                        const layoutList = (next.layouts[device] || []) as Array<any>;
-                        const entry = layoutList.find((candidate) => candidate.instanceId === inst.instanceId);
+                        const entry = ((next.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
                         if (entry) {
                             entry.collapsed = !(layout.collapsed === true);
                             layout.collapsed = entry.collapsed;
-                            saveState(next);
+                            this.saveHomeState(next);
                         }
                     },
                     read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
-                        this.homeRuntime.read(inst.moduleId, device, (config as Record<string, unknown>) || inst.config || {}, readOptions),
+                        this.homeRuntime.read(inst.moduleId, device, inst.config || {}, readOptions),
                 });
                 if (!controller) return;
-                controllers.push({...controller, moduleId: inst.moduleId, cell} as any);
+                controllers.push({moduleId: inst.moduleId, refresh: () => controller.refresh(), dispose: () => controller.dispose(), cell});
                 grid.appendChild(cell);
 
                 if (editing) {
+                    // 桌面端拖拽排序（dense 布局自动归位）；手机端用上移/下移按钮
+                    if (!this.isMobile) {
+                        cell.draggable = true;
+                        cell.addEventListener("dragstart", (event) => {
+                            event.dataTransfer?.setData("text/sw-home-instance", inst.instanceId);
+                            event.dataTransfer!.effectAllowed = "move";
+                            cell.classList.add("sw-home__cell--dragging");
+                        });
+                        cell.addEventListener("dragend", () => cell.classList.remove("sw-home__cell--dragging"));
+                        cell.addEventListener("dragover", (event) => {
+                            event.preventDefault();
+                            event.dataTransfer!.dropEffect = "move";
+                            cell.classList.add("sw-home__cell--dragover");
+                        });
+                        cell.addEventListener("dragleave", () => cell.classList.remove("sw-home__cell--dragover"));
+                        cell.addEventListener("drop", (event) => {
+                            event.preventDefault();
+                            cell.classList.remove("sw-home__cell--dragover");
+                            const draggedId = event.dataTransfer?.getData("text/sw-home-instance");
+                            if (!draggedId || draggedId === inst.instanceId) return;
+                            const next = this.getHomeState();
+                            const list = (next.layouts[device] || []) as Array<any>;
+                            const from = list.findIndex((candidate) => candidate.instanceId === draggedId);
+                            const to = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
+                            if (from < 0 || to < 0) return;
+                            const [moved] = list.splice(from, 1);
+                            list.splice(to, 0, moved);
+                            next.layouts[device] = list;
+                            this.saveHomeState(next);
+                            renderPanel();
+                        });
+                    }
                     const persistLayout = (patch: Record<string, unknown>) => {
                         const next = this.getHomeState();
-                        const layoutList = (next.layouts[device] || []) as Array<any>;
-                        let entry = layoutList.find((candidate) => candidate.instanceId === inst.instanceId);
-                        if (!entry) {
-                            entry = {instanceId: inst.instanceId, x: 0, y: 0, w: 6, h: 1, collapsed: false};
-                            layoutList.push(entry);
+                        const entry = ((next.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
+                        if (entry) {
+                            Object.assign(entry, patch);
+                            next.layouts[device] = (next.layouts[device] || []) as Array<any>;
+                            this.saveHomeState(next);
                         }
-                        Object.assign(entry, patch);
-                        next.layouts[device] = layoutList;
-                        saveState(next);
                     };
                     const tools = document.createElement("div");
                     tools.className = "sw-home__cell-tools";
@@ -3124,30 +3256,35 @@ const version = beginSearch(session);
                         button.addEventListener("click", onClick);
                         return button;
                     };
+                    const sizeIndex = supported.indexOf(sizeKey);
+                    const nextSize = supported[(sizeIndex + 1) % supported.length];
                     tools.append(
-                        tool(this.i18n.homeNarrower, () => { persistLayout({w: Math.max(4, (Number(layout.w) || 6) - 2)}); renderPanel(); }),
-                        tool(this.i18n.homeWider, () => { persistLayout({w: Math.min(12, (Number(layout.w) || 6) + 2)}); renderPanel(); }),
+                        tool(this.i18n.homeSize + " · " + (HOME_WIDGET_SIZE_LABELS[nextSize as HomeWidgetSize] || nextSize), () => {
+                            const preset2 = HOME_WIDGET_SIZES[nextSize as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                            persistLayout({size: nextSize, w: preset2.w, h: preset2.h});
+                            renderPanel();
+                        }),
                         tool(this.i18n.homeMoveUp, () => {
                             const next = this.getHomeState();
-                            const layoutList = (next.layouts[device] || []) as Array<any>;
-                            const index = layoutList.findIndex((candidate) => candidate.instanceId === inst.instanceId);
+                            const list = (next.layouts[device] || []) as Array<any>;
+                            const index = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
                             if (index > 0) {
-                                const [entry] = layoutList.splice(index, 1);
-                                layoutList.splice(index - 1, 0, entry);
-                                next.layouts[device] = layoutList;
-                                saveState(next);
+                                const [moved] = list.splice(index, 1);
+                                list.splice(index - 1, 0, moved);
+                                next.layouts[device] = list;
+                                this.saveHomeState(next);
                                 renderPanel();
                             }
                         }),
                         tool(this.i18n.homeMoveDown, () => {
                             const next = this.getHomeState();
-                            const layoutList = (next.layouts[device] || []) as Array<any>;
-                            const index = layoutList.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (index >= 0 && index < layoutList.length - 1) {
-                                const [entry] = layoutList.splice(index, 1);
-                                layoutList.splice(index + 1, 0, entry);
-                                next.layouts[device] = layoutList;
-                                saveState(next);
+                            const list = (next.layouts[device] || []) as Array<any>;
+                            const index = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
+                            if (index >= 0 && index < list.length - 1) {
+                                const [moved] = list.splice(index, 1);
+                                list.splice(index + 1, 0, moved);
+                                next.layouts[device] = list;
+                                this.saveHomeState(next);
                                 renderPanel();
                             }
                         }),
@@ -3155,7 +3292,7 @@ const version = beginSearch(session);
                             const next = this.getHomeState();
                             next.instances = (next.instances as Array<any>).filter((candidate) => candidate.instanceId !== inst.instanceId);
                             next.layouts[device] = ((next.layouts[device] || []) as Array<any>).filter((candidate) => candidate.instanceId !== inst.instanceId);
-                            saveState(next);
+                            this.saveHomeState(next);
                             renderPanel();
                         }),
                     );
@@ -3165,16 +3302,16 @@ const version = beginSearch(session);
 
             root.appendChild(grid);
 
-            // 首次打开播种默认实例（最近打开 + 收藏），之后删除即 stays deleted
+            // 首次打开播种默认实例（最近打开 + 收藏，中号），之后删除即保留删除
             if (state.instances.length === 0 && !editing) {
                 const seeded = this.getHomeState();
                 ["recent-documents", "favorites"].forEach((moduleId) => {
                     if (!catalogIds.has(moduleId)) return;
                     (seeded.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
-                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: 0, y: 0, w: 6, h: 1, collapsed: false});
+                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: 0, y: 0, w: 4, h: 4, collapsed: false, size: "medium"});
                 });
                 if ((seeded.instances as Array<any>).length > 0) {
-                    saveState(seeded);
+                    this.saveHomeState(seeded);
                     renderPanel();
                     return;
                 }
@@ -3203,10 +3340,6 @@ const version = beginSearch(session);
             });
         };
 
-        const originalDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
-            originalDestroy();
-        };
         renderPanel();
     }
 
@@ -6343,6 +6476,8 @@ private rootIdOf(tab: Tab): string | null {
         scrollElement.innerHTML = "";
         const settings = this.getSettings();
         scrollElement.style.setProperty("--sw-thumb-height", `${settings.thumbHeight}px`);
+        this.groupFlowObserver?.disconnect();
+        this.groupFlowObserver = null;
 
         const activeTabId = activeTab?.id;
         const mru = this.getMru();
@@ -6430,6 +6565,56 @@ private rootIdOf(tab: Tab): string | null {
     private createdByIdCache: {[rootId: string]: string} = {};
     private notebookListCache: Array<{id: string; name: string}> | null = null;
 
+    private groupFlowObserver: ResizeObserver | null = null;
+    private groupFlowLastWidth = 0;
+
+    // 分组流式布局度量：用标准网格自己的公式反推列数与 1fr 实际像素宽，
+    // 保证组块内卡片与不分组时逐像素一致；显式列数设置优先
+    private computeGroupFlowLayout(scrollElement: HTMLElement, settings: ISwSettings): {cols: number; cellWidth: number} {
+        const cs = window.getComputedStyle(scrollElement);
+        const contentWidth = Math.max(0, scrollElement.clientWidth - parseFloat(cs.paddingLeft || "0") - parseFloat(cs.paddingRight || "0"));
+        const gap = GROUP_FLOW_GAP_PX;
+        const minCard = GROUP_FLOW_MIN_CARD_PX;
+        let cols = 1;
+        if (!scrollElement.closest(".sw--sidebar") && settings.columns >= 2) {
+            cols = settings.columns;
+        } else {
+            cols = Math.max(1, Math.floor((contentWidth + gap) / (minCard + gap)));
+        }
+        const cellWidth = (contentWidth - (cols - 1) * gap) / cols;
+        return {cols: Math.max(1, cols), cellWidth: Math.max(0, cellWidth)};
+    }
+
+    // 容器宽度变化时才重排（rAF 去抖）；不重建数据，仅走既有整列表刷新链路
+    private watchGroupFlowResize(
+        scrollElement: HTMLElement,
+        tabs: Tab[],
+        activeTab: Tab | undefined,
+        groupMode: TabGroupMode,
+        listOpts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
+        sortBy: SortBy,
+        updatedMap: {[rootId: string]: string},
+    ) {
+        this.groupFlowObserver?.disconnect();
+        this.groupFlowObserver = null;
+        this.groupFlowLastWidth = scrollElement.clientWidth;
+        if (typeof ResizeObserver !== "function") return;
+        let frame = 0;
+        const observer = new ResizeObserver(() => {
+            if (frame) cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                if (!scrollElement.isConnected) return;
+                const width = scrollElement.clientWidth;
+                if (width === this.groupFlowLastWidth) return;
+                this.groupFlowLastWidth = width;
+                this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+            });
+        });
+        observer.observe(scrollElement);
+        this.groupFlowObserver = observer;
+    }
+
     // 分组渲染主路径：解析分组上下文（收藏分组/笔记本/创建时间）→ groupTabsByMode →
     // 稀疏组流式布局（组块宽度=内容卡片数，上限满宽）；异步数据（创建时间/笔记本名）
     // 就绪后若有关键新数据则重排一次
@@ -6504,6 +6689,8 @@ private rootIdOf(tab: Tab): string | null {
         ctx: ITabGroupRenderCtx,
         all: IGroupedTab[],
         focusState: {defaultFocusIndex: number},
+        span = 0,
+        cellWidth = 0,
     ) {
         const collapsed = this.groupCollapseState.has(def.key);
         const groupEl = document.createElement("div");
@@ -6532,6 +6719,12 @@ private rootIdOf(tab: Tab): string | null {
         groupEl.appendChild(header);
 
         const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
+        if (span > 0 && cellWidth > 0) {
+            // 组块宽度 = span 张标准卡片 + 块间距；内部 repeat(span, 1fr) 在确定宽度下每列
+            // 恰好等于标准网格的 1fr 宽——卡片尺寸与不分组时逐像素一致
+            groupEl.style.width = `${Math.round(span * cellWidth + (span - 1) * GROUP_FLOW_GAP_PX)}px`;
+            grid.style.gridTemplateColumns = `repeat(${span}, 1fr)`;
+        }
         ordered.forEach((item) => {
             const card = this.acquireGroupCard(item, ctx, false);
             grid.appendChild(card);
@@ -7354,19 +7547,30 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 }
             }
 
+            // 流式分组下组块宽度不等，方向键按屏幕坐标就近移动；Tab 保持顺序移动
+            const flowNav = scrollElement.classList.contains("sw--grouped-flow");
+            const flowNeighbor = (dir: string): number => {
+                const neighbor = this.pickCardByPosition(cards, cards[focusIndex], dir);
+                return neighbor ? cards.indexOf(neighbor) : -1;
+            };
+
             let next = -1;
             if (key === "ArrowRight" || (key === "Tab" && !event.shiftKey)) {
                 event.preventDefault();
-                next = (focusIndex + 1) % cards.length;
+                next = key === "ArrowRight" && flowNav && flowNeighbor(key) >= 0
+                    ? flowNeighbor(key)
+                    : (focusIndex + 1) % cards.length;
             } else if (key === "ArrowLeft" || (key === "Tab" && event.shiftKey)) {
                 event.preventDefault();
-                next = (focusIndex - 1 + cards.length) % cards.length;
+                next = key === "ArrowLeft" && flowNav && flowNeighbor(key) >= 0
+                    ? flowNeighbor(key)
+                    : (focusIndex - 1 + cards.length) % cards.length;
             } else if (key === "ArrowDown") {
                 event.preventDefault();
-                next = Math.min(focusIndex + colCount, cards.length - 1);
+                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.min(focusIndex + colCount, cards.length - 1);
             } else if (key === "ArrowUp") {
                 event.preventDefault();
-                next = Math.max(focusIndex - colCount, 0);
+                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
             } else if (key === "Enter") {
                 event.preventDefault();
                 const target = cards[focusIndex];
@@ -7389,6 +7593,42 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.scrollIntoView(cards[next], scrollElement);
             }
         });
+    }
+
+    // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）
+    private pickCardByPosition(cards: HTMLElement[], current: HTMLElement, key: string): HTMLElement | null {
+        const base = current.getBoundingClientRect();
+        let best: HTMLElement | null = null;
+        let bestScore = Number.POSITIVE_INFINITY;
+        cards.forEach((card) => {
+            if (card === current) return;
+            const rect = card.getBoundingClientRect();
+            const dx = rect.left - base.left;
+            const dy = rect.top - base.top;
+            let primary = 0;
+            let cross = 0;
+            if (key === "ArrowRight") {
+                primary = dx; cross = Math.abs(dy);
+                if (primary <= 1) return;
+            } else if (key === "ArrowLeft") {
+                primary = -dx; cross = Math.abs(dy);
+                if (primary <= 1) return;
+            } else if (key === "ArrowDown") {
+                primary = dy; cross = Math.abs(dx);
+                if (primary <= 1) return;
+            } else if (key === "ArrowUp") {
+                primary = -dy; cross = Math.abs(dx);
+                if (primary <= 1) return;
+            } else {
+                return;
+            }
+            const score = Math.abs(primary) + cross * 2.5;
+            if (score < bestScore) {
+                bestScore = score;
+                best = card;
+            }
+        });
+        return best;
     }
 
     private focusCard(card: HTMLElement | undefined | null) {

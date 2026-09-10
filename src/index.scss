@@ -4287,9 +4287,9 @@ body:not(.desktop) .sw-home {
 }
 
 // ==================== 分组·排序 一体化浮层（与最近下拉同模式：fixed + 弹窗内层级） ====================
-.speed-switch .sw__sort-menu {
+.sw__sort-menu {
     position: fixed;
-    z-index: 999;
+    z-index: 2147483647;
     display: flex;
     flex-direction: column;
     min-width: 200px;
@@ -4331,5 +4331,170 @@ body:not(.desktop) .sw-home {
         }
 
         svg { width: 12px; height: 12px; flex: none; }
+    }
+}
+
+// ==================== 分组流式布局：小分组并排、大分组占满整行 ====================
+// 块宽由渲染层按标准网格 1fr 像素精确写入（内联），容器仅负责横向流动换行
+.speed-switch .sw--grouped-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px 12px;
+
+    .sw__group--named {
+        flex: none;
+        min-width: 0;
+    }
+}
+
+// ==================== 第二面板：iPad 式小组件画布 ====================
+// 12 列固定网格 + 40px 行单元 + dense 自动归位；模块占整数格（型号 S4×3/M4×4/W8×3/L8×5）
+.sw-home .sw-home__grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 40px;
+    grid-auto-flow: dense;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.sw-home .sw-home__cell {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow, none);
+}
+
+.sw-home .sw-home__cell-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px 12px;
+}
+
+// 型号密度：小号压缩内边距与行高，内容自然截断（可滚动）
+.sw-home .sw-home__cell[data-size="small"] .sw-home__cell-body {
+    padding: 8px 10px;
+
+    .sw__home-module-list .sw__home-module-item-action {
+        padding: 3px 6px;
+        font-size: 12px;
+    }
+}
+
+.sw-home .sw-home__cell--dragging {
+    opacity: 0.45;
+}
+
+.sw-home .sw-home__cell--dragover {
+    outline: 2px dashed var(--b3-theme-primary);
+    outline-offset: -3px;
+}
+
+.sw-home .sw-home__cell-tools {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 6px 8px;
+    border-top: 1px dashed var(--b3-border-color);
+
+    .sw-home__tool {
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+}
+
+// ==================== 小组件商店画廊 ====================
+.sw-home-store {
+    height: 100%;
+    padding: 14px 18px 18px;
+    box-sizing: border-box;
+    overflow: auto;
+    background: var(--sw-page-bg, var(--b3-theme-background));
+}
+
+.sw-home-store__section {
+    margin: 14px 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--b3-theme-on-surface);
+
+    &:first-child { margin-top: 0; }
+}
+
+.sw-home-store__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.sw-home-store__card {
+    padding: 12px 14px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow, none);
+}
+
+.sw-home-store__card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    svg {
+        flex: none;
+        width: 28px;
+        height: 28px;
+        color: var(--b3-theme-primary);
+    }
+
+    strong {
+        display: block;
+        font-size: 13px;
+    }
+
+    span {
+        display: block;
+        margin-top: 2px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12px;
+    }
+}
+
+.sw-home-store__sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sw-home-store__size {
+    padding: 3px 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+
+    &:hover,
+    &:focus-visible {
+        border-color: var(--b3-theme-primary);
+        color: var(--b3-theme-primary);
+        outline: none;
+    }
+
+    &.sw-home-store__size--added {
+        border-style: dashed;
+        color: var(--b3-theme-on-surface-light);
     }
 }
