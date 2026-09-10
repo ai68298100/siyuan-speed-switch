@@ -9,7 +9,23 @@ const BUILTIN_QUICK_ACTIONS = [
     {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "mobile"], order: 10, enabled: true},
     {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
 ];
-const DEFAULT_QUICK_ACTIONS = BUILTIN_QUICK_ACTIONS.filter((item) => item.value === "journal" || item.value === "settings");
+// Keep a deliberately small first-run workspace. External providers remain
+// available from “Add action” and must never occupy the bar automatically.
+const DEFAULT_QUICK_ACTIONS = BUILTIN_QUICK_ACTIONS.filter((item) =>
+    item.value === "journal" || item.value === "settings" || item.value === "search");
+
+// v2 (0.16.11): the stored action bar used to be machine-written from older
+// default sets (auto-registered provider entries included), so pre-marker
+// configs are reset to the new defaults exactly once. After the marker is
+// written, user curation is never touched again.
+const QUICK_ACTION_DEFAULTS_VERSION = 2;
+
+function migrateQuickActionDefaults(stored, storedVersion) {
+    if (storedVersion === QUICK_ACTION_DEFAULTS_VERSION) {
+        return {items: null, migrated: false};
+    }
+    return {items: getDefaultQuickActions(), migrated: true};
+}
 
 function normalizeProvider(provider) {
     if (!provider || typeof provider !== "object") return null;
@@ -108,7 +124,7 @@ function shouldRenderQuickAction(action, surface, context = "switcher", declared
     // buttons in its desktop/mobile footer duplicates controls without adding a
     // useful action. Preserve their stored config for sidebar/legacy use.
     if (context === "switcher" && action.kind === "builtin"
-        && (action.value === "switcher" || action.value === "search")
+        && action.value === "switcher"
         && (surface === "desktop" || surface === "mobile")) return false;
     return true;
 }
@@ -221,5 +237,7 @@ module.exports = {
     resolveQuickActionSupport,
     shouldRenderQuickAction,
     appendQuickAction,
+    migrateQuickActionDefaults,
+    QUICK_ACTION_DEFAULTS_VERSION,
     graphemeLength,
 };

@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {
@@ -176,6 +176,41 @@ test('resolveIconReference: preserves emoji values', () => {
     assert.deepEqual(resolveIconReference('⭐', new Set(['iconFile'])), {type: 'emoji', value: '⭐'});
 });
 
+// ── tab ordering ──
+test('sortItems: supports title, updated, MRU and reverse layout without mutating input', () => {
+    const items = [{id: 'a', title: 'Doc 10', root: 'a'}, {id: 'b', title: 'Doc 2', root: 'b'}, {id: 'c', title: 'Doc 1', root: 'c'}];
+    const options = {titleOf: x => x.title, rootIdOf: x => x.root, pinKeyOf: x => x.root, updatedMap: {a: '2024-01-01', b: '2024-03-01', c: '2024-02-01'}};
+    assert.deepEqual(sortItems(items, 'titleAsc', [], options).map(x => x.id), ['c', 'b', 'a']);
+    assert.deepEqual(sortItems(items, 'updatedDesc', [], options).map(x => x.id), ['b', 'c', 'a']);
+    assert.deepEqual(sortItems(items, 'mru', ['c', 'a'], options).map(x => x.id), ['c', 'a', 'b']);
+    assert.deepEqual(sortItems(items, 'layoutDesc', [], options).map(x => x.id), ['c', 'b', 'a']);
+    assert.deepEqual(items.map(x => x.id), ['a', 'b', 'c']);
+});
+
+test('sortGroupItems: pinned entries stay first while the rest follow selected ordering', () => {
+    const items = [{id: 'a', title: 'Z', key: 'a'}, {id: 'b', title: 'A', key: 'b'}, {id: 'c', title: 'B', key: 'c'}];
+    const result = sortGroupItems(items, 'titleAsc', [], new Set(['a']), {}, {titleOf: x => x.title, pinKeyOf: x => x.key});
+    assert.deepEqual(result.map(x => x.id), ['a', 'b', 'c']);
+    assert.notEqual(result, items);
+});
+
+test('resolveQuickActionSurfaceState: normalizes display and collapse per surface', () => {
+    const settings = {
+        quickActionsDisplayDesktop: 'icons', quickActionsDisplaySidebar: 'hidden', quickActionsDisplayMobile: 'full',
+        quickActionsCollapsedDesktopRight: true, quickActionsCollapsedDesktopBottom: false,
+        quickActionsCollapsedSidebar: true, quickActionsCollapsedMobile: false,
+    };
+    assert.deepEqual(resolveQuickActionSurfaceState('desktop', settings, '.sw__quick-rail'), {
+        surface: 'desktop', display: 'icons', isRightRail: true, collapsed: true,
+    });
+    assert.deepEqual(resolveQuickActionSurfaceState('sidebar', settings), {
+        surface: 'sidebar', display: 'hidden', isRightRail: false, collapsed: true,
+    });
+    assert.deepEqual(resolveQuickActionSurfaceState('unknown', {}), {
+        surface: 'desktop', display: 'full', isRightRail: false, collapsed: false,
+    });
+});
+
 test('normalizeQuickActionText: collapses controls and bounds metadata', () => {
     assert.equal(normalizeQuickActionText('  思播\n\u0000播放器  ', 80), '思播 播放器');
     assert.equal(normalizeQuickActionText('abcdefgh', 4), 'abcd');
@@ -269,6 +304,9 @@ test('planGroupOpenFavorites: dedupes roots and excludes opened legacy/root keys
     ];
     const result = planGroupOpenFavorites(favorites, new Set(['legacy-open', 'root-b']), (favorite) => favorite.rootId);
     assert.deepEqual(result, {targets: [{favorite: favorites[2], rootId: 'root-c'}], invalid: 0});
+    assert.equal(resolveFavoriteRootId({rootId: 'root-a', key: 'tab-uuid'}), '');
+    assert.equal(resolveFavoriteRootId({rootId: '20260906120000-aaaaaaa', key: 'tab-uuid'}), '20260906120000-aaaaaaa');
+    assert.equal(resolveFavoriteRootId({rootId: 'tab-uuid', key: '20260906120001-bbbbbbb'}), '20260906120001-bbbbbbb');
 });
 
 test('planGroupOpenFavorites: reports invalid entries without counting duplicates as failures', () => {

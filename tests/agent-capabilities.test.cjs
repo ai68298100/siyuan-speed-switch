@@ -8,6 +8,10 @@ const {
     normalizeAgentQuery,
     normalizeAgentNotebook,
     normalizeAgentLimit,
+    normalizeAgentSearchMethod,
+    normalizeAgentSearchOrder,
+    normalizeAgentSearchType,
+    normalizeAgentSearchSubType,
     normalizeAgentRootId,
     limitAgentItems,
     buildAgentNavigationResult,
@@ -21,6 +25,13 @@ test("agent capability specs are read-only and bounded", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.name, "navigation-state");
     assert.equal(AGENT_CAPABILITY_SPECS.search.name, "search-documents");
     assert.equal(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.limit.maximum, 32);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.method.enum, ["keyword", "query", "regexp"]);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.orderBy.enum,
+        ["relevanceDesc", "updatedDesc", "createdDesc", "content"]);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.type.enum,
+        ["document", "heading", "paragraph", "codeBlock"]);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.subType.enum,
+        ["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
     assert.match(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.notebook.pattern, /A-Za-z0-9/);
     assert.equal(AGENT_CAPABILITY_SPECS.search.outputSchema.properties.items.items.type, "object");
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.tabs.type, "array");
@@ -59,6 +70,13 @@ test("agent input normalization rejects unsafe notebook and ids", () => {
     assert.equal(normalizeAgentRootId("not-a-block"), "");
     assert.equal(normalizeAgentLimit("999"), 32);
     assert.equal(normalizeAgentLimit("bad", 7), 7);
+    assert.equal(normalizeAgentSearchMethod("regexp"), "regexp");
+    assert.equal(normalizeAgentSearchMethod("sql"), "");
+    assert.equal(normalizeAgentSearchOrder("updatedDesc"), "updatedDesc");
+    assert.equal(normalizeAgentSearchType("heading"), "heading");
+    assert.equal(normalizeAgentSearchType("databaseBlock"), "");
+    assert.equal(normalizeAgentSearchSubType("h2"), "h2");
+    assert.equal(normalizeAgentSearchSubType("database"), "");
 });
 
 test("agent item output is deduplicated and bounded", () => {

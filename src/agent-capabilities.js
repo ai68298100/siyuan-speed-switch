@@ -12,6 +12,10 @@ const MAX_TEXT_LENGTH = 256;
 const MAX_SNIPPET_LENGTH = 600;
 const ITEM_SOURCES = Object.freeze(["tabs", "recent", "favorite", "title", "opened", "global"]);
 const SEARCH_SOURCES = Object.freeze(["tabs", "title", "global", "tabs+title", "tabs+global"]);
+const SEARCH_METHODS = Object.freeze(["keyword", "query", "regexp"]);
+const SEARCH_ORDERS = Object.freeze(["relevanceDesc", "updatedDesc", "createdDesc", "content"]);
+const SEARCH_TYPES = Object.freeze(["document", "heading", "paragraph", "codeBlock"]);
+const SEARCH_SUBTYPES = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
 const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter()
     : null;
@@ -47,6 +51,26 @@ function normalizeAgentLimit(value, fallback = 12) {
     const parsed = Number.parseInt(String(value), 10);
     if (!Number.isFinite(parsed)) return fallback;
     return Math.min(MAX_ITEMS, Math.max(1, parsed));
+}
+
+function normalizeAgentSearchMethod(value) {
+    if (value === undefined || value === null || value === "" || value === "keyword") return "keyword";
+    return SEARCH_METHODS.includes(value) ? value : "";
+}
+
+function normalizeAgentSearchOrder(value) {
+    if (value === undefined || value === null || value === "" || value === "relevanceDesc") return "relevanceDesc";
+    return SEARCH_ORDERS.includes(value) ? value : "";
+}
+
+function normalizeAgentSearchType(value) {
+    if (value === undefined || value === null || value === "") return "";
+    return SEARCH_TYPES.includes(value) ? value : "";
+}
+
+function normalizeAgentSearchSubType(value) {
+    if (value === undefined || value === null || value === "") return "";
+    return SEARCH_SUBTYPES.includes(value) ? value : "";
 }
 
 function normalizeAgentRootId(value) {
@@ -199,7 +223,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     search: Object.freeze({
         name: "search-documents",
         title: "小驴速切搜索文档",
-        description: "只读搜索思源文档标题；标题无结果时可使用受限的原生块搜索回退。结果只返回根文档摘要和定位信息。",
+        description: "只读搜索思源文档；支持受限的笔记本、内容类型、搜索方式和结果排序筛选，并在需要时使用原生块搜索。结果只返回根文档摘要和定位信息。",
         inputSchema: Object.freeze({
             type: "object",
             properties: {
@@ -211,6 +235,10 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     pattern: "^[A-Za-z0-9_-]{1,64}$",
                 },
                 limit: {type: "integer", minimum: 1, maximum: MAX_SEARCH_ITEMS},
+                method: {type: "string", enum: SEARCH_METHODS},
+                orderBy: {type: "string", enum: SEARCH_ORDERS},
+                type: {type: "string", enum: SEARCH_TYPES},
+                subType: {type: "string", enum: SEARCH_SUBTYPES},
             },
             required: ["query"],
             additionalProperties: false,
@@ -265,6 +293,10 @@ module.exports = {
     normalizeAgentQuery,
     normalizeAgentNotebook,
     normalizeAgentLimit,
+    normalizeAgentSearchMethod,
+    normalizeAgentSearchOrder,
+    normalizeAgentSearchType,
+    normalizeAgentSearchSubType,
     normalizeAgentRootId,
     limitAgentItems,
     buildAgentNavigationResult,

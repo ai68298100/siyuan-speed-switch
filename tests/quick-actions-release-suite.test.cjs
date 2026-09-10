@@ -21,5 +21,5 @@ test("release suite: malformed migration is isolated and valid defaults remain r
     const result = sanitizeQuickActions([null, {id: "bad", kind: "builtin", value: "invalid"}]);
     assert.deepEqual(result.items, []);
     const defaults = sanitizeQuickActions(undefined).items;
-    assert.deepEqual(defaults.map((item) => item.value), ["journal", "settings"]);
+    assert.deepEqual(defaults.map((item) => item.value), ["search", "journal", "settings"]);
 });

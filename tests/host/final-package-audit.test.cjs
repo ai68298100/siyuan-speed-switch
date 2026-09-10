@@ -2,8 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const cp = require('node:child_process');
 const root = path.resolve(__dirname, '..', '..');
+const {listZipEntryNames, readZipEntry} = require(path.join(__dirname, 'lib', 'zip.cjs'));
 
 test('final package audit matches manifest, readme, and workflow claims', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8'));
@@ -18,9 +18,21 @@ test('final package audit matches manifest, readme, and workflow claims', () => 
 test('final package audit reports a bounded unique archive', () => {
     const zip = path.join(root, 'package.zip');
     if (!fs.existsSync(zip)) return;
-    const entries = cp.execFileSync('tar', ['-tf', zip], {encoding: 'utf8'}).split(/\r?\n/).filter(Boolean);
+    const entries = listZipEntryNames(fs.readFileSync(zip));
     assert.ok(entries.length >= 8 && entries.length <= 32);
     assert.equal(new Set(entries).size, entries.length);
 });
 
-test('final audit is read-only', () => assert.equal(typeof cp.execFileSync, 'function'));
+test('release archive carries the current candidate documentation', () => {
+    const zip = path.join(root, 'package.zip');
+    if (!fs.existsSync(zip)) return;
+    const buffer = fs.readFileSync(zip);
+    const readme = readZipEntry(buffer, 'README.md').toString('utf8');
+    const roadmap = readZipEntry(buffer, 'ROADMAP.md').toString('utf8');
+    assert.match(readme, /verify:release/);
+    assert.match(readme, /发布候选状态/);
+    assert.match(readme, /发布前检查/);
+    assert.match(roadmap, /R7：现代化 UI 视觉重构/);
+});
+
+test('final audit is read-only', () => assert.equal(typeof fs.readFileSync, 'function'));

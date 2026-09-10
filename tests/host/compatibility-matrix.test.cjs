@@ -13,6 +13,35 @@ test('compatibility matrix documents supported and degraded host surfaces', () =
     assert.match(readme, /Android/);
 });
 
+test('readme exposes a complete release-candidate path', () => {
+    const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+    const english = fs.readFileSync(path.join(root, 'README.en-US.md'), 'utf8');
+    for (const text of [readme, english]) {
+        assert.match(text, /Release Checklist|发布前检查/);
+        assert.match(text, /verify:release/);
+        assert.match(text, /Android/);
+        assert.match(text, /not.*published|正式发布|发布版本/i);
+    }
+});
+
+test('documentation local links resolve from the repository', () => {
+    const documents = ['README.md', 'README.en-US.md', 'ROADMAP.md'];
+    const missing = [];
+    const linkPattern = /\[[^\]]+\]\(([^)\s]+)(?:\s+[^)]*)?\)/g;
+    for (const document of documents) {
+        const source = fs.readFileSync(path.join(root, document), 'utf8');
+        for (const match of source.matchAll(linkPattern)) {
+            const target = match[1];
+            if (/^(?:https?:|mailto:|#)/i.test(target)) continue;
+            const relative = target.split('#', 1)[0].split('?', 1)[0];
+            if (!relative) continue;
+            const resolved = path.resolve(root, path.dirname(document), relative);
+            if (!fs.existsSync(resolved)) missing.push(`${document} -> ${target}`);
+        }
+    }
+    assert.deepEqual(missing, [], `broken documentation links: ${missing.join(', ')}`);
+});
+
 test('release resources required by the plugin are present', () => {
     const required = ['plugin.json', 'index.js', 'index.css', 'i18n/en.json', 'i18n/zh-CN.json'];
     const missing = required.filter((file) => !fs.existsSync(path.join(root, 'dist', file)));

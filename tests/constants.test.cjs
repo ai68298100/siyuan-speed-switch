@@ -59,6 +59,18 @@ test("document search constants are reasonable", () => {
     assert.ok(DOC_SEARCH_CACHE_LIMIT >= DOC_RESULT_LIMIT, "DOC_SEARCH_CACHE_LIMIT should be >= DOC_RESULT_LIMIT");
 });
 
+test("document-set probe concurrency stays bounded", () => {
+    assert.ok(Number.isInteger(constants.DOCUMENT_SET_PROBE_CONCURRENCY));
+    assert.ok(constants.DOCUMENT_SET_PROBE_CONCURRENCY >= 1);
+    assert.ok(constants.DOCUMENT_SET_PROBE_CONCURRENCY <= 8);
+    assert.ok(Number.isInteger(constants.DOCUMENT_SET_PROBE_TIMEOUT_MS));
+    assert.ok(constants.DOCUMENT_SET_PROBE_TIMEOUT_MS >= 1000);
+    assert.ok(constants.DOCUMENT_SET_PROBE_TIMEOUT_MS <= 30000);
+    assert.ok(Number.isInteger(constants.DOCUMENT_SET_IMPORT_MAX_BYTES));
+    assert.ok(constants.DOCUMENT_SET_IMPORT_MAX_BYTES >= 64 * 1024);
+    assert.ok(constants.DOCUMENT_SET_IMPORT_MAX_BYTES <= 2 * 1024 * 1024);
+});
+
 test("mru constants are reasonable", () => {
     // MRU_MAX (200)：最近使用页签列表上限，必须有界防止插件数据无限膨胀
     const {MRU_MAX} = constants;

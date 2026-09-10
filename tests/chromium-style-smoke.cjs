@@ -135,7 +135,7 @@ try {
     const docCardsOk = result.docGrid.display === 'grid'
         && result.docItem.tag === 'BUTTON'
         && result.docItem.display === 'grid'
-        && result.docItem.minHeight === '76px'
+        && result.docItem.minHeight === '84px'
         && result.docTitleClamp === '2';
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);

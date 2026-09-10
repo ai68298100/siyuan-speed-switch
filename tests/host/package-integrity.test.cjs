@@ -2,18 +2,24 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const cp = require('node:child_process');
+const {listZipEntryNames} = require(path.join(__dirname, 'lib', 'zip.cjs'));
 
 const root = path.resolve(__dirname, '..', '..');
 
 function filesInZip(zipPath) {
-    const output = cp.execFileSync('tar', ['-tf', zipPath], {encoding: 'utf8'});
-    return output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    return listZipEntryNames(fs.readFileSync(zipPath));
 }
 
 test('package.zip, when present, contains only release files', () => {
     const zip = path.join(root, 'package.zip');
-    if (!fs.existsSync(zip)) return;
+    if (!fs.existsSync(zip)) {
+        if (process.env.SW_REQUIRE_PACKAGE === '1') {
+            assert.fail('package.zip is required for the release archive gate');
+        }
+        return;
+    }
+    const bytes = fs.statSync(zip).size;
+    assert.ok(bytes <= 300 * 1024, `package.zip is ${bytes} bytes; budget is 307200`);
     const allowed = /^(index\.js|index\.css|icon\.png|preview\.png|README(?:\.en-US)?\.md|ROADMAP\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg)$/;
     const files = filesInZip(zip);
     assert.ok(files.length > 0);

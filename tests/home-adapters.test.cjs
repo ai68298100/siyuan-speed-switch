@@ -48,6 +48,50 @@ test("home adapter bridge supports cancellation without poisoning cache", async 
     assert.equal(result.reason, "aborted");
 });
 
+test("home adapter bridge removes abort listeners after an early read", async () => {
+    adapters.clearHomeSnapshotCache();
+    const listeners = new Set();
+    const signal = {
+        aborted: false,
+        addEventListener(type, listener) { if (type === "abort") listeners.add(listener); },
+        removeEventListener(type, listener) { if (type === "abort") listeners.delete(listener); },
+    };
+    const map = adapters.registerHomeAdapters([{moduleId: "cleanup", supportedDevices: ["desktop"], read: () => ({title: "ready"})}]);
+    const result = await adapters.readHomeModule(map, "cleanup", "desktop", {}, {signal, timeoutMs: 50});
+    assert.equal(result.ok, true);
+    assert.equal(listeners.size, 0);
+});
+
+test("home adapter bridge tolerates a signal without listener removal", async () => {
+    adapters.clearHomeSnapshotCache();
+    const signal = {aborted: false, addEventListener() {}};
+    const map = adapters.registerHomeAdapters([{moduleId: "legacy-signal", supportedDevices: ["desktop"], read: () => ({title: "ready"})}]);
+    const result = await adapters.readHomeModule(map, "legacy-signal", "desktop", {}, {signal, timeoutMs: 50});
+    assert.equal(result.ok, true);
+});
+
+test("home adapter bridge tolerates a signal without listener registration", async () => {
+    adapters.clearHomeSnapshotCache();
+    const signal = {aborted: false};
+    const map = adapters.registerHomeAdapters([{moduleId: "minimal-signal", supportedDevices: ["desktop"], read: () => ({title: "ready"})}]);
+    const result = await adapters.readHomeModule(map, "minimal-signal", "desktop", {}, {signal, timeoutMs: 50});
+    assert.equal(result.ok, true);
+});
+
+test("home adapter bridge skips an already-aborted minimal signal", async () => {
+    adapters.clearHomeSnapshotCache();
+    const signal = {aborted: true};
+    let reads = 0;
+    const map = adapters.registerHomeAdapters([{moduleId: "aborted-minimal-signal", supportedDevices: ["desktop"], read: () => {
+        reads += 1;
+        return {title: "should not be read"};
+    }}]);
+    const result = await adapters.readHomeModule(map, "aborted-minimal-signal", "desktop", {}, {signal, timeoutMs: 50});
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "aborted");
+    assert.equal(reads, 0);
+});
+
 test("home adapter agent sources remain read-only and device isolated", async () => {
     adapters.clearHomeSnapshotCache();
     const map = adapters.registerHomeAdapters([{moduleId: "agent", supportedDevices: ["desktop", "mobile"], read: (_, device) => ({title: device, items: []})}]);
@@ -76,7 +120,7 @@ test("home adapter external plugin providers interoperate through one contract",
     assert.equal((await adapters.readHomeModule(map, "checkin", "mobile")).ok, true);
     assert.equal((await adapters.readHomeModule(map, "data-assets", "mobile")).reason, "unsupported");
     adapters.unregisterHomeAdapter(map, "light-talk");
-    assert.equal((await adapters.readHomeModule(map, "light-talk", "desktop")).reason, "unsupported");
+    assert.equal((await adapters.readHomeModule(map, "light-talk", "desktop")).reason, "unregistered");
 });
 
 test("home adapter provider snapshots tolerate schema versions and malformed payloads", () => {
@@ -108,7 +152,7 @@ test("home adapter provider replacement and unload clear stale state", async () 
     const replacement = adapters.registerHomeAdapters([{moduleId: "replace", supportedDevices: ["desktop"], read: () => ({title: version})}]);
     map.set("replace", replacement.get("replace"));
     adapters.unregisterHomeAdapter(map, "replace");
-    assert.equal((await adapters.readHomeModule(map, "replace", "desktop")).reason, "unsupported");
+    assert.equal((await adapters.readHomeModule(map, "replace", "desktop")).reason, "unregistered");
 });
 
 test("home adapter repeated provider replacement stays bounded", async () => {
@@ -212,7 +256,7 @@ test("home adapter final mobile budget matrix stays within all bounds", () => {
 test("home adapter agent error states expose stable retryable reasons", async () => {
     adapters.clearHomeSnapshotCache();
     const denied = await adapters.readHomeModule(new Map(), "agent", "mobile");
-    assert.equal(denied.reason, "unsupported");
+    assert.equal(denied.reason, "unregistered");
     const map = adapters.registerHomeAdapters([{moduleId: "agent-retry", supportedDevices: ["desktop"], read: () => { throw new Error("permission denied"); }}]);
     const failed = await adapters.readHomeModule(map, "agent-retry", "desktop", {}, {timeoutMs: 5});
     assert.equal(failed.reason, "failed");
@@ -419,7 +463,7 @@ guarded("home adapters: unregister removes provider state and tolerates missing 
     await adapters.readHomeModule(map, "lifecycle", "desktop", {}, {cacheTtlMs: 1000});
     adapters.unregisterHomeAdapter(map, "lifecycle");
     const result = await adapters.readHomeModule(map, "lifecycle", "desktop");
-    assert.equal(result.reason, "unsupported");
+    assert.equal(result.reason, "unregistered");
     assert.equal(adapters.getHomeAdapterDiagnostics().some((item) => item.moduleId === "lifecycle"), false);
     assert.doesNotThrow(() => adapters.unregisterHomeAdapter(map, "missing"));
 });
@@ -467,6 +511,24 @@ guarded("home adapters: unload during pending read remains safe", async () => {
     const result = await read;
     assert.equal(result.ok, true);
     assert.equal(map.has("pending"), false);
+});
+
+guarded("home adapters: unloaded reads cannot repopulate a replacement cache", async () => {
+    adapters.clearHomeSnapshotCache();
+    let resolveOld;
+    let reads = 0;
+    const oldPending = new Promise((done) => { resolveOld = done; });
+    const map = adapters.registerHomeAdapters([{moduleId: "replace-pending", supportedDevices: ["desktop"], read: () => oldPending}]);
+    const oldRead = adapters.readHomeModule(map, "replace-pending", "desktop", {}, {cacheTtlMs: 1000});
+    adapters.unregisterHomeAdapter(map, "replace-pending");
+    map.set("replace-pending", {moduleId: "replace-pending", supportedDevices: ["desktop"], read: () => ({title: `new-${++reads}`})});
+    const newRead = await adapters.readHomeModule(map, "replace-pending", "desktop", {}, {cacheTtlMs: 1000});
+    resolveOld({title: "late-old"});
+    await oldRead;
+    const cached = await adapters.readHomeModule(map, "replace-pending", "desktop", {}, {cacheTtlMs: 1000});
+    assert.equal(newRead.snapshot.title, "new-1");
+    assert.equal(cached.cached, true);
+    assert.equal(cached.snapshot.title, "new-1");
 });
 
 guarded("home adapters: refresh planner is device-aware and never refreshes hidden modules", () => {

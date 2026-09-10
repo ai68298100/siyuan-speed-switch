@@ -9,9 +9,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,6 +45,14 @@ jobs:
 
       - name: Build package.zip
         run: pnpm build
+
+      # The full test suite runs before the build; execute archive checks again
+      # after the artifact exists so release-only size and manifest gates cannot
+      # silently skip on a clean checkout.
+      - name: Package integrity gate
+        env:
+          SW_REQUIRE_PACKAGE: "1"
+        run: node --test tests/host/package-integrity.test.cjs tests/host/final-package-audit.test.cjs
 
       - name: Smoke test
         run: pnpm test:smoke

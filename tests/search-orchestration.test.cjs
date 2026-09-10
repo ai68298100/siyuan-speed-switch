@@ -20,21 +20,29 @@ function tab(rootId, path) {
     return {rootId, path, notebookId: "box-a"};
 }
 
-/** A transport-only harness for the intended title -> opened -> global flow. */
-async function runOrchestration({title = [], opened = [], global = [], rejectAt = ""} = {}) {
+/** A transport-only harness for the intended tabs -> opened -> title/global flow. */
+async function runOrchestration({title = [], opened = [], global = [], rejectAt = "", titleFailure = false} = {}) {
     const calls = [];
     const fetchMock = async (endpoint) => {
         calls.push(endpoint);
         if (endpoint === "title") {
             if (rejectAt === endpoint) throw new DOMException("Aborted", "AbortError");
+            if (titleFailure) throw new Error("searchDocs unavailable");
             return response({data: title});
         }
         if (rejectAt === endpoint) throw new DOMException("Aborted", "AbortError");
         return response({data: endpoint === "opened" ? opened : global});
     };
     try {
-        const titleResponse = await fetchMock("title");
-        const titleRecords = normalizeTitleSearchDocuments(extractSearchRecords(await titleResponse.json()));
+        let titleRecords = [];
+        try {
+            const titleResponse = await fetchMock("title");
+            titleRecords = normalizeTitleSearchDocuments(extractSearchRecords(await titleResponse.json()));
+        } catch (error) {
+            if (error?.name === "AbortError") throw error;
+            // A title endpoint failure is compatible with the same fallback
+            // sequence used for an empty title result.
+        }
         if (titleRecords.length > 0) {
             return {calls, titleRecords};
         }
@@ -71,6 +79,13 @@ test("search orchestration: empty title follows opened before global fallback", 
     const output = await runOrchestration({global: [{id: ROOT_C, root_id: ROOT_C, name: "项目全库", hPath: "work/project"}]});
     assert.deepEqual(output.calls, ["title", "opened", "opened", "global"]);
     assert.equal(output.result.cards[0].rootId, ROOT_C);
+
+    const unavailable = await runOrchestration({
+        titleFailure: true,
+        global: [{id: ROOT_C, root_id: ROOT_C, name: "项目全库", hPath: "work/project"}],
+    });
+    assert.deepEqual(unavailable.calls, ["title", "opened", "opened", "global"]);
+    assert.equal(unavailable.result.cards[0].rootId, ROOT_C);
 });
 
 test("search orchestration: AbortError is a silent cancellation", async () => {

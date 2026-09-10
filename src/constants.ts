@@ -29,6 +29,11 @@ export const UPDATED_CACHE_MS = 3000;
 // 笔记本列表拉取超时：内核无响应时中断请求，避免设置页下拉一直停在加载中
 export const NOTEBOOK_FETCH_TIMEOUT_MS = 5000;
 
+// 文档集恢复前的宿主可用性预检并发上限，避免一次恢复压垮内核 RPC。
+export const DOCUMENT_SET_PROBE_CONCURRENCY = 4;
+export const DOCUMENT_SET_PROBE_TIMEOUT_MS = 5000;
+export const DOCUMENT_SET_IMPORT_MAX_BYTES = 512 * 1024;
+
 // 批量开/关页签后给思源 DOM/状态一帧沉降时间：连续 removeTab/MobileTabs 操作降低漏关/漏开概率
 export const TAB_SETTLE_MS = 30;
 // 批量开关页签后的最长状态确认时间，超时的操作不计入成功数量
@@ -123,11 +128,14 @@ export const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
 // 集中后重命名风险一目了然；业务代码禁止手写这些字符串字面量
 export const MRU_KEY = "sw_mru";            // 最近使用页签记录，数组按最近在前排列
 export const HISTORY_KEY = "sw_open_history"; // 最近打开文档记录，按最近在前排列
+export const CLOSED_HISTORY_KEY = "sw_closed_history"; // 最近关闭文档记录
 export const PINNED_KEY = "sw_pinned";      // 置顶页签记录（优先存文档 rootID，跨会话稳定）
 export const FAV_KEY = "sw_favorites";      // 收藏页签记录（文档用 rootID 跨会话稳定，收藏后即使关闭也可从收藏栏快速重开）
 export const FAV_GROUPS_KEY = "sw_fav_groups"; // 收藏分组注册表：设置页新建的分组（允许暂无收藏项的空分组）
 export const SETTINGS_KEY = "sw_settings";  // 插件设置
 export const QUICK_ACTIONS_KEY = "sw_quick_actions"; // 快捷入口配置
+export const QUICK_ACTIONS_DEFAULTS_KEY = "sw_quick_actions_defaults"; // 快捷入口默认值迁移版本标记
+export const DOCUMENT_SETS_KEY = "sw_document_sets"; // 命名文档集 / 工作区快照
 export const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 export const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
 export const QUICK_ACTIONS_MAX = 12;
@@ -140,3 +148,14 @@ export const SIDEBAR_DOCK_TYPE = "sidebar";
 export const DEFAULT_HOTKEY = "⌥⇧S";
 // 旧版本写入的无法匹配的顺序，需在加载时迁移
 export const LEGACY_HOTKEY = "⇧⌥S";
+// 第二面板默认快捷键 Alt+Shift+P；命令同时注册 globalCallback，
+// 思源会为其提供系统级全局热键位（在 设置→快捷键 中为该命令绑定"全局"即可在应用外触发）。
+export const SECOND_PANEL_HOTKEY = "⌥⇧P";
+
+// 面板尺寸模式：adaptive=按屏幕比例自适应（默认）/ custom=固定尺寸 / fullscreen=全屏
+export type PanelSizeMode = "adaptive" | "custom" | "fullscreen";
+export const PANEL_SIZE_MODES: PanelSizeMode[] = ["adaptive", "custom", "fullscreen"];
+export const PANEL_SCALE_MIN = 50;   // 自适应比例下限（百分比）
+export const PANEL_SCALE_MAX = 100;  // 自适应比例上限（百分比，100% 时铺满可视区再留安全边距）
+export const PANEL_SCALE_DEFAULT = 90;
+export const PANEL_SIZE_MIN_PX = 420; // 自适应计算的像素下限，避免小窗口下面板过小

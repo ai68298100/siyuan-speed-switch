@@ -12,10 +12,22 @@ function readWorkflow(name) {
 test('CI and release workflows invoke the same core local gates', () => {
     const ci = readWorkflow('ci.yml');
     const release = readWorkflow('release.yml');
+    assert.match(ci, /permissions:\s*\n\s+contents:\s+read/);
+    assert.match(ci, /pnpm\s+exec\s+tsc\s+--noEmit/);
+    assert.match(ci, /concurrency:\s*[\s\S]*cancel-in-progress:\s+true/);
+    assert.match(ci, /timeout-minutes:\s+15/);
+    assert.match(release, /concurrency:\s*[\s\S]*cancel-in-progress:\s+false/);
+    assert.match(release, /timeout-minutes:\s+15/);
     for (const command of ['pnpm build', 'pnpm test']) {
         assert.match(ci, new RegExp(command.replace(' ', '\\s+')));
         assert.match(release, new RegExp(command.replace(' ', '\\s+')));
     }
+    const buildIndex = release.indexOf('name: Build package.zip');
+    const packageGateIndex = release.indexOf('name: Package integrity gate');
+    assert.ok(buildIndex >= 0 && packageGateIndex > buildIndex,
+        'release archive gate must run after package.zip is built');
+    assert.match(release, /SW_REQUIRE_PACKAGE:\s*["']?1["']?/,
+        'release archive gate must require a generated package.zip');
     assert.match(release, /package\.zip/);
 });
 

@@ -1,9 +1,11 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
+import type {IMenu} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildOpenedDocumentSearchRequests, buildSearchCacheKey, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
+import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -12,15 +14,30 @@ import {
     resolveQuickActionSupport,
     shouldRenderQuickAction,
     appendQuickAction,
+    migrateQuickActionDefaults,
+    QUICK_ACTION_DEFAULTS_VERSION,
     createQuickActionRegistry,
 } from "./quick-actions";
 import {mountQuickActionPicker} from "./quick-actions-ui";
+import {createHomeRuntime} from "./home-runtime";
+import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
+import {createHomeModuleController} from "./home-controller";
+import {createHomePanelController} from "./home-panel";
+import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
+import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
+import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
+import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "./favorite-actions";
+import {normalizeSettings, resolvePanelSize} from "./settings-model";
 import {
     AGENT_CAPABILITY_SPECS,
     MAX_SEARCH_ITEMS,
     buildAgentNavigationResult,
     buildAgentSearchResult,
     normalizeAgentLimit,
+    normalizeAgentSearchMethod,
+    normalizeAgentSearchOrder,
+    normalizeAgentSearchType,
+    normalizeAgentSearchSubType,
     normalizeAgentNotebook,
     normalizeAgentQuery,
     registerReadOnlyAgentCapabilities,
@@ -35,6 +52,9 @@ import {
     MESSAGE_DEFAULT_MS,
     UPDATED_CACHE_MS,
     NOTEBOOK_FETCH_TIMEOUT_MS,
+    DOCUMENT_SET_PROBE_CONCURRENCY,
+    DOCUMENT_SET_PROBE_TIMEOUT_MS,
+    DOCUMENT_SET_IMPORT_MAX_BYTES,
     TAB_SETTLE_MS,
     TAB_VERIFY_TIMEOUT_MS,
     DIALOG_WIDTH_MIN_PX,
@@ -71,6 +91,7 @@ import {
     FAV_PANEL_MIN_HEIGHT_PX,
     MRU_KEY,
     HISTORY_KEY,
+    CLOSED_HISTORY_KEY,
     PINNED_KEY,
     FAV_KEY,
     FAV_GROUPS_KEY,
@@ -78,10 +99,19 @@ import {
     THUMB_CACHE_KEY,
     FAV_COLLAPSED_KEY,
     QUICK_ACTIONS_KEY,
+    QUICK_ACTIONS_DEFAULTS_KEY,
+    DOCUMENT_SETS_KEY,
     QUICK_ACTIONS_MAX,
     SIDEBAR_DOCK_TYPE,
     DEFAULT_HOTKEY,
     LEGACY_HOTKEY,
+    SECOND_PANEL_HOTKEY,
+    PanelSizeMode,
+    PANEL_SIZE_MODES,
+    PANEL_SCALE_MIN,
+    PANEL_SCALE_MAX,
+    PANEL_SCALE_DEFAULT,
+    PANEL_SIZE_MIN_PX,
 } from "./constants";
 import {
     getSiyuan,
@@ -103,6 +133,23 @@ declare module "./util" {
     export function clampNum(value: unknown, min: number, max: number, fallback: number): number;
     export function stableSortBy<T>(arr: T[], keyFn: (item: T) => string | number): T[];
     export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
+    export function sortItems<T>(items: T[], sortBy: string, mru?: string[], options?: {
+        titleOf?: (item: T) => string;
+        rootIdOf?: (item: T) => string;
+        pinKeyOf?: (item: T) => string;
+        updatedMap?: {[rootId: string]: string};
+    }): T[];
+    export function sortGroupItems<T>(group: T[], sortBy: string, mru?: string[], pinned?: Set<string> | Iterable<string>, updatedMap?: {[rootId: string]: string}, callbacks?: {
+        titleOf?: (item: T) => string;
+        rootIdOf?: (item: T) => string;
+        pinKeyOf?: (item: T) => string;
+    }): T[];
+    export function resolveQuickActionSurfaceState(surface: string, settings?: Record<string, unknown>, selector?: string): {
+        surface: "desktop" | "sidebar" | "mobile";
+        display: "full" | "icons" | "hidden";
+        isRightRail: boolean;
+        collapsed: boolean;
+    };
     export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
     export function resolveIconFallback(raw: string): {type: "svg", value: string} | {type: "emoji", value: string};
     export function resolveIconReference(raw: unknown, availableSymbols: Iterable<string> | null | undefined, fallback?: string | string[]): {type: "svg", value: string} | {type: "emoji", value: string};
@@ -143,6 +190,63 @@ declare module "./quick-actions-ui" {
         emptyText?: string;
         onSelect: (candidate: any) => void;
     }): HTMLElement | null;
+}
+
+declare module "./home-runtime" {
+    export function createHomeRuntime(): {
+        registerAdapter(options: Record<string, unknown>): {registered: boolean; unregister: () => boolean | void};
+        listModules(device?: string): unknown[];
+        read(moduleId: string, device?: string, config?: Record<string, unknown>, options?: Record<string, unknown>): Promise<unknown>;
+        dispose(): void;
+    };
+}
+
+declare module "./home-view" {
+    export function buildHomeModuleView(module: unknown, result: unknown, options?: {collapsed?: boolean}): unknown;
+    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onRetry?: (view: unknown) => void}): unknown;
+}
+declare module "./home-controller" {
+    export function createHomeModuleController(options: Record<string, unknown>): {
+        mount: () => unknown;
+        refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<{ok: boolean; reason: string; view: unknown}>;
+        toggle: () => unknown;
+        showError: (reason?: string) => unknown;
+        dispose: () => void;
+        getView: () => unknown;
+    } | null;
+}
+declare module "./home-panel" {
+    export function createHomePanelController(options: Record<string, unknown>): {
+        mount: () => unknown;
+        refresh: (config?: unknown, readOptions?: Record<string, unknown>) => Promise<{ok: boolean; reason: string; results: Array<{ok: boolean; reason: string; view: unknown}>}>;
+        toggle: (moduleId: string) => unknown;
+        dispose: () => void;
+        listModules: () => unknown[];
+        getViews: () => unknown[];
+    } | null;
+}
+declare module "./recent-closed" {
+    export function removeRecentEntry<T extends Record<string, unknown>>(entries: T[], key: string, field?: "key" | "rootId"): {items: T[]; changed: boolean};
+    export function recordRecentOpen<T extends Record<string, unknown>>(openEntries: T[], closedEntries: T[], entry: {key: string; rootId?: string | null; title?: string; ts?: number}, max?: number): {open: T[]; closed: T[]; changed: boolean};
+}
+declare module "./favorite-actions" {
+    export function removeFavoriteEntry<T extends {key?: string}>(entries: T[], key: string): {items: T[]; changed: boolean};
+    export function setFavoriteEntryGroup<T extends {key?: string; group?: string}>(entries: T[], key: string, group: string): {items: T[]; changed: boolean};
+    export function migrateFavoriteEntry<T extends {key?: string; rootId?: string}>(entries: T[], legacyKey: string, rootId: string): {items: T[]; changed: boolean; migrated: boolean; duplicate?: boolean};
+}
+declare module "./settings-model" {
+    export function normalizeSettings(saved: unknown, options?: Record<string, unknown>): any;
+    export function resolvePanelSize(settings: {panelSizeMode?: string; panelScale?: number; dialogWidth?: number; dialogHeight?: number} | null | undefined, viewport: {width: number; height: number; minWidth?: number; minHeight?: number}): {width: number; height: number};
+}
+declare module "./document-sets" {
+    export function normalizeDocumentSets(value: unknown, max?: number): {schemaVersion: number; sets: unknown[]; changed: boolean};
+    export function createDocumentSet(name: string, entries: unknown[], options?: Record<string, unknown>): any;
+    export function upsertDocumentSet(value: unknown, candidate: unknown, options?: Record<string, unknown>): any;
+    export function removeDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): any;
+    export function mergeDocumentSets(value: unknown, incoming: unknown, options?: Record<string, unknown>): any;
+    export function planDocumentSetRestore(value: unknown, openedRootIds?: unknown, availableRootIds?: unknown, max?: number): any;
+    export function summarizeDocumentSetRestore(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean}): {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
+    export function runDocumentSetRestore(entries: Array<{rootId: string}>, openRoot: (rootId: string, entry: unknown) => Promise<unknown> | unknown, options?: {signal?: AbortSignal; shouldContinue?: () => boolean}): Promise<{succeeded: number; failed: number; attempted: number; cancelled: boolean; results: Array<{rootId: string; ok: boolean; error?: string}>}>;
 }
 
 // 鍗＄墖涓夋寜閽墍闇€鍥炬爣 symbol锛堜笌瀹樻柟 litheness sprite 鍚屽悕鍚屽舰锛夛細
@@ -186,6 +290,10 @@ interface IDocSearchResult {
 interface IDocSearchFilters {
     notebook?: string;
     paths?: string[];
+    types?: Record<string, boolean>;
+    subTypes?: Record<string, boolean>;
+    method?: "keyword" | "query" | "regexp";
+    orderBy?: "relevanceDesc" | "updatedDesc" | "createdDesc" | "content";
 }
 
 interface ISearchSession<T> {
@@ -221,7 +329,9 @@ declare module "./search-model" {
         endpoint: string;
         body: Record<string, unknown>;
     } | null;
+    export function buildNativeSearchTabConfig(input?: Record<string, unknown>): {instance: string; config: Record<string, unknown>} | null;
     export function buildSearchCacheKey(input?: Record<string, unknown>): string;
+    export function canUseTitleSearch(filters?: Record<string, unknown>): boolean;
     export function extractSearchRecords(payload: unknown): unknown[];
     export function normalizeSearchResult(value: unknown, source?: string): {
         rootId: string;
@@ -260,13 +370,15 @@ type IOverlayClose = () => void;
 
 // 榛樿璁剧疆锛堝彲琚敤鎴疯缃鐩栵級
 const DEFAULT_SETTINGS: ISwSettings = {
-    dialogWidth: 880,      // 鍒囨崲鍣ㄥ脊绐楀搴?px
-    dialogHeight: 600,     // 鍒囨崲鍣ㄥ脊绐楅珮搴?px
+    dialogWidth: 880,      // 固定尺寸模式的宽度 px
+    dialogHeight: 600,     // 固定尺寸模式的高度 px
+    panelSizeMode: "adaptive", // 面板尺寸模式：adaptive=屏幕比例自适应（默认）/ custom=固定尺寸 / fullscreen=全屏
+    panelScale: PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
     columns: 0,            // 缂╃暐鍥惧垪鏁帮紝0=鑷姩
     thumbHeight: 128,      // 缂╃暐鍥鹃珮搴?px
     sortBy: "mru",         // 椤电鎺掑簭鏂瑰紡
     excludedDocks: [],     // 涓嶆樉绀哄湪宸︿晶鍒楄〃鐨勯潰鏉跨被鍨?
-    dockDisplay: "full",   // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡锛歨idden 闅愯棌 / collapsed 鎶樺彔鍥炬爣鏉?/ full 瀹屾暣鍒楄〃
+    dockDisplay: "collapsed",   // Default to the compact icon rail; users can expand it when labels are needed.
     fullscreen: false,     // 鍏ㄥ睆妯″紡锛氬垏鎹㈠櫒閾烘弧鏁翠釜绐楀彛锛屾寜 Esc 閫€鍑?
     sidebarLayout: "enlarge", // 渚ц竟鏍忕缉鐣ュ浘甯冨眬锛歟nlarge 鏀惧ぇ濉弧鏍忓锛堥粯璁わ級/ columns 鎸夊搴﹁嚜鍔ㄥ姞鍒?
     fabEnabled: false,     // 鎵嬫満绔偓娴寜閽粯璁ゅ叧闂紝闇€瑕佺殑鐢ㄦ埛鍦ㄨ缃腑鎵撳紑
@@ -295,6 +407,8 @@ const SIDEBAR_LAYOUT_LIST: SidebarLayout[] = ["enlarge", "columns"];
 interface ISwSettings {
     dialogWidth: number;
     dialogHeight: number;
+    panelSizeMode: PanelSizeMode; // 面板尺寸模式
+    panelScale: number;           // 自适应比例（百分比）
     columns: number;
     thumbHeight: number;
     sortBy: SortBy;
@@ -409,6 +523,8 @@ interface IOpenHistoryEntry {
     rootId: string | null;
     title: string;
     ts: number;
+    source?: "open" | "closed";
+    closedAt?: number;
 }
 
 export default class SpeedSwitchPlugin extends Plugin {
@@ -416,18 +532,33 @@ export default class SpeedSwitchPlugin extends Plugin {
     private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
     private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
     private activeAgentSearchControllers = new Set<AbortController>();
+    private activeDocumentSetRestoreControllers = new Set<AbortController>();
     private docSearchFilters = new WeakMap<HTMLElement, IDocSearchFilters>();
+    private docSearchNotebookNames = new WeakMap<HTMLElement, Map<string, string>>();
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
     private quickActionProviders = new Map<string, IQuickActionProvider>();
     private quickActionProviderTokens = new Map<string, symbol>();
     private quickActionRegistry = createQuickActionRegistry();
+    private homeRuntime = createHomeRuntime();
     private switcherRefreshFrame: number | null = null;
+    private switcherRefreshFrameCancel: (() => void) | null = null;
     private sidebarElement: HTMLElement | null = null; // 渚ц竟鏍?dock 闈㈡澘鍐呭鍏冪礌
+    private sidebarHistoryDropdownDispose: (() => void) | null = null;
+    private sidebarSearchFilterDispose: (() => void) | null = null;
     private sidebarResizeObserver: ResizeObserver | null = null; // 渚ц竟鏍忓昂瀵哥洃鍚紝鍙樺寲鏃堕噸绠楃缉鐣ュ浘缂╂斁
     private saveTimers = new Map<string, number>(); // 鍘绘姈鍐欑洏瀹氭椂鍣細MRU/缃《/鏀惰棌绛夐珮棰戞暟鎹悎骞惰惤鐩?
     private saveChains = new Map<string, Promise<void>>(); // 鍚屼竴 key 鐨勫啓鍏ヤ弗鏍间覆琛岋紝閬垮厤鏃ц姹傝鐩栨柊鏁版嵁
+    private recentOpenSnapshot = new Map<string, string>();
+    private recentClosedSyncTimer: number | null = null;
+    private lifecycleGeneration = 0;
+    private isUnloading = false;
+    private globalEventHandlers: {
+        switchProtyle: () => void;
+        loadedProtyle: () => void;
+        destroyProtyle: () => void;
+    } | null = null;
     private favCollapsed = new Set<string>(); // 鏀惰棌涓嬫媺涓凡鎶樺彔鐨勫垎缁勫悕锛堝凡鎸佷箙鍖栵紝閲嶅惎鍚庢仮澶嶏級
     private fabElement: HTMLElement | null = null; // 鎵嬫満绔偓娴寜閽?
     private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
@@ -436,9 +567,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
     private cardTabs = new WeakMap<HTMLElement, Tab>(); // 澶嶇敤鍗＄墖濮嬬粓鎸囧悜鏈€鏂扮殑 Tab 瀵硅薄
 
+    private activeHistoryMenu: Menu | null = null;
+    private historyDropdownClosers = new WeakMap<HTMLElement, {close: () => void; dispose: () => void}>();
+    private historyDropdownCloseSet = new Set<() => void>();
     private groupOperationBusy = false;
 
     async onload() {
+        this.isUnloading = false;
+        this.lifecycleGeneration += 1;
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
 
         // 灏芥棭娉ㄥ叆鍗＄墖鎸夐挳鍥炬爣锛氬畼鏂?sprite 涓哄紓姝ユ敞鍏ワ紝棣栧抚娓叉煋鐨勪笁鎸夐挳鍙兘寮曠敤鍒扮┖ symbol
@@ -456,6 +592,16 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
+        // 第二面板顶栏入口：与切换器并列，一键直达聚合面板
+        this.addTopBar({
+            icon: "iconLayout",
+            title: this.i18n.secondPanel,
+            position: "right",
+            callback: () => {
+                this.openSecondPanel();
+            },
+        });
+
         // 娉ㄥ唽渚ц竟鏍?dock 闈㈡澘锛堟闈級涓庢墜鏈虹鍏ュ彛锛堥《鏍?+ FAB锛夛紝浜掓枼
         if (!this.isMobile) {
             this.registerDesktopDock();
@@ -464,12 +610,25 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.registerMobileEntries();
         }
 
+        this.captureRecentOpenSnapshot();
         this.bindGlobalEvents();
         this.addCommand({
             langKey: "switchTabs",
             hotkey: DEFAULT_HOTKEY,
             callback: () => {
                 this.showSwitcher();
+            },
+        });
+        // globalCallback: 焦点不在思源时也执行。思源为这类命令提供系统级
+        // 全局热键位（设置→快捷键 里绑定"全局"），触发时会同时把思源带到前台。
+        this.addCommand({
+            langKey: "secondPanel",
+            hotkey: SECOND_PANEL_HOTKEY,
+            callback: () => {
+                this.openSecondPanel();
+            },
+            globalCallback: () => {
+                this.openSecondPanel();
             },
         });
         this.registerAgentCapabilities();
@@ -480,16 +639,20 @@ export default class SpeedSwitchPlugin extends Plugin {
         await Promise.all([
             this.loadData(MRU_KEY),
             this.loadData(HISTORY_KEY),
+            this.loadData(CLOSED_HISTORY_KEY),
             this.loadData(PINNED_KEY),
             this.loadData(FAV_KEY),
             this.loadData(FAV_GROUPS_KEY),
             this.loadData(FAV_COLLAPSED_KEY),
             this.loadData(QUICK_ACTIONS_KEY),
+            this.loadData(QUICK_ACTIONS_DEFAULTS_KEY),
+            this.loadData(DOCUMENT_SETS_KEY),
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => logger.warn("load data fail", e));
         // 鍔犺浇鏈?sanitize锛氭竻鐞嗗巻鍙茶剰鏁版嵁锛?.16.5锛夛紝浠呭湪纭疄鍙樺寲鏃跺洖鍐欙紝閬垮厤姣忔鍚姩閲嶅啓鏂囦欢
         this.sanitizePersistentData();
+        this.runQuickActionDefaultsMigration();
         // 鏀惰棌鍒嗙粍鎶樺彔鐘舵€侊細浠庢寔涔呭寲鏁版嵁鍒濆鍖栵紙鏃х増鏈棤姝ゆ暟鎹椂涓洪粯璁ゅ睍寮€锛?
         this.initFavCollapsed();
     }
@@ -516,11 +679,34 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.data[HISTORY_KEY] = history.items;
             this.saveDataDebounced(HISTORY_KEY);
         }
+        const closedHistory = normalizeClosedEntries(this.data[CLOSED_HISTORY_KEY], HISTORY_MAX);
+        if (closedHistory.changed) {
+            this.data[CLOSED_HISTORY_KEY] = closedHistory.items;
+            this.saveDataDebounced(CLOSED_HISTORY_KEY);
+        }
         const quickActions = sanitizeQuickActions(this.data[QUICK_ACTIONS_KEY], QUICK_ACTIONS_MAX);
         if (quickActions.changed) {
             this.data[QUICK_ACTIONS_KEY] = quickActions.items;
             this.saveDataDebounced(QUICK_ACTIONS_KEY);
         }
+        const documentSets = normalizeDocumentSets(this.data[DOCUMENT_SETS_KEY]);
+        if (documentSets.changed || this.data[DOCUMENT_SETS_KEY]?.schemaVersion !== documentSets.schemaVersion) {
+            this.data[DOCUMENT_SETS_KEY] = documentSets;
+            this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        }
+    }
+
+    // One-time migration: pre-marker quick-action bars were machine-written
+    // from older default sets (auto-registered provider entries included).
+    // Reset them to the current minimal defaults exactly once; from then on
+    // the stored marker keeps user curation untouched.
+    private runQuickActionDefaultsMigration() {
+        const decision = migrateQuickActionDefaults(this.data[QUICK_ACTIONS_KEY], this.data[QUICK_ACTIONS_DEFAULTS_KEY]);
+        if (!decision.migrated) return;
+        this.data[QUICK_ACTIONS_KEY] = decision.items as IQuickAction[];
+        this.saveDataDebounced(QUICK_ACTIONS_KEY);
+        this.data[QUICK_ACTIONS_DEFAULTS_KEY] = QUICK_ACTION_DEFAULTS_VERSION;
+        this.saveDataDebounced(QUICK_ACTIONS_DEFAULTS_KEY);
     }
 
     // 妗岄潰渚ц竟鏍?dock锛氫笌鍒囨崲鍣ㄥ悓鏍风殑鍗＄墖鍒楄〃锛屽父椹讳究浜庡揩閫熷垏鎹紱
@@ -561,22 +747,29 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 鍏ㄥ眬浜嬩欢锛氬垏鎹?/ 鎵撳紑 / 鍏抽棴椤电鏃跺悓姝ヤ晶杈规爮楂樹寒鎴栧叏閲忓埛鏂帮紱
     // 鎵嬫満绔『甯︾‘璁ゅ叆鍙ｆ寜閽粛鍦紙鍐呮牳涓埆鍦烘櫙浼氶噸寤洪《鏍?DOM锛?
     private bindGlobalEvents() {
-        this.eventBus.on("switch-protyle", () => {
+        if (this.globalEventHandlers) return;
+        const switchProtyle = () => {
             this.refreshSidebarActive();
             this.scheduleOpenSwitchersRefresh();
             if (this.isMobile) {
                 this.ensureMobileTopBarButton();
             }
-        });
+        };
         // 椤电澧炲噺锛堟枃妗ｆ墦寮€/鍏抽棴锛夋椂鍒锋柊鎵€鏈夊凡鎵撳紑瑙嗗浘
-        this.eventBus.on("loaded-protyle-static", () => {
+        const loadedProtyle = () => {
+            this.captureRecentOpenSnapshot();
             this.refreshSidebar();
             this.scheduleOpenSwitchersRefresh();
-        });
-        this.eventBus.on("destroy-protyle", () => {
+        };
+        const destroyProtyle = () => {
+            this.scheduleRecentClosedSync();
             this.refreshSidebar();
             this.scheduleOpenSwitchersRefresh();
-        });
+        };
+        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle};
+        this.eventBus.on("switch-protyle", switchProtyle);
+        this.eventBus.on("loaded-protyle-static", loadedProtyle);
+        this.eventBus.on("destroy-protyle", destroyProtyle);
     }
 
     private registerSwitcherRefresh(callback: () => void): () => void {
@@ -596,10 +789,25 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private scheduleOpenSwitchersRefresh() {
         if (this.switcherRefreshFrame !== null || this.switcherRefreshers.size === 0) return;
-        this.switcherRefreshFrame = requestAnimationFrame(() => {
+        const refresh = () => {
             this.switcherRefreshFrame = null;
+            this.switcherRefreshFrameCancel = null;
             this.refreshOpenSwitchers();
-        });
+        };
+        if (typeof requestAnimationFrame === "function") {
+            const frame = requestAnimationFrame(refresh);
+            this.switcherRefreshFrame = frame;
+            this.switcherRefreshFrameCancel = () => cancelAnimationFrame(frame);
+        } else {
+            const timer = window.setTimeout(refresh, 16);
+            this.switcherRefreshFrame = timer;
+            this.switcherRefreshFrameCancel = () => window.clearTimeout(timer);
+        }
+    }
+
+    private scheduleAnimationFrame(callback: FrameRequestCallback): number {
+        if (typeof requestAnimationFrame === "function") return requestAnimationFrame(callback);
+        return window.setTimeout(() => callback(Date.now()), 16);
     }
 
     // 甯冨眬灏辩华鍚庡啀娆＄‘璁ゆ墜鏈虹鍏ュ彛锛氶儴鍒嗘満鍨嬩笂 onload 鎵ц鏃堕《鏍忓皻鏈瀯寤哄畬鎴愶紝
@@ -612,20 +820,45 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     async onunload() {
+        this.isUnloading = true;
+        this.lifecycleGeneration += 1;
         const pendingSaves = this.flushPendingSaves();
+        const globalEventHandlers = this.globalEventHandlers;
+        if (globalEventHandlers && typeof this.eventBus.off === "function") {
+            this.eventBus.off("switch-protyle", globalEventHandlers.switchProtyle);
+            this.eventBus.off("loaded-protyle-static", globalEventHandlers.loadedProtyle);
+            this.eventBus.off("destroy-protyle", globalEventHandlers.destroyProtyle);
+        }
+        this.globalEventHandlers = null;
         this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
         this.activeDocSearchSessions.clear();
         this.activeAgentSearchControllers.forEach((controller) => controller.abort());
         this.activeAgentSearchControllers.clear();
+        this.activeDocumentSetRestoreControllers.forEach((controller) => controller.abort());
+        this.activeDocumentSetRestoreControllers.clear();
         this.switcherRefreshers.clear();
         this.quickActionAdapters.clear();
         this.quickActionAdapterTargets.clear();
         this.quickActionProviders.clear();
         this.quickActionProviderTokens.clear();
         this.quickActionRegistry = createQuickActionRegistry();
+        this.homeRuntime.dispose();
+        this.closeHistoryMenu();
+        this.sidebarHistoryDropdownDispose?.();
+        this.sidebarHistoryDropdownDispose = null;
+        this.sidebarSearchFilterDispose?.();
+        this.sidebarSearchFilterDispose = null;
+        this.historyDropdownCloseSet.forEach((close) => close());
+        this.historyDropdownCloseSet.clear();
+        document.querySelectorAll<HTMLElement>(".sw__mobile-sort-overlay, .sw__mobile-sheet-overlay, .sw-quick-icon-picker-overlay").forEach((overlay) => overlay.remove());
         if (this.switcherRefreshFrame !== null) {
-            cancelAnimationFrame(this.switcherRefreshFrame);
+            this.switcherRefreshFrameCancel?.();
             this.switcherRefreshFrame = null;
+            this.switcherRefreshFrameCancel = null;
+        }
+        if (this.recentClosedSyncTimer !== null) {
+            window.clearTimeout(this.recentClosedSyncTimer);
+            this.recentClosedSyncTimer = null;
         }
         this.sidebarResizeObserver?.disconnect();
         this.sidebarResizeObserver = null;
@@ -650,6 +883,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 鍘绘姈鍐欑洏锛氶珮棰戞暟鎹紙MRU/缃《/鏀惰棌锛夋瘡娆℃搷浣滃彧鏇存柊鍐呭瓨锛屽悎骞跺悗寤惰繜钀界洏锛?
     // 閬垮厤杩炵画鏀惰棌/缃《/鍒囨崲椤电鏃舵瘡涓姩浣滈兘瑙﹀彂涓€娆″唴鏍告枃浠跺啓鍏ワ紙浜や簰鍗￠】鐨勬牴鍥狅級
     private saveDataDebounced(key: string) {
+        if (this.isUnloading) return;
         const timer = this.saveTimers.get(key);
         if (timer) {
             clearTimeout(timer);
@@ -704,41 +938,26 @@ export default class SpeedSwitchPlugin extends Plugin {
     private getSettings(): ISwSettings {
         // 纾佺洏璇诲彇鐨勬槸 unknown锛岃€佺増鏈?寮傚父鏁版嵁瀛楁鍙兘缂哄け锛屽叏閮ㄦ寜瀛楁閫愪竴闄嶇骇鍒伴粯璁ゅ€笺€?
         // 鐢?Partial<ISwSettings> 鎶婃暣涓?saved 涓€娆℃€ф敹绐勶紝鍚庣画瀛楁璁块棶灏变笉鍐嶉渶瑕佹瘡琛屾柇瑷€銆?
-        const saved = this.data[SETTINGS_KEY] as Partial<ISwSettings> | null | undefined;
-        if (!saved || typeof saved !== "object") {
-            return {...DEFAULT_SETTINGS};
-        }
-        return {
-            dialogWidth: this.clampNum(saved.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DEFAULT_SETTINGS.dialogWidth),
-            dialogHeight: this.clampNum(saved.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, DEFAULT_SETTINGS.dialogHeight),
-            columns: this.clampNum(saved.columns, COLUMNS_MIN, COLUMNS_MAX, DEFAULT_SETTINGS.columns),
-            thumbHeight: this.clampNum(saved.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, DEFAULT_SETTINGS.thumbHeight),
-            sortBy: normalizeSortBy(saved.sortBy, SORT_BY_LIST, DEFAULT_SETTINGS.sortBy) as SortBy,
-            excludedDocks: Array.isArray(saved.excludedDocks)
-                ? saved.excludedDocks.filter((t) => typeof t === "string")
-                : [],
-            dockDisplay: normalizeSortBy(saved.dockDisplay, DOCK_DISPLAY_LIST, DEFAULT_SETTINGS.dockDisplay) as DockDisplay,
-            sidebarLayout: normalizeSortBy(saved.sidebarLayout, SIDEBAR_LAYOUT_LIST, DEFAULT_SETTINGS.sidebarLayout) as SidebarLayout,
-            fullscreen: typeof saved.fullscreen === "boolean"
-                ? saved.fullscreen : DEFAULT_SETTINGS.fullscreen,
-            fabEnabled: typeof saved.fabEnabled === "boolean"
-                ? saved.fabEnabled : DEFAULT_SETTINGS.fabEnabled,
-            mobileColumns: this.clampNum(saved.mobileColumns, MOBILE_COLUMNS_MIN, MOBILE_COLUMNS_MAX, DEFAULT_SETTINGS.mobileColumns),
-            mobileThumbHeight: this.clampNum(saved.mobileThumbHeight, MOBILE_THUMB_HEIGHT_MIN_PX, MOBILE_THUMB_HEIGHT_MAX_PX, DEFAULT_SETTINGS.mobileThumbHeight),
-            journalNotebook: typeof saved.journalNotebook === "string"
-                ? saved.journalNotebook : DEFAULT_SETTINGS.journalNotebook,
-            lastSettingsTab: typeof saved.lastSettingsTab === "string"
-                ? saved.lastSettingsTab : DEFAULT_SETTINGS.lastSettingsTab,
-            quickActions: sanitizeQuickActions(this.data[QUICK_ACTIONS_KEY], QUICK_ACTIONS_MAX).items,
-            quickActionsRightRail: typeof saved.quickActionsRightRail === "boolean" ? saved.quickActionsRightRail : DEFAULT_SETTINGS.quickActionsRightRail,
-            quickActionsDisplayDesktop: this.normalizeQuickActionDisplay(saved.quickActionsDisplayDesktop, DEFAULT_SETTINGS.quickActionsDisplayDesktop),
-            quickActionsDisplaySidebar: this.normalizeQuickActionDisplay(saved.quickActionsDisplaySidebar, DEFAULT_SETTINGS.quickActionsDisplaySidebar),
-            quickActionsDisplayMobile: this.normalizeQuickActionDisplay(saved.quickActionsDisplayMobile, DEFAULT_SETTINGS.quickActionsDisplayMobile),
-            quickActionsCollapsedDesktopBottom: typeof saved.quickActionsCollapsedDesktopBottom === "boolean" ? saved.quickActionsCollapsedDesktopBottom : false,
-            quickActionsCollapsedDesktopRight: typeof saved.quickActionsCollapsedDesktopRight === "boolean" ? saved.quickActionsCollapsedDesktopRight : false,
-            quickActionsCollapsedSidebar: typeof saved.quickActionsCollapsedSidebar === "boolean" ? saved.quickActionsCollapsedSidebar : false,
-            quickActionsCollapsedMobile: typeof saved.quickActionsCollapsedMobile === "boolean" ? saved.quickActionsCollapsedMobile : false,
-        };
+        const saved = this.data[SETTINGS_KEY];
+        if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {...DEFAULT_SETTINGS};
+        return normalizeSettings(saved, {
+            defaults: DEFAULT_SETTINGS,
+            clamp: (value: unknown, min: number, max: number, fallback: number) => this.clampNum(value, min, max, fallback),
+            normalizeEnum: (value: unknown, allowed: readonly string[], fallback: string) => normalizeSortBy(value, allowed, fallback),
+            ranges: {
+                dialogWidth: [DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX],
+                dialogHeight: [DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX],
+                panelScale: [PANEL_SCALE_MIN, PANEL_SCALE_MAX],
+                columns: [COLUMNS_MIN, COLUMNS_MAX],
+                thumbHeight: [THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX],
+                mobileColumns: [MOBILE_COLUMNS_MIN, MOBILE_COLUMNS_MAX],
+                mobileThumbHeight: [MOBILE_THUMB_HEIGHT_MIN_PX, MOBILE_THUMB_HEIGHT_MAX_PX],
+            },
+            sortBy: SORT_BY_LIST,
+            dockDisplay: DOCK_DISPLAY_LIST,
+            sidebarLayout: SIDEBAR_LAYOUT_LIST,
+            quickActions: () => sanitizeQuickActions(this.data[QUICK_ACTIONS_KEY], QUICK_ACTIONS_MAX).items,
+        }) as ISwSettings;
     }
 
     private normalizeQuickActionDisplay(value: unknown, fallback: QuickActionDisplay): QuickActionDisplay {
@@ -846,16 +1065,23 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 鎷夊彇宸叉墦寮€鐨勭瑪璁版湰鍒楄〃锛坕d + name锛夛紝鐢ㄤ簬榛樿鏃ヨ绗旇鏈笅鎷?
     private async loadNotebooks(): Promise<Array<{id: string, name: string}>> {
-        // 鍐呮牳鏃犲搷搴旀椂瓒呮椂涓柇璇锋眰锛岄伩鍏嶈缃〉涓嬫媺涓€鐩村仠鍦ㄥ姞杞戒腑
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), NOTEBOOK_FETCH_TIMEOUT_MS);
+    // 鍐呮牳鏃犲搷搴旀椂瓒呮椂涓柇璇锋眰锛岄伩鍏嶈缃〉涓嬫媺涓€鐩村仠鍦ㄥ姞杞戒腑
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        let timer: number | null = null;
+        const timeoutPromise = new Promise<Response>((_, reject) => {
+            timer = window.setTimeout(() => {
+                controller?.abort();
+                reject(new Error("timeout"));
+            }, NOTEBOOK_FETCH_TIMEOUT_MS);
+        });
         try {
-            const response = await fetch("/api/notebook/lsNotebooks", {
+            const request = fetch("/api/notebook/lsNotebooks", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: "{}",
-                signal: controller.signal,
+                ...(controller ? {signal: controller.signal} : {}),
             });
+            const response = await Promise.race([request, timeoutPromise]);
             if (!response.ok) {
                 throw new Error(`lsNotebooks HTTP ${response.status}`);
             }
@@ -920,25 +1146,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 璋冪敤鍐呮牳 createDailyNote锛氬凡鏈夊綋鏃ユ棩璁版椂杩斿洖鍏?id锛堜笉閲嶅鍒涘缓锛?
     private async ensureTodayJournal(notebook: string): Promise<string | null> {
-        try {
-            const response = await fetch("/api/filetree/createDailyNote", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({notebook}),
-            });
-            if (!response.ok) {
-                throw new Error(`createDailyNote HTTP ${response.status}`);
-            }
-            const json = await response.json();
-            if (json?.code === 0 && json?.data?.id) {
-                return json.data.id;
-            }
-            logger.warn("createDailyNote fail", json);
-            return null;
-        } catch (e) {
-            logger.warn("createDailyNote fail", e);
-            return null;
-        }
+        return ensureTodayJournalAction({notebook, fetchImpl: fetch, logger});
     }
 
     // 棣栨鐐瑰嚮鏃ヨ鎸夐挳锛氬脊绐楅€夋嫨榛樿鏃ヨ绗旇鏈紝閫夋嫨鍚庝繚瀛樺苟杩斿洖
@@ -1043,13 +1251,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 甯冨眬锛氬乏渚ф爣绛炬爮锛堝瑙?琛屼负/闈㈡澘/鏀惰棌/鎵嬫満绔級+ 鍙充晶鍒嗙粍闈㈡澘锛岀偣鍑绘爣绛惧垏鎹?
     openSetting(initialPanel?: string) {
         const s = this.getSettings();
-        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "journal", "mobile"] as const;
+        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "documentSets", "journal", "mobile"] as const;
         const panelLabels: Record<string, string> = {
             appearance: this.i18n.secAppearance,
             behavior: this.i18n.secBehavior,
             panels: this.i18n.secPanels,
             favorites: this.i18n.secFavorites,
             quickActions: this.i18n.secQuickActions,
+            documentSets: this.i18n.secDocumentSets,
             journal: this.i18n.secJournal,
             mobile: this.i18n.secMobile,
         };
@@ -1072,8 +1281,55 @@ export default class SpeedSwitchPlugin extends Plugin {
         const tabs = document.createElement("div");
         tabs.className = "sw-settings__tabs";
         tabs.setAttribute("role", "tablist");
+        tabs.setAttribute("aria-label", this.i18n.settings);
+        const horizontalTabs = typeof window === "object" && typeof window.matchMedia === "function"
+            && window.matchMedia("(max-width: 560px)").matches;
+        tabs.setAttribute("aria-orientation", horizontalTabs ? "horizontal" : "vertical");
+        const updateTabsOrientation = () => {
+            const isHorizontal = typeof window === "object" && typeof window.matchMedia === "function"
+                && window.matchMedia("(max-width: 560px)").matches;
+            tabs.setAttribute("aria-orientation", isHorizontal ? "horizontal" : "vertical");
+        };
+        const onSettingsResize = () => updateTabsOrientation();
+        if (typeof window === "object" && typeof window.addEventListener === "function") {
+            window.addEventListener("resize", onSettingsResize);
+        }
+        const originalSettingsDestroy = dialog.destroy.bind(dialog);
+        let settingsDestroyed = false;
+        dialog.destroy = () => {
+            if (settingsDestroyed) return;
+            settingsDestroyed = true;
+            if (typeof window === "object" && typeof window.removeEventListener === "function") {
+                window.removeEventListener("resize", onSettingsResize);
+            }
+            originalSettingsDestroy();
+        };
         const panels = document.createElement("div");
         panels.className = "sw-settings__panels";
+
+        const ensureTabVisible = (key: string, behavior: ScrollBehavior = "auto") => {
+            const activeTab = tabs.querySelector<HTMLElement>(`.sw-settings__tab[data-panel="${key}"]`);
+            if (!activeTab || tabs.scrollWidth <= tabs.clientWidth) return;
+            const itemLeft = activeTab.offsetLeft;
+            const itemRight = itemLeft + activeTab.offsetWidth;
+            const edge = Math.max(12, Math.min(28, Math.floor(tabs.clientWidth * 0.12)));
+            let nextLeft = tabs.scrollLeft;
+            if (itemLeft < tabs.scrollLeft + edge) nextLeft = itemLeft - edge;
+            else if (itemRight > tabs.scrollLeft + tabs.clientWidth - edge) nextLeft = itemRight - tabs.clientWidth + edge;
+            nextLeft = Math.max(0, Math.min(nextLeft, tabs.scrollWidth - tabs.clientWidth));
+            const reduceMotion = typeof window === "object" && typeof window.matchMedia === "function"
+                && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const scrollBehavior: ScrollBehavior = reduceMotion ? "auto" : behavior;
+            if (typeof tabs.scrollTo === "function") {
+                try {
+                    tabs.scrollTo({left: nextLeft, behavior: scrollBehavior});
+                    return;
+                } catch (_) {
+                    // Older WebViews may reject the options object.
+                }
+            }
+            tabs.scrollLeft = nextLeft;
+        };
 
         // 鍒囨崲鍒嗙粍锛氫粎婵€娲诲搴旀爣绛句笌闈㈡澘锛屽悓姝?aria-selected 渚涜灞忔劅鐭ワ紱
         // persist=true 鏃惰褰曟渶杩戦€変腑鐨勬爣绛鹃〉锛堜粎鐢ㄦ埛涓诲姩鐐瑰嚮鏃跺啓鐩橈紝閬垮厤鎵撳紑璁剧疆灏变骇鐢熶竴娆℃棤鏁堝啓鍏ワ級
@@ -1085,11 +1341,15 @@ export default class SpeedSwitchPlugin extends Plugin {
                 tab.tabIndex = active ? 0 : -1;
             });
             panels.querySelectorAll<HTMLElement>(".sw-settings__panel").forEach((p) => {
-                p.classList.toggle("is-active", p.dataset.panel === key);
+                const active = p.dataset.panel === key;
+                p.classList.toggle("is-active", active);
+                p.hidden = !active;
+                p.setAttribute("aria-hidden", active ? "false" : "true");
             });
             if (persist) {
                 this.updateSettings({lastSettingsTab: key});
             }
+            this.scheduleAnimationFrame(() => ensureTabVisible(key, persist ? "smooth" : "auto"));
         };
 
         const activateByOffset = (currentKey: string, offset: number) => {
@@ -1106,6 +1366,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             panels: () => this.buildSettingsPanels(s),
             favorites: () => this.buildSettingsFavorites(),
             quickActions: () => this.buildSettingsQuickActions(),
+            documentSets: () => this.buildSettingsDocumentSets(),
             journal: () => this.buildSettingsJournal(s),
             mobile: () => this.buildSettingsMobile(s),
         };
@@ -1159,24 +1420,27 @@ export default class SpeedSwitchPlugin extends Plugin {
         // Only move the horizontal tab strip. scrollIntoView also scrolls
         // Dialog ancestors in Android WebView and can shift the entire settings
         // page off screen when opening the quick-action panel directly.
-        requestAnimationFrame(() => {
+        this.scheduleAnimationFrame(() => {
+            if (!root.isConnected) return;
             root.scrollLeft = 0;
             panels.scrollLeft = 0;
-            const activeTab = tabs.querySelector<HTMLElement>(`.sw-settings__tab[data-panel="${initial}"]`);
-            if (!activeTab || tabs.scrollWidth <= tabs.clientWidth) return;
-            const itemLeft = activeTab.offsetLeft;
-            const itemRight = itemLeft + activeTab.offsetWidth;
-            let nextLeft = tabs.scrollLeft;
-            if (itemLeft < tabs.scrollLeft) nextLeft = itemLeft;
-            else if (itemRight > tabs.scrollLeft + tabs.clientWidth) nextLeft = itemRight - tabs.clientWidth;
-            tabs.scrollLeft = Math.max(0, Math.min(nextLeft, tabs.scrollWidth - tabs.clientWidth));
+            ensureTabVisible(initial);
         });
     }
 
     // ===== 璁剧疆椤?路 澶栬锛氬脊绐楀楂樸€佺缉鐣ュ浘鍒楁暟涓庨珮搴?=====
     private buildSettingsAppearance(s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
+        const sizeModeOptions: Array<{value: PanelSizeMode, label: string}> = [
+            {value: "adaptive", label: this.i18n.panelSizeModeAdaptive},
+            {value: "custom", label: this.i18n.panelSizeModeCustom},
+            {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
+        ];
         wrapper.append(
+            this.settingItem(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip,
+                this.select(sizeModeOptions, s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode}))),
+            this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,
+                this.num(s.panelScale, PANEL_SCALE_MIN, PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({panelScale: v}), this.i18n.panelScale)),
             this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
                 this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
             this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
@@ -1204,16 +1468,6 @@ export default class SpeedSwitchPlugin extends Plugin {
         ];
         wrapper.append(this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
             this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))));
-        // 鍏ㄥ睆鍙睘浜庢闈㈢锛涙墜鏈虹涓嶆樉绀烘棤娉曚娇鐢ㄧ殑鎺у埗銆?
-        if (!this.isMobile) {
-            wrapper.append(this.settingItem(this.i18n.fullScreen, this.i18n.fullScreenTip,
-                this.switcher(s.fullscreen, (v) => {
-                    this.updateSettings({fullscreen: v});
-                    if (v) {
-                        showMessage(this.i18n.fullScreenOn);
-                    }
-                })));
-        }
         return wrapper;
     }
 
@@ -1427,6 +1681,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (items.length === 0) {
                 const empty = document.createElement("div");
                 empty.className = "sw-setting__fav-empty";
+                empty.setAttribute("role", "status");
                 empty.textContent = this.i18n.noFavorites;
                 list.appendChild(empty);
             }
@@ -1657,6 +1912,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (favorites.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw-setting__fav-empty";
+            empty.setAttribute("role", "status");
             empty.textContent = this.i18n.noFavorites;
             box.appendChild(empty);
             return;
@@ -1697,11 +1953,6 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
 
         const tabs = getAllTabs();
-        if (tabs.length === 0) {
-            showMessage(this.i18n.noOpenedTabs);
-            return;
-        }
-
         const settings = this.getSettings();
         const activeTab = this.getActiveTab();
         // 鍏ㄥ睆妯″紡锛氬垏鎹㈠櫒閾烘弧鏁翠釜绐楀彛锛圗sc 閫€鍑虹敱鎬濇簮 Dialog 榛樿琛屼负鎻愪緵锛?
@@ -1714,13 +1965,23 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 鏋勯€犳闈㈢鍒囨崲鍣?Dialog锛堝唴瀹?HTML + 灏哄锛夛紝澶栭儴鍙叧蹇冭閰嶉『搴忥紝涓嶅叧蹇?DOM 缁撴瀯缁嗚妭
     private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean): Dialog {
+        const size = this.resolvePanelDialogSize(settings, fullscreen);
         return new Dialog({
-            // 鏋佺畝锛氶殣钘忓師鐢熸爣棰樻爮锛岄《鏍忓唴缃簬鍐呭鍖烘渶涓婃柟
             title: "",
             content: this.buildSwitcherHtml(fullscreen),
-            width: fullscreen ? "100vw" : `${settings.dialogWidth}px`,
-            height: fullscreen ? "100vh" : `${settings.dialogHeight}px`,
+            width: `${size.width}px`,
+            height: `${size.height}px`,
         });
+    }
+
+    // Shared sizing for the desktop switcher and second-panel dialogs:
+    // fullscreen fills the viewport, adaptive follows the configured screen
+    // ratio, custom uses the fixed pixel settings.
+    private resolvePanelDialogSize(settings: ISwSettings, fullscreen: boolean) {
+        return resolvePanelSize(
+            {...settings, panelSizeMode: fullscreen ? "fullscreen" : settings.panelSizeMode},
+            {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX},
+        );
     }
 
     // 鍒囨崲鍣ㄤ富浣?HTML 瀛楃涓诧紙缁撴瀯锛氶《鏍忔悳绱?鏀惰棌涓嬫媺/鎺掑簭/鍏ㄥ睆鎸夐挳 + 婊氬姩鍖?+ 鍥炲埌椤堕儴锛?
@@ -1733,6 +1994,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 <div class="sw__search-wrap">
                     <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
                     <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+                    <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
+                        <svg><use xlink:href="#iconFilter"></use></svg>
+                    </button>
                 </div>
                 <div class="sw__select-wrap">
                     <div class="sw__fav-dd"></div>
@@ -1750,22 +2014,22 @@ export default class SpeedSwitchPlugin extends Plugin {
                         <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
                     </select>
                 </div>
-                <span class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn b3-tooltips b3-tooltips__s" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn b3-tooltips b3-tooltips__s" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
                     <svg class="sw__fs-enter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <svg class="sw__fs-exit" viewBox="0 0 24 24"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </span>
-                <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.journalBtn}">
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.journalBtn}">
                     <svg><use xlink:href="#iconCalendar"></use></svg>
-                </span>
-                <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
                     <svg><use xlink:href="#iconSettings"></use></svg>
-                </span>
+                </button>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
             <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
-            <span class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
+            <button type="button" class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
                 <svg><use xlink:href="#iconUp"></use></svg>
-            </span>
+            </button>
         </div>
         <div class="sw__quick-rail fn__none" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
     </div>
@@ -1808,7 +2072,7 @@ const updatedMap: {[rootId: string]: string} = {};
             }
             this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts,
                 (sortSelect?.value as SortBy) || settings.sortBy, updatedMap);
-            if (searchInput && searchInput.value.trim() !== "") {
+            if (searchInput && (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement))) {
                 this.applySearch(scrollElement, searchInput, closeOverlay);
             }
         };
@@ -1828,9 +2092,15 @@ const updatedMap: {[rootId: string]: string} = {};
             refreshQuickActions();
         };
         const unregisterRefresh = this.registerSwitcherRefresh(refreshSurface);
+        const disposeSearchFilter: () => void = searchInput
+            ? this.bindDocSearchFilter(dialog.element, scrollElement, searchInput, closeOverlay)
+            : () => undefined;
+        const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         const originalDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
             unregisterRefresh();
+            disposeSearchFilter();
+            disposeHistoryDropdown();
             this.disposeDocSearchSession(scrollElement);
             originalDestroy();
         };
@@ -1841,8 +2111,6 @@ const updatedMap: {[rootId: string]: string} = {};
         // 鏀惰棌涓嬫媺缁勪欢锛氭槦鏍囪Е鍙?+ 鍒嗙粍闈㈡澘锛堝垎缁勫彲鎶樺彔/灞曞紑锛岄」鐐瑰嚮璺宠浆锛?
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
         this.setupFavDropdown(favDd, closeOverlay, refreshList);
-        const historyDd = dialog.element.querySelector<HTMLElement>(".sw__history-dd");
-        this.setupOpenHistoryDropdown(historyDd, closeOverlay);
         if (sortSelect) {
             sortSelect.value = settings.sortBy;
         }
@@ -1934,8 +2202,9 @@ const updatedMap: {[rootId: string]: string} = {};
                 swBody?.classList.add("sw--fullscreen");
                 fsBtn?.setAttribute("aria-label", this.i18n.exitFullscreen);
             } else {
-                container.style.width = `${settings.dialogWidth}px`;
-                container.style.height = `${settings.dialogHeight}px`;
+                const restored = this.resolvePanelDialogSize(settings, false);
+                container.style.width = `${restored.width}px`;
+                container.style.height = `${restored.height}px`;
                 container.classList.remove("sw-dialog--fullscreen");
                 swBody?.classList.remove("sw--fullscreen");
                 fsBtn?.setAttribute("aria-label", this.i18n.enterFullscreen);
@@ -1991,9 +2260,10 @@ const updatedMap: {[rootId: string]: string} = {};
     // 鎵ц鎼滅储锛氬凡鎵撳紑椤电鍖归厤鍗＄墖鏄剧ず鍦ㄤ笂鍗婇儴鍒嗭紝鍚屾椂锛堥槻鎶栵級鎼滅储鍏ㄥ簱鏂囨。鏍囬鏄剧ず鍦ㄤ笅鍗婇儴鍒?
     private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
         const keyword = searchInput.value.trim();
-        this.filterCards(scrollElement, searchInput.value);
+        scrollElement.dataset.swDocSearchQuery = keyword;
         const session = this.getDocSearchSession(scrollElement);
         const filters = this.docSearchFilters.get(scrollElement) || {};
+        this.filterCards(scrollElement, searchInput.value, new Set(), filters);
 
         // 姣忔杈撳叆閮借涓婁竴杞姹傚け鏁堛€傜┖鍏抽敭璇嶆垨缂撳瓨鍛戒腑涔熷繀椤婚€掑搴忓彿锛?        // 鍚﹀垯杈冩參鐨勬棫璇锋眰杩斿洖鍚庝細瑕嗙洊褰撳墠鐣岄潰銆?
 const version = beginSearch(session);
@@ -2069,7 +2339,6 @@ const version = beginSearch(session);
         const actionValue = options.value ? `${adapterId}/${options.value}` : adapterId;
         const registrationToken = Symbol(actionValue);
         this.quickActionProviderTokens.set(actionValue, registrationToken);
-        const safeActionId = `${adapterId}-${options.value || "action"}`.replace(/[^A-Za-z0-9_-]/g, "-");
         const declaredTargets = Array.isArray(options.targets) ? options.targets : undefined;
         this.quickActionRegistry.register({
             id: adapterId,
@@ -2093,22 +2362,6 @@ const version = beginSearch(session);
             existing.icon = options.icon || existing.icon;
             existing.targets = declaredTargets ? [...declaredTargets] : existing.targets;
             this.saveQuickActions(actions);
-        } else if (actions.length < QUICK_ACTIONS_MAX) {
-            const baseId = `adapter-${safeActionId}`;
-            let actionId = baseId;
-            let suffix = 2;
-            while (actions.some((item) => item.id === actionId)) actionId = `${baseId}-${suffix++}`;
-            actions.push({
-                id: actionId,
-                label: normalizeQuickActionText(options.label, 80) || adapterId,
-                icon: options.icon || "iconPlugin",
-                kind: "adapter",
-                value: actionValue,
-                targets: declaredTargets ? [...declaredTargets] : getDefaultQuickActionTargets("adapter", actionValue) as QuickActionTarget[],
-                order: (actions.length + 1) * 10,
-                enabled: true,
-            });
-            this.saveQuickActions(actions);
         }
         return () => {
             if (this.quickActionProviderTokens.get(actionValue) !== registrationToken) return;
@@ -2117,6 +2370,74 @@ const version = beginSearch(session);
             this.quickActionProviders.delete(actionValue);
             this.quickActionRegistry.unregister(adapterId);
         };
+    }
+
+    /** Opt-in read-only module boundary for the future home/second-panel UI. */
+    public registerHomeModule(options: {
+        moduleId: string;
+        title?: string;
+        icon?: string;
+        category?: string;
+        supportedDevices?: Array<"desktop" | "sidebar" | "mobile">;
+        read: (config: Record<string, unknown>, device: string) => unknown | Promise<unknown>;
+        readOnly?: boolean;
+    }): () => void {
+        const registration = this.homeRuntime.registerAdapter(options as unknown as Record<string, unknown>);
+        if (!registration.registered) return () => undefined;
+        return () => { registration.unregister(); };
+    }
+
+    public getHomeModules(device: "desktop" | "sidebar" | "mobile" = this.isMobile ? "mobile" : "desktop") {
+        return this.homeRuntime.listModules(device);
+    }
+
+    public readHomeModule(moduleId: string, device: "desktop" | "sidebar" | "mobile" = this.isMobile ? "mobile" : "desktop", config: Record<string, unknown> = {}, options: Record<string, unknown> = {}) {
+        return this.homeRuntime.read(moduleId, device, config, options);
+    }
+
+    public buildHomeModuleView(moduleId: string, device: "desktop" | "sidebar" | "mobile" = this.isMobile ? "mobile" : "desktop", result: unknown, collapsed = false) {
+        const module = this.homeRuntime.listModules(device).find((item: any) => item.moduleId === moduleId);
+        return buildHomeModuleView(module, result, {collapsed});
+    }
+
+    /**
+     * Convert an opt-in home module view into a DOM subtree. The host decides
+     * where (or whether) to mount it; no default panel is created here.
+     */
+    public renderHomeModuleView(doc: unknown, view: unknown, options: Record<string, unknown> = {}) {
+        return renderHomeModuleView(doc, view, options as any);
+    }
+
+    /** Create an explicit, lifecycle-bound home module mount for integrations. */
+    public createHomeModuleController(container: unknown, moduleId: string, device: "desktop" | "sidebar" | "mobile" = this.isMobile ? "mobile" : "desktop", config: Record<string, unknown> = {}, options: Record<string, unknown> = {}) {
+        const module = this.homeRuntime.listModules(device).find((item: any) => item.moduleId === moduleId);
+        if (!module || !container || typeof (container as any).appendChild !== "function") return null;
+        return createHomeModuleController({
+            document: (container as any).ownerDocument || document,
+            container,
+            module,
+            config,
+            labels: options.labels,
+            onItem: options.onItem,
+            onToggle: options.onToggle,
+            read: (nextConfig: Record<string, unknown>, readOptions: Record<string, unknown>) => this.homeRuntime.read(moduleId, device, nextConfig, readOptions),
+        } as any);
+    }
+
+    /** Create an explicit multi-module second-panel mount for integrations. */
+    public createHomePanelController(container: unknown, device: "desktop" | "sidebar" | "mobile" = this.isMobile ? "mobile" : "desktop", options: Record<string, unknown> = {}) {
+        if (!container || typeof (container as any).appendChild !== "function") return null;
+        const modules = this.homeRuntime.listModules(device);
+        return createHomePanelController({
+            document: (container as any).ownerDocument || document,
+            container,
+            modules,
+            title: options.title,
+            labels: options.labels,
+            onItem: options.onItem,
+            onToggle: options.onToggle,
+            read: (module: any, config: Record<string, unknown>, readOptions: Record<string, unknown>) => this.homeRuntime.read(module.moduleId, device, config, readOptions),
+        } as any);
     }
 
     private getPluginCommands(): IQuickActionPluginCommand[] {
@@ -2199,12 +2520,8 @@ const version = beginSearch(session);
         if (!host) return;
         host.innerHTML = "";
         const settings = this.getSettings();
-        const display = surface === "desktop" ? settings.quickActionsDisplayDesktop
-            : surface === "sidebar" ? settings.quickActionsDisplaySidebar : settings.quickActionsDisplayMobile;
-        const isRightRail = surface === "desktop" && selector === ".sw__quick-rail";
-        const collapsed = surface === "desktop"
-            ? (isRightRail ? settings.quickActionsCollapsedDesktopRight : settings.quickActionsCollapsedDesktopBottom)
-            : surface === "sidebar" ? settings.quickActionsCollapsedSidebar : settings.quickActionsCollapsedMobile;
+        const presentation = resolveQuickActionSurfaceState(surface, settings, selector);
+        const {display, isRightRail, collapsed} = presentation;
         host.classList.toggle("sw__quick-actions--icons", display === "icons" || (collapsed && isRightRail));
         host.classList.toggle("sw__quick-actions--hidden", display === "hidden");
         host.classList.toggle("sw__quick-actions--collapsed", collapsed && display !== "hidden");
@@ -2248,6 +2565,19 @@ const version = beginSearch(session);
             button.addEventListener("click", () => this.executeQuickAction(action, searchInput, close));
             host.appendChild(button);
         });
+        if (surface === "desktop") {
+            const homeButton = document.createElement("button");
+            homeButton.type = "button";
+            homeButton.className = "sw__quick-action sw__quick-action--home b3-tooltips b3-tooltips__n";
+            homeButton.setAttribute("aria-label", this.i18n.secondPanel);
+            homeButton.title = this.i18n.secondPanel;
+            homeButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#iconLayout"></use></svg></span><span class="sw__quick-action-label">${this.i18n.secondPanel}</span>`;
+            homeButton.addEventListener("click", () => {
+                close();
+                this.openSecondPanel();
+            });
+            host.appendChild(homeButton);
+        }
         const addButton = document.createElement("button");
         addButton.type = "button";
         addButton.className = "sw__quick-action sw__quick-action--add b3-tooltips b3-tooltips__n";
@@ -2345,6 +2675,60 @@ const version = beginSearch(session);
                 this.openSetting();
                 break;
         }
+    }
+
+    private openSecondPanel() {
+        const settings = this.getSettings();
+        const size = this.resolvePanelDialogSize(settings, settings.fullscreen);
+        const dialog = new Dialog({
+            title: this.i18n.secondPanel,
+            content: '<div class="speed-switch sw-second-panel"></div>',
+            width: `${size.width}px`,
+            height: `${size.height}px`,
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw-second-panel");
+        if (!root) return;
+        const sections = [
+            {
+                title: this.i18n.historyOpenSection,
+                icon: "iconHistory",
+                items: this.getOpenHistory().slice(0, 8).map((entry) => ({
+                    label: entry.title,
+                    open: () => { dialog.destroy(); void this.openHistoryEntry(entry); },
+                })),
+            },
+            {
+                title: this.i18n.favorites,
+                icon: "iconStar",
+                items: this.getFavorites().slice(0, 8).map((favorite) => ({
+                    label: favorite.title,
+                    open: () => { dialog.destroy(); void this.jumpToFavorite(favorite, () => undefined); },
+                })),
+            },
+        ];
+        sections.forEach((section) => {
+            const card = document.createElement("section");
+            card.className = "sw-second-panel__section";
+            const heading = document.createElement("h3");
+            heading.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${section.icon}"></use></svg><span>${section.title}</span>`;
+            card.appendChild(heading);
+            if (section.items.length === 0) {
+                const empty = document.createElement("p");
+                empty.className = "sw-second-panel__empty";
+                empty.textContent = this.i18n.secondPanelEmpty;
+                card.appendChild(empty);
+            } else {
+                section.items.forEach((item) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "sw-second-panel__item";
+                    button.textContent = item.label;
+                    button.addEventListener("click", item.open);
+                    card.appendChild(button);
+                });
+            }
+            root.appendChild(card);
+        });
     }
 
     private getQuickActionPickerCandidates(actions: IQuickAction[]): IQuickActionPickerCandidate[] {
@@ -2828,6 +3212,645 @@ const version = beginSearch(session);
         return box;
     }
 
+    private getDocumentSets(): any[] {
+        return normalizeDocumentSets(this.data[DOCUMENT_SETS_KEY]).sets;
+    }
+
+    private currentDocumentSetEntries() {
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const seen = new Set<string>();
+        return tabs.map((tab, index) => {
+            const rootId = this.rootIdOf(tab);
+            if (!rootId || !BLOCK_ID_RE.test(rootId) || seen.has(rootId)) return null;
+            seen.add(rootId);
+            return {rootId, title: this.titleOf(tab) || rootId, index};
+        }).filter((item): item is {rootId: string; title: string; index: number} => Boolean(item));
+    }
+
+    private saveDocumentSet(candidate: unknown) {
+        const result = upsertDocumentSet(this.data[DOCUMENT_SETS_KEY], candidate, {now: Date.now()});
+        if (!result.item) return false;
+        this.data[DOCUMENT_SETS_KEY] = result.state;
+        this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        return true;
+    }
+
+    private async probeDocumentSetEntries(entries: Array<{rootId: string; title: string}>, signal?: AbortSignal) {
+        const queue = entries.slice(0, 40);
+        const results: Array<"available" | "missing" | "unknown" | null> = new Array(queue.length).fill(null);
+        let cursor = 0;
+        const worker = async () => {
+            while (cursor < queue.length) {
+                const index = cursor++;
+                const entry = queue[index];
+                if (signal?.aborted) break;
+                let timeoutHandle: number | null = null;
+                try {
+                    const request = fetch("/api/filetree/getDoc", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({id: entry.rootId, mode: 0, size: 1}),
+                        ...(signal ? {signal} : {}),
+                    });
+                    const timeout = new Promise<null>((resolve) => {
+                        timeoutHandle = window.setTimeout(() => resolve(null), DOCUMENT_SET_PROBE_TIMEOUT_MS);
+                    });
+                    const response = await Promise.race([request, timeout]);
+                    if (!response) {
+                        results[index] = "unknown";
+                        continue;
+                    }
+                    results[index] = response.ok ? "available" : response.status === 404 ? "missing" : "unknown";
+                } catch (error) {
+                    logger.warn("probe document set entry fail", error);
+                    results[index] = "unknown";
+                } finally {
+                    if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
+                }
+            }
+        };
+        const workers = Math.min(DOCUMENT_SET_PROBE_CONCURRENCY, queue.length);
+        await Promise.all(Array.from({length: workers}, () => worker()));
+        return {
+            available: queue.filter((_entry, index) => results[index] === "available"),
+            missing: queue.filter((_entry, index) => results[index] === "missing"),
+            unknown: queue.filter((_entry, index) => results[index] === "unknown"),
+        };
+    }
+
+    private buildSettingsDocumentSets(): HTMLElement {
+        const wrapper = document.createElement("div");
+        const guide = document.createElement("section");
+        guide.className = "sw-document-set-guide";
+        const guideTitle = document.createElement("strong");
+        guideTitle.textContent = this.i18n.documentSetsGuideTitle;
+        const guidePurpose = document.createElement("p");
+        guidePurpose.textContent = this.i18n.documentSetsGuidePurpose;
+        const guideSteps = document.createElement("ol");
+        [
+            this.i18n.documentSetsGuideStep1,
+            this.i18n.documentSetsGuideStep2,
+            this.i18n.documentSetsGuideStep3,
+        ].forEach((text) => {
+            const item = document.createElement("li");
+            item.textContent = text;
+            guideSteps.appendChild(item);
+        });
+        const guideNote = document.createElement("p");
+        guideNote.className = "sw-document-set-guide__note";
+        guideNote.textContent = this.i18n.documentSetsGuideNote;
+        guide.append(guideTitle, guidePurpose, guideSteps, guideNote);
+        const hint = document.createElement("p");
+        hint.className = "sw-settings__hint";
+        hint.textContent = this.i18n.documentSetsTip;
+        const form = document.createElement("div");
+        form.className = "sw-setting__document-set-form";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "b3-text-field fn__block";
+        input.placeholder = this.i18n.documentSetNamePlaceholder;
+        input.maxLength = 80;
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "b3-button b3-button--text";
+        save.textContent = this.i18n.documentSetSave;
+        const exportButton = document.createElement("button");
+        exportButton.type = "button";
+        exportButton.className = "b3-button b3-button--text";
+        exportButton.textContent = this.i18n.documentSetExport;
+        exportButton.addEventListener("click", () => {
+            const blob = new Blob([JSON.stringify({schemaVersion: 1, sets: this.getDocumentSets()}, null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "siyuan-speed-switch-document-sets.json";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        });
+        const importButton = document.createElement("button");
+        importButton.type = "button";
+        importButton.className = "b3-button b3-button--text";
+        importButton.textContent = this.i18n.documentSetImport;
+        const importInput = document.createElement("input");
+        importInput.type = "file";
+        importInput.accept = "application/json,.json";
+        importInput.className = "fn__none";
+        importButton.addEventListener("click", () => importInput.click());
+        importInput.addEventListener("change", async () => {
+            const file = importInput.files?.[0];
+            if (!file) return;
+            importButton.disabled = true;
+            importButton.setAttribute("aria-busy", "true");
+            try {
+                if (Number.isFinite(file.size) && file.size > DOCUMENT_SET_IMPORT_MAX_BYTES) {
+                    showMessage(this.i18n.documentSetImportFailed);
+                    return;
+                }
+                const parsed = JSON.parse(await file.text());
+                const normalized = normalizeDocumentSets(parsed);
+                if (!normalized.sets.length) {
+                    showMessage(this.i18n.documentSetImportFailed);
+                    return;
+                }
+                const importConfirm = this.i18n.documentSetImportConfirm.replace("{x}", String(normalized.sets.length));
+                if (!confirm(importConfirm)) return;
+                const merged = mergeDocumentSets(this.data[DOCUMENT_SETS_KEY], normalized, {now: Date.now()});
+                this.data[DOCUMENT_SETS_KEY] = merged.state;
+                if (merged.changed) this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                render();
+                showMessage(this.i18n.documentSetImportDone);
+            } catch (error) {
+                logger.warn("import document sets fail", error);
+                showMessage(this.i18n.documentSetImportFailed);
+            } finally {
+                importInput.value = "";
+                importButton.disabled = false;
+                importButton.removeAttribute("aria-busy");
+            }
+        });
+        const list = document.createElement("div");
+        list.className = "sw-setting__document-sets";
+        let editingSetId: string | null = null;
+        const focusRenameAction = (setId: string) => {
+            window.setTimeout(() => {
+                const button = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-document-set-rename]"))
+                    .find((candidate) => candidate.dataset.documentSetRename === setId);
+                if (!button || button.disabled) return;
+                try {
+                    button.focus({preventScroll: true});
+                } catch (_) {
+                    button.focus();
+                }
+            }, 0);
+        };
+        const render = () => {
+            list.innerHTML = "";
+            const items = this.getDocumentSets();
+            if (items.length === 0) {
+                list.textContent = this.i18n.documentSetEmpty;
+                return;
+            }
+            items.forEach((item: any) => {
+                const row = document.createElement("div");
+                row.className = "sw-setting__document-set";
+                const copy = document.createElement("div");
+                copy.className = "sw-setting__document-set-copy";
+                const title = document.createElement("strong");
+                title.textContent = item.name;
+                const meta = document.createElement("span");
+                meta.textContent = `${item.entries.length} ${this.i18n.documentSetItems}`;
+                if (editingSetId === item.setId) {
+                    const edit = document.createElement("input");
+                    edit.type = "text";
+                    edit.className = "b3-text-field fn__block";
+                    edit.value = item.name;
+                    edit.maxLength = 80;
+                    edit.setAttribute("aria-label", this.i18n.documentSetRename);
+                    copy.append(edit, meta);
+                    window.setTimeout(() => edit.focus(), 0);
+                    const editActions = document.createElement("div");
+                    editActions.className = "sw-setting__document-set-actions";
+                    const finishRename = (saveChanges: boolean) => {
+                        if (saveChanges) {
+                            const name = edit.value.trim();
+                            if (!name) {
+                                edit.focus();
+                                return;
+                            }
+                            this.saveDocumentSet({...item, name});
+                        }
+                        editingSetId = null;
+                        render();
+                        focusRenameAction(item.setId);
+                    };
+                    const apply = document.createElement("button");
+                    apply.type = "button";
+                    apply.className = "b3-button b3-button--text";
+                    apply.textContent = this.i18n.confirm;
+                    apply.addEventListener("click", () => finishRename(true));
+                    const cancel = document.createElement("button");
+                    cancel.type = "button";
+                    cancel.className = "b3-button b3-button--text";
+                    cancel.textContent = this.i18n.cancel;
+                    cancel.addEventListener("click", () => finishRename(false));
+                    edit.addEventListener("keydown", (event) => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            finishRename(true);
+                        } else if (event.key === "Escape") {
+                            event.preventDefault();
+                            finishRename(false);
+                        }
+                    });
+                    editActions.append(apply, cancel);
+                    row.append(copy, editActions);
+                    list.appendChild(row);
+                    return;
+                }
+                copy.append(title, meta);
+                const actions = document.createElement("div");
+                actions.className = "sw-setting__document-set-actions";
+                const rename = document.createElement("button");
+                rename.type = "button";
+                rename.className = "b3-button b3-button--text";
+                rename.textContent = this.i18n.documentSetRename;
+                rename.dataset.documentSetRename = item.setId;
+                rename.setAttribute("aria-label", `${this.i18n.documentSetRename}: ${item.name}`);
+                rename.addEventListener("click", () => { editingSetId = item.setId; render(); });
+                const restore = document.createElement("button");
+                restore.type = "button";
+                restore.className = "b3-button b3-button--text";
+                restore.textContent = this.i18n.documentSetRestore;
+                let restoreController: AbortController | null = null;
+                restore.addEventListener("click", async () => {
+                    if (restoreController) {
+                        restoreController.abort();
+                        return;
+                    }
+                    const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                    const plan = planDocumentSetRestore(item, opened, null);
+                    if (!plan.pending.length) {
+                        showMessage(this.i18n.documentSetRestoreNone);
+                        return;
+                    }
+                    restore.setAttribute("aria-busy", "true");
+                    restoreController = typeof AbortController === "function" ? new AbortController() : null;
+                    if (restoreController) this.activeDocumentSetRestoreControllers.add(restoreController);
+                    if (restoreController) restore.textContent = this.i18n.documentSetCancel;
+                    else restore.disabled = true;
+                    const signal = restoreController?.signal;
+                    const probe = await this.probeDocumentSetEntries(plan.pending, signal);
+                    if (this.isUnloading || !restore.isConnected) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        return;
+                    }
+                    const candidates = [...probe.available, ...probe.unknown];
+                    if (!candidates.length) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        restore.textContent = this.i18n.documentSetRestore;
+                        restore.disabled = false;
+                        restore.removeAttribute("aria-busy");
+                        showMessage(signal?.aborted ? this.i18n.documentSetRestoreCancelled : this.i18n.documentSetNoAvailable);
+                        return;
+                    }
+                    const confirmations: string[] = [];
+                    if (probe.missing.length > 0) {
+                        confirmations.push(`${this.i18n.documentSetMissingConfirm} (${probe.missing.length})`);
+                    }
+                    if (probe.unknown.length > 0) {
+                        confirmations.push(`${this.i18n.documentSetUnknownConfirm} (${probe.unknown.length})`);
+                    }
+                    const confirmation = confirmations.length > 0 ? confirmations.join("\n") : this.i18n.documentSetRestoreConfirm;
+                    if (!confirm(confirmation)) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        restore.textContent = this.i18n.documentSetRestore;
+                        restore.disabled = false;
+                        restore.removeAttribute("aria-busy");
+                        return;
+                    }
+                    const execution = await runDocumentSetRestore(candidates, async (rootId) => {
+                        if (this.isUnloading || !restore.isConnected) return false;
+                        return this.isMobile
+                            ? await this.mobileOpenDoc(rootId)
+                            : (await openTab({app: this.app, doc: {id: rootId}}), true);
+                    }, {signal, shouldContinue: () => !this.isUnloading && restore.isConnected});
+                    execution.results.filter((item) => !item.ok && item.error).forEach((item) => logger.warn("restore document set entry fail", item.error));
+                    const cancelled = execution.cancelled || this.isUnloading || !restore.isConnected;
+                    if (this.isUnloading || !restore.isConnected) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        return;
+                    }
+                    if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                    restoreController = null;
+                    restore.textContent = this.i18n.documentSetRestore;
+                    restore.disabled = false;
+                    restore.removeAttribute("aria-busy");
+                    const counts = summarizeDocumentSetRestore(plan, probe, {succeeded: execution.succeeded, failed: execution.failed, cancelled});
+                    const summary = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}, ${this.i18n.documentSetRestoreFailed}: ${counts.failed}, `
+                        + `${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}, ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`;
+                    showMessage(counts.cancelled ? `${this.i18n.documentSetRestoreCancelled}: ${summary}` : summary);
+                });
+                const preview = document.createElement("button");
+                preview.type = "button";
+                preview.className = "b3-button b3-button--text";
+                preview.textContent = this.i18n.documentSetPreview;
+                preview.addEventListener("click", () => {
+                    const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                    const plan = planDocumentSetRestore(item, opened, null);
+                    showMessage(`${this.i18n.documentSetPreview}: ${plan.pending.length} ${this.i18n.documentSetPending}, ${plan.opened.length} ${this.i18n.documentSetOpened}`);
+                });
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "b3-button b3-button--text";
+                remove.textContent = this.i18n.documentSetDelete;
+                remove.addEventListener("click", () => {
+                    if (!confirm(this.i18n.documentSetDeleteConfirm)) return;
+                    const result = removeDocumentSet(this.data[DOCUMENT_SETS_KEY], item.setId);
+                    this.data[DOCUMENT_SETS_KEY] = result.state;
+                    if (result.changed) this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                    render();
+                });
+                actions.append(rename, restore, preview, remove);
+                row.append(copy, actions);
+                list.appendChild(row);
+            });
+        };
+        save.addEventListener("click", () => {
+            const name = input.value.trim();
+            const entries = this.currentDocumentSetEntries();
+            if (!entries.length) {
+                showMessage(this.i18n.documentSetNoTabs);
+                return;
+            }
+            if (!name) {
+                input.focus();
+                return;
+            }
+            const existing = this.getDocumentSets().find((item: any) => item.name === name);
+            const candidate = createDocumentSet(name, entries, {setId: existing?.setId});
+            if (this.saveDocumentSet(candidate)) {
+                input.value = "";
+                render();
+                showMessage(this.i18n.documentSetSaved);
+            }
+        });
+        form.append(input, save, exportButton, importButton, importInput);
+        wrapper.append(guide, hint, form, list);
+        render();
+        return wrapper;
+    }
+
+    private bindDocSearchFilter(
+        container: HTMLElement,
+        scrollElement: HTMLElement,
+        searchInput: HTMLInputElement,
+        onClose: IOverlayClose,
+    ): () => void {
+        const button = container.querySelector<HTMLButtonElement>(".sw__search-filter-btn");
+        if (!button) return () => undefined;
+        let activeMenu: Menu | null = null;
+        const onMenuKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== "Escape" || !activeMenu) return;
+            window.setTimeout(() => {
+                if (button.isConnected && !button.disabled) {
+                    try {
+                        button.focus({preventScroll: true});
+                    } catch (_) {
+                        button.focus();
+                    }
+                }
+            }, 0);
+        };
+        document.addEventListener("keydown", onMenuKeyDown, true);
+
+        const updateButton = () => {
+            const filters = this.docSearchFilters.get(scrollElement) || {};
+            const count = this.getDocSearchFilterCount(filters);
+            const label = count > 0
+                ? this.i18n.searchFiltersActive.replace("{x}", String(count))
+                : this.i18n.searchFilters;
+            const summary = this.getDocSearchFilterSummary(filters, scrollElement);
+            const accessibleLabel = summary ? `${label}: ${summary}` : label;
+            button.classList.toggle("sw__active", count > 0);
+            button.dataset.filterCount = count > 0 ? String(Math.min(9, count)) : "";
+            button.setAttribute("aria-pressed", String(count > 0));
+            button.setAttribute("aria-label", accessibleLabel);
+            button.title = accessibleLabel;
+        };
+        const commitFilters = (change: (next: IDocSearchFilters) => void) => {
+            const next: IDocSearchFilters = {...(this.docSearchFilters.get(scrollElement) || {})};
+            change(next);
+            if (next.types && Object.keys(next.types).length === 0) delete next.types;
+            if (next.subTypes && Object.keys(next.subTypes).length === 0) delete next.subTypes;
+            this.docSearchFilters.set(scrollElement, Object.freeze(next));
+            updateButton();
+            this.applySearch(scrollElement, searchInput, onClose);
+            searchInput.focus({preventScroll: true});
+        };
+        const onClick = async (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (button.disabled) return;
+            activeMenu?.close();
+            activeMenu = null;
+            button.disabled = true;
+            button.setAttribute("aria-busy", "true");
+            let notebooks: Array<{id: string; name: string}> = [];
+            try {
+                notebooks = await this.loadNotebooks();
+            } catch (error) {
+                // Keep the filter menu usable even if a host adapter throws
+                // outside loadNotebooks' own guarded fetch path.
+                logger.warn("load search filter notebooks fail", error);
+            } finally {
+                if (button.isConnected) {
+                    button.disabled = false;
+                    button.removeAttribute("aria-busy");
+                }
+            }
+            if (!button.isConnected) return;
+
+            this.docSearchNotebookNames.set(scrollElement, new Map(
+                notebooks
+                    .filter((notebook) => typeof notebook?.id === "string" && typeof notebook?.name === "string")
+                    .map((notebook) => [notebook.id, notebook.name.slice(0, 64)]),
+            ));
+            updateButton();
+
+            const current = this.docSearchFilters.get(scrollElement) || {};
+            const notebookSub: IMenu[] = [{
+                label: this.i18n.searchAllNotebooks,
+                icon: "iconGlobalGraph",
+                checked: !current.notebook,
+                click: () => commitFilters((next) => delete next.notebook),
+            }];
+            if (notebooks.length > 0) {
+                notebookSub.push({type: "separator"});
+                notebooks.forEach((notebook) => notebookSub.push({
+                    label: this.escapeAttr(notebook.name),
+                    icon: "iconFiles",
+                    checked: current.notebook === notebook.id,
+                    click: () => commitFilters((next) => { next.notebook = notebook.id; }),
+                }));
+            } else {
+                notebookSub.push({label: this.i18n.searchNoNotebooks, disabled: true});
+            }
+            const selectedType = Object.keys(current.types || {}).find((key) => current.types?.[key]) || "";
+            const selectedSubType = Object.keys(current.subTypes || {}).find((key) => current.subTypes?.[key]) || "";
+            const typeOptions: Array<{value: string; label: string}> = [
+                {value: "", label: this.i18n.searchTypeAll},
+                {value: "document", label: this.i18n.searchTypeDocument},
+                {value: "heading", label: this.i18n.searchTypeHeading},
+                {value: "paragraph", label: this.i18n.searchTypeParagraph},
+                {value: "codeBlock", label: this.i18n.searchTypeCodeBlock},
+            ];
+            const subTypeOptions: Array<{value: string; label: string}> = [
+                {value: "", label: this.i18n.searchSubTypeAll},
+                {value: "h1", label: this.i18n.searchSubTypeH1},
+                {value: "h2", label: this.i18n.searchSubTypeH2},
+                {value: "h3", label: this.i18n.searchSubTypeH3},
+                {value: "h4", label: this.i18n.searchSubTypeH4},
+                {value: "h5", label: this.i18n.searchSubTypeH5},
+                {value: "h6", label: this.i18n.searchSubTypeH6},
+                {value: "o", label: this.i18n.searchSubTypeOrdered},
+                {value: "u", label: this.i18n.searchSubTypeUnordered},
+                {value: "t", label: this.i18n.searchSubTypeTask},
+            ];
+            const methodOptions: Array<{value: IDocSearchFilters["method"]; label: string}> = [
+                {value: "keyword", label: this.i18n.searchMethodKeyword},
+                {value: "query", label: this.i18n.searchMethodQuery},
+                {value: "regexp", label: this.i18n.searchMethodRegexp},
+            ];
+            const orderOptions: Array<{value: IDocSearchFilters["orderBy"]; label: string}> = [
+                {value: "relevanceDesc", label: this.i18n.searchOrderRelevance},
+                {value: "updatedDesc", label: this.i18n.searchOrderUpdated},
+                {value: "createdDesc", label: this.i18n.searchOrderCreated},
+                {value: "content", label: this.i18n.searchOrderContent},
+            ];
+            const menu = new Menu("swSearchFilter");
+            activeMenu = menu;
+            menu.addItem({type: "submenu", label: this.i18n.searchFilterNotebook, icon: "iconFiles", submenu: notebookSub});
+            menu.addItem({
+                type: "submenu",
+                label: this.i18n.searchContentType,
+                icon: "iconFilter",
+                submenu: typeOptions.map(({value, label}) => ({
+                    label,
+                    checked: selectedType === value,
+                    click: () => commitFilters((next) => {
+                        if (value) {
+                            next.types = Object.freeze({[value]: true});
+                            delete next.subTypes;
+                        } else delete next.types;
+                    }),
+                })),
+            });
+            menu.addItem({
+                type: "submenu",
+                label: this.i18n.searchSubType,
+                icon: "iconHeading",
+                submenu: subTypeOptions.map(({value, label}) => ({
+                    label,
+                    checked: selectedSubType === value,
+                    click: () => commitFilters((next) => {
+                        if (value) {
+                            next.subTypes = Object.freeze({[value]: true});
+                            delete next.types;
+                        } else delete next.subTypes;
+                    }),
+                })),
+            });
+            menu.addItem({
+                type: "submenu",
+                label: this.i18n.searchMethod,
+                icon: "iconSearch",
+                submenu: methodOptions.map(({value, label}) => ({
+                    label,
+                    checked: (current.method || "keyword") === value,
+                    click: () => commitFilters((next) => {
+                        if (value && value !== "keyword") next.method = value;
+                        else delete next.method;
+                    }),
+                })),
+            });
+            menu.addItem({
+                type: "submenu",
+                label: this.i18n.searchResultOrder,
+                icon: "iconSort",
+                submenu: orderOptions.map(({value, label}) => ({
+                    label,
+                    checked: (current.orderBy || "relevanceDesc") === value,
+                    click: () => commitFilters((next) => {
+                        if (value && value !== "relevanceDesc") next.orderBy = value;
+                        else delete next.orderBy;
+                    }),
+                })),
+            });
+            menu.addSeparator();
+            menu.addItem({
+                label: this.i18n.searchResetFilters,
+                icon: "iconRefresh",
+                disabled: this.getDocSearchFilterCount(current) === 0,
+                click: () => commitFilters((next) => {
+                    Object.keys(next).forEach((key) => delete next[key as keyof IDocSearchFilters]);
+                }),
+            });
+            const rect = button.getBoundingClientRect();
+            menu.open({x: rect.left, y: rect.bottom});
+        };
+
+        updateButton();
+        button.addEventListener("click", onClick);
+        return () => {
+            button.removeEventListener("click", onClick);
+            document.removeEventListener("keydown", onMenuKeyDown, true);
+            activeMenu?.close();
+            activeMenu = null;
+        };
+    }
+
+    private getDocSearchFilterCount(filters: IDocSearchFilters = {}): number {
+        return Number(Boolean(filters.notebook))
+            + Number(Boolean(filters.paths?.length))
+            + Number(Boolean(filters.types && Object.keys(filters.types).length))
+            + Number(Boolean(filters.subTypes && Object.keys(filters.subTypes).length))
+            + Number(Boolean(filters.method && filters.method !== "keyword"))
+            + Number(Boolean(filters.orderBy && filters.orderBy !== "relevanceDesc"));
+    }
+
+    private getDocSearchFilterSummary(filters: IDocSearchFilters = {}, scrollElement?: HTMLElement): string {
+        const parts: string[] = [];
+        const notebookId = typeof filters.notebook === "string" ? filters.notebook.trim() : "";
+        if (notebookId) {
+            const notebookName = scrollElement ? this.docSearchNotebookNames.get(scrollElement)?.get(notebookId) : "";
+            parts.push(`${this.i18n.searchFilterNotebook}: ${(notebookName || notebookId).slice(0, 32)}`);
+        }
+        const typeLabels: Record<string, string> = {
+            document: this.i18n.searchTypeDocument,
+            heading: this.i18n.searchTypeHeading,
+            paragraph: this.i18n.searchTypeParagraph,
+            codeBlock: this.i18n.searchTypeCodeBlock,
+        };
+        const type = Object.keys(filters.types || {}).find((key) => filters.types?.[key]);
+        if (type) parts.push(`${this.i18n.searchContentType}: ${typeLabels[type] || type}`);
+        const subTypeLabels: Record<string, string> = {
+            h1: this.i18n.searchSubTypeH1,
+            h2: this.i18n.searchSubTypeH2,
+            h3: this.i18n.searchSubTypeH3,
+            h4: this.i18n.searchSubTypeH4,
+            h5: this.i18n.searchSubTypeH5,
+            h6: this.i18n.searchSubTypeH6,
+            o: this.i18n.searchSubTypeOrdered,
+            u: this.i18n.searchSubTypeUnordered,
+            t: this.i18n.searchSubTypeTask,
+        };
+        const subType = Object.keys(filters.subTypes || {}).find((key) => filters.subTypes?.[key]);
+        if (subType) parts.push(`${this.i18n.searchSubType}: ${subTypeLabels[subType] || subType}`);
+        if (filters.method && filters.method !== "keyword") {
+            const methodLabels = {query: this.i18n.searchMethodQuery, regexp: this.i18n.searchMethodRegexp};
+            parts.push(`${this.i18n.searchMethod}: ${methodLabels[filters.method] || filters.method}`);
+        }
+        if (filters.orderBy && filters.orderBy !== "relevanceDesc") {
+            const orderLabels = {
+                updatedDesc: this.i18n.searchOrderUpdated,
+                createdDesc: this.i18n.searchOrderCreated,
+                content: this.i18n.searchOrderContent,
+            };
+            parts.push(`${this.i18n.searchResultOrder}: ${orderLabels[filters.orderBy] || filters.orderBy}`);
+        }
+        return parts.join(" · ");
+    }
+
+    private hasDocSearchFilter(scrollElement: HTMLElement): boolean {
+        return this.getDocSearchFilterCount(this.docSearchFilters.get(scrollElement)) > 0;
+    }
+
     private getDocSearchSession(scrollElement: HTMLElement): ISearchSession<IDocSearchResult[]> {
         if (!this.docSearchFilters.has(scrollElement)) {
             this.docSearchFilters.set(scrollElement, Object.freeze({}));
@@ -2844,11 +3867,15 @@ const version = beginSearch(session);
     private disposeDocSearchSession(scrollElement: HTMLElement) {
         const session = this.docSearchSessions.get(scrollElement);
         if (!session) {
+            this.docSearchFilters.delete(scrollElement);
+            this.docSearchNotebookNames.delete(scrollElement);
             return;
         }
         disposeSearchSession(session);
         this.activeDocSearchSessions.delete(session);
         this.docSearchSessions.delete(scrollElement);
+        this.docSearchFilters.delete(scrollElement);
+        this.docSearchNotebookNames.delete(scrollElement);
     }
 
     // 鍏ㄥ簱鏂囨。鎼滅储杩滅▼璇锋眰锛氭瘡涓晫闈細璇濈嫭绔嬪彇娑堝苟涓㈠純杩囨湡鍝嶅簲
@@ -2875,38 +3902,69 @@ const version = beginSearch(session);
         }
         let controller: AbortController | null = null;
         try {
-            controller = new AbortController();
+            // Older embedded WebViews may not expose AbortController. Keep
+            // the request/version guards active in that case and simply omit
+            // the optional fetch cancellation signal.
+            controller = typeof AbortController === "function" ? new AbortController() : null;
             session.controller = controller;
-            const response = await fetch("/api/filetree/searchDocs", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({k: keyword}),
-                signal: controller.signal,
-            });
-            if (!response.ok) {
-                throw new Error(`searchDocs HTTP ${response.status}`);
-            }
-            const json = await response.json();
-            if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                return;
-            }
-            let docs: IDocSearchResult[] = Array.isArray(json?.data)
-                ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
-                : [];
-            docs = this.filterDocSearchResults(docs, filters);
-            let openedContentRoots = new Set<string>();
-            if (docs.length === 0) {
-                openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, controller.signal);
+            const signal = controller?.signal;
+            if (!canUseTitleSearch(filters)) {
+                const openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, signal, filters);
                 if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
                     return;
                 }
-                this.filterCards(scrollElement, keyword, openedContentRoots);
+                this.filterCards(scrollElement, keyword, openedContentRoots, filters);
+                const docs = await this.runFullTextSearchFallback(keyword, signal, filters, DOC_RESULT_LIMIT + 1);
+                if (docs === null) {
+                    if (openedContentRoots.size === 0) {
+                        this.renderDocResults(scrollElement, [], onClose, "error");
+                    } else {
+                        this.renderDocResults(scrollElement, null, onClose);
+                    }
+                    return;
+                }
+                cacheSearchResult(session, cacheKey, docs);
+                this.renderDocResults(scrollElement, docs, onClose);
+                return;
+            }
+            let docs: IDocSearchResult[] = [];
+            let titleSearchUnavailable = false;
+            try {
+                const response = await fetch("/api/filetree/searchDocs", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({k: keyword}),
+                    ...(signal ? {signal} : {}),
+                });
+                if (!response.ok) {
+                    throw new Error(`searchDocs HTTP ${response.status}`);
+                }
+                const json = await response.json();
+                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
+                    return;
+                }
+                docs = Array.isArray(json?.data)
+                    ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
+                    : [];
+                docs = this.filterDocSearchResults(docs, filters);
+            } catch (error) {
+                if ((error as DOMException)?.name === "AbortError") throw error;
+                titleSearchUnavailable = true;
+                logger.warn("title search unavailable; trying compatible fallbacks", error);
+            }
+            let openedContentRoots = new Set<string>();
+            if (titleSearchUnavailable || docs.length === 0) {
+                openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, signal, filters);
+                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
+                    return;
+                }
+                this.filterCards(scrollElement, keyword, openedContentRoots, filters);
             }
             // Keep title search as the fast path. Only ask the native block
             // endpoint when it found no documents, preserving existing
             // ordering and request cost for the common case.
             if (docs.length === 0) {
-                const fallbackDocs = await this.runFullTextSearchFallback(keyword, controller.signal, filters);
+                const fallbackDocs = await this.runFullTextSearchFallback(keyword, signal, filters, DOC_RESULT_LIMIT + 1);
                 if (fallbackDocs === null) {
                     if (openedContentRoots.size === 0) {
                         this.renderDocResults(scrollElement, [], onClose, "error");
@@ -2938,9 +3996,22 @@ if ((e as DOMException)?.name !== "AbortError") {
     }
 
     // 娓叉煋鍏ㄥ簱鏂囨。鎼滅储缁撴灉鍒嗙粍锛坉ocs 涓?null 琛ㄧず闅愯棌锛夛紱宸叉墦寮€鐨勬枃妗ｄ笉鍐嶉噸澶嶅垪鍑?
-    private async runOpenedDocumentContentSearch(keyword: string, signal: AbortSignal): Promise<Set<string>> {
-        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
-        const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {maxDocuments: 6, pageSize: 8});
+    private async runOpenedDocumentContentSearch(
+        keyword: string,
+        signal?: AbortSignal,
+        filters: IDocSearchFilters = {},
+    ): Promise<Set<string>> {
+        const tabs = (this.isMobile ? this.getMobileTabs() : getAllTabs()).filter((tab) =>
+            !filters.notebook || resolveSearchNotebookId(tab as unknown) === filters.notebook);
+        const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {
+            maxDocuments: 6,
+            pageSize: 8,
+            method: filters.method,
+            orderBy: filters.orderBy,
+            types: filters.types,
+            subTypes: filters.subTypes,
+            filters,
+        });
         const roots = new Set<string>();
         if (requests.length === 0) return roots;
         const results = new Array<boolean>(requests.length).fill(false);
@@ -2954,7 +4025,7 @@ if ((e as DOMException)?.name !== "AbortError") {
                         method: "POST",
                         headers: {"Content-Type": "application/json"},
                         body: JSON.stringify(request.body),
-                        signal,
+                        ...(signal ? {signal} : {}),
                     });
                     if (!response.ok) continue;
                     const payload = await response.json();
@@ -2978,7 +4049,7 @@ if ((e as DOMException)?.name !== "AbortError") {
 
     private async runFullTextSearchFallback(
         keyword: string,
-        signal: AbortSignal,
+        signal?: AbortSignal,
         filters: IDocSearchFilters = {},
         documents = DOC_RESULT_LIMIT,
     ): Promise<IDocSearchResult[] | null> {
@@ -2987,7 +4058,8 @@ if ((e as DOMException)?.name !== "AbortError") {
         const documentLimit = Math.min(33, Math.max(1, Math.floor(Number(documents) || DOC_RESULT_LIMIT)));
         const request = buildFullTextSearchRequest({
             query: keyword,
-            method: "keyword",
+            method: filters.method || "keyword",
+            orderBy: filters.orderBy || "relevanceDesc",
             groupBy: "document",
             pageSize: Math.max(documentLimit * 2, 24),
             filters,
@@ -3000,7 +4072,7 @@ if ((e as DOMException)?.name !== "AbortError") {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(request.body),
-                signal,
+                ...(signal ? {signal} : {}),
             });
             if (!response.ok) {
                 throw new Error(`full text search HTTP ${response.status}`);
@@ -3049,6 +4121,7 @@ if ((e as DOMException)?.name !== "AbortError") {
         if (!box) {
             return;
         }
+        box.setAttribute("aria-busy", state === "loading" ? "true" : "false");
         if (state !== "results") {
             this.appendDocSearchStatus(box, state);
             return;
@@ -3081,9 +4154,12 @@ const openRootIds = this.collectOpenRootIds();
         }
         const label = box.querySelector<HTMLElement>(".sw__window-label");
         if (label) {
-            label.textContent = `${this.i18n.docSearchResults} 路 ${grid.childElementCount}`;
+            label.textContent = `${this.i18n.docSearchResults} · ${grid.childElementCount}`;
         }
         box.appendChild(grid);
+        if (docs.length > DOC_RESULT_LIMIT) {
+            this.appendDocResultsViewAll(box, scrollElement, onClose);
+        }
     }
 
     // 澶嶇敤鐜版湁 .sw__doc-results 瀹瑰櫒锛沝ocs===null 鏃剁洿鎺ョЩ闄ゅ苟杩斿洖 null
@@ -3121,16 +4197,38 @@ const openRootIds = this.collectOpenRootIds();
     private appendDocResultsEmpty(box: HTMLElement) {
         const empty = document.createElement("div");
         empty.className = "sw__doc-status sw__doc-status--empty";
+        empty.setAttribute("role", "status");
+        empty.setAttribute("aria-live", "polite");
         empty.textContent = this.i18n.noDocResults;
         box.appendChild(empty);
+    }
+
+    private appendDocResultsViewAll(box: HTMLElement, scrollElement: HTMLElement, onClose: IOverlayClose) {
+        const query = String(scrollElement.dataset.swDocSearchQuery || "").trim();
+        const filters = this.docSearchFilters.get(scrollElement) || {};
+        const search = buildNativeSearchTabConfig({query, filters});
+        if (!search) return;
+        const action = document.createElement("button");
+        action.type = "button";
+        action.className = "sw__doc-view-all b3-button b3-button--text";
+        action.textContent = this.i18n.docSearchViewAll;
+        action.setAttribute("aria-label", this.i18n.docSearchViewAll);
+        action.addEventListener("click", () => {
+            onClose();
+            void openTab({app: this.app, search: search.config as any}).catch((error) => {
+                logger.warn("open native search tab fail", error);
+                showMessage(this.i18n.docSearchFailed);
+            });
+        });
+        box.appendChild(action);
     }
 
     private appendDocSearchStatus(box: HTMLElement, state: Exclude<DocSearchRenderState, "results">) {
         const status = document.createElement("div");
         status.className = `sw__doc-status sw__doc-status--${state}`;
-        status.setAttribute("role", "status");
+        status.setAttribute("role", state === "error" ? "alert" : "status");
+        status.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
         if (state === "loading") {
-            status.setAttribute("aria-live", "polite");
             status.innerHTML = '<svg class="sw__spin" aria-hidden="true"><use xlink:href="#iconRefresh"></use></svg>';
             const text = document.createElement("span");
             text.textContent = this.i18n.docSearchLoading;
@@ -3178,27 +4276,14 @@ const openRootIds = this.collectOpenRootIds();
             await this.mobileOpenDoc(rootId);
             return;
         }
-        const targetId = hitId && BLOCK_ID_RE.test(hitId) ? hitId : rootId;
-        try {
-            await openTab({
-                app: this.app,
-                doc: targetId === rootId ? {id: rootId} : {id: targetId, action: ["cb-get-scroll"]},
-            });
-        } catch (error) {
-            if (targetId === rootId) {
-                logger.warn("open document search result fail", error);
-                showMessage(this.i18n.openDocFailed);
-                return;
-            }
-            // A stale block ID should never make a valid document card unusable.
-            logger.warn("open document search hit fail, falling back to root", error);
-            try {
-                await openTab({app: this.app, doc: {id: rootId}});
-            } catch (fallbackError) {
-                logger.warn("open document search root fallback fail", fallbackError);
-                showMessage(this.i18n.openDocFailed);
-            }
-        }
+        const opened = await openDocumentOnDesktop({
+            rootId,
+            hitId: hitId && BLOCK_ID_RE.test(hitId) ? hitId : null,
+            app: this.app,
+            openTab,
+            logger,
+        });
+        if (!opened) showMessage(this.i18n.openDocFailed);
     }
 
     // 鍗曚釜鏂囨。鎼滅储缁撴灉鍗＄墖锛堝浘鏍?+ 鏍囬 + 璺緞锛夛紱鐐瑰嚮鐩村紑鏂囨。锛堟墜鏈虹璧?MobileTabs.open锛?
@@ -3335,7 +4420,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         }));
                         const favorites = this.getFavorites().map((entry) => ({
                             id: entry.key,
-                            rootId: this.resolveFavRootId(entry) || undefined,
+                            rootId: resolveFavoriteRootId(entry) || undefined,
                             title: entry.title,
                             group: entry.group,
                             source: "favorite",
@@ -3375,14 +4460,34 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             return {error: "invalid notebook id"};
         }
         if (notebook) filters.notebook = notebook;
+        const method = normalizeAgentSearchMethod(args.method);
+        const orderBy = normalizeAgentSearchOrder(args.orderBy);
+        const type = normalizeAgentSearchType(args.type);
+        const subType = normalizeAgentSearchSubType(args.subType);
+        if ((args.method !== undefined && !method)
+            || (args.orderBy !== undefined && !orderBy)
+            || (args.type !== undefined && !type)
+            || (args.subType !== undefined && !subType)) {
+            return {error: "invalid search filter"};
+        }
+        if (method !== "keyword") filters.method = method as IDocSearchFilters["method"];
+        if (orderBy !== "relevanceDesc") filters.orderBy = orderBy as IDocSearchFilters["orderBy"];
+        if (type) filters.types = {[type]: true};
+        if (subType) filters.subTypes = {[subType]: true};
         const limit = normalizeAgentLimit(args.limit, DOC_RESULT_LIMIT);
-        const controller = new AbortController();
-        this.activeAgentSearchControllers.add(controller);
-        const timer = window.setTimeout(() => controller.abort(), NOTEBOOK_FETCH_TIMEOUT_MS);
+        // AbortController is optional in older embedded WebViews. The Agent
+        // request remains bounded by its local result limit and guards even
+        // when native cancellation is unavailable.
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        if (controller) this.activeAgentSearchControllers.add(controller);
+        const signal = controller?.signal;
+        const timer = controller
+            ? window.setTimeout(() => controller.abort(), NOTEBOOK_FETCH_TIMEOUT_MS)
+            : null;
         try {
             const localTabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
             const queryLower = query.toLocaleLowerCase();
-            const localItems = localTabs.map((tab) => {
+            const localItems = canUseTitleSearch(filters) ? localTabs.map((tab) => {
                 const rootId = this.rootIdOf(tab) || "";
                 const title = this.titleOf(tab);
                 const path = String((tab as unknown as {path?: string; hPath?: string}).path
@@ -3398,7 +4503,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     notebookId: notebookId || undefined,
                     source: "tabs",
                 };
-            }).filter(Boolean) as Array<Record<string, unknown>>;
+            }).filter(Boolean) as Array<Record<string, unknown>> : [];
 
             // A local tab match already satisfies the requested bound. Avoid
             // waking the file tree or full-text endpoint in that case.
@@ -3410,11 +4515,14 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             let docs: IDocSearchResult[] = [];
             let titleSearchAvailable = true;
             try {
+                if (!canUseTitleSearch(filters)) {
+                    throw new Error("advanced filters require native search");
+                }
                 const response = await fetch("/api/filetree/searchDocs", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({k: query}),
-                    signal: controller.signal,
+                    ...(signal ? {signal} : {}),
                 });
                 if (!response.ok) throw new Error(`searchDocs HTTP ${response.status}`);
                 const json = await response.json();
@@ -3435,7 +4543,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
 
             let source = localItems.length > 0 ? "tabs" : "title";
             if (docs.length === 0) {
-                const fallback = await this.runFullTextSearchFallback(query, controller.signal, filters, Math.min(33, limit + 1));
+                const fallback = await this.runFullTextSearchFallback(query, signal, filters, Math.min(33, limit + 1));
                 if (fallback !== null) {
                     docs = fallback;
                     source = localItems.length > 0 ? "tabs+global" : "global";
@@ -3468,19 +4576,28 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             logger.warn("Agent search fail", error);
             return {error: "search unavailable"};
         } finally {
-            window.clearTimeout(timer);
-            this.activeAgentSearchControllers.delete(controller);
+            if (timer !== null) window.clearTimeout(timer);
+            if (controller) this.activeAgentSearchControllers.delete(controller);
         }
     }
 
     // 鎸夊叧閿瓧杩囨护鍗＄墖锛屾暣缁勬棤鍖归厤鏃堕殣钘忓垎缁勶紱杩斿洖鍙鍗＄墖鏁?
-    private filterCards(scrollElement: HTMLElement, keyword: string, contentRoots: Set<string> = new Set()): number {
+    private filterCards(
+        scrollElement: HTMLElement,
+        keyword: string,
+        contentRoots: Set<string> = new Set(),
+        filters: IDocSearchFilters = this.docSearchFilters.get(scrollElement) || {},
+    ): number {
         const kw = keyword.trim().toLowerCase();
+        const allowLocalTitleMatch = (!filters.method || filters.method === "keyword")
+            && (!filters.types || filters.types.document === true)
+            && !filters.subTypes;
         let visible = 0;
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             const title = (card.dataset.title || "").toLowerCase();
             const rootId = card.dataset.rootId || "";
-            const match = !kw || title.includes(kw) || contentRoots.has(rootId);
+            const matchesNotebook = !filters.notebook || card.dataset.notebookId === filters.notebook;
+            const match = matchesNotebook && (!kw || (allowLocalTitleMatch && title.includes(kw)) || contentRoots.has(rootId));
             card.classList.toggle("fn__none", !match);
             if (match) {
                 visible++;
@@ -3585,6 +4702,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
     // 璇诲彇甯冨眬閰嶇疆涓殑鍏ㄩ儴闈㈡澘锛堝乏/鍙?涓嬩笁渚?dock锛夛紝鍙繚鐣欏綋鍓嶇湡瀹炲瓨鍦ㄧ殑闈㈡澘
     private getDockPanels(): IDockPanel[] {
         const panels: IDockPanel[] = [];
+        const seen = new Set<string>();
         try {
             const uiLayout = getSiyuan()?.config?.uiLayout;
             if (!uiLayout) {
@@ -3597,7 +4715,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 }
                 groups.forEach((group: any[]) => {
                     (group || []).forEach((item: any) => {
-                        if (item?.type && this.getDockByType(item.type)) {
+                        if (item?.type && !seen.has(item.type) && this.getDockByType(item.type)) {
+                            seen.add(item.type);
                             panels.push({
                                 type: item.type,
                                 title: normalizeQuickActionText(item.title || item.type, 80) || item.type,
@@ -3713,21 +4832,16 @@ private rootIdOf(tab: Tab): string | null {
     // 姝ょ被鏉＄洰 rootId 涓虹┖銆佽烦杞繀鐒跺け鏁堛€傞〉绛炬縺娲昏В鏋愬嚭 rootId 鍚庡皢鍏舵敼鍐欎负绋冲畾閿紱
     // 鑻ュ悓鏂囨。宸插瓨鍦ㄦ甯告潯鐩垯鑴忔潯鐩睘浜庡巻鍙查噸澶嶏紝鐩存帴绉婚櫎銆傝繑鍥炴槸鍚﹀彂鐢熶簡杩佺Щ
     private migrateFavoriteKey(list: IFavoriteItem[], tab: Tab, rootId: string): boolean {
-        const index = list.findIndex((item) => item.key === tab.id && item.key !== rootId);
-        if (index < 0) {
-            return false;
-        }
-        if (list.some((item) => item.key === rootId)) {
-            list.splice(index, 1);
-        } else {
-            list[index] = {...list[index], key: rootId, rootId};
-        }
+        const result = migrateFavoriteEntry(list, tab.id, rootId);
+        if (!result.migrated) return false;
+        list.splice(0, list.length, ...result.items);
         this.saveFavorites(list);
         return true;
     }
 
     private removeFavorite(key: string) {
-        this.saveFavorites(this.getFavorites().filter((item) => item.key !== key));
+        const result = removeFavoriteEntry(this.getFavorites(), key);
+        if (result.changed) this.saveFavorites(result.items);
     }
 
     // ==================== 鏀惰棌鍒嗙粍鎶樺彔鐘舵€佹寔涔呭寲 ====================
@@ -3753,14 +4867,16 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     // 桌面端顶部的最近打开记录。历史与 MRU 分离，保留关闭页签后仍可重开的文档。
-    private setupOpenHistoryDropdown(container: HTMLElement | null, onClose: IOverlayClose) {
-        if (!container) return;
+    private setupOpenHistoryDropdown(container: HTMLElement | null, onClose: IOverlayClose): () => void {
+        if (!container) return () => undefined;
+        const previous = this.historyDropdownClosers.get(container);
+        previous?.dispose();
         container.innerHTML = `<button type="button" class="sw__history-trigger" aria-label="${this.i18n.openHistory}">
     <svg><use xlink:href="#iconClock"></use></svg><span class="sw__history-trigger-text">${this.i18n.openHistory}</span><span class="sw__history-badge"></span>
 </button><div class="sw__history-panel fn__none" role="menu"></div>`;
         const trigger = container.querySelector<HTMLElement>(".sw__history-trigger");
         const panel = container.querySelector<HTMLElement>(".sw__history-panel");
-        if (!trigger || !panel) return;
+        if (!trigger || !panel) return () => undefined;
         let outsideHandler: ((event: PointerEvent) => void) | null = null;
         let resizeHandler: (() => void) | null = null;
         const close = () => {
@@ -3770,6 +4886,16 @@ private rootIdOf(tab: Tab): string | null {
             outsideHandler = null;
             resizeHandler = null;
         };
+        let disposed = false;
+        const dispose = () => {
+            if (disposed) return;
+            disposed = true;
+            close();
+            if (this.historyDropdownClosers.get(container)?.dispose === dispose) this.historyDropdownClosers.delete(container);
+            this.historyDropdownCloseSet.delete(dispose);
+        };
+        this.historyDropdownClosers.set(container, {close, dispose});
+        this.historyDropdownCloseSet.add(dispose);
         trigger.addEventListener("click", () => {
             if (!panel.classList.contains("fn__none")) { close(); return; }
             this.renderOpenHistoryPanel(panel, (entry) => {
@@ -3787,6 +4913,7 @@ private rootIdOf(tab: Tab): string | null {
             window.addEventListener("resize", resizeHandler);
         });
         this.refreshOpenHistoryDropdown(container);
+        return dispose;
     }
 
     private positionOpenHistoryPanel(trigger: HTMLElement, panel: HTMLElement) {
@@ -3803,40 +4930,117 @@ private rootIdOf(tab: Tab): string | null {
 
     private renderOpenHistoryPanel(panel: HTMLElement, onPick: (entry: IOpenHistoryEntry) => void) {
         panel.innerHTML = "";
-        const entries = this.getOpenHistory();
-        if (entries.length === 0) {
+        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
+        const openedRoots = new Set(opened.map((tab) => this.rootIdOf(tab)).filter(Boolean));
+        const sections = buildRecentHistorySections(this.getOpenHistory(), this.getClosedHistory(), openedRoots);
+        if (sections.count === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__history-empty";
             empty.textContent = this.i18n.noOpenHistory;
             panel.appendChild(empty);
             return;
         }
-        const clear = document.createElement("button");
-        clear.type = "button";
-        clear.className = "sw__history-clear";
-        clear.textContent = this.i18n.clearOpenHistory;
-        clear.addEventListener("click", (event) => {
-            event.stopPropagation();
+
+        const appendSection = (title: string, entries: IOpenHistoryEntry[], clearLabel: string, clearAction: () => void) => {
+            if (entries.length === 0) return;
+            const heading = document.createElement("div");
+            heading.className = "sw__history-section-title";
+            heading.textContent = title;
+            panel.appendChild(heading);
+            const clear = document.createElement("button");
+            clear.type = "button";
+            clear.className = "sw__history-clear";
+            clear.textContent = clearLabel;
+            clear.addEventListener("click", (event) => {
+                event.stopPropagation();
+                clearAction();
+            });
+            panel.appendChild(clear);
+            entries.forEach((entry) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = `sw__history-item${entry.source === "closed" ? " sw__history-item--closed" : ""}`;
+            item.setAttribute("role", "menuitem");
+            item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span class="sw__history-copy"><span class="sw__history-title"></span><span class="sw__history-meta"></span></span>`;
+            item.querySelector<HTMLElement>(".sw__history-title")!.textContent = entry.title;
+            item.querySelector<HTMLElement>(".sw__history-meta")!.textContent = entry.source === "closed"
+                ? this.i18n.historyClosed
+                : openedKeys.has(entry.key) ? this.i18n.historyOpen : this.i18n.historyClosed;
+            item.title = entry.title;
+            this.bindHistoryItemActions(item, entry, onPick);
+            panel.appendChild(item);
+            });
+        };
+        appendSection(this.i18n.historyOpenSection, sections.open as IOpenHistoryEntry[], this.i18n.clearOpenHistory, () => {
             if (!confirm(this.i18n.clearOpenHistoryConfirm)) return;
             this.data[HISTORY_KEY] = [];
             this.saveDataDebounced(HISTORY_KEY);
             this.refreshOpenHistoryDropdowns();
         });
-        panel.appendChild(clear);
-        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
-        const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
-        entries.forEach((entry) => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "sw__history-item";
-            item.setAttribute("role", "menuitem");
-            item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span class="sw__history-copy"><span class="sw__history-title"></span><span class="sw__history-meta"></span></span>`;
-            item.querySelector<HTMLElement>(".sw__history-title")!.textContent = entry.title;
-            item.querySelector<HTMLElement>(".sw__history-meta")!.textContent = openedKeys.has(entry.key) ? this.i18n.historyOpen : this.i18n.historyClosed;
-            item.title = entry.title;
-            item.addEventListener("click", () => onPick(entry));
-            panel.appendChild(item);
+        appendSection(this.i18n.historyClosedSection, sections.closed as IOpenHistoryEntry[], this.i18n.clearClosedHistory, () => {
+            this.data[CLOSED_HISTORY_KEY] = [];
+            this.saveDataDebounced(CLOSED_HISTORY_KEY);
+            this.refreshOpenHistoryDropdowns();
         });
+    }
+
+    private bindHistoryItemActions(item: HTMLButtonElement, entry: IOpenHistoryEntry, onPick: (entry: IOpenHistoryEntry) => void) {
+        let timer: number | null = null;
+        let longPressed = false;
+        let x = 0;
+        let y = 0;
+        const clearTimer = () => {
+            if (timer !== null) window.clearTimeout(timer);
+            timer = null;
+        };
+        const openMenu = (clientX: number, clientY: number) => {
+            this.closeHistoryMenu();
+            const menu = new Menu("swHistoryItemMenu");
+            this.activeHistoryMenu = menu;
+            menu.addItem({label: this.i18n.historyOpenAction, icon: "iconOpen", click: () => onPick(entry)});
+            menu.addItem({label: this.i18n.historyRemove, icon: "iconTrashcan", click: () => {
+                if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId || entry.key);
+                else this.removeOpenHistoryEntry(entry.key);
+                this.refreshOpenHistoryDropdowns();
+            }});
+            menu.open({x: clientX, y: clientY});
+        };
+        item.addEventListener("click", (event) => {
+            if (longPressed) {
+                longPressed = false;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+            }
+            onPick(entry);
+        });
+        item.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openMenu(event.clientX, event.clientY);
+        });
+        item.addEventListener("touchstart", (event) => {
+            const touch = event.touches[0];
+            x = touch?.clientX || 0;
+            y = touch?.clientY || 0;
+            longPressed = false;
+            clearTimer();
+            timer = window.setTimeout(() => {
+                timer = null;
+                longPressed = true;
+                openMenu(x, y);
+            }, 500);
+        }, {passive: true});
+        item.addEventListener("touchmove", clearTimer, {passive: true});
+        item.addEventListener("touchcancel", clearTimer);
+        item.addEventListener("touchend", (event) => {
+            clearTimer();
+            if (longPressed) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }, {passive: false});
     }
 
     private async openHistoryEntry(entry: IOpenHistoryEntry) {
@@ -3844,26 +5048,54 @@ private rootIdOf(tab: Tab): string | null {
         const current = opened.find((tab) => this.pinKeyOf(tab) === entry.key);
         if (current) { this.activateTab(current); return; }
         if (!entry.rootId || !BLOCK_ID_RE.test(entry.rootId)) {
-            this.removeOpenHistoryEntry(entry.key);
+            if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId || entry.key);
+            else this.removeOpenHistoryEntry(entry.key);
             showMessage(this.i18n.historyInvalid);
             return;
         }
         if (this.isMobile) {
-            await this.mobileOpenDoc(entry.rootId);
+            const opened = await this.mobileOpenDoc(entry.rootId);
+            if (!opened) {
+                if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId);
+                showMessage(this.i18n.openDocFailed);
+            }
         } else {
-            try { await openTab({app: this.app, doc: {id: entry.rootId}}); }
-            catch (e) { logger.warn("open history entry fail", e); this.removeOpenHistoryEntry(entry.key); showMessage(this.i18n.openDocFailed); }
+            const opened = await openDocumentOnDesktop({
+                rootId: entry.rootId,
+                app: this.app,
+                openTab,
+                logger,
+            });
+            if (!opened) {
+                if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId || entry.key);
+                else this.removeOpenHistoryEntry(entry.key);
+                showMessage(this.i18n.openDocFailed);
+            }
         }
     }
 
     private refreshOpenHistoryDropdowns() {
+        this.closeHistoryMenu();
         document.querySelectorAll<HTMLElement>(".sw__history-dd").forEach((container) => this.refreshOpenHistoryDropdown(container));
     }
 
+    private closeHistoryMenu() {
+        if (!this.activeHistoryMenu) return;
+        try {
+            this.activeHistoryMenu.close();
+        } catch (error) {
+            logger.warn("close history menu fail", error);
+        }
+        this.activeHistoryMenu = null;
+    }
+
     private refreshOpenHistoryDropdown(container: HTMLElement) {
+        this.historyDropdownClosers.get(container)?.close();
         const badge = container.querySelector<HTMLElement>(".sw__history-badge");
         if (badge) {
-            const count = this.getOpenHistory().length;
+            const openedRoots = new Set((this.isMobile ? this.getMobileTabs() : getAllTabs())
+                .map((tab) => this.rootIdOf(tab)).filter(Boolean));
+            const count = buildRecentHistorySections(this.getOpenHistory(), this.getClosedHistory(), openedRoots).count;
             badge.textContent = String(count);
             badge.classList.toggle("fn__none", count === 0);
         }
@@ -3889,16 +5121,16 @@ private rootIdOf(tab: Tab): string | null {
 
         // 闈㈡澘鎵撳紑鏈熼棿鎵嶇洃鍚?DOM 鍙樺寲锛氬鍣ㄨ绉婚櫎锛堝脊绐楅攢姣?渚ц竟鏍忛噸娓叉煋锛夋椂瑙ｇ粦鍏ㄥ眬鐩戝惉锛?
         // 闈㈡澘鍏抽棴鍗?disconnect锛岄伩鍏?body 绾?MutationObserver 闅忕紪杈戞搷浣滃叏灞€甯搁┗
-        const observer = new MutationObserver(() => {
+        const observer = typeof MutationObserver === "function" ? new MutationObserver(() => {
             if (!container.isConnected) {
                 unbindGlobal();
             }
-        });
+        }) : null;
         const unbindGlobal = () => {
             document.removeEventListener("pointerdown", onDocPointerDown, true);
             window.removeEventListener("resize", onReposition);
             document.removeEventListener("scroll", onReposition, true);
-            observer.disconnect();
+            observer?.disconnect();
         };
         // 鏀惰捣闈㈡澘骞跺仠姝?DOM 瑙傚療锛堜笁鏉℃敹璧疯矾寰勫叡鐢細鍐嶆鐐瑰嚮瑙﹀彂鍣?/ 鐐瑰嚮澶栭儴 / 閫変腑鏀惰棌椤癸級
         const closePanel = () => {
@@ -3934,7 +5166,7 @@ private rootIdOf(tab: Tab): string | null {
                 document.addEventListener("pointerdown", onDocPointerDown, true);
                 window.addEventListener("resize", onReposition);
                 document.addEventListener("scroll", onReposition, true);
-                observer.observe(document.body, {childList: true, subtree: true});
+                observer?.observe(document.body, {childList: true, subtree: true});
             } else {
                 closePanel();
             }
@@ -3985,6 +5217,7 @@ private rootIdOf(tab: Tab): string | null {
         if (favorites.length === 0 && groupNames.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__fav-empty";
+            empty.setAttribute("role", "status");
             empty.textContent = this.i18n.noFavorites;
             panel.appendChild(empty);
             return;
@@ -4095,11 +5328,9 @@ private rootIdOf(tab: Tab): string | null {
     // 淇敼鏀惰棌椤圭殑鍒嗙粍锛坓roup 涓虹┖琛ㄧず绉诲嚭鍒嗙粍锛?
     private setFavoriteGroup(key: string, group: string) {
         const list = this.getFavorites();
-        const item = list.find((fav) => fav.key === key);
-        if (!item) {
-            return;
-        }
-        item.group = group.trim();
+        const result = setFavoriteEntryGroup(list, key, group);
+        if (!result.changed) return;
+        list.splice(0, list.length, ...result.items);
         this.saveFavorites(list);
         this.refreshFavSelects();
     }
@@ -4459,13 +5690,6 @@ private rootIdOf(tab: Tab): string | null {
 
     // 鏀惰棌鏉＄洰鐨勫彲璺宠浆 rootId锛氫紭鍏堝彇 rootId 瀛楁锛岀己澶辨椂鍥為€€ key锛涗袱鑰呴兘蹇呴』鏄?
     // 鍧?ID 鏍煎紡鈥斺€斿巻鍙茶剰鏉＄洰鐨?key 鏄竴娆℃€?tab.id锛圲UID锛夛紝openTab 鏃犳硶瑙ｆ瀽鍙細闈欓粯澶辫触
-    private resolveFavRootId(favorite: IFavoriteItem): string {
-        if (favorite.rootId && BLOCK_ID_RE.test(favorite.rootId)) {
-            return favorite.rootId;
-        }
-        return BLOCK_ID_RE.test(favorite.key) ? favorite.key : "";
-    }
-
     // 璺宠浆鍒版敹钘忛」锛氶〉绛惧凡寮€鍒欏垏鎹㈣繃鍘伙紱椤电宸插叧闂垯鎸?rootId 閲嶅紑銆?
     // 鏀惰棌椤规案涔呯暀瀛橈紙鐩村埌鐢ㄦ埛涓诲姩鍒犻櫎锛夛細鏃犳硶瀹氫綅鏂囨。鐨勫巻鍙茶剰鏉＄洰浠呮彁绀恒€佷笉鑷姩娓呯悊锛?
     // 鐢ㄦ埛鎵撳紑瀵瑰簲椤电鍚庢槦鏍囨搷浣滀細鑷姩灏嗗叾杩佺Щ淇
@@ -4477,7 +5701,7 @@ private rootIdOf(tab: Tab): string | null {
             this.activateTab(tab, onClose);
             return;
         }
-        const rootId = this.resolveFavRootId(favorite);
+        const rootId = resolveFavoriteRootId(favorite);
         if (!rootId) {
             showMessage(this.i18n.favInvalidEntry);
             return;
@@ -4490,10 +5714,13 @@ private rootIdOf(tab: Tab): string | null {
                 showMessage(this.i18n.openDocFailed);
             }
         } else {
-            openTab({
+            const opened = await openDocumentOnDesktop({
+                rootId,
                 app: this.app,
-                doc: {id: rootId},
+                openTab,
+                logger,
             });
+            if (!opened) showMessage(this.i18n.openDocFailed);
         }
     }
 
@@ -4515,7 +5742,7 @@ private rootIdOf(tab: Tab): string | null {
     private async openGroupTabsInternal(items: IFavoriteItem[]): Promise<number> {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
-        const plan = planGroupOpenFavorites(items, openedKeys, (favorite) => this.resolveFavRootId(favorite));
+        const plan = planGroupOpenFavorites(items, openedKeys, resolveFavoriteRootId);
         let failed = plan.invalid;
         const attempted: string[] = [];
         for (const {favorite: fav, rootId} of plan.targets) {
@@ -4575,7 +5802,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     private async closeGroupTabsInternal(items: IFavoriteItem[]): Promise<number> {
-        const keys = new Set(items.map((fav) => this.resolveFavRootId(fav)).filter(Boolean));
+        const keys = new Set(items.map((fav) => resolveFavoriteRootId(fav)).filter(Boolean));
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const targets = opened.filter((tab) => keys.has(this.pinKeyOf(tab)));
         let failed = 0;
@@ -4605,32 +5832,14 @@ private rootIdOf(tab: Tab): string | null {
         return closed;
     }
 
-    // 缁勫唴鎺掑簭锛氱疆椤堕〉绛惧浐瀹氬湪鏈€鍓嶏紝鍏朵綑鎸夋墍閫夋柟寮忔帓搴?
+    // 排序领域逻辑位于 util.js；这里仅注入宿主 Tab 适配器，避免 UI 层持有排序细节。
     private sortItems(items: IGroupedTab[], sortBy: SortBy, mru: string[], updatedMap: {[rootId: string]: string}) {
-        if (sortBy === "titleAsc" || sortBy === "titleDesc") {
-            items.sort((a, b) => {
-                const result = this.titleOf(a.tab).localeCompare(this.titleOf(b.tab), undefined, {numeric: true});
-                return sortBy === "titleAsc" ? result : -result;
-            });
-        } else if (sortBy === "layoutDesc") {
-            items.reverse(); // 鎵撳紑椤哄簭鍊掑簭锛氬弽杞?getAllTabs 鐨勫竷灞€椤哄簭
-        } else if (sortBy === "updatedDesc") {
-            // 鏈€杩戠紪杈戯細鎸夋枃妗?updated 鏃堕棿鍊掑簭锛屾棤鏁版嵁鐨勬帓鍚庨潰
-            items.sort((a, b) => {
-                const ua = updatedMap[this.rootIdOf(a.tab) || ""] || "";
-                const ub = updatedMap[this.rootIdOf(b.tab) || ""] || "";
-                return ua < ub ? 1 : ua > ub ? -1 : 0;
-            });
-        } else if (sortBy === "mru") {
-            // MRU 涓秺闈犲墠瓒婃柊锛涗笉鍦ㄨ褰曚腑鐨勯〉绛炬寜鎵撳紑椤哄簭鎺掑湪鍚庨潰銆?
-            // 鎸?pinKey锛堟枃妗ｉ〉绛句负 rootID锛夊尮閰嶏紝涓?activateTab 鐨勮褰曢敭涓€鑷达紝鎵嬫満绔?妗岄潰绔叡鐢ㄥ悓涓€浠?MRU
-            items.sort((a, b) => {
-                const ra = mru.indexOf(this.pinKeyOf(a.tab));
-                const rb = mru.indexOf(this.pinKeyOf(b.tab));
-                return (ra < 0 ? Number.MAX_SAFE_INTEGER : ra) - (rb < 0 ? Number.MAX_SAFE_INTEGER : rb);
-            });
-        }
-        // layout锛氫繚鎸?getAllTabs 杩斿洖鐨勫竷灞€椤哄簭锛屾棤闇€澶勭悊
+        return sortItemsUtil(items, sortBy, mru, {
+            titleOf: (item) => this.titleOf(item.tab),
+            rootIdOf: (item) => this.rootIdOf(item.tab) || "",
+            pinKeyOf: (item) => this.pinKeyOf(item.tab),
+            updatedMap,
+        });
     }
 
     // 鎸夌獥鍙ｅ垎缁勫苟娓叉煋鍏ㄩ儴椤电
@@ -4687,10 +5896,11 @@ private rootIdOf(tab: Tab): string | null {
         pinned: Set<string>,
         updatedMap: {[rootId: string]: string},
     ): IGroupedTab[] {
-        const pinnedItems = group.filter((item) => pinned.has(this.pinKeyOf(item.tab)));
-        const restItems = group.filter((item) => !pinned.has(this.pinKeyOf(item.tab)));
-        this.sortItems(restItems, sortBy, mru, updatedMap);
-        return [...pinnedItems, ...restItems];
+        return sortGroupItemsUtil(group, sortBy, mru, pinned, updatedMap, {
+            titleOf: (item) => this.titleOf(item.tab),
+            rootIdOf: (item) => this.rootIdOf(item.tab) || "",
+            pinKeyOf: (item) => this.pinKeyOf(item.tab),
+        });
     }
 
     // 娓叉煋鍗曚竴鍒嗙粍锛歭abel + grid + 鍚勫崱鐗囷紱鍗＄墖鑾峰彇濮旀墭 acquireGroupCard锛涚疮绉?defaultFocusIndex
@@ -4762,15 +5972,25 @@ private rootIdOf(tab: Tab): string | null {
     // 澶嶇敤鏃у崱鐗囨椂鍚屾鐘舵€侊細缃《/鏀惰棌/婵€娲荤被鍚嶄笌鍥炬爣銆佹爣棰樻枃鏈?
     private syncCardState(card: HTMLElement, tab: Tab, isActive: boolean, isPinned: boolean, isFaved: boolean) {
         this.cardTabs.set(card, tab);
+        // Keep surface-specific modifiers when a card is reused during a
+        // mobile list refresh.  `renderMobileList` deliberately reuses DOM
+        // nodes to preserve thumbnails, but resetting className below used
+        // to drop `sw__mobile-card`, making refreshed cards fall back to the
+        // desktop layout until the next full dialog rebuild.
+        const isMobileCard = card.classList.contains("sw__mobile-card");
         const previousRootId = card.dataset.rootId || "";
         const rootId = this.rootIdOf(tab) || "";
         card.className = "sw__card"
             + (isActive ? " sw__active" : "")
             + (isPinned ? " sw__pinned" : "")
             + (isFaved ? " sw__faved" : "");
+        if (isMobileCard) {
+            card.classList.add("sw__mobile-card");
+        }
         const title = this.titleOf(tab);
         card.dataset.title = title;
         card.dataset.rootId = rootId;
+        card.dataset.notebookId = resolveSearchNotebookId(tab as unknown);
         card.querySelector<HTMLElement>(".sw__title")!.textContent = title;
         const icon = card.querySelector<HTMLElement>(".sw__icon");
         if (icon) {
@@ -4797,6 +6017,8 @@ private rootIdOf(tab: Tab): string | null {
     private buildEmptyState(): HTMLElement {
         const empty = document.createElement("div");
         empty.className = "sw__empty";
+        empty.setAttribute("role", "status");
+        empty.setAttribute("aria-live", "polite");
         empty.innerHTML = `<div class="sw__empty-title"></div><div class="sw__empty-sub"></div>`;
         empty.querySelector(".sw__empty-title")!.textContent = this.i18n.noOpenedTabs;
         empty.querySelector(".sw__empty-sub")!.textContent = this.i18n.emptyHint;
@@ -4940,6 +6162,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         card.dataset.tabId = tab.id;
         card.dataset.title = this.titleOf(tab);
         card.dataset.rootId = this.rootIdOf(tab) || "";
+        card.dataset.notebookId = resolveSearchNotebookId(tab as unknown);
 
         card.appendChild(this.buildCardThumb());
         card.appendChild(this.buildCardMeta(tab));
@@ -4968,6 +6191,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         thumb.className = "sw__thumb";
         const loading = document.createElement("div");
         loading.className = "sw__thumb-loading";
+        loading.setAttribute("role", "status");
+        loading.setAttribute("aria-live", "polite");
         loading.innerHTML = `<svg class="sw__spin"><use xlink:href="#iconRefresh"></use></svg><span>${this.i18n.loadingThumbnail}</span>`;
         thumb.appendChild(loading);
         return thumb;
@@ -5279,7 +6504,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
 
         // 鐜涓嶆敮鎸?IntersectionObserver 鏃堕€€鍥炲師鍒嗘壒鍏ㄩ噺娓叉煋锛堟€濇簮鍐呮牳鍧囦负 Chromium锛屼粎闃插尽锛?
-        if (typeof IntersectionObserver === "undefined") {
+        if (typeof IntersectionObserver !== "function") {
             this.renderThumbBatch(list, batch);
             return;
         }
@@ -5354,12 +6579,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.fillThumbByApi(item.tab, thumb);
             }
             if (index < list.length) {
-                requestAnimationFrame(runBatch);
+                this.scheduleAnimationFrame(runBatch);
             } else if (dirty) {
                 this.saveThumbCache(cache);
             }
         };
-        requestAnimationFrame(runBatch);
+        this.scheduleAnimationFrame(runBatch);
     }
 
     // 灏嗗厠闅嗗唴瀹硅杩涚缉鐣ュ浘妗嗗苟鎸夊搴︾缉鏀?
@@ -5379,7 +6604,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 content.style.visibility = "visible";
                 return;
             }
-            if (attempt < 5) requestAnimationFrame(() => syncScale(attempt + 1));
+            if (attempt < 5) this.scheduleAnimationFrame(() => syncScale(attempt + 1));
             else content.style.visibility = "visible";
         };
         syncScale(0);
@@ -5657,41 +6882,23 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     //    open 鏄庣‘杩斿洖澶辫触锛坕nvalid/cancelled/failed锛夋椂涓嶉檷绾р€斺€攐penTab 鍦ㄧЩ鍔ㄧ鏄┖瀹炵幇锛岄檷绾ф棤鎰忎箟锛?
     // 2) 浠呭綋 MobileTabs API 涓嶅瓨鍦紙鎬濇簮 <3.8锛夋墠闄嶇骇鍒?plugin.openTab 鍏滃簳閫氶亾
     private async mobileOpenDoc(rootId: string): Promise<boolean> {
-        const tabs = getSiyuan()?.mobile?.tabs;
-
-        // 璺緞 1锛歁obileTabs.open锛堟棫鐗堟湰鏃犺繑鍥炲€兼椂涓?undefined锛岃浣滃凡鐢熸晥锛涙柊鐗堟湰 "success" 鎵嶇畻鎴愬姛锛?
-        if (typeof tabs?.open === "function") {
-            try {
-                const result = await tabs.open(rootId);
-                if (result === undefined || result === "success") {
-                    return true;
-                }
-                logger.warn("mobile open doc non-success result", result);
-                return false;
-            } catch (e) {
-                logger.warn("mobile open doc fail (path 1)", e);
-                return false;
-            }
-        }
-
-        // 璺緞 2锛氭棫鐗堟€濇簮锛堟棤 MobileTabs API锛夐檷绾у埌 plugin openTab锛堢Щ鍔ㄧ绌哄疄鐜帮紝闈欓粯杩斿洖锛?
-        try {
-            await openTab({app: this.app, doc: {id: rootId}});
-            return true;
-        } catch (e) {
-            logger.warn("mobile open doc fail (path 2)", e);
-            showMessage(this.i18n.openDocFailed);
-            return false;
-        }
+        return openDocumentOnMobile({
+            rootId,
+            tabs: getSiyuan()?.mobile?.tabs,
+            app: this.app,
+            openTab,
+            logger,
+            onFailure: () => showMessage(this.i18n.openDocFailed),
+        });
     }
 
     // 鎵嬫満绔垏鎹㈠櫒锛氬叏灞忚鐩栧脊绐楋紝绠€鍖栧伐鍏锋爮锛屽崟鍒?鍙屽垪鍗＄墖锛岀函瑙︽懜鎿嶄綔
     private showMobileSwitcher() {
         const tabs = this.getMobileTabs();
-        if (tabs.length === 0) {
+        if (!this.hasMobileTabsApi()) {
             // 鎵嬫満绔?WebView 浼氭嫤鎴師鐢?alert锛屽繀椤荤敤鎬濇簮 showMessage 鎵嶆湁鍙鍙嶉锛?
             // 鏃х増鎬濇簮锛?3.8锛夋棤 MobileTabs API锛岄渶鎻愮ず鍗囩骇鑰屼笉鏄鎶?鏃犻〉绛?
-            showMessage(this.hasMobileTabsApi() ? this.i18n.noOpenedTabs : this.i18n.mobileNeedsNewer);
+            showMessage(this.i18n.mobileNeedsNewer);
             return;
         }
         this.openMobileSwitcherDialog(tabs);
@@ -5707,8 +6914,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
         const dialog = this.createMobileSwitcherDialog();
         this.suspendFABForDialog(dialog);
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-mobile-switcher-dialog");
         const mobileBody = dialog.element.querySelector<HTMLElement>(".sw__mobile");
         let readyFrame: number | null = null;
+        let readyFrameCancel: (() => void) | null = null;
         let revealCancelled = false;
         let rendered = false;
         let stableFrames = 0;
@@ -5763,11 +6972,28 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     logger.warn("mobile switcher revealed after layout timeout", {width: bodyRect.width, height: bodyRect.height});
                 }
                 readyFrame = null;
+                readyFrameCancel = null;
                 return;
             }
-            readyFrame = requestAnimationFrame(() => revealWhenReady(attempt + 1));
+            if (typeof requestAnimationFrame === "function") {
+                const frame = requestAnimationFrame(() => revealWhenReady(attempt + 1));
+                readyFrame = frame;
+                readyFrameCancel = () => cancelAnimationFrame(frame);
+            } else {
+                const timer = window.setTimeout(() => revealWhenReady(attempt + 1), 16);
+                readyFrame = timer;
+                readyFrameCancel = () => window.clearTimeout(timer);
+            }
         };
-        readyFrame = requestAnimationFrame(() => revealWhenReady());
+        if (typeof requestAnimationFrame === "function") {
+            const frame = requestAnimationFrame(() => revealWhenReady());
+            readyFrame = frame;
+            readyFrameCancel = () => cancelAnimationFrame(frame);
+        } else {
+            const timer = window.setTimeout(() => revealWhenReady(), 16);
+            readyFrame = timer;
+            readyFrameCancel = () => window.clearTimeout(timer);
+        }
         const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
         const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
@@ -5785,17 +7011,20 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
         let unregisterRefresh: () => void = () => undefined;
         let disposeMobileToolbar: () => void = () => undefined;
+        let disposeHistoryDropdown: () => void = () => undefined;
         // 閽╀綇 Dialog.destroy锛圗scape/鐐瑰嚮澶栭儴/绋嬪簭璋冪敤锛夋墍鏈夊叧闂矾寰勯兘鎭㈠ FAB
         const origDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
             revealCancelled = true;
-            if (readyFrame !== null) cancelAnimationFrame(readyFrame);
+            readyFrameCancel?.();
             readyFrame = null;
+            readyFrameCancel = null;
             // Sorting is rendered in a body-level portal so it can escape the
             // host Dialog's clipping/stacking context.  Always tear that
             // portal down with its owner, including Escape and route changes.
             document.querySelectorAll<HTMLElement>(".sw__mobile-sort-overlay").forEach((overlay) => overlay.remove());
             disposeMobileToolbar();
+            disposeHistoryDropdown();
             unregisterRefresh();
             if (scrollElement) {
                 this.disposeDocSearchSession(scrollElement);
@@ -5816,10 +7045,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const {renderMobileList} = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
         const refreshMobileSurface = () => {
             renderMobileList();
+            if (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement)) {
+                this.applySearch(scrollElement, searchInput, closeOverlay);
+            }
             this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         };
         unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
         disposeMobileToolbar = this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
+        disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         rendered = true;
 
@@ -5847,6 +7080,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+            <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
+                <svg><use xlink:href="#iconFilter"></use></svg>
+            </button>
         </div>
         <button type="button" class="b3-button b3-button--text sw__sort-btn" aria-label="${this.i18n.setSortBy}"></button>
         <select class="b3-select sw__sort fn__none" aria-label="${this.i18n.setSortBy}">
@@ -5857,15 +7093,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
             <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
         </select>
-        <span class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
             <svg><use xlink:href="#iconStar"></use></svg>
-        </span>
-        <span class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}">
-                    <svg><use xlink:href="#iconCalendar"></use></svg>
-                </span>
-                <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
-                    <svg><use xlink:href="#iconSettings"></use></svg>
-                </span>
+        </button>
+        <div class="sw__history-dd sw__history-dd--icon"></div>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
+            <svg><use xlink:href="#iconSettings"></use></svg>
+        </button>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn" aria-label="${this.i18n.close}">
+            <svg><use xlink:href="#iconClose"></use></svg>
+        </button>
             </div>
     <div class="sw__scroll" tabindex="0"></div>
     <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
@@ -5881,6 +7118,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         closeOverlay: () => void,
         renderMobileList: () => void,
     ): () => void {
+        const disposeSearchFilter = this.bindDocSearchFilter(dialog.element, scrollElement, searchInput, closeOverlay);
         let activeSortOverlay: HTMLElement | null = null;
         const closeSortOverlay = () => {
             activeSortOverlay?.remove();
@@ -5898,6 +7136,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             dialog.destroy();
             this.openSetting();
         });
+        dialog.element.querySelector(".sw__mobile-close-btn")?.addEventListener("click", () => dialog.destroy());
         // 椤舵爮鏃ヨ鎸夐挳锛氭墦寮€/鏂板缓褰撴棩鏃ヨ锛堝叧闂脊绐楀苟鎭㈠ FAB锛屾湭璁鹃粯璁ゆ棩璁版湰鏃堕娆＄偣鍑诲脊鍑洪€夋嫨锛?
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -5978,8 +7217,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 closeSortOverlay();
             });
             overlay.tabIndex = -1;
-            requestAnimationFrame(() => overlay.focus({preventScroll: true}));
-            requestAnimationFrame(() => sheet.classList.add("sw__mobile-sort-sheet--open"));
+            this.scheduleAnimationFrame(() => { if (overlay.isConnected) overlay.focus({preventScroll: true}); });
+            this.scheduleAnimationFrame(() => { if (sheet.isConnected) sheet.classList.add("sw__mobile-sort-sheet--open"); });
         });
         sortSelect.addEventListener("change", () => {
             sortSelect.size = 0;
@@ -5993,12 +7232,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             // 鎺掑簭鍒囨崲锛氬鐢ㄨ閰嶆湡 renderMobileList锛堥噸璇绘渶鏂板垪琛?+ 鍏变韩 updatedMap锛夛紝鍐嶆竻鎼滅储璇嶉噸杩囨护
             renderMobileList();
             searchInput.value = "";
-            this.filterCards(scrollElement, searchInput.value);
+            this.applySearch(scrollElement, searchInput, closeOverlay);
         });
         searchInput.addEventListener("input", () => {
             this.applySearch(scrollElement, searchInput, closeOverlay);
         });
         return () => {
+            disposeSearchFilter();
             document.removeEventListener("keydown", onDocumentKeyDown, true);
             closeSortOverlay();
         };
@@ -6013,7 +7253,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     ) {
         const listOpts = {
             onOverlayClose: () => dialog.destroy(),
-            onTabsChanged: () => renderMobileList(),
+            onTabsChanged: () => {
+                renderMobileList();
+                const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+                if (searchInput && (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement))) {
+                    this.applySearch(scrollElement, searchInput, () => dialog.destroy());
+                }
+            },
         };
         let updatedMap: {[rootId: string]: string} = {};
         const renderMobileList = () => {
@@ -6027,6 +7273,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             Object.assign(mergedMap, map);
             if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
                 renderMobileList();
+                const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+                if (searchInput && (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement))) {
+                    this.applySearch(scrollElement, searchInput, () => dialog.destroy());
+                }
             }
         });
         return {renderMobileList};
@@ -6132,7 +7382,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay);
 
         // 鍔ㄧ敾锛氫笅涓€甯ф粦鍏?
-        requestAnimationFrame(() => sheet.classList.add("sw__mobile-sheet--open"));
+        this.scheduleAnimationFrame(() => { if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open"); });
         // 鐐瑰嚮鑳屾櫙鍏抽棴
         this.bindMobileFavSheetBackdropClose(overlay, sheet);
     }
@@ -6176,6 +7426,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         if (favorites.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__mobile-sheet-empty";
+            empty.setAttribute("role", "status");
             empty.textContent = this.i18n.mobileNoFav;
             body.appendChild(empty);
         }
@@ -6318,8 +7569,8 @@ if (count > 0) {
         body.appendChild(cancel);
 
         // 鍔ㄧ敾锛氫笅涓€甯ф粦鍏?
-        requestAnimationFrame(() => {
-            sheet.classList.add("sw__mobile-sheet--open");
+        this.scheduleAnimationFrame(() => {
+            if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open");
         });
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) {
@@ -6437,7 +7688,7 @@ if (count > 0) {
         if (!topBar) {
             return;
         }
-        // 鍒囨崲鍣ㄥ叆鍙ｏ紙澶栭儴鍙湁涓€涓叆鍙ｆ寜閽紱鏃ヨ鎸夐挳浣嶄簬鍒囨崲鍣ㄥ脊绐楅《鏍忓唴锛?
+        // 鍒囨崲鍣ㄥ叆鍙ｏ紙澶栭儴鍙湁涓€涓叚鍙ユ寜閽紱鏃ヨ鎸夐挳浣嶄簬鍒囨崲鍣ㄥ脊绐楅《鏍忓唴锛?
         if (!this.mobileTopBarButton?.isConnected && !topBar.querySelector("#swMobileTopBarBtn")) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -6451,6 +7702,19 @@ if (count > 0) {
             topBar.appendChild(btn);
             this.mobileTopBarButton = btn;
         }
+        // Keep our entry off the very end of the bar: the host's trailing
+        // controls (close/more) own that spot, and appending used to overlap
+        // them. Also repositions buttons appended by older releases.
+        const existing = this.mobileTopBarButton?.isConnected
+            ? this.mobileTopBarButton
+            : topBar.querySelector<HTMLElement>("#swMobileTopBarBtn");
+        if (existing && existing.nextElementSibling !== null) {
+            const topBarChildren = Array.from(topBar.children).filter((child): child is HTMLElement => child instanceof HTMLElement);
+            const insertAnchor = topBarChildren[topBarChildren.length - 1];
+            if (insertAnchor && insertAnchor !== existing) {
+                topBar.insertBefore(existing, insertAnchor);
+            }
+        }
     }
 
     // ==================== 渚ц竟鏍忔ā寮?====================
@@ -6461,9 +7725,17 @@ if (count > 0) {
             return;
         }
         const previousScrollElement = element.querySelector<HTMLElement>(".sw__scroll");
+        const previousSearchFilters = previousScrollElement
+            ? this.docSearchFilters.get(previousScrollElement)
+            : undefined;
+        const previousSearchQuery = element.querySelector<HTMLInputElement>(".sw__search")?.value || "";
         if (previousScrollElement) {
             this.disposeDocSearchSession(previousScrollElement);
         }
+        this.sidebarHistoryDropdownDispose?.();
+        this.sidebarHistoryDropdownDispose = null;
+        this.sidebarSearchFilterDispose?.();
+        this.sidebarSearchFilterDispose = null;
         this.sidebarElement = element;
         element.classList.add("speed-switch", "sw__body", "sw--sidebar");
         // 渚ц竟鏍忕缉鐣ュ浘甯冨眬锛歟nlarge锛堥粯璁わ級鏀惧ぇ濉弧鏍忓锛沜olumns 鎸夊搴﹁嚜鍔ㄥ鍔犲垪鏁?
@@ -6480,6 +7752,9 @@ if (count > 0) {
         if (!scrollElement) {
             return;
         }
+        if (previousSearchFilters) {
+            this.docSearchFilters.set(scrollElement, Object.freeze({...previousSearchFilters}));
+        }
         this.renderList(scrollElement, tabs, activeTab, listOpts, this.getSettings().sortBy, updatedMap);
 
         // 銆屾渶杩戠紪杈戙€嶆帓搴忛渶瑕佹枃妗ｆ洿鏂版椂闂达細鍚庡彴鏌ヨ涓€娆★紝瀹屾垚鍚庤嫢浠嶅浜庤鎺掑簭涓旀湭鎼滅储鍒欓噸鎺?
@@ -6495,7 +7770,12 @@ if (count > 0) {
         // 闈㈡澘灏哄鍙樺寲鏃朵粎閲嶇畻缂╃暐鍥剧缉鏀炬瘮渚嬶紙ResizeObserver 瑕嗙洊鎷栧姩鍒嗛殧鏉＄瓑鎵€鏈夊満鏅級
         this.observeSidebarResize(element);
         // 椤舵爮浜や簰锛氭悳绱?/ 鏀惰棌涓嬫媺 / 鎺掑簭 / 璁剧疆 / 鍥炲埌椤堕儴
-        this.bindSidebarToolbarEvents(element, scrollElement, refresh);
+        this.sidebarHistoryDropdownDispose = this.bindSidebarToolbarEvents(element, scrollElement, refresh);
+        const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
+        if (searchInput && (previousSearchQuery || this.hasDocSearchFilter(scrollElement))) {
+            searchInput.value = previousSearchQuery;
+            this.applySearch(scrollElement, searchInput, refresh);
+        }
         this.renderQuickActions(element, "sidebar", element.querySelector<HTMLInputElement>(".sw__search"), refresh);
     }
 
@@ -6506,6 +7786,9 @@ if (count > 0) {
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+            <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
+                <svg><use xlink:href="#iconFilter"></use></svg>
+            </button>
         </div>
         <div class="sw__select-wrap">
             <span class="sw__select-label">${this.i18n.favorites}</span>
@@ -6522,15 +7805,16 @@ if (count > 0) {
                 <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
             </select>
         </div>
-        <span class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
+        <div class="sw__history-dd sw__history-dd--icon"></div>
+        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
             <svg><use xlink:href="#iconSettings"></use></svg>
-        </span>
+        </button>
     </div>
     <div class="sw__scroll" tabindex="0"></div>
     <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
-    <span class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
+    <button type="button" class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
         <svg><use xlink:href="#iconUp"></use></svg>
-    </span>
+    </button>
 </div>`;
     }
 
@@ -6539,14 +7823,22 @@ if (count > 0) {
         if (this.sidebarResizeObserver) {
             this.sidebarResizeObserver.disconnect();
         }
+        if (typeof ResizeObserver !== "function") {
+            this.sidebarResizeObserver = null;
+            return;
+        }
         this.sidebarResizeObserver = new ResizeObserver(() => this.rescaleThumbs(element));
         this.sidebarResizeObserver.observe(element);
     }
 
     // 渚ц竟鏍忛《鏍忎簨浠讹細鎼滅储 / 鏀惰棌涓嬫媺 / 鎺掑簭鍒囨崲 / 璁剧疆 / 鍥炲埌椤堕儴
-    private bindSidebarToolbarEvents(element: HTMLElement, scrollElement: HTMLDivElement, refresh: IOverlayClose) {
+    private bindSidebarToolbarEvents(element: HTMLElement, scrollElement: HTMLDivElement, refresh: IOverlayClose): () => void {
         // 鎼滅储锛氫笌寮圭獥涓€鑷达紝椤电鍖归厤鍦ㄤ笂銆佸叏搴撴枃妗ｅ湪涓?
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
+        const disposeHistoryDropdown = this.setupOpenHistoryDropdown(element.querySelector<HTMLElement>(".sw__history-dd"), refresh);
+        this.sidebarSearchFilterDispose = searchInput
+            ? this.bindDocSearchFilter(element, scrollElement, searchInput, refresh)
+            : null;
         searchInput.addEventListener("input", () => {
             this.applySearch(scrollElement, searchInput, refresh);
         });
@@ -6574,6 +7866,7 @@ if (count > 0) {
         backTopBtn?.addEventListener("click", () => {
             scrollElement.scrollTo({top: 0, behavior: "smooth"});
         });
+        return disposeHistoryDropdown;
     }
 
     // 閲嶇畻瀹瑰櫒鍐呭叏閮ㄧ缉鐣ュ浘鐨勭缉鏀炬瘮渚嬶紙渚ц竟鏍忓昂瀵稿彉鍖栨椂璋冪敤锛屽唴瀹归殢闈㈡澘瀹藉害鑷姩浼哥缉锛?
@@ -6634,10 +7927,19 @@ if (count > 0) {
     private removeOpenHistoryEntry(key: string) {
         if (typeof key !== "string" || !key) return;
         const history = this.getOpenHistory();
-        const next = history.filter((item) => item.key !== key);
-        if (next.length === history.length) return;
-        this.data[HISTORY_KEY] = next;
+        const result = removeRecentEntry(history, key, "key");
+        if (!result.changed) return;
+        this.data[HISTORY_KEY] = result.items;
         this.saveDataDebounced(HISTORY_KEY);
+        this.refreshOpenHistoryDropdowns();
+    }
+
+    private removeClosedHistoryEntry(rootId: string) {
+        const history = this.getClosedHistory();
+        const result = removeRecentEntry(history, rootId, "rootId");
+        if (!result.changed) return;
+        this.data[CLOSED_HISTORY_KEY] = result.items;
+        this.saveDataDebounced(CLOSED_HISTORY_KEY);
         this.refreshOpenHistoryDropdowns();
     }
 
@@ -6646,10 +7948,73 @@ if (count > 0) {
         if (!key) return;
         const rootId = this.rootIdOf(tab);
         const title = this.titleOf(tab) || key;
-        const history = this.getOpenHistory().filter((item) => item.key !== key);
-        history.unshift({key, rootId, title: title.slice(0, 200), ts: Date.now()});
-        this.data[HISTORY_KEY] = history.slice(0, HISTORY_MAX);
+        const result = recordRecentOpen(this.getOpenHistory(), this.getClosedHistory(), {key, rootId, title, ts: Date.now()}, HISTORY_MAX);
+        this.data[HISTORY_KEY] = result.open;
         this.saveDataDebounced(HISTORY_KEY);
+        if (result.closed.length !== this.getClosedHistory().length) {
+            this.data[CLOSED_HISTORY_KEY] = result.closed;
+            this.saveDataDebounced(CLOSED_HISTORY_KEY);
+        }
         this.refreshOpenHistoryDropdowns();
+    }
+
+    private getClosedHistory(): Array<{rootId: string; title: string; closedAt: number}> {
+        return normalizeClosedEntries(this.data[CLOSED_HISTORY_KEY], HISTORY_MAX).items;
+    }
+
+    private captureRecentOpenSnapshot() {
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const next = new Map<string, string>();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId && BLOCK_ID_RE.test(rootId)) {
+                next.set(rootId, this.titleOf(tab) || rootId);
+            }
+        });
+        this.recentOpenSnapshot = next;
+    }
+
+    private scheduleRecentClosedSync() {
+        if (this.recentClosedSyncTimer !== null) {
+            window.clearTimeout(this.recentClosedSyncTimer);
+        }
+        const generation = this.lifecycleGeneration;
+        this.recentClosedSyncTimer = window.setTimeout(() => {
+            this.recentClosedSyncTimer = null;
+            if (generation !== this.lifecycleGeneration) return;
+            this.syncRecentClosedFromSnapshot(generation);
+        }, Math.max(TAB_SETTLE_MS, 30));
+    }
+
+    private syncRecentClosedFromSnapshot(generation = this.lifecycleGeneration) {
+        if (generation !== this.lifecycleGeneration) return;
+        if (this.recentOpenSnapshot.size === 0) return;
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const current = new Set<string>();
+        tabs.forEach((tab) => {
+            const rootId = this.rootIdOf(tab);
+            if (rootId && BLOCK_ID_RE.test(rootId)) current.add(rootId);
+        });
+        let state: {open: unknown[]; closed: Array<{rootId: string; title: string; closedAt: number}>} = {
+            open: [],
+            closed: this.getClosedHistory(),
+        };
+        this.recentOpenSnapshot.forEach((title, rootId) => {
+            if (!current.has(rootId)) {
+                state = applyRecentEvent(state, {type: "close", rootId, title, closedAt: Date.now()}) as typeof state;
+            }
+        });
+        const closed = normalizeClosedEntries(state.closed, HISTORY_MAX).items;
+        const previousClosed = this.getClosedHistory();
+        if (closed.length !== previousClosed.length
+            || closed.some((item, index) => item.rootId !== previousClosed[index]?.rootId)) {
+            this.data[CLOSED_HISTORY_KEY] = closed;
+            this.saveDataDebounced(CLOSED_HISTORY_KEY);
+            this.refreshOpenHistoryDropdowns();
+        }
+        this.recentOpenSnapshot = new Map(tabs.map((tab) => {
+            const rootId = this.rootIdOf(tab);
+            return rootId ? [rootId, this.titleOf(tab) || rootId] as [string, string] : null;
+        }).filter((item): item is [string, string] => Boolean(item)));
     }
 }

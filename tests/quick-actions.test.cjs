@@ -14,8 +14,8 @@ const {
 test("quick actions: missing storage returns safe defaults", () => {
     const result = sanitizeQuickActions(undefined);
     assert.equal(result.changed, false);
-    assert.equal(result.items.length, 2);
-    assert.deepEqual(result.items.map((item) => item.value), ["journal", "settings"]);
+    assert.equal(result.items.length, 3);
+    assert.deepEqual(result.items.map((item) => item.value), ["search", "journal", "settings"]);
 });
 
 test("quick actions: invalid entries and duplicate ids are removed", () => {
@@ -45,7 +45,7 @@ test("quick actions: composed emoji labels are not split", () => {
 test("quick actions: defaults are cloned", () => {
     const a = getDefaultQuickActions();
     a[0].label = "改";
-    assert.equal(getDefaultQuickActions()[0].label, "日记");
+    assert.equal(getDefaultQuickActions()[0].label, "搜索");
 });
 
 test("quick actions: empty labels receive an accessible fallback", () => {
@@ -54,7 +54,7 @@ test("quick actions: empty labels receive an accessible fallback", () => {
 });
 
 test("quick actions: optional built-ins remain available without becoming defaults", () => {
-    assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["journal", "settings"]);
+    assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["search", "journal", "settings"]);
     assert.deepEqual(getBuiltinQuickActions().map((item) => item.value), ["switcher", "search", "journal", "settings"]);
 });
 
@@ -147,12 +147,12 @@ test("quick actions: third-party defaults are conservative and cloned", () => {
     assert.deepEqual(getDefaultQuickActionTargets("adapter", "checkin/open", ["desktop", "mobile"]), ["desktop", "mobile"]);
 });
 
-test("quick actions: redundant switch/search are suppressed only in switcher surfaces", () => {
+test("quick actions: switcher is suppressed while the user-requested search shortcut remains visible", () => {
     const switcher = {kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], enabled: true};
     const search = {kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], enabled: true};
     const journal = {kind: "builtin", value: "journal", targets: ["desktop", "mobile"], enabled: true};
     assert.equal(shouldRenderQuickAction(switcher, "desktop", "switcher"), false);
-    assert.equal(shouldRenderQuickAction(search, "mobile", "switcher"), false);
+    assert.equal(shouldRenderQuickAction(search, "mobile", "switcher"), true);
     assert.equal(shouldRenderQuickAction(search, "sidebar", "switcher"), true);
     assert.equal(shouldRenderQuickAction(journal, "mobile", "switcher"), true);
 });
@@ -163,8 +163,8 @@ test("quick actions: append rejects duplicates and does not default commands to 
     const added = appendQuickAction(original, candidate, 12);
     assert.equal(added.added, true);
     assert.deepEqual(added.items.at(-1).targets, ["desktop", "sidebar"]);
-    assert.equal(added.items.at(-1).order, 30);
-    assert.equal(original.length, 2);
+    assert.equal(added.items.at(-1).order, 40);
+    assert.equal(original.length, 3);
     const duplicate = appendQuickAction(added.items, candidate, 12);
     assert.equal(duplicate.added, false);
     assert.equal(duplicate.reason, "duplicate");

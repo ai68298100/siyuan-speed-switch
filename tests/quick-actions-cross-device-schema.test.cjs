@@ -14,7 +14,7 @@ test("cross-device schema: desktop/sidebar/mobile import same package determinis
 
 test("cross-device schema: old package fallback preserves safe defaults", () => {
     const migrated = {schemaVersion: 1, items: sanitizeQuickActions(undefined).items};
-    assert.deepEqual(migrated.items.map((item) => item.value), ["journal", "settings"]);
+    assert.deepEqual(migrated.items.map((item) => item.value), ["search", "journal", "settings"]);
 });
 
 test("cross-device schema: normalized order and targets remain stable after round trip", () => {

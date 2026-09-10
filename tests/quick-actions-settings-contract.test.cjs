@@ -15,10 +15,10 @@ test("settings contract: add then edit targets persists as a serializable action
 test("settings contract: reorder updates stable order and delete removes only selected entry", () => {
     const base = getDefaultQuickActions();
     const reordered = move(base, 1, 0);
-    assert.deepEqual(reordered.map((item) => item.value), ["settings", "journal"]);
+    assert.deepEqual(reordered.map((item) => item.value), ["journal", "search", "settings"]);
     const deleted = reordered.filter((item) => item.value !== "journal");
-    assert.deepEqual(deleted.map((item) => item.value), ["settings"]);
-    assert.equal(deleted[0].order, 10);
+    assert.deepEqual(deleted.map((item) => item.value), ["search", "settings"]);
+    assert.equal(deleted[0].order, 20);
 });
 
 test("settings contract: disabled action remains stored but is not rendered", () => {
@@ -33,7 +33,7 @@ test("settings contract: unknown mobile capability produces an explicit hint", (
 
 test("settings contract: restore defaults removes custom entries and recreates defaults", () => {
     const custom = appendQuickAction(getDefaultQuickActions(), {id: "x", kind: "command", value: "x", label: "自定义"}).items;
-    assert.equal(custom.length, 3);
+    assert.equal(custom.length, 4);
     const restored = sanitizeQuickActions(getDefaultQuickActions());
-    assert.deepEqual(restored.items.map((item) => item.value), ["journal", "settings"]);
+    assert.deepEqual(restored.items.map((item) => item.value), ["search", "journal", "settings"]);
 });

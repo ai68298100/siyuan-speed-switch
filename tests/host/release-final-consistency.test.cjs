@@ -12,7 +12,7 @@ test('rollback, CLI preflight, and dry-run contracts are documented', () => {
 
 test('release workflow remains aligned with preflight intent', () => {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
-    for (const marker of [/Verify tag version/, /pnpm test/, /pnpm build/, /files: package\.zip/]) {
+    for (const marker of [/Verify tag version/, /pnpm test/, /pnpm build/, /Package integrity gate/, /files: package\.zip/]) {
         assert.match(workflow, marker);
     }
 });

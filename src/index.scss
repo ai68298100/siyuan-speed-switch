@@ -1,6 +1,6 @@
 // ============================================================
-// 小驴速切（LvSpeed Switch）—— 极简风格。尽量不用背景色，仅用文字色 / 边框 / 阴影
-// 随思源主题变量自动适配明暗主题，避免与各类主题产生冲突
+// 小驴速切（LvSpeed Switch）—— 紧凑、克制的现代工作界面。
+// 所有层级继续取自思源主题变量，避免形成与宿主割裂的第二套设计语言。
 // ============================================================
 
 // 旋转动画（缩略图加载中）
@@ -40,6 +40,83 @@
         &:hover {
             border-color: var(--b3-theme-primary);
             background: var(--b3-list-hover);
+        }
+    }
+}
+
+.sw-setting__document-set-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    .b3-text-field {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+}
+
+.sw-setting__document-sets {
+    display: grid;
+    gap: 6px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 13px;
+}
+
+.sw-setting__document-set {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 42px;
+    padding: 6px 8px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+}
+
+.sw-setting__document-set-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+
+    strong {
+        overflow: hidden;
+        color: var(--b3-theme-on-background);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    span {
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12px;
+    }
+}
+
+.sw-setting__document-set-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+}
+
+@media (max-width: 420px) {
+    .sw-setting__document-set-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sw-setting__document-set {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .sw-setting__document-set-actions {
+        width: 100%;
+        flex-wrap: wrap;
+
+        .b3-button {
+            flex: 1 1 auto;
+            min-width: 0;
         }
     }
 }
@@ -592,8 +669,17 @@
     width: 100%;
 
     .sw-setting__fav-empty {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: var(--sw-radius-card, 10px);
+        background: color-mix(in srgb, var(--b3-theme-surface-lighter) 55%, transparent);
         font-size: 12px;
         color: var(--b3-theme-on-surface-light);
+        text-align: center;
     }
 
     // 新建分组行：输入框弹性伸缩 + 按钮
@@ -811,6 +897,8 @@
 
 // ==================== 设置页标签页布局（左侧标签栏 + 右侧分组面板） ====================
 .sw-settings {
+    --sw-settings-focus-ring: 0 0 0 2px color-mix(in srgb, var(--b3-theme-primary) 24%, transparent);
+    --sw-settings-hover-bg: var(--b3-list-hover, var(--b3-theme-surface-lighter));
     display: flex;
     flex-direction: row;
     height: 100%;
@@ -827,17 +915,19 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
-        padding: 8px 6px;
+        padding: 10px 7px;
         border-right: 1px solid var(--b3-theme-surface-lighter);
         overflow-x: hidden;
         overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--b3-border-color) transparent;
     }
 
     .sw-settings__tab {
         flex: none;
         padding: 8px 10px;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         background: transparent;
         color: var(--b3-theme-on-surface);
         font-size: 13px;
@@ -858,6 +948,11 @@
             color: var(--b3-theme-primary);
             font-weight: 600;
         }
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--sw-settings-focus-ring);
+        }
     }
 
     // 右侧分组面板区：面板内滚动
@@ -866,7 +961,7 @@
         min-width: 0;
         overflow-x: hidden;
         overflow-y: auto;
-        padding: 12px 16px;
+        padding: 14px 18px 18px;
         overscroll-behavior: contain;
     }
 
@@ -887,11 +982,18 @@
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        padding: 12px 0;
+        padding: 13px 8px;
+        margin-inline: -8px;
+        border-radius: 8px;
+        transition: background-color .12s ease;
         border-bottom: 1px solid var(--b3-theme-surface-lighter);
 
         &:last-child {
             border-bottom: none;
+        }
+
+        &:hover {
+            background: var(--sw-settings-hover-bg);
         }
 
         .sw-settings__item-main {
@@ -970,20 +1072,26 @@
             overflow-x: auto;
             overflow-y: hidden;
             overscroll-behavior-x: contain;
+            touch-action: pan-x;
+            scrollbar-width: thin;
             -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
         }
 
         .sw-settings__tab {
             min-width: max-content;
             padding: 7px 10px;
             text-align: center;
+            scroll-snap-align: center;
         }
 
         .sw-settings__panels {
             flex: 1;
             width: 100%;
             min-height: 0;
-            padding: 10px 12px 16px;
+            // Keep the final setting row above Android gesture bars and any
+            // host bottom overlay.  The desktop rule remains compact.
+            padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px));
             box-sizing: border-box;
         }
 
@@ -1035,6 +1143,7 @@
         .b3-dialog__body {
             min-width: 0;
             overflow: hidden;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
         }
     }
 }
@@ -1070,6 +1179,27 @@
 }
 
 .speed-switch {
+    // Shared visual language: lavender accent, blue-grey layers and restrained
+    // elevation.  Every token still derives from SiYuan theme variables so
+    // dark/custom themes remain in control; the hex values are safe fallbacks.
+    --sw-accent-fallback: #8576e8;
+    --sw-warm-accent: #d58a5b;
+    --sw-radius-control: 10px;
+    --sw-radius-card: 14px;
+    --sw-radius-panel: 18px;
+    --sw-control-bg: var(--b3-theme-surface-lighter, var(--b3-theme-background));
+    --sw-page-bg: var(--b3-theme-background);
+    --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
+    --sw-surface-muted: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+    --sw-surface-muted: color-mix(in srgb, var(--b3-theme-surface) 86%, #e4e8f2 14%);
+    --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
+    --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 12%, transparent);
+    --sw-warm-soft: color-mix(in srgb, var(--sw-warm-accent) 13%, transparent);
+    --sw-hover-bg: var(--b3-list-hover, var(--sw-accent-soft));
+    --sw-focus-ring: 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 24%, transparent);
+    --sw-card-shadow: 0 1px 2px rgba(51, 58, 83, .05), 0 8px 24px rgba(75, 85, 120, .08);
+    --sw-float-shadow: 0 14px 36px rgba(55, 65, 100, .15), 0 3px 10px rgba(55, 65, 100, .08);
+
     // 对话框内部整体布局。注意：根元素同时挂 speed-switch 和 sw__body 两个类，
     // 必须用 & 复合选择器（.speed-switch.sw__body），后代选择器匹配不到自身导致布局全断
     &.sw__body {
@@ -1109,8 +1239,12 @@
         flex-wrap: nowrap;
         align-items: center;
         gap: 8px;
-        padding: 10px 12px;
+        min-height: 52px;
+        box-sizing: border-box;
+        padding: 9px 12px;
         border-bottom: 1px solid var(--b3-border-color);
+        background: var(--b3-theme-surface);
+        background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--b3-theme-background));
 
         // 搜索框（带前置搜索图标，无边框透明底，聚焦时仅底部主色线）：基准 240px 可伸缩占满剩余
         .sw__search-wrap {
@@ -1131,13 +1265,14 @@
 
             .sw__search {
                 width: 100%;
-                height: 32px;
+                height: 34px;
                 padding-left: 28px;
-                border: none;
-                background: transparent;
+                padding-right: 34px;
+                border: 1px solid var(--b3-border-color);
+                background: var(--sw-control-bg);
                 box-shadow: none;
-                border-radius: 0;
-                border-bottom: 1px solid transparent;
+                border-radius: var(--sw-radius-control);
+                border-bottom: 0;
                 color: var(--b3-theme-on-background);
 
                 &::placeholder {
@@ -1146,7 +1281,71 @@
 
                 &:focus {
                     outline: none;
-                    border-bottom-color: var(--b3-theme-primary);
+                    border-color: var(--b3-theme-primary);
+                    background: var(--b3-theme-surface);
+                    box-shadow: var(--sw-focus-ring);
+                }
+            }
+
+            .sw__search-filter-btn {
+                position: absolute;
+                right: 2px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                padding: 0;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: var(--b3-theme-on-surface-light);
+                cursor: pointer;
+
+                svg {
+                    width: 15px;
+                    height: 15px;
+                }
+
+                &:hover {
+                    background: var(--b3-theme-surface-light);
+                    color: var(--b3-theme-on-background);
+                }
+
+                &:focus-visible {
+                    outline: 2px solid var(--b3-theme-primary);
+                    outline-offset: -1px;
+                }
+
+                &.sw__active {
+                    background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+                    color: var(--b3-theme-primary);
+
+                    &::after {
+                        content: attr(data-filter-count);
+                        position: absolute;
+                        top: -2px;
+                        right: -2px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-width: 13px;
+                        height: 13px;
+                        padding: 0 3px;
+                        border: 2px solid var(--b3-theme-surface);
+                        border-radius: 999px;
+                        background: var(--b3-theme-primary);
+                        color: var(--b3-theme-on-primary);
+                        font-size: 9px;
+                        font-weight: 600;
+                        line-height: 1;
+                        pointer-events: none;
+                    }
+                }
+
+                &:disabled {
+                    cursor: wait;
+                    opacity: .55;
                 }
             }
         }
@@ -1168,12 +1367,12 @@
 
             .sw__sort {
                 flex: 0 1 132px;
-                height: 28px;
+                height: 32px;
                 min-width: 96px;
                 border: 1px solid var(--b3-border-color);
-                background: transparent;
+                background: var(--sw-control-bg);
                 color: var(--b3-theme-on-background);
-                border-radius: 6px;
+                border-radius: var(--sw-radius-control);
             }
 
             // ===== 收藏下拉组件（自定义，替代原生 select：分组可折叠/展开） =====
@@ -1187,13 +1386,13 @@
                 display: flex;
                 align-items: center;
                 gap: 4px;
-                height: 28px;
+                height: 32px;
                 padding: 0 8px;
                 min-width: 96px;
                 border: 1px solid var(--b3-border-color);
-                background: transparent;
+                background: var(--sw-control-bg);
                 color: var(--b3-theme-on-background);
-                border-radius: 6px;
+                border-radius: var(--sw-radius-control);
                 cursor: pointer;
                 font-size: 12px;
 
@@ -1248,7 +1447,10 @@
                 box-shadow: var(--b3-dialog-shadow);
 
                 .sw__fav-empty {
-                    padding: 14px 10px;
+                    min-height: 64px;
+                    padding: 18px 10px;
+                    border-radius: calc(var(--sw-radius-card) - 2px);
+                    background: color-mix(in srgb, var(--b3-theme-background) 44%, transparent);
                     font-size: 12px;
                     color: var(--b3-theme-on-surface-light);
                     text-align: center;
@@ -1365,18 +1567,18 @@
         // 顶栏图标按钮：无边框无背景，hover 仅文字变主色
         .sw__icon-btn {
             flex: none;
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             background: transparent;
             border: none;
-            border-radius: 6px;
+            border-radius: var(--sw-radius-control);
             color: var(--b3-theme-on-surface);
             cursor: pointer;
-            transition: color 0.15s;
+            transition: color 0.15s, background-color 0.15s;
 
             svg {
                 width: 16px;
@@ -1385,7 +1587,13 @@
 
             &:hover {
                 color: var(--b3-theme-primary);
-                background: transparent;
+                background: var(--sw-hover-bg);
+            }
+
+            &:focus-visible {
+                outline: none;
+                color: var(--b3-theme-primary);
+                box-shadow: var(--sw-focus-ring);
             }
         }
 
@@ -1621,10 +1829,19 @@
         align-items: center;
         justify-content: center;
         gap: 6px;
+        min-height: 132px;
         padding: 48px 16px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: var(--sw-radius-card);
+        background: color-mix(in srgb, var(--b3-theme-surface) 72%, var(--b3-theme-background));
         font-size: 13px;
         color: var(--b3-theme-on-surface-light);
         text-align: center;
+
+        .sw__empty-title {
+            font-weight: 600;
+            color: var(--b3-theme-on-surface);
+        }
 
         .sw__empty-sub {
             font-size: 12px;
@@ -1693,88 +1910,6 @@
                 border-color: var(--b3-theme-primary);
                 transform: translateY(-1px);
                 box-shadow: var(--b3-dialog-shadow);
-            }
-
-            .sw__history-dd {
-                position: relative;
-                flex: 0 1 auto;
-                min-width: 0;
-            }
-
-            .sw__history-trigger {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                height: 28px;
-                padding: 0 8px;
-                min-width: 96px;
-                border: 1px solid var(--b3-border-color);
-                background: transparent;
-                color: var(--b3-theme-on-background);
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 12px;
-
-                svg { width: 13px; height: 13px; flex: none; color: var(--b3-theme-on-surface-light); }
-                .sw__history-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                .sw__history-badge {
-                    flex: none;
-                    min-width: 15px;
-                    padding: 0 4px;
-                    border-radius: 8px;
-                    background: var(--b3-theme-primary);
-                    color: var(--b3-theme-on-primary);
-                    font-size: 10px;
-                    line-height: 15px;
-                    text-align: center;
-                }
-                &:hover { border-color: var(--b3-theme-primary-light); color: var(--b3-theme-primary); }
-            }
-
-            .sw__history-panel {
-                position: fixed;
-                z-index: 999;
-                max-height: 320px;
-                overflow: auto;
-                padding: 4px;
-                background: var(--b3-theme-surface);
-                border: 1px solid var(--b3-border-color);
-                border-radius: 8px;
-                box-shadow: var(--b3-dialog-shadow);
-            }
-
-            .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
-            .sw__history-clear {
-                display: block;
-                width: 100%;
-                padding: 6px 8px;
-                border: 0;
-                border-bottom: 1px solid var(--b3-border-color);
-                background: transparent;
-                color: var(--b3-theme-on-surface-light);
-                font-size: 11px;
-                text-align: right;
-                cursor: pointer;
-                &:hover { color: var(--b3-theme-primary); }
-            }
-            .sw__history-item {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                width: 100%;
-                min-width: 0;
-                padding: 7px 8px;
-                border: 0;
-                border-radius: 5px;
-                background: transparent;
-                color: var(--b3-theme-on-background);
-                text-align: left;
-                cursor: pointer;
-                &:hover { background: var(--b3-theme-surface-light); }
-                > svg { width: 14px; height: 14px; flex: none; color: var(--b3-theme-on-surface-light); }
-                .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-                .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-                .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: 10px; }
             }
 
             &:focus-visible {
@@ -1864,8 +1999,9 @@
             gap: 8px;
             min-height: 76px;
             padding: 12px;
-            border: 1px dashed var(--b3-border-color);
-            border-radius: 8px;
+            border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+            border-radius: var(--sw-radius-card);
+            background: color-mix(in srgb, var(--b3-theme-surface) 76%, var(--b3-theme-background));
             color: var(--b3-theme-on-surface-light);
             font-size: 12px;
             text-align: center;
@@ -1876,9 +2012,269 @@
             }
 
             &.sw__doc-status--error {
+                border-color: color-mix(in srgb, var(--b3-theme-error) 42%, var(--b3-border-color));
+                background: color-mix(in srgb, var(--b3-theme-error) 8%, var(--b3-theme-surface));
                 color: var(--b3-theme-error);
             }
+
+            &.sw__doc-status--loading {
+                border-style: dashed;
+                color: var(--b3-theme-primary);
+            }
+
+            &.sw__doc-status--empty {
+                border-style: dashed;
+            }
         }
+
+        .sw__doc-view-all {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 32px;
+            margin-top: 8px;
+            border: 1px solid var(--b3-border-color);
+            border-radius: var(--sw-radius-control);
+            color: var(--b3-theme-primary);
+            font-size: 12px;
+
+            &:hover,
+            &:focus-visible {
+                background: var(--sw-hover-bg);
+                outline: none;
+                box-shadow: var(--sw-focus-ring);
+            }
+        }
+    }
+
+    // Opt-in home/second-panel module surface. The renderer owns semantics;
+    // this layer only gives it a compact, theme-native visual treatment.
+    .sw__home-module {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--b3-border-color);
+        border-radius: var(--sw-radius-card);
+        background: var(--b3-theme-surface);
+        box-shadow: var(--sw-card-shadow);
+
+        &[data-status="loading"] .sw__home-module-status { color: var(--b3-theme-primary); }
+        &[data-status="error"] { border-color: color-mix(in srgb, var(--b3-theme-error) 45%, var(--b3-border-color)); }
+    }
+
+    .sw__home-module-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--b3-border-color);
+        background: color-mix(in srgb, var(--b3-theme-surface) 86%, var(--b3-theme-background));
+    }
+
+.sw__home-module-title {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .sw__home-module-toggle,
+    .sw__home-module-retry {
+        flex: none;
+        min-height: 28px;
+        padding: 0 8px;
+        border-radius: var(--sw-radius-control);
+        font-size: 11px;
+
+        &:focus-visible {
+            outline: none;
+            border-color: var(--b3-theme-primary);
+            box-shadow: var(--sw-focus-ring);
+        }
+    }
+
+    .sw__home-module-body { min-width: 0; padding: 6px; }
+    .sw__home-module-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+    .sw__home-module-item { min-width: 0; }
+    .sw__home-module-item-action {
+        display: block;
+        width: 100%;
+        min-height: 32px;
+        padding: 6px 8px;
+        overflow: hidden;
+        border: 1px solid transparent;
+        border-radius: var(--sw-radius-control);
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--b3-border-color);
+            background: var(--sw-hover-bg);
+            color: var(--b3-theme-primary);
+            outline: none;
+        }
+
+        &:focus-visible { box-shadow: var(--sw-focus-ring); }
+    }
+
+    .sw__home-module-status {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        margin: 0;
+        padding: 8px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12px;
+        text-align: center;
+
+        &--error { color: var(--b3-theme-error); }
+    }
+
+    .sw__home-panel {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+        gap: 10px;
+        min-width: 0;
+        align-items: start;
+    }
+
+    .sw__home-panel-module {
+        min-width: 0;
+    }
+
+    .sw__home-panel-empty {
+        grid-column: 1 / -1;
+        min-height: 54px;
+        margin: 0;
+        padding: 18px 12px;
+        border: 1px dashed var(--b3-border-color);
+        border-radius: var(--sw-radius-card);
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12px;
+        text-align: center;
+    }
+
+    // Shared recent/open-history component used by desktop, sidebar and mobile.
+    .sw__history-dd {
+        position: relative;
+        flex: 0 1 auto;
+        min-width: 0;
+
+        &--icon {
+            flex: none;
+            .sw__history-trigger {
+                min-width: 28px;
+                width: 28px;
+                padding: 0;
+                justify-content: center;
+                .sw__history-trigger-text { display: none; }
+            }
+        }
+    }
+
+    .sw__history-trigger {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 32px;
+        padding: 0 8px;
+        min-width: 96px;
+        border: 1px solid var(--b3-border-color);
+        background: var(--sw-control-bg);
+        color: var(--b3-theme-on-background);
+        border-radius: var(--sw-radius-control);
+        cursor: pointer;
+        font-size: 12px;
+
+        svg { width: 13px; height: 13px; flex: none; color: var(--b3-theme-on-surface-light); }
+        .sw__history-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sw__history-badge {
+            flex: none;
+            min-width: 15px;
+            padding: 0 4px;
+            border-radius: 8px;
+            background: var(--b3-theme-primary);
+            color: var(--b3-theme-on-primary);
+            font-size: 10px;
+            line-height: 15px;
+            text-align: center;
+        }
+        &:hover { border-color: var(--b3-theme-primary-light); color: var(--b3-theme-primary); }
+        &:focus-visible { outline: none; border-color: var(--b3-theme-primary); box-shadow: var(--sw-focus-ring); }
+    }
+
+    .sw__history-panel {
+        position: fixed;
+        z-index: 999;
+        max-height: 320px;
+        overflow: auto;
+        padding: 4px;
+        background: var(--b3-theme-surface);
+        border: 1px solid var(--b3-border-color);
+        border-radius: var(--sw-radius-card);
+        box-shadow: var(--b3-dialog-shadow), var(--sw-card-shadow);
+    }
+
+    .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
+    .sw__history-section-title {
+        padding: 7px 8px 3px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .sw__history-clear {
+        display: block;
+        width: 100%;
+        padding: 6px 8px;
+        border: 0;
+        border-bottom: 1px solid var(--b3-border-color);
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        text-align: right;
+        cursor: pointer;
+        &:hover { color: var(--b3-theme-primary); }
+    }
+    .sw__history-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+        padding: 7px 8px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        text-align: left;
+        cursor: pointer;
+        transition: background-color .12s ease, color .12s ease;
+        &:hover,
+        &:focus-visible { background: var(--sw-hover-bg); }
+        &:focus-visible { outline: none; box-shadow: inset var(--sw-focus-ring); }
+        &--closed > svg { color: var(--b3-theme-primary); }
+        > svg { width: 14px; height: 14px; flex: none; color: var(--b3-theme-on-surface-light); }
+        .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+        .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+        .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: 10px; }
     }
 
     // 桌面端快捷入口：固定在内容区底部，不压缩中央卡片的横向宽度
@@ -1891,6 +2287,7 @@
         min-height: 46px;
         padding: 6px 12px;
         border-top: 1px solid var(--b3-border-color);
+        background: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-background));
         overflow-x: auto;
 
         &.fn__none {
@@ -1929,7 +2326,7 @@
         height: 32px;
         padding: 0 8px;
         border: 1px solid transparent;
-        border-radius: 6px;
+        border-radius: 8px;
         background: transparent;
         color: var(--b3-theme-on-surface);
         cursor: pointer;
@@ -2078,28 +2475,36 @@
     // 卡片：极简细边框，hover 轻微上浮+阴影；当前页签仅主色细边框（无底色填充）
     .sw__card {
         position: relative;
-        border-radius: 8px;
+        border-radius: var(--sw-radius-card);
         border: 1px solid var(--b3-border-color);
         background-color: var(--b3-theme-surface);
         overflow: hidden;
         cursor: pointer;
+        box-shadow: var(--sw-card-shadow);
         transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
         flex-direction: column;
         display: flex;
 
         &:hover {
             border-color: var(--b3-theme-primary);
-            transform: translateY(-2px);
-            box-shadow: var(--b3-dialog-shadow);
+            transform: translateY(-1px);
+            box-shadow: var(--b3-dialog-shadow), var(--sw-card-shadow);
         }
 
         &.sw__focused {
             border-color: var(--b3-theme-primary);
-            box-shadow: 0 0 0 1px var(--b3-theme-primary);
+            box-shadow: 0 0 0 1px var(--b3-theme-primary), var(--sw-card-shadow);
         }
 
         &.sw__active {
             border-color: var(--b3-theme-primary);
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 55%, transparent), var(--sw-card-shadow);
+        }
+
+        &:focus-visible {
+            outline: none;
+            border-color: var(--b3-theme-primary);
+            box-shadow: var(--sw-focus-ring), var(--sw-card-shadow);
         }
 
         // 置顶页签：左上角主色细条
@@ -2132,6 +2537,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+            background: color-mix(in srgb, var(--b3-theme-surface) 72%, var(--b3-theme-background));
             font-size: 12px;
             color: var(--b3-theme-on-surface-light);
 
@@ -2372,9 +2778,9 @@
                     min-width: 0;
                     padding: 0 2px;
                     border: 1px solid var(--b3-border-color);
-                    background: transparent;
+                    background: var(--sw-control-bg);
                     color: var(--b3-theme-on-background);
-                    border-radius: 6px;
+                    border-radius: var(--sw-radius-control);
                     font-size: 12px;
                 }
 
@@ -2388,13 +2794,19 @@
                     height: 32px;
                     padding: 0;
                     border: none;
-                    border-radius: 6px;
-                    background: transparent;
+                    border-radius: var(--sw-radius-control);
+                    background: var(--sw-control-bg);
                     color: var(--b3-theme-on-background);
 
                     svg {
                         width: 18px;
                         height: 18px;
+                    }
+
+                    &:focus-visible {
+                        outline: none;
+                        background: var(--sw-hover-bg);
+                        box-shadow: var(--sw-focus-ring);
                     }
                 }
 
@@ -2407,6 +2819,12 @@
                     height: 32px;
                     color: var(--b3-theme-on-surface);
                     -webkit-tap-highlight-color: transparent;
+                    touch-action: manipulation;
+                    border: 0;
+                    padding: 0;
+                    background: transparent;
+                    appearance: none;
+                    -webkit-appearance: none;
 
                     // 透明伪元素扩大触控热区（34×32 → 44×42），视觉尺寸不变保持极简
                     &::after {
@@ -2519,7 +2937,9 @@
                     content: "" !important;
                     position: absolute !important;
                     inset: -4px !important;
-                    pointer-events: none;
+                    // 让扩展后的透明区域参与命中测试，保持按钮视觉尺寸不变的同时
+                    // 提供更稳定的触控热区（约 36×36px）。
+                    pointer-events: auto;
                 }
 
                 svg {
@@ -2679,6 +3099,515 @@
         .sw__fs-exit {
             display: block;
         }
+    }
+}
+
+// Final desktop overrides: the modern visual layer above must not undo the
+// compact rail dimensions selected by the runtime.
+.speed-switch .sw__dock.sw__dock--collapsed {
+    width: 52px;
+    min-width: 52px;
+    padding: 12px 6px;
+    overflow: visible;
+
+    .sw__dock-toggle { margin-inline: auto; }
+    .sw__dock-item { padding-inline: 0; }
+}
+
+.speed-switch .sw__history-trigger {
+    justify-content: center;
+    line-height: 1;
+
+    .sw__history-trigger-text {
+        display: inline-flex;
+        align-items: center;
+        height: 100%;
+        line-height: 1;
+    }
+}
+
+.speed-switch:not(.sw__mobile) .sw__meta {
+    min-height: 34px;
+    padding-block: 4px;
+}
+
+.sw-second-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+    background: var(--sw-page-bg, var(--b3-theme-background));
+    box-sizing: border-box;
+}
+
+.sw-second-panel__section {
+    align-self: start;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow);
+
+    h3 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 8px;
+        font-size: 14px;
+
+        svg { width: 16px; height: 16px; }
+    }
+}
+
+.sw-second-panel__item {
+    display: block;
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 8px;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--sw-radius-control, 10px);
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible { background: var(--sw-accent-soft, var(--b3-list-hover)); outline: none; }
+}
+
+.sw-second-panel__empty {
+    margin: 0;
+    padding: 18px 8px;
+    color: var(--b3-theme-on-surface-light);
+    text-align: center;
+}
+
+.sw-document-set-guide {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 20%, var(--b3-border-color));
+    border-radius: 12px;
+    background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    line-height: 1.55;
+
+    > p { margin: 5px 0; }
+    ol { margin: 6px 0; padding-left: 20px; }
+    li + li { margin-top: 3px; }
+    .sw-document-set-guide__note { color: var(--b3-theme-on-surface-light); }
+}
+
+@media (max-width: 560px) {
+    // The switcher owns an explicit close button. Hide SiYuan's floating
+    // dialog close control, which otherwise overlaps the settings button.
+    .b3-dialog__container.sw-mobile-switcher-dialog > .b3-dialog__header,
+    .b3-dialog__container.sw-mobile-switcher-dialog .b3-dialog__close {
+        display: none !important;
+    }
+
+    .b3-dialog__container.sw-mobile-switcher-dialog .b3-dialog__body {
+        padding-top: 0 !important;
+    }
+
+    .speed-switch.sw__mobile .sw__mobile-toolbar {
+        padding-right: 8px;
+
+        .sw__search-wrap { flex-basis: 84px; }
+        .sw__mobile-close-btn {
+            display: inline-flex;
+            flex: none;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 32px;
+            padding: 0;
+            border: 0;
+            border-radius: var(--sw-radius-control);
+            background: transparent;
+            color: var(--b3-theme-on-surface);
+            touch-action: manipulation;
+
+            svg { width: 16px; height: 16px; }
+        }
+    }
+
+    .b3-dialog__container.sw-settings-dialog {
+        // The native title stays visible, while the plugin tab strip remains
+        // one compact, full-width horizontal row below it.
+        .b3-dialog__header { flex: none; min-height: 48px; }
+    }
+
+    .sw-settings .sw-settings__tabs {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-height: 48px;
+        height: auto;
+        padding: 5px 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-sizing: border-box;
+    }
+
+    .sw-settings .sw-settings__tab {
+        min-height: 36px;
+        padding: 7px 11px;
+        white-space: nowrap;
+    }
+
+    .sw-second-panel { grid-template-columns: 1fr; padding: 12px; }
+}
+
+.sw__home-module-meta {
+    flex: none;
+    max-width: 42%;
+    overflow: hidden;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw__home-module-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--b3-theme-primary);
+    fill: currentColor;
+    stroke: currentColor;
+
+    &--text {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        line-height: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .speed-switch,
+    .speed-switch * {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+// ==================== 现代柔和视觉层（第一面板 / 第二面板 / 移动端共享） ====================
+// 这些是结构样式之上的轻量覆盖，集中维护便于主题适配和后续微调。
+.speed-switch {
+    color: var(--b3-theme-on-background);
+    background: var(--sw-page-bg);
+
+    .sw__main,
+    .sw__content {
+        background: var(--sw-page-bg);
+    }
+
+    .sw__toolbar {
+        min-height: 58px;
+        padding: 10px 14px;
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent);
+        background: var(--b3-theme-surface);
+        box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-theme-surface) 70%, transparent), 0 5px 16px rgba(70, 78, 110, .05);
+
+        .sw__search {
+            height: 38px;
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 18%, var(--b3-border-color));
+            border-radius: 12px;
+            background: var(--sw-surface-muted);
+            box-shadow: inset 0 1px 1px rgba(50, 60, 90, .03);
+
+            &:focus {
+                border-color: var(--b3-theme-primary, var(--sw-accent-fallback));
+                background: var(--b3-theme-surface);
+                box-shadow: var(--sw-focus-ring), 0 4px 14px rgba(91, 82, 174, .08);
+            }
+        }
+
+        .sw__select-wrap .sw__sort,
+        .sw__fav-trigger,
+        .sw__history-trigger {
+            height: 36px;
+            border-radius: 10px;
+            border-color: color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+            background: var(--sw-surface-muted);
+            transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+
+            &:hover,
+            &:focus-visible {
+                border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 56%, var(--b3-border-color));
+                background: var(--b3-theme-surface);
+                box-shadow: 0 2px 8px rgba(85, 78, 160, .08);
+                outline: none;
+            }
+        }
+
+        .sw__icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+
+            &:hover,
+            &:focus-visible {
+                background: var(--sw-accent-soft);
+            }
+        }
+    }
+
+    .sw__dock {
+        width: 168px;
+        padding: 14px 10px 14px 14px;
+        border-right: 1px solid color-mix(in srgb, var(--b3-border-color) 52%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 58%, var(--sw-page-bg));
+    }
+
+    .sw__dock-label {
+        margin: 2px 8px 8px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .sw__dock-item {
+        min-height: 36px;
+        margin: 2px 0;
+        padding: 7px 10px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        color: var(--b3-theme-on-surface);
+        transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+
+        &:hover,
+        &:focus {
+            background: var(--sw-accent-soft);
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 15%, transparent);
+            color: var(--b3-theme-primary, var(--sw-accent-fallback));
+        }
+
+        &.sw__active {
+            background: var(--sw-accent-soft);
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 22%, transparent);
+            color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            font-weight: 600;
+        }
+    }
+
+    .sw__scroll {
+        padding: 16px 16px 20px;
+        background: var(--sw-page-bg);
+    }
+
+    .sw__window-label {
+        margin: 6px 4px 10px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .06em;
+    }
+
+    .sw__card,
+    .sw__doc-item,
+    .sw__home-module {
+        border-radius: var(--sw-radius-card);
+        border-color: color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+        box-shadow: var(--sw-card-shadow);
+    }
+
+    .sw__card {
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 62%, var(--b3-border-color));
+            box-shadow: var(--sw-float-shadow);
+        }
+
+        &.sw__active,
+        &.sw__focused {
+            border-color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 38%, transparent), var(--sw-card-shadow);
+        }
+    }
+
+    .sw__meta {
+        min-height: 42px;
+        padding: 8px 12px;
+        background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--sw-accent-soft));
+    }
+
+    .sw__doc-results {
+        margin-top: 18px;
+
+        .sw__doc-grid { gap: 12px; }
+
+        .sw__doc-item {
+            min-height: 84px;
+            padding: 12px;
+            background: var(--b3-theme-surface);
+
+            &:hover {
+                background: color-mix(in srgb, var(--b3-theme-surface) 90%, var(--sw-accent-soft));
+                box-shadow: var(--sw-float-shadow);
+            }
+
+            .sw__doc-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 11px;
+                background: var(--sw-accent-soft);
+                color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            }
+        }
+
+        .sw__doc-status {
+            border-radius: var(--sw-radius-card);
+            background: var(--sw-surface-muted);
+        }
+    }
+
+    .sw__home-panel {
+        gap: 14px;
+    }
+
+    .sw__home-module {
+        border-radius: var(--sw-radius-panel);
+        background: var(--b3-theme-surface);
+
+        &[data-status="error"] {
+            border-color: color-mix(in srgb, var(--b3-theme-error) 38%, var(--b3-border-color));
+        }
+    }
+
+    .sw__home-module-header {
+        min-height: 44px;
+        padding: 9px 12px;
+        border-bottom-color: color-mix(in srgb, var(--b3-border-color) 58%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 84%, var(--sw-accent-soft));
+    }
+
+    .sw__home-module-item-action {
+        min-height: 36px;
+        padding: 8px 10px;
+        border-radius: 10px;
+
+        &:hover,
+        &:focus-visible {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 18%, transparent);
+            background: var(--sw-accent-soft);
+        }
+    }
+
+    .sw__quick-actions,
+    .sw__quick-rail {
+        min-height: 52px;
+        padding: 8px 14px;
+        border-top-color: color-mix(in srgb, var(--b3-border-color) 60%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 78%, var(--sw-page-bg));
+    }
+
+    .sw__quick-action {
+        min-height: 36px;
+        height: 36px;
+        padding-inline: 10px;
+        border-radius: 11px;
+
+        &:hover,
+        &:focus-visible {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 20%, transparent);
+            background: var(--sw-accent-soft);
+        }
+
+        &--add {
+            color: var(--sw-warm-accent);
+            background: var(--sw-warm-soft);
+        }
+    }
+}
+
+// 设置页与主面板共享同一套卡片感，但保留思源设置弹窗的紧凑密度。
+.sw-settings {
+    --sw-page-bg: var(--b3-theme-background);
+    --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
+    --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
+    --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent);
+    --sw-settings-hover-bg: var(--sw-accent-soft);
+    background: var(--sw-page-bg, var(--b3-theme-background));
+
+    .sw-settings__tabs {
+        width: 148px;
+        padding: 14px 9px;
+        border-right-color: color-mix(in srgb, var(--b3-border-color) 55%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 54%, var(--sw-page-bg));
+    }
+
+    .sw-settings__tab {
+        min-height: 36px;
+        padding: 8px 11px;
+        border-radius: 10px;
+
+        &:hover { background: var(--sw-accent-soft); }
+
+        &.is-active {
+            background: var(--sw-accent-soft);
+            color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            box-shadow: inset 3px 0 0 var(--b3-theme-primary, var(--sw-accent-fallback));
+        }
+    }
+
+    .sw-settings__panels { padding: 18px 22px 22px; }
+
+    .sw-settings__item {
+        margin-inline: -10px;
+        padding: 14px 10px;
+        border-bottom-color: color-mix(in srgb, var(--b3-border-color) 48%, transparent);
+        border-radius: 12px;
+    }
+
+    .sw-settings__item-action .b3-select,
+    .sw-settings__num .b3-text-field,
+    .sw-setting__document-set-form .b3-text-field {
+        border-radius: 10px;
+    }
+}
+
+@media (max-width: 560px) {
+    .speed-switch {
+        .sw__toolbar {
+            min-height: 54px;
+            padding: 8px 10px;
+        }
+
+        .sw__scroll {
+            padding: 12px 10px calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .sw__mobile-card {
+            border-radius: 14px;
+            box-shadow: 0 3px 14px rgba(65, 74, 108, .08);
+
+            .sw__meta {
+                min-height: 36px;
+                padding: 4px 114px 4px 10px;
+            }
+        }
+
+        .sw__mobile-grid { gap: 12px; }
+    }
+
+    .sw-settings {
+        .sw-settings__tabs { padding: 8px 6px; }
+        .sw-settings__panels { padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px)); }
+        .sw-settings__item { margin-inline: -6px; padding-inline: 8px; }
     }
 }
 
@@ -2945,7 +3874,11 @@
     }
 
     .sw__mobile-sheet-empty {
-        padding: 32px 16px;
+        min-height: 96px;
+        padding: 28px 16px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: var(--sw-radius-card);
+        background: color-mix(in srgb, var(--b3-theme-surface) 76%, var(--b3-theme-background));
         text-align: center;
         font-size: 13px;
         color: var(--b3-theme-on-surface-light);
@@ -2965,4 +3898,40 @@
         transition: none !important;
         animation: none !important;
     }
+}
+
+// Mobile bottom sheets/FAB are portals mounted on body, so they receive a
+// small standalone pass instead of relying on .speed-switch inheritance.
+.sw__mobile-sheet,
+.sw__mobile-sort-sheet {
+    border-radius: 22px 22px 0 0;
+    background: var(--b3-theme-surface);
+    box-shadow: 0 -14px 36px rgba(55, 65, 100, .16), 0 -3px 10px rgba(55, 65, 100, .08);
+
+    .sw__mobile-sheet-handle { background: var(--b3-theme-primary, #8576e8); opacity: .38; }
+    .sw__mobile-sheet-title { padding-top: 10px; font-size: 16px; }
+    .sw__mobile-sheet-item {
+        border-radius: 10px;
+        margin-inline: 8px;
+        padding-inline: 12px;
+
+        &:active { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent); }
+    }
+}
+
+.sw__mobile-sheet-overlay,
+.sw__mobile-sort-overlay {
+    background: rgba(43, 48, 70, .28);
+    backdrop-filter: blur(2px);
+}
+
+.sw__fab {
+    box-shadow: 0 8px 22px rgba(76, 68, 150, .22), 0 2px 6px rgba(55, 65, 100, .12);
+}
+
+.sw-setting__dock-item,
+.sw-setting__document-set {
+    border-radius: 10px;
+    border-color: color-mix(in srgb, var(--b3-border-color) 68%, transparent);
+    box-shadow: 0 2px 8px rgba(70, 78, 110, .05);
 }

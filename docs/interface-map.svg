@@ -51,7 +51,7 @@
   <text x="626" y="202" text-anchor="middle" class="small">Live thumbnail</text>
   <rect x="214" y="226" width="488" height="34" class="search"/>
   <text x="458" y="241" text-anchor="middle" class="text">Workspace search cards</text>
-  <text x="458" y="254" text-anchor="middle" class="small">title + path, cached and cancelable</text>
+  <text x="458" y="254" text-anchor="middle" class="small">title + bounded full-text, cached and cancelable</text>
   <rect x="731" y="148" width="174" height="126" class="actions"/>
   <text x="818" y="169" text-anchor="middle" class="text">Optional right action rail</text>
   <text x="818" y="190" text-anchor="middle" class="small">Built-in actions</text>

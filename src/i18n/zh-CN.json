@@ -6,10 +6,17 @@
   "panels": "面板",
   "loadingThumbnail": "缩略图加载中",
   "settings": "小驴速切设置",
+  "panelSizeMode": "面板尺寸模式",
+  "panelSizeModeTip": "自适应：按屏幕比例自动计算面板大小；固定：使用下方宽高；全屏：铺满整个窗口",
+  "panelSizeModeAdaptive": "自适应屏幕比例",
+  "panelSizeModeCustom": "固定尺寸",
+  "panelSizeModeFullscreen": "全屏铺满",
+  "panelScale": "自适应比例",
+  "panelScaleTip": "自适应模式下面板宽高占当前窗口宽高的百分比（50–100）",
   "setWidth": "切换器宽度",
-  "setWidthTip": "切换器弹窗的宽度，单位像素（480–1920）",
+  "setWidthTip": "固定尺寸模式下切换器弹窗的宽度，单位像素（480–1920）",
   "setHeight": "切换器高度",
-  "setHeightTip": "切换器弹窗的高度，单位像素（360–1280）",
+  "setHeightTip": "固定尺寸模式下切换器弹窗的高度，单位像素（360–1280）",
   "setColumns": "缩略图列数",
   "setColumnsTip": "每行显示的页签卡片数量，「自动」按窗口宽度自适应",
   "setThumbHeight": "缩略图高度",
@@ -32,6 +39,38 @@
   "sortTitleAsc": "标题 A→Z",
   "sortTitleDesc": "标题 Z→A",
   "searchTabs": "搜索页签或全库文档…",
+  "searchFilterNotebook": "按笔记本筛选",
+  "searchAllNotebooks": "全部笔记本",
+  "searchNoNotebooks": "暂无可用笔记本",
+  "searchFilters": "搜索筛选",
+  "searchFiltersActive": "已启用 {x} 项搜索筛选",
+  "searchContentType": "内容类型",
+  "searchTypeAll": "全部内容",
+  "searchTypeDocument": "文档",
+  "searchTypeHeading": "标题",
+  "searchTypeParagraph": "段落",
+  "searchTypeCodeBlock": "代码块",
+  "searchSubType": "细分类型",
+  "searchSubTypeAll": "全部细分类型",
+  "searchSubTypeH1": "一级标题",
+  "searchSubTypeH2": "二级标题",
+  "searchSubTypeH3": "三级标题",
+  "searchSubTypeH4": "四级标题",
+  "searchSubTypeH5": "五级标题",
+  "searchSubTypeH6": "六级标题",
+  "searchSubTypeOrdered": "有序列表",
+  "searchSubTypeUnordered": "无序列表",
+  "searchSubTypeTask": "任务列表",
+  "searchMethod": "搜索方式",
+  "searchMethodKeyword": "关键词",
+  "searchMethodQuery": "查询语法",
+  "searchMethodRegexp": "正则表达式",
+  "searchResultOrder": "结果排序",
+  "searchOrderRelevance": "相关度",
+  "searchOrderUpdated": "最近更新",
+  "searchOrderCreated": "最近创建",
+  "searchOrderContent": "文档内容顺序",
+  "searchResetFilters": "重置全部筛选",
   "pinTab": "置顶",
   "unpinTab": "取消置顶",
   "favoriteTab": "收藏",
@@ -78,6 +117,7 @@
   "docSearchSourceOpened": "已打开内容",
   "docSearchLoading": "正在搜索全库文档…",
   "docSearchFailed": "搜索失败，请稍后重试",
+  "docSearchViewAll": "在思源搜索中查看全部",
   "noDocResults": "未找到匹配的文档",
   "backTop": "回到顶部",
   "secMobile": "手机端",
@@ -174,12 +214,56 @@
   ,"quickBuiltinSearch": "搜索"
   ,"quickBuiltinJournal": "日记"
   ,"quickBuiltinSettings": "设置"
+  ,"secDocumentSets": "文档集"
+  ,"documentSetsTip": "保存当前已打开的文档，之后可预览并恢复缺失项；暂不记录不可稳定恢复的临时页签。"
+  ,"documentSetNamePlaceholder": "文档集名称"
+  ,"documentSetSave": "保存当前文档"
+  ,"documentSetExport": "导出"
+  ,"documentSetImport": "导入"
+  ,"documentSetImportDone": "文档集已导入"
+  ,"documentSetImportFailed": "文档集导入失败"
+  ,"documentSetImportConfirm": "确认导入并合并这些文档集吗？共 {x} 个。"
+  ,"documentSetEmpty": "暂无文档集"
+  ,"documentSetItems": "个文档"
+  ,"documentSetPreview": "预览恢复"
+  ,"documentSetRestore": "恢复"
+  ,"documentSetCancel": "取消恢复"
+  ,"documentSetRestoreConfirm": "按顺序打开这个文档集中的待打开文档吗？"
+  ,"documentSetMissingConfirm": "有文档在当前工作空间中明确不存在，仍继续恢复其余文档吗？"
+  ,"documentSetUnknownConfirm": "有文档暂时无法确认状态，仍尝试恢复其余文档吗？"
+  ,"documentSetNoAvailable": "没有可恢复的文档"
+  ,"documentSetRestoreNone": "文档集没有待打开的文档"
+  ,"documentSetRestoreDone": "已恢复"
+  ,"documentSetRestoreFailed": "失败"
+  ,"documentSetRestoreSkipped": "已跳过"
+  ,"documentSetRestoreMissing": "缺失"
+  ,"documentSetRestoreCancelled": "恢复已取消"
+  ,"documentSetDelete": "删除"
+  ,"documentSetRename": "重命名"
+  ,"documentSetDeleteConfirm": "确定删除这个文档集吗？"
+  ,"documentSetSaved": "文档集已保存"
+  ,"documentSetNoTabs": "当前没有可保存的已打开文档"
+  ,"documentSetPending": "待打开"
+  ,"documentSetOpened": "已打开"
+  ,"documentSetsGuideTitle": "文档集是什么？"
+  ,"documentSetsGuidePurpose": "文档集是一份“工作现场快照”：把当前已经打开的文档保存成一个命名集合，之后可以按原顺序重新打开，适合在不同项目或任务之间切换。"
+  ,"documentSetsGuideStep1": "先打开本次工作需要的文档，在下方输入名称，然后点击“保存当前文档”。"
+  ,"documentSetsGuideStep2": "需要回来继续时，可先点“预览恢复”查看待打开和已打开数量，再点“恢复”。"
+  ,"documentSetsGuideStep3": "使用导出/导入可备份或迁移文档集；同名保存会更新原有集合。"
+  ,"documentSetsGuideNote": "注意：文档集只记录可稳定恢复的根文档，不保存编辑位置、临时页签或文档内容；删除或移出当前工作空间的文档会在恢复前标记为缺失。"
+  ,"secondPanel": "第二面板"
+  ,"secondPanelEmpty": "暂无内容"
   ,"mobileLayoutFailed": "切换器初始化失败，请关闭后重试"
   ,"openHistory": "最近打开"
   ,"noOpenHistory": "暂无最近打开记录"
   ,"clearOpenHistory": "清空记录"
+  ,"clearClosedHistory": "清空最近关闭"
   ,"clearOpenHistoryConfirm": "确定清空最近打开记录吗？"
   ,"historyOpen": "已打开"
   ,"historyClosed": "已关闭，点击重开"
+  ,"historyOpenSection": "最近打开"
+  ,"historyClosedSection": "最近关闭"
+  ,"historyOpenAction": "打开"
+  ,"historyRemove": "移除记录"
   ,"historyInvalid": "该历史记录已失效"
 }

@@ -89,7 +89,9 @@ module.exports = (env, argv) => {
         optimization: {
             minimize: production,
             minimizer: [
-                new EsbuildPlugin(),
+                // legalComments:none 剥离压缩产物中保留的许可证注释；
+                // LICENSE 仍由 BannerPlugin 以完整文本形式附在产物头部。
+                new EsbuildPlugin({legalComments: "none"}),
             ],
         },
         resolve: {
@@ -104,7 +106,10 @@ module.exports = (env, argv) => {
                         {
                             loader: "esbuild-loader",
                             options: {
-                                target: "es6",
+                                // 思源桌面端为 Electron、手机端为现代 WebView（kernel minAppVersion 3.1.20），
+                                // es2020 覆盖可选链/空值合并且保留 async/await 原生语法，
+                                // 避免降级到 es6 时注入大段 __async/generator 辅助函数。
+                                target: "es2020",
                             },
                         },
                     ],

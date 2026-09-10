@@ -132,6 +132,22 @@ function normalizeSearchScope(value) {
 }
 
 /**
+ * The lightweight document-title endpoint can only preserve notebook and
+ * path scopes. Other filters require native block search.
+ */
+function canUseTitleSearch(filters = {}) {
+    const source = normalizeSearchFilters(filters);
+    return !Object.entries(source).some(([key, value]) => {
+        if (key === "notebook" || key === "paths") return false;
+        if (key === "method" && (value === "" || value === "keyword" || value === 0)) return false;
+        if (value === undefined || value === null || value === "" || value === false) return false;
+        if (Array.isArray(value)) return value.length > 0;
+        if (typeof value === "object") return Object.keys(value).length > 0;
+        return true;
+    });
+}
+
+/**
  * Build a deterministic, versioned in-memory cache key. The version lets a
  * future result-shape change invalidate old entries without persisting data.
  */
@@ -377,8 +393,9 @@ function tabTitle(tab, rootId) {
  * Filter only local tab metadata. This function never performs I/O and keeps
  * the original tab object on each item so adapters can activate it directly.
  */
-function filterOpenTabs(tabs, query) {
+function filterOpenTabs(tabs, query, filters = {}) {
     const keyword = normalizeSearchQuery(query).toLowerCase();
+    const notebook = normalizeText(filters?.notebook, 64);
     if (!Array.isArray(tabs)) return [];
     const items = [];
     tabs.forEach((tab, index) => {
@@ -386,6 +403,8 @@ function filterOpenTabs(tabs, query) {
         const rootId = tabRootId(tab);
         const path = firstText(tab.hPath, tab.path, tab.rootPath);
         const title = tabTitle(tab, rootId || String(tab.id || index));
+        const notebookId = resolveSearchNotebookId(tab);
+        if (notebook && notebookId !== notebook) return;
         const haystack = `${title} ${path}`.toLowerCase();
         if (keyword && !haystack.includes(keyword)) return;
         items.push({
@@ -394,6 +413,7 @@ function filterOpenTabs(tabs, query) {
             tab,
             title,
             path,
+            notebookId,
             updated: firstText(tab.updated, tab.updatedAt),
             source: "tabs",
         });
@@ -439,7 +459,7 @@ function mergeSearchLayers(input = {}) {
     const query = normalizeSearchQuery(input.query);
     const limits = normalizeSearchLimits(input.limits || input);
     const tabs = Array.isArray(input.tabs) ? input.tabs : (Array.isArray(input.openTabs) ? input.openTabs : []);
-    const tabItems = filterOpenTabs(tabs, query);
+    const tabItems = filterOpenTabs(tabs, query, input.filters);
     const displayedTabRoots = new Set(tabItems.map((item) => item.rootId).filter(Boolean));
     const allOpenRoots = collectTabRootIds(tabs);
     toRootSet(input.openRootIds).forEach((rootId) => allOpenRoots.add(rootId));
@@ -588,6 +608,26 @@ function buildFullTextSearchRequest(input = {}) {
     };
 }
 
+/** Translate bounded plugin filters into SiYuan's native Search tab config. */
+function buildNativeSearchTabConfig(input = {}) {
+    const request = buildFullTextSearchRequest({...input, groupBy: input.groupBy ?? "document"});
+    if (!request) return null;
+    const filters = input.filters && typeof input.filters === "object" ? input.filters : {};
+    return {
+        instance: "Search",
+        config: {
+            query: request.body.query,
+            k: request.body.query,
+            group: request.body.groupBy,
+            method: request.body.method,
+            sort: request.body.orderBy,
+            types: request.body.types,
+            subTypes: request.body.subTypes,
+            idPath: request.body.paths,
+        },
+    };
+}
+
 /**
  * SiYuan has returned block-search payloads in a few compatible wrappers
  * across versions. Keep the transport quirk out of the UI adapter and only
@@ -649,10 +689,17 @@ function buildOpenedDocumentSearchRequest(input = {}) {
     const source = input && typeof input === "object" ? input : {};
     const scope = buildOpenedDocumentScope(source.tab || source);
     if (!scope) return null;
+    const requestedOrder = source.orderBy || source.filters?.orderBy || "relevanceDesc";
+    // Content order is only defined by SiYuan when results are grouped by
+    // document. Open-document probing is deliberately ungrouped, so keep it
+    // on a portable relevance order instead of emitting an invalid combo.
+    const orderBy = requestedOrder === "content" ? "relevanceDesc" : requestedOrder;
     const request = buildFullTextSearchRequest({
         query: source.query || source.k,
-        method: source.method || "keyword",
-        orderBy: source.orderBy || "relevanceDesc",
+        method: source.method || source.filters?.method || "keyword",
+        orderBy,
+        types: source.types || source.filters?.types,
+        subTypes: source.subTypes || source.filters?.subTypes,
         groupBy: "none",
         page: source.page,
         pageSize: source.pageSize,
@@ -730,7 +777,10 @@ function filterSearchDocuments(documents, filters = {}) {
             MAX_PATH_LENGTH,
         ).replace(/\\/g, "/").replace(/^\/+/, "");
         if (!rawPath) return false;
-        const scopedPath = documentNotebook ? `${documentNotebook}/${rawPath}` : rawPath;
+        const notebookPrefix = documentNotebook ? `${documentNotebook}/` : "";
+        const scopedPath = documentNotebook && rawPath !== documentNotebook && !rawPath.startsWith(notebookPrefix)
+            ? `${notebookPrefix}${rawPath}`
+            : rawPath;
         return paths.some((path) => scopedPath === path || scopedPath.startsWith(`${path}/`));
     });
 }
@@ -752,6 +802,10 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
             query,
             tab,
             method: options.method,
+            orderBy: options.orderBy,
+            types: options.types,
+            subTypes: options.subTypes,
+            filters: options.filters,
             pageSize: options.pageSize,
         });
         if (!request) return;
@@ -768,6 +822,7 @@ module.exports = {
     normalizeSearchFilters,
     normalizeSearchLimits,
     buildSearchCacheKey,
+    canUseTitleSearch,
     normalizeSearchResult,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
@@ -778,6 +833,7 @@ module.exports = {
     mergeSearchLayers,
     shouldSearchRemote,
     buildFullTextSearchRequest,
+    buildNativeSearchTabConfig,
     extractSearchRecords,
     buildOpenedDocumentScope,
     resolveSearchNotebookId,

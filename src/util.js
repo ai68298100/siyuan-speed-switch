@@ -47,6 +47,69 @@ function normalizeSortBy(value, allowed, fallback) {
     return allowed.includes(String(value)) ? String(value) : fallback;
 }
 
+/** Sort tab-like items without mutating the input array. */
+function sortItems(items, sortBy, mru = [], options = {}) {
+    const ordered = Array.from(items || []);
+    const titleOf = typeof options.titleOf === "function" ? options.titleOf : () => "";
+    const rootIdOf = typeof options.rootIdOf === "function" ? options.rootIdOf : () => "";
+    const pinKeyOf = typeof options.pinKeyOf === "function" ? options.pinKeyOf : rootIdOf;
+    const updatedMap = options.updatedMap && typeof options.updatedMap === "object" ? options.updatedMap : {};
+    if (sortBy === "titleAsc" || sortBy === "titleDesc") {
+        ordered.sort((a, b) => {
+            const result = String(titleOf(a) || "").localeCompare(String(titleOf(b) || ""), undefined, {numeric: true});
+            return sortBy === "titleAsc" ? result : -result;
+        });
+    } else if (sortBy === "layoutDesc") {
+        ordered.reverse();
+    } else if (sortBy === "updatedDesc") {
+        ordered.sort((a, b) => {
+            const ua = updatedMap[rootIdOf(a) || ""] || "";
+            const ub = updatedMap[rootIdOf(b) || ""] || "";
+            return ua < ub ? 1 : ua > ub ? -1 : 0;
+        });
+    } else if (sortBy === "mru") {
+        ordered.sort((a, b) => {
+            const ra = mru.indexOf(pinKeyOf(a));
+            const rb = mru.indexOf(pinKeyOf(b));
+            return (ra < 0 ? Number.MAX_SAFE_INTEGER : ra) - (rb < 0 ? Number.MAX_SAFE_INTEGER : rb);
+        });
+    }
+    return ordered;
+}
+
+/** Keep pinned items first, then apply the selected ordering to the remainder. */
+function sortGroupItems(group, sortBy, mru = [], pinned = new Set(), updatedMap = {}, callbacks = {}) {
+    const pinKeyOf = typeof callbacks.pinKeyOf === "function"
+        ? callbacks.pinKeyOf
+        : (typeof callbacks.rootIdOf === "function" ? callbacks.rootIdOf : () => "");
+    const pinnedSet = pinned instanceof Set ? pinned : new Set(pinned || []);
+    const pinnedItems = [];
+    const restItems = [];
+    Array.from(group || []).forEach((item) => {
+        (pinnedSet.has(pinKeyOf(item)) ? pinnedItems : restItems).push(item);
+    });
+    const orderedRest = sortItems(restItems, sortBy, mru, {...callbacks, updatedMap});
+    return [...pinnedItems, ...orderedRest];
+}
+
+/** Resolve the presentation state shared by quick-action surfaces. */
+function resolveQuickActionSurfaceState(surface, settings = {}, selector = ".sw__quick-actions") {
+    const normalizedSurface = surface === "sidebar" || surface === "mobile" ? surface : "desktop";
+    const display = normalizedSurface === "desktop" ? settings.quickActionsDisplayDesktop
+        : normalizedSurface === "sidebar" ? settings.quickActionsDisplaySidebar
+            : settings.quickActionsDisplayMobile;
+    const isRightRail = normalizedSurface === "desktop" && selector === ".sw__quick-rail";
+    const collapsed = normalizedSurface === "desktop"
+        ? (isRightRail ? settings.quickActionsCollapsedDesktopRight : settings.quickActionsCollapsedDesktopBottom)
+        : normalizedSurface === "sidebar" ? settings.quickActionsCollapsedSidebar : settings.quickActionsCollapsedMobile;
+    return {
+        surface: normalizedSurface,
+        display: display === "icons" || display === "hidden" ? display : "full",
+        isRightRail,
+        collapsed: collapsed === true,
+    };
+}
+
 /**
  * 收藏按 group 分组聚合：
  * - 注册表中的空分组会被保留（"先建组再添加"工作流）
@@ -356,6 +419,14 @@ function isSuccessfulMobileTabsResult(result) {
     return result === undefined || result === "success";
 }
 
+/** Resolve the stable root document ID stored by a favorite entry. */
+function resolveFavoriteRootId(favorite) {
+    const rootId = typeof favorite?.rootId === "string" ? favorite.rootId : "";
+    if (/^\d{14}-[0-9a-z]+$/i.test(rootId)) return rootId;
+    const key = typeof favorite?.key === "string" ? favorite.key : "";
+    return /^\d{14}-[0-9a-z]+$/i.test(key) ? key : "";
+}
+
 /**
  * Open-history storage normalization. Document roots are stable across tab
  * instances, so old tab-id entries are migrated to the root key when one is
@@ -407,4 +478,4 @@ function sanitizeOpenHistory(values, max = 50) {
     return {items: items.slice(0, limit), changed};
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};

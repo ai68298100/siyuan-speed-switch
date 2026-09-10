@@ -60,8 +60,17 @@ function unregisterHomeAdapter(adapters, moduleId) {
     const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
     const id = safeText(moduleId, 64);
     map.delete(id);
-    for (const key of snapshotCache.keys()) if (key.startsWith(`${id}:`)) snapshotCache.delete(key);
-    for (const key of failureBackoff.keys()) if (key.startsWith(`${id}:`)) failureBackoff.delete(key);
+    const prefix = `${id}:`;
+    for (const key of snapshotCache.keys()) if (key.startsWith(prefix)) snapshotCache.delete(key);
+    for (const key of failureBackoff.keys()) if (key.startsWith(prefix)) failureBackoff.delete(key);
+    for (const key of inFlightReads.keys()) {
+        if (!key.startsWith(prefix)) continue;
+        inFlightReads.delete(key);
+        readGenerations.set(key, (readGenerations.get(key) || 0) + 1);
+    }
+    for (const key of readGenerations.keys()) {
+        if (key.startsWith(prefix) && !inFlightReads.has(key)) readGenerations.set(key, (readGenerations.get(key) || 0) + 1);
+    }
     for (let index = diagnostics.length - 1; index >= 0; index -= 1) {
         if (diagnostics[index].moduleId === id) diagnostics.splice(index, 1);
     }
@@ -97,7 +106,9 @@ function getHomeDataSourceContract(sourceId) {
 
 async function readHomeModule(adapters, moduleId, device, config = {}, options = {}) {
     const map = adapters instanceof Map ? adapters : registerHomeAdapters(adapters);
-    const adapter = map.get(safeText(moduleId, 64));
+    const normalizedModuleId = safeText(moduleId, 64);
+    const adapter = map.get(normalizedModuleId);
+    if (!adapter) return {ok: false, reason: "unregistered", snapshot: normalizeSnapshot(null)};
     if (!canReadAdapter(adapter, device)) return {ok: false, reason: "unsupported", snapshot: normalizeSnapshot(null)};
     const cacheKey = `${adapter.moduleId}:${device}:${JSON.stringify(normalizeConfig(config))}`;
     const generation = (readGenerations.get(cacheKey) || 0) + 1;
@@ -119,15 +130,24 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     }
     if (options.dedupe !== false && inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
     const run = (async () => {
+    let timeoutHandle = null;
+    let abortHandler = null;
+    let signal = null;
     try {
         const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : DEFAULT_READ_TIMEOUT_MS;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutHandle = setTimeout(() => reject(new Error("timeout")), timeout);
+        });
+        signal = options.signal && typeof options.signal === "object" ? options.signal : null;
+        if (signal?.aborted) throw new Error("aborted");
+        const abortPromise = signal && typeof signal.addEventListener === "function" ? new Promise((_, reject) => {
+            abortHandler = () => reject(new Error("aborted"));
+            signal.addEventListener("abort", abortHandler, {once: true});
+        }) : null;
         const value = await Promise.race([
             Promise.resolve(adapter.read(normalizeConfig(config), device)),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeout)),
-            ...(options.signal ? [new Promise((_, reject) => {
-                if (options.signal.aborted) reject(new Error("aborted"));
-                else options.signal.addEventListener("abort", () => reject(new Error("aborted")), {once: true});
-            })] : []),
+            timeoutPromise,
+            ...(abortPromise ? [abortPromise] : []),
         ]);
         const snapshot = normalizeSnapshot(value);
         if (readGenerations.get(cacheKey) === generation) snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
@@ -142,10 +162,17 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         const cached = snapshotCache.get(cacheKey);
         recordDiagnostic(reason, moduleId, device);
         return {ok: false, reason, snapshot: cached?.snapshot || normalizeSnapshot(null)};
+    } finally {
+        if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+        if (signal && abortHandler && typeof signal.removeEventListener === "function") {
+            signal.removeEventListener("abort", abortHandler);
+        }
     }
     })();
     inFlightReads.set(cacheKey, run);
-    try { return await run; } finally { inFlightReads.delete(cacheKey); }
+    try { return await run; } finally {
+        if (inFlightReads.get(cacheKey) === run) inFlightReads.delete(cacheKey);
+    }
 }
 
 function clearHomeSnapshotCache() {

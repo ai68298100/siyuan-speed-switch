@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice} = require("../src/recent-closed.js");
+const {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen} = require("../src/recent-closed.js");
 
 function capClosed(entries, max = 50) {
     return (Array.isArray(entries) ? entries : [])
@@ -72,6 +72,21 @@ test("recent records: merge keeps open records first and removes duplicate roots
     assert.deepEqual(output.map((item) => [item.rootId, item.source]), [["a", "open"], ["b", "open"], ["c", "closed"]]);
 });
 
+test("recent history sections give captured closes precedence and expose a deduplicated count", () => {
+    const output = buildRecentHistorySections([
+        {key: "tab-a", rootId: "a", title: "Open A", ts: 9},
+        {key: "tab-b", rootId: "b", title: "Legacy B", ts: 8},
+        {key: "utility", title: "Utility", ts: 7},
+    ], [
+        {rootId: "b", title: "Closed B", closedAt: 10},
+        {rootId: "c", title: "Closed C", closedAt: 6},
+        {rootId: "a", title: "Stale close A", closedAt: 5},
+    ], new Set(["a"]));
+    assert.deepEqual(output.open.map((item) => item.key), ["tab-a", "utility"]);
+    assert.deepEqual(output.closed.map((item) => item.rootId), ["b", "c"]);
+    assert.equal(output.count, 4);
+});
+
 test("recent recovery: one failed open does not block later entries", async () => {
     const output = await runRecoveryPlan([{rootId: "a"}, {rootId: "b"}, {rootId: "c"}], async (rootId) => {
         if (rootId === "b") throw new Error("missing");
@@ -84,8 +99,12 @@ test("recent recovery: one failed open does not block later entries", async () =
 
 test("recent events: open and close events are idempotent and mutually exclusive", () => {
     let state = applyRecentEvent({}, {type: "open", rootId: "a", ts: 1});
+    const duplicateOpen = applyRecentEvent(state, {type: "open", rootId: "a", ts: 1});
+    assert.equal(duplicateOpen.changed, false);
     state = applyRecentEvent(state, {type: "open", rootId: "a", ts: 2});
     state = applyRecentEvent(state, {type: "close", rootId: "a", closedAt: 3});
+    const duplicateClose = applyRecentEvent(state, {type: "close", rootId: "a", closedAt: 3});
+    assert.equal(duplicateClose.changed, false);
     assert.deepEqual(state.open, []);
     assert.deepEqual(state.closed.map((item) => item.rootId), ["a"]);
     const unchanged = applyRecentEvent(state, {type: "unknown", rootId: "a"});
@@ -132,4 +151,25 @@ test("recent recovery: legacy callers remain compatible without options", async 
     const output = await runRecoveryPlan([{rootId: "legacy"}], async () => undefined);
     assert.deepEqual(output.succeeded, ["legacy"]);
     assert.deepEqual(output.failed, []);
+});
+
+test("recent entries: removal is source-aware and idempotent", () => {
+    const open = [{key: "tab-a", rootId: "a"}, {key: "tab-b", rootId: "b"}];
+    assert.deepEqual(removeRecentEntry(open, "tab-a").items, [{key: "tab-b", rootId: "b"}]);
+    assert.equal(removeRecentEntry(open, "missing").changed, false);
+    const closed = [{rootId: "a", closedAt: 2}, {rootId: "b", closedAt: 1}];
+    assert.deepEqual(removeRecentEntry(closed, "a", "rootId").items, [{rootId: "b", closedAt: 1}]);
+    assert.deepEqual(open, [{key: "tab-a", rootId: "a"}, {key: "tab-b", rootId: "b"}]);
+});
+
+test("recent entries: recording an open item moves it to the front and clears closed state", () => {
+    const result = recordRecentOpen(
+        [{key: "old", rootId: "old", title: "Old", ts: 1}, {key: "tab-a", rootId: "a", title: "A", ts: 2}],
+        [{rootId: "a", title: "Closed A", closedAt: 3}, {rootId: "b", title: "Closed B", closedAt: 2}],
+        {key: "tab-a", rootId: "a", title: "A2", ts: 4},
+        10,
+    );
+    assert.deepEqual(result.open.map((item) => item.key), ["tab-a", "old"]);
+    assert.deepEqual(result.closed.map((item) => item.rootId), ["b"]);
+    assert.equal(result.changed, true);
 });

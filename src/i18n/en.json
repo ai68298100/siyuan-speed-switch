@@ -6,10 +6,17 @@
   "panels": "Panels",
   "loadingThumbnail": "Loading thumbnail",
   "settings": "LvSpeed Switch Settings",
+  "panelSizeMode": "Panel size mode",
+  "panelSizeModeTip": "Adaptive: compute the panel size from the screen ratio; Fixed: use the width/height below; Fullscreen: fill the window",
+  "panelSizeModeAdaptive": "Fit to screen",
+  "panelSizeModeCustom": "Fixed size",
+  "panelSizeModeFullscreen": "Fullscreen",
+  "panelScale": "Adaptive scale",
+  "panelScaleTip": "Percentage of the current window width/height used by the panel in adaptive mode (50–100)",
   "setWidth": "Switcher width",
-  "setWidthTip": "Width of the switcher dialog in pixels (480–1920)",
+  "setWidthTip": "Width of the switcher dialog in fixed-size mode, in pixels (480–1920)",
   "setHeight": "Switcher height",
-  "setHeightTip": "Height of the switcher dialog in pixels (360–1280)",
+  "setHeightTip": "Height of the switcher dialog in fixed-size mode, in pixels (360–1280)",
   "setColumns": "Thumbnail columns",
   "setColumnsTip": "Cards per row; \"Auto\" adapts to the window width",
   "setThumbHeight": "Thumbnail height",
@@ -32,6 +39,38 @@
   "sortTitleAsc": "Title A→Z",
   "sortTitleDesc": "Title Z→A",
   "searchTabs": "Search tabs or documents…",
+  "searchFilterNotebook": "Filter by notebook",
+  "searchAllNotebooks": "All notebooks",
+  "searchNoNotebooks": "No notebooks available",
+  "searchFilters": "Search filters",
+  "searchFiltersActive": "{x} search filters active",
+  "searchContentType": "Content type",
+  "searchTypeAll": "All content",
+  "searchTypeDocument": "Documents",
+  "searchTypeHeading": "Headings",
+  "searchTypeParagraph": "Paragraphs",
+  "searchTypeCodeBlock": "Code blocks",
+  "searchSubType": "Subtype",
+  "searchSubTypeAll": "All subtypes",
+  "searchSubTypeH1": "Heading 1",
+  "searchSubTypeH2": "Heading 2",
+  "searchSubTypeH3": "Heading 3",
+  "searchSubTypeH4": "Heading 4",
+  "searchSubTypeH5": "Heading 5",
+  "searchSubTypeH6": "Heading 6",
+  "searchSubTypeOrdered": "Ordered lists",
+  "searchSubTypeUnordered": "Unordered lists",
+  "searchSubTypeTask": "Task lists",
+  "searchMethod": "Search method",
+  "searchMethodKeyword": "Keyword",
+  "searchMethodQuery": "Query syntax",
+  "searchMethodRegexp": "Regular expression",
+  "searchResultOrder": "Result order",
+  "searchOrderRelevance": "Relevance",
+  "searchOrderUpdated": "Recently updated",
+  "searchOrderCreated": "Recently created",
+  "searchOrderContent": "Document order",
+  "searchResetFilters": "Reset all filters",
   "pinTab": "Pin",
   "unpinTab": "Unpin",
   "favoriteTab": "Favorite",
@@ -78,6 +117,7 @@
   "docSearchSourceOpened": "Opened content",
   "docSearchLoading": "Searching workspace documents…",
   "docSearchFailed": "Search failed. Please try again.",
+  "docSearchViewAll": "View all in SiYuan Search",
   "noDocResults": "No matching documents found",
   "backTop": "Back to top",
   "secMobile": "Mobile",
@@ -174,12 +214,56 @@
   ,"quickBuiltinSearch": "Search"
   ,"quickBuiltinJournal": "Journal"
   ,"quickBuiltinSettings": "Settings"
+  ,"secDocumentSets": "Document sets"
+  ,"documentSetsTip": "Save currently opened documents for a later restore preview; transient tabs without stable roots are skipped."
+  ,"documentSetNamePlaceholder": "Document set name"
+  ,"documentSetSave": "Save current documents"
+  ,"documentSetExport": "Export"
+  ,"documentSetImport": "Import"
+  ,"documentSetImportDone": "Document sets imported"
+  ,"documentSetImportFailed": "Document-set import failed"
+  ,"documentSetImportConfirm": "Import and merge these document sets? {x} total."
+  ,"documentSetEmpty": "No document sets yet"
+  ,"documentSetItems": "documents"
+  ,"documentSetPreview": "Preview restore"
+  ,"documentSetRestore": "Restore"
+  ,"documentSetCancel": "Cancel restore"
+  ,"documentSetRestoreConfirm": "Open the pending documents in this set in order?"
+  ,"documentSetMissingConfirm": "Some documents are missing from the current workspace. Continue with the remaining documents?"
+  ,"documentSetUnknownConfirm": "Some documents could not be verified. Try restoring the remaining documents?"
+  ,"documentSetNoAvailable": "No documents are available to restore"
+  ,"documentSetRestoreNone": "This set has no pending documents"
+  ,"documentSetRestoreDone": "Restored"
+  ,"documentSetRestoreFailed": "failed"
+  ,"documentSetRestoreSkipped": "skipped"
+  ,"documentSetRestoreMissing": "missing"
+  ,"documentSetRestoreCancelled": "Restore cancelled"
+  ,"documentSetDelete": "Delete"
+  ,"documentSetRename": "Rename"
+  ,"documentSetDeleteConfirm": "Delete this document set?"
+  ,"documentSetSaved": "Document set saved"
+  ,"documentSetNoTabs": "No opened documents can be saved"
+  ,"documentSetPending": "pending"
+  ,"documentSetOpened": "opened"
+  ,"documentSetsGuideTitle": "What is a document set?"
+  ,"documentSetsGuidePurpose": "A document set is a named snapshot of the documents currently open. Restore it later in the saved order when switching between projects or tasks."
+  ,"documentSetsGuideStep1": "Open the documents needed for the task, enter a name below, then choose Save current documents."
+  ,"documentSetsGuideStep2": "When returning, use Preview restore to review pending and already-open counts, then choose Restore."
+  ,"documentSetsGuideStep3": "Export and import document sets for backup or migration. Saving with the same name updates the existing set."
+  ,"documentSetsGuideNote": "Note: document sets store stable root-document references only. They do not save cursor positions, transient tabs, or document content. Deleted or unavailable documents are marked missing before restore."
+  ,"secondPanel": "Second panel"
+  ,"secondPanelEmpty": "Nothing here yet"
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
   ,"noOpenHistory": "No recent documents"
   ,"clearOpenHistory": "Clear history"
+  ,"clearClosedHistory": "Clear recently closed"
   ,"clearOpenHistoryConfirm": "Clear all recent documents?"
   ,"historyOpen": "Open"
   ,"historyClosed": "Closed · click to reopen"
+  ,"historyOpenSection": "Recently opened"
+  ,"historyClosedSection": "Recently closed"
+  ,"historyOpenAction": "Open"
+  ,"historyRemove": "Remove record"
   ,"historyInvalid": "This history entry is no longer available"
 }

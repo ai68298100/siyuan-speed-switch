@@ -5,6 +5,7 @@ const {
     normalizeSearchQuery,
     normalizeSearchFilters,
     buildSearchCacheKey,
+    canUseTitleSearch,
     normalizeSearchResult,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
@@ -15,6 +16,7 @@ const {
     mergeSearchLayers,
     shouldSearchRemote,
     buildFullTextSearchRequest,
+    buildNativeSearchTabConfig,
     extractSearchRecords,
     buildOpenedDocumentScope,
     buildOpenedDocumentSearchRequest,
@@ -121,6 +123,21 @@ test("search model: local tabs match title/path and preserve original tab refere
     assert.equal(result[0].rootId, ROOT_A);
     assert.equal(result[0].tab, tabA);
     assert.equal(filterOpenTabs([tabA, tabB], "" ).length, 2);
+});
+
+test("search model: notebook filters apply to local tabs before remote layers", () => {
+    const tabA = {id: "tab-a", rootId: ROOT_A, title: "项目", notebookId: "box-a", path: "box-a/work/a.sy"};
+    const tabB = {id: "tab-b", rootId: ROOT_B, title: "项目", notebookId: "box-b", path: "box-b/work/b.sy"};
+    const filtered = filterOpenTabs([tabA, tabB], "项目", {notebook: "box-a"});
+    assert.deepEqual(filtered.map((item) => item.rootId), [ROOT_A]);
+    assert.equal(filtered[0].notebookId, "box-a");
+    const merged = mergeSearchLayers({
+        query: "项目",
+        filters: {notebook: "box-b"},
+        tabs: [tabA, tabB],
+        global: [{rootId: ROOT_C, title: "项目全库"}],
+    });
+    assert.deepEqual(merged.tabs.map((item) => item.rootId), [ROOT_B]);
 });
 
 test("search model: three layers prioritize tabs, then opened hits, then global cards", () => {
@@ -320,10 +337,90 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
 });
 
+test("search model: native view-all config preserves safe filters", () => {
+    const search = buildNativeSearchTabConfig({query: "项目", filters: {
+        method: "regexp", orderBy: "updatedDesc", paths: ["box-a/work"],
+        types: {document: true, paragraph: false}, subTypes: {h1: true},
+    }});
+    assert.equal(search.instance, "Search");
+    assert.deepEqual(search.config, {
+        query: "项目", k: "项目", group: 1, method: 3, sort: 4,
+        types: {document: true, paragraph: false}, subTypes: {h1: true}, idPath: ["box-a/work"],
+    });
+    assert.equal(buildNativeSearchTabConfig({query: "x", method: 2}).config.method, 0);
+    assert.equal(buildNativeSearchTabConfig({query: "   "}), null);
+});
+
 test("search model: notebook-only filters produce a native path scope", () => {
     const request = buildFullTextSearchRequest({query: "项目", filters: {notebook: "box-a"}});
     assert.deepEqual(request.body.paths, ["box-a"]);
     assert.equal(request.body.notebook, "box-a");
+});
+
+test("search model: title fast path only accepts locally enforceable scopes", () => {
+    assert.equal(canUseTitleSearch({}), true);
+    assert.equal(canUseTitleSearch({notebook: "box-a", paths: ["box-a/work"]}), true);
+    assert.equal(canUseTitleSearch({method: "keyword"}), true);
+    assert.equal(canUseTitleSearch({method: "query"}), false);
+    assert.equal(canUseTitleSearch({types: {heading: true}}), false);
+    assert.equal(canUseTitleSearch({subTypes: {h2: true}}), false);
+    assert.equal(canUseTitleSearch({orderBy: "updatedDesc"}), false);
+});
+
+test("search model: advanced filters reach bounded full-text requests exactly", () => {
+    const request = buildFullTextSearchRequest({
+        query: "项目",
+        filters: {
+            notebook: "box-a",
+            method: "regexp",
+            orderBy: "createdDesc",
+            types: {heading: true},
+            subTypes: {h2: true},
+        },
+        groupBy: "document",
+    });
+    assert.equal(request.body.method, 3);
+    assert.equal(request.body.orderBy, 2);
+    assert.deepEqual(request.body.types, {heading: true});
+    assert.deepEqual(request.body.subTypes, {h2: true});
+    assert.deepEqual(request.body.paths, ["box-a"]);
+    assert.equal(request.body.groupBy, 1);
+});
+
+test("search model: opened-document requests inherit advanced filters", () => {
+    const request = buildOpenedDocumentSearchRequest({
+        query: "^项目",
+        tab: {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"},
+        filters: {
+            method: "regexp",
+            orderBy: "updatedDesc",
+            types: {paragraph: true},
+        },
+    });
+    assert.equal(request.body.method, 3);
+    assert.equal(request.body.orderBy, 4);
+    assert.deepEqual(request.body.types, {paragraph: true});
+    assert.deepEqual(request.body.paths, ["box-a/docs/root.sy"]);
+});
+
+test("search model: opened-document probing downgrades unsupported content order", () => {
+    const request = buildOpenedDocumentSearchRequest({
+        query: "项目",
+        orderBy: "content",
+        tab: {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"},
+    });
+    assert.equal(request.body.groupBy, 0);
+    assert.equal(request.body.orderBy, 7);
+});
+
+test("search model: advanced filter values isolate cache entries", () => {
+    const base = {scope: "global", query: "项目"};
+    const keyword = buildSearchCacheKey({...base, filters: {notebook: "box-a"}});
+    const regexp = buildSearchCacheKey({...base, filters: {notebook: "box-a", method: "regexp"}});
+    const heading = buildSearchCacheKey({...base, filters: {notebook: "box-a", types: {heading: true}}});
+    assert.notEqual(keyword, regexp);
+    assert.notEqual(keyword, heading);
+    assert.notEqual(regexp, heading);
 });
 
 test("search model: accepts native searchDocs box metadata", () => {
@@ -360,6 +457,12 @@ test("search model: filters native document paths inside an explicit notebook", 
     ];
     assert.deepEqual(filterSearchDocuments(docs, {paths: ["box-a/work"]}), [docs[0]]);
     assert.deepEqual(filterSearchDocuments(docs, {notebook: "box-a", paths: ["box-a/work"]}), [docs[0]]);
+});
+
+test("search model: preserves paths that already include the notebook prefix", () => {
+    const document = {id: ROOT_A, box: "box-a", path: "box-a/work/a.sy"};
+    assert.deepEqual(filterSearchDocuments([document], {paths: ["box-a/work"]}), [document]);
+    assert.deepEqual(filterSearchDocuments([document], {notebook: "box-a", paths: ["box-a/work"]}), [document]);
 });
 
 test("search model: cache keys isolate notebook and path filters", () => {
