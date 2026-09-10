@@ -121,6 +121,9 @@ import {
     SETTINGS_PANEL_SCALE,
     GROUP_FLOW_MIN_CARD_PX,
     GROUP_FLOW_GAP_PX,
+    HOME_SIZE_DEFAULTS,
+    HOME_SIZE_MODES,
+    HomeSizeMode,
     HOME_WIDGET_SIZES,
     HOME_WIDGET_SIZE_LABELS,
     HomeWidgetSize,
@@ -396,6 +399,9 @@ const DEFAULT_SETTINGS: ISwSettings = {
     panelSizeMode: "adaptive", // 面板尺寸模式：adaptive=屏幕比例自适应（默认）/ custom=固定尺寸 / fullscreen=全屏
     panelScale: PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
     groupBy: TAB_GROUP_MODE_DEFAULT, // 列表分组：默认按笔记本
+    homeSizeMode: "follow", // 组件面板尺寸模式：跟随第一面板
+    homeWidth: 960,          // 组件面板固定宽度
+    homeHeight: 720,         // 组件面板固定高度
     columns: 0,            // 缂╃暐鍥惧垪鏁帮紝0=鑷姩
     thumbHeight: 128,      // 缂╃暐鍥鹃珮搴?px
     sortBy: "mru",         // 椤电鎺掑簭鏂瑰紡
@@ -431,6 +437,9 @@ interface ISwSettings {
     dialogHeight: number;
     panelSizeMode: PanelSizeMode; // 面板尺寸模式
     panelScale: number;           // 自适应比例（百分比）
+    homeSizeMode: HomeSizeMode;   // 组件面板尺寸模式
+    homeWidth: number;            // 组件面板固定宽度
+    homeHeight: number;           // 组件面板固定高度
     groupBy: TabGroupMode;        // 列表分组方式（默认按笔记本）
     columns: number;
     thumbHeight: number;
@@ -1061,6 +1070,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 dialogWidth: [DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX],
                 dialogHeight: [DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX],
                 panelScale: [PANEL_SCALE_MIN, PANEL_SCALE_MAX],
+                homeWidth: [480, 1920],
+                homeHeight: [360, 1280],
                 columns: [COLUMNS_MIN, COLUMNS_MAX],
                 thumbHeight: [THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX],
                 mobileColumns: [MOBILE_COLUMNS_MIN, MOBILE_COLUMNS_MAX],
@@ -1482,6 +1493,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             documentSets: () => this.buildSettingsDocumentSets(),
             journal: () => this.buildSettingsJournal(s),
             mobile: () => this.buildSettingsMobile(s),
+            homePanel: () => this.buildSettingsHomePanel(s),
         };
 
         // 鏋勫缓鏍囩鏍忎笌鍒嗙粍闈㈡澘
@@ -1650,6 +1662,27 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // ===== 璁剧疆椤?路 鎵嬫満绔細鎮诞鎸夐挳寮€鍏炽€佸崱鐗囧竷灞€ =====
+    private buildSettingsHomePanel(s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const modeOptions: Array<{value: HomeSizeMode, label: string}> = [
+            {value: "follow", label: this.i18n.setHomeSizeModeFollow},
+            {value: "adaptive", label: this.i18n.setHomeSizeModeAdaptive},
+            {value: "custom", label: this.i18n.setHomeSizeModeCustom},
+            {value: "fullscreen", label: this.i18n.setHomeSizeModeFullscreen},
+        ];
+        const modeRow = this.settingItem(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip,
+            this.select(modeOptions, s.homeSizeMode, (v) => this.updateSettings({homeSizeMode: v as HomeSizeMode})));
+        const widthRow = this.settingItem(this.i18n.setHomeWidth, this.i18n.setHomeWidthTip,
+            this.num(s.homeWidth, 480, 1920, 20, this.i18n.unitPx, (v) => this.updateSettings({homeWidth: v}), this.i18n.setHomeWidth));
+        const heightRow = this.settingItem(this.i18n.setHomeHeight, this.i18n.setHomeHeightTip,
+            this.num(s.homeHeight, 360, 1280, 20, this.i18n.unitPx, (v) => this.updateSettings({homeHeight: v}), this.i18n.setHomeHeight));
+        wrapper.append(modeRow);
+        if (s.homeSizeMode === "custom") {
+            wrapper.append(widthRow, heightRow);
+        }
+        return wrapper;
+    }
+
     private buildSettingsMobile(s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         wrapper.append(
@@ -3546,18 +3579,6 @@ const version = beginSearch(session);
             });
             root.appendChild(grid);
 
-            const hint = document.createElement("div");
-            hint.className = "sw-home__hint";
-            const hintText = document.createElement("span");
-            hintText.textContent = this.i18n.homeHintText;
-            const hintLink = document.createElement("a");
-            hintLink.className = "sw-home__hint-link";
-            hintLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/widget-protocol.md";
-            hintLink.target = "_blank";
-            hintLink.rel = "noopener";
-            hintLink.textContent = this.i18n.homeHintLink;
-            hint.append(hintText, hintLink);
-            root.appendChild(hint);
         });
         if (offered === 0) {
             root.textContent = this.i18n.homeNoMoreModules;
@@ -3566,13 +3587,26 @@ const version = beginSearch(session);
 
     private openSecondPanel() {
         const settings = this.getSettings();
-        const size = this.resolvePanelDialogSize(settings, settings.fullscreen);
+        const viewport = {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX};
+        // 组件面板独立尺寸模式：follow=跟随第一面板；adaptive=独立 90% 自适应；custom=固定尺寸；fullscreen=全屏
+        const mode: HomeSizeMode = settings.homeSizeMode || "follow";
+        const size = mode === "fullscreen"
+            ? {width: viewport.width, height: viewport.height}
+            : mode === "adaptive"
+                ? resolvePanelSize({...settings, panelSizeMode: "adaptive", panelScale: PANEL_SCALE_DEFAULT}, viewport)
+                : mode === "custom"
+                    ? resolvePanelSize({...settings, panelSizeMode: "custom", dialogWidth: settings.homeWidth, dialogHeight: settings.homeHeight}, viewport)
+                    : this.resolvePanelDialogSize(settings, settings.fullscreen);
+        const fullscreenMode = mode === "fullscreen" || (mode === "follow" && settings.panelSizeMode === "fullscreen");
         const dialog = new Dialog({
             title: this.i18n.secondPanel,
             content: '<div class="speed-switch sw-home"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
         });
+        if (fullscreenMode) {
+            dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
+        }
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
         // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
@@ -3624,6 +3658,8 @@ const version = beginSearch(session);
             }
             root.appendChild(bar);
 
+            const body = document.createElement("div");
+            body.className = "sw-home__body";
             const grid = document.createElement("div");
             grid.className = "sw-home__grid";
             if (cells.length === 0) {
@@ -3816,7 +3852,7 @@ const version = beginSearch(session);
                 }
             });
 
-            root.appendChild(grid);
+            body.appendChild(grid);
 
             // 首次打开播种默认实例（最近打开 + 收藏，中号），之后删除即保留删除
             if (state.instances.length === 0 && !editing) {
@@ -3891,6 +3927,27 @@ const version = beginSearch(session);
                     existing?.remove();
                 }
             });
+
+            // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
+            const hint = document.createElement("div");
+            hint.className = "sw-home__hint";
+            const hintText = document.createElement("span");
+            hintText.textContent = this.i18n.homeHintText;
+            const hintLink = document.createElement("a");
+            hintLink.className = "sw-home__hint-link";
+            hintLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/widget-protocol.md";
+            hintLink.target = "_blank";
+            hintLink.rel = "noopener";
+            hintLink.textContent = this.i18n.homeHintLink;
+            hint.append(hintText, hintLink);
+            body.appendChild(hint);
+            root.appendChild(body);
+
+            const quickHost = document.createElement("div");
+            quickHost.className = "sw-home__quick-actions sw__quick-actions";
+            root.appendChild(quickHost);
+            this.renderQuickActions(dialog.element, this.isMobile ? "mobile" : "desktop", null, () => dialog.destroy(), ".sw-home__quick-actions");
+            quickHost.classList.add("sw__quick-actions--icons");
         };
 
         const originalDestroy = dialog.destroy.bind(dialog);

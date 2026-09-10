@@ -170,6 +170,12 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.28 (2026-09-12)
+
+- Independent widget panel size settings: a new "Widget panel" tab in settings offers follow-first-panel (default) / fit-to-screen (90%) / fixed size / fullscreen modes; fixed mode exposes separate panel width/height (480–1920 × 360–1280) independent of the first panel.
+- Widget panel bottom quick-action bar: shares the same quick action configuration as the first panel (icon display, docked at the bottom); the panel layout is now a three-segment structure (top bar / scroll area / bottom bar) so long lists no longer push the bar away.
+- Fullscreen mode caps the widget grid at 1600px centered, avoiding over-wide lists on ultra-wide screens.
+
 ### v0.16.27 (2026-09-12)
 
 - Today's tasks widget gains a "Show completed" toggle (off by default): completed tasks render strike-through and their checkboxes reopen them, completing the toggle loop.

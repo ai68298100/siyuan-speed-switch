@@ -4031,10 +4031,29 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 12px 16px 16px;
+    padding: 12px 16px;
     box-sizing: border-box;
-    overflow: auto;
+    overflow: hidden;
     background: var(--sw-page-bg, var(--b3-theme-background));
+}
+
+// 中部滚动区：网格与提示条在此滚动，顶栏与底部入口栏常驻
+.sw-home__body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.sw-home__quick-actions {
+    flex: none;
+    margin-top: 10px;
+}
+
+// 全屏模式：网格限宽居中，避免超宽屏下拉列表过宽
+.b3-dialog__container.sw-dialog--fullscreen .sw-home__grid {
+    max-width: 1600px;
+    margin-inline: auto;
+    width: 100%;
 }
 
 .sw-home__bar {

@@ -162,6 +162,19 @@ export const PANEL_SCALE_DEFAULT = 90;
 export const PANEL_SIZE_MIN_PX = 420; // 自适应计算的像素下限，避免小窗口下面板过小
 export const SETTINGS_PANEL_SCALE = 70; // 设置页桌面端独立自适应比例（不随面板比例设置联动）
 
+// 组件面板尺寸设置：follow=跟随第一面板 / adaptive=独立自适应（90%）/ custom=固定尺寸 / fullscreen=全屏
+export type HomeSizeMode = "follow" | "adaptive" | "custom" | "fullscreen";
+export const HOME_SIZE_MODES: HomeSizeMode[] = ["follow", "adaptive", "custom", "fullscreen"];
+export const HOME_SIZE_DEFAULTS = {
+    mode: "follow" as HomeSizeMode,
+    width: 960,
+    height: 720,
+    minW: 480,
+    maxW: 1920,
+    minH: 360,
+    maxH: 1280,
+};
+
 // 列表分组流式布局：卡片最小宽与块间距，与 .sw__grid 的 minmax(220px, 1fr)/12px 保持一致
 export const GROUP_FLOW_MIN_CARD_PX = 220;
 export const GROUP_FLOW_GAP_PX = 12;

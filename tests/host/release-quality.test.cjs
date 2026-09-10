@@ -38,9 +38,9 @@ test('production bundle remains within the mobile performance budget when built'
     // The budget was recalibrated after the layered search and document-set UI
     // increments; keep a hard ceiling while leaving webpack's 244 KiB warning
     // threshold as a separate optimization signal.
-    // 2026-09-11: recalibrated to 280 KiB for in-panel task toggling, widget
-    // refresh triggers, store search and the open-document agent action.
-    assert.ok(bytes <= 280 * 1024, `dist/index.js is ${bytes} bytes; budget is 286720`);
+    // 2026-09-12: recalibrated to 288 KiB for the widget panel independent size
+    // settings tab and the in-panel quick-action bar.
+    assert.ok(bytes <= 288 * 1024, `dist/index.js is ${bytes} bytes; budget is 294912`);
 });
 
 test('release candidate command covers all local gates', () => {

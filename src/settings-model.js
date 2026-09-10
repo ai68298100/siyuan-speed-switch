@@ -39,6 +39,12 @@ function normalizeSettings(saved, options = {}) {
         dialogWidth: clamp(source.dialogWidth, ...range("dialogWidth"), defaults.dialogWidth),
         dialogHeight: clamp(source.dialogHeight, ...range("dialogHeight"), defaults.dialogHeight),
         panelSizeMode,
+        homeSizeMode: source.homeSizeMode === "follow" || source.homeSizeMode === "adaptive"
+            || source.homeSizeMode === "custom" || source.homeSizeMode === "fullscreen"
+            ? source.homeSizeMode
+            : (defaults.homeSizeMode || "follow"),
+        homeWidth: clamp(source.homeWidth, ...range("homeWidth"), defaults.homeWidth || 960),
+        homeHeight: clamp(source.homeHeight, ...range("homeHeight"), defaults.homeHeight || 720),
         panelScale: clamp(source.panelScale, ...range("panelScale"), defaults.panelScale),
         groupBy,
         columns: clamp(source.columns, ...range("columns"), defaults.columns),
