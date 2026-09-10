@@ -43,5 +43,5 @@ test('built-in modules declare size subsets and config schemas', () => {
     assert.equal(fixed.protocolVersion, 2);
     assert.deepEqual(fixed.configSchema.map((field) => field.key), ['docId', 'title']);
     const tasks = modules.find((item) => item.moduleId === 'today-tasks');
-    assert.deepEqual(tasks.configSchema.map((field) => field.key), ['limit', 'allDocuments', 'notebook', 'days']);
+    assert.deepEqual(tasks.configSchema.map((field) => field.key), ['limit', 'allDocuments', 'notebook', 'showCompleted', 'days']);
 });

@@ -170,6 +170,12 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.27 (2026-09-12)
+
+- Today's tasks widget gains a "Show completed" toggle (off by default): completed tasks render strike-through and their checkboxes reopen them, completing the toggle loop.
+- Full-library scan mode now only retrieves tasks updated within the last 30 days by default (7–365 configurable), keeping large workspaces fast.
+- ROADMAP AI capability section synced to the current seven-capability state.
+
 ### v0.16.26 (2026-09-12)
 
 - Mobile entry for the widget panel: the bottom quick-action bar now carries a permanent Widgets button (alongside journal/search/settings), so mobile users no longer need to detour through the More menu.

@@ -3015,6 +3015,11 @@ const version = beginSearch(session);
             // 全库扫描的时间窗守卫：默认只看近 30 天有更新的任务（天数 7–365 可配）
             const days = Math.min(365, Math.max(7, Math.trunc(Number(config.days) || 30)));
             const since = this.taskWindowStart(days);
+            const showCompleted = config.showCompleted === "是";
+            // 显示已完成时同时匹配未勾选与已勾选（含大写 X）；否则只看未完成任务
+            const stateCondition = showCompleted
+                ? `(markdown LIKE '%[ ] %' OR markdown LIKE '%[x] %' OR markdown LIKE '%[X] %')`
+                : `markdown LIKE '%[ ] %'`;
             let scope = "";
             if (notebookFilter) {
                 scope = ` AND box='${notebookFilter}' AND updated >= '${since}'`;
@@ -3024,7 +3029,7 @@ const version = beginSearch(session);
                 if (openIds.length === 0) return {items: []};
             }
             const json = await this.fetchKernelJson("/api/query/sql", {
-                query: `SELECT id, content FROM blocks WHERE type='p' AND markdown LIKE '%[ ] %'${scope} ORDER BY updated DESC LIMIT ${limit}`,
+                query: `SELECT id, content, markdown FROM blocks WHERE type='p' AND ${stateCondition}${scope} ORDER BY updated DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{id: string; content: string; markdown?: string}>;
             return {items: rows.map((row) => ({
