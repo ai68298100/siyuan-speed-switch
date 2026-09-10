@@ -2812,7 +2812,8 @@ const version = beginSearch(session);
             button.addEventListener("click", () => this.executeQuickAction(action, searchInput, close));
             host.appendChild(button);
         });
-        if (surface === "desktop") {
+        // 组件面板入口：桌面与手机底栏都常驻（手机端此前只能绕道"更多"菜单）
+        if (surface === "desktop" || surface === "mobile") {
             const homeButton = document.createElement("button");
             homeButton.type = "button";
             homeButton.className = "sw__quick-action sw__quick-action--home b3-tooltips b3-tooltips__n";

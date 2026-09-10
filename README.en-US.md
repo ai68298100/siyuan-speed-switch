@@ -170,6 +170,10 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.26 (2026-09-12)
+
+- Mobile entry for the widget panel: the bottom quick-action bar now carries a permanent Widgets button (alongside journal/search/settings), so mobile users no longer need to detour through the More menu.
+
 ### v0.16.25 (2026-09-11)
 
 - Second controlled-write pilot `append-to-journal`: the AI can append an entry to today's journal (auto-creating it when missing; the notebook comes from plugin settings), behind the mandatory confirmation dialog.
