@@ -4552,3 +4552,29 @@
         }
     }
 }
+
+// ==================== 智能体受控写确认对话框 ====================
+.sw-ai-confirm {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding: 16px 18px;
+
+    .sw-ai-confirm__detail {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .sw-ai-confirm__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}

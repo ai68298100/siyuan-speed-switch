@@ -174,6 +174,7 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 - Configurable widgets: **Pinned document** takes a doc id and display name; **Today's tasks** supports an item cap and a scan-all-documents switch; **Plugin commands** supports an item cap and keyword filter.
 - **Agent integration**: a new read-only agent capability `home-widget-snapshot` lets SiYuan AI query the bounded snapshot of any registered widget (third-party included), capped by item limits and cache.
 - Fixed the built-in size whitelist not covering the 7-tier expansion (XS/Tall/Full were silently downgraded).
+- First controlled-write pilot `update-task-status`: the AI can toggle a task checkbox after an in-panel confirmation dialog (deny or 30s timeout aborts); effects honestly declare localWrite; the flip logic is a fully branch-tested pure function.
 - Agent capabilities rounded out with the controlled navigation action `open-document` (open and locate a document by block id), closing the query-to-jump loop with `home-widget-snapshot`; published third-party invitation drafts at [docs/widget-invite-drafts.md](docs/widget-invite-drafts.md).
 
 ### v0.16.16 (2026-09-11)

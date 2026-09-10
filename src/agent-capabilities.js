@@ -198,6 +198,35 @@ const AGENT_ITEMS_SCHEMA = Object.freeze({
 });
 
 const AGENT_CAPABILITY_SPECS = Object.freeze({
+    updateTask: Object.freeze({
+        name: "update-task-status",
+        title: "小驴速切换换任务状态",
+        description: "受控写操作：切换指定任务块的完成状态（勾选/取消勾选）。执行前会弹窗请求用户确认，用户拒绝或超时则不执行。仅修改该任务块的勾选标记，不改写任务文本。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                id: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 64,
+                    pattern: "^[0-9]{14}-[0-9a-z]+$",
+                },
+                done: {type: "boolean"},
+            },
+            required: ["id", "done"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                ok: {type: "boolean"},
+                id: {type: "string", maxLength: 64},
+                done: {type: "boolean"},
+            },
+            required: ["ok", "id", "done"],
+            additionalProperties: false,
+        }),
+    }),
     openDocument: Object.freeze({
         name: "open-document",
         title: "小驴速切打开文档",
@@ -374,6 +403,19 @@ function registerAgentActionCapability(host, definition, onError = (_error, _spe
     }
 }
 
+
+// 翻转任务块 markdown 的勾选标记：- [ ] ↔ - [x]（兼容 * + 列表符与缩进）；
+// 非任务块（没有勾选框）返回空串，由调用方拒绝执行
+function flipTaskMarkdown(markdown, done) {
+    const source = typeof markdown === "string" ? markdown : "";
+    const pattern = /^((?:[\s>]*)(?:[*+-]|\d+\.) \[)([ xX])(\].*)$/s;
+    const match = pattern.exec(source);
+    if (!match) return "";
+    const target = done ? "x" : " ";
+    if (match[2] === target) return "";
+    return source.slice(0, match.index) + match[1] + target + match[3] + source.slice(match.index + match[0].length);
+}
+
 module.exports = {
     MAX_QUERY_LENGTH,
     MAX_NOTEBOOK_LENGTH,
@@ -389,6 +431,7 @@ module.exports = {
     normalizeAgentSearchType,
     normalizeAgentSearchSubType,
     normalizeAgentRootId,
+    flipTaskMarkdown,
     normalizeAgentDocumentId,
     registerAgentActionCapability,
     limitAgentItems,

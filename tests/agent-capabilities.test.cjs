@@ -18,6 +18,7 @@ const {
     buildAgentSearchResult,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
+    flipTaskMarkdown,
     registerAgentActionCapability,
 } = require("../src/agent-capabilities.js");
 
@@ -188,4 +189,27 @@ test("open-document declares honest effects and normalizes ids", () => {
     // 非法宿主/缺 handler 时安静跳过
     assert.equal(registerAgentActionCapability(null, {spec: {}}), null);
     assert.equal(registerAgentActionCapability(host, {spec: {}}), null);
+});
+
+
+test("controlled write: flipTaskMarkdown toggles checkbox marks only", () => {
+    assert.equal(flipTaskMarkdown("* [ ] 买牛奶", true), "* [x] 买牛奶");
+    assert.equal(flipTaskMarkdown("- [x] 买牛奶", false), "- [ ] 买牛奶");
+    assert.equal(flipTaskMarkdown("1. [ ] 有序任务", true), "1. [x] 有序任务");
+    assert.ok(flipTaskMarkdown("  > * [ ] 引用任务", true).includes("> * [x]"));
+    // 大写 X 也可识别为已完成
+    assert.equal(flipTaskMarkdown("- [X] 已完成", false), "- [ ] 已完成");
+});
+
+test("controlled write: non-task blocks and no-op flips are rejected", () => {
+    assert.equal(flipTaskMarkdown("普通段落文本", true), "");
+    assert.equal(flipTaskMarkdown("- [x] 已完成", true), "");
+    assert.equal(flipTaskMarkdown("- [ ] 未变", false), "");
+    assert.equal(flipTaskMarkdown(undefined, true), "");
+});
+
+test("update-task spec requires id and done, declares confirmation", () => {
+    assert.equal(AGENT_CAPABILITY_SPECS.updateTask.name, "update-task-status");
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.updateTask.inputSchema.required, ["id", "done"]);
+    assert.match(AGENT_CAPABILITY_SPECS.updateTask.description, /确认/);
 });

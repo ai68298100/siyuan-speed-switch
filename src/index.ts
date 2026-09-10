@@ -41,6 +41,7 @@ import {
     normalizeAgentSearchSubType,
     normalizeAgentNotebook,
     normalizeAgentQuery,
+    flipTaskMarkdown,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     registerAgentActionCapability,
@@ -674,6 +675,34 @@ export default class SpeedSwitchPlugin extends Plugin {
                     logger.warn("Agent open document fail", error);
                     return {error: "open failed"};
                 }
+            },
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+
+        // 受控写试点：AI 切换任务勾选状态。写入前强制弹窗确认（30s 超时视为拒绝），
+        // 只改勾选标记不改写任务文本
+        registerAgentActionCapability(pluginWithAgentAction, {
+            spec: AGENT_CAPABILITY_SPECS.updateTask,
+            effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
+            handler: async (args: Record<string, unknown>) => {
+                const id = normalizeAgentDocumentId(args?.id);
+                const done = args?.done === true;
+                if (!id) return {error: "invalid task id"};
+                const rowJson = await this.fetchKernelJson("/api/query/sql", {
+                    query: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type='p'`,
+                });
+                const row = (rowJson?.data || [])[0] as {markdown?: string; content?: string} | undefined;
+                if (!row) return {error: "task not found"};
+                const newMarkdown = flipTaskMarkdown(String(row.markdown || ""), done);
+                if (!newMarkdown) return {error: "not a task block"};
+                const detail = (done ? this.i18n.aiTaskMarkDone : this.i18n.aiTaskMarkUndone)
+                    + "\n" + String(row.content || "").slice(0, 80);
+                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
+                if (!approved) return {error: "user denied"};
+                const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
+                    dataType: "markdown", data: newMarkdown, id,
+                });
+                if (!updateJson || updateJson.code !== 0) return {error: "update failed"};
+                return {structuredContent: {ok: true, id, done}, result: JSON.stringify({ok: true, id, done})};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
         this.registerBuiltinHomeAdapters();
@@ -3156,6 +3185,47 @@ const version = beginSearch(session);
         document.addEventListener("pointerdown", outside, true);
         document.addEventListener("keydown", esc, true);
         window.addEventListener("resize", reposition);
+    }
+
+    // 受控写操作的人工确认：30s 超时视为拒绝；仅当用户点"允许执行"才 resolve(true)
+    private confirmControlledAction(title: string, detail: string): Promise<boolean> {
+        return new Promise((resolve) => {
+            let settled = false;
+            let timer = 0;
+            const dialog = new Dialog({
+                title,
+                content: '<div class="speed-switch sw-ai-confirm"></div>',
+                width: this.isMobile ? "min(420px, 92vw)" : "380px",
+                height: this.isMobile ? "min(300px, 70vh)" : "220px",
+            });
+            const settle = (value: boolean) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
+                dialog.destroy();
+                resolve(value);
+            };
+            const root = dialog.element.querySelector<HTMLElement>(".sw-ai-confirm");
+            if (!root) { settle(false); return; }
+            const detailEl = document.createElement("p");
+            detailEl.className = "sw-ai-confirm__detail";
+            detailEl.textContent = detail;
+            const actions = document.createElement("div");
+            actions.className = "sw-ai-confirm__actions";
+            const deny = document.createElement("button");
+            deny.type = "button";
+            deny.className = "b3-button b3-button--text";
+            deny.textContent = this.i18n.aiDeny;
+            deny.addEventListener("click", () => settle(false));
+            const allow = document.createElement("button");
+            allow.type = "button";
+            allow.className = "b3-button b3-button--outline";
+            allow.textContent = this.i18n.aiAllow;
+            allow.addEventListener("click", () => settle(true));
+            actions.append(deny, allow);
+            root.append(detailEl, actions);
+            timer = window.setTimeout(() => settle(false), 30000);
+        });
     }
 
     // 协议 v2 声明式配置表单：由 configSchema 渲染，保存写入实例 config 并回调刷新
