@@ -44,6 +44,7 @@ import {
     flipTaskMarkdown,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
+    normalizeAgentNotebookId,
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {
@@ -703,6 +704,41 @@ export default class SpeedSwitchPlugin extends Plugin {
                 });
                 if (!updateJson || updateJson.code !== 0) return {error: "update failed"};
                 return {structuredContent: {ok: true, id, done}, result: JSON.stringify({ok: true, id, done})};
+            },
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+
+        // 受控写：AI 在指定笔记本下新建文档（强制确认；参数 notebook 支持 ID 或名称）
+        registerAgentActionCapability(pluginWithAgentAction, {
+            spec: AGENT_CAPABILITY_SPECS.createDocument,
+            effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
+            handler: async (args: Record<string, unknown>) => {
+                const rawNotebook = String(args?.notebook || "").trim();
+                const title = String(args?.title || "").trim().slice(0, 128);
+                const markdown = String(args?.markdown || "").slice(0, 4096);
+                if (!rawNotebook || !title) return {error: "notebook and title are required"};
+                const notebooks = await this.loadNotebooks();
+                const target = normalizeAgentNotebookId(rawNotebook)
+                    ? notebooks.find((nb) => nb.id === rawNotebook)
+                    : notebooks.find((nb) => nb.name === rawNotebook);
+                if (!target) return {error: "unknown notebook"};
+                const detail = this.i18n.aiCreateDocDesc
+                    .replace("{notebook}", target.name)
+                    .replace("{title}", title);
+                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
+                if (!approved) return {error: "user denied"};
+                const createJson = await this.fetchKernelJson("/api/filetree/createDocWithMd", {
+                    notebook: target.id, path: title, markdown,
+                });
+                if (!createJson || createJson.code !== 0) {
+                    logger.warn("Agent create document fail", createJson?.msg);
+                    return {error: "create failed"};
+                }
+                // createDocWithMd 不回传文档 ID：按标题回查最近创建的同名根文档
+                const locate = await this.fetchKernelJson("/api/query/sql", {
+                    query: `SELECT id FROM blocks WHERE type='d' AND content='${title.replace(/'/g, "''")}' ORDER BY created DESC LIMIT 1`,
+                });
+                const docId = (locate?.data || [])[0]?.id || "";
+                return {structuredContent: {ok: true, notebook: target.id, title, docId}, result: JSON.stringify({ok: true, notebook: target.id, title, docId})};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
         this.registerBuiltinHomeAdapters();
@@ -2964,12 +3000,18 @@ const version = beginSearch(session);
         });
         // 今日待办：SQL 扫描当前打开文档中的未完成任务块，点击跳块
         register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
-            // 协议 v2 configSchema：limit（条数）、allDocuments（"是"=扫描全库根文档，仍限量）
+            // 协议 v2 configSchema：limit（条数）、allDocuments（"是"=扫描全库）、notebook（按笔记本 ID 过滤，优先于 allDocuments）
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
             const scanAll = config.allDocuments === "是";
-            const openIds = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
-            const scope = scanAll ? "" : ` AND root_id IN ('${openIds.join("','")}')`;
-            if (!scanAll && openIds.length === 0) return {items: []};
+            const notebookFilter = typeof config.notebook === "string" && normalizeAgentNotebookId(config.notebook) ? config.notebook : "";
+            let scope = "";
+            if (notebookFilter) {
+                scope = ` AND box='${notebookFilter}'`;
+            } else if (!scanAll) {
+                const openIds = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                scope = ` AND root_id IN ('${openIds.join("','")}')`;
+                if (openIds.length === 0) return {items: []};
+            }
             const json = await this.fetchKernelJson("/api/query/sql", {
                 query: `SELECT id, content FROM blocks WHERE type='p' AND markdown LIKE '%[ ] %'${scope} ORDER BY updated DESC LIMIT ${limit}`,
             });
@@ -3288,6 +3330,26 @@ const version = beginSearch(session);
                 select.value = current;
                 select.addEventListener("change", () => { draft[field.key] = select.value; });
                 row.appendChild(select);
+            } else if (field.type === "notebook") {
+                // 动态笔记本下拉：值 = 笔记本 ID；笔记本列表异步加载后填充
+                const select = document.createElement("select");
+                select.className = "b3-select fn__block";
+                const current = typeof draft[field.key] === "string" ? (draft[field.key] as string) : (field.defaults as string || "");
+                const fill = (options: Array<{id: string; name: string}>) => {
+                    select.innerHTML = "";
+                    options.forEach((nb) => {
+                        const optionEl = document.createElement("option");
+                        optionEl.value = nb.id;
+                        optionEl.textContent = nb.name;
+                        select.appendChild(optionEl);
+                    });
+                    if (current && options.some((nb) => nb.id === current)) select.value = current;
+                };
+                select.addEventListener("change", () => { draft[field.key] = select.value; });
+                row.appendChild(select);
+                void this.loadNotebooks().then((notebooks) => {
+                    fill(notebooks.length > 0 ? notebooks : [{id: current, name: current || "—"}]);
+                });
             } else {
                 const input = document.createElement("input");
                 input.className = "b3-text-field fn__block";

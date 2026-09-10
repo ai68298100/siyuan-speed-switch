@@ -198,6 +198,36 @@ const AGENT_ITEMS_SCHEMA = Object.freeze({
 });
 
 const AGENT_CAPABILITY_SPECS = Object.freeze({
+    createDocument: Object.freeze({
+        name: "create-document",
+        title: "小驴速切新建文档",
+        description: "受控写操作：在指定笔记本下新建一篇文档（可带初始内容）。执行前会弹窗请求用户确认，用户拒绝或超时则不执行。仅创建新文档，不修改既有内容。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                notebook: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 64,
+                },
+                title: {type: "string", minLength: 1, maxLength: 128},
+                markdown: {type: "string", maxLength: 4096},
+            },
+            required: ["notebook", "title"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                ok: {type: "boolean"},
+                notebook: {type: "string", maxLength: 64},
+                title: {type: "string", maxLength: 128},
+                docId: {type: "string", maxLength: 64},
+            },
+            required: ["ok", "notebook", "title"],
+            additionalProperties: false,
+        }),
+    }),
     updateTask: Object.freeze({
         name: "update-task-status",
         title: "小驴速切换换任务状态",
@@ -416,6 +446,13 @@ function flipTaskMarkdown(markdown, done) {
     return source.slice(0, match.index) + match[1] + target + match[3] + source.slice(match.index + match[0].length);
 }
 
+
+// 笔记本 ID 校验（与思源笔记本 ID 同格式：14 位时间戳-后缀）
+function normalizeAgentNotebookId(value) {
+    const id = asText(value, 64);
+    return /^\d{14}-[0-9a-z]+$/i.test(id) ? id : "";
+}
+
 module.exports = {
     MAX_QUERY_LENGTH,
     MAX_NOTEBOOK_LENGTH,
@@ -431,6 +468,8 @@ module.exports = {
     normalizeAgentSearchType,
     normalizeAgentSearchSubType,
     normalizeAgentRootId,
+    normalizeAgentNotebookId,
+    flipTaskMarkdown,
     flipTaskMarkdown,
     normalizeAgentDocumentId,
     registerAgentActionCapability,

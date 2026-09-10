@@ -168,6 +168,11 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.23 (2026-09-11)
+
+- Controlled-write expansion: a new `create-document` agent capability creates a document in a given notebook (with optional initial markdown), behind the mandatory confirmation dialog; the `notebook` argument accepts an id or a name.
+- Today's tasks widget supports per-notebook filtering: the config form gains a dynamic notebook dropdown (protocol adds a `notebook` config field type whose options the panel fills from SiYuan's notebook list).
+
 ### v0.16.22 (2026-09-11)
 
 - Agent discovery mode: `home-widget-snapshot` accepts an omitted `moduleId` to list every queryable widget on the panel (with title, description and size presets), letting the AI discover before it queries.

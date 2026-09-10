@@ -93,6 +93,7 @@
   "homeConfig": "配置",
   "homeConfigSave": "保存",
   "homeTaskToggleFailed": "任务状态更新失败，请稍后重试",
+  "aiCreateDocDesc": "智能体请求在笔记本「{notebook}」新建文档：\n{title}",
   "aiConfirmTitle": "智能体请求确认",
   "aiAllow": "允许执行",
   "aiDeny": "拒绝",

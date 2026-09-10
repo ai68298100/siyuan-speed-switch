@@ -10,6 +10,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "allDocuments", label: "扫描全部文档", type: "select", options: ["否", "是"], defaults: "否"},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
     {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "docId", label: "文档 ID", type: "text", defaults: ""},
@@ -63,7 +64,7 @@ function normalizeLayout(value) {
 // 协议 v2 字段归一化
 const PROTOCOL_VERSIONS = [1, 2];
 const REFRESH_EVENTS = ["switch-protyle", "loaded-protyle", "destroy-protyle"];
-const CONFIG_FIELD_TYPES = ["text", "number", "select"];
+const CONFIG_FIELD_TYPES = ["text", "number", "select", "notebook"];
 
 function normalizeProtocolVersion(value) {
     return PROTOCOL_VERSIONS.includes(value) ? value : 1;
@@ -98,6 +99,8 @@ function normalizeConfigSchema(value) {
                 .map((option) => text(typeof option === "object" ? option?.label : option, 32)).filter(Boolean);
             if (field.options.length === 0) return fields;
             field.defaults = text(raw.defaults, 32) || field.options[0];
+        } else if (type === "notebook") {
+            // 选项由宿主渲染时用思源笔记本列表动态填充
         } else {
             field.defaults = text(raw.defaults, 128);
         }
