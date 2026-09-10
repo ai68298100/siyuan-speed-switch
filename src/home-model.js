@@ -11,6 +11,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "allDocuments", label: "扫描全部文档", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
+        {key: "days", label: "时间范围（天）", type: "number", min: 7, max: 365, defaults: 30},
     ]},
     {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "docId", label: "文档 ID", type: "text", defaults: ""},

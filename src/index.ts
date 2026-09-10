@@ -1,5 +1,5 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
-import type {IMenu} from "siyuan";
+import type {IMenu, TEventBus} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
@@ -2930,6 +2930,13 @@ const version = beginSearch(session);
     private homeModuleOpens = new Map<string, () => void>();
     private homeBuiltinAdapterIds = new Set<string>();
 
+    // 全库扫描时间窗起点：days 天前的 "YYYYMMDDHHmmss"（思源 updated 同格式，可直接字符串比较）
+    private taskWindowStart(days: number): string {
+        const d = new Date(Date.now() - Math.max(1, days) * 86400000);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}000000`;
+    }
+
     // 内核 HTTP POST 的统一封装：5s 超时、非 2xx 抛错、失败返回 null（组件走空态/错误态）
     private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
         const controller = typeof AbortController === "function" ? new AbortController() : null;
@@ -3004,9 +3011,12 @@ const version = beginSearch(session);
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
             const scanAll = config.allDocuments === "是";
             const notebookFilter = typeof config.notebook === "string" && normalizeAgentNotebookId(config.notebook) ? config.notebook : "";
+            // 全库扫描的时间窗守卫：默认只看近 30 天有更新的任务（天数 7–365 可配）
+            const days = Math.min(365, Math.max(7, Math.trunc(Number(config.days) || 30)));
+            const since = this.taskWindowStart(days);
             let scope = "";
             if (notebookFilter) {
-                scope = ` AND box='${notebookFilter}'`;
+                scope = ` AND box='${notebookFilter}' AND updated >= '${since}'`;
             } else if (!scanAll) {
                 const openIds = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
                 scope = ` AND root_id IN ('${openIds.join("','")}')`;
@@ -3817,33 +3827,38 @@ const version = beginSearch(session);
                 }
             }
 
-            // 协议 v2 refreshOn：任一模块声明的事件触发时防抖刷新整面板（有界：仅面板存活期）
-            const refreshEvents = new Set<string>();
-            cells.forEach(({inst}) => {
-                const def = defs.get(inst.moduleId);
-                (Array.isArray(def?.refreshOn) ? def.refreshOn : []).forEach((event: string) => refreshEvents.add(event));
+            // 协议 v2 refreshOn：事件触发时只刷新订阅了该事件的组件（500ms 防抖；仅面板存活期）
+            const eventModuleIds = new Map<TEventBus, Set<string>>();
+            controllers.forEach((entry) => {
+                const def = defs.get(entry.moduleId);
+                (Array.isArray(def?.refreshOn) ? def.refreshOn : []).forEach((event: TEventBus) => {
+                    if (!eventModuleIds.has(event)) eventModuleIds.set(event, new Set());
+                    eventModuleIds.get(event)!.add(entry.moduleId);
+                });
             });
-            const homeRefreshHandler = refreshEvents.size > 0
-                ? () => {
-                    if (this.homeRefreshTimer) window.clearTimeout(this.homeRefreshTimer);
-                    this.homeRefreshTimer = window.setTimeout(() => {
-                        this.homeRefreshTimer = 0;
-                        if (root.isConnected) controllers.forEach((entry) => void entry.refresh());
-                    }, 500);
-                }
-                : null;
-            if (homeRefreshHandler && this.globalEventHandlers) {
-                if (refreshEvents.has("switch-protyle")) this.eventBus.on("switch-protyle", homeRefreshHandler);
-                if (refreshEvents.has("loaded-protyle")) this.eventBus.on("loaded-protyle-static", homeRefreshHandler);
-                if (refreshEvents.has("destroy-protyle")) this.eventBus.on("destroy-protyle", homeRefreshHandler);
-                this.homeRefreshCleanup = () => {
-                    if (this.homeRefreshTimer) window.clearTimeout(this.homeRefreshTimer);
-                    this.homeRefreshTimer = 0;
-                    if (refreshEvents.has("switch-protyle")) this.eventBus.off("switch-protyle", homeRefreshHandler);
-                    if (refreshEvents.has("loaded-protyle")) this.eventBus.off("loaded-protyle-static", homeRefreshHandler);
-                    if (refreshEvents.has("destroy-protyle")) this.eventBus.off("destroy-protyle", homeRefreshHandler);
-                    this.homeRefreshCleanup = null;
+            let homeRefreshTimer = 0;
+            const pendingModules = new Set<string>();
+            const homeFlushRefresh = () => {
+                homeRefreshTimer = 0;
+                if (!root.isConnected || pendingModules.size === 0) { pendingModules.clear(); return; }
+                const ids = [...pendingModules];
+                pendingModules.clear();
+                controllers.forEach((entry) => {
+                    if (ids.includes(entry.moduleId)) void entry.refresh();
+                });
+            };
+            const homeRefreshCleanupFns: Array<() => void> = [];
+            eventModuleIds.forEach((moduleIds, event) => {
+                const handler = () => {
+                    moduleIds.forEach((id) => pendingModules.add(id));
+                    if (homeRefreshTimer) return;
+                    homeRefreshTimer = window.setTimeout(homeFlushRefresh, 500);
                 };
+                this.eventBus.on(event as TEventBus, handler);
+                homeRefreshCleanupFns.push(() => this.eventBus.off(event as TEventBus, handler));
+            });
+            if (homeRefreshCleanupFns.length > 0) {
+                this.homeRefreshCleanup = () => homeRefreshCleanupFns.forEach((fn) => fn());
             }
 
             // 统一刷新；插件模块失败且有跳转回调时补"打开插件"按钮

@@ -35,6 +35,8 @@ On SiYuan versions that expose `addAgentCapability` (the current adapter follows
 
 [中文说明](./README.md)
 
+**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot` (read-only), `open-document` (controlled navigation), `update-task-status` and `create-document` (controlled writes behind a mandatory confirmation dialog).
+
 ## Core Capabilities
 
 ### Tab Switching And Live Refresh
@@ -167,6 +169,12 @@ Then verify in a real SiYuan environment:
 Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
 
 ## Changelog
+
+### v0.16.24 (2026-09-11)
+
+- refreshOn refinement: fired events now refresh only the widgets subscribed to them, not the whole panel.
+- Today's tasks full-library scan gains a time-window guard (last 30 days by default, 7–365 configurable) so large workspaces never degrade the LIKE query.
+- Agent capability table now documents update-task-status and create-document.
 
 ### v0.16.23 (2026-09-11)
 
