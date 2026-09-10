@@ -86,7 +86,9 @@ function normalizeSnapshot(value) {
     const rawItems = Array.isArray(value.items) ? value.items : [];
     const items = rawItems.slice(0, MAX_SNAPSHOT_ITEMS).map((item) => {
         if (!item || typeof item !== "object") return null;
-        return {label: safeText(item.label), value: safeText(item.value), href: safeText(item.href, 512)};
+        return {label: safeText(item.label), value: safeText(item.value), href: safeText(item.href, 512), command: safeText(item.command, 128)};
+        // 协议 v2：command 为 "插件名::命令key"，点击由宿主代为执行（有界格式）
+        
     }).filter(Boolean);
     return {title: safeText(value.title, 64), items, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
 }

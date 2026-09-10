@@ -2907,11 +2907,15 @@ const version = beginSearch(session);
             return {items: docId && BLOCK_ID_RE.test(docId) ? [{label: title, value: docId}] : []};
         });
         // 今日待办：SQL 扫描当前打开文档中的未完成任务块，点击跳块
-        register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, async () => {
-            const ids = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
-            if (ids.length === 0) return {items: []};
+        register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, async (config) => {
+            // 协议 v2 configSchema：limit（条数）、allDocuments（"是"=扫描全库根文档，仍限量）
+            const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const scanAll = config.allDocuments === "是";
+            const openIds = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+            const scope = scanAll ? "" : ` AND root_id IN ('${openIds.join("','")}')`;
+            if (!scanAll && openIds.length === 0) return {items: []};
             const json = await this.fetchKernelJson("/api/query/sql", {
-                query: `SELECT id, content FROM blocks WHERE type='p' AND markdown LIKE '%[ ] %' AND root_id IN ('${ids.join("','")}') ORDER BY updated DESC LIMIT 12`,
+                query: `SELECT id, content FROM blocks WHERE type='p' AND markdown LIKE '%[ ] %'${scope} ORDER BY updated DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{id: string; content: string}>;
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
@@ -2948,8 +2952,15 @@ const version = beginSearch(session);
             ]};
         });
         // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
-        register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, () => {
-            const commands = this.getPluginCommands().slice(0, 12);
+        register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, (config) => {
+            // 协议 v2 configSchema：limit（条数）、filter（label/plugin 关键词过滤）
+            const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const filter = typeof config.filter === "string" ? config.filter.trim().toLowerCase() : "";
+            const commands = this.getPluginCommands()
+                .filter((command) => !filter
+                    || command.label.toLowerCase().includes(filter)
+                    || command.pluginTitle.toLowerCase().includes(filter))
+                .slice(0, limit);
             return {items: commands.map((command) => ({
                 label: command.pluginTitle ? `${command.label} · ${command.pluginTitle}` : command.label,
                 value: "cmd:" + command.value,
@@ -2996,8 +3007,21 @@ const version = beginSearch(session);
         showMessage(`${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`);
     }
 
-    // 面板条目点击分发：动作协议 / 文档集 / 收藏键 / 文档 rootId
-    private handleHomeItemAction(item: { label?: string; value?: string; href?: string }, close: () => void) {
+    // 执行 "插件名::命令key"（协议 v2 条目级命令 / 模块级 clickCommand 共用）
+    private executeHomeCommand(command: string, close: () => void): boolean {
+        if (!/^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(command)) return false;
+        const action = {
+            id: "home-cmd", label: command, icon: "iconPlugin",
+            kind: "command", value: command, targets: ["desktop"], order: 0, enabled: true,
+        } as IQuickAction;
+        close();
+        this.executeQuickAction(action, null, () => undefined);
+        return true;
+    }
+
+    // 面板条目点击分发：条目命令 / 动作协议 / 文档集 / 收藏键 / 文档 rootId
+    private handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void) {
+        if (item.command && this.executeHomeCommand(item.command, close)) return;
         const value = String(item.value || "");
         if (value === "action:journal") {
             close();
@@ -3107,6 +3131,94 @@ const version = beginSearch(session);
         window.addEventListener("resize", reposition);
     }
 
+    // 协议 v2 声明式配置表单：由 configSchema 渲染，保存写入实例 config 并回调刷新
+    private openHomeConfigForm(
+        inst: { instanceId: string; moduleId: string; config: Record<string, unknown> },
+        schema: Array<{ key: string; label: string; type: string; min?: number; max?: number; defaults?: unknown; options?: string[] }>,
+        onSaved: () => void,
+    ) {
+        const dialog = new Dialog({
+            title: `${this.i18n.homeConfig} · ${inst.moduleId}`,
+            content: '<div class="speed-switch sw-home-config"></div>',
+            width: this.isMobile ? "min(480px, 92vw)" : "420px",
+            height: this.isMobile ? "min(420px, 80vh)" : "360px",
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw-home-config");
+        if (!root) return;
+        root.innerHTML = "";
+        const draft: Record<string, unknown> = {...inst.config};
+        schema.forEach((field) => {
+            const row = document.createElement("div");
+            row.className = "sw-home-config__field";
+            const label = document.createElement("label");
+            label.className = "sw-home-config__label";
+            label.textContent = field.label;
+            row.appendChild(label);
+            if (field.type === "select") {
+                const select = document.createElement("select");
+                select.className = "b3-select fn__block";
+                (field.options || []).forEach((option) => {
+                    const optionEl = document.createElement("option");
+                    optionEl.value = option;
+                    optionEl.textContent = option;
+                    select.appendChild(optionEl);
+                });
+                const current = typeof draft[field.key] === "string" && (field.options || []).includes(draft[field.key] as string)
+                    ? (draft[field.key] as string)
+                    : (field.defaults as string);
+                select.value = current;
+                select.addEventListener("change", () => { draft[field.key] = select.value; });
+                row.appendChild(select);
+            } else {
+                const input = document.createElement("input");
+                input.className = "b3-text-field fn__block";
+                const current = draft[field.key] ?? field.defaults ?? "";
+                input.value = String(current);
+                if (field.type === "number") {
+                    input.type = "number";
+                    input.min = String(field.min ?? 0);
+                    input.max = String(field.max ?? 100);
+                }
+                input.addEventListener("change", () => {
+                    if (field.type === "number") {
+                        const parsed = Number(input.value);
+                        const min = field.min ?? 0;
+                        const max = field.max ?? 100;
+                        draft[field.key] = Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.trunc(parsed))) : field.defaults ?? min;
+                        input.value = String(draft[field.key]);
+                    } else {
+                        draft[field.key] = input.value.slice(0, 128);
+                    }
+                });
+                row.appendChild(input);
+            }
+            root.appendChild(row);
+        });
+        const actions = document.createElement("div");
+        actions.className = "sw-home-config__actions";
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "b3-button b3-button--text";
+        cancel.textContent = this.i18n.cancel;
+        cancel.addEventListener("click", () => dialog.destroy());
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "b3-button b3-button--text";
+        save.textContent = this.i18n.homeConfigSave;
+        save.addEventListener("click", () => {
+            const next = this.getHomeState();
+            const instance = (next.instances as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
+            if (instance) {
+                instance.config = {...draft};
+                this.saveHomeState(next);
+            }
+            dialog.destroy();
+            onSaved();
+        });
+        actions.append(cancel, save);
+        root.appendChild(actions);
+    }
+
     // 小组件商店：画廊式添加入口，内置/插件分区；卡片带型号瓦片，点瓦片添加（或调整已添加实例的型号）
     private openHomeWidgetStore(
         defs: Map<string, any>,
@@ -3162,6 +3274,14 @@ const version = beginSearch(session);
                 const desc = document.createElement("span");
                 desc.textContent = def.description || "";
                 copy.append(title, desc);
+                // 协议 v2 元数据：作者与协议版本（可选）
+                const metaBits = [def.author, def.protocolVersion >= 2 ? "Protocol v2" : ""].filter(Boolean);
+                if (metaBits.length > 0) {
+                    const meta = document.createElement("span");
+                    meta.className = "sw-home-store__meta";
+                    meta.textContent = metaBits.join(" · ");
+                    copy.appendChild(meta);
+                }
                 head.append(icon, copy);
                 card.appendChild(head);
                 const tiles = document.createElement("div");
@@ -3405,6 +3525,17 @@ const version = beginSearch(session);
                         button.addEventListener("click", onClick);
                         return button;
                     };
+                    const configSchema = Array.isArray(def.configSchema) ? def.configSchema : [];
+                    const toolsChildren: HTMLElement[] = [];
+                    if (configSchema.length > 0) {
+                        const configButton = tool(this.i18n.homeConfig, () => undefined);
+                        configButton.addEventListener("click", () => {
+                            this.openHomeConfigForm(inst, configSchema, () => {
+                                renderPanel();
+                            });
+                        });
+                        toolsChildren.push(configButton);
+                    }
                     const sizeButton = tool(this.i18n.homeSize, () => undefined);
                     sizeButton.addEventListener("click", () => {
                         this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
@@ -3414,6 +3545,7 @@ const version = beginSearch(session);
                         });
                     });
                     tools.append(
+                        ...toolsChildren,
                         sizeButton,
                         tool(this.i18n.homeMoveUp, () => {
                             const next = this.getHomeState();
@@ -3468,10 +3600,42 @@ const version = beginSearch(session);
                 }
             }
 
+            // 协议 v2 refreshOn：任一模块声明的事件触发时防抖刷新整面板（有界：仅面板存活期）
+            const refreshEvents = new Set<string>();
+            cells.forEach(({inst}) => {
+                const def = defs.get(inst.moduleId);
+                (Array.isArray(def?.refreshOn) ? def.refreshOn : []).forEach((event: string) => refreshEvents.add(event));
+            });
+            const homeRefreshHandler = refreshEvents.size > 0
+                ? () => {
+                    if (this.homeRefreshTimer) window.clearTimeout(this.homeRefreshTimer);
+                    this.homeRefreshTimer = window.setTimeout(() => {
+                        this.homeRefreshTimer = 0;
+                        if (root.isConnected) controllers.forEach((entry) => void entry.refresh());
+                    }, 500);
+                }
+                : null;
+            if (homeRefreshHandler && this.globalEventHandlers) {
+                if (refreshEvents.has("switch-protyle")) this.eventBus.on("switch-protyle", homeRefreshHandler);
+                if (refreshEvents.has("loaded-protyle")) this.eventBus.on("loaded-protyle-static", homeRefreshHandler);
+                if (refreshEvents.has("destroy-protyle")) this.eventBus.on("destroy-protyle", homeRefreshHandler);
+                this.homeRefreshCleanup = () => {
+                    if (this.homeRefreshTimer) window.clearTimeout(this.homeRefreshTimer);
+                    this.homeRefreshTimer = 0;
+                    if (refreshEvents.has("switch-protyle")) this.eventBus.off("switch-protyle", homeRefreshHandler);
+                    if (refreshEvents.has("loaded-protyle")) this.eventBus.off("loaded-protyle-static", homeRefreshHandler);
+                    if (refreshEvents.has("destroy-protyle")) this.eventBus.off("destroy-protyle", homeRefreshHandler);
+                    this.homeRefreshCleanup = null;
+                };
+            }
+
             // 统一刷新；插件模块失败且有跳转回调时补"打开插件"按钮
             controllers.forEach(async (entry) => {
                 const result = await entry.refresh() as { ok?: boolean } | undefined;
-                const open = this.homeModuleOpens.get(entry.moduleId);
+                // 协议 v2：无 open 回调时可用声明式 clickCommand（"插件名::命令key"）
+                const clickCommand = defs.get(entry.moduleId)?.clickCommand || "";
+                const open = this.homeModuleOpens.get(entry.moduleId)
+                    || (clickCommand ? () => this.executeHomeCommand(clickCommand, () => undefined) : null);
                 const existing = entry.cell.querySelector(".sw-home__open");
                 if (result && result.ok === false && open) {
                     if (!existing) {
@@ -3491,6 +3655,11 @@ const version = beginSearch(session);
             });
         };
 
+        const originalDestroy = dialog.destroy.bind(dialog);
+        dialog.destroy = () => {
+            this.homeRefreshCleanup?.();
+            originalDestroy();
+        };
         renderPanel();
     }
 
@@ -5212,6 +5381,34 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 spec: AGENT_CAPABILITY_SPECS.search,
                 handler: async (args: Record<string, unknown>) => this.searchAgentDocuments(args),
             },
+            {
+                spec: AGENT_CAPABILITY_SPECS.homeWidgets,
+                handler: async (args: Record<string, unknown>) => {
+                    try {
+                        const moduleId = String(args?.moduleId || "");
+                        const limit = normalizeAgentLimit(args?.limit, 12);
+                        const device = this.isMobile ? "mobile" : "desktop";
+                        const def = this.homeRuntime.listModules(device)
+                            .find((item: any) => item.moduleId === moduleId) as {title?: string} | undefined;
+                        if (!def) return {error: "unknown module"};
+                        const result = await this.homeRuntime.read(moduleId, device, {}, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
+                        const items = ((result?.snapshot?.items || []) as Array<{label?: string; value?: string}>)
+                            .slice(0, limit)
+                            .map((item) => ({label: item.label || "", value: item.value || ""}))
+                            .filter((item) => !!item.label);
+                        const content = {
+                            moduleId,
+                            title: def.title,
+                            status: result?.ok ? "ok" : String(result?.reason || "unavailable"),
+                            items,
+                        };
+                        return {structuredContent: content, result: JSON.stringify(content)};
+                    } catch (error) {
+                        logger.warn("Agent home widget snapshot unavailable", error);
+                        return {error: "widget snapshot unavailable"};
+                    }
+                },
+            },
         ], (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
     }
 
@@ -6717,6 +6914,8 @@ private rootIdOf(tab: Tab): string | null {
     private notebookListCache: Array<{id: string; name: string}> | null = null;
 
     private groupFlowObserver: ResizeObserver | null = null;
+    private homeRefreshTimer = 0;
+    private homeRefreshCleanup: (() => void) | null = null;
     private groupFlowLastWidth = 0;
 
     // 分组流式布局度量：用标准网格自己的公式反推列数与 1fr 实际像素宽，

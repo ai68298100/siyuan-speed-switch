@@ -198,6 +198,48 @@ const AGENT_ITEMS_SCHEMA = Object.freeze({
 });
 
 const AGENT_CAPABILITY_SPECS = Object.freeze({
+    homeWidgets: Object.freeze({
+        name: "home-widget-snapshot",
+        title: "小驴速切组件面板数据",
+        description: "只读获取组件面板中任一已注册组件的有界数据快照（如今日待办、本月日记、最近打开、标签、第三方插件组件）。不会修改笔记或页签。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                moduleId: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 64,
+                    pattern: "^[A-Za-z0-9._:-]{1,64}$",
+                },
+                limit: {type: "integer", minimum: 1, maximum: 24},
+            },
+            required: ["moduleId"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                moduleId: {type: "string", maxLength: 64},
+                title: {type: "string", maxLength: 64},
+                status: {type: "string", maxLength: 32},
+                items: {
+                    type: "array",
+                    maxItems: 24,
+                    items: {
+                        type: "object",
+                        properties: {
+                            label: {type: "string", maxLength: 256},
+                            value: {type: "string", maxLength: 256},
+                        },
+                        required: ["label"],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ["moduleId", "items"],
+            additionalProperties: false,
+        }),
+    }),
     navigation: Object.freeze({
         name: "navigation-state",
         title: "小驴速切导航状态",

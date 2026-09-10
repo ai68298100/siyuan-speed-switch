@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.16-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.17-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -167,6 +167,13 @@ Then verify in a real SiYuan environment:
 Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
 
 ## Changelog
+
+### v0.16.17 (2026-09-11)
+
+- **Protocol v2**: `registerHomeModule` gains four declarative capability groups — per-item `command` (click executes a plugin command), module-level `clickCommand` (declarative failure-jump), `configSchema` (declare config fields; the panel renders the form and passes values to read), and `refreshOn` (auto-refresh on tab switch/open/close events, 500ms debounce) — plus a `protocolVersion` handshake and store-card author/version metadata.
+- Configurable widgets: **Pinned document** takes a doc id and display name; **Today's tasks** supports an item cap and a scan-all-documents switch; **Plugin commands** supports an item cap and keyword filter.
+- **Agent integration**: a new read-only agent capability `home-widget-snapshot` lets SiYuan AI query the bounded snapshot of any registered widget (third-party included), capped by item limits and cache.
+- Fixed the built-in size whitelist not covering the 7-tier expansion (XS/Tall/Full were silently downgraded).
 
 ### v0.16.16 (2026-09-11)
 

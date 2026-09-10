@@ -9,7 +9,7 @@ test("home view normalizes loading, cached, empty, and bounded item states", () 
     const ready = normalizeHomeViewResult({ok: true, cached: true, snapshot: {items: [{label: " Ready ", value: "1"}, {label: ""}]}});
     assert.equal(ready.status, "ready");
     assert.equal(ready.cached, true);
-    assert.deepEqual(ready.items, [{label: "Ready", value: "1", href: ""}]);
+    assert.deepEqual(ready.items, [{label: "Ready", value: "1", href: "", command: ""}]);
     assert.equal(normalizeHomeViewResult({ok: true, snapshot: {items: []}}).status, "empty");
     assert.equal(normalizeHomeViewResult({ok: false, reason: "timeout"}).status, "error");
 });
@@ -18,7 +18,7 @@ test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {
         moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan", status: "ready", cached: false,
-        reason: "", updatedAt: 0, items: [{label: "One", value: "", href: ""}], collapsed: true,
+        reason: "", updatedAt: 0, items: [{label: "One", value: "", href: "", command: ""}], collapsed: true,
         role: "region", ariaBusy: false,
     });
     assert.equal(buildHomeModuleView(null, {}), null);

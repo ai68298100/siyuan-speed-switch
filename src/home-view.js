@@ -62,6 +62,7 @@ function normalizeHomeViewResult(value) {
         label: text(item?.label),
         value: text(item?.value),
         href: text(item?.href, 512),
+        command: text(item?.command, 128),
     })).filter((item) => item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
     const status = explicitStatus || (source.loading === true ? "loading" : source.ok === false ? "error" : items.length ? "ready" : "empty");
@@ -185,6 +186,7 @@ function renderHomeModuleView(doc, view, options = {}) {
             button.dataset.focusKey = focusKey;
             button.dataset.value = item.value || "";
             if (item.href) button.dataset.href = item.href;
+            if (item.command) button.dataset.command = item.command;
             button.textContent = item.label || item.value || item.href || "";
             if (options.onItem) button.addEventListener("click", () => options.onItem(item, view));
             row.appendChild(button);

@@ -89,6 +89,8 @@
   "homeDescBookmarks": "Bookmarks with counts; click to open the bookmark panel",
   "homeDescJournalMonthly": "This month's journal entries; click to jump",
   "homeDescCmds": "Trigger other plugins' commands — no adaptation required",
+  "homeConfig": "Configure",
+  "homeConfigSave": "Save",
   "homeHintText": "The widget panel is still evolving. Plugin developers are invited to bring their plugins into the widget store via the widget protocol:",
   "homeHintLink": "Widget Protocol Guide",
   "homeRecentDocuments": "Recently opened",

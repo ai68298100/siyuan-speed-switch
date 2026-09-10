@@ -7,14 +7,23 @@ const DEFAULT_LAYOUT = Object.freeze({x: 0, y: 0, w: 1, h: 1, collapsed: false})
 const DEFAULT_MODULES = Object.freeze([
     {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]},
     {moduleId: "today-journal", title: "今日日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"]},
-    {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large", "full"]},
-    {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
+    {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "allDocuments", label: "扫描全部文档", type: "select", options: ["否", "是"], defaults: "否"},
+    ]},
+    {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "docId", label: "文档 ID", type: "text", defaults: ""},
+        {key: "title", label: "显示名称", type: "text", defaults: ""},
+    ]},
     {moduleId: "favorites", title: "收藏", icon: "iconStar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]},
     {moduleId: "document-sets", title: "文档集", icon: "iconLayout", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large"]},
     {moduleId: "tags", title: "标签", icon: "iconTags", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"]},
     {moduleId: "bookmarks", title: "书签", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"]},
     {moduleId: "journal-monthly", title: "本月日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
-    {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
+    {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "filter", label: "关键词过滤", type: "text", defaults: ""},
+    ]},
     {moduleId: "checkin-summary", title: "打卡摘要", icon: "iconCalendar", category: "plugin", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
 ]);
 
@@ -50,6 +59,53 @@ function normalizeLayout(value) {
     return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
 }
 
+
+// 协议 v2 字段归一化
+const PROTOCOL_VERSIONS = [1, 2];
+const REFRESH_EVENTS = ["switch-protyle", "loaded-protyle", "destroy-protyle"];
+const CONFIG_FIELD_TYPES = ["text", "number", "select"];
+
+function normalizeProtocolVersion(value) {
+    return PROTOCOL_VERSIONS.includes(value) ? value : 1;
+}
+
+function normalizeClickCommand(value) {
+    const raw = text(value, 128);
+    return /^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : "";
+}
+
+function normalizeRefreshOn(value) {
+    return Array.isArray(value)
+        ? REFRESH_EVENTS.filter((event) => value.includes(event)).slice(0, 3)
+        : [];
+}
+
+function normalizeConfigSchema(value) {
+    if (!Array.isArray(value)) return [];
+    return value.slice(0, 8).reduce((fields, raw) => {
+        if (!raw || typeof raw !== "object") return fields;
+        const key = typeof raw.key === "string" ? raw.key.replace(/[^A-Za-z0-9_-]/g, "") : "";
+        const label = text(raw.label, 32);
+        if (!/^[A-Za-z][A-Za-z0-9_-]{0,31}$/.test(key) || !label) return fields;
+        const type = CONFIG_FIELD_TYPES.includes(raw.type) ? raw.type : "text";
+        const field = {key, label, type};
+        if (type === "number") {
+            field.min = Number.isFinite(raw.min) ? Math.trunc(raw.min) : 0;
+            field.max = Number.isFinite(raw.max) ? Math.trunc(raw.max) : 100;
+            if (Number.isFinite(raw.defaults)) field.defaults = Math.trunc(raw.defaults);
+        } else if (type === "select") {
+            field.options = (Array.isArray(raw.options) ? raw.options : []).slice(0, 12)
+                .map((option) => text(typeof option === "object" ? option?.label : option, 32)).filter(Boolean);
+            if (field.options.length === 0) return fields;
+            field.defaults = text(raw.defaults, 32) || field.options[0];
+        } else {
+            field.defaults = text(raw.defaults, 128);
+        }
+        fields.push(field);
+        return fields;
+    }, []);
+}
+
 function normalizeModuleDefinition(value) {
     if (!value || typeof value !== "object") return null;
     const moduleId = text(value.moduleId, 64).replace(/[^A-Za-z0-9._:-]/g, "");
@@ -59,7 +115,7 @@ function normalizeModuleDefinition(value) {
         ? DEVICES.filter((device) => value.supportedDevices.includes(device))
         : ["desktop"];
     if (supportedDevices.length === 0) return null;
-    const sizeKeys = ["small", "medium", "wide", "large"];
+    const sizeKeys = ["xs", "small", "medium", "tall", "wide", "large", "full"];
     const sizes = Array.isArray(value.sizes) ? sizeKeys.filter((key) => value.sizes.includes(key)) : [];
     return {
         moduleId, title,
@@ -69,6 +125,12 @@ function normalizeModuleDefinition(value) {
         readOnly: value.readOnly !== false,
         sizes: sizes.length > 0 ? sizes : ["medium"],
         description: text(value.description, 96),
+        protocolVersion: normalizeProtocolVersion(value.protocolVersion),
+        author: text(value.author, 64),
+        homepage: text(value.homepage, 256),
+        clickCommand: normalizeClickCommand(value.clickCommand),
+        configSchema: normalizeConfigSchema(value.configSchema),
+        refreshOn: normalizeRefreshOn(value.refreshOn),
     };
 }
 
@@ -152,4 +214,4 @@ function getModuleDefinition(definitions, moduleId) {
     return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeProtocolVersion, normalizeClickCommand, normalizeRefreshOn, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};

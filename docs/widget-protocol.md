@@ -83,6 +83,59 @@ export default class MyPlugin extends Plugin {
 - `read` 抛错或超时不会拖垮面板，组件显示错误态与重试/打开插件按钮；
 - **性能要求**：避免全库扫描；数据量大时先缓存/限量（建议 ≤12 条）。
 
+## 协议 v2：更低的接入成本
+
+在基础字段之上，v2（`protocolVersion: 2`）提供四组声明式能力，**全部可选**，按需取用：
+
+### 1. 条目级命令（`command`）
+
+`read` 返回的条目可携带 `command: "插件名::命令key"`，点击该条目时由小驴速切代为执行对应插件命令——不需要自己处理点击跳转逻辑：
+
+```js
+read: async () => ({
+    items: [
+        {label: "开始专注", value: "", command: "siyuan-plugin-docktomato::start"},
+    ],
+}),
+```
+
+### 2. 模块级 `clickCommand`（声明式跳转）
+
+不想写 `open` 回调时，直接声明命令字符串即可；组件读取失败时面板显示"打开插件"按钮并执行它：
+
+```js
+{ moduleId: "...", clickCommand: "my-plugin::open", read: ... }
+```
+
+### 3. `configSchema`（用户可配置的组件）
+
+声明配置字段，面板会在编辑布局模式的「配置」按钮里自动渲染表单，值经清洗后传入 `read(config)`：
+
+```js
+configSchema: [
+    {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+    {key: "notebook", label: "笔记本", type: "text", defaults: ""},
+    {key: "view", label: "视图", type: "select", options: ["日", "周", "月"], defaults: "月"},
+],
+```
+
+- 最多 8 个字段；`type` 支持 `text` / `number` / `select`；
+- 用户配置持久化在面板实例上，`read(config)` 每次都会收到最新值。
+
+### 4. `refreshOn`（自动刷新时机）
+
+声明内置事件白名单，面板打开期间任一事件触发即防抖刷新（500ms）：
+
+```js
+refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
+```
+
+> 第三方插件自定义事件暂不在白名单内（思源 eventBus 为插件私有实例，跨插件事件不可达）；如有需求欢迎提 issue 讨论。
+
+### 5. 商店元数据
+
+`author`（≤64 字）与 `homepage`（URL）会展示在商店卡片上；`protocolVersion: 2` 会标记 Protocol v2 徽标。
+
 ## 点击行为
 
 条目 `value` 交给小驴速切分发，按前缀识别：
