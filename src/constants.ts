@@ -160,6 +160,7 @@ export const PANEL_SCALE_MIN = 50;   // 自适应比例下限（百分比）
 export const PANEL_SCALE_MAX = 100;  // 自适应比例上限（百分比，100% 时铺满可视区再留安全边距）
 export const PANEL_SCALE_DEFAULT = 90;
 export const PANEL_SIZE_MIN_PX = 420; // 自适应计算的像素下限，避免小窗口下面板过小
+export const SETTINGS_PANEL_SCALE = 70; // 设置页桌面端独立自适应比例（不随面板比例设置联动）
 
 // 列表分组方式：none=按窗口平铺（旧行为）/ notebook=按笔记本（默认）/ favorites=按收藏 / createdMonth=按创建月份
 export type TabGroupMode = "none" | "notebook" | "favorites" | "createdMonth";

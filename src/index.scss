@@ -1856,21 +1856,6 @@
         flex-direction: column;
     }
 
-    // ==================== 分类分组流式布局（笔记本/收藏/创建月份） ====================
-    // 组块宽度 = --sw-span 列（全局 --sw-cols 列基准）；小分组并排流动换行，不再各占一整排
-    .sw--grouped-flow {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: 14px;
-
-        .sw__group--named {
-            flex: 0 0 calc((100% - (var(--sw-cols, 1) - 1) * 14px) / var(--sw-cols, 1) * var(--sw-span, 1)
-                + (var(--sw-span, 1) - 1) * 14px);
-            min-width: 0;
-        }
-    }
-
     .sw__group-header {
         display: flex;
         align-items: center;
@@ -4298,5 +4283,53 @@ body:not(.desktop) .sw-home {
 
     .sw-settings .b3-dialog__header .b3-dialog__title {
         font-size: 14px;
+    }
+}
+
+// ==================== 分组·排序 一体化浮层（与最近下拉同模式：fixed + 弹窗内层级） ====================
+.speed-switch .sw__sort-menu {
+    position: fixed;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    max-height: 60vh;
+    overflow: auto;
+    padding: 6px;
+    background: var(--b3-theme-surface);
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card);
+    box-shadow: var(--b3-dialog-shadow);
+
+    .sw__sort-menu-section {
+        margin: 6px 6px 2px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        letter-spacing: 0.05em;
+    }
+
+    .sw__sort-menu-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
+            outline: none;
+        }
+
+        svg { width: 12px; height: 12px; flex: none; }
     }
 }

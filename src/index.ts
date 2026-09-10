@@ -114,6 +114,7 @@ import {
     PANEL_SCALE_MAX,
     PANEL_SCALE_DEFAULT,
     PANEL_SIZE_MIN_PX,
+    SETTINGS_PANEL_SCALE,
     TabGroupMode,
     TAB_GROUP_MODES,
     TAB_GROUP_MODE_DEFAULT,
@@ -1281,9 +1282,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dialog = new Dialog({
             title: this.i18n.settings,
             content: '<div class="sw-settings"></div>',
-            // 桌面端跟随面板尺寸模式（自适应比例/固定/全屏）；手机端按视口收缩，避免溢出屏幕
-            width: this.isMobile ? "min(720px, 88vw)" : `${this.resolvePanelDialogSize(this.getSettings(), false).width}px`,
-            height: this.isMobile ? "min(560px, 85vh)" : `${this.resolvePanelDialogSize(this.getSettings(), false).height}px`,
+            // 桌面端独立采用 70% 视口自适应（不与第一面板的 panelScale 联动）；手机端按视口收缩，避免溢出屏幕
+            width: this.isMobile ? "min(720px, 88vw)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).width}px`,
+            height: this.isMobile ? "min(560px, 85vh)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).height}px`,
         });
         this.suspendFABForDialog(dialog);
 
@@ -2279,7 +2280,8 @@ const updatedMap: {[rootId: string]: string} = {};
         this.bindSortTriggerMenu(dialog.element, applySortChange, applyGroupChange);
     }
 
-    // 排序触发按钮：标签 = 分组·排序 组合；点击弹出一体化菜单（分组方式 4 项 + 组内排序 6 项）
+    // 排序触发按钮：标签 = 分组·排序 组合；点击弹出自制浮层（与收藏/最近下拉同模式，
+    // 不用思源 Menu——插件弹窗层级可能盖住 body 级菜单），浮层含分组方式与组内排序两段单选
     private updateSortTriggerLabel(scope: HTMLElement) {
         const labelEl = scope.querySelector<HTMLElement>(".sw__sort-trigger .sw__sort-trigger-label");
         if (!labelEl) return;
@@ -2309,45 +2311,86 @@ const updatedMap: {[rootId: string]: string} = {};
         const trigger = scope.querySelector<HTMLButtonElement>(".sw__sort-trigger");
         if (!trigger) return;
         this.updateSortTriggerLabel(scope);
+        let panel: HTMLElement | null = null;
+        let outsideHandler: ((event: PointerEvent) => void) | null = null;
+        let keyHandler: ((event: KeyboardEvent) => void) | null = null;
+        const closePanel = () => {
+            panel?.remove();
+            panel = null;
+            if (outsideHandler) document.removeEventListener("pointerdown", outsideHandler, true);
+            if (keyHandler) document.removeEventListener("keydown", keyHandler, true);
+            outsideHandler = null;
+            keyHandler = null;
+        };
+        const radioRow = (label: string, checked: boolean, onClick: () => void) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__sort-menu-option";
+            item.setAttribute("role", "menuitemradio");
+            item.setAttribute("aria-checked", String(checked));
+            item.innerHTML = "<span></span>" + (checked ? '<svg><use xlink:href="#iconCheck"></use></svg>' : "");
+            item.querySelector("span")!.textContent = label;
+            item.addEventListener("click", () => {
+                closePanel();
+                onClick();
+            });
+            return item;
+        };
+        const sectionTitle = (label: string) => {
+            const title = document.createElement("div");
+            title.className = "sw__sort-menu-section";
+            title.textContent = label;
+            return title;
+        };
         trigger.addEventListener("click", () => {
+            if (panel) { closePanel(); return; }
+            panel = document.createElement("div");
+            panel.className = "sw__sort-menu";
+            panel.setAttribute("role", "menu");
+            panel.setAttribute("aria-label", this.i18n.setSortBy);
             const s = this.getSettings();
-            const menu = new Menu("swSortGroupMenu");
-            const groupOptions: Array<{value: TabGroupMode, label: string}> = [
-                {value: "notebook", label: this.i18n.groupNotebook},
-                {value: "favorites", label: this.i18n.groupFavorites},
-                {value: "createdMonth", label: this.i18n.groupCreatedMonth},
-                {value: "none", label: this.i18n.groupNone},
-            ];
-            groupOptions.forEach(({value, label}) => {
-                menu.addItem({
-                    label,
-                    iconHTML: "",
-                    checked: s.groupBy === value,
-                    click: () => applyGroupChange(value),
-                });
+            panel.appendChild(sectionTitle(this.i18n.groupModeTitle));
+            ([
+                ["notebook", this.i18n.groupNotebook],
+                ["favorites", this.i18n.groupFavorites],
+                ["createdMonth", this.i18n.groupCreatedMonth],
+                ["none", this.i18n.groupNone],
+            ] as Array<[TabGroupMode, string]>).forEach(([value, label]) => {
+                panel!.appendChild(radioRow(label, s.groupBy === value, () => {
+                    this.updateSortTriggerLabel(scope);
+                    applyGroupChange(value);
+                }));
             });
-            menu.addSeparator();
-            const sortOptions: Array<{value: SortBy, label: string}> = [
-                {value: "mru", label: this.i18n.sortMru},
-                {value: "layout", label: this.i18n.sortLayout},
-                {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
-                {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
-                {value: "titleAsc", label: this.i18n.sortTitleAsc},
-                {value: "titleDesc", label: this.i18n.sortTitleDesc},
-            ];
-            sortOptions.forEach(({value, label}) => {
-                menu.addItem({
-                    label,
-                    iconHTML: "",
-                    checked: s.sortBy === value,
-                    click: () => {
-                        this.updateSortTriggerLabel(scope);
-                        applySortChange(value);
-                    },
-                });
+            panel.appendChild(sectionTitle(this.i18n.groupSortTitle));
+            ([
+                ["mru", this.i18n.sortMru],
+                ["layout", this.i18n.sortLayout],
+                ["layoutDesc", this.i18n.sortLayoutDesc],
+                ["updatedDesc", this.i18n.sortUpdatedDesc],
+                ["titleAsc", this.i18n.sortTitleAsc],
+                ["titleDesc", this.i18n.sortTitleDesc],
+            ] as Array<[SortBy, string]>).forEach(([value, label]) => {
+                panel!.appendChild(radioRow(label, s.sortBy === value, () => {
+                    this.updateSortTriggerLabel(scope);
+                    applySortChange(value);
+                }));
             });
+            scope.appendChild(panel);
             const rect = trigger.getBoundingClientRect();
-            menu.open({x: rect.left, y: rect.bottom + 4});
+            panel.style.top = `${Math.round(rect.bottom + 6)}px`;
+            panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+            outsideHandler = (event) => {
+                if (!panel?.contains(event.target as Node) && event.target !== trigger && !trigger.contains(event.target as Node)) closePanel();
+            };
+            document.addEventListener("pointerdown", outsideHandler, true);
+            keyHandler = (event) => {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closePanel();
+                }
+            };
+            document.addEventListener("keydown", keyHandler, true);
         });
     }
 
@@ -6313,7 +6356,6 @@ private rootIdOf(tab: Tab): string | null {
         const groupMode = settings.groupBy;
         if (groupMode === "none") {
             // 鎸?parent锛圵nd锛夊垎鏍忓垎缁勶紝淇濇寔 getAllTabs 鐨勫竷灞€鏍戦『搴?
-            scrollElement.classList.remove("sw--grouped-flow");
             const groups = buildTabGroupsByParent(tabs, scrollElement);
             groups.forEach((group) => {
                 const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
@@ -6403,7 +6445,6 @@ private rootIdOf(tab: Tab): string | null {
         sortBy: SortBy,
         updatedMap: {[rootId: string]: string},
     ) {
-        scrollElement.classList.add("sw--grouped-flow");
         const favoriteGroupByKey = new Map<string, string>();
         this.getFavorites().forEach((fav) => favoriteGroupByKey.set(fav.key, fav.group || ""));
         const notebookMap = new Map((this.notebookListCache || []).map((nb) => [nb.id, nb.name]));
@@ -6425,12 +6466,9 @@ private rootIdOf(tab: Tab): string | null {
                 unknownMonth: this.i18n.groupUnknownMonth,
             },
         });
-        const maxCols = this.resolveGroupColumns(scrollElement, ctx.settings);
-        scrollElement.style.setProperty("--sw-cols", String(maxCols));
         defs.forEach((def) => {
             const ordered = this.sortGroupItems(def.items.map((tab: Tab) => ({tab})), sortBy, ctx.mru, ctx.pinned, updatedMap);
-            const span = Math.min(ordered.length, maxCols);
-            this.renderNamedTabGroup(scrollElement, def, ordered, ctx, all, focusState, span);
+            this.renderNamedTabGroup(scrollElement, def, ordered, ctx, all, focusState);
         });
         if (groupMode === "createdMonth") {
             const missing = tabs.some((tab) => {
@@ -6466,12 +6504,10 @@ private rootIdOf(tab: Tab): string | null {
         ctx: ITabGroupRenderCtx,
         all: IGroupedTab[],
         focusState: {defaultFocusIndex: number},
-        span: number,
     ) {
         const collapsed = this.groupCollapseState.has(def.key);
         const groupEl = document.createElement("div");
         groupEl.className = "sw__group sw__group--named" + (collapsed ? " sw__group--collapsed" : "");
-        groupEl.style.setProperty("--sw-span", String(Math.max(1, span)));
         const header = document.createElement("button");
         header.type = "button";
         header.className = "sw__group-header";
@@ -6496,7 +6532,6 @@ private rootIdOf(tab: Tab): string | null {
         groupEl.appendChild(header);
 
         const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
-        grid.style.gridTemplateColumns = 'repeat(' + Math.max(1, span) + ', 1fr)';
         ordered.forEach((item) => {
             const card = this.acquireGroupCard(item, ctx, false);
             grid.appendChild(card);
@@ -6510,62 +6545,6 @@ private rootIdOf(tab: Tab): string | null {
         scrollElement.appendChild(groupEl);
     }
 
-    // 解析全局列数（稀疏组块宽度基准）：显式列数优先；自动时用隐藏探针读真实 auto-fill 列数
-    private resolveGroupColumns(scrollElement: HTMLElement, settings: ISwSettings): number {
-        if (!scrollElement.closest(".sw--sidebar") && settings.columns >= 2) {
-            return settings.columns;
-        }
-        const probe = document.createElement("div");
-        probe.className = "sw__grid";
-        probe.style.visibility = "hidden";
-        probe.style.height = "0";
-        scrollElement.appendChild(probe);
-        let cols = 1;
-        try {
-            const parts = window.getComputedStyle(probe).gridTemplateColumns.split(" ").filter((c) => c && c !== "none");
-            if (parts.length > 0) cols = parts.length;
-        } catch (e) {
-            cols = 1;
-        }
-        probe.remove();
-        return Math.max(1, cols);
-    }
-
-    // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）
-    private pickCardByPosition(cards: HTMLElement[], current: HTMLElement, key: string): HTMLElement | null {
-        const base = current.getBoundingClientRect();
-        let best: HTMLElement | null = null;
-        let bestScore = Number.POSITIVE_INFINITY;
-        cards.forEach((card) => {
-            if (card === current) return;
-            const rect = card.getBoundingClientRect();
-            const dx = rect.left - base.left;
-            const dy = rect.top - base.top;
-            let primary = 0;
-            let cross = 0;
-            if (key === "ArrowRight") {
-                primary = dx; cross = Math.abs(dy);
-                if (primary <= 1) return;
-            } else if (key === "ArrowLeft") {
-                primary = -dx; cross = Math.abs(dy);
-                if (primary <= 1) return;
-            } else if (key === "ArrowDown") {
-                primary = dy; cross = Math.abs(dx);
-                if (primary <= 1) return;
-            } else if (key === "ArrowUp") {
-                primary = -dy; cross = Math.abs(dx);
-                if (primary <= 1) return;
-            } else {
-                return;
-            }
-            const score = Math.abs(primary) + cross * 2.5;
-            if (score < bestScore) {
-                bestScore = score;
-                best = card;
-            }
-        });
-        return best;
-    }
 
 
     // 鍙栧緱鍒嗙粍鍐呭崟寮犲崱鐗囷細浼樺厛澶嶇敤鏃у崱鐗囷紙鍚屾鐘舵€佺被/鍥炬爣/鏍囬锛岀缉鐣ュ浘涓嶅姩锛屼簨浠舵部鏃ч棴鍖咃級锛屽惁鍒欐柊寤猴紱
@@ -7375,30 +7354,19 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 }
             }
 
-            // 流式分组布局下组块宽度不等，方向键改用屏幕坐标就近移动；Tab 始终顺序移动
-            const flowNav = scrollElement.classList.contains("sw--grouped-flow");
-            const flowNeighbor = (dir: string): number => {
-                const neighbor = this.pickCardByPosition(cards, cards[focusIndex], dir);
-                return neighbor ? cards.indexOf(neighbor) : -1;
-            };
-
             let next = -1;
             if (key === "ArrowRight" || (key === "Tab" && !event.shiftKey)) {
                 event.preventDefault();
-                next = key === "ArrowRight" && flowNav
-                    ? (flowNeighbor(key) >= 0 ? flowNeighbor(key) : (focusIndex + 1) % cards.length)
-                    : (focusIndex + 1) % cards.length;
+                next = (focusIndex + 1) % cards.length;
             } else if (key === "ArrowLeft" || (key === "Tab" && event.shiftKey)) {
                 event.preventDefault();
-                next = key === "ArrowLeft" && flowNav
-                    ? (flowNeighbor(key) >= 0 ? flowNeighbor(key) : (focusIndex - 1 + cards.length) % cards.length)
-                    : (focusIndex - 1 + cards.length) % cards.length;
+                next = (focusIndex - 1 + cards.length) % cards.length;
             } else if (key === "ArrowDown") {
                 event.preventDefault();
-                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.min(focusIndex + colCount, cards.length - 1);
+                next = Math.min(focusIndex + colCount, cards.length - 1);
             } else if (key === "ArrowUp") {
                 event.preventDefault();
-                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
+                next = Math.max(focusIndex - colCount, 0);
             } else if (key === "Enter") {
                 event.preventDefault();
                 const target = cards[focusIndex];
