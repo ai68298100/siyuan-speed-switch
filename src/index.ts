@@ -3612,6 +3612,9 @@ const version = beginSearch(session);
                     },
                     read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
                         this.homeRuntime.read(inst.moduleId, device, inst.config || {}, readOptions),
+                    onConfig: editing ? undefined : () => {
+                        this.openHomeConfigForm(inst, def.configSchema || [], () => renderPanel());
+                    },
                     onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
                         void (async () => {
                             const ok = await this.toggleHomeTaskBlock(item);
@@ -5537,19 +5540,34 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 spec: AGENT_CAPABILITY_SPECS.homeWidgets,
                 handler: async (args: Record<string, unknown>) => {
                     try {
-                        const moduleId = String(args?.moduleId || "");
-                        const limit = normalizeAgentLimit(args?.limit, 12);
                         const device = this.isMobile ? "mobile" : "desktop";
-                        const def = this.homeRuntime.listModules(device)
-                            .find((item: any) => item.moduleId === moduleId) as {title?: string} | undefined;
+                        const queryable = this.homeRuntime.listModules(device)
+                            .filter((item: any) =>
+                                this.homeBuiltinAdapterIds.has(item.moduleId) || this.homeModuleOpens.has(item.moduleId));
+                        // 发现模式：省略 moduleId 时返回全部可查询组件清单
+                        const requested = String(args?.moduleId || "");
+                        if (!requested) {
+                            const limit2 = normalizeAgentLimit(args?.limit, 24);
+                            const content = {
+                                widgets: queryable.slice(0, limit2).map((item: any) => ({
+                                    moduleId: item.moduleId,
+                                    title: item.title,
+                                    description: item.description || "",
+                                    sizes: item.sizes || [],
+                                })),
+                            };
+                            return {structuredContent: content, result: JSON.stringify(content)};
+                        }
+                        const limit = normalizeAgentLimit(args?.limit, 12);
+                        const def = queryable.find((item: any) => item.moduleId === requested) as {title?: string} | undefined;
                         if (!def) return {error: "unknown module"};
-                        const result = await this.homeRuntime.read(moduleId, device, {}, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
+                        const result = await this.homeRuntime.read(requested, device, {}, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
                         const items = ((result?.snapshot?.items || []) as Array<{label?: string; value?: string}>)
                             .slice(0, limit)
                             .map((item) => ({label: item.label || "", value: item.value || ""}))
                             .filter((item) => !!item.label);
                         const content = {
-                            moduleId,
+                            moduleId: requested,
                             title: def.title,
                             status: result?.ok ? "ok" : String(result?.reason || "unavailable"),
                             items,

@@ -18,7 +18,7 @@ test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {
         moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan", status: "ready", cached: false,
-        reason: "", updatedAt: 0, items: [{label: "One", value: "", href: "", command: ""}], collapsed: true,
+        reason: "", updatedAt: 0, items: [{label: "One", value: "", href: "", command: ""}], configurable: false, collapsed: true,
         role: "region", ariaBusy: false,
     });
     assert.equal(buildHomeModuleView(null, {}), null);
@@ -130,4 +130,29 @@ test("home view done items render strikethrough style hooks", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "T"}, {ok: true, snapshot: {items: [{label: "Done task", done: true}]}});
     const root = renderHomeModuleView(dom.window.document, view, {});
     assert.equal(root.querySelectorAll(".sw__home-module-item-action.is-done").length, 1);
+});
+
+
+test("home view renders config button only for configurable widgets", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const doc = dom.window.document;
+    const calls = [];
+    const configurable = buildHomeModuleView({
+        moduleId: "fixed-document", title: "Pinned",
+        configSchema: [{key: "docId", label: "Doc", type: "text"}],
+    }, {ok: true, snapshot: {items: []}});
+    assert.equal(configurable.configurable, true);
+    const root = renderHomeModuleView(doc, configurable, {
+        onConfig: () => calls.push("config"),
+    });
+    const button = root.querySelector(".sw__home-module-toggle");
+    assert.ok(button, "config button should render");
+    button.click();
+    assert.deepEqual(calls, ["config"]);
+
+    // 无 configSchema 的组件不渲染配置按钮
+    const plainView = buildHomeModuleView({moduleId: "plain", title: "Plain"}, {ok: true, snapshot: {items: []}});
+    assert.equal(plainView.configurable, false);
+    const plainRoot = renderHomeModuleView(doc, plainView, {onConfig: () => calls.push("bad")});
+    assert.equal(plainRoot.querySelectorAll(".sw__home-module-toggle").length, 0);
 });

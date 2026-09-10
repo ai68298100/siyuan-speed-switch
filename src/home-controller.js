@@ -33,6 +33,7 @@ function createHomeModuleController(options = {}) {
             labels: options.labels,
             onItem: options.onItem,
             onToggleItem: options.onToggleItem,
+            onConfig: options.onConfig,
             onToggle: () => toggle(),
             onRetry: () => refresh(),
         });

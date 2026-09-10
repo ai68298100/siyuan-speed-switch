@@ -90,6 +90,7 @@ function buildHomeModuleView(module, result, options = {}) {
         title: text(definition.title, 64) || moduleId,
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
+        configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
         status: normalized.status,
         cached: normalized.cached,
         reason: normalized.reason,
@@ -144,6 +145,15 @@ function renderHomeModuleView(doc, view, options = {}) {
         meta.textContent = parts.join(" · ");
         meta.setAttribute("aria-label", meta.textContent);
         heading.appendChild(meta);
+    }
+    if (view.configurable && options.onConfig) {
+        const configButton = doc.createElement("button");
+        configButton.type = "button";
+        configButton.className = "sw__home-module-toggle b3-button b3-button--outline";
+        configButton.dataset.focusKey = "config";
+        configButton.textContent = labels.config || "Configure";
+        configButton.addEventListener("click", () => options.onConfig(view));
+        heading.appendChild(configButton);
     }
     if (options.onToggle) {
         const toggle = doc.createElement("button");

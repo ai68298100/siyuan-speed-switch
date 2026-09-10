@@ -168,6 +168,12 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.22 (2026-09-11)
+
+- Agent discovery mode: `home-widget-snapshot` accepts an omitted `moduleId` to list every queryable widget on the panel (with title, description and size presets), letting the AI discover before it queries.
+- Direct widget configuration: widgets with a `configSchema` (e.g. Pinned document, Today's tasks) show a permanent "Configure" button in their header — no need to enter edit layout; changes refresh instantly.
+- Protocol documentation updated with the discovery mode.
+
 ### v0.16.21 (2026-09-11)
 
 - Check today's tasks directly in the panel: task items render a checkbox that completes/reopens the task in SiYuan (writes the block, no navigation), strike-through styling on done, instant refresh; write failures surface a message.
