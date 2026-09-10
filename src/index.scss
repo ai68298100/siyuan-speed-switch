@@ -2824,13 +2824,16 @@
             // 手机端工具栏：复用桌面 sw__toolbar 基础样式（搜索图标/输入框/图标按钮尺寸由此而来），
             // 仅做紧凑化覆盖——单行排列：搜索框弹性伸缩 + 排序 + 收藏 + 设置，窄屏自动换行
             .sw__mobile-toolbar {
-                flex-wrap: nowrap;
+                // 两行结构：行1 搜索+排序+关闭，行2 收藏/最近/设置芯片（见 .sw__toolbar-row2）
+                flex-wrap: wrap;
+                row-gap: 6px;
                 padding: 8px 10px;
                 gap: 4px;
 
                 .sw__search-wrap {
                     flex: 1 1 128px;
-                    min-width: 0;
+                    // 保底最小宽：单行空间不足时搜索框也不允许被压缩消失
+                    min-width: 120px;
                 }
 
                 .sw__sort {
@@ -4237,7 +4240,7 @@ body:not(.desktop) .sw-home {
     }
 
     .sw__history-trigger {
-        height: 32px;
+        height: 36px;
         padding: 0 10px;
         border: 1px solid var(--b3-border-color);
         border-radius: 16px;
@@ -4249,7 +4252,7 @@ body:not(.desktop) .sw-home {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        height: 32px;
+        height: 36px;
         padding: 0 10px;
         border: 1px solid var(--b3-border-color);
         border-radius: 16px;
@@ -4496,5 +4499,27 @@ body:not(.desktop) .sw-home {
     &.sw-home-store__size--added {
         border-style: dashed;
         color: var(--b3-theme-on-surface-light);
+    }
+}
+
+// ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================
+.speed-switch.sw--sidebar .sw__toolbar {
+    gap: 6px;
+
+    .sw__select-wrap {
+        flex: 1 1 0;
+        min-width: 0;
+
+        .sw__sort-trigger {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .sw__sort-trigger-label {
+        max-width: 96px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }

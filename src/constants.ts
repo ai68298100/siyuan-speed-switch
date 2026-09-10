@@ -172,16 +172,23 @@ export const TAB_GROUP_MODES: TabGroupMode[] = ["none", "notebook", "favorites",
 export const TAB_GROUP_MODE_DEFAULT: TabGroupMode = "notebook";
 
 // 第二面板小组件固定尺寸型号：宽×高（12 列网格，行高 40px）
-export type HomeWidgetSize = "small" | "medium" | "wide" | "large";
+export type HomeWidgetSize = "xs" | "small" | "medium" | "tall" | "wide" | "large" | "full";
 export const HOME_WIDGET_SIZES: Record<HomeWidgetSize, {w: number; h: number}> = {
+    xs: {w: 2, h: 3},
     small: {w: 4, h: 3},
     medium: {w: 4, h: 4},
+    tall: {w: 4, h: 6},
     wide: {w: 8, h: 3},
     large: {w: 8, h: 5},
+    full: {w: 12, h: 6},
 };
 export const HOME_WIDGET_SIZE_LABELS: Record<HomeWidgetSize, string> = {
+    xs: "迷你 2×3",
     small: "小 4×3",
-    medium: "中 4×4",
+    medium: "方 4×4",
+    tall: "高 4×6",
     wide: "宽 8×3",
     large: "大 8×5",
+    full: "全幅 12×6",
 };
+

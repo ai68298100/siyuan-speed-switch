@@ -78,8 +78,17 @@
   "homeDescJournal": "Today's journal — open or create in one tap",
   "homeDescDocSets": "Saved workspace snapshots with bounded restore",
   "homeDescFixed": "Pin a frequently used document",
-  "homeDescTasks": "Today's tasks at a glance",
+  "homeTodayTasks": "Today's tasks",
+  "homeDescTasks": "Open tasks in currently opened documents; click to jump",
   "homeDescCheckin": "Summary from LvCheckin",
+  "homeTags": "Tags",
+  "homeBookmarks": "Bookmarks",
+  "homeJournalMonthly": "Journal this month",
+  "homePluginCommands": "Plugin commands",
+  "homeDescTags": "Workspace tags with counts; click to open the tag panel",
+  "homeDescBookmarks": "Bookmarks with counts; click to open the bookmark panel",
+  "homeDescJournalMonthly": "This month's journal entries; click to jump",
+  "homeDescCmds": "Trigger other plugins' commands — no adaptation required",
   "homeRecentDocuments": "Recently opened",
   "homeFavorites": "Favorites",
   "homeTodayJournal": "Today journal",
@@ -299,7 +308,7 @@
   ,"documentSetsGuideStep2": "When returning, use Preview restore to review pending and already-open counts, then choose Restore."
   ,"documentSetsGuideStep3": "Export and import document sets for backup or migration. Saving with the same name updates the existing set."
   ,"documentSetsGuideNote": "Note: document sets store stable root-document references only. They do not save cursor positions, transient tabs, or document content. Deleted or unavailable documents are marked missing before restore."
-  ,"secondPanel": "Second panel"
+  ,"secondPanel": "Widgets"
   ,"secondPanelEmpty": "Nothing here yet"
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"

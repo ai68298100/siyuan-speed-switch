@@ -78,8 +78,17 @@
   "homeDescJournal": "今天的一篇日记，一键打开或新建",
   "homeDescDocSets": "保存的工作区快照，可预览恢复",
   "homeDescFixed": "固定展示某个常用文档",
-  "homeDescTasks": "今日待办事项一览",
+  "homeTodayTasks": "今日待办",
+  "homeDescTasks": "当前打开文档中的未完成任务，点击跳转",
   "homeDescCheckin": "来自小驴打卡的摘要",
+  "homeTags": "标签",
+  "homeBookmarks": "书签",
+  "homeJournalMonthly": "本月日记",
+  "homePluginCommands": "插件命令",
+  "homeDescTags": "全库标签与数量，点击打开标签面板",
+  "homeDescBookmarks": "书签与数量，点击打开书签面板",
+  "homeDescJournalMonthly": "当月日记列表，点击直达对应日记",
+  "homeDescCmds": "其他插件的命令一键触发，任何插件无需适配即可使用",
   "homeRecentDocuments": "最近打开",
   "homeFavorites": "收藏",
   "homeTodayJournal": "今日日记",
@@ -299,7 +308,7 @@
   ,"documentSetsGuideStep2": "需要回来继续时，可先点“预览恢复”查看待打开和已打开数量，再点“恢复”。"
   ,"documentSetsGuideStep3": "使用导出/导入可备份或迁移文档集；同名保存会更新原有集合。"
   ,"documentSetsGuideNote": "注意：文档集只记录可稳定恢复的根文档，不保存编辑位置、临时页签或文档内容；删除或移出当前工作空间的文档会在恢复前标记为缺失。"
-  ,"secondPanel": "第二面板"
+  ,"secondPanel": "组件面板"
   ,"secondPanelEmpty": "暂无内容"
   ,"mobileLayoutFailed": "切换器初始化失败，请关闭后重试"
   ,"openHistory": "最近打开"

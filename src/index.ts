@@ -2840,6 +2840,27 @@ const version = beginSearch(session);
     private homeModuleOpens = new Map<string, () => void>();
     private homeBuiltinAdapterIds = new Set<string>();
 
+    // 内核 HTTP POST 的统一封装：5s 超时、非 2xx 抛错、失败返回 null（组件走空态/错误态）
+    private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
+        const controller = typeof AbortController === "function" ? new AbortController() : null;
+        const timer = window.setTimeout(() => controller?.abort(), 5000);
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(body),
+                ...(controller ? {signal: controller.signal} : {}),
+            });
+            if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+            return await response.json();
+        } catch (e) {
+            logger.warn("kernel request fail", url, e);
+            return null;
+        } finally {
+            window.clearTimeout(timer);
+        }
+    }
+
     // 内置只读适配器：面板数据全部来自插件既有领域数据（最近/收藏/日记/文档集/指定文档）。
     // 注册定义覆盖 home-model DEFAULT_MODULES 的同名项（标题随 i18n）。
     private registerBuiltinHomeAdapters() {
@@ -2848,7 +2869,9 @@ const version = beginSearch(session);
             title: string,
             icon: string,
             description: string,
-            read: (config: Record<string, unknown>) => { title?: string; items: Array<{ label: string; value: string }> },
+            read: (config: Record<string, unknown>) =>
+                { title?: string; items: Array<{ label: string; value: string }> } |
+                Promise<{ title?: string; items: Array<{ label: string; value: string }> }>,
         ) => {
             const result = this.homeRuntime.registerAdapter({
                 moduleId, title, icon, description, category: "siyuan",
@@ -2882,6 +2905,55 @@ const version = beginSearch(session);
             const docId = typeof config.docId === "string" ? config.docId : "";
             const title = typeof config.title === "string" && config.title ? config.title : docId;
             return {items: docId && BLOCK_ID_RE.test(docId) ? [{label: title, value: docId}] : []};
+        });
+        // 今日待办：SQL 扫描当前打开文档中的未完成任务块，点击跳块
+        register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, async () => {
+            const ids = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+            if (ids.length === 0) return {items: []};
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                query: `SELECT id, content FROM blocks WHERE type='p' AND markdown LIKE '%[ ] %' AND root_id IN ('${ids.join("','")}') ORDER BY updated DESC LIMIT 12`,
+            });
+            const rows = (json?.data || []) as Array<{id: string; content: string}>;
+            return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
+        });
+        // 标签：getTag，点击打开思源标签面板
+        register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, async () => {
+            const json = await this.fetchKernelJson("/api/tag/getTag", {});
+            const tags = (json?.data?.tags || []) as Array<{name: string; count?: number}>;
+            return {items: tags.slice(0, 12).map((tag) => ({
+                label: `${tag.name} (${tag.count ?? 0})`,
+                value: "tag:" + tag.name,
+            })).filter((item) => item.value.length > 4)};
+        });
+        // 书签：getBookmark，点击打开思源书签面板
+        register("bookmarks", this.i18n.homeBookmarks, "iconBookmark", this.i18n.homeDescBookmarks, async () => {
+            const json = await this.fetchKernelJson("/api/bookmark/getBookmark", {});
+            const bookmarks = (json?.data?.bookmarks || []) as Array<{name: string; count?: number}>;
+            return {items: bookmarks.slice(0, 12).map((bookmark) => ({
+                label: `${bookmark.name} (${bookmark.count ?? 0})`,
+                value: "bookmark:" + bookmark.name,
+            })).filter((item) => item.value.length > 9)};
+        });
+        // 本月日记：按日记标题前缀（YYYY-MM）列出当月日记，点击直达；首位固定"打开今日日记"
+        register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, async () => {
+            const now = new Date();
+            const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                query: `SELECT root_id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 12`,
+            });
+            const rows = (json?.data || []) as Array<{root_id: string; content: string}>;
+            return {items: [
+                {label: this.i18n.homeTodayJournalOpen, value: "action:journal"},
+                ...rows.filter((row) => row.root_id && row.content).map((row) => ({label: row.content, value: row.root_id})),
+            ]};
+        });
+        // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
+        register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, () => {
+            const commands = this.getPluginCommands().slice(0, 12);
+            return {items: commands.map((command) => ({
+                label: command.pluginTitle ? `${command.label} · ${command.pluginTitle}` : command.label,
+                value: "cmd:" + command.value,
+            }))};
         });
     }
 
@@ -2937,6 +3009,28 @@ const version = beginSearch(session);
             void this.restoreDocumentSetFromHome(value.slice(4));
             return;
         }
+        if (value.startsWith("tag:") || value.startsWith("bookmark:")) {
+            const dockType = value.startsWith("tag:") ? "tag" : "bookmark";
+            const dock = this.getDockByType(dockType);
+            if (dock?.toggleModel) {
+                try {
+                    dock.toggleModel(dockType, true);
+                    close();
+                } catch (e) {
+                    logger.warn("open dock fail", dockType, e);
+                }
+            }
+            return;
+        }
+        if (value.startsWith("cmd:")) {
+            const action = {
+                id: "home-cmd", label: item.label || "", icon: "iconPlugin",
+                kind: "command", value: value.slice(4), targets: ["desktop"], order: 0, enabled: true,
+            } as IQuickAction;
+            close();
+            this.executeQuickAction(action, null, () => undefined);
+            return;
+        }
         const favorite = this.getFavorites().find((fav) => fav.key === value);
         if (favorite) {
             close();
@@ -2957,19 +3051,60 @@ const version = beginSearch(session);
         }
     }
 
-    // 面板宽档循环：1/3 → 1/2 → 2/3 → 整行
-    private cycleHomeWidth(w: number): number {
-        const steps = [4, 6, 8, 12];
-        const index = steps.indexOf(w >= 4 && w <= 12 ? w : 6);
-        return steps[(index + 1) % steps.length];
-    }
 
     // 旧宽度档 → 新固定型号就近映射（一次迁移，迁移后 layout.size 非空即视为已迁移）
     private migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string {
         if (entry.size && sizes.includes(entry.size)) return entry.size;
         const w = Number(entry.w) || 6;
-        const fallback = w <= 5 ? "small" : w <= 7 ? "medium" : w <= 9 ? "wide" : "large";
+        const fallback = w <= 2 ? "xs" : w <= 4 ? "small" : w <= 6 ? "medium" : w <= 9 ? "wide" : "large";
         return sizes.includes(fallback) ? fallback : (sizes[0] || "medium");
+    }
+
+    // 型号选择浮层（与排序浮层同模式：body + fixed + 外点/Esc 关闭），列出该模块支持的全部档位
+    private openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void) {
+        const panel = document.createElement("div");
+        panel.className = "sw__sort-menu sw-home__size-menu";
+        panel.setAttribute("role", "menu");
+        const cleanup = () => {
+            panel.remove();
+            document.removeEventListener("pointerdown", outside, true);
+            document.removeEventListener("keydown", esc, true);
+            window.removeEventListener("resize", reposition);
+        };
+        const outside = (event: PointerEvent) => {
+            if (!panel.contains(event.target as Node) && !anchor.contains(event.target as Node)) cleanup();
+        };
+        const esc = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                cleanup();
+            }
+        };
+        const reposition = () => {
+            const rect = anchor.getBoundingClientRect();
+            panel.style.top = `${Math.round(rect.bottom + 6)}px`;
+            panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+        };
+        supported.forEach((key) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__sort-menu-option";
+            item.setAttribute("role", "menuitemradio");
+            item.setAttribute("aria-checked", String(key === current));
+            item.innerHTML = "<span></span>" + (key === current ? '<svg><use xlink:href="#iconCheck"></use></svg>' : "");
+            item.querySelector("span")!.textContent = HOME_WIDGET_SIZE_LABELS[key as HomeWidgetSize] || key;
+            item.addEventListener("click", () => {
+                cleanup();
+                onPick(key);
+            });
+            panel.appendChild(item);
+        });
+        document.body.appendChild(panel);
+        reposition();
+        document.addEventListener("pointerdown", outside, true);
+        document.addEventListener("keydown", esc, true);
+        window.addEventListener("resize", reposition);
     }
 
     // 小组件商店：画廊式添加入口，内置/插件分区；卡片带型号瓦片，点瓦片添加（或调整已添加实例的型号）
@@ -3120,11 +3255,12 @@ const version = beginSearch(session);
                 renderPanel();
             });
             bar.appendChild(editToggle);
-            if (editing || cells.length === 0) {
+            // 组件商店常驻右上角（与编辑布局并列），不再要求先进编辑态
+            {
                 const addButton = document.createElement("button");
                 addButton.type = "button";
                 addButton.className = "b3-button b3-button--text sw-home__add";
-                addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeAddModule + '</span>';
+                addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeStoreTitle + '</span>';
                 addButton.addEventListener("click", () => {
                     this.openHomeWidgetStore(defs, catalogIds, device, renderPanel);
                 });
@@ -3256,14 +3392,16 @@ const version = beginSearch(session);
                         button.addEventListener("click", onClick);
                         return button;
                     };
-                    const sizeIndex = supported.indexOf(sizeKey);
-                    const nextSize = supported[(sizeIndex + 1) % supported.length];
-                    tools.append(
-                        tool(this.i18n.homeSize + " · " + (HOME_WIDGET_SIZE_LABELS[nextSize as HomeWidgetSize] || nextSize), () => {
-                            const preset2 = HOME_WIDGET_SIZES[nextSize as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                            persistLayout({size: nextSize, w: preset2.w, h: preset2.h});
+                    const sizeButton = tool(this.i18n.homeSize, () => undefined);
+                    sizeButton.addEventListener("click", () => {
+                        this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
+                            const preset2 = HOME_WIDGET_SIZES[picked as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                            persistLayout({size: picked, w: preset2.w, h: preset2.h});
                             renderPanel();
-                        }),
+                        });
+                    });
+                    tools.append(
+                        sizeButton,
                         tool(this.i18n.homeMoveUp, () => {
                             const next = this.getHomeState();
                             const list = (next.layouts[device] || []) as Array<any>;
@@ -8721,9 +8859,8 @@ if (count > 0) {
         // 銆屾渶杩戠紪杈戙€嶆帓搴忛渶瑕佹枃妗ｆ洿鏂版椂闂达細鍚庡彴鏌ヨ涓€娆★紝瀹屾垚鍚庤嫢浠嶅浜庤鎺掑簭涓旀湭鎼滅储鍒欓噸鎺?
         this.loadUpdatedMap(tabs).then((map) => {
             Object.assign(updatedMap, map);
-            const sortSelect = element.querySelector<HTMLSelectElement>(".sw__sort");
             const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
-            if (element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+            if (element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
                 this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
             }
         });
@@ -8752,19 +8889,13 @@ if (count > 0) {
             </button>
         </div>
         <div class="sw__select-wrap">
-            <span class="sw__select-label">${this.i18n.favorites}</span>
             <div class="sw__fav-dd"></div>
         </div>
         <div class="sw__select-wrap">
-            <span class="sw__select-label">${this.i18n.sortLabel}</span>
-            <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
-                <option value="mru">${this.i18n.sortMru}</option>
-                <option value="layout">${this.i18n.sortLayout}</option>
-                <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
-                <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
-                <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
-                <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
-            </select>
+            <button type="button" class="b3-button b3-button--text sw__sort-trigger" aria-label="${this.i18n.setSortBy}">
+                <svg><use xlink:href="#iconSort"></use></svg>
+                <span class="sw__sort-trigger-label"></span>
+            </button>
         </div>
         <div class="sw__history-dd sw__history-dd--icon"></div>
         <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.settings}">
@@ -8808,13 +8939,10 @@ if (count > 0) {
         const favDd = element.querySelector<HTMLElement>(".sw__fav-dd");
         this.setupFavDropdown(favDd, refresh, refresh);
 
-        // 鎺掑簭鍒囨崲锛氭寔涔呭寲璁剧疆骞堕噸娓叉煋鍒楄〃
-        const sortSelect = element.querySelector<HTMLSelectElement>(".sw__sort");
-        sortSelect.value = this.getSettings().sortBy;
-        sortSelect.addEventListener("change", () => {
-            this.updateSettings({sortBy: sortSelect.value as SortBy});
-            this.refreshSidebar();
-        });
+        // 分组·排序一体化浮层（与弹窗同款，浮层挂 body 不受 dock 层级影响）
+        this.bindSortTriggerMenu(element,
+            () => this.refreshSidebar(),
+            () => this.refreshSidebar());
 
         element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             this.openSetting();
