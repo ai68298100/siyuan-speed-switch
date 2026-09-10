@@ -92,6 +92,7 @@
   "homeStoreSearch": "Search widgets…",
   "homeConfig": "Configure",
   "homeConfigSave": "Save",
+  "homeTaskToggleFailed": "Failed to update the task; try again later",
   "aiConfirmTitle": "Agent confirmation required",
   "aiAllow": "Allow",
   "aiDeny": "Deny",

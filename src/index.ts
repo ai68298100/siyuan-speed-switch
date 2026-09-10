@@ -2973,8 +2973,12 @@ const version = beginSearch(session);
             const json = await this.fetchKernelJson("/api/query/sql", {
                 query: `SELECT id, content FROM blocks WHERE type='p' AND markdown LIKE '%[ ] %'${scope} ORDER BY updated DESC LIMIT ${limit}`,
             });
-            const rows = (json?.data || []) as Array<{id: string; content: string}>;
-            return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
+            const rows = (json?.data || []) as Array<{id: string; content: string; markdown?: string}>;
+            return {items: rows.map((row) => ({
+                label: row.content,
+                value: row.id,
+                done: /\[[xX]\]/.test(String(row.markdown || "")),
+            })).filter((item) => !!item.label && !!item.value)};
         });
         // 标签：getTag，点击打开思源标签面板
         register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, [], async () => {
@@ -3073,6 +3077,24 @@ const version = beginSearch(session);
         close();
         this.executeQuickAction(action, null, () => undefined);
         return true;
+    }
+
+    // 面板内直接勾选待办：用户本人操作即确认，免弹窗；写失败给消息反馈
+    private async toggleHomeTaskBlock(item: { value?: string; done?: boolean }): Promise<boolean> {
+        const id = String(item.value || "");
+        if (!BLOCK_ID_RE.test(id)) return false;
+        const target = !(item.done === true);
+        const rowJson = await this.fetchKernelJson("/api/query/sql", {
+            query: `SELECT markdown FROM blocks WHERE id='${id}' AND type='p'`,
+        });
+        const row = (rowJson?.data || [])[0] as {markdown?: string} | undefined;
+        if (!row) return false;
+        const newMarkdown = flipTaskMarkdown(String(row.markdown || ""), target);
+        if (!newMarkdown) return false;
+        const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
+            dataType: "markdown", data: newMarkdown, id,
+        });
+        return !!updateJson && updateJson.code === 0;
     }
 
     // 面板条目点击分发：条目命令 / 动作协议 / 文档集 / 收藏键 / 文档 rootId
@@ -3590,6 +3612,13 @@ const version = beginSearch(session);
                     },
                     read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
                         this.homeRuntime.read(inst.moduleId, device, inst.config || {}, readOptions),
+                    onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
+                        void (async () => {
+                            const ok = await this.toggleHomeTaskBlock(item);
+                            if (!ok) showMessage(this.i18n.homeTaskToggleFailed);
+                            await controller.refresh(inst.config || {}, {force: true});
+                        })();
+                    },
                 });
                 if (!controller) return;
                 controllers.push({moduleId: inst.moduleId, refresh: () => controller.refresh(), dispose: () => controller.dispose(), cell});

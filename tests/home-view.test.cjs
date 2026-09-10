@@ -102,3 +102,32 @@ test("home view exposes bounded cache and update metadata", () => {
     assert.match(meta.textContent, /更新/);
     assert.equal(meta.getAttribute("aria-label"), meta.textContent);
 });
+
+
+test("home view renders task checkboxes and forwards toggles", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const doc = dom.window.document;
+    const calls = [];
+    const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks"}, {ok: true, snapshot: {items: [
+        {label: "Open task", value: "1", done: false},
+        {label: "Plain item", value: "2"},
+    ]}});
+    const root = renderHomeModuleView(doc, view, {
+        onItem: (item) => calls.push("item:" + item.value),
+        onToggleItem: (item) => calls.push("toggle:" + item.value),
+    });
+    const checks = root.querySelectorAll(".sw__home-module-item-check");
+    assert.equal(checks.length, 1); // 仅带 done 的条目有勾选框
+    assert.equal(checks[0].getAttribute("aria-pressed"), "false");
+    checks[0].click();
+    const plain = root.querySelectorAll(".sw__home-module-item-action")[1];
+    plain.click();
+    assert.deepEqual(calls, ["toggle:1", "item:2"]);
+});
+
+test("home view done items render strikethrough style hooks", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "tasks", title: "T"}, {ok: true, snapshot: {items: [{label: "Done task", done: true}]}});
+    const root = renderHomeModuleView(dom.window.document, view, {});
+    assert.equal(root.querySelectorAll(".sw__home-module-item-action.is-done").length, 1);
+});

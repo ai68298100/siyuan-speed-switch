@@ -168,14 +168,32 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.21 (2026-09-11)
+
+- Check today's tasks directly in the panel: task items render a checkbox that completes/reopens the task in SiYuan (writes the block, no navigation), strike-through styling on done, instant refresh; write failures surface a message.
+- Protocol and rendering chain: snapshot items accept an optional `done` boolean; the checkbox is rendered whenever an `onToggleItem` callback is present, available to third-party widgets too.
+
+### v0.16.20 (2026-09-11)
+
+- Controlled-write pilot `update-task-status`: the AI can toggle a task checkbox after a mandatory in-panel confirmation (deny or 30s timeout aborts); effects honestly declare localWrite; the flip logic is a fully branch-tested pure function.
+
+### v0.16.19 (2026-09-11)
+
+- Widget panel "live data": built-in widgets declare refresh triggers (recents/favorites/tasks/document-sets subscribe to tab events), so data stays fresh while the panel is open (500ms debounce); third-party widgets can opt in via the protocol v2 `refreshOn` field.
+- Fixed the mobile widget canvas: the 12-column grid squeezed widgets into ~120px strips and the old single-column fallback selector never matched; mobile now injects a single-column class for full-width stacking.
+- The widget store gains an instant search box filtering widgets by name and description, with sections auto-hiding when empty.
+
 ### v0.16.18 (2026-09-11)
+
+- Agent capabilities rounded out with the controlled navigation action `open-document` (open and locate a document by block id), closing the query-to-jump loop with `home-widget-snapshot`; published third-party invitation drafts at [docs/widget-invite-drafts.md](docs/widget-invite-drafts.md).
+
+### v0.16.17 (2026-09-11)
 
 - **Protocol v2**: `registerHomeModule` gains four declarative capability groups — per-item `command` (click executes a plugin command), module-level `clickCommand` (declarative failure-jump), `configSchema` (declare config fields; the panel renders the form and passes values to read), and `refreshOn` (auto-refresh on tab switch/open/close events, 500ms debounce) — plus a `protocolVersion` handshake and store-card author/version metadata.
 - Configurable widgets: **Pinned document** takes a doc id and display name; **Today's tasks** supports an item cap and a scan-all-documents switch; **Plugin commands** supports an item cap and keyword filter.
 - **Agent integration**: a new read-only agent capability `home-widget-snapshot` lets SiYuan AI query the bounded snapshot of any registered widget (third-party included), capped by item limits and cache.
 - Fixed the built-in size whitelist not covering the 7-tier expansion (XS/Tall/Full were silently downgraded).
-- First controlled-write pilot `update-task-status`: the AI can toggle a task checkbox after an in-panel confirmation dialog (deny or 30s timeout aborts); effects honestly declare localWrite; the flip logic is a fully branch-tested pure function.
-- Agent capabilities rounded out with the controlled navigation action `open-document` (open and locate a document by block id), closing the query-to-jump loop with `home-widget-snapshot`; published third-party invitation drafts at [docs/widget-invite-drafts.md](docs/widget-invite-drafts.md).
+
 
 ### v0.16.16 (2026-09-11)
 
@@ -183,7 +201,6 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 - Size presets expand to 7 tiers: XS 2×3 / Small 4×3 / Square 4×4 / Tall 4×6 / Wide 8×3 / Large 8×5 / Full 12×6; modules declare their supported subsets and pick sizes from a popover menu (replacing the single cycle button); legacy widths migrate to the nearest preset.
 - Five new native widgets: **Today's tasks** (SQL scan of open tasks in opened documents, click to jump), **Tags** and **Bookmarks** (getTag/getBookmark, click opens the matching dock), **Journal this month** (aggregates the month's journal entries with an open-today shortcut), and a **Plugin command launcher** (one-tap execution of other plugins' commands — any plugin works without adaptation).
 - Published the third-party widget guide [docs/widget-protocol.md](docs/widget-protocol.md): registration signature, snapshot contract, size presets, jump callbacks, and a full example for calendar/journal/todo/pomodoro plugin authors.
-- The widget panel now shows a permanent footer inviting plugin developers to the store via the Widget Protocol guide.
 - The widget panel now shows a permanent footer inviting plugin developers to the store via the Widget Protocol guide.
 - Fixed duplicate "Favorites/Sort" text labels in the desktop sidebar toolbar and upgraded its sort control to the unified group·sort popover (the sidebar can now change grouping); fixed the mobile switcher toolbar where a legacy nowrap rule suppressed the two-row layout (search collapsing away, buttons overlapping) — two rows restored with taller chips.
 

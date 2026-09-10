@@ -92,6 +92,7 @@
   "homeStoreSearch": "搜索组件…",
   "homeConfig": "配置",
   "homeConfigSave": "保存",
+  "homeTaskToggleFailed": "任务状态更新失败，请稍后重试",
   "aiConfirmTitle": "智能体请求确认",
   "aiAllow": "允许执行",
   "aiDeny": "拒绝",

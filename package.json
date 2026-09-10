@@ -1,6 +1,6 @@
 {
   "name": "siyuan-speed-switch",
-  "version": "0.16.20",
+  "version": "0.16.21",
   "description": "SiYuan plugin: switch opened tabs with thumbnails like Windows Alt+Tab.",
   "main": "index.js",
   "scripts": {

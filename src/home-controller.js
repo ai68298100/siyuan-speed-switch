@@ -32,6 +32,7 @@ function createHomeModuleController(options = {}) {
         const element = renderHomeModuleView(documentRef, view, {
             labels: options.labels,
             onItem: options.onItem,
+            onToggleItem: options.onToggleItem,
             onToggle: () => toggle(),
             onRetry: () => refresh(),
         });

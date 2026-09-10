@@ -52,6 +52,7 @@ function createHomePanelController(options = {}) {
                 collapsed: module.collapsed === true,
                 labels: options.labels,
                 onItem: options.onItem,
+                onToggleItem: options.onToggleItem,
                 onToggle: options.onToggle,
                 read: (config, readOptions) => read(module, config, readOptions),
             });

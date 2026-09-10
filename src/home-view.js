@@ -58,12 +58,16 @@ function normalizeHomeViewResult(value) {
     const source = value && typeof value === "object" ? value : {};
     const rawSnapshot = source.snapshot && typeof source.snapshot === "object" ? source.snapshot : {};
     const rawItems = Array.isArray(rawSnapshot.items) ? rawSnapshot.items : [];
-    const items = rawItems.slice(0, MAX_ITEMS).map((item) => ({
-        label: text(item?.label),
-        value: text(item?.value),
-        href: text(item?.href, 512),
-        command: text(item?.command, 128),
-    })).filter((item) => item.label || item.value || item.href);
+    const items = rawItems.slice(0, MAX_ITEMS).map((item) => {
+        const entry = {
+            label: text(item?.label),
+            value: text(item?.value),
+            href: text(item?.href, 512),
+            command: text(item?.command, 128),
+        };
+        if (typeof item?.done === "boolean") entry.done = item.done;
+        return entry;
+    }).filter((item) => item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
     const status = explicitStatus || (source.loading === true ? "loading" : source.ok === false ? "error" : items.length ? "ready" : "empty");
     return {
@@ -168,6 +172,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         list.setAttribute("role", "list");
         const focusKeys = new Map();
         const usedFocusKeys = new Set();
+        const canToggle = typeof options.onToggleItem === "function";
         (Array.isArray(view.items) ? view.items : []).forEach((item) => {
             const row = doc.createElement("li");
             row.className = "sw__home-module-item";
@@ -187,8 +192,22 @@ function renderHomeModuleView(doc, view, options = {}) {
             button.dataset.value = item.value || "";
             if (item.href) button.dataset.href = item.href;
             if (item.command) button.dataset.command = item.command;
+            button.classList.toggle("is-done", item.done === true);
             button.textContent = item.label || item.value || item.href || "";
             if (options.onItem) button.addEventListener("click", () => options.onItem(item, view));
+            if (canToggle && typeof item.done === "boolean") {
+                const check = doc.createElement("button");
+                check.type = "button";
+                check.className = "sw__home-module-item-check" + (item.done ? " is-done" : "");
+                check.setAttribute("aria-label", item.done ? "标记未完成" : "标记完成");
+                check.setAttribute("aria-pressed", String(item.done));
+                check.innerHTML = item.done ? '<svg><use xlink:href="#iconCheck"></use></svg>' : "";
+                check.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    options.onToggleItem(item, view);
+                });
+                row.appendChild(check);
+            }
             row.appendChild(button);
             list.appendChild(row);
         });

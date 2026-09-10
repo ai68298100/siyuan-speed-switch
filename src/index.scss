@@ -4578,3 +4578,46 @@
         gap: 8px;
     }
 }
+
+// ==================== 组件面板：任务条目勾选交互 ====================
+.sw__home-module-list .sw__home-module-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    .sw__home-module-item-check {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 1.5px solid var(--b3-border-color);
+        border-radius: 5px;
+        background: transparent;
+        color: var(--b3-theme-background);
+        cursor: pointer;
+        transition: all 0.12s;
+
+        svg { width: 11px; height: 11px; }
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--b3-theme-primary);
+            outline: none;
+        }
+
+        &.is-done {
+            border-color: var(--b3-theme-primary);
+            background: var(--b3-theme-primary);
+            color: var(--b3-theme-background);
+        }
+    }
+
+    .sw__home-module-item-action.is-done {
+        color: var(--b3-theme-on-surface-light);
+        text-decoration: line-through;
+    }
+}
