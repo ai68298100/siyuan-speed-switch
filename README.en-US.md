@@ -170,6 +170,11 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.25 (2026-09-11)
+
+- Second controlled-write pilot `append-to-journal`: the AI can append an entry to today's journal (auto-creating it when missing; the notebook comes from plugin settings), behind the mandatory confirmation dialog.
+- Appended content is sanitized (newlines flattened, whitespace collapsed, capped at 512 chars) and inserted as a list item at the end of the journal without touching existing text.
+
 ### v0.16.24 (2026-09-11)
 
 - refreshOn refinement: fired events now refresh only the widgets subscribed to them, not the whole panel.

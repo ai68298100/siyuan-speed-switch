@@ -19,6 +19,7 @@ const {
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     flipTaskMarkdown,
+    sanitizeJournalAppend,
     registerAgentActionCapability,
 } = require("../src/agent-capabilities.js");
 
@@ -212,4 +213,18 @@ test("update-task spec requires id and done, declares confirmation", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.updateTask.name, "update-task-status");
     assert.deepEqual(AGENT_CAPABILITY_SPECS.updateTask.inputSchema.required, ["id", "done"]);
     assert.match(AGENT_CAPABILITY_SPECS.updateTask.description, /确认/);
+});
+
+
+test("controlled write: sanitizeJournalAppend flattens and bounds content", () => {
+    assert.equal(sanitizeJournalAppend("  记一下：\n\t试了新功能  "), "记一下： 试了新功能");
+    assert.equal(sanitizeJournalAppend("   "), "");
+    assert.equal(sanitizeJournalAppend(undefined), "");
+    assert.equal(sanitizeJournalAppend("x".repeat(600)).length, 512);
+});
+
+test("append-to-journal spec requires content and declares confirmation", () => {
+    assert.equal(AGENT_CAPABILITY_SPECS.appendToJournal.name, "append-to-journal");
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.appendToJournal.inputSchema.required, ["content"]);
+    assert.match(AGENT_CAPABILITY_SPECS.appendToJournal.description, /确认/);
 });

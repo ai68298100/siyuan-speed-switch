@@ -93,6 +93,7 @@
   "homeConfig": "Configure",
   "homeConfigSave": "Save",
   "homeTaskToggleFailed": "Failed to update the task; try again later",
+  "aiJournalAppendDesc": "Append the following to today\u0027s journal:\n{content}",
   "aiCreateDocDesc": "The agent wants to create a document in notebook [{notebook}]:\n{title}",
   "aiConfirmTitle": "Agent confirmation required",
   "aiAllow": "Allow",

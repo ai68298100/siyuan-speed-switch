@@ -198,6 +198,28 @@ const AGENT_ITEMS_SCHEMA = Object.freeze({
 });
 
 const AGENT_CAPABILITY_SPECS = Object.freeze({
+    appendToJournal: Object.freeze({
+        name: "append-to-journal",
+        title: "小驴速切追加今日日记",
+        description: "受控写操作：向今天的日记文档末尾追加一条内容（今日日记不存在时自动创建，日记笔记本取自插件设置）。执行前会弹窗请求用户确认，用户拒绝或超时则不执行。仅在日记末尾追加，不改写已有内容。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                content: {type: "string", minLength: 1, maxLength: 512},
+            },
+            required: ["content"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                ok: {type: "boolean"},
+                docId: {type: "string", maxLength: 64},
+            },
+            required: ["ok", "docId"],
+            additionalProperties: false,
+        }),
+    }),
     createDocument: Object.freeze({
         name: "create-document",
         title: "小驴速切新建文档",
@@ -453,6 +475,14 @@ function normalizeAgentNotebookId(value) {
     return /^\d{14}-[0-9a-z]+$/i.test(id) ? id : "";
 }
 
+
+// 日记追加内容清洗：压平换行/制表、合并空白、限长 512；清洗后为空则拒绝
+function sanitizeJournalAppend(value) {
+    const raw = typeof value === "string" ? value : "";
+    const cleaned = raw.replace(/[\r\n\t\u0000-\u001f]+/g, " ").replace(/\s{2,}/g, " ").trim();
+    return cleaned.slice(0, 512);
+}
+
 module.exports = {
     MAX_QUERY_LENGTH,
     MAX_NOTEBOOK_LENGTH,
@@ -469,6 +499,7 @@ module.exports = {
     normalizeAgentSearchSubType,
     normalizeAgentRootId,
     normalizeAgentNotebookId,
+    sanitizeJournalAppend,
     flipTaskMarkdown,
     flipTaskMarkdown,
     normalizeAgentDocumentId,
