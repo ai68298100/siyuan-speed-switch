@@ -3204,6 +3204,19 @@ const version = beginSearch(session);
                 grid.appendChild(card);
             });
             root.appendChild(grid);
+
+            const hint = document.createElement("div");
+            hint.className = "sw-home__hint";
+            const hintText = document.createElement("span");
+            hintText.textContent = this.i18n.homeHintText;
+            const hintLink = document.createElement("a");
+            hintLink.className = "sw-home__hint-link";
+            hintLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/widget-protocol.md";
+            hintLink.target = "_blank";
+            hintLink.rel = "noopener";
+            hintLink.textContent = this.i18n.homeHintLink;
+            hint.append(hintText, hintLink);
+            root.appendChild(hint);
         });
         if (offered === 0) {
             root.textContent = this.i18n.homeNoMoreModules;

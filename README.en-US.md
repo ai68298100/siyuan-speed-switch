@@ -168,6 +168,40 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.16 (2026-09-11)
+
+- The "second panel" is renamed **Widgets**; the widget-store button now sits permanently in the top bar next to "Edit layout".
+- Size presets expand to 7 tiers: XS 2×3 / Small 4×3 / Square 4×4 / Tall 4×6 / Wide 8×3 / Large 8×5 / Full 12×6; modules declare their supported subsets and pick sizes from a popover menu (replacing the single cycle button); legacy widths migrate to the nearest preset.
+- Five new native widgets: **Today's tasks** (SQL scan of open tasks in opened documents, click to jump), **Tags** and **Bookmarks** (getTag/getBookmark, click opens the matching dock), **Journal this month** (aggregates the month's journal entries with an open-today shortcut), and a **Plugin command launcher** (one-tap execution of other plugins' commands — any plugin works without adaptation).
+- Published the third-party widget guide [docs/widget-protocol.md](docs/widget-protocol.md): registration signature, snapshot contract, size presets, jump callbacks, and a full example for calendar/journal/todo/pomodoro plugin authors.
+- The widget panel now shows a permanent footer inviting plugin developers to the store via the Widget Protocol guide.
+- The widget panel now shows a permanent footer inviting plugin developers to the store via the Widget Protocol guide.
+- Fixed duplicate "Favorites/Sort" text labels in the desktop sidebar toolbar and upgraded its sort control to the unified group·sort popover (the sidebar can now change grouping); fixed the mobile switcher toolbar where a legacy nowrap rule suppressed the two-row layout (search collapsing away, buttons overlapping) — two rows restored with taller chips.
+
+### v0.16.15 (2026-09-10)
+
+- Second panel becomes an iPad-style widget canvas: a 12-column grid with 40px row units and dense auto-packing; every module declares fixed size presets and cycles among its supported sizes while editing; legacy width steps migrate to the nearest preset automatically.
+- Edit mode supports desktop drag-and-drop reordering (dense packing keeps the canvas gap-free); mobile keeps the move up/down buttons.
+- "Add module" becomes a widget-store gallery: built-in and plugin sections with icon, description, and size tiles — tap a tile to add, or re-size an already added module.
+- Module content adapts to the chosen size (compact density for small, lists scroll within the cell).
+- Switcher grouped lists: small groups (1–2 cards) flow side by side at exact standard card width while large groups fill rows; ResizeObserver re-layouts on width change (rAF-debounced, no card rebuilds); arrow keys move by on-screen position in flow mode.
+- Fixed the group·sort popover appearing at the dialog bottom-left: it now mounts to body with a top z-index and follows the trigger on resize.
+
+### v0.16.14 (2026-09-10)
+
+- Grouped lists return to the exact standard card grid: grouping only changes how tabs are sectioned, cards keep their previous size and arrangement; collapsible group headers with icon/name/count remain.
+- Fixed the group+sort control opening no dropdown: replaced the SiYuan Menu (apparently stacked beneath the plugin dialog) with the same in-house popover used by the favorites/recents dropdowns (fixed positioning, closes on outside pointerdown and Escape).
+- The desktop settings dialog now opens at an independent 70% viewport ratio instead of following the panel scale setting.
+- The second panel keeps its previous two-card list pattern (recents + favorites by default) with the layout-editing extras still available.
+
+### v0.16.13 (2026-09-10)
+
+- Grouped tab lists: a unified "group · sort" control (desktop menu, mobile sheet section) offers grouping by notebook (default) / favorites / created month / none, with the six sort orders applying within groups; sidebar and mobile lists share the same grouping semantics.
+- Flow layout for sparse groups: group headers show icon, name, and count and collapse on click.
+- Second panel becomes widget-based: driven by the home runtime with built-in read-only modules (recents, favorites, journal, document sets, pinned document) that can be added, removed, reordered, resized, and collapsed with per-device persistence; third-party plugins can register read-only modules via registerHomeModule.
+- Desktop settings dialog now follows the panel size mode; mobile keeps the viewport clamp.
+- Fixed the crowded mobile switcher toolbar and the mobile settings tab strip; the long document-sets guide moved below the action buttons; bundle budget recalibrated.
+
 ### v0.16.12 (2026-09-10)
 
 - Second panel gains a dedicated top-bar entry and the `Alt+Shift+P` default hotkey; the command also registers a global callback, so binding "global" in SiYuan's Settings → Keymap makes it trigger via a system-level hotkey while SiYuan is unfocused (SiYuan comes to the front together with the panel).

@@ -4523,3 +4523,26 @@ body:not(.desktop) .sw-home {
         white-space: nowrap;
     }
 }
+
+// ==================== 组件面板底部提示：持续完善 + 开发者邀请 ====================
+.sw-home .sw-home__hint {
+    flex: none;
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.6;
+
+    .sw-home__hint-link {
+        color: var(--b3-theme-primary);
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+            text-decoration: underline;
+            outline: none;
+        }
+    }
+}
