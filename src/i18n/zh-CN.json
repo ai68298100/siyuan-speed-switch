@@ -89,6 +89,7 @@
   "homeDescBookmarks": "书签与数量，点击打开书签面板",
   "homeDescJournalMonthly": "当月日记列表，点击直达对应日记",
   "homeDescCmds": "其他插件的命令一键触发，任何插件无需适配即可使用",
+  "homeStoreSearch": "搜索组件…",
   "homeConfig": "配置",
   "homeConfigSave": "保存",
   "homeHintText": "组件面板仍在持续完善中。我们诚邀插件开发者遵循组件接入协议，把你的插件能力上架到组件商店：",

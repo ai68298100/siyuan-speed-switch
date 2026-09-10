@@ -2894,6 +2894,7 @@ const version = beginSearch(session);
             title: string,
             icon: string,
             description: string,
+            refreshOn: string[],
             read: (config: Record<string, unknown>) =>
                 { title?: string; items: Array<{ label: string; value: string }> } |
                 Promise<{ title?: string; items: Array<{ label: string; value: string }> }>,
@@ -2901,38 +2902,39 @@ const version = beginSearch(session);
             const result = this.homeRuntime.registerAdapter({
                 moduleId, title, icon, description, category: "siyuan",
                 supportedDevices: ["desktop", "sidebar", "mobile"],
+                refreshOn,
                 read,
             });
             if (result.registered) this.homeBuiltinAdapterIds.add(moduleId);
         };
-        register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", this.i18n.homeDescRecent, () => ({
+        register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", this.i18n.homeDescRecent, ["switch-protyle", "loaded-protyle", "destroy-protyle"], () => ({
             items: this.getOpenHistory().slice(0, 8).map((entry) => ({
                 label: entry.title || entry.rootId,
                 value: entry.rootId || "",
             })).filter((item) => !!item.value),
         }));
-        register("favorites", this.i18n.homeFavorites, "iconStar", this.i18n.homeDescFav, () => ({
+        register("favorites", this.i18n.homeFavorites, "iconStar", this.i18n.homeDescFav, ["switch-protyle", "loaded-protyle", "destroy-protyle"], () => ({
             items: this.getFavorites().slice(0, 8).map((fav) => ({
                 label: fav.title || fav.key,
                 value: fav.key,
             })),
         }));
-        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", this.i18n.homeDescJournal, () => ({
+        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", this.i18n.homeDescJournal, ["switch-protyle"], () => ({
             items: [{label: this.i18n.homeTodayJournalOpen, value: "action:journal"}],
         }));
-        register("document-sets", this.i18n.homeDocumentSets, "iconLayout", this.i18n.homeDescDocSets, () => ({
+        register("document-sets", this.i18n.homeDocumentSets, "iconLayout", this.i18n.homeDescDocSets, ["loaded-protyle", "destroy-protyle"], () => ({
             items: this.getDocumentSets().slice(0, 8).map((set: any) => ({
                 label: String(set?.name || ""),
                 value: "set:" + String(set?.setId || ""),
             })).filter((item) => !!item.value && !!item.label),
         }));
-        register("fixed-document", this.i18n.homeFixedDocument, "iconFile", this.i18n.homeDescFixed, (config) => {
+        register("fixed-document", this.i18n.homeFixedDocument, "iconFile", this.i18n.homeDescFixed, [], (config) => {
             const docId = typeof config.docId === "string" ? config.docId : "";
             const title = typeof config.title === "string" && config.title ? config.title : docId;
             return {items: docId && BLOCK_ID_RE.test(docId) ? [{label: title, value: docId}] : []};
         });
         // 今日待办：SQL 扫描当前打开文档中的未完成任务块，点击跳块
-        register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, async (config) => {
+        register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
             // 协议 v2 configSchema：limit（条数）、allDocuments（"是"=扫描全库根文档，仍限量）
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
             const scanAll = config.allDocuments === "是";
@@ -2946,7 +2948,7 @@ const version = beginSearch(session);
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
         });
         // 标签：getTag，点击打开思源标签面板
-        register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, async () => {
+        register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, [], async () => {
             const json = await this.fetchKernelJson("/api/tag/getTag", {});
             const tags = (json?.data?.tags || []) as Array<{name: string; count?: number}>;
             return {items: tags.slice(0, 12).map((tag) => ({
@@ -2955,7 +2957,7 @@ const version = beginSearch(session);
             })).filter((item) => item.value.length > 4)};
         });
         // 书签：getBookmark，点击打开思源书签面板
-        register("bookmarks", this.i18n.homeBookmarks, "iconBookmark", this.i18n.homeDescBookmarks, async () => {
+        register("bookmarks", this.i18n.homeBookmarks, "iconBookmark", this.i18n.homeDescBookmarks, [], async () => {
             const json = await this.fetchKernelJson("/api/bookmark/getBookmark", {});
             const bookmarks = (json?.data?.bookmarks || []) as Array<{name: string; count?: number}>;
             return {items: bookmarks.slice(0, 12).map((bookmark) => ({
@@ -2964,7 +2966,7 @@ const version = beginSearch(session);
             })).filter((item) => item.value.length > 9)};
         });
         // 本月日记：按日记标题前缀（YYYY-MM）列出当月日记，点击直达；首位固定"打开今日日记"
-        register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, async () => {
+        register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, ["switch-protyle", "loaded-protyle"], async () => {
             const now = new Date();
             const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
             const json = await this.fetchKernelJson("/api/query/sql", {
@@ -2977,7 +2979,7 @@ const version = beginSearch(session);
             ]};
         });
         // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
-        register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, (config) => {
+        register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, [], (config) => {
             // 协议 v2 configSchema：limit（条数）、filter（label/plugin 关键词过滤）
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
             const filter = typeof config.filter === "string" ? config.filter.trim().toLowerCase() : "";
@@ -3260,6 +3262,29 @@ const version = beginSearch(session);
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
         const state = this.getHomeState();
+        // 商店内搜索：按名称/描述过滤卡片
+        const searchBar = document.createElement("div");
+        searchBar.className = "sw-home-store__search";
+        const searchInput = document.createElement("input");
+        searchInput.className = "b3-text-field fn__block";
+        searchInput.type = "text";
+        searchInput.placeholder = this.i18n.homeStoreSearch;
+        searchInput.setAttribute("aria-label", this.i18n.homeStoreSearch);
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.trim().toLowerCase();
+            root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
+                const haystack = card.dataset.search || "";
+                card.classList.toggle("fn__none", query !== "" && !haystack.includes(query));
+            });
+            root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
+                const section = heading.nextElementSibling;
+                if (!section) return;
+                const visible = Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
+                heading.classList.toggle("fn__none", !visible);
+                section.classList.toggle("fn__none", !visible);
+            });
+        });
+        root.appendChild(searchBar);
         const instanceByModule = new Map<string, any>();
         ((state.layouts[device] || []) as Array<any>).forEach((entry) => {
             const inst = state.instances.find((candidate: any) => candidate.instanceId === entry.instanceId);
@@ -3287,6 +3312,7 @@ const version = beginSearch(session);
                 const def = defs.get(moduleId);
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
+                card.dataset.search = ((def.title || "") + " " + (def.description || "") + " " + moduleId).toLowerCase();
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
@@ -3379,6 +3405,8 @@ const version = beginSearch(session);
         });
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
+        // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
+        if (this.isMobile) root.classList.add("sw-home--mobile");
         const device = this.isMobile ? "mobile" : "desktop";
         let editing = false;
 

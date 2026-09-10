@@ -4198,13 +4198,19 @@
     font-size: 12px;
 }
 
-// 手机端：单列堆叠
-.sw__mobile .sw-home,
-body:not(.desktop) .sw-home {
-    .sw-home__cell {
-        grid-column: 1 / -1;
-    }
+// 手机端：单列堆叠（根节点带 sw-home--mobile 类，由渲染层按 isMobile 注入）
+.sw-home--mobile .sw-home__grid {
+    grid-template-columns: repeat(4, 1fr);
 }
+
+.sw-home--mobile .sw-home__cell {
+    grid-column: 1 / -1;
+}
+
+.sw-home-store__search {
+    margin-bottom: 12px;
+}
+
 
 // ==================== 手机切换器顶栏两行化 ====================
 // 行1 = 搜索 + 排序 + 关闭；行2 = 收藏 / 最近打开 / 设置（带文字，横向可滚动）。
