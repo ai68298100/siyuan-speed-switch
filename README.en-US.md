@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.12-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.13-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,11 +8,11 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> `v0.16.12` adds a dedicated top-bar entry for the second panel (hotkey `Alt+Shift+P`, global-hotkey capable) and screen-ratio adaptive desktop panel sizing (fixed-size and fullscreen modes configurable); quick-action defaults are migrated once so legacy auto-added entries no longer occupy the bar.
+> `v0.16.13` introduces grouped tab lists (by notebook by default / favorites / created month) with a unified group+sort menu and flow layout where small groups sit side by side, and turns the second panel into a widget home: built-in recents/favorites/journal/document-set modules can be added, removed, reordered, resized, and collapsed; third-party read-only modules are supported with an open-plugin fallback. Desktop settings now follows the adaptive size mode; mobile toolbar crowding and the settings tab-strip glitch are fixed.
 
 > The current worktree contains unreleased search and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters. The UI is also moving to a modern visual language with lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
 
-> Release-candidate status: automated gates pass (type check, production build, 494 tests, mobile and Chromium UI smoke tests, and archive audit). Final real-device acceptance has not been performed; no tag, release, or push will be created before explicit user confirmation.
+> Release-candidate status: automated gates pass (type check, production build, 499 tests, mobile and Chromium UI smoke tests, and archive audit). Final real-device acceptance has not been performed; no tag, release, or push will be created before explicit user confirmation.
 
 ## Contents
 
@@ -560,7 +560,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 77 `*.test.cjs` files under `tests/` and `tests/host/`, currently 494 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 78 `*.test.cjs` files under `tests/` and `tests/host/`, currently 499 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -589,7 +589,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 494)
+pnpm test               # run every unit, contract, and host release test (currently 499)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

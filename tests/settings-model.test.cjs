@@ -8,6 +8,7 @@ const defaults = {
     fullscreen: false, fabEnabled: false, mobileColumns: 2, mobileThumbHeight: 80,
     journalNotebook: '', lastSettingsTab: 'appearance', quickActions: [],
     panelSizeMode: 'adaptive', panelScale: 90,
+    groupBy: 'notebook',
     quickActionsRightRail: false, quickActionsDisplayDesktop: 'full',
     quickActionsDisplaySidebar: 'full', quickActionsDisplayMobile: 'full',
     quickActionsCollapsedDesktopBottom: false, quickActionsCollapsedDesktopRight: false,
@@ -43,6 +44,12 @@ test('settings model isolates malformed persisted objects and preserves defaults
     assert.equal(result.quickActionsDisplayMobile, 'full');
     assert.equal(result.panelSizeMode, 'adaptive');
     assert.equal(result.panelScale, 90);
+});
+
+test('group by mode accepts known values and rejects unknown ones', () => {
+    assert.equal(normalizeSettings({groupBy: 'favorites'}, options).groupBy, 'favorites');
+    assert.equal(normalizeSettings({groupBy: 'none'}, options).groupBy, 'none');
+    assert.equal(normalizeSettings({groupBy: 'bogus'}, options).groupBy, 'notebook');
 });
 
 test('panel size mode accepts known values and rejects unknown ones', () => {

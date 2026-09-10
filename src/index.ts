@@ -2,7 +2,7 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
@@ -23,6 +23,7 @@ import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
 import {createHomeModuleController} from "./home-controller";
 import {createHomePanelController} from "./home-panel";
+import {normalizeHomeState} from "./home-model";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -100,6 +101,7 @@ import {
     FAV_COLLAPSED_KEY,
     QUICK_ACTIONS_KEY,
     QUICK_ACTIONS_DEFAULTS_KEY,
+    HOME_STATE_KEY,
     DOCUMENT_SETS_KEY,
     QUICK_ACTIONS_MAX,
     SIDEBAR_DOCK_TYPE,
@@ -112,6 +114,9 @@ import {
     PANEL_SCALE_MAX,
     PANEL_SCALE_DEFAULT,
     PANEL_SIZE_MIN_PX,
+    TabGroupMode,
+    TAB_GROUP_MODES,
+    TAB_GROUP_MODE_DEFAULT,
 } from "./constants";
 import {
     getSiyuan,
@@ -234,6 +239,9 @@ declare module "./favorite-actions" {
     export function setFavoriteEntryGroup<T extends {key?: string; group?: string}>(entries: T[], key: string, group: string): {items: T[]; changed: boolean};
     export function migrateFavoriteEntry<T extends {key?: string; rootId?: string}>(entries: T[], legacyKey: string, rootId: string): {items: T[]; changed: boolean; migrated: boolean; duplicate?: boolean};
 }
+declare module "./home-model" {
+    export function normalizeHomeState(value: unknown): {schemaVersion: number; instances: Array<{instanceId: string; moduleId: string; enabled: boolean; config: Record<string, unknown>}>; layouts: Record<string, Array<{instanceId: string; x: number; y: number; w: number; h: number; collapsed: boolean}>>};
+}
 declare module "./settings-model" {
     export function normalizeSettings(saved: unknown, options?: Record<string, unknown>): any;
     export function resolvePanelSize(settings: {panelSizeMode?: string; panelScale?: number; dialogWidth?: number; dialogHeight?: number} | null | undefined, viewport: {width: number; height: number; minWidth?: number; minHeight?: number}): {width: number; height: number};
@@ -256,7 +264,10 @@ const CARD_ICON_SPRITE =
     '<symbol id="iconUnpin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H7.89"/><path d="m2 2 20 20"/><path d="M9 9v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h11"/></symbol>' +
     '<symbol id="iconPin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>' +
     '<symbol id="iconStar" viewBox="0 0 24 24" fill="var(--b3-icon-star-fill, none)" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>' +
-    '<symbol id="iconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>';
+    '<symbol id="iconClose" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>' +
+    // 第二面板专属图标：与 iconLayout（2×2 均等网格）同族，但为 dashboard 变体
+    // （一格宽 + 三格小），暗示"聚合面板"，外框/描边风格保持一致以示同源
+    '<symbol id="iconLayoutHome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="10" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="6" rx="1.2"/><rect x="13.5" y="12" width="7.5" height="9" rx="1.2"/><rect x="3" y="16" width="7.5" height="5" rx="1.2"/></symbol>';
 
 // 鍗曞垎缁勬覆鏌撲笂涓嬫枃锛氶伩鍏?renderTabGroup 褰㈠弬鍒楄〃鐖嗙偢锛屾墍鏈夊叡浜瓧娈垫墦鍖呭埌涓€涓璞?
 interface ITabGroupRenderCtx {
@@ -374,6 +385,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     dialogHeight: 600,     // 固定尺寸模式的高度 px
     panelSizeMode: "adaptive", // 面板尺寸模式：adaptive=屏幕比例自适应（默认）/ custom=固定尺寸 / fullscreen=全屏
     panelScale: PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
+    groupBy: TAB_GROUP_MODE_DEFAULT, // 列表分组：默认按笔记本
     columns: 0,            // 缂╃暐鍥惧垪鏁帮紝0=鑷姩
     thumbHeight: 128,      // 缂╃暐鍥鹃珮搴?px
     sortBy: "mru",         // 椤电鎺掑簭鏂瑰紡
@@ -409,6 +421,7 @@ interface ISwSettings {
     dialogHeight: number;
     panelSizeMode: PanelSizeMode; // 面板尺寸模式
     panelScale: number;           // 自适应比例（百分比）
+    groupBy: TabGroupMode;        // 列表分组方式（默认按笔记本）
     columns: number;
     thumbHeight: number;
     sortBy: SortBy;
@@ -592,9 +605,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
 
-        // 第二面板顶栏入口：与切换器并列，一键直达聚合面板
+        // 第二面板顶栏入口：与切换器并列，一键直达聚合面板（dashboard 变体图标，与 iconLayout 同族）
         this.addTopBar({
-            icon: "iconLayout",
+            icon: "iconLayoutHome",
             title: this.i18n.secondPanel,
             position: "right",
             callback: () => {
@@ -632,6 +645,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
         this.registerAgentCapabilities();
+        this.registerBuiltinHomeAdapters();
     }
 
     // 棰勫姞杞?7 涓寔涔呭寲 key锛歭oadData 鍐欏叆 this.data锛岃 getMru 绛夎兘璇诲埌鏃у€?
@@ -647,6 +661,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.loadData(QUICK_ACTIONS_KEY),
             this.loadData(QUICK_ACTIONS_DEFAULTS_KEY),
             this.loadData(DOCUMENT_SETS_KEY),
+            this.loadData(HOME_STATE_KEY),
             this.loadData(SETTINGS_KEY),
             this.loadData(THUMB_CACHE_KEY),
         ]).catch((e) => logger.warn("load data fail", e));
@@ -1266,9 +1281,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dialog = new Dialog({
             title: this.i18n.settings,
             content: '<div class="sw-settings"></div>',
-            // 妗岄潰 720脳560锛涙墜鏈虹锛堝惈妯睆鐭鍙ｏ級鎸夎鍙ｆ敹缂╋紝閬垮厤婧㈠嚭灞忓箷
-            width: "min(720px, 88vw)",
-            height: "min(560px, 85vh)",
+            // 桌面端跟随面板尺寸模式（自适应比例/固定/全屏）；手机端按视口收缩，避免溢出屏幕
+            width: this.isMobile ? "min(720px, 88vw)" : `${this.resolvePanelDialogSize(this.getSettings(), false).width}px`,
+            height: this.isMobile ? "min(560px, 85vh)" : `${this.resolvePanelDialogSize(this.getSettings(), false).height}px`,
         });
         this.suspendFABForDialog(dialog);
 
@@ -2005,14 +2020,10 @@ export default class SpeedSwitchPlugin extends Plugin {
                     <div class="sw__history-dd"></div>
                 </div>
                 <div class="sw__select-wrap">
-                    <select class="b3-select sw__sort b3-tooltips b3-tooltips__s" aria-label="${this.i18n.setSortBy}">
-                        <option value="mru">${this.i18n.sortMru}</option>
-                        <option value="layout">${this.i18n.sortLayout}</option>
-                        <option value="layoutDesc">${this.i18n.sortLayoutDesc}</option>
-                        <option value="updatedDesc">${this.i18n.sortUpdatedDesc}</option>
-                        <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
-                        <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
-                    </select>
+                    <button type="button" class="b3-button b3-button--text sw__sort-trigger" aria-label="${this.i18n.setSortBy}">
+                        <svg><use xlink:href="#iconSort"></use></svg>
+                        <span class="sw__sort-trigger-label"></span>
+                    </button>
                 </div>
                 <button type="button" class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn b3-tooltips b3-tooltips__s" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
                     <svg class="sw__fs-enter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -2231,18 +2242,17 @@ const updatedMap: {[rootId: string]: string} = {};
             dialog.destroy();
             this.openJournal();
         });
-        sortSelect?.addEventListener("change", () => {
-            const nextSort = sortSelect.value as SortBy;
+        // 排序/分组一体化变更：更新设置 → 重排列表 → 补查最近编辑 → 清搜索词
+        const applySortChange = (nextSort: SortBy) => {
             this.updateSettings({sortBy: nextSort});
             const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-            // 寮圭獥瀛樻椿鏈熼棿椤电鍙兘宸插鍑忥紝閲嶅彇鏈€鏂板垪琛紱娌跨敤鍏变韩 updatedMap锛屽凡鍥炴簮鐨勬洿鏂版椂闂翠笉涓?
+            // 寮圭獥瀛樻椿鏈熼棿椤电鍙兘宸插鍑忥紝閲嶅彇鏈€鏂板垪琛紱娌跨敤鍏变韩 updatedMap锛屽凡鍥炴簮鐨勬洿鏂版椂闂翠笉涓?
             if (scrollElement) {
                 this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, nextSort, updatedMap);
             }
-            // 鎺掑簭鍒囨崲鏃舵枃妗ｅ彲鑳藉張鏈夋洿鏂帮細琛ユ煡涓€娆℃洿鏂版椂闂达紝浠嶅湪銆屾渶杩戠紪杈戙€嶆帓搴忎笖鏈悳绱㈡椂閲嶆帓
             this.loadUpdatedMap(getAllTabs()).then((map) => {
                 Object.assign(updatedMap, map);
-                if (dialog.element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
+                if (dialog.element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
                     const el = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
                     if (el) {
                         this.renderList(el, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
@@ -2254,8 +2264,93 @@ const updatedMap: {[rootId: string]: string} = {};
                 this.applySearch(scrollElement, searchInput, closeOverlay);
             }
             scrollElement?.focus();
+        };
+        const applyGroupChange = (nextGroup: TabGroupMode) => {
+            this.updateSettings({groupBy: nextGroup});
+            this.updateSortTriggerLabel(dialog.element);
+            const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+            if (scrollElement) {
+                this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, this.getSettings().sortBy, updatedMap);
+            }
+        };
+        sortSelect?.addEventListener("change", () => {
+            applySortChange(sortSelect.value as SortBy);
+        });
+        this.bindSortTriggerMenu(dialog.element, applySortChange, applyGroupChange);
+    }
+
+    // 排序触发按钮：标签 = 分组·排序 组合；点击弹出一体化菜单（分组方式 4 项 + 组内排序 6 项）
+    private updateSortTriggerLabel(scope: HTMLElement) {
+        const labelEl = scope.querySelector<HTMLElement>(".sw__sort-trigger .sw__sort-trigger-label");
+        if (!labelEl) return;
+        const s = this.getSettings();
+        const groupLabels: Record<string, string> = {
+            none: this.i18n.groupNone,
+            notebook: this.i18n.groupNotebook,
+            favorites: this.i18n.groupFavorites,
+            createdMonth: this.i18n.groupCreatedMonth,
+        };
+        const sortLabels: Record<string, string> = {
+            mru: this.i18n.sortMru,
+            layout: this.i18n.sortLayout,
+            layoutDesc: this.i18n.sortLayoutDesc,
+            updatedDesc: this.i18n.sortUpdatedDesc,
+            titleAsc: this.i18n.sortTitleAsc,
+            titleDesc: this.i18n.sortTitleDesc,
+        };
+        labelEl.textContent = (groupLabels[s.groupBy] || s.groupBy) + " · " + (sortLabels[s.sortBy] || s.sortBy);
+    }
+
+    private bindSortTriggerMenu(
+        scope: HTMLElement,
+        applySortChange: (nextSort: SortBy) => void,
+        applyGroupChange: (nextGroup: TabGroupMode) => void,
+    ) {
+        const trigger = scope.querySelector<HTMLButtonElement>(".sw__sort-trigger");
+        if (!trigger) return;
+        this.updateSortTriggerLabel(scope);
+        trigger.addEventListener("click", () => {
+            const s = this.getSettings();
+            const menu = new Menu("swSortGroupMenu");
+            const groupOptions: Array<{value: TabGroupMode, label: string}> = [
+                {value: "notebook", label: this.i18n.groupNotebook},
+                {value: "favorites", label: this.i18n.groupFavorites},
+                {value: "createdMonth", label: this.i18n.groupCreatedMonth},
+                {value: "none", label: this.i18n.groupNone},
+            ];
+            groupOptions.forEach(({value, label}) => {
+                menu.addItem({
+                    label,
+                    iconHTML: "",
+                    checked: s.groupBy === value,
+                    click: () => applyGroupChange(value),
+                });
+            });
+            menu.addSeparator();
+            const sortOptions: Array<{value: SortBy, label: string}> = [
+                {value: "mru", label: this.i18n.sortMru},
+                {value: "layout", label: this.i18n.sortLayout},
+                {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
+                {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
+                {value: "titleAsc", label: this.i18n.sortTitleAsc},
+                {value: "titleDesc", label: this.i18n.sortTitleDesc},
+            ];
+            sortOptions.forEach(({value, label}) => {
+                menu.addItem({
+                    label,
+                    iconHTML: "",
+                    checked: s.sortBy === value,
+                    click: () => {
+                        this.updateSortTriggerLabel(scope);
+                        applySortChange(value);
+                    },
+                });
+            });
+            const rect = trigger.getBoundingClientRect();
+            menu.open({x: rect.left, y: rect.bottom + 4});
         });
     }
+
 
     // 鎵ц鎼滅储锛氬凡鎵撳紑椤电鍖归厤鍗＄墖鏄剧ず鍦ㄤ笂鍗婇儴鍒嗭紝鍚屾椂锛堥槻鎶栵級鎼滅储鍏ㄥ簱鏂囨。鏍囬鏄剧ず鍦ㄤ笅鍗婇儴鍒?
     private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
@@ -2383,6 +2478,9 @@ const version = beginSearch(session);
         readOnly?: boolean;
     }): () => void {
         const registration = this.homeRuntime.registerAdapter(options as unknown as Record<string, unknown>);
+        if (registration.registered && typeof (options as {open?: unknown}).open === "function") {
+            this.homeModuleOpens.set(String(options.moduleId), (options as unknown as {open: () => void}).open);
+        }
         if (!registration.registered) return () => undefined;
         return () => { registration.unregister(); };
     }
@@ -2571,7 +2669,7 @@ const version = beginSearch(session);
             homeButton.className = "sw__quick-action sw__quick-action--home b3-tooltips b3-tooltips__n";
             homeButton.setAttribute("aria-label", this.i18n.secondPanel);
             homeButton.title = this.i18n.secondPanel;
-            homeButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#iconLayout"></use></svg></span><span class="sw__quick-action-label">${this.i18n.secondPanel}</span>`;
+            homeButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#iconLayoutHome"></use></svg></span><span class="sw__quick-action-label">${this.i18n.secondPanel}</span>`;
             homeButton.addEventListener("click", () => {
                 close();
                 this.openSecondPanel();
@@ -2677,58 +2775,396 @@ const version = beginSearch(session);
         }
     }
 
+    // ==================== 第二面板（小组件主页） ====================
+
+    // 第三方模块的"跳转本体"回调（仅内存，不持久化）；模块读取失败时面板显示跳转按钮
+    private homeModuleOpens = new Map<string, () => void>();
+    private homeBuiltinAdapterIds = new Set<string>();
+
+    // 内置只读适配器：面板数据全部来自插件既有领域数据（最近/收藏/日记/文档集/指定文档）。
+    // 注册定义覆盖 home-model DEFAULT_MODULES 的同名项（标题随 i18n）。
+    private registerBuiltinHomeAdapters() {
+        const register = (
+            moduleId: string,
+            title: string,
+            icon: string,
+            read: (config: Record<string, unknown>) => { title?: string; items: Array<{ label: string; value: string }> },
+        ) => {
+            const result = this.homeRuntime.registerAdapter({
+                moduleId, title, icon, category: "siyuan",
+                supportedDevices: ["desktop", "sidebar", "mobile"],
+                read,
+            });
+            if (result.registered) this.homeBuiltinAdapterIds.add(moduleId);
+        };
+        register("recent-documents", this.i18n.homeRecentDocuments, "iconHistory", () => ({
+            items: this.getOpenHistory().slice(0, 8).map((entry) => ({
+                label: entry.title || entry.rootId,
+                value: entry.rootId || "",
+            })).filter((item) => !!item.value),
+        }));
+        register("favorites", this.i18n.homeFavorites, "iconStar", () => ({
+            items: this.getFavorites().slice(0, 8).map((fav) => ({
+                label: fav.title || fav.key,
+                value: fav.key,
+            })),
+        }));
+        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", () => ({
+            items: [{label: this.i18n.homeTodayJournalOpen, value: "action:journal"}],
+        }));
+        register("document-sets", this.i18n.homeDocumentSets, "iconLayout", () => ({
+            items: this.getDocumentSets().slice(0, 8).map((set: any) => ({
+                label: String(set?.name || ""),
+                value: "set:" + String(set?.setId || ""),
+            })).filter((item) => !!item.value && !!item.label),
+        }));
+        register("fixed-document", this.i18n.homeFixedDocument, "iconFile", (config) => {
+            const docId = typeof config.docId === "string" ? config.docId : "";
+            const title = typeof config.title === "string" && config.title ? config.title : docId;
+            return {items: docId && BLOCK_ID_RE.test(docId) ? [{label: title, value: docId}] : []};
+        });
+    }
+
+    private getHomeState() {
+        return normalizeHomeState(this.data[HOME_STATE_KEY]);
+    }
+
+    private saveHomeState(state: { schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]> }) {
+        this.data[HOME_STATE_KEY] = state;
+        this.saveDataDebounced(HOME_STATE_KEY);
+    }
+
+    // 文档集快速恢复（面板内直达）：复用设置的预检 + 确认 + 可取消执行链路
+    private async restoreDocumentSetFromHome(setId: string) {
+        const item = this.getDocumentSets().find((candidate: any) => candidate?.setId === setId);
+        if (!item) return;
+        const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+        const plan = planDocumentSetRestore(item, opened, null);
+        if (!plan.pending.length) {
+            showMessage(this.i18n.documentSetRestoreNone);
+            return;
+        }
+        const probe = await this.probeDocumentSetEntries(plan.pending);
+        if (this.isUnloading) return;
+        const candidates = [...probe.available, ...probe.unknown];
+        if (!candidates.length) {
+            showMessage(this.i18n.documentSetNoAvailable);
+            return;
+        }
+        const confirmations: string[] = [];
+        if (probe.missing.length > 0) confirmations.push(`${this.i18n.documentSetMissingConfirm} (${probe.missing.length})`);
+        if (probe.unknown.length > 0) confirmations.push(`${this.i18n.documentSetUnknownConfirm} (${probe.unknown.length})`);
+        const confirmation = confirmations.length > 0 ? confirmations.join("\n") : this.i18n.documentSetRestoreConfirm;
+        if (!confirm(confirmation)) return;
+        const execution = await runDocumentSetRestore(candidates, async (rootId) => {
+            if (this.isUnloading) return false;
+            return this.isMobile ? await this.mobileOpenDoc(rootId) : ((await openTab({app: this.app, doc: {id: rootId}})), true);
+        });
+        const summary = summarizeDocumentSetRestore(plan, probe, execution);
+        showMessage(`${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`);
+    }
+
+    // 面板条目点击分发：动作协议 / 文档集 / 收藏键 / 文档 rootId
+    private handleHomeItemAction(item: { label?: string; value?: string; href?: string }, close: () => void) {
+        const value = String(item.value || "");
+        if (value === "action:journal") {
+            close();
+            this.openJournal();
+            return;
+        }
+        if (value.startsWith("set:")) {
+            close();
+            void this.restoreDocumentSetFromHome(value.slice(4));
+            return;
+        }
+        const favorite = this.getFavorites().find((fav) => fav.key === value);
+        if (favorite) {
+            close();
+            void this.jumpToFavorite(favorite, () => undefined);
+            return;
+        }
+        if (BLOCK_ID_RE.test(value)) {
+            close();
+            if (this.isMobile) {
+                void this.mobileOpenDoc(value);
+            } else {
+                void openTab({app: this.app, doc: {id: value}});
+            }
+            return;
+        }
+        if (item.href) {
+            window.open(item.href, "_blank", "noopener");
+        }
+    }
+
+    // 面板宽档循环：1/3 → 1/2 → 2/3 → 整行
+    private cycleHomeWidth(w: number): number {
+        const steps = [4, 6, 8, 12];
+        const index = steps.indexOf(w >= 4 && w <= 12 ? w : 6);
+        return steps[(index + 1) % steps.length];
+    }
+
     private openSecondPanel() {
         const settings = this.getSettings();
         const size = this.resolvePanelDialogSize(settings, settings.fullscreen);
         const dialog = new Dialog({
             title: this.i18n.secondPanel,
-            content: '<div class="speed-switch sw-second-panel"></div>',
+            content: '<div class="speed-switch sw-home"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
         });
-        const root = dialog.element.querySelector<HTMLElement>(".sw-second-panel");
+        const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
-        const sections = [
-            {
-                title: this.i18n.historyOpenSection,
-                icon: "iconHistory",
-                items: this.getOpenHistory().slice(0, 8).map((entry) => ({
-                    label: entry.title,
-                    open: () => { dialog.destroy(); void this.openHistoryEntry(entry); },
-                })),
-            },
-            {
-                title: this.i18n.favorites,
-                icon: "iconStar",
-                items: this.getFavorites().slice(0, 8).map((favorite) => ({
-                    label: favorite.title,
-                    open: () => { dialog.destroy(); void this.jumpToFavorite(favorite, () => undefined); },
-                })),
-            },
-        ];
-        sections.forEach((section) => {
-            const card = document.createElement("section");
-            card.className = "sw-second-panel__section";
-            const heading = document.createElement("h3");
-            heading.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${section.icon}"></use></svg><span>${section.title}</span>`;
-            card.appendChild(heading);
-            if (section.items.length === 0) {
-                const empty = document.createElement("p");
-                empty.className = "sw-second-panel__empty";
-                empty.textContent = this.i18n.secondPanelEmpty;
-                card.appendChild(empty);
-            } else {
-                section.items.forEach((item) => {
-                    const button = document.createElement("button");
-                    button.type = "button";
-                    button.className = "sw-second-panel__item";
-                    button.textContent = item.label;
-                    button.addEventListener("click", item.open);
-                    card.appendChild(button);
-                });
+        const device = this.isMobile ? "mobile" : "desktop";
+        let editing = false;
+
+        const defs = new Map<string, any>();
+        const modules = this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
+            .concat(this.homeRuntime.listModules("sidebar"));
+        modules.forEach((def: any) => defs.set(def.moduleId, def));
+        const catalogIds = new Set<string>();
+        modules.forEach((def: any) => {
+            if (this.homeBuiltinAdapterIds.has(def.moduleId) || this.homeModuleOpens.has(def.moduleId)) {
+                catalogIds.add(def.moduleId);
             }
-            root.appendChild(card);
         });
+
+        const saveState = (state: ReturnType<typeof this.getHomeState>) => this.saveHomeState(state);
+        const buildCells = (state: ReturnType<typeof this.getHomeState>, deviceKey: string) => {
+            const byId = new Map(state.instances.map((inst: any) => [inst.instanceId, inst]));
+            const layoutList = (state.layouts[deviceKey] || []) as Array<any>;
+            const cells: Array<{ inst: any; layout: any }> = [];
+            layoutList.forEach((entry) => {
+                const inst = byId.get(entry.instanceId);
+                if (inst) cells.push({inst, layout: entry});
+            });
+            state.instances.forEach((inst: any) => {
+                if (!layoutList.some((entry) => entry.instanceId === inst.instanceId)) {
+                    cells.push({inst, layout: {...{x: 0, y: 0, w: 6, h: 1, collapsed: false}}});
+                }
+            });
+            return cells;
+        };
+
+        const renderPanel = () => {
+            root.innerHTML = "";
+            const state = this.getHomeState();
+            const cells = buildCells(state, device);
+
+            const bar = document.createElement("div");
+            bar.className = "sw-home__bar";
+            const editToggle = document.createElement("button");
+            editToggle.type = "button";
+            editToggle.className = "b3-button b3-button--text";
+            editToggle.textContent = editing ? this.i18n.homeDone : this.i18n.homeEditLayout;
+            editToggle.addEventListener("click", () => {
+                editing = !editing;
+                renderPanel();
+            });
+            bar.appendChild(editToggle);
+            if (editing || cells.length === 0) {
+                const addButton = document.createElement("button");
+                addButton.type = "button";
+                addButton.className = "b3-button b3-button--text sw-home__add";
+                addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeAddModule + '</span>';
+                addButton.addEventListener("click", () => {
+                    const menu = new Menu("swHomeModulePicker");
+                    let offered = 0;
+                    catalogIds.forEach((moduleId) => {
+                        if (state.instances.some((inst: any) => inst.moduleId === moduleId)) return;
+                        const def = defs.get(moduleId);
+                        if (!def) return;
+                        offered += 1;
+                        menu.addItem({
+                            label: def.title || moduleId,
+                            icon: def.icon || "iconFile",
+                            iconHTML: "",
+                            click: () => {
+                                const next = this.getHomeState();
+                                next.instances = [...next.instances, {
+                                    instanceId: moduleId, moduleId, enabled: true, config: {},
+                                }];
+                                const layoutList = (next.layouts[device] || []) as Array<any>;
+                                layoutList.push({instanceId: moduleId, x: 0, y: 0, w: device === "mobile" ? 12 : 6, h: 1, collapsed: false});
+                                next.layouts[device] = layoutList;
+                                saveState(next);
+                                renderPanel();
+                            },
+                        });
+                    });
+                    if (offered === 0) {
+                        showMessage(this.i18n.homeNoMoreModules);
+                        return;
+                    }
+                    const rect = addButton.getBoundingClientRect();
+                    menu.open({x: rect.left, y: rect.bottom + 4});
+                });
+                bar.appendChild(addButton);
+            }
+            root.appendChild(bar);
+
+            const grid = document.createElement("div");
+            grid.className = "sw-home__grid";
+            if (cells.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "sw-home__empty";
+                empty.setAttribute("role", "status");
+                empty.textContent = this.i18n.homeEmpty;
+                grid.appendChild(empty);
+            }
+            const controllers: Array<{ moduleId: string; refresh: (config?: unknown, options?: unknown) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
+
+            cells.forEach(({inst, layout}) => {
+                const def = defs.get(inst.moduleId);
+                if (!def) return;
+                const cell = document.createElement("section");
+                cell.className = "sw-home__cell";
+                cell.style.setProperty("--sw-home-span", String(Math.max(4, Math.min(12, Number(layout.w) || 6))));
+                const body = document.createElement("div");
+                body.className = "sw-home__cell-body";
+                cell.appendChild(body);
+
+                const controller = createHomeModuleController({
+                    document: window.document,
+                    container: body,
+                    module: {...def, openable: this.homeModuleOpens.has(inst.moduleId)},
+                    collapsed: layout.collapsed === true,
+                    labels: {
+                        loading: this.i18n.homeLoading,
+                        empty: this.i18n.homeEmptyModule,
+                        error: this.i18n.homeModuleError,
+                        retry: this.i18n.homeRetry,
+                        collapse: this.i18n.homeCollapse,
+                        expand: this.i18n.homeExpand,
+                        cached: this.i18n.homeCached,
+                        updated: this.i18n.homeUpdated,
+                    },
+                    onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
+                    onToggle: () => {
+                        const next = this.getHomeState();
+                        const layoutList = (next.layouts[device] || []) as Array<any>;
+                        const entry = layoutList.find((candidate) => candidate.instanceId === inst.instanceId);
+                        if (entry) {
+                            entry.collapsed = !(layout.collapsed === true);
+                            layout.collapsed = entry.collapsed;
+                            saveState(next);
+                        }
+                    },
+                    read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
+                        this.homeRuntime.read(inst.moduleId, device, (config as Record<string, unknown>) || inst.config || {}, readOptions),
+                });
+                if (!controller) return;
+                controllers.push({...controller, moduleId: inst.moduleId, cell} as any);
+                grid.appendChild(cell);
+
+                if (editing) {
+                    const persistLayout = (patch: Record<string, unknown>) => {
+                        const next = this.getHomeState();
+                        const layoutList = (next.layouts[device] || []) as Array<any>;
+                        let entry = layoutList.find((candidate) => candidate.instanceId === inst.instanceId);
+                        if (!entry) {
+                            entry = {instanceId: inst.instanceId, x: 0, y: 0, w: 6, h: 1, collapsed: false};
+                            layoutList.push(entry);
+                        }
+                        Object.assign(entry, patch);
+                        next.layouts[device] = layoutList;
+                        saveState(next);
+                    };
+                    const tools = document.createElement("div");
+                    tools.className = "sw-home__cell-tools";
+                    const tool = (label: string, onClick: () => void) => {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.className = "b3-button b3-button--text sw-home__tool";
+                        button.textContent = label;
+                        button.setAttribute("aria-label", label);
+                        button.addEventListener("click", onClick);
+                        return button;
+                    };
+                    tools.append(
+                        tool(this.i18n.homeNarrower, () => { persistLayout({w: Math.max(4, (Number(layout.w) || 6) - 2)}); renderPanel(); }),
+                        tool(this.i18n.homeWider, () => { persistLayout({w: Math.min(12, (Number(layout.w) || 6) + 2)}); renderPanel(); }),
+                        tool(this.i18n.homeMoveUp, () => {
+                            const next = this.getHomeState();
+                            const layoutList = (next.layouts[device] || []) as Array<any>;
+                            const index = layoutList.findIndex((candidate) => candidate.instanceId === inst.instanceId);
+                            if (index > 0) {
+                                const [entry] = layoutList.splice(index, 1);
+                                layoutList.splice(index - 1, 0, entry);
+                                next.layouts[device] = layoutList;
+                                saveState(next);
+                                renderPanel();
+                            }
+                        }),
+                        tool(this.i18n.homeMoveDown, () => {
+                            const next = this.getHomeState();
+                            const layoutList = (next.layouts[device] || []) as Array<any>;
+                            const index = layoutList.findIndex((candidate) => candidate.instanceId === inst.instanceId);
+                            if (index >= 0 && index < layoutList.length - 1) {
+                                const [entry] = layoutList.splice(index, 1);
+                                layoutList.splice(index + 1, 0, entry);
+                                next.layouts[device] = layoutList;
+                                saveState(next);
+                                renderPanel();
+                            }
+                        }),
+                        tool(this.i18n.homeRemove, () => {
+                            const next = this.getHomeState();
+                            next.instances = (next.instances as Array<any>).filter((candidate) => candidate.instanceId !== inst.instanceId);
+                            next.layouts[device] = ((next.layouts[device] || []) as Array<any>).filter((candidate) => candidate.instanceId !== inst.instanceId);
+                            saveState(next);
+                            renderPanel();
+                        }),
+                    );
+                    cell.appendChild(tools);
+                }
+            });
+
+            root.appendChild(grid);
+
+            // 首次打开播种默认实例（最近打开 + 收藏），之后删除即 stays deleted
+            if (state.instances.length === 0 && !editing) {
+                const seeded = this.getHomeState();
+                ["recent-documents", "favorites"].forEach((moduleId) => {
+                    if (!catalogIds.has(moduleId)) return;
+                    (seeded.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
+                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: 0, y: 0, w: 6, h: 1, collapsed: false});
+                });
+                if ((seeded.instances as Array<any>).length > 0) {
+                    saveState(seeded);
+                    renderPanel();
+                    return;
+                }
+            }
+
+            // 统一刷新；插件模块失败且有跳转回调时补"打开插件"按钮
+            controllers.forEach(async (entry) => {
+                const result = await entry.refresh() as { ok?: boolean } | undefined;
+                const open = this.homeModuleOpens.get(entry.moduleId);
+                const existing = entry.cell.querySelector(".sw-home__open");
+                if (result && result.ok === false && open) {
+                    if (!existing) {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.className = "b3-button b3-button--text sw-home__open";
+                        button.textContent = this.i18n.homeOpenPlugin;
+                        button.addEventListener("click", () => {
+                            dialog.destroy();
+                            open();
+                        });
+                        entry.cell.appendChild(button);
+                    }
+                } else {
+                    existing?.remove();
+                }
+            });
+        };
+
+        const originalDestroy = dialog.destroy.bind(dialog);
+        dialog.destroy = () => {
+            originalDestroy();
+        };
+        renderPanel();
     }
 
     private getQuickActionPickerCandidates(actions: IQuickAction[]): IQuickActionPickerCandidate[] {
@@ -3581,7 +4017,8 @@ const version = beginSearch(session);
             }
         });
         form.append(input, save, exportButton, importButton, importInput);
-        wrapper.append(guide, hint, form, list);
+        // 说明放操作按钮下方：先操作与列表，长说明作为随选随读的辅助内容收尾
+        wrapper.append(hint, form, list, guide);
         render();
         return wrapper;
     }
@@ -4353,7 +4790,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             const response = await fetch("/api/query/sql", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({query: `SELECT root_id, updated FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
+                body: JSON.stringify({query: `SELECT root_id, updated, created FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
             });
             if (!response.ok) {
                 throw new Error(`query/sql HTTP ${response.status}`);
@@ -4362,6 +4799,10 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             const map: {[rootId: string]: string} = {};
             (json?.data || []).forEach((row: any) => {
                 map[row.root_id] = row.updated;
+                // created 顺带回填缓存（YYYYMMDDHHmmss），供按创建月份分组使用
+                if (typeof row.created === "string" && row.created) {
+                    this.createdByIdCache[row.root_id] = row.created;
+                }
             });
             this.updatedMapCache = {key, ts: Date.now(), map};
             return map;
@@ -5865,16 +6306,22 @@ private rootIdOf(tab: Tab): string | null {
         const pinned = new Set(this.getPinned());
         const favorites = new Set(this.getFavorites().map((item) => item.key));
 
-        // 鎸?parent锛圵nd锛夊垎鏍忓垎缁勶紝淇濇寔 getAllTabs 鐨勫竷灞€鏍戦『搴?
-        const groups = buildTabGroupsByParent(tabs, scrollElement);
         const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
 
         const all: IGroupedTab[] = [];
         const focusState: {defaultFocusIndex: number} = {defaultFocusIndex: 0};
-        groups.forEach((group) => {
-            const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
-            this.renderTabGroup(scrollElement, ordered, ctx, all, focusState);
-        });
+        const groupMode = settings.groupBy;
+        if (groupMode === "none") {
+            // 鎸?parent锛圵nd锛夊垎鏍忓垎缁勶紝淇濇寔 getAllTabs 鐨勫竷灞€鏍戦『搴?
+            scrollElement.classList.remove("sw--grouped-flow");
+            const groups = buildTabGroupsByParent(tabs, scrollElement);
+            groups.forEach((group) => {
+                const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
+                this.renderTabGroup(scrollElement, ordered, ctx, all, focusState);
+            });
+        } else {
+            this.renderGroupedList(scrollElement, tabs, activeTab, groupMode, ctx, all, focusState, opts, sortBy, updatedMap);
+        }
 
         if (all.length === 0) {
             scrollElement.appendChild(this.buildEmptyState());
@@ -5934,6 +6381,192 @@ private rootIdOf(tab: Tab): string | null {
         groupEl.appendChild(grid);
         scrollElement.appendChild(groupEl);
     }
+    // ==================== 分类分组（笔记本/收藏/创建月份） ====================
+
+    // 会话内折叠状态（键 = groupMode:groupKey）；跨会话记忆属设置页范畴，列表内保持轻量
+    private groupCollapseState = new Set<string>();
+    private createdByIdCache: {[rootId: string]: string} = {};
+    private notebookListCache: Array<{id: string; name: string}> | null = null;
+
+    // 分组渲染主路径：解析分组上下文（收藏分组/笔记本/创建时间）→ groupTabsByMode →
+    // 稀疏组流式布局（组块宽度=内容卡片数，上限满宽）；异步数据（创建时间/笔记本名）
+    // 就绪后若有关键新数据则重排一次
+    private renderGroupedList(
+        scrollElement: HTMLElement,
+        tabs: Tab[],
+        activeTab: Tab | undefined,
+        groupMode: TabGroupMode,
+        ctx: ITabGroupRenderCtx,
+        all: IGroupedTab[],
+        focusState: {defaultFocusIndex: number},
+        listOpts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
+        sortBy: SortBy,
+        updatedMap: {[rootId: string]: string},
+    ) {
+        scrollElement.classList.add("sw--grouped-flow");
+        const favoriteGroupByKey = new Map<string, string>();
+        this.getFavorites().forEach((fav) => favoriteGroupByKey.set(fav.key, fav.group || ""));
+        const notebookMap = new Map((this.notebookListCache || []).map((nb) => [nb.id, nb.name]));
+        const notebookOrder = (this.notebookListCache || []).map((nb) => nb.id);
+        const rootIdOf = (tab: Tab) => this.rootIdOf(tab) || "";
+        const defs = groupTabsByMode(tabs, groupMode, {
+            pinKeyOf: (tab: Tab) => this.pinKeyOf(tab),
+            isFavorite: (key: string) => ctx.favorites.has(key),
+            favoriteGroupOf: (key: string) => favoriteGroupByKey.get(key) || "",
+            favoriteGroupOrder: this.getFavGroupRegistry(),
+            notebookIdOf: (tab: Tab) => resolveSearchNotebookId(tab as unknown) || "",
+            notebookNameOf: (id: string) => notebookMap.get(id) || "",
+            notebookOrder,
+            createdOf: (key: string) => this.createdByIdCache[key] || "",
+            labels: {
+                unknownNotebook: this.i18n.groupUnknownNotebook,
+                ungroupedFavorite: this.i18n.groupUngroupedFavorite,
+                unfavorited: this.i18n.groupUnfavorited,
+                unknownMonth: this.i18n.groupUnknownMonth,
+            },
+        });
+        const maxCols = this.resolveGroupColumns(scrollElement, ctx.settings);
+        scrollElement.style.setProperty("--sw-cols", String(maxCols));
+        defs.forEach((def) => {
+            const ordered = this.sortGroupItems(def.items.map((tab: Tab) => ({tab})), sortBy, ctx.mru, ctx.pinned, updatedMap);
+            const span = Math.min(ordered.length, maxCols);
+            this.renderNamedTabGroup(scrollElement, def, ordered, ctx, all, focusState, span);
+        });
+        if (groupMode === "createdMonth") {
+            const missing = tabs.some((tab) => {
+                const rootId = rootIdOf(tab);
+                return !!rootId && !(rootId in this.createdByIdCache);
+            });
+            if (missing) {
+                void this.loadUpdatedMap(tabs).then(() => {
+                    // 请求过的 rootId 无论查到与否都落键（未命中记 ""），保证只重排一次不循环
+                    tabs.forEach((tab) => {
+                        const rootId = rootIdOf(tab);
+                        if (rootId && !(rootId in this.createdByIdCache)) this.createdByIdCache[rootId] = "";
+                    });
+                    if (!scrollElement.isConnected) return;
+                    this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+                });
+            }
+        } else if (groupMode === "notebook" && this.notebookListCache === null) {
+            void this.loadNotebooks().then((notebooks) => {
+                this.notebookListCache = notebooks;
+                if (!scrollElement.isConnected || notebooks.length === 0) return;
+                this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+            });
+        }
+    }
+
+    // 命名分组块：可折叠组头（图标+名称+计数）+ 内容网格；块宽 = span 列（上限满宽），
+    // 多个组块在 .sw--grouped-flow 下横向流动换行，小分组不再各占一整排
+    private renderNamedTabGroup(
+        scrollElement: HTMLElement,
+        def: {key: string; label: string; icon: string; items: Tab[]},
+        ordered: IGroupedTab[],
+        ctx: ITabGroupRenderCtx,
+        all: IGroupedTab[],
+        focusState: {defaultFocusIndex: number},
+        span: number,
+    ) {
+        const collapsed = this.groupCollapseState.has(def.key);
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__group sw__group--named" + (collapsed ? " sw__group--collapsed" : "");
+        groupEl.style.setProperty("--sw-span", String(Math.max(1, span)));
+        const header = document.createElement("button");
+        header.type = "button";
+        header.className = "sw__group-header";
+        header.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        header.innerHTML = '<svg class="sw__group-chevron"><use xlink:href="#' + (collapsed ? "iconRight" : "iconDown") + '"></use></svg>'
+            + '<svg class="sw__group-icon"><use xlink:href="#' + (def.icon || "iconFile") + '"></use></svg>'
+            + '<span class="sw__group-title"></span>'
+            + '<span class="sw__group-count">' + ordered.length + '</span>';
+        header.querySelector<HTMLElement>(".sw__group-title")!.textContent = def.label;
+        header.setAttribute("aria-label", def.label + " (" + ordered.length + ")");
+        header.addEventListener("click", () => {
+            const nextCollapsed = !this.groupCollapseState.has(def.key);
+            if (nextCollapsed) {
+                this.groupCollapseState.add(def.key);
+            } else {
+                this.groupCollapseState.delete(def.key);
+            }
+            groupEl.classList.toggle("sw__group--collapsed", nextCollapsed);
+            header.setAttribute("aria-expanded", nextCollapsed ? "false" : "true");
+            header.querySelector<SVGUseElement>(".sw__group-chevron use")?.setAttribute("xlink:href", "#" + (nextCollapsed ? "iconRight" : "iconDown"));
+        });
+        groupEl.appendChild(header);
+
+        const grid = this.buildTabGroupGrid(scrollElement, ordered.length, ctx.settings);
+        grid.style.gridTemplateColumns = 'repeat(' + Math.max(1, span) + ', 1fr)';
+        ordered.forEach((item) => {
+            const card = this.acquireGroupCard(item, ctx, false);
+            grid.appendChild(card);
+            item.card = card;
+            all.push(item);
+            if (item.tab.id !== ctx.activeTabId && ctx.mru.indexOf(this.pinKeyOf(item.tab)) === 0) {
+                focusState.defaultFocusIndex = all.length - 1;
+            }
+        });
+        groupEl.appendChild(grid);
+        scrollElement.appendChild(groupEl);
+    }
+
+    // 解析全局列数（稀疏组块宽度基准）：显式列数优先；自动时用隐藏探针读真实 auto-fill 列数
+    private resolveGroupColumns(scrollElement: HTMLElement, settings: ISwSettings): number {
+        if (!scrollElement.closest(".sw--sidebar") && settings.columns >= 2) {
+            return settings.columns;
+        }
+        const probe = document.createElement("div");
+        probe.className = "sw__grid";
+        probe.style.visibility = "hidden";
+        probe.style.height = "0";
+        scrollElement.appendChild(probe);
+        let cols = 1;
+        try {
+            const parts = window.getComputedStyle(probe).gridTemplateColumns.split(" ").filter((c) => c && c !== "none");
+            if (parts.length > 0) cols = parts.length;
+        } catch (e) {
+            cols = 1;
+        }
+        probe.remove();
+        return Math.max(1, cols);
+    }
+
+    // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）
+    private pickCardByPosition(cards: HTMLElement[], current: HTMLElement, key: string): HTMLElement | null {
+        const base = current.getBoundingClientRect();
+        let best: HTMLElement | null = null;
+        let bestScore = Number.POSITIVE_INFINITY;
+        cards.forEach((card) => {
+            if (card === current) return;
+            const rect = card.getBoundingClientRect();
+            const dx = rect.left - base.left;
+            const dy = rect.top - base.top;
+            let primary = 0;
+            let cross = 0;
+            if (key === "ArrowRight") {
+                primary = dx; cross = Math.abs(dy);
+                if (primary <= 1) return;
+            } else if (key === "ArrowLeft") {
+                primary = -dx; cross = Math.abs(dy);
+                if (primary <= 1) return;
+            } else if (key === "ArrowDown") {
+                primary = dy; cross = Math.abs(dx);
+                if (primary <= 1) return;
+            } else if (key === "ArrowUp") {
+                primary = -dy; cross = Math.abs(dx);
+                if (primary <= 1) return;
+            } else {
+                return;
+            }
+            const score = Math.abs(primary) + cross * 2.5;
+            if (score < bestScore) {
+                bestScore = score;
+                best = card;
+            }
+        });
+        return best;
+    }
+
 
     // 鍙栧緱鍒嗙粍鍐呭崟寮犲崱鐗囷細浼樺厛澶嶇敤鏃у崱鐗囷紙鍚屾鐘舵€佺被/鍥炬爣/鏍囬锛岀缉鐣ュ浘涓嶅姩锛屼簨浠舵部鏃ч棴鍖咃級锛屽惁鍒欐柊寤猴紱
     // 鍙岀鍒嗙粍娓叉煋鍏辩敤锛坮enderTabGroup/renderMobileCardsInGroup锛夛紝鎵嬫満绔拷鍔?sw__mobile-card 淇グ绫?
@@ -6742,19 +7375,30 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 }
             }
 
+            // 流式分组布局下组块宽度不等，方向键改用屏幕坐标就近移动；Tab 始终顺序移动
+            const flowNav = scrollElement.classList.contains("sw--grouped-flow");
+            const flowNeighbor = (dir: string): number => {
+                const neighbor = this.pickCardByPosition(cards, cards[focusIndex], dir);
+                return neighbor ? cards.indexOf(neighbor) : -1;
+            };
+
             let next = -1;
             if (key === "ArrowRight" || (key === "Tab" && !event.shiftKey)) {
                 event.preventDefault();
-                next = (focusIndex + 1) % cards.length;
+                next = key === "ArrowRight" && flowNav
+                    ? (flowNeighbor(key) >= 0 ? flowNeighbor(key) : (focusIndex + 1) % cards.length)
+                    : (focusIndex + 1) % cards.length;
             } else if (key === "ArrowLeft" || (key === "Tab" && event.shiftKey)) {
                 event.preventDefault();
-                next = (focusIndex - 1 + cards.length) % cards.length;
+                next = key === "ArrowLeft" && flowNav
+                    ? (flowNeighbor(key) >= 0 ? flowNeighbor(key) : (focusIndex - 1 + cards.length) % cards.length)
+                    : (focusIndex - 1 + cards.length) % cards.length;
             } else if (key === "ArrowDown") {
                 event.preventDefault();
-                next = Math.min(focusIndex + colCount, cards.length - 1);
+                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.min(focusIndex + colCount, cards.length - 1);
             } else if (key === "ArrowUp") {
                 event.preventDefault();
-                next = Math.max(focusIndex - colCount, 0);
+                next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
             } else if (key === "Enter") {
                 event.preventDefault();
                 const target = cards[focusIndex];
@@ -7093,16 +7737,18 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             <option value="titleAsc">${this.i18n.sortTitleAsc}</option>
             <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
         </select>
-        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
-            <svg><use xlink:href="#iconStar"></use></svg>
-        </button>
-        <div class="sw__history-dd sw__history-dd--icon"></div>
-        <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
-            <svg><use xlink:href="#iconSettings"></use></svg>
-        </button>
         <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn" aria-label="${this.i18n.close}">
             <svg><use xlink:href="#iconClose"></use></svg>
         </button>
+        <div class="sw__toolbar-row2">
+            <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
+                <svg><use xlink:href="#iconStar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.favorites}</span>
+            </button>
+            <div class="sw__history-dd"></div>
+            <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
+                <svg><use xlink:href="#iconSettings"></use></svg><span class="sw__mobile-chip-label">${this.i18n.settingsShort}</span>
+            </button>
+        </div>
             </div>
     <div class="sw__scroll" tabindex="0"></div>
     <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
@@ -7177,6 +7823,46 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             list.className = "sw__mobile-sort-list";
             list.setAttribute("role", "menu");
             list.setAttribute("aria-label", this.i18n.setSortBy);
+            // 分组方式区：与桌面一体化菜单同语义（分组在前，组内排序在后）
+            const groupTitle = document.createElement("div");
+            groupTitle.className = "sw__mobile-sheet-section";
+            groupTitle.textContent = this.i18n.groupModeTitle;
+            sheet.appendChild(groupTitle);
+            const groupList = document.createElement("div");
+            groupList.className = "sw__mobile-sort-list";
+            groupList.setAttribute("role", "menu");
+            groupList.setAttribute("aria-label", this.i18n.groupModeTitle);
+            const groupOptions: Array<{value: TabGroupMode, label: string}> = [
+                {value: "notebook", label: this.i18n.groupNotebook},
+                {value: "favorites", label: this.i18n.groupFavorites},
+                {value: "createdMonth", label: this.i18n.groupCreatedMonth},
+                {value: "none", label: this.i18n.groupNone},
+            ];
+            const currentGroup = this.getSettings().groupBy;
+            groupOptions.forEach(({value, label}) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__mobile-sort-option";
+                item.setAttribute("role", "menuitemradio");
+                item.setAttribute("aria-checked", String(value === currentGroup));
+                item.innerHTML = '<span>' + label + '</span>' + (value === currentGroup ? '<svg><use xlink:href="#iconCheck"></use></svg>' : '');
+                item.addEventListener("click", () => {
+                    this.updateSettings({groupBy: value});
+                    closeSortOverlay();
+                    renderMobileList();
+                    const searchEl = dialog.element.querySelector<HTMLInputElement>(".sw__search");
+                    if (searchEl) {
+                        searchEl.value = "";
+                        this.applySearch(scrollElement, searchEl, closeOverlay);
+                    }
+                });
+                groupList.appendChild(item);
+            });
+            sheet.appendChild(groupList);
+            const sortTitle = document.createElement("div");
+            sortTitle.className = "sw__mobile-sheet-section";
+            sortTitle.textContent = this.i18n.groupSortTitle;
+            sheet.appendChild(sortTitle);
             Object.entries(sortLabels).forEach(([value, label]) => {
                 const item = document.createElement("button");
                 item.type = "button";
@@ -7303,17 +7989,84 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const favorites = new Set(this.getFavorites().map((item) => item.key));
 
         // 鎵嬫満绔笉鍒嗙獥鍙ｅ垎缁勶紝鍏ㄩ儴鎵佸钩鍖?
-        const items: IGroupedTab[] = tabs.map((tab) => ({tab}));
-        const ordered = this.sortGroupItems(items, sortBy, mru, pinned, updatedMap);
-
-        const groupEl = document.createElement("div");
-        groupEl.className = "sw__group";
-        const grid = this.buildMobileGroupGrid(settings);
         const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
-        const all: IGroupedTab[] = this.renderMobileCardsInGroup(grid, ordered, ctx);
+        const all: IGroupedTab[] = [];
+        const groupMode = settings.groupBy;
 
-        groupEl.appendChild(grid);
-        scrollElement.appendChild(groupEl);
+        const renderMobileNamedGroup = (label: string, icon: string, key: string, count: number, ordered: IGroupedTab[]) => {
+            const collapsed = this.groupCollapseState.has(key);
+            const groupEl = document.createElement("div");
+            groupEl.className = "sw__group sw__group--named" + (collapsed ? " sw__group--collapsed" : "");
+            const header = document.createElement("button");
+            header.type = "button";
+            header.className = "sw__group-header";
+            header.setAttribute("aria-expanded", collapsed ? "false" : "true");
+            header.innerHTML = '<svg class="sw__group-chevron"><use xlink:href="#' + (collapsed ? "iconRight" : "iconDown") + '"></use></svg>'
+                + '<svg class="sw__group-icon"><use xlink:href="#' + (icon || "iconFile") + '"></use></svg>'
+                + '<span class="sw__group-title"></span>'
+                + '<span class="sw__group-count">' + count + '</span>';
+            header.querySelector<HTMLElement>(".sw__group-title")!.textContent = label;
+            header.addEventListener("click", () => {
+                const nextCollapsed = !this.groupCollapseState.has(key);
+                if (nextCollapsed) this.groupCollapseState.add(key); else this.groupCollapseState.delete(key);
+                groupEl.classList.toggle("sw__group--collapsed", nextCollapsed);
+                header.setAttribute("aria-expanded", nextCollapsed ? "false" : "true");
+                header.querySelector<SVGUseElement>(".sw__group-chevron use")?.setAttribute("xlink:href", "#" + (nextCollapsed ? "iconRight" : "iconDown"));
+            });
+            groupEl.appendChild(header);
+            const groupGrid = this.buildMobileGroupGrid(settings);
+            this.renderMobileCardsInGroup(groupGrid, ordered, ctx).forEach((item) => all.push(item));
+            groupEl.appendChild(groupGrid);
+            scrollElement.appendChild(groupEl);
+        };
+
+        if (groupMode === "none") {
+            const items: IGroupedTab[] = tabs.map((tab) => ({tab}));
+            const ordered = this.sortGroupItems(items, sortBy, mru, pinned, updatedMap);
+            renderMobileNamedGroup("", "", "all", ordered.length, ordered);
+        } else {
+            const favoriteGroupByKey = new Map<string, string>();
+            this.getFavorites().forEach((fav) => favoriteGroupByKey.set(fav.key, fav.group || ""));
+            const notebookMap = new Map((this.notebookListCache || []).map((nb) => [nb.id, nb.name]));
+            const defs = groupTabsByMode(tabs, groupMode, {
+                pinKeyOf: (tab: Tab) => this.pinKeyOf(tab),
+                isFavorite: (key: string) => favorites.has(key),
+                favoriteGroupOf: (key: string) => favoriteGroupByKey.get(key) || "",
+                favoriteGroupOrder: this.getFavGroupRegistry(),
+                notebookIdOf: (tab: Tab) => resolveSearchNotebookId(tab as unknown) || "",
+                notebookNameOf: (id: string) => notebookMap.get(id) || "",
+                notebookOrder: (this.notebookListCache || []).map((nb) => nb.id),
+                createdOf: (key: string) => this.createdByIdCache[key] || "",
+                labels: {
+                    unknownNotebook: this.i18n.groupUnknownNotebook,
+                    ungroupedFavorite: this.i18n.groupUngroupedFavorite,
+                    unfavorited: this.i18n.groupUnfavorited,
+                    unknownMonth: this.i18n.groupUnknownMonth,
+                },
+            });
+            defs.forEach((def) => {
+                const ordered = this.sortGroupItems(def.items.map((tab: Tab) => ({tab})), sortBy, mru, pinned, updatedMap);
+                renderMobileNamedGroup(def.label, def.icon, def.key, ordered.length, ordered);
+            });
+            if (groupMode === "createdMonth" && tabs.some((tab) => {
+                const rootId = this.rootIdOf(tab);
+                return !!rootId && !(rootId in this.createdByIdCache);
+            })) {
+                void this.loadUpdatedMap(tabs).then(() => {
+                    tabs.forEach((tab) => {
+                        const rootId = this.rootIdOf(tab);
+                        if (rootId && !(rootId in this.createdByIdCache)) this.createdByIdCache[rootId] = "";
+                    });
+                    if (scrollElement.isConnected) this.renderMobileList(scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
+                });
+            } else if (groupMode === "notebook" && this.notebookListCache === null) {
+                void this.loadNotebooks().then((notebooks) => {
+                    this.notebookListCache = notebooks;
+                    if (!scrollElement.isConnected || notebooks.length === 0) return;
+                    this.renderMobileList(scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
+                });
+            }
+        }
 
         if (all.length === 0) {
             scrollElement.appendChild(this.buildEmptyState());

@@ -9,6 +9,8 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "today-journal", title: "今日日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
     {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
     {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
+    {moduleId: "favorites", title: "收藏", icon: "iconStar", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
+    {moduleId: "document-sets", title: "文档集", icon: "iconLayout", category: "siyuan", supportedDevices: DEVICES, readOnly: true},
     {moduleId: "checkin-summary", title: "打卡摘要", icon: "iconCalendar", category: "plugin", supportedDevices: DEVICES, readOnly: true},
 ]);
 

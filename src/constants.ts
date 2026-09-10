@@ -136,6 +136,7 @@ export const SETTINGS_KEY = "sw_settings";  // 插件设置
 export const QUICK_ACTIONS_KEY = "sw_quick_actions"; // 快捷入口配置
 export const QUICK_ACTIONS_DEFAULTS_KEY = "sw_quick_actions_defaults"; // 快捷入口默认值迁移版本标记
 export const DOCUMENT_SETS_KEY = "sw_document_sets"; // 命名文档集 / 工作区快照
+export const HOME_STATE_KEY = "sw_home_state"; // 第二面板小组件实例与分端布局
 export const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 export const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
 export const QUICK_ACTIONS_MAX = 12;
@@ -159,3 +160,8 @@ export const PANEL_SCALE_MIN = 50;   // 自适应比例下限（百分比）
 export const PANEL_SCALE_MAX = 100;  // 自适应比例上限（百分比，100% 时铺满可视区再留安全边距）
 export const PANEL_SCALE_DEFAULT = 90;
 export const PANEL_SIZE_MIN_PX = 420; // 自适应计算的像素下限，避免小窗口下面板过小
+
+// 列表分组方式：none=按窗口平铺（旧行为）/ notebook=按笔记本（默认）/ favorites=按收藏 / createdMonth=按创建月份
+export type TabGroupMode = "none" | "notebook" | "favorites" | "createdMonth";
+export const TAB_GROUP_MODES: TabGroupMode[] = ["none", "notebook", "favorites", "createdMonth"];
+export const TAB_GROUP_MODE_DEFAULT: TabGroupMode = "notebook";

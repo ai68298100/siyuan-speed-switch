@@ -478,4 +478,96 @@ function sanitizeOpenHistory(values, max = 50) {
     return {items: items.slice(0, limit), changed};
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+/**
+ * 列表分组纯函数：按模式把打开页签聚成有序组。纯数据进纯数据出，
+ * 标签/图标/排序上下文由宿主注入（DOM 与 i18n 留在 index.ts）。
+ * ctx: {
+ *   pinKeyOf(tab) -> string                     // 页签持久键（与收藏 key 同键域）
+ *   isFavorite(pinKey) -> boolean
+ *   favoriteGroupOf(pinKey) -> string           // 收藏分组名，""=未分组
+ *   favoriteGroupOrder: string[]                // 收藏分组注册表顺序
+ *   notebookIdOf(tab) -> string
+ *   notebookNameOf(id) -> string
+ *   notebookOrder: string[]                     // 思源笔记本列表顺序（id）
+ *   createdOf(pinKey) -> string                 // "YYYYMMDDHHmmss"，""=未知
+ *   labels: { unknownNotebook, ungroupedFavorite, unfavorited, unknownMonth }
+ * }
+ * 返回 Array<{key, label, icon, items}>，key 稳定可作折叠状态键。
+ */
+function groupTabsByMode(tabs, mode, ctx) {
+    const labels = ctx.labels || {};
+    if (mode === "notebook") {
+        const groups = new Map();
+        tabs.forEach((tab) => {
+            const id = String(ctx.notebookIdOf(tab) || "");
+            if (!groups.has(id)) groups.set(id, []);
+            groups.get(id).push(tab);
+        });
+        const order = new Map((ctx.notebookOrder || []).map((id, index) => [id, index]));
+        return [...groups.entries()]
+            .map(([id, items]) => ({
+                key: `nb:${id || "none"}`,
+                label: ctx.notebookNameOf(id) || labels.unknownNotebook || id || "—",
+                icon: "iconFile",
+                items,
+            }))
+            .sort((a, b) => {
+                const ia = order.has(ctx.notebookIdOf(a.items[0])) ? order.get(ctx.notebookIdOf(a.items[0])) : Number.MAX_SAFE_INTEGER;
+                const ib = order.has(ctx.notebookIdOf(b.items[0])) ? order.get(ctx.notebookIdOf(b.items[0])) : Number.MAX_SAFE_INTEGER;
+                return ia !== ib ? ia - ib : a.label.localeCompare(b.label);
+            });
+    }
+    if (mode === "favorites") {
+        const groups = new Map();
+        tabs.forEach((tab) => {
+            const pinKey = ctx.pinKeyOf(tab);
+            const favorited = ctx.isFavorite(pinKey);
+            const name = favorited ? String(ctx.favoriteGroupOf(pinKey) ?? "") : "";
+            const key = favorited ? `fg:${name}` : "__unfavorited__";
+            if (!groups.has(key)) groups.set(key, {name, items: []});
+            groups.get(key).items.push(tab);
+        });
+        const order = new Map((ctx.favoriteGroupOrder || []).map((name, index) => [name, index]));
+        return [...groups.entries()]
+            .map(([key, bucket]) => ({
+                key,
+                label: key === "__unfavorited__"
+                    ? (labels.unfavorited || "未收藏")
+                    : (bucket.name || labels.ungroupedFavorite || "未分组"),
+                icon: key === "__unfavorited__" ? "iconFile" : "iconStar",
+                items: bucket.items,
+            }))
+            .sort((a, b) => {
+                if (a.key === "__unfavorited__") return 1;
+                if (b.key === "__unfavorited__") return -1;
+                const oa = order.has(a.label) ? order.get(a.label) : Number.MAX_SAFE_INTEGER;
+                const ob = order.has(b.label) ? order.get(b.label) : Number.MAX_SAFE_INTEGER;
+                return oa !== ob ? oa - ob : a.label.localeCompare(b.label);
+            });
+    }
+    if (mode === "createdMonth") {
+        const groups = new Map();
+        tabs.forEach((tab) => {
+            const created = String(ctx.createdOf(ctx.pinKeyOf(tab)) || "");
+            const match = /^(\d{4})(\d{2})/.exec(created);
+            const key = match ? `${match[1]}-${match[2]}` : "__unknown__";
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(tab);
+        });
+        return [...groups.entries()]
+            .map(([key, items]) => ({
+                key: `cm:${key}`,
+                label: key === "__unknown__" ? (labels.unknownMonth || "更早") : key,
+                icon: "iconCalendar",
+                items,
+            }))
+            .sort((a, b) => {
+                if (a.key === "cm:__unknown__") return 1;
+                if (b.key === "cm:__unknown__") return -1;
+                return b.key.localeCompare(a.key);
+            });
+    }
+    return [{key: "all", label: "", icon: "", items: [...tabs]}];
+}
+
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};

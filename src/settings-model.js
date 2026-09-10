@@ -31,11 +31,16 @@ function normalizeSettings(saved, options = {}) {
         || source.panelSizeMode === "fullscreen"
         ? source.panelSizeMode
         : (source.panelSizeMode === undefined && source.fullscreen === true ? "fullscreen" : (defaults.panelSizeMode || "adaptive"));
+    const groupBy = source.groupBy === "none" || source.groupBy === "notebook"
+        || source.groupBy === "favorites" || source.groupBy === "createdMonth"
+        ? source.groupBy
+        : (defaults.groupBy || "notebook");
     return {
         dialogWidth: clamp(source.dialogWidth, ...range("dialogWidth"), defaults.dialogWidth),
         dialogHeight: clamp(source.dialogHeight, ...range("dialogHeight"), defaults.dialogHeight),
         panelSizeMode,
         panelScale: clamp(source.panelScale, ...range("panelScale"), defaults.panelScale),
+        groupBy,
         columns: clamp(source.columns, ...range("columns"), defaults.columns),
         thumbHeight: clamp(source.thumbHeight, ...range("thumbHeight"), defaults.thumbHeight),
         sortBy: normalizeEnum(source.sortBy, options.sortBy || [], defaults.sortBy),

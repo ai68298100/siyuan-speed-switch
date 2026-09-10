@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.12-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.13-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,11 +8,11 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> `v0.16.12` 第二面板直达与自适应尺寸：顶栏新增第二面板入口（快捷键 `Alt+Shift+P`，支持全局热键）；桌面面板默认按屏幕比例自适应打开，可在设置改为固定尺寸或全屏；快捷入口默认值一次性迁移，去除旧版自动写入的第三方条目。
+> `v0.16.13` 列表分组与第二面板小组件化：页签列表支持按笔记本（默认）/收藏/创建月份分组，与排序一体化设定，稀疏分组按内容并排流动；第二面板升级为可增删、挪动、调宽的小组件主页（内置最近/收藏/日记/文档集模块，支持第三方只读模块与失败跳转）；设置页桌面端同比例自适应；修复手机顶栏拥挤与设置页标签条错位。
 
 > 当前工作树包含尚未发布的搜索与 UI 增量：搜索按“已打开页签 → 已打开文档内容 → 全库标题/受限全文”分层执行，并支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；界面正在采用淡紫主色、浅蓝灰层级、圆角卡片、柔和阴影和少量暖色强调的现代视觉方案；这些改动仍需完成真实桌面、侧栏和 Android 思源验收，不能视为已发布版本。
 
-> 发布候选状态：自动化门禁已通过（类型检查、生产构建、494 项测试、移动端与 Chromium UI 烟测、归档审计）；尚未执行最终真实设备验收，也不会在用户确认前创建 Tag、Release 或推送。
+> 发布候选状态：自动化门禁已通过（类型检查、生产构建、499 项测试、移动端与 Chromium UI 烟测、归档审计）；尚未执行最终真实设备验收，也不会在用户确认前创建 Tag、Release 或推送。
 
 ## 目录
 
@@ -123,6 +123,7 @@
 | 标签页 | 可配置项 |
 | --- | --- |
 | 外观 | 面板尺寸模式（自适应屏幕比例 / 固定尺寸 / 全屏铺满）、自适应比例（50–100）、固定宽高（480–1920 × 360–1280）、缩略图列数（自动 / 2–8）、缩略图高度（72–360） |
+| 分组与排序 | 顶栏「分组 · 排序」按钮一体化设定：分组方式（按笔记本 / 按收藏 / 按创建月份 / 不分组，默认按笔记本）+ 组内排序（六种）；分组块按内容宽度并排流动，组头可折叠 |
 | 行为 | 默认排序方式、最近打开记录 |
 | 面板 | 左侧面板列表显示 / 隐藏、显示方式（完整 / 折叠图标 / 隐藏）、侧边栏缩略图布局（放大 / 自动增列） |
 | 收藏 | 收藏夹折叠、序号、新建 / 重命名 / 删除 / 排序，组内收藏排序和分组调整 |
@@ -561,7 +562,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 77 个 `*.test.cjs` 文件，当前共 494 项测试；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 78 个 `*.test.cjs` 文件，当前共 499 项测试；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -590,10 +591,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 494 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 499 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、494 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、499 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
