@@ -22,6 +22,7 @@ import {mountQuickActionPicker} from "./quick-actions-ui";
 import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
 import {createHomeModuleController} from "./home-controller";
+import {WIDGET_CATALOG} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
@@ -2680,6 +2681,7 @@ const version = beginSearch(session);
         if (registration.registered && typeof (options as {open?: unknown}).open === "function") {
             this.homeModuleOpens.set(String(options.moduleId), (options as unknown as {open: () => void}).open);
         }
+        if (registration.registered) this.homeThirdPartyIds.add(String(options.moduleId));
         if (!registration.registered) return () => undefined;
         return () => { registration.unregister(); };
     }
@@ -2979,6 +2981,7 @@ const version = beginSearch(session);
 
     // 第三方模块的"跳转本体"回调（仅内存，不持久化）；模块读取失败时面板显示跳转按钮
     private homeModuleOpens = new Map<string, () => void>();
+    private homeThirdPartyIds = new Set<string>();
     private homeBuiltinAdapterIds = new Set<string>();
 
     // 全库扫描时间窗起点：days 天前的 "YYYYMMDDHHmmss"（思源 updated 同格式，可直接字符串比较）
@@ -3467,12 +3470,10 @@ const version = beginSearch(session);
     }
 
     // 小组件商店：画廊式添加入口，内置/插件分区；卡片带型号瓦片，点瓦片添加（或调整已添加实例的型号）
-    private openHomeWidgetStore(
-        defs: Map<string, any>,
-        catalogIds: Set<string>,
-        device: "desktop" | "sidebar" | "mobile",
-        onChanged: () => void,
-    ) {
+    // 小组件商店：两大分区——「可用组件」（内置 + 已注册插件组件）与「需安装插件后可用」
+    // （组件目录中已登记、来源插件未就位的组件，标注需安装的插件名）。
+    // 渲染后 400ms 异步复扫一次安装状态（增量识别，不影响首屏）。
+    private openHomeWidgetStore(device: "desktop" | "sidebar" | "mobile", onChanged: () => void) {
         const storeDialog = new Dialog({
             title: this.i18n.homeStoreTitle,
             content: '<div class="speed-switch sw-home-store"></div>',
@@ -3481,62 +3482,73 @@ const version = beginSearch(session);
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
-        const state = this.getHomeState();
-        // 商店内搜索：按名称/描述过滤卡片
-        const searchBar = document.createElement("div");
-        searchBar.className = "sw-home-store__search";
-        const searchInput = document.createElement("input");
-        searchInput.className = "b3-text-field fn__block";
-        searchInput.type = "text";
-        searchInput.placeholder = this.i18n.homeStoreSearch;
-        searchInput.setAttribute("aria-label", this.i18n.homeStoreSearch);
-        searchInput.addEventListener("input", () => {
-            const query = searchInput.value.trim().toLowerCase();
-            root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
-                const haystack = card.dataset.search || "";
-                card.classList.toggle("fn__none", query !== "" && !haystack.includes(query));
+
+        const isProviderLoaded = (providerPlugin: string) =>
+            (this.app as unknown as {plugins?: Array<{name?: string}>}).plugins?.some((p) => p?.name === providerPlugin) === true;
+
+        const renderStore = () => {
+            root.innerHTML = "";
+            const state = this.getHomeState();
+            const instanceByModule = new Map<string, any>();
+            ((state.layouts[device] || []) as Array<any>).forEach((entry) => {
+                const inst = state.instances.find((candidate: any) => candidate.instanceId === entry.instanceId);
+                if (inst) instanceByModule.set(inst.moduleId, entry);
             });
-            root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
-                const section = heading.nextElementSibling;
-                if (!section) return;
-                const visible = Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
-                heading.classList.toggle("fn__none", !visible);
-                section.classList.toggle("fn__none", !visible);
+
+            const defs = new Map<string, any>();
+            this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
+                .concat(this.homeRuntime.listModules("sidebar"))
+                .forEach((def: any) => defs.set(def.moduleId, def));
+            const activeIds = new Set<string>();
+            defs.forEach((_def: any, moduleId: string) => {
+                if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeThirdPartyIds.has(moduleId)) activeIds.add(moduleId);
             });
-        });
-        root.appendChild(searchBar);
-        const instanceByModule = new Map<string, any>();
-        ((state.layouts[device] || []) as Array<any>).forEach((entry) => {
-            const inst = state.instances.find((candidate: any) => candidate.instanceId === entry.instanceId);
-            if (inst) instanceByModule.set(inst.moduleId, entry);
-        });
-        const sections: Array<{label: string, category: string}> = [
-            {label: this.i18n.homeStoreSectionBuiltin, category: "siyuan"},
-            {label: this.i18n.homeStoreSectionPlugin, category: "plugin"},
-        ];
-        let offered = 0;
-        sections.forEach((section) => {
-            const ids = [...catalogIds].filter((moduleId) => {
-                const def = defs.get(moduleId);
-                return def && (section.category === "siyuan" ? (def.category === "siyuan") : (def.category !== "siyuan"));
-            });
-            if (ids.length === 0) return;
-            offered += ids.length;
-            const heading = document.createElement("h3");
-            heading.className = "sw-home-store__section";
-            heading.textContent = section.label;
-            root.appendChild(heading);
-            const grid = document.createElement("div");
-            grid.className = "sw-home-store__grid";
-            ids.forEach((moduleId) => {
-                const def = defs.get(moduleId);
+
+            const searchBar = document.createElement("div");
+            searchBar.className = "sw-home-store__search";
+            const searchInput = document.createElement("input");
+            searchInput.className = "b3-text-field fn__block";
+            searchInput.type = "text";
+            searchInput.placeholder = this.i18n.homeStoreSearch;
+            searchInput.setAttribute("aria-label", this.i18n.homeStoreSearch);
+            searchBar.appendChild(searchInput);
+            root.appendChild(searchBar);
+
+            const applyFilter = () => {
+                const query = searchInput.value.trim().toLowerCase();
+                root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
+                    const haystack = card.dataset.search || "";
+                    card.classList.toggle("fn__none", query !== "" && !haystack.includes(query));
+                });
+                root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
+                    const section = heading.nextElementSibling;
+                    if (!section) return;
+                    const visible = Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
+                    heading.classList.toggle("fn__none", !visible);
+                    section.classList.toggle("fn__none", !visible);
+                });
+            };
+            searchInput.addEventListener("input", applyFilter);
+
+            // —— 分区一：可用组件（内置 + 已就位插件提供） ——
+            const readyHeading = document.createElement("h3");
+            readyHeading.className = "sw-home-store__section";
+            readyHeading.textContent = this.i18n.homeStoreReady;
+            root.appendChild(readyHeading);
+            const readyGrid = document.createElement("div");
+            readyGrid.className = "sw-home-store__grid";
+            const ready = [...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
+                .filter((item) => !!item.def)
+                .sort((a, b) => (a.def.category === b.def.category ? a.moduleId.localeCompare(b.moduleId)
+                    : (a.def.category === "siyuan" ? -1 : 1)));
+            ready.forEach(({moduleId, def}) => {
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
-                card.dataset.search = ((def.title || "") + " " + (def.description || "") + " " + moduleId).toLowerCase();
+                card.dataset.search = `${def.title || ""} ${def.description || ""} ${moduleId}`.toLowerCase();
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
-                icon.innerHTML = `<use xlink:href="#${def.icon || "iconFile"}"></use>`;
+                icon.innerHTML = `<use xlink:href="#${def.icon || "iconPlugin"}"></use>`;
                 icon.setAttribute("viewBox", "0 0 24 24");
                 icon.setAttribute("aria-hidden", "true");
                 const copy = document.createElement("div");
@@ -3545,21 +3557,13 @@ const version = beginSearch(session);
                 const desc = document.createElement("span");
                 desc.textContent = def.description || "";
                 copy.append(title, desc);
-                // 协议 v2 元数据：作者与协议版本（可选）
-                const metaBits = [def.author, def.protocolVersion >= 2 ? "Protocol v2" : ""].filter(Boolean);
-                if (metaBits.length > 0) {
-                    const meta = document.createElement("span");
-                    meta.className = "sw-home-store__meta";
-                    meta.textContent = metaBits.join(" · ");
-                    copy.appendChild(meta);
-                }
                 head.append(icon, copy);
                 card.appendChild(head);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                const added = instanceByModule.get(moduleId);
                 supported.forEach((sizeKey) => {
-                    const added = instanceByModule.get(moduleId);
                     const tile = document.createElement("button");
                     tile.type = "button";
                     tile.className = "sw-home-store__size";
@@ -3586,20 +3590,67 @@ const version = beginSearch(session);
                         }
                         next.layouts[device] = layoutList;
                         this.saveHomeState(next);
-                        storeDialog.destroy();
+                        renderStore();
                         onChanged();
                     });
                     tiles.appendChild(tile);
                 });
                 card.appendChild(tiles);
-                grid.appendChild(card);
+                readyGrid.appendChild(card);
             });
-            root.appendChild(grid);
+            if (ready.length > 0) root.appendChild(readyGrid);
 
-        });
-        if (offered === 0) {
-            root.textContent = this.i18n.homeNoMoreModules;
-        }
+            // —— 分区二：需安装插件后可用（目录中登记、来源插件未就位） ——
+            const pending = WIDGET_CATALOG.filter((entry) => !activeIds.has(entry.moduleId) && !instanceByModule.has(entry.moduleId));
+            if (pending.length > 0) {
+                const pendingHeading = document.createElement("h3");
+                pendingHeading.className = "sw-home-store__section";
+                pendingHeading.textContent = this.i18n.homeStorePending;
+                root.appendChild(pendingHeading);
+                const pendingGrid = document.createElement("div");
+                pendingGrid.className = "sw-home-store__grid";
+                pending.forEach((entry) => {
+                    const card = document.createElement("section");
+                    card.className = "sw-home-store__card sw-home-store__card--pending";
+                    card.dataset.search = `${entry.title} ${entry.description} ${entry.providerName}`.toLowerCase();
+                    const head = document.createElement("div");
+                    head.className = "sw-home-store__card-head";
+                    const icon = document.createElement("svg");
+                    icon.innerHTML = `<use xlink:href="#${entry.icon || "iconPlugin"}"></use>`;
+                    icon.setAttribute("viewBox", "0 0 24 24");
+                    icon.setAttribute("aria-hidden", "true");
+                    const copy = document.createElement("div");
+                    const title = document.createElement("strong");
+                    title.textContent = entry.title;
+                    const desc = document.createElement("span");
+                    desc.textContent = entry.description;
+                    copy.append(title, desc);
+                    head.append(icon, copy);
+                    card.appendChild(head);
+                    const requireNote = document.createElement("p");
+                    requireNote.className = "sw-home-store__require";
+                    requireNote.textContent = this.i18n.homeStoreRequires.replace("{plugin}", entry.providerName);
+                    card.appendChild(requireNote);
+                    pendingGrid.appendChild(card);
+                });
+                root.appendChild(pendingGrid);
+            }
+
+            if (ready.length === 0 && pending.length === 0) {
+                root.textContent = this.i18n.homeNoMoreModules;
+            }
+        };
+
+        renderStore();
+        // 缓冲识别：插件启停后 400ms 复扫一次安装状态（增量，不影响首屏）
+        const rescanTimer = window.setTimeout(() => {
+            if (root.isConnected) renderStore();
+        }, 400);
+        const originalDestroy = storeDialog.destroy.bind(storeDialog);
+        storeDialog.destroy = () => {
+            window.clearTimeout(rescanTimer);
+            originalDestroy();
+        };
     }
 
     private openSecondPanel() {
@@ -3669,7 +3720,7 @@ const version = beginSearch(session);
                 addButton.className = "b3-button b3-button--text sw-home__add";
                 addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeStoreTitle + '</span>';
                 addButton.addEventListener("click", () => {
-                    this.openHomeWidgetStore(defs, catalogIds, device, renderPanel);
+                    this.openHomeWidgetStore(device, renderPanel);
                 });
                 bar.appendChild(addButton);
             }

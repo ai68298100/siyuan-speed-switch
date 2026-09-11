@@ -170,6 +170,12 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.30 (2026-09-12)
+
+- Widget store sections: split into "Available widgets" (built-ins + registered plugin widgets) and "Available after installing the plugin" (entries registered in the widget catalog whose source plugin is missing, labeled with the required plugin name).
+- Automatic install-state detection: opening the store reads the loaded plugin list synchronously (zero extra cost) and re-scans once after 400ms to catch enable/disable changes.
+- Panel robustness: widget instances whose source plugin was uninstalled are hidden instead of rendering error cards, and restore automatically after reinstall.
+
 ### v0.16.29 (2026-09-12)
 
 - Performance: memoized settings normalization (hot paths get a zero-cost cached read, invalidated on write).

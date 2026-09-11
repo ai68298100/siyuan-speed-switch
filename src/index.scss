@@ -4640,3 +4640,17 @@
         text-decoration: line-through;
     }
 }
+
+// ==================== 组件商店：需安装插件分区 ====================
+.sw-home-store__card--pending {
+    opacity: 0.85;
+}
+
+.sw-home-store__require {
+    margin: 10px 0 0;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
