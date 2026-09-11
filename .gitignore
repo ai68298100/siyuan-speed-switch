@@ -8,3 +8,7 @@ package.zip
 
 # Mimosa 安全钩子内部状态（不入库）
 .mimosa/
+
+# 本地实测截图（烟测产物，不入库）
+live-siyuan-*.png
+ui-smoke.png
