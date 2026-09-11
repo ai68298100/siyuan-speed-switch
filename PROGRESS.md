@@ -1,15 +1,15 @@
 # 进度
 
-当前任务：无（第三层完成；剩余全部需用户）
-上次检查点：5acd542 workspace-context（本地）；i18n 死键清理待提交
+当前任务：无（v0.16.37 全部开发与验收准备完成，等待用户实测）
+上次检查点：90e6e60（本地 7 commit 未推送，verify:release 全绿，package.zip 289,440 字节与 HEAD 同步）
 已完成（本轮自主循环）：
-- workspace-context 智能体能力（第 10 项，ROADMAP 第三层收口）：设备端/活动文档/页签/文档集/快捷入口/今日日记一次只读汇总；今日日记只按日期前缀 SQL 探测（绝不用会创建文档的 createDailyNote）；journalNotebook 先过 ID 归一化再进 SQL
-- buildAgentWorkspaceContext 纯函数（未知字段降级空值）+ spec/effects 测试
-- bundle 预算 299→304 KiB 校准（带日期注释，D-008 记录政策）
-- i18n 死键清理：15 个未引用键从双语文移除（i18n 测试信息区不再报预留键）
-未提交变更：src/i18n/en.json、src/i18n/zh-CN.json（死键删除）
-上次提交：5acd542 feat: workspace-context agent capability
-本地待推送：5 个 commit（51ee5d1 → f02a00d → edf26aa → a925a2d → 5acd542）+ 本次 i18n 清理
-下一步（均需用户）：真实宿主验收 → 确认后升 0.16.37 发版（合并日志）；第四层等待 task-horizon#94 / docktomato#4 作者回复
-验证基线：tsc 0 错误、526/526 测试、构建 308,564 字节（304KiB 预算内）
-续跑口令：读取 PROGRESS.md 恢复；本地领先远端 5+ commit，网络恢复后可推送
+- docs/acceptance-v0.16.37.md 验收清单：覆盖 6 个功能 commit 的逐项手动测试步骤 + 回归抽查 + 已知边界 + 安装指引
+- README 能力表补全：中文表自 v0.16.25 起就漏了 append-to-journal 且写着"四项"，现补全为十项并修正类型标注；英文 README 两处过期段落同步
+- 远端 CI 确认：origin/main (2b792ce) 最近 5 次 CI 全部 success
+未提交变更：无
+上次提交：90e6e60 docs: acceptance checklist for v0.16.37
+本地待推送：7 个 commit（51ee5d1 → f02a00d → edf26aa → a925a2d → 5acd542 → 878319b → 90e6e60）
+下一步（需用户）：按 docs/acceptance-v0.16.37.md 实测（装根目录 package.zip）→ 通过后回复"发版"→ 升 0.16.37 写合并日志推送打 tag；第四层等待 task-horizon#94 / docktomato#4 作者回复
+验证基线：tsc 0 错误、526/526 测试、verify:release 全绿、dist/index.js 308,564 字节（304KiB 预算内）
+续跑口令：读取 PROGRESS.md 恢复；本地领先远端 7 commit，网络恢复后可推送
+
