@@ -3142,6 +3142,57 @@ const version = beginSearch(session);
                 ...rows.filter((row) => row.root_id && row.content).map((row) => ({label: row.content, value: row.root_id})),
             ]};
         });
+        // 笔记统计：全库文档数 / 字数估算 / 本周新建 / 本周改动（只读 SQL，聚合查询）
+        register("note-stats", this.i18n.homeNoteStats, "iconChart", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async () => {
+            const weekStart = this.taskWindowStart(6);
+            const [docsJson, charsJson, createdJson, updatedJson] = await Promise.all([
+                this.fetchKernelJson("/api/query/sql", {query: "SELECT COUNT(*) AS n FROM blocks WHERE type='d'"}),
+                this.fetchKernelJson("/api/query/sql", {query: "SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE type<>'d'"}),
+                this.fetchKernelJson("/api/query/sql", {query: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND created >= '${weekStart}'`}),
+                this.fetchKernelJson("/api/query/sql", {query: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND updated >= '${weekStart}'`}),
+            ]);
+            const countOf = (json: any) => Number((json?.data || [])[0]?.n) || 0;
+            const docs = countOf(docsJson);
+            const chars = countOf(charsJson);
+            const created = countOf(createdJson);
+            const updated = countOf(updatedJson);
+            const charsText = chars >= 10000 ? `${(chars / 10000).toFixed(1)} ${this.i18n.homeUnitWanChars}` : `${chars} ${this.i18n.homeUnitChars}`;
+            return {
+                stat: {value: docs.toLocaleString(), label: this.i18n.homeUnitDocs},
+                items: [
+                    {label: `${this.i18n.homeNewThisWeek} · ${created}`, value: ""},
+                    {label: `${this.i18n.homeModifiedThisWeek} · ${updated}`, value: ""},
+                    {label: `${this.i18n.homeCharEstimate} · ${charsText}`, value: ""},
+                ],
+            };
+        });
+        // 年度进度：纯前端计算（已过天数 / 剩余天数 / 百分比），带进度条
+        register("year-progress", this.i18n.homeYearProgress, "iconRefresh", this.i18n.homeDescYearProgress, [], () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const start = new Date(year, 0, 1);
+            const end = new Date(year + 1, 0, 1);
+            const dayMs = 86400000;
+            const total = Math.round((end.getTime() - start.getTime()) / dayMs);
+            const elapsed = Math.min(total, Math.floor((now.getTime() - start.getTime()) / dayMs) + 1);
+            const remaining = total - elapsed;
+            const percent = Math.round(elapsed / total * 100);
+            return {
+                stat: {value: `${percent}%`, label: `${year}`, progress: percent},
+                items: [
+                    {label: this.i18n.homeYearElapsed.replace("{x}", String(elapsed)), value: ""},
+                    {label: this.i18n.homeYearRemaining.replace("{x}", String(remaining)), value: ""},
+                ],
+            };
+        });
+        // 近期编辑：全库最近修改的文档列表，点击直达
+        register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async () => {
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                query: "SELECT id, content FROM blocks WHERE type='d' ORDER BY updated DESC LIMIT 10",
+            });
+            const rows = (json?.data || []) as Array<{id: string; content: string}>;
+            return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
+        });
         // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
         register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, [], (config) => {
             // 协议 v2 configSchema：limit（条数）、filter（label/plugin 关键词过滤）

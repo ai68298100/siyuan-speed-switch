@@ -170,6 +170,17 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.34 (2026-09-12)
+
+- Built-in widget library expanded: **Note stats** (documents + estimated characters + created/modified this week via aggregate SQL), **Year progress** (client-side elapsed/remaining days with a progress bar), and **Recently edited** (last 10 modified documents, click to open).
+- Rendering additions: stat progress bars (`stat.progress`) and per-item proportion bars (`item.count`, normalized to the list max).
+- Built-in widgets now total 13; the catalog and store pick them up automatically.
+
+### v0.16.33 (2026-09-12)
+
+- Widget panel visual deepening: stat progress bars, per-item proportion bars (tags normalized by occurrence), and a subtle 3% accent tint on card backgrounds.
+- New built-in widgets: **Week new** (documents created this week) and **Notebook overview** (per-notebook document counts as proportion bars).
+
 ### v0.16.32 (2026-09-12)
 
 - **Fixes a runtime break in v0.16.31**: a kernel-request helper was renamed without updating 11 call sites (type-check catches it, but the esbuild build does not type-check, so the broken bundle still packaged). Tags, bookmarks, journal-this-month and today's tasks widgets plus the agent write capabilities all failed at runtime. This release restores the helper and adds an endpoint whitelist.
