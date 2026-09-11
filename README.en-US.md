@@ -31,11 +31,11 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 ## Native SiYuan Agent capabilities
 
-On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers two read-only capabilities after a runtime check: navigation state (current tabs, recent documents, and favorites) and bounded document search (with notebook, content-type, subtype, search-method, and result-order filters plus a limited native block-search path when needed). Input, output, and text sizes are bounded. Both capabilities declare `localRead` only, with no writes, data egress, or external cost. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; future open-tab, journal, and cross-plugin actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
+On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers ten capabilities after a runtime check. Read-only capabilities declare `localRead` only, with no writes, data egress, or external cost; controlled navigation declares no writes. Input, output, and text sizes are bounded. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; further cross-document or destructive actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
 
 [中文说明](./README.md)
 
-**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot` and `get-document-outline` (read-only), `open-document` (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
+**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot`, `get-document-outline` and `workspace-context` (read-only), `open-document` and `open-documents` — up to 5 documents per call, behind a confirmation dialog listing every title (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
 
 ## Core Capabilities
 
