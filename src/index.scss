@@ -2623,10 +2623,17 @@
         background: var(--b3-theme-background);
         overflow-wrap: break-word;
         word-break: break-word;
+        // 防 FOUC：JS rescale 前隐藏，避免 800px 原始宽度瞬间撑满卡片
+        visibility: hidden;
 
         img, svg, iframe {
             max-width: 100%;
         }
+    }
+
+    // JS 缩放完成后显示
+    .sw__thumb-content.thumb-scaled {
+        visibility: visible;
     }
 
     // 无预览内容时的占位
