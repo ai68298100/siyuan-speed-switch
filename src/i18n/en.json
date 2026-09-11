@@ -23,9 +23,6 @@
   "setThumbHeightTip": "Height of each tab thumbnail in pixels (72–360)",
   "setSortBy": "Tab sort order",
   "setSortByTip": "Default card order when opening the switcher; pinned tabs always come first",
-  "fullScreen": "Fullscreen mode",
-  "fullScreenTip": "The switcher fills the whole window; press Esc to exit (off by default)",
-  "fullScreenOn": "Fullscreen mode enabled. Press Esc to exit",
   "enterFullscreen": "Fullscreen",
   "exitFullscreen": "Exit fullscreen",
   "setDocks": "Panel visibility",
@@ -51,7 +48,6 @@
   "settingsShort": "Settings",
   "homeEditLayout": "Edit layout",
   "homeDone": "Done",
-  "homeAddModule": "Add module",
   "homeEmpty": "The second panel is empty. Use 'Add module' to place recents, favorites, journal, document sets, or plugin modules.",
   "homeNoMoreModules": "No more modules to add",
   "homeEmptyModule": "Nothing here yet",
@@ -63,8 +59,6 @@
   "homeCached": "Cached",
   "homeUpdated": "Updated",
   "homeRemove": "Remove",
-  "homeNarrower": "Narrower",
-  "homeWider": "Wider",
   "homeMoveUp": "Move up",
   "homeMoveDown": "Move down",
   "homeOpenPlugin": "Open plugin",
@@ -76,8 +70,6 @@
   "homeStatFlashcards": "due cards",
   "homeRefreshAll": "Refresh all",
   "homeStoreTitle": "Widget store",
-  "homeStoreSectionBuiltin": "Built-in",
-  "homeStoreSectionPlugin": "Plugins",
   "homeStoreAdded": "Added",
   "homeSize": "Size",
   "homeDescRecent": "Recently opened documents, click to jump",
@@ -87,7 +79,6 @@
   "homeDescFixed": "Pin a frequently used document",
   "homeTodayTasks": "Today's tasks",
   "homeDescTasks": "Open tasks in currently opened documents; click to jump",
-  "homeDescCheckin": "Summary from LvCheckin",
   "homeTags": "Tags",
   "homeBookmarks": "Bookmarks",
   "homeJournalMonthly": "Journal this month",
@@ -126,7 +117,6 @@
   "homeConfig": "Configure",
   "homeConfigSave": "Save",
   "homeTaskToggleFailed": "Failed to update the task; try again later",
-  "aiJournalAppendDesc": "Append the following to today\u0027s journal:\n{content}",
   "aiCreateDocDesc": "The agent wants to create a document in notebook [{notebook}]:\n{title}",
   "homeStatFavorites": "favorites",
   "homeStatDocSets": "doc sets",
@@ -194,7 +184,6 @@
   "moveToGroup": "Move to group",
   "cancel": "Cancel",
   "confirm": "OK",
-  "sortLabel": "Sort",
   "secAppearance": "Appearance",
   "secBehavior": "Behavior",
   "secPanels": "Panels",
@@ -219,7 +208,6 @@
   "groupTabsNoChanges": "All tabs in this group are already in the requested state",
   "groupTabsInProgress": "A group tab operation is already in progress",
   "rename": "Rename",
-  "openSidebar": "Sidebar mode",
   "docSearchResults": "Workspace documents",
   "docSearchSourceGlobal": "Workspace",
   "docSearchSourceOpened": "Opened content",
@@ -228,7 +216,6 @@
   "docSearchViewAll": "View all in SiYuan Search",
   "noDocResults": "No matching documents found",
   "backTop": "Back to top",
-  "secHomePanel": "Widget panel",
   "setHomeSizeMode": "Size mode",
   "setHomeSizeModeTip": "Follow the first panel's setting, or give the widget panel its own adaptive, fixed, or fullscreen size",
   "setHomeSizeModeFollow": "Follow first panel",
@@ -288,7 +275,6 @@
   ,"quickMoveUp": "Move up"
   ,"quickMoveDown": "Move down"
   ,"quickRemove": "Remove"
-  ,"quickIcon": "Icon"
   ,"quickExport": "Export config"
   ,"quickImport": "Import config"
   ,"quickImportDone": "Quick action config imported"
@@ -371,7 +357,6 @@
   ,"documentSetsGuideStep3": "Export and import document sets for backup or migration. Saving with the same name updates the existing set."
   ,"documentSetsGuideNote": "Note: document sets store stable root-document references only. They do not save cursor positions, transient tabs, or document content. Deleted or unavailable documents are marked missing before restore."
   ,"secondPanel": "Widgets"
-  ,"secondPanelEmpty": "Nothing here yet"
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
   ,"noOpenHistory": "No recent documents"

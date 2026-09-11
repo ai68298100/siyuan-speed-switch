@@ -23,9 +23,6 @@
   "setThumbHeightTip": "单张页签缩略图的高度，单位像素（72–360）",
   "setSortBy": "页签排序方式",
   "setSortByTip": "打开切换器时页签卡片的默认排序；置顶页签始终排在最前",
-  "fullScreen": "全屏模式",
-  "fullScreenTip": "切换器铺满整个窗口，按 Esc 退出（默认关闭）",
-  "fullScreenOn": "已开启全屏模式，按 Esc 退出",
   "enterFullscreen": "全屏模式",
   "exitFullscreen": "退出全屏",
   "setDocks": "面板显示设置",
@@ -51,7 +48,6 @@
   "settingsShort": "设置",
   "homeEditLayout": "编辑布局",
   "homeDone": "完成",
-  "homeAddModule": "添加模块",
   "homeEmpty": "第二面板还是空的，点击「添加模块」放置最近打开、收藏、日记、文档集或插件模块。",
   "homeNoMoreModules": "没有更多可添加的模块",
   "homeEmptyModule": "暂无内容",
@@ -63,8 +59,6 @@
   "homeCached": "缓存",
   "homeUpdated": "更新",
   "homeRemove": "移除",
-  "homeNarrower": "缩窄",
-  "homeWider": "加宽",
   "homeMoveUp": "上移",
   "homeMoveDown": "下移",
   "homeOpenPlugin": "打开插件",
@@ -76,8 +70,6 @@
   "homeStatFlashcards": "张待复习",
   "homeRefreshAll": "刷新全部",
   "homeStoreTitle": "小组件商店",
-  "homeStoreSectionBuiltin": "内置",
-  "homeStoreSectionPlugin": "插件",
   "homeStoreAdded": "已添加",
   "homeSize": "型号",
   "homeDescRecent": "最近打开的文档，点击直达",
@@ -87,7 +79,6 @@
   "homeDescFixed": "固定展示某个常用文档",
   "homeTodayTasks": "今日待办",
   "homeDescTasks": "当前打开文档中的未完成任务，点击跳转",
-  "homeDescCheckin": "来自小驴打卡的摘要",
   "homeTags": "标签",
   "homeBookmarks": "书签",
   "homeJournalMonthly": "本月日记",
@@ -126,7 +117,6 @@
   "homeConfig": "配置",
   "homeConfigSave": "保存",
   "homeTaskToggleFailed": "任务状态更新失败，请稍后重试",
-  "aiJournalAppendDesc": "将向今日日记追加以下内容：\n{content}",
   "aiCreateDocDesc": "智能体请求在笔记本「{notebook}」新建文档：\n{title}",
   "homeStatFavorites": "条收藏",
   "homeStatDocSets": "个文档集",
@@ -194,7 +184,6 @@
   "moveToGroup": "移动至分组",
   "cancel": "取消",
   "confirm": "确定",
-  "sortLabel": "排序",
   "secAppearance": "外观",
   "secBehavior": "行为",
   "secPanels": "面板",
@@ -219,7 +208,6 @@
   "groupTabsNoChanges": "组内页签已是目标状态",
   "groupTabsInProgress": "正在处理组内页签，请稍候",
   "rename": "重命名",
-  "openSidebar": "侧边栏模式",
   "docSearchResults": "全库文档",
   "docSearchSourceGlobal": "全库",
   "docSearchSourceOpened": "已打开内容",
@@ -228,7 +216,6 @@
   "docSearchViewAll": "在思源搜索中查看全部",
   "noDocResults": "未找到匹配的文档",
   "backTop": "回到顶部",
-  "secHomePanel": "组件面板",
   "setHomeSizeMode": "尺寸模式",
   "setHomeSizeModeTip": "跟随第一面板使用相同设置；也可为组件面板单独指定自适应、固定尺寸或全屏",
   "setHomeSizeModeFollow": "跟随第一面板",
@@ -288,7 +275,6 @@
   ,"quickMoveUp": "上移"
   ,"quickMoveDown": "下移"
   ,"quickRemove": "删除"
-  ,"quickIcon": "图标"
   ,"quickExport": "导出配置"
   ,"quickImport": "导入配置"
   ,"quickImportDone": "快捷入口配置已导入"
@@ -371,7 +357,6 @@
   ,"documentSetsGuideStep3": "使用导出/导入可备份或迁移文档集；同名保存会更新原有集合。"
   ,"documentSetsGuideNote": "注意：文档集只记录可稳定恢复的根文档，不保存编辑位置、临时页签或文档内容；删除或移出当前工作空间的文档会在恢复前标记为缺失。"
   ,"secondPanel": "组件面板"
-  ,"secondPanelEmpty": "暂无内容"
   ,"mobileLayoutFailed": "切换器初始化失败，请关闭后重试"
   ,"openHistory": "最近打开"
   ,"noOpenHistory": "暂无最近打开记录"
