@@ -19,7 +19,7 @@
 
 - [ ] T-021 Agent 能力真机实测（open-documents / workspace-context 等）
   - 验收：在配置了 AI 的思源里让模型调用能力，确认确认弹窗与输出
-  - 依赖：需要思源 AI 宿主 + 用户配合触发
+  - 依赖：已实证 3.8.2 即有 addAgentCapability（10 项能力应已注册）；仅剩"AI 对话触发"需用户在有 LLM 配置的环境验证
   - 状态：blocked on user
 - [ ] T-022 手机端回归抽查（Android 真机）
   - 依赖：需要 Android 设备
