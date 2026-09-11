@@ -80,6 +80,17 @@ function normalizeClickCommand(value) {
     return /^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : "";
 }
 
+function normalizeHomepage(value) {
+    const raw = text(value, 256);
+    if (!raw) return "";
+    try {
+        const url = new URL(raw);
+        return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+    } catch {
+        return "";
+    }
+}
+
 function normalizeRefreshOn(value) {
     return Array.isArray(value)
         ? REFRESH_EVENTS.filter((event) => value.includes(event)).slice(0, 3)
@@ -96,14 +107,18 @@ function normalizeConfigSchema(value) {
         const type = CONFIG_FIELD_TYPES.includes(raw.type) ? raw.type : "text";
         const field = {key, label, type};
         if (type === "number") {
-            field.min = Number.isFinite(raw.min) ? Math.trunc(raw.min) : 0;
-            field.max = Number.isFinite(raw.max) ? Math.trunc(raw.max) : 100;
-            if (Number.isFinite(raw.defaults)) field.defaults = Math.trunc(raw.defaults);
+            const rawMin = Number.isFinite(raw.min) ? Math.trunc(raw.min) : 0;
+            const rawMax = Number.isFinite(raw.max) ? Math.trunc(raw.max) : 100;
+            field.min = Math.min(rawMin, rawMax);
+            field.max = Math.max(rawMin, rawMax);
+            if (Number.isFinite(raw.defaults)) field.defaults = Math.max(field.min, Math.min(field.max, Math.trunc(raw.defaults)));
         } else if (type === "select") {
-            field.options = (Array.isArray(raw.options) ? raw.options : []).slice(0, 12)
+            const options = (Array.isArray(raw.options) ? raw.options : []).slice(0, 12)
                 .map((option) => text(typeof option === "object" ? option?.label : option, 32)).filter(Boolean);
+            field.options = [...new Set(options)].slice(0, 12);
             if (field.options.length === 0) return fields;
-            field.defaults = text(raw.defaults, 32) || field.options[0];
+            const selected = text(raw.defaults, 32);
+            field.defaults = field.options.includes(selected) ? selected : field.options[0];
         } else if (type === "notebook") {
             // 选项由宿主渲染时用思源笔记本列表动态填充
         } else {
@@ -135,7 +150,7 @@ function normalizeModuleDefinition(value) {
         description: text(value.description, 96),
         protocolVersion: normalizeProtocolVersion(value.protocolVersion),
         author: text(value.author, 64),
-        homepage: text(value.homepage, 256),
+        homepage: normalizeHomepage(value.homepage),
         clickCommand: normalizeClickCommand(value.clickCommand),
         configSchema: normalizeConfigSchema(value.configSchema),
         refreshOn: normalizeRefreshOn(value.refreshOn),
@@ -222,4 +237,4 @@ function getModuleDefinition(definitions, moduleId) {
     return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeProtocolVersion, normalizeClickCommand, normalizeRefreshOn, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};

@@ -7,6 +7,7 @@ const {
     READ_ONLY_EFFECTS,
     normalizeAgentQuery,
     normalizeAgentNotebook,
+    normalizeAgentSearchPaths,
     normalizeAgentLimit,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,
@@ -37,6 +38,7 @@ test("agent capability specs are read-only and bounded", () => {
     assert.deepEqual(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.subType.enum,
         ["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
     assert.match(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.notebook.pattern, /A-Za-z0-9/);
+    assert.equal(AGENT_CAPABILITY_SPECS.search.inputSchema.properties.paths.maxItems, 8);
     assert.equal(AGENT_CAPABILITY_SPECS.search.outputSchema.properties.items.items.type, "object");
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.tabs.type, "array");
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.tabs.maxItems, 32);
@@ -50,6 +52,7 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
     const ajv = new Ajv({strict: true});
     const validateNavigation = ajv.compile(AGENT_CAPABILITY_SPECS.navigation.outputSchema);
     const validateSearch = ajv.compile(AGENT_CAPABILITY_SPECS.search.outputSchema);
+    const validateWidgets = ajv.compile(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema);
     const navigation = buildAgentNavigationResult({
         activeId: ROOT,
         mobile: false,
@@ -62,14 +65,31 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
     ], {source: "global"});
     assert.equal(validateNavigation(navigation), true, JSON.stringify(validateNavigation.errors));
     assert.equal(validateSearch(search), true, JSON.stringify(validateSearch.errors));
+    assert.equal(validateWidgets({
+        moduleId: "today-tasks",
+        title: "今日待办",
+        status: "ok",
+        items: [{label: "任务", value: "1"}],
+    }), true, JSON.stringify(validateWidgets.errors));
+    assert.equal(validateWidgets({
+        widgets: [{
+            moduleId: "today-tasks",
+            title: "今日待办",
+            description: "今天需要完成的任务",
+            sizes: ["small", "medium"],
+        }],
+    }), true, JSON.stringify(validateWidgets.errors));
     assert.equal(validateNavigation({...navigation, unexpected: true}), false);
     assert.equal(validateSearch({...search, items: [{rootId: "invalid"}]}), false);
+    assert.equal(validateWidgets({moduleId: "today-tasks", widgets: []}), false);
 });
 
 test("agent input normalization rejects unsafe notebook and ids", () => {
     assert.equal(normalizeAgentQuery("  alpha\n beta  "), "alpha beta");
     assert.equal(normalizeAgentNotebook("box_1"), "box_1");
     assert.equal(normalizeAgentNotebook("box/../../other"), "");
+    assert.deepEqual(normalizeAgentSearchPaths(["box-a/projects", "box-a\\other", "/box-b/资料/"]), ["box-a/projects", "box-a/other", "box-b/资料"]);
+    assert.deepEqual(normalizeAgentSearchPaths(["box-a/../secret", "bad box/path", "box-a/a;drop"]), []);
     assert.equal(normalizeAgentRootId(ROOT), ROOT);
     assert.equal(normalizeAgentRootId("not-a-block"), "");
     assert.equal(normalizeAgentLimit("999"), 32);
@@ -169,7 +189,10 @@ test("agent capability registration is read-only and tolerates old hosts", () =>
 
 test("agent capability specs include widget snapshot and controlled open", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.name, "home-widget-snapshot");
-    assert.deepEqual(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.required, ["moduleId"]);
+    assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.required, undefined);
+    assert.match(AGENT_CAPABILITY_SPECS.homeWidgets.description, /省略 moduleId/);
+    assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.config.maxProperties, 16);
+    assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema.anyOf.length, 2);
     assert.equal(AGENT_CAPABILITY_SPECS.openDocument.name, "open-document");
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
 });

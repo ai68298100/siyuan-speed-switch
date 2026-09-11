@@ -23,7 +23,17 @@ function createHomeRuntime(definitions = []) {
         const token = Symbol(moduleId);
         // The public home-module boundary is intentionally read-only. Ignore
         // caller metadata that attempts to advertise a writable module.
-        const definition = normalizeModuleDefinition({moduleId, title: raw?.title || moduleId, icon: raw?.icon, category: raw?.category || "custom", supportedDevices: raw?.supportedDevices || candidate.supportedDevices, readOnly: true});
+        // Keep the public metadata in the normalized definition so the store,
+        // Agent discovery and host integrations see the same bounded contract.
+        // The adapter's executable read function is kept separately and never
+        // becomes part of persisted or Agent-facing metadata.
+        const definition = normalizeModuleDefinition({
+            ...raw,
+            moduleId,
+            title: raw?.title || moduleId,
+            supportedDevices: raw?.supportedDevices || candidate.supportedDevices,
+            readOnly: true,
+        });
         if (!definition) return {registered: false, reason: "invalid", unregister: () => undefined};
         adapters.set(moduleId, candidate);
         const unregister = () => {

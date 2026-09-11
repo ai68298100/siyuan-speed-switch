@@ -42,6 +42,7 @@ import {
     normalizeAgentSearchType,
     normalizeAgentSearchSubType,
     normalizeAgentNotebook,
+    normalizeAgentSearchPaths,
     normalizeAgentQuery,
     flipTaskMarkdown,
     registerReadOnlyAgentCapabilities,
@@ -2675,16 +2676,30 @@ const version = beginSearch(session);
         icon?: string;
         category?: string;
         supportedDevices?: Array<"desktop" | "sidebar" | "mobile">;
+        sizes?: Array<"xs" | "small" | "medium" | "tall" | "wide" | "large" | "full">;
+        description?: string;
+        protocolVersion?: number;
+        author?: string;
+        homepage?: string;
+        clickCommand?: string;
+        configSchema?: Array<Record<string, unknown>>;
+        refreshOn?: Array<"switch-protyle" | "loaded-protyle" | "destroy-protyle">;
         read: (config: Record<string, unknown>, device: string) => unknown | Promise<unknown>;
         readOnly?: boolean;
+        open?: () => void;
     }): () => void {
         const registration = this.homeRuntime.registerAdapter(options as unknown as Record<string, unknown>);
-        if (registration.registered && typeof (options as {open?: unknown}).open === "function") {
+        const moduleId = String(options.moduleId || "");
+        if (registration.registered && typeof options.open === "function") {
             this.homeModuleOpens.set(String(options.moduleId), (options as unknown as {open: () => void}).open);
         }
-        if (registration.registered) this.homeThirdPartyIds.add(String(options.moduleId));
+        if (registration.registered) this.homeThirdPartyIds.add(moduleId);
         if (!registration.registered) return () => undefined;
-        return () => { registration.unregister(); };
+        return () => {
+            if (!registration.unregister()) return;
+            this.homeModuleOpens.delete(moduleId);
+            this.homeThirdPartyIds.delete(moduleId);
+        };
     }
 
     public getHomeModules(device: "desktop" | "sidebar" | "mobile" = this.isMobile ? "mobile" : "desktop") {
@@ -5469,9 +5484,7 @@ if ((e as DOMException)?.name !== "AbortError") {
                 snippets: card.snippets,
                 source: "global",
             }));
-            const scoped = filters.notebook
-                ? mapped.filter((doc) => doc.notebookId === filters.notebook)
-                : mapped;
+            const scoped = this.filterDocSearchResults(mapped, filters);
             return scoped.slice(0, documentLimit);
         } catch (error) {
             if ((error as DOMException)?.name === "AbortError") {
@@ -5864,7 +5877,10 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         const limit = normalizeAgentLimit(args?.limit, 12);
                         const def = queryable.find((item: any) => item.moduleId === requested) as {title?: string} | undefined;
                         if (!def) return {error: "unknown module"};
-                        const result = await this.homeRuntime.read(requested, device, {}, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
+                        const config = args?.config && typeof args.config === "object" && !Array.isArray(args.config)
+                            ? args.config as Record<string, unknown>
+                            : {};
+                        const result = await this.homeRuntime.read(requested, device, config, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
                         const items = ((result?.snapshot?.items || []) as Array<{label?: string; value?: string}>)
                             .slice(0, limit)
                             .map((item) => ({label: item.label || "", value: item.value || ""}))
@@ -5898,6 +5914,15 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             return {error: "invalid notebook id"};
         }
         if (notebook) filters.notebook = notebook;
+        if (args.paths !== undefined) {
+            if (!Array.isArray(args.paths) || args.paths.length > 8) return {error: "invalid search path"};
+            const rawPaths = args.paths.map((value) => String(value || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "")).filter(Boolean);
+            const paths = normalizeAgentSearchPaths(args.paths);
+            if (paths.length !== rawPaths.length || new Set(rawPaths).size !== rawPaths.length) {
+                return {error: "invalid search path"};
+            }
+            if (paths.length > 0) filters.paths = paths;
+        }
         const method = normalizeAgentSearchMethod(args.method);
         const orderBy = normalizeAgentSearchOrder(args.orderBy);
         const type = normalizeAgentSearchType(args.type);
@@ -5932,6 +5957,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     || (tab as unknown as {hPath?: string}).hPath || "");
                 const notebookId = resolveSearchNotebookId(tab as unknown);
                 if (notebook && notebookId !== notebook) return null;
+                if (filters.paths && this.filterDocSearchResults([{path, hPath: path, notebookId}], filters).length === 0) return null;
                 if (!`${title} ${path}`.toLocaleLowerCase().includes(queryLower)) return null;
                 return {
                     id: rootId || tab.id,

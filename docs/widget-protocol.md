@@ -136,6 +136,17 @@ refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
 
 `author`（≤64 字）与 `homepage`（URL）会展示在商店卡片上；`protocolVersion: 2` 会标记 Protocol v2 徽标。
 
+### 6. Agent 发现与配置读取
+
+如果宿主支持思源 Agent，小驴速切会把已注册且可读取的组件纳入 `home-widget-snapshot`：
+
+- 省略 `moduleId` 可先发现当前端可查询组件的 `moduleId`、标题、描述和尺寸型号；
+- 传入 `moduleId` 可读取该组件的有界快照；
+- 可选传入 `config` 查询配置型组件，配置最多 16 个字段，每个字段仅接受有界字符串、数字或布尔值；
+- 发现和读取均为只读操作，不会修改笔记、页签或组件配置持久化状态。
+
+组件注册时声明的 `description`、`sizes`、`protocolVersion`、`configSchema` 和 `refreshOn` 会经过宿主归一化后用于商店和 Agent 发现，非法或超限字段会被安全丢弃。
+
 ## 点击行为
 
 条目 `value` 交给小驴速切分发，按前缀识别：

@@ -30,7 +30,7 @@ test('release archive carries the current candidate documentation', () => {
     const readme = readZipEntry(buffer, 'README.md').toString('utf8');
     const roadmap = readZipEntry(buffer, 'ROADMAP.md').toString('utf8');
     assert.match(readme, /verify:release/);
-    assert.match(readme, /发布候选状态/);
+    assert.match(readme, /当前开发策略/);
     assert.match(readme, /发布前检查/);
     assert.match(roadmap, /R7：现代化 UI 视觉重构/);
 });

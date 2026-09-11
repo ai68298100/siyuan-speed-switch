@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.18-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.35-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -10,9 +10,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > `v0.16.19` widget panel live data and mobile canvas fix: built-in widgets declare refresh triggers so data stays fresh while the panel is open; the mobile canvas stacks single-column; the widget store gains instant search. > `v0.16.13` introduces grouped tab lists (by notebook by default / favorites / created month) with a unified group+sort menu and flow layout where small groups sit side by side, and turns the second panel into a widget home: built-in recents/favorites/journal/document-set modules can be added, removed, reordered, resized, and collapsed; third-party read-only modules are supported with an open-plugin fallback. Desktop settings now follows the adaptive size mode; mobile toolbar crowding and the settings tab-strip glitch are fixed.
 
-> The current worktree contains unreleased search and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters. The UI is also moving to a modern visual language with lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
+> The current worktree contains unreleased search, widget, Agent, and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters; the widget panel supports third-party read-only modules and Agent discovery mode. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
 
-> Release-candidate status: automated gates pass (type check, production build, 499 tests, mobile and Chromium UI smoke tests, and archive audit). Final real-device acceptance has not been performed; no tag, release, or push will be created before explicit user confirmation.
+> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 522 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
 
 ## Contents
 
@@ -35,7 +35,7 @@ On SiYuan versions that expose `addAgentCapability` (the current adapter follows
 
 [中文说明](./README.md)
 
-**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot` and `get-document-outline` (read-only), `open-document` (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog).
+**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot` and `get-document-outline` (read-only), `open-document` (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
 
 ## Core Capabilities
 
@@ -174,7 +174,7 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 - New read-only agent capability `get-document-outline`: returns a document's heading outline (text, depth, heading block id) so the AI can navigate by section together with `open-document`; results are bounded (max 48 headings, depth clamped to 0-8).
 - Security hardening: the kernel request entry point now enforces a same-origin guard — only relative paths starting with `/` that hit the endpoint whitelist are allowed; absolute URLs and foreign hosts are rejected explicitly.
-- Agent capabilities now total 8 (4 read-only, 1 controlled navigation, 3 controlled writes); 519 automated tests.
+- Agent capabilities now total 8 (4 read-only, 1 controlled navigation, 3 controlled writes); 522 automated tests.
 
 ### v0.16.34 (2026-09-12)
 
@@ -702,7 +702,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 78 `*.test.cjs` files under `tests/` and `tests/host/`, currently 499 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 78 `*.test.cjs` files under `tests/` and `tests/host/`, currently 522 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -731,7 +731,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 499)
+pnpm test               # run every unit, contract, and host release test (currently 522)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

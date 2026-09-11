@@ -28,11 +28,23 @@ test('protocol v2 fields normalize with bounded defaults', () => {
 });
 
 test('protocol v2 defaults: unknown version/command/event degrade safely', () => {
-    const def = home.normalizeModuleDefinition({moduleId: 'x', title: 'T', protocolVersion: 99, clickCommand: 'not-a-command', refreshOn: 'bad'});
+    const def = home.normalizeModuleDefinition({moduleId: 'x', title: 'T', protocolVersion: 99, homepage: 'javascript:alert(1)', clickCommand: 'not-a-command', refreshOn: 'bad'});
     assert.equal(def.protocolVersion, 1);
     assert.equal(def.clickCommand, '');
+    assert.equal(def.homepage, '');
     assert.deepEqual(def.refreshOn, []);
     assert.deepEqual(def.configSchema, []);
+});
+
+test('protocol v2 config fields clamp invalid ranges and defaults', () => {
+    const def = home.normalizeModuleDefinition({
+        moduleId: 'bounded', title: 'Bounded', configSchema: [
+            {key: 'count', label: 'Count', type: 'number', min: 10, max: 2, defaults: 99},
+            {key: 'mode', label: 'Mode', type: 'select', options: ['a', 'a', 'b'], defaults: 'missing'},
+        ],
+    });
+    assert.deepEqual(def.configSchema[0], {key: 'count', label: 'Count', type: 'number', min: 2, max: 10, defaults: 10});
+    assert.deepEqual(def.configSchema[1], {key: 'mode', label: 'Mode', type: 'select', options: ['a', 'b'], defaults: 'a'});
 });
 
 test('built-in modules declare size subsets and config schemas', () => {

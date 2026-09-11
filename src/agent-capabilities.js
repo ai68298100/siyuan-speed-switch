@@ -9,6 +9,8 @@ const MAX_NOTEBOOK_LENGTH = 64;
 const MAX_ITEMS = 32;
 const MAX_SEARCH_ITEMS = 32;
 const MAX_OUTLINE_ITEMS = 48;
+const MAX_AGENT_PATHS = 8;
+const MAX_AGENT_PATH_LENGTH = 1024;
 const MAX_TEXT_LENGTH = 256;
 const MAX_SNIPPET_LENGTH = 600;
 const ITEM_SOURCES = Object.freeze(["tabs", "recent", "favorite", "title", "opened", "global"]);
@@ -46,6 +48,23 @@ function normalizeAgentQuery(value) {
 function normalizeAgentNotebook(value) {
     const notebook = asText(value, MAX_NOTEBOOK_LENGTH);
     return /^[A-Za-z0-9_-]{1,64}$/.test(notebook) ? notebook : "";
+}
+
+function normalizeAgentSearchPaths(value) {
+    if (!Array.isArray(value)) return [];
+    const paths = [];
+    const seen = new Set();
+    value.slice(0, MAX_AGENT_PATHS).forEach((entry) => {
+        const path = asText(entry, MAX_AGENT_PATH_LENGTH).replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+        if (!path || seen.has(path)) return;
+        const parts = path.split("/");
+        if (!/^[A-Za-z0-9_-]{1,64}$/.test(parts[0])) return;
+        if (parts.some((part) => !part || part === "." || part === "..")) return;
+        if (/['"`;]|--|\/\*|\*\//.test(path)) return;
+        seen.add(path);
+        paths.push(path);
+    });
+    return paths;
 }
 
 function normalizeAgentLimit(value, fallback = 12) {
@@ -310,7 +329,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     homeWidgets: Object.freeze({
         name: "home-widget-snapshot",
         title: "小驴速切组件面板数据",
-        description: "只读获取组件面板中任一已注册组件的有界数据快照（如今日待办、本月日记、最近打开、标签、第三方插件组件）。不会修改笔记或页签。",
+        description: "只读获取组件面板中任一已注册组件的有界数据快照（如今日待办、本月日记、最近打开、标签、第三方插件组件），或省略 moduleId 发现当前可查询组件。不会修改笔记或页签。",
         inputSchema: Object.freeze({
             type: "object",
             properties: {
@@ -321,32 +340,72 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     pattern: "^[A-Za-z0-9._:-]{1,64}$",
                 },
                 limit: {type: "integer", minimum: 1, maximum: 24},
-            },
-            required: ["moduleId"],
-            additionalProperties: false,
-        }),
-        outputSchema: Object.freeze({
-            type: "object",
-            properties: {
-                moduleId: {type: "string", maxLength: 64},
-                title: {type: "string", maxLength: 64},
-                status: {type: "string", maxLength: 32},
-                items: {
-                    type: "array",
-                    maxItems: 24,
-                    items: {
-                        type: "object",
-                        properties: {
-                            label: {type: "string", maxLength: 256},
-                            value: {type: "string", maxLength: 256},
-                        },
-                        required: ["label"],
-                        additionalProperties: false,
+                config: {
+                    type: "object",
+                    maxProperties: 16,
+                    additionalProperties: {
+                        anyOf: [
+                            {type: "string", maxLength: 512},
+                            {type: "number"},
+                            {type: "boolean"},
+                        ],
                     },
                 },
             },
-            required: ["moduleId", "items"],
             additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            anyOf: [
+                {
+                    type: "object",
+                    properties: {
+                        moduleId: {type: "string", maxLength: 64, pattern: "^[A-Za-z0-9._:-]{1,64}$"},
+                        title: {type: "string", maxLength: 64},
+                        status: {type: "string", maxLength: 32},
+                        items: {
+                            type: "array",
+                            maxItems: 24,
+                            items: {
+                                type: "object",
+                                properties: {
+                                    label: {type: "string", maxLength: 256},
+                                    value: {type: "string", maxLength: 256},
+                                },
+                                required: ["label"],
+                                additionalProperties: false,
+                            },
+                        },
+                    },
+                    required: ["moduleId", "items"],
+                    additionalProperties: false,
+                },
+                {
+                    type: "object",
+                    properties: {
+                        widgets: {
+                            type: "array",
+                            maxItems: 24,
+                            items: {
+                                type: "object",
+                                properties: {
+                                    moduleId: {type: "string", maxLength: 64, pattern: "^[A-Za-z0-9._:-]{1,64}$"},
+                                    title: {type: "string", maxLength: 64},
+                                    description: {type: "string", maxLength: 256},
+                                    sizes: {
+                                        type: "array",
+                                        maxItems: 8,
+                                        items: {type: "string", maxLength: 32},
+                                    },
+                                },
+                                required: ["moduleId", "title", "description", "sizes"],
+                                additionalProperties: false,
+                            },
+                        },
+                    },
+                    required: ["widgets"],
+                    additionalProperties: false,
+                },
+            ],
         }),
     }),
     outline: Object.freeze({
@@ -415,7 +474,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     search: Object.freeze({
         name: "search-documents",
         title: "小驴速切搜索文档",
-        description: "只读搜索思源文档；支持受限的笔记本、内容类型、搜索方式和结果排序筛选，并在需要时使用原生块搜索。结果只返回根文档摘要和定位信息。",
+        description: "只读搜索思源文档；支持受限的笔记本、路径、内容类型、搜索方式和结果排序筛选，并在需要时使用原生块搜索。结果只返回根文档摘要和定位信息。",
         inputSchema: Object.freeze({
             type: "object",
             properties: {
@@ -425,6 +484,11 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     minLength: 1,
                     maxLength: 64,
                     pattern: "^[A-Za-z0-9_-]{1,64}$",
+                },
+                paths: {
+                    type: "array",
+                    maxItems: MAX_AGENT_PATHS,
+                    items: {type: "string", minLength: 1, maxLength: MAX_AGENT_PATH_LENGTH},
                 },
                 limit: {type: "integer", minimum: 1, maximum: MAX_SEARCH_ITEMS},
                 method: {type: "string", enum: SEARCH_METHODS},
@@ -551,6 +615,7 @@ module.exports = {
     READ_ONLY_EFFECTS,
     normalizeAgentQuery,
     normalizeAgentNotebook,
+    normalizeAgentSearchPaths,
     normalizeAgentLimit,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,

@@ -13,6 +13,35 @@ test("home runtime registers a device-scoped read-only module and reads bounded 
     assert.equal((await runtime.read("demo-module", "mobile")).ok, false);
 });
 
+test("home runtime preserves bounded protocol metadata for discovery", () => {
+    const runtime = createHomeRuntime();
+    const registration = runtime.registerAdapter({
+        moduleId: "meta-module",
+        title: "Meta module",
+        description: "A discoverable module",
+        icon: "iconInfo",
+        category: "plugin",
+        supportedDevices: ["desktop"],
+        sizes: ["small", "wide", "invalid"],
+        protocolVersion: 2,
+        author: "Example",
+        homepage: "https://example.com/widget",
+        clickCommand: "example::open",
+        configSchema: [{key: "limit", label: "Limit", type: "number", min: 1, max: 8, defaults: 4}],
+        refreshOn: ["loaded-protyle", "unsafe-event"],
+        read: () => ({}),
+    });
+    const definition = runtime.listModules("desktop").find((item) => item.moduleId === "meta-module");
+    assert.equal(registration.registered, true);
+    assert.equal(definition.description, "A discoverable module");
+    assert.deepEqual(definition.sizes, ["small", "wide"]);
+    assert.equal(definition.protocolVersion, 2);
+    assert.deepEqual(definition.configSchema[0].key, "limit");
+    assert.deepEqual(definition.refreshOn, ["loaded-protyle"]);
+    assert.equal(definition.readOnly, true);
+    runtime.dispose();
+});
+
 test("home runtime replacement invalidates the previous registration", () => {
     const runtime = createHomeRuntime();
     const first = runtime.registerAdapter({moduleId: "replace", title: "First", supportedDevices: ["desktop"], read: () => ({})});
@@ -52,5 +81,15 @@ test("home runtime distinguishes an unregistered module from an unsupported devi
     assert.equal((await runtime.read("missing-module", "desktop")).reason, "unregistered");
     runtime.registerAdapter({moduleId: "desktop-only", title: "Desktop", supportedDevices: ["desktop"], read: () => ({})});
     assert.equal((await runtime.read("desktop-only", "mobile")).reason, "unsupported");
+    runtime.dispose();
+});
+
+test("home runtime rejects adapter ids that would normalize to another id", () => {
+    const runtime = createHomeRuntime();
+    const spaced = runtime.registerAdapter({moduleId: "bad id", title: "Bad", supportedDevices: ["desktop"], read: () => ({})});
+    const scripted = runtime.registerAdapter({moduleId: "<script>", title: "Bad", supportedDevices: ["desktop"], read: () => ({})});
+    assert.equal(spaced.registered, false);
+    assert.equal(scripted.registered, false);
+    assert.equal(runtime.listModules("desktop").some((item) => item.moduleId === "badid"), false);
     runtime.dispose();
 });

@@ -40,7 +40,7 @@ function safeText(value, max = MAX_TEXT) {
 function normalizeAdapter(adapter) {
     if (!adapter || typeof adapter !== "object") return null;
     const moduleId = safeText(adapter.moduleId, 64);
-    if (!moduleId || typeof adapter.read !== "function") return null;
+    if (!/^[A-Za-z0-9._:-]{1,64}$/.test(moduleId) || typeof adapter.read !== "function") return null;
     const supportedDevices = Array.isArray(adapter.supportedDevices)
         ? DEVICES.filter((device) => adapter.supportedDevices.includes(device)) : [];
     if (!supportedDevices.length) return null;
