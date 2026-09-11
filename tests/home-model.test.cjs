@@ -4,13 +4,13 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 15);
+    assert.equal(modules.length, 16);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 15);
+    assert.equal(home.modulesForDevice([], "mobile").length, 16);
 });
 
 test("flashcard-due module keeps bounded notebook config schema", () => {
@@ -20,6 +20,14 @@ test("flashcard-due module keeps bounded notebook config schema", () => {
     assert.equal(flashcard.readOnly, true);
     assert.deepEqual(flashcard.configSchema, [{key: "notebook", label: "限定笔记本", type: "notebook"}]);
     assert.ok(flashcard.sizes.includes("small") && flashcard.sizes.includes("tall"));
+});
+
+test("random-review module clamps stale-days window", () => {
+    const modules = home.registerModules([]);
+    const random = modules.find((item) => item.moduleId === "random-review");
+    assert.ok(random, "random-review module registered");
+    assert.equal(random.readOnly, true);
+    assert.deepEqual(random.configSchema, [{key: "days", label: "多久未看（天）", type: "number", min: 7, max: 3650, defaults: 90}]);
 });
 
 test("home model normalizes layout and rejects invalid instances", () => {

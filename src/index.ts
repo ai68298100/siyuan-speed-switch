@@ -3213,7 +3213,7 @@ const version = beginSearch(session);
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
         });
         // 闪卡待复习：笔记本级到期闪卡（只读）；限定单本显示卡片列表，全部笔记本显示到期数分布
-        register("flashcard-due", this.i18n.homeFlashcardDue, "iconRiff", this.i18n.homeDescFlashcardDue, [], async (config) => {
+        register("flashcard-due", this.i18n.homeFlashcardDue, "iconClock", this.i18n.homeDescFlashcardDue, [], async (config) => {
             const notebookFilter = typeof config.notebook === "string" && normalizeAgentNotebookId(config.notebook) ? config.notebook : "";
             if (notebookFilter) {
                 const json = await this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", {notebook: notebookFilter});
@@ -3240,6 +3240,17 @@ const version = beginSearch(session);
                 stat: {value: String(total), label: this.i18n.homeStatFlashcards},
                 items: counts.filter((entry) => entry.count > 0).map((entry) => ({label: entry.label, value: "", count: entry.count})),
             };
+        });
+        // 随机回顾：抽取 N 天未更新的旧文档（SQLite random()，只读）；仅手动刷新重抽，不订阅事件
+        register("random-review", this.i18n.homeRandomReview, "iconDice", this.i18n.homeDescRandomReview, [], (config) => {
+            const days = Math.min(3650, Math.max(7, Math.trunc(Number(config.days) || 90)));
+            const cutoff = this.taskWindowStart(days);
+            return this.fetchKernelJson("/api/query/sql", {
+                query: `SELECT id, content FROM blocks WHERE type='d' AND updated < '${cutoff}' ORDER BY random() LIMIT 3`,
+            }).then((json) => {
+                const rows = (json?.data || []) as Array<{id: string; content: string}>;
+                return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
+            });
         });
         // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
         register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, [], (config) => {

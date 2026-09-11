@@ -26,8 +26,11 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, configSchema: []},
     {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
-    {moduleId: "flashcard-due", title: "闪卡待复习", icon: "iconRiff", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
+    {moduleId: "flashcard-due", title: "闪卡待复习", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
+    {moduleId: "random-review", title: "随机回顾", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
+        {key: "days", label: "多久未看（天）", type: "number", min: 7, max: 3650, defaults: 90},
     ]},
         {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},

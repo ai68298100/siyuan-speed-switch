@@ -68,6 +68,8 @@
   "homeMoveUp": "上移",
   "homeMoveDown": "下移",
   "homeOpenPlugin": "打开插件",
+  "homeRandomReview": "随机回顾",
+  "homeDescRandomReview": "随机抽取久未翻动的旧文档，点「刷新全部」换一批",
   "homeFlashcardDue": "闪卡待复习",
   "homeDescFlashcardDue": "按笔记本查看到期闪卡，点击直达卡片所在文档",
   "homeStatFlashcards": "张待复习",

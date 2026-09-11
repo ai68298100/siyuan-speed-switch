@@ -68,6 +68,8 @@
   "homeMoveUp": "Move up",
   "homeMoveDown": "Move down",
   "homeOpenPlugin": "Open plugin",
+  "homeRandomReview": "Random review",
+  "homeDescRandomReview": "Randomly resurfaces stale documents; hit Refresh all for a new batch",
   "homeFlashcardDue": "Flashcard review",
   "homeDescFlashcardDue": "Due flashcards by notebook; click to open the source document",
   "homeStatFlashcards": "due cards",
