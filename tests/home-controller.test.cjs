@@ -24,6 +24,31 @@ test("home controller mounts loading state, refreshes content, and disposes clea
     assert.equal((await controller.refresh()).reason, "disposed");
 });
 
+test("home controller falls back to a stale snapshot instead of an error page", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let failNext = false;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "digest", title: "Digest"},
+        read: async () => {
+            if (failNext) return {ok: false, reason: "timeout", snapshot: {items: [{label: "stale-item"}]}};
+            return {ok: true, snapshot: {items: [{label: "fresh-item"}]}};
+        },
+    });
+    await controller.refresh();
+    assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "fresh-item");
+    failNext = true;
+    const result = await controller.refresh();
+    assert.equal(result.ok, true);
+    assert.equal(result.reason, "timeout");
+    // 失败但有过期好数据：展示旧数据 + 缓存标记，而非错误页
+    assert.equal(container.querySelector("[data-status='error']") === null, true);
+    assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "stale-item");
+    assert.equal(container.textContent.includes("缓存"), true);
+    controller.dispose();
+});
 test("home controller keeps the newest request when an older read resolves later", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
     const container = dom.window.document.querySelector("#mount");
