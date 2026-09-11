@@ -3606,9 +3606,12 @@ const version = beginSearch(session);
 
             const applyFilter = () => {
                 const query = searchInput.value.trim().toLowerCase();
+                const catFilter = tabBar.querySelector<HTMLElement>(".sw-home-store__tab.is-active")?.dataset.tabFilter || "all";
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
                     const haystack = card.dataset.search || "";
-                    card.classList.toggle("fn__none", query !== "" && !haystack.includes(query));
+                    const textMatch = query === "" || haystack.includes(query);
+                    const catMatch = catFilter === "all" || card.dataset.category === catFilter;
+                    card.classList.toggle("fn__none", !textMatch || !catMatch);
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
                     const section = heading.nextElementSibling;
@@ -3619,6 +3622,30 @@ const version = beginSearch(session);
                 });
             };
             searchInput.addEventListener("input", applyFilter);
+
+            // 分类 Tab：全部 / 内置 / 插件
+            const tabBar = document.createElement("div");
+            tabBar.className = "sw-home-store__tabs";
+            const tabs: Array<{key: string; label: string; match: (cat: string) => boolean}> = [
+                {key: "all", label: this.i18n.homeStoreTabAll, match: () => true},
+                {key: "builtin", label: this.i18n.homeStoreTabBuiltin, match: (cat) => cat === "siyuan"},
+                {key: "plugin", label: this.i18n.homeStoreTabPlugin, match: (cat) => cat !== "siyuan"},
+            ];
+            let activeTab = "all";
+            tabs.forEach((tab) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "sw-home-store__tab" + (tab.key === "all" ? " is-active" : "");
+                btn.textContent = tab.label;
+                btn.dataset.tabFilter = tab.key;
+                btn.addEventListener("click", () => {
+                    activeTab = tab.key;
+                    tabBar.querySelectorAll(".sw-home-store__tab").forEach((b) => b.classList.toggle("is-active", b === btn));
+                    applyFilter();
+                });
+                tabBar.appendChild(btn);
+            });
+            root.appendChild(tabBar);
 
             // —— 分区一：可用组件（内置 + 已就位插件提供） ——
             const readyHeading = document.createElement("h3");
@@ -3635,6 +3662,7 @@ const version = beginSearch(session);
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
                 card.dataset.search = `${def.title || ""} ${def.description || ""} ${moduleId}`.toLowerCase();
+                card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");

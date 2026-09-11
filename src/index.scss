@@ -4783,3 +4783,30 @@
 .sw-home .sw-home__cell {
     background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 3%, var(--b3-theme-surface));
 }
+
+// ==================== 商店分类 Tab ====================
+.sw-home-store__tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--b3-border-color);
+
+    .sw-home-store__tab {
+        padding: 6px 16px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 13px;
+        cursor: pointer;
+        transition: color 0.15s, border-color 0.15s;
+
+        &:hover { color: var(--b3-theme-on-background); }
+
+        &.is-active {
+            color: var(--b3-theme-primary);
+            border-bottom-color: var(--b3-theme-primary);
+            font-weight: 500;
+        }
+    }
+}
