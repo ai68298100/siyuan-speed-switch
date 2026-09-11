@@ -3844,6 +3844,19 @@ const version = beginSearch(session);
             }
             root.appendChild(bar);
 
+            // 时间感知问候头：让面板更有"个人主页"温度
+            const now = new Date();
+            const hour = now.getHours();
+            const greeting = hour < 5 ? this.i18n.homeGreetingNight
+                : hour < 12 ? this.i18n.homeGreetingMorning
+                : hour < 14 ? this.i18n.homeGreetingNoon
+                : hour < 18 ? this.i18n.homeGreetingAfternoon
+                : this.i18n.homeGreetingEvening;
+            const greetingEl = document.createElement("div");
+            greetingEl.className = "sw-home__greeting";
+            greetingEl.textContent = `${greeting}，${this.i18n.homeGreetingSuffix}`;
+            root.appendChild(greetingEl);
+
             const body = document.createElement("div");
             body.className = "sw-home__body";
             const grid = document.createElement("div");

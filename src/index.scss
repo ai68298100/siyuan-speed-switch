@@ -4810,3 +4810,12 @@
         }
     }
 }
+
+// 问候头
+.sw-home__greeting {
+    padding: 6px 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--b3-theme-on-background);
+    letter-spacing: -0.01em;
+}
