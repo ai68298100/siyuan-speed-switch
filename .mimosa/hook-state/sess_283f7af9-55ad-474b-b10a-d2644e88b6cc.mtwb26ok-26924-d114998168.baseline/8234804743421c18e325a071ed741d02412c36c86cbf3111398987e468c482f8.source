@@ -92,12 +92,7 @@ function normalizeSnapshot(value) {
         // 协议 v2：command 为 "插件名::命令key"，点击由宿主代为执行（有界格式）
         
     }).filter(Boolean);
-    // 协议 v2.1：stat 为可选概览数值（如"今日待办 5 条"），渲染为大数字英雄区
-    const statRaw = value.stat && typeof value.stat === "object" ? value.stat : null;
-    const stat = statRaw && safeText(statRaw.value, 32)
-        ? {value: safeText(statRaw.value, 32), label: safeText(statRaw.label, 32)}
-        : null;
-    return {title: safeText(value.title, 64), items, stat, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
+    return {title: safeText(value.title, 64), items, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
 }
 
 const HOME_DATA_SOURCES = Object.freeze({

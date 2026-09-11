@@ -18,7 +18,7 @@ test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {
         moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan", status: "ready", cached: false,
-        reason: "", updatedAt: 0, items: [{label: "One", value: "", href: "", command: ""}], configurable: false, collapsed: true,
+        reason: "", updatedAt: 0, stat: null, items: [{label: "One", value: "", href: "", command: ""}], configurable: false, collapsed: true,
         role: "region", ariaBusy: false,
     });
     assert.equal(buildHomeModuleView(null, {}), null);

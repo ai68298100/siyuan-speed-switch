@@ -2983,7 +2983,6 @@ const version = beginSearch(session);
     private homeModuleOpens = new Map<string, () => void>();
     private homeThirdPartyIds = new Set<string>();
     private homeBuiltinAdapterIds = new Set<string>();
-    private static HOME_ACCENTS = ["#7c6cf2", "#4f8ef7", "#35b8a8", "#f2a03d", "#e8637c", "#59b96f", "#e05fd0", "#8a93a6"];
 
     // 全库扫描时间窗起点：days 天前的 "YYYYMMDDHHmmss"（思源 updated 同格式，可直接字符串比较）
     private taskWindowStart(days: number): string {
@@ -2992,9 +2991,8 @@ const version = beginSearch(session);
         return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}000000`;
     }
 
-    // 内核 HTTP POST 共用逻辑：5s 超时 + 非 2xx 抛错 + 失败返回 null
-    // 各调用方在 fetch 处使用字面量 URL（便于安全扫描器识别，防 SSRF）
-    private async kernelPost(url: string, body: Record<string, unknown>): Promise<any | null> {
+    // 内核 HTTP POST 的统一封装：5s 超时、非 2xx 抛错、失败返回 null（组件走空态/错误态）
+    private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         const timer = window.setTimeout(() => controller?.abort(), 5000);
         try {
@@ -3042,7 +3040,6 @@ const version = beginSearch(session);
             })).filter((item) => !!item.value),
         }));
         register("favorites", this.i18n.homeFavorites, "iconStar", this.i18n.homeDescFav, ["switch-protyle", "loaded-protyle", "destroy-protyle"], () => ({
-            stat: {value: String(this.getFavorites().length), label: this.i18n.homeStatFavorites},
             items: this.getFavorites().slice(0, 8).map((fav) => ({
                 label: fav.title || fav.key,
                 value: fav.key,
@@ -3052,7 +3049,6 @@ const version = beginSearch(session);
             items: [{label: this.i18n.homeTodayJournalOpen, value: "action:journal"}],
         }));
         register("document-sets", this.i18n.homeDocumentSets, "iconLayout", this.i18n.homeDescDocSets, ["loaded-protyle", "destroy-protyle"], () => ({
-            stat: {value: String(this.getDocumentSets().length), label: this.i18n.homeStatDocSets},
             items: this.getDocumentSets().slice(0, 8).map((set: any) => ({
                 label: String(set?.name || ""),
                 value: "set:" + String(set?.setId || ""),
@@ -3085,17 +3081,11 @@ const version = beginSearch(session);
                 scope = ` AND root_id IN ('${openIds.join("','")}')`;
                 if (openIds.length === 0) return {items: []};
             }
-            const [json, countJson] = await Promise.all([
-                this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT id, content, markdown FROM blocks WHERE type='p' AND ${stateCondition}${scope} ORDER BY updated DESC LIMIT ${limit}`,
-                }),
-                this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT COUNT(*) AS total FROM blocks WHERE type='p' AND ${stateCondition}${scope}`,
-                }),
-            ]);
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                query: `SELECT id, content, markdown FROM blocks WHERE type='p' AND ${stateCondition}${scope} ORDER BY updated DESC LIMIT ${limit}`,
+            });
             const rows = (json?.data || []) as Array<{id: string; content: string; markdown?: string}>;
-            const total = Number((countJson?.data || [])[0]?.total) || 0;
-            return {stat: {value: String(total), label: this.i18n.homeStatTasks}, items: rows.map((row) => ({
+            return {items: rows.map((row) => ({
                 label: row.content,
                 value: row.id,
                 done: /\[[xX]\]/.test(String(row.markdown || "")),
@@ -3105,7 +3095,7 @@ const version = beginSearch(session);
         register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, [], async () => {
             const json = await this.fetchKernelJson("/api/tag/getTag", {});
             const tags = (json?.data?.tags || []) as Array<{name: string; count?: number}>;
-            return {stat: {value: String(tags.length), label: this.i18n.homeStatTags}, items: tags.slice(0, 12).map((tag) => ({
+            return {items: tags.slice(0, 12).map((tag) => ({
                 label: `${tag.name} (${tag.count ?? 0})`,
                 value: "tag:" + tag.name,
             })).filter((item) => item.value.length > 4)};
@@ -3114,7 +3104,7 @@ const version = beginSearch(session);
         register("bookmarks", this.i18n.homeBookmarks, "iconBookmark", this.i18n.homeDescBookmarks, [], async () => {
             const json = await this.fetchKernelJson("/api/bookmark/getBookmark", {});
             const bookmarks = (json?.data?.bookmarks || []) as Array<{name: string; count?: number}>;
-            return {stat: {value: String(bookmarks.length), label: this.i18n.homeStatBookmarks}, items: bookmarks.slice(0, 12).map((bookmark) => ({
+            return {items: bookmarks.slice(0, 12).map((bookmark) => ({
                 label: `${bookmark.name} (${bookmark.count ?? 0})`,
                 value: "bookmark:" + bookmark.name,
             })).filter((item) => item.value.length > 9)};
@@ -3773,8 +3763,6 @@ const version = beginSearch(session);
                 cell.dataset.size = sizeKey;
                 cell.style.gridColumn = `span ${Math.min(12, preset.w)}`;
                 cell.style.gridRow = `span ${Math.max(1, preset.h)}`;
-                // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
-                cell.style.setProperty("--sw-home-accent", SpeedSwitchPlugin.HOME_ACCENTS[[...inst.moduleId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % SpeedSwitchPlugin.HOME_ACCENTS.length]);
                 const body = document.createElement("div");
                 body.className = "sw-home__cell-body";
                 cell.appendChild(body);

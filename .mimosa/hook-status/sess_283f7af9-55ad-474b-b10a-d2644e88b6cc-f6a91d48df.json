@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-09-11T02:39:00.058Z",
+  "sessionId": "sess_283f7af9-55ad-474b-b10a-d2644e88b6cc",
+  "event": "PostToolUse",
+  "toolName": "Write",
+  "file": ".tmp-commit.sh",
+  "outcome": "clear",
+  "coverage": "complete",
+  "findingCount": 0,
+  "durationMs": 16,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}

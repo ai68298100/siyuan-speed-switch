@@ -4654,3 +4654,87 @@
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
 }
+
+// ==================== 组件面板视觉升级：iPad 小组件质感 ====================
+
+// 卡片：强调色 icon chip + 柔和阴影 + 悬停浮起
+.sw-home .sw-home__cell {
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--b3-border-color) 45%, var(--sw-home-accent, transparent) 20%);
+    }
+}
+
+// 模块头：accent 圆角芯片图标 + 粗体标题 + 计数
+.sw__home-module-header {
+    .sw__home-module-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 14%, transparent);
+        color: var(--sw-home-accent, var(--b3-theme-primary));
+
+        svg { width: 16px; height: 16px; }
+    }
+
+    .sw__home-module-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+    .sw__home-module-toggle, .sw__home-module-meta { font-size: 11px; }
+}
+
+// 列表条目：圆点标记 + 间距
+.sw__home-module-list .sw__home-module-item-action {
+    position: relative;
+    padding: 5px 8px 5px 16px;
+    border-radius: 8px;
+    line-height: 1.45;
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 50%;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 45%, transparent);
+        transform: translateY(-50%);
+    }
+
+    &:hover::before { background: var(--sw-home-accent, var(--b3-theme-primary)); }
+}
+
+// 概览数字（stat hero）
+.sw__home-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 0 8px;
+
+    .sw__home-stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--sw-home-accent, var(--b3-theme-primary));
+        line-height: 1;
+    }
+
+    .sw__home-stat-label {
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+    }
+}
+
+// 紧凑密度：小号组件
+.sw-home .sw-home__cell[data-size="xs"] .sw__home-module-list .sw__home-module-item-action {
+    padding: 3px 6px 3px 14px;
+    font-size: 12px;
+}

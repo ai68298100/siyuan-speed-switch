@@ -76,9 +76,6 @@ function normalizeHomeViewResult(value) {
         reason: text(source.reason, 32),
         title: text(rawSnapshot.title, 64),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
-        stat: rawSnapshot.stat && typeof rawSnapshot.stat === "object"
-            ? {value: text(rawSnapshot.stat.value, 32), label: text(rawSnapshot.stat.label, 32)}
-            : null,
         items,
     };
 }
@@ -95,7 +92,6 @@ function buildHomeModuleView(module, result, options = {}) {
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
         status: normalized.status,
-        stat: normalized.stat,
         cached: normalized.cached,
         reason: normalized.reason,
         updatedAt: normalized.updatedAt,
@@ -179,18 +175,6 @@ function renderHomeModuleView(doc, view, options = {}) {
     body.id = bodyId;
     if (view.collapsed === true) {
         body.hidden = true;
-    }
-    if (view.stat && view.stat.value) {
-        const hero = doc.createElement("div");
-        hero.className = "sw__home-stat";
-        const value = doc.createElement("span");
-        value.className = "sw__home-stat-value";
-        value.textContent = view.stat.value;
-        const label = doc.createElement("span");
-        label.className = "sw__home-stat-label";
-        label.textContent = view.stat.label || "";
-        hero.append(value, label);
-        body.appendChild(hero);
     }
     if (view.status === "ready") {
         const list = doc.createElement("ul");

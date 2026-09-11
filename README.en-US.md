@@ -170,6 +170,14 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.31 (2026-09-12)
+
+- Widget panel visual upgrade: 16px rounded cards with soft double shadows and hover lift; module header icons in accent-tinted rounded chips (8-color palette, stably assigned per moduleId).
+- Stat overview: favorites / tags / bookmarks / document sets / today's tasks widgets show a large overview number with label before the list.
+- List items gain accent-colored dot markers and refined padding.
+
+### v0.16.30 (2026-09-12)## Changelog
+
 ### v0.16.30 (2026-09-12)
 
 - Widget store sections: split into "Available widgets" (built-ins + registered plugin widgets) and "Available after installing the plugin" (entries registered in the widget catalog whose source plugin is missing, labeled with the required plugin name).
