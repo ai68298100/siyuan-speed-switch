@@ -16,6 +16,7 @@ const {
     normalizeAgentRootId,
     limitAgentItems,
     buildAgentNavigationResult,
+    buildAgentWorkspaceContext,
     buildAgentSearchResult,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
@@ -198,6 +199,39 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
 });
 
+test("workspace-context spec and builder keep bounded read-only snapshot", () => {
+    assert.equal(AGENT_CAPABILITY_SPECS.workspaceContext.name, "workspace-context");
+    assert.match(AGENT_CAPABILITY_SPECS.workspaceContext.description, /只读/);
+    const host = {registered: [], addAgentCapability: (options) => { host.registered.push(options); return "id"; }};
+    registerReadOnlyAgentCapabilities(host, [{
+        spec: AGENT_CAPABILITY_SPECS.workspaceContext,
+        handler: async () => ({ok: true}),
+    }]);
+    assert.equal(host.registered.length, 1);
+    assert.deepEqual(host.registered[0].effects, READ_ONLY_EFFECTS);
+    const context = buildAgentWorkspaceContext({
+        device: "mobile",
+        activeDocument: {id: "20260911083000-abcdef", title: " 读书笔记 "},
+        openTabs: [{id: "20260911083000-abcdef", title: "读书笔记", source: "tabs"}],
+        documentSets: [{name: "工作", count: 3}, {name: "", count: 9}, {count: 2}],
+        quickActions: [{label: "搜索", kind: "builtin"}, {kind: "dock"}],
+        todayJournal: {configured: true, docId: "20260911083000-abcdeg"},
+        bogus: "dropped",
+    });
+    assert.deepEqual(context, {
+        device: "mobile",
+        activeDocument: {id: "20260911083000-abcdef", title: "读书笔记"},
+        openTabs: [{id: "20260911083000-abcdef", title: "读书笔记", source: "tabs"}],
+        documentSets: [{name: "工作", count: 3}],
+        quickActions: [{label: "搜索", kind: "builtin"}],
+        todayJournal: {configured: true, docId: "20260911083000-abcdeg"},
+    });
+    const empty = buildAgentWorkspaceContext(null);
+    assert.equal(empty.device, "desktop");
+    assert.deepEqual(empty.activeDocument, {id: "", title: ""});
+    assert.deepEqual(empty.openTabs, []);
+    assert.deepEqual(empty.todayJournal, {configured: false, docId: ""});
+});
 test("open-documents spec bounds batch to five and ids normalize bounded", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.openDocuments.name, "open-documents");
     const items = AGENT_CAPABILITY_SPECS.openDocuments.inputSchema.properties.ids;

@@ -35,6 +35,7 @@ import {
     flattenOutline,
     MAX_SEARCH_ITEMS,
     buildAgentNavigationResult,
+    buildAgentWorkspaceContext,
     buildAgentSearchResult,
     normalizeAgentLimit,
     normalizeAgentSearchMethod,
@@ -6035,6 +6036,57 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     } catch (error) {
                         logger.warn("Agent home widget snapshot unavailable", error);
                         return {error: "widget snapshot unavailable"};
+                    }
+                },
+            },
+            {
+                // 工作区上下文（第三层）：活动文档/页签/文档集/快捷入口/今日日记一次只读汇总
+                spec: AGENT_CAPABILITY_SPECS.workspaceContext,
+                handler: async (args: Record<string, unknown>) => {
+                    try {
+                        const limit = normalizeAgentLimit(args?.limit, 12);
+                        const device = this.isMobile ? "mobile" : "desktop";
+                        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+                        const active = this.isMobile
+                            ? opened.find((tab) => tab.id === this.getMobileActiveTabId())
+                            : this.getActiveTab();
+                        const settings = this.getSettings();
+                        const storedActions = sanitizeQuickActions(settings.quickActions);
+                        const actionItems = (storedActions.items.length > 0 ? storedActions.items : getDefaultQuickActions())
+                            .filter((action) => shouldRenderQuickAction(action, device))
+                            .map((action) => ({label: action.label, kind: action.kind}));
+                        // 今日日记只读探测：按日期前缀查当日文档（绝不调用 createDailyNote——那会创建）
+                        const journalNotebookId = normalizeAgentNotebookId(settings.journalNotebook);
+                        let todayJournal = {configured: false, docId: ""};
+                        if (journalNotebookId) {
+                            todayJournal.configured = true;
+                            const now = new Date();
+                            const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                            const journalJson = await this.fetchKernelJson("/api/query/sql", {
+                                query: `SELECT id FROM blocks WHERE type='d' AND box='${journalNotebookId}' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 1`,
+                            });
+                            const found = ((journalJson?.data || [])[0] as {id?: string} | undefined)?.id || "";
+                            if (BLOCK_ID_RE.test(found)) todayJournal.docId = found;
+                        }
+                        const content = buildAgentWorkspaceContext({
+                            device,
+                            activeDocument: {id: active ? (this.rootIdOf(active) || "") : "", title: active ? this.titleOf(active) : ""},
+                            openTabs: opened.map((tab) => ({
+                                id: this.rootIdOf(tab) || tab.id,
+                                title: this.titleOf(tab),
+                                source: "tabs",
+                            })),
+                            documentSets: this.getDocumentSets().map((set: any) => ({
+                                name: String(set?.name || ""),
+                                count: Array.isArray(set?.entries) ? set.entries.length : 0,
+                            })),
+                            quickActions: actionItems,
+                            todayJournal,
+                        });
+                        return {structuredContent: content, result: JSON.stringify(content)};
+                    } catch (error) {
+                        logger.warn("Agent workspace context unavailable", error);
+                        return {error: "workspace context unavailable"};
                     }
                 },
             },

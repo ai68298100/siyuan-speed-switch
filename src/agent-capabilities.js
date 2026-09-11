@@ -166,6 +166,35 @@ function buildAgentNavigationResult(input = {}) {
     };
 }
 
+// 工作区上下文（ROADMAP 第三层）：把设备端、活动文档、页签、文档集、
+// 快捷入口与今日日记状态收敛为有界的只读快照。未知字段一律降级为空值。
+function buildAgentWorkspaceContext(input = {}) {
+    const source = input && typeof input === "object" ? input : {};
+    const limit = normalizeAgentLimit(source.limit, 12);
+    const active = source.activeDocument && typeof source.activeDocument === "object" ? source.activeDocument : {};
+    const docSets = Array.isArray(source.documentSets) ? source.documentSets : [];
+    const actions = Array.isArray(source.quickActions) ? source.quickActions : [];
+    const journal = source.todayJournal && typeof source.todayJournal === "object" ? source.todayJournal : {};
+    return {
+        device: source.device === "mobile" ? "mobile" : "desktop",
+        activeDocument: {id: asText(active.id, 64), title: asText(active.title, 256)},
+        openTabs: limitAgentItems(source.openTabs, limit),
+        documentSets: docSets.slice(0, 8)
+            .map((set) => ({
+                name: asText(set?.name, 128),
+                count: Number.isFinite(set?.count) ? Math.max(0, Math.trunc(set.count)) : 0,
+            }))
+            .filter((set) => set.name),
+        quickActions: actions.slice(0, 16)
+            .map((action) => ({label: asText(action?.label, 80), kind: asText(action?.kind, 16)}))
+            .filter((action) => action.label),
+        todayJournal: {
+            configured: journal.configured === true,
+            docId: asText(journal.docId, 64),
+        },
+    };
+}
+
 function buildAgentSearchResult(query, items, extra = {}) {
     const normalizedQuery = normalizeAgentQuery(query);
     const source = extra && typeof extra === "object" ? extra : {};
@@ -504,6 +533,68 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
             additionalProperties: false,
         }),
     }),
+    workspaceContext: Object.freeze({
+        name: "workspace-context",
+        title: "小驴速切工作区上下文",
+        description: "只读汇总当前工作区：设备端、活动文档、打开页签、文档集清单、快捷入口与今日日记状态。供 Agent 一次调用了解用户当前工作环境，不修改任何内容、不创建文档。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {limit: {type: "integer", minimum: 1, maximum: MAX_ITEMS}},
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                device: {type: "string", enum: ["desktop", "mobile"]},
+                activeDocument: Object.freeze({
+                    type: "object",
+                    properties: {
+                        id: {type: "string", maxLength: 64},
+                        title: {type: "string", maxLength: 256},
+                    },
+                    additionalProperties: false,
+                }),
+                openTabs: AGENT_ITEMS_SCHEMA,
+                documentSets: Object.freeze({
+                    type: "array",
+                    maxItems: 8,
+                    items: Object.freeze({
+                        type: "object",
+                        properties: {
+                            name: {type: "string", maxLength: 128},
+                            count: {type: "integer", minimum: 0},
+                        },
+                        required: ["name", "count"],
+                        additionalProperties: false,
+                    }),
+                }),
+                quickActions: Object.freeze({
+                    type: "array",
+                    maxItems: 16,
+                    items: Object.freeze({
+                        type: "object",
+                        properties: {
+                            label: {type: "string", maxLength: 80},
+                            kind: {type: "string", maxLength: 16},
+                        },
+                        required: ["label", "kind"],
+                        additionalProperties: false,
+                    }),
+                }),
+                todayJournal: Object.freeze({
+                    type: "object",
+                    properties: {
+                        configured: {type: "boolean"},
+                        docId: {type: "string", maxLength: 64},
+                    },
+                    required: ["configured", "docId"],
+                    additionalProperties: false,
+                }),
+            },
+            required: ["device", "activeDocument", "openTabs", "documentSets", "quickActions", "todayJournal"],
+            additionalProperties: false,
+        }),
+    }),
     search: Object.freeze({
         name: "search-documents",
         title: "小驴速切搜索文档",
@@ -680,6 +771,7 @@ module.exports = {
     registerAgentActionCapability,
     limitAgentItems,
     buildAgentNavigationResult,
+    buildAgentWorkspaceContext,
     buildAgentSearchResult,
     AGENT_CAPABILITY_SPECS,
     registerReadOnlyAgentCapabilities,
