@@ -2992,9 +2992,19 @@ const version = beginSearch(session);
         return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}000000`;
     }
 
-    // 内核 HTTP POST 共用逻辑：5s 超时 + 非 2xx 抛错 + 失败返回 null
-    // 各调用方在 fetch 处使用字面量 URL（便于安全扫描器识别，防 SSRF）
-    private async kernelPost(url: string, body: Record<string, unknown>): Promise<any | null> {
+    // 内核 HTTP POST 共用逻辑：端点白名单 + 5s 超时 + 非 2xx 抛错 + 失败返回 null
+    private static KERNEL_ENDPOINTS = new Set([
+        "/api/query/sql", "/api/tag/getTag", "/api/bookmark/getBookmark",
+        "/api/filetree/getDoc", "/api/filetree/createDocWithMd",
+        "/api/block/updateBlock", "/api/block/insertBlock",
+    ]);
+
+    private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
+        // 端点白名单：仅允许硬编码的思源内核相对路径（纵深防御，杜绝 SSRF）
+        if (!SpeedSwitchPlugin.KERNEL_ENDPOINTS.has(url)) {
+            logger.warn("blocked non-whitelisted kernel endpoint", url);
+            return null;
+        }
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         const timer = window.setTimeout(() => controller?.abort(), 5000);
         try {

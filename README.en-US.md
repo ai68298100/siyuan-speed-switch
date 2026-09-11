@@ -170,6 +170,11 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 ## Changelog
 
+### v0.16.32 (2026-09-12)
+
+- **Fixes a runtime break in v0.16.31**: a kernel-request helper was renamed without updating 11 call sites (type-check catches it, but the esbuild build does not type-check, so the broken bundle still packaged). Tags, bookmarks, journal-this-month and today's tasks widgets plus the agent write capabilities all failed at runtime. This release restores the helper and adds an endpoint whitelist.
+- Release hardening: a type-check gate now runs after the build so type-broken bundles cannot ship in a Release.
+
 ### v0.16.31 (2026-09-12)
 
 - Widget panel visual upgrade: 16px rounded cards with soft double shadows and hover lift; module header icons in accent-tinted rounded chips (8-color palette, stably assigned per moduleId).
