@@ -5,3 +5,6 @@ package.zip
 .history/
 .hotreload
 *.log
+
+# Mimosa 安全钩子内部状态（不入库）
+.mimosa/
