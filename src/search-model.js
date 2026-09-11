@@ -587,11 +587,15 @@ function buildFullTextSearchRequest(input = {}) {
         // standalone `notebook` field is reserved for special notebook modes.
         paths.push(notebook);
     }
+    const types = normalizeSearchBooleanMap(get("types", {}));
+    const subTypes = normalizeSearchBooleanMap(get("subTypes", get("subtypes", {})));
+    // 3.8.x 内核把空 types 视为"不搜任何类型"（真机实证）：未指定类型筛选时
+    // 显式声明插件语义中的默认全类型，否则全文回退永远返回 0
     const body = {
         query,
         method,
-        types: normalizeSearchBooleanMap(get("types", {})),
-        subTypes: normalizeSearchBooleanMap(get("subTypes", get("subtypes", {}))),
+        types: Object.keys(types).length > 0 ? types : {document: true, heading: true, paragraph: true, codeBlock: true},
+        subTypes,
         paths,
         groupBy: normalizeSearchEnum(get("groupBy", get("group", 0)), {document: 1, none: 0}, 0, 0, 1),
         orderBy: normalizeSearchEnum(get("orderBy", get("sort", 0)), SEARCH_SORT_NAMES, 0, 0, 7),

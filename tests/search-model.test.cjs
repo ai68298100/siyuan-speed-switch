@@ -513,3 +513,12 @@ test("search model: plans bounded opened-document requests without duplicates", 
     assert.deepEqual(requests[0].body.paths, ["box-a/docs/a.sy"]);
     assert.equal(buildOpenedDocumentSearchRequests(tabs, " ").length, 0);
 });
+
+test("fulltext fallback declares default types because 3.8.x treats empty types as none", () => {
+    const request = buildFullTextSearchRequest({query: "会议"});
+    assert.ok(request, "request built");
+    assert.equal(request.endpoint, "/api/search/fullTextSearchBlock");
+    assert.deepEqual(request.body.types, {document: true, heading: true, paragraph: true, codeBlock: true});
+    const scoped = buildFullTextSearchRequest({query: "会议", filters: {types: {codeBlock: true}}});
+    assert.deepEqual(scoped.body.types, {codeBlock: true});
+});
