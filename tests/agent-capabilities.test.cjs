@@ -19,6 +19,7 @@ const {
     buildAgentSearchResult,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
+    normalizeAgentDocumentIds,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerAgentActionCapability,
@@ -197,6 +198,15 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
 });
 
+test("open-documents spec bounds batch to five and ids normalize bounded", () => {
+    assert.equal(AGENT_CAPABILITY_SPECS.openDocuments.name, "open-documents");
+    const items = AGENT_CAPABILITY_SPECS.openDocuments.inputSchema.properties.ids;
+    assert.equal(items.maxItems, 5);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocuments.inputSchema.required, ["ids"]);
+    assert.equal(normalizeAgentDocumentIds(["20260911083000-abcdef", "  ", "not-an-id", "20260911083000-abcdef", "20260911083000-abcdeg", "20260911083000-abcdeh"]).join(","), "20260911083000-abcdef,20260911083000-abcdeg,20260911083000-abcdeh");
+    assert.deepEqual(normalizeAgentDocumentIds("20260911083000-abcdef"), []);
+    assert.deepEqual(normalizeAgentDocumentIds(null), []);
+});
 test("open-document declares honest effects and normalizes ids", () => {
     assert.equal(normalizeAgentDocumentId("20260911083000-abcdef"), "20260911083000-abcdef");
     assert.equal(normalizeAgentDocumentId(" javascript:alert(1)"), "");

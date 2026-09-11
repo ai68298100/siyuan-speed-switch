@@ -326,6 +326,39 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
             additionalProperties: false,
         }),
     }),
+    openDocuments: Object.freeze({
+        name: "open-documents",
+        title: "小驴速切批量打开文档",
+        description: "受控导航动作：一次打开最多 5 篇文档组成工作区（只切换页签，不修改任何笔记内容）。执行前列出全部文档弹窗请求用户确认，拒绝或超时则不打开。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                ids: {
+                    type: "array",
+                    minItems: 1,
+                    maxItems: 5,
+                    items: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 64,
+                        pattern: "^[0-9]{14}-[0-9a-z]+$",
+                    },
+                },
+            },
+            required: ["ids"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                ok: {type: "boolean"},
+                opened: {type: "array", maxItems: 5, items: {type: "string", maxLength: 64}},
+                failed: {type: "array", maxItems: 5, items: {type: "string", maxLength: 64}},
+            },
+            required: ["ok", "opened"],
+            additionalProperties: false,
+        }),
+    }),
     homeWidgets: Object.freeze({
         name: "home-widget-snapshot",
         title: "小驴速切组件面板数据",
@@ -582,6 +615,22 @@ function normalizeAgentNotebookId(value) {
 }
 
 
+// 批量文档 ID 清洗：仅保留合法 ID、去重保序、上限 5 篇；非法输入整体降级为空数组
+function normalizeAgentDocumentIds(value, limit = 5) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const item of value) {
+        if (out.length >= Math.max(1, limit)) break;
+        const id = normalizeAgentDocumentId(item);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push(id);
+    }
+    return out;
+}
+
+
 // 日记追加内容清洗：压平换行/制表、合并空白、限长 512；清洗后为空则拒绝
 function sanitizeJournalAppend(value) {
     const raw = typeof value === "string" ? value : "";
@@ -627,6 +676,7 @@ module.exports = {
     flipTaskMarkdown,
     flattenOutline,
     normalizeAgentDocumentId,
+    normalizeAgentDocumentIds,
     registerAgentActionCapability,
     limitAgentItems,
     buildAgentNavigationResult,

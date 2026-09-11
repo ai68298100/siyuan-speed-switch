@@ -68,6 +68,7 @@
   "homeMoveUp": "Move up",
   "homeMoveDown": "Move down",
   "homeOpenPlugin": "Open plugin",
+  "aiOpenDocsDesc": "Will open the following {count} documents:",
   "homeRandomReview": "Random review",
   "homeDescRandomReview": "Randomly resurfaces stale documents; hit Refresh all for a new batch",
   "homeFlashcardDue": "Flashcard review",

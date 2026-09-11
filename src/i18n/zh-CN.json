@@ -68,6 +68,7 @@
   "homeMoveUp": "上移",
   "homeMoveDown": "下移",
   "homeOpenPlugin": "打开插件",
+  "aiOpenDocsDesc": "将打开以下 {count} 篇文档：",
   "homeRandomReview": "随机回顾",
   "homeDescRandomReview": "随机抽取久未翻动的旧文档，点「刷新全部」换一批",
   "homeFlashcardDue": "闪卡待复习",

@@ -47,6 +47,7 @@ import {
     flipTaskMarkdown,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
+    normalizeAgentDocumentIds,
     normalizeAgentNotebookId,
     registerAgentActionCapability,
 } from "./agent-capabilities";
@@ -688,6 +689,41 @@ export default class SpeedSwitchPlugin extends Plugin {
                     logger.warn("Agent open document fail", error);
                     return {error: "open failed"};
                 }
+            },
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+
+        // 受控导航（批量）：AI 一次打开最多 5 篇文档组成工作区。执行前列出全部标题弹窗确认
+        registerAgentActionCapability(pluginWithAgentAction, {
+            spec: AGENT_CAPABILITY_SPECS.openDocuments,
+            effects: {localRead: true, localWrite: false, dataEgress: false, externalCost: false},
+            handler: async (args: Record<string, unknown>) => {
+                const ids = normalizeAgentDocumentIds(args?.ids);
+                if (ids.length === 0) return {error: "no valid document ids"};
+                const titlesJson = await this.fetchKernelJson("/api/query/sql", {
+                    query: `SELECT id, content FROM blocks WHERE type='d' AND id IN ('${ids.join("','")}')`,
+                });
+                const titleById = new Map<string, string>(((titlesJson?.data || []) as Array<{id: string; content: string}>)
+                    .map((row) => [row.id, String(row.content || "")]));
+                const detail = this.i18n.aiOpenDocsDesc.replace("{count}", String(ids.length))
+                    + "\n" + ids.map((id, index) => `${index + 1}. ${titleById.get(id) || id}`).join("\n");
+                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
+                if (!approved) return {error: "user denied"};
+                const opened: string[] = [];
+                const failed: string[] = [];
+                for (const id of ids) {
+                    try {
+                        if (this.isMobile) {
+                            await this.mobileOpenDoc(id);
+                        } else {
+                            await openTab({app: this.app, doc: {id}});
+                        }
+                        opened.push(id);
+                    } catch (error) {
+                        logger.warn("Agent batch open document fail", id, error);
+                        failed.push(id);
+                    }
+                }
+                return {structuredContent: {ok: failed.length === 0, opened, failed}, result: JSON.stringify({ok: failed.length === 0, opened, failed})};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
 
