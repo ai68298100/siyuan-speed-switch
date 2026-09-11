@@ -4344,6 +4344,15 @@
         letter-spacing: 0.05em;
     }
 
+    
+.sw__size-tile {
+    display: inline-block;
+    flex: none;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 55%, transparent);
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+}
+
     .sw__sort-menu-option {
         display: flex;
         align-items: center;

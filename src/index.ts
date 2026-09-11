@@ -3013,7 +3013,7 @@ const version = beginSearch(session);
         "/api/query/sql", "/api/tag/getTag", "/api/bookmark/getBookmark",
         "/api/filetree/getDoc", "/api/filetree/createDocWithMd",
         "/api/block/updateBlock", "/api/block/insertBlock",
-        "/api/outline/getDocOutline",
+        "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
     ]);
 
     private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
@@ -3212,6 +3212,35 @@ const version = beginSearch(session);
             const rows = (json?.data || []) as Array<{id: string; content: string}>;
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
         });
+        // 闪卡待复习：笔记本级到期闪卡（只读）；限定单本显示卡片列表，全部笔记本显示到期数分布
+        register("flashcard-due", this.i18n.homeFlashcardDue, "iconRiff", this.i18n.homeDescFlashcardDue, [], async (config) => {
+            const notebookFilter = typeof config.notebook === "string" && normalizeAgentNotebookId(config.notebook) ? config.notebook : "";
+            if (notebookFilter) {
+                const json = await this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", {notebook: notebookFilter});
+                const due = Number(json?.data?.unreviewedCount) || 0;
+                const blockIds = ((json?.data?.cards || []) as Array<{blockID?: string}>)
+                    .map((card) => String(card?.blockID || ""))
+                    .filter((id) => BLOCK_ID_RE.test(id))
+                    .slice(0, 8);
+                const cardRows = blockIds.length > 0 ? (((await this.fetchKernelJson("/api/query/sql", {
+                    query: `SELECT id, content, root_id FROM blocks WHERE id IN ('${blockIds.join("','")}') LIMIT 8`,
+                }))?.data || []) as Array<{id: string; content: string; root_id: string}>) : [];
+                return {
+                    stat: {value: String(due), label: this.i18n.homeStatFlashcards},
+                    items: cardRows.map((row) => ({label: row.content, value: row.root_id || row.id})).filter((item) => !!item.label && !!item.value),
+                };
+            }
+            const notebooks = (await this.loadNotebooks()).slice(0, 6);
+            const counts = await Promise.all(notebooks.map(async (nb) => {
+                const json = await this.fetchKernelJson("/api/riff/getNotebookRiffDueCards", {notebook: nb.id});
+                return {label: nb.name, count: Number(json?.data?.unreviewedCount) || 0};
+            }));
+            const total = counts.reduce((sum, entry) => sum + entry.count, 0);
+            return {
+                stat: {value: String(total), label: this.i18n.homeStatFlashcards},
+                items: counts.filter((entry) => entry.count > 0).map((entry) => ({label: entry.label, value: "", count: entry.count})),
+            };
+        });
         // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
         register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, [], (config) => {
             // 协议 v2 configSchema：limit（条数）、filter（label/plugin 关键词过滤）
@@ -3395,8 +3424,16 @@ const version = beginSearch(session);
             item.className = "sw__sort-menu-option";
             item.setAttribute("role", "menuitemradio");
             item.setAttribute("aria-checked", String(key === current));
-            item.innerHTML = "<span></span>" + (key === current ? '<svg><use xlink:href="#iconCheck"></use></svg>' : "");
-            item.querySelector("span")!.textContent = HOME_WIDGET_SIZE_LABELS[key as HomeWidgetSize] || key;
+            // 型号预览瓦片：按该型号的 12 列比例绘制小矩形，直观对比大小
+            const preset = HOME_WIDGET_SIZES[key as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+            const tile = document.createElement("i");
+            tile.className = "sw__size-tile";
+            tile.style.width = `${Math.max(8, Math.round(preset.w * 2.4))}px`;
+            tile.style.height = `${Math.max(5, Math.round(preset.h * 1.7))}px`;
+            const label = document.createElement("span");
+            label.textContent = HOME_WIDGET_SIZE_LABELS[key as HomeWidgetSize] || key;
+            item.append(tile, label);
+            if (key === current) item.insertAdjacentHTML("beforeend", '<svg><use xlink:href="#iconCheck"></use></svg>');
             item.addEventListener("click", () => {
                 cleanup();
                 onPick(key);

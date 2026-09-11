@@ -4,13 +4,22 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 14);
+    assert.equal(modules.length, 15);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 14);
+    assert.equal(home.modulesForDevice([], "mobile").length, 15);
+});
+
+test("flashcard-due module keeps bounded notebook config schema", () => {
+    const modules = home.registerModules([]);
+    const flashcard = modules.find((item) => item.moduleId === "flashcard-due");
+    assert.ok(flashcard, "flashcard-due module registered");
+    assert.equal(flashcard.readOnly, true);
+    assert.deepEqual(flashcard.configSchema, [{key: "notebook", label: "限定笔记本", type: "notebook"}]);
+    assert.ok(flashcard.sizes.includes("small") && flashcard.sizes.includes("tall"));
 });
 
 test("home model normalizes layout and rejects invalid instances", () => {
