@@ -275,7 +275,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         // Keep a generic fallback for older hosts, while allowing the host
         // adapter to surface a stable reason such as timeout/unsupported in a
         // localized way without exposing raw exception text.
-        status.textContent = labels[view.reason] || labels[view.status] || labels.empty;
+        const reasonCode = view.status === "error" && view.reason && !labels[view.reason] ? ` · ${view.reason}` : "";
+        status.textContent = (labels[view.reason] || labels[view.status] || labels.empty) + reasonCode;
         body.appendChild(status);
         if (view.status === "error" && options.onRetry) {
             const retry = doc.createElement("button");

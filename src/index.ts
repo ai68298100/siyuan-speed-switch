@@ -3167,23 +3167,26 @@ const version = beginSearch(session);
                 done: /\[[xX]\]/.test(String(row.markdown || "")),
             })).filter((item) => !!item.label && !!item.value)};
         });
-        // 标签：getTag，点击打开思源标签面板
+        // 标签：getTag，点击打开思源标签面板（data 在 3.8.x 内核直接是数组，兼容旧的 data.tags 包装）
         register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, [], async () => {
             const json = await this.fetchKernelJson("/api/tag/getTag", {});
-            const tags = (json?.data?.tags || []) as Array<{name: string; count?: number}>;
+            const tags = (Array.isArray(json?.data) ? json.data : (json?.data?.tags || [])) as Array<{name: string; count?: number}>;
             return {stat: {value: String(tags.length), label: this.i18n.homeStatTags}, items: tags.slice(0, 12).map((tag) => ({
-                label: `${tag.name} (${tag.count ?? 0})`,
+                label: tag.count ? `${tag.name} (${tag.count})` : tag.name,
                 value: "tag:" + tag.name,
             })).filter((item) => item.value.length > 4)};
         });
-        // 书签：getBookmark，点击打开思源书签面板
+        // 书签：getBookmark，点击打开思源书签面板（data 直接是数组；无 count 时回退 blocks 数）
         register("bookmarks", this.i18n.homeBookmarks, "iconBookmark", this.i18n.homeDescBookmarks, [], async () => {
             const json = await this.fetchKernelJson("/api/bookmark/getBookmark", {});
-            const bookmarks = (json?.data?.bookmarks || []) as Array<{name: string; count?: number}>;
-            return {stat: {value: String(bookmarks.length), label: this.i18n.homeStatBookmarks}, items: bookmarks.slice(0, 12).map((bookmark) => ({
-                label: `${bookmark.name} (${bookmark.count ?? 0})`,
-                value: "bookmark:" + bookmark.name,
-            })).filter((item) => item.value.length > 9)};
+            const bookmarks = (Array.isArray(json?.data) ? json.data : (json?.data?.bookmarks || [])) as Array<{name: string; count?: number; blocks?: unknown[]}>;
+            return {stat: {value: String(bookmarks.length), label: this.i18n.homeStatBookmarks}, items: bookmarks.slice(0, 12).map((bookmark) => {
+                const count = bookmark.count ?? (Array.isArray(bookmark.blocks) ? bookmark.blocks.length : 0);
+                return {
+                    label: count ? `${bookmark.name} (${count})` : bookmark.name,
+                    value: "bookmark:" + bookmark.name,
+                };
+            }).filter((item) => item.value.length > 9)};
         });
         // 本月日记：按日记标题前缀（YYYY-MM）列出当月日记，点击直达；首位固定"打开今日日记"
         register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, ["switch-protyle", "loaded-protyle"], async () => {

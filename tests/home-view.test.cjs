@@ -62,7 +62,8 @@ test("home view renderer exposes bounded states and activation hooks", () => {
         onRetry: () => calls.push("retry"),
     });
     assert.equal(error.getAttribute("aria-busy"), "false");
-    assert.equal(error.querySelector('[role="alert"]').textContent, "暂时无法加载");
+    assert.equal(error.querySelector('[role="alert"]').textContent, "暂时无法加载 · timeout");
+    
     assert.equal(error.querySelector('[role="alert"]').getAttribute("aria-live"), "assertive");
     error.querySelector(".sw__home-module-retry").click();
     assert.equal(calls.at(-1), "retry");

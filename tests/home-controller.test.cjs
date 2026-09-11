@@ -188,7 +188,7 @@ test("home controller exposes a bounded error state for panel-level failures", (
     const view = controller.showError("bad config");
     assert.equal(view.status, "error");
     assert.equal(container.querySelector("[data-status='error']") !== null, true);
-    assert.equal(container.querySelector('[role="alert"]').textContent, "暂时无法加载");
+    assert.equal(container.querySelector('[role="alert"]').textContent, "暂时无法加载 · bad config");
     controller.dispose();
 });
 
