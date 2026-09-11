@@ -66,6 +66,7 @@ function normalizeHomeViewResult(value) {
             command: text(item?.command, 128),
         };
         if (typeof item?.done === "boolean") entry.done = item.done;
+        if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
         return entry;
     }).filter((item) => item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
@@ -77,7 +78,11 @@ function normalizeHomeViewResult(value) {
         title: text(rawSnapshot.title, 64),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         stat: rawSnapshot.stat && typeof rawSnapshot.stat === "object"
-            ? {value: text(rawSnapshot.stat.value, 32), label: text(rawSnapshot.stat.label, 32)}
+            ? {
+                value: text(rawSnapshot.stat.value, 32),
+                label: text(rawSnapshot.stat.label, 32),
+                progress: Number.isFinite(rawSnapshot.stat.progress) ? Math.min(100, Math.max(0, rawSnapshot.stat.progress)) : null,
+            }
             : null,
         items,
     };
@@ -191,6 +196,19 @@ function renderHomeModuleView(doc, view, options = {}) {
         label.textContent = view.stat.label || "";
         hero.append(value, label);
         body.appendChild(hero);
+        if (Number.isFinite(view.stat.progress)) {
+            const bar = doc.createElement("div");
+            bar.className = "sw__home-progress";
+            bar.setAttribute("role", "progressbar");
+            bar.setAttribute("aria-valuenow", String(Math.round(view.stat.progress)));
+            bar.setAttribute("aria-valuemin", "0");
+            bar.setAttribute("aria-valuemax", "100");
+            const fill = doc.createElement("div");
+            fill.className = "sw__home-progress-fill";
+            fill.style.width = Math.min(100, Math.max(0, view.stat.progress)) + "%";
+            bar.appendChild(fill);
+            body.appendChild(bar);
+        }
     }
     if (view.status === "ready") {
         const list = doc.createElement("ul");
@@ -199,6 +217,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         const focusKeys = new Map();
         const usedFocusKeys = new Set();
         const canToggle = typeof options.onToggleItem === "function";
+        const countValues = (Array.isArray(view.items) ? view.items : []).filter((item) => Number.isFinite(item.count) && item.count > 0).map((item) => item.count);
+        const maxCount = countValues.length > 0 ? Math.max(...countValues) : 0;
         (Array.isArray(view.items) ? view.items : []).forEach((item) => {
             const row = doc.createElement("li");
             row.className = "sw__home-module-item";
@@ -220,7 +240,6 @@ function renderHomeModuleView(doc, view, options = {}) {
             if (item.command) button.dataset.command = item.command;
             button.classList.toggle("is-done", item.done === true);
             button.textContent = item.label || item.value || item.href || "";
-            if (options.onItem) button.addEventListener("click", () => options.onItem(item, view));
             if (canToggle && typeof item.done === "boolean") {
                 const check = doc.createElement("button");
                 check.type = "button";
@@ -233,6 +252,16 @@ function renderHomeModuleView(doc, view, options = {}) {
                     options.onToggleItem(item, view);
                 });
                 row.appendChild(check);
+            }
+            if (options.onItem) button.addEventListener("click", () => options.onItem(item, view));
+            if (Number.isFinite(item.count) && item.count > 0 && maxCount > 0) {
+                const barWrap = doc.createElement("span");
+                barWrap.className = "sw__home-item-bar";
+                const barFill = doc.createElement("span");
+                barFill.className = "sw__home-item-bar-fill";
+                barFill.style.width = Math.min(100, Math.round(item.count / maxCount * 100)) + "%";
+                barWrap.appendChild(barFill);
+                row.appendChild(barWrap);
             }
             row.appendChild(button);
             list.appendChild(row);

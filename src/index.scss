@@ -4738,3 +4738,41 @@
     padding: 3px 6px 3px 14px;
     font-size: 12px;
 }
+
+// ==================== 概览进度条与条目比例条 ====================
+.sw__home-progress {
+    height: 6px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
+    overflow: hidden;
+    margin: 4px 0 8px;
+
+    .sw__home-progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--sw-home-accent, var(--b3-theme-primary));
+        transition: width 0.3s ease;
+    }
+}
+
+.sw__home-item-bar {
+    flex: 1;
+    min-width: 20px;
+    height: 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent);
+    overflow: hidden;
+    margin-inline-start: auto;
+
+    .sw__home-item-bar-fill {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 55%, transparent);
+    }
+}
+
+// 卡片强调色微底色
+.sw-home .sw-home__cell {
+    background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 3%, var(--b3-theme-surface));
+}

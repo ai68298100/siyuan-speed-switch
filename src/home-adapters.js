@@ -87,6 +87,8 @@ function normalizeSnapshot(value) {
     const items = rawItems.slice(0, MAX_SNAPSHOT_ITEMS).map((item) => {
         if (!item || typeof item !== "object") return null;
         const entry = {label: safeText(item.label), value: safeText(item.value), href: safeText(item.href, 512), command: safeText(item.command, 128)};
+        // 协议 v2.2：count 为非负整数（如标签出现次数），渲染为行内比例条
+        if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));
         if (typeof item.done === "boolean") entry.done = item.done;
         return entry;
         // 协议 v2：command 为 "插件名::命令key"，点击由宿主代为执行（有界格式）
@@ -95,7 +97,7 @@ function normalizeSnapshot(value) {
     // 协议 v2.1：stat 为可选概览数值（如"今日待办 5 条"），渲染为大数字英雄区
     const statRaw = value.stat && typeof value.stat === "object" ? value.stat : null;
     const stat = statRaw && safeText(statRaw.value, 32)
-        ? {value: safeText(statRaw.value, 32), label: safeText(statRaw.label, 32)}
+        ? {value: safeText(statRaw.value, 32), label: safeText(statRaw.label, 32), progress: Number.isFinite(statRaw.progress) ? Math.min(100, Math.max(0, statRaw.progress)) : null}
         : null;
     return {title: safeText(value.title, 64), items, stat, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
 }
