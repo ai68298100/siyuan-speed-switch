@@ -3799,6 +3799,8 @@ const version = beginSearch(session);
         if (this.isMobile) root.classList.add("sw-home--mobile");
         const device = this.isMobile ? "mobile" : "desktop";
         let editing = false;
+        // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
+        const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
 
         const defs = new Map<string, any>();
         this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
@@ -3831,6 +3833,18 @@ const version = beginSearch(session);
                 renderPanel();
             });
             bar.appendChild(editToggle);
+            // 一键强制刷新全部组件（绕过 3s 缓存与失败退避）；空面板时无意义，隐藏
+            if (cells.length > 0) {
+                const refreshAllButton = document.createElement("button");
+                refreshAllButton.type = "button";
+                refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
+                refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
+                refreshAllButton.innerHTML = '<svg><use xlink:href="#iconRefresh"></use></svg><span>' + this.i18n.homeRefreshAll + '</span>';
+                refreshAllButton.addEventListener("click", () => {
+                    homeControllers.forEach((entry) => void entry.refresh(undefined, {force: true}));
+                });
+                bar.appendChild(refreshAllButton);
+            }
             // 组件商店常驻右上角（与编辑布局并列），不再要求先进编辑态
             {
                 const addButton = document.createElement("button");
@@ -3868,7 +3882,8 @@ const version = beginSearch(session);
                 empty.textContent = this.i18n.homeEmpty;
                 grid.appendChild(empty);
             }
-            const controllers: Array<{ moduleId: string; refresh: () => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
+            const controllers = homeControllers;
+            controllers.length = 0;
 
             cells.forEach(({inst, layout}) => {
                 const def = defs.get(inst.moduleId);
@@ -3939,7 +3954,7 @@ const version = beginSearch(session);
                     },
                 });
                 if (!controller) return;
-                controllers.push({moduleId: inst.moduleId, refresh: () => controller.refresh(), dispose: () => controller.dispose(), cell});
+                controllers.push({moduleId: inst.moduleId, refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => controller.refresh(config, readOptions), dispose: () => controller.dispose(), cell});
                 grid.appendChild(cell);
 
                 if (editing) {

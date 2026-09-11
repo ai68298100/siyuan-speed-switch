@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.35-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.36-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -169,6 +169,13 @@ Then verify in a real SiYuan environment:
 Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
 
 ## Changelog
+
+### v0.16.36 (2026-09-12)
+
+- Search result card display comfort: relaxed spacing, padding, title weight and snippet line height, with calmer truncation for long paths and snippets.
+- Widget store category tabs: all / builtin / plugin widgets, third-party entries at a glance.
+- Time-aware greeting header in the widget panel: morning/afternoon/night copy.
+- New **Refresh all** button in the widget panel: force-rereads every widget, bypassing cache and failure backoff.
 
 ### v0.16.35 (2026-09-12)
 

@@ -68,6 +68,7 @@
   "homeMoveUp": "Move up",
   "homeMoveDown": "Move down",
   "homeOpenPlugin": "Open plugin",
+  "homeRefreshAll": "Refresh all",
   "homeStoreTitle": "Widget store",
   "homeStoreSectionBuiltin": "Built-in",
   "homeStoreSectionPlugin": "Plugins",
