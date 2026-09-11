@@ -35,7 +35,7 @@ On SiYuan versions that expose `addAgentCapability` (the current adapter follows
 
 [中文说明](./README.md)
 
-**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot` (read-only), `open-document` (controlled navigation), `update-task-status` and `create-document` (controlled writes behind a mandatory confirmation dialog).
+**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot` and `get-document-outline` (read-only), `open-document` (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog).
 
 ## Core Capabilities
 
@@ -169,6 +169,12 @@ Then verify in a real SiYuan environment:
 Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
 
 ## Changelog
+
+### v0.16.35 (2026-09-12)
+
+- New read-only agent capability `get-document-outline`: returns a document's heading outline (text, depth, heading block id) so the AI can navigate by section together with `open-document`; results are bounded (max 48 headings, depth clamped to 0-8).
+- Security hardening: the kernel request entry point now enforces a same-origin guard — only relative paths starting with `/` that hit the endpoint whitelist are allowed; absolute URLs and foreign hosts are rejected explicitly.
+- Agent capabilities now total 8 (4 read-only, 1 controlled navigation, 3 controlled writes); 519 automated tests.
 
 ### v0.16.34 (2026-09-12)
 

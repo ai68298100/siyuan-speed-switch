@@ -8,6 +8,7 @@ const MAX_QUERY_LENGTH = 200;
 const MAX_NOTEBOOK_LENGTH = 64;
 const MAX_ITEMS = 32;
 const MAX_SEARCH_ITEMS = 32;
+const MAX_OUTLINE_ITEMS = 48;
 const MAX_TEXT_LENGTH = 256;
 const MAX_SNIPPET_LENGTH = 600;
 const ITEM_SOURCES = Object.freeze(["tabs", "recent", "favorite", "title", "opened", "global"]);
@@ -348,6 +349,47 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
             additionalProperties: false,
         }),
     }),
+    outline: Object.freeze({
+        name: "get-document-outline",
+        title: "小驴速切文档大纲",
+        description: "只读获取指定文档的标题大纲（标题文本与层级）。可与「打开文档」配合，按标题块 ID 定位到具体章节。不会修改笔记。",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                id: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: 64,
+                    pattern: "^[0-9]{14}-[0-9a-z]+$",
+                },
+                limit: {type: "integer", minimum: 1, maximum: MAX_OUTLINE_ITEMS},
+            },
+            required: ["id"],
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                id: {type: "string", maxLength: 64},
+                headings: {
+                    type: "array",
+                    maxItems: MAX_OUTLINE_ITEMS,
+                    items: {
+                        type: "object",
+                        properties: {
+                            id: {type: "string", maxLength: 64},
+                            title: {type: "string", maxLength: 200},
+                            depth: {type: "integer", minimum: 0, maximum: 8},
+                        },
+                        required: ["id", "title"],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ["id", "headings"],
+            additionalProperties: false,
+        }),
+    }),
     navigation: Object.freeze({
         name: "navigation-state",
         title: "小驴速切导航状态",
@@ -483,6 +525,23 @@ function sanitizeJournalAppend(value) {
     return cleaned.slice(0, 512);
 }
 
+// 文档大纲扁平化：内核返回嵌套 Path（id/name/depth/blocks），按上限展平为有界列表。
+// 只保留非空 id 与标题，depth 限制在 0–8，供 Agent 按标题块 ID 定位章节。
+function flattenOutline(nodes, limit = MAX_OUTLINE_ITEMS, depth = 0, out = []) {
+    if (!Array.isArray(nodes) || out.length >= limit) return out;
+    for (const node of nodes) {
+        if (out.length >= limit) break;
+        if (!node || typeof node !== "object") continue;
+        const id = asText(node.id, 64);
+        const title = asText(node.name, 200);
+        if (!id || !title) continue;
+        const level = Number.isFinite(node.depth) ? node.depth : depth;
+        out.push({id, title, depth: Math.min(8, Math.max(0, Math.trunc(level)))});
+        flattenOutline(node.blocks || node.children, limit, depth + 1, out);
+    }
+    return out;
+}
+
 module.exports = {
     MAX_QUERY_LENGTH,
     MAX_NOTEBOOK_LENGTH,
@@ -501,7 +560,7 @@ module.exports = {
     normalizeAgentNotebookId,
     sanitizeJournalAppend,
     flipTaskMarkdown,
-    flipTaskMarkdown,
+    flattenOutline,
     normalizeAgentDocumentId,
     registerAgentActionCapability,
     limitAgentItems,

@@ -32,6 +32,7 @@ import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
 import {
     AGENT_CAPABILITY_SPECS,
+    flattenOutline,
     MAX_SEARCH_ITEMS,
     buildAgentNavigationResult,
     buildAgentSearchResult,
@@ -2997,11 +2998,14 @@ const version = beginSearch(session);
         "/api/query/sql", "/api/tag/getTag", "/api/bookmark/getBookmark",
         "/api/filetree/getDoc", "/api/filetree/createDocWithMd",
         "/api/block/updateBlock", "/api/block/insertBlock",
+        "/api/outline/getDocOutline",
     ]);
 
     private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
-        // 端点白名单：仅允许硬编码的思源内核相对路径（纵深防御，杜绝 SSRF）
-        if (!SpeedSwitchPlugin.KERNEL_ENDPOINTS.has(url)) {
+        // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。
+        // - 必须以 "/" 开头（相对路径 → 同源），拒绝任何绝对 URL 与外部 host；
+        // - 必须命中端点白名单，杜绝把请求指向任意地址（SSRF）。
+        if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//") || !SpeedSwitchPlugin.KERNEL_ENDPOINTS.has(url)) {
             logger.warn("blocked non-whitelisted kernel endpoint", url);
             return null;
         }
@@ -5764,6 +5768,24 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             addAgentCapability?: (options: Record<string, unknown>) => string;
         };
         registerReadOnlyAgentCapabilities(pluginWithAgent, [
+            {
+                spec: AGENT_CAPABILITY_SPECS.outline,
+                handler: async (args: Record<string, unknown>) => {
+                    try {
+                        const id = normalizeAgentDocumentId(args?.id);
+                        if (!id) return {error: "invalid document id"};
+                        const limit = Math.min(48, Math.max(1, Math.trunc(Number(args?.limit) || 40)));
+                        const json = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                        if (!json || json.code !== 0) return {error: "outline unavailable"};
+                        const headings = flattenOutline(Array.isArray(json.data) ? json.data : [], limit);
+                        const content = {id, headings};
+                        return {structuredContent: content, result: JSON.stringify(content)};
+                    } catch (error) {
+                        logger.warn("Agent document outline unavailable", error);
+                        return {error: "outline unavailable"};
+                    }
+                },
+            },
             {
                 spec: AGENT_CAPABILITY_SPECS.navigation,
                 handler: async (args: Record<string, unknown>) => {
