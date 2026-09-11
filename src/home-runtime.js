@@ -27,8 +27,15 @@ function createHomeRuntime(definitions = []) {
         // Agent discovery and host integrations see the same bounded contract.
         // The adapter's executable read function is kept separately and never
         // becomes part of persisted or Agent-facing metadata.
+        // When the adapter omits `sizes`, inherit the builtin default so the
+        // registration override does not collapse the size menu to "medium".
+        const inherited = Array.isArray(raw?.sizes) && raw.sizes.length > 0 ? {} : (() => {
+            const base = moduleDefinitions.find((item) => item && item.moduleId === moduleId);
+            return base && Array.isArray(base.sizes) && base.sizes.length > 0 ? {sizes: base.sizes} : {};
+        })();
         const definition = normalizeModuleDefinition({
             ...raw,
+            ...inherited,
             moduleId,
             title: raw?.title || moduleId,
             supportedDevices: raw?.supportedDevices || candidate.supportedDevices,

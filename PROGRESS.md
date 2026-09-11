@@ -1,15 +1,16 @@
 # 进度
 
-当前任务：无（v0.16.37 全部开发与验收准备完成，等待用户实测）
-上次检查点：90e6e60（本地 7 commit 未推送，verify:release 全绿，package.zip 289,440 字节与 HEAD 同步）
-已完成（本轮自主循环）：
-- docs/acceptance-v0.16.37.md 验收清单：覆盖 6 个功能 commit 的逐项手动测试步骤 + 回归抽查 + 已知边界 + 安装指引
-- README 能力表补全：中文表自 v0.16.25 起就漏了 append-to-journal 且写着"四项"，现补全为十项并修正类型标注；英文 README 两处过期段落同步
-- 远端 CI 确认：origin/main (2b792ce) 最近 5 次 CI 全部 success
-未提交变更：无
-上次提交：90e6e60 docs: acceptance checklist for v0.16.37
-本地待推送：7 个 commit（51ee5d1 → f02a00d → edf26aa → a925a2d → 5acd542 → 878319b → 90e6e60）
-下一步（需用户）：按 docs/acceptance-v0.16.37.md 实测（装根目录 package.zip）→ 通过后回复"发版"→ 升 0.16.37 写合并日志推送打 tag；第四层等待 task-horizon#94 / docktomato#4 作者回复
-验证基线：tsc 0 错误、526/526 测试、verify:release 全绿、dist/index.js 308,564 字节（304KiB 预算内）
-续跑口令：读取 PROGRESS.md 恢复；本地领先远端 7 commit，网络恢复后可推送
-
+当前任务：无（桌面端真机验收完成；SQL 参数名与尺寸菜单两个真 Bug 已修复并实测）
+上次检查点：真机验收完成（见 docs/acceptance-v0.16.37.md 顶部结论）；527/527 测试；verify:release 全绿；dist 308,851 字节已部署回本机思源
+已完成（本轮自主循环 = 真实宿主验收）：
+- 备份本机 0.16.32 插件目录（Temp/speed-switch-0.16.32-bak）→ 部署 RC → 重启思源完成 GUI 验收
+- 🐛 Bug 1（重大）：/api/query/sql 参数名内核要求 `stmt`，插件一直传 `query`——所有 SQL 类组件在真实宿主静默失败（至少自 v0.16.32 起）。修复 16 处调用点
+- 🐛 Bug 2：内置适配器注册未传 sizes → 注册定义覆盖默认后尺寸菜单塌缩为仅 medium。修复：home-runtime.registerAdapter 继承内置默认 sizes + 回归测试
+- 加固：尺寸菜单视口钳制（不再弹出屏外）
+- GUI 实测通过：刷新全部/闪卡/随机回顾/尺寸瓦片/问候头/商店页签/增删组件/布局还原
+- 验收结果已写回 docs/acceptance-v0.16.37.md
+未提交变更：src/index.ts（stmt 16 处 + 菜单钳制）、src/home-runtime.js（sizes 继承）、tests/home-runtime.test.cjs、docs/acceptance-v0.16.37.md
+本地待推送：8 commit + 本轮 bugfix（commit 后 9）
+下一步：用户可复核桌面验收结论；剩余待测 = Agent 能力实测（需 AI 宿主）+ 手机端；之后即可升 0.16.37 发版
+验证基线：tsc 0 错误、527/527 测试、verify:release 全绿
+关键经验：内核 SQL 端点参数名是 stmt 不是 query；单测 mock 掩盖了真实协议差异——真机验收不可豁免

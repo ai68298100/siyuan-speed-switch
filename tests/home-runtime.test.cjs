@@ -13,6 +13,16 @@ test("home runtime registers a device-scoped read-only module and reads bounded 
     assert.equal((await runtime.read("demo-module", "mobile")).ok, false);
 });
 
+test("adapter registration inherits builtin sizes when omitted", () => {
+    const runtime = createHomeRuntime([
+        {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: ["desktop"], readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]},
+    ]);
+    const registration = runtime.registerAdapter({moduleId: "recent-documents", title: "近期文档", supportedDevices: ["desktop"], read: () => ({items: []})});
+    assert.equal(registration.registered, true);
+    const def = runtime.listModules("desktop").find((item) => item.moduleId === "recent-documents");
+    assert.deepEqual(def.sizes, ["small", "medium", "wide", "large", "full"]);
+    runtime.dispose();
+});
 test("home runtime preserves bounded protocol metadata for discovery", () => {
     const runtime = createHomeRuntime();
     const registration = runtime.registerAdapter({

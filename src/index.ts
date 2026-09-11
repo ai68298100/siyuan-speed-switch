@@ -701,7 +701,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const ids = normalizeAgentDocumentIds(args?.ids);
                 if (ids.length === 0) return {error: "no valid document ids"};
                 const titlesJson = await this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT id, content FROM blocks WHERE type='d' AND id IN ('${ids.join("','")}')`,
+                    stmt: `SELECT id, content FROM blocks WHERE type='d' AND id IN ('${ids.join("','")}')`,
                 });
                 const titleById = new Map<string, string>(((titlesJson?.data || []) as Array<{id: string; content: string}>)
                     .map((row) => [row.id, String(row.content || "")]));
@@ -738,7 +738,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const done = args?.done === true;
                 if (!id) return {error: "invalid task id"};
                 const rowJson = await this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type='p'`,
+                    stmt: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type='p'`,
                 });
                 const row = (rowJson?.data || [])[0] as {markdown?: string; content?: string} | undefined;
                 if (!row) return {error: "task not found"};
@@ -784,7 +784,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 }
                 // createDocWithMd 不回传文档 ID：按标题回查最近创建的同名根文档
                 const locate = await this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT id FROM blocks WHERE type='d' AND content='${title.replace(/'/g, "''")}' ORDER BY created DESC LIMIT 1`,
+                    stmt: `SELECT id FROM blocks WHERE type='d' AND content='${title.replace(/'/g, "''")}' ORDER BY created DESC LIMIT 1`,
                 });
                 const docId = (locate?.data || [])[0]?.id || "";
                 return {structuredContent: {ok: true, notebook: target.id, title, docId}, result: JSON.stringify({ok: true, notebook: target.id, title, docId})};
@@ -3153,10 +3153,10 @@ const version = beginSearch(session);
             }
             const [json, countJson] = await Promise.all([
                 this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT id, content, markdown FROM blocks WHERE type='p' AND ${stateCondition}${scope} ORDER BY updated DESC LIMIT ${limit}`,
+                    stmt: `SELECT id, content, markdown FROM blocks WHERE type='p' AND ${stateCondition}${scope} ORDER BY updated DESC LIMIT ${limit}`,
                 }),
                 this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT COUNT(*) AS total FROM blocks WHERE type='p' AND ${stateCondition}${scope}`,
+                    stmt: `SELECT COUNT(*) AS total FROM blocks WHERE type='p' AND ${stateCondition}${scope}`,
                 }),
             ]);
             const rows = (json?.data || []) as Array<{id: string; content: string; markdown?: string}>;
@@ -3190,7 +3190,7 @@ const version = beginSearch(session);
             const now = new Date();
             const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
             const json = await this.fetchKernelJson("/api/query/sql", {
-                query: `SELECT root_id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 12`,
+                stmt: `SELECT root_id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 12`,
             });
             const rows = (json?.data || []) as Array<{root_id: string; content: string}>;
             return {items: [
@@ -3202,10 +3202,10 @@ const version = beginSearch(session);
         register("note-stats", this.i18n.homeNoteStats, "iconChart", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async () => {
             const weekStart = this.taskWindowStart(6);
             const [docsJson, charsJson, createdJson, updatedJson] = await Promise.all([
-                this.fetchKernelJson("/api/query/sql", {query: "SELECT COUNT(*) AS n FROM blocks WHERE type='d'"}),
-                this.fetchKernelJson("/api/query/sql", {query: "SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE type<>'d'"}),
-                this.fetchKernelJson("/api/query/sql", {query: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND created >= '${weekStart}'`}),
-                this.fetchKernelJson("/api/query/sql", {query: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND updated >= '${weekStart}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: "SELECT COUNT(*) AS n FROM blocks WHERE type='d'"}),
+                this.fetchKernelJson("/api/query/sql", {stmt: "SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE type<>'d'"}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND created >= '${weekStart}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND updated >= '${weekStart}'`}),
             ]);
             const countOf = (json: any) => Number((json?.data || [])[0]?.n) || 0;
             const docs = countOf(docsJson);
@@ -3244,7 +3244,7 @@ const version = beginSearch(session);
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async () => {
             const json = await this.fetchKernelJson("/api/query/sql", {
-                query: "SELECT id, content FROM blocks WHERE type='d' ORDER BY updated DESC LIMIT 10",
+                stmt: "SELECT id, content FROM blocks WHERE type='d' ORDER BY updated DESC LIMIT 10",
             });
             const rows = (json?.data || []) as Array<{id: string; content: string}>;
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
@@ -3260,7 +3260,7 @@ const version = beginSearch(session);
                     .filter((id) => BLOCK_ID_RE.test(id))
                     .slice(0, 8);
                 const cardRows = blockIds.length > 0 ? (((await this.fetchKernelJson("/api/query/sql", {
-                    query: `SELECT id, content, root_id FROM blocks WHERE id IN ('${blockIds.join("','")}') LIMIT 8`,
+                    stmt: `SELECT id, content, root_id FROM blocks WHERE id IN ('${blockIds.join("','")}') LIMIT 8`,
                 }))?.data || []) as Array<{id: string; content: string; root_id: string}>) : [];
                 return {
                     stat: {value: String(due), label: this.i18n.homeStatFlashcards},
@@ -3283,7 +3283,7 @@ const version = beginSearch(session);
             const days = Math.min(3650, Math.max(7, Math.trunc(Number(config.days) || 90)));
             const cutoff = this.taskWindowStart(days);
             return this.fetchKernelJson("/api/query/sql", {
-                query: `SELECT id, content FROM blocks WHERE type='d' AND updated < '${cutoff}' ORDER BY random() LIMIT 3`,
+                stmt: `SELECT id, content FROM blocks WHERE type='d' AND updated < '${cutoff}' ORDER BY random() LIMIT 3`,
             }).then((json) => {
                 const rows = (json?.data || []) as Array<{id: string; content: string}>;
                 return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
@@ -3363,7 +3363,7 @@ const version = beginSearch(session);
         if (!BLOCK_ID_RE.test(id)) return false;
         const target = !(item.done === true);
         const rowJson = await this.fetchKernelJson("/api/query/sql", {
-            query: `SELECT markdown FROM blocks WHERE id='${id}' AND type='p'`,
+            stmt: `SELECT markdown FROM blocks WHERE id='${id}' AND type='p'`,
         });
         const row = (rowJson?.data || [])[0] as {markdown?: string} | undefined;
         if (!row) return false;
@@ -3463,8 +3463,15 @@ const version = beginSearch(session);
         };
         const reposition = () => {
             const rect = anchor.getBoundingClientRect();
-            panel.style.top = `${Math.round(rect.bottom + 6)}px`;
+            // 垂直：贴按钮下方，超出视口下缘时向上收
+            panel.style.top = `${Math.round(Math.max(6, Math.min(rect.bottom + 6, window.innerHeight - panel.offsetHeight - 6)))}px`;
+            // 水平：锚定按钮右缘，再钳制左缘避免整块弹出屏外
             panel.style.right = `${Math.round(Math.max(6, window.innerWidth - rect.right))}px`;
+            const box = panel.getBoundingClientRect();
+            if (box.left < 6) {
+                panel.style.left = "6px";
+                panel.style.right = "auto";
+            }
         };
         supported.forEach((key) => {
             const item = document.createElement("button");
@@ -5880,7 +5887,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             const response = await fetch("/api/query/sql", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({query: `SELECT root_id, updated, created FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
+                body: JSON.stringify({stmt: `SELECT root_id, updated, created FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
             });
             if (!response.ok) {
                 throw new Error(`query/sql HTTP ${response.status}`);
@@ -6063,7 +6070,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             const now = new Date();
                             const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
                             const journalJson = await this.fetchKernelJson("/api/query/sql", {
-                                query: `SELECT id FROM blocks WHERE type='d' AND box='${journalNotebookId}' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 1`,
+                                stmt: `SELECT id FROM blocks WHERE type='d' AND box='${journalNotebookId}' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 1`,
                             });
                             const found = ((journalJson?.data || [])[0] as {id?: string} | undefined)?.id || "";
                             if (BLOCK_ID_RE.test(found)) todayJournal.docId = found;
