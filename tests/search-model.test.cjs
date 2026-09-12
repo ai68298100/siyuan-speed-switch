@@ -318,6 +318,13 @@ test("search model: extracts compatible native result wrappers", () => {
     assert.deepEqual(extractSearchRecords(null), []);
 });
 
+test("search model: extracts title-document wrappers used by older hosts", () => {
+    const files = [{path: "box/doc.sy", hPath: "doc", box: "box"}];
+    assert.strictEqual(extractSearchRecords({data: {files}}), files);
+    assert.strictEqual(extractSearchRecords({result: {documents: files}}), files);
+    assert.strictEqual(extractSearchRecords({data: {docs: files}}), files);
+});
+
 test("search model: scopes opened-document search to one safe notebook path", () => {
     const scope = buildOpenedDocumentScope({rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"});
     assert.deepEqual(scope, {rootId: ROOT_A, notebook: "box-a", path: "box-a/docs/root.sy"});

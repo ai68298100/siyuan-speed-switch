@@ -14,7 +14,7 @@
 - 已记录 D-010：去重只发生在 Agent 输出边界，不修改持久化关闭历史，等待后续事件同步自然收敛。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
-验证基线：`pnpm verify:release` 全绿，包含 TypeScript 检查、生产构建、531 项自动测试、移动端烟测和 Chromium 样式烟测；生产构建已生成 `package.zip`。
+验证基线：`pnpm verify:release` 全绿，包含 TypeScript 检查、生产构建、532 项自动测试、移动端烟测和 Chromium 样式烟测；生产构建已生成 `package.zip`。
 
 待处理：
 

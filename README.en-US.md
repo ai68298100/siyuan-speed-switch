@@ -175,7 +175,7 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 - Four new mobile-style builtin widgets (20 total): **Quick capture** (Flomo-style: tap to open a small input and append a line to today's journal; guides you to pick a journal notebook when unset), **Clipped to read** (tag-based reading queue with a configurable tag; tap to open), **On this day** (documents from the same month and day in past years), **Today's writing** (today's characters plus new/edited document counts).
 - Fixed a capability gap: `append-to-journal` was defined but never registered - the README claimed ten agent capabilities while only nine were live. It is now registered (endpoint whitelist, confirmation dialog, 30 s timeout = denied), so the count is genuinely ten.
 - New "capability registration guard" test: scans the plugin entry source and requires every capability spec to be registered, so this class of gap cannot recur (the test fails before the fix).
-- 530 automated tests.
+- 532 automated tests.
 
 ### v0.16.37 (2026-09-12)
 
@@ -726,7 +726,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 78 `*.test.cjs` files under `tests/` and `tests/host/`, currently 522 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 78 `*.test.cjs` files under `tests/` and `tests/host/`, currently 532 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -755,7 +755,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 522)
+pnpm test               # run every unit, contract, and host release test (currently 532)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

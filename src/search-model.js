@@ -652,7 +652,7 @@ function extractSearchRecords(payload) {
     queue.forEach((container) => {
         if (!container || typeof container !== "object") return;
         add(container);
-        ["data", "blocks", "items", "results", "records"].forEach((key) => add(container[key]));
+        ["data", "blocks", "items", "results", "records", "files", "documents", "docs"].forEach((key) => add(container[key]));
     });
     return containers.find((items) => items.length > 0) || containers[0] || [];
 }

@@ -6398,9 +6398,9 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 });
                 if (!response.ok) throw new Error(`searchDocs HTTP ${response.status}`);
                 const json = await response.json();
-                const rawDocs = Array.isArray(json?.data)
-                    ? json.data.slice(0, MAX_SEARCH_ITEMS * 2).filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
-                    : [];
+                const rawDocs = extractSearchRecords(json)
+                    .slice(0, MAX_SEARCH_ITEMS * 2)
+                    .filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object");
                 // Native v3.8.x searchDocs records commonly contain only
                 // {path, hPath, box, boxIcon}. Normalize the root/title
                 // before applying Agent bounds, otherwise valid title hits
