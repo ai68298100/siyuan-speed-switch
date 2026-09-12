@@ -232,6 +232,14 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
     assert.deepEqual(empty.openTabs, []);
     assert.deepEqual(empty.todayJournal, {configured: false, docId: ""});
 });
+test("every agent capability spec is registered in the plugin entry", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const missing = Object.keys(AGENT_CAPABILITY_SPECS)
+        .filter((key) => !source.includes(`AGENT_CAPABILITY_SPECS.${key}`));
+    assert.deepEqual(missing, [], "unregistered capability specs: " + missing.join(", "));
+});
 test("open-documents spec bounds batch to five and ids normalize bounded", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.openDocuments.name, "open-documents");
     const items = AGENT_CAPABILITY_SPECS.openDocuments.inputSchema.properties.ids;

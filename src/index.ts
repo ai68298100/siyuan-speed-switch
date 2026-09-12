@@ -46,6 +46,7 @@ import {
     normalizeAgentSearchPaths,
     normalizeAgentQuery,
     flipTaskMarkdown,
+    sanitizeJournalAppend,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
@@ -790,6 +791,28 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return {structuredContent: {ok: true, notebook: target.id, title, docId}, result: JSON.stringify({ok: true, notebook: target.id, title, docId})};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+
+        // 受控写：向今日日记末尾追加一条内容（日记缺失自动创建；强制确认；只追加不改写）
+        registerAgentActionCapability(pluginWithAgentAction, {
+            spec: AGENT_CAPABILITY_SPECS.appendToJournal,
+            effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
+            handler: async (args: Record<string, unknown>) => {
+                const content = sanitizeJournalAppend(args?.content);
+                if (!content) return {error: "invalid content"};
+                const notebook = normalizeAgentNotebookId(this.getSettings().journalNotebook);
+                if (!notebook) return {error: "journal notebook not configured"};
+                const detail = this.i18n.aiJournalAppendDesc.replace("{content}", content.slice(0, 120));
+                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
+                if (!approved) return {error: "user denied"};
+                const docId = await this.ensureTodayJournal(notebook);
+                if (!docId) return {error: "journal unavailable"};
+                const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
+                    dataType: "markdown", data: content, parentID: docId,
+                });
+                if (!appendJson || appendJson.code !== 0) return {error: "append failed"};
+                return {structuredContent: {ok: true, docId}, result: JSON.stringify({ok: true, docId})};
+            },
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
         this.registerBuiltinHomeAdapters();
     }
 
@@ -1304,6 +1327,65 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 鎵撳紑/鍒涘缓褰撴棩鏃ヨ锛氶粯璁ゆ棩璁版湰鏈缃椂鍏堝脊鍑轰笅鎷夐€夋嫨
+    // 快速记录：Flomo 式弹窗，输入一句追加到今日日记末尾（未配置日记本时先让用户选择）
+    private openQuickCapture() {
+        const dialog = new Dialog({
+            title: this.i18n.quickCaptureTitle,
+            content: '<div class="speed-switch sw-quick-capture"></div>',
+            width: this.isMobile ? "min(420px, 92vw)" : "380px",
+            height: this.isMobile ? "min(280px, 60vh)" : "230px",
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw-quick-capture");
+        if (!root) return;
+        const input = document.createElement("textarea");
+        input.className = "b3-text-field fn__block sw-quick-capture__input";
+        input.rows = 3;
+        input.placeholder = this.i18n.quickCapturePlaceholder;
+        input.setAttribute("aria-label", this.i18n.quickCaptureTitle);
+        const actions = document.createElement("div");
+        actions.className = "sw-quick-capture__actions";
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "b3-button b3-button--text";
+        cancel.textContent = this.i18n.quickCaptureCancel;
+        cancel.addEventListener("click", () => dialog.destroy());
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "b3-button b3-button--outline";
+        save.textContent = this.i18n.quickCaptureSave;
+        save.addEventListener("click", () => {
+            void (async () => {
+                const content = sanitizeJournalAppend(input.value);
+                if (!content) {
+                    showMessage(this.i18n.quickCaptureEmpty);
+                    return;
+                }
+                let notebook = normalizeAgentNotebookId(this.getSettings().journalNotebook);
+                if (!notebook) {
+                    notebook = await this.promptJournalNotebook();
+                    if (!notebook) return;
+                }
+                const docId = await this.ensureTodayJournal(notebook);
+                if (!docId) {
+                    showMessage(this.i18n.journalFailed, MESSAGE_DEFAULT_MS, "error");
+                    return;
+                }
+                const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
+                    dataType: "markdown", data: content, parentID: docId,
+                });
+                if (!appendJson || appendJson.code !== 0) {
+                    showMessage(this.i18n.quickCaptureFailed, MESSAGE_DEFAULT_MS, "error");
+                    return;
+                }
+                dialog.destroy();
+                showMessage(this.i18n.quickCaptureDone);
+            })();
+        });
+        actions.append(cancel, save);
+        root.append(input, actions);
+        window.setTimeout(() => input.focus(), 30);
+    }
+
     private async openJournal() {
         let notebook = this.getSettings().journalNotebook;
         if (!notebook) {
@@ -3049,7 +3131,7 @@ const version = beginSearch(session);
     private static KERNEL_ENDPOINTS = new Set([
         "/api/query/sql", "/api/tag/getTag", "/api/bookmark/getBookmark",
         "/api/filetree/getDoc", "/api/filetree/createDocWithMd",
-        "/api/block/updateBlock", "/api/block/insertBlock",
+        "/api/block/updateBlock", "/api/block/insertBlock", "/api/block/appendBlock",
         "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
     ]);
 
@@ -3093,6 +3175,9 @@ const version = beginSearch(session);
                     break;
                 case "/api/block/insertBlock":
                     response = await fetch("/api/block/insertBlock", init);
+                    break;
+                case "/api/block/appendBlock":
+                    response = await fetch("/api/block/appendBlock", init);
                     break;
                 case "/api/outline/getDocOutline":
                     response = await fetch("/api/outline/getDocOutline", init);
@@ -3326,6 +3411,54 @@ const version = beginSearch(session);
                 return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
             });
         });
+        // 剪藏待读：按标签聚合的待读清单（Safari 阅读列表风格）；点击直达文档
+        register("clipped-unread", this.i18n.homeClippedUnread, "iconBookmark", this.i18n.homeDescClippedUnread, [], async (config) => {
+            const tag = String(config.tag || "剪藏").trim().slice(0, 32).replace(/[%_']/g, "");
+            if (!tag) return {items: []};
+            const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT b.root_id AS root_id, d.content AS title, MAX(b.created) AS latest FROM blocks b JOIN blocks d ON d.id = b.root_id WHERE b.tag LIKE '%${tag}%' AND b.root_id <> '' GROUP BY b.root_id ORDER BY latest DESC LIMIT ${limit}`,
+            });
+            const rows = (json?.data || []) as Array<{root_id: string; title: string}>;
+            return {
+                stat: {value: String(rows.length), label: this.i18n.homeStatClipped},
+                items: rows.map((row) => ({label: row.title || row.root_id, value: row.root_id})).filter((item) => !!item.value),
+            };
+        });
+        // 往年今日：同月同日的往年日记/文档（照片"回忆"风格）
+        register("on-this-day", this.i18n.homeOnThisDay, "iconClock", this.i18n.homeDescOnThisDay, ["loaded-protyle"], async () => {
+            const now = new Date();
+            const mmdd = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            const thisYear = String(now.getFullYear());
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '%-${mmdd}' AND content NOT LIKE '${thisYear}-%' ORDER BY content DESC LIMIT 8`,
+            });
+            const rows = (json?.data || []) as Array<{id: string; content: string}>;
+            return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
+        });
+        // 今日写作：今天的写作活跃度（屏幕使用时间风格）
+        register("today-writing", this.i18n.homeTodayWriting, "iconEdit", this.i18n.homeDescTodayWriting, ["loaded-protyle", "destroy-protyle"], async () => {
+            const now = new Date();
+            const start = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}000000`;
+            const [charsJson, createdJson, updatedJson] = await Promise.all([
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE created >= '${start}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND created >= '${start}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND updated >= '${start}' AND created < '${start}'`}),
+            ]);
+            const countOf = (json: any) => Number((json?.data || [])[0]?.n) || 0;
+            const chars = countOf(charsJson);
+            return {
+                stat: {value: chars.toLocaleString(), label: this.i18n.homeStatTodayChars},
+                items: [
+                    {label: `${this.i18n.homeTodayNewDocs} · ${countOf(createdJson)}`, value: ""},
+                    {label: `${this.i18n.homeTodayEditedDocs} · ${countOf(updatedJson)}`, value: ""},
+                ],
+            };
+        });
+        // 快速记录：Flomo 式一键记一句到今日日记（点击后弹输入框，需确认追加）
+        register("quick-capture", this.i18n.homeQuickCapture, "iconAdd", this.i18n.homeDescQuickCapture, [], () => ({
+            items: [{label: this.i18n.quickCaptureAction, value: "action:quick-capture"}],
+        }));
         // 插件命令启动器：枚举其他插件的命令，任何插件无需适配即可进面板一键触发
         register("plugin-commands", this.i18n.homePluginCommands, "iconPlugin", this.i18n.homeDescCmds, [], (config) => {
             // 协议 v2 configSchema：limit（条数）、filter（label/plugin 关键词过滤）
@@ -3424,6 +3557,11 @@ const version = beginSearch(session);
         if (value === "action:journal") {
             close();
             this.openJournal();
+            return;
+        }
+        if (value === "action:quick-capture") {
+            close();
+            this.openQuickCapture();
             return;
         }
         if (value.startsWith("set:")) {

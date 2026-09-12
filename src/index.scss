@@ -4829,3 +4829,21 @@
     color: var(--b3-theme-on-background);
     letter-spacing: -0.01em;
 }
+
+// ==================== 快速记录（Flomo 式随手记） ====================
+.sw-quick-capture {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    &__input {
+        resize: vertical;
+        min-height: 64px;
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}
