@@ -14,6 +14,13 @@ test("insight-style widgets are registered with bounded sizes", () => {
     const recentEdits = byId.get("recent-edits");
     assert.ok(recentEdits, "recent-edits registered");
     assert.deepEqual(recentEdits.sizes, ["medium", "wide", "large"]);
+    const writing = byId.get("recent-writing-activity");
+    assert.ok(writing, "recent writing activity registered");
+    assert.deepEqual(writing.configSchema, [{key: "days", label: "统计天数", type: "number", min: 7, max: 30, defaults: 7}]);
+    const daily = byId.get("recent-daily-notes");
+    assert.ok(daily, "recent daily notes registered");
+    assert.equal(daily.configSchema.length, 2);
+    assert.equal(daily.readOnly, true);
 });
 
 test("year progress percentage stays within bounds for leap and non-leap years", () => {

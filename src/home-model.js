@@ -39,6 +39,13 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "on-this-day", title: "往年今日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"]},
     {moduleId: "today-writing", title: "今日写作", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
+    {moduleId: "recent-writing-activity", title: "近期开��活跃度", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "days", label: "统计天数", type: "number", min: 7, max: 30, defaults: 7},
+    ]},
+    {moduleId: "recent-daily-notes", title: "近期日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "days", label: "回看天数", type: "number", min: 7, max: 60, defaults: 14},
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
+    ]},
         {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "filter", label: "关键词过滤", type: "text", defaults: ""},

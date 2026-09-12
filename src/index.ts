@@ -3456,6 +3456,35 @@ const version = beginSearch(session);
             };
         });
         // 快速记录：Flomo 式一键记一句到今日日记（点击后弹输入框，需确认追加）
+        // 近期写作活跃度：按天聚合“创建的内容块”数量（不是文档数），只读且限制窗口。
+        register("recent-writing-activity", this.i18n.homeRecentWritingActivity, "iconChart", this.i18n.homeDescRecentWritingActivity, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const days = Math.min(30, Math.max(7, Math.trunc(Number(config.days) || 7)));
+            const since = this.taskWindowStart(days - 1);
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT substr(created, 1, 8) AS day, COUNT(*) AS n FROM blocks WHERE created >= '${since}' GROUP BY substr(created, 1, 8) ORDER BY day DESC LIMIT ${days}`,
+            });
+            const rows = (json?.data || []) as Array<{day?: string; n?: number}>;
+            const items = rows.map((row) => {
+                const day = String(row.day || "");
+                const label = /^\\d{8}$/.test(day) ? `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}` : day;
+                return {label, value: "", count: Math.max(0, Number(row.n) || 0)};
+            }).filter((item) => item.label && item.count > 0);
+            const total = items.reduce((sum, item) => sum + item.count, 0);
+            return {stat: {value: String(total), label: this.i18n.homeStatWritingBlocks}, items};
+        });
+        // 近期日记：按日期标题探测已存在的日记，绝不创建缺失日期。
+        register("recent-daily-notes", this.i18n.homeRecentDailyNotes, "iconCalendar", this.i18n.homeDescRecentDailyNotes, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const days = Math.min(60, Math.max(7, Math.trunc(Number(config.days) || 14)));
+            const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
+            const now = new Date();
+            const cutoff = new Date(now.getTime() - (days - 1) * 86400000);
+            const from = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, root_id, content FROM blocks WHERE type='d' AND content GLOB '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' AND content >= '${from}' ORDER BY content DESC LIMIT ${limit}`,
+            });
+            const rows = (json?.data || []) as Array<{id?: string; root_id?: string; content?: string}>;
+            return {items: rows.map((row) => ({label: String(row.content || "").slice(0, 64), value: String(row.root_id || row.id || "")})).filter((item) => item.label && BLOCK_ID_RE.test(item.value))};
+        });
         register("quick-capture", this.i18n.homeQuickCapture, "iconAdd", this.i18n.homeDescQuickCapture, [], () => ({
             items: [{label: this.i18n.quickCaptureAction, value: "action:quick-capture"}],
         }));
