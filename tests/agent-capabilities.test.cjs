@@ -18,6 +18,7 @@ const {
     buildAgentNavigationResult,
     buildAgentWorkspaceContext,
     buildAgentSearchResult,
+    normalizeAgentFailureReason,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
@@ -25,6 +26,15 @@ const {
     sanitizeJournalAppend,
     registerAgentActionCapability,
 } = require("../src/agent-capabilities.js");
+
+test("agent failure reasons normalize abort, timeout, and opaque errors", () => {
+    assert.equal(normalizeAgentFailureReason({name: "AbortError"}), "cancelled");
+    assert.equal(normalizeAgentFailureReason({code: "ABORT_ERR"}), "cancelled");
+    assert.equal(normalizeAgentFailureReason({name: "TimeoutError"}), "timeout");
+    assert.equal(normalizeAgentFailureReason(new Error("request timed out")), "timeout");
+    assert.equal(normalizeAgentFailureReason(new Error("network exploded")), "failed");
+    assert.equal(normalizeAgentFailureReason(null), "failed");
+});
 
 const ROOT = "20260906120000-aaaaaaa";
 
@@ -217,6 +227,8 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema.anyOf.length, 2);
     assert.equal(AGENT_CAPABILITY_SPECS.openDocument.name, "open-document");
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
+    assert.equal(AGENT_CAPABILITY_SPECS.homeDiagnostics.name, "home-adapter-diagnostics");
+    assert.equal(AGENT_CAPABILITY_SPECS.homeDiagnostics.outputSchema.properties.diagnostics.maxItems, 32);
 });
 
 test("workspace-context spec and builder keep bounded read-only snapshot", () => {

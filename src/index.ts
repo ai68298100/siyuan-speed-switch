@@ -45,6 +45,7 @@ import {
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentQuery,
+    normalizeAgentFailureReason,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerReadOnlyAgentCapabilities,
@@ -221,6 +222,7 @@ declare module "./home-runtime" {
         registerAdapter(options: Record<string, unknown>): {registered: boolean; unregister: () => boolean | void};
         listModules(device?: string): unknown[];
         read(moduleId: string, device?: string, config?: Record<string, unknown>, options?: Record<string, unknown>): Promise<unknown>;
+        diagnostics(): Array<{type: string; moduleId: string; device: string; at: number}>;
         dispose(): void;
     };
 }
@@ -6369,6 +6371,29 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     }
                 },
             },
+            {
+                spec: AGENT_CAPABILITY_SPECS.homeDiagnostics,
+                handler: async (args: Record<string, unknown>) => {
+                    try {
+                        const limit = normalizeAgentLimit(args?.limit, 16);
+                        const diagnostics = typeof this.homeRuntime.diagnostics === "function"
+                            ? this.homeRuntime.diagnostics().slice(-limit)
+                            : [];
+                        const content = {
+                            diagnostics: diagnostics.map((item: any) => ({
+                                type: String(item?.type || "failed").slice(0, 24),
+                                moduleId: String(item?.moduleId || "").slice(0, 64),
+                                device: ["desktop", "sidebar", "mobile"].includes(item?.device) ? item.device : "desktop",
+                                at: Number.isFinite(item?.at) && item.at > 0 ? Math.floor(item.at) : Date.now(),
+                            })).slice(-limit),
+                        };
+                        return {structuredContent: content, result: JSON.stringify(content)};
+                    } catch (error) {
+                        logger.warn("Agent home diagnostics unavailable", error);
+                        return {error: "home diagnostics unavailable"};
+                    }
+                },
+            },
         ], (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
     }
 
@@ -6507,7 +6532,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             });
             return {structuredContent: content, result: JSON.stringify(content)};
         } catch (error) {
-            if ((error as DOMException)?.name === "AbortError") return {error: "search timed out or was cancelled"};
+            const reason = normalizeAgentFailureReason(error);
+            if (reason === "cancelled" || reason === "timeout") return {error: "search timed out or was cancelled"};
             logger.warn("Agent search fail", error);
             return {error: "search unavailable"};
         } finally {

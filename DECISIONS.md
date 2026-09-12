@@ -17,3 +17,5 @@
 - D-015 文档关系组件采用保守 SQL 口径：直接子块使用 `parent_id/root_id`，引用使用受限 `markdown LIKE`；只返回少量可打开 ID，不引入重量级图布局或未确认的关系 API。
 - D-016 新增四个本地只读组件后生产 bundle 预算调整至 315 KiB；仍低于 package.zip 300 KiB 硬上限与现有构建警告阈值，保留门禁并记录增量原因。
 - D-017 预约组件采用已验证的 `attributes.custom-reservation`（YYYYMMDD）契约，仅做时间窗口内只读查询；不复制日记插件插入/取消逻辑，也不依赖其私有状态。
+- D-018 Agent 错误对外只保留 `cancelled`、`timeout`、`failed` 三类稳定原因；不返回异常对象、堆栈或宿主错误文本，取消/超时统一显示可重试提示。
+- D-019 home adapter diagnostics 通过只读 Agent capability 暴露，字段仅含 type/moduleId/device/at；生产 bundle 门禁随该能力调整至 317 KiB，package.zip 仍需低于 300 KiB。

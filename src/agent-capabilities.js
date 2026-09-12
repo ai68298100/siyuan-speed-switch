@@ -11,6 +11,7 @@ const MAX_SEARCH_ITEMS = 32;
 const MAX_OUTLINE_ITEMS = 48;
 const MAX_AGENT_PATHS = 8;
 const MAX_AGENT_PATH_LENGTH = 1024;
+const MAX_DIAGNOSTICS = 32;
 const MAX_TEXT_LENGTH = 256;
 const MAX_SNIPPET_LENGTH = 600;
 const ITEM_SOURCES = Object.freeze(["tabs", "recent", "closed", "favorite", "title", "opened", "global"]);
@@ -43,6 +44,16 @@ function asText(value, maxLength = MAX_TEXT_LENGTH) {
 
 function normalizeAgentQuery(value) {
     return asText(value, MAX_QUERY_LENGTH);
+}
+
+function normalizeAgentFailureReason(error) {
+    const source = error && typeof error === "object" ? error : {};
+    const name = String(source.name || "").toLowerCase();
+    const code = String(source.code || "").toLowerCase();
+    const message = String(source.message || error || "").toLowerCase();
+    if (name === "aborterror" || code === "abort_err" || message.includes("aborted") || message.includes("cancelled") || message.includes("canceled")) return "cancelled";
+    if (name === "timeouterror" || code === "timeout" || message.includes("timeout") || message.includes("timed out")) return "timeout";
+    return "failed";
 }
 
 function normalizeAgentNotebook(value) {
@@ -611,6 +622,38 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
             additionalProperties: false,
         }),
     }),
+    homeDiagnostics: Object.freeze({
+        name: "home-adapter-diagnostics",
+        title: "灏忛┐閫熺粍浠惰瘖鏂憳瑕?",
+        description: "鍙杩斿洖缁勪欢閫傞厤鍣ㄧ殑鏈€杩戞垚鍔熴€佺紦瀛樸€佽秴鏃跺拰澶辫触鐘舵€侊紝涓嶅寘鍚紓甯稿璞°€佹晱鎰熸枃鏈垨璇锋眰鍐呭銆?",
+        inputSchema: Object.freeze({
+            type: "object",
+            properties: {limit: {type: "integer", minimum: 1, maximum: MAX_DIAGNOSTICS}},
+            additionalProperties: false,
+        }),
+        outputSchema: Object.freeze({
+            type: "object",
+            properties: {
+                diagnostics: Object.freeze({
+                    type: "array",
+                    maxItems: MAX_DIAGNOSTICS,
+                    items: Object.freeze({
+                        type: "object",
+                        properties: {
+                            type: {type: "string", maxLength: 24},
+                            moduleId: {type: "string", maxLength: 64},
+                            device: {type: "string", enum: ["desktop", "sidebar", "mobile"]},
+                            at: {type: "integer", minimum: 1},
+                        },
+                        required: ["type", "moduleId", "device", "at"],
+                        additionalProperties: false,
+                    }),
+                }),
+            },
+            required: ["diagnostics"],
+            additionalProperties: false,
+        }),
+    }),
     search: Object.freeze({
         name: "search-documents",
         title: "小驴速切搜索文档",
@@ -775,6 +818,7 @@ module.exports = {
     AGENT_ITEM_SCHEMA,
     READ_ONLY_EFFECTS,
     normalizeAgentQuery,
+    normalizeAgentFailureReason,
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,

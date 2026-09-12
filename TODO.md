@@ -62,3 +62,9 @@
 - [x] T-028 预约块格式调研与只读组件
   - 证据：`siyuan-dailynote-today` 使用 `attributes.name='custom-reservation'`、`value=YYYYMMDD`；新增 `today-reservations`，限制未来 0–14 天和 12 条
   - 状态：done；不执行插入、取消或创建操作
+- [x] T-029 Agent 取消/超时回归
+  - 证据：新增统一 `normalizeAgentFailureReason`，覆盖 AbortError/ABORT_ERR/TimeoutError/普通异常，并接入 Agent 搜索错误返回；533 项自动测试通过
+  - 状态：done
+- [x] T-030 组件可观测性
+  - 证据：新增只读 Agent capability `home-adapter-diagnostics`，返回受限设备/模块/时间/稳定原因字段；不暴露异常对象或敏感数据
+  - 状态：done
