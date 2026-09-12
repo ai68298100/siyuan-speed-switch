@@ -94,6 +94,40 @@ function buildAgentHomeDiagnostics(items, limit = 16, windowMinutes = 60, now = 
     };
 }
 
+function buildAgentWidgetCatalog(items, options = {}) {
+    const source = options && typeof options === "object" ? options : {};
+    const device = HOME_DIAGNOSTIC_DEVICES.includes(source.device) ? source.device : "desktop";
+    const readOnly = typeof source.readOnly === "boolean" ? source.readOnly : null;
+    const limit = Math.min(24, normalizeAgentLimit(source.limit, 24));
+    const offset = Math.min(MAX_ITEMS * 2, Math.max(0, Number.parseInt(String(source.offset), 10) || 0));
+    const rawItems = Array.isArray(items) ? items : [];
+    const eligible = rawItems.slice(0, MAX_ITEMS * 2).map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const moduleId = asText(item.moduleId, 64);
+        const supportedDevices = HOME_DIAGNOSTIC_DEVICES.filter((value) => item.supportedDevices?.includes?.(value));
+        const itemReadOnly = item.readOnly !== false;
+        if (!/^[A-Za-z0-9._:-]{1,64}$/.test(moduleId)
+            || !supportedDevices.includes(device)
+            || (readOnly !== null && itemReadOnly !== readOnly)) return null;
+        return {
+            moduleId,
+            title: asText(item.title, 64) || moduleId,
+            description: asText(item.description, 256),
+            sizes: (Array.isArray(item.sizes) ? item.sizes : []).map((size) => asText(size, 32)).filter(Boolean).slice(0, 8),
+            supportedDevices,
+            readOnly: itemReadOnly,
+            source: item.category === "siyuan" ? "builtin" : "external",
+        };
+    }).filter(Boolean);
+    const widgets = eligible.slice(offset, offset + limit);
+    return {
+        widgets,
+        total: eligible.length,
+        offset,
+        truncated: rawItems.length > MAX_ITEMS * 2 || offset + widgets.length < eligible.length,
+    };
+}
+
 function normalizeAgentNotebook(value) {
     const notebook = asText(value, MAX_NOTEBOOK_LENGTH);
     return /^[A-Za-z0-9_-]{1,64}$/.test(notebook) ? notebook : "";
@@ -465,6 +499,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     pattern: "^[A-Za-z0-9._:-]{1,64}$",
                 },
                 limit: {type: "integer", minimum: 1, maximum: 24},
+                offset: {type: "integer", minimum: 0, maximum: MAX_ITEMS * 2},
                 config: {
                     type: "object",
                     maxProperties: 16,
@@ -476,6 +511,8 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                         ],
                     },
                 },
+                device: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
+                readOnly: {type: "boolean"},
             },
             additionalProperties: false,
         }),
@@ -521,13 +558,23 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                                         maxItems: 8,
                                         items: {type: "string", maxLength: 32},
                                     },
+                                    supportedDevices: {
+                                        type: "array",
+                                        maxItems: 3,
+                                        items: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
+                                    },
+                                    readOnly: {type: "boolean"},
+                                    source: {type: "string", enum: ["builtin", "external"]},
                                 },
-                                required: ["moduleId", "title", "description", "sizes"],
+                                required: ["moduleId", "title", "description", "sizes", "supportedDevices", "readOnly", "source"],
                                 additionalProperties: false,
                             },
                         },
+                        total: {type: "integer", minimum: 0, maximum: MAX_ITEMS * 2},
+                        offset: {type: "integer", minimum: 0, maximum: MAX_ITEMS * 2},
+                        truncated: {type: "boolean"},
                     },
-                    required: ["widgets"],
+                    required: ["widgets", "total", "offset", "truncated"],
                     additionalProperties: false,
                 },
             ],
@@ -882,6 +929,7 @@ module.exports = {
     normalizeAgentQuery,
     normalizeAgentFailureReason,
     buildAgentHomeDiagnostics,
+    buildAgentWidgetCatalog,
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,

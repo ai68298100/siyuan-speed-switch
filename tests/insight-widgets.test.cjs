@@ -25,6 +25,11 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.ok(relations, "document relations summary registered");
     assert.deepEqual(relations.sizes, ["small", "medium", "wide"]);
     assert.equal(relations.configSchema[0].max, 12);
+    const outline = byId.get("current-document-outline");
+    assert.ok(outline, "current document outline registered");
+    assert.deepEqual(outline.sizes, ["small", "medium", "tall", "wide"]);
+    assert.equal(outline.configSchema[0].max, 12);
+    assert.equal(outline.readOnly, true);
     const reservations = byId.get("today-reservations");
     assert.ok(reservations, "today reservations registered");
     assert.equal(reservations.configSchema[0].max, 14);
@@ -48,4 +53,13 @@ test("year progress percentage stays within bounds for leap and non-leap years",
     const mid = percentFor(2025, 5, 30);
     assert.ok(mid.percent > 40 && mid.percent < 60);
     assert.ok(mid.elapsed + mid.remaining === mid.total);
+});
+
+test("current document outline adapter reuses bounded outline data", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    assert.match(source, /register\("current-document-outline"/);
+    assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: false\}\)/);
+    assert.match(source, /flattenOutline\(Array\.isArray\(json\?\.data\) \? json\.data : \[\], limit\)/);
 });

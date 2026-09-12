@@ -47,6 +47,7 @@ import {
     normalizeAgentQuery,
     normalizeAgentFailureReason,
     buildAgentHomeDiagnostics,
+    buildAgentWidgetCatalog,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerReadOnlyAgentCapabilities,
@@ -3507,6 +3508,24 @@ const version = beginSearch(session);
             })).filter((item) => item.label && BLOCK_ID_RE.test(item.value)).slice(0, limit);
             return {stat: {value: String(items.length), label: this.i18n.homeStatRelations}, items};
         });
+        // 当前文档大纲：复用 Agent 大纲扁平化口径，仅读取活动文档且限制标题数量。
+        register("current-document-outline", this.i18n.homeCurrentDocumentOutline, "iconList", this.i18n.homeDescCurrentDocumentOutline, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const active = this.isMobile
+                ? this.getMobileTabs().find((tab) => tab.id === this.getMobileActiveTabId())
+                : this.getActiveTab();
+            const rootId = active ? this.rootIdOf(active) : "";
+            if (!rootId || !BLOCK_ID_RE.test(rootId)) return {items: []};
+            const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const json = await this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: false});
+            const headings = flattenOutline(Array.isArray(json?.data) ? json.data : [], limit);
+            return {
+                stat: {value: String(headings.length), label: this.i18n.homeStatOutlineHeadings},
+                items: headings.map((heading) => ({
+                    label: `${"· ".repeat(heading.depth)}${heading.title}`,
+                    value: heading.id,
+                })),
+            };
+        });
         // 近期预约：复用日记插件确认过的 attributes.custom-reservation 数据契约，只读查询。
         register("today-reservations", this.i18n.homeTodayReservations, "iconClock", this.i18n.homeDescTodayReservations, ["switch-protyle", "loaded-protyle"], async (config) => {
             const days = Math.min(14, Math.max(0, Math.trunc(Number(config.days) || 3)));
@@ -6272,22 +6291,23 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 spec: AGENT_CAPABILITY_SPECS.homeWidgets,
                 handler: async (args: Record<string, unknown>) => {
                     try {
-                        const device = this.isMobile ? "mobile" : "desktop";
+                        const currentDevice = this.isMobile ? "mobile" : "desktop";
+                        const requestedDevice = ["desktop", "sidebar", "mobile"].includes(String(args?.device || ""))
+                            ? String(args.device)
+                            : currentDevice;
+                        const device = requestedDevice as "desktop" | "sidebar" | "mobile";
                         const queryable = this.homeRuntime.listModules(device)
                             .filter((item: any) =>
                                 this.homeBuiltinAdapterIds.has(item.moduleId) || this.homeModuleOpens.has(item.moduleId));
                         // 发现模式：省略 moduleId 时返回全部可查询组件清单
                         const requested = String(args?.moduleId || "");
                         if (!requested) {
-                            const limit2 = normalizeAgentLimit(args?.limit, 24);
-                            const content = {
-                                widgets: queryable.slice(0, limit2).map((item: any) => ({
-                                    moduleId: item.moduleId,
-                                    title: item.title,
-                                    description: item.description || "",
-                                    sizes: item.sizes || [],
-                                })),
-                            };
+                            const content = buildAgentWidgetCatalog(queryable, {
+                                device,
+                                readOnly: typeof args?.readOnly === "boolean" ? args.readOnly : undefined,
+                                limit: args?.limit,
+                                offset: args?.offset,
+                            });
                             return {structuredContent: content, result: JSON.stringify(content)};
                         }
                         const limit = normalizeAgentLimit(args?.limit, 12);

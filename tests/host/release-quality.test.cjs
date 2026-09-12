@@ -54,7 +54,9 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-12 (6): recalibrated to 317 KiB for bounded home diagnostics.
     // 2026-09-12 (7): recalibrated to 319 KiB for diagnostic time windows and
     // bounded device/reason aggregates; package.zip remains below 300 KiB.
-    const budget = 319 * 1024;
+    // 2026-09-12 (8): consolidated to 321 KiB for device/read-only catalog
+    // filters and bounded pagination metadata.
+    const budget = 321 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

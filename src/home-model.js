@@ -49,6 +49,9 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "document-relations-summary", title: "文档关系摘要", icon: "iconGraph", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 6},
     ]},
+    {moduleId: "current-document-outline", title: "当前文档大纲", icon: "iconList", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall", "wide"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "标题上限", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
     {moduleId: "today-reservations", title: "近期预约", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "未来天数", type: "number", min: 0, max: 14, defaults: 3},
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},

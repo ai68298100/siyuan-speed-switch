@@ -20,6 +20,7 @@ const {
     buildAgentSearchResult,
     normalizeAgentFailureReason,
     buildAgentHomeDiagnostics,
+    buildAgentWidgetCatalog,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
@@ -60,6 +61,37 @@ test("agent home diagnostics normalize trusted fields and reject malformed entri
     assert.equal(result.summary.byType.timeout, 1);
     assert.deepEqual(result.summary.byDevice, {desktop: 1, sidebar: 1, mobile: 1});
     assert.deepEqual(buildAgentHomeDiagnostics(null, 16, 60, now).diagnostics, []);
+});
+
+test("agent widget catalog filters device and read-only metadata within schema limits", () => {
+    const widgets = buildAgentWidgetCatalog([
+        {moduleId: "desktop-only", title: "Desktop", supportedDevices: ["desktop"], readOnly: true, sizes: ["small"]},
+        {moduleId: "mobile-read", title: "Mobile", category: "plugin", supportedDevices: ["mobile", "unknown"], readOnly: true, sizes: ["small", "x".repeat(40)]},
+        {moduleId: "mobile-write", title: "Write", supportedDevices: ["mobile"], readOnly: false},
+        {moduleId: "bad module", title: "Bad", supportedDevices: ["mobile"], readOnly: true},
+    ], {device: "mobile", readOnly: true, limit: 99});
+    assert.deepEqual(widgets, {
+        widgets: [{
+            moduleId: "mobile-read",
+            title: "Mobile",
+            description: "",
+            sizes: ["small", "x".repeat(32)],
+            supportedDevices: ["mobile"],
+            readOnly: true,
+            source: "external",
+        }],
+        total: 1,
+        offset: 0,
+        truncated: false,
+    });
+    const many = buildAgentWidgetCatalog(Array.from({length: 40}, (_, index) => ({
+        moduleId: `widget-${index}`,
+        supportedDevices: ["desktop"],
+    })), {device: "desktop", limit: 24, offset: 8});
+    assert.equal(many.widgets.length, 24);
+    assert.equal(many.total, 40);
+    assert.equal(many.offset, 8);
+    assert.equal(many.truncated, true);
 });
 
 const ROOT = "20260906120000-aaaaaaa";
@@ -123,7 +155,13 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
             title: "今日待办",
             description: "今天需要完成的任务",
             sizes: ["small", "medium"],
+            supportedDevices: ["desktop", "sidebar", "mobile"],
+            readOnly: true,
+            source: "builtin",
         }],
+        total: 1,
+        offset: 0,
+        truncated: false,
     }), true, JSON.stringify(validateWidgets.errors));
     assert.equal(validateNavigation({...navigation, unexpected: true}), false);
     assert.equal(validateSearch({...search, items: [{rootId: "invalid"}]}), false);
@@ -304,6 +342,60 @@ test("every agent capability spec is registered in the plugin entry", () => {
     const missing = Object.keys(AGENT_CAPABILITY_SPECS)
         .filter((key) => !source.includes(`AGENT_CAPABILITY_SPECS.${key}`));
     assert.deepEqual(missing, [], "unregistered capability specs: " + missing.join(", "));
+});
+
+test("agent capability contract matrix partitions read and action effects", () => {
+    const readOnly = ["outline", "navigation", "search", "homeWidgets", "workspaceContext", "homeDiagnostics"];
+    const actions = {
+        openDocument: {},
+        openDocuments: {...READ_ONLY_EFFECTS},
+        updateTask: {...READ_ONLY_EFFECTS, localWrite: true},
+        createDocument: {...READ_ONLY_EFFECTS, localWrite: true},
+        appendToJournal: {...READ_ONLY_EFFECTS, localWrite: true},
+    };
+    assert.deepEqual(new Set([...readOnly, ...Object.keys(actions)]), new Set(Object.keys(AGENT_CAPABILITY_SPECS)));
+    assert.equal(new Set(Object.values(AGENT_CAPABILITY_SPECS).map((spec) => spec.name)).size, 11);
+
+    const host = {registered: [], addAgentCapability(options) { this.registered.push(options); return options.name; }};
+    registerReadOnlyAgentCapabilities(host, readOnly.map((key) => ({
+        spec: AGENT_CAPABILITY_SPECS[key],
+        handler: async () => ({}),
+    })));
+    Object.entries(actions).forEach(([key, effects]) => registerAgentActionCapability(host, {
+        spec: AGENT_CAPABILITY_SPECS[key],
+        effects,
+        handler: async () => ({}),
+    }));
+    assert.equal(host.registered.length, 11);
+    host.registered.forEach((entry) => {
+        const key = Object.keys(AGENT_CAPABILITY_SPECS).find((candidate) => AGENT_CAPABILITY_SPECS[candidate].name === entry.name);
+        assert.deepEqual(entry.effects, readOnly.includes(key) ? READ_ONLY_EFFECTS : actions[key], entry.name);
+        assert.equal(typeof entry.handler, "function", entry.name);
+    });
+});
+
+test("agent capability schemas keep collection and text outputs bounded", () => {
+    const visit = (schema, path, seen = new Set()) => {
+        if (!schema || typeof schema !== "object" || seen.has(schema)) return;
+        seen.add(schema);
+        if (schema.type === "array") assert.equal(Number.isInteger(schema.maxItems), true, `${path} array is unbounded`);
+        if (schema.type === "string" && !Array.isArray(schema.enum)) {
+            assert.equal(Number.isInteger(schema.maxLength), true, `${path} string is unbounded`);
+        }
+        Object.entries(schema.properties || {}).forEach(([key, value]) => visit(value, `${path}.${key}`, seen));
+        if (schema.items) visit(schema.items, `${path}[]`, seen);
+        (schema.anyOf || []).forEach((value, index) => {
+            // anyOf branches used only to select required identity fields reuse
+            // the bounded property declaration from their parent object.
+            if (!value.type && value.required) return;
+            visit(value, `${path}.anyOf[${index}]`, seen);
+        });
+    };
+    Object.entries(AGENT_CAPABILITY_SPECS).forEach(([key, spec]) => {
+        assert.equal(spec.inputSchema.additionalProperties, false, `${key} input accepts unknown fields`);
+        visit(spec.inputSchema, `${key}.input`);
+        visit(spec.outputSchema, `${key}.output`);
+    });
 });
 test("open-documents spec bounds batch to five and ids normalize bounded", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.openDocuments.name, "open-documents");

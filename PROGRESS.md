@@ -15,13 +15,13 @@
 - Agent 标题搜索复用兼容提取器，支持 `data.files`、`data.documents`、`result.records` 等旧宿主包装，避免合法标题结果被误判为空。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
-验证基线：T-031~T-035 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、535/535、移动烟测和 Chromium 样式烟测；`index.js` 约 318 KiB，`package.zip` 约 291 KiB。
+验证基线：T-036~T-040 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、539/539、移动烟测和 Chromium 样式烟测；`index.js` 约 320 KiB，`package.zip` 约 292 KiB。
 
 待处理：
 
 1. T-022：Android 真机回归（需要用户设备与空闲时间）。
-2. T-036：建立 11 项 Agent 能力的一致性矩阵。
-3. T-037：为 Agent 组件目录增加设备与只读筛选。
+2. T-041：为近期写作活跃度增加可选笔记本范围。
+3. T-042：为近期日记增加可选笔记本范围。
 4. 用户明确确认后，才执行 push、打 tag、创建 Release 等正式发版动作。
 
 关键经验：SiYuan 3.8.x 查询参数使用 `stmt`；`getTag/getBookmark` 返回裸数组；全文搜索空 `types` 表示不搜索任何类型；前端 Agent 能力只能经宿主内部 AI 通道分发；真实宿主验收不可由 mock 或浏览器模拟替代。
@@ -32,3 +32,5 @@
 2026-09-12 T-030 完成：新增 `home-adapter-diagnostics` 只读 Agent 能力，复用现有有界诊断环，返回最多 32 条安全摘要；533 项自动测试通过，正在复跑完整发布门禁。
 2026-09-12 T-031~T-033 完成：搜索响应提取器支持已知字段的两层嵌套包装，并加入循环对象、未知字段和深度上限回归；Agent 诊断输出统一经纯函数与 JSON Schema 约束；Agent 搜索截止时间不再依赖 `AbortController`，超时与取消可区分。TypeScript 与专项测试通过；生产 bundle 经等价压缩保持 317 KiB 原预算。
 2026-09-12 T-034~T-035 完成：`home-adapter-diagnostics` 新增 1–1440 分钟时间窗口及按原因/设备聚合，输出仍基于最多 32 条安全记录；搜索宿主包装回归改为数据驱动矩阵并固定首个非空数组优先级。新增汇总使 raw bundle 自律线调整为 319 KiB，package.zip 仍为约 291 KiB。
+2026-09-12 T-036~T-038 完成：新增 11 项 Agent 能力的 effects/注册/schema 一致性矩阵；`home-widget-snapshot` 目录支持按设备与只读属性筛选，输出声明支持端和只读状态，并以 24 条单页、64 条扫描上限提供 offset/total/truncated。raw bundle 自律线合并调整为 321 KiB，压缩包继续守住 300 KiB。
+2026-09-12 T-039~T-040 完成：内置组件增至 25 个，新增当前活动文档大纲（原生 outline 端点、共享扁平化、最多 12 个标题、三端点击定位）；Agent 组件目录新增 `builtin/external` 安全来源字段，不暴露 adapter 执行函数或第三方私有数据。
