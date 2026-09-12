@@ -61,7 +61,9 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-12 (11): 325 KiB for bounded Agent widget config discovery and input normalization.
     // 2026-09-12 (12): 326 KiB for bounded widget stats, cache/device and pagination metadata.
     // 2026-09-12 (13): 327 KiB for effective config echo, retry and explicit refresh semantics.
-    const budget = 327 * 1024;
+    // 2026-09-12 (14): 328 KiB for the snapshot-contract hardening round (final
+    // working-tree increment; gzip package still far below the zip ceiling).
+    const budget = 328 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
