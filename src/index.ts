@@ -54,6 +54,7 @@ import {
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
     normalizeAgentNotebookId,
+    buildNotebookBoxScope,
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {
@@ -3325,13 +3326,14 @@ const version = beginSearch(session);
             ]};
         });
         // 笔记统计：全库文档数 / 字数估算 / 本周新建 / 本周改动（只读 SQL，聚合查询）
-        register("note-stats", this.i18n.homeNoteStats, "iconChart", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async () => {
+        register("note-stats", this.i18n.homeNoteStats, "iconChart", this.i18n.homeDescNoteStats, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const weekStart = this.taskWindowStart(6);
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const [docsJson, charsJson, createdJson, updatedJson] = await Promise.all([
-                this.fetchKernelJson("/api/query/sql", {stmt: "SELECT COUNT(*) AS n FROM blocks WHERE type='d'"}),
-                this.fetchKernelJson("/api/query/sql", {stmt: "SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE type<>'d'"}),
-                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND created >= '${weekStart}'`}),
-                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND updated >= '${weekStart}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d'${notebookScope}`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE type<>'d'${notebookScope}`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d'${notebookScope} AND created >= '${weekStart}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d'${notebookScope} AND updated >= '${weekStart}'`}),
             ]);
             const countOf = (json: any) => Number((json?.data || [])[0]?.n) || 0;
             const docs = countOf(docsJson);
@@ -3368,9 +3370,11 @@ const version = beginSearch(session);
             };
         });
         // 近期编辑：全库最近修改的文档列表，点击直达
-        register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async () => {
+        register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: "SELECT id, content FROM blocks WHERE type='d' ORDER BY updated DESC LIMIT 10",
+                stmt: `SELECT id, content FROM blocks WHERE type='d'${notebookScope} ORDER BY updated DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{id: string; content: string}>;
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
@@ -3408,8 +3412,9 @@ const version = beginSearch(session);
         register("random-review", this.i18n.homeRandomReview, "iconDice", this.i18n.homeDescRandomReview, [], (config) => {
             const days = Math.min(3650, Math.max(7, Math.trunc(Number(config.days) || 90)));
             const cutoff = this.taskWindowStart(days);
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             return this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, content FROM blocks WHERE type='d' AND updated < '${cutoff}' ORDER BY random() LIMIT 3`,
+                stmt: `SELECT id, content FROM blocks WHERE type='d'${notebookScope} AND updated < '${cutoff}' ORDER BY random() LIMIT 3`,
             }).then((json) => {
                 const rows = (json?.data || []) as Array<{id: string; content: string}>;
                 return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
@@ -3441,13 +3446,14 @@ const version = beginSearch(session);
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
         });
         // 今日写作：今天的写作活跃度（屏幕使用时间风格）
-        register("today-writing", this.i18n.homeTodayWriting, "iconEdit", this.i18n.homeDescTodayWriting, ["loaded-protyle", "destroy-protyle"], async () => {
+        register("today-writing", this.i18n.homeTodayWriting, "iconEdit", this.i18n.homeDescTodayWriting, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const now = new Date();
             const start = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}000000`;
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const [charsJson, createdJson, updatedJson] = await Promise.all([
-                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE created >= '${start}'`}),
-                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND created >= '${start}'`}),
-                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d' AND updated >= '${start}' AND created < '${start}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COALESCE(SUM(length), 0) AS n FROM blocks WHERE created >= '${start}'${notebookScope}`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d'${notebookScope} AND created >= '${start}'`}),
+                this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(*) AS n FROM blocks WHERE type='d'${notebookScope} AND updated >= '${start}' AND created < '${start}'`}),
             ]);
             const countOf = (json: any) => Number((json?.data || [])[0]?.n) || 0;
             const chars = countOf(charsJson);
@@ -3463,9 +3469,10 @@ const version = beginSearch(session);
         // 近期写作活跃度：按天聚合“创建的内容块”数量（不是文档数），只读且限制窗口。
         register("recent-writing-activity", this.i18n.homeRecentWritingActivity, "iconChart", this.i18n.homeDescRecentWritingActivity, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const days = Math.min(30, Math.max(7, Math.trunc(Number(config.days) || 7)));
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const since = this.taskWindowStart(days - 1);
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT substr(created, 1, 8) AS day, COUNT(*) AS n FROM blocks WHERE created >= '${since}' GROUP BY substr(created, 1, 8) ORDER BY day DESC LIMIT ${days}`,
+                stmt: `SELECT substr(created, 1, 8) AS day, COUNT(*) AS n FROM blocks WHERE created >= '${since}'${notebookScope} GROUP BY substr(created, 1, 8) ORDER BY day DESC LIMIT ${days}`,
             });
             const rows = (json?.data || []) as Array<{day?: string; n?: number}>;
             const items = rows.map((row) => {
@@ -3480,11 +3487,12 @@ const version = beginSearch(session);
         register("recent-daily-notes", this.i18n.homeRecentDailyNotes, "iconCalendar", this.i18n.homeDescRecentDailyNotes, ["switch-protyle", "loaded-protyle"], async (config) => {
             const days = Math.min(60, Math.max(7, Math.trunc(Number(config.days) || 14)));
             const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const now = new Date();
             const cutoff = new Date(now.getTime() - (days - 1) * 86400000);
             const from = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, root_id, content FROM blocks WHERE type='d' AND content GLOB '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' AND content >= '${from}' ORDER BY content DESC LIMIT ${limit}`,
+                stmt: `SELECT id, root_id, content FROM blocks WHERE type='d'${notebookScope} AND content GLOB '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' AND content >= '${from}' ORDER BY content DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{id?: string; root_id?: string; content?: string}>;
             return {items: rows.map((row) => ({label: String(row.content || "").slice(0, 64), value: String(row.root_id || row.id || "")})).filter((item) => item.label && BLOCK_ID_RE.test(item.value))};
@@ -6305,6 +6313,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             const content = buildAgentWidgetCatalog(queryable, {
                                 device,
                                 readOnly: typeof args?.readOnly === "boolean" ? args.readOnly : undefined,
+                                source: args?.source,
                                 limit: args?.limit,
                                 offset: args?.offset,
                             });

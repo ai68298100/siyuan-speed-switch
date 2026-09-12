@@ -98,27 +98,34 @@ function buildAgentWidgetCatalog(items, options = {}) {
     const source = options && typeof options === "object" ? options : {};
     const device = HOME_DIAGNOSTIC_DEVICES.includes(source.device) ? source.device : "desktop";
     const readOnly = typeof source.readOnly === "boolean" ? source.readOnly : null;
+    const requestedSource = ["builtin", "external"].includes(source.source) ? source.source : null;
     const limit = Math.min(24, normalizeAgentLimit(source.limit, 24));
-    const offset = Math.min(MAX_ITEMS * 2, Math.max(0, Number.parseInt(String(source.offset), 10) || 0));
+    const requestedOffset = Math.min(MAX_ITEMS * 2, Math.max(0, Number.parseInt(String(source.offset), 10) || 0));
     const rawItems = Array.isArray(items) ? items : [];
-    const eligible = rawItems.slice(0, MAX_ITEMS * 2).map((item) => {
-        if (!item || typeof item !== "object") return null;
+    const eligible = [];
+    const seen = new Set();
+    rawItems.slice(0, MAX_ITEMS * 2).forEach((item) => {
+        if (!item || typeof item !== "object") return;
         const moduleId = asText(item.moduleId, 64);
+        if (!/^[A-Za-z0-9._:-]{1,64}$/.test(moduleId) || seen.has(moduleId)) return;
+        seen.add(moduleId);
         const supportedDevices = HOME_DIAGNOSTIC_DEVICES.filter((value) => item.supportedDevices?.includes?.(value));
         const itemReadOnly = item.readOnly !== false;
-        if (!/^[A-Za-z0-9._:-]{1,64}$/.test(moduleId)
-            || !supportedDevices.includes(device)
-            || (readOnly !== null && itemReadOnly !== readOnly)) return null;
-        return {
+        const itemSource = item.category === "siyuan" ? "builtin" : "external";
+        if (!supportedDevices.includes(device)
+            || (readOnly !== null && itemReadOnly !== readOnly)
+            || (requestedSource !== null && itemSource !== requestedSource)) return;
+        eligible.push({
             moduleId,
             title: asText(item.title, 64) || moduleId,
             description: asText(item.description, 256),
             sizes: (Array.isArray(item.sizes) ? item.sizes : []).map((size) => asText(size, 32)).filter(Boolean).slice(0, 8),
             supportedDevices,
             readOnly: itemReadOnly,
-            source: item.category === "siyuan" ? "builtin" : "external",
-        };
-    }).filter(Boolean);
+            source: itemSource,
+        });
+    });
+    const offset = Math.min(requestedOffset, eligible.length);
     const widgets = eligible.slice(offset, offset + limit);
     return {
         widgets,
@@ -513,6 +520,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                 },
                 device: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
                 readOnly: {type: "boolean"},
+                source: {type: "string", enum: ["builtin", "external"]},
             },
             additionalProperties: false,
         }),
@@ -878,6 +886,11 @@ function normalizeAgentNotebookId(value) {
     return /^\d{14}-[0-9a-z]+$/i.test(id) ? id : "";
 }
 
+function buildNotebookBoxScope(value) {
+    const notebook = normalizeAgentNotebookId(value);
+    return notebook ? ` AND box='${notebook}'` : "";
+}
+
 
 // 批量文档 ID 清洗：仅保留合法 ID、去重保序、上限 5 篇；非法输入整体降级为空数组
 function normalizeAgentDocumentIds(value, limit = 5) {
@@ -939,6 +952,7 @@ module.exports = {
     normalizeAgentSearchSubType,
     normalizeAgentRootId,
     normalizeAgentNotebookId,
+    buildNotebookBoxScope,
     sanitizeJournalAppend,
     flipTaskMarkdown,
     flattenOutline,

@@ -23,14 +23,20 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "tags", title: "标签", icon: "iconTags", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"]},
     {moduleId: "bookmarks", title: "书签", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"]},
     {moduleId: "journal-monthly", title: "本月日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
-    {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, configSchema: []},
+    {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
     {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"]},
-    {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
+    {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
     {moduleId: "flashcard-due", title: "闪卡待复习", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
     {moduleId: "random-review", title: "随机回顾", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
         {key: "days", label: "多久未看（天）", type: "number", min: 7, max: 3650, defaults: 90},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
     {moduleId: "quick-capture", title: "快速记录", icon: "iconAdd", category: "siyuan", supportedDevices: DEVICES, readOnly: false, sizes: ["xs", "small", "medium"]},
     {moduleId: "clipped-unread", title: "剪藏待读", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
@@ -38,13 +44,17 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
     ]},
     {moduleId: "on-this-day", title: "往年今日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"]},
-    {moduleId: "today-writing", title: "今日写作", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
-    {moduleId: "recent-writing-activity", title: "近期开��活跃度", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+    {moduleId: "today-writing", title: "今日写作", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
+    {moduleId: "recent-writing-activity", title: "近期写作活跃度", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "统计天数", type: "number", min: 7, max: 30, defaults: 7},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
     {moduleId: "recent-daily-notes", title: "近期日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "回看天数", type: "number", min: 7, max: 60, defaults: 14},
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
     {moduleId: "document-relations-summary", title: "文档关系摘要", icon: "iconGraph", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 6},

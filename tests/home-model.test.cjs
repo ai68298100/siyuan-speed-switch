@@ -27,7 +27,10 @@ test("random-review module clamps stale-days window", () => {
     const random = modules.find((item) => item.moduleId === "random-review");
     assert.ok(random, "random-review module registered");
     assert.equal(random.readOnly, true);
-    assert.deepEqual(random.configSchema, [{key: "days", label: "多久未看（天）", type: "number", min: 7, max: 3650, defaults: 90}]);
+    assert.deepEqual(random.configSchema, [
+        {key: "days", label: "多久未看（天）", type: "number", min: 7, max: 3650, defaults: 90},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]);
 });
 
 test("home model normalizes layout and rejects invalid instances", () => {

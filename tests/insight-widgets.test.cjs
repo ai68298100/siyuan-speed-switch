@@ -8,18 +8,29 @@ test("insight-style widgets are registered with bounded sizes", () => {
     const noteStats = byId.get("note-stats");
     assert.ok(noteStats, "note-stats registered");
     assert.deepEqual(noteStats.sizes, ["small", "medium"]);
+    assert.deepEqual(noteStats.configSchema, [{key: "notebook", label: "限定笔记本", type: "notebook"}]);
     const yearProgress = byId.get("year-progress");
     assert.ok(yearProgress, "year-progress registered");
     assert.deepEqual(yearProgress.sizes, ["xs", "small"]);
     const recentEdits = byId.get("recent-edits");
     assert.ok(recentEdits, "recent-edits registered");
     assert.deepEqual(recentEdits.sizes, ["medium", "wide", "large"]);
+    assert.deepEqual(recentEdits.configSchema, [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]);
+    const todayWriting = byId.get("today-writing");
+    assert.deepEqual(todayWriting.configSchema, [{key: "notebook", label: "限定笔记本", type: "notebook"}]);
     const writing = byId.get("recent-writing-activity");
     assert.ok(writing, "recent writing activity registered");
-    assert.deepEqual(writing.configSchema, [{key: "days", label: "统计天数", type: "number", min: 7, max: 30, defaults: 7}]);
+    assert.deepEqual(writing.configSchema, [
+        {key: "days", label: "统计天数", type: "number", min: 7, max: 30, defaults: 7},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]);
     const daily = byId.get("recent-daily-notes");
     assert.ok(daily, "recent daily notes registered");
-    assert.equal(daily.configSchema.length, 2);
+    assert.equal(daily.configSchema.length, 3);
+    assert.deepEqual(daily.configSchema[2], {key: "notebook", label: "限定笔记本", type: "notebook"});
     assert.equal(daily.readOnly, true);
     const relations = byId.get("document-relations-summary");
     assert.ok(relations, "document relations summary registered");
@@ -62,4 +73,41 @@ test("current document outline adapter reuses bounded outline data", () => {
     assert.match(source, /register\("current-document-outline"/);
     assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: false\}\)/);
     assert.match(source, /flattenOutline\(Array\.isArray\(json\?\.data\) \? json\.data : \[\], limit\)/);
+});
+
+test("writing activity and daily-note adapters validate optional notebook SQL scope", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const writing = source.slice(
+        source.indexOf('register("recent-writing-activity"'),
+        source.indexOf('register("recent-daily-notes"'),
+    );
+    const daily = source.slice(
+        source.indexOf('register("recent-daily-notes"'),
+        source.indexOf('register("document-relations-summary"'),
+    );
+    for (const adapter of [writing, daily]) {
+        assert.match(adapter, /buildNotebookBoxScope\(config\.notebook\)/);
+    }
+    assert.match(writing, /created >= '\$\{since\}'\$\{notebookScope\}/);
+    assert.match(daily, /type='d'\$\{notebookScope\}/);
+});
+
+test("insight adapters share validated notebook scope without changing default queries", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const slice = (start, end) => source.slice(source.indexOf(`register("${start}"`), source.indexOf(`register("${end}"`));
+    const adapters = [
+        slice("note-stats", "year-progress"),
+        slice("recent-edits", "flashcard-due"),
+        slice("random-review", "clipped-unread"),
+        slice("today-writing", "recent-writing-activity"),
+    ];
+    adapters.forEach((adapter) => {
+        assert.match(adapter, /buildNotebookBoxScope\(config\.notebook\)/);
+        assert.match(adapter, /\$\{notebookScope\}/);
+    });
+    assert.match(adapters[1], /Math\.min\(20, Math\.max\(1, Math\.trunc\(Number\(config\.limit\) \|\| 10\)\)\)/);
 });

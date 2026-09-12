@@ -24,6 +24,7 @@ const {
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
+    buildNotebookBoxScope,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerAgentActionCapability,
@@ -92,6 +93,36 @@ test("agent widget catalog filters device and read-only metadata within schema l
     assert.equal(many.total, 40);
     assert.equal(many.offset, 8);
     assert.equal(many.truncated, true);
+});
+
+test("agent widget catalog filters source and keeps the first normalized module id", () => {
+    const widgets = buildAgentWidgetCatalog([
+        {moduleId: "same", title: "First", category: "siyuan", supportedDevices: ["desktop"]},
+        {moduleId: "same", title: "Duplicate", category: "plugin", supportedDevices: ["desktop"]},
+        {moduleId: "external-one", title: "External", category: "plugin", supportedDevices: ["desktop"]},
+        {moduleId: "builtin-one", title: "Builtin", category: "siyuan", supportedDevices: ["desktop"]},
+    ], {device: "desktop", source: "external"});
+    assert.deepEqual(widgets.widgets.map((item) => item.moduleId), ["external-one"]);
+    assert.equal(widgets.total, 1);
+    assert.equal(widgets.truncated, false);
+
+    const all = buildAgentWidgetCatalog([
+        {moduleId: "same", title: "First", category: "siyuan", supportedDevices: ["desktop"]},
+        {moduleId: "same", title: "Duplicate", category: "plugin", supportedDevices: ["desktop"]},
+    ], {device: "desktop"});
+    assert.equal(all.widgets.length, 1);
+    assert.equal(all.widgets[0].title, "First");
+
+    const beyond = buildAgentWidgetCatalog([
+        {moduleId: "only", supportedDevices: ["desktop"]},
+    ], {device: "desktop", offset: 64});
+    assert.deepEqual(beyond, {widgets: [], total: 1, offset: 1, truncated: false});
+});
+
+test("notebook SQL scope accepts only a normalized SiYuan id", () => {
+    assert.equal(buildNotebookBoxScope("20260912083000-abcdefg"), " AND box='20260912083000-abcdefg'");
+    assert.equal(buildNotebookBoxScope("bad' OR 1=1 --"), "");
+    assert.equal(buildNotebookBoxScope(null), "");
 });
 
 const ROOT = "20260906120000-aaaaaaa";
@@ -292,6 +323,7 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.required, undefined);
     assert.match(AGENT_CAPABILITY_SPECS.homeWidgets.description, /省略 moduleId/);
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.config.maxProperties, 16);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.source.enum, ["builtin", "external"]);
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema.anyOf.length, 2);
     assert.equal(AGENT_CAPABILITY_SPECS.openDocument.name, "open-document");
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
