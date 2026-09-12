@@ -17,4 +17,5 @@ T-021 补充：已实证思源 AI Agent 已配置（deepseek 模型 + capability
 验证基线：tsc 0 错误、529/529 测试、verify:release 全绿、最终构建已部署本机
 上下文将满（本轮终态）：工作树保留 src/index.ts 字面量 URL 分发重构（529/529 绿）+ B-003 文档，提交被 Mimosa L3 剩余 17 高危拦截（applySearch×6/runDocSearchFetch/runOpenedDocumentContentSearch×2/flipTaskMarkdown×2 污点启发式，均误报）。续跑优先级：①拆解剩余命中（先读 index.ts:2275/2621/5485 找启发式模式）②或请用户调整 Mimosa 策略③之后正常提交并发版。
 B-003 已解决：真根因是扫描器把 .exec( 字样当 shell 命令执行——全部改为等价 .match() 后高危清零，commit 恢复。载荷钳制保留（真实加固）。
+T-021 已真机验证：workspace-context 全链路成功（模型→frontend 工具→插件能力→内核→结构化回复）；点击落点事故已修复零残留（教训：动态 UI 点击前必须重新截图定位）。open-documents 确认弹窗未测（有单测覆盖，低风险）。
 关键经验：①stmt 非 query；②getTag/getBookmark data 为数组；③fullTextSearchBlock 空 types=无类型；④单测 mock 掩盖协议差异——真机验收不可豁免；⑤强杀思源损坏全文索引；⑥3.8.2 已有 addAgentCapability；⑦前端能力无外部 RPC 通道，AI 分发仅走宿主内部
