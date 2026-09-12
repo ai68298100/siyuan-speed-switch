@@ -25,6 +25,7 @@
 3. 继续保持自动门禁与 300 KiB 压缩包硬上限。
 4. 用户明确确认后，才执行 push、打 tag、创建 Release 等正式发版动作。
 
+接手并行会话（2026-09-12 晚）：18 commit（智能体快照/封闭历史/发现扩展/诊断加固/3 新组件等）+ 未提交的 D-040 搜索分页功能已代为提交（5073a9c/92279f4），548/548 测试全绿、预算校准 328KiB。远端同步与 v0.16.39 发布待用户指令。
 关键经验：SiYuan 3.8.x 查询参数使用 `stmt`；`getTag/getBookmark` 返回裸数组；全文搜索空 `types` 表示不搜索任何类型；前端 Agent 能力只能经宿主内部 AI 通道分发；真实宿主验收不可由 mock 或浏览器模拟替代。
 2026-09-12 续接开发：完成 10 个第三方插件的静态调研并记录于 `docs/plugin-research.md`；新增 `recent-writing-activity`（按日创建内容块统计）与 `recent-daily-notes`（只读近期已存在日记）两个内置组件，支持三端、配置边界、缓存/超时/取消协议。更新双语 i18n 与 home model，自动测试 532/532 通过，`pnpm verify:release` 全绿。下一步：轻量文档关系摘要与预约块格式调研，Android 真机回归仍等待用户设备。
 2026-09-12 后续推进：环境核验确认 Node/pnpm/TypeScript/Webpack/GitHub CLI/自动测试可用，`adb` 与 Java 不可用，Android 真机回归继续保持独立阻塞。新增 `document-relations-summary` 内置只读组件：按当前活动文档查询直接子块与有限引用，不引入关系图引擎；测试与构建门禁继续保持绿色。下一步为预约块格式调研及 Agent 取消/超时边界回归。
