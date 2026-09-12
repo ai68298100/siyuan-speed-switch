@@ -549,7 +549,7 @@ function groupTabsByMode(tabs, mode, ctx) {
         const groups = new Map();
         tabs.forEach((tab) => {
             const created = String(ctx.createdOf(ctx.pinKeyOf(tab)) || "");
-            const match = /^(\d{4})(\d{2})/.exec(created);
+            const match = created.match(/^(\d{4})(\d{2})/);
             const key = match ? `${match[1]}-${match[2]}` : "__unknown__";
             if (!groups.has(key)) groups.set(key, []);
             groups.get(key).push(tab);

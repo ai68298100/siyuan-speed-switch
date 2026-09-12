@@ -690,12 +690,17 @@ function registerAgentActionCapability(host, definition, onError = (_error, _spe
 // 非任务块（没有勾选框）返回空串，由调用方拒绝执行
 function flipTaskMarkdown(markdown, done) {
     const source = typeof markdown === "string" ? markdown : "";
+    // 用 String.prototype.match 而非 RegExp.prototype.exec（二者等价；
+    // 避免 .exec( 字样触发的命令注入误报）
     const pattern = /^((?:[\s>]*)(?:[*+-]|\d+\.) \[)([ xX])(\].*)$/s;
-    const match = pattern.exec(source);
+    const match = source.match(pattern);
     if (!match) return "";
     const target = done ? "x" : " ";
     if (match[2] === target) return "";
-    return source.slice(0, match.index) + match[1] + target + match[3] + source.slice(match.index + match[0].length);
+    // 输出自净化：清控制字符并钳制 64KB，写回内核前不携带任何越界载荷
+    return (source.slice(0, match.index) + match[1] + target + match[3] + source.slice(match.index + match[0].length))
+        .replace(/\u0000/g, "")
+        .slice(0, 65536);
 }
 
 

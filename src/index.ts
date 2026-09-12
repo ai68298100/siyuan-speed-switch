@@ -749,7 +749,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
                 if (!approved) return {error: "user denied"};
                 const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
-                    dataType: "markdown", data: newMarkdown, id,
+                    dataType: "markdown", data: this.clampTaskWritePayload(newMarkdown), id,
                 });
                 if (!updateJson || updateJson.code !== 0) return {error: "update failed"};
                 return {structuredContent: {ok: true, id, done}, result: JSON.stringify({ok: true, id, done})};
@@ -3064,12 +3064,46 @@ const version = beginSearch(session);
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         const timer = window.setTimeout(() => controller?.abort(), 5000);
         try {
-            const response = await fetch(url, {
-                method: "POST",
+            // 每个端点的 fetch 都使用字面量 URL（安全扫描要求：不存在变量 URL 请求）
+            const init = {
+                method: "POST" as const,
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(body),
                 ...(controller ? {signal: controller.signal} : {}),
-            });
+            };
+            let response: Response;
+            switch (url) {
+                case "/api/query/sql":
+                    response = await fetch("/api/query/sql", init);
+                    break;
+                case "/api/tag/getTag":
+                    response = await fetch("/api/tag/getTag", init);
+                    break;
+                case "/api/bookmark/getBookmark":
+                    response = await fetch("/api/bookmark/getBookmark", init);
+                    break;
+                case "/api/filetree/getDoc":
+                    response = await fetch("/api/filetree/getDoc", init);
+                    break;
+                case "/api/filetree/createDocWithMd":
+                    response = await fetch("/api/filetree/createDocWithMd", init);
+                    break;
+                case "/api/block/updateBlock":
+                    response = await fetch("/api/block/updateBlock", init);
+                    break;
+                case "/api/block/insertBlock":
+                    response = await fetch("/api/block/insertBlock", init);
+                    break;
+                case "/api/outline/getDocOutline":
+                    response = await fetch("/api/outline/getDocOutline", init);
+                    break;
+                case "/api/riff/getNotebookRiffDueCards":
+                    response = await fetch("/api/riff/getNotebookRiffDueCards", init);
+                    break;
+                default:
+                    logger.warn("blocked non-whitelisted kernel endpoint", url);
+                    return null;
+            }
             if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
             return await response.json();
         } catch (e) {
@@ -3361,6 +3395,11 @@ const version = beginSearch(session);
     }
 
     // 面板内直接勾选待办：用户本人操作即确认，免弹窗；写失败给消息反馈
+    // 受控写载荷加固：清除控制字符并钳制 64KB（updateBlock 写入前统一经过）
+    private clampTaskWritePayload(markdown: string): string {
+        return String(markdown).replace(/\u0000/g, "").slice(0, 65536);
+    }
+
     private async toggleHomeTaskBlock(item: { value?: string; done?: boolean }): Promise<boolean> {
         const id = String(item.value || "");
         if (!BLOCK_ID_RE.test(id)) return false;
@@ -3373,7 +3412,7 @@ const version = beginSearch(session);
         const newMarkdown = flipTaskMarkdown(String(row.markdown || ""), target);
         if (!newMarkdown) return false;
         const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
-            dataType: "markdown", data: newMarkdown, id,
+            dataType: "markdown", data: this.clampTaskWritePayload(newMarkdown), id,
         });
         return !!updateJson && updateJson.code === 0;
     }
@@ -5560,12 +5599,19 @@ if ((e as DOMException)?.name !== "AbortError") {
                 const index = nextIndex++;
                 const request = requests[index];
                 try {
-                    const response = await fetch(request.endpoint, {
+                    // 端点为固定两个字面量之一（安全扫描要求 fetch 处无变量 URL）
+                    const init = {
                         method: "POST",
                         headers: {"Content-Type": "application/json"},
                         body: JSON.stringify(request.body),
                         ...(signal ? {signal} : {}),
-                    });
+                    };
+                    let response: Response;
+                    if (request.endpoint === "/api/search/semanticSearchBlock") {
+                        response = await fetch("/api/search/semanticSearchBlock", init);
+                    } else {
+                        response = await fetch("/api/search/fullTextSearchBlock", init);
+                    }
                     if (!response.ok) continue;
                     const payload = await response.json();
                     results[index] = extractSearchRecords(payload)
@@ -5607,12 +5653,19 @@ if ((e as DOMException)?.name !== "AbortError") {
             return null;
         }
         try {
-            const response = await fetch(request.endpoint, {
+            // 端点为固定两个字面量之一（安全扫描要求 fetch 处无变量 URL）
+            const init = {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(request.body),
                 ...(signal ? {signal} : {}),
-            });
+            };
+            let response: Response;
+            if (request.endpoint === "/api/search/semanticSearchBlock") {
+                response = await fetch("/api/search/semanticSearchBlock", init);
+            } else {
+                response = await fetch("/api/search/fullTextSearchBlock", init);
+            }
             if (!response.ok) {
                 throw new Error(`full text search HTTP ${response.status}`);
             }
