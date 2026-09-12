@@ -1336,6 +1336,59 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 鎵撳紑/鍒涘缓褰撴棩鏃ヨ锛氶粯璁ゆ棩璁版湰鏈缃椂鍏堝脊鍑轰笅鎷夐€夋嫨
     // 快速记录：Flomo 式弹窗，输入一句追加到今日日记末尾（未配置日记本时先让用户选择）
+    // 商店实时预览：以默认尺寸渲染真实组件（数据与面板同源），关闭窗口即释放实例
+    private openStoreWidgetPreview(moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile") {
+        const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+        const sizeKey = sizes.includes("medium") ? "medium" : sizes[0];
+        const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+        const dialog = new Dialog({
+            title: `${this.i18n.homeStorePreview} · ${def.title || moduleId}`,
+            content: '<div class="speed-switch sw-store-preview"></div>',
+            width: this.isMobile ? "min(420px, 92vw)" : `${Math.max(360, Math.round(preset.w * 86))}px`,
+            height: this.isMobile ? "min(560px, 80vh)" : `${Math.max(320, Math.round(preset.h * 86))}px`,
+        });
+        const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
+        if (!container) return;
+        const body = document.createElement("div");
+        body.className = "sw-store-preview__body";
+        container.appendChild(body);
+        let controller: ReturnType<typeof createHomeModuleController> | null = null;
+        controller = createHomeModuleController({
+            document: window.document,
+            container: body,
+            module: {...def},
+            read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
+                this.homeRuntime.read(moduleId, device, config || {}, {...readOptions, size: sizeKey}),
+            labels: {
+                loading: this.i18n.homeLoading,
+                empty: this.i18n.homeEmptyModule,
+                error: this.i18n.homeModuleError,
+                retry: this.i18n.homeRetry,
+                collapse: this.i18n.homeCollapse,
+                expand: this.i18n.homeExpand,
+                cached: this.i18n.homeCached,
+                updated: this.i18n.homeUpdated,
+            },
+            calendarWeekdays: this.i18n.homeCalendarWeekdays,
+            onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
+            onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
+                void (async () => {
+                    const ok = await this.toggleHomeTaskBlock(item);
+                    if (!ok) showMessage(this.i18n.homeTaskToggleFailed);
+                    await controller?.refresh();
+                })();
+            },
+        });
+        controller.mount();
+        // 宿主 Dialog 关闭无回调：轮询断连即释放控制器，避免悬空读取
+        const disposeTimer = window.setInterval(() => {
+            if (!dialog.element.isConnected) {
+                controller?.dispose();
+                window.clearInterval(disposeTimer);
+            }
+        }, 1500);
+    }
+
     private openQuickCapture() {
         const dialog = new Dialog({
             title: this.i18n.quickCaptureTitle,
@@ -4186,6 +4239,12 @@ const version = beginSearch(session);
                     });
                     tiles.appendChild(tile);
                 });
+                const previewButton = document.createElement("button");
+                previewButton.type = "button";
+                previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
+                previewButton.textContent = this.i18n.homeStorePreview;
+                previewButton.addEventListener("click", () => this.openStoreWidgetPreview(moduleId, def, device));
+                tiles.appendChild(previewButton);
                 card.appendChild(tiles);
                 return card;
             };

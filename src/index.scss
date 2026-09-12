@@ -4928,3 +4928,30 @@
     font-weight: 600;
     letter-spacing: 0.04em;
 }
+
+// ==================== 商店实时预览弹窗 ====================
+.sw-store-preview {
+    height: 100%;
+    overflow: auto;
+
+    &__body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 4px 2px 8px;
+
+        .sw__home-module {
+            border: 1px solid var(--b3-border-color);
+            border-radius: var(--sw-radius-card, 14px);
+            background: var(--b3-theme-surface);
+        }
+    }
+}
+
+.sw-home-store__preview-btn {
+    color: var(--b3-theme-primary);
+
+    &:hover {
+        border-color: var(--b3-theme-primary);
+    }
+}

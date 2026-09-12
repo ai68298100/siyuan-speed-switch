@@ -105,6 +105,7 @@
   "aiJournalAppendDesc": "Append to today's journal: \"{content}\"",
   "homeJournalCalendar": "Journal calendar",
   "homeDescJournalCalendar": "This month at a glance: journal days highlighted, tap to open",
+  "homeStorePreview": "Preview",
   "homeCalendarWeekdays": "MTWTFSS",
   "homeCountdown": "Countdown",
   "homeDescCountdown": "Set a target date to track days remaining or elapsed - anniversaries, deadlines and more",
