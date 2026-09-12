@@ -13,6 +13,7 @@
 1. T-021 Agent 实测：在思源 AI 对话里让模型调用"批量打开文档"/"工作区上下文"（需已配置 LLM）
 2. T-022 手机端抽查（需 Android 设备）
 3. 复核通过后回复"发版"→ 升 0.16.37 + 合并日志 + 推送 17 commit + 打 tag 触发 CI
+T-021 补充：已实证思源 AI Agent 已配置（deepseek 模型 + capabilityPolicy 齐全），真机 AI 对话触发测试待用户空闲时自测（30 秒即可：智能体面板输入"请调用小驴速切的工作区上下文能力"）；自动化驱动已停（检测到用户活跃使用机器，避免干扰）。
 验证基线：tsc 0 错误、529/529 测试、verify:release 全绿、最终构建已部署本机
 上下文将满（本轮终态）：工作树保留 src/index.ts 字面量 URL 分发重构（529/529 绿）+ B-003 文档，提交被 Mimosa L3 剩余 17 高危拦截（applySearch×6/runDocSearchFetch/runOpenedDocumentContentSearch×2/flipTaskMarkdown×2 污点启发式，均误报）。续跑优先级：①拆解剩余命中（先读 index.ts:2275/2621/5485 找启发式模式）②或请用户调整 Mimosa 策略③之后正常提交并发版。
 B-003 已解决：真根因是扫描器把 .exec( 字样当 shell 命令执行——全部改为等价 .match() 后高危清零，commit 恢复。载荷钳制保留（真实加固）。
