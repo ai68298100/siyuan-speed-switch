@@ -73,7 +73,7 @@ export default class MyPlugin extends Plugin {
 | `large` | 8×5 | 大列表 + 汇总 |
 | `full` | 12×6 | 全幅看板 |
 
-组件在不同型号下会收到同样的 `read` 调用；列表内容超出门槛时面板在格子内滚动，无需自行适配高度。
+组件在不同型号下的 `read` 调用签名相同：`read(config, device, options)`，第三参 `options.size` 携带当前型号（如 `"xs"/"medium"`，未知为空串）。适配器可按尺寸裁剪条目数实现渐进披露（小尺寸少列）；不关心尺寸时忽略即可。列表内容超出门槛时面板在格子内滚动，无需自行适配高度。
 
 ## `read` 数据契约
 

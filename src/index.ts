@@ -3474,6 +3474,27 @@ const version = beginSearch(session);
                 ],
             };
         });
+        // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数
+        register("countdown", this.i18n.homeCountdown, "iconClock", this.i18n.homeDescCountdown, ["loaded-protyle"], (config) => {
+            const title = String(config.title || "").trim().slice(0, 32);
+            const target = String(config.targetDate || "").trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) {
+                return {items: [{label: this.i18n.homeCountdownHint, value: ""}]};
+            }
+            const targetTime = new Date(`${target}T00:00:00`).getTime();
+            if (!Number.isFinite(targetTime)) return {items: [{label: this.i18n.homeCountdownHint, value: ""}]};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const days = Math.round((targetTime - today.getTime()) / 86400000);
+            const dayLabel = days > 0
+                ? this.i18n.homeCountdownRemaining.replace("{n}", String(days))
+                : days === 0 ? this.i18n.homeCountdownToday
+                    : this.i18n.homeCountdownPassed.replace("{n}", String(-days));
+            return {
+                stat: {value: days === 0 ? "0" : String(Math.abs(days)), label: dayLabel},
+                items: [{label: `${title || this.i18n.homeCountdown} · ${target}`, value: ""}],
+            };
+        });
         // 快速记录：Flomo 式一键记一句到今日日记（点击后弹输入框，需确认追加）
         // 近期写作活跃度：按天聚合“创建的内容块”数量（不是文档数），只读且限制窗口。
         register("recent-writing-activity", this.i18n.homeRecentWritingActivity, "iconChart", this.i18n.homeDescRecentWritingActivity, ["loaded-protyle", "destroy-protyle"], async (config) => {
@@ -4318,7 +4339,8 @@ const version = beginSearch(session);
                         }
                     },
                     read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
-                        this.homeRuntime.read(inst.moduleId, device, inst.config || {}, readOptions),
+                        // 附带当前型号（尺寸感知接口）：适配器可据此裁剪条目数
+                        this.homeRuntime.read(inst.moduleId, device, inst.config || {}, {...readOptions, size: sizeKey}),
                     onConfig: editing ? undefined : () => {
                         this.openHomeConfigForm(inst, def.configSchema || [], () => renderPanel());
                     },

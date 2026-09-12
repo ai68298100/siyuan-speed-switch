@@ -156,7 +156,10 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
             signal.addEventListener("abort", abortHandler, {once: true});
         }) : null;
         const value = await Promise.race([
-            Promise.resolve(adapter.read(normalizeConfig(config), device)),
+            // 尺寸感知接口（协议 v2.3）：第三参携带当前型号，适配器可按尺寸裁剪内容
+            Promise.resolve(adapter.read(normalizeConfig(config), device, {
+                size: typeof options.size === "string" ? options.size.slice(0, 16) : "",
+            })),
             timeoutPromise,
             ...(abortPromise ? [abortPromise] : []),
         ]);
