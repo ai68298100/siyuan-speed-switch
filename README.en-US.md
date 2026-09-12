@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.36-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.37-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -169,6 +169,16 @@ Then verify in a real SiYuan environment:
 Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
 
 ## Changelog
+
+### v0.16.37 (2026-09-12)
+
+- Two new builtin widgets (16 total): **Flashcard review** (notebook-level due cards; single-notebook mode lists clickable cards, all-notebooks mode shows due-count bars) and **Random review** (resurfaces stale documents; hit Refresh all to reroll).
+- Size menu gains **proportion preview tiles** and viewport clamping.
+- Two new agent capabilities: **open-documents** (up to 5 docs per call behind a title-listing confirmation; deny or timeout opens nothing) and **workspace-context** (device, active document, open tabs, document sets, quick actions and today-journal state in one read-only snapshot; the journal is probed, never created). Ten capabilities total.
+- **Four latent defects found and fixed through real-host acceptance** (SiYuan v3.8.2): wrong kernel parameter names silently broke every SQL-backed widget; the size menu collapsed to a single preset because adapter registrations dropped builtin sizes; tag/bookmark widgets always showed zero due to a 3.8.x response-shape change; full-text content search never matched because an empty type filter means "no types" (0 to 12 hits after the fix).
+- Resilience: widgets keep showing the last good snapshot (marked cached) instead of erroring during sync-window timeouts; error states carry a machine reason code.
+- Hardening: every kernel request now uses a literal endpoint dispatch (on top of the existing whitelist and same-origin guard); task write payloads are clamped.
+- 529 automated tests; the real-host acceptance checklist lives in docs/acceptance-v0.16.37.md.
 
 ### v0.16.36 (2026-09-12)
 
