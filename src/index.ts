@@ -3495,6 +3495,32 @@ const version = beginSearch(session);
                 items: [{label: `${title || this.i18n.homeCountdown} · ${target}`, value: ""}],
             };
         });
+        // 日历月视图：本月日历网格（周一开头），有日记的日期可点击直达
+        register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY content LIMIT 31`,
+            });
+            const journalByDay = new Map<string, string>();
+            ((json?.data || []) as Array<{id: string; content: string}>).forEach((row) => {
+                const day = Number(String(row.content).slice(prefix.length, prefix.length + 2));
+                if (Number.isFinite(day) && day >= 1) journalByDay.set(String(day), row.id);
+            });
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7; // 周一开头
+            const today = now.getDate();
+            const items: Array<{label: string; value: string; done?: boolean}> = [];
+            for (let i = 0; i < leadingBlanks; i += 1) items.push({label: "", value: ""});
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const dayKey = String(day);
+                items.push({label: dayKey, value: journalByDay.get(dayKey) || "", done: day === today});
+            }
+            while (items.length % 7 !== 0) items.push({label: "", value: ""});
+            return {items};
+        });
         // 快速记录：Flomo 式一键记一句到今日日记（点击后弹输入框，需确认追加）
         // 近期写作活跃度：按天聚合“创建的内容块”数量（不是文档数），只读且限制窗口。
         register("recent-writing-activity", this.i18n.homeRecentWritingActivity, "iconChart", this.i18n.homeDescRecentWritingActivity, ["loaded-protyle", "destroy-protyle"], async (config) => {
@@ -4079,6 +4105,8 @@ const version = beginSearch(session);
                 card.className = "sw-home-store__card";
                 card.dataset.search = `${def.title || ""} ${def.description || ""} ${moduleId}`.toLowerCase();
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
+                const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                const added = instanceByModule.get(moduleId);
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
@@ -4093,7 +4121,7 @@ const version = beginSearch(session);
                 copy.append(title, desc);
                 head.append(icon, copy);
                 card.appendChild(head);
-                // 迷你预览：按组件形态给骨架示意（stat 大数字 / list 列表行）
+                // 迷你预览：骨架示意 + 各档尺寸按 12 列比例的整体效果
                 const STAT_KINDS = ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown", "flashcard-due", "random-review"];
                 const kind = STAT_KINDS.includes(moduleId) ? "stat" : "list";
                 const preview = document.createElement("div");
@@ -4110,11 +4138,22 @@ const version = beginSearch(session);
                     line.className = `p-line ${w}`;
                     preview.appendChild(line);
                 });
+                // 各档尺寸的整体效果：按 w/12 比例宽度的成比例缩略框
+                const supportedSizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                const sizesRow = document.createElement("div");
+                sizesRow.className = "sw-home-store__preview-sizes";
+                supportedSizes.forEach((sizeKey) => {
+                    const sizePreset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                    const box = document.createElement("i");
+                    box.className = "p-size" + (added && added.size === sizeKey ? " is-current" : "");
+                    box.style.width = `${Math.max(9, Math.round(sizePreset.w / 12 * 100))}%`;
+                    box.title = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
+                    sizesRow.appendChild(box);
+                });
+                preview.appendChild(sizesRow);
                 card.appendChild(preview);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
-                const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
-                const added = instanceByModule.get(moduleId);
                 supported.forEach((sizeKey) => {
                     const tile = document.createElement("button");
                     tile.type = "button";
@@ -4386,6 +4425,7 @@ const version = beginSearch(session);
                         cached: this.i18n.homeCached,
                         updated: this.i18n.homeUpdated,
                     },
+                    calendarWeekdays: this.i18n.homeCalendarWeekdays,
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
                     onToggle: () => {
                         const next = this.getHomeState();

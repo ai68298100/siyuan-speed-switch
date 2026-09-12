@@ -74,7 +74,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
-        {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, viewType: "calendar"},
+    {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
         {key: "targetDate", label: "目标日期", type: "text", defaults: ""},
     ]},
@@ -201,6 +202,7 @@ function normalizeModuleDefinition(value) {
         sizes: sizes.length > 0 ? sizes : ["medium"],
         description: text(value.description, 96),
         protocolVersion: normalizeProtocolVersion(value.protocolVersion),
+        viewType: value.viewType === "calendar" ? "calendar" : "",
         author: text(value.author, 64),
         homepage: normalizeHomepage(value.homepage),
         clickCommand: normalizeClickCommand(value.clickCommand),

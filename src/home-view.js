@@ -54,7 +54,7 @@ function renderModuleIcon(doc, value) {
     return null;
 }
 
-function normalizeHomeViewResult(value) {
+function normalizeHomeViewResult(value, options = {}) {
     const source = value && typeof value === "object" ? value : {};
     const rawSnapshot = source.snapshot && typeof source.snapshot === "object" ? source.snapshot : {};
     const rawItems = Array.isArray(rawSnapshot.items) ? rawSnapshot.items : [];
@@ -68,7 +68,7 @@ function normalizeHomeViewResult(value) {
         if (typeof item?.done === "boolean") entry.done = item.done;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
         return entry;
-    }).filter((item) => item.label || item.value || item.href);
+    }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
     const status = explicitStatus || (source.loading === true ? "loading" : source.ok === false ? "error" : items.length ? "ready" : "empty");
     return {
@@ -92,13 +92,14 @@ function buildHomeModuleView(module, result, options = {}) {
     const definition = module && typeof module === "object" ? module : {};
     const moduleId = text(definition.moduleId, 64);
     if (!moduleId) return null;
-    const normalized = normalizeHomeViewResult(result);
+    const normalized = normalizeHomeViewResult(result, {keepEmptyItems: definition.viewType === "calendar"});
     return {
         moduleId,
         title: text(definition.title, 64) || moduleId,
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
+        viewType: definition.viewType === "calendar" ? "calendar" : "",
         status: normalized.status,
         stat: normalized.stat,
         cached: normalized.cached,
@@ -209,6 +210,34 @@ function renderHomeModuleView(doc, view, options = {}) {
             bar.appendChild(fill);
             body.appendChild(bar);
         }
+    }
+    if (view.status === "ready" && view.viewType === "calendar") {
+        // 日历月视图：7 列网格；条目约定 label=日期数字、value=文档 ID（可点击）、done=今天
+        const grid = doc.createElement("div");
+        grid.className = "sw__home-calendar";
+        grid.setAttribute("role", "grid");
+        const weekdayLabels = typeof options.calendarWeekdays === "string" && options.calendarWeekdays.length >= 7
+            ? options.calendarWeekdays
+            : "一二三四五六日";
+        weekdayLabels.slice(0, 7).split("").forEach((label) => {
+            const head = doc.createElement("span");
+            head.className = "sw__home-calendar-head";
+            head.textContent = label;
+            grid.appendChild(head);
+        });
+        (Array.isArray(view.items) ? view.items : []).forEach((item) => {
+            const clickable = Boolean(item.value) && typeof options.onItem === "function";
+            const cell = doc.createElement(clickable ? "button" : "span");
+            cell.className = "sw__home-calendar-cell"
+                + (item.value ? " has-journal" : "")
+                + (item.done === true ? " is-today" : "");
+            cell.textContent = item.label || "";
+            if (clickable) cell.addEventListener("click", () => options.onItem(item, view));
+            grid.appendChild(cell);
+        });
+        body.appendChild(grid);
+        root.appendChild(body);
+        return root;
     }
     if (view.status === "ready") {
         const list = doc.createElement("ul");

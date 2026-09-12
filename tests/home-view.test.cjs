@@ -18,7 +18,7 @@ test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {
         moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan", status: "ready", cached: false,
-        reason: "", updatedAt: 0, stat: null, items: [{label: "One", value: "", href: "", command: ""}], configurable: false, collapsed: true,
+        reason: "", updatedAt: 0, stat: null, items: [{label: "One", value: "", href: "", command: ""}], viewType: "", configurable: false, collapsed: true,
         role: "region", ariaBusy: false,
     });
     assert.equal(buildHomeModuleView(null, {}), null);
@@ -74,6 +74,27 @@ test("home view renderer exposes bounded states and activation hooks", () => {
     assert.equal(localized.querySelector('[role="alert"]').textContent, "请求超时");
 });
 
+test("home view renders calendar grid for viewType calendar", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView(
+        {moduleId: "journal-calendar", title: "日历月视图", viewType: "calendar"},
+        {ok: true, snapshot: {items: [
+            {label: "", value: ""},
+            {label: "1", value: "20260901000000-aaaaaaa"},
+            {label: "2", value: ""},
+            {label: "3", value: "", done: true},
+        ]}},
+        {calendarWeekdays: "一二三四五六日"},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {onItem: () => {}});
+    assert.ok(root, "rendered");
+    const grid = root.querySelector(".sw__home-calendar");
+    assert.ok(grid, "calendar grid present");
+    assert.equal(grid.querySelectorAll(".sw__home-calendar-head").length, 7);
+    assert.equal(grid.querySelectorAll(".sw__home-calendar-cell").length, 4);
+    assert.equal(grid.querySelectorAll(".has-journal").length, 1);
+    assert.equal(grid.querySelectorAll(".is-today").length, 1);
+});
 test("home view renders safe symbol and text icon fallbacks", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const symbol = renderModuleIcon(dom.window.document, "iconCalendar");

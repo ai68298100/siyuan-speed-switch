@@ -65,7 +65,8 @@ test('production bundle remains within the mobile performance budget when built'
     // working-tree increment; gzip package still far below the zip ceiling).
     // 2026-09-12 (15): 332 KiB for the store upgrade - grouped sections,
     // preview skeletons and a larger default store dialog.
-    const budget = 332 * 1024;
+    // 2026-09-13 (16): 334 KiB for proportional size previews in store cards.
+    const budget = 334 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

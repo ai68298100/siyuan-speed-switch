@@ -31,6 +31,7 @@ function createHomeModuleController(options = {}) {
         }
         const element = renderHomeModuleView(documentRef, view, {
             labels: options.labels,
+            calendarWeekdays: options.calendarWeekdays,
             onItem: options.onItem,
             onToggleItem: options.onToggleItem,
             onConfig: options.onConfig,

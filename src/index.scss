@@ -4900,7 +4900,25 @@
             &.w2 { width: 72%; }
             &.w3 { width: 82%; }
         }
+
+        &.p-size {
+            height: 12px;
+            border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
+            background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+
+            &.is-current {
+                border-color: var(--b3-theme-primary);
+                background: color-mix(in srgb, var(--b3-theme-primary) 26%, transparent);
+            }
+        }
     }
+}
+
+.sw-home-store__preview-sizes {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    margin-top: 3px;
 }
 
 .sw-home-store__group {
