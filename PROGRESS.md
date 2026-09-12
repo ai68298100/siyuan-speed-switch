@@ -15,13 +15,13 @@
 - Agent 标题搜索复用兼容提取器，支持 `data.files`、`data.documents`、`result.records` 等旧宿主包装，避免合法标题结果被误判为空。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
-验证基线：T-051~T-057 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、545/545、移动烟测和 Chromium 样式烟测；`index.js` 332102 字节，`package.zip` 299687 字节。
+验证基线：T-058~T-061 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、546/546、移动烟测和 Chromium 样式烟测；`index.js` 333732 字节，`package.zip` 300058 字节。
 
 待处理：
 
 1. T-022：Android 真机回归（需要用户设备与空闲时间）。
-2. T-058：Agent 组件快照补充有界 stat/count/done。
-3. T-059：Agent 组件快照补充 cached/updatedAt 状态。
+2. 继续审计 Agent 快照错误分支与配置结果可解释性。
+3. 继续保持完整自动门禁和压缩包硬上限。
 3. 继续保持自动门禁与 300 KiB 压缩包硬上限。
 4. 用户明确确认后，才执行 push、打 tag、创建 Release 等正式发版动作。
 
@@ -42,3 +42,4 @@
 2026-09-12 T-051~T-054 完成：往年今日新增条数/笔记本配置，剪藏待读和近期预约新增笔记本范围，本月日记新增条数/笔记本配置并以 `action:journal:<notebookId>` 定向打开或创建今日日记；联表 SQL 仅允许内部 `b/B` 别名。同期修复预约 `days=0` 被错误回退到 3 的边界。TypeScript、53 项专项测试与生产构建通过；`index.js` 330085 字节、`package.zip` 299104 字节。
 2026-09-12 T-055 完成：ROADMAP 同步为 25 个内置组件、11 项 Agent 能力和 544 项验证基线；已完成任务表收敛到 T-054，并明确继续开发本地只读组件/Agent 边界、真实设备验收后置的当前口径。
 2026-09-12 T-056~T-057 完成：Agent 组件目录为每项公开最多 8 个重新清洗的 `configFields`（类型、范围、选项、默认值）；组件快照调用按目标 configSchema 丢弃未知字段、钳制数字并验证枚举/笔记本 ID，不再透传任意配置对象。TypeScript 与 29 项 Agent 专项测试通过，生产 `index.js` 332102 字节、`package.zip` 299687 字节。
+2026-09-12 T-058~T-061 完成：Agent 组件快照新增有界 `stat`、条目 `count/done`、`cached/updatedAt`，并让 moduleId 模式复用 `offset` 返回 `device/total/offset/truncated`；总数按清洗后的有效条目计算。TypeScript、30 项 Agent 专项测试和生产构建通过；`index.js` 333732 字节、`package.zip` 300058 字节。

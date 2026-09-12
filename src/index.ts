@@ -49,6 +49,7 @@ import {
     buildAgentHomeDiagnostics,
     buildAgentWidgetCatalog,
     normalizeAgentWidgetConfig,
+    buildAgentWidgetSnapshot,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerReadOnlyAgentCapabilities,
@@ -6333,17 +6334,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         const def = queryable.find((item: any) => item.moduleId === requested) as {title?: string; configSchema?: unknown[]} | undefined;
                         if (!def) return {error: "unknown module"};
                         const config = normalizeAgentWidgetConfig(args?.config, def.configSchema) as Record<string, unknown>;
-                        const result = await this.homeRuntime.read(requested, device, config, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
-                        const items = ((result?.snapshot?.items || []) as Array<{label?: string; value?: string}>)
-                            .slice(0, limit)
-                            .map((item) => ({label: item.label || "", value: item.value || ""}))
-                            .filter((item) => !!item.label);
-                        const content = {
-                            moduleId: requested,
-                            title: def.title,
-                            status: result?.ok ? "ok" : String(result?.reason || "unavailable"),
-                            items,
-                        };
+                        const result = await this.homeRuntime.read(requested, device, config, {cacheTtlMs: 1500});
+                        const content = buildAgentWidgetSnapshot(requested, def.title, result, {device, limit, offset: args?.offset});
                         return {structuredContent: content, result: JSON.stringify(content)};
                     } catch (error) {
                         logger.warn("Agent home widget snapshot unavailable", error);

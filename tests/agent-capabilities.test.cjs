@@ -23,6 +23,7 @@ const {
     buildAgentWidgetCatalog,
     normalizeAgentWidgetConfigFields,
     normalizeAgentWidgetConfig,
+    buildAgentWidgetSnapshot,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
@@ -157,6 +158,43 @@ test("agent widget config metadata and values stay schema-bound", () => {
     assert.deepEqual(normalizeAgentWidgetConfig({mode: "bad", notebook: "bad"}, schema), {});
 });
 
+test("agent widget snapshot preserves bounded stats, item state, and cache metadata", () => {
+    assert.deepEqual(buildAgentWidgetSnapshot("today-tasks", "Today", {
+        ok: true,
+        cached: true,
+        snapshot: {
+            updatedAt: 1234.9,
+            stat: {value: "3", label: "Tasks", progress: 150},
+            items: [
+                {label: "One", value: "id", count: 10001, done: false, secret: "drop"},
+                {label: "", value: "drop"},
+            ],
+        },
+    }, {device: "mobile", limit: 12}), {
+        moduleId: "today-tasks",
+        title: "Today",
+        status: "ok",
+        device: "mobile",
+        cached: true,
+        updatedAt: 1234,
+        items: [{label: "One", value: "id", count: 9999, done: false}],
+        total: 1,
+        offset: 0,
+        truncated: false,
+        stat: {value: "3", label: "Tasks", progress: 100},
+    });
+    assert.deepEqual(buildAgentWidgetSnapshot("x", "", {ok: false, reason: "timeout"}), {
+        moduleId: "x", title: "", status: "timeout", device: "desktop", cached: false, updatedAt: 0,
+        items: [], total: 0, offset: 0, truncated: false,
+    });
+    const paged = buildAgentWidgetSnapshot("x", "X", {ok: true, snapshot: {items: [
+        {label: "one"}, {label: "two"}, {label: "three"},
+    ]}}, {limit: 1, offset: 1, device: "sidebar"});
+    assert.deepEqual(paged.items, [{label: "two", value: ""}]);
+    assert.deepEqual({device: paged.device, total: paged.total, offset: paged.offset, truncated: paged.truncated},
+        {device: "sidebar", total: 3, offset: 1, truncated: true});
+});
+
 test("notebook SQL scope accepts only a normalized SiYuan id", () => {
     assert.equal(buildNotebookBoxScope("20260912083000-abcdefg"), " AND box='20260912083000-abcdefg'");
     assert.equal(buildNotebookBoxScope("20260912083000-abcdefg", "b"), " AND b.box='20260912083000-abcdefg'");
@@ -216,7 +254,13 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
         moduleId: "today-tasks",
         title: "今日待办",
         status: "ok",
+        device: "desktop",
+        cached: false,
+        updatedAt: 0,
         items: [{label: "任务", value: "1"}],
+        total: 1,
+        offset: 0,
+        truncated: false,
     }), true, JSON.stringify(validateWidgets.errors));
     assert.equal(validateDiagnostics(buildAgentHomeDiagnostics([
         {type: "timeout", moduleId: "today-tasks", device: "sidebar", at: Date.now()},

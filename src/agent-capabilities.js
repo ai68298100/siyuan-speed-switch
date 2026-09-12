@@ -142,6 +142,47 @@ function normalizeAgentWidgetConfig(value, schema) {
     return result;
 }
 
+function buildAgentWidgetSnapshot(moduleId, title, value, options = {}) {
+    const source = value && typeof value === "object" ? value : {};
+    const snapshot = source.snapshot && typeof source.snapshot === "object" ? source.snapshot : {};
+    const settings = options && typeof options === "object" ? options : {};
+    const device = HOME_DIAGNOSTIC_DEVICES.includes(settings.device) ? settings.device : "desktop";
+    const limit = Math.min(24, normalizeAgentLimit(settings.limit, 12));
+    const rawItems = (Array.isArray(snapshot.items) ? snapshot.items : []).slice(0, 24);
+    const normalizedItems = rawItems.map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const label = asText(item.label, 256);
+        if (!label) return null;
+        const entry = {label, value: asText(item.value, 256)};
+        if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));
+        if (typeof item.done === "boolean") entry.done = item.done;
+        return entry;
+    }).filter(Boolean);
+    const total = normalizedItems.length;
+    const offset = Math.min(total, Math.min(MAX_ITEMS * 2, Math.max(0, Number.parseInt(String(settings.offset), 10) || 0)));
+    const items = normalizedItems.slice(offset, offset + limit);
+    const content = {
+        moduleId: asText(moduleId, 64),
+        title: asText(title, 64),
+        status: source.ok ? "ok" : asText(source.reason, 32) || "unavailable",
+        device,
+        cached: source.cached === true,
+        updatedAt: Number.isFinite(snapshot.updatedAt) ? Math.min(9999999999999, Math.max(0, Math.trunc(snapshot.updatedAt))) : 0,
+        items,
+        total,
+        offset,
+        truncated: offset + items.length < total,
+    };
+    const stat = snapshot.stat && typeof snapshot.stat === "object" ? snapshot.stat : null;
+    const statValue = stat ? asText(stat.value, 32) : "";
+    if (statValue) content.stat = {
+        value: statValue,
+        label: asText(stat.label, 32),
+        progress: Number.isFinite(stat.progress) ? Math.min(100, Math.max(0, stat.progress)) : null,
+    };
+    return content;
+}
+
 function buildAgentWidgetCatalog(items, options = {}) {
     const source = options && typeof options === "object" ? options : {};
     const device = HOME_DIAGNOSTIC_DEVICES.includes(source.device) ? source.device : "desktop";
@@ -581,6 +622,22 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                         moduleId: {type: "string", maxLength: 64, pattern: "^[A-Za-z0-9._:-]{1,64}$"},
                         title: {type: "string", maxLength: 64},
                         status: {type: "string", maxLength: 32},
+                        device: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
+                        cached: {type: "boolean"},
+                        updatedAt: {type: "integer", minimum: 0, maximum: 9999999999999},
+                        total: {type: "integer", minimum: 0, maximum: 24},
+                        offset: {type: "integer", minimum: 0, maximum: 24},
+                        truncated: {type: "boolean"},
+                        stat: {
+                            type: "object",
+                            properties: {
+                                value: {type: "string", maxLength: 32},
+                                label: {type: "string", maxLength: 32},
+                                progress: {anyOf: [{type: "number", minimum: 0, maximum: 100}, {type: "null"}]},
+                            },
+                            required: ["value", "label", "progress"],
+                            additionalProperties: false,
+                        },
                         items: {
                             type: "array",
                             maxItems: 24,
@@ -589,13 +646,15 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                                 properties: {
                                     label: {type: "string", maxLength: 256},
                                     value: {type: "string", maxLength: 256},
+                                    count: {type: "integer", minimum: 0, maximum: 9999},
+                                    done: {type: "boolean"},
                                 },
                                 required: ["label"],
                                 additionalProperties: false,
                             },
                         },
                     },
-                    required: ["moduleId", "items"],
+                    required: ["moduleId", "items", "device", "cached", "updatedAt", "total", "offset", "truncated"],
                     additionalProperties: false,
                 },
                 {
@@ -1013,6 +1072,7 @@ module.exports = {
     buildAgentWidgetCatalog,
     normalizeAgentWidgetConfigFields,
     normalizeAgentWidgetConfig,
+    buildAgentWidgetSnapshot,
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,

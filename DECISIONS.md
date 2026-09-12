@@ -37,3 +37,4 @@
 - D-035 `buildNotebookBoxScope` 的联表限定只接受内部白名单别名 `b/B`，其他别名一律退回无前缀 `box`；调用方不能提供任意 SQL 标识符。指定笔记本日记动作使用 `action:journal:<notebookId>`，分发前再次校验 ID，未配置时保持原 `action:journal` 与默认日记本行为。
 - D-036 T-051~T-054 使 raw bundle 自律线由 322 KiB 校准为 323 KiB；新增的是四个已有组件的范围配置、定向日记动作与预约零日窗口修复，`package.zip` 仍受 300 KiB 硬上限约束。
 - D-037 Agent 组件配置发现只公开重新清洗后的 `key/label/type/min/max/defaultValue/options`，最多 8 项；快照输入只保留该组件 configSchema 声明的字段。无公开 schema 的 adapter 收到空配置，避免把通用 Agent 输入当成第三方私有协议。该契约使 raw bundle 自律线校准为 325 KiB，压缩包硬上限不变。
+- D-038 Agent 组件快照的 `total/offset/truncated` 基于清洗后的最多 24 个有效条目，而非 adapter 原始数组；`updatedAt` 只采用提供方时间戳，缺失时为 0，不伪造缓存生成时间。T-058~T-061 使 raw bundle 自律线校准到 326 KiB，`package.zip` 仍受 300 KiB 硬上限约束。

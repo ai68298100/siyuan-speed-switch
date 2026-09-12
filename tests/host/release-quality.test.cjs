@@ -59,7 +59,8 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-12 (9): 322 KiB for shared optional-notebook scopes across four insight widgets.
     // 2026-09-12 (10): 323 KiB for dated-content scopes and notebook-directed journal actions.
     // 2026-09-12 (11): 325 KiB for bounded Agent widget config discovery and input normalization.
-    const budget = 325 * 1024;
+    // 2026-09-12 (12): 326 KiB for bounded widget stats, cache/device and pagination metadata.
+    const budget = 326 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
