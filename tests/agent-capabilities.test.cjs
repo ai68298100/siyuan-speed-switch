@@ -21,6 +21,8 @@ const {
     normalizeAgentFailureReason,
     buildAgentHomeDiagnostics,
     buildAgentWidgetCatalog,
+    normalizeAgentWidgetConfigFields,
+    normalizeAgentWidgetConfig,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
@@ -67,7 +69,10 @@ test("agent home diagnostics normalize trusted fields and reject malformed entri
 test("agent widget catalog filters device and read-only metadata within schema limits", () => {
     const widgets = buildAgentWidgetCatalog([
         {moduleId: "desktop-only", title: "Desktop", supportedDevices: ["desktop"], readOnly: true, sizes: ["small"]},
-        {moduleId: "mobile-read", title: "Mobile", category: "plugin", supportedDevices: ["mobile", "unknown"], readOnly: true, sizes: ["small", "x".repeat(40)]},
+        {moduleId: "mobile-read", title: "Mobile", category: "plugin", supportedDevices: ["mobile", "unknown"], readOnly: true, sizes: ["small", "x".repeat(40)], configSchema: [
+            {key: "limit", label: "Limit", type: "number", min: 1, max: 20, defaults: 10},
+            {key: "notebook", label: "Notebook", type: "notebook"},
+        ]},
         {moduleId: "mobile-write", title: "Write", supportedDevices: ["mobile"], readOnly: false},
         {moduleId: "bad module", title: "Bad", supportedDevices: ["mobile"], readOnly: true},
     ], {device: "mobile", readOnly: true, limit: 99});
@@ -80,6 +85,10 @@ test("agent widget catalog filters device and read-only metadata within schema l
             supportedDevices: ["mobile"],
             readOnly: true,
             source: "external",
+            configFields: [
+                {key: "limit", label: "Limit", type: "number", min: 1, max: 20, defaultValue: 10},
+                {key: "notebook", label: "Notebook", type: "notebook"},
+            ],
         }],
         total: 1,
         offset: 0,
@@ -119,8 +128,40 @@ test("agent widget catalog filters source and keeps the first normalized module 
     assert.deepEqual(beyond, {widgets: [], total: 1, offset: 1, truncated: false});
 });
 
+test("agent widget config metadata and values stay schema-bound", () => {
+    const schema = [
+        {key: "limit", label: "Limit", type: "number", min: 1, max: 20, defaults: 10},
+        {key: "mode", label: "Mode", type: "select", options: ["one", "two", "one"], defaults: "two"},
+        {key: "notebook", label: "Notebook", type: "notebook"},
+        {key: "query", label: "Query", type: "text", defaults: ""},
+        {key: "bad key", label: "Bad", type: "text"},
+    ];
+    assert.deepEqual(normalizeAgentWidgetConfigFields(schema), [
+        {key: "limit", label: "Limit", type: "number", min: 1, max: 20, defaultValue: 10},
+        {key: "mode", label: "Mode", type: "select", options: ["one", "two"], defaultValue: "two"},
+        {key: "notebook", label: "Notebook", type: "notebook"},
+        {key: "query", label: "Query", type: "text", defaultValue: ""},
+    ]);
+    assert.deepEqual(normalizeAgentWidgetConfig({
+        limit: 99,
+        mode: "two",
+        notebook: "20260912083000-abcdefg",
+        query: "  hello\nworld  ",
+        unknown: "drop",
+    }, schema), {
+        limit: 20,
+        mode: "two",
+        notebook: "20260912083000-abcdefg",
+        query: "hello world",
+    });
+    assert.deepEqual(normalizeAgentWidgetConfig({mode: "bad", notebook: "bad"}, schema), {});
+});
+
 test("notebook SQL scope accepts only a normalized SiYuan id", () => {
     assert.equal(buildNotebookBoxScope("20260912083000-abcdefg"), " AND box='20260912083000-abcdefg'");
+    assert.equal(buildNotebookBoxScope("20260912083000-abcdefg", "b"), " AND b.box='20260912083000-abcdefg'");
+    assert.equal(buildNotebookBoxScope("20260912083000-abcdefg", "B"), " AND B.box='20260912083000-abcdefg'");
+    assert.equal(buildNotebookBoxScope("20260912083000-abcdefg", "x;drop"), " AND box='20260912083000-abcdefg'");
     assert.equal(buildNotebookBoxScope("bad' OR 1=1 --"), "");
     assert.equal(buildNotebookBoxScope(null), "");
 });
@@ -189,6 +230,7 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
             supportedDevices: ["desktop", "sidebar", "mobile"],
             readOnly: true,
             source: "builtin",
+            configFields: [],
         }],
         total: 1,
         offset: 0,

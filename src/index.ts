@@ -48,6 +48,7 @@ import {
     normalizeAgentFailureReason,
     buildAgentHomeDiagnostics,
     buildAgentWidgetCatalog,
+    normalizeAgentWidgetConfig,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerReadOnlyAgentCapabilities,
@@ -1391,8 +1392,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         window.setTimeout(() => input.focus(), 30);
     }
 
-    private async openJournal() {
-        let notebook = this.getSettings().journalNotebook;
+    private async openJournal(preferredNotebook = "") {
+        let notebook = normalizeAgentNotebookId(preferredNotebook) || this.getSettings().journalNotebook;
         if (!notebook) {
             notebook = await this.promptJournalNotebook();
             if (!notebook) {
@@ -3313,15 +3314,18 @@ const version = beginSearch(session);
             }).filter((item) => item.value.length > 9)};
         });
         // 本月日记：按日记标题前缀（YYYY-MM）列出当月日记，点击直达；首位固定"打开今日日记"
-        register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, ["switch-protyle", "loaded-protyle"], async () => {
+        register("journal-monthly", this.i18n.homeJournalMonthly, "iconCalendar", this.i18n.homeDescJournalMonthly, ["switch-protyle", "loaded-protyle"], async (config) => {
             const now = new Date();
             const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 12)));
+            const notebook = normalizeAgentNotebookId(config.notebook);
+            const notebookScope = buildNotebookBoxScope(notebook);
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT root_id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 12`,
+                stmt: `SELECT root_id, content FROM blocks WHERE type='d'${notebookScope} AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{root_id: string; content: string}>;
             return {items: [
-                {label: this.i18n.homeTodayJournalOpen, value: "action:journal"},
+                {label: this.i18n.homeTodayJournalOpen, value: notebook ? `action:journal:${notebook}` : "action:journal"},
                 ...rows.filter((row) => row.root_id && row.content).map((row) => ({label: row.content, value: row.root_id})),
             ]};
         });
@@ -3425,8 +3429,9 @@ const version = beginSearch(session);
             const tag = String(config.tag || "剪藏").trim().slice(0, 32).replace(/[%_']/g, "");
             if (!tag) return {items: []};
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const notebookScope = buildNotebookBoxScope(config.notebook, "b");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT b.root_id AS root_id, d.content AS title, MAX(b.created) AS latest FROM blocks b JOIN blocks d ON d.id = b.root_id WHERE b.tag LIKE '%${tag}%' AND b.root_id <> '' GROUP BY b.root_id ORDER BY latest DESC LIMIT ${limit}`,
+                stmt: `SELECT b.root_id AS root_id, d.content AS title, MAX(b.created) AS latest FROM blocks b JOIN blocks d ON d.id = b.root_id WHERE b.tag LIKE '%${tag}%'${notebookScope} AND b.root_id <> '' GROUP BY b.root_id ORDER BY latest DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{root_id: string; title: string}>;
             return {
@@ -3435,12 +3440,14 @@ const version = beginSearch(session);
             };
         });
         // 往年今日：同月同日的往年日记/文档（照片"回忆"风格）
-        register("on-this-day", this.i18n.homeOnThisDay, "iconClock", this.i18n.homeDescOnThisDay, ["loaded-protyle"], async () => {
+        register("on-this-day", this.i18n.homeOnThisDay, "iconClock", this.i18n.homeDescOnThisDay, ["loaded-protyle"], async (config) => {
             const now = new Date();
             const mmdd = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
             const thisYear = String(now.getFullYear());
+            const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '%-${mmdd}' AND content NOT LIKE '${thisYear}-%' ORDER BY content DESC LIMIT 8`,
+                stmt: `SELECT id, content FROM blocks WHERE type='d'${notebookScope} AND content LIKE '%-${mmdd}' AND content NOT LIKE '${thisYear}-%' ORDER BY content DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{id: string; content: string}>;
             return {items: rows.map((row) => ({label: row.content, value: row.id})).filter((item) => !!item.label && !!item.value)};
@@ -3536,10 +3543,12 @@ const version = beginSearch(session);
         });
         // 近期预约：复用日记插件确认过的 attributes.custom-reservation 数据契约，只读查询。
         register("today-reservations", this.i18n.homeTodayReservations, "iconClock", this.i18n.homeDescTodayReservations, ["switch-protyle", "loaded-protyle"], async (config) => {
-            const days = Math.min(14, Math.max(0, Math.trunc(Number(config.days) || 3)));
+            const configuredDays = Number(config.days);
+            const days = Math.min(14, Math.max(0, Number.isFinite(configuredDays) ? Math.trunc(configuredDays) : 3));
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const notebookScope = buildNotebookBoxScope(config.notebook, "B");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT B.id, B.content, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${days} days')) ORDER BY A.value, B.updated DESC LIMIT ${limit}`,
+                stmt: `SELECT B.id, B.content, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT ${limit}`,
             });
             const rows = (json?.data || []) as Array<{id?: string; content?: string; date?: string}>;
             const items = rows.map((row) => {
@@ -3647,9 +3656,10 @@ const version = beginSearch(session);
     private handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void) {
         if (item.command && this.executeHomeCommand(item.command, close)) return;
         const value = String(item.value || "");
-        if (value === "action:journal") {
+        const journalNotebook = value.startsWith("action:journal:") ? normalizeAgentNotebookId(value.slice(15)) : "";
+        if (value === "action:journal" || journalNotebook) {
             close();
-            this.openJournal();
+            this.openJournal(journalNotebook);
             return;
         }
         if (value === "action:quick-capture") {
@@ -6320,11 +6330,9 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             return {structuredContent: content, result: JSON.stringify(content)};
                         }
                         const limit = normalizeAgentLimit(args?.limit, 12);
-                        const def = queryable.find((item: any) => item.moduleId === requested) as {title?: string} | undefined;
+                        const def = queryable.find((item: any) => item.moduleId === requested) as {title?: string; configSchema?: unknown[]} | undefined;
                         if (!def) return {error: "unknown module"};
-                        const config = args?.config && typeof args.config === "object" && !Array.isArray(args.config)
-                            ? args.config as Record<string, unknown>
-                            : {};
+                        const config = normalizeAgentWidgetConfig(args?.config, def.configSchema) as Record<string, unknown>;
                         const result = await this.homeRuntime.read(requested, device, config, {cacheTtlMs: 1500}) as {ok?: boolean; reason?: string; snapshot?: {items?: Array<{label?: string; value?: string}>}};
                         const items = ((result?.snapshot?.items || []) as Array<{label?: string; value?: string}>)
                             .slice(0, limit)

@@ -21,6 +21,14 @@ test("insight-style widgets are registered with bounded sizes", () => {
     ]);
     const todayWriting = byId.get("today-writing");
     assert.deepEqual(todayWriting.configSchema, [{key: "notebook", label: "限定笔记本", type: "notebook"}]);
+    const monthly = byId.get("journal-monthly");
+    assert.equal(monthly.configSchema[0].max, 20);
+    assert.equal(monthly.configSchema[1].type, "notebook");
+    const onThisDay = byId.get("on-this-day");
+    assert.equal(onThisDay.configSchema[0].max, 20);
+    assert.equal(onThisDay.configSchema[1].type, "notebook");
+    const clipped = byId.get("clipped-unread");
+    assert.equal(clipped.configSchema[2].type, "notebook");
     const writing = byId.get("recent-writing-activity");
     assert.ok(writing, "recent writing activity registered");
     assert.deepEqual(writing.configSchema, [
@@ -44,6 +52,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     const reservations = byId.get("today-reservations");
     assert.ok(reservations, "today reservations registered");
     assert.equal(reservations.configSchema[0].max, 14);
+    assert.equal(reservations.configSchema[2].type, "notebook");
     assert.equal(reservations.readOnly, true);
 });
 
@@ -110,4 +119,22 @@ test("insight adapters share validated notebook scope without changing default q
         assert.match(adapter, /\$\{notebookScope\}/);
     });
     assert.match(adapters[1], /Math\.min\(20, Math\.max\(1, Math\.trunc\(Number\(config\.limit\) \|\| 10\)\)\)/);
+});
+
+test("journal and dated-content adapters use bounded notebook-aware actions", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const slice = (start, end) => source.slice(source.indexOf(`register("${start}"`), source.indexOf(`register("${end}"`));
+    const monthly = slice("journal-monthly", "note-stats");
+    const clipped = slice("clipped-unread", "on-this-day");
+    const memory = slice("on-this-day", "today-writing");
+    const reservations = slice("today-reservations", "plugin-commands");
+    assert.match(monthly, /action:journal:\$\{notebook\}/);
+    assert.match(monthly, /buildNotebookBoxScope\(notebook\)/);
+    assert.match(clipped, /buildNotebookBoxScope\(config\.notebook, "b"\)/);
+    assert.match(memory, /buildNotebookBoxScope\(config\.notebook\)/);
+    assert.match(reservations, /buildNotebookBoxScope\(config\.notebook, "B"\)/);
+    assert.match(reservations, /Number\.isFinite\(configuredDays\)/);
+    assert.match(source, /this\.openJournal\(journalNotebook\)/);
 });

@@ -22,6 +22,7 @@ const SEARCH_TYPES = Object.freeze(["document", "heading", "paragraph", "codeBlo
 const SEARCH_SUBTYPES = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
 const HOME_DIAGNOSTIC_TYPES = Object.freeze(["backoff", "cache", "empty", "timeout", "aborted", "failed"]);
 const HOME_DIAGNOSTIC_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
+const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "notebook"]);
 const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter()
     : null;
@@ -94,6 +95,53 @@ function buildAgentHomeDiagnostics(items, limit = 16, windowMinutes = 60, now = 
     };
 }
 
+function normalizeAgentWidgetConfigFields(value) {
+    if (!Array.isArray(value)) return [];
+    return value.slice(0, 8).map((raw) => {
+        if (!raw || typeof raw !== "object") return null;
+        const key = asText(raw.key, 32);
+        const type = HOME_CONFIG_FIELD_TYPES.includes(raw.type) ? raw.type : "";
+        if (!/^[A-Za-z][A-Za-z0-9_-]{0,31}$/.test(key) || !type) return null;
+        const field = {key, label: asText(raw.label, 32) || key, type};
+        if (type === "number") {
+            const min = Number.isFinite(raw.min) ? Math.min(1000000, Math.max(-1000000, Math.trunc(raw.min))) : 0;
+            const max = Number.isFinite(raw.max) ? Math.min(1000000, Math.max(-1000000, Math.trunc(raw.max))) : 100;
+            field.min = Math.min(min, max);
+            field.max = Math.max(min, max);
+            if (Number.isFinite(raw.defaults)) field.defaultValue = Math.min(field.max, Math.max(field.min, Math.trunc(raw.defaults)));
+        } else if (type === "select") {
+            field.options = [...new Set((Array.isArray(raw.options) ? raw.options : []).map((item) => asText(item, 32)).filter(Boolean))].slice(0, 12);
+            if (!field.options.length) return null;
+            const selected = asText(raw.defaults, 32);
+            field.defaultValue = field.options.includes(selected) ? selected : field.options[0];
+        } else if (type === "text") {
+            field.defaultValue = asText(raw.defaults, 128);
+        }
+        return field;
+    }).filter(Boolean);
+}
+
+function normalizeAgentWidgetConfig(value, schema) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const result = {};
+    normalizeAgentWidgetConfigFields(schema).forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(source, field.key)) return;
+        if (field.type === "number") {
+            const number = Number(source[field.key]);
+            if (Number.isFinite(number)) result[field.key] = Math.min(field.max, Math.max(field.min, Math.trunc(number)));
+        } else if (field.type === "notebook") {
+            const notebook = normalizeAgentNotebookId(source[field.key]);
+            if (notebook) result[field.key] = notebook;
+        } else if (field.type === "select") {
+            const selected = asText(source[field.key], 32);
+            if (field.options.includes(selected)) result[field.key] = selected;
+        } else {
+            result[field.key] = asText(source[field.key], 512);
+        }
+    });
+    return result;
+}
+
 function buildAgentWidgetCatalog(items, options = {}) {
     const source = options && typeof options === "object" ? options : {};
     const device = HOME_DIAGNOSTIC_DEVICES.includes(source.device) ? source.device : "desktop";
@@ -123,6 +171,7 @@ function buildAgentWidgetCatalog(items, options = {}) {
             supportedDevices,
             readOnly: itemReadOnly,
             source: itemSource,
+            configFields: normalizeAgentWidgetConfigFields(item.configSchema),
         });
     });
     const offset = Math.min(requestedOffset, eligible.length);
@@ -573,8 +622,26 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                                     },
                                     readOnly: {type: "boolean"},
                                     source: {type: "string", enum: ["builtin", "external"]},
+                                    configFields: {
+                                        type: "array",
+                                        maxItems: 8,
+                                        items: {
+                                            type: "object",
+                                            properties: {
+                                                key: {type: "string", maxLength: 32, pattern: "^[A-Za-z][A-Za-z0-9_-]{0,31}$"},
+                                                label: {type: "string", maxLength: 32},
+                                                type: {type: "string", enum: HOME_CONFIG_FIELD_TYPES},
+                                                min: {type: "integer", minimum: -1000000, maximum: 1000000},
+                                                max: {type: "integer", minimum: -1000000, maximum: 1000000},
+                                                defaultValue: {anyOf: [{type: "string", maxLength: 128}, {type: "integer", minimum: -1000000, maximum: 1000000}]},
+                                                options: {type: "array", maxItems: 12, items: {type: "string", maxLength: 32}},
+                                            },
+                                            required: ["key", "label", "type"],
+                                            additionalProperties: false,
+                                        },
+                                    },
                                 },
-                                required: ["moduleId", "title", "description", "sizes", "supportedDevices", "readOnly", "source"],
+                                required: ["moduleId", "title", "description", "sizes", "supportedDevices", "readOnly", "source", "configFields"],
                                 additionalProperties: false,
                             },
                         },
@@ -886,9 +953,10 @@ function normalizeAgentNotebookId(value) {
     return /^\d{14}-[0-9a-z]+$/i.test(id) ? id : "";
 }
 
-function buildNotebookBoxScope(value) {
+function buildNotebookBoxScope(value, tableAlias = "") {
     const notebook = normalizeAgentNotebookId(value);
-    return notebook ? ` AND box='${notebook}'` : "";
+    const qualifier = tableAlias === "b" || tableAlias === "B" ? `${tableAlias}.` : "";
+    return notebook ? ` AND ${qualifier}box='${notebook}'` : "";
 }
 
 
@@ -943,6 +1011,8 @@ module.exports = {
     normalizeAgentFailureReason,
     buildAgentHomeDiagnostics,
     buildAgentWidgetCatalog,
+    normalizeAgentWidgetConfigFields,
+    normalizeAgentWidgetConfig,
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,

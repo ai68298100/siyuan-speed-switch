@@ -155,6 +155,7 @@ refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
 | --- | --- |
 | 思源块 ID（如 `20260911…`） | 打开该块所在文档并定位 |
 | `"action:journal"` | 打开/新建今日日记 |
+| `"action:journal:笔记本ID"` | 打开/新建指定笔记本的今日日记（ID 非法时拒绝） |
 | `"set:文档集ID"` | 恢复对应文档集 |
 | 其他 | 视为纯展示；需要跳转请用 `href` |
 

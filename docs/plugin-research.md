@@ -17,12 +17,11 @@
 
 ## 已实现的内置组件
 
-- `recent-writing-activity`：配置 7–30 天；SQL 按 `blocks.created` 的日期聚合，最多返回配置天数，明确统计的是内容块数量。
-- `recent-daily-notes`：配置回看天数和条数；仅查询日期格式标题且已存在的文档，不调用创建日记 API。
+- `recent-writing-activity`：配置 7–30 天及可选笔记本；SQL 按 `blocks.created` 的日期聚合，最多返回配置天数，明确统计的是内容块数量。
+- `recent-daily-notes`：配置回看天数、条数及可选笔记本；仅查询日期格式标题且已存在的文档，不调用创建日记 API。
 
 两者均注册到统一 home adapter，支持桌面/侧栏/移动端，沿用缓存、超时、取消、stale 快照和只读协议。
 
 ## 安全与许可边界
 
 第三方插件的许可证和实现细节仅用于设计参考；Graph Enhance 为 AGPL-3.0，其余仓库以各自 LICENSE 为准。除非明确兼容并完成许可证审查，本项目不复制代码。外部 API、第三方私有 storage、任意 JS 执行均不作为默认数据源或能力。
-

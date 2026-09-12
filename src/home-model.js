@@ -22,7 +22,10 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "document-sets", title: "文档集", icon: "iconLayout", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large"]},
     {moduleId: "tags", title: "标签", icon: "iconTags", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"]},
     {moduleId: "bookmarks", title: "书签", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"]},
-    {moduleId: "journal-monthly", title: "本月日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"]},
+    {moduleId: "journal-monthly", title: "本月日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 12},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
     {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
@@ -42,8 +45,12 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "clipped-unread", title: "剪藏待读", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
         {key: "tag", label: "标签名", type: "text", defaults: "剪藏"},
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
-    {moduleId: "on-this-day", title: "往年今日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"]},
+    {moduleId: "on-this-day", title: "往年今日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 8},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
     {moduleId: "today-writing", title: "今日写作", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
@@ -65,6 +72,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "today-reservations", title: "近期预约", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "未来天数", type: "number", min: 0, max: 14, defaults: 3},
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
         {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},

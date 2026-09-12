@@ -34,3 +34,6 @@
 - D-032 Agent 组件目录的越界 `offset` 钳制到筛选后 `total`，而不是回到首页或原样返回越界值；这样空页仍明确指向结果末端，调用方无需猜测是否应重置分页。
 - D-033 所有通过 `blocks.box` 限定 SQL 的新增适配器优先复用 `buildNotebookBoxScope`；该函数只接受规范思源笔记本 ID，空值和非法值均返回空片段。原因：把字符串拼接的安全前提集中为可独立回归的边界。
 - D-034 多笔记本范围优先覆盖已有只读洞察组件，并保持“未配置=原全库语义”：近期编辑、今日写作、笔记统计和随机回顾只改变查询范围，不引入新持久化数据或自动创建行为。该增量使 raw bundle 自律线由 321 KiB 校准至 322 KiB；`package.zip` 的 300 KiB 硬上限不变。
+- D-035 `buildNotebookBoxScope` 的联表限定只接受内部白名单别名 `b/B`，其他别名一律退回无前缀 `box`；调用方不能提供任意 SQL 标识符。指定笔记本日记动作使用 `action:journal:<notebookId>`，分发前再次校验 ID，未配置时保持原 `action:journal` 与默认日记本行为。
+- D-036 T-051~T-054 使 raw bundle 自律线由 322 KiB 校准为 323 KiB；新增的是四个已有组件的范围配置、定向日记动作与预约零日窗口修复，`package.zip` 仍受 300 KiB 硬上限约束。
+- D-037 Agent 组件配置发现只公开重新清洗后的 `key/label/type/min/max/defaultValue/options`，最多 8 项；快照输入只保留该组件 configSchema 声明的字段。无公开 schema 的 adapter 收到空配置，避免把通用 Agent 输入当成第三方私有协议。该契约使 raw bundle 自律线校准为 325 KiB，压缩包硬上限不变。

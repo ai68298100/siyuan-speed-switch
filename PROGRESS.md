@@ -7,7 +7,7 @@
 已完成：
 
 - 桌面端真实宿主验收、内核端点兼容修复和 stale-while-revalidate 韧性增强。
-- 分层搜索、最近打开/关闭恢复、收藏、文档集、三端快捷入口、第二面板和 24 个内置组件。
+- 分层搜索、最近打开/关闭恢复、收藏、文档集、三端快捷入口、第二面板和 25 个内置组件。
 - 11 项 Agent 能力：导航、搜索、组件快照、组件诊断、大纲、工作区上下文、单篇/批量打开及受控写操作。
 - Agent `navigation-state` 新增有界 `closed` 最近关闭列表；`workspace-context` 同步提供 `closedTabs`，均为只读快照。
 - Agent 导航与工作区快照现在以当前打开页签优先，自动排除同 rootId 的陈旧关闭记录，避免模型误判可恢复状态。
@@ -15,12 +15,13 @@
 - Agent 标题搜索复用兼容提取器，支持 `data.files`、`data.documents`、`result.records` 等旧宿主包装，避免合法标题结果被误判为空。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
-验证基线：T-041~T-050 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、543/543、移动烟测和 Chromium 样式烟测；`index.js` 329127 字节，`package.zip` 298977 字节。
+验证基线：T-051~T-057 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、545/545、移动烟测和 Chromium 样式烟测；`index.js` 332102 字节，`package.zip` 299687 字节。
 
 待处理：
 
 1. T-022：Android 真机回归（需要用户设备与空闲时间）。
-2. 选择下一组本地只读组件配置一致性或 Agent 协议任务。
+2. T-058：Agent 组件快照补充有界 stat/count/done。
+3. T-059：Agent 组件快照补充 cached/updatedAt 状态。
 3. 继续保持自动门禁与 300 KiB 压缩包硬上限。
 4. 用户明确确认后，才执行 push、打 tag、创建 Release 等正式发版动作。
 
@@ -38,3 +39,6 @@
 2026-09-12 T-043~T-044 完成：`home-widget-snapshot` 发现模式新增 `builtin/external` 来源筛选，输入 schema 与运行时一致；目录在设备、只读和来源筛选前按合法 `moduleId` 保留首个注册项，重复项不再扭曲总数和分页。TypeScript 与 27 项 Agent 专项测试通过，正在执行完整发布门禁。
 2026-09-12 T-045~T-046 完成：组件目录越界 `offset` 统一钳制到筛选后 `total`，空页元数据可继续用于稳定分页；可选笔记本 SQL 条件抽为 `buildNotebookBoxScope` 纯函数，仅合法思源 ID 能生成 `blocks.box` 片段。32 项专项测试与生产构建通过，`index.js` 328479 字节、`package.zip` 298930 字节。
 2026-09-12 T-047~T-050 完成：`recent-edits` 新增 1–20 条与笔记本配置，`today-writing`、`note-stats`、`random-review` 新增可选笔记本范围；六组统计/列表 SQL 统一复用安全 `blocks.box` 片段，空配置保持既有全库结果。TypeScript、24 项专项测试和生产构建通过；`index.js` 329127 字节，原始自律线校准为 322 KiB，`package.zip` 298977 字节且 300 KiB 硬上限不变。
+2026-09-12 T-051~T-054 完成：往年今日新增条数/笔记本配置，剪藏待读和近期预约新增笔记本范围，本月日记新增条数/笔记本配置并以 `action:journal:<notebookId>` 定向打开或创建今日日记；联表 SQL 仅允许内部 `b/B` 别名。同期修复预约 `days=0` 被错误回退到 3 的边界。TypeScript、53 项专项测试与生产构建通过；`index.js` 330085 字节、`package.zip` 299104 字节。
+2026-09-12 T-055 完成：ROADMAP 同步为 25 个内置组件、11 项 Agent 能力和 544 项验证基线；已完成任务表收敛到 T-054，并明确继续开发本地只读组件/Agent 边界、真实设备验收后置的当前口径。
+2026-09-12 T-056~T-057 完成：Agent 组件目录为每项公开最多 8 个重新清洗的 `configFields`（类型、范围、选项、默认值）；组件快照调用按目标 configSchema 丢弃未知字段、钳制数字并验证枚举/笔记本 ID，不再透传任意配置对象。TypeScript 与 29 项 Agent 专项测试通过，生产 `index.js` 332102 字节、`package.zip` 299687 字节。
