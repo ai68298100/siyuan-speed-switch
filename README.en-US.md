@@ -35,7 +35,7 @@ On SiYuan versions that expose `addAgentCapability` (the current adapter follows
 
 [中文说明](./README.md)
 
-**Agent capabilities** (via `addAgentCapability`): `navigation-state`, `search-documents`, `home-widget-snapshot`, `get-document-outline` and `workspace-context` (read-only), `open-document` and `open-documents` — up to 5 documents per call, behind a confirmation dialog listing every title (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
+**Agent capabilities** (via `addAgentCapability`): `navigation-state` (bounded tabs, recent-open, recent-closed and favorites snapshot), `search-documents`, `home-widget-snapshot`, `get-document-outline` and `workspace-context` (read-only), `open-document` and `open-documents` — up to 5 documents per call, behind a confirmation dialog listing every title (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
 
 ## Core Capabilities
 

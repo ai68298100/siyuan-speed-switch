@@ -180,6 +180,7 @@ function buildAgentWorkspaceContext(input = {}) {
         device: source.device === "mobile" ? "mobile" : "desktop",
         activeDocument: {id: asText(active.id, 64), title: asText(active.title, 256)},
         openTabs: limitAgentItems(source.openTabs, limit),
+        closedTabs: limitAgentItems(source.closedTabs, limit),
         documentSets: docSets.slice(0, 8)
             .map((set) => ({
                 name: asText(set?.name, 128),
@@ -557,6 +558,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     additionalProperties: false,
                 }),
                 openTabs: AGENT_ITEMS_SCHEMA,
+                closedTabs: AGENT_ITEMS_SCHEMA,
                 documentSets: Object.freeze({
                     type: "array",
                     maxItems: 8,
@@ -593,7 +595,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     additionalProperties: false,
                 }),
             },
-            required: ["device", "activeDocument", "openTabs", "documentSets", "quickActions", "todayJournal"],
+            required: ["device", "activeDocument", "openTabs", "closedTabs", "documentSets", "quickActions", "todayJournal"],
             additionalProperties: false,
         }),
     }),

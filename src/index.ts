@@ -6285,6 +6285,13 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                                 title: this.titleOf(tab),
                                 source: "tabs",
                             })),
+                            closedTabs: this.getClosedHistory().map((entry) => ({
+                                id: entry.rootId,
+                                rootId: entry.rootId,
+                                title: entry.title,
+                                ts: entry.closedAt,
+                                source: "closed",
+                            })),
                             documentSets: this.getDocumentSets().map((set: any) => ({
                                 name: String(set?.name || ""),
                                 count: Array.isArray(set?.entries) ? set.entries.length : 0,
