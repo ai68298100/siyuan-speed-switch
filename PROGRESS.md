@@ -12,6 +12,7 @@
 - Agent `navigation-state` 新增有界 `closed` 最近关闭列表；`workspace-context` 同步提供 `closedTabs`，均为只读快照。
 - Agent 导航与工作区快照现在以当前打开页签优先，自动排除同 rootId 的陈旧关闭记录，避免模型误判可恢复状态。
 - 已记录 D-010：去重只发生在 Agent 输出边界，不修改持久化关闭历史，等待后续事件同步自然收敛。
+- Agent 标题搜索复用兼容提取器，支持 `data.files`、`data.documents`、`result.records` 等旧宿主包装，避免合法标题结果被误判为空。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
 验证基线：`pnpm verify:release` 全绿，包含 TypeScript 检查、生产构建、532 项自动测试、移动端烟测和 Chromium 样式烟测；生产构建已生成 `package.zip`。
@@ -19,7 +20,7 @@
 待处理：
 
 1. T-022：Android 真机回归（需要用户设备与空闲时间）。
-2. T-024：继续补 Agent/搜索兼容性增量；本轮已完成跨来源历史去重，后续继续处理旧宿主返回结构。
+2. T-024：继续补 Agent/搜索兼容性增量；已完成跨来源历史去重和标题搜索包装兼容，后续继续处理取消/超时边界。
 3. 用户明确确认后，才执行 push、打 tag、创建 Release 等正式发版动作。
 
 关键经验：SiYuan 3.8.x 查询参数使用 `stmt`；`getTag/getBookmark` 返回裸数组；全文搜索空 `types` 表示不搜索任何类型；前端 Agent 能力只能经宿主内部 AI 通道分发；真实宿主验收不可由 mock 或浏览器模拟替代。
