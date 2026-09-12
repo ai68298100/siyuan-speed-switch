@@ -161,10 +161,21 @@ function buildAgentWidgetSnapshot(moduleId, title, value, options = {}) {
     const total = normalizedItems.length;
     const offset = Math.min(total, Math.min(MAX_ITEMS * 2, Math.max(0, Number.parseInt(String(settings.offset), 10) || 0)));
     const items = normalizedItems.slice(offset, offset + limit);
+    const appliedConfig = {};
+    const rawConfig = settings.config && typeof settings.config === "object" && !Array.isArray(settings.config) ? settings.config : {};
+    Object.keys(rawConfig).slice(0, 8).forEach((key) => {
+        if (!/^[A-Za-z][A-Za-z0-9_-]{0,31}$/.test(key)) return;
+        const value = rawConfig[key];
+        if (typeof value === "string") appliedConfig[key] = asText(value, 512);
+        else if (typeof value === "boolean") appliedConfig[key] = value;
+        else if (Number.isFinite(value)) appliedConfig[key] = Math.min(1000000, Math.max(-1000000, Math.trunc(value)));
+    });
+    const status = source.ok ? "ok" : asText(source.reason, 32) || "unavailable";
     const content = {
         moduleId: asText(moduleId, 64),
         title: asText(title, 64),
-        status: source.ok ? "ok" : asText(source.reason, 32) || "unavailable",
+        status,
+        retryable: !source.ok && ["backoff", "timeout", "failed"].includes(status),
         device,
         cached: source.cached === true,
         updatedAt: Number.isFinite(snapshot.updatedAt) ? Math.min(9999999999999, Math.max(0, Math.trunc(snapshot.updatedAt))) : 0,
@@ -172,6 +183,7 @@ function buildAgentWidgetSnapshot(moduleId, title, value, options = {}) {
         total,
         offset,
         truncated: offset + items.length < total,
+        appliedConfig,
     };
     const stat = snapshot.stat && typeof snapshot.stat === "object" ? snapshot.stat : null;
     const statValue = stat ? asText(stat.value, 32) : "";
@@ -611,6 +623,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                 device: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
                 readOnly: {type: "boolean"},
                 source: {type: "string", enum: ["builtin", "external"]},
+                refresh: {type: "boolean"},
             },
             additionalProperties: false,
         }),
@@ -622,12 +635,24 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                         moduleId: {type: "string", maxLength: 64, pattern: "^[A-Za-z0-9._:-]{1,64}$"},
                         title: {type: "string", maxLength: 64},
                         status: {type: "string", maxLength: 32},
+                        retryable: {type: "boolean"},
                         device: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
                         cached: {type: "boolean"},
                         updatedAt: {type: "integer", minimum: 0, maximum: 9999999999999},
                         total: {type: "integer", minimum: 0, maximum: 24},
                         offset: {type: "integer", minimum: 0, maximum: 24},
                         truncated: {type: "boolean"},
+                        appliedConfig: {
+                            type: "object",
+                            maxProperties: 8,
+                            additionalProperties: {
+                                anyOf: [
+                                    {type: "string", maxLength: 512},
+                                    {type: "integer", minimum: -1000000, maximum: 1000000},
+                                    {type: "boolean"},
+                                ],
+                            },
+                        },
                         stat: {
                             type: "object",
                             properties: {
@@ -654,7 +679,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                             },
                         },
                     },
-                    required: ["moduleId", "items", "device", "cached", "updatedAt", "total", "offset", "truncated"],
+                    required: ["moduleId", "items", "device", "retryable", "cached", "updatedAt", "total", "offset", "truncated", "appliedConfig"],
                     additionalProperties: false,
                 },
                 {

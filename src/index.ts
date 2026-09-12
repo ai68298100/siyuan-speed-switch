@@ -6309,17 +6309,18 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             {
                 spec: AGENT_CAPABILITY_SPECS.homeWidgets,
                 handler: async (args: Record<string, unknown>) => {
+                    const currentDevice = this.isMobile ? "mobile" : "desktop";
+                    const requestedDevice = ["desktop", "sidebar", "mobile"].includes(String(args?.device || ""))
+                        ? String(args.device)
+                        : currentDevice;
+                    const device = requestedDevice as "desktop" | "sidebar" | "mobile";
+                    const requested = String(args?.moduleId || "");
+                    const limit = normalizeAgentLimit(args?.limit, 12);
                     try {
-                        const currentDevice = this.isMobile ? "mobile" : "desktop";
-                        const requestedDevice = ["desktop", "sidebar", "mobile"].includes(String(args?.device || ""))
-                            ? String(args.device)
-                            : currentDevice;
-                        const device = requestedDevice as "desktop" | "sidebar" | "mobile";
                         const queryable = this.homeRuntime.listModules(device)
                             .filter((item: any) =>
                                 this.homeBuiltinAdapterIds.has(item.moduleId) || this.homeModuleOpens.has(item.moduleId));
                         // 发现模式：省略 moduleId 时返回全部可查询组件清单
-                        const requested = String(args?.moduleId || "");
                         if (!requested) {
                             const content = buildAgentWidgetCatalog(queryable, {
                                 device,
@@ -6330,15 +6331,21 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             });
                             return {structuredContent: content, result: JSON.stringify(content)};
                         }
-                        const limit = normalizeAgentLimit(args?.limit, 12);
                         const def = queryable.find((item: any) => item.moduleId === requested) as {title?: string; configSchema?: unknown[]} | undefined;
-                        if (!def) return {error: "unknown module"};
+                        if (!def) {
+                            const content = buildAgentWidgetSnapshot(requested, "", {ok: false, reason: "unregistered"}, {device, limit, offset: args?.offset});
+                            return {structuredContent: content, result: JSON.stringify(content)};
+                        }
                         const config = normalizeAgentWidgetConfig(args?.config, def.configSchema) as Record<string, unknown>;
-                        const result = await this.homeRuntime.read(requested, device, config, {cacheTtlMs: 1500});
-                        const content = buildAgentWidgetSnapshot(requested, def.title, result, {device, limit, offset: args?.offset});
+                        const result = await this.homeRuntime.read(requested, device, config, {cacheTtlMs: 1500, force: args?.refresh === true});
+                        const content = buildAgentWidgetSnapshot(requested, def.title, result, {device, limit, offset: args?.offset, config});
                         return {structuredContent: content, result: JSON.stringify(content)};
                     } catch (error) {
                         logger.warn("Agent home widget snapshot unavailable", error);
+                        if (requested) {
+                            const content = buildAgentWidgetSnapshot(requested, "", {ok: false, reason: "failed"}, {device, limit, offset: args?.offset});
+                            return {structuredContent: content, result: JSON.stringify(content)};
+                        }
                         return {error: "widget snapshot unavailable"};
                     }
                 },

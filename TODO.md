@@ -154,3 +154,15 @@
 - [x] T-061 Agent 组件快照设备回显
   - 目标：输出实际查询的 desktop/sidebar/mobile，避免跨端调用方误判结果能力范围
   - 状态：done（2026-09-12）
+- [x] T-062 Agent 组件快照有效配置回显
+  - 目标：返回实际传给 adapter 的有界配置，明确未知字段丢弃、数值钳制和非法枚举降级结果
+  - 状态：done（2026-09-12）
+- [x] T-063 Agent 组件快照重试语义
+  - 目标：按稳定状态输出 retryable，区分 timeout/backoff/failed 与取消或不支持
+  - 状态：done（2026-09-12）
+- [x] T-064 Agent 组件快照显式刷新
+  - 目标：新增 refresh 布尔输入，在用户/模型明确要求时绕过短缓存，保持默认缓存行为不变
+  - 状态：done（2026-09-12）
+- [x] T-065 Agent 组件快照错误输出一致性
+  - 目标：合法但未注册的组件及读取异常返回符合 outputSchema 的 unregistered/failed 快照，而非旁路 error 对象
+  - 状态：done（2026-09-12）

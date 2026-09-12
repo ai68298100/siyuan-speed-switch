@@ -170,10 +170,11 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
                 {label: "", value: "drop"},
             ],
         },
-    }, {device: "mobile", limit: 12}), {
+    }, {device: "mobile", limit: 12, config: {limit: 20, extra: true, "bad key": "drop"}}), {
         moduleId: "today-tasks",
         title: "Today",
         status: "ok",
+        retryable: false,
         device: "mobile",
         cached: true,
         updatedAt: 1234,
@@ -181,18 +182,30 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
         total: 1,
         offset: 0,
         truncated: false,
+        appliedConfig: {limit: 20, extra: true},
         stat: {value: "3", label: "Tasks", progress: 100},
     });
     assert.deepEqual(buildAgentWidgetSnapshot("x", "", {ok: false, reason: "timeout"}), {
-        moduleId: "x", title: "", status: "timeout", device: "desktop", cached: false, updatedAt: 0,
-        items: [], total: 0, offset: 0, truncated: false,
+        moduleId: "x", title: "", status: "timeout", retryable: true, device: "desktop", cached: false, updatedAt: 0,
+        items: [], total: 0, offset: 0, truncated: false, appliedConfig: {},
     });
+    assert.equal(buildAgentWidgetSnapshot("x", "", {ok: false, reason: "unregistered"}).retryable, false);
     const paged = buildAgentWidgetSnapshot("x", "X", {ok: true, snapshot: {items: [
         {label: "one"}, {label: "two"}, {label: "three"},
     ]}}, {limit: 1, offset: 1, device: "sidebar"});
     assert.deepEqual(paged.items, [{label: "two", value: ""}]);
     assert.deepEqual({device: paged.device, total: paged.total, offset: paged.offset, truncated: paged.truncated},
         {device: "sidebar", total: 3, offset: 1, truncated: true});
+});
+
+test("agent widget refresh explicitly bypasses the short runtime cache", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    assert.match(source, /cacheTtlMs: 1500, force: args\?\.refresh === true/);
+    assert.match(source, /offset: args\?\.offset, config/);
+    assert.doesNotMatch(source, /return \{error: "unknown module"\}/);
+    assert.match(source, /reason: "unregistered"/);
 });
 
 test("notebook SQL scope accepts only a normalized SiYuan id", () => {
@@ -254,6 +267,7 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
         moduleId: "today-tasks",
         title: "今日待办",
         status: "ok",
+        retryable: false,
         device: "desktop",
         cached: false,
         updatedAt: 0,
@@ -261,6 +275,7 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
         total: 1,
         offset: 0,
         truncated: false,
+        appliedConfig: {},
     }), true, JSON.stringify(validateWidgets.errors));
     assert.equal(validateDiagnostics(buildAgentHomeDiagnostics([
         {type: "timeout", moduleId: "today-tasks", device: "sidebar", at: Date.now()},
@@ -410,6 +425,7 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.match(AGENT_CAPABILITY_SPECS.homeWidgets.description, /省略 moduleId/);
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.config.maxProperties, 16);
     assert.deepEqual(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.source.enum, ["builtin", "external"]);
+    assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.refresh.type, "boolean");
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema.anyOf.length, 2);
     assert.equal(AGENT_CAPABILITY_SPECS.openDocument.name, "open-document");
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
