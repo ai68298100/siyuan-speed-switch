@@ -6168,6 +6168,13 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             ts: entry.ts,
                             source: "recent",
                         }));
+                        const closed = this.getClosedHistory().map((entry) => ({
+                            id: entry.rootId,
+                            rootId: entry.rootId,
+                            title: entry.title,
+                            ts: entry.closedAt,
+                            source: "closed",
+                        }));
                         const favorites = this.getFavorites().map((entry) => ({
                             id: entry.key,
                             rootId: resolveFavoriteRootId(entry) || undefined,
@@ -6180,6 +6187,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             mobile: this.isMobile,
                             tabs,
                             recent,
+                            closed,
                             favorites,
                             limit,
                         });

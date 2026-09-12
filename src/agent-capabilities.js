@@ -13,7 +13,7 @@ const MAX_AGENT_PATHS = 8;
 const MAX_AGENT_PATH_LENGTH = 1024;
 const MAX_TEXT_LENGTH = 256;
 const MAX_SNIPPET_LENGTH = 600;
-const ITEM_SOURCES = Object.freeze(["tabs", "recent", "favorite", "title", "opened", "global"]);
+const ITEM_SOURCES = Object.freeze(["tabs", "recent", "closed", "favorite", "title", "opened", "global"]);
 const SEARCH_SOURCES = Object.freeze(["tabs", "title", "global", "tabs+title", "tabs+global"]);
 const SEARCH_METHODS = Object.freeze(["keyword", "query", "regexp"]);
 const SEARCH_ORDERS = Object.freeze(["relevanceDesc", "updatedDesc", "createdDesc", "content"]);
@@ -162,6 +162,7 @@ function buildAgentNavigationResult(input = {}) {
         mobile: source.mobile === true,
         tabs: limitAgentItems(source.tabs, limit),
         recent: limitAgentItems(source.recent, limit),
+        closed: limitAgentItems(source.closed, limit),
         favorites: limitAgentItems(source.favorites, limit),
     };
 }
@@ -527,9 +528,10 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                 mobile: {type: "boolean"},
                 tabs: AGENT_ITEMS_SCHEMA,
                 recent: AGENT_ITEMS_SCHEMA,
+                closed: AGENT_ITEMS_SCHEMA,
                 favorites: AGENT_ITEMS_SCHEMA,
             },
-            required: ["activeId", "mobile", "tabs", "recent", "favorites"],
+            required: ["activeId", "mobile", "tabs", "recent", "closed", "favorites"],
             additionalProperties: false,
         }),
     }),

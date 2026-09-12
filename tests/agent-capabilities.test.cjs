@@ -44,6 +44,8 @@ test("agent capability specs are read-only and bounded", () => {
     assert.equal(AGENT_CAPABILITY_SPECS.search.outputSchema.properties.items.items.type, "object");
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.tabs.type, "array");
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.tabs.maxItems, 32);
+    assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.closed.type, "array");
+    assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.properties.closed.maxItems, 32);
     assert.equal(AGENT_CAPABILITY_SPECS.navigation.outputSchema.additionalProperties, false);
     assert.equal(AGENT_CAPABILITY_SPECS.search.outputSchema.properties.count.maximum, 32);
     assert.equal(AGENT_ITEM_SCHEMA.additionalProperties, false);
@@ -60,12 +62,14 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
         mobile: false,
         tabs: [{id: "tab-a", rootId: ROOT, title: "当前", source: "tabs", active: true}],
         recent: [],
+        closed: [{rootId: ROOT, title: "已关闭", source: "closed", ts: Date.now()}],
         favorites: [],
     });
     const search = buildAgentSearchResult("query", [
         {id: ROOT, rootId: ROOT, title: "文档", source: "global", snippets: ["片段"]},
     ], {source: "global"});
     assert.equal(validateNavigation(navigation), true, JSON.stringify(validateNavigation.errors));
+    assert.equal(navigation.closed[0].source, "closed");
     assert.equal(validateSearch(search), true, JSON.stringify(validateSearch.errors));
     assert.equal(validateWidgets({
         moduleId: "today-tasks",
@@ -128,12 +132,14 @@ test("agent navigation result keeps separate sources and active state", () => {
         mobile: true,
         tabs: [{rootId: ROOT, title: "当前"}],
         recent: [{rootId: ROOT, title: "最近"}],
+        closed: [{rootId: ROOT, title: "已关闭", source: "closed"}],
         favorites: [{rootId: ROOT, title: "收藏", group: "工作"}],
         limit: 8,
     });
     assert.equal(result.activeId, ROOT);
     assert.equal(result.mobile, true);
     assert.equal(result.tabs[0].title, "当前");
+    assert.equal(result.closed[0].title, "已关闭");
     assert.equal(result.favorites[0].group, "工作");
 });
 
