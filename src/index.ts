@@ -3965,8 +3965,8 @@ const version = beginSearch(session);
         const storeDialog = new Dialog({
             title: this.i18n.homeStoreTitle,
             content: '<div class="speed-switch sw-home-store"></div>',
-            width: this.isMobile ? "min(680px, 94vw)" : `${Math.min(680, Math.round(window.innerWidth * 0.7))}px`,
-            height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(560, Math.round(window.innerHeight * 0.7))}px`,
+            width: this.isMobile ? "min(680px, 94vw)" : `${Math.min(960, Math.round(window.innerWidth * 0.78))}px`,
+            height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(720, Math.round(window.innerHeight * 0.84))}px`,
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
@@ -4045,18 +4045,36 @@ const version = beginSearch(session);
             });
             root.appendChild(tabBar);
 
-            // —— 分区一：可用组件（内置 + 已就位插件提供） ——
+            // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
             const readyHeading = document.createElement("h3");
             readyHeading.className = "sw-home-store__section";
             readyHeading.textContent = this.i18n.homeStoreReady;
             root.appendChild(readyHeading);
-            const readyGrid = document.createElement("div");
-            readyGrid.className = "sw-home-store__grid";
+
+            // 功能分组（内置组件按用途归类；插件组件按来源作者归类）
+            const BUILTIN_GROUPS: Array<{label: string; moduleIds: string[]}> = [
+                {label: "日记与日程", moduleIds: ["today-journal", "journal-monthly", "recent-daily-notes", "today-reservations", "on-this-day"]},
+                {label: "任务与清单", moduleIds: ["today-tasks"]},
+                {label: "文档与导航", moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
+                {label: "数据洞察", moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
+                {label: "学习与记忆", moduleIds: ["flashcard-due", "random-review"]},
+                {label: "采集与速记", moduleIds: ["quick-capture", "clipped-unread"]},
+                {label: "系统与工具", moduleIds: ["tags", "bookmarks", "plugin-commands"]},
+            ];
+            const groupOf = (moduleId: string, def: any): string => {
+                if (def.category === "siyuan") {
+                    const hit = BUILTIN_GROUPS.find((group) => group.moduleIds.includes(moduleId));
+                    return hit ? hit.label : "其他";
+                }
+                return def.author ? `插件 · ${def.author}` : "插件组件";
+            };
+
             const ready = [...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
                 .filter((item) => !!item.def)
                 .sort((a, b) => (a.def.category === b.def.category ? a.moduleId.localeCompare(b.moduleId)
                     : (a.def.category === "siyuan" ? -1 : 1)));
-            ready.forEach(({moduleId, def}) => {
+
+            const buildReadyCard = (moduleId: string, def: any) => {
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
                 card.dataset.search = `${def.title || ""} ${def.description || ""} ${moduleId}`.toLowerCase();
@@ -4075,6 +4093,24 @@ const version = beginSearch(session);
                 copy.append(title, desc);
                 head.append(icon, copy);
                 card.appendChild(head);
+                // 迷你预览：按组件形态给骨架示意（stat 大数字 / list 列表行）
+                const STAT_KINDS = ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown", "flashcard-due", "random-review"];
+                const kind = STAT_KINDS.includes(moduleId) ? "stat" : "list";
+                const preview = document.createElement("div");
+                preview.className = "sw-home-store__preview";
+                preview.dataset.kind = kind;
+                preview.setAttribute("aria-hidden", "true");
+                if (kind === "stat") {
+                    const hero = document.createElement("i");
+                    hero.className = "p-hero";
+                    preview.appendChild(hero);
+                }
+                ["w1", "w2", "w3"].forEach((w) => {
+                    const line = document.createElement("i");
+                    line.className = `p-line ${w}`;
+                    preview.appendChild(line);
+                });
+                card.appendChild(preview);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
@@ -4112,9 +4148,31 @@ const version = beginSearch(session);
                     tiles.appendChild(tile);
                 });
                 card.appendChild(tiles);
-                readyGrid.appendChild(card);
+                return card;
+            };
+
+            // 按组渲染：组头（含数量）+ 组内网格；搜索过滤沿用卡片隐藏逻辑
+            const readyGroups = new Map<string, HTMLElement[]>();
+            ready.forEach(({moduleId, def}) => {
+                const label = groupOf(moduleId, def);
+                if (!readyGroups.has(label)) readyGroups.set(label, []);
+                readyGroups.get(label)!.push(buildReadyCard(moduleId, def));
             });
-            if (ready.length > 0) root.appendChild(readyGrid);
+            const orderedGroups = [
+                ...BUILTIN_GROUPS.map((group) => group.label).filter((label) => readyGroups.has(label)),
+                ...[...readyGroups.keys()].filter((label) => !BUILTIN_GROUPS.some((group) => group.label === label)),
+            ];
+            orderedGroups.forEach((label) => {
+                const cards = readyGroups.get(label)!;
+                const groupHeading = document.createElement("h3");
+                groupHeading.className = "sw-home-store__group";
+                groupHeading.textContent = `${label} · ${cards.length}`;
+                root.appendChild(groupHeading);
+                const groupGrid = document.createElement("div");
+                groupGrid.className = "sw-home-store__grid";
+                cards.forEach((card) => groupGrid.appendChild(card));
+                root.appendChild(groupGrid);
+            });
 
             // —— 分区二：需安装插件后可用（目录中登记、来源插件未就位） ——
             const pending = WIDGET_CATALOG.filter((entry) => !activeIds.has(entry.moduleId) && !instanceByModule.has(entry.moduleId));

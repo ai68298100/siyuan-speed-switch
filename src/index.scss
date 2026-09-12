@@ -4868,3 +4868,45 @@
 
     .sw__home-module-body { padding: 0 2px 4px; }
 }
+
+// ==================== 商店卡片预览与分组头 ====================
+.sw-home-store__preview {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    min-height: 52px;
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--b3-theme-background) 55%, transparent);
+
+    i {
+        display: block;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--b3-border-color) 75%, transparent);
+
+        &.p-hero {
+            width: 44%;
+            height: 16px;
+            margin-bottom: 2px;
+            background: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent);
+        }
+
+        &.p-line {
+            height: 6px;
+
+            &.w1 { width: 92%; }
+            &.w2 { width: 72%; }
+            &.w3 { width: 82%; }
+        }
+    }
+}
+
+.sw-home-store__group {
+    margin: 12px 0 6px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
