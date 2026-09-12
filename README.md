@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.37-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.38-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -184,6 +184,13 @@ pnpm verify:release
 人工验收完成前，本工作树应视为发布候选而不是正式发布版本。
 
 ## 更新日志
+
+### v0.16.38（2026-09-12）
+
+- 新增四个移动端风格内置组件（内置组件达 20 个）：**快速记录**（Flomo 式随手记：点一下弹输入框，一句追加到今日日记末尾，未配置日记本时引导选择）、**剪藏待读**（按标签聚合的待读清单，标签名可配置，点击直达文档）、**往年今日**（同月同日的往年文档，照片"回忆"式重逢）、**今日写作**（今日新增字数与新建/修订文档数）。
+- 修复能力缺口：`append-to-journal`（追加今日日记）此前只有定义、从未注册——README 宣称 10 项智能体能力而实际只有 9 项；现已补全注册（含端点白名单、弹窗确认、30 秒超时拒绝），智能体能力真正达到 10 项。
+- 新增"能力注册守卫"测试：扫描插件入口源码，确保每个能力定义都必须被注册，同类缺口不会再漏（该测试在修复前会失败）。
+- 530 项自动测试。
 
 ### v0.16.37（2026-09-12）
 

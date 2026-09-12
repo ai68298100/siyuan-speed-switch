@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.37-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.38-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -169,6 +169,13 @@ Then verify in a real SiYuan environment:
 Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
 
 ## Changelog
+
+### v0.16.38 (2026-09-12)
+
+- Four new mobile-style builtin widgets (20 total): **Quick capture** (Flomo-style: tap to open a small input and append a line to today's journal; guides you to pick a journal notebook when unset), **Clipped to read** (tag-based reading queue with a configurable tag; tap to open), **On this day** (documents from the same month and day in past years), **Today's writing** (today's characters plus new/edited document counts).
+- Fixed a capability gap: `append-to-journal` was defined but never registered - the README claimed ten agent capabilities while only nine were live. It is now registered (endpoint whitelist, confirmation dialog, 30 s timeout = denied), so the count is genuinely ten.
+- New "capability registration guard" test: scans the plugin entry source and requires every capability spec to be registered, so this class of gap cannot recur (the test fails before the fix).
+- 530 automated tests.
 
 ### v0.16.37 (2026-09-12)
 
