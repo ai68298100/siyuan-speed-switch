@@ -62,14 +62,14 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
         mobile: false,
         tabs: [{id: "tab-a", rootId: ROOT, title: "当前", source: "tabs", active: true}],
         recent: [],
-        closed: [{rootId: ROOT, title: "已关闭", source: "closed", ts: Date.now()}],
+        closed: [{rootId: "20260911083000-abcdeg", title: "已关闭", source: "closed", ts: Date.now()}],
         favorites: [],
     });
     const search = buildAgentSearchResult("query", [
         {id: ROOT, rootId: ROOT, title: "文档", source: "global", snippets: ["片段"]},
     ], {source: "global"});
     assert.equal(validateNavigation(navigation), true, JSON.stringify(validateNavigation.errors));
-    assert.equal(navigation.closed[0].source, "closed");
+        assert.equal(navigation.closed[0].source, "closed");
     assert.equal(validateSearch(search), true, JSON.stringify(validateSearch.errors));
     assert.equal(validateWidgets({
         moduleId: "today-tasks",
@@ -132,7 +132,7 @@ test("agent navigation result keeps separate sources and active state", () => {
         mobile: true,
         tabs: [{rootId: ROOT, title: "当前"}],
         recent: [{rootId: ROOT, title: "最近"}],
-        closed: [{rootId: ROOT, title: "已关闭", source: "closed"}],
+        closed: [{rootId: "20260911083000-abcdeg", title: "已关闭", source: "closed"}],
         favorites: [{rootId: ROOT, title: "收藏", group: "工作"}],
         limit: 8,
     });
@@ -141,6 +141,20 @@ test("agent navigation result keeps separate sources and active state", () => {
     assert.equal(result.tabs[0].title, "当前");
     assert.equal(result.closed[0].title, "已关闭");
     assert.equal(result.favorites[0].group, "工作");
+});
+
+test("agent navigation and workspace snapshots prefer reopened tabs over stale closed records", () => {
+    const navigation = buildAgentNavigationResult({
+        tabs: [{rootId: ROOT, title: "重新打开"}],
+        closed: [{rootId: ROOT, title: "旧关闭记录"}, {rootId: "20260911083000-abcdeg", title: "仍关闭"}],
+        limit: 8,
+    });
+    assert.deepEqual(navigation.closed.map((item) => item.rootId), ["20260911083000-abcdeg"]);
+    const context = buildAgentWorkspaceContext({
+        openTabs: [{rootId: ROOT, title: "重新打开"}],
+        closedTabs: [{rootId: ROOT, title: "旧关闭记录"}],
+    });
+    assert.deepEqual(context.closedTabs, []);
 });
 
 test("agent search result reports truncation without leaking unbounded data", () => {

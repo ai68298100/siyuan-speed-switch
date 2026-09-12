@@ -154,15 +154,25 @@ function limitAgentItems(items, limit = MAX_ITEMS) {
     return output;
 }
 
+function excludeAgentItems(items, excluded) {
+    const blocked = excluded instanceof Set ? excluded : new Set();
+    return (Array.isArray(items) ? items : []).filter((item) => {
+        const key = item?.rootId || item?.id || item?.title;
+        return key && !blocked.has(key);
+    });
+}
+
 function buildAgentNavigationResult(input = {}) {
     const source = input && typeof input === "object" ? input : {};
     const limit = normalizeAgentLimit(source.limit, 12);
+    const tabs = limitAgentItems(source.tabs, limit);
+    const openRoots = new Set(tabs.map((item) => item.rootId || item.id).filter(Boolean));
     return {
         activeId: asText(source.activeId, 128),
         mobile: source.mobile === true,
-        tabs: limitAgentItems(source.tabs, limit),
+        tabs,
         recent: limitAgentItems(source.recent, limit),
-        closed: limitAgentItems(source.closed, limit),
+        closed: limitAgentItems(excludeAgentItems(source.closed, openRoots), limit),
         favorites: limitAgentItems(source.favorites, limit),
     };
 }
@@ -176,11 +186,13 @@ function buildAgentWorkspaceContext(input = {}) {
     const docSets = Array.isArray(source.documentSets) ? source.documentSets : [];
     const actions = Array.isArray(source.quickActions) ? source.quickActions : [];
     const journal = source.todayJournal && typeof source.todayJournal === "object" ? source.todayJournal : {};
+    const openTabs = limitAgentItems(source.openTabs, limit);
+    const openRoots = new Set(openTabs.map((item) => item.rootId || item.id).filter(Boolean));
     return {
         device: source.device === "mobile" ? "mobile" : "desktop",
         activeDocument: {id: asText(active.id, 64), title: asText(active.title, 256)},
-        openTabs: limitAgentItems(source.openTabs, limit),
-        closedTabs: limitAgentItems(source.closedTabs, limit),
+        openTabs,
+        closedTabs: limitAgentItems(excludeAgentItems(source.closedTabs, openRoots), limit),
         documentSets: docSets.slice(0, 8)
             .map((set) => ({
                 name: asText(set?.name, 128),
