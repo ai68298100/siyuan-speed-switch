@@ -11,6 +11,7 @@
 - 10 项 Agent 能力：导航、搜索、组件快照、大纲、工作区上下文、单篇/批量打开及受控写操作。
 - Agent `navigation-state` 新增有界 `closed` 最近关闭列表；`workspace-context` 同步提供 `closedTabs`，均为只读快照。
 - Agent 导航与工作区快照现在以当前打开页签优先，自动排除同 rootId 的陈旧关闭记录，避免模型误判可恢复状态。
+- 已记录 D-010：去重只发生在 Agent 输出边界，不修改持久化关闭历史，等待后续事件同步自然收敛。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
 验证基线：`pnpm verify:release` 全绿，包含 TypeScript 检查、生产构建、531 项自动测试、移动端烟测和 Chromium 样式烟测；生产构建已生成 `package.zip`。
