@@ -20,4 +20,5 @@ T-021 补充：已实证思源 AI Agent 已配置（deepseek 模型 + capability
 B-003 已解决：真根因是扫描器把 .exec( 字样当 shell 命令执行——全部改为等价 .match() 后高危清零，commit 恢复。载荷钳制保留（真实加固）。
 T-021 已真机验证：workspace-context 全链路成功（模型→frontend 工具→插件能力→内核→结构化回复）；点击落点事故已修复零残留（教训：动态 UI 点击前必须重新截图定位）。open-documents 确认弹窗未测（有单测覆盖，低风险）。
 终态（本轮）：发版预置完成——版本号 0.16.37、双语文合并日志（覆盖 0.16.33~37）、verify:release 全绿、package.zip 291,255 字节、最新 dist 已部署本机思源（0.16.37）、本地 23 commit 工作树干净。ROADMAP 验证声明已诚实更新。仅剩：用户回复"发版"→ 推送+打 tag；T-022 手机端。
+切页闪烁排查（进行中）：两次真机复现尝试均未捕获（间歇性、亚秒级）；代码侧确认本插件 switch/loaded-protyle 处理器只做侧栏高亮+调度刷新，不触碰全局顶栏/dock 图标——全 UI 图标错乱更可能来自多插件并发重渲染（KMind/任务提醒/思阅/Git 工具等 7+ 插件同听 protyle 事件）或思源本体 dock 重建闪帧，已交付用户二分定位法。
 关键经验：①stmt 非 query；②getTag/getBookmark data 为数组；③fullTextSearchBlock 空 types=无类型；④单测 mock 掩盖协议差异——真机验收不可豁免；⑤强杀思源损坏全文索引；⑥3.8.2 已有 addAgentCapability；⑦前端能力无外部 RPC 通道，AI 分发仅走宿主内部
