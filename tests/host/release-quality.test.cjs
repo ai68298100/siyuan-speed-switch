@@ -51,8 +51,11 @@ test('production bundle remains within the mobile performance budget when built'
     // today's writing) plus the append-to-journal registration fix.
     // 2026-09-12 (5): recalibrated to 315 KiB for recent writing activity,
     // recent daily notes, document-relations and reservation summaries.
-    // 2026-09-12 (5): recalibrated to 317 KiB for bounded home diagnostics.
-    assert.ok(bytes <= 317 * 1024, `dist/index.js is ${bytes} bytes; budget is 324608`);
+    // 2026-09-12 (6): recalibrated to 317 KiB for bounded home diagnostics.
+    // 2026-09-12 (7): recalibrated to 319 KiB for diagnostic time windows and
+    // bounded device/reason aggregates; package.zip remains below 300 KiB.
+    const budget = 319 * 1024;
+    assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
 test('release candidate command covers all local gates', () => {

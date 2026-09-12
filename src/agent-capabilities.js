@@ -20,6 +20,8 @@ const SEARCH_METHODS = Object.freeze(["keyword", "query", "regexp"]);
 const SEARCH_ORDERS = Object.freeze(["relevanceDesc", "updatedDesc", "createdDesc", "content"]);
 const SEARCH_TYPES = Object.freeze(["document", "heading", "paragraph", "codeBlock"]);
 const SEARCH_SUBTYPES = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
+const HOME_DIAGNOSTIC_TYPES = Object.freeze(["backoff", "cache", "empty", "timeout", "aborted", "failed"]);
+const HOME_DIAGNOSTIC_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter()
     : null;
@@ -46,7 +48,8 @@ function normalizeAgentQuery(value) {
     return asText(value, MAX_QUERY_LENGTH);
 }
 
-function normalizeAgentFailureReason(error) {
+function normalizeAgentFailureReason(error, deadlineExpired = false) {
+    if (deadlineExpired === true) return "timeout";
     const source = error && typeof error === "object" ? error : {};
     const name = String(source.name || "").toLowerCase();
     const code = String(source.code || "").toLowerCase();
@@ -54,6 +57,41 @@ function normalizeAgentFailureReason(error) {
     if (name === "aborterror" || code === "abort_err" || message.includes("aborted") || message.includes("cancelled") || message.includes("canceled")) return "cancelled";
     if (name === "timeouterror" || code === "timeout" || message.includes("timeout") || message.includes("timed out")) return "timeout";
     return "failed";
+}
+
+function buildAgentHomeDiagnostics(items, limit = 16, windowMinutes = 60, now = Date.now()) {
+    const normalizedLimit = normalizeAgentLimit(limit, 16);
+    const minutes = Math.min(1440, Math.max(1, Number.parseInt(String(windowMinutes), 10) || 60));
+    const currentTime = Number.isFinite(now) && now > 0 ? Math.floor(now) : Date.now();
+    const since = Math.max(1, currentTime - minutes * 60000);
+    const diagnostics = [];
+    const source = Array.isArray(items) ? items.slice(-MAX_DIAGNOSTICS * 2) : [];
+    source.forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const moduleId = asText(item.moduleId, 64);
+        const device = asText(item.device, 16);
+        const at = Number(item.at);
+        if (!/^[A-Za-z0-9._:-]{1,64}$/.test(moduleId)
+            || !HOME_DIAGNOSTIC_DEVICES.includes(device)
+            || !Number.isFinite(at) || at < since || at > currentTime) return;
+        const rawType = asText(item.type, 24);
+        diagnostics.push({
+            type: HOME_DIAGNOSTIC_TYPES.includes(rawType) ? rawType : "failed",
+            moduleId,
+            device,
+            at: Math.floor(at),
+        });
+    });
+    const byType = Object.fromEntries(HOME_DIAGNOSTIC_TYPES.map((type) => [type, 0]));
+    const byDevice = Object.fromEntries(HOME_DIAGNOSTIC_DEVICES.map((device) => [device, 0]));
+    diagnostics.forEach((item) => {
+        byType[item.type] += 1;
+        byDevice[item.device] += 1;
+    });
+    return {
+        diagnostics: diagnostics.slice(-normalizedLimit),
+        summary: {total: diagnostics.length, windowMinutes: minutes, byType, byDevice},
+    };
 }
 
 function normalizeAgentNotebook(value) {
@@ -628,7 +666,10 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
         description: "鍙杩斿洖缁勪欢閫傞厤鍣ㄧ殑鏈€杩戞垚鍔熴€佺紦瀛樸€佽秴鏃跺拰澶辫触鐘舵€侊紝涓嶅寘鍚紓甯稿璞°€佹晱鎰熸枃鏈垨璇锋眰鍐呭銆?",
         inputSchema: Object.freeze({
             type: "object",
-            properties: {limit: {type: "integer", minimum: 1, maximum: MAX_DIAGNOSTICS}},
+            properties: {
+                limit: {type: "integer", minimum: 1, maximum: MAX_DIAGNOSTICS},
+                windowMinutes: {type: "integer", minimum: 1, maximum: 1440},
+            },
             additionalProperties: false,
         }),
         outputSchema: Object.freeze({
@@ -642,15 +683,36 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                         properties: {
                             type: {type: "string", maxLength: 24},
                             moduleId: {type: "string", maxLength: 64},
-                            device: {type: "string", enum: ["desktop", "sidebar", "mobile"]},
+                            device: {type: "string", enum: HOME_DIAGNOSTIC_DEVICES},
                             at: {type: "integer", minimum: 1},
                         },
                         required: ["type", "moduleId", "device", "at"],
                         additionalProperties: false,
                     }),
                 }),
+                summary: Object.freeze({
+                    type: "object",
+                    properties: {
+                        total: {type: "integer", minimum: 0, maximum: MAX_DIAGNOSTICS},
+                        windowMinutes: {type: "integer", minimum: 1, maximum: 1440},
+                        byType: {
+                            type: "object",
+                            properties: Object.fromEntries(HOME_DIAGNOSTIC_TYPES.map((type) => [type, {type: "integer", minimum: 0, maximum: MAX_DIAGNOSTICS}])),
+                            required: HOME_DIAGNOSTIC_TYPES,
+                            additionalProperties: false,
+                        },
+                        byDevice: {
+                            type: "object",
+                            properties: Object.fromEntries(HOME_DIAGNOSTIC_DEVICES.map((device) => [device, {type: "integer", minimum: 0, maximum: MAX_DIAGNOSTICS}])),
+                            required: HOME_DIAGNOSTIC_DEVICES,
+                            additionalProperties: false,
+                        },
+                    },
+                    required: ["total", "windowMinutes", "byType", "byDevice"],
+                    additionalProperties: false,
+                }),
             },
-            required: ["diagnostics"],
+            required: ["diagnostics", "summary"],
             additionalProperties: false,
         }),
     }),
@@ -819,6 +881,7 @@ module.exports = {
     READ_ONLY_EFFECTS,
     normalizeAgentQuery,
     normalizeAgentFailureReason,
+    buildAgentHomeDiagnostics,
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,

@@ -648,12 +648,20 @@ function extractSearchRecords(payload) {
         }
     };
     add(payload);
-    const queue = [payload, payload?.data, payload?.result, payload?.results];
-    queue.forEach((container) => {
-        if (!container || typeof container !== "object") return;
+    const queue = [[payload, 0]];
+    const visited = new Set();
+    for (let index = 0; index < queue.length; index += 1) {
+        const [container, depth] = queue[index];
+        if (!container || typeof container !== "object" || visited.has(container)) continue;
+        visited.add(container);
         add(container);
-        ["data", "blocks", "items", "results", "records", "files", "documents", "docs"].forEach((key) => add(container[key]));
-    });
+        ["data", "result", "blocks", "items", "results", "records", "files", "documents", "docs"].forEach((key) => {
+            add(container[key]);
+            if (depth < 2 && container[key] && typeof container[key] === "object" && !Array.isArray(container[key])) {
+                queue.push([container[key], depth + 1]);
+            }
+        });
+    }
     return containers.find((items) => items.length > 0) || containers[0] || [];
 }
 

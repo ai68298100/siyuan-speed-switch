@@ -19,6 +19,7 @@ const {
     buildAgentWorkspaceContext,
     buildAgentSearchResult,
     normalizeAgentFailureReason,
+    buildAgentHomeDiagnostics,
     registerReadOnlyAgentCapabilities,
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
@@ -34,6 +35,31 @@ test("agent failure reasons normalize abort, timeout, and opaque errors", () => 
     assert.equal(normalizeAgentFailureReason(new Error("request timed out")), "timeout");
     assert.equal(normalizeAgentFailureReason(new Error("network exploded")), "failed");
     assert.equal(normalizeAgentFailureReason(null), "failed");
+    assert.equal(normalizeAgentFailureReason({name: "AbortError"}, true), "timeout");
+});
+
+test("agent home diagnostics normalize trusted fields and reject malformed entries", () => {
+    const now = 1_000_000;
+    const result = buildAgentHomeDiagnostics([
+        {type: "cache", moduleId: "recent-documents", device: "desktop", at: now - 1000},
+        {type: "future-code", moduleId: "today-tasks", device: "mobile", at: now - 500.1},
+        {type: "timeout", moduleId: "today-journal", device: "sidebar", at: now - 200},
+        {type: "empty", moduleId: "old-widget", device: "desktop", at: now - 61000},
+        {type: "failed", moduleId: "bad module", device: "desktop", at: now - 100},
+        {type: "timeout", moduleId: "today-journal", device: "unknown", at: now - 100},
+        {type: "timeout", moduleId: "today-journal", device: "sidebar", at: 0},
+    ], 2, 1, now);
+    assert.deepEqual(result.diagnostics, [
+        {type: "failed", moduleId: "today-tasks", device: "mobile", at: now - 501},
+        {type: "timeout", moduleId: "today-journal", device: "sidebar", at: now - 200},
+    ]);
+    assert.equal(result.summary.total, 3);
+    assert.equal(result.summary.windowMinutes, 1);
+    assert.equal(result.summary.byType.cache, 1);
+    assert.equal(result.summary.byType.failed, 1);
+    assert.equal(result.summary.byType.timeout, 1);
+    assert.deepEqual(result.summary.byDevice, {desktop: 1, sidebar: 1, mobile: 1});
+    assert.deepEqual(buildAgentHomeDiagnostics(null, 16, 60, now).diagnostics, []);
 });
 
 const ROOT = "20260906120000-aaaaaaa";
@@ -67,6 +93,7 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
     const validateNavigation = ajv.compile(AGENT_CAPABILITY_SPECS.navigation.outputSchema);
     const validateSearch = ajv.compile(AGENT_CAPABILITY_SPECS.search.outputSchema);
     const validateWidgets = ajv.compile(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema);
+    const validateDiagnostics = ajv.compile(AGENT_CAPABILITY_SPECS.homeDiagnostics.outputSchema);
     const navigation = buildAgentNavigationResult({
         activeId: ROOT,
         mobile: false,
@@ -87,6 +114,9 @@ test("agent capability outputs satisfy their declared JSON schemas", () => {
         status: "ok",
         items: [{label: "任务", value: "1"}],
     }), true, JSON.stringify(validateWidgets.errors));
+    assert.equal(validateDiagnostics(buildAgentHomeDiagnostics([
+        {type: "timeout", moduleId: "today-tasks", device: "sidebar", at: Date.now()},
+    ])), true, JSON.stringify(validateDiagnostics.errors));
     assert.equal(validateWidgets({
         widgets: [{
             moduleId: "today-tasks",

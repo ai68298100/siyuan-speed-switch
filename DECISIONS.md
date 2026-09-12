@@ -19,3 +19,8 @@
 - D-017 预约组件采用已验证的 `attributes.custom-reservation`（YYYYMMDD）契约，仅做时间窗口内只读查询；不复制日记插件插入/取消逻辑，也不依赖其私有状态。
 - D-018 Agent 错误对外只保留 `cancelled`、`timeout`、`failed` 三类稳定原因；不返回异常对象、堆栈或宿主错误文本，取消/超时统一显示可重试提示。
 - D-019 home adapter diagnostics 通过只读 Agent capability 暴露，字段仅含 type/moduleId/device/at；生产 bundle 门禁随该能力调整至 317 KiB，package.zip 仍需低于 300 KiB。
+- D-020 搜索结果包装只沿 `data/result/blocks/items/results/records/files/documents/docs` 已知字段遍历，最多两层对象包装并记录已访问对象；原因：兼容旧宿主嵌套结构，同时避免扫描任意私有对象或循环引用。
+- D-021 Agent 组件诊断由共享纯函数统一校验，不为畸形条目伪造时间戳或设备；未知诊断类型降级为 `failed`，非法模块、设备和时间条目直接丢弃。
+- D-022 Agent 搜索采用独立截止 Promise，并在可用时同时中止底层请求；原因：旧 WebView 可能没有 `AbortController`，仅靠中止无法保证能力调用按时返回。截止触发归类为 `timeout`，插件卸载中止归类为 `cancelled`。
+- D-023 组件诊断汇总只基于现有最多 32 条内存环形记录，并限定 1–1440 分钟窗口；明细返回上限与汇总样本分离，避免较小 limit 扭曲统计。该能力不持久化诊断，也不暴露请求内容或异常对象。
+- D-024 为诊断窗口和原因/设备聚合将 raw bundle 自律线由 317 KiB 调整到 319 KiB；生产 `package.zip` 仍约 291 KiB，继续低于 300 KiB 硬上限。

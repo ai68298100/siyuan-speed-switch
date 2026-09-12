@@ -46,6 +46,7 @@ import {
     normalizeAgentSearchPaths,
     normalizeAgentQuery,
     normalizeAgentFailureReason,
+    buildAgentHomeDiagnostics,
     flipTaskMarkdown,
     sanitizeJournalAppend,
     registerReadOnlyAgentCapabilities,
@@ -6377,16 +6378,10 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     try {
                         const limit = normalizeAgentLimit(args?.limit, 16);
                         const diagnostics = typeof this.homeRuntime.diagnostics === "function"
-                            ? this.homeRuntime.diagnostics().slice(-limit)
+                            ? this.homeRuntime.diagnostics()
                             : [];
-                        const content = {
-                            diagnostics: diagnostics.map((item: any) => ({
-                                type: String(item?.type || "failed").slice(0, 24),
-                                moduleId: String(item?.moduleId || "").slice(0, 64),
-                                device: ["desktop", "sidebar", "mobile"].includes(item?.device) ? item.device : "desktop",
-                                at: Number.isFinite(item?.at) && item.at > 0 ? Math.floor(item.at) : Date.now(),
-                            })).slice(-limit),
-                        };
+                        const windowMinutes = Number.parseInt(String(args?.windowMinutes ?? ""), 10);
+                        const content = buildAgentHomeDiagnostics(diagnostics, limit, windowMinutes);
                         return {structuredContent: content, result: JSON.stringify(content)};
                     } catch (error) {
                         logger.warn("Agent home diagnostics unavailable", error);
@@ -6440,9 +6435,15 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         const controller = typeof AbortController === "function" ? new AbortController() : null;
         if (controller) this.activeAgentSearchControllers.add(controller);
         const signal = controller?.signal;
-        const timer = controller
-            ? window.setTimeout(() => controller.abort(), NOTEBOOK_FETCH_TIMEOUT_MS)
-            : null;
+        let deadlineExpired = false;
+        let timer: number | null = null;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timer = window.setTimeout(() => {
+                deadlineExpired = true;
+                controller?.abort();
+                reject(new Error("timeout"));
+            }, NOTEBOOK_FETCH_TIMEOUT_MS);
+        });
         try {
             const localTabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
             const queryLower = query.toLocaleLowerCase();
@@ -6478,14 +6479,14 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 if (!canUseTitleSearch(filters)) {
                     throw new Error("advanced filters require native search");
                 }
-                const response = await fetch("/api/filetree/searchDocs", {
+                const response = await Promise.race([fetch("/api/filetree/searchDocs", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({k: query}),
                     ...(signal ? {signal} : {}),
-                });
+                }), timeoutPromise]);
                 if (!response.ok) throw new Error(`searchDocs HTTP ${response.status}`);
-                const json = await response.json();
+                const json = await Promise.race([response.json(), timeoutPromise]);
                 const rawDocs = extractSearchRecords(json)
                     .slice(0, MAX_SEARCH_ITEMS * 2)
                     .filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object");
@@ -6496,14 +6497,18 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 docs = normalizeTitleSearchDocuments(rawDocs) as IDocSearchResult[];
                 docs = this.filterDocSearchResults(docs, filters);
             } catch (error) {
-                if ((error as DOMException)?.name === "AbortError") throw error;
+                const reason = normalizeAgentFailureReason(error, deadlineExpired);
+                if (reason === "cancelled" || reason === "timeout") throw error;
                 titleSearchAvailable = false;
                 logger.warn("Agent title search unavailable", error);
             }
 
             let source = localItems.length > 0 ? "tabs" : "title";
             if (docs.length === 0) {
-                const fallback = await this.runFullTextSearchFallback(query, signal, filters, Math.min(33, limit + 1));
+                const fallback = await Promise.race([
+                    this.runFullTextSearchFallback(query, signal, filters, Math.min(33, limit + 1)),
+                    timeoutPromise,
+                ]);
                 if (fallback !== null) {
                     docs = fallback;
                     source = localItems.length > 0 ? "tabs+global" : "global";
@@ -6532,8 +6537,9 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             });
             return {structuredContent: content, result: JSON.stringify(content)};
         } catch (error) {
-            const reason = normalizeAgentFailureReason(error);
-            if (reason === "cancelled" || reason === "timeout") return {error: "search timed out or was cancelled"};
+            const reason = normalizeAgentFailureReason(error, deadlineExpired);
+            if (reason === "timeout") return {error: "search timed out"};
+            if (reason === "cancelled") return {error: "search cancelled"};
             logger.warn("Agent search fail", error);
             return {error: "search unavailable"};
         } finally {

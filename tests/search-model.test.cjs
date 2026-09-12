@@ -320,9 +320,29 @@ test("search model: extracts compatible native result wrappers", () => {
 
 test("search model: extracts title-document wrappers used by older hosts", () => {
     const files = [{path: "box/doc.sy", hPath: "doc", box: "box"}];
-    assert.strictEqual(extractSearchRecords({data: {files}}), files);
-    assert.strictEqual(extractSearchRecords({result: {documents: files}}), files);
-    assert.strictEqual(extractSearchRecords({data: {docs: files}}), files);
+    const matrix = [
+        ["data.files", {data: {files}}],
+        ["result.documents", {result: {documents: files}}],
+        ["data.docs", {data: {docs: files}}],
+        ["result.data.documents", {result: {data: {documents: files}}}],
+        ["data.result.records", {data: {result: {records: files}}}],
+        ["result.results.items", {result: {results: {items: files}}}],
+    ];
+    matrix.forEach(([name, payload]) => {
+        assert.strictEqual(extractSearchRecords(payload), files, name);
+    });
+    const preferred = [{path: "box/preferred.sy", hPath: "preferred", box: "box"}];
+    assert.strictEqual(extractSearchRecords({data: preferred, result: {documents: files}}), preferred);
+});
+
+test("search model: compatible wrapper traversal stays bounded and ignores unknown fields", () => {
+    const files = [{id: "20260912120000-abcdefg", name: "bounded"}];
+    const cyclic = {};
+    cyclic.data = cyclic;
+    cyclic.result = {documents: files};
+    assert.strictEqual(extractSearchRecords(cyclic), files);
+    assert.deepEqual(extractSearchRecords({private: {documents: files}}), []);
+    assert.deepEqual(extractSearchRecords({data: {result: {data: {documents: files}}}}), []);
 });
 
 test("search model: scopes opened-document search to one safe notebook path", () => {
