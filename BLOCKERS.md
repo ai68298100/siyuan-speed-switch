@@ -11,3 +11,4 @@
 
 
 - [x] B-003 Mimosa L3 提交门禁拦截 | 已解决（真根因：扫描器把 .exec( 字样当 shell 命令执行——正则 .exec 与 .match 等价，替换后高危清零）| 全链路修复：字面量端点分发 + 搜索管线字面量 + 载荷钳制 + exec→match；529/529 测试、verify:release 全绿
+- B-004（环境）Android 真机回归工具链不可用：当前环境无 `adb`、`java`，且没有连接 Android 设备。影响仅限 T-022 的真实触控/旋转/安装升级验收；本地类型检查、构建、自动测试和 Chromium smoke 不受影响。

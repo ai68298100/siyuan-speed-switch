@@ -21,6 +21,10 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.ok(daily, "recent daily notes registered");
     assert.equal(daily.configSchema.length, 2);
     assert.equal(daily.readOnly, true);
+    const relations = byId.get("document-relations-summary");
+    assert.ok(relations, "document relations summary registered");
+    assert.deepEqual(relations.sizes, ["small", "medium", "wide"]);
+    assert.equal(relations.configSchema[0].max, 12);
 });
 
 test("year progress percentage stays within bounds for leap and non-leap years", () => {

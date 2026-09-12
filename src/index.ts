@@ -3485,6 +3485,25 @@ const version = beginSearch(session);
             const rows = (json?.data || []) as Array<{id?: string; root_id?: string; content?: string}>;
             return {items: rows.map((row) => ({label: String(row.content || "").slice(0, 64), value: String(row.root_id || row.id || "")})).filter((item) => item.label && BLOCK_ID_RE.test(item.value))};
         });
+        // 文档关系摘要：仅查询活动文档的直接子块与引用它的块，限制数量并保持只读。
+        register("document-relations-summary", this.i18n.homeDocumentRelationsSummary, "iconGraph", this.i18n.homeDescDocumentRelationsSummary, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const active = this.isMobile
+                ? this.getMobileTabs().find((tab) => tab.id === this.getMobileActiveTabId())
+                : this.getActiveTab();
+            const rootId = active ? this.rootIdOf(active) : "";
+            if (!rootId || !BLOCK_ID_RE.test(rootId)) return {items: []};
+            const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 6)));
+            const escaped = rootId.replace(/'/g, "''");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, id AS target_id, 'child' AS relation FROM blocks WHERE root_id='${escaped}' AND parent_id='${escaped}' UNION ALL SELECT id, content, root_id AS target_id, 'reference' AS relation FROM blocks WHERE id<>'${escaped}' AND markdown LIKE '%((${escaped}%' ORDER BY id DESC LIMIT ${limit * 2}`,
+            });
+            const rows = (json?.data || []) as Array<{id?: string; content?: string; target_id?: string; relation?: string}>;
+            const items = rows.map((row) => ({
+                label: `${row.relation === "reference" ? "引用" : "子块"}：${String(row.content || "").slice(0, 56)}`,
+                value: String(row.target_id || row.id || ""),
+            })).filter((item) => item.label && BLOCK_ID_RE.test(item.value)).slice(0, limit);
+            return {stat: {value: String(items.length), label: this.i18n.homeStatRelations}, items};
+        });
         register("quick-capture", this.i18n.homeQuickCapture, "iconAdd", this.i18n.homeDescQuickCapture, [], () => ({
             items: [{label: this.i18n.quickCaptureAction, value: "action:quick-capture"}],
         }));
