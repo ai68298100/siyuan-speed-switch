@@ -265,6 +265,13 @@ function normalizeAgentLimit(value, fallback = 12) {
     return Math.min(MAX_ITEMS, Math.max(1, parsed));
 }
 
+function normalizeAgentSearchOffset(value, total = MAX_SEARCH_ITEMS) {
+    const parsed = Number.parseInt(String(value), 10);
+    const upper = Math.min(MAX_SEARCH_ITEMS * 2, Math.max(0, Number.parseInt(String(total), 10) || 0));
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.min(upper, Math.max(0, parsed));
+}
+
 function normalizeAgentSearchMethod(value) {
     if (value === undefined || value === null || value === "" || value === "keyword") return "keyword";
     return SEARCH_METHODS.includes(value) ? value : "";
@@ -404,14 +411,19 @@ function buildAgentWorkspaceContext(input = {}) {
 function buildAgentSearchResult(query, items, extra = {}) {
     const normalizedQuery = normalizeAgentQuery(query);
     const source = extra && typeof extra === "object" ? extra : {};
-    const limitedItems = limitAgentItems(items, source.limit || 12);
     const limit = normalizeAgentLimit(source.limit, 12);
+    const allItems = limitAgentItems(items, MAX_SEARCH_ITEMS);
+    const offset = normalizeAgentSearchOffset(source.offset, allItems.length);
+    const limitedItems = allItems.slice(offset, offset + limit);
     return {
         query: normalizedQuery,
         count: limitedItems.length,
         items: limitedItems,
         source: SEARCH_SOURCES.includes(source.source) ? source.source : "tabs",
-        truncated: source.truncated === true || (Array.isArray(items) && items.length > limit),
+        total: allItems.length,
+        offset,
+        truncated: source.truncated === true || (Array.isArray(items) && items.length > MAX_SEARCH_ITEMS)
+            || offset + limitedItems.length < allItems.length,
     };
 }
 
@@ -942,6 +954,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     items: {type: "string", minLength: 1, maxLength: MAX_AGENT_PATH_LENGTH},
                 },
                 limit: {type: "integer", minimum: 1, maximum: MAX_SEARCH_ITEMS},
+                offset: {type: "integer", minimum: 0, maximum: MAX_SEARCH_ITEMS * 2},
                 method: {type: "string", enum: SEARCH_METHODS},
                 orderBy: {type: "string", enum: SEARCH_ORDERS},
                 type: {type: "string", enum: SEARCH_TYPES},
@@ -957,9 +970,11 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                 count: {type: "integer", minimum: 0, maximum: MAX_SEARCH_ITEMS},
                 items: AGENT_ITEMS_SCHEMA,
                 source: {type: "string", enum: SEARCH_SOURCES},
+                total: {type: "integer", minimum: 0, maximum: MAX_SEARCH_ITEMS},
+                offset: {type: "integer", minimum: 0, maximum: MAX_SEARCH_ITEMS * 2},
                 truncated: {type: "boolean"},
             },
-            required: ["query", "count", "items", "source", "truncated"],
+            required: ["query", "count", "items", "source", "total", "offset", "truncated"],
             additionalProperties: false,
         }),
     }),
@@ -1101,6 +1116,7 @@ module.exports = {
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,
+    normalizeAgentSearchOffset,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,
     normalizeAgentSearchType,

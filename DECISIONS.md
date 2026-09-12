@@ -39,3 +39,8 @@
 - D-037 Agent 组件配置发现只公开重新清洗后的 `key/label/type/min/max/defaultValue/options`，最多 8 项；快照输入只保留该组件 configSchema 声明的字段。无公开 schema 的 adapter 收到空配置，避免把通用 Agent 输入当成第三方私有协议。该契约使 raw bundle 自律线校准为 325 KiB，压缩包硬上限不变。
 - D-038 Agent 组件快照的 `total/offset/truncated` 基于清洗后的最多 24 个有效条目，而非 adapter 原始数组；`updatedAt` 只采用提供方时间戳，缺失时为 0，不伪造缓存生成时间。T-058~T-061 使 raw bundle 自律线校准到 326 KiB，`package.zip` 仍受 300 KiB 硬上限约束。
 - D-039 Agent 快照只回显已经 schema 收敛的 `appliedConfig`，最多 8 项；`timeout/backoff/failed` 标为可重试，`aborted/unregistered/unsupported` 不标记重试。显式 `refresh` 仅绕过 home adapter 短缓存，不改变只读 effects。T-062~T-065 使 raw bundle 自律线校准到 327 KiB，压缩包硬上限不变。
+# D-040 Agent search pagination uses bounded offset metadata
+
+- `search-documents` accepts an optional integer `offset` and returns `total`, normalized `offset`, and `truncated`.
+- Pagination is applied after de-duplication and output sanitization; the result set is capped at `MAX_SEARCH_ITEMS` so older hosts remain safe.
+- Existing callers omitting `offset` retain first-page behavior. Offsets beyond the available result set clamp to `total` and return an explicit empty page.

@@ -9,6 +9,7 @@ const {
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,
+    normalizeAgentSearchOffset,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,
     normalizeAgentSearchType,
@@ -375,6 +376,22 @@ test("agent search result reports truncation without leaking unbounded data", ()
     assert.equal(result.items.length, 3);
     assert.equal(result.truncated, true);
     assert.equal(result.source, "global");
+    assert.equal(result.total, 32);
+    assert.equal(result.offset, 0);
+});
+
+test("agent search result supports bounded offsets", () => {
+    const items = Array.from({length: 10}, (_, index) => ({id: `offset-${index}`, title: `doc ${index}`}));
+    const result = buildAgentSearchResult("query", items, {source: "global", limit: 3, offset: 4});
+    assert.equal(result.total, 10);
+    assert.equal(result.offset, 4);
+    assert.deepEqual(result.items.map((item) => item.id), ["offset-4", "offset-5", "offset-6"]);
+    assert.equal(result.truncated, true);
+    const beyond = buildAgentSearchResult("query", items, {limit: 3, offset: 999});
+    assert.equal(beyond.offset, 10);
+    assert.deepEqual(beyond.items, []);
+    assert.equal(normalizeAgentSearchOffset("-4", 10), 0);
+    assert.equal(normalizeAgentSearchOffset("999", 10), 10);
 });
 
 test("agent text boundaries preserve complete Unicode code points", () => {

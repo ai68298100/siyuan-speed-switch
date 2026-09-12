@@ -38,6 +38,7 @@ import {
     buildAgentWorkspaceContext,
     buildAgentSearchResult,
     normalizeAgentLimit,
+    normalizeAgentSearchOffset,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,
     normalizeAgentSearchType,
@@ -6465,6 +6466,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         if (type) filters.types = {[type]: true};
         if (subType) filters.subTypes = {[subType]: true};
         const limit = normalizeAgentLimit(args.limit, DOC_RESULT_LIMIT);
+        const offset = normalizeAgentSearchOffset(args.offset);
         // AbortController is optional in older embedded WebViews. The Agent
         // request remains bounded by its local result limit and guards even
         // when native cancellation is unavailable.
@@ -6504,8 +6506,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
 
             // A local tab match already satisfies the requested bound. Avoid
             // waking the file tree or full-text endpoint in that case.
-            if (localItems.length >= limit) {
-                const content = buildAgentSearchResult(query, localItems, {source: "tabs", limit});
+            if (offset === 0 && localItems.length >= limit) {
+                const content = buildAgentSearchResult(query, localItems, {source: "tabs", limit, offset});
                 return {structuredContent: content, result: JSON.stringify(content)};
             }
 
@@ -6542,7 +6544,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             let source = localItems.length > 0 ? "tabs" : "title";
             if (docs.length === 0) {
                 const fallback = await Promise.race([
-                    this.runFullTextSearchFallback(query, signal, filters, Math.min(33, limit + 1)),
+                    this.runFullTextSearchFallback(query, signal, filters, Math.min(33, offset + limit + 1)),
                     timeoutPromise,
                 ]);
                 if (fallback !== null) {
@@ -6550,7 +6552,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     source = localItems.length > 0 ? "tabs+global" : "global";
                 } else if (localItems.length === 0) {
                     if (!titleSearchAvailable) return {error: "search unavailable"};
-                    const content = buildAgentSearchResult(query, [], {source: "title", limit});
+                    const content = buildAgentSearchResult(query, [], {source: "title", limit, offset});
                     return {structuredContent: content, result: JSON.stringify(content)};
                 }
             } else if (localItems.length > 0) {
@@ -6569,6 +6571,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             const content = buildAgentSearchResult(query, items, {
                 source,
                 limit,
+                offset,
                 truncated: docs.length > limit,
             });
             return {structuredContent: content, result: JSON.stringify(content)};
