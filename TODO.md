@@ -59,3 +59,6 @@
 - [x] T-027 轻量文档关系摘要组件
   - 证据：新增 `document-relations-summary`，仅查询活动文档直接子块/引用，条数上限 12，三端只读
   - 状态：done（完整关系图布局不做）
+- [x] T-028 预约块格式调研与只读组件
+  - 证据：`siyuan-dailynote-today` 使用 `attributes.name='custom-reservation'`、`value=YYYYMMDD`；新增 `today-reservations`，限制未来 0–14 天和 12 条
+  - 状态：done；不执行插入、取消或创建操作

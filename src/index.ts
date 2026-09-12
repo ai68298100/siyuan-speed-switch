@@ -3504,6 +3504,21 @@ const version = beginSearch(session);
             })).filter((item) => item.label && BLOCK_ID_RE.test(item.value)).slice(0, limit);
             return {stat: {value: String(items.length), label: this.i18n.homeStatRelations}, items};
         });
+        // 近期预约：复用日记插件确认过的 attributes.custom-reservation 数据契约，只读查询。
+        register("today-reservations", this.i18n.homeTodayReservations, "iconClock", this.i18n.homeDescTodayReservations, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const days = Math.min(14, Math.max(0, Math.trunc(Number(config.days) || 3)));
+            const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT B.id, B.content, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${days} days')) ORDER BY A.value, B.updated DESC LIMIT ${limit}`,
+            });
+            const rows = (json?.data || []) as Array<{id?: string; content?: string; date?: string}>;
+            const items = rows.map((row) => {
+                const date = String(row.date || "");
+                const labelDate = /^\\d{8}$/.test(date) ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : date;
+                return {label: `${labelDate}：${String(row.content || "").slice(0, 56)}`, value: String(row.id || "")};
+            }).filter((item) => item.label && BLOCK_ID_RE.test(item.value));
+            return {stat: {value: String(items.length), label: this.i18n.homeStatReservations}, items};
+        });
         register("quick-capture", this.i18n.homeQuickCapture, "iconAdd", this.i18n.homeDescQuickCapture, [], () => ({
             items: [{label: this.i18n.quickCaptureAction, value: "action:quick-capture"}],
         }));

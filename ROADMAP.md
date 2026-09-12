@@ -442,6 +442,8 @@ pnpm build
 | T-029 Agent 取消/超时回归 | queued | 为 capability handler 增加可取消边界测试 |
 | T-030 组件可观测性 | queued | 增加只读诊断摘要，不暴露异常对象或敏感数据 |
 
+T-028 已于本轮完成：确认 `custom-reservation` 属性契约并实现 `today-reservations` 只读组件；原“next”状态仅为历史路线表述，后续以 TODO/PROGRESS 为准。
+
 ### 停止/跳过规则
 
 - 没有 `adb` 或真实 Android 设备时，不把浏览器 smoke 当作 Android 验收，也不因此停止本地开发。

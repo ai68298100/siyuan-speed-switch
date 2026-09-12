@@ -25,6 +25,10 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.ok(relations, "document relations summary registered");
     assert.deepEqual(relations.sizes, ["small", "medium", "wide"]);
     assert.equal(relations.configSchema[0].max, 12);
+    const reservations = byId.get("today-reservations");
+    assert.ok(reservations, "today reservations registered");
+    assert.equal(reservations.configSchema[0].max, 14);
+    assert.equal(reservations.readOnly, true);
 });
 
 test("year progress percentage stays within bounds for leap and non-leap years", () => {

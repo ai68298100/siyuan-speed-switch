@@ -15,4 +15,5 @@
 - D-013 新增 `recent-writing-activity` 与 `recent-daily-notes` 作为本地优先只读组件：前者统计创建内容块而非文档，后者只探测已存在日期文档，均不自动创建日记。
 - D-014 环境核验后采用“本地自动门禁持续开发、Android 真机单独验收”的路线；无 `adb`/Java 时不以浏览器模拟替代真实设备，也不阻塞不依赖设备的功能开发。
 - D-015 文档关系组件采用保守 SQL 口径：直接子块使用 `parent_id/root_id`，引用使用受限 `markdown LIKE`；只返回少量可打开 ID，不引入重量级图布局或未确认的关系 API。
-- D-016 新增三个本地只读组件后生产 bundle 从 312 KiB 预算增至 313 KiB；仍低于 package.zip 300 KiB 硬上限与现有构建警告阈值，保留门禁并记录增量原因。
+- D-016 新增四个本地只读组件后生产 bundle 预算调整至 315 KiB；仍低于 package.zip 300 KiB 硬上限与现有构建警告阈值，保留门禁并记录增量原因。
+- D-017 预约组件采用已验证的 `attributes.custom-reservation`（YYYYMMDD）契约，仅做时间窗口内只读查询；不复制日记插件插入/取消逻辑，也不依赖其私有状态。
