@@ -17,7 +17,7 @@ const {createDocumentSet} = require('../src/document-sets.js');
 const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
-const {createWorkspaceAgentBridge, MAX_STORED_PLANS} = require('../src/agent-workspace-bridge.js');
+const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -274,6 +274,27 @@ test("workspace agent bridge provides bounded plan issue execute lifecycle", asy
     assert.equal(unknown.status, "plan_not_found");
     bridge.dispose();
     assert.equal(bridge.size(), 0);
+});
+
+test("workspace bridge handler factories expose structured capability results", async () => {
+    assert.equal(WORKSPACE_PLAN_HANDLER_SPEC.name, "workspace-plan");
+    assert.equal(EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name, "execute-workspace-plan");
+    const bridge = createWorkspaceAgentBridge({
+        navigation: {isMobile: false, app: {}, openTab: async () => true},
+        documentSet: {getSet: async () => null, openDocument: async () => true},
+    });
+    const planHandler = createWorkspacePlanHandler(bridge, () => 1700000000000);
+    const planned = await planHandler({steps: [{action: "open-document", id: "20260913083000-abcdef"}]});
+    assert.equal(planned.structuredContent.planId.startsWith("wp-"), true);
+    assert.equal(planned.result, JSON.stringify(planned.structuredContent));
+    assert.deepEqual(await createWorkspacePlanHandler(bridge, () => 1700000000000)({steps: []}), {error: "invalid_plan"});
+
+    const executeHandler = createWorkspaceExecuteHandler({execute: async (request, now) => ({status: "completed", planId: request.planId, now})}, () => 1700000000010);
+    const executed = await executeHandler({planId: "wp-test", digest: "pd-test", approvalToken: "at-test"});
+    assert.deepEqual(executed.structuredContent, {status: "completed", planId: "wp-test", now: 1700000000010});
+    assert.equal(executed.result, JSON.stringify(executed.structuredContent));
+    assert.deepEqual(await createWorkspaceExecuteHandler(null)({}), {error: "executor_unavailable"});
+    bridge.dispose();
 });
 
 test("workspace plan summary exposes counts without content", () => {

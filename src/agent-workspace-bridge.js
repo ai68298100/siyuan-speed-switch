@@ -1,11 +1,14 @@
 "use strict";
 
-const {buildWorkspacePlan} = require("./agent-workspace-plan.js");
+const {buildWorkspacePlan, WORKSPACE_PLAN_SPEC} = require("./agent-workspace-plan.js");
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest} = require("./agent-workspace-capability.js");
 const {createWorkspaceExecutionSession} = require("./agent-workspace-session.js");
 const {buildWorkspacePlanSummary} = require("./agent-workspace-actions.js");
 
 const MAX_STORED_PLANS = 32;
+
+const WORKSPACE_PLAN_HANDLER_SPEC = WORKSPACE_PLAN_SPEC;
+const EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC = EXECUTE_WORKSPACE_PLAN_SPEC;
 
 // Bridge facade for future addAgentCapability handlers.  Plans stay in memory
 // only and are bounded; no document content is persisted between sessions.
@@ -46,4 +49,20 @@ function createWorkspaceAgentBridge(options = {}) {
     });
 }
 
-module.exports = {MAX_STORED_PLANS, EXECUTE_WORKSPACE_PLAN_SPEC, createWorkspaceAgentBridge};
+function createWorkspacePlanHandler(bridge, now = Date.now) {
+    return async (args = {}) => {
+        const plan = bridge && typeof bridge.plan === "function" ? bridge.plan(args, typeof now === "function" ? now() : Date.now()) : null;
+        if (!plan) return {error: "invalid_plan"};
+        return {structuredContent: plan, result: JSON.stringify(plan)};
+    };
+}
+
+function createWorkspaceExecuteHandler(bridge, now = Date.now) {
+    return async (args = {}) => {
+        if (!bridge || typeof bridge.execute !== "function") return {error: "executor_unavailable"};
+        const result = await bridge.execute(args, typeof now === "function" ? now() : Date.now());
+        return {structuredContent: result, result: JSON.stringify(result)};
+    };
+}
+
+module.exports = {MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_SPEC, createWorkspaceAgentBridge, createWorkspacePlanHandler, createWorkspaceExecuteHandler};

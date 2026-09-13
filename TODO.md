@@ -477,3 +477,7 @@
   - 目标：提供统一 `plan → issue → execute → dispose` API，封装计划存储、审批会话和动作执行，供未来 Agent handler 直接调用
   - 实现：新增独立 `src/agent-workspace-bridge.js`，计划内存最多 32 条，执行请求经现有契约归一化，销毁时清理全部状态
   - 状态：in-progress
+- [ ] T-144 Agent workspace bridge handler 工厂
+  - 目标：为 `workspace-plan` 与 `execute-workspace-plan` 提供可注册的稳定 handler 包装，统一返回 `structuredContent` 与序列化 `result`
+  - 实现：新增 `createWorkspacePlanHandler` / `createWorkspaceExecuteHandler`，无效计划与缺失执行器分别降级为稳定错误；安全校验仍由 bridge/session 负责
+  - 状态：in-progress
