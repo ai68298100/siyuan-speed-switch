@@ -897,6 +897,18 @@
   - 目标：去重未知事件并固定五类事件顺序
   - 实现：新增 `normalizeWorkspaceCapabilityDiagnosticsEvents`
   - 状态：done
+- [x] T-251 Agent workspace diagnostics 事件队列
+  - 目标：提供独立最多 8 条 diagnostics 事件缓存、cursor 与 dispose
+  - 实现：新增 `createWorkspaceCapabilityDiagnosticsEventQueue`
+  - 状态：done
+- [x] T-252 Agent workspace diagnostics diff 入队
+  - 目标：将 diagnostics snapshot 变化写入专用事件队列
+  - 实现：新增 `enqueueWorkspaceCapabilityDiagnosticsDiff`
+  - 状态：done
+- [x] T-253 Agent workspace diagnostics replay/recovery
+  - 目标：支持有界回放、确认及溢出后的 versioned snapshot 恢复
+  - 实现：新增 `readWorkspaceCapabilityDiagnosticsEventsForReplay`、`commitWorkspaceCapabilityDiagnosticsReplay`、`recoverWorkspaceCapabilityDiagnostics`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

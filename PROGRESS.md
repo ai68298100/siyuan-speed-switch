@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-13）：T-251~T-253 增加 diagnostics 独立事件队列、snapshot diff 入队、replay/ack 与溢出恢复；658/658 测试、TypeScript 与 diff 检查通过。
+
 补充（2026-09-13）：T-248~T-250 增加 diagnostics snapshot 五类差异计算、变化事件构建与归一化；657/657 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-246~T-247 增加统一 diagnostics snapshot version=1、归一化与兼容/一致性校验；656/656 测试、TypeScript 与 diff 检查通过。

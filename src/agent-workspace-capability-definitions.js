@@ -959,6 +959,40 @@ function normalizeWorkspaceCapabilityDiagnosticsEvents(events) {
     return order.filter((type) => source.some((event) => event?.type === type) && !seen.has(type) && seen.add(type)).map((type) => ({type, changed: true}));
 }
 
+function createWorkspaceCapabilityDiagnosticsEventQueue(maxItems = 8) {
+    const max = Math.min(8, Math.max(1, Math.trunc(Number(maxItems) || 8)));
+    const queue = []; let disposed = false; let nextSequence = 1;
+    return Object.freeze({
+        push(events) { if (disposed) return 0; const normalized = normalizeWorkspaceCapabilityDiagnosticsEvents(events); normalized.forEach((event) => queue.push({sequence: nextSequence++, event})); while (queue.length > max) queue.shift(); return normalized.length; },
+        readSince(cursor = 0, limit = max) { const from = Math.max(0, Math.trunc(Number(cursor) || 0)); const count = Math.min(max, Math.max(0, Math.trunc(Number(limit) || max))); const first = queue[0]?.sequence || nextSequence; return {cursor: nextSequence - 1, truncated: from < first - 1, events: queue.filter((entry) => entry.sequence > from).slice(0, count).map((entry) => ({sequence: entry.sequence, event: {...entry.event}}))}; },
+        acknowledge(cursor = 0) { const upto = Math.max(0, Math.trunc(Number(cursor) || 0)); let removed = 0; while (queue.length && queue[0].sequence <= upto) { queue.shift(); removed += 1; } return removed; },
+        size() { return queue.length; }, status() { return Object.freeze({size: queue.length, maxItems: max, cursor: nextSequence - 1, disposed}); }, dispose() { disposed = true; queue.length = 0; },
+    });
+}
+
+function enqueueWorkspaceCapabilityDiagnosticsDiff(queue, previous, current) {
+    if (!queue || typeof queue.push !== "function") return 0;
+    return queue.push(buildWorkspaceCapabilityDiagnosticsEvents(previous, current));
+}
+
+function readWorkspaceCapabilityDiagnosticsEventsForReplay(queue, cursor = 0, limit = 8) {
+    if (!queue || typeof queue.readSince !== "function") return {ok: false, reason: "queue_unavailable", cursor: 0, events: []};
+    let batch; try { batch = queue.readSince(cursor, limit); } catch (_error) { return {ok: false, reason: "queue_unavailable", cursor: 0, events: []}; }
+    if (!batch || batch.truncated === true) return {ok: false, reason: "snapshot_required", cursor: Number(batch?.cursor) || 0, events: []};
+    return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: normalizeWorkspaceCapabilityDiagnosticsEvents(batch.events?.map((entry) => entry.event))};
+}
+
+function commitWorkspaceCapabilityDiagnosticsReplay(queue, replay) { if (!queue || typeof queue.acknowledge !== "function" || !replay || replay.ok !== true || replay.reason !== "ready") return 0; return queue.acknowledge(replay.cursor); }
+
+function recoverWorkspaceCapabilityDiagnostics(queue, cursor = 0, limit = 8, snapshot = null) {
+    const replay = readWorkspaceCapabilityDiagnosticsEventsForReplay(queue, cursor, limit);
+    if (replay.ok) return {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null};
+    if (replay.reason !== "snapshot_required" || !isWorkspaceCapabilityDiagnosticsSnapshotCompatible(snapshot)) return {ok: false, mode: replay.reason === "snapshot_required" ? "invalid_snapshot" : "unavailable", reason: replay.reason === "snapshot_required" ? "invalid_snapshot" : replay.reason, cursor: replay.cursor, events: [], snapshot: null};
+    const validation = validateWorkspaceCapabilityDiagnosticsSnapshot(snapshot);
+    if (!validation.ok) return {ok: false, mode: "invalid_snapshot", reason: validation.reason, cursor: replay.cursor, events: [], snapshot: null};
+    return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot: normalizeWorkspaceCapabilityDiagnosticsSnapshot(snapshot)};
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1254,6 +1288,11 @@ module.exports = {
     diffWorkspaceCapabilityDiagnosticsSnapshots,
     buildWorkspaceCapabilityDiagnosticsEvents,
     normalizeWorkspaceCapabilityDiagnosticsEvents,
+    createWorkspaceCapabilityDiagnosticsEventQueue,
+    enqueueWorkspaceCapabilityDiagnosticsDiff,
+    readWorkspaceCapabilityDiagnosticsEventsForReplay,
+    commitWorkspaceCapabilityDiagnosticsReplay,
+    recoverWorkspaceCapabilityDiagnostics,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
