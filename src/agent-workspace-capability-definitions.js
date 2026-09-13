@@ -596,6 +596,58 @@ function diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots(previous, curren
     return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff(events);
 }
 
+function buildWorkspaceCapabilityRuntimeSessionRegistrySummary(value) {
+    const snapshot = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value);
+    const validation = validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value);
+    const active = snapshot.sessions.filter((session) => !session.disposed).length;
+    const disposedSessions = snapshot.sessions.length - active;
+    return Object.freeze({
+        ok: validation.ok === true,
+        reason: validation.ok === true ? "ready" : validation.reason,
+        size: snapshot.size,
+        maxSessions: snapshot.maxSessions,
+        active,
+        disposed: disposedSessions,
+        capacityAvailable: Math.max(0, snapshot.maxSessions - snapshot.size),
+    });
+}
+
+function createWorkspaceCapabilityRuntimeRegistryDiffQueue(maxItems = 8) {
+    const max = Math.min(8, Math.max(1, Math.trunc(Number(maxItems) || 8)));
+    const queue = [];
+    let disposed = false;
+    let nextSequence = 1;
+    return Object.freeze({
+        push(events) {
+            if (disposed) return 0;
+            const normalized = normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff(events);
+            normalized.forEach((event) => queue.push({sequence: nextSequence++, event}));
+            while (queue.length > max) queue.shift();
+            return normalized.length;
+        },
+        readSince(cursor = 0, limit = max) {
+            const from = Math.max(0, Math.trunc(Number(cursor) || 0));
+            const count = Math.min(max, Math.max(0, Math.trunc(Number(limit) || max)));
+            const first = queue[0]?.sequence || nextSequence;
+            return {cursor: nextSequence - 1, truncated: from < first - 1, events: queue.filter((entry) => entry.sequence > from).slice(0, count).map((entry) => ({sequence: entry.sequence, event: {...entry.event}}))};
+        },
+        acknowledge(cursor = 0) {
+            const upto = Math.max(0, Math.trunc(Number(cursor) || 0));
+            let removed = 0;
+            while (queue.length && queue[0].sequence <= upto) { queue.shift(); removed += 1; }
+            return removed;
+        },
+        size() { return queue.length; },
+        status() { return Object.freeze({size: queue.length, maxItems: max, cursor: nextSequence - 1, disposed}); },
+        dispose() { disposed = true; queue.length = 0; },
+    });
+}
+
+function enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, previous, current) {
+    if (!queue || typeof queue.push !== "function") return 0;
+    return queue.push(diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots(previous, current));
+}
+
 function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
     const allowed = ["created", "evicted", "removed", "pruned", "idle"];
     return (Array.isArray(events) ? events : []).slice(0, 8).map((event) => {
@@ -797,6 +849,9 @@ module.exports = {
     validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
     normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff,
     diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots,
+    buildWorkspaceCapabilityRuntimeSessionRegistrySummary,
+    createWorkspaceCapabilityRuntimeRegistryDiffQueue,
+    enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,

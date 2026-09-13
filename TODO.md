@@ -737,6 +737,18 @@
   - 目标：为 registry 快照提供 version=1 构建与兼容检查，拒绝未知版本恢复
   - 实现：新增 `WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION`、builder 与 compatibility helper
   - 状态：done
+- [x] T-211 Agent workspace registry 跨 session 摘要
+  - 目标：提供 active/disposed/capacityAvailable 等有界只读统计
+  - 实现：新增 `buildWorkspaceCapabilityRuntimeSessionRegistrySummary`
+  - 状态：done
+- [x] T-212 Agent workspace registry 差异事件队列
+  - 目标：为 registry diff 提供独立 8 条队列、游标读取与确认消费
+  - 实现：新增 `createWorkspaceCapabilityRuntimeRegistryDiffQueue`
+  - 状态：done
+- [x] T-213 Agent workspace registry 差异入队桥接
+  - 目标：将前后快照差异安全写入 registry 专用队列，不污染 runtime 事件类型
+  - 实现：新增 `enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

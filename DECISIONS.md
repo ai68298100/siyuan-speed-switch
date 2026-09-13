@@ -173,3 +173,5 @@
 - D-167 v0.17 registry snapshot validation 要求 size 与合法 session 摘要数量一致、sessionId 唯一，disposed registry 不得残留 session；差异事件仅允许 created/removed/disposed/capacity 四类并限制为 8 条。
 - D-168 v0.17 registry snapshot recovery 在归一化后必须通过一致性校验；不一致状态返回 `invalid_snapshot`，不确认溢出事件，交由上层重新获取快照。
 - D-169 v0.17 registry snapshot 使用独立 version=1 契约；未知版本在 recovery 前拒绝，避免新旧宿主误读会话状态。
+- D-170 v0.17 registry diff 不复用 runtime queue；因事件类型集合不同，使用独立最多 8 条游标队列，并仅输出 created/removed/disposed/capacity。
+- D-171 v0.17 registry summary 只返回 active/disposed/capacity 计数与一致性 reason，不暴露 session runtime、文档内容或宿主异常。
