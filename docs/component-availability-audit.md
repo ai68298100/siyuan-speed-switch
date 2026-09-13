@@ -6,7 +6,7 @@
 - 27 个内置组件都有真实 adapter 注册；`checkin-summary` 没有本插件内 adapter，必须由 `siyuan-checkin` 注册后才会进入“可用组件”。依据：`src/index.ts:3300-3739`、`src/widget-catalog.js:11-22`。
 - 当前自动门禁为 **661/661 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
 - 已有思源 3.8.2 桌面实测覆盖：商店添加/尺寸、闪卡待复习（空数据态）、随机回顾、本月日记、标签；其余组件仍缺少逐项真实宿主证据（见 `docs/acceptance-v0.16.37.md`）。
-- **确定缺陷（P0）**：`recent-writing-activity` 与 `today-reservations` 使用 `/^\\d{8}$/`，不会匹配 `YYYYMMDD`，因此日期显示为原始八位数字而非格式化日期。查询和条目仍可返回，但体验和协议展示不正确。
+- **已修复的确定缺陷（P0）**：`recent-writing-activity` 与 `today-reservations` 曾使用错误的日期正则，现已修正为匹配 `YYYYMMDD` 并显示为 `YYYY-MM-DD`，回归测试已覆盖。
 
 ## 评级定义
 
@@ -37,11 +37,11 @@
 | `clipped-unread` 剪藏待读 | C | SQL 读取 `blocks.tag` 包含配置标签 | 不是通用剪藏 API，只能识别标签约定；可能把普通标签误认为剪藏 | 改名“标签待读”或增加来源协议/插件探测 |
 | `on-this-day` 往年今日 | C | SQL 匹配文档标题 `%-MM-DD` 且排除今年 | 依赖严格日期标题；没有标准日记时长期为空 | 商店显示标题格式前置条件 |
 | `today-writing` 今日写作 | B | SQL 聚合今日 blocks 的 `length/created/updated` | 真实只读查询；依赖 created 格式和 length 字段 | 对字段缺失提供“暂不可统计”而非 0 |
-| `recent-writing-activity` 近期写作活跃度 | B（P0 展示缺陷） | SQL 按 `created` 的 `YYYYMMDD` 聚合 | adapter 有效；但 `src/index.ts:3653` 的 `/^\\d{8}$/` 写法错误，日期标签不格式化 | 修正为 `/^\\d{8}$/` 的单反斜杠源码形式，并加回归测试 |
+| `recent-writing-activity` 近期写作活跃度 | B | SQL 按 `created` 的 `YYYYMMDD` 聚合；日期标签已正确格式化 | adapter 有效；自动测试覆盖格式化正则 | 保持；真实宿主验证数据时区边界 |
 | `recent-daily-notes` 近期日记 | C | SQL 探测标题以 `YYYY-MM-DD` 开头的已有日记 | 只读、不创建；严格命名协议，空态常见 | 商店增加格式提示；补跨年边界测试 |
 | `document-relations-summary` 文档关系摘要 | C | 活动文档直接子块 + markdown 引用 SQL | 无活动文档必为空；引用匹配为有限 LIKE，不是完整关系图，可能漏报 | 标注“轻量摘要/非完整关系图”；后续改引用解析 |
 | `current-document-outline` 当前文档大纲 | C | 活动文档 `/api/outline/getDocOutline` | 端点与 Agent 共用；依赖活动文档和宿主返回结构 | 增加无活动文档和旧返回包装验收 |
-| `today-reservations` 近期预约 | C（P0 展示缺陷） | `attributes.name='custom-reservation'`、`value=YYYYMMDD` SQL | 仅兼容 dailynote-today 等插件约定，不是思源通用预约；`src/index.ts:3722` 日期正则同样写错 | 修正正则；商店明确“需 custom-reservation 数据协议” |
+| `today-reservations` 近期预约 | C | `attributes.name='custom-reservation'`、`value=YYYYMMDD` SQL；日期标签已正确格式化 | 仅兼容 dailynote-today 等插件约定，不是思源通用预约 | 商店描述已明确协议依赖；真实宿主验证第三方数据 |
 | `journal-calendar` 日历月视图 | C | SQL 按 `YYYY-MM-` 标题生成月历，已有日期可点击 | 依赖标准日期标题；无 notebook 过滤；当前仅允许过去月份偏移 | 标注命名规则；增加笔记本筛选和翻月按钮待办 |
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |
 | `countdown` 倒数日 | B | 纯前端 `YYYY-MM-DD` 计算 | 配置合法日期即可用；未配置时显示提示 | 配置控件改为日期 input，避免手填格式错误 |
@@ -52,8 +52,8 @@
 
 ### P0（下一次小修复）
 
-1. 修正两处日期正则并加入单测，确保 `YYYYMMDD → YYYY-MM-DD`。
-2. 对 `today-reservations`、`clipped-unread`、`journal-calendar`、日记类组件在卡片或空态中展示协议前置条件，避免用户把“无数据”误认为“坏了”。
+1. 两处日期正则已修正并加入单测，确保 `YYYYMMDD → YYYY-MM-DD`。
+2. 已将日记标题、预约属性、剪藏标签、活动文档、闪卡和插件命令等前置条件写入商店卡片描述，避免用户把“无数据”误认为“坏了”。
 
 ### P1（真实宿主验收）
 

@@ -3650,7 +3650,7 @@ const version = beginSearch(session);
             const rows = (json?.data || []) as Array<{day?: string; n?: number}>;
             const items = rows.map((row) => {
                 const day = String(row.day || "");
-                const label = /^\\d{8}$/.test(day) ? `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}` : day;
+                const label = /^\d{8}$/.test(day) ? `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}` : day;
                 return {label, value: "", count: Math.max(0, Number(row.n) || 0)};
             }).filter((item) => item.label && item.count > 0);
             const total = items.reduce((sum, item) => sum + item.count, 0);
@@ -3719,7 +3719,7 @@ const version = beginSearch(session);
             const rows = (json?.data || []) as Array<{id?: string; content?: string; date?: string}>;
             const items = rows.map((row) => {
                 const date = String(row.date || "");
-                const labelDate = /^\\d{8}$/.test(date) ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : date;
+                const labelDate = /^\d{8}$/.test(date) ? `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}` : date;
                 return {label: `${labelDate}：${String(row.content || "").slice(0, 56)}`, value: String(row.id || "")};
             }).filter((item) => item.label && BLOCK_ID_RE.test(item.value));
             return {stat: {value: String(items.length), label: this.i18n.homeStatReservations}, items};
@@ -4113,9 +4113,6 @@ const version = beginSearch(session);
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
-
-        const isProviderLoaded = (providerPlugin: string) =>
-            (this.app as unknown as {plugins?: Array<{name?: string}>}).plugins?.some((p) => p?.name === providerPlugin) === true;
 
         const renderStore = () => {
             root.innerHTML = "";

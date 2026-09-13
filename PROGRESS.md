@@ -2,6 +2,8 @@
 
 补充（2026-09-13）：完成组件商店逐项可用性审计（T-263）。`docs/component-availability-audit.md` 覆盖 28 个内置组件与 1 个第三方目录组件；当前自动测试 661/661 全绿。审计确认两处 `YYYYMMDD` 日期标签正则展示缺陷（T-264），并将第三方/命名协议/活动文档依赖与正常空数据分开分级；下一步优先修复正则、补商店依赖提示并安排真实桌面逐项验收（T-265~T-266）。
 
+补充（2026-09-13）：T-264/T-265 完成。修正 `recent-writing-activity` 与 `today-reservations` 日期显示正则，新增回归测试；商店中英文描述补充任务扫描、日记标题、预约属性、剪藏标签、活动文档、闪卡和插件命令等前置条件。661/661 自动测试通过，生产包 `dist/index.js` 353208 bytes、`package.zip` 301884 bytes，仍低于包体门禁。
+
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-258~T-259 增加 diagnostics 联合恢复结果归一化与 queue/snapshot 联合 coordinator；661/661 测试、TypeScript 与 diff 检查通过。

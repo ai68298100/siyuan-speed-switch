@@ -103,6 +103,24 @@ test("writing activity and daily-note adapters validate optional notebook SQL sc
     assert.match(daily, /type='d'\$\{notebookScope\}/);
 });
 
+test("date-based widget labels format YYYYMMDD values for users", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const writing = source.slice(
+        source.indexOf('register("recent-writing-activity"'),
+        source.indexOf('register("recent-daily-notes"'),
+    );
+    const reservations = source.slice(
+        source.indexOf('register("today-reservations"'),
+        source.indexOf('register("quick-capture"'),
+    );
+    for (const adapter of [writing, reservations]) {
+        assert.match(adapter, /\/\^\\d\{8\}\$\//);
+        assert.match(adapter, /slice\(0, 4\).*slice\(4, 6\).*slice\(6, 8\)/s);
+    }
+});
+
 test("insight adapters share validated notebook scope without changing default queries", () => {
     const fs = require("node:fs");
     const path = require("node:path");
