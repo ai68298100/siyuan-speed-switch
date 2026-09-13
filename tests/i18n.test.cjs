@@ -126,3 +126,15 @@ test("i18n: 报告未使用的 key（信息性，不判失败）", (t) => {
   }
   assert.ok(true);
 });
+
+test("i18n: home refresh summary stays bounded and preserves stable placeholders", () => {
+  for (const langFile of LANG_FILES) {
+    const lang = loadLang(langFile);
+    const summary = lang.homeRefreshFailed;
+    assert.equal(typeof summary, "string");
+    assert.ok(summary.length <= 128, `${path.basename(langFile)} homeRefreshFailed exceeds 128 characters`);
+    for (const placeholder of ["{count}", "{timeout}", "{failed}", "{other}"]) {
+      assert.ok(summary.includes(placeholder), `${path.basename(langFile)} missing ${placeholder}`);
+    }
+  }
+});
