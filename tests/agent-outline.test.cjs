@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeRegistryEvents} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, commitWorkspaceCapabilityRuntimeRegistryReplay, recoverWorkspaceCapabilityRuntimeRegistry} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -624,6 +624,27 @@ test("workspace session registry prunes idle sessions without touching recent on
     assert.equal(registry.get(recent.sessionId), recent);
     assert.equal(registry.pruneIdle(now, 0), 0);
     registry.dispose();
+});
+
+test("workspace registry events replay and snapshot recovery stay bounded", () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(2);
+    const first = registry.create();
+    const second = registry.create();
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, 0, 8);
+    assert.equal(replay.ok, true);
+    assert.equal(replay.events.length, 2);
+    assert.equal(commitWorkspaceCapabilityRuntimeRegistryReplay(registry, replay), 2);
+    assert.equal(registry.eventsSince(0).events.length, 0);
+    first.dispose();
+    second.dispose();
+    const overflow = createWorkspaceCapabilityRuntimeSessionRegistry(1);
+    for (let index = 0; index < 5; index += 1) overflow.create();
+    const recovered = recoverWorkspaceCapabilityRuntimeRegistry(overflow, 0);
+    assert.equal(recovered.ok, true);
+    assert.equal(recovered.mode, "snapshot");
+    assert.equal(recovered.snapshot.maxSessions, 1);
+    registry.dispose();
+    overflow.dispose();
 });
 
 test("workspace runtime session snapshots are versioned and normalized", () => {

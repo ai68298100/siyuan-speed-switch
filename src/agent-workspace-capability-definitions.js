@@ -553,6 +553,26 @@ function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
     }).filter(Boolean);
 }
 
+function readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, cursor = 0, limit = 8) {
+    if (!registry || typeof registry.eventsSince !== "function") return {ok: false, reason: "registry_unavailable", cursor: 0, events: []};
+    const batch = registry.eventsSince(cursor, limit);
+    if (batch.truncated === true) return {ok: false, reason: "snapshot_required", cursor: Number(batch.cursor) || 0, events: []};
+    return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: normalizeWorkspaceCapabilityRuntimeRegistryEvents(batch.events)};
+}
+
+function commitWorkspaceCapabilityRuntimeRegistryReplay(registry, replay) {
+    if (!registry || typeof registry.acknowledgeEvents !== "function" || !replay || replay.ok !== true) return 0;
+    if (replay.reason !== "ready") return 0;
+    return registry.acknowledgeEvents(replay.cursor);
+}
+
+function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, limit = 8) {
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, cursor, limit);
+    if (replay.ok) return {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null};
+    if (replay.reason !== "snapshot_required" || !registry || typeof registry.snapshot !== "function") return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
+    return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot: normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry.snapshot())};
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -589,4 +609,7 @@ module.exports = {
     createWorkspaceCapabilityRuntimeSessionRegistry,
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
+    readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
+    commitWorkspaceCapabilityRuntimeRegistryReplay,
+    recoverWorkspaceCapabilityRuntimeRegistry,
 };

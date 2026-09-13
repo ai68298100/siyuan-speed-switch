@@ -661,6 +661,18 @@
   - 目标：过滤未知事件、非法 sessionId 和越界序号
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRegistryEvents`
   - 状态：in-progress
+- [ ] T-192 Agent workspace registry 事件安全回放
+  - 目标：按游标读取 registry 生命周期事件，溢出时要求完整快照
+  - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplay`
+  - 状态：in-progress
+- [ ] T-193 Agent workspace registry 回放确认
+  - 目标：仅确认 ready 回放结果，失败或 snapshot_required 保留事件
+  - 实现：新增 `commitWorkspaceCapabilityRuntimeRegistryReplay`
+  - 状态：in-progress
+- [ ] T-194 Agent workspace registry 快照恢复
+  - 目标：统一 registry 事件回放与溢出后的完整 snapshot 恢复
+  - 实现：新增 `recoverWorkspaceCapabilityRuntimeRegistry`
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
