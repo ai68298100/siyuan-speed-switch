@@ -30,6 +30,8 @@ const UNWIRED_CONTRACT_MODULES = [
 
 const WIRED_SANITY_MODULES = [
     'agent-capabilities',
+    'agent-workspace-diagnostics',
+    'agent-workspace-runtime',
     'home-adapters',
     'home-controller',
     'search-model',
@@ -82,8 +84,8 @@ test('production graph traversal reaches every wired runtime module', () => {
 
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
-    // 2026-09-14 审计闭包为 23 个模块;超过 26 说明引入了新生产模块,
-    // 必须复核 raw bundle 自律线(355 KiB)后再放行。
+    // 2026-09-14 阶段 1 接入后闭包为 25 个模块（+runtime/+diagnostics，
+    // D-220）；超过 29 说明引入了新生产模块，必须复核包体预算后再放行。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 26, `production graph grew to ${graph.size} modules; audit baseline is 23`);
+    assert.ok(graph.size <= 29, `production graph grew to ${graph.size} modules; audit baseline is 25`);
 });

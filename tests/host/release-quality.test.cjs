@@ -98,7 +98,10 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (34): 356 KiB for tri-surface search/group input ARIA labels
     // and the loose keyword gate (matched-item filter latency ~6x lower);
     // locale archives now ship minified to keep the hard ceiling intact.
-    const budget = 356 * 1024;
+    // 2026-09-14 (35): 376 KiB for v0.17 stage-1 workspace runtime diagnostics
+    // wiring (D-220): slim agent-workspace-runtime cluster moved out of the
+    // unshipped definitions matrix; zip grows only ~5 KiB, hard ceiling intact.
+    const budget = 376 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

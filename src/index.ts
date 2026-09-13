@@ -60,6 +60,7 @@ import {
     buildNotebookBoxScope,
     registerAgentActionCapability,
 } from "./agent-capabilities";
+import {createWorkspaceRuntimeDiagnostics} from "./agent-workspace-diagnostics";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -583,6 +584,8 @@ interface IOpenHistoryEntry {
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
+    // v0.17 阶段 1（D-220）：workspace 运行时只读诊断能力的生命周期持有者
+    private workspaceRuntimeDiagnostics: ReturnType<typeof createWorkspaceRuntimeDiagnostics> | null = null;
     private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
@@ -1036,6 +1039,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.activeAgentSearchControllers.clear();
         this.activeDocumentSetRestoreControllers.forEach((controller) => controller.abort());
         this.activeDocumentSetRestoreControllers.clear();
+        // v0.17 阶段 1（D-220）：销毁 workspace 诊断运行时（registry/queue/coordinator）
+        this.workspaceRuntimeDiagnostics?.dispose();
+        this.workspaceRuntimeDiagnostics = null;
         this.switcherRefreshers.clear();
         this.quickActionAdapters.clear();
         this.quickActionAdapterTargets.clear();
@@ -6834,7 +6840,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         const pluginWithAgent = this as unknown as {
             addAgentCapability?: (options: Record<string, unknown>) => string;
         };
-        registerReadOnlyAgentCapabilities(pluginWithAgent, [
+        const readOnlyDefinitions: Array<{spec: Record<string, unknown>; handler: (args: Record<string, unknown>) => unknown}> = [
             {
                 spec: AGENT_CAPABILITY_SPECS.outline,
                 handler: async (args: Record<string, unknown>) => {
@@ -7046,7 +7052,25 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     }
                 },
             },
-        ], (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+        ];
+        // v0.17 阶段 1（D-220）：workspace 运行时基础设施只读诊断。
+        // registry/queue/coordinator 生命周期与插件一致，卸载时统一销毁。
+        this.workspaceRuntimeDiagnostics = createWorkspaceRuntimeDiagnostics();
+        if (this.workspaceRuntimeDiagnostics.validation.ok) {
+            readOnlyDefinitions.push({
+                spec: this.workspaceRuntimeDiagnostics.spec as unknown as Record<string, unknown>,
+                handler: (args: Record<string, unknown>) => {
+                    const runtime = this.workspaceRuntimeDiagnostics;
+                    if (!runtime) return {error: "workspace diagnostics unavailable"};
+                    return runtime.handler(args || {});
+                },
+            });
+        } else {
+            logger.warn("workspace runtime diagnostics definition invalid", this.workspaceRuntimeDiagnostics.validation);
+            this.workspaceRuntimeDiagnostics.dispose();
+            this.workspaceRuntimeDiagnostics = null;
+        }
+        registerReadOnlyAgentCapabilities(pluginWithAgent, readOnlyDefinitions, (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
     }
 
     private async searchAgentDocuments(args: Record<string, unknown> = {}) {
