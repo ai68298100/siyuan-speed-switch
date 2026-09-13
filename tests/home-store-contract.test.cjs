@@ -17,4 +17,5 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /homeStoreAvailabilityConditional/);
     assert.match(source, /homeStoreTabConditional/);
     assert.match(source, /card\.dataset\.availability === availabilityFilter/);
+    assert.match(source, /listModules\(device\)\.forEach/);
 });

@@ -4125,9 +4125,8 @@ const version = beginSearch(session);
             });
 
             const defs = new Map<string, any>();
-            this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
-                .concat(this.homeRuntime.listModules("sidebar"))
-                .forEach((def: any) => defs.set(def.moduleId, def));
+            // 仅展示当前设备支持的组件，避免用户添加后才发现 adapter 不支持该表面。
+            this.homeRuntime.listModules(device).forEach((def: any) => defs.set(def.moduleId, def));
             const activeIds = new Set<string>();
             defs.forEach((_def: any, moduleId: string) => {
                 if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeThirdPartyIds.has(moduleId)) activeIds.add(moduleId);

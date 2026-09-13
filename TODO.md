@@ -76,6 +76,11 @@
   - 证据：`src/index.ts`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-272 商店按当前设备过滤
+  - 目标：组件商店仅展示当前 desktop/sidebar/mobile 表面可用的组件，避免跨设备误添加
+  - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
