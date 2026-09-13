@@ -291,7 +291,7 @@ pnpm build
 **v0.17 —— Agent 工作区执行落地与路径筛选 UI**
 
 - 把已建成的独立契约层（`document-context`、`workspace-plan`、审批令牌、一次性执行门卫、session registry、diagnostics）择优接入生产 `addAgentCapability` 注册，坚持"上下文 → dry-run 计划 → 用户确认 → 固定动作执行 → 结果回执"主线。
-- 硬约束：zip 硬上限余量仅约 1.1 KiB，接入前必须先做 bundle 瘦身或功能开关，不把独立 bridge 执行链整体塞入入口。
+- 硬约束（2026-09-14 审计后更新，见 D-216/D-218）：免费瘦身空间已耗尽——CSS 零死类、资产无安全压缩收益、生产闭包 23 模块已由门禁固化；zip 硬上限余量仅 50 bytes。**接入任何契约模块前必须先做归档内容决策**（候选：README 变更链裁剪、ROADMAP/docs SVG 移出归档；均为维护者决策项）或完成结构性重构腾出字节。
 - 完成真实宿主权限、取消、卸载与确认弹窗验证（open-documents 真机点击、手机端能力矩阵）后，才评估 Agent 入口是否加入默认工具栏。
 - 路径筛选在拿到可信路径树端点证据（T-107）后开放 UI（T-103），复用已有 `path-filter-model`。
 

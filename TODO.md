@@ -181,6 +181,67 @@
   - 证据：`tests/mobile-card-smoke.cjs` 的 `readSource` 归一化；三端 smoke 与全量测试通过
   - 状态：done（2026-09-14）
 
+- [x] T-293 生产依赖图契约层隔离门禁
+  - 目标：自动断言 16 个未接入的 v0.17 契约模块不出现在生产 import 闭包，防止包体预算被无声突破
+  - 证据：`tests/production-graph-isolation.test.cjs`（闭包遍历 23 模块、16 模块图外断言、规模上限断言）
+  - 状态：done（2026-09-14）
+
+- [x] T-294 i18n 死 key 清理
+  - 目标：删除源码零引用的 `homeCountdownTarget`、`homeStoreAdded`（中英同步）
+  - 证据：`src/i18n/*.json` 各 460→458 key；动态访问禁令使"未引用=死 key"成立
+  - 状态：done（2026-09-14）
+
+- [x] T-295 i18n 死 key 硬门禁
+  - 目标：把原信息性未用 key 报告升级为失败断言，预留 key 必须显式白名单登记
+  - 证据：`tests/i18n.test.cjs` 11/11 通过
+  - 状态：done（2026-09-14）
+
+- [x] T-296 CSS 死类审计门禁
+  - 目标：断言编译产物中每个 sw 类都有源码消费方（含动态前缀家族），阻止归档 CSS 无声膨胀
+  - 证据：`tests/css-usage-audit.test.cjs`；基线 343/343 全在用
+  - 状态：done（2026-09-14）
+
+- [x] T-297 本地页签过滤性能基准与 6 倍优化
+  - 目标：固化 ROADMAP 3.5 性能预算为可执行基准；修复 `firstText`→`Intl.Segmenter` 每击键数千次切分的热点
+  - 实现：`filterOpenTabs` 轻量门禁 + 命中条目重型产出（行为一致，D-217）；300 页签关键词路径 8.9ms→1.4ms
+  - 证据：`tests/search-filter-perf.test.cjs` 两路径基准、`tests/search-model.test.cjs` 41/41 含新增一致性回归
+  - 状态：done（2026-09-14）
+
+- [x] T-298 包体瘦身审计结论固化
+  - 目标：CSS/资产/重复代码/契约层四条路线的审计结论落入决策记录，避免后续重复试错
+  - 证据：DECISIONS D-216；生产闭包 23 模块、CSS 零死类、PNG 无安全收益、无安全合并
+  - 状态：done（2026-09-14）
+
+- [x] T-299 widget-protocol 生命周期文档
+  - 目标：向第三方开发者文档化 provider 失效恢复、热替换覆盖、注销 token 语义与可用性徽标
+  - 证据：`docs/widget-protocol.md` 新增"生命周期与失效恢复"一节（D-197~D-203、D-192 语义）
+  - 状态：done（2026-09-14）
+
+- [x] T-300 三端输入框可访问性标签
+  - 目标：桌面弹窗/侧栏/手机搜索框与收藏分组输入补 `aria-label`，不再仅依赖 placeholder
+  - 证据：`src/index.ts` 5 处补齐；aria-label 总数 72→77
+  - 状态：done（2026-09-14）
+
+- [x] T-301 v0.17 预算前置条件更新
+  - 目标：把审计结论写入 ROADMAP 8.0.1，v0.17 接入前必须先完成归档内容决策
+  - 证据：ROADMAP v0.17 小节；候选项（README 变更链裁剪、ROADMAP/docs SVG 移出归档）待维护者决策
+  - 状态：done（2026-09-14）
+
+- [x] T-302 归档 i18n 构建期最小化与尺寸校准
+  - 目标：源文件保持可读缩进、归档输出 `JSON.stringify` 最小形态；readiness/README 计数同步实际产物
+  - 证据：`webpack.config.js` CopyPlugin transform；zip 307337→307150（余量 50 bytes）；`docs/release-readiness.md`、README.en-US 92 文件/682 测试
+  - 状态：done（2026-09-14）
+
+- [x] T-303 决策与预警记录
+  - 目标：D-216 审计结论、D-217 过滤优化语义、D-218 i18n 最小化与硬上限余量预警落档
+  - 证据：`DECISIONS.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-304 全门禁复跑与本轮提交
+  - 目标：类型检查、全量测试、生产构建与三类 smoke 全绿后按协议本地提交
+  - 证据：682/682 测试、TSC 通过、移动烟测 68 PASS、Chromium 烟测 3 PASS
+  - 状态：done（2026-09-14）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
