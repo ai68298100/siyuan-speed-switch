@@ -59,8 +59,21 @@ function workspacePlanDigest(plan) {
 async function executeWorkspacePlan(plan, options = {}) {
     const guard = options.guard || createWorkspaceExecutionGuard();
     const now = typeof options.now === "function" ? Number(options.now()) : Number(options.now || Date.now());
+    const approvalStore = options.approvalStore;
+    const request = {planId: plan?.planId, digest: options.digest || "", device: options.device || "desktop"};
+    if (approvalStore && typeof approvalStore.validate === "function") {
+        const tokenCheck = approvalStore.validate(options.approvalToken, request, now);
+        if (!tokenCheck.ok) return {planId: normalizePlanId(plan?.planId), status: tokenCheck.reason, receipt: ""};
+    }
     const check = guard.begin(plan, {approved: options.approved === true, digest: options.digest || ""}, now);
     if (!check.ok) return {planId: normalizePlanId(plan?.planId), status: check.reason, receipt: check.receipt || ""};
+    if (approvalStore && typeof approvalStore.consume === "function") {
+        const consumed = approvalStore.consume(options.approvalToken, request, now);
+        if (!consumed.ok) {
+            guard.finish(plan.planId, "", consumed.reason);
+            return {planId: normalizePlanId(plan?.planId), status: consumed.reason, receipt: ""};
+        }
+    }
     const {runWorkspacePlan} = require("./agent-workspace-plan.js");
     const receipt = await runWorkspacePlan(plan, options);
     guard.finish(plan.planId, receipt.receipt, receipt.status);

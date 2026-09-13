@@ -161,6 +161,28 @@ test("workspace orchestrator binds approval digest and consumes once", async () 
     assert.equal(replay.status, "already_consumed");
 });
 
+test("workspace orchestrator validates and consumes approval token before steps", async () => {
+    const base = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    const plan = {...base, digest: workspacePlanDigest(base)};
+    const approvalStore = createApprovalTokenStore();
+    const token = approvalStore.issue(plan, "desktop", 1700000000100, "integration");
+    let calls = 0;
+    const options = {
+        approvalStore, approvalToken: token, guard: createWorkspaceExecutionGuard(), approved: true,
+        digest: plan.digest, device: "desktop", now: 1700000000101,
+        runStep: async () => { calls += 1; return {status: "completed"}; },
+    };
+    const receipt = await executeWorkspacePlan(plan, options);
+    assert.equal(receipt.status, "completed");
+    assert.equal(calls, 1);
+    const replay = await executeWorkspacePlan(plan, {...options, now: 1700000000102});
+    assert.equal(replay.status, "consumed");
+    assert.equal(calls, 1);
+    const otherToken = approvalStore.issue(plan, "sidebar", 1700000000100, "other");
+    const mismatch = await executeWorkspacePlan(plan, {...options, approvalToken: otherToken, device: "desktop", guard: createWorkspaceExecutionGuard(), now: 1700000000103});
+    assert.equal(mismatch.status, "binding_mismatch");
+});
+
 test("execute-workspace-plan contract requires digest and one-time approval token", () => {
     assert.equal(EXECUTE_WORKSPACE_PLAN_SPEC.name, "execute-workspace-plan");
     assert.deepEqual(EXECUTE_WORKSPACE_PLAN_SPEC.inputSchema.required, ["planId", "digest", "approvalToken"]);

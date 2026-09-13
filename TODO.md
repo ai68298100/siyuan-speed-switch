@@ -425,3 +425,7 @@
   - 目标：将用户确认绑定到 planId、digest、设备和过期时间，并保证令牌一次性消费、会话内有界保留
   - 实现：新增独立 `src/agent-approval-token.js`，最多保留 32 个令牌，支持 issue/validate/consume/clear；令牌不携带正文或权限信息
   - 状态：in-progress
+- [ ] T-131 Agent 执行编排接入审批令牌
+  - 目标：执行计划前校验 token 的 planId/digest/device/expiry，校验通过后一次性消费，阻止缺少授权或令牌重放进入动作 handler
+  - 实现：`executeWorkspacePlan` 支持注入 `approvalStore`、`approvalToken` 和 `device`，令牌验证失败不产生步骤副作用
+  - 状态：in-progress
