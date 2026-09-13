@@ -5,6 +5,7 @@
 // lifetime and keeps a small bounded receipt index.
 const MAX_EXECUTION_RECORDS = 32;
 const PLAN_ID_RE = /^wp-[a-z0-9-]{3,32}$/;
+const DIGEST_RE = /^pd-[a-z0-9]{6,12}$/;
 
 function createWorkspaceExecutionGuard(limit = MAX_EXECUTION_RECORDS) {
     const max = Math.min(MAX_EXECUTION_RECORDS, Math.max(1, Math.trunc(Number(limit) || MAX_EXECUTION_RECORDS)));
@@ -15,10 +16,13 @@ function createWorkspaceExecutionGuard(limit = MAX_EXECUTION_RECORDS) {
         while (records.size > max) records.delete(records.keys().next().value);
     };
     return Object.freeze({
-        begin(plan, approved, now = Date.now()) {
+        begin(plan, approved, now = Date.now(), digest = "") {
             const planId = normalizePlanId(plan?.planId);
             if (!planId) return {ok: false, reason: "invalid_plan"};
-            if (approved !== true) return {ok: false, reason: "denied"};
+            const allowed = approved && typeof approved === "object" ? approved.approved === true : approved === true;
+            const expectedDigest = approved && typeof approved === "object" ? approved.digest : digest;
+            if (allowed !== true) return {ok: false, reason: "denied"};
+            if (expectedDigest && expectedDigest !== workspacePlanDigest(plan)) return {ok: false, reason: "digest_mismatch"};
             if (Number.isFinite(now) && Number(now) >= Number(plan.expiresAt)) return {ok: false, reason: "expired"};
             const previous = records.get(planId);
             if (previous) return {ok: false, reason: previous.status === "running" ? "already_running" : "already_consumed", receipt: previous.receipt || ""};
@@ -45,4 +49,22 @@ function normalizePlanId(value) {
     return PLAN_ID_RE.test(id) ? id : "";
 }
 
-module.exports = {MAX_EXECUTION_RECORDS, PLAN_ID_RE, normalizePlanId, createWorkspaceExecutionGuard};
+function workspacePlanDigest(plan) {
+    const source = plan && typeof plan === "object" ? {planId: plan.planId, createdAt: plan.createdAt, expiresAt: plan.expiresAt, steps: plan.steps} : {};
+    let hash = 2166136261;
+    for (const char of JSON.stringify(source)) { hash ^= char.charCodeAt(0); hash = Math.imul(hash, 16777619); }
+    return `pd-${(hash >>> 0).toString(36)}`;
+}
+
+async function executeWorkspacePlan(plan, options = {}) {
+    const guard = options.guard || createWorkspaceExecutionGuard();
+    const now = typeof options.now === "function" ? Number(options.now()) : Number(options.now || Date.now());
+    const check = guard.begin(plan, {approved: options.approved === true, digest: options.digest || ""}, now);
+    if (!check.ok) return {planId: normalizePlanId(plan?.planId), status: check.reason, receipt: check.receipt || ""};
+    const {runWorkspacePlan} = require("./agent-workspace-plan.js");
+    const receipt = await runWorkspacePlan(plan, options);
+    guard.finish(plan.planId, receipt.receipt, receipt.status);
+    return receipt;
+}
+
+module.exports = {MAX_EXECUTION_RECORDS, PLAN_ID_RE, DIGEST_RE, normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan};

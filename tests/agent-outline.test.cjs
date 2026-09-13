@@ -7,7 +7,7 @@ const {
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
 const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = require('../src/agent-workspace-actions.js');
-const {normalizePlanId, createWorkspaceExecutionGuard} = require('../src/agent-workspace-execution.js');
+const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -131,7 +131,10 @@ test("workspace execution guard prevents replay and stays bounded", () => {
     assert.equal(normalizePlanId("javascript:bad"), "");
     const guard = createWorkspaceExecutionGuard(1);
     assert.deepEqual(guard.begin(plan, false, 1700000000100), {ok: false, reason: "denied"});
-    assert.deepEqual(guard.begin(plan, true, 1700000000100), {ok: true, planId: plan.planId});
+    const digest = workspacePlanDigest(plan);
+    assert.equal(digest.startsWith("pd-"), true);
+    assert.equal(guard.begin(plan, {approved: true, digest: "pd-invalid"}, 1700000000100).reason, "digest_mismatch");
+    assert.deepEqual(guard.begin(plan, {approved: true, digest}, 1700000000100), {ok: true, planId: plan.planId});
     assert.equal(guard.begin(plan, true, 1700000000101).reason, "already_running");
     assert.equal(guard.finish(plan.planId, "rc-abc", "partial"), true);
     assert.deepEqual(guard.get(plan.planId), {status: "partial", receipt: "rc-abc"});
@@ -139,6 +142,21 @@ test("workspace execution guard prevents replay and stays bounded", () => {
     const other = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000001);
     assert.equal(guard.begin(other, true, 1700000000100).ok, true);
     assert.equal(guard.get(plan.planId), null);
+});
+
+test("workspace orchestrator binds approval digest and consumes once", async () => {
+    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    const guard = createWorkspaceExecutionGuard();
+    const calls = [];
+    const digest = workspacePlanDigest(plan);
+    const receipt = await executeWorkspacePlan(plan, {
+        guard, approved: true, digest, now: 1700000000100,
+        runStep: async (step) => { calls.push(step.action); return {status: "completed"}; },
+    });
+    assert.equal(receipt.status, "completed");
+    assert.deepEqual(calls, ["open-document"]);
+    const replay = await executeWorkspacePlan(plan, {guard, approved: true, digest, now: 1700000000101, runStep: async () => ({status: "completed"})});
+    assert.equal(replay.status, "already_consumed");
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {

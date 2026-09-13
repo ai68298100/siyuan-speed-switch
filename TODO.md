@@ -413,3 +413,7 @@
   - 目标：阻止同一计划被 Agent 重放，统一审批、过期、运行中和已消费状态，保持会话内记录有界
   - 实现：新增独立 `src/agent-workspace-execution.js`，最多保留 32 条计划记录，提供 begin/finish/get/clear 生命周期
   - 状态：in-progress
+- [ ] T-128 Agent 工作区审批摘要与执行编排
+  - 目标：把用户确认绑定到计划 digest，并组合一次性消费门卫与执行状态机，阻止确认后计划被替换或重复重放
+  - 实现：新增 `workspacePlanDigest`、`executeWorkspacePlan`；digest mismatch/denied/expired/replay 均在动作执行前返回，成功后写入有界消费记录
+  - 状态：in-progress
