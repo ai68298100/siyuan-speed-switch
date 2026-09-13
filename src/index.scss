@@ -5035,3 +5035,44 @@
 .sw-home .sw-home__panel-scroll {
     scroll-behavior: smooth;
 }
+
+// ==================== 周打卡行（Duolingo 式） ====================
+.sw__home-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    align-items: center;
+}
+
+.sw__home-weekday {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    &-dot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 80%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-background) 60%, transparent);
+        color: transparent;
+        transition: background-color 0.15s, border-color 0.15s;
+
+        svg { width: 11px; height: 11px; }
+    }
+
+    &.is-done &-dot {
+        border-color: var(--sw-home-accent, var(--b3-theme-primary));
+        background: var(--sw-home-accent, var(--b3-theme-primary));
+        color: var(--b3-theme-background);
+    }
+
+    &-label {
+        font-size: 10px;
+        opacity: 0.65;
+    }
+}

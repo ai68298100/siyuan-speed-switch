@@ -77,6 +77,9 @@ const DEFAULT_MODULES = Object.freeze([
         {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, viewType: "calendar", configSchema: [
         {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 0, defaults: 0},
     ]},
+    {moduleId: "writing-streak", title: "写作打卡", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, viewType: "weekdays", configSchema: [
+        {key: "notebook", label: "限定笔记本", type: "notebook"},
+    ]},
     {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
         {key: "targetDate", label: "目标日期", type: "text", defaults: ""},
@@ -204,7 +207,7 @@ function normalizeModuleDefinition(value) {
         sizes: sizes.length > 0 ? sizes : ["medium"],
         description: text(value.description, 96),
         protocolVersion: normalizeProtocolVersion(value.protocolVersion),
-        viewType: value.viewType === "calendar" ? "calendar" : "",
+        viewType: value.viewType === "calendar" ? "calendar" : (value.viewType === "weekdays" ? "weekdays" : ""),
         author: text(value.author, 64),
         homepage: normalizeHomepage(value.homepage),
         clickCommand: normalizeClickCommand(value.clickCommand),

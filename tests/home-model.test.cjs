@@ -4,13 +4,13 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 27);
+    assert.equal(modules.length, 28);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 27);
+    assert.equal(home.modulesForDevice([], "mobile").length, 28);
 });
 
 test("journal-calendar viewType and monthOffset config", () => {

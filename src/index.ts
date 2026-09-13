@@ -3527,6 +3527,34 @@ const version = beginSearch(session);
                 ],
             };
         });
+        // 写作打卡：连续写作天数 + 本周 7 天完成行（Duolingo 式）
+        register("writing-streak", this.i18n.homeWritingStreak, "iconCheck", this.i18n.homeDescWritingStreak, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const now = new Date();
+            const windowDays = 60;
+            const since = this.taskWindowStart(windowDays);
+            const notebookScope = buildNotebookBoxScope(config.notebook);
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT DISTINCT substr(created, 1, 8) AS day FROM blocks WHERE created >= '${since}'${notebookScope} ORDER BY day DESC LIMIT ${windowDays}`,
+            });
+            const written = new Set(((json?.data || []) as Array<{day: string}>).map((row) => String(row.day)));
+            const dayKey = (d: Date) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+            // 连续天数：从今天往回数（今天尚未写作时从昨天起算，保留昨日连续）
+            let streak = 0;
+            const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            if (!written.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+            while (streak < windowDays && written.has(dayKey(cursor))) {
+                streak += 1;
+                cursor.setDate(cursor.getDate() - 1);
+            }
+            // 本周（周一起）7 天标记
+            const weekLabel = this.i18n.homeCalendarWeekdays || "一二三四五六日";
+            const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+            const items = Array.from({length: 7}, (_unused, index) => {
+                const day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+                return {label: weekLabel.slice(index, index + 1), value: "", done: written.has(dayKey(day))};
+            });
+            return {stat: {value: String(streak), label: this.i18n.homeStatStreakDays}, items};
+        });
         // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数
         register("countdown", this.i18n.homeCountdown, "iconClock", this.i18n.homeDescCountdown, ["loaded-protyle"], (config) => {
             const title = String(config.title || "").trim().slice(0, 32);

@@ -95,6 +95,23 @@ test("home view renders calendar grid for viewType calendar", () => {
     assert.equal(grid.querySelectorAll(".has-journal").length, 1);
     assert.equal(grid.querySelectorAll(".is-today").length, 1);
 });
+test("home view renders week row for viewType weekdays", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView(
+        {moduleId: "writing-streak", title: "写作打卡", viewType: "weekdays"},
+        {ok: true, snapshot: {items: [
+            {label: "一", value: "", done: true},
+            {label: "二", value: "", done: true},
+            {label: "三", value: "", done: false},
+        ]}},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {});
+    assert.ok(root, "rendered");
+    const row = root.querySelector(".sw__home-weekdays");
+    assert.ok(row, "week row present");
+    assert.equal(row.querySelectorAll(".sw__home-weekday").length, 3);
+    assert.equal(row.querySelectorAll(".sw__home-weekday.is-done").length, 2);
+});
 test("home view renders safe symbol and text icon fallbacks", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const symbol = renderModuleIcon(dom.window.document, "iconCalendar");

@@ -67,7 +67,8 @@ test('production bundle remains within the mobile performance budget when built'
     // preview skeletons and a larger default store dialog.
     // 2026-09-13 (16): 334 KiB for proportional size previews in store cards.
     // 2026-09-13 (17): 335 KiB for on-demand live preview dialogs in the store.
-    const budget = 335 * 1024;
+    // 2026-09-13 (18): 337 KiB for the writing-streak widget (week row view).
+    const budget = 337 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

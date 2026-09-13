@@ -99,7 +99,7 @@ function buildHomeModuleView(module, result, options = {}) {
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
-        viewType: definition.viewType === "calendar" ? "calendar" : "",
+        viewType: definition.viewType === "calendar" ? "calendar" : (definition.viewType === "weekdays" ? "weekdays" : ""),
         status: normalized.status,
         stat: normalized.stat,
         cached: normalized.cached,
@@ -212,6 +212,31 @@ function renderHomeModuleView(doc, view, options = {}) {
             bar.appendChild(fill);
             body.appendChild(bar);
         }
+    }
+    if (view.status === "ready" && view.viewType === "weekdays") {
+        // 周打卡行（Duolingo 式）：7 个圆点；条目约定 label=星期字、done=当天已完成
+        const row = doc.createElement("div");
+        row.className = "sw__home-weekdays";
+        row.setAttribute("role", "list");
+        (Array.isArray(view.items) ? view.items : []).slice(0, 7).forEach((item) => {
+            const cell = doc.createElement("div");
+            cell.className = "sw__home-weekday" + (item.done === true ? " is-done" : "");
+            cell.setAttribute("role", "listitem");
+            cell.setAttribute("aria-label", `${item.label || ""}${item.done === true ? " ✓" : ""}`);
+            const dot = doc.createElement("span");
+            dot.className = "sw__home-weekday-dot";
+            if (item.done === true) {
+                dot.innerHTML = '<svg><use xlink:href="#iconCheck"></use></svg>';
+            }
+            const label = doc.createElement("span");
+            label.className = "sw__home-weekday-label";
+            label.textContent = (item.label || "").slice(0, 1);
+            cell.append(dot, label);
+            row.appendChild(cell);
+        });
+        body.appendChild(row);
+        root.appendChild(body);
+        return root;
     }
     if (view.status === "ready" && view.viewType === "calendar") {
         // 日历月视图：7 列网格；条目约定 label=日期数字、value=文档 ID（可点击）、done=今天
