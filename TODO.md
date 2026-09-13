@@ -509,3 +509,7 @@
   - 目标：宿主卸载时回收已注册 capability 句柄，避免旧 handler 残留或异常冒泡
   - 实现：新增 `disposeWorkspaceCapabilityRegistrations`，兼容 disposer、对象 disposer 与 `removeAgentCapability`，逐项隔离异常并返回计数
   - 状态：in-progress
+- [ ] T-152 Agent workspace bridge 销毁态隔离
+  - 目标：防止 bridge dispose 后重新创建计划或执行旧请求
+  - 实现：增加幂等 disposed 标记；销毁后 plan/issue/preview 返回空值，execute 返回 `bridge_disposed`
+  - 状态：in-progress

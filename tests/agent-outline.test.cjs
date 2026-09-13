@@ -285,6 +285,11 @@ test("workspace agent bridge provides bounded plan issue execute lifecycle", asy
     assert.equal(bridge.prune(expiredPlan.expiresAt + 1), 0);
     bridge.dispose();
     assert.equal(bridge.size(), 0);
+    assert.equal(bridge.plan({steps: [{action: "open-document", id: "20260913083002-abcdef"}]}, 1700000000000), null);
+    assert.equal(bridge.issue(plan.planId), null);
+    assert.equal(bridge.preview(plan.planId), null);
+    assert.deepEqual(await bridge.execute(challenge), {planId: "", status: "bridge_disposed", receipt: ""});
+    bridge.dispose();
 });
 
 test("workspace bridge handler factories expose structured capability results", async () => {

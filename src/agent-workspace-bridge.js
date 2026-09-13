@@ -16,6 +16,7 @@ function createWorkspaceAgentBridge(options = {}) {
     const session = options.session || createWorkspaceExecutionSession(options);
     const max = Math.min(MAX_STORED_PLANS, Math.max(1, Math.trunc(Number(options.maxPlans) || MAX_STORED_PLANS)));
     const plans = new Map();
+    let disposed = false;
     const remember = (plan) => {
         plans.delete(plan.planId);
         plans.set(plan.planId, plan);
@@ -23,20 +24,24 @@ function createWorkspaceAgentBridge(options = {}) {
     };
     return Object.freeze({
         plan(input, now = Date.now()) {
+            if (disposed) return null;
             const plan = buildWorkspacePlan(input, now);
             if (!plan.steps.length) return null;
             remember(plan);
             return {...plan, summary: buildWorkspacePlanSummary(plan)};
         },
         issue(planId, device = "desktop", now = Date.now()) {
+            if (disposed) return null;
             const plan = plans.get(typeof planId === "string" ? planId : "");
             return plan ? session.issue(plan, device, now) : null;
         },
         preview(planId, device = "desktop", now = Date.now()) {
+            if (disposed) return null;
             const plan = plans.get(typeof planId === "string" ? planId : "");
             return plan && typeof session.preview === "function" ? session.preview(plan, device, now) : null;
         },
         async execute(request, now = Date.now()) {
+            if (disposed) return {planId: "", status: "bridge_disposed", receipt: ""};
             const normalized = normalizeExecutionRequest(request);
             const plan = normalized && plans.get(normalized.planId);
             if (!normalized || !plan) return {planId: normalized?.planId || "", status: "plan_not_found", receipt: ""};
@@ -49,6 +54,7 @@ function createWorkspaceAgentBridge(options = {}) {
             }, {now});
         },
         prune(now = Date.now()) {
+            if (disposed) return 0;
             let removed = 0;
             for (const [planId, plan] of plans) {
                 if (isWorkspacePlanExpired(plan, now)) {
@@ -59,7 +65,12 @@ function createWorkspaceAgentBridge(options = {}) {
             return removed;
         },
         size() { return plans.size; },
-        dispose() { plans.clear(); session.dispose?.(); },
+        dispose() {
+            if (disposed) return;
+            disposed = true;
+            plans.clear();
+            session.dispose?.();
+        },
     });
 }
 
