@@ -4,6 +4,8 @@
 
 补充（2026-09-13）：T-264/T-265 完成。修正 `recent-writing-activity` 与 `today-reservations` 日期显示正则，新增回归测试；商店中英文描述补充任务扫描、日记标题、预约属性、剪藏标签、活动文档、闪卡和插件命令等前置条件。661/661 自动测试通过，生产包 `dist/index.js` 353208 bytes、`package.zip` 301884 bytes，仍低于包体门禁。
 
+补充（2026-09-13）：T-267 完成。新增组件可用性审计门禁，自动检查 27 个内置组件与 runtime adapter 一一对应、第三方目录组件必须由 provider 提供、SQL adapter 使用白名单 `stmt` 参数，并区分正常空态和未注册状态；当前 `pnpm test` 为 666/666 全绿。
+
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-258~T-259 增加 diagnostics 联合恢复结果归一化与 queue/snapshot 联合 coordinator；661/661 测试、TypeScript 与 diff 检查通过。
