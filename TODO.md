@@ -541,3 +541,7 @@
   - 目标：统一输出宿主可用性、注册成功/失败、不可回收句柄与销毁态，便于诊断和 UI 展示
   - 实现：新增 `lifecycle.snapshot()`，组合既有 probe/status，保持所有字段有界且不携带敏感值
   - 状态：in-progress
+- [ ] T-160 Agent workspace runtime 组合快照
+  - 目标：一次读取 capability lifecycle 与 bridge 状态，供诊断/UI 使用且不触发副作用
+  - 实现：新增 `buildWorkspaceCapabilityRuntimeSnapshot`，对缺失对象返回稳定空状态，不携带敏感数据
+  - 状态：in-progress

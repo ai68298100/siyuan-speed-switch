@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -429,6 +429,21 @@ test("workspace capability handles normalize managed and opaque host returns", (
     assert.deepEqual(normalizeWorkspaceCapabilityHandle("capability-id"), {managed: true, kind: "id"});
     assert.deepEqual(normalizeWorkspaceCapabilityHandle(undefined), {managed: false, kind: "opaque"});
     assert.deepEqual(normalizeWorkspaceCapabilityHandle(null), {managed: false, kind: "invalid"});
+});
+
+test("workspace runtime snapshot composes lifecycle and bridge state safely", () => {
+    const lifecycle = {snapshot: () => ({host: {available: true, reason: "ready"}, registration: {registered: 2, failed: 0, unmanaged: 0, disposed: false}})};
+    const bridge = {status: () => ({planCount: 1, maxPlans: 32, disposed: false})};
+    const snapshot = buildWorkspaceCapabilityRuntimeSnapshot(lifecycle, bridge);
+    assert.deepEqual(snapshot, {
+        lifecycle: {host: {available: true, reason: "ready"}, registration: {registered: 2, failed: 0, unmanaged: 0, disposed: false}},
+        bridge: {planCount: 1, maxPlans: 32, disposed: false},
+    });
+    assert.equal(Object.isFrozen(snapshot), true);
+    assert.deepEqual(buildWorkspaceCapabilityRuntimeSnapshot(null, null), {
+        lifecycle: {host: {available: false, reason: "unavailable"}, registration: {registered: 0, failed: 0, unmanaged: 0, disposed: false}},
+        bridge: {planCount: 0, maxPlans: 0, disposed: true},
+    });
 });
 
 test("workspace capability host probe stays stable and side-effect free", () => {

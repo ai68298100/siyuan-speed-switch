@@ -136,3 +136,4 @@
 - D-130 v0.17 注册句柄只按 disposer/object/id/opaque/invalid 归类；生命周期状态仅暴露 unmanaged 数量，不回显句柄值，兼容旧宿主返回 undefined 的情况。
 - D-131 v0.17 lifecycle `probe()` 只读取宿主 `addAgentCapability` 函数是否存在并返回 ready/unavailable 快照；注册前探测无副作用，status 字段保持稳定。
 - D-132 v0.17 lifecycle `snapshot()` 组合 host 与 registration 两个固定对象；不回显 capability 名称、句柄、token 或异常文本，供诊断/UI 只读消费。
+- D-133 v0.17 runtime 组合快照只拼接 lifecycle 与 bridge 的既有状态，不主动执行 probe/register/prune/execute；缺失对象降级为固定空状态，避免诊断读取改变运行时。

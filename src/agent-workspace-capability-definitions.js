@@ -146,6 +146,16 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
     });
 }
 
+function buildWorkspaceCapabilityRuntimeSnapshot(lifecycle, bridge) {
+    const lifecycleSnapshot = lifecycle && typeof lifecycle.snapshot === "function"
+        ? lifecycle.snapshot()
+        : {host: {available: false, reason: "unavailable"}, registration: {registered: 0, failed: 0, unmanaged: 0, disposed: false}};
+    const bridgeSnapshot = bridge && typeof bridge.status === "function"
+        ? bridge.status()
+        : {planCount: 0, maxPlans: 0, disposed: true};
+    return Object.freeze({lifecycle: lifecycleSnapshot, bridge: bridgeSnapshot});
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -155,4 +165,5 @@ module.exports = {
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,
+    buildWorkspaceCapabilityRuntimeSnapshot,
 };
