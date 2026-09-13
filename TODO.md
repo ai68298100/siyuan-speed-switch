@@ -837,6 +837,10 @@
   - 目标：允许独立 diagnostics 定义进入生命周期，同时保持旧调用兼容
   - 实现：`lifecycle.register(definitionsOverride)` 支持安全注入定义数组
   - 状态：done
+- [x] T-236 Agent workspace capability 定义完整性校验
+  - 目标：统一校验 canonical spec、handler 与固定 effects
+  - 实现：新增 `validateWorkspaceCapabilityDefinition` 并接入注册流程
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

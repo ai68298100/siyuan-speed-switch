@@ -101,6 +101,18 @@ function normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput(value) {
     return Object.freeze(value && typeof value === "object" && !Array.isArray(value) ? {} : {});
 }
 
+function validateWorkspaceCapabilityDefinition(definition) {
+    const spec = definition && definition.spec;
+    const name = typeof spec?.name === "string" ? spec.name : "";
+    const canonicalSpec = name === WORKSPACE_PLAN_HANDLER_SPEC.name ? spec === WORKSPACE_PLAN_HANDLER_SPEC
+        : name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name ? spec === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC
+            : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? spec === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC : false;
+    if (!canonicalSpec) return {ok: false, reason: "unknown_capability"};
+    if (typeof definition.handler !== "function") return {ok: false, reason: "invalid_handler"};
+    const effects = name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name ? EXECUTE_WORKSPACE_PLAN_EFFECTS : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS : WORKSPACE_PLAN_EFFECTS;
+    return {ok: true, name, effects};
+}
+
 // Register only the known definitions.  Effects are selected by capability
 // name instead of trusting caller-supplied metadata, preventing a malformed
 // definition from silently downgrading an execution capability to read-only.
@@ -110,19 +122,9 @@ function registerWorkspaceCapabilityDefinitions(host, definitions, onError = (_e
     (Array.isArray(definitions) ? definitions : []).forEach((definition) => {
         const spec = definition && definition.spec;
         const name = spec && typeof spec.name === "string" ? spec.name : "";
-        const canonical = name === WORKSPACE_PLAN_HANDLER_SPEC.name
-            ? spec === WORKSPACE_PLAN_HANDLER_SPEC
-            : name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name
-                ? spec === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC
-                : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name
-                    ? spec === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC
-                : false;
-        if (!canonical || typeof definition.handler !== "function") return;
-        const effects = name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name
-            ? EXECUTE_WORKSPACE_PLAN_EFFECTS
-            : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name
-                ? WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS
-                : WORKSPACE_PLAN_EFFECTS;
+        const validation = validateWorkspaceCapabilityDefinition(definition);
+        if (!validation.ok) return;
+        const effects = validation.effects;
         try {
             registered.push(host.addAgentCapability({...spec, effects, handler: definition.handler}));
         } catch (error) {
@@ -1093,6 +1095,7 @@ module.exports = {
     createWorkspaceCapabilityDiagnosticsDefinition,
     createWorkspaceCapabilityDefinitionsWithDiagnostics,
     normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput,
+    validateWorkspaceCapabilityDefinition,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,
