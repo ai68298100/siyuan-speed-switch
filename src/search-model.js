@@ -727,7 +727,9 @@ function buildOpenedDocumentScope(tab) {
 
 function buildOpenedDocumentSearchRequest(input = {}) {
     const source = input && typeof input === "object" ? input : {};
-    const scope = buildOpenedDocumentScope(source.tab || source);
+    // Callers that already resolved the scope (multi-tab fan-out) pass it in
+    // so the grapheme-heavy resolution does not run twice per tab.
+    const scope = source.scope || buildOpenedDocumentScope(source.tab || source);
     if (!scope) return null;
     const requestedOrder = source.orderBy || source.filters?.orderBy || "relevanceDesc";
     // Content order is only defined by SiYuan when results are grouped by
@@ -841,6 +843,7 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
         const request = buildOpenedDocumentSearchRequest({
             query,
             tab,
+            scope,
             method: options.method,
             orderBy: options.orderBy,
             types: options.types,

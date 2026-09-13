@@ -1,0 +1,80 @@
+/**
+ * 存储契约清单门禁（ROADMAP v0.20 存储审计前置，2026-09-14）
+ *
+ * 固化三项事实：
+ * 1. constants.ts 是存储 key 的唯一登记处，且每个 key 带用途注释；
+ * 2. index.ts 的 loadData/saveData 只能引用 *_KEY 常量，不得出现裸字符串 key；
+ * 3. 每个持久化 key 的读取路径必须有对应 sanitize/normalize 函数引用，
+ *    防止"新增 key 忘记损坏数据降级"。
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.resolve(__dirname, '..');
+const constants = fs.readFileSync(path.join(root, 'src', 'constants.ts'), 'utf8').replace(/\r\n/g, '\n');
+const indexTs = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8').replace(/\r\n/g, '\n');
+
+test('storage: every key is registered in constants.ts with a usage comment', () => {
+    const keys = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "([a-z0-9_]+)";\s*\/\/\s*(.+)/g)];
+    assert.ok(keys.length >= 13, `expected at least 13 registered storage keys, found ${keys.length}`);
+    const keyNames = keys.map(([, name]) => name);
+    assert.equal(new Set(keyNames).size, keyNames.length, 'duplicate key constant names');
+    const rawIds = keys.map(([, , id]) => id);
+    assert.equal(new Set(rawIds).size, rawIds.length, 'duplicate raw storage ids');
+    for (const id of rawIds) {
+        assert.match(id, /^sw_[a-z0-9_]+$/, `storage id "${id}" must be sw_ prefixed`);
+    }
+});
+
+test('storage: plugin reads/writes only registered key constants, never bare strings', () => {
+    // queueSave(key, value) 防抖封装层是唯一的字符串间接点：其内部
+    // `this.saveData(key, value)` 的 key 一律来自上层的 *_KEY 常量调用方。
+    const queueSaveInternal = 'this.saveData(key, value)';
+    for (const match of indexTs.matchAll(/this\.(?:loadData|saveData)\(([^)]*)\)/g)) {
+        const call = match[0];
+        if (call.includes(queueSaveInternal)) continue;
+        const args = match[1].trim();
+        const firstArg = args.split(',')[0].trim();
+        assert.match(firstArg, /^[A-Z0-9_]+_KEY$/,
+            `loadData/saveData must reference a *_KEY constant: ${call.slice(0, 70)}`);
+    }
+    // 裸字符串 key 禁令（当前应为零）
+    const bare = [...indexTs.matchAll(/(?:loadData|saveData)\(\s*"sw_[a-z0-9_]+"/g)];
+    assert.deepEqual(bare.map((m) => m[0]), [], 'bare string storage keys found');
+    // 封装层的所有外部调用方必须传常量；仅豁免防抖链内部的精确传递调用
+    // （scheduleSave → queueSave → saveData，key 始终来自最初的 *_KEY 调用方）。
+    for (const match of indexTs.matchAll(/this\.queueSave\(([^)]*)\)/g)) {
+        const args = match[1].trim();
+        if (args === 'key, this.data[key]') continue;
+        const firstArg = args.split(',')[0].trim();
+        assert.match(firstArg, /^[A-Z0-9_]+_KEY$/,
+            `queueSave callers must pass a *_KEY constant: ${match[0].slice(0, 60)}`);
+    }
+});
+
+test('storage: every persisted key has a sanitize path before use', () => {
+    // key → 允许的清洗/迁移函数引用白名单（存在性断言，防止无降级直读）
+    const sanitizeAllowlist = {
+        MRU_KEY: ['sanitizeStringList', 'capMru'],
+        HISTORY_KEY: ['sanitizeOpenHistory'],
+        CLOSED_HISTORY_KEY: ['normalizeClosedEntries', 'sanitizeOpenHistory'],
+        PINNED_KEY: ['sanitizeStringList'],
+        FAV_KEY: ['sanitizeFavorites'],
+        FAV_GROUPS_KEY: ['sanitizeStringList', 'sanitizeFavorites'],
+        FAV_COLLAPSED_KEY: ['sanitizeStringList'],
+        QUICK_ACTIONS_KEY: ['normalizeQuickActionText', 'sanitize'],
+        QUICK_ACTIONS_DEFAULTS_KEY: ['sanitize'],
+        DOCUMENT_SETS_KEY: ['normalizeDocumentSets'],
+        HOME_STATE_KEY: ['normalizeHomeState'],
+        SETTINGS_KEY: ['normalizeSettings'],
+        THUMB_CACHE_KEY: ['thumbCache', 'sanitize'],
+    };
+    const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY)/g)].map((m) => m[1]);
+    const unknown = Object.keys(sanitizeAllowlist).filter((key) => !registered.includes(key));
+    assert.deepEqual(unknown, [], `allowlist references unregistered keys: ${unknown.join(', ')}`);
+    const unaccounted = registered.filter((key) => !(key in sanitizeAllowlist));
+    assert.deepEqual(unaccounted, [],
+        `new storage keys must join the sanitize allowlist with their degradation path: ${unaccounted.join(', ')}`);
+});

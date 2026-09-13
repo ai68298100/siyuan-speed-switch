@@ -384,6 +384,20 @@ test("search model: rejects stale or unsafe opened-document scopes", () => {
     assert.equal(buildOpenedDocumentSearchRequest({query: "x", tab: {rootId: ROOT_A}}), null);
 });
 
+test("search model: external scope reuse produces identical requests to inline building", () => {
+    const tab = {id: "tab-x", rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/a.sy"};
+    const inline = buildOpenedDocumentSearchRequest({query: "正文", tab});
+    const scope = buildOpenedDocumentScope(tab);
+    const reused = buildOpenedDocumentSearchRequest({query: "正文", tab, scope});
+    assert.ok(inline && reused);
+    assert.deepEqual(reused, inline);
+    assert.equal(reused.scope.rootId, ROOT_A);
+    assert.deepEqual(reused.body.paths, ["box-a/docs/a.sy"]);
+    // 显式 null scope 回退内联构建，不会直接失败
+    const fallback = buildOpenedDocumentSearchRequest({query: "正文", tab, scope: null});
+    assert.deepEqual(fallback, inline);
+});
+
 test("search model: native view-all config preserves safe filters", () => {
     const search = buildNativeSearchTabConfig({query: "项目", filters: {
         method: "regexp", orderBy: "updatedDesc", paths: ["box-a/work"],
