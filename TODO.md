@@ -689,6 +689,22 @@
   - 目标：限制 registry 游标倒退/重复提交，并在销毁后阻断恢复
   - 实现：新增 `createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator`
   - 状态：done
+- [x] T-199 Agent workspace registry 异常隔离
+  - 目标：宿主 eventsSince/snapshot 抛错时返回稳定 `registry_unavailable`
+  - 实现：回放与快照路径增加异常捕获，不向 Agent/UI 泄漏异常对象
+  - 状态：done
+- [x] T-200 Agent workspace registry 恢复结果归一化
+  - 目标：固定 events/snapshot/cancelled/timeout/unavailable 终态并限制字段
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult`
+  - 状态：done
+- [x] T-201 Agent workspace registry 安全恢复门面
+  - 目标：带取消信号的恢复统一执行归一化且不产生确认副作用
+  - 实现：新增 `recoverWorkspaceCapabilityRuntimeRegistrySafe`
+  - 状态：done
+- [x] T-202 Agent workspace registry coordinator 截止与取消入口
+  - 目标：协调器提供 signal/deadline 恢复入口，沿用单调游标和销毁语义
+  - 实现：新增 `recoverWithSignal` 与 `recoverWithDeadline`
+  - 状态：done
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
