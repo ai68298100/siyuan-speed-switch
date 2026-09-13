@@ -641,6 +641,10 @@
   - 目标：主动清理已销毁 session，避免 registry 长期持有失效引用
   - 实现：新增 registry `prune()`，返回回收数量并保持有界
   - 状态：in-progress
+- [ ] T-187 Agent workspace session registry 快照归一化
+  - 目标：跨宿主消费 registry 快照时限制会话数量、ID 格式和销毁状态
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot`，最多保留 8 个合法 session 摘要
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

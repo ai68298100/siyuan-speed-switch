@@ -483,6 +483,15 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
     });
 }
 
+function normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const sessions = Array.isArray(source.sessions) ? source.sessions.slice(0, MAX_RUNTIME_SESSIONS).map((item) => {
+        const sessionId = typeof item?.sessionId === "string" && /^ws-[a-z0-9]{8}$/.test(item.sessionId) ? item.sessionId : "";
+        return {sessionId, disposed: item?.disposed === true, runtime: item?.runtime && typeof item.runtime === "object" ? item.runtime : null};
+    }).filter((item) => item.sessionId) : [];
+    return Object.freeze({size: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.size) || sessions.length))), maxSessions: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.maxSessions) || MAX_RUNTIME_SESSIONS))), disposed: source.disposed === true, sessions});
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -517,4 +526,5 @@ module.exports = {
     buildWorkspaceCapabilityRuntimeSessionSnapshot,
     normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
     createWorkspaceCapabilityRuntimeSessionRegistry,
+    normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
 };

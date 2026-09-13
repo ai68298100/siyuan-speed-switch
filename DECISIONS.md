@@ -158,5 +158,6 @@
 - D-154 v0.17 runtime session 每次创建生成 8 位随机 sessionId，仅用于内存隔离诊断；不同 session 独立 queue/coordinator，dispose 同时清理两者，不跨会话复用 cursor/token。
 - D-155 v0.17 session snapshot 固定 version=1，仅保留 sessionId/disposed/runtime；registry 最多 8 个 session，超限淘汰最旧并 dispose，统一 dispose 后禁止创建新会话。
 - D-156 v0.17 session registry snapshot 最多输出 8 个 session 摘要；prune 仅删除已 disposed 会话，不触碰活跃 session，避免诊断聚合引入副作用。
+- D-157 v0.17 registry 快照归一化最多保留 8 个合法 sessionId，disposed 仅接受布尔 true；runtime 仅保留对象形态，未知 token 等字段丢弃。
 - D-151 v0.17 runtime 恢复截止时间采用显式 deadline；到达或超过 deadline 返回 timeout 且不读取/确认队列，和 cancelled 保持可区分诊断语义。
 - D-152 v0.17 恢复结果归一化固定六种 mode，成功仅允许 events/snapshot；cursor、事件数和快照均有界，未知扩展字段丢弃且不回显异常文本。
