@@ -354,7 +354,7 @@ function capMru(values, max) {
  * @param {unknown} values
  * @returns {{items: string[], changed: boolean}}
  */
-function sanitizeStringList(values) {
+function sanitizeStringList(values, max) {
     if (!Array.isArray(values)) {
         return {items: [], changed: false};
     }
@@ -367,7 +367,9 @@ function sanitizeStringList(values) {
         seen.add(value);
         items.push(value);
     });
-    return {items, changed: items.length !== values.length};
+    const limit = Number.isFinite(Number(max)) && Number(max) > 0 ? Math.floor(Number(max)) : 0;
+    const bounded = limit > 0 ? items.slice(0, limit) : items;
+    return {items: bounded, changed: bounded.length !== values.length};
 }
 
 /**
@@ -381,7 +383,7 @@ function sanitizeStringList(values) {
  * @param {unknown} values
  * @returns {{items: Array<{key: string, title: string, rootId: string|null, group: string}>, changed: boolean}}
  */
-function sanitizeFavorites(values) {
+function sanitizeFavorites(values, max) {
     if (!Array.isArray(values)) {
         return {items: [], changed: false};
     }
@@ -411,7 +413,9 @@ function sanitizeFavorites(values) {
         }
         items.push({key, title, rootId, group});
     });
-    return {items, changed};
+    const limit = Number.isFinite(Number(max)) && Number(max) > 0 ? Math.floor(Number(max)) : 0;
+    const bounded = limit > 0 ? items.slice(0, limit) : items;
+    return {items: bounded, changed: changed || bounded.length !== values.length};
 }
 
 /**

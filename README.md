@@ -10,7 +10,7 @@
 
 > v0.16.40 聚焦组件商店、配置体验与思源智能体协作：商店支持真实预览、可用性/已添加筛选、失效 provider 保留与恢复、空结果一键清除；组件面板空态可直达商店；配置表单支持严格日期/文档校验、恢复默认和失效笔记本提示；Agent 组件发现会返回当前设备的添加/启用/尺寸状态。界面采用淡紫主色、浅蓝灰层级、圆角卡片、柔和阴影和少量暖色强调的现代视觉方案。
 
-> 当前开发策略：本版已通过类型检查、生产构建、675 项自动测试、移动端与 Chromium UI 烟测并完成正式发布；路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
+> 当前开发策略：本版已通过类型检查、生产构建、751 项自动测试、移动端与 Chromium UI 烟测并完成正式发布；收藏/置顶/分组容量边界已锁定（512/64/64），路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
 
 ## 目录
 
@@ -102,7 +102,7 @@
 
 - 页签本地过滤和切换不等待全库 API 或第三方插件；搜索失败仍保留已打开页签，标题搜索 API 不可用时继续尝试已打开文档内容和受限全文层，只有兼容回退全部不可用才显示错误态。
 - 缩略图按视口懒渲染，缓存按文档保存并设置单条上限；关闭无关页签后清理失效缓存。
-- MRU、收藏、置顶、设置和快捷入口在读取时校验与去重，写入采用防抖，卸载前等待未完成保存。
+- MRU、收藏、置顶、设置和快捷入口在读取时校验与去重；收藏最多 512 条、置顶最多 64 条、收藏分组最多 64 条，写入采用防抖并在卸载前等待完成。
 - UI 使用思源主题变量和原生图标，约束按钮、卡片、开关和文字尺寸，统一空态、载入态、失败态的视觉层级与读屏语义，兼容默认明暗主题及 Neo 等第三方主题。
 - 当前未发布的 R7 视觉方案在上述约束之上增加淡紫主色、浅蓝灰背景层级、圆角卡片、柔和阴影和少量暖色强调；桌面、侧栏、第二面板、设置页与移动端共享 token，但保留各端布局差异。
 - 对缺少 `AbortController`、`IntersectionObserver`、`ResizeObserver` 或 `MutationObserver` 的旧 WebView，搜索取消、缩略图懒加载和尺寸/收藏监听会自动降级，不阻断页签切换主流程。
@@ -190,7 +190,7 @@ pnpm verify:release
 - Agent 组件发现增强：`home-widget-snapshot` 省略 `moduleId` 时返回当前设备的已添加、启用和应用尺寸状态，仍保持只读且不返回配置值。
 - 组件商店体验增强：无结果时可一键清除搜索/页签筛选；页签补齐 `tablist/tab/aria-selected`，尺寸选择补齐 `aria-pressed`，键盘和读屏反馈更明确。
 - 空面板与配置体验增强：空面板新增直达组件商店按钮；配置表单支持恢复 schema 默认值，同时保留第三方未知配置字段并兼容异步笔记本加载。
-- 发布门禁与文档同步：675 项自动测试、TypeScript、移动端和 Chromium smoke 全部通过，生产包继续低于 300 KiB 硬上限。
+- 发布门禁与文档同步：751 项自动测试、TypeScript、移动端和 Chromium smoke 全部通过；收藏/置顶/分组容量边界（512/64/64）已纳入读写门禁，生产包继续低于 300 KiB 硬上限。
 
 ### v0.16.39（2026-09-13）
 
@@ -227,7 +227,7 @@ pnpm verify:release
 
 **性能隔离**：已开页签切换只依赖本地状态；全库请求、缩略图补全和第三方动作都是可失败的附加层。每个搜索界面拥有独立请求序号、取消控制器、定时器和缓存，销毁时集中释放。
 
-**数据边界**：`sw_mru`、`sw_pinned`、`sw_favorites`、`sw_fav_groups`、`sw_fav_collapsed`、`sw_closed_history`、`sw_quick_actions`、`sw_settings` 和 `sw_thumb_cache` 分项保存。可重新查询的搜索结果和临时界面状态不写入插件数据。
+**数据边界**：`sw_mru`、`sw_pinned`、`sw_favorites`、`sw_fav_groups`、`sw_fav_collapsed`、`sw_closed_history`、`sw_quick_actions`、`sw_settings` 和 `sw_thumb_cache` 分项保存。收藏最多 512 条、置顶最多 64 条、收藏分组最多 64 个；加载和写入都会去重、裁剪并安全回写。可重新查询的搜索结果和临时界面状态不写入插件数据。
 
 **组件面板开放协议**：第三方插件可以通过 `registerHomeModule` 注册只读、按端隔离的组件，出现在组件面板的组件商店里（支持尺寸型号声明、描述、失败跳转回调）。完整接入指南见 [`docs/widget-protocol.md`](docs/widget-protocol.md)。基础桥接（实验性、显式挂载）：可注册数据模块，再由宿主明确调用 `createHomeModuleController` 或 `createHomePanelController` 挂载。模块读取结果会统一归一化为空、载入、缓存或失败状态，并受条目数、文本长度、并发和生命周期上限约束。插件不会自动改变默认切换器首页，也不会保存外部函数引用；调用方卸载时应执行注册返回的清理函数和控制器 `dispose()`。
 
@@ -241,7 +241,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 745 项测试（100 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 751 项测试（100 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -270,10 +270,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 745 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 751 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、745 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、751 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

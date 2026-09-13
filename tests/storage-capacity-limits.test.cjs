@@ -3,8 +3,8 @@
  *
  * 对每个已声明容量上限的持久化 key,用超限输入断言"上限真实生效"
  * （裁剪到声明值、去重保持、顺序保留），防止未来重构静默丢失边界。
- * 已知无上限项（favorites/sanitizeStringList 系列）单独记录为事实,
- * 上限值属维护者决策,见 TODO 候选。
+ * 收藏/置顶/分组容量由 constants.ts 明确声明，加载和写入均需遵守；
+ * 无 max 参数的纯函数调用仍保持向后兼容的无限制语义。
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
+const constants = require('../src/constants.ts');
 
 const makeBlockId = (i) => `20260914090000-${i.toString(16).padStart(8, '0')}`;
 
@@ -64,22 +65,27 @@ test('capacity: home state layouts clamp to 64 entries per device and drop unkno
     assert.equal(state.layouts.desktop[0].instanceId, 'inst-0');
 });
 
-test('capacity: thumbnail cache constants stay bounded and distinct per device', () => {
-    const constants = require('../src/constants.ts');
+test('capacity: thumbnail cache and user-list constants stay bounded', () => {
     assert.equal(constants.THUMB_CACHE_MAX, 40);
     assert.equal(constants.THUMB_CACHE_MAX_MOBILE, 30);
     assert.equal(constants.MRU_MAX, 200);
     assert.equal(constants.QUICK_ACTIONS_MAX, 12);
+    assert.equal(constants.FAVORITES_MAX, 512);
+    assert.equal(constants.PINNED_MAX, 64);
+    assert.equal(constants.FAVORITE_GROUPS_MAX, 64);
 });
 
-test('capacity: favorites and string lists are known unbounded (documented fact)', (t) => {
-    // 维护者决策项（TODO 候选）：收藏/置顶/分组为用户主动行为,当前实现
-    // 只做类型清洗与去重,不做数量裁剪。本测试固化该事实,防止有人误以为
-    // 存在隐式上限;未来引入上限时必须同步更新此断言与 TODO。
+test('capacity: favorites clamp to the declared 512-entry limit', () => {
     const favorites = Array.from({length: 1200}, (_, i) => ({key: `k${i}`, title: `t${i}`, rootId: makeBlockId(i)}));
-    assert.equal(sanitizeFavorites(favorites).items.length, 1200,
-        'sanitizeFavorites currently does not clamp; update this contract when a limit is decided');
+    const result = sanitizeFavorites(favorites, constants.FAVORITES_MAX);
+    assert.equal(result.items.length, constants.FAVORITES_MAX);
+    assert.equal(result.items[0].key, 'k0');
+    assert.equal(result.changed, true);
+});
+
+test('capacity: pinned and group string lists clamp independently', () => {
     const strings = Array.from({length: 800}, (_, i) => `group-${i}`);
-    assert.equal(sanitizeStringList(strings).items.length, 800,
-        'sanitizeStringList currently does not clamp; update this contract when a limit is decided');
+    assert.equal(sanitizeStringList(strings, constants.PINNED_MAX).items.length, constants.PINNED_MAX);
+    assert.equal(sanitizeStringList(strings, constants.FAVORITE_GROUPS_MAX).items.length, constants.FAVORITE_GROUPS_MAX);
+    assert.equal(sanitizeStringList(strings).items.length, 800, 'omitting max preserves pure-function compatibility');
 });

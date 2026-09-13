@@ -1,6 +1,7 @@
 # 决策
 
 - D-225 v0.17 阶段 2 document-context 采用只读诚实接入：省略 id 读取活动 root，已打开文档优先使用页签元数据，关闭文档仅做单行 SQL（id/content/box）回退；大纲复用既有 outline 端点并限制 24 条。输出不含正文、markdown、异常文本或未知字段；真实桌面取消/权限证据继续后置，不以 mock 冒充宿主验收。
+- D-226 收藏/置顶/分组容量确定为 favorites=512、pinned=64、favorite groups=64。三类列表在加载和运行时写入均统一裁剪、去重保序并标记 changed 触发一次回写；未传 max 的纯函数调用保持旧版无限制语义，避免第三方/历史测试破坏兼容。
 
 - D-001 fetchKernelJson 采用硬编码端点白名单而非通配 URL | 原因：防 SSRF（Mimosa 要求） | 影响：新增内核端点须手动登记（本轮新增 `/api/riff/getNotebookRiffDueCards`）
 - D-002 组件面板尺寸型号固定 7 档而非自由像素 | 原因：用户要求 iPad 固定型号感 | 影响：无自由拖宽

@@ -89,7 +89,7 @@ On mobile, the first frame waits for the WebView to reach a stable size before c
 
 - Local tab filtering and switching never wait for workspace APIs or third-party plugins; open-tab results remain intact when search fails, and an unavailable title-search API still falls through to opened-document content and bounded full-text layers before showing an error state.
 - Thumbnails render by viewport and cache per document with a per-entry size limit; orphaned cache entries are pruned after tabs close.
-- MRU, favorites, pins, settings, and quick actions are validated and deduplicated on read. Writes are debounced and pending saves are flushed before unload.
+- MRU, favorites, pins, settings, and quick actions are validated and deduplicated on read; favorites are capped at 512 entries, pins at 64, and favorite groups at 64. Writes are debounced and pending saves are flushed before unload.
 - UI uses SiYuan theme variables and native icons, with stable button, card, switch, and text dimensions plus shared empty/loading/error state semantics for default themes and third-party themes such as Neo. The unreleased R7 visual pass adds lavender accents, blue-grey surface layers, rounded cards, soft elevation, and restrained warm highlights across desktop, sidebar, second-panel, settings, and mobile layouts while preserving each surface's layout differences.
 - Older WebViews missing `AbortController`, `IntersectionObserver`, `ResizeObserver`, or `MutationObserver` use bounded fallbacks for search cancellation, thumbnail loading, and resize/favorite observation without blocking tab switching.
 
@@ -175,7 +175,7 @@ This version is published as `v0.16.40`; real-host path-filter capability, narro
 - Agent widget discovery now reports current-device `configured`, `enabled`, and applied `size` metadata when `moduleId` is omitted, without exposing widget configuration values.
 - Widget store usability and accessibility improvements: one-click clearing for no-result filters, standard `tablist`/`tab`/`aria-selected` semantics, and `aria-pressed` size selection state.
 - Empty-panel and configuration improvements: a direct “Open widget store” CTA, schema-scoped reset-to-defaults, preservation of unknown third-party fields, and safe coordination with asynchronous notebook loading.
-- Release gates and documentation refreshed: 675 automated tests, TypeScript, mobile smoke, and Chromium smoke pass; the production archive remains below the 300 KiB hard limit.
+- Release gates and documentation refreshed: 751 automated tests, TypeScript, mobile smoke, and Chromium smoke pass; favorite/pin/group capacity limits (512/64/64) are enforced on read and write, and the production archive remains below the 300 KiB hard limit.
 
 ### v0.16.39 (2026-09-13)
 
@@ -208,7 +208,7 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 
 **Performance isolation**: open-tab switching uses local state only. Workspace requests, thumbnail backfill, and third-party actions are optional layers that may fail independently. Every search surface owns its request version, abort controller, timer, and cache, all released on destruction.
 
-**Data boundaries**: `sw_mru`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_closed_history`, `sw_quick_actions`, `sw_settings`, and `sw_thumb_cache` persist independently. Re-queryable search results and temporary UI state are never written to plugin data.
+**Data boundaries**: `sw_mru`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_closed_history`, `sw_quick_actions`, `sw_settings`, and `sw_thumb_cache` persist independently. Favorites are capped at 512 entries, pins at 64, and favorite groups at 64; loading and runtime writes both deduplicate, clamp, and safely write back. Re-queryable search results and temporary UI state are never written to plugin data.
 
 **Home-module bridge (experimental, explicit mount)**: third-party plugins may register read-only, device-scoped modules with `registerHomeModule`, then explicitly mount them through `createHomeModuleController` or `createHomePanelController`. Reads are normalized to shared empty/loading/cached/error states and bounded by item, text, concurrency, and lifecycle limits. Registration never changes the default switcher home automatically and never persists external function references; callers should run the returned unregister function and `dispose()` the controller during unload.
 
@@ -222,7 +222,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 100 `*.test.cjs` files under `tests/` and `tests/host/`, currently 745 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 100 `*.test.cjs` files under `tests/` and `tests/host/`, currently 751 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -251,7 +251,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 745)
+pnpm test               # run every unit, contract, and host release test (currently 751)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

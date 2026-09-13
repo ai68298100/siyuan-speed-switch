@@ -392,6 +392,16 @@ test('sanitizeStringList: non-array returns empty list without changed (first ru
     assert.deepEqual(sanitizeStringList({}), {items: [], changed: false});
 });
 
+test('sanitizeStringList: optional max keeps newest-first order', () => {
+    assert.deepEqual(sanitizeStringList(['a', 'b', 'c'], 2), {items: ['a', 'b'], changed: true});
+    assert.deepEqual(sanitizeStringList(['a', 'b'], 2), {items: ['a', 'b'], changed: false});
+});
+
+test('sanitizeStringList: invalid max does not unexpectedly drop entries', () => {
+    assert.equal(sanitizeStringList(['a', 'b'], 0).items.length, 2);
+    assert.equal(sanitizeStringList(['a', 'b'], 'bad').items.length, 2);
+});
+
 // ── sanitizeFavorites ──
 test('sanitizeFavorites: valid entries pass through unchanged', () => {
     const input = [
@@ -451,6 +461,27 @@ test('sanitizeFavorites: non-array returns empty list without changed (first run
     assert.deepEqual(sanitizeFavorites(undefined), {items: [], changed: false});
     assert.deepEqual(sanitizeFavorites(null), {items: [], changed: false});
     assert.deepEqual(sanitizeFavorites({}), {items: [], changed: false});
+});
+
+test('sanitizeFavorites: optional max preserves first valid entries', () => {
+    const out = sanitizeFavorites([
+        {key: 'k1', title: 'one'}, {key: 'k2', title: 'two'}, {key: 'k3', title: 'three'},
+    ], 2);
+    assert.deepEqual(out.items.map((item) => item.key), ['k1', 'k2']);
+    assert.equal(out.changed, true);
+});
+
+test('sanitizeFavorites: duplicate removal happens before capacity truncation', () => {
+    const out = sanitizeFavorites([
+        {key: 'k1'}, {key: 'k1'}, {key: 'k2'}, {key: 'k3'},
+    ], 2);
+    assert.deepEqual(out.items.map((item) => item.key), ['k1', 'k2']);
+});
+
+test('sanitizeFavorites: invalid max keeps backwards-compatible unbounded behavior', () => {
+    const input = [{key: 'k1'}, {key: 'k2'}];
+    assert.equal(sanitizeFavorites(input, 0).items.length, 2);
+    assert.equal(sanitizeFavorites(input, 'bad').items.length, 2);
 });
 
 test('sanitizeOpenHistory: migrates root keys and removes duplicate document entries', () => {

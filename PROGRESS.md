@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第五轮）：完成 24 项开发（T-350、T-391~T-414），收口收藏/置顶/分组容量决策（512/64/64）。sanitize 函数新增可选上限，加载期和运行时写入统一去重、保序、裁剪并安全回写；新增容量常量、边界/污染/兼容测试，README、DECISIONS、TODO 同步。门禁：751/751 测试、TypeScript、移动烟测与 Chromium smoke 全部通过；`dist/index.js` 388739 bytes、`package.zip` 259127 bytes（300 KiB 余量 48073 bytes）。
+
 补充（2026-09-14 第四轮）：完成 23 项开发（T-368~T-390），核心是 **v0.17 阶段 2 document-context 只读生产接入**：新增请求/路径/元数据 envelope 归一化，活动页签优先与关闭文档 SQL 回退，复用 outline 端点输出最多 24 条大纲；稳定错误语义不泄漏宿主异常，新增 23 项契约测试与 10 项 wiring 静态门禁。ROADMAP 与 wiring plan 已同步，真实桌面取消/权限验收仍后置。终验门禁：745/745 测试、TypeScript、生产构建、移动烟测与 Chromium smoke 全绿；`dist/index.js` 388412 bytes、`package.zip` 258927 bytes（300 KiB 余量 48273 bytes）。
 
 补充（2026-09-14 第三轮）：完成 11 项开发（T-305~T-315），核心是**执行 D-219 归档内容决策、解锁 v0.17 预算**：中英文 README 更新日志裁剪至最近两个版本（80.3→27.8 KB、84.5→27.1 KB，门禁断言内容全保留）；ROADMAP.md 移出发布归档并由仓库边界测试锁死（防回潮）；docs SVG 因市场渲染 README 需要而留档；新增归档 i18n 逐值一致性门禁。结果 `package.zip` 307150→252683 bytes，**300 KiB 硬上限余量 50→54517 bytes**，v0.17 契约层生产接入不再需要内容决策。ROADMAP 8.0.1 同步接入顺序建议；新增 `docs/workspace-capability-wiring-plan.md` 三阶段接入计划（体积预估：小型只读簇 +2 KiB zip、执行链 +7 KiB、definitions 全量 +20 KiB，硬上限内可容纳）。补足细节项：T-314 把 5 处 aria-label 固化为移动烟测源码契约断言。门禁全绿：683/683 测试、TypeScript、生产构建与三类 smoke。

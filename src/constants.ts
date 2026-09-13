@@ -115,6 +115,10 @@ export const FAV_PANEL_MIN_HEIGHT_PX = 140;
 export const MRU_MAX = 200;
 // 最近打开记录上限，避免历史数据无限增长
 export const HISTORY_MAX = 50;
+// 收藏/置顶/分组均为用户主动维护列表；仍设高容量上限，防止损坏导入造成无限增长。
+export const FAVORITES_MAX = 512;
+export const PINNED_MAX = 64;
+export const FAVORITE_GROUPS_MAX = 64;
 
 // 思源块 ID 格式（14 位时间戳-随机后缀，如 20260721173719-zlynli0）。
 // 用于区分文档 rootId 与一次性 tab.id（UUID）：收藏跳转只信任块 ID，

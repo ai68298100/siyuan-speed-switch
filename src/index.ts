@@ -105,6 +105,9 @@ import {
     THUMB_API_MAX_MOBILE,
     MRU_MAX,
     HISTORY_MAX,
+    FAVORITES_MAX,
+    PINNED_MAX,
+    FAVORITE_GROUPS_MAX,
     BLOCK_ID_RE,
     FAV_PANEL_WIDTH_PX,
     FAV_PANEL_MAX_HEIGHT_PX,
@@ -194,9 +197,9 @@ declare module "./util" {
     export function planGroupOpenFavorites<T extends {key: string}>(
         favorites: T[], openedKeys: Set<string>, resolveRootId: (favorite: T) => string,
     ): {targets: Array<{favorite: T, rootId: string}>, invalid: number};
-    export function sanitizeFavorites(values: unknown): {items: IFavoriteItem[], changed: boolean};
+    export function sanitizeFavorites(values: unknown, max?: number): {items: IFavoriteItem[], changed: boolean};
     export function sanitizeOpenHistory(values: unknown, max?: number): {items: IOpenHistoryEntry[], changed: boolean};
-    export function sanitizeStringList(values: unknown): {items: string[], changed: boolean};
+    export function sanitizeStringList(values: unknown, max?: number): {items: string[], changed: boolean};
     export function isSuccessfulMobileTabsResult(result: unknown): boolean;
     export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
     export function getDefaultQuickActions(): IQuickAction[];
@@ -861,17 +864,17 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 鍔犺浇鏈熸暟鎹噣鍖栵細鏀惰棌鍒楄〃缁撴瀯鏍￠獙/鎸?key 鍘婚噸锛岀疆椤朵笌鍒嗙粍娉ㄥ唽琛ㄨ繃婊ら潪娉曞瓧绗︿覆
     private sanitizePersistentData() {
-        const favorites = sanitizeFavorites(this.data[FAV_KEY]);
+        const favorites = sanitizeFavorites(this.data[FAV_KEY], FAVORITES_MAX);
         if (favorites.changed) {
             this.data[FAV_KEY] = favorites.items;
             this.saveDataDebounced(FAV_KEY);
         }
-        const pinned = sanitizeStringList(this.data[PINNED_KEY]);
+        const pinned = sanitizeStringList(this.data[PINNED_KEY], PINNED_MAX);
         if (pinned.changed) {
             this.data[PINNED_KEY] = pinned.items;
             this.saveDataDebounced(PINNED_KEY);
         }
-        const groups = sanitizeStringList(this.data[FAV_GROUPS_KEY]);
+        const groups = sanitizeStringList(this.data[FAV_GROUPS_KEY], FAVORITE_GROUPS_MAX);
         if (groups.changed) {
             this.data[FAV_GROUPS_KEY] = groups.items;
             this.saveDataDebounced(FAV_GROUPS_KEY);
@@ -7495,6 +7498,7 @@ private rootIdOf(tab: Tab): string | null {
             return false;
         }
         list.unshift(key);
+        if (list.length > PINNED_MAX) list.length = PINNED_MAX;
         this.data[PINNED_KEY] = list;
         this.saveDataDebounced(PINNED_KEY);
         return true;
@@ -7509,7 +7513,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     private saveFavorites(list: IFavoriteItem[]) {
-        this.data[FAV_KEY] = list;
+        this.data[FAV_KEY] = sanitizeFavorites(list, FAVORITES_MAX).items;
         this.saveDataDebounced(FAV_KEY);
     }
 
@@ -8077,7 +8081,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     private saveFavGroupRegistry(names: string[]) {
-        this.data[FAV_GROUPS_KEY] = names;
+        this.data[FAV_GROUPS_KEY] = sanitizeStringList(names, FAVORITE_GROUPS_MAX).items;
         this.saveDataDebounced(FAV_GROUPS_KEY);
     }
 
