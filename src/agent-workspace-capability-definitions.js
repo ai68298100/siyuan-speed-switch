@@ -137,6 +137,12 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
         status() {
             return Object.freeze({registered: registrations.length, failed, unmanaged, disposed});
         },
+        snapshot() {
+            return Object.freeze({
+                host: buildWorkspaceCapabilityProbeSnapshot(host),
+                registration: Object.freeze({registered: registrations.length, failed, unmanaged, disposed}),
+            });
+        },
     });
 }
 

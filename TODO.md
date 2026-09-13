@@ -537,3 +537,7 @@
   - 目标：让 capability lifecycle 在注册前提供统一、无副作用的宿主可用性快照
   - 实现：新增 `lifecycle.probe()`，复用 `agent-workspace-probe`，不改变注册或 status 契约
   - 状态：in-progress
+- [ ] T-159 Agent workspace lifecycle 统一状态快照
+  - 目标：统一输出宿主可用性、注册成功/失败、不可回收句柄与销毁态，便于诊断和 UI 展示
+  - 实现：新增 `lifecycle.snapshot()`，组合既有 probe/status，保持所有字段有界且不携带敏感值
+  - 状态：in-progress

@@ -389,6 +389,10 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
     assert.equal(lifecycle.size(), 2);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
     assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, disposed: false});
+    assert.deepEqual(lifecycle.snapshot(), {
+        host: {available: true, reason: "ready"},
+        registration: {registered: 2, failed: 0, unmanaged: 0, disposed: false},
+    });
     assert.equal(lifecycle.dispose(), 2);
     assert.equal(lifecycle.dispose(), 0);
     assert.equal(lifecycle.size(), 0);
@@ -416,6 +420,7 @@ test("workspace capability lifecycle probe is unavailable on legacy hosts", () =
     assert.deepEqual(lifecycle.probe(), {available: false, reason: "unavailable"});
     assert.deepEqual(lifecycle.register(), []);
     assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: false});
+    assert.deepEqual(lifecycle.snapshot().host, {available: false, reason: "unavailable"});
 });
 
 test("workspace capability handles normalize managed and opaque host returns", () => {
