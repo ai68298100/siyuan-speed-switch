@@ -613,3 +613,7 @@
   - 目标：面板卸载或请求切换时安全取消恢复，不读取、不确认事件队列
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithSignal`，AbortSignal 已取消时返回稳定 cancelled
   - 状态：in-progress
+- [ ] T-178 Agent workspace runtime 恢复超时边界
+  - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
+  - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
+  - 状态：in-progress

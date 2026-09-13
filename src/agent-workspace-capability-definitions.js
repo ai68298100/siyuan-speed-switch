@@ -305,6 +305,20 @@ function recoverWorkspaceCapabilityRuntimeWithSignal(queue, cursor = 0, snapshot
     return recovery;
 }
 
+function recoverWorkspaceCapabilityRuntimeWithDeadline(queue, cursor = 0, snapshot = null, limit = 16, deadline, now = Date.now) {
+    const current = typeof now === "function" ? Number(now()) : Number(now);
+    const expiresAt = Number(deadline);
+    if (Number.isFinite(expiresAt) && Number.isFinite(current) && current >= expiresAt) {
+        return {ok: false, mode: "timeout", reason: "timeout", cursor: Math.max(0, Math.trunc(Number(cursor) || 0)), events: [], snapshot: null};
+    }
+    const recovery = recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+    const after = typeof now === "function" ? Number(now()) : Number(now);
+    if (Number.isFinite(expiresAt) && Number.isFinite(after) && after >= expiresAt) {
+        return {ok: false, mode: "timeout", reason: "timeout", cursor: recovery.cursor, events: [], snapshot: null};
+    }
+    return recovery;
+}
+
 function commitWorkspaceCapabilityRuntimeRecovery(queue, recovery) {
     if (!queue || typeof queue.acknowledge !== "function" || !recovery || recovery.ok !== true) return 0;
     if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
@@ -377,6 +391,7 @@ module.exports = {
     readWorkspaceCapabilityRuntimeEventsForReplay,
     recoverWorkspaceCapabilityRuntime,
     recoverWorkspaceCapabilityRuntimeWithSignal,
+    recoverWorkspaceCapabilityRuntimeWithDeadline,
     commitWorkspaceCapabilityRuntimeRecovery,
     recoverAndCommitWorkspaceCapabilityRuntime,
     createWorkspaceCapabilityRecoveryCoordinator,
