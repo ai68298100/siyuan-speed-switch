@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {listZipEntries} = require('./lib/zip.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -38,7 +39,16 @@ test('build metadata does not contain obvious wall-clock or random drift markers
 
 test('release archive metadata uses a fixed ZIP timestamp', () => {
     const source = fs.readFileSync(path.join(root, 'webpack.config.js'), 'utf8');
-    assert.match(source, /RELEASE_ZIP_MTIME\s*=\s*new Date\("1980-01-01T00:00:00\.000Z"\)/);
+    assert.match(source, /RELEASE_ZIP_MTIME\s*=\s*new Date\(1980,\s*0,\s*1,\s*0,\s*0,\s*0,\s*0\)/);
     assert.match(source, /fileOptions\s*:\s*\{[\s\S]*mtime:\s*RELEASE_ZIP_MTIME/);
     assert.doesNotMatch(source, /mtime:\s*new Date\(\)/);
+});
+
+test('generated release archive carries the ZIP epoch timestamp', () => {
+    const archive = path.join(root, 'package.zip');
+    if (!fs.existsSync(archive)) return;
+    const entries = listZipEntries(fs.readFileSync(archive));
+    assert.ok(entries.length > 0 && entries.length <= 32);
+    assert.deepEqual(entries.map((entry) => [entry.lastModFileTime, entry.lastModFileDate]),
+        entries.map(() => [0, 33]));
 });

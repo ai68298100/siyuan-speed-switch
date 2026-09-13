@@ -6,7 +6,9 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const ZipPlugin = require("zip-webpack-plugin");
 const pluginManifest = require("./plugin.json");
-const RELEASE_ZIP_MTIME = new Date("1980-01-01T00:00:00.000Z");
+// Construct local midnight so yazl's local Date getters emit DOS time=0 on
+// every builder timezone, while the calendar date remains ZIP's epoch.
+const RELEASE_ZIP_MTIME = new Date(1980, 0, 1, 0, 0, 0, 0);
 
 const packageImagePatterns = [
     ["icon", "icon.png"],

@@ -35,11 +35,15 @@ function listZipEntries(buffer) {
         const commentLength = buffer.readUInt16LE(offset + 32);
         const compressedSize = buffer.readUInt32LE(offset + 20);
         const uncompressedSize = buffer.readUInt32LE(offset + 24);
+        const lastModFileTime = buffer.readUInt16LE(offset + 12);
+        const lastModFileDate = buffer.readUInt16LE(offset + 14);
         const localOffset = buffer.readUInt32LE(offset + 42);
         entries.push({
             name: buffer.slice(offset + 46, offset + 46 + nameLength).toString("utf8"),
             compressedSize,
             uncompressedSize,
+            lastModFileTime,
+            lastModFileDate,
             localOffset,
         });
         offset += 46 + nameLength + extraLength + commentLength;
@@ -75,4 +79,4 @@ function listZipEntryStats(buffer) {
     }));
 }
 
-module.exports = {listZipEntryNames, listZipEntryStats, readZipEntry};
+module.exports = {listZipEntries, listZipEntryNames, listZipEntryStats, readZipEntry};
