@@ -486,8 +486,15 @@ test("workspace capability event queue stays bounded and consumable", () => {
     assert.equal(queue.push([{type: "host"}, {type: "plans", delta: 1}, {type: "disposed"}]), 3);
     assert.equal(queue.size(), 2);
     assert.deepEqual(queue.read(), [{type: "plans", delta: 1}, {type: "disposed", changed: true}]);
-    assert.deepEqual(queue.consume(1), [{type: "plans", delta: 1}]);
+    assert.deepEqual(queue.readSince(0), {
+        cursor: 3,
+        truncated: true,
+        events: [{sequence: 2, event: {type: "plans", delta: 1}}, {sequence: 3, event: {type: "disposed", changed: true}}],
+    });
+    assert.equal(queue.acknowledge(2), 1);
     assert.equal(queue.size(), 1);
+    assert.deepEqual(queue.consume(1), [{type: "disposed", changed: true}]);
+    assert.equal(queue.size(), 0);
     queue.dispose();
     assert.equal(queue.push([{type: "host"}]), 0);
     assert.deepEqual(queue.consume(), []);

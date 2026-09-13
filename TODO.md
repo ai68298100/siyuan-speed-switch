@@ -573,3 +573,7 @@
   - 目标：为 UI/诊断提供有界事件缓存，支持批量读取与确认消费
   - 实现：新增 `createWorkspaceCapabilityEventQueue`，最多保留 16 条，dispose 后停止接收事件
   - 状态：in-progress
+- [ ] T-168 Agent workspace runtime 事件游标
+  - 目标：支持 UI/诊断按序号增量读取、检测丢失事件并确认消费
+  - 实现：事件队列增加 `readSince(cursor, limit)` 与 `acknowledge(cursor)`，游标单调递增且队列仍最多 16 条
+  - 状态：in-progress

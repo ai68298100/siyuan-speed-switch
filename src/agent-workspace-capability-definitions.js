@@ -231,22 +231,43 @@ function createWorkspaceCapabilityEventQueue(maxItems = 16) {
     const max = Math.min(16, Math.max(1, Math.trunc(Number(maxItems) || 16)));
     const queue = [];
     let disposed = false;
+    let nextSequence = 1;
     return Object.freeze({
         push(events) {
             if (disposed) return 0;
             const normalized = normalizeWorkspaceCapabilityRuntimeEvents(events);
-            normalized.forEach((event) => queue.push(event));
+            normalized.forEach((event) => queue.push({sequence: nextSequence++, event}));
             while (queue.length > max) queue.shift();
             return normalized.length;
         },
         read(limit = max) {
             const count = Math.min(max, Math.max(0, Math.trunc(Number(limit) || max)));
-            return queue.slice(0, count).map((event) => ({...event}));
+            return queue.slice(0, count).map((entry) => ({...entry.event}));
         },
         consume(limit = max) {
             const items = this.read(limit);
             queue.splice(0, items.length);
             return items;
+        },
+        readSince(cursor = 0, limit = max) {
+            const from = Math.max(0, Math.trunc(Number(cursor) || 0));
+            const count = Math.min(max, Math.max(0, Math.trunc(Number(limit) || max)));
+            const first = queue[0]?.sequence || nextSequence;
+            const items = queue.filter((entry) => entry.sequence > from).slice(0, count);
+            return {
+                cursor: nextSequence - 1,
+                truncated: from < first - 1,
+                events: items.map((entry) => ({sequence: entry.sequence, event: {...entry.event}})),
+            };
+        },
+        acknowledge(cursor = 0) {
+            const upto = Math.max(0, Math.trunc(Number(cursor) || 0));
+            let removed = 0;
+            while (queue.length && queue[0].sequence <= upto) {
+                queue.shift();
+                removed += 1;
+            }
+            return removed;
         },
         size() { return queue.length; },
         dispose() { disposed = true; queue.length = 0; },
