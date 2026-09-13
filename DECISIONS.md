@@ -172,3 +172,4 @@
 - D-166 v0.17 registry `recoverAndCommitWithSignal/Deadline` 由 coordinator 统一编排，只有归一化成功的 events/snapshot 才推进游标；调用方不再自行组合读取与确认。
 - D-167 v0.17 registry snapshot validation 要求 size 与合法 session 摘要数量一致、sessionId 唯一，disposed registry 不得残留 session；差异事件仅允许 created/removed/disposed/capacity 四类并限制为 8 条。
 - D-168 v0.17 registry snapshot recovery 在归一化后必须通过一致性校验；不一致状态返回 `invalid_snapshot`，不确认溢出事件，交由上层重新获取快照。
+- D-169 v0.17 registry snapshot 使用独立 version=1 契约；未知版本在 recovery 前拒绝，避免新旧宿主误读会话状态。

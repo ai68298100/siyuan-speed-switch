@@ -733,6 +733,10 @@
   - 目标：safe/coordinator 输出固定 invalid_snapshot 终态且不携带快照内容
   - 实现：扩展 registry recovery result normalization 的终态白名单
   - 状态：done
+- [x] T-210 Agent workspace registry 快照版本兼容
+  - 目标：为 registry 快照提供 version=1 构建与兼容检查，拒绝未知版本恢复
+  - 实现：新增 `WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION`、builder 与 compatibility helper
+  - 状态：done
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

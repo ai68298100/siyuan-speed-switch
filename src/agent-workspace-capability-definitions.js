@@ -32,6 +32,7 @@ const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
 ]);
 const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
+const WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION = 1;
 const MAX_RUNTIME_SESSIONS = 8;
 
 function normalizeWorkspaceCapabilityHandle(handle) {
@@ -543,8 +544,20 @@ function normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
     return Object.freeze({size: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.size) || sessions.length))), maxSessions: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.maxSessions) || MAX_RUNTIME_SESSIONS))), disposed: source.disposed === true, sessions});
 }
 
+function buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry) {
+    const source = registry && typeof registry.snapshot === "function" ? registry.snapshot() : {};
+    const normalized = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(source);
+    return Object.freeze({...normalized, version: WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION});
+}
+
+function isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible(value) {
+    if (!value || typeof value !== "object") return false;
+    return value.version === undefined || value.version === WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION;
+}
+
 function validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
     if (!value || typeof value !== "object") return {ok: false, reason: "invalid_snapshot"};
+    if (!isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible(value)) return {ok: false, reason: "unsupported_version"};
     const normalized = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value);
     if (normalized.maxSessions < 1 || normalized.size > normalized.maxSessions || normalized.sessions.length > normalized.maxSessions) return {ok: false, reason: "capacity_overflow"};
     const ids = normalized.sessions.map((session) => session.sessionId);
@@ -638,8 +651,10 @@ function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, limit =
     if (replay.ok) return {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null};
     if (replay.reason !== "snapshot_required" || !registry || typeof registry.snapshot !== "function") return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
     try {
-        const snapshot = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry.snapshot());
-        const validation = validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot);
+        const rawSnapshot = registry.snapshot();
+        if (!isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible(rawSnapshot)) return {ok: false, mode: "invalid_snapshot", reason: "unsupported_version", cursor: replay.cursor, events: [], snapshot: null};
+        const snapshot = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(rawSnapshot);
+        const validation = validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(rawSnapshot);
         if (!validation.ok) return {ok: false, mode: "invalid_snapshot", reason: "invalid_snapshot", cursor: replay.cursor, events: [], snapshot: null};
         return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot};
     } catch (_error) {
@@ -771,11 +786,14 @@ module.exports = {
     createWorkspaceCapabilityRecoveryCoordinator,
     createWorkspaceCapabilityRuntimeSession,
     WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION,
+    WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION,
     MAX_RUNTIME_SESSIONS,
     buildWorkspaceCapabilityRuntimeSessionSnapshot,
     normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
     createWorkspaceCapabilityRuntimeSessionRegistry,
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
+    buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
+    isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible,
     validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
     normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff,
     diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots,
