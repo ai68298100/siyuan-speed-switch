@@ -173,6 +173,11 @@ function normalizeWorkspaceCapabilityRuntimeSnapshot(value) {
     });
 }
 
+function isWorkspaceCapabilityRuntimeSnapshotCompatible(value) {
+    if (!value || typeof value !== "object") return false;
+    return value.version === undefined || value.version === WORKSPACE_RUNTIME_SNAPSHOT_VERSION;
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -185,4 +190,5 @@ module.exports = {
     buildWorkspaceCapabilityRuntimeSnapshot,
     WORKSPACE_RUNTIME_SNAPSHOT_VERSION,
     normalizeWorkspaceCapabilityRuntimeSnapshot,
+    isWorkspaceCapabilityRuntimeSnapshotCompatible,
 };

@@ -549,3 +549,7 @@
   - 目标：为组合快照提供稳定版本号与输入归一化，限制计数/状态范围并过滤未知字段
   - 实现：新增 `WORKSPACE_RUNTIME_SNAPSHOT_VERSION` 与 `normalizeWorkspaceCapabilityRuntimeSnapshot`
   - 状态：in-progress
+- [ ] T-162 Agent workspace runtime 版本兼容门禁
+  - 目标：消费快照前显式识别当前/未知未来版本，避免新协议被旧宿主误读
+  - 实现：新增 `isWorkspaceCapabilityRuntimeSnapshotCompatible`，仅接受缺省版本或 version=1
+  - 状态：in-progress
