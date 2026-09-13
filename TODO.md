@@ -781,6 +781,14 @@
   - 目标：限制 diff cursor 倒退/重复提交并支持 dispose、signal/deadline 组合调用
   - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator`
   - 状态：done
+- [x] T-222 Agent workspace registry diff coordinator 快照
+  - 目标：一次读取 diff coordinator 与 queue 的有界运行状态
+  - 实现：新增 `coordinator.snapshot()`
+  - 状态：done
+- [x] T-223 Agent workspace registry 联合诊断摘要
+  - 目标：聚合 registry summary、registry status、diff queue/coordinator 状态
+  - 实现：新增 `buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

@@ -762,8 +762,21 @@ function createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator(
             return Object.freeze({...result, acknowledged: this.commit(result)});
         },
         status() { return Object.freeze({lastCursor, commits, disposed}); },
+        snapshot() {
+            const queueStatus = queue && typeof queue.status === "function" ? queue.status() : {size: 0, maxItems: 0, cursor: lastCursor, disposed: true};
+            return Object.freeze({coordinator: Object.freeze({lastCursor, commits, disposed}), queue: queueStatus});
+        },
         dispose() { disposed = true; },
     });
+}
+
+function buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(registry, diffQueue = null, diffCoordinator = null) {
+    const snapshot = registry && typeof registry.snapshot === "function" ? buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry) : null;
+    const summary = snapshot ? buildWorkspaceCapabilityRuntimeSessionRegistrySummary(snapshot) : {ok: false, reason: "registry_unavailable", size: 0, maxSessions: 0, active: 0, disposed: 0, capacityAvailable: 0};
+    const registryStatus = registry && typeof registry.status === "function" ? registry.status() : {size: 0, maxSessions: 0, disposed: true};
+    const queueStatus = diffQueue && typeof diffQueue.status === "function" ? diffQueue.status() : {size: 0, maxItems: 0, cursor: 0, disposed: true};
+    const coordinatorStatus = diffCoordinator && typeof diffCoordinator.status === "function" ? diffCoordinator.status() : {lastCursor: 0, commits: 0, disposed: true};
+    return Object.freeze({summary, registry: Object.freeze({...registryStatus}), diffQueue: Object.freeze({...queueStatus}), diffCoordinator: Object.freeze({...coordinatorStatus})});
 }
 
 function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
@@ -979,6 +992,7 @@ module.exports = {
     recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe,
     commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery,
     createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator,
+    buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,

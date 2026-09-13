@@ -177,3 +177,4 @@
 - D-171 v0.17 registry summary 只返回 active/disposed/capacity 计数与一致性 reason，不暴露 session runtime、文档内容或宿主异常。
 - D-172 v0.17 registry diff queue 使用独立 replay/recovery 契约；溢出后只接受通过 snapshot validation 的完整 registry 快照，避免把生命周期差异误当 runtime 状态事件。
 - D-173 v0.17 registry diff replay 的取消/超时语义与 runtime/registry 一致：读取前后双检查，失败不 acknowledge；coordinator 只推进单调 cursor。
+- D-174 v0.17 registry diff coordinator snapshot 仅返回 lastCursor/commits/disposed 与 queue status；联合 diagnostics 只输出计数和稳定 reason，不暴露 session runtime。
