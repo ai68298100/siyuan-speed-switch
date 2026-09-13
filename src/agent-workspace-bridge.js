@@ -55,17 +55,25 @@ function createWorkspaceAgentBridge(options = {}) {
 
 function createWorkspacePlanHandler(bridge, now = Date.now) {
     return async (args = {}) => {
-        const plan = bridge && typeof bridge.plan === "function" ? bridge.plan(args, typeof now === "function" ? now() : Date.now()) : null;
-        if (!plan) return {error: "invalid_plan"};
-        return {structuredContent: plan, result: JSON.stringify(plan)};
+        try {
+            const plan = bridge && typeof bridge.plan === "function" ? bridge.plan(args, typeof now === "function" ? now() : Date.now()) : null;
+            if (!plan) return {error: "invalid_plan"};
+            return {structuredContent: plan, result: JSON.stringify(plan)};
+        } catch (_error) {
+            return {error: "invalid_plan"};
+        }
     };
 }
 
 function createWorkspaceExecuteHandler(bridge, now = Date.now) {
     return async (args = {}) => {
         if (!bridge || typeof bridge.execute !== "function") return {error: "executor_unavailable"};
-        const result = await bridge.execute(args, typeof now === "function" ? now() : Date.now());
-        return {structuredContent: result, result: JSON.stringify(result)};
+        try {
+            const result = await bridge.execute(args, typeof now === "function" ? now() : Date.now());
+            return {structuredContent: result, result: JSON.stringify(result)};
+        } catch (_error) {
+            return {error: "executor_unavailable"};
+        }
     };
 }
 

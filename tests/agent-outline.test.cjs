@@ -300,6 +300,8 @@ test("workspace bridge handler factories expose structured capability results", 
     assert.deepEqual(executed.structuredContent, {status: "completed", planId: "wp-test", now: 1700000000010});
     assert.equal(executed.result, JSON.stringify(executed.structuredContent));
     assert.deepEqual(await createWorkspaceExecuteHandler(null)({}), {error: "executor_unavailable"});
+    assert.deepEqual(await createWorkspacePlanHandler({plan: () => { throw new Error("secret"); }})({steps: []}), {error: "invalid_plan"});
+    assert.deepEqual(await createWorkspaceExecuteHandler({execute: async () => { throw new Error("secret"); }})({}), {error: "executor_unavailable"});
     bridge.dispose();
 });
 

@@ -489,3 +489,7 @@
   - 目标：在 bridge 层直接提供不含正文的步骤摘要与审批 challenge，供 Agent/审批 UI 在执行前复用
   - 实现：新增 `preview(planId, device, now)`，复用 session 预览与既有 challenge 校验边界；未知计划安全返回 null
   - 状态：in-progress
+- [ ] T-147 Agent workspace handler 异常隔离
+  - 目标：阻止注入式 bridge/宿主异常文本或异常对象冒泡到 Agent 通道
+  - 实现：plan/execute handler 工厂捕获同步与异步异常，分别降级为 `invalid_plan` / `executor_unavailable`
+  - 状态：in-progress
