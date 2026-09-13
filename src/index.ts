@@ -4468,6 +4468,7 @@ const version = beginSearch(session);
                 let retryEntries: typeof homeControllers | null = null;
                 refreshAllButton.addEventListener("click", async () => {
                     if (refreshAllButton.disabled) return;
+                    const preserveRefreshFocus = document.activeElement === refreshAllButton;
                     refreshAllButton.disabled = true;
                     refreshAllButton.setAttribute("aria-busy", "true");
                     const batchController = typeof AbortController === "function" ? new AbortController() : null;
@@ -4498,6 +4499,9 @@ const version = beginSearch(session);
                         if (refreshAllButton.isConnected) {
                             refreshAllButton.disabled = false;
                             refreshAllButton.setAttribute("aria-busy", "false");
+                            if (preserveRefreshFocus && document.activeElement !== refreshAllButton) {
+                                refreshAllButton.focus({preventScroll: true});
+                            }
                         }
                     }
                 });

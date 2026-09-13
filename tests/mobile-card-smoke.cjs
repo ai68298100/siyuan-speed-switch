@@ -372,6 +372,10 @@ const homeRefreshCancelOk = homeControllerSource.includes('if (signal?.aborted)'
     && source.includes('signal: batchController?.signal');
 console.log(`${homeRefreshCancelOk ? 'PASS' : 'FAIL'} home refresh-all cancellation lifecycle`);
 if (!homeRefreshCancelOk) allPassed = false;
+const homeRefreshFocusOk = source.includes('const preserveRefreshFocus = document.activeElement === refreshAllButton')
+    && source.includes('refreshAllButton.focus({preventScroll: true})');
+console.log(`${homeRefreshFocusOk ? 'PASS' : 'FAIL'} home refresh focus continuity`);
+if (!homeRefreshFocusOk) allPassed = false;
 const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')
