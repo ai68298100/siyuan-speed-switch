@@ -376,6 +376,11 @@ const homeRefreshFocusOk = source.includes('const preserveRefreshFocus = documen
     && source.includes('refreshAllButton.focus({preventScroll: true})');
 console.log(`${homeRefreshFocusOk ? 'PASS' : 'FAIL'} home refresh focus continuity`);
 if (!homeRefreshFocusOk) allPassed = false;
+const homeRefreshBusyVisualOk = source.includes('refreshAllButton.setAttribute("aria-busy", "true")')
+    && source.includes('refreshAllButton.disabled = true')
+    && pluginCss.includes('.sw-home__refresh');
+console.log(`${homeRefreshBusyVisualOk ? 'PASS' : 'FAIL'} home refresh busy visual contract`);
+if (!homeRefreshBusyVisualOk) allPassed = false;
 const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')
