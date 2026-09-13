@@ -54,7 +54,12 @@ function registerWorkspaceCapabilityDefinitions(host, definitions, onError = (_e
     (Array.isArray(definitions) ? definitions : []).forEach((definition) => {
         const spec = definition && definition.spec;
         const name = spec && typeof spec.name === "string" ? spec.name : "";
-        if (!WORKSPACE_CAPABILITY_NAMES.includes(name) || typeof definition.handler !== "function") return;
+        const canonical = name === WORKSPACE_PLAN_HANDLER_SPEC.name
+            ? spec === WORKSPACE_PLAN_HANDLER_SPEC
+            : name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name
+                ? spec === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC
+                : false;
+        if (!canonical || typeof definition.handler !== "function") return;
         const effects = name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name
             ? EXECUTE_WORKSPACE_PLAN_EFFECTS
             : WORKSPACE_PLAN_EFFECTS;

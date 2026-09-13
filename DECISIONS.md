@@ -125,3 +125,4 @@
 - D-119 v0.17 bridge `preview` 只返回计划摘要与审批 challenge（planId/digest/device/expiresAt/token），不返回正文或原始参数；challenge 仍由 session 统一签发，避免 UI 层复制授权逻辑。
 - D-120 v0.17 bridge handler 工厂捕获注入 bridge 的同步/异步异常并返回稳定错误 token；不把异常对象、message 或 stack 传入 Agent 回执。
 - D-121 v0.17 capability 注册适配器仅接受两个固定 workspace capability 名称，并按名称强制注入 effects；调用方传入的 effects 不得改变执行能力的 localWrite 语义，未知定义直接跳过。
+- D-122 v0.17 workspace 注册进一步要求 canonical spec 对象身份匹配；仅同名但被篡改 schema 的定义不得进入宿主，避免注册边界被伪造元数据绕过。

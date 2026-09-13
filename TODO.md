@@ -497,3 +497,7 @@
   - 目标：将已知 workspace capability 定义交给宿主注册器，并按 capability 名称固定 effects，拒绝未知定义
   - 实现：新增 `registerWorkspaceCapabilityDefinitions`，兼容旧宿主、隔离单项注册异常，不信任调用方覆盖执行 effects
   - 状态：in-progress
+- [ ] T-149 Agent workspace canonical spec 防伪校验
+  - 目标：阻止外部构造同名但篡改 schema/effects 的 workspace capability 定义注册
+  - 实现：注册适配器要求使用模块内冻结 canonical spec 对象，伪造同名定义直接跳过
+  - 状态：in-progress

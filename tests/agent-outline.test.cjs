@@ -333,6 +333,7 @@ test("workspace capability registration enforces known names and effects", () =>
         definitions[0],
         {...definitions[1], effects: WORKSPACE_PLAN_EFFECTS},
         {spec: {name: "unknown-capability"}, handler: () => true},
+        {spec: {...definitions[0].spec}, handler: () => true},
         {spec: definitions[0].spec, handler: "not-a-function"},
     ]);
     assert.deepEqual(registered, ["registered:workspace-plan", "registered:execute-workspace-plan"]);
