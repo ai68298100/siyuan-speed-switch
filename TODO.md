@@ -493,3 +493,7 @@
   - 目标：阻止注入式 bridge/宿主异常文本或异常对象冒泡到 Agent 通道
   - 实现：plan/execute handler 工厂捕获同步与异步异常，分别降级为 `invalid_plan` / `executor_unavailable`
   - 状态：in-progress
+- [ ] T-148 Agent workspace capability 安全注册适配器
+  - 目标：将已知 workspace capability 定义交给宿主注册器，并按 capability 名称固定 effects，拒绝未知定义
+  - 实现：新增 `registerWorkspaceCapabilityDefinitions`，兼容旧宿主、隔离单项注册异常，不信任调用方覆盖执行 effects
+  - 状态：in-progress

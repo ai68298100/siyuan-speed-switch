@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions} = require('../src/agent-workspace-capability-definitions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -323,6 +323,22 @@ test("workspace capability definitions are data-driven and effect-scoped", async
     const executed = await definitions[1].handler({planId: "wp-def", digest: "pd-abcdef", approvalToken: "at-valid"});
     assert.equal(executed.structuredContent.status, "completed");
     assert.equal(calls[0].now, 1700000000042);
+});
+
+test("workspace capability registration enforces known names and effects", () => {
+    const calls = [];
+    const host = {addAgentCapability: (definition) => { calls.push(definition); return `registered:${definition.name}`; }};
+    const definitions = createWorkspaceCapabilityDefinitions({plan: () => null, execute: async () => ({})});
+    const registered = registerWorkspaceCapabilityDefinitions(host, [
+        definitions[0],
+        {...definitions[1], effects: WORKSPACE_PLAN_EFFECTS},
+        {spec: {name: "unknown-capability"}, handler: () => true},
+        {spec: definitions[0].spec, handler: "not-a-function"},
+    ]);
+    assert.deepEqual(registered, ["registered:workspace-plan", "registered:execute-workspace-plan"]);
+    assert.deepEqual(calls[0].effects, WORKSPACE_PLAN_EFFECTS);
+    assert.deepEqual(calls[1].effects, EXECUTE_WORKSPACE_PLAN_EFFECTS);
+    assert.equal(typeof calls[0].handler, "function");
 });
 
 test("workspace plan summary exposes counts without content", () => {
