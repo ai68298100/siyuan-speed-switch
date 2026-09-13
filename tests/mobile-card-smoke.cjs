@@ -353,7 +353,7 @@ console.log(`${homeRefreshOk ? 'PASS' : 'FAIL'} home refresh keeps ready content
 if (!homeRefreshOk) allPassed = false;
 const homeRefreshAllOk = homeControllerSource.includes('async function refreshHomeModules')
     && homeControllerSource.includes('Math.min(4, Math.max(1')
-    && source.includes('refreshHomeModules(homeControllers, {concurrency: 2, signal: batchController?.signal})')
+    && source.includes('refreshHomeModules(targets, {concurrency: 2, signal: batchController?.signal})')
     && source.includes('refreshAllButton.disabled = true');
 console.log(`${homeRefreshAllOk ? 'PASS' : 'FAIL'} home refresh-all bounded concurrency`);
 if (!homeRefreshAllOk) allPassed = false;
@@ -362,6 +362,8 @@ const homeRefreshSummaryOk = homeControllerSource.includes('function countHomeRe
     && source.includes('this.i18n.homeRefreshFailed')
     && source.includes('.replace("{count}"')
     && source.includes('summary.timeout')
+    && source.includes('selectHomeRefreshRetryEntries')
+    && source.includes('label.textContent = this.i18n.homeRetry')
     && source.includes('if (failureCount > 0)');
 console.log(`${homeRefreshSummaryOk ? 'PASS' : 'FAIL'} home refresh failure-only summary`);
 if (!homeRefreshSummaryOk) allPassed = false;

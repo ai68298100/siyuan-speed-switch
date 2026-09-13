@@ -208,4 +208,12 @@ function summarizeHomeRefreshFailures(results) {
     return summary;
 }
 
-module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures};
+function selectHomeRefreshRetryEntries(entries, results) {
+    if (!Array.isArray(entries) || !Array.isArray(results)) return [];
+    return entries.filter((_, index) => {
+        const result = results[index];
+        return result?.ok === false && !["aborted", "disposed", "stale"].includes(result.reason);
+    });
+}
+
+module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries};

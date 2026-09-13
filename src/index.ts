@@ -21,7 +21,7 @@ import {
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
-import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures} from "./home-controller";
+import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries} from "./home-controller";
 import {WIDGET_CATALOG} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
@@ -249,6 +249,7 @@ declare module "./home-controller" {
     export function refreshHomeModules(entries: unknown[], options?: {concurrency?: number}): Promise<unknown[]>;
     export function countHomeRefreshFailures(results: unknown): number;
     export function summarizeHomeRefreshFailures(results: unknown): {timeout: number; failed: number; other: number};
+    export function selectHomeRefreshRetryEntries(entries: unknown[], results: unknown): unknown[];
 }
 declare module "./home-panel" {
     export function createHomePanelController(options: Record<string, unknown>): {
@@ -4464,6 +4465,7 @@ const version = beginSearch(session);
                 refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
                 refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
                 refreshAllButton.innerHTML = '<svg><use xlink:href="#iconRefresh"></use></svg><span>' + this.i18n.homeRefreshAll + '</span>';
+                let retryEntries: typeof homeControllers | null = null;
                 refreshAllButton.addEventListener("click", async () => {
                     if (refreshAllButton.disabled) return;
                     refreshAllButton.disabled = true;
@@ -4471,15 +4473,25 @@ const version = beginSearch(session);
                     const batchController = typeof AbortController === "function" ? new AbortController() : null;
                     homeRefreshBatchController = batchController;
                     try {
-                        const results = await refreshHomeModules(homeControllers, {concurrency: 2, signal: batchController?.signal});
+                        const targets = retryEntries || homeControllers;
+                        const results = await refreshHomeModules(targets, {concurrency: 2, signal: batchController?.signal});
                         const failureCount = countHomeRefreshFailures(results);
                         if (failureCount > 0) {
                             const summary = summarizeHomeRefreshFailures(results);
+                            retryEntries = selectHomeRefreshRetryEntries(targets, results) as typeof homeControllers;
+                            const label = refreshAllButton.querySelector("span");
+                            if (label) label.textContent = this.i18n.homeRetry;
+                            refreshAllButton.setAttribute("aria-label", this.i18n.homeRetry);
                             showMessage(this.i18n.homeRefreshFailed
                                 .replace("{count}", String(failureCount))
                                 .replace("{timeout}", String(summary.timeout))
                                 .replace("{failed}", String(summary.failed))
                                 .replace("{other}", String(summary.other)));
+                        } else {
+                            retryEntries = null;
+                            const label = refreshAllButton.querySelector("span");
+                            if (label) label.textContent = this.i18n.homeRefreshAll;
+                            refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
                         }
                     } finally {
                         if (homeRefreshBatchController === batchController) homeRefreshBatchController = null;
