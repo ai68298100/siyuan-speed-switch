@@ -207,6 +207,11 @@
   - 实现：`home-adapter-diagnostics` 摘要新增 `cacheHits`、`completed`、`failures` 三项计数，均从已有 32 条环形事件窗口推导；可见性门控继续只影响读取调度，不记录内容
   - 验收：Agent 输出 schema、隐私边界和 32 项专项测试通过，`pnpm verify:release` 全绿
   - 状态：done（2026-09-13）
-- [ ] T-076 首页键盘与 reduced-motion 细节审计
+- [x] T-076 首页键盘与 reduced-motion 细节审计
   - 目标：统一月历导航、折叠按钮和条目焦点环的键盘顺序、触控热区与 reduced-motion 行为，避免新增交互在窄屏产生跳动
-  - 状态：queued（优先补结构 smoke 与样式契约，不依赖真实设备）
+  - 实现：月历导航和有日记日期统一 button 语义、28px 触控热区与 focus-visible 焦点环；减弱动态效果时关闭日历过渡
+  - 验收：结构 smoke、12 项 home-view 测试、TypeScript 与完整发布门禁通过
+  - 状态：done（2026-09-13）
+- [ ] T-077 首页状态恢复与焦点连续性
+  - 目标：面板刷新、翻月和可见性恢复时保留当前模块焦点与滚动上下文，避免异步替换造成键盘位置跳变
+  - 状态：queued（优先复用现有 focusKey 机制，不新增持久化滚动位置）

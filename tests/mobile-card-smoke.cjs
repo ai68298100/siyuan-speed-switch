@@ -331,6 +331,14 @@ const homeA11yOk = homeViewSource.includes('root.setAttribute("aria-labelledby",
     && homeViewSource.includes('body.id = bodyId');
 console.log(`${homeA11yOk ? 'PASS' : 'FAIL'} home module title accessibility linkage`);
 if (!homeA11yOk) allPassed = false;
+const homeCalendarA11yOk = homeViewSource.includes('onCalendarNavigate')
+    && pluginCss.includes('.sw__home-calendar-nav')
+    && pluginCss.includes('.sw__home-calendar-cell')
+    && /min-width:\s*28px/.test(pluginCss)
+    && /min-height:\s*28px/.test(pluginCss)
+    && pluginCss.includes('prefers-reduced-motion: reduce');
+console.log(`${homeCalendarA11yOk ? 'PASS' : 'FAIL'} home calendar keyboard and motion rules`);
+if (!homeCalendarA11yOk) allPassed = false;
 const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')

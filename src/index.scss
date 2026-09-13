@@ -5033,6 +5033,39 @@
     justify-content: flex-end;
     gap: 2px;
     margin-bottom: 4px;
+
+    button {
+        min-width: 28px;
+        min-height: 28px;
+        padding: 2px 6px;
+        line-height: 1;
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--sw-focus-ring);
+        }
+    }
+}
+
+.sw__home-calendar-cell {
+    min-height: 28px;
+
+    &.has-journal {
+        border: 0;
+        background: transparent;
+        color: inherit;
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--sw-focus-ring);
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw__home-calendar-cell.has-journal {
+        transition: none;
+    }
 }
 
 .sw__home-calendar-cell.has-journal {

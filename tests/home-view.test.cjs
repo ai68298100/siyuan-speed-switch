@@ -109,6 +109,7 @@ test("home view exposes bounded calendar navigation controls", () => {
     });
     const controls = root.querySelectorAll(".sw__home-module-body button");
     assert.equal(controls.length, 3);
+    assert.equal([...controls].every((control) => control.type === "button"), true);
     assert.equal(controls[0].getAttribute("aria-label"), "上月");
     controls[0].click();
     controls[1].click();
