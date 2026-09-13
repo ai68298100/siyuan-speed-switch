@@ -339,6 +339,13 @@ const homeCalendarA11yOk = homeViewSource.includes('onCalendarNavigate')
     && pluginCss.includes('prefers-reduced-motion: reduce');
 console.log(`${homeCalendarA11yOk ? 'PASS' : 'FAIL'} home calendar keyboard and motion rules`);
 if (!homeCalendarA11yOk) allPassed = false;
+const homeSkeletonOk = homeViewSource.includes('sw__home-loading-skeleton')
+    && pluginCss.includes('sw-home-skeleton-pulse')
+    && pluginCss.includes('prefers-reduced-motion: reduce')
+    && pluginCss.includes('prefers-reduced-data: reduce')
+    && pluginCss.includes('sw__home-module-status--empty');
+console.log(`${homeSkeletonOk ? 'PASS' : 'FAIL'} home loading skeleton motion fallback`);
+if (!homeSkeletonOk) allPassed = false;
 const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')

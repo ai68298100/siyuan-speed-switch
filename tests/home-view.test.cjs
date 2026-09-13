@@ -97,6 +97,24 @@ test("home view renders calendar grid for viewType calendar", () => {
     assert.equal(grid.querySelectorAll(".is-today").length, 1);
     assert.equal(grid.querySelectorAll(".sw__home-calendar-secondary").length, 1);
 });
+test("home view loading state includes a bounded static-safe skeleton", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "loading", title: "Loading"}, {loading: true});
+    const root = renderHomeModuleView(dom.window.document, view, {});
+    const skeleton = root.querySelector(".sw__home-loading-skeleton");
+    assert.ok(skeleton);
+    assert.equal(skeleton.getAttribute("aria-hidden"), "true");
+    assert.equal(skeleton.querySelectorAll(".sw__home-loading-skeleton-line").length, 3);
+});
+test("home view empty and error states expose stable status hooks", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const empty = renderHomeModuleView(dom.window.document, buildHomeModuleView({moduleId: "empty", title: "Empty"}, {ok: true, snapshot: {items: []}}));
+    const failure = renderHomeModuleView(dom.window.document, buildHomeModuleView({moduleId: "error", title: "Error"}, {ok: false, reason: "failed"}));
+    assert.ok(empty.querySelector(".sw__home-module-status--empty"));
+    assert.ok(failure.querySelector(".sw__home-module-status--error"));
+    assert.equal(empty.querySelector(".sw__home-module-status").getAttribute("aria-live"), "polite");
+    assert.equal(failure.querySelector(".sw__home-module-status").getAttribute("aria-live"), "assertive");
+});
 test("home view exposes bounded calendar navigation controls", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const calls = [];

@@ -390,6 +390,17 @@ function renderHomeModuleView(doc, view, options = {}) {
         });
         body.appendChild(list);
     } else {
+        if (view.status === "loading") {
+            const skeleton = doc.createElement("div");
+            skeleton.className = "sw__home-loading-skeleton";
+            skeleton.setAttribute("aria-hidden", "true");
+            ["wide", "medium", "short"].forEach((size) => {
+                const line = doc.createElement("span");
+                line.className = `sw__home-loading-skeleton-line is-${size}`;
+                skeleton.appendChild(line);
+            });
+            body.appendChild(skeleton);
+        }
         const status = doc.createElement("p");
         status.className = `sw__home-module-status sw__home-module-status--${view.status || "empty"}`;
         status.setAttribute("role", view.status === "error" ? "alert" : "status");

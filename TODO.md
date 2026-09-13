@@ -217,6 +217,11 @@
   - 实现：异步刷新替换模块 DOM 前暂存 `scrollTop`，替换后恢复；继续复用 `focusKey`，滚动位置仅存在于当前控制器生命周期
   - 验收：13 项 home-controller 测试、TypeScript 与 `pnpm verify:release` 全绿
   - 状态：done（2026-09-13）
-- [ ] T-078 首页加载状态的低动效骨架
+- [x] T-078 首页加载状态的低动效骨架
   - 目标：为首开骨架增加稳定高度与轻量 shimmer，`prefers-reduced-motion` 下退化为静态占位，降低布局跳动
-  - 状态：queued（先评估 CSS 体积与主题变量复用）
+  - 实现：固定 54px 有界占位、主题变量 `color-mix` 和 1.2s 低动效脉冲；reduced-motion 下禁用动画；无图片与第三方依赖
+  - 状态：done（2026-09-13）
+- [ ] T-079 首页错误/空状态稳定高度与低带宽降级
+  - 目标：统一 error/empty 状态的最小高度与文案折行上限，并在低带宽或弱设备下跳过非必要装饰，继续保持可访问性
+  - 实现：error/empty 统一 54px 最小高度与两行截断；支持 `prefers-reduced-data` 时停用骨架动画，保留 reduced-motion 兼容
+  - 状态：done（2026-09-13）
