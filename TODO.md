@@ -433,3 +433,7 @@
   - 目标：把计划转换为可展示、可确认的一次性挑战载荷，绑定 planId/digest/device/expiresAt/approvalToken，并校验计划未被替换
   - 实现：新增独立 `src/agent-workspace-approval.js`，提供 challenge 创建与校验；令牌仍只存在内存，不携带正文或权限数据
   - 状态：in-progress
+- [ ] T-133 Agent 工作区动作清单与审批摘要
+  - 目标：为六类固定动作提供 effect/确认/目标上限元数据，并生成不含正文的计划统计摘要
+  - 实现：`src/agent-workspace-actions.js` 新增 `WORKSPACE_ACTION_SPECS` 与 `buildWorkspacePlanSummary`，输出步骤数、对象数、导航/写入计数和确认标记
+  - 状态：in-progress

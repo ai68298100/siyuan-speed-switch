@@ -6,7 +6,7 @@ const {
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
-const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = require('../src/agent-workspace-actions.js');
+const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
 const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
@@ -111,6 +111,7 @@ test("workspace plan runner requires approval and isolates cancellation", async 
 
 test("workspace action adapter dispatches only normalized fixed actions", async () => {
     assert.equal(ACTION_KEYS["append-to-journal"], "appendToJournal");
+    assert.equal(WORKSPACE_ACTION_SPECS["update-task-status"].effect, "localWrite");
     assert.deepEqual(normalizeWorkspaceStep({action: "open-document", ids: ["20260913083000-abcdef"]}), {
         action: "open-document", id: "20260913083000-abcdef",
     });
@@ -126,6 +127,24 @@ test("workspace action adapter dispatches only normalized fixed actions", async 
     assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed"});
     assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "failed", reason: "handler_missing"});
     assert.equal(calls.length, 1);
+});
+
+test("workspace plan summary exposes counts without content", () => {
+    const plan = buildWorkspacePlan({steps: [
+        {action: "open-documents", ids: ["20260913083000-abcdef", "20260913083001-abcdef"]},
+        {action: "append-to-journal", content: "秘密正文不应进入摘要"},
+    ]}, 1700000000000);
+    assert.deepEqual(buildWorkspacePlanSummary(plan), {
+        planId: plan.planId,
+        stepCount: 2,
+        targetCount: 3,
+        navigationSteps: 1,
+        writeSteps: 1,
+        requiresConfirmation: true,
+        requiresWrite: true,
+    });
+    assert.equal(Object.hasOwn(buildWorkspacePlanSummary(plan), "content"), false);
+    assert.equal(buildWorkspacePlanSummary(null), null);
 });
 
 test("workspace execution guard prevents replay and stays bounded", () => {

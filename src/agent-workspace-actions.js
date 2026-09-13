@@ -14,6 +14,15 @@ const ACTION_KEYS = Object.freeze({
     "append-to-journal": "appendToJournal",
 });
 
+const WORKSPACE_ACTION_SPECS = Object.freeze({
+    "open-document": Object.freeze({effect: "navigation", requiresConfirmation: true, maxTargets: 1}),
+    "open-documents": Object.freeze({effect: "navigation", requiresConfirmation: true, maxTargets: 5}),
+    "restore-document-set": Object.freeze({effect: "navigation", requiresConfirmation: true, maxTargets: 1}),
+    "update-task-status": Object.freeze({effect: "localWrite", requiresConfirmation: true, maxTargets: 1}),
+    "create-document": Object.freeze({effect: "localWrite", requiresConfirmation: true, maxTargets: 1}),
+    "append-to-journal": Object.freeze({effect: "localWrite", requiresConfirmation: true, maxTargets: 1}),
+});
+
 function normalizeWorkspaceStep(step) {
     if (!step || typeof step !== "object" || !PLAN_ACTIONS.includes(step.action)) return null;
     const action = step.action;
@@ -56,4 +65,21 @@ function createWorkspaceActionExecutor(handlers = {}) {
     };
 }
 
-module.exports = {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor};
+function buildWorkspacePlanSummary(plan) {
+    if (!plan || !Array.isArray(plan.steps)) return null;
+    const steps = plan.steps.slice(0, 8).filter((step) => WORKSPACE_ACTION_SPECS[step?.action]);
+    const navigationSteps = steps.filter((step) => WORKSPACE_ACTION_SPECS[step.action].effect === "navigation").length;
+    const writeSteps = steps.length - navigationSteps;
+    const targetCount = steps.reduce((sum, step) => sum + (Array.isArray(step.ids) ? step.ids.length : 1), 0);
+    return {
+        planId: typeof plan.planId === "string" ? plan.planId.slice(0, 32) : "",
+        stepCount: steps.length,
+        targetCount: Math.min(40, targetCount),
+        navigationSteps,
+        writeSteps,
+        requiresConfirmation: steps.some((step) => WORKSPACE_ACTION_SPECS[step.action].requiresConfirmation),
+        requiresWrite: writeSteps > 0,
+    };
+}
+
+module.exports = {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, createWorkspaceActionExecutor, buildWorkspacePlanSummary};
