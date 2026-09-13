@@ -577,3 +577,7 @@
   - 目标：支持 UI/诊断按序号增量读取、检测丢失事件并确认消费
   - 实现：事件队列增加 `readSince(cursor, limit)` 与 `acknowledge(cursor)`，游标单调递增且队列仍最多 16 条
   - 状态：in-progress
+- [ ] T-169 Agent workspace runtime diff 入队桥接
+  - 目标：将 snapshot diff 直接写入有界事件队列，统一事件归一化与游标语义
+  - 实现：新增 `enqueueWorkspaceCapabilityRuntimeDiff`，无效队列或无变化返回 0
+  - 状态：in-progress

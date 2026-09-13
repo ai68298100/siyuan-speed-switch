@@ -145,3 +145,4 @@
 - D-139 v0.17 runtime 事件归一化按 host→registration→unmanaged→plans→disposed 固定顺序去重；未知类型与零 delta 丢弃，每类最多一条，避免高频生命周期事件放大。
 - D-140 v0.17 runtime 事件队列最多保留 16 条，push 时丢弃最旧事件；read 返回副本，consume 才移除，dispose 后拒绝新事件，避免无界内存和重复消费。
 - D-141 v0.17 事件游标使用进程内单调 sequence；`readSince` 返回当前 cursor 与 truncated 标记，`acknowledge` 仅删除不大于游标的已缓存事件，检测到队列溢出时由调用方自行重新拉取完整快照。
+- D-142 v0.17 runtime diff 入队只调用既有 diff/events/push 管线，不直接修改快照；无效队列与零变化安全返回 0，避免诊断路径产生隐式副作用。

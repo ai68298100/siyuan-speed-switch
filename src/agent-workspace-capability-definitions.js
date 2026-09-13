@@ -274,6 +274,11 @@ function createWorkspaceCapabilityEventQueue(maxItems = 16) {
     });
 }
 
+function enqueueWorkspaceCapabilityRuntimeDiff(queue, previous, current) {
+    if (!queue || typeof queue.push !== "function") return 0;
+    return queue.push(buildWorkspaceCapabilityRuntimeEvents(previous, current));
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -292,4 +297,5 @@ module.exports = {
     buildWorkspaceCapabilityRuntimeEvents,
     normalizeWorkspaceCapabilityRuntimeEvents,
     createWorkspaceCapabilityEventQueue,
+    enqueueWorkspaceCapabilityRuntimeDiff,
 };
