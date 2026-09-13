@@ -157,19 +157,22 @@ const visualTokensOk = pluginCss.includes('--sw-accent-soft')
     && pluginCss.includes('env(safe-area-inset-bottom');
 console.log(`${visualTokensOk ? 'PASS' : 'FAIL'} shared lavender/blue-grey visual tokens`);
 if (!visualTokensOk) allPassed = false;
-const source = fs.readFileSync(path.join(REPO, 'src', 'index.ts'), 'utf8');
+// Source-contract checks should be independent of the checkout's line-ending
+// policy (Windows commonly materializes CRLF while CI uses LF).
+const readSource = (file) => fs.readFileSync(path.join(REPO, 'src', file), 'utf8').replace(/\r\n/g, '\n');
+const source = readSource('index.ts');
 const mobileToolbarSemanticsOk = source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn"')
     && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn"')
     && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn"');
 console.log(`${mobileToolbarSemanticsOk ? 'PASS' : 'FAIL'} mobile toolbar controls use button semantics`);
 if (!mobileToolbarSemanticsOk) allPassed = false;
-const documentActionsSource = fs.readFileSync(path.join(REPO, 'src', 'document-actions.js'), 'utf8');
-const homePanelSource = fs.readFileSync(path.join(REPO, 'src', 'home-panel.js'), 'utf8');
-const homeViewSource = fs.readFileSync(path.join(REPO, 'src', 'home-view.js'), 'utf8');
-const homeAdapterSource = fs.readFileSync(path.join(REPO, 'src', 'home-adapters.js'), 'utf8');
-const homeRuntimeSource = fs.readFileSync(path.join(REPO, 'src', 'home-runtime.js'), 'utf8');
-const agentSource = fs.readFileSync(path.join(REPO, 'src', 'agent-capabilities.js'), 'utf8');
-const documentSetSource = fs.readFileSync(path.join(REPO, 'src', 'document-sets.js'), 'utf8');
+const documentActionsSource = readSource('document-actions.js');
+const homePanelSource = readSource('home-panel.js');
+const homeViewSource = readSource('home-view.js');
+const homeAdapterSource = readSource('home-adapters.js');
+const homeRuntimeSource = readSource('home-runtime.js');
+const agentSource = readSource('agent-capabilities.js');
+const documentSetSource = readSource('document-sets.js');
 const documentSetContractOk = source.includes('"documentSets"')
     && source.includes('buildSettingsDocumentSets')
     && source.includes('createDocumentSet')

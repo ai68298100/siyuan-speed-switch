@@ -19,10 +19,10 @@ const browserCandidates = [
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
 ].filter(Boolean);
-const browserPath = browserCandidates.find((candidate) => fs.existsSync(candidate));
+const browserPaths = browserCandidates.filter((candidate) => fs.existsSync(candidate));
 const cssPaths = [baseCssPath, pluginCssPath, ...themeCssPaths];
 
-if (!browserPath) {
+if (!browserPaths.length) {
     console.error('Chromium browser not found. Set BROWSER_PATH to Edge, Chrome, or Chromium.');
     process.exit(1);
 }
@@ -117,10 +117,28 @@ try {
         args.push(`--screenshot=${screenshotPath}`);
     }
     args.push(pathToFileURL(htmlPath).href);
-    const output = execFileSync(browserPath, args, {encoding: 'utf8', timeout: 30000});
-    const match = output.match(/data-result="([^"]+)"/);
+    // A freshly auto-updated headless browser can exit cleanly with empty or
+    // attribute-less output; fall through to the next installed Chromium.
+    let match = null;
+    let lastError = null;
+    for (const [index, browserPath] of browserPaths.entries()) {
+        // Each attempt needs its own profile dir: a browser that stays
+        // resident after --dump-dom would otherwise lock the next attempt's
+        // profile and the final temp-dir cleanup.
+        const attemptProfileDir = `${profileDir}-${index}`;
+        const attemptArgs = args.map((arg) => arg.startsWith('--user-data-dir=')
+            ? `--user-data-dir=${attemptProfileDir}`
+            : arg);
+        try {
+            const output = execFileSync(browserPath, attemptArgs, {encoding: 'utf8', timeout: 30000});
+            match = output.match(/data-result="([^"]+)"/);
+        } catch (error) {
+            lastError = error;
+        }
+        if (match) break;
+    }
     if (!match) {
-        throw new Error('Browser did not return computed styles');
+        throw lastError || new Error('No candidate browser returned computed styles');
     }
     const result = JSON.parse(Buffer.from(match[1], 'base64').toString('utf8'));
     const actionOk = ['pin', 'favorite', 'close'].every((key) => {
@@ -146,5 +164,18 @@ try {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
 } finally {
-    fs.rmSync(tempDir, {recursive: true, force: true});
+    // Resident headless browsers may still hold locks briefly; a failed
+    // cleanup must not fail an otherwise green run (dir lives in os.tmpdir).
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+            fs.rmSync(tempDir, {recursive: true, force: true});
+            break;
+        } catch (error) {
+            if (attempt === 2) {
+                console.warn(`smoke temp dir left behind: ${tempDir} (${error.message})`);
+            } else {
+                Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+            }
+        }
+    }
 }
