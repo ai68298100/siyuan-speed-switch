@@ -14,6 +14,7 @@ const {createWorkspaceApprovalChallenge, validateWorkspaceApprovalChallenge} = r
 const {createNavigationActionHandlers} = require('../src/agent-host-actions.js');
 const {createDocumentSetRestoreHandler} = require('../src/agent-document-set-actions.js');
 const {createDocumentSet} = require('../src/document-sets.js');
+const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -184,6 +185,26 @@ test("document-set restore adapter preserves order, skips opened and respects ca
     assert.deepEqual(cancelled, {status: "cancelled"});
     const missing = createDocumentSetRestoreHandler({getSet: async () => null, openDocument: async () => true});
     assert.deepEqual(await missing({setId: "set-project"}), {status: "failed", reason: "set_not_found"});
+});
+
+test("write action adapters validate payloads and return stable IDs", async () => {
+    const calls = [];
+    const handlers = createWriteActionHandlers({
+        readTask: async () => ({markdown: "- [ ] 做事", content: "做事"}),
+        updateBlock: async (id, markdown) => { calls.push([id, markdown]); return true; },
+        createDocument: async () => ({docId: "20260913083002-abcdef", ignored: "secret"}),
+        notebook: "20260913083000-boxbox",
+        ensureJournal: async () => "20260913083003-abcdef",
+        appendBlock: async () => true,
+    });
+    assert.deepEqual(await handlers.updateTaskStatus({id: "20260913083001-abcdef", done: true}), {status: "completed", id: "20260913083001-abcdef", done: true});
+    assert.deepEqual(await handlers.createDocument({notebook: "20260913083000-boxbox", title: "新建", markdown: "# hi"}), {status: "completed", docId: "20260913083002-abcdef"});
+    assert.deepEqual(await handlers.appendToJournal({content: "记录\n一条"}), {status: "completed", docId: "20260913083003-abcdef"});
+    assert.equal(calls[0][1], "- [x] 做事");
+    const denied = await handlers.updateTaskStatus({id: "20260913083001-abcdef", done: false}, {signal: {aborted: true}});
+    assert.deepEqual(denied, {status: "cancelled"});
+    const missing = createWriteActionHandlers({});
+    assert.deepEqual(await missing.createDocument({notebook: "x", title: "y"}), {status: "failed", reason: "handler_missing"});
 });
 
 test("workspace plan summary exposes counts without content", () => {

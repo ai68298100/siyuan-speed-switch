@@ -457,3 +457,7 @@
   - 目标：将现有文档集预检/恢复逻辑封装为计划 handler，复用顺序、已打开跳过、缺失探测和取消语义
   - 实现：新增独立 `src/agent-document-set-actions.js`，宿主注入集合查询、可用性探测和打开回调；无集合/全缺失/全失败返回稳定原因
   - 状态：in-progress
+- [ ] T-139 Agent 写入动作宿主适配器
+  - 目标：把任务更新、新建文档、追加今日日记封装为可注入 handler，统一校验载荷、取消语义和 postcondition
+  - 实现：新增独立 `src/agent-write-actions.js`；内核调用由宿主注入，任务仅改勾选标记，创建/追加必须回传合法文档 ID
+  - 状态：in-progress
