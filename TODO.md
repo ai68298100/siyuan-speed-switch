@@ -585,3 +585,7 @@
   - 目标：在游标过旧导致队列溢出时明确要求重新获取完整快照，避免不完整事件流污染 UI
   - 实现：新增 `readWorkspaceCapabilityRuntimeEventsForReplay`，正常返回 ready 批次，溢出返回 `snapshot_required`
   - 状态：in-progress
+- [ ] T-171 Agent workspace runtime 快照恢复流程
+  - 目标：统一事件回放成功与队列溢出后的完整快照恢复，避免 UI 自行拼接游标和校验逻辑
+  - 实现：新增 `recoverWorkspaceCapabilityRuntime`，返回 events/snapshot/unavailable 三种稳定模式
+  - 状态：in-progress

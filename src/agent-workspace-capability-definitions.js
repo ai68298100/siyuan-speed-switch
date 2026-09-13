@@ -286,6 +286,18 @@ function readWorkspaceCapabilityRuntimeEventsForReplay(queue, cursor = 0, limit 
     return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: Array.isArray(batch.events) ? batch.events.map((entry) => ({sequence: entry.sequence, event: {...entry.event}})) : []};
 }
 
+function recoverWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot = null, limit = 16) {
+    const replay = readWorkspaceCapabilityRuntimeEventsForReplay(queue, cursor, limit);
+    if (replay.ok) return {ok: true, mode: "events", cursor: replay.cursor, events: replay.events, snapshot: null};
+    if (replay.reason !== "snapshot_required" || !isWorkspaceCapabilityRuntimeSnapshotCompatible(snapshot)) {
+        return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
+    }
+    const normalized = normalizeWorkspaceCapabilityRuntimeSnapshot(snapshot);
+    const valid = validateWorkspaceCapabilityRuntimeSnapshot(normalized);
+    if (!valid.ok) return {ok: false, mode: "invalid_snapshot", reason: valid.reason, cursor: replay.cursor, events: [], snapshot: null};
+    return {ok: true, mode: "snapshot", cursor: replay.cursor, events: [], snapshot: normalized};
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -306,4 +318,5 @@ module.exports = {
     createWorkspaceCapabilityEventQueue,
     enqueueWorkspaceCapabilityRuntimeDiff,
     readWorkspaceCapabilityRuntimeEventsForReplay,
+    recoverWorkspaceCapabilityRuntime,
 };

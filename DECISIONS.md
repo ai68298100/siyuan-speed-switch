@@ -147,3 +147,4 @@
 - D-141 v0.17 事件游标使用进程内单调 sequence；`readSince` 返回当前 cursor 与 truncated 标记，`acknowledge` 仅删除不大于游标的已缓存事件，检测到队列溢出时由调用方自行重新拉取完整快照。
 - D-142 v0.17 runtime diff 入队只调用既有 diff/events/push 管线，不直接修改快照；无效队列与零变化安全返回 0，避免诊断路径产生隐式副作用。
 - D-143 v0.17 事件回放读取遇到 truncated 必须返回 `snapshot_required` 且不返回部分事件；调用方重新获取完整 runtime snapshot 后再从最新 cursor 继续，避免状态漂移。
+- D-144 v0.17 runtime 恢复流程先尝试事件回放，溢出时仅接受兼容且通过一致性校验的完整快照；返回 events/snapshot/unavailable 固定模式，不自动执行副作用。
