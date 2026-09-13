@@ -524,6 +524,13 @@ const searchFilterUiOk = (source.match(/class="sw__search-filter-btn/g) || []).l
     && pluginCss.includes('.sw__search-filter-btn.sw__active');
 console.log(`${searchFilterUiOk ? 'PASS' : 'FAIL'} shared notebook search filter`);
 if (!searchFilterUiOk) allPassed = false;
+
+// T-300/T-314：三端搜索框与收藏分组输入必须带显式 aria-label（读屏不依赖 placeholder）。
+const ariaLabelsOk = (source.match(/class="b3-text-field sw__search" placeholder="\$\{this\.i18n\.searchTabs\}" aria-label="\$\{this\.i18n\.searchTabs\}"/g) || []).length === 3
+    && (source.match(/class="b3-text-field fn__block sw__group-input" placeholder="\$\{this\.i18n\.groupName\}" aria-label="\$\{this\.i18n\.groupName\}"/g) || []).length === 2;
+console.log(`${ariaLabelsOk ? 'PASS' : 'FAIL'} search and group inputs expose explicit aria-labels`);
+if (!ariaLabelsOk) allPassed = false;
+
 const agentSubtypeContractOk = agentSource.includes('normalizeAgentSearchSubType')
     && agentSource.includes('subType: {type: "string", enum: SEARCH_SUBTYPES}')
     && source.includes('const subType = normalizeAgentSearchSubType(args.subType)')

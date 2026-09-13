@@ -242,6 +242,61 @@
   - 证据：682/682 测试、TSC 通过、移动烟测 68 PASS、Chromium 烟测 3 PASS
   - 状态：done（2026-09-14）
 
+- [x] T-305 中文 README 更新日志裁剪
+  - 目标：更新日志保留最近两个版本，历史指向 GitHub Releases，压缩市场载入体积
+  - 证据：80253→27772 bytes；`verify:release`、发布前检查、当前开发策略等门禁断言内容全部保留
+  - 状态：done（2026-09-14）
+
+- [x] T-306 英文 README 更新日志裁剪
+  - 目标：与 T-305 对称的英文侧裁剪
+  - 证据：84509→27100 bytes；Release Checklist/verify:release/Android 断言保留
+  - 状态：done（2026-09-14）
+
+- [x] T-307 ROADMAP 移出发布归档
+  - 目标：执行 D-219——ROADMAP 为纯开发文档不再随包分发，仓库边界继续把关内容
+  - 证据：`webpack.config.js` 复制模式移除；`final-package-audit` 改为仓库校验 R7 + 断言归档不含 ROADMAP；`package-integrity` 白名单收窄；docs SVG 保留（市场渲染需要）
+  - 状态：done（2026-09-14）
+
+- [x] T-308 资源基线再生与余量重测
+  - 目标：基线随归档决策同步，量化预算解锁效果
+  - 证据：`package.zip` 307150→252683 bytes，余量 50→54517 bytes；`tests/host/package-resource-baseline.json` 11 条目
+  - 状态：done（2026-09-14）
+
+- [x] T-309 归档 i18n 逐值一致性门禁
+  - 目标：锁定 D-218 最小化仅为排版变换——包内 JSON 与 src/i18n 源文件 key/value 完全一致
+  - 证据：`tests/shipped-i18n-parity.test.cjs`
+  - 状态：done（2026-09-14）
+
+- [x] T-310 决策记录 D-219
+  - 目标：归档内容决策的执行细节、取舍（SVG 留档原因）与结果量化落档
+  - 证据：`DECISIONS.md` D-219
+  - 状态：done（2026-09-14）
+
+- [x] T-311 v0.17 前置条件解除与接入顺序建议
+  - 目标：ROADMAP 8.0.1 更新为"预算已解锁"，并给出无宿主审计依赖模块的接入顺序
+  - 证据：ROADMAP v0.17 小节（先 diagnostics → document-context 待审计 → 执行链待真机验证）
+  - 状态：done（2026-09-14）
+
+- [x] T-312 文档计数与尺寸同步
+  - 目标：readiness/README 同步 93 个测试文件、683 项测试与新产物尺寸
+  - 证据：`docs/release-readiness.md`、`README.en-US.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-313 全门禁复跑与本轮提交
+  - 目标：终验后按协议本地提交
+  - 证据：683/683 测试、TSC 通过、三类 smoke 全绿
+  - 状态：done（2026-09-14）
+
+- [x] T-314 ARIA 标签烟测防回归锁
+  - 目标：把 T-300 的 5 处输入框 aria-label 固化为移动烟测源码契约断言
+  - 证据：`tests/mobile-card-smoke.cjs` 新增断言（搜索框 ×3、分组输入 ×2）；烟测 0 FAIL
+  - 状态：done（2026-09-14）
+
+- [x] T-315 v0.17 生产接入计划研究
+  - 目标：以真实体积与生产注册模式为基础，给出三阶段接入顺序、前置条件与预算预估
+  - 证据：`docs/workspace-capability-wiring-plan.md`（小型只读簇 +2 KiB zip、执行链 +7 KiB、definitions 全量 +20 KiB，硬上限内可容纳）
+  - 状态：done（2026-09-14）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

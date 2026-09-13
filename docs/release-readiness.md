@@ -1,11 +1,11 @@
 # Release readiness
 
-评估日期：2026-09-14（v0.16.40 发布后的开发增量基线）；真实宿主补充验收仍按兼容性任务持续跟进。
+评估日期：2026-09-14（v0.16.40 后第二开发轮：D-219 归档内容决策落地）；真实宿主补充验收仍按兼容性任务持续跟进。
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
-| TypeScript、自动测试、UI smoke | 已通过 | `pnpm verify:release`；682/682 |
-| 生产产物与包体 | 已通过 | `dist/index.js` 363569 bytes；`package.zip` 307150 bytes（跨平台允许 ±1 KiB；硬上限余量仅 50 bytes，见 D-218 预警） |
+| TypeScript、自动测试、UI smoke | 已通过 | `pnpm verify:release`；683/683 |
+| 生产产物与包体 | 已通过 | `dist/index.js` 363569 bytes；`package.zip` 252683 bytes（D-219 归档瘦身与 i18n 最小化后，300 KiB 硬上限余量 54517 bytes，跨平台允许 ±1 KiB） |
 | 归档可复现性 | 已通过 | 连续构建 SHA-256 一致；ZIP 条目固定为 1980-01-01 00:00 |
 | 版本元数据 | 已通过 | `0.16.40` 已同步 `package.json`、`plugin.json`、中英文 README |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
