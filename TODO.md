@@ -597,3 +597,7 @@
   - 目标：将恢复与游标确认组合为单一原子调用，成功才消费，失败保留队列
   - 实现：新增 `recoverAndCommitWorkspaceCapabilityRuntime`，返回恢复结果与 acknowledged 计数
   - 状态：in-progress
+- [ ] T-174 Agent workspace runtime 恢复并发协调器
+  - 目标：防止多个消费者重复或倒退确认同一批事件
+  - 实现：新增 `createWorkspaceCapabilityRecoveryCoordinator`，记录 lastCursor/commits 并拒绝重复确认
+  - 状态：in-progress

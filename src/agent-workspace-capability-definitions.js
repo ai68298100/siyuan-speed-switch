@@ -310,6 +310,31 @@ function recoverAndCommitWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot 
     return Object.freeze({...recovery, acknowledged});
 }
 
+function createWorkspaceCapabilityRecoveryCoordinator(queue) {
+    let lastCursor = 0;
+    let commits = 0;
+    return Object.freeze({
+        recover(cursor = 0, snapshot = null, limit = 16) {
+            return recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+        },
+        commit(recovery) {
+            const cursor = Math.max(0, Math.trunc(Number(recovery?.cursor) || 0));
+            if (!recovery || recovery.ok !== true || cursor <= lastCursor) return 0;
+            const acknowledged = commitWorkspaceCapabilityRuntimeRecovery(queue, recovery);
+            if (acknowledged > 0 || recovery.mode === "snapshot") {
+                lastCursor = cursor;
+                commits = Math.min(32, commits + 1);
+            }
+            return acknowledged;
+        },
+        recoverAndCommit(cursor = 0, snapshot = null, limit = 16) {
+            const recovery = recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+            return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
+        },
+        status() { return Object.freeze({lastCursor, commits}); },
+    });
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -333,4 +358,5 @@ module.exports = {
     recoverWorkspaceCapabilityRuntime,
     commitWorkspaceCapabilityRuntimeRecovery,
     recoverAndCommitWorkspaceCapabilityRuntime,
+    createWorkspaceCapabilityRecoveryCoordinator,
 };
