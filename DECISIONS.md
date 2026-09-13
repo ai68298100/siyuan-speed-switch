@@ -192,3 +192,4 @@
 - D-186 v0.17 统一 diagnostics snapshot 使用独立 version=1 契约；未知版本、定义溢出或缺失 registry 摘要均拒绝消费，避免跨宿主误读状态。
 - D-187 v0.17 diagnostics snapshot diff 仅保留 definitions/lifecycle/registry/diffQueue/coordinator 五类布尔变化，事件固定顺序且去重，不携带具体 session、文档或异常内容。
 - D-188 v0.17 diagnostics 事件使用独立最多 8 条队列与 replay/recovery 契约，不复用 runtime/registry 事件队列；溢出后只接受通过 diagnostics snapshot validation 的完整快照。
+- D-189 v0.17 diagnostics recovery coordinator 沿用单调 cursor 与双重 signal/deadline 检查，取消/超时/非法快照均不 acknowledge，dispose 后统一返回 diagnostics_coordinator_disposed。

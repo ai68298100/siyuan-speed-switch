@@ -909,6 +909,22 @@
   - 目标：支持有界回放、确认及溢出后的 versioned snapshot 恢复
   - 实现：新增 `readWorkspaceCapabilityDiagnosticsEventsForReplay`、`commitWorkspaceCapabilityDiagnosticsReplay`、`recoverWorkspaceCapabilityDiagnostics`
   - 状态：done
+- [x] T-254 Agent workspace diagnostics replay 取消边界
+  - 目标：signal 取消前后均不读取/确认 diagnostics 事件
+  - 实现：新增 `readWorkspaceCapabilityDiagnosticsEventsForReplayWithSignal`
+  - 状态：done
+- [x] T-255 Agent workspace diagnostics replay 超时边界
+  - 目标：deadline 到达时返回 timeout，保留事件队列
+  - 实现：新增 `readWorkspaceCapabilityDiagnosticsEventsForReplayWithDeadline`
+  - 状态：done
+- [x] T-256 Agent workspace diagnostics recovery 归一化
+  - 目标：统一 events/snapshot/invalid_snapshot/cancelled/timeout 终态
+  - 实现：新增 `normalizeWorkspaceCapabilityDiagnosticsRecoveryResult`
+  - 状态：done
+- [x] T-257 Agent workspace diagnostics recovery coordinator
+  - 目标：单调 cursor、原子确认、dispose 与 signal/deadline 组合调用
+  - 实现：新增 `createWorkspaceCapabilityDiagnosticsRecoveryCoordinator`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
