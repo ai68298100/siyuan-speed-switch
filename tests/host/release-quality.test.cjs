@@ -120,3 +120,15 @@ test('production sources contain no debug output or machine-local paths', () => 
     }
     assert.deepEqual(violations, [], `debug or machine-local source markers: ${violations.join(', ')}`);
 });
+
+test('release readiness matrix matches generated artifact sizes', () => {
+    const archive = path.join(root, 'package.zip');
+    const bundle = path.join(root, 'dist', 'index.js');
+    const readinessPath = path.join(root, 'docs', 'release-readiness.md');
+    if (!fs.existsSync(archive) || !fs.existsSync(bundle)) return;
+    const readiness = fs.readFileSync(readinessPath, 'utf8');
+    const archiveBytes = fs.statSync(archive).size;
+    const bundleBytes = fs.statSync(bundle).size;
+    assert.match(readiness, new RegExp('`dist/index\\.js` ' + bundleBytes + ' bytes'));
+    assert.match(readiness, new RegExp('`package\\.zip` ' + archiveBytes + ' bytes'));
+});
