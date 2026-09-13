@@ -30,6 +30,14 @@ const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
     EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
 ]);
 
+function normalizeWorkspaceCapabilityHandle(handle) {
+    if (typeof handle === "function") return {managed: true, kind: "disposer"};
+    if (handle && typeof handle.dispose === "function") return {managed: true, kind: "object"};
+    if (typeof handle === "string" || typeof handle === "number") return {managed: true, kind: "id"};
+    if (handle === undefined) return {managed: false, kind: "opaque"};
+    return {managed: false, kind: "invalid"};
+}
+
 function createWorkspaceCapabilityDefinitions(bridge, now = Date.now) {
     return Object.freeze([
         Object.freeze({
@@ -101,6 +109,7 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
     let registrations = [];
     let disposed = false;
     let failed = 0;
+    let unmanaged = 0;
     return Object.freeze({
         register() {
             if (disposed || registrations.length) return registrations.slice();
@@ -109,6 +118,7 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
                 failed = Math.min(2, failed + 1);
                 onError(error, spec);
             });
+            unmanaged = registrations.reduce((count, handle) => count + (normalizeWorkspaceCapabilityHandle(handle).managed ? 0 : 1), 0);
             return registrations.slice();
         },
         dispose() {
@@ -116,11 +126,12 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
             disposed = true;
             const count = disposeWorkspaceCapabilityRegistrations(host, registrations, onError);
             registrations = [];
+            unmanaged = 0;
             return count;
         },
         size() { return registrations.length; },
         status() {
-            return Object.freeze({registered: registrations.length, failed, disposed});
+            return Object.freeze({registered: registrations.length, failed, unmanaged, disposed});
         },
     });
 }
@@ -129,6 +140,7 @@ module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
     WORKSPACE_CAPABILITY_NAMES,
+    normalizeWorkspaceCapabilityHandle,
     createWorkspaceCapabilityDefinitions,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,

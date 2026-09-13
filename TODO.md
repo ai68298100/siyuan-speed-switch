@@ -529,3 +529,7 @@
   - 目标：在正式注册前判断宿主是否支持 addAgentCapability，并统一 unavailable/timeout/cancelled/failed 状态
   - 实现：新增独立 `src/agent-workspace-probe.js`，只做能力存在性检查与稳定快照，不调用注册副作用
   - 状态：in-progress
+- [ ] T-157 Agent workspace 注册句柄归一化
+  - 目标：识别 disposer、对象、ID 与空句柄，向生命周期状态暴露潜在不可回收注册
+  - 实现：新增 `normalizeWorkspaceCapabilityHandle` 与 `unmanaged` 计数，不返回句柄内容
+  - 状态：in-progress

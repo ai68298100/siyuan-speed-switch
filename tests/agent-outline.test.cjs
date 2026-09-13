@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -387,11 +387,11 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
     assert.deepEqual(second, first);
     assert.equal(lifecycle.size(), 2);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
-    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, disposed: false});
     assert.equal(lifecycle.dispose(), 2);
     assert.equal(lifecycle.dispose(), 0);
     assert.equal(lifecycle.size(), 0);
-    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, disposed: true});
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: true});
     assert.deepEqual(lifecycle.register(), []);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
 });
@@ -404,9 +404,17 @@ test("workspace capability lifecycle reports bounded partial registration failur
     }};
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {}, Date.now, (error) => errors.push(error));
     assert.deepEqual(lifecycle.register(), ["workspace-plan-handle"]);
-    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, disposed: false});
     assert.equal(errors.length, 1);
     assert.equal(lifecycle.register().length, 1);
+});
+
+test("workspace capability handles normalize managed and opaque host returns", () => {
+    assert.deepEqual(normalizeWorkspaceCapabilityHandle(() => true), {managed: true, kind: "disposer"});
+    assert.deepEqual(normalizeWorkspaceCapabilityHandle({dispose() {}}), {managed: true, kind: "object"});
+    assert.deepEqual(normalizeWorkspaceCapabilityHandle("capability-id"), {managed: true, kind: "id"});
+    assert.deepEqual(normalizeWorkspaceCapabilityHandle(undefined), {managed: false, kind: "opaque"});
+    assert.deepEqual(normalizeWorkspaceCapabilityHandle(null), {managed: false, kind: "invalid"});
 });
 
 test("workspace capability host probe stays stable and side-effect free", () => {
