@@ -278,6 +278,11 @@ test("workspace agent bridge provides bounded plan issue execute lifecycle", asy
     assert.deepEqual(opened, ["20260913083000-abcdef"]);
     const unknown = await bridge.execute({...challenge, planId: "wp-missing"}, 1700000000101);
     assert.equal(unknown.status, "plan_not_found");
+    const expiredPlan = bridge.plan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000000);
+    assert.equal(bridge.size(), 1);
+    assert.equal(bridge.prune(expiredPlan.expiresAt), 1);
+    assert.equal(bridge.size(), 0);
+    assert.equal(bridge.prune(expiredPlan.expiresAt + 1), 0);
     bridge.dispose();
     assert.equal(bridge.size(), 0);
 });

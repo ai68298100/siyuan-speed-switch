@@ -1,6 +1,6 @@
 "use strict";
 
-const {buildWorkspacePlan, WORKSPACE_PLAN_SPEC} = require("./agent-workspace-plan.js");
+const {buildWorkspacePlan, isWorkspacePlanExpired, WORKSPACE_PLAN_SPEC} = require("./agent-workspace-plan.js");
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest} = require("./agent-workspace-capability.js");
 const {createWorkspaceExecutionSession} = require("./agent-workspace-session.js");
 const {buildWorkspacePlanSummary} = require("./agent-workspace-actions.js");
@@ -47,6 +47,16 @@ function createWorkspaceAgentBridge(options = {}) {
                 expiresAt: plan.expiresAt,
                 approvalToken: normalized.approvalToken,
             }, {now});
+        },
+        prune(now = Date.now()) {
+            let removed = 0;
+            for (const [planId, plan] of plans) {
+                if (isWorkspacePlanExpired(plan, now)) {
+                    plans.delete(planId);
+                    removed += 1;
+                }
+            }
+            return removed;
         },
         size() { return plans.size; },
         dispose() { plans.clear(); session.dispose?.(); },

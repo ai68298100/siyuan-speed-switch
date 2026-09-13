@@ -501,3 +501,7 @@
   - 目标：阻止外部构造同名但篡改 schema/effects 的 workspace capability 定义注册
   - 实现：注册适配器要求使用模块内冻结 canonical spec 对象，伪造同名定义直接跳过
   - 状态：in-progress
+- [ ] T-150 Agent workspace 过期计划回收
+  - 目标：为长期运行的 bridge 清理已过期计划元数据，避免有界计划槽位被陈旧审批占用
+  - 实现：新增 `prune(now)`，按统一 expiry 语义删除过期计划并返回回收数量；不影响 session 内 token/replay 清理
+  - 状态：in-progress
