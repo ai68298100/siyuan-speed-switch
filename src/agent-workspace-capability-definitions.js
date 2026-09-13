@@ -1041,6 +1041,40 @@ function createWorkspaceCapabilityDiagnosticsRecoveryCoordinator(queue) {
     });
 }
 
+function normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const modes = ["events", "snapshot", "unavailable", "invalid_snapshot", "cancelled", "timeout"];
+    const mode = modes.includes(source.mode) ? source.mode : "unavailable";
+    const ok = source.ok === true && (mode === "events" || mode === "snapshot");
+    const reason = ["ready", "snapshot_required", "queue_unavailable", "invalid_snapshot", "cancelled", "timeout", "diagnostics_joint_coordinator_disposed"].includes(source.reason) ? source.reason : (ok ? "ready" : mode);
+    return Object.freeze({ok, mode, reason, events: source.events ? normalizeWorkspaceCapabilityDiagnosticsRecoveryResult(source.events) : null, snapshot: source.snapshot ? normalizeWorkspaceCapabilityDiagnosticsSnapshot(source.snapshot) : null, acknowledged: Math.max(0, Math.min(8, Math.trunc(Number(source.acknowledged) || 0)))});
+}
+
+function createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator(queue) {
+    let lastCursor = 0; let commits = 0; let disposed = false;
+    const unavailable = () => ({ok: false, mode: "unavailable", reason: "diagnostics_joint_coordinator_disposed", events: null, snapshot: null, acknowledged: 0});
+    return Object.freeze({
+        recover(cursor = 0, limit = 8, snapshot = null) {
+            if (disposed) return unavailable();
+            const requested = Math.max(lastCursor, Math.max(0, Math.trunc(Number(cursor) || 0)));
+            const recovery = recoverWorkspaceCapabilityDiagnostics(queue, requested, limit, snapshot);
+            return recovery.mode === "events" ? {ok: true, mode: "events", reason: "ready", events: recovery, snapshot: null, acknowledged: 0} : recovery.mode === "snapshot" ? {ok: true, mode: "snapshot", reason: "snapshot_required", events: recovery, snapshot: recovery.snapshot, acknowledged: 0} : {ok: false, mode: recovery.mode, reason: recovery.reason, events: recovery, snapshot: null, acknowledged: 0};
+        },
+        commit(recovery) {
+            if (disposed || !recovery || recovery.ok !== true || !recovery.events) return 0;
+            const cursor = Math.max(0, Math.trunc(Number(recovery.events.cursor) || 0));
+            if (cursor <= lastCursor) return 0;
+            const acknowledged = commitWorkspaceCapabilityDiagnosticsRecovery(queue, recovery.events);
+            if (acknowledged > 0 || recovery.mode === "snapshot") { lastCursor = cursor; commits = Math.min(32, commits + 1); return acknowledged; }
+            return 0;
+        },
+        recoverAndCommit(cursor = 0, limit = 8, snapshot = null) { if (disposed) return {...unavailable(), acknowledged: 0}; const recovery = this.recover(cursor, limit, snapshot); return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)}); },
+        status() { return Object.freeze({lastCursor, commits, disposed}); },
+        snapshot() { return Object.freeze({coordinator: Object.freeze({lastCursor, commits, disposed}), queue: queue?.status?.() || {size: 0, maxItems: 0, cursor: 0, disposed: true}}); },
+        dispose() { disposed = true; },
+    });
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1346,6 +1380,8 @@ module.exports = {
     normalizeWorkspaceCapabilityDiagnosticsRecoveryResult,
     commitWorkspaceCapabilityDiagnosticsRecovery,
     createWorkspaceCapabilityDiagnosticsRecoveryCoordinator,
+    normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult,
+    createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

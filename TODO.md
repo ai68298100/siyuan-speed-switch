@@ -925,6 +925,14 @@
   - 目标：单调 cursor、原子确认、dispose 与 signal/deadline 组合调用
   - 实现：新增 `createWorkspaceCapabilityDiagnosticsRecoveryCoordinator`
   - 状态：done
+- [x] T-258 Agent workspace diagnostics 联合恢复结果归一化
+  - 目标：统一 diagnostics events/snapshot 两路恢复结果与 acknowledged 上限
+  - 实现：新增 `normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult`
+  - 状态：done
+- [x] T-259 Agent workspace diagnostics 联合恢复协调器
+  - 目标：将 diagnostics queue replay 与 snapshot fallback 组合为单一恢复入口
+  - 实现：新增 `createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
