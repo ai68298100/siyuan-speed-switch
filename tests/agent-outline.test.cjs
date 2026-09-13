@@ -6,6 +6,7 @@ const {
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
+const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = require('../src/agent-workspace-actions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -102,6 +103,25 @@ test("workspace plan runner requires approval and isolates cancellation", async 
     const failed = await runWorkspacePlan(plan, {approved: true, now: 1700000000100});
     assert.equal(failed.status, "failed");
     assert.equal(failed.failed[0].reason, "executor_missing");
+});
+
+test("workspace action adapter dispatches only normalized fixed actions", async () => {
+    assert.equal(ACTION_KEYS["append-to-journal"], "appendToJournal");
+    assert.deepEqual(normalizeWorkspaceStep({action: "open-document", ids: ["20260913083000-abcdef"]}), {
+        action: "open-document", id: "20260913083000-abcdef",
+    });
+    assert.equal(normalizeWorkspaceStep({action: "open-document", id: "javascript:bad"}), null);
+    assert.deepEqual(normalizeWorkspaceStep({action: "create-document", notebook: " 工作 ", title: " 新文档 ", markdown: "# 初始"}), {
+        action: "create-document", notebook: "工作", title: "新文档", markdown: "# 初始",
+    });
+    assert.equal(normalizeWorkspaceStep({action: "append-to-journal", content: "\n\t"}), null);
+    const calls = [];
+    const execute = createWorkspaceActionExecutor({
+        openDocument: async (step) => { calls.push(step); return {status: "completed"}; },
+    });
+    assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed"});
+    assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "failed", reason: "handler_missing"});
+    assert.equal(calls.length, 1);
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {

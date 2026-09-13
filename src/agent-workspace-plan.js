@@ -2,7 +2,7 @@
 
 // v0.17 Agent groundwork: dry-run plans are deliberately standalone until
 // host-level approval, cancellation and expiry semantics are verified.
-const {normalizeAgentDocumentId, normalizeAgentDocumentIds} = require("./agent-capabilities.js");
+const {normalizeAgentDocumentId, normalizeAgentDocumentIds, normalizeAgentNotebookId, sanitizeJournalAppend} = require("./agent-capabilities.js");
 
 const MAX_PLAN_STEPS = 8;
 const MAX_PLAN_TTL_MS = 10 * 60 * 1000;
@@ -30,6 +30,10 @@ const WORKSPACE_PLAN_SPEC = Object.freeze({
                         ids: {type: "array", maxItems: 5, items: {type: "string", maxLength: 64}},
                         setId: {type: "string", maxLength: 64},
                         done: {type: "boolean"},
+                        notebook: {type: "string", maxLength: 64},
+                        title: {type: "string", maxLength: 128},
+                        markdown: {type: "string", maxLength: 4096},
+                        content: {type: "string", maxLength: 512},
                     },
                     required: ["action"],
                     additionalProperties: false,
@@ -108,6 +112,17 @@ function buildWorkspacePlan(input, now = Date.now()) {
             const setId = typeof raw.setId === "string" ? raw.setId.trim().slice(0, 64) : "";
             if (!setId) return;
             item.setId = setId;
+        } else if (action === "create-document") {
+            const notebook = typeof raw.notebook === "string" ? raw.notebook.trim().slice(0, 64) : "";
+            const title = typeof raw.title === "string" ? raw.title.trim().slice(0, 128) : "";
+            if (!notebook || !title) return;
+            item.notebook = normalizeAgentNotebookId(notebook) || notebook;
+            item.title = title;
+            item.markdown = typeof raw.markdown === "string" ? raw.markdown.slice(0, 4096) : "";
+        } else if (action === "append-to-journal") {
+            const content = sanitizeJournalAppend(raw.content);
+            if (!content) return;
+            item.content = content;
         }
         steps.push(item);
     });

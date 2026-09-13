@@ -405,3 +405,7 @@
   - 目标：在不绑定思源 API 的前提下固化确认、过期、取消、逐步执行和部分成功语义，为后续 `execute-workspace-plan` 接入复用
   - 实现：新增注入式 `runWorkspacePlan`，无批准不执行、过期拒绝、AbortSignal 取消未开始步骤、执行器异常归一化为稳定失败 token
   - 状态：in-progress
+- [ ] T-126 Agent 工作区固定动作适配层
+  - 目标：把计划步骤映射到六类白名单动作，统一做目标二次校验、参数裁剪和 handler 缺失/异常降级
+  - 实现：新增独立 `src/agent-workspace-actions.js`，仅允许 open/open-batch/restore/update/create/append；实际思源调用由宿主注入
+  - 状态：in-progress
