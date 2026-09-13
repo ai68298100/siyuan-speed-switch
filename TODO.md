@@ -35,6 +35,21 @@
 
 ## P3（持续开发）
 
+- [x] T-263 组件商店逐项可用性审计
+  - 证据：`docs/component-availability-audit.md`；覆盖 28 个内置组件与 1 个第三方目录组件，区分真实可用、条件可用、协议依赖与不可独立使用
+  - 发现：`recent-writing-activity`、`today-reservations` 日期标签正则存在确定展示缺陷；`checkin-summary` 无 provider 时不可独立添加
+  - 状态：done（2026-09-13，静态审计；真实宿主逐项验收列为后续任务）
+- [ ] T-264 修复两处 YYYYMMDD 日期标签正则
+  - 范围：`recent-writing-activity`、`today-reservations`；补回归测试，确认八位日期显示为 `YYYY-MM-DD`
+  - 优先级：P0
+- [ ] T-265 商店依赖提示与空态语义增强
+  - 范围：日记标题协议、`custom-reservation`、剪藏标签、活动文档、第三方插件依赖；卡片显示前置条件，空态区分“暂无数据/未满足协议”
+  - 优先级：P1
+- [ ] T-266 组件真实宿主验收矩阵
+  - 范围：在合法已认证桌面会话逐项验证首读、刷新、配置、点击、空态和错误重试；优先 SQL/API/插件协议组件
+  - 依赖：B-005；Android 仍按 D-042 后置
+  - 优先级：P1
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

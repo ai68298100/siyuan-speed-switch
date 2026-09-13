@@ -195,3 +195,4 @@
 - D-189 v0.17 diagnostics recovery coordinator 沿用单调 cursor 与双重 signal/deadline 检查，取消/超时/非法快照均不 acknowledge，dispose 后统一返回 diagnostics_coordinator_disposed。
 - D-190 v0.17 diagnostics joint coordinator 只允许 events 或 snapshot 单一路径成功确认；归一化结果限制 acknowledged≤8，避免事件流半提交和过量回显。
 - D-191 v0.17 diagnostics joint signal/deadline 与 handler 仅允许只读恢复和归一化，不隐式扩大输入字段；取消/超时/异常均不确认队列。
+- D-192 组件商店可用性审计采用 A/B/C/D 四级：空数据不判故障；依赖活动文档、命名约定、特定内核 API 或第三方插件统一标为条件可用；仅在本插件无独立实现且默认无法添加时标为 D。静态审计不能替代真实思源宿主验收，后续按 T-266 补证据。
