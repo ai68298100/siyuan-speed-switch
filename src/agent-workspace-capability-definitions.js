@@ -178,6 +178,17 @@ function isWorkspaceCapabilityRuntimeSnapshotCompatible(value) {
     return value.version === undefined || value.version === WORKSPACE_RUNTIME_SNAPSHOT_VERSION;
 }
 
+function validateWorkspaceCapabilityRuntimeSnapshot(value) {
+    if (!isWorkspaceCapabilityRuntimeSnapshotCompatible(value)) return {ok: false, reason: "unsupported_version"};
+    const snapshot = normalizeWorkspaceCapabilityRuntimeSnapshot(value);
+    const registration = snapshot.lifecycle.registration;
+    const bridge = snapshot.bridge;
+    if (registration.registered + registration.failed > 2) return {ok: false, reason: "registration_overflow"};
+    if (bridge.planCount > bridge.maxPlans) return {ok: false, reason: "plan_overflow"};
+    if (registration.disposed !== bridge.disposed) return {ok: false, reason: "dispose_mismatch"};
+    return {ok: true, version: snapshot.version};
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -191,4 +202,5 @@ module.exports = {
     WORKSPACE_RUNTIME_SNAPSHOT_VERSION,
     normalizeWorkspaceCapabilityRuntimeSnapshot,
     isWorkspaceCapabilityRuntimeSnapshotCompatible,
+    validateWorkspaceCapabilityRuntimeSnapshot,
 };

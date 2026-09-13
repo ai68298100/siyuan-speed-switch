@@ -553,3 +553,7 @@
   - 目标：消费快照前显式识别当前/未知未来版本，避免新协议被旧宿主误读
   - 实现：新增 `isWorkspaceCapabilityRuntimeSnapshotCompatible`，仅接受缺省版本或 version=1
   - 状态：in-progress
+- [ ] T-163 Agent workspace runtime 一致性校验
+  - 目标：阻止注册/计划计数溢出或 lifecycle 与 bridge 销毁态不一致的快照进入诊断/UI
+  - 实现：新增 `validateWorkspaceCapabilityRuntimeSnapshot`，输出稳定 `unsupported_version/registration_overflow/plan_overflow/dispose_mismatch`
+  - 状态：in-progress
