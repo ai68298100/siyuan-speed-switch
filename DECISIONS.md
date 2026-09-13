@@ -142,3 +142,4 @@
 - D-136 v0.17 runtime 快照一致性校验在归一化后执行固定关系检查；只返回稳定 reason，不返回原始字段，避免溢出计数或 dispose 不一致污染诊断/UI。
 - D-137 v0.17 runtime 状态 diff 只比较归一化快照的固定字段，planCount 仅输出有界增量；不输出计划 ID、token、句柄或异常文本，便于 UI 增量刷新。
 - D-138 v0.17 runtime 事件固定为 host/registration/unmanaged/plans/disposed 五类，plans delta 限制在 -32~32；事件不携带快照原文或敏感值，便于 UI/诊断增量消费。
+- D-139 v0.17 runtime 事件归一化按 host→registration→unmanaged→plans→disposed 固定顺序去重；未知类型与零 delta 丢弃，每类最多一条，避免高频生命周期事件放大。

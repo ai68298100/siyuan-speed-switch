@@ -212,6 +212,21 @@ function buildWorkspaceCapabilityRuntimeEvents(previous, current) {
     return events;
 }
 
+function normalizeWorkspaceCapabilityRuntimeEvents(events) {
+    const order = ["host", "registration", "unmanaged", "plans", "disposed"];
+    const source = Array.isArray(events) ? events : [];
+    const byType = new Map();
+    source.forEach((event) => {
+        if (!event || !order.includes(event.type) || byType.has(event.type)) return;
+        if (event.type === "plans") {
+            const delta = Math.max(-32, Math.min(32, Math.trunc(Number(event.delta) || 0)));
+            if (delta === 0) return;
+            byType.set(event.type, {type: "plans", delta});
+        } else byType.set(event.type, {type: event.type, changed: true});
+    });
+    return order.filter((type) => byType.has(type)).map((type) => byType.get(type));
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -228,4 +243,5 @@ module.exports = {
     validateWorkspaceCapabilityRuntimeSnapshot,
     diffWorkspaceCapabilityRuntimeSnapshots,
     buildWorkspaceCapabilityRuntimeEvents,
+    normalizeWorkspaceCapabilityRuntimeEvents,
 };

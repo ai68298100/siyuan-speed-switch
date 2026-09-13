@@ -565,3 +565,7 @@
   - 目标：将 runtime 快照变化转换为 UI/诊断可消费的固定事件，限制事件数量与 delta 范围
   - 实现：新增 `buildWorkspaceCapabilityRuntimeEvents`，最多输出 host/registration/unmanaged/plans/disposed 五类事件
   - 状态：in-progress
+- [ ] T-166 Agent workspace runtime 事件归一化
+  - 目标：对状态事件固定排序、去重和 delta 上限，防止高频变化制造 UI 噪声
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeEvents`，仅保留五类事件，最多一类一条
+  - 状态：in-progress
