@@ -35,6 +35,7 @@ const WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS = Object.freeze({
 const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION = 1;
+const WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION = 1;
 const MAX_RUNTIME_SESSIONS = 8;
 const WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC = Object.freeze({
     name: "workspace-runtime-registry-diagnostics",
@@ -918,6 +919,28 @@ function buildWorkspaceCapabilityDefinitionLifecycleDiagnostics(definitions, lif
     return Object.freeze({definitions: normalizeWorkspaceCapabilityDefinitionsDiagnostics(buildWorkspaceCapabilityDefinitionsDiagnostics(definitions)), lifecycle: buildWorkspaceCapabilityLifecycleDiagnostics(lifecycle)});
 }
 
+function buildWorkspaceCapabilityDiagnosticsSnapshot(definitions, lifecycle, registry, diffQueue = null, diffCoordinator = null) {
+    return Object.freeze({version: WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION, definitionLifecycle: buildWorkspaceCapabilityDefinitionLifecycleDiagnostics(definitions, lifecycle), runtimeRegistry: normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(registry, diffQueue, diffCoordinator))});
+}
+
+function normalizeWorkspaceCapabilityDiagnosticsSnapshot(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return Object.freeze({version: WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION, definitionLifecycle: source.definitionLifecycle && typeof source.definitionLifecycle === "object" ? source.definitionLifecycle : {definitions: {ok: false, total: 0, valid: 0, invalid: 0, duplicate: 0}, lifecycle: buildWorkspaceCapabilityLifecycleDiagnostics(null)}, runtimeRegistry: normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(source.runtimeRegistry)});
+}
+
+function isWorkspaceCapabilityDiagnosticsSnapshotCompatible(value) {
+    return !!value && typeof value === "object" && (value.version === undefined || value.version === WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION);
+}
+
+function validateWorkspaceCapabilityDiagnosticsSnapshot(value) {
+    if (!isWorkspaceCapabilityDiagnosticsSnapshotCompatible(value)) return {ok: false, reason: "unsupported_version"};
+    const normalized = normalizeWorkspaceCapabilityDiagnosticsSnapshot(value);
+    const definitions = normalized.definitionLifecycle?.definitions;
+    if (!definitions || definitions.valid + definitions.invalid > 8) return {ok: false, reason: "definition_overflow"};
+    if (!normalized.runtimeRegistry || !normalized.runtimeRegistry.summary) return {ok: false, reason: "registry_missing"};
+    return {ok: true, version: normalized.version};
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1175,6 +1198,7 @@ module.exports = {
     createWorkspaceCapabilityRuntimeSession,
     WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION,
     WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION,
+    WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION,
     MAX_RUNTIME_SESSIONS,
     buildWorkspaceCapabilityRuntimeSessionSnapshot,
     normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
@@ -1205,6 +1229,10 @@ module.exports = {
     normalizeWorkspaceCapabilityDefinitionsDiagnostics,
     buildWorkspaceCapabilityLifecycleDiagnostics,
     buildWorkspaceCapabilityDefinitionLifecycleDiagnostics,
+    buildWorkspaceCapabilityDiagnosticsSnapshot,
+    normalizeWorkspaceCapabilityDiagnosticsSnapshot,
+    isWorkspaceCapabilityDiagnosticsSnapshotCompatible,
+    validateWorkspaceCapabilityDiagnosticsSnapshot,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

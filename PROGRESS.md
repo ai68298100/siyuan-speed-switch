@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-13）：T-246~T-247 增加统一 diagnostics snapshot version=1、归一化与兼容/一致性校验；656/656 测试、TypeScript 与 diff 检查通过。
+
 补充（2026-09-13）：T-243~T-245 增加 definitions/lifecycle 诊断归一化、生命周期摘要及联合只读诊断包；655/655 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-241~T-242 增加注册失败原因归一化/lifecycle failureStatus，以及 definitions 矩阵 diagnostics 摘要；654/654 测试、TypeScript 与 diff 检查通过。

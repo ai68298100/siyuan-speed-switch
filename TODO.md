@@ -877,6 +877,14 @@
   - 目标：一次读取 definitions 矩阵与 lifecycle 运行状态
   - 实现：新增 `buildWorkspaceCapabilityDefinitionLifecycleDiagnostics`
   - 状态：done
+- [x] T-246 Agent workspace diagnostics snapshot 版本化
+  - 目标：为统一诊断总览提供 version=1 快照契约
+  - 实现：新增 `WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION` 与 builder/normalizer
+  - 状态：done
+- [x] T-247 Agent workspace diagnostics snapshot 兼容校验
+  - 目标：拒绝未知版本、定义数量溢出和缺失 registry 摘要的快照
+  - 实现：新增 `isWorkspaceCapabilityDiagnosticsSnapshotCompatible` 与 `validateWorkspaceCapabilityDiagnosticsSnapshot`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
