@@ -389,9 +389,30 @@ function tabTitle(tab, rootId) {
     return firstText(tab?.title, tab?.name, tab?.label, pathBase(path), rootId);
 }
 
+// 轻量候选选择：只挑第一个非空字符串，不做图形切分/截断。
+// 与 firstText 的差异仅影响 >MAX_PATH_LENGTH 的极端串，
+// 这里只服务于命中门禁，产出字段仍走重型规范化。
+function firstLooseText(...values) {
+    for (const value of values) {
+        if (typeof value === "string" && value) return value;
+    }
+    return "";
+}
+
+function looseNeedle(text) {
+    return text
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+}
+
 /**
  * Filter only local tab metadata. This function never performs I/O and keeps
  * the original tab object on each item so adapters can activate it directly.
+ * Matching is gated by a cheap loose haystack so per-keystroke cost stays
+ * flat on large tab sets; the grapheme-safe heavy normalization only runs
+ * for matched items that actually get emitted.
  */
 function filterOpenTabs(tabs, query, filters = {}) {
     const keyword = normalizeSearchQuery(query).toLowerCase();
@@ -400,13 +421,20 @@ function filterOpenTabs(tabs, query, filters = {}) {
     const items = [];
     tabs.forEach((tab, index) => {
         if (!tab || typeof tab !== "object") return;
+        if (keyword) {
+            const loosePath = firstLooseText(tab.hPath, tab.path, tab.rootPath);
+            const looseRootId = firstLooseText(tab.rootId, tab.rootID, tab.root_id, tab.documentId, tab.docId)
+                || (BLOCK_ID_RE.test(pathBase(loosePath)) ? pathBase(loosePath) : "");
+            const looseTitle = firstLooseText(tab.title, tab.name, tab.label)
+                || pathBase(loosePath) || looseRootId || String(tab.id || index);
+            const loose = looseNeedle(`${looseTitle} ${loosePath}`);
+            if (!loose.includes(keyword)) return;
+        }
         const rootId = tabRootId(tab);
         const path = firstText(tab.hPath, tab.path, tab.rootPath);
         const title = tabTitle(tab, rootId || String(tab.id || index));
         const notebookId = resolveSearchNotebookId(tab);
         if (notebook && notebookId !== notebook) return;
-        const haystack = `${title} ${path}`.toLowerCase();
-        if (keyword && !haystack.includes(keyword)) return;
         items.push({
             kind: "tab",
             rootId: rootId || null,

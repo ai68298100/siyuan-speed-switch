@@ -117,14 +117,26 @@ test("i18n: zh-CN 与 en 的 key 集合完全一致", () => {
   );
 });
 
-test("i18n: 报告未使用的 key（信息性，不判失败）", (t) => {
+// 静态扫描已禁止动态 key 访问，因此"源码未引用"即等价于"死 key"。
+// 若确需保留预留 key，请登记到 ALLOWED_UNUSED 并注明理由，避免
+// 双语文案在无消费的情况下持续膨胀归档体积。
+const ALLOWED_UNUSED = [];
+
+test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {
   const {keys} = collectReferencedKeys();
   const zh = loadLang(LANG_FILES[0]);
-  const unused = Object.keys(zh).filter((k) => !keys.has(k));
-  if (unused.length > 0) {
-    t.diagnostic(`以下 key 定义了但源码未引用（可能是预留或待清理）：${unused.join(", ")}`);
+  const en = loadLang(LANG_FILES[1]);
+  const zhOnly = Object.keys(zh).filter((k) => !keys.has(k) && !ALLOWED_UNUSED.includes(k));
+  const enOnly = Object.keys(en).filter((k) => !keys.has(k) && !ALLOWED_UNUSED.includes(k));
+  assert.deepEqual(
+    {zhOnly, enOnly},
+    {zhOnly: [], enOnly: []},
+    "发现死 key（定义了但源码未引用），请从两份语言文件同步删除或登记白名单：\n" +
+      [...new Set([...zhOnly, ...enOnly])].map((k) => `  ${k}`).join("\n"),
+  );
+  if (ALLOWED_UNUSED.length > 0) {
+    t.diagnostic(`allowlisted reserved keys: ${ALLOWED_UNUSED.join(", ")}`);
   }
-  assert.ok(true);
 });
 
 test("i18n: home refresh summary stays bounded and preserves stable placeholders", () => {

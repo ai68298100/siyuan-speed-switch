@@ -2357,7 +2357,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             <div class="sw__toolbar">
                 <div class="sw__search-wrap">
                     <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
-                    <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+                    <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
                     <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
                         <svg><use xlink:href="#iconFilter"></use></svg>
                     </button>
@@ -8245,7 +8245,7 @@ private rootIdOf(tab: Tab): string | null {
         const dialog = new Dialog({
             title: `${this.i18n.setGroup} 路 ${this.escapeAttr(this.titleOf(tab))}`,
             content: `<div class="b3-dialog__content">
-    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(favorite?.group || "")}" />
+    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(favorite?.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
     <div class="fn__hr"></div>
     <div class="b3-label__text">${this.i18n.groupTip}</div>
@@ -8285,7 +8285,7 @@ private rootIdOf(tab: Tab): string | null {
         const dialog = new Dialog({
             title: `${this.i18n.setGroup} 路 ${this.escapeAttr(fav.title)}`,
             content: `<div class="b3-dialog__content">
-    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(fav.group || "")}" />
+    <input class="b3-text-field fn__block sw__group-input" placeholder="${this.i18n.groupName}" aria-label="${this.i18n.groupName}" list="sw__group-list" value="${this.escapeAttr(fav.group || "")}" />
     <datalist id="sw__group-list">${groupNames.map((name) => `<option value="${this.escapeAttr(name)}"></option>`).join("")}</datalist>
     <div class="fn__hr"></div>
     <div class="b3-label__text">${this.i18n.groupTip}</div>
@@ -9942,7 +9942,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
-            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
             <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
                 <svg><use xlink:href="#iconFilter"></use></svg>
             </button>
@@ -10756,7 +10756,7 @@ if (count > 0) {
     <div class="sw__toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
-            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" />
+            <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" />
             <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
                 <svg><use xlink:href="#iconFilter"></use></svg>
             </button>

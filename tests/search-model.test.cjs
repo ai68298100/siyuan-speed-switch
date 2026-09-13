@@ -125,6 +125,26 @@ test("search model: local tabs match title/path and preserve original tab refere
     assert.equal(filterOpenTabs([tabA, tabB], "" ).length, 2);
 });
 
+test("search model: loose keyword gate stays consistent with emitted heavy fields", () => {
+    // 无标题/路径时按 rootId 兜底匹配：轻量门禁与重型产出必须一致
+    const bare = {id: "tab-bare", rootId: ROOT_A};
+    assert.equal(filterOpenTabs([bare], "20260906120000").length, 1);
+    // id 兜底：无 rootId、无路径时仍可按 tab.id 命中
+    const idOnly = {id: "20260101120000-xyzabc"};
+    assert.equal(filterOpenTabs([idOnly], "xyzabc").length, 1);
+    // 超长路径关键词不再被产出截断半径误伤（门禁与产出同源匹配）
+    const longPath = `/${"深".repeat(600)}/needle-target`;
+    const longTab = {id: "tab-long", rootId: ROOT_B, title: "长路径", hPath: longPath};
+    assert.equal(filterOpenTabs([longTab], "needle-target").length, 1);
+    // 控制字符统一折叠为空格后仍可命中
+    const noisy = {id: "tab-noisy", rootId: ROOT_A, title: "项目\u0001文档"};
+    assert.equal(filterOpenTabs([noisy], "项目 文档").length, 1);
+    // 命中条目的产出字段仍走重型规范化（有界、图形安全），保持原引用
+    const emitted = filterOpenTabs([bare], "20260906120000")[0];
+    assert.equal(emitted.tab, bare);
+    assert.equal(emitted.rootId, ROOT_A);
+});
+
 test("search model: notebook filters apply to local tabs before remote layers", () => {
     const tabA = {id: "tab-a", rootId: ROOT_A, title: "项目", notebookId: "box-a", path: "box-a/work/a.sy"};
     const tabB = {id: "tab-b", rootId: ROOT_B, title: "项目", notebookId: "box-b", path: "box-b/work/b.sy"};

@@ -95,7 +95,10 @@ test('production bundle remains within the mobile performance budget when built'
     // accessibility semantics; package.zip remains below the hard ceiling.
     // 2026-09-13 (33): 355 KiB for bounded Agent widget discovery state;
     // package.zip remains below the 300 KiB hard ceiling.
-    const budget = 355 * 1024;
+    // 2026-09-14 (34): 356 KiB for tri-surface search/group input ARIA labels
+    // and the loose keyword gate (matched-item filter latency ~6x lower);
+    // locale archives now ship minified to keep the hard ceiling intact.
+    const budget = 356 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

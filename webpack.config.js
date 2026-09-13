@@ -48,7 +48,10 @@ module.exports = (env, argv) => {
                     {from: "ROADMAP.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "docs/*.svg", to: "./dist/docs/[name][ext]"},
                     {from: "plugin.json", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
-                    {from: "src/i18n/", to: "./dist/i18n/"},
+                    // Ship locale files minified: sources stay pretty for diffs,
+                    // the archive only needs JSON.parse-able content. This buys
+                    // back real bytes against the 300 KiB hard cap.
+                    {from: "src/i18n/", to: "./dist/i18n/", transform: (content) => JSON.stringify(JSON.parse(content.toString("utf8")))},
                 ],
             }),
         );
