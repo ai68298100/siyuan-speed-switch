@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.39-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.40-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,9 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> The current worktree contains unreleased search, widget, Agent, and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters; the widget panel supports third-party read-only modules and Agent discovery mode. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
+> v0.16.40 focuses on widget-store, configuration, and native SiYuan Agent collaboration: the store provides live previews, availability/added filters, provider-unavailable retention and recovery, and one-click filter clearing; the empty widget panel links directly to the store; configuration supports strict date/document validation, reset-to-defaults, and unavailable notebook feedback; Agent widget discovery reports configured/enabled/size state for the current device. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights.
 
-> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 675 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
+> Release note: this version passes type checking, production build, 675 automated tests, and mobile/Chromium UI smoke tests. This is not a release candidate anymore; it is the published `v0.16.40` release. Real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -166,9 +166,16 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-Until manual acceptance is complete, this worktree is a release candidate rather than a published release.
+This version is published as `v0.16.40`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
 
 ## Changelog
+
+### v0.16.40 (2026-09-13)
+
+- Agent widget discovery now reports current-device `configured`, `enabled`, and applied `size` metadata when `moduleId` is omitted, without exposing widget configuration values.
+- Widget store usability and accessibility improvements: one-click clearing for no-result filters, standard `tablist`/`tab`/`aria-selected` semantics, and `aria-pressed` size selection state.
+- Empty-panel and configuration improvements: a direct “Open widget store” CTA, schema-scoped reset-to-defaults, preservation of unknown third-party fields, and safe coordination with asynchronous notebook loading.
+- Release gates and documentation refreshed: 675 automated tests, TypeScript, mobile smoke, and Chromium smoke pass; the production archive remains below the 300 KiB hard limit.
 
 ### v0.16.39 (2026-09-13)
 

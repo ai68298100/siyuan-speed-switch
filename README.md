@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.39-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.40-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,9 +8,9 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> 当前工作树包含尚未发布的搜索、组件、Agent 与 UI 增量：搜索按“已打开页签 → 已打开文档内容 → 全库标题/受限全文”分层执行，并支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；组件面板支持第三方只读模块与 Agent 发现模式；界面采用淡紫主色、浅蓝灰层级、圆角卡片、柔和阴影和少量暖色强调的现代视觉方案。这些改动仍需完成真实桌面、侧栏和 Android 思源验收，不能视为已发布版本。
+> v0.16.40 聚焦组件商店、配置体验与思源智能体协作：商店支持真实预览、可用性/已添加筛选、失效 provider 保留与恢复、空结果一键清除；组件面板空态可直达商店；配置表单支持严格日期/文档校验、恢复默认和失效笔记本提示；Agent 组件发现会返回当前设备的添加/启用/尺寸状态。界面采用淡紫主色、浅蓝灰层级、圆角卡片、柔和阴影和少量暖色强调的现代视觉方案。
 
-> 当前开发策略：继续以小步开发和自动化护栏为主，暂不强行整理为完整发布版本。类型检查、生产构建、675 项测试、移动端与 Chromium UI 烟测已通过；真实设备验收、安装升级卸载和正式发布等待维护者有时间审核，并且不会在用户确认前创建 Tag、Release 或推送。
+> 当前开发策略：本版已通过类型检查、生产构建、675 项自动测试、移动端与 Chromium UI 烟测并完成正式发布；路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
 
 ## 目录
 
@@ -181,9 +181,16 @@ pnpm verify:release
 4. 主题：默认明暗主题、Neo 等第三方主题，以及窗口缩放和旋转后的布局。
 5. 生命周期：安装、升级、卸载、重启后数据迁移，以及 API 失败/取消/权限拒绝。
 
-人工验收完成前，本工作树应视为发布候选而不是正式发布版本。
+本版本已作为 `v0.16.40` 发布；路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍记录为后续兼容性补充。
 
 ## 更新日志
+
+### v0.16.40（2026-09-13）
+
+- Agent 组件发现增强：`home-widget-snapshot` 省略 `moduleId` 时返回当前设备的已添加、启用和应用尺寸状态，仍保持只读且不返回配置值。
+- 组件商店体验增强：无结果时可一键清除搜索/页签筛选；页签补齐 `tablist/tab/aria-selected`，尺寸选择补齐 `aria-pressed`，键盘和读屏反馈更明确。
+- 空面板与配置体验增强：空面板新增直达组件商店按钮；配置表单支持恢复 schema 默认值，同时保留第三方未知配置字段并兼容异步笔记本加载。
+- 发布门禁与文档同步：675 项自动测试、TypeScript、移动端和 Chromium smoke 全部通过，生产包继续低于 300 KiB 硬上限。
 
 ### v0.16.39（2026-09-13）
 
