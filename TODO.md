@@ -347,6 +347,50 @@
   - 证据：`docs/workspace-capability-wiring-plan.md`、ROADMAP、PROGRESS
   - 状态：done（2026-09-14）
 
+- [x] T-326 存储契约清单门禁
+  - 目标：固化 13 个 sw_* key 的唯一登记处与注释、loadData/saveData 仅允许 *_KEY 常量
+  - 证据：`tests/storage-key-audit.test.cjs`；防抖链传递点显式豁免
+  - 状态：done（2026-09-14）
+
+- [x] T-327 存储降级路径白名单
+  - 目标：每个持久化 key 必须登记 sanitize/normalize 降级函数，新增 key 未登记即失败
+  - 证据：同上 3/3；v0.20 存储审计静态前置
+  - 状态：done（2026-09-14）
+
+- [x] T-328 搜索编排基准与 scope 复用优化
+  - 目标：固化第二层扇出/全文请求/三层合并基准；buildOpenedDocumentSearchRequest 支持外部 scope 避免重复解析
+  - 证据：`tests/search-orchestration-perf.test.cjs` 4/4（200 页签 0.14ms、病态上限 2.0ms）；`tests/search-model.test.cjs` 42/42
+  - 状态：done（2026-09-14）
+
+- [x] T-329 第三方组件最小示例
+  - 目标：提供可复制模板并锁定协议白名单，防示例与生产漂移
+  - 证据：`docs/widget-example/`（example-module.js + README）；`tests/widget-example-contract.test.cjs` 4/4
+  - 状态：done（2026-09-14）
+
+- [x] T-330 协议文档补记阶段 1 能力
+  - 目标：workspace-runtime-registry-diagnostics 进入第三方可见的 Agent 章节
+  - 证据：`docs/widget-protocol.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-331 home items 键盘语义审计
+  - 目标：确认组件条目/日历格渲染语义；结论：button 语义已达标，方向键网格导航列后续增强
+  - 证据：`src/home-view.js` items 渲染（button.type=button + focusKey 去重）
+  - 状态：done（2026-09-14）
+
+- [x] T-332 决策 D-221 落档
+  - 证据：`DECISIONS.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-333 状态文档收口
+  - 目标：TODO/PROGRESS/readiness/README 计数同步（97 文件、701 测试、zip 余量 49431 bytes）
+  - 证据：本轮状态文件
+  - 状态：done（2026-09-14）
+
+- [x] T-334 全门禁复跑与本轮提交
+  - 目标：终验后按协议本地提交
+  - 证据：701/701 测试、TSC、移动烟测 69 PASS、Chromium 烟测 3 PASS
+  - 状态：done（2026-09-14）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

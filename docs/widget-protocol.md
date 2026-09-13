@@ -149,6 +149,8 @@ refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
 
 组件注册时声明的 `description`、`sizes`、`protocolVersion`、`configSchema` 和 `refreshOn` 会经过宿主归一化后用于商店和 Agent 发现，非法或超限字段会被安全丢弃。
 
+自 v0.17 起，小驴速切额外注册只读能力 `workspace-runtime-registry-diagnostics`：返回有界的组件运行时计数快照（注册数/会话数/队列游标），无输入、无正文内容、无宿主异常透出；Agent 可用它在诊断对话中确认组件面板的基础设施状态。组件本身的生命周期事件（失效/恢复）不影响该计数以外的任何输出。
+
 ## 点击行为
 
 条目 `value` 交给小驴速切分发，按前缀识别：
