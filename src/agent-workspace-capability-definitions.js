@@ -34,6 +34,23 @@ const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION = 1;
 const MAX_RUNTIME_SESSIONS = 8;
+const WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC = Object.freeze({
+    name: "workspace-runtime-registry-diagnostics",
+    title: "Workspace runtime registry diagnostics",
+    description: "Read-only bounded registry/session lifecycle counters; never returns document content or host exceptions.",
+    inputSchema: Object.freeze({type: "object", properties: {}, additionalProperties: false}),
+    outputSchema: Object.freeze({
+        type: "object",
+        properties: {
+            summary: Object.freeze({type: "object", properties: {ok: {type: "boolean"}, reason: {type: "string", enum: ["ready", "invalid_snapshot", "registry_unavailable"]}, size: {type: "integer", minimum: 0, maximum: 8}, maxSessions: {type: "integer", minimum: 0, maximum: 8}, active: {type: "integer", minimum: 0, maximum: 8}, disposed: {type: "integer", minimum: 0, maximum: 8}, capacityAvailable: {type: "integer", minimum: 0, maximum: 8}}, required: ["ok", "reason", "size", "maxSessions", "active", "disposed", "capacityAvailable"], additionalProperties: false}),
+            registry: Object.freeze({type: "object", properties: {size: {type: "integer", minimum: 0, maximum: 8}, maxSessions: {type: "integer", minimum: 0, maximum: 8}, disposed: {type: "boolean"}}, required: ["size", "maxSessions", "disposed"], additionalProperties: false}),
+            diffQueue: Object.freeze({type: "object", properties: {size: {type: "integer", minimum: 0, maximum: 8}, maxItems: {type: "integer", minimum: 0, maximum: 8}, cursor: {type: "integer", minimum: 0, maximum: 2147483647}, disposed: {type: "boolean"}}, required: ["size", "maxItems", "cursor", "disposed"], additionalProperties: false}),
+            diffCoordinator: Object.freeze({type: "object", properties: {lastCursor: {type: "integer", minimum: 0, maximum: 2147483647}, commits: {type: "integer", minimum: 0, maximum: 32}, disposed: {type: "boolean"}}, required: ["lastCursor", "commits", "disposed"], additionalProperties: false}),
+        },
+        required: ["summary", "registry", "diffQueue", "diffCoordinator"],
+        additionalProperties: false,
+    }),
+});
 
 function normalizeWorkspaceCapabilityHandle(handle) {
     if (typeof handle === "function") return {managed: true, kind: "disposer"};
@@ -807,6 +824,16 @@ function normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(value) {
     });
 }
 
+function createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler(registry, diffQueue = null, diffCoordinator = null) {
+    return function workspaceRuntimeRegistryDiagnosticsHandler(_input = {}) {
+        try {
+            return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(registry, diffQueue, diffCoordinator));
+        } catch (_error) {
+            return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(null);
+        }
+    };
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1029,6 +1056,7 @@ module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
     WORKSPACE_CAPABILITY_NAMES,
+    WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC,
     normalizeWorkspaceCapabilityHandle,
     createWorkspaceCapabilityDefinitions,
     registerWorkspaceCapabilityDefinitions,
@@ -1081,6 +1109,7 @@ module.exports = {
     buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
     normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult,
     normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
+    createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

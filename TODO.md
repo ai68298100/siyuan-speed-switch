@@ -809,6 +809,14 @@
   - 目标：限制联合诊断中的计数、游标、提交次数和稳定 reason
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics`
   - 状态：done
+- [x] T-229 Agent workspace registry diagnostics capability 契约
+  - 目标：定义严格只读、无输入、固定输出上限的 Agent capability spec
+  - 实现：新增 `WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC`
+  - 状态：done
+- [x] T-230 Agent workspace registry diagnostics handler
+  - 目标：将联合诊断安全包装为可注册 handler，隔离宿主异常
+  - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
