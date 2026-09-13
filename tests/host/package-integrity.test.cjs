@@ -19,7 +19,9 @@ test('package.zip, when present, contains only release files', () => {
         return;
     }
     const bytes = fs.statSync(zip).size;
-    assert.ok(bytes <= 300 * 1024, `package.zip is ${bytes} bytes; budget is 307200`);
+    const budget = 300 * 1024;
+    const headroom = budget - bytes;
+    assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${headroom} bytes`);
     const allowed = /^(index\.js|index\.css|icon\.png|preview\.png|README(?:\.en-US)?\.md|ROADMAP\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg)$/;
     const files = filesInZip(zip);
     assert.ok(files.length > 0);
