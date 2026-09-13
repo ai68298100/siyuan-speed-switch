@@ -170,6 +170,7 @@
   "homeStoreTabAdded": "已添加",
   "homeStoreSearch": "搜索组件…",
   "homeStoreNoResults": "没有符合当前筛选条件的组件",
+  "homeStoreClearFilters": "清除筛选",
   "homeStoreGroupJournal": "日记与日程",
   "homeStoreGroupTasks": "任务与清单",
   "homeStoreGroupDocuments": "文档与导航",

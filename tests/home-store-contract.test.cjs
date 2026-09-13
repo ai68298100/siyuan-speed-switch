@@ -58,4 +58,9 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /homeConfigReset/);
     assert.match(source, /sw-home__empty-store/);
     assert.match(source, /homeEmptyOpenStore/);
+    assert.match(source, /tabBar\.setAttribute\("role", "tablist"\)/);
+    assert.match(source, /btn\.setAttribute\("role", "tab"\)/);
+    assert.match(source, /tile\.setAttribute\("aria-pressed"/);
+    assert.match(source, /homeStoreClearFilters/);
+    assert.match(source, /searchInput\.focus\(\)/);
 });

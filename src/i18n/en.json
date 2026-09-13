@@ -170,6 +170,7 @@
   "homeStoreTabAdded": "Added",
   "homeStoreSearch": "Search widgets…",
   "homeStoreNoResults": "No widgets match the current filters",
+  "homeStoreClearFilters": "Clear filters",
   "homeStoreGroupJournal": "Journal & schedule",
   "homeStoreGroupTasks": "Tasks & lists",
   "homeStoreGroupDocuments": "Documents & navigation",

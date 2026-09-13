@@ -30,6 +30,8 @@
 
 补充（2026-09-13）：T-284~T-285 完成。空组件面板新增独立“打开组件商店”CTA，配置表单新增“恢复默认”按钮，仅重置 schema 声明字段并保留未知配置；异步笔记本选项加载与重置状态安全协同。`pnpm test` 674/674 全绿，TypeScript 与生产构建通过；最新产物 `dist/index.js` 361378 bytes、`package.zip` 305399 bytes，raw bundle 自律线校准至 353 KiB。
 
+补充（2026-09-13）：T-286~T-287 完成。组件商店无结果状态新增一键清除搜索/页签筛选；页签采用标准 tablist/tab 语义，尺寸选择同步暴露 `aria-pressed`，键盘与读屏操作反馈更清晰。`pnpm test` 674/674、TypeScript 与生产构建通过；最新产物 `dist/index.js` 362169 bytes、`package.zip` 305564 bytes，raw bundle 自律线校准至 354 KiB。
+
 补充（2026-09-13）：T-271 完成。商店新增“条件”筛选，按 `availability` 精确过滤条件依赖组件，待安装的第三方卡片标记为 external；自动门禁复跑中。
 
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。

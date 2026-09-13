@@ -4299,6 +4299,7 @@ const version = beginSearch(session);
             // 分类与状态 Tab：分类条件和可用性条件保持正交，避免条件组件被分类误过滤。
             const tabBar = document.createElement("div");
             tabBar.className = "sw-home-store__tabs";
+            tabBar.setAttribute("role", "tablist");
             const tabs: Array<{key: string; label: string; category?: string; availability?: string; addedOnly?: boolean}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
                 {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
@@ -4311,12 +4312,18 @@ const version = beginSearch(session);
                 btn.type = "button";
                 btn.className = "sw-home-store__tab" + (tab.key === storeTab ? " is-active" : "");
                 btn.textContent = tab.label;
+                btn.setAttribute("role", "tab");
+                btn.setAttribute("aria-selected", String(tab.key === storeTab));
                 btn.dataset.tabFilter = tab.category || "all";
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
                 if (tab.addedOnly) btn.dataset.tabAdded = "true";
                 btn.addEventListener("click", () => {
                     storeTab = tab.key;
-                    tabBar.querySelectorAll(".sw-home-store__tab").forEach((b) => b.classList.toggle("is-active", b === btn));
+                    tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((b) => {
+                        const active = b === btn;
+                        b.classList.toggle("is-active", active);
+                        b.setAttribute("aria-selected", String(active));
+                    });
                     applyFilter();
                 });
                 tabBar.appendChild(btn);
@@ -4441,10 +4448,13 @@ const version = beginSearch(session);
                         selectedTile = tile;
                         tile.classList.add("is-selected");
                     }
+                    tile.setAttribute("aria-pressed", String(tile === selectedTile));
                     tile.onclick = () => {
                         selectedTile?.classList.remove("is-selected");
+                        selectedTile?.setAttribute("aria-pressed", "false");
                         selectedTile = tile;
                         tile.classList.add("is-selected");
+                        tile.setAttribute("aria-pressed", "true");
                     };
                     tiles.appendChild(tile);
                 });
@@ -4582,7 +4592,25 @@ const version = beginSearch(session);
             filterEmptyState = document.createElement("p");
             filterEmptyState.className = "sw-home-store__filter-empty fn__none";
             filterEmptyState.setAttribute("role", "status");
-            filterEmptyState.textContent = this.i18n.homeStoreNoResults;
+            const emptyText = document.createElement("span");
+            emptyText.textContent = this.i18n.homeStoreNoResults;
+            const clearFilters = document.createElement("button");
+            clearFilters.type = "button";
+            clearFilters.className = "b3-button b3-button--text";
+            clearFilters.textContent = this.i18n.homeStoreClearFilters;
+            clearFilters.addEventListener("click", () => {
+                storeQuery = "";
+                storeTab = "all";
+                searchInput.value = "";
+                tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
+                    const active = button.dataset.tabFilter === "all" && !button.dataset.tabAvailability && !button.dataset.tabAdded;
+                    button.classList.toggle("is-active", active);
+                    button.setAttribute("aria-selected", String(active));
+                });
+                applyFilter();
+                searchInput.focus();
+            });
+            filterEmptyState.append(emptyText, clearFilters);
             root.appendChild(filterEmptyState);
             applyFilter();
         };

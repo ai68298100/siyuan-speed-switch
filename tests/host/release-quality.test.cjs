@@ -91,7 +91,9 @@ test('production bundle remains within the mobile performance budget when built'
     // strict Agent config normalization and notebook/document suggestions.
     // 2026-09-13 (31): 353 KiB for the empty-panel store CTA and schema reset
     // action; package.zip remains below the 300 KiB hard ceiling.
-    const budget = 353 * 1024;
+    // 2026-09-13 (32): 354 KiB for store clear-filters action and tab/size
+    // accessibility semantics; package.zip remains below the hard ceiling.
+    const budget = 354 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

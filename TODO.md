@@ -146,6 +146,16 @@
   - 证据：`src/index.ts`、双语 i18n、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-286 商店无结果恢复入口
+  - 目标：无结果时一键清除搜索、分类、可用性和已添加筛选，并把焦点返回搜索框
+  - 证据：`src/index.ts`、`src/index.scss`、双语 i18n、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-287 商店选择状态可访问性
+  - 目标：为商店页签和尺寸选择补齐标准 ARIA 状态，保持重渲染和筛选后的状态同步
+  - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
