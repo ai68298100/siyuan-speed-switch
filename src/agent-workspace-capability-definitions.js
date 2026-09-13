@@ -941,6 +941,24 @@ function validateWorkspaceCapabilityDiagnosticsSnapshot(value) {
     return {ok: true, version: normalized.version};
 }
 
+function diffWorkspaceCapabilityDiagnosticsSnapshots(previous, current) {
+    const before = normalizeWorkspaceCapabilityDiagnosticsSnapshot(previous);
+    const after = normalizeWorkspaceCapabilityDiagnosticsSnapshot(current);
+    return Object.freeze({definitionsChanged: JSON.stringify(before.definitionLifecycle?.definitions) !== JSON.stringify(after.definitionLifecycle?.definitions), lifecycleChanged: JSON.stringify(before.definitionLifecycle?.lifecycle) !== JSON.stringify(after.definitionLifecycle?.lifecycle), registryChanged: JSON.stringify(before.runtimeRegistry?.registry) !== JSON.stringify(after.runtimeRegistry?.registry), diffQueueChanged: JSON.stringify(before.runtimeRegistry?.diffQueue) !== JSON.stringify(after.runtimeRegistry?.diffQueue), coordinatorChanged: JSON.stringify(before.runtimeRegistry?.diffCoordinator) !== JSON.stringify(after.runtimeRegistry?.diffCoordinator)});
+}
+
+function buildWorkspaceCapabilityDiagnosticsEvents(previous, current) {
+    const diff = diffWorkspaceCapabilityDiagnosticsSnapshots(previous, current);
+    return ["definitions", "lifecycle", "registry", "diffQueue", "coordinator"].filter((type) => diff[`${type}Changed`]).map((type) => ({type, changed: true}));
+}
+
+function normalizeWorkspaceCapabilityDiagnosticsEvents(events) {
+    const order = ["definitions", "lifecycle", "registry", "diffQueue", "coordinator"];
+    const source = Array.isArray(events) ? events : [];
+    const seen = new Set();
+    return order.filter((type) => source.some((event) => event?.type === type) && !seen.has(type) && seen.add(type)).map((type) => ({type, changed: true}));
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1233,6 +1251,9 @@ module.exports = {
     normalizeWorkspaceCapabilityDiagnosticsSnapshot,
     isWorkspaceCapabilityDiagnosticsSnapshotCompatible,
     validateWorkspaceCapabilityDiagnosticsSnapshot,
+    diffWorkspaceCapabilityDiagnosticsSnapshots,
+    buildWorkspaceCapabilityDiagnosticsEvents,
+    normalizeWorkspaceCapabilityDiagnosticsEvents,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

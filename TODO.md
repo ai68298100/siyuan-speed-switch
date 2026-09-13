@@ -885,6 +885,18 @@
   - 目标：拒绝未知版本、定义数量溢出和缺失 registry 摘要的快照
   - 实现：新增 `isWorkspaceCapabilityDiagnosticsSnapshotCompatible` 与 `validateWorkspaceCapabilityDiagnosticsSnapshot`
   - 状态：done
+- [x] T-248 Agent workspace diagnostics snapshot 差异计算
+  - 目标：检测 definitions/lifecycle/registry/diffQueue/coordinator 五类变化
+  - 实现：新增 `diffWorkspaceCapabilityDiagnosticsSnapshots`
+  - 状态：done
+- [x] T-249 Agent workspace diagnostics 变化事件构建
+  - 目标：将诊断快照变化转换为固定顺序、有界事件
+  - 实现：新增 `buildWorkspaceCapabilityDiagnosticsEvents`
+  - 状态：done
+- [x] T-250 Agent workspace diagnostics 事件归一化
+  - 目标：去重未知事件并固定五类事件顺序
+  - 实现：新增 `normalizeWorkspaceCapabilityDiagnosticsEvents`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

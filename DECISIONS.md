@@ -190,3 +190,4 @@
 - D-184 v0.17 capability 注册异常只对外暴露 cancelled/timeout/failed 三类稳定原因；failureStatus 限制总数与分类计数，不回显异常文本或对象。
 - D-185 v0.17 definitions/lifecycle 联合诊断仅输出矩阵计数、宿主可用性、注册数量、句柄类型和失败原因；不纳入 handler、spec 详情、token 或异常对象。
 - D-186 v0.17 统一 diagnostics snapshot 使用独立 version=1 契约；未知版本、定义溢出或缺失 registry 摘要均拒绝消费，避免跨宿主误读状态。
+- D-187 v0.17 diagnostics snapshot diff 仅保留 definitions/lifecycle/registry/diffQueue/coordinator 五类布尔变化，事件固定顺序且去重，不携带具体 session、文档或异常内容。
