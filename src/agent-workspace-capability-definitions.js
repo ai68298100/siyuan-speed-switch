@@ -90,6 +90,17 @@ function createWorkspaceCapabilityDiagnosticsDefinition(registry, diffQueue = nu
     });
 }
 
+function createWorkspaceCapabilityDefinitionsWithDiagnostics(bridge, registry, diffQueue = null, diffCoordinator = null, now = Date.now) {
+    return Object.freeze([
+        ...createWorkspaceCapabilityDefinitions(bridge, now),
+        createWorkspaceCapabilityDiagnosticsDefinition(registry, diffQueue, diffCoordinator),
+    ]);
+}
+
+function normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput(value) {
+    return Object.freeze(value && typeof value === "object" && !Array.isArray(value) ? {} : {});
+}
+
 // Register only the known definitions.  Effects are selected by capability
 // name instead of trusting caller-supplied metadata, preventing a malformed
 // definition from silently downgrading an execution capability to read-only.
@@ -155,9 +166,9 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
         probe() {
             return buildWorkspaceCapabilityProbeSnapshot(host);
         },
-        register() {
+        register(definitionsOverride = null) {
             if (disposed || registrations.length) return registrations.slice();
-            const definitions = createWorkspaceCapabilityDefinitions(bridge, now);
+            const definitions = Array.isArray(definitionsOverride) ? definitionsOverride : createWorkspaceCapabilityDefinitions(bridge, now);
             registrations = registerWorkspaceCapabilityDefinitions(host, definitions, (error, spec) => {
                 failed = Math.min(2, failed + 1);
                 onError(error, spec);
@@ -1080,6 +1091,8 @@ module.exports = {
     normalizeWorkspaceCapabilityHandle,
     createWorkspaceCapabilityDefinitions,
     createWorkspaceCapabilityDiagnosticsDefinition,
+    createWorkspaceCapabilityDefinitionsWithDiagnostics,
+    normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,

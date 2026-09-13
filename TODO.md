@@ -825,6 +825,18 @@
   - 目标：确保新增 diagnostics spec 不引入模块加载时序错误
   - 实现：调整 `WORKSPACE_CAPABILITY_NAMES` 声明顺序并增加直接 require 自检
   - 状态：done
+- [x] T-233 Agent workspace definitions diagnostics 工厂
+  - 目标：一次创建 workspace-plan/execute 与 diagnostics 三项有序定义
+  - 实现：新增 `createWorkspaceCapabilityDefinitionsWithDiagnostics`
+  - 状态：done
+- [x] T-234 Agent workspace diagnostics 输入归一化
+  - 目标：拒绝数组/任意输入字段，保持 diagnostics 无输入契约
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput`
+  - 状态：done
+- [x] T-235 Agent workspace lifecycle 自定义定义注册
+  - 目标：允许独立 diagnostics 定义进入生命周期，同时保持旧调用兼容
+  - 实现：`lifecycle.register(definitionsOverride)` 支持安全注入定义数组
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

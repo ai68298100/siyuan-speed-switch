@@ -183,3 +183,4 @@
 - D-177 v0.17 registry diagnostics capability 先以独立只读契约存在：无输入、固定对象输出、所有计数和游标有上限；handler 异常统一降级，不暴露宿主错误。
 - D-178 v0.17 diagnostics 注册适配器按 canonical spec 名称固定 `localRead=true/localWrite=false/dataEgress=false/externalCost=false`，不信任调用方 effects，且暂不接入生产入口。
 - D-179 v0.17 capability names 在引用 diagnostics spec 前必须完成 spec 初始化；直接模块加载自检作为回归证据，避免生产/测试 require 时触发 TDZ。
+- D-180 v0.17 lifecycle.register 接受可选 definitionsOverride 仅用于独立契约测试/宿主适配；默认路径保持原两项 workspace definitions，避免无意扩大生产注册集合。
