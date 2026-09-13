@@ -65,6 +65,9 @@ function createWorkspaceAgentBridge(options = {}) {
             return removed;
         },
         size() { return plans.size; },
+        status() {
+            return Object.freeze({planCount: plans.size, maxPlans: max, disposed});
+        },
         dispose() {
             if (disposed) return;
             disposed = true;

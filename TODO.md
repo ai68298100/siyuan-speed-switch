@@ -521,3 +521,7 @@
   - 目标：向宿主提供有界注册/失败/销毁状态，便于诊断部分注册失败而不泄露异常
   - 实现：新增 `status()` 返回 `registered/failed/disposed`，失败计数最多 2，继续保留句柄与异常隔离
   - 状态：in-progress
+- [ ] T-155 Agent workspace bridge 状态快照
+  - 目标：提供有界 bridge 运行状态，便于宿主诊断计划容量与销毁态而不暴露敏感数据
+  - 实现：新增 `status()` 返回 `planCount/maxPlans/disposed`，不返回计划、审批令牌或 handler 信息
+  - 状态：in-progress

@@ -266,6 +266,7 @@ test("workspace agent bridge provides bounded plan issue execute lifecycle", asy
     assert.equal(MAX_STORED_PLANS, 32);
     const plan = bridge.plan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
     assert.equal(plan.summary.stepCount, 1);
+    assert.deepEqual(bridge.status(), {planCount: 1, maxPlans: 1, disposed: false});
     const challenge = bridge.issue(plan.planId, "desktop", 1700000000100);
     assert.equal(challenge.planId, plan.planId);
     const preview = bridge.preview(plan.planId, "desktop", 1700000000100);
@@ -282,9 +283,11 @@ test("workspace agent bridge provides bounded plan issue execute lifecycle", asy
     assert.equal(bridge.size(), 1);
     assert.equal(bridge.prune(expiredPlan.expiresAt), 1);
     assert.equal(bridge.size(), 0);
+    assert.deepEqual(bridge.status(), {planCount: 0, maxPlans: 1, disposed: false});
     assert.equal(bridge.prune(expiredPlan.expiresAt + 1), 0);
     bridge.dispose();
     assert.equal(bridge.size(), 0);
+    assert.deepEqual(bridge.status(), {planCount: 0, maxPlans: 1, disposed: true});
     assert.equal(bridge.plan({steps: [{action: "open-document", id: "20260913083002-abcdef"}]}, 1700000000000), null);
     assert.equal(bridge.issue(plan.planId), null);
     assert.equal(bridge.preview(plan.planId), null);
