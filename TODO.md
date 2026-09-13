@@ -474,6 +474,51 @@
   - 证据：全门禁 710/710 + 三 smoke 全绿；zip 257991（余量 49209 bytes）
   - 状态：done（2026-09-14）
 
+- [x] T-359 三端搜索 IME 守卫
+  - 目标：composition（拼音候选中）期间不触发搜索，杜绝中间态请求与错误结果闪现
+  - 实现：`bindSearchInputComposition` 统一接线桌面弹窗/侧栏/手机端三处搜索框；商店过滤为纯前端不接守卫
+  - 证据：移动烟测新增三端接线契约断言；TSC 通过
+  - 状态：done（2026-09-14）
+
+- [x] T-360 焦点可见性审计
+  - 目标：确认 outline:none 处均有替代样式；结论：focus-visible 均配主色边框，达标
+  - 证据：`src/index.scss` 459/594/952 等处
+  - 状态：done（2026-09-14）
+
+- [x] T-361 块 ID 校验单一事实来源
+  - 目标：agent-capabilities 内 4 处 schema pattern 与 2 处运行时正则提取共享常量
+  - 证据：AGENT_BLOCK_ID_PATTERN/RE；agent-outline 84/84 + agent-capabilities 33/33 不变
+  - 状态：done（2026-09-14）
+
+- [x] T-362 runtime dispose 幂等断言
+  - 目标：二次 dispose 无害、dispose 后 handler 仍返回结构完整快照
+  - 证据：`tests/workspace-diagnostics-wiring.test.cjs` 8/8
+  - 状态：done（2026-09-14）
+
+- [x] T-363 runtime 直载自检
+  - 目标：防 re-export 断链——关键导出存在性 + canonical spec 对象身份跨模块共享
+  - 证据：同上
+  - 状态：done（2026-09-14）
+
+- [x] T-364 筛选按钮激活态初始化排查
+  - 目标：排除"打开面板时激活态未初始化"疑点；结论：bindDocSearchFilter 绑定时立即调用 updateButton
+  - 证据：`src/index.ts` 6089
+  - 状态：done（2026-09-14）
+
+- [x] T-365 商店对话框 aria 审计
+  - 目标：确认商店对话框可访问性；结论：走思源 Dialog 标准结构，宿主管 aria，无需重复声明
+  - 证据：`src/index.ts` openHomeWidgetStore
+  - 状态：done（2026-09-14）
+
+- [x] T-366 决策 D-224 落档
+  - 证据：`DECISIONS.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-367 状态收口与提交
+  - 目标：TODO/PROGRESS/readiness/README 同步（712 项测试）并按协议提交
+  - 证据：全门禁 712/712 + 三 smoke 全绿；zip 258125（余量 49075 bytes）
+  - 状态：done（2026-09-14）
+
 ## 待维护者决策
 
 - [ ] T-350 收藏/置顶/分组列表容量上限值
