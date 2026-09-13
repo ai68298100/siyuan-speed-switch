@@ -155,6 +155,7 @@
   "homeStoreRequires": "Requires the {plugin} plugin",
   "homeStoreAvailabilityConditional": "Conditional",
   "homeStoreAvailabilityExternal": "External plugin",
+  "homeStoreConditionalHint": "Before first use, check the data or protocol prerequisites in the component description",
   "homeStoreTabAll": "All",
   "homeStoreTabBuiltin": "Built-in",
   "homeStoreTabPlugin": "Plugins",

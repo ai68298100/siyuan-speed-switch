@@ -4628,6 +4628,11 @@
     margin-left: auto;
 }
 
+.sw-home-store__configure {
+    min-height: 28px;
+    padding-inline: 8px;
+}
+
 // ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================
 .speed-switch.sw--sidebar .sw__toolbar {
     gap: 6px;

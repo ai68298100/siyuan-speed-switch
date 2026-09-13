@@ -155,6 +155,7 @@
   "homeStoreRequires": "需安装「{plugin}」插件后可用",
   "homeStoreAvailabilityConditional": "条件可用",
   "homeStoreAvailabilityExternal": "外部插件",
+  "homeStoreConditionalHint": "首次使用前请确认组件描述中的数据或协议前置条件",
   "homeStoreTabAll": "全部",
   "homeStoreTabBuiltin": "内置",
   "homeStoreTabPlugin": "插件",

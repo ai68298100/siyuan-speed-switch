@@ -20,4 +20,9 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /listModules\(device\)\.forEach/);
     assert.match(source, /sw-home-store__group/);
     assert.match(source, /grid\.classList\.toggle\("fn__none", !visible\)/);
+    assert.match(source, /!added && def\.availability === "conditional"/);
+    assert.match(source, /homeStoreConditionalHint/);
+    assert.match(source, /addedInstance && Array\.isArray\(def\.configSchema\)/);
+    assert.match(source, /sw-home-store__configure/);
+    assert.match(source, /openHomeConfigForm\(addedInstance, def\.configSchema/);
 });

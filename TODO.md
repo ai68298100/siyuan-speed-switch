@@ -86,6 +86,16 @@
   - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-274 条件组件首次添加引导
+  - 目标：首次添加 `conditional` 组件时给出一次性前置条件提示，后续尺寸调整不重复打扰
+  - 证据：`src/index.ts`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-275 商店卡片配置入口
+  - 目标：已添加且声明 `configSchema` 的组件在商店卡片直接提供“配置”入口，减少用户回到面板编辑模式寻找设置的成本
+  - 范围：复用既有安全配置表单；保存后刷新商店与首页，不改变尺寸选择和添加按钮语义
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

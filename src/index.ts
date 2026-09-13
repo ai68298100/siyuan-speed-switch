@@ -4119,9 +4119,13 @@ const version = beginSearch(session);
             root.innerHTML = "";
             const state = this.getHomeState();
             const instanceByModule = new Map<string, any>();
+            const instanceStateByModule = new Map<string, any>();
             ((state.layouts[device] || []) as Array<any>).forEach((entry) => {
                 const inst = state.instances.find((candidate: any) => candidate.instanceId === entry.instanceId);
-                if (inst) instanceByModule.set(inst.moduleId, entry);
+                if (inst) {
+                    instanceByModule.set(inst.moduleId, entry);
+                    instanceStateByModule.set(inst.moduleId, inst);
+                }
             });
 
             const defs = new Map<string, any>();
@@ -4234,6 +4238,7 @@ const version = beginSearch(session);
                 card.dataset.availability = def.availability || "ready";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const added = instanceByModule.get(moduleId);
+                const addedInstance = instanceStateByModule.get(moduleId);
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
@@ -4322,10 +4327,27 @@ const version = beginSearch(session);
                     }
                     next.layouts[device] = layoutList;
                     this.saveHomeState(next);
+                    if (!added && def.availability === "conditional") {
+                        showMessage(`${def.title || moduleId}：${this.i18n.homeStoreConditionalHint}`);
+                    }
                     renderStore();
                     onChanged();
                 };
                 tiles.appendChild(addButton);
+                if (addedInstance && Array.isArray(def.configSchema) && def.configSchema.length > 0) {
+                    const configButton = document.createElement("button");
+                    configButton.type = "button";
+                    configButton.className = "b3-button b3-button--text sw-home-store__configure";
+                    configButton.textContent = this.i18n.homeConfig;
+                    configButton.setAttribute("aria-label", `${this.i18n.homeConfig} · ${def.title || moduleId}`);
+                    configButton.onclick = () => {
+                        this.openHomeConfigForm(addedInstance, def.configSchema, () => {
+                            renderStore();
+                            onChanged();
+                        });
+                    };
+                    tiles.appendChild(configButton);
+                }
                 const previewButton = document.createElement("button");
                 previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
                 previewButton.textContent = this.i18n.homeStorePreview;
