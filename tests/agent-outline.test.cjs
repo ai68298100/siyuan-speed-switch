@@ -5,6 +5,7 @@ const {
     flattenOutline,
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
+const {WORKSPACE_PLAN_SPEC, buildWorkspacePlan, isWorkspacePlanExpired} = require('../src/agent-workspace-plan.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -31,6 +32,31 @@ test("document-context groundwork keeps a bounded read-only contract", () => {
         headings: [{id: "20260913083001-aaaaaaa", title: "第一章", depth: 0}],
     });
     assert.equal(Object.hasOwn(context, "markdown"), false);
+});
+
+test("workspace-plan is a dry-run contract with fixed actions and expiry", () => {
+    assert.equal(WORKSPACE_PLAN_SPEC.name, "workspace-plan");
+    assert.deepEqual(WORKSPACE_PLAN_SPEC.inputSchema.required, ["steps"]);
+    assert.equal(WORKSPACE_PLAN_SPEC.inputSchema.properties.steps.maxItems, 8);
+    assert.match(WORKSPACE_PLAN_SPEC.description, /不执行/);
+    const plan = buildWorkspacePlan({
+        ttlMs: 99999999,
+        steps: [
+            {action: "open-document", id: "20260913083000-abcdef"},
+            {action: "update-task-status", id: "20260913083001-abcdef", done: true},
+            {action: "open-documents", ids: ["20260913083002-abcdef", "bad", "20260913083002-abcdef"]},
+            {action: "drop-private-action"},
+        ],
+    }, 1700000000000);
+    assert.equal(plan.steps.length, 3);
+    assert.equal(plan.requiresConfirmation, true);
+    assert.equal(plan.requiresWrite, true);
+    assert.equal(plan.steps[1].done, true);
+    assert.deepEqual(plan.steps[2].ids, ["20260913083002-abcdef"]);
+    assert.equal(plan.expiresAt - plan.createdAt, 600000);
+    assert.equal(isWorkspacePlanExpired(plan, plan.createdAt + 599999), false);
+    assert.equal(isWorkspacePlanExpired(plan, plan.expiresAt), true);
+    assert.equal(buildWorkspacePlan({steps: []}, 1700000000000).requiresConfirmation, false);
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {
