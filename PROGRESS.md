@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-13）：T-241~T-242 增加注册失败原因归一化/lifecycle failureStatus，以及 definitions 矩阵 diagnostics 摘要；654/654 测试、TypeScript 与 diff 检查通过。
+
 补充（2026-09-13）：T-239~T-240 增加 capability definitions 批量矩阵校验，并以独立 `handleStatus()` 暴露 opaque/invalid 句柄计数，保持既有 runtime snapshot 兼容；652/652 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-237~T-238 增加 capability schema 矩阵校验与 lifecycle opaque/invalid 句柄统计；652/652 测试、TypeScript 与 diff 检查通过。

@@ -123,6 +123,13 @@ function validateWorkspaceCapabilityDefinitions(definitions) {
     return Object.freeze({ok: results.length === source.length && results.every((result) => result.ok) && unique.size === names.length, total: results.length, valid: results.filter((result) => result.ok).length, invalid: results.filter((result) => !result.ok).length, duplicate: names.length - unique.size, results: results.map((result) => ({ok: result.ok, name: result.name || "", reason: result.reason || "ready"}))});
 }
 
+function normalizeWorkspaceCapabilityRegistrationFailureReason(error) {
+    const name = typeof error?.name === "string" ? error.name : "";
+    if (name === "AbortError" || name === "ABORT_ERR") return "cancelled";
+    if (name === "TimeoutError" || name === "TIMEOUT_ERR") return "timeout";
+    return "failed";
+}
+
 // Register only the known definitions.  Effects are selected by capability
 // name instead of trusting caller-supplied metadata, preventing a malformed
 // definition from silently downgrading an execution capability to read-only.
@@ -176,6 +183,7 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
     let unmanaged = 0;
     let opaque = 0;
     let invalid = 0;
+    const failureReasons = {cancelled: 0, timeout: 0, failed: 0};
     return Object.freeze({
         probe() {
             return buildWorkspaceCapabilityProbeSnapshot(host);
@@ -185,6 +193,8 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
             const definitions = Array.isArray(definitionsOverride) ? definitionsOverride : createWorkspaceCapabilityDefinitions(bridge, now);
             registrations = registerWorkspaceCapabilityDefinitions(host, definitions, (error, spec) => {
                 failed = Math.min(2, failed + 1);
+                const reason = normalizeWorkspaceCapabilityRegistrationFailureReason(error);
+                failureReasons[reason] = Math.min(8, failureReasons[reason] + 1);
                 onError(error, spec);
             });
             unmanaged = registrations.reduce((count, handle) => count + (normalizeWorkspaceCapabilityHandle(handle).managed ? 0 : 1), 0);
@@ -204,6 +214,7 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
         },
         size() { return registrations.length; },
         handleStatus() { return Object.freeze({opaque, invalid}); },
+        failureStatus() { return Object.freeze({total: Math.min(8, failed), byReason: Object.freeze({...failureReasons})}); },
         status() {
             return Object.freeze({registered: registrations.length, failed, unmanaged, disposed});
         },
@@ -883,6 +894,11 @@ function createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler(regis
     };
 }
 
+function buildWorkspaceCapabilityDefinitionsDiagnostics(definitions) {
+    const matrix = validateWorkspaceCapabilityDefinitions(definitions);
+    return Object.freeze({ok: matrix.ok, total: matrix.total, valid: matrix.valid, invalid: matrix.invalid, duplicate: matrix.duplicate});
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1114,6 +1130,7 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput,
     validateWorkspaceCapabilityDefinition,
     validateWorkspaceCapabilityDefinitions,
+    normalizeWorkspaceCapabilityRegistrationFailureReason,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,
@@ -1165,6 +1182,7 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult,
     normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
     createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler,
+    buildWorkspaceCapabilityDefinitionsDiagnostics,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

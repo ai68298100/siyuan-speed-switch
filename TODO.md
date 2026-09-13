@@ -857,6 +857,14 @@
   - 目标：保留既有 runtime snapshot schema，同时提供独立 opaque/invalid 句柄统计入口
   - 实现：新增 lifecycle `handleStatus()`，避免破坏现有快照兼容
   - 状态：done
+- [x] T-241 Agent workspace capability 注册失败原因分类
+  - 目标：将 Abort/Timeout/普通异常归一化为稳定取消/超时/失败原因
+  - 实现：新增 `normalizeWorkspaceCapabilityRegistrationFailureReason` 与 lifecycle `failureStatus()`
+  - 状态：done
+- [x] T-242 Agent workspace definitions diagnostics 摘要
+  - 目标：将批量定义矩阵压缩为可供 UI/Agent 消费的有界统计
+  - 实现：新增 `buildWorkspaceCapabilityDefinitionsDiagnostics`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

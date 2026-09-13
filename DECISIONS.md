@@ -187,3 +187,4 @@
 - D-181 v0.17 capability 注册统一先经 `validateWorkspaceCapabilityDefinition`，按 canonical spec 推导 effects；未知定义/非函数 handler 静默跳过，不进入 Agent 注册通道。
 - D-182 v0.17 lifecycle 将 host 返回句柄分为 managed/opaque/invalid 三类计数；仅用于有界诊断，不影响注册成功语义或向 Agent 暴露句柄详情。
 - D-183 v0.17 不把 opaque/invalid 字段直接加入既有 runtime snapshot，避免破坏已验证的 v1 快照契约；通过 `handleStatus()` 独立读取，后续版本再评估 schema 升级。
+- D-184 v0.17 capability 注册异常只对外暴露 cancelled/timeout/failed 三类稳定原因；failureStatus 限制总数与分类计数，不回显异常文本或对象。
