@@ -445,3 +445,7 @@
   - 目标：拒绝“completed 但缺少关键结果”的假成功，让 Agent 回执反映真实动作结果
   - 实现：`validateWorkspaceActionPostcondition` 要求打开/更新/创建/追加动作返回合法目标或结果；恢复文档集保留无 ID 的完成语义
   - 状态：in-progress
+- [ ] T-136 Agent 工作区计划结构完整性校验
+  - 目标：在审批和执行前验证步骤索引、动作白名单、写权限标记、目标数量与任务状态字段，阻止结构篡改进入 handler
+  - 实现：`validateWorkspacePlan` 接入 `runWorkspacePlan`，非法计划统一失败且不调用步骤执行器
+  - 状态：in-progress

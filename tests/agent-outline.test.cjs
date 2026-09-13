@@ -5,7 +5,7 @@ const {
     flattenOutline,
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
-const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
+const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, validateWorkspacePlan, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
 const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, validateWorkspaceActionPostcondition, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
@@ -107,6 +107,19 @@ test("workspace plan runner requires approval and isolates cancellation", async 
     const failed = await runWorkspacePlan(plan, {approved: true, now: 1700000000100});
     assert.equal(failed.status, "failed");
     assert.equal(failed.failed[0].reason, "executor_missing");
+});
+
+test("workspace plan validation rejects tampered structure before execution", async () => {
+    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    assert.deepEqual(validateWorkspacePlan(plan), {ok: true});
+    const tampered = {...plan, steps: [{...plan.steps[0], index: 1}]};
+    assert.equal(validateWorkspacePlan(tampered).reason, "invalid_step");
+    const wrongWrite = {...plan, steps: [{...plan.steps[0], requiresWrite: true}]};
+    assert.equal(validateWorkspacePlan(wrongWrite).reason, "invalid_step");
+    let calls = 0;
+    const receipt = await runWorkspacePlan(tampered, {approved: true, runStep: async () => { calls += 1; return {status: "completed", id: "20260913083000-abcdef"}; }});
+    assert.equal(receipt.status, "failed");
+    assert.equal(calls, 0);
 });
 
 test("workspace action adapter dispatches only normalized fixed actions", async () => {

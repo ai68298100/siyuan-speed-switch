@@ -142,6 +142,19 @@ function isWorkspacePlanExpired(plan, now = Date.now()) {
     return !plan || !Number.isFinite(now) || Math.floor(now) >= Number(plan.expiresAt);
 }
 
+function validateWorkspacePlan(plan) {
+    if (!plan || typeof plan !== "object" || typeof plan.planId !== "string" || !Array.isArray(plan.steps) || plan.steps.length > MAX_PLAN_STEPS) return {ok: false, reason: "invalid_plan"};
+    for (let index = 0; index < plan.steps.length; index += 1) {
+        const step = plan.steps[index];
+        if (!step || step.index !== index || !PLAN_ACTIONS.includes(step.action) || step.requiresWrite !== WRITE_ACTIONS.includes(step.action)) return {ok: false, reason: "invalid_step"};
+        if ((step.action === "open-document" || step.action === "update-task-status") && (!Array.isArray(step.ids) || step.ids.length !== 1 || !normalizeAgentDocumentId(step.ids[0]))) return {ok: false, reason: "invalid_target"};
+        if (step.action === "open-documents" && (!Array.isArray(step.ids) || !step.ids.length || step.ids.length > 5 || normalizeAgentDocumentIds(step.ids, 5).length !== step.ids.length)) return {ok: false, reason: "invalid_targets"};
+        if (step.action === "restore-document-set" && (typeof step.setId !== "string" || !step.setId.trim())) return {ok: false, reason: "invalid_set"};
+        if (step.action === "update-task-status" && typeof step.done !== "boolean") return {ok: false, reason: "invalid_done"};
+    }
+    return {ok: true};
+}
+
 function buildWorkspaceReceipt(plan, results, now = Date.now(), forcedStatus = "") {
     const source = Array.isArray(results) ? results : [];
     const completed = [], skipped = [], cancelled = [], failed = [];
@@ -163,7 +176,8 @@ function buildWorkspaceReceipt(plan, results, now = Date.now(), forcedStatus = "
 // 执行状态机只依赖注入的 runStep，不接触思源 API；宿主接入时可复用同一套取消/过期语义。
 async function runWorkspacePlan(plan, options = {}) {
     const now = () => typeof options.now === "function" ? Number(options.now()) : Number(options.now || Date.now());
-    if (!plan || !Array.isArray(plan.steps)) return buildWorkspaceReceipt({planId: "", steps: []}, [], now(), "failed");
+    const structure = validateWorkspacePlan(plan);
+    if (!structure.ok) return buildWorkspaceReceipt({planId: typeof plan?.planId === "string" ? plan.planId : "", steps: []}, [], now(), "failed");
     if (isWorkspacePlanExpired(plan, now())) return buildWorkspaceReceipt(plan, [], now(), "expired");
     if (options.approved !== true) return buildWorkspaceReceipt(plan, [], now(), "denied");
     const results = [];
@@ -210,4 +224,4 @@ function makePlanId(createdAt, steps) {
     return `wp-${createdAt.toString(36)}-${hash.toString(36)}`.slice(0, 32);
 }
 
-module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan};
+module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, validateWorkspacePlan, buildWorkspaceReceipt, runWorkspacePlan};
