@@ -132,3 +132,4 @@
 - D-126 v0.17 capability lifecycle facade 采用一次注册、不可逆 dispose 语义；注册句柄仅保存在内存，重复 register 返回副本，不重新调用宿主，避免卸载竞态和重复 capability。
 - D-127 v0.17 lifecycle `status()` 仅暴露 registered/failed/disposed 三个有界字段；失败计数上限为 2，不返回 capability 名称、异常文本或句柄详情，避免诊断通道扩大信息面。
 - D-128 v0.17 bridge `status()` 仅暴露 planCount/maxPlans/disposed；计划内容、审批令牌和 handler 仍不可见，便于宿主诊断容量而不扩大 Agent 数据面。
+- D-129 v0.17 workspace capability 宿主探测只检查 `addAgentCapability` 函数存在性，不通过试注册探测；结果统一为 ready/unavailable/timeout/cancelled/failed，避免探测产生副作用。

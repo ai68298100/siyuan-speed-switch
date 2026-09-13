@@ -19,6 +19,7 @@ const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.j
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
 const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle} = require('../src/agent-workspace-capability-definitions.js');
+const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -406,6 +407,17 @@ test("workspace capability lifecycle reports bounded partial registration failur
     assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, disposed: false});
     assert.equal(errors.length, 1);
     assert.equal(lifecycle.register().length, 1);
+});
+
+test("workspace capability host probe stays stable and side-effect free", () => {
+    assert.deepEqual(PROBE_REASONS, ["ready", "unavailable", "timeout", "cancelled", "failed"]);
+    assert.deepEqual(probeWorkspaceCapabilityHost({addAgentCapability: () => true}), {ok: true, reason: "ready"});
+    assert.deepEqual(probeWorkspaceCapabilityHost({}), {ok: false, reason: "unavailable"});
+    assert.deepEqual(normalizeWorkspaceCapabilityProbeOutcome({kind: "timeout"}), {ok: false, reason: "timeout"});
+    assert.deepEqual(normalizeWorkspaceCapabilityProbeOutcome({kind: "cancelled"}), {ok: false, reason: "cancelled"});
+    assert.deepEqual(normalizeWorkspaceCapabilityProbeOutcome({kind: "unknown", message: "secret"}), {ok: false, reason: "failed"});
+    assert.deepEqual(buildWorkspaceCapabilityProbeSnapshot({}), {available: false, reason: "unavailable"});
+    assert.deepEqual(buildWorkspaceCapabilityProbeSnapshot({addAgentCapability: () => true}, {kind: "ready"}), {available: true, reason: "ready"});
 });
 
 test("workspace plan summary exposes counts without content", () => {

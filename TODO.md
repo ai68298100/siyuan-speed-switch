@@ -525,3 +525,7 @@
   - 目标：提供有界 bridge 运行状态，便于宿主诊断计划容量与销毁态而不暴露敏感数据
   - 实现：新增 `status()` 返回 `planCount/maxPlans/disposed`，不返回计划、审批令牌或 handler 信息
   - 状态：in-progress
+- [ ] T-156 Agent workspace capability 宿主探测
+  - 目标：在正式注册前判断宿主是否支持 addAgentCapability，并统一 unavailable/timeout/cancelled/failed 状态
+  - 实现：新增独立 `src/agent-workspace-probe.js`，只做能力存在性检查与稳定快照，不调用注册副作用
+  - 状态：in-progress
