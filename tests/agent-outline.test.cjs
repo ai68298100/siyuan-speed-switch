@@ -12,6 +12,8 @@ const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGat
 const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
 const {createWorkspaceApprovalChallenge, validateWorkspaceApprovalChallenge} = require('../src/agent-workspace-approval.js');
 const {createNavigationActionHandlers} = require('../src/agent-host-actions.js');
+const {createDocumentSetRestoreHandler} = require('../src/agent-document-set-actions.js');
+const {createDocumentSet} = require('../src/document-sets.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -161,6 +163,27 @@ test("navigation host adapter opens single and batch documents with cancellation
     const signal = {aborted: true};
     assert.deepEqual(await handlers.openDocument({id: "20260913083003-abcdef"}, {signal}), {status: "cancelled", reason: "open_failed"});
     assert.deepEqual(opened, ["20260913083000-abcdef", "20260913083001-abcdef", "20260913083002-abcdef"]);
+});
+
+test("document-set restore adapter preserves order, skips opened and respects cancellation", async () => {
+    const set = createDocumentSet("项目", [
+        {rootId: "20260913083000-abcdef", title: "一", index: 0},
+        {rootId: "20260913083001-abcdef", title: "二", index: 1},
+        {rootId: "20260913083002-abcdef", title: "三", index: 2},
+    ], {now: 1700000000000, setId: "set-project"});
+    const opened = [];
+    const handler = createDocumentSetRestoreHandler({
+        getSet: async () => set,
+        getOpenedIds: () => ["20260913083001-abcdef"],
+        probeEntries: async (entries) => entries.map((entry) => entry.rootId),
+        openDocument: async (id) => { opened.push(id); return true; },
+    });
+    assert.deepEqual(await handler({setId: "set-project"}), {status: "completed"});
+    assert.deepEqual(opened, ["20260913083000-abcdef", "20260913083002-abcdef"]);
+    const cancelled = await handler({setId: "set-project"}, {signal: {aborted: true}});
+    assert.deepEqual(cancelled, {status: "cancelled"});
+    const missing = createDocumentSetRestoreHandler({getSet: async () => null, openDocument: async () => true});
+    assert.deepEqual(await missing({setId: "set-project"}), {status: "failed", reason: "set_not_found"});
 });
 
 test("workspace plan summary exposes counts without content", () => {

@@ -453,3 +453,7 @@
   - 目标：将现有桌面/移动文档打开 API 封装为计划执行 handler，支持单篇、批量、旧宿主回退和取消信号
   - 实现：新增独立 `src/agent-host-actions.js`，复用 `document-actions`；批量打开保持顺序并返回逐项 opened/failed
   - 状态：in-progress
+- [ ] T-138 Agent 文档集恢复宿主适配器
+  - 目标：将现有文档集预检/恢复逻辑封装为计划 handler，复用顺序、已打开跳过、缺失探测和取消语义
+  - 实现：新增独立 `src/agent-document-set-actions.js`，宿主注入集合查询、可用性探测和打开回调；无集合/全缺失/全失败返回稳定原因
+  - 状态：in-progress

@@ -115,3 +115,4 @@
 - D-109 v0.17 动作结果采用 postcondition 兜底：打开文档、更新任务必须回显合法 ID，创建/追加必须回显新文档 ID，批量打开至少有 opened/failed 一项；缺失关键结果统一降级为 missing_result，避免向 Agent 报告假成功。
 - D-110 v0.17 计划结构校验在审批/执行前完成，要求索引连续、动作与 requiresWrite 一致、目标字段符合各动作上限；任何篡改统一失败且不调用 handler，避免依赖 digest 之外的隐式结构假设。
 - D-111 v0.17 首个真实宿主 adapter 只接入导航动作；复用现有桌面/移动打开文档兼容层，批量按输入顺序串行执行并尊重 AbortSignal，写入动作仍等待独立审批与宿主验证。
+- D-112 v0.17 文档集恢复 adapter 复用既有 `planDocumentSetRestore`/`runDocumentSetRestore`，宿主只注入集合查询、可用性探测和打开回调；已打开项跳过、全缺失和取消均不伪造成功，不读取正文。
