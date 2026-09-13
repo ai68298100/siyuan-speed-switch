@@ -129,6 +129,22 @@ test("home controller drops focus key when the focused item disappears", async (
     controller.dispose();
 });
 
+test("home controller preserves transient scroll position across async replacement", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "scroll", title: "Scroll"},
+        read: async () => ({ok: true, snapshot: {items: [{label: "Item", value: "item"}]}}),
+    });
+    await controller.refresh();
+    container.scrollTop = 144;
+    await controller.refresh();
+    assert.equal(container.scrollTop, 144);
+    controller.dispose();
+});
+
 test("home controller keeps focus keys unique when values overlap with generated suffixes", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
     const container = dom.window.document.querySelector("#mount");

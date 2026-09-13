@@ -212,6 +212,11 @@
   - 实现：月历导航和有日记日期统一 button 语义、28px 触控热区与 focus-visible 焦点环；减弱动态效果时关闭日历过渡
   - 验收：结构 smoke、12 项 home-view 测试、TypeScript 与完整发布门禁通过
   - 状态：done（2026-09-13）
-- [ ] T-077 首页状态恢复与焦点连续性
+- [x] T-077 首页状态恢复与焦点连续性
   - 目标：面板刷新、翻月和可见性恢复时保留当前模块焦点与滚动上下文，避免异步替换造成键盘位置跳变
-  - 状态：queued（优先复用现有 focusKey 机制，不新增持久化滚动位置）
+  - 实现：异步刷新替换模块 DOM 前暂存 `scrollTop`，替换后恢复；继续复用 `focusKey`，滚动位置仅存在于当前控制器生命周期
+  - 验收：13 项 home-controller 测试、TypeScript 与 `pnpm verify:release` 全绿
+  - 状态：done（2026-09-13）
+- [ ] T-078 首页加载状态的低动效骨架
+  - 目标：为首开骨架增加稳定高度与轻量 shimmer，`prefers-reduced-motion` 下退化为静态占位，降低布局跳动
+  - 状态：queued（先评估 CSS 体积与主题变量复用）

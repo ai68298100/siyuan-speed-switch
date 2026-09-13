@@ -12,6 +12,7 @@ function createHomeModuleController(options = {}) {
     let disposed = false;
     let activeController = null;
     let pendingFocusKey = null;
+    let pendingScrollTop = null;
     let currentView = buildHomeModuleView(module, {loading: true}, {collapsed: options.collapsed === true});
 
     function toggle() {
@@ -25,6 +26,9 @@ function createHomeModuleController(options = {}) {
     function render(view) {
         if (disposed || !view) return null;
         const active = documentRef.activeElement;
+        if (Number.isFinite(container.scrollTop) && container.scrollTop > 0) {
+            pendingScrollTop = container.scrollTop;
+        }
         const containsActive = typeof container.contains === "function" && container.contains(active);
         if (active && containsActive && active.dataset?.focusKey) {
             pendingFocusKey = active.dataset.focusKey;
@@ -42,6 +46,10 @@ function createHomeModuleController(options = {}) {
         if (!element) return null;
         while (container.firstChild) container.removeChild(container.firstChild);
         container.appendChild(element);
+        if (pendingScrollTop !== null) {
+            try { container.scrollTop = pendingScrollTop; } catch (_) { /* minimal host container */ }
+            pendingScrollTop = null;
+        }
         if (pendingFocusKey) {
             const focusTarget = Array.from(element.querySelectorAll("[data-focus-key]"))
                 .find((candidate) => candidate.dataset.focusKey === pendingFocusKey);
