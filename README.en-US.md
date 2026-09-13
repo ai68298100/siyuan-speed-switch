@@ -148,6 +148,8 @@ Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.
 
 ## Release Checklist
 
+See the [release readiness matrix](docs/release-readiness.md) for the current candidate status, automated gates, and remaining real-host checks.
+
 Run the fixed local gate before manual acceptance:
 
 ```bash
