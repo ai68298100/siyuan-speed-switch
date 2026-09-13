@@ -15,6 +15,7 @@ const {createNavigationActionHandlers} = require('../src/agent-host-actions.js')
 const {createDocumentSetRestoreHandler} = require('../src/agent-document-set-actions.js');
 const {createDocumentSet} = require('../src/document-sets.js');
 const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
+const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -205,6 +206,28 @@ test("write action adapters validate payloads and return stable IDs", async () =
     assert.deepEqual(denied, {status: "cancelled"});
     const missing = createWriteActionHandlers({});
     assert.deepEqual(await missing.createDocument({notebook: "x", title: "y"}), {status: "failed", reason: "handler_missing"});
+});
+
+test("workspace host registry composes all six fixed action handlers", async () => {
+    const opened = [];
+    const handlers = createWorkspaceHostHandlers({
+        navigation: {isMobile: false, app: {}, openTab: async ({doc}) => opened.push(doc.id)},
+        documentSet: {getSet: async () => null, openDocument: async () => true},
+        write: {
+            readTask: async () => ({markdown: "- [ ] task"}),
+            updateBlock: async () => true,
+            createDocument: async () => ({docId: "20260913083002-abcdef"}),
+            notebook: "20260913083000-boxbox",
+            ensureJournal: async () => "20260913083003-abcdef",
+            appendBlock: async () => true,
+        },
+    });
+    assert.deepEqual(Object.keys(handlers).sort(), ["appendToJournal", "createDocument", "openDocument", "openDocuments", "restoreDocumentSet", "updateTaskStatus"]);
+    const execute = createWorkspaceActionExecutor(handlers);
+    assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed", id: "20260913083000-abcdef"});
+    assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "completed", id: "20260913083001-abcdef", done: true});
+    assert.deepEqual(await execute({action: "create-document", notebook: "20260913083000-boxbox", title: "新建"}), {status: "completed", docId: "20260913083002-abcdef"});
+    assert.equal(opened.length, 1);
 });
 
 test("workspace plan summary exposes counts without content", () => {

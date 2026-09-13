@@ -117,3 +117,4 @@
 - D-111 v0.17 首个真实宿主 adapter 只接入导航动作；复用现有桌面/移动打开文档兼容层，批量按输入顺序串行执行并尊重 AbortSignal，写入动作仍等待独立审批与宿主验证。
 - D-112 v0.17 文档集恢复 adapter 复用既有 `planDocumentSetRestore`/`runDocumentSetRestore`，宿主只注入集合查询、可用性探测和打开回调；已打开项跳过、全缺失和取消均不伪造成功，不读取正文。
 - D-113 v0.17 写入动作 adapter 只负责参数清洗和内核回调编排，不自行弹确认；任务更新复用 `flipTaskMarkdown` 仅改勾选标记，创建/追加必须以合法文档 ID 作为成功 postcondition，取消在每次内核调用前后检查。
+- D-114 v0.17 宿主 handler 通过统一 registry 按 navigation/documentSet/write 三域注入；registry 只暴露六个固定动作键并冻结，避免执行器意外发现或调用额外插件方法。

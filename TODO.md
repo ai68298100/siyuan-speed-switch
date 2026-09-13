@@ -461,3 +461,7 @@
   - 目标：把任务更新、新建文档、追加今日日记封装为可注入 handler，统一校验载荷、取消语义和 postcondition
   - 实现：新增独立 `src/agent-write-actions.js`；内核调用由宿主注入，任务仅改勾选标记，创建/追加必须回传合法文档 ID
   - 状态：in-progress
+- [ ] T-140 Agent 工作区宿主 handler registry
+  - 目标：将导航、文档集恢复和写入三组 adapter 组合为统一六动作 registry，直接供计划执行器消费
+  - 实现：新增独立 `src/agent-workspace-registry.js`，各组回调分域注入并冻结输出键集合；不捕获 Plugin/DOM 状态
+  - 状态：in-progress
