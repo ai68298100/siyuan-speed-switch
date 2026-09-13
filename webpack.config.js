@@ -42,8 +42,10 @@ module.exports = (env, argv) => {
             new CopyPlugin({
                 patterns: [
                     ...packageImagePatterns,
-                    {from: "README*.md", to: "./dist/"},
-                    {from: "ROADMAP.md", to: "./dist/"},
+                    // Normalize documentation line endings at the copy boundary so
+                    // Windows and Ubuntu release runners produce identical archives.
+                    {from: "README*.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
+                    {from: "ROADMAP.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "docs/*.svg", to: "./dist/docs/[name][ext]"},
                     {from: "plugin.json", to: "./dist/"},
                     {from: "src/i18n/", to: "./dist/i18n/"},

@@ -34,6 +34,8 @@
 
 补充（2026-09-13）：T-288 完成。Agent `home-widget-snapshot` 的发现模式现在返回当前设备的组件添加、启用和尺寸状态，保持只读且不暴露配置值；675/675 自动测试、TypeScript、生产构建和 UI smoke 全部通过。最新产物 `dist/index.js` 363031 bytes、`package.zip` 305870 bytes，raw bundle 自律线校准至 355 KiB。
 
+补充（2026-09-13）：T-289 完成。发布前修复 Windows/Ubuntu 文档换行差异：webpack 复制 README/ROADMAP 时统一为 LF，保证 `package.zip` 在本地与 GitHub Actions 生成一致；发布门禁与跨平台归档审计复跑通过，归档大小 306056 bytes。
+
 补充（2026-09-13）：T-271 完成。商店新增“条件”筛选，按 `availability` 精确过滤条件依赖组件，待安装的第三方卡片标记为 external；自动门禁复跑中。
 
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。

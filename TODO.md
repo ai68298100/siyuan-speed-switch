@@ -161,6 +161,11 @@
   - 证据：`src/agent-capabilities.js`、`src/index.ts`、`tests/agent-capabilities.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-289 跨平台发布归档一致性
+  - 目标：消除 Windows 与 Ubuntu 构建时 README/ROADMAP 换行差异，确保 package.zip 体积与内容一致
+  - 证据：`webpack.config.js`、`docs/release-readiness.md`、`pnpm verify:release`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
