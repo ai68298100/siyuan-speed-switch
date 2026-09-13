@@ -5843,7 +5843,7 @@ const version = beginSearch(session);
                     label: this.escapeAttr(notebook.name),
                     icon: "iconFiles",
                     checked: current.notebook === notebook.id,
-                    click: () => commitFilters((next) => { next.notebook = notebook.id; }),
+                    click: () => commitFilters((next) => { next.notebook = notebook.id; delete next.paths; }),
                 }));
             } else {
                 notebookSub.push({label: this.i18n.searchNoNotebooks, disabled: true});
