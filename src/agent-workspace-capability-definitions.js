@@ -109,6 +109,8 @@ function validateWorkspaceCapabilityDefinition(definition) {
             : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? spec === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC : false;
     if (!canonicalSpec) return {ok: false, reason: "unknown_capability"};
     if (typeof definition.handler !== "function") return {ok: false, reason: "invalid_handler"};
+    if (!spec.inputSchema || typeof spec.inputSchema !== "object" || !spec.outputSchema || typeof spec.outputSchema !== "object") return {ok: false, reason: "invalid_schema"};
+    if (spec.inputSchema.type !== "object" || spec.outputSchema.type !== "object") return {ok: false, reason: "invalid_schema"};
     const effects = name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name ? EXECUTE_WORKSPACE_PLAN_EFFECTS : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS : WORKSPACE_PLAN_EFFECTS;
     return {ok: true, name, effects};
 }
@@ -164,6 +166,8 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
     let disposed = false;
     let failed = 0;
     let unmanaged = 0;
+    let opaque = 0;
+    let invalid = 0;
     return Object.freeze({
         probe() {
             return buildWorkspaceCapabilityProbeSnapshot(host);
@@ -176,6 +180,8 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
                 onError(error, spec);
             });
             unmanaged = registrations.reduce((count, handle) => count + (normalizeWorkspaceCapabilityHandle(handle).managed ? 0 : 1), 0);
+            opaque = registrations.filter((handle) => normalizeWorkspaceCapabilityHandle(handle).kind === "opaque").length;
+            invalid = registrations.filter((handle) => normalizeWorkspaceCapabilityHandle(handle).kind === "invalid").length;
             return registrations.slice();
         },
         dispose() {
@@ -184,16 +190,18 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
             const count = disposeWorkspaceCapabilityRegistrations(host, registrations, onError);
             registrations = [];
             unmanaged = 0;
+            opaque = 0;
+            invalid = 0;
             return count;
         },
         size() { return registrations.length; },
         status() {
-            return Object.freeze({registered: registrations.length, failed, unmanaged, disposed});
+            return Object.freeze({registered: registrations.length, failed, unmanaged, opaque, invalid, disposed});
         },
         snapshot() {
             return Object.freeze({
                 host: buildWorkspaceCapabilityProbeSnapshot(host),
-                registration: Object.freeze({registered: registrations.length, failed, unmanaged, disposed}),
+                registration: Object.freeze({registered: registrations.length, failed, unmanaged, opaque, invalid, disposed}),
             });
         },
     });

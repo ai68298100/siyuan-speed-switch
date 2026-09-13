@@ -428,15 +428,15 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
     assert.deepEqual(second, first);
     assert.equal(lifecycle.size(), 2);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
-    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: false});
     assert.deepEqual(lifecycle.snapshot(), {
         host: {available: true, reason: "ready"},
-        registration: {registered: 2, failed: 0, unmanaged: 0, disposed: false},
+        registration: {registered: 2, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: false},
     });
     assert.equal(lifecycle.dispose(), 2);
     assert.equal(lifecycle.dispose(), 0);
     assert.equal(lifecycle.size(), 0);
-    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: true});
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: true});
     assert.deepEqual(lifecycle.register(), []);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
 });
@@ -450,16 +450,24 @@ test("workspace capability lifecycle reports bounded partial registration failur
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {}, Date.now, (error) => errors.push(error));
     assert.deepEqual(lifecycle.probe(), {available: true, reason: "ready"});
     assert.deepEqual(lifecycle.register(), ["workspace-plan-handle"]);
-    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, opaque: 0, invalid: 0, disposed: false});
     assert.equal(errors.length, 1);
     assert.equal(lifecycle.register().length, 1);
+});
+
+test("workspace capability lifecycle reports opaque and invalid host handles", () => {
+    let index = 0;
+    const host = {addAgentCapability: () => index++ === 0 ? undefined : null};
+    const lifecycle = createWorkspaceCapabilityLifecycle(host, {});
+    assert.equal(lifecycle.register().length, 2);
+    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 2, opaque: 1, invalid: 1, disposed: false});
 });
 
 test("workspace capability lifecycle probe is unavailable on legacy hosts", () => {
     const lifecycle = createWorkspaceCapabilityLifecycle({}, {});
     assert.deepEqual(lifecycle.probe(), {available: false, reason: "unavailable"});
     assert.deepEqual(lifecycle.register(), []);
-    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: false});
     assert.deepEqual(lifecycle.snapshot().host, {available: false, reason: "unavailable"});
 });
 

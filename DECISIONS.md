@@ -185,3 +185,4 @@
 - D-179 v0.17 capability names 在引用 diagnostics spec 前必须完成 spec 初始化；直接模块加载自检作为回归证据，避免生产/测试 require 时触发 TDZ。
 - D-180 v0.17 lifecycle.register 接受可选 definitionsOverride 仅用于独立契约测试/宿主适配；默认路径保持原两项 workspace definitions，避免无意扩大生产注册集合。
 - D-181 v0.17 capability 注册统一先经 `validateWorkspaceCapabilityDefinition`，按 canonical spec 推导 effects；未知定义/非函数 handler 静默跳过，不进入 Agent 注册通道。
+- D-182 v0.17 lifecycle 将 host 返回句柄分为 managed/opaque/invalid 三类计数；仅用于有界诊断，不影响注册成功语义或向 Agent 暴露句柄详情。

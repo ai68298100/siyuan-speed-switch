@@ -841,6 +841,14 @@
   - 目标：统一校验 canonical spec、handler 与固定 effects
   - 实现：新增 `validateWorkspaceCapabilityDefinition` 并接入注册流程
   - 状态：done
+- [x] T-237 Agent workspace capability schema 矩阵门禁
+  - 目标：定义注册前必须具备 object input/output schema 的统一校验
+  - 实现：`validateWorkspaceCapabilityDefinition` 增加 schema 类型检查
+  - 状态：done
+- [x] T-238 Agent workspace lifecycle 句柄类型统计
+  - 目标：区分 managed/opaque/invalid 宿主返回，支持旧宿主可观测性
+  - 实现：lifecycle status/snapshot 增加 `opaque` 与 `invalid` 计数
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
