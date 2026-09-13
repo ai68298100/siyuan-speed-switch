@@ -32,6 +32,10 @@ function createWorkspaceAgentBridge(options = {}) {
             const plan = plans.get(typeof planId === "string" ? planId : "");
             return plan ? session.issue(plan, device, now) : null;
         },
+        preview(planId, device = "desktop", now = Date.now()) {
+            const plan = plans.get(typeof planId === "string" ? planId : "");
+            return plan && typeof session.preview === "function" ? session.preview(plan, device, now) : null;
+        },
         async execute(request, now = Date.now()) {
             const normalized = normalizeExecutionRequest(request);
             const plan = normalized && plans.get(normalized.planId);

@@ -1,6 +1,6 @@
 # 进度
 
-当前基线：`v0.16.39`（发布提交 `3d0d841`），开发头为本地 `main`；本地分支已包含未推送的性能/UI提交，T-071~T-121 已完成，T-122~T-145 已启动。正式发版继续后置。
+当前基线：`v0.16.39`（发布提交 `3d0d841`），开发头为本地 `main`；本地分支已包含未推送的性能/UI提交，T-071~T-121 已完成，T-122~T-146 已启动。正式发版继续后置。
 
 当前状态：继续推进不依赖真实设备的 Agent、搜索兼容、状态恢复、UI 体验和自动化门禁；手机端测试按 D-042 永久跳过，不以浏览器烟测替代真实设备验收。
 
@@ -15,7 +15,7 @@
 - Agent 标题搜索复用兼容提取器，支持 `data.files`、`data.documents`、`result.records` 等旧宿主包装，避免合法标题结果被误判为空。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
-验证基线：T-066~T-121 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、604/604、移动烟测和 Chromium 样式烟测；raw bundle 自律预算 345 KiB，压缩包约 294.6 KiB，条目级差异与硬上限余量均由 diagnostic 持续观测。T-122~T-145 先以独立契约模型推进，暂不增加生产 bundle。
+验证基线：T-066~T-121 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、604/604、移动烟测和 Chromium 样式烟测；raw bundle 自律预算 345 KiB，压缩包约 294.6 KiB，条目级差异与硬上限余量均由 diagnostic 持续观测。T-122~T-146 先以独立契约模型推进，暂不增加生产 bundle。
 
 待处理：
 
@@ -23,7 +23,7 @@
 2. 下一候选：观察路径筛选端点兼容性并在真实桌面节点验证侧栏最小 chip 实验；T-103 生产入口仍需能力探测与至少 2 KiB 包体余量，真实窄屏验收按 D-042 后置。
 3. 用户明确确认后，才执行 push、打 tag、创建 Release 等正式发版动作。
 
-本轮新增（2026-09-13）：T-144 为 workspace bridge 增加两个 data-driven handler 工厂，输出结构化与 JSON 序列化双通道；T-145 将两项 capability 的 spec/effects/handler 组合为可注册定义数组；604/604 自动测试、TypeScript 与 diff 检查通过。下一候选为整理正式 `addAgentCapability` 注册定义，但需先释放生产包体余量，避免将独立 bridge 执行链直接塞入当前入口。
+本轮新增（2026-09-13）：T-144 为 workspace bridge 增加两个 data-driven handler 工厂，输出结构化与 JSON 序列化双通道；T-145 将两项 capability 的 spec/effects/handler 组合为可注册定义数组；T-146 在 bridge 暴露不含正文的 `preview` 审批预览；604/604 自动测试、TypeScript 与 diff 检查通过。下一候选为整理正式 `addAgentCapability` 注册定义，但需先释放生产包体余量，避免将独立 bridge 执行链直接塞入当前入口。
 
 2026-09-13 只读宿主探测：本机 6806 端口返回思源访问授权页，未找到可复用的已认证会话；未调用受保护路径端点，T-107 继续等待合法桌面验收会话。
 

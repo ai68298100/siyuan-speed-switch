@@ -122,3 +122,4 @@
 - D-116 v0.17 Agent bridge 只保存有界计划元数据于内存，最多 32 条；`plan/issue/execute/dispose` 是未来 capability handler 的唯一编排入口，未知 planId 或非法执行请求在宿主动作前返回稳定状态。
 - D-117 v0.17 bridge handler 工厂仅负责将 bridge 结果包装为 `structuredContent` 与 JSON `result`，不复制计划校验、审批令牌或执行安全逻辑；缺失 bridge/无效计划返回稳定错误，便于未来以 data-driven 方式注册 Agent capability。
 - D-118 v0.17 workspace capability definitions 将 `workspace-plan` 标记为只读 localRead，将 `execute-workspace-plan` 标记为 localWrite；定义数组只组合 spec/effects/handler，不在注册层引入新的安全或审批分支。
+- D-119 v0.17 bridge `preview` 只返回计划摘要与审批 challenge（planId/digest/device/expiresAt/token），不返回正文或原始参数；challenge 仍由 session 统一签发，避免 UI 层复制授权逻辑。

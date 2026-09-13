@@ -485,3 +485,7 @@
   - 目标：把 workspace-plan 与 execute-workspace-plan 的 spec、effects、handler 组合为可直接交给注册器的定义数组
   - 实现：新增独立 `src/agent-workspace-capability-definitions.js`，区分只读计划与可写执行 effects，保持 bridge 安全逻辑单一来源
   - 状态：in-progress
+- [ ] T-146 Agent workspace bridge 审批预览入口
+  - 目标：在 bridge 层直接提供不含正文的步骤摘要与审批 challenge，供 Agent/审批 UI 在执行前复用
+  - 实现：新增 `preview(planId, device, now)`，复用 session 预览与既有 challenge 校验边界；未知计划安全返回 null
+  - 状态：in-progress

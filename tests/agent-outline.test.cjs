@@ -268,6 +268,11 @@ test("workspace agent bridge provides bounded plan issue execute lifecycle", asy
     assert.equal(plan.summary.stepCount, 1);
     const challenge = bridge.issue(plan.planId, "desktop", 1700000000100);
     assert.equal(challenge.planId, plan.planId);
+    const preview = bridge.preview(plan.planId, "desktop", 1700000000100);
+    assert.equal(preview.planId, plan.planId);
+    assert.equal(preview.stepCount, 1);
+    assert.equal(Object.hasOwn(preview, "content"), false);
+    assert.equal(bridge.preview("wp-missing"), null);
     const result = await bridge.execute(challenge, 1700000000101);
     assert.equal(result.status, "completed");
     assert.deepEqual(opened, ["20260913083000-abcdef"]);
