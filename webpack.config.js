@@ -6,6 +6,7 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const ZipPlugin = require("zip-webpack-plugin");
 const pluginManifest = require("./plugin.json");
+const RELEASE_ZIP_MTIME = new Date("1980-01-01T00:00:00.000Z");
 
 const packageImagePatterns = [
     ["icon", "icon.png"],
@@ -51,6 +52,14 @@ module.exports = (env, argv) => {
             new ZipPlugin({
                 filename: "package.zip",
                 algorithm: "gzip",
+                fileOptions: {
+                    // Keep central-directory metadata stable across builds so
+                    // identical sources produce byte-identical release archives.
+                    mtime: RELEASE_ZIP_MTIME,
+                    mode: 0o100664,
+                    compress: true,
+                    forceZip64Format: false,
+                },
                 include: [/dist/],
                 pathMapper: (assetPath) => {
                     return assetPath.replace("dist/", "");

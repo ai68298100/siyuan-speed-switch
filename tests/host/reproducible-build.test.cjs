@@ -35,3 +35,10 @@ test('build metadata does not contain obvious wall-clock or random drift markers
     const source = fs.readFileSync(manifestPath, 'utf8');
     assert.doesNotMatch(source, /(?:timestamp|buildTime|generatedAt|randomSeed)\s*:/i);
 });
+
+test('release archive metadata uses a fixed ZIP timestamp', () => {
+    const source = fs.readFileSync(path.join(root, 'webpack.config.js'), 'utf8');
+    assert.match(source, /RELEASE_ZIP_MTIME\s*=\s*new Date\("1980-01-01T00:00:00\.000Z"\)/);
+    assert.match(source, /fileOptions\s*:\s*\{[\s\S]*mtime:\s*RELEASE_ZIP_MTIME/);
+    assert.doesNotMatch(source, /mtime:\s*new Date\(\)/);
+});

@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > The current worktree contains unreleased search, widget, Agent, and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters; the widget panel supports third-party read-only modules and Agent discovery mode. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
 
-> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 574 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
+> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 575 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
 
 ## Contents
 
