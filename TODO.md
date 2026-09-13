@@ -435,6 +435,45 @@
   - 证据：本轮状态文件；全门禁 707/707 + 三 smoke 全绿
   - 状态：done（2026-09-14）
 
+- [x] T-351 面板条目方向键导航
+  - 目标：↑/↓ 在组件面板条目间循环移动焦点，Home/End 跳首尾
+  - 实现：`src/home-panel.js` keydown 委托挂面板容器（随 DOM 释放），仅条目按钮上接管，与其他控件/外层键盘语义正交
+  - 状态：done（2026-09-14）
+
+- [x] T-352 导航契约测试
+  - 目标：jsdom 真实键盘事件断言循环边界与焦点转移
+  - 证据：`tests/home-panel.test.cjs` 10/10
+  - 状态：done（2026-09-14）
+
+- [x] T-353 会话并发隔离扩展
+  - 目标：双会话同 key 缓存互不污染、防抖计时器互不影响、dispose 对称
+  - 证据：`tests/search-session.test.cjs` 10/10
+  - 状态：done（2026-09-14）
+
+- [x] T-354 缓存查找基准
+  - 目标：10k 次缓存查找 <50ms，锁定 Map 命中路径
+  - 证据：同上
+  - 状态：done（2026-09-14）
+
+- [x] T-355 既有覆盖确认三件
+  - 目标：pruneIdle 孤儿回收（agent-outline 已覆盖）、store provider 双订阅（store-contract 已覆盖）、moduleId 归一化（trim/截断/白名单达标，大小写敏感合理）
+  - 证据：`tests/agent-outline.test.cjs`、`tests/home-store-contract.test.cjs`、`src/home-adapters.js`
+  - 状态：done（2026-09-14）
+
+- [x] T-356 wiring plan 阶段 2 状态记录
+  - 目标：明确 document-context 接入等待维护者授权（是否不等真实桌面审计）
+  - 证据：`docs/workspace-capability-wiring-plan.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-357 决策 D-223 落档
+  - 证据：`DECISIONS.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-358 状态收口与提交
+  - 目标：TODO/PROGRESS/readiness/README 计数同步并按协议提交
+  - 证据：全门禁 710/710 + 三 smoke 全绿；zip 257991（余量 49209 bytes）
+  - 状态：done（2026-09-14）
+
 ## 待维护者决策
 
 - [ ] T-350 收藏/置顶/分组列表容量上限值

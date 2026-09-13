@@ -31,7 +31,7 @@
   4. 测试镜像 `agent-outline.test.cjs` 模式（spec/effects/handler 一致性 + 输出有界）。
 - 门禁：`production-graph-isolation` 的 UNWIRED 清单相应收窄并记录 D 条目；`verify:release` 全绿。
 
-## 阶段 2：document-context 只读接入（前置：真实桌面取消/权限审计）
+## 阶段 2：document-context 只读接入（⏸ 等待维护者授权：是否不等真实桌面审计先行接入；代码就绪 2.4 KiB）
 
 - T-122 自身依赖注明"真实桌面取消/权限审计后接入"；代码就绪（2.4 KiB 纯模型，大纲 ≤24 条、路径 ≤256 字符）。
 - handler 复用 `/api/outline/getDocOutline` + 活动页签解析，与现有 outline/navigation 能力同源，无新增宿主面。
