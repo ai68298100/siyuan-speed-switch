@@ -158,6 +158,7 @@
   "homeStoreTabAll": "All",
   "homeStoreTabBuiltin": "Built-in",
   "homeStoreTabPlugin": "Plugins",
+  "homeStoreTabConditional": "Conditional",
   "homeStoreSearch": "Search widgets…",
   "homeNoteStats": "Note stats",
   "homeDescNoteStats": "Workspace scale and this week's activity: documents, estimated characters, created and modified",

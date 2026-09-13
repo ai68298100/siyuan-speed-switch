@@ -4145,12 +4145,15 @@ const version = beginSearch(session);
 
             const applyFilter = () => {
                 const query = searchInput.value.trim().toLowerCase();
-                const catFilter = tabBar.querySelector<HTMLElement>(".sw-home-store__tab.is-active")?.dataset.tabFilter || "all";
+                const activeTab = tabBar.querySelector<HTMLElement>(".sw-home-store__tab.is-active");
+                const catFilter = activeTab?.dataset.tabFilter || "all";
+                const availabilityFilter = activeTab?.dataset.tabAvailability || "";
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
                     const haystack = card.dataset.search || "";
                     const textMatch = query === "" || haystack.includes(query);
                     const catMatch = catFilter === "all" || card.dataset.category === catFilter;
-                    card.classList.toggle("fn__none", !textMatch || !catMatch);
+                    const availabilityMatch = !availabilityFilter || card.dataset.availability === availabilityFilter;
+                    card.classList.toggle("fn__none", !textMatch || !catMatch || !availabilityMatch);
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
                     const section = heading.nextElementSibling;
@@ -4165,10 +4168,11 @@ const version = beginSearch(session);
             // 分类 Tab：全部 / 内置 / 插件
             const tabBar = document.createElement("div");
             tabBar.className = "sw-home-store__tabs";
-            const tabs: Array<{key: string; label: string; match: (cat: string) => boolean}> = [
+            const tabs: Array<{key: string; label: string; match: (cat: string) => boolean; availability?: string}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll, match: () => true},
                 {key: "builtin", label: this.i18n.homeStoreTabBuiltin, match: (cat) => cat === "siyuan"},
                 {key: "plugin", label: this.i18n.homeStoreTabPlugin, match: (cat) => cat !== "siyuan"},
+                {key: "conditional", label: this.i18n.homeStoreTabConditional, match: () => true, availability: "conditional"},
             ];
             let activeTab = "all";
             tabs.forEach((tab) => {
@@ -4177,6 +4181,7 @@ const version = beginSearch(session);
                 btn.className = "sw-home-store__tab" + (tab.key === "all" ? " is-active" : "");
                 btn.textContent = tab.label;
                 btn.dataset.tabFilter = tab.key;
+                if (tab.availability) btn.dataset.tabAvailability = tab.availability;
                 btn.addEventListener("click", () => {
                     activeTab = tab.key;
                     tabBar.querySelectorAll(".sw-home-store__tab").forEach((b) => b.classList.toggle("is-active", b === btn));
@@ -4220,6 +4225,7 @@ const version = beginSearch(session);
                 card.className = "sw-home-store__card";
                 card.dataset.search = `${def.title || ""} ${def.description || ""} ${moduleId}`.toLowerCase();
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
+                card.dataset.availability = def.availability || "ready";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const added = instanceByModule.get(moduleId);
                 const head = document.createElement("div");
@@ -4359,6 +4365,8 @@ const version = beginSearch(session);
                     const card = document.createElement("section");
                     card.className = "sw-home-store__card sw-home-store__card--pending";
                     card.dataset.search = `${entry.title} ${entry.description} ${entry.providerName}`.toLowerCase();
+                    card.dataset.category = "plugin";
+                    card.dataset.availability = "external";
                     const head = document.createElement("div");
                     head.className = "sw-home-store__card-head";
                     const icon = document.createElement("svg");

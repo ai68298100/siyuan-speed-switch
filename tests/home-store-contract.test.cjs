@@ -15,4 +15,6 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /selectedTile\?\.classList\.remove\("is-selected"\)/);
     assert.match(source, /sw-home-store__availability/);
     assert.match(source, /homeStoreAvailabilityConditional/);
+    assert.match(source, /homeStoreTabConditional/);
+    assert.match(source, /card\.dataset\.availability === availabilityFilter/);
 });

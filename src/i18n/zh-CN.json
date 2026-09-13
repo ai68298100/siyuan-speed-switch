@@ -158,6 +158,7 @@
   "homeStoreTabAll": "全部",
   "homeStoreTabBuiltin": "内置",
   "homeStoreTabPlugin": "插件",
+  "homeStoreTabConditional": "条件",
   "homeStoreSearch": "搜索组件…",
   "homeNoteStats": "笔记统计",
   "homeDescNoteStats": "全库规模与本周写作活动：文档数、字数估算、本周新建与改动",

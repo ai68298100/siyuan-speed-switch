@@ -12,6 +12,8 @@
 
 补充（2026-09-13）：T-270 完成。组件定义新增受限 `availability` 等级（ready/conditional/external），商店卡片对条件依赖和外部插件显示本地化徽标；671/671 自动测试全绿。
 
+补充（2026-09-13）：T-271 完成。商店新增“条件”筛选，按 `availability` 精确过滤条件依赖组件，待安装的第三方卡片标记为 external；自动门禁复跑中。
+
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-258~T-259 增加 diagnostics 联合恢复结果归一化与 queue/snapshot 联合 coordinator；661/661 测试、TypeScript 与 diff 检查通过。

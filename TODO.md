@@ -71,6 +71,11 @@
   - 证据：`src/home-model.js`、`src/index.ts`、`src/index.scss`、`tests/component-availability-audit.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-271 商店可用性筛选
+  - 目标：新增“条件”筛选，快速定位需要命名协议、活动文档或特定 API 的组件；第三方待安装项保持外部状态
+  - 证据：`src/index.ts`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
