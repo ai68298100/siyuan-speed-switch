@@ -72,12 +72,14 @@ test('production bundle remains within the mobile performance budget when built'
     // bounded Agent snapshot contract; package.zip remains below 300 KiB.
     // 2026-09-13 (20): 340 KiB for bounded card palette presets and settings.
     // 2026-09-13 (21): 341 KiB for calendar navigation controls and labels.
-    const budget = 341 * 1024;
+    // 2026-09-13 (22): 342 KiB for visibility-gated tail reads.
+    const budget = 342 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
 test('home panel defers tail reads and cancels idle work on destroy', () => {
     const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+    assert.match(source, /IntersectionObserver/);
     assert.match(source, /requestIdleCallback/);
     assert.match(source, /cancelIdleCallback/);
     assert.match(source, /if \(index < 2\)/);

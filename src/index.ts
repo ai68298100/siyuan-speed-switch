@@ -4416,6 +4416,7 @@ const version = beginSearch(session);
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
         const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
         const homeRefreshTimers: number[] = [];
+        const homeRefreshObservers: IntersectionObserver[] = [];
 
         const defs = new Map<string, any>();
         this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
@@ -4785,6 +4786,18 @@ const version = beginSearch(session);
                     void run();
                     return;
                 }
+                if (typeof IntersectionObserver === "function") {
+                    const observer = new IntersectionObserver((entries, currentObserver) => {
+                        if (!entries.some((candidate) => candidate.isIntersecting)) return;
+                        currentObserver.disconnect();
+                        const position = homeRefreshObservers.indexOf(currentObserver);
+                        if (position >= 0) homeRefreshObservers.splice(position, 1);
+                        void run();
+                    }, {root: body, rootMargin: "120px"});
+                    observer.observe(entry.cell);
+                    homeRefreshObservers.push(observer);
+                    return;
+                }
                 const idle = (window as any).requestIdleCallback;
                 if (typeof idle === "function") {
                     const handle = idle((): void => { void run(); }, {timeout: 500});
@@ -4826,6 +4839,8 @@ const version = beginSearch(session);
                 window.clearTimeout(handle);
             });
             homeRefreshTimers.length = 0;
+            homeRefreshObservers.forEach((observer) => observer.disconnect());
+            homeRefreshObservers.length = 0;
             this.homeRefreshCleanup?.();
             originalDestroy();
         };

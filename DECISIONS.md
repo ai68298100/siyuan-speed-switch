@@ -53,3 +53,4 @@
 - D-047 raw bundle 自律预算由 339 KiB 校准至 340 KiB（2026-09-13）：卡片配色预设和设置文案新增约 0.3 KiB；压缩包继续低于 300 KiB 硬上限。
 - D-048 月历农历采用原生 `Intl.DateTimeFormat('zh-CN-u-ca-chinese')`，配置默认关闭且次级文本有界；原因：避免引入第三方农历库、降低包体和维护风险，同时保留现有主日期与点击语义。宿主不支持该 Intl 日历时安全降级为不显示农历。
 - D-049 raw bundle 自律预算由 340 KiB 校准至 341 KiB（2026-09-13）：月历翻月/今日快捷入口增加渲染与刷新回调；`package.zip` 仍保持在 300 KiB 硬上限内。
+- D-050 raw bundle 自律预算由 341 KiB 校准至 342 KiB（2026-09-13）：尾部组件增加 `IntersectionObserver` 可见性门控并保留旧 WebView 回退；`package.zip` 仍保持在 300 KiB 硬上限内。
