@@ -304,6 +304,12 @@ function commitWorkspaceCapabilityRuntimeRecovery(queue, recovery) {
     return queue.acknowledge(recovery.cursor);
 }
 
+function recoverAndCommitWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot = null, limit = 16) {
+    const recovery = recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+    const acknowledged = commitWorkspaceCapabilityRuntimeRecovery(queue, recovery);
+    return Object.freeze({...recovery, acknowledged});
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -326,4 +332,5 @@ module.exports = {
     readWorkspaceCapabilityRuntimeEventsForReplay,
     recoverWorkspaceCapabilityRuntime,
     commitWorkspaceCapabilityRuntimeRecovery,
+    recoverAndCommitWorkspaceCapabilityRuntime,
 };

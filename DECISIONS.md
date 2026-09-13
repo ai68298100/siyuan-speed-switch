@@ -149,3 +149,4 @@
 - D-143 v0.17 事件回放读取遇到 truncated 必须返回 `snapshot_required` 且不返回部分事件；调用方重新获取完整 runtime snapshot 后再从最新 cursor 继续，避免状态漂移。
 - D-144 v0.17 runtime 恢复流程先尝试事件回放，溢出时仅接受兼容且通过一致性校验的完整快照；返回 events/snapshot/unavailable 固定模式，不自动执行副作用。
 - D-145 v0.17 恢复确认仅对 ok 的 events/snapshot 模式调用队列 acknowledge；失败或 unavailable 不删除事件，保证中断恢复可重试且不丢状态。
+- D-146 v0.17 恢复提交门面先执行既有 recover，再基于结果调用 commit；返回 acknowledged 计数，失败路径固定为 0，不引入额外副作用。

@@ -593,3 +593,7 @@
   - 目标：仅在成功回放或完整快照恢复后原子推进事件确认游标，失败时保留队列
   - 实现：新增 `commitWorkspaceCapabilityRuntimeRecovery`，限定 events/snapshot 模式并忽略失败结果
   - 状态：in-progress
+- [ ] T-173 Agent workspace runtime 恢复提交门面
+  - 目标：将恢复与游标确认组合为单一原子调用，成功才消费，失败保留队列
+  - 实现：新增 `recoverAndCommitWorkspaceCapabilityRuntime`，返回恢复结果与 acknowledged 计数
+  - 状态：in-progress
