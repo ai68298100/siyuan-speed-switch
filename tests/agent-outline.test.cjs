@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -493,6 +493,7 @@ test("workspace capability event queue stays bounded and consumable", () => {
     });
     assert.equal(queue.acknowledge(2), 1);
     assert.equal(queue.size(), 1);
+    assert.deepEqual(queue.status(), {size: 1, maxItems: 2, cursor: 3, disposed: false});
     assert.deepEqual(queue.consume(1), [{type: "disposed", changed: true}]);
     assert.equal(queue.size(), 0);
     queue.dispose();
@@ -548,10 +549,12 @@ test("workspace runtime recovery coordinator rejects duplicate and stale commits
     assert.equal(coordinator.commit(first), 0);
     assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 1}), 0);
     assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1, disposed: false});
+    assert.deepEqual(coordinator.snapshot().coordinator, {lastCursor: 2, commits: 1, disposed: false});
     coordinator.dispose();
     assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1, disposed: true});
     assert.deepEqual(coordinator.recoverAndCommit(2), {ok: false, mode: "unavailable", reason: "coordinator_disposed", cursor: 2, events: [], snapshot: null, acknowledged: 0});
     assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 3}), 0);
+    assert.deepEqual(coordinator.snapshot().coordinator, {lastCursor: 2, commits: 1, disposed: true});
 });
 
 test("workspace runtime recovery honors cancellation without consuming events", () => {
@@ -570,6 +573,7 @@ test("workspace runtime recovery honors deadline without consuming events", () =
     assert.deepEqual(recoverWorkspaceCapabilityRuntimeWithDeadline(queue, 0, null, 16, 100, 100), {ok: false, mode: "timeout", reason: "timeout", cursor: 0, events: [], snapshot: null});
     assert.equal(queue.size(), 1);
     assert.deepEqual(recoverWorkspaceCapabilityRuntimeWithDeadline(queue, 0, null, 16, 100, 99), {ok: true, mode: "events", cursor: 1, events: [{sequence: 1, event: {type: "host", changed: true}}], snapshot: null});
+    assert.deepEqual(recoverWorkspaceCapabilityRuntimeSafe(queue, 0, null, 16, {aborted: true}), {ok: false, mode: "cancelled", reason: "cancelled", cursor: 0, events: [], snapshot: null});
 });
 
 test("workspace runtime recovery result normalization keeps terminal modes bounded", () => {

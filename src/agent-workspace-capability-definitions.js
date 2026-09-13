@@ -270,6 +270,7 @@ function createWorkspaceCapabilityEventQueue(maxItems = 16) {
             return removed;
         },
         size() { return queue.length; },
+        status() { return Object.freeze({size: queue.length, maxItems: max, cursor: nextSequence - 1, disposed}); },
         dispose() { disposed = true; queue.length = 0; },
     });
 }
@@ -347,6 +348,10 @@ function recoverAndCommitWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot 
     return Object.freeze({...recovery, acknowledged});
 }
 
+function recoverWorkspaceCapabilityRuntimeSafe(queue, cursor = 0, snapshot = null, limit = 16, signal) {
+    return normalizeWorkspaceCapabilityRuntimeRecoveryResult(recoverWorkspaceCapabilityRuntimeWithSignal(queue, cursor, snapshot, limit, signal));
+}
+
 function createWorkspaceCapabilityRecoveryCoordinator(queue) {
     let lastCursor = 0;
     let commits = 0;
@@ -373,6 +378,10 @@ function createWorkspaceCapabilityRecoveryCoordinator(queue) {
             return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
         },
         status() { return Object.freeze({lastCursor, commits, disposed}); },
+        snapshot() {
+            const queueStatus = queue && typeof queue.status === "function" ? queue.status() : {size: 0, maxItems: 0, cursor: lastCursor, disposed: true};
+            return Object.freeze({coordinator: Object.freeze({lastCursor, commits, disposed}), queue: queueStatus});
+        },
         dispose(clearQueue = false) {
             if (disposed) return 0;
             disposed = true;
@@ -411,5 +420,6 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeRecoveryResult,
     commitWorkspaceCapabilityRuntimeRecovery,
     recoverAndCommitWorkspaceCapabilityRuntime,
+    recoverWorkspaceCapabilityRuntimeSafe,
     createWorkspaceCapabilityRecoveryCoordinator,
 };
