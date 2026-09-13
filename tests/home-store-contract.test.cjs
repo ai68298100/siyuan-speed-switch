@@ -63,4 +63,6 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /tile\.setAttribute\("aria-pressed"/);
     assert.match(source, /homeStoreClearFilters/);
     assert.match(source, /searchInput\.focus\(\)/);
+    assert.match(source, /includeState: true/);
+    assert.match(source, /configuredModuleIds/);
 });

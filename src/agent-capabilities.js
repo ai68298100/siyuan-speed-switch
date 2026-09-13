@@ -224,6 +224,11 @@ function buildAgentWidgetCatalog(items, options = {}) {
     const requestedSource = ["builtin", "external"].includes(source.source) ? source.source : null;
     const limit = Math.min(24, normalizeAgentLimit(source.limit, 24));
     const requestedOffset = Math.min(MAX_ITEMS * 2, Math.max(0, Number.parseInt(String(source.offset), 10) || 0));
+    const includeState = source.includeState === true;
+    const configuredIds = includeState && source.configuredModuleIds && typeof source.configuredModuleIds[Symbol.iterator] === "function"
+        ? new Set(source.configuredModuleIds) : new Set();
+    const configuredState = includeState && source.configuredState && typeof source.configuredState === "object"
+        ? source.configuredState : {};
     const rawItems = Array.isArray(items) ? items : [];
     const eligible = [];
     const seen = new Set();
@@ -238,7 +243,7 @@ function buildAgentWidgetCatalog(items, options = {}) {
         if (!supportedDevices.includes(device)
             || (readOnly !== null && itemReadOnly !== readOnly)
             || (requestedSource !== null && itemSource !== requestedSource)) return;
-        eligible.push({
+        const widget = {
             moduleId,
             title: asText(item.title, 64) || moduleId,
             description: asText(item.description, 256),
@@ -247,7 +252,16 @@ function buildAgentWidgetCatalog(items, options = {}) {
             readOnly: itemReadOnly,
             source: itemSource,
             configFields: normalizeAgentWidgetConfigFields(item.configSchema),
-        });
+        };
+        if (includeState) {
+            const state = configuredState[moduleId] && typeof configuredState[moduleId] === "object"
+                ? configuredState[moduleId] : {};
+            widget.configured = configuredIds.has(moduleId);
+            widget.enabled = widget.configured ? state.enabled !== false : false;
+            const size = asText(state.size, 16);
+            if (size) widget.size = size;
+        }
+        eligible.push(widget);
     });
     const offset = Math.min(requestedOffset, eligible.length);
     const widgets = eligible.slice(offset, offset + limit);
@@ -768,6 +782,9 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                                             additionalProperties: false,
                                         },
                                     },
+                                    configured: {type: "boolean"},
+                                    enabled: {type: "boolean"},
+                                    size: {type: "string", maxLength: 16},
                                 },
                                 required: ["moduleId", "title", "description", "sizes", "supportedDevices", "readOnly", "source", "configFields"],
                                 additionalProperties: false,

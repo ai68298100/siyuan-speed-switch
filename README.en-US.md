@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > The current worktree contains unreleased search, widget, Agent, and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters; the widget panel supports third-party read-only modules and Agent discovery mode. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
 
-> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 674 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
+> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 675 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
 
 ## Contents
 
@@ -178,7 +178,7 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 - Configuration UX improvements: countdown uses a native date picker, pinned documents offer suggestions from currently open documents with block-ID validation, and notebook filters preserve an explicit empty option plus unavailable-value feedback before save.
 - Widget panel UI polish: single-layer chrome (inner module card removed), compact chevron fold toggle, muted empty-state prefix, calendar cell hover tint, list item hover accent bar, larger stat hero numbers, rounded progress bar caps, smooth collapse animation, staggered widget loading.
 - Fixed append-to-journal agent capability that was defined but never registered; added a capability registration guard test.
-- 674 automated tests.
+- 675 automated tests.
 
 ### v0.16.38 (2026-09-12)
 
@@ -736,7 +736,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 89 `*.test.cjs` files under `tests/` and `tests/host/`, currently 674 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 89 `*.test.cjs` files under `tests/` and `tests/host/`, currently 675 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -765,7 +765,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 674)
+pnpm test               # run every unit, contract, and host release test (currently 675)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

@@ -133,6 +133,22 @@ test("agent widget catalog filters source and keeps the first normalized module 
     assert.deepEqual(beyond, {widgets: [], total: 1, offset: 1, truncated: false});
 });
 
+test("agent widget catalog can expose bounded configured state for discovery", () => {
+    const widgets = buildAgentWidgetCatalog([
+        {moduleId: "one", title: "One", supportedDevices: ["desktop"], sizes: ["small", "medium"]},
+        {moduleId: "two", title: "Two", supportedDevices: ["desktop"]},
+    ], {
+        device: "desktop",
+        includeState: true,
+        configuredModuleIds: ["one"],
+        configuredState: {one: {enabled: true, size: "medium"}},
+    });
+    assert.deepEqual(widgets.widgets.map(({moduleId, configured, enabled, size}) => ({moduleId, configured, enabled, size})), [
+        {moduleId: "one", configured: true, enabled: true, size: "medium"},
+        {moduleId: "two", configured: false, enabled: false, size: undefined},
+    ]);
+});
+
 test("agent widget config metadata and values stay schema-bound", () => {
     const schema = [
         {key: "limit", label: "Limit", type: "number", min: 1, max: 20, defaults: 10},

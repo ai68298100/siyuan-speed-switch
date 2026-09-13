@@ -6930,12 +6930,25 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                                 this.homeBuiltinAdapterIds.has(item.moduleId) || this.homeModuleOpens.has(item.moduleId));
                         // 发现模式：省略 moduleId 时返回全部可查询组件清单
                         if (!requested) {
+                            const homeState = this.getHomeState();
+                            const configuredModuleIds = ((homeState.layouts[device] || []) as Array<any>).map((entry) => {
+                                const instance = (homeState.instances as Array<any>).find((item) => item.instanceId === entry.instanceId);
+                                return instance?.moduleId || "";
+                            }).filter(Boolean);
+                            const configuredState: Record<string, {enabled?: boolean; size?: string}> = {};
+                            ((homeState.layouts[device] || []) as Array<any>).forEach((entry) => {
+                                const instance = (homeState.instances as Array<any>).find((item) => item.instanceId === entry.instanceId);
+                                if (instance?.moduleId) configuredState[instance.moduleId] = {enabled: instance.enabled !== false, size: entry.size};
+                            });
                             const content = buildAgentWidgetCatalog(queryable, {
                                 device,
                                 readOnly: typeof args?.readOnly === "boolean" ? args.readOnly : undefined,
                                 source: args?.source,
                                 limit: args?.limit,
                                 offset: args?.offset,
+                                includeState: true,
+                                configuredModuleIds,
+                                configuredState,
                             });
                             return {structuredContent: content, result: JSON.stringify(content)};
                         }

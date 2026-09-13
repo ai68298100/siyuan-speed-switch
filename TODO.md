@@ -156,6 +156,11 @@
   - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-288 Agent 组件发现状态
+  - 目标：让 `home-widget-snapshot` 发现模式返回当前设备的已添加、启用和尺寸状态，帮助智能体理解工作区布局
+  - 证据：`src/agent-capabilities.js`、`src/index.ts`、`tests/agent-capabilities.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
