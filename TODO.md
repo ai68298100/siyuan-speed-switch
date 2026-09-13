@@ -545,3 +545,7 @@
   - 目标：一次读取 capability lifecycle 与 bridge 状态，供诊断/UI 使用且不触发副作用
   - 实现：新增 `buildWorkspaceCapabilityRuntimeSnapshot`，对缺失对象返回稳定空状态，不携带敏感数据
   - 状态：in-progress
+- [ ] T-161 Agent workspace runtime 快照版本化
+  - 目标：为组合快照提供稳定版本号与输入归一化，限制计数/状态范围并过滤未知字段
+  - 实现：新增 `WORKSPACE_RUNTIME_SNAPSHOT_VERSION` 与 `normalizeWorkspaceCapabilityRuntimeSnapshot`
+  - 状态：in-progress

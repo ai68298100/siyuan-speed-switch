@@ -30,6 +30,7 @@ const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
     WORKSPACE_PLAN_HANDLER_SPEC.name,
     EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
 ]);
+const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
 
 function normalizeWorkspaceCapabilityHandle(handle) {
     if (typeof handle === "function") return {managed: true, kind: "disposer"};
@@ -153,7 +154,23 @@ function buildWorkspaceCapabilityRuntimeSnapshot(lifecycle, bridge) {
     const bridgeSnapshot = bridge && typeof bridge.status === "function"
         ? bridge.status()
         : {planCount: 0, maxPlans: 0, disposed: true};
-    return Object.freeze({lifecycle: lifecycleSnapshot, bridge: bridgeSnapshot});
+    return Object.freeze({version: WORKSPACE_RUNTIME_SNAPSHOT_VERSION, lifecycle: lifecycleSnapshot, bridge: bridgeSnapshot});
+}
+
+function normalizeWorkspaceCapabilityRuntimeSnapshot(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const host = source.lifecycle?.host && typeof source.lifecycle.host === "object" ? source.lifecycle.host : {};
+    const registration = source.lifecycle?.registration && typeof source.lifecycle.registration === "object" ? source.lifecycle.registration : {};
+    const bridge = source.bridge && typeof source.bridge === "object" ? source.bridge : {};
+    const count = (input, max) => Math.min(max, Math.max(0, Math.trunc(Number(input) || 0)));
+    return Object.freeze({
+        version: WORKSPACE_RUNTIME_SNAPSHOT_VERSION,
+        lifecycle: Object.freeze({
+            host: Object.freeze({available: host.available === true, reason: ["ready", "unavailable", "timeout", "cancelled", "failed"].includes(host.reason) ? host.reason : "failed"}),
+            registration: Object.freeze({registered: count(registration.registered, 2), failed: count(registration.failed, 2), unmanaged: count(registration.unmanaged, 2), disposed: registration.disposed === true}),
+        }),
+        bridge: Object.freeze({planCount: count(bridge.planCount, 32), maxPlans: count(bridge.maxPlans, 32), disposed: bridge.disposed === true}),
+    });
 }
 
 module.exports = {
@@ -166,4 +183,6 @@ module.exports = {
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,
     buildWorkspaceCapabilityRuntimeSnapshot,
+    WORKSPACE_RUNTIME_SNAPSHOT_VERSION,
+    normalizeWorkspaceCapabilityRuntimeSnapshot,
 };
