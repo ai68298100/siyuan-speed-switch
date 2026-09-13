@@ -28,11 +28,16 @@ test('release archive carries the current candidate documentation', () => {
     if (!fs.existsSync(zip)) return;
     const buffer = fs.readFileSync(zip);
     const readme = readZipEntry(buffer, 'README.md').toString('utf8');
-    const roadmap = readZipEntry(buffer, 'ROADMAP.md').toString('utf8');
     assert.match(readme, /verify:release/);
     assert.match(readme, /当前开发策略/);
     assert.match(readme, /发布前检查/);
+    // D-219：ROADMAP 移出发布归档为纯开发文档；完整路线保留在仓库根目录，
+    // 由本测试在仓库边界继续把关内容，不再随包分发。
+    const roadmap = fs.readFileSync(path.join(root, 'ROADMAP.md'), 'utf8');
     assert.match(roadmap, /R7：现代化 UI 视觉重构/);
+    const entryNames = listZipEntryNames(buffer);
+    assert.equal(entryNames.includes('ROADMAP.md'), false,
+        'ROADMAP.md must stay out of the release archive (D-219)');
 });
 
 test('final audit is read-only', () => assert.equal(typeof fs.readFileSync, 'function'));

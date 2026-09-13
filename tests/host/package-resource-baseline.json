@@ -1,17 +1,16 @@
 {
   "version": 1,
   "entries": {
-    "docs/architecture.svg": 1900,
-    "docs/interface-map.svg": 1809,
-    "i18n/en.json": 7156,
-    "i18n/zh-CN.json": 8141,
+    "index.css": 15365,
+    "index.js": 98103,
     "icon.png": 44735,
-    "index.css": 15331,
-    "index.js": 97318,
-    "plugin.json": 697,
     "preview.png": 50389,
-    "README.en-US.md": 30976,
-    "README.md": 33096,
-    "ROADMAP.md": 12307
+    "README.en-US.md": 10659,
+    "README.md": 12731,
+    "docs/architecture.svg": 1897,
+    "docs/interface-map.svg": 1805,
+    "plugin.json": 692,
+    "i18n/en.json": 7084,
+    "i18n/zh-CN.json": 8083
   }
 }

@@ -44,8 +44,9 @@ module.exports = (env, argv) => {
                     ...packageImagePatterns,
                     // Normalize documentation line endings at the copy boundary so
                     // Windows and Ubuntu release runners produce identical archives.
+                    // ROADMAP.md stays a repo-only dev doc (D-219); the interface
+                    // map SVG ships because the market renders it from README.
                     {from: "README*.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
-                    {from: "ROADMAP.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "docs/*.svg", to: "./dist/docs/[name][ext]"},
                     {from: "plugin.json", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     // Ship locale files minified: sources stay pretty for diffs,
