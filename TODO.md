@@ -385,3 +385,7 @@
   - 目标：防止新增测试文件后英文 README 的测试矩阵数量过期
   - 实现：host release-quality 动态统计 `tests/` 与 `tests/host/` 的 `*.test.cjs` 文件并核对 README 声明；不增加生产 bundle
   - 状态：done（2026-09-13）
+- [x] T-121 组件商店预览与添加交互
+  - 目标：修复实时预览永久 loading，并将尺寸选择与添加/应用操作拆开
+  - 实现：预览打开后主动触发 controller refresh；尺寸按钮仅选择并显示选中态；新增独立“添加组件/应用尺寸”按钮；补充中英文文案与商店契约测试
+  - 状态：in-progress（待完整发布门禁确认）

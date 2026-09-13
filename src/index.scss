@@ -4597,6 +4597,17 @@
         border-style: dashed;
         color: var(--b3-theme-on-surface-light);
     }
+
+    &.is-selected {
+        border-color: var(--b3-theme-primary);
+        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+        color: var(--b3-theme-primary);
+    }
+}
+
+.sw-home-store__add {
+    min-height: 28px;
+    margin-left: auto;
 }
 
 // ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================

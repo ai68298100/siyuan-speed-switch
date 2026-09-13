@@ -1388,6 +1388,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         });
         controller.mount();
+        void controller.refresh({}, {force: true});
         // 宿主 Dialog 关闭无回调：轮询断连即释放控制器，避免悬空读取
         const disposeTimer = window.setInterval(() => {
             if (!dialog.element.isConnected) {
@@ -4099,7 +4100,7 @@ const version = beginSearch(session);
         root.appendChild(actions);
     }
 
-    // 小组件商店：画廊式添加入口，内置/插件分区；卡片带型号瓦片，点瓦片添加（或调整已添加实例的型号）
+    // 小组件商店：画廊式添加入口，内置/插件分区；先选型号，再用独立按钮提交
     // 小组件商店：两大分区——「可用组件」（内置 + 已注册插件组件）与「需安装插件后可用」
     // （组件目录中已登记、来源插件未就位的组件，标注需安装的插件名）。
     // 渲染后 400ms 异步复扫一次安装状态（增量识别，不影响首屏）。
@@ -4270,43 +4271,46 @@ const version = beginSearch(session);
                 card.appendChild(preview);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
+                let selectedTile: HTMLButtonElement | undefined;
                 supported.forEach((sizeKey) => {
                     const tile = document.createElement("button");
-                    tile.type = "button";
                     tile.className = "sw-home-store__size";
+                    tile.dataset.size = sizeKey;
                     tile.textContent = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
-                    if (added) {
-                        tile.classList.add("sw-home-store__size--added");
-                        tile.setAttribute("aria-label", `${this.i18n.homeSize}: ${tile.textContent} (${this.i18n.homeStoreAdded})`);
+                    if (sizeKey === (added?.size || supported[0])) {
+                        selectedTile = tile;
                     }
-                    tile.addEventListener("click", () => {
-                        const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                        const next = this.getHomeState();
-                        const layoutList = (next.layouts[device] || []) as Array<any>;
-                        const existing = (next.instances as Array<any>).find((candidate) => candidate.moduleId === moduleId);
-                        if (existing) {
-                            const entry = layoutList.find((candidate) => candidate.instanceId === existing.instanceId);
-                            if (entry) {
-                                entry.size = sizeKey;
-                                entry.w = preset.w;
-                                entry.h = preset.h;
-                            }
-                        } else {
-                            next.instances = [...next.instances, {instanceId: moduleId, moduleId, enabled: true, config: {}}];
-                            layoutList.push({instanceId: moduleId, x: 0, y: 0, w: preset.w, h: preset.h, collapsed: false, size: sizeKey});
-                        }
-                        next.layouts[device] = layoutList;
-                        this.saveHomeState(next);
-                        renderStore();
-                        onChanged();
-                    });
+                    tile.onclick = () => {
+                        selectedTile?.classList.remove("is-selected");
+                        selectedTile = tile;
+                        tile.classList.add("is-selected");
+                    };
                     tiles.appendChild(tile);
                 });
+                tiles.insertAdjacentHTML("beforeend", `<button class="b3-button b3-button--outline sw-home-store__add">${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd}</button>`);
+                const addButton = tiles.lastElementChild as HTMLButtonElement;
+                addButton.onclick = () => {
+                    const sizeKey = selectedTile!.dataset.size;
+                    const {w, h} = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize]!;
+                    const next = this.getHomeState();
+                    const layoutList = (next.layouts[device] || []) as Array<any>;
+                    const entry = added && layoutList.find((candidate) => candidate.instanceId === added.instanceId);
+                    if (entry) {
+                        Object.assign(entry, {size: sizeKey, w, h});
+                    } else {
+                        (next.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
+                        layoutList.push({instanceId: moduleId, x: 0, y: 0, w, h, collapsed: false, size: sizeKey});
+                    }
+                    next.layouts[device] = layoutList;
+                    this.saveHomeState(next);
+                    renderStore();
+                    onChanged();
+                };
+                tiles.appendChild(addButton);
                 const previewButton = document.createElement("button");
-                previewButton.type = "button";
                 previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
                 previewButton.textContent = this.i18n.homeStorePreview;
-                previewButton.addEventListener("click", () => this.openStoreWidgetPreview(moduleId, def, device));
+                previewButton.onclick = () => this.openStoreWidgetPreview(moduleId, def, device);
                 tiles.appendChild(previewButton);
                 card.appendChild(tiles);
                 return card;
