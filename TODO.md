@@ -513,3 +513,7 @@
   - 目标：防止 bridge dispose 后重新创建计划或执行旧请求
   - 实现：增加幂等 disposed 标记；销毁后 plan/issue/preview 返回空值，execute 返回 `bridge_disposed`
   - 状态：in-progress
+- [ ] T-153 Agent workspace capability lifecycle facade
+  - 目标：统一 workspace capability 的注册、句柄保存与不可逆卸载，避免调用方重复注册或遗漏清理
+  - 实现：新增 `createWorkspaceCapabilityLifecycle`，register 只执行一次，dispose 逐项回收并阻止再次注册
+  - 状态：in-progress

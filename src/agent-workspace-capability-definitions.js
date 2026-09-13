@@ -97,6 +97,27 @@ function disposeWorkspaceCapabilityRegistrations(host, registrations, onError = 
     return disposed;
 }
 
+function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onError = (_error, _spec) => {}) {
+    let registrations = [];
+    let disposed = false;
+    return Object.freeze({
+        register() {
+            if (disposed || registrations.length) return registrations.slice();
+            const definitions = createWorkspaceCapabilityDefinitions(bridge, now);
+            registrations = registerWorkspaceCapabilityDefinitions(host, definitions, onError);
+            return registrations.slice();
+        },
+        dispose() {
+            if (disposed) return 0;
+            disposed = true;
+            const count = disposeWorkspaceCapabilityRegistrations(host, registrations, onError);
+            registrations = [];
+            return count;
+        },
+        size() { return registrations.length; },
+    });
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -104,4 +125,5 @@ module.exports = {
     createWorkspaceCapabilityDefinitions,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
+    createWorkspaceCapabilityLifecycle,
 };

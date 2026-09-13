@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle} = require('../src/agent-workspace-capability-definitions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -370,6 +370,24 @@ test("workspace capability registrations dispose safely across host handle style
     assert.deepEqual(removed, ["capability-id"]);
     assert.equal(errors.length, 1);
     assert.deepEqual(disposeWorkspaceCapabilityRegistrations(null, ["ignored"]), 0);
+});
+
+test("workspace capability lifecycle registers once and disposes irreversibly", () => {
+    const events = [];
+    const host = {
+        addAgentCapability: ({name}) => { events.push(`add:${name}`); return () => events.push(`dispose:${name}`); },
+    };
+    const lifecycle = createWorkspaceCapabilityLifecycle(host, {plan: () => null, execute: async () => ({})});
+    const first = lifecycle.register();
+    const second = lifecycle.register();
+    assert.deepEqual(second, first);
+    assert.equal(lifecycle.size(), 2);
+    assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
+    assert.equal(lifecycle.dispose(), 2);
+    assert.equal(lifecycle.dispose(), 0);
+    assert.equal(lifecycle.size(), 0);
+    assert.deepEqual(lifecycle.register(), []);
+    assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
 });
 
 test("workspace plan summary exposes counts without content", () => {
