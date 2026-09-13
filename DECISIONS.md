@@ -121,3 +121,4 @@
 - D-115 v0.17 以 `agent-workspace-session` 作为未来宿主接入边界：会话统一管理 challenge、token、replay guard 和动作 executor，dispose 时清理全部内存授权；审批预览只输出动作/对象计数，不输出正文。
 - D-116 v0.17 Agent bridge 只保存有界计划元数据于内存，最多 32 条；`plan/issue/execute/dispose` 是未来 capability handler 的唯一编排入口，未知 planId 或非法执行请求在宿主动作前返回稳定状态。
 - D-117 v0.17 bridge handler 工厂仅负责将 bridge 结果包装为 `structuredContent` 与 JSON `result`，不复制计划校验、审批令牌或执行安全逻辑；缺失 bridge/无效计划返回稳定错误，便于未来以 data-driven 方式注册 Agent capability。
+- D-118 v0.17 workspace capability definitions 将 `workspace-plan` 标记为只读 localRead，将 `execute-workspace-plan` 标记为 localWrite；定义数组只组合 spec/effects/handler，不在注册层引入新的安全或审批分支。

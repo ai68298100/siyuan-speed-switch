@@ -18,6 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions} = require('../src/agent-workspace-capability-definitions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -295,6 +296,26 @@ test("workspace bridge handler factories expose structured capability results", 
     assert.equal(executed.result, JSON.stringify(executed.structuredContent));
     assert.deepEqual(await createWorkspaceExecuteHandler(null)({}), {error: "executor_unavailable"});
     bridge.dispose();
+});
+
+test("workspace capability definitions are data-driven and effect-scoped", async () => {
+    assert.deepEqual(WORKSPACE_PLAN_EFFECTS, {localRead: true, localWrite: false, dataEgress: false, externalCost: false});
+    assert.deepEqual(EXECUTE_WORKSPACE_PLAN_EFFECTS, {localRead: true, localWrite: true, dataEgress: false, externalCost: false});
+    const calls = [];
+    const bridge = {
+        plan: (args, now) => ({planId: "wp-def", steps: args.steps, now}),
+        execute: async (args, now) => { calls.push({args, now}); return {planId: args.planId, status: "completed", receipt: "rc-def"}; },
+    };
+    const definitions = createWorkspaceCapabilityDefinitions(bridge, () => 1700000000042);
+    assert.equal(Object.isFrozen(definitions), true);
+    assert.deepEqual(definitions.map((item) => item.spec.name), ["workspace-plan", "execute-workspace-plan"]);
+    assert.deepEqual(definitions[0].effects, WORKSPACE_PLAN_EFFECTS);
+    assert.deepEqual(definitions[1].effects, EXECUTE_WORKSPACE_PLAN_EFFECTS);
+    const planned = await definitions[0].handler({steps: [{action: "open-document", id: "20260913083000-abcdef"}]});
+    assert.equal(planned.structuredContent.planId, "wp-def");
+    const executed = await definitions[1].handler({planId: "wp-def", digest: "pd-abcdef", approvalToken: "at-valid"});
+    assert.equal(executed.structuredContent.status, "completed");
+    assert.equal(calls[0].now, 1700000000042);
 });
 
 test("workspace plan summary exposes counts without content", () => {
