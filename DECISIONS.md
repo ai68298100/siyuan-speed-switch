@@ -155,3 +155,4 @@
 - D-149 v0.17 coordinator 默认 dispose 不触碰共享队列；仅显式 `dispose(true)` 才清理并销毁队列，避免多消费者场景下误删其他诊断事件。
 - D-150 v0.17 runtime 恢复支持 AbortSignal 取消；取消在读取前/后均返回 cancelled 且不 acknowledge，避免面板卸载时尾部消费事件。
 - D-151 v0.17 runtime 恢复截止时间采用显式 deadline；到达或超过 deadline 返回 timeout 且不读取/确认队列，和 cancelled 保持可区分诊断语义。
+- D-152 v0.17 恢复结果归一化固定六种 mode，成功仅允许 events/snapshot；cursor、事件数和快照均有界，未知扩展字段丢弃且不回显异常文本。

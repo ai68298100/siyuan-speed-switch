@@ -319,6 +319,22 @@ function recoverWorkspaceCapabilityRuntimeWithDeadline(queue, cursor = 0, snapsh
     return recovery;
 }
 
+function normalizeWorkspaceCapabilityRuntimeRecoveryResult(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const modes = ["events", "snapshot", "unavailable", "invalid_snapshot", "cancelled", "timeout"];
+    const mode = modes.includes(source.mode) ? source.mode : "unavailable";
+    const ok = source.ok === true && (mode === "events" || mode === "snapshot");
+    const result = {
+        ok,
+        mode,
+        reason: ["ready", "snapshot_required", "queue_unavailable", "invalid_snapshot", "cancelled", "timeout", "coordinator_disposed"].includes(source.reason) ? source.reason : (ok ? "ready" : mode),
+        cursor: Math.max(0, Math.min(0x7fffffff, Math.trunc(Number(source.cursor) || 0))),
+        events: mode === "events" && Array.isArray(source.events) ? source.events.slice(0, 16).map((entry) => ({sequence: Math.max(0, Math.trunc(Number(entry?.sequence) || 0)), event: entry?.event && typeof entry.event === "object" ? {...entry.event} : {}})) : [],
+        snapshot: mode === "snapshot" && source.snapshot ? normalizeWorkspaceCapabilityRuntimeSnapshot(source.snapshot) : null,
+    };
+    return Object.freeze(result);
+}
+
 function commitWorkspaceCapabilityRuntimeRecovery(queue, recovery) {
     if (!queue || typeof queue.acknowledge !== "function" || !recovery || recovery.ok !== true) return 0;
     if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
@@ -392,6 +408,7 @@ module.exports = {
     recoverWorkspaceCapabilityRuntime,
     recoverWorkspaceCapabilityRuntimeWithSignal,
     recoverWorkspaceCapabilityRuntimeWithDeadline,
+    normalizeWorkspaceCapabilityRuntimeRecoveryResult,
     commitWorkspaceCapabilityRuntimeRecovery,
     recoverAndCommitWorkspaceCapabilityRuntime,
     createWorkspaceCapabilityRecoveryCoordinator,

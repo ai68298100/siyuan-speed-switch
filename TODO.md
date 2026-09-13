@@ -617,3 +617,7 @@
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
   - 状态：in-progress
+- [ ] T-179 Agent workspace runtime 恢复结果归一化
+  - 目标：统一 events/snapshot/cancelled/timeout/invalid_snapshot 终态字段，过滤未知扩展
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRecoveryResult`，限制 cursor、事件数和快照内容
+  - 状态：in-progress
