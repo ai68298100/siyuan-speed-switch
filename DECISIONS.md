@@ -134,3 +134,4 @@
 - D-128 v0.17 bridge `status()` 仅暴露 planCount/maxPlans/disposed；计划内容、审批令牌和 handler 仍不可见，便于宿主诊断容量而不扩大 Agent 数据面。
 - D-129 v0.17 workspace capability 宿主探测只检查 `addAgentCapability` 函数存在性，不通过试注册探测；结果统一为 ready/unavailable/timeout/cancelled/failed，避免探测产生副作用。
 - D-130 v0.17 注册句柄只按 disposer/object/id/opaque/invalid 归类；生命周期状态仅暴露 unmanaged 数量，不回显句柄值，兼容旧宿主返回 undefined 的情况。
+- D-131 v0.17 lifecycle `probe()` 只读取宿主 `addAgentCapability` 函数是否存在并返回 ready/unavailable 快照；注册前探测无副作用，status 字段保持稳定。

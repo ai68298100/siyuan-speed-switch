@@ -10,6 +10,7 @@ const {
     createWorkspacePlanHandler,
     createWorkspaceExecuteHandler,
 } = require("./agent-workspace-bridge.js");
+const {buildWorkspaceCapabilityProbeSnapshot} = require("./agent-workspace-probe.js");
 
 const WORKSPACE_PLAN_EFFECTS = Object.freeze({
     localRead: true,
@@ -111,6 +112,9 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
     let failed = 0;
     let unmanaged = 0;
     return Object.freeze({
+        probe() {
+            return buildWorkspaceCapabilityProbeSnapshot(host);
+        },
         register() {
             if (disposed || registrations.length) return registrations.slice();
             const definitions = createWorkspaceCapabilityDefinitions(bridge, now);

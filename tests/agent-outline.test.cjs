@@ -382,6 +382,7 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
         addAgentCapability: ({name}) => { events.push(`add:${name}`); return () => events.push(`dispose:${name}`); },
     };
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {plan: () => null, execute: async () => ({})});
+    assert.deepEqual(lifecycle.probe(), {available: true, reason: "ready"});
     const first = lifecycle.register();
     const second = lifecycle.register();
     assert.deepEqual(second, first);
@@ -403,10 +404,18 @@ test("workspace capability lifecycle reports bounded partial registration failur
         return "workspace-plan-handle";
     }};
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {}, Date.now, (error) => errors.push(error));
+    assert.deepEqual(lifecycle.probe(), {available: true, reason: "ready"});
     assert.deepEqual(lifecycle.register(), ["workspace-plan-handle"]);
     assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, disposed: false});
     assert.equal(errors.length, 1);
     assert.equal(lifecycle.register().length, 1);
+});
+
+test("workspace capability lifecycle probe is unavailable on legacy hosts", () => {
+    const lifecycle = createWorkspaceCapabilityLifecycle({}, {});
+    assert.deepEqual(lifecycle.probe(), {available: false, reason: "unavailable"});
+    assert.deepEqual(lifecycle.register(), []);
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: false});
 });
 
 test("workspace capability handles normalize managed and opaque host returns", () => {

@@ -533,3 +533,7 @@
   - 目标：识别 disposer、对象、ID 与空句柄，向生命周期状态暴露潜在不可回收注册
   - 实现：新增 `normalizeWorkspaceCapabilityHandle` 与 `unmanaged` 计数，不返回句柄内容
   - 状态：in-progress
+- [ ] T-158 Agent workspace lifecycle 宿主探测入口
+  - 目标：让 capability lifecycle 在注册前提供统一、无副作用的宿主可用性快照
+  - 实现：新增 `lifecycle.probe()`，复用 `agent-workspace-probe`，不改变注册或 status 契约
+  - 状态：in-progress
