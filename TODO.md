@@ -429,3 +429,7 @@
   - 目标：执行计划前校验 token 的 planId/digest/device/expiry，校验通过后一次性消费，阻止缺少授权或令牌重放进入动作 handler
   - 实现：`executeWorkspacePlan` 支持注入 `approvalStore`、`approvalToken` 和 `device`，令牌验证失败不产生步骤副作用
   - 状态：in-progress
+- [ ] T-132 Agent 工作区审批挑战生成器
+  - 目标：把计划转换为可展示、可确认的一次性挑战载荷，绑定 planId/digest/device/expiresAt/approvalToken，并校验计划未被替换
+  - 实现：新增独立 `src/agent-workspace-approval.js`，提供 challenge 创建与校验；令牌仍只存在内存，不携带正文或权限数据
+  - 状态：in-progress

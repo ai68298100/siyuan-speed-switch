@@ -10,6 +10,7 @@ const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = req
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
 const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
+const {createWorkspaceApprovalChallenge, validateWorkspaceApprovalChallenge} = require('../src/agent-workspace-approval.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -210,6 +211,19 @@ test("approval token binds plan digest, device and one-time consumption", () => 
     assert.ok(second);
     assert.equal(store.size(), 1);
     assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}).reason, "invalid_token");
+});
+
+test("workspace approval challenge binds immutable plan metadata", () => {
+    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    const store = createApprovalTokenStore();
+    const challenge = createWorkspaceApprovalChallenge(plan, store, "sidebar", 1700000000100);
+    assert.deepEqual(Object.keys(challenge).sort(), ["approvalToken", "device", "digest", "expiresAt", "planId"]);
+    assert.equal(challenge.planId, plan.planId);
+    assert.equal(challenge.device, "sidebar");
+    assert.deepEqual(validateWorkspaceApprovalChallenge(challenge, plan, 1700000000101), {ok: true, planId: plan.planId, device: "sidebar"});
+    assert.equal(validateWorkspaceApprovalChallenge({...challenge, digest: "pd-tampered"}, plan, 1700000000101).reason, "digest_mismatch");
+    assert.equal(validateWorkspaceApprovalChallenge({...challenge, expiresAt: plan.expiresAt + 1}, plan, 1700000000101).reason, "expiry_mismatch");
+    assert.equal(createWorkspaceApprovalChallenge(plan, store, "desktop", plan.expiresAt), null);
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {
