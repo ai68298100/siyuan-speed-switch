@@ -44,6 +44,13 @@ test('settings model isolates malformed persisted objects and preserves defaults
     assert.equal(result.quickActionsDisplayMobile, 'full');
     assert.equal(result.panelSizeMode, 'adaptive');
     assert.equal(result.panelScale, 90);
+    assert.equal(result.homePalette, 'auto');
+});
+
+test('home card palette accepts only bounded presets', () => {
+    assert.equal(normalizeSettings({homePalette: 'soft'}, options).homePalette, 'soft');
+    assert.equal(normalizeSettings({homePalette: 'mono'}, options).homePalette, 'mono');
+    assert.equal(normalizeSettings({homePalette: 'url("javascript:bad")'}, options).homePalette, 'auto');
 });
 
 test('group by mode accepts known values and rejects unknown ones', () => {

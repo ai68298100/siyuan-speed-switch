@@ -70,7 +70,8 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-13 (18): 337 KiB for the writing-streak widget (week row view).
     // 2026-09-13 (19): 339 KiB for stat.arc progress-ring rendering and the
     // bounded Agent snapshot contract; package.zip remains below 300 KiB.
-    const budget = 339 * 1024;
+    // 2026-09-13 (20): 340 KiB for bounded card palette presets and settings.
+    const budget = 340 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
@@ -79,6 +80,13 @@ test('home panel defers tail reads and cancels idle work on destroy', () => {
     assert.match(source, /requestIdleCallback/);
     assert.match(source, /cancelIdleCallback/);
     assert.match(source, /if \(index < 2\)/);
+});
+
+test('home card palette stays on the fixed preset allowlist', () => {
+    const source = fs.readFileSync(path.join(root, 'src', 'settings-model.js'), 'utf8');
+    assert.match(source, /homePalette === "auto"/);
+    assert.match(source, /homePalette === "soft"/);
+    assert.match(source, /homePalette === "mono"/);
 });
 
 test('release candidate command covers all local gates', () => {

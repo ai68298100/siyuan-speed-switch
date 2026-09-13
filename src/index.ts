@@ -400,6 +400,7 @@ interface IDockHandlerSelf {
 }
 type SortBy = "mru" | "layout" | "layoutDesc" | "titleAsc" | "titleDesc" | "updatedDesc";
 type QuickActionDisplay = "full" | "icons" | "hidden";
+type HomePalette = "auto" | "soft" | "mono";
 const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
 // 椤电鍗＄墖鎿嶄綔瀹屾垚鍚庣殑鏀跺熬鍔ㄤ綔锛堝脊绐楁ā寮忛攢姣佸脊绐楋紝渚ц竟鏍忔ā寮忓埛鏂板垪琛級
 type IOverlayClose = () => void;
@@ -414,6 +415,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     panelScale: PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
     groupBy: TAB_GROUP_MODE_DEFAULT, // 列表分组：默认按笔记本
     homeSizeMode: "follow", // 组件面板尺寸模式：跟随第一面板
+    homePalette: "auto",     // 组件卡片强调色：自动多彩 / 柔和 / 单色
     homeWidth: 960,          // 组件面板固定宽度
     homeHeight: 720,         // 组件面板固定高度
     columns: 0,            // 缂╃暐鍥惧垪鏁帮紝0=鑷姩
@@ -452,6 +454,7 @@ interface ISwSettings {
     panelSizeMode: PanelSizeMode; // 面板尺寸模式
     panelScale: number;           // 自适应比例（百分比）
     homeSizeMode: HomeSizeMode;   // 组件面板尺寸模式
+    homePalette: HomePalette;
     homeWidth: number;            // 组件面板固定宽度
     homeHeight: number;           // 组件面板固定高度
     groupBy: TabGroupMode;        // 列表分组方式（默认按笔记本）
@@ -1864,6 +1867,13 @@ export default class SpeedSwitchPlugin extends Plugin {
     // ===== 璁剧疆椤?路 鎵嬫満绔細鎮诞鎸夐挳寮€鍏炽€佸崱鐗囧竷灞€ =====
     private buildSettingsHomePanel(s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
+        const paletteOptions: Array<{value: HomePalette, label: string}> = [
+            {value: "auto", label: this.i18n.setHomePaletteAuto},
+            {value: "soft", label: this.i18n.setHomePaletteSoft},
+            {value: "mono", label: this.i18n.setHomePaletteMono},
+        ];
+        const paletteRow = this.settingItem(this.i18n.setHomePalette, this.i18n.setHomePaletteTip,
+            this.select(paletteOptions, s.homePalette, (v) => this.updateSettings({homePalette: v as HomePalette})));
         const modeOptions: Array<{value: HomeSizeMode, label: string}> = [
             {value: "follow", label: this.i18n.setHomeSizeModeFollow},
             {value: "adaptive", label: this.i18n.setHomeSizeModeAdaptive},
@@ -1876,7 +1886,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.num(s.homeWidth, 480, 1920, 20, this.i18n.unitPx, (v) => this.updateSettings({homeWidth: v}), this.i18n.setHomeWidth));
         const heightRow = this.settingItem(this.i18n.setHomeHeight, this.i18n.setHomeHeightTip,
             this.num(s.homeHeight, 360, 1280, 20, this.i18n.unitPx, (v) => this.updateSettings({homeHeight: v}), this.i18n.setHomeHeight));
-        wrapper.append(modeRow);
+        wrapper.append(paletteRow, modeRow);
         if (s.homeSizeMode === "custom") {
             wrapper.append(widthRow, heightRow);
         }
@@ -4387,6 +4397,8 @@ const version = beginSearch(session);
         }
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
+        const homePalette = settings.homePalette || "auto";
+        root.classList.add(`sw-home--palette-${homePalette}`);
         // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
         if (this.isMobile) root.classList.add("sw-home--mobile");
         const device = this.isMobile ? "mobile" : "desktop";
@@ -4503,7 +4515,9 @@ const version = beginSearch(session);
                 cell.style.gridColumn = `span ${Math.min(12, preset.w)}`;
                 cell.style.gridRow = `span ${Math.max(1, preset.h)}`;
                 // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
-                cell.style.setProperty("--sw-home-accent", SpeedSwitchPlugin.HOME_ACCENTS[[...inst.moduleId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % SpeedSwitchPlugin.HOME_ACCENTS.length]);
+                if (homePalette === "auto") {
+                    cell.style.setProperty("--sw-home-accent", SpeedSwitchPlugin.HOME_ACCENTS[[...inst.moduleId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % SpeedSwitchPlugin.HOME_ACCENTS.length]);
+                }
                 const body = document.createElement("div");
                 body.className = "sw-home__cell-body";
                 cell.appendChild(body);

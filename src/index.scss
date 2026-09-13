@@ -4826,6 +4826,15 @@
     background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 3%, var(--b3-theme-surface));
 }
 
+// 组件面板配色预设：只使用主题变量和固定混合比例，不接受任意用户颜色。
+.sw-home--palette-soft .sw-home__cell {
+    --sw-home-accent: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 72%, var(--b3-theme-on-surface) 28%);
+}
+
+.sw-home--palette-mono .sw-home__cell {
+    --sw-home-accent: var(--b3-theme-primary, var(--sw-accent-fallback));
+}
+
 // ==================== 商店分类 Tab ====================
 .sw-home-store__tabs {
     display: flex;

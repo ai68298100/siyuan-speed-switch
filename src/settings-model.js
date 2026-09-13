@@ -35,6 +35,9 @@ function normalizeSettings(saved, options = {}) {
         || source.groupBy === "favorites" || source.groupBy === "createdMonth"
         ? source.groupBy
         : (defaults.groupBy || "notebook");
+    const homePalette = source.homePalette === "auto" || source.homePalette === "soft" || source.homePalette === "mono"
+        ? source.homePalette
+        : (defaults.homePalette || "auto");
     return {
         dialogWidth: clamp(source.dialogWidth, ...range("dialogWidth"), defaults.dialogWidth),
         dialogHeight: clamp(source.dialogHeight, ...range("dialogHeight"), defaults.dialogHeight),
@@ -45,6 +48,7 @@ function normalizeSettings(saved, options = {}) {
             : (defaults.homeSizeMode || "follow"),
         homeWidth: clamp(source.homeWidth, ...range("homeWidth"), defaults.homeWidth || 960),
         homeHeight: clamp(source.homeHeight, ...range("homeHeight"), defaults.homeHeight || 720),
+        homePalette,
         panelScale: clamp(source.panelScale, ...range("panelScale"), defaults.panelScale),
         groupBy,
         columns: clamp(source.columns, ...range("columns"), defaults.columns),
