@@ -169,3 +169,4 @@
 - D-163 v0.17 registry recovery coordinator 以单调 `lastCursor` 串行化 events/snapshot 提交，snapshot 成功同样确认截至游标的旧事件；销毁后统一返回 `registry_coordinator_disposed`，防止尾部任务污染已销毁 registry。
 - D-164 v0.17 registry eventsSince/snapshot 异常统一降级为 `registry_unavailable`；不把宿主异常文本、stack 或对象透传给 Agent/UI。
 - D-165 v0.17 registry recovery safe/coordinator signal 与 deadline 入口只做读取和归一化，不隐式 acknowledge；取消/超时结果始终可安全重试。
+- D-166 v0.17 registry `recoverAndCommitWithSignal/Deadline` 由 coordinator 统一编排，只有归一化成功的 events/snapshot 才推进游标；调用方不再自行组合读取与确认。

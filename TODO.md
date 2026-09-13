@@ -705,6 +705,14 @@
   - 目标：协调器提供 signal/deadline 恢复入口，沿用单调游标和销毁语义
   - 实现：新增 `recoverWithSignal` 与 `recoverWithDeadline`
   - 状态：done
+- [x] T-203 Agent workspace registry signal 提交门面
+  - 目标：将 signal 恢复与确认组合为单一安全调用
+  - 实现：新增 `recoverAndCommitWithSignal`，取消时 acknowledged 固定为 0
+  - 状态：done
+- [x] T-204 Agent workspace registry deadline 提交门面
+  - 目标：将 deadline 恢复与确认组合为单一安全调用
+  - 实现：新增 `recoverAndCommitWithDeadline`，超时不消费事件
+  - 状态：done
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

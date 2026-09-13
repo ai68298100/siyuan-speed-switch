@@ -679,6 +679,16 @@ function createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator(registry) {
             const recovery = this.recover(cursor, limit);
             return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
         },
+        recoverAndCommitWithSignal(cursor = 0, limit = 8, signal) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const recovery = this.recoverWithSignal(cursor, limit, signal);
+            return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
+        },
+        recoverAndCommitWithDeadline(cursor = 0, limit = 8, deadline, now = Date.now) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const recovery = this.recoverWithDeadline(cursor, limit, deadline, now);
+            return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
+        },
         status() { return Object.freeze({lastCursor, commits, disposed}); },
         snapshot() {
             const registryStatus = registry && typeof registry.status === "function" ? registry.status() : {size: 0, maxSessions: 0, disposed: true};

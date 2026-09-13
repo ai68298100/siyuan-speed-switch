@@ -700,6 +700,21 @@ test("workspace registry coordinator signal and deadline paths remain bounded", 
     registry.dispose();
 });
 
+test("workspace registry coordinator combined signal/deadline recovery commits only success", () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
+    registry.create();
+    const coordinator = createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator(registry);
+    const controller = new AbortController();
+    controller.abort();
+    assert.equal(coordinator.recoverAndCommitWithSignal(0, 8, controller.signal).acknowledged, 0);
+    assert.equal(registry.eventsSince(0).events.length, 1);
+    const committed = coordinator.recoverAndCommitWithDeadline(0, 8, 200, 100);
+    assert.equal(committed.ok, true);
+    assert.equal(committed.acknowledged, 1);
+    assert.equal(registry.eventsSince(0).events.length, 0);
+    registry.dispose();
+});
+
 test("workspace runtime session snapshots are versioned and normalized", () => {
     const session = createWorkspaceCapabilityRuntimeSession(2);
     const snapshot = buildWorkspaceCapabilityRuntimeSessionSnapshot(session);
