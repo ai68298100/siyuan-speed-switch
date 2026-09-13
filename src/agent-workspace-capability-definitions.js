@@ -422,19 +422,29 @@ function normalizeWorkspaceCapabilityRuntimeSessionSnapshot(value) {
     return Object.freeze({version: WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, sessionId, disposed: source.disposed === true, runtime: source.runtime && typeof source.runtime === "object" ? source.runtime : null});
 }
 
-function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTIME_SESSIONS) {
+function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTIME_SESSIONS, options = {}) {
     const max = Math.min(MAX_RUNTIME_SESSIONS, Math.max(1, Math.trunc(Number(maxSessions) || MAX_RUNTIME_SESSIONS)));
     const sessions = new Map();
     let disposed = false;
+    const events = [];
+    const emit = (type, sessionId) => {
+        events.push({type, sessionId});
+        while (events.length > 8) events.shift();
+        if (typeof options.onEvent === "function") {
+            try { options.onEvent({type, sessionId}); } catch (_error) { /* isolate observer */ }
+        }
+    };
     return Object.freeze({
         create(maxItems = 16) {
             if (disposed) return null;
             const session = createWorkspaceCapabilityRuntimeSession(maxItems);
             sessions.set(session.sessionId, session);
+            emit("created", session.sessionId);
             while (sessions.size > max) {
                 const oldest = sessions.keys().next().value;
                 sessions.get(oldest)?.dispose();
                 sessions.delete(oldest);
+                emit("evicted", oldest);
             }
             return session;
         },
@@ -447,6 +457,7 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
             if (!session) return false;
             session.dispose();
             sessions.delete(sessionId);
+            emit("removed", sessionId);
             return true;
         },
         prune() {
@@ -456,12 +467,14 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
                     session.dispose();
                     sessions.delete(sessionId);
                     removed += 1;
+                    emit("pruned", sessionId);
                 }
             }
             return removed;
         },
         size() { return sessions.size; },
         status() { return Object.freeze({size: sessions.size, maxSessions: max, disposed}); },
+        events(limit = 8) { return events.slice(-Math.min(8, Math.max(0, Math.trunc(Number(limit) || 8)))).map((event) => ({...event})); },
         snapshot() {
             return Object.freeze({
                 size: sessions.size,
@@ -479,6 +492,7 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
             disposed = true;
             sessions.forEach((session) => session.dispose());
             sessions.clear();
+            events.length = 0;
         },
     });
 }

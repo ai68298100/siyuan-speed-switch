@@ -645,6 +645,10 @@
   - 目标：跨宿主消费 registry 快照时限制会话数量、ID 格式和销毁状态
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot`，最多保留 8 个合法 session 摘要
   - 状态：in-progress
+- [ ] T-188 Agent workspace session registry 事件通知
+  - 目标：记录会话创建、淘汰、移除和回收事件，供诊断/UI 观察生命周期变化
+  - 实现：registry 增加有界 `events()` 与可选 `onEvent`，最多保留 8 条且隔离观察器异常
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
