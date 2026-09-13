@@ -10,6 +10,8 @@
 
 补充（2026-09-13）：T-269 完成。adapter 快照新增有界 `emptyHint` 通道，首页空态优先显示组件自己的引导文案；插件命令在无可执行命令时提示安装/启用相关插件，669/669 自动测试全绿。
 
+补充（2026-09-13）：T-270 完成。组件定义新增受限 `availability` 等级（ready/conditional/external），商店卡片对条件依赖和外部插件显示本地化徽标；671/671 自动测试全绿。
+
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-258~T-259 增加 diagnostics 联合恢复结果归一化与 queue/snapshot 联合 coordinator；661/661 测试、TypeScript 与 diff 检查通过。

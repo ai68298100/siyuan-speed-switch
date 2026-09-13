@@ -4231,6 +4231,15 @@ const version = beginSearch(session);
                 const copy = document.createElement("div");
                 const title = document.createElement("strong");
                 title.textContent = def.title || moduleId;
+                const availability = def.availability === "conditional" || def.availability === "external" ? def.availability : "";
+                if (availability) {
+                    const badge = document.createElement("em");
+                    badge.className = `sw-home-store__availability sw-home-store__availability--${availability}`;
+                    badge.textContent = availability === "external" ? this.i18n.homeStoreAvailabilityExternal : this.i18n.homeStoreAvailabilityConditional;
+                    badge.setAttribute("aria-label", badge.textContent);
+                    title.appendChild(document.createTextNode(" "));
+                    title.appendChild(badge);
+                }
                 const desc = document.createElement("span");
                 desc.textContent = def.description || "";
                 copy.append(title, desc);

@@ -153,6 +153,8 @@
   "homeStoreReady": "Available widgets",
   "homeStorePending": "Install the plugin to enable",
   "homeStoreRequires": "Requires the {plugin} plugin",
+  "homeStoreAvailabilityConditional": "Conditional",
+  "homeStoreAvailabilityExternal": "External plugin",
   "homeStoreTabAll": "All",
   "homeStoreTabBuiltin": "Built-in",
   "homeStoreTabPlugin": "Plugins",

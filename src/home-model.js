@@ -3,6 +3,12 @@
 const HOME_SCHEMA_VERSION = 1;
 const DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const DEFAULT_LAYOUT = Object.freeze({x: 0, y: 0, w: 1, h: 1, collapsed: false});
+const AVAILABILITY_LEVELS = Object.freeze(["ready", "conditional", "external"]);
+const CONDITIONAL_MODULES = new Set([
+    "today-tasks", "bookmarks", "journal-monthly", "flashcard-due", "quick-capture",
+    "clipped-unread", "on-this-day", "recent-daily-notes", "document-relations-summary",
+    "current-document-outline", "today-reservations", "journal-calendar", "writing-streak", "plugin-commands",
+]);
 
 const DEFAULT_MODULES = Object.freeze([
     {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]},
@@ -200,6 +206,9 @@ function normalizeModuleDefinition(value) {
     if (supportedDevices.length === 0) return null;
     const sizeKeys = ["xs", "small", "medium", "tall", "wide", "large", "full"];
     const sizes = Array.isArray(value.sizes) ? sizeKeys.filter((key) => value.sizes.includes(key)) : [];
+    const availability = AVAILABILITY_LEVELS.includes(value.availability)
+        ? value.availability
+        : value.category !== "siyuan" ? "external" : CONDITIONAL_MODULES.has(moduleId) ? "conditional" : "ready";
     return {
         moduleId, title,
         icon: text(value.icon, 64) || "iconFile",
@@ -208,6 +217,7 @@ function normalizeModuleDefinition(value) {
         readOnly: value.readOnly !== false,
         sizes: sizes.length > 0 ? sizes : ["medium"],
         description: text(value.description, 96),
+        availability,
         protocolVersion: normalizeProtocolVersion(value.protocolVersion),
         viewType: value.viewType === "calendar" ? "calendar" : (value.viewType === "weekdays" ? "weekdays" : ""),
         author: text(value.author, 64),
@@ -298,4 +308,4 @@ function getModuleDefinition(definitions, moduleId) {
     return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, AVAILABILITY_LEVELS, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};

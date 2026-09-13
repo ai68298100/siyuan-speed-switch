@@ -52,3 +52,10 @@ test("availability audit keeps normal empty states distinct from missing registr
     assert.equal(registeredIds.includes("checkin-summary"), false);
     assert.match(source, /需安装插件后可用|homeStorePending/);
 });
+
+test("availability levels are explicit and bounded for store cards", () => {
+    const definitions = home.registerModules([]);
+    for (const definition of definitions) assert.ok(home.AVAILABILITY_LEVELS.includes(definition.availability));
+    assert.equal(definitions.filter((item) => item.availability === "conditional").length >= 10, true);
+    assert.equal(definitions.find((item) => item.moduleId === "checkin-summary").availability, "external");
+});

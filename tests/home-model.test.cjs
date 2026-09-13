@@ -23,6 +23,13 @@ test("journal-calendar viewType and monthOffset config", () => {
     assert.deepEqual(cal.configSchema[1], {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"});
     assert.deepEqual(cal.configSchema[2], {key: "notebook", label: "限定笔记本", type: "notebook"});
 });
+test("home modules expose bounded availability levels", () => {
+    const modules = home.registerModules([]);
+    assert.equal(modules.find((item) => item.moduleId === "year-progress").availability, "ready");
+    assert.equal(modules.find((item) => item.moduleId === "journal-calendar").availability, "conditional");
+    assert.equal(modules.find((item) => item.moduleId === "checkin-summary").availability, "external");
+    assert.deepEqual(home.AVAILABILITY_LEVELS, ["ready", "conditional", "external"]);
+});
 test("flashcard-due module keeps bounded notebook config schema", () => {
     const modules = home.registerModules([]);
     const flashcard = modules.find((item) => item.moduleId === "flashcard-due");

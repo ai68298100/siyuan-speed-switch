@@ -66,6 +66,11 @@
   - 证据：`src/home-adapters.js`、`src/home-view.js`、`src/index.ts`、`tests/home-view.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-270 商店结构化可用性徽标
+  - 目标：将组件的 ready/conditional/external 状态结构化并在商店卡片显示，减少用户把条件依赖误判为故障
+  - 证据：`src/home-model.js`、`src/index.ts`、`src/index.scss`、`tests/component-availability-audit.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
