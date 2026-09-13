@@ -417,3 +417,7 @@
   - 目标：把用户确认绑定到计划 digest，并组合一次性消费门卫与执行状态机，阻止确认后计划被替换或重复重放
   - 实现：新增 `workspacePlanDigest`、`executeWorkspacePlan`；digest mismatch/denied/expired/replay 均在动作执行前返回，成功后写入有界消费记录
   - 状态：in-progress
+- [ ] T-129 Agent 执行能力请求契约
+  - 目标：为未来 `execute-workspace-plan` 注册固定输入边界，要求 planId、digest 和一次性确认令牌，显式回显设备范围
+  - 实现：新增独立 `src/agent-workspace-capability.js`，拒绝未知字段、非法摘要和短/危险确认令牌；当前仅契约模型，不执行动作
+  - 状态：in-progress

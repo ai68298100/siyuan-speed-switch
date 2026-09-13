@@ -8,6 +8,7 @@ const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-docu
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
 const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = require('../src/agent-workspace-actions.js');
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
+const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -157,6 +158,17 @@ test("workspace orchestrator binds approval digest and consumes once", async () 
     assert.deepEqual(calls, ["open-document"]);
     const replay = await executeWorkspacePlan(plan, {guard, approved: true, digest, now: 1700000000101, runStep: async () => ({status: "completed"})});
     assert.equal(replay.status, "already_consumed");
+});
+
+test("execute-workspace-plan contract requires digest and one-time approval token", () => {
+    assert.equal(EXECUTE_WORKSPACE_PLAN_SPEC.name, "execute-workspace-plan");
+    assert.deepEqual(EXECUTE_WORKSPACE_PLAN_SPEC.inputSchema.required, ["planId", "digest", "approvalToken"]);
+    assert.equal(EXECUTE_WORKSPACE_PLAN_SPEC.inputSchema.additionalProperties, false);
+    const valid = normalizeExecutionRequest({planId: "wp-l8-abc123", digest: "pd-abc123", approvalToken: "approve_123", device: "sidebar"});
+    assert.deepEqual(valid, {planId: "wp-l8-abc123", digest: "pd-abc123", approvalToken: "approve_123", device: "sidebar"});
+    assert.equal(normalizeExecutionRequest({...valid, approvalToken: "short"}), null);
+    assert.equal(normalizeExecutionRequest({...valid, digest: "bad"}), null);
+    assert.deepEqual(buildExecutionGateResult(valid, "expired"), {planId: "wp-l8-abc123", status: "expired", receipt: ""});
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {
