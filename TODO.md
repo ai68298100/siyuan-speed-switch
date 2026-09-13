@@ -589,3 +589,7 @@
   - 目标：统一事件回放成功与队列溢出后的完整快照恢复，避免 UI 自行拼接游标和校验逻辑
   - 实现：新增 `recoverWorkspaceCapabilityRuntime`，返回 events/snapshot/unavailable 三种稳定模式
   - 状态：in-progress
+- [ ] T-172 Agent workspace runtime 恢复确认
+  - 目标：仅在成功回放或完整快照恢复后原子推进事件确认游标，失败时保留队列
+  - 实现：新增 `commitWorkspaceCapabilityRuntimeRecovery`，限定 events/snapshot 模式并忽略失败结果
+  - 状态：in-progress

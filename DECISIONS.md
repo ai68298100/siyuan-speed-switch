@@ -148,3 +148,4 @@
 - D-142 v0.17 runtime diff 入队只调用既有 diff/events/push 管线，不直接修改快照；无效队列与零变化安全返回 0，避免诊断路径产生隐式副作用。
 - D-143 v0.17 事件回放读取遇到 truncated 必须返回 `snapshot_required` 且不返回部分事件；调用方重新获取完整 runtime snapshot 后再从最新 cursor 继续，避免状态漂移。
 - D-144 v0.17 runtime 恢复流程先尝试事件回放，溢出时仅接受兼容且通过一致性校验的完整快照；返回 events/snapshot/unavailable 固定模式，不自动执行副作用。
+- D-145 v0.17 恢复确认仅对 ok 的 events/snapshot 模式调用队列 acknowledge；失败或 unavailable 不删除事件，保证中断恢复可重试且不丢状态。

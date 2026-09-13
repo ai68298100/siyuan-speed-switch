@@ -298,6 +298,12 @@ function recoverWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot = null, l
     return {ok: true, mode: "snapshot", cursor: replay.cursor, events: [], snapshot: normalized};
 }
 
+function commitWorkspaceCapabilityRuntimeRecovery(queue, recovery) {
+    if (!queue || typeof queue.acknowledge !== "function" || !recovery || recovery.ok !== true) return 0;
+    if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
+    return queue.acknowledge(recovery.cursor);
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -319,4 +325,5 @@ module.exports = {
     enqueueWorkspaceCapabilityRuntimeDiff,
     readWorkspaceCapabilityRuntimeEventsForReplay,
     recoverWorkspaceCapabilityRuntime,
+    commitWorkspaceCapabilityRuntimeRecovery,
 };
