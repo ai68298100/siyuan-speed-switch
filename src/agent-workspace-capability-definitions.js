@@ -100,11 +100,15 @@ function disposeWorkspaceCapabilityRegistrations(host, registrations, onError = 
 function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onError = (_error, _spec) => {}) {
     let registrations = [];
     let disposed = false;
+    let failed = 0;
     return Object.freeze({
         register() {
             if (disposed || registrations.length) return registrations.slice();
             const definitions = createWorkspaceCapabilityDefinitions(bridge, now);
-            registrations = registerWorkspaceCapabilityDefinitions(host, definitions, onError);
+            registrations = registerWorkspaceCapabilityDefinitions(host, definitions, (error, spec) => {
+                failed = Math.min(2, failed + 1);
+                onError(error, spec);
+            });
             return registrations.slice();
         },
         dispose() {
@@ -115,6 +119,9 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
             return count;
         },
         size() { return registrations.length; },
+        status() {
+            return Object.freeze({registered: registrations.length, failed, disposed});
+        },
     });
 }
 

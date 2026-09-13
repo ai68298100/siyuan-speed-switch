@@ -517,3 +517,7 @@
   - 目标：统一 workspace capability 的注册、句柄保存与不可逆卸载，避免调用方重复注册或遗漏清理
   - 实现：新增 `createWorkspaceCapabilityLifecycle`，register 只执行一次，dispose 逐项回收并阻止再次注册
   - 状态：in-progress
+- [ ] T-154 Agent workspace lifecycle 状态快照
+  - 目标：向宿主提供有界注册/失败/销毁状态，便于诊断部分注册失败而不泄露异常
+  - 实现：新增 `status()` 返回 `registered/failed/disposed`，失败计数最多 2，继续保留句柄与异常隔离
+  - 状态：in-progress

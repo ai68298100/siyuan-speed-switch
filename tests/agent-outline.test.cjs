@@ -383,11 +383,26 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
     assert.deepEqual(second, first);
     assert.equal(lifecycle.size(), 2);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
+    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, disposed: false});
     assert.equal(lifecycle.dispose(), 2);
     assert.equal(lifecycle.dispose(), 0);
     assert.equal(lifecycle.size(), 0);
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, disposed: true});
     assert.deepEqual(lifecycle.register(), []);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
+});
+
+test("workspace capability lifecycle reports bounded partial registration failures", () => {
+    const errors = [];
+    const host = {addAgentCapability: ({name}) => {
+        if (name === "execute-workspace-plan") throw new Error("secret");
+        return "workspace-plan-handle";
+    }};
+    const lifecycle = createWorkspaceCapabilityLifecycle(host, {}, Date.now, (error) => errors.push(error));
+    assert.deepEqual(lifecycle.register(), ["workspace-plan-handle"]);
+    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, disposed: false});
+    assert.equal(errors.length, 1);
+    assert.equal(lifecycle.register().length, 1);
 });
 
 test("workspace plan summary exposes counts without content", () => {
