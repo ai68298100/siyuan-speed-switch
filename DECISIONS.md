@@ -155,5 +155,6 @@
 - D-149 v0.17 coordinator 默认 dispose 不触碰共享队列；仅显式 `dispose(true)` 才清理并销毁队列，避免多消费者场景下误删其他诊断事件。
 - D-150 v0.17 runtime 恢复支持 AbortSignal 取消；取消在读取前/后均返回 cancelled 且不 acknowledge，避免面板卸载时尾部消费事件。
 - D-153 v0.17 recovery safe facade 复用带 signal 的恢复与结果归一化，不新增消费副作用；queue/coordinator snapshot 仅返回计数、游标和销毁态。
+- D-154 v0.17 runtime session 每次创建生成 8 位随机 sessionId，仅用于内存隔离诊断；不同 session 独立 queue/coordinator，dispose 同时清理两者，不跨会话复用 cursor/token。
 - D-151 v0.17 runtime 恢复截止时间采用显式 deadline；到达或超过 deadline 返回 timeout 且不读取/确认队列，和 cancelled 保持可区分诊断语义。
 - D-152 v0.17 恢复结果归一化固定六种 mode，成功仅允许 events/snapshot；cursor、事件数和快照均有界，未知扩展字段丢弃且不回显异常文本。

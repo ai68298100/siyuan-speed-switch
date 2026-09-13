@@ -621,6 +621,10 @@
   - 目标：一次读取 coordinator 与队列的有界状态
   - 实现：新增 `coordinator.snapshot()` 与 queue status
   - 状态：in-progress
+- [ ] T-182 Agent workspace runtime session facade
+  - 目标：统一 queue/coordinator 的会话级创建、快照与销毁，隔离不同宿主会话的恢复状态
+  - 实现：新增 `createWorkspaceCapabilityRuntimeSession`，生成有界 sessionId，dispose 同步清理 queue/coordinator
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

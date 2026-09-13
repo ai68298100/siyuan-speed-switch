@@ -394,6 +394,20 @@ function createWorkspaceCapabilityRecoveryCoordinator(queue) {
     });
 }
 
+function createWorkspaceCapabilityRuntimeSession(maxItems = 16) {
+    const queue = createWorkspaceCapabilityEventQueue(maxItems);
+    const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
+    const sessionId = `ws-${Math.random().toString(36).slice(2, 10)}`;
+    let disposed = false;
+    return Object.freeze({
+        sessionId,
+        queue,
+        coordinator,
+        snapshot() { return Object.freeze({sessionId, disposed, runtime: coordinator.snapshot()}); },
+        dispose() { if (disposed) return; disposed = true; coordinator.dispose(true); },
+    });
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -422,4 +436,5 @@ module.exports = {
     recoverAndCommitWorkspaceCapabilityRuntime,
     recoverWorkspaceCapabilityRuntimeSafe,
     createWorkspaceCapabilityRecoveryCoordinator,
+    createWorkspaceCapabilityRuntimeSession,
 };
