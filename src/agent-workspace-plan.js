@@ -9,7 +9,7 @@ const MAX_PLAN_TTL_MS = 10 * 60 * 1000;
 const PLAN_ACTIONS = Object.freeze(["open-document", "open-documents", "restore-document-set", "update-task-status", "create-document", "append-to-journal"]);
 const WRITE_ACTIONS = Object.freeze(["update-task-status", "create-document", "append-to-journal"]);
 const RECEIPT_STATUSES = Object.freeze(["completed", "skipped", "failed", "cancelled"]);
-const PLAN_RESULT_STATUSES = Object.freeze(["completed", "partial", "failed", "cancelled", "expired"]);
+const PLAN_RESULT_STATUSES = Object.freeze(["completed", "partial", "failed", "cancelled", "denied", "expired"]);
 
 const WORKSPACE_PLAN_SPEC = Object.freeze({
     name: "workspace-plan",
@@ -127,7 +127,7 @@ function isWorkspacePlanExpired(plan, now = Date.now()) {
     return !plan || !Number.isFinite(now) || Math.floor(now) >= Number(plan.expiresAt);
 }
 
-function buildWorkspaceReceipt(plan, results, now = Date.now()) {
+function buildWorkspaceReceipt(plan, results, now = Date.now(), forcedStatus = "") {
     const source = Array.isArray(results) ? results : [];
     const completed = [], skipped = [], cancelled = [], failed = [];
     for (let index = 0; index < Math.min(MAX_PLAN_STEPS, plan?.steps?.length || 0); index += 1) {
@@ -138,11 +138,43 @@ function buildWorkspaceReceipt(plan, results, now = Date.now()) {
         else if (status === "failed") failed.push({index, reason: cleanReason(result.reason)});
         else skipped.push(index);
     }
-    let status = "completed";
-    if (isWorkspacePlanExpired(plan, now)) status = "expired";
-    else if (cancelled.length && !completed.length && !failed.length) status = "cancelled";
-    else if (failed.length || skipped.length || cancelled.length) status = completed.length ? "partial" : "failed";
+    let status = PLAN_RESULT_STATUSES.includes(forcedStatus) ? forcedStatus : "completed";
+    if (!forcedStatus && isWorkspacePlanExpired(plan, now)) status = "expired";
+    else if (!forcedStatus && cancelled.length && !completed.length && !failed.length) status = "cancelled";
+    else if (!forcedStatus && (failed.length || skipped.length || cancelled.length)) status = completed.length ? "partial" : "failed";
     return {planId: typeof plan?.planId === "string" ? plan.planId.slice(0, 32) : "", status, completed, skipped, failed, cancelled, receipt: makeReceiptId(plan?.planId, now, status)};
+}
+
+// 执行状态机只依赖注入的 runStep，不接触思源 API；宿主接入时可复用同一套取消/过期语义。
+async function runWorkspacePlan(plan, options = {}) {
+    const now = () => typeof options.now === "function" ? Number(options.now()) : Number(options.now || Date.now());
+    if (!plan || !Array.isArray(plan.steps)) return buildWorkspaceReceipt({planId: "", steps: []}, [], now(), "failed");
+    if (isWorkspacePlanExpired(plan, now())) return buildWorkspaceReceipt(plan, [], now(), "expired");
+    if (options.approved !== true) return buildWorkspaceReceipt(plan, [], now(), "denied");
+    const results = [];
+    let forcedStatus = "";
+    for (let index = 0; index < Math.min(MAX_PLAN_STEPS, plan.steps.length); index += 1) {
+        if (options.signal?.aborted) {
+            forcedStatus = "cancelled";
+            for (let cursor = index; cursor < plan.steps.length && cursor < MAX_PLAN_STEPS; cursor += 1) results[cursor] = {status: "cancelled"};
+            break;
+        }
+        if (isWorkspacePlanExpired(plan, now())) {
+            forcedStatus = "expired";
+            break;
+        }
+        if (typeof options.runStep !== "function") {
+            results[index] = {status: "failed", reason: "executor_missing"};
+            continue;
+        }
+        try {
+            const result = await options.runStep(plan.steps[index], index);
+            results[index] = result && typeof result === "object" ? result : {status: "completed"};
+        } catch (error) {
+            results[index] = {status: "failed", reason: error?.reason || error?.code || "executor_failed"};
+        }
+    }
+    return buildWorkspaceReceipt(plan, results, now(), forcedStatus);
 }
 
 function cleanReason(value) {
@@ -163,4 +195,4 @@ function makePlanId(createdAt, steps) {
     return `wp-${createdAt.toString(36)}-${hash.toString(36)}`.slice(0, 32);
 }
 
-module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt};
+module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan};

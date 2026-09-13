@@ -401,3 +401,7 @@
   - 目标：为计划执行后的完成、跳过、失败、取消和过期建立统一有界回执，支持部分成功而不泄露宿主异常文本
   - 实现：`src/agent-workspace-plan.js` 新增回执 schema、稳定 receipt ID 和状态归一化；仍未接入生产执行器
   - 状态：in-progress
+- [ ] T-125 Agent 工作区计划执行状态机
+  - 目标：在不绑定思源 API 的前提下固化确认、过期、取消、逐步执行和部分成功语义，为后续 `execute-workspace-plan` 接入复用
+  - 实现：新增注入式 `runWorkspacePlan`，无批准不执行、过期拒绝、AbortSignal 取消未开始步骤、执行器异常归一化为稳定失败 token
+  - 状态：in-progress

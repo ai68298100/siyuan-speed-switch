@@ -5,7 +5,7 @@ const {
     flattenOutline,
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
-const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt} = require('../src/agent-workspace-plan.js');
+const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -78,6 +78,30 @@ test("workspace receipt normalizes partial, cancelled and failed steps", () => {
     assert.match(receipt.receipt, /^rc-[a-z0-9]+$/);
     const expired = buildWorkspaceReceipt(plan, [], plan.expiresAt);
     assert.equal(expired.status, "expired");
+});
+
+test("workspace plan runner requires approval and isolates cancellation", async () => {
+    const plan = buildWorkspacePlan({steps: [
+        {action: "open-document", id: "20260913083000-abcdef"},
+        {action: "open-document", id: "20260913083001-abcdef"},
+        {action: "update-task-status", id: "20260913083002-abcdef", done: true},
+    ]}, 1700000000000);
+    const denied = await runWorkspacePlan(plan, {approved: false, now: 1700000000100, runStep: async () => ({status: "completed"})});
+    assert.equal(denied.status, "denied");
+    assert.deepEqual(denied.completed, []);
+    let calls = 0;
+    const signal = {aborted: false};
+    const cancelled = await runWorkspacePlan(plan, {
+        approved: true, signal, now: () => 1700000000100,
+        runStep: async (_step, index) => { calls += 1; if (index === 0) signal.aborted = true; return {status: "completed"}; },
+    });
+    assert.equal(cancelled.status, "cancelled");
+    assert.equal(calls, 1);
+    assert.deepEqual(cancelled.completed, [0]);
+    assert.deepEqual(cancelled.cancelled, [1, 2]);
+    const failed = await runWorkspacePlan(plan, {approved: true, now: 1700000000100});
+    assert.equal(failed.status, "failed");
+    assert.equal(failed.failed[0].reason, "executor_missing");
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {

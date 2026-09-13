@@ -102,3 +102,4 @@
 - D-096 v0.17 首个 Agent 增量先以独立 `document-context` 契约/纯模型落地，不立即注册到生产 bundle；原因：当前 raw JS 仅余极小 headroom，且真实桌面取消、拒绝和卸载语义尚未完成审计。模型先固定正文不出域、大纲 24 条和路径 256 字符边界，待宿主证据与瘦身完成后再接入。
 - D-097 v0.17 计划层先以独立 `workspace-plan` dry-run 模型落地；动作仅允许打开、恢复、任务更新、新建和日记追加，最多 8 步且最长 10 分钟。计划只返回固定步骤、写权限和过期时间，不执行任何动作；待审批/取消/卸载宿主语义验证后再接入 Agent 注册。
 - D-098 v0.17 执行结果统一为有界回执：每步只允许 completed/skipped/failed/cancelled，整体支持 completed/partial/failed/cancelled/expired；失败原因仅保留清洗后的稳定 token，回执不携带异常文本或正文。
+- D-099 v0.17 计划执行器采用注入式状态机：核心层只负责批准、过期、AbortSignal 和逐步结果归一化，不直接依赖思源 API；这样可先在纯测试中锁定安全语义，再由宿主 adapter 映射固定动作。
