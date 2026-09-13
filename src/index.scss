@@ -5006,3 +5006,27 @@
     font-size: 0.85em;
     opacity: 0.7;
 }
+
+// ==================== 面板交互体验优化 ====================
+// 折叠体平滑过渡（max-height + opacity 渐变，不干扰内部滚动）
+.sw-home__cell .sw__home-module-body {
+    max-height: 600px;
+    overflow: hidden;
+    transition: max-height 0.25s ease, opacity 0.2s ease;
+
+    &[aria-hidden="true"] {
+        max-height: 0;
+        opacity: 0;
+    }
+}
+
+// 进度条圆角端点
+.sw-home__cell .sw__home-progress,
+.sw-home__cell .sw__home-progress-fill {
+    border-radius: 99px;
+}
+
+// 条目过渡：悬停与选中反馈更流畅
+.sw-home__cell .sw__home-module-item {
+    transition: background-color 0.12s ease;
+}

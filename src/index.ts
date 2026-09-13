@@ -4675,29 +4675,32 @@ const version = beginSearch(session);
                 this.homeRefreshCleanup = () => homeRefreshCleanupFns.forEach((fn) => fn());
             }
 
-            // 统一刷新；插件模块失败且有跳转回调时补"打开插件"按钮
-            controllers.forEach(async (entry) => {
-                const result = await entry.refresh() as { ok?: boolean } | undefined;
-                // 协议 v2：无 open 回调时可用声明式 clickCommand（"插件名::命令key"）
-                const clickCommand = defs.get(entry.moduleId)?.clickCommand || "";
-                const open = this.homeModuleOpens.get(entry.moduleId)
-                    || (clickCommand ? () => this.executeHomeCommand(clickCommand, () => undefined) : null);
-                const existing = entry.cell.querySelector(".sw-home__open");
-                if (result && result.ok === false && open) {
-                    if (!existing) {
-                        const button = document.createElement("button");
-                        button.type = "button";
-                        button.className = "b3-button b3-button--text sw-home__open";
-                        button.textContent = this.i18n.homeOpenPlugin;
-                        button.addEventListener("click", () => {
-                            dialog.destroy();
-                            open();
-                        });
-                        entry.cell.appendChild(button);
+            // 逐个错峰刷新：避免打开时内核并发请求风暴（每次间隔 80ms）
+            controllers.forEach((entry, index) => {
+                window.setTimeout(async () => {
+                    if (!dialog.element.isConnected) return;
+                    const result = await entry.refresh() as { ok?: boolean } | undefined;
+                    // 协议 v2：无 open 回调时可用声明式 clickCommand（"插件名::命令key"）
+                    const clickCommand = defs.get(entry.moduleId)?.clickCommand || "";
+                    const open = this.homeModuleOpens.get(entry.moduleId)
+                        || (clickCommand ? () => this.executeHomeCommand(clickCommand, () => undefined) : null);
+                    const existing = entry.cell.querySelector(".sw-home__open");
+                    if (result && result.ok === false && open) {
+                        if (!existing) {
+                            const button = document.createElement("button");
+                            button.type = "button";
+                            button.className = "b3-button b3-button--text sw-home__open";
+                            button.textContent = this.i18n.homeOpenPlugin;
+                            button.addEventListener("click", () => {
+                                dialog.destroy();
+                                open();
+                            });
+                            entry.cell.appendChild(button);
+                        }
+                    } else {
+                        existing?.remove();
                     }
-                } else {
-                    existing?.remove();
-                }
+                }, index * 80);
             });
 
             // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
