@@ -388,6 +388,12 @@ const homeRefreshSnapshotOk = source.includes('label.textContent = this.i18n.hom
     && source.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll)');
 console.log(`${homeRefreshSnapshotOk ? 'PASS' : 'FAIL'} home refresh status snapshot contract`);
 if (!homeRefreshSnapshotOk) allPassed = false;
+const homeStatusDensityOk = pluginCss.includes('.sw__home-module-status--empty')
+    && pluginCss.includes('.sw__home-module-status--error')
+    && /min-height:\s*54px/.test(pluginCss)
+    && /-webkit-line-clamp:\s*2/.test(pluginCss);
+console.log(`${homeStatusDensityOk ? 'PASS' : 'FAIL'} home refresh summary density rules`);
+if (!homeStatusDensityOk) allPassed = false;
 const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')
