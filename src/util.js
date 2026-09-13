@@ -330,9 +330,14 @@ function sanitizeDocIds(values) {
  */
 function capMru(values, max) {
     const limit = typeof max === "number" && max > 0 ? Math.floor(max) : 0;
+    if (!Array.isArray(values)) {
+        // 损坏/非法输入统一安全降级，与其余 sanitize 家族保持一致；
+        // 非数组的 truthy 值（如被写坏的字符串）此前会直接抛错。
+        return [];
+    }
     const seen = new Set();
     const out = [];
-    (values || []).forEach((value) => {
+    values.forEach((value) => {
         if (typeof value !== "string" || !value || seen.has(value)) {
             return;
         }

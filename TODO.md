@@ -391,6 +391,57 @@
   - 证据：701/701 测试、TSC、移动烟测 69 PASS、Chromium 烟测 3 PASS
   - 状态：done（2026-09-14）
 
+- [x] T-335 容量契约：MRU 与 capMru 修复
+  - 目标：固化 MRU 200 上限（首条存活/去重）；修复 capMru 对非数组 truthy 输入抛 TypeError 的缺口
+  - 证据：`tests/storage-capacity-limits.test.cjs`；`src/util.js` 安全降级
+  - 状态：done（2026-09-14）
+
+- [x] T-336 容量契约：历史/文档集/布局
+  - 目标：最近打开 50、文档集 24（envelope+changed）、home 布局每设备 64 且丢幽灵实例
+  - 证据：同上 6/6
+  - 状态：done（2026-09-14）
+
+- [x] T-337 容量契约：常量锁定
+  - 目标：THUMB_CACHE 40/30、MRU 200、QUICK_ACTIONS 12 常量值锁定防漂移
+  - 证据：同上
+  - 状态：done（2026-09-14）
+
+- [x] T-338 favorites 无上限事实固化
+  - 目标：收藏/置顶/分组列表无上限为已知事实（用户主动行为），上限值待维护者决策；事实断言防误解
+  - 证据：同上 + TODO 候选 T-350
+  - 状态：done（2026-09-14）
+
+- [x] T-339 农历开关持久化审计
+  - 目标：确认 journal-calendar 的 showLunar/monthOffset 已由 configSchema 声明并经声明式配置持久化
+  - 证据：`src/home-model.js` configSchema（select/number 字段）
+  - 状态：done（2026-09-14）
+
+- [x] T-340 焦点恢复机制审计
+  - 目标：确认面板重渲染后焦点恢复已实现（controller focusKey 保存与找回）
+  - 证据：`src/home-controller.js` pendingFocusKey 链路
+  - 状态：done（2026-09-14）
+
+- [x] T-341 计数与尺寸同步
+  - 目标：README 98 文件/707 测试、readiness 尺寸、资源基线同步
+  - 证据：`README.en-US.md`、`docs/release-readiness.md`、baseline
+  - 状态：done（2026-09-14）
+
+- [x] T-342 决策 D-222 落档
+  - 证据：`DECISIONS.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-343 状态收口与提交
+  - 目标：TODO/PROGRESS 更新并按协议提交
+  - 证据：本轮状态文件；全门禁 707/707 + 三 smoke 全绿
+  - 状态：done（2026-09-14）
+
+## 待维护者决策
+
+- [ ] T-350 收藏/置顶/分组列表容量上限值
+  - 背景：sanitizeFavorites 与 sanitizeStringList 系列当前只清洗不裁剪（`tests/storage-capacity-limits.test.cjs` 事实断言固化）；正常使用无风险，极端数据可无限膨胀
+  - 建议：favorites 500～1000、分组 64、置顶 64；确定后同步事实断言与本行
+  - 优先级：P3
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
