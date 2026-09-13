@@ -795,6 +795,18 @@ function normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult(v
     });
 }
 
+function normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const summary = source.summary && typeof source.summary === "object" ? source.summary : {};
+    const bounded = (input, max) => Math.max(0, Math.min(max, Math.trunc(Number(input) || 0)));
+    return Object.freeze({
+        summary: Object.freeze({ok: summary.ok === true, reason: ["ready", "invalid_snapshot", "registry_unavailable"].includes(summary.reason) ? summary.reason : "registry_unavailable", size: bounded(summary.size, 8), maxSessions: bounded(summary.maxSessions, 8), active: bounded(summary.active, 8), disposed: bounded(summary.disposed, 8), capacityAvailable: bounded(summary.capacityAvailable, 8)}),
+        registry: Object.freeze({size: bounded(source.registry?.size, 8), maxSessions: bounded(source.registry?.maxSessions, 8), disposed: source.registry?.disposed === true}),
+        diffQueue: Object.freeze({size: bounded(source.diffQueue?.size, 8), maxItems: bounded(source.diffQueue?.maxItems, 8), cursor: bounded(source.diffQueue?.cursor, 0x7fffffff), disposed: source.diffQueue?.disposed === true}),
+        diffCoordinator: Object.freeze({lastCursor: bounded(source.diffCoordinator?.lastCursor, 0x7fffffff), commits: bounded(source.diffCoordinator?.commits, 32), disposed: source.diffCoordinator?.disposed === true}),
+    });
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -828,6 +840,23 @@ function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator
         recoverAndCommit(cursor = 0, diffCursorInput = 0, limit = 8, snapshot = null) {
             if (disposed) return {...unavailable(), acknowledged: 0};
             const recovery = this.recover(cursor, diffCursorInput, limit, snapshot);
+            return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)});
+        },
+        recoverAndCommitWithSignal(cursor = 0, diffCursorInput = 0, limit = 8, snapshot = null, signal) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            if (signal?.aborted) return {...unavailable(), reason: "cancelled", acknowledged: 0};
+            const recovery = recoverPair(cursor, diffCursorInput, limit, snapshot);
+            if (signal?.aborted) return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({ok: false, mode: "cancelled", reason: "cancelled", acknowledged: 0});
+            return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)});
+        },
+        recoverAndCommitWithDeadline(cursor = 0, diffCursorInput = 0, limit = 8, snapshot = null, deadline, now = Date.now) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const expiresAt = Number(deadline);
+            const current = typeof now === "function" ? Number(now()) : Number(now);
+            if (Number.isFinite(expiresAt) && Number.isFinite(current) && current >= expiresAt) return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({ok: false, mode: "timeout", reason: "timeout", acknowledged: 0});
+            const recovery = recoverPair(cursor, diffCursorInput, limit, snapshot);
+            const after = typeof now === "function" ? Number(now()) : Number(now);
+            if (Number.isFinite(expiresAt) && Number.isFinite(after) && after >= expiresAt) return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({ok: false, mode: "timeout", reason: "timeout", acknowledged: 0});
             return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)});
         },
         status() { return Object.freeze({registryCursor, diffCursor, commits, disposed}); },
@@ -1051,6 +1080,7 @@ module.exports = {
     createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator,
     buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
     normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult,
+    normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

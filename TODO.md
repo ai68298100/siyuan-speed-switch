@@ -797,6 +797,18 @@
   - 目标：双游标恢复仅在两路均成功时原子确认，拒绝部分成功污染状态
   - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator`
   - 状态：done
+- [x] T-226 Agent workspace registry 联合取消边界
+  - 目标：联合恢复取消时两路均不读取确认，返回稳定 cancelled
+  - 实现：新增 `recoverAndCommitWithSignal`
+  - 状态：done
+- [x] T-227 Agent workspace registry 联合超时边界
+  - 目标：联合恢复超时时两路均不确认，返回稳定 timeout
+  - 实现：新增 `recoverAndCommitWithDeadline`
+  - 状态：done
+- [x] T-228 Agent workspace registry 诊断归一化
+  - 目标：限制联合诊断中的计数、游标、提交次数和稳定 reason
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
