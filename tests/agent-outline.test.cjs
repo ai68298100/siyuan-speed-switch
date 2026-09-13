@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -552,6 +552,16 @@ test("workspace runtime recovery coordinator rejects duplicate and stale commits
     assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1, disposed: true});
     assert.deepEqual(coordinator.recoverAndCommit(2), {ok: false, mode: "unavailable", reason: "coordinator_disposed", cursor: 2, events: [], snapshot: null, acknowledged: 0});
     assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 3}), 0);
+});
+
+test("workspace runtime recovery honors cancellation without consuming events", () => {
+    const queue = createWorkspaceCapabilityEventQueue(2);
+    queue.push([{type: "host"}]);
+    const controller = new AbortController();
+    controller.abort();
+    assert.deepEqual(recoverWorkspaceCapabilityRuntimeWithSignal(queue, 0, null, 16, controller.signal), {ok: false, mode: "cancelled", reason: "cancelled", cursor: 0, events: [], snapshot: null});
+    assert.equal(queue.size(), 1);
+    assert.deepEqual(recoverWorkspaceCapabilityRuntimeWithSignal(queue, 0, null, 16, {aborted: false}), {ok: true, mode: "events", cursor: 1, events: [{sequence: 1, event: {type: "host", changed: true}}], snapshot: null});
 });
 
 test("workspace recovery coordinator can optionally dispose its owned queue", () => {

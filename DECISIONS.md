@@ -153,3 +153,4 @@
 - D-147 v0.17 recovery coordinator 以单调 lastCursor 拒绝重复/倒退提交，commits 上限 32；并发消费者共享同一 coordinator 时只允许首次成功确认推进队列。
 - D-148 v0.17 recovery coordinator dispose 后不可恢复或提交；返回 `coordinator_disposed` 与 acknowledged=0，保留历史 cursor 仅用于只读状态诊断。
 - D-149 v0.17 coordinator 默认 dispose 不触碰共享队列；仅显式 `dispose(true)` 才清理并销毁队列，避免多消费者场景下误删其他诊断事件。
+- D-150 v0.17 runtime 恢复支持 AbortSignal 取消；取消在读取前/后均返回 cancelled 且不 acknowledge，避免面板卸载时尾部消费事件。

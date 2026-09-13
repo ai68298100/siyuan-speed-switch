@@ -298,6 +298,13 @@ function recoverWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot = null, l
     return {ok: true, mode: "snapshot", cursor: replay.cursor, events: [], snapshot: normalized};
 }
 
+function recoverWorkspaceCapabilityRuntimeWithSignal(queue, cursor = 0, snapshot = null, limit = 16, signal) {
+    if (signal?.aborted) return {ok: false, mode: "cancelled", reason: "cancelled", cursor: Math.max(0, Math.trunc(Number(cursor) || 0)), events: [], snapshot: null};
+    const recovery = recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+    if (signal?.aborted) return {ok: false, mode: "cancelled", reason: "cancelled", cursor: recovery.cursor, events: [], snapshot: null};
+    return recovery;
+}
+
 function commitWorkspaceCapabilityRuntimeRecovery(queue, recovery) {
     if (!queue || typeof queue.acknowledge !== "function" || !recovery || recovery.ok !== true) return 0;
     if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
@@ -369,6 +376,7 @@ module.exports = {
     enqueueWorkspaceCapabilityRuntimeDiff,
     readWorkspaceCapabilityRuntimeEventsForReplay,
     recoverWorkspaceCapabilityRuntime,
+    recoverWorkspaceCapabilityRuntimeWithSignal,
     commitWorkspaceCapabilityRuntimeRecovery,
     recoverAndCommitWorkspaceCapabilityRuntime,
     createWorkspaceCapabilityRecoveryCoordinator,

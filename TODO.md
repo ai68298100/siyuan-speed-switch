@@ -609,3 +609,7 @@
   - 目标：在插件彻底卸载时可选择同时清理事件队列，普通共享消费者仍保留队列
   - 实现：`coordinator.dispose(true)` 同步调用 queue.dispose；默认 dispose() 不清理共享队列并保持幂等
   - 状态：in-progress
+- [ ] T-177 Agent workspace runtime 恢复取消边界
+  - 目标：面板卸载或请求切换时安全取消恢复，不读取、不确认事件队列
+  - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithSignal`，AbortSignal 已取消时返回稳定 cancelled
+  - 状态：in-progress
