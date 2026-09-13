@@ -122,7 +122,7 @@
   "homeCountdownTarget": "目标",
   "homeCountdownHint": "请在配置中填写目标日期（YYYY-MM-DD）",
   "homeRefreshAll": "刷新全部",
-  "homeRefreshFailed": "{count} 个组件刷新失败",
+  "homeRefreshFailed": "{count} 个组件刷新失败（超时 {timeout}，失败 {failed}，其他 {other}）",
   "homeStoreTitle": "小组件商店",
   "homeStoreAdded": "已添加",
   "homeSize": "型号",

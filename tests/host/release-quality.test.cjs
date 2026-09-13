@@ -75,7 +75,8 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-13 (22): 342 KiB for visibility-gated tail reads.
     // 2026-09-13 (23): 343 KiB for the bounded home loading skeleton.
     // 2026-09-13 (24): 344 KiB for non-blocking refresh and bounded refresh-all scheduling.
-    const budget = 344 * 1024;
+    // 2026-09-13 (25): 345 KiB for bounded refresh failure-reason summaries.
+    const budget = 345 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

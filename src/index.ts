@@ -21,7 +21,7 @@ import {
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
-import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures} from "./home-controller";
+import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures} from "./home-controller";
 import {WIDGET_CATALOG} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
@@ -248,6 +248,7 @@ declare module "./home-controller" {
     } | null;
     export function refreshHomeModules(entries: unknown[], options?: {concurrency?: number}): Promise<unknown[]>;
     export function countHomeRefreshFailures(results: unknown): number;
+    export function summarizeHomeRefreshFailures(results: unknown): {timeout: number; failed: number; other: number};
 }
 declare module "./home-panel" {
     export function createHomePanelController(options: Record<string, unknown>): {
@@ -4473,7 +4474,12 @@ const version = beginSearch(session);
                         const results = await refreshHomeModules(homeControllers, {concurrency: 2, signal: batchController?.signal});
                         const failureCount = countHomeRefreshFailures(results);
                         if (failureCount > 0) {
-                            showMessage(this.i18n.homeRefreshFailed.replace("{count}", String(failureCount)));
+                            const summary = summarizeHomeRefreshFailures(results);
+                            showMessage(this.i18n.homeRefreshFailed
+                                .replace("{count}", String(failureCount))
+                                .replace("{timeout}", String(summary.timeout))
+                                .replace("{failed}", String(summary.failed))
+                                .replace("{other}", String(summary.other)));
                         }
                     } finally {
                         if (homeRefreshBatchController === batchController) homeRefreshBatchController = null;

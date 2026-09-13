@@ -122,7 +122,7 @@
   "homeCountdownTarget": "Target",
   "homeCountdownHint": "Set a target date in the config (YYYY-MM-DD)",
   "homeRefreshAll": "Refresh all",
-  "homeRefreshFailed": "{count} modules failed to refresh",
+  "homeRefreshFailed": "{count} modules failed to refresh (timeout {timeout}, failed {failed}, other {other})",
   "homeStoreTitle": "Widget store",
   "homeStoreAdded": "Added",
   "homeSize": "Size",

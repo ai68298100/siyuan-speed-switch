@@ -196,4 +196,16 @@ function countHomeRefreshFailures(results) {
     return Math.min(64, results.reduce((count, result) => count + (result?.ok === false && !["aborted", "disposed", "stale"].includes(result?.reason) ? 1 : 0), 0));
 }
 
-module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures};
+function summarizeHomeRefreshFailures(results) {
+    const summary = {timeout: 0, failed: 0, other: 0};
+    if (!Array.isArray(results)) return summary;
+    results.forEach((result) => {
+        if (result?.ok !== false || ["aborted", "disposed", "stale"].includes(result?.reason)) return;
+        if (result.reason === "timeout") summary.timeout = Math.min(64, summary.timeout + 1);
+        else if (result.reason === "failed" || !result.reason) summary.failed = Math.min(64, summary.failed + 1);
+        else summary.other = Math.min(64, summary.other + 1);
+    });
+    return summary;
+}
+
+module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures};

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {JSDOM} = require("jsdom");
-const {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures} = require("../src/home-controller.js");
+const {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures} = require("../src/home-controller.js");
 
 test("home controller mounts loading state, refreshes content, and disposes cleanly", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
@@ -337,6 +337,17 @@ test("home refresh summary counts only bounded stable failures", () => {
     assert.equal(countHomeRefreshFailures([{ok: true}, {ok: false}, null, {ok: false, detail: "hidden"}, {ok: false, reason: "aborted"}]), 2);
     assert.equal(countHomeRefreshFailures(Array.from({length: 100}, () => ({ok: false}))), 64);
     assert.equal(countHomeRefreshFailures(null), 0);
+});
+
+test("home refresh summary groups stable failure reasons", () => {
+    assert.deepEqual(summarizeHomeRefreshFailures([
+        {ok: false, reason: "timeout"},
+        {ok: false, reason: "failed"},
+        {ok: false, reason: "unsupported"},
+        {ok: false, reason: "aborted"},
+        {ok: true},
+    ]), {timeout: 1, failed: 1, other: 1});
+    assert.deepEqual(summarizeHomeRefreshFailures(null), {timeout: 0, failed: 0, other: 0});
 });
 
 test("home refresh-all scheduler stops queued work after cancellation", async () => {

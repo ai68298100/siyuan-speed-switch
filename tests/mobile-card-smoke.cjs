@@ -358,7 +358,10 @@ const homeRefreshAllOk = homeControllerSource.includes('async function refreshHo
 console.log(`${homeRefreshAllOk ? 'PASS' : 'FAIL'} home refresh-all bounded concurrency`);
 if (!homeRefreshAllOk) allPassed = false;
 const homeRefreshSummaryOk = homeControllerSource.includes('function countHomeRefreshFailures')
-    && source.includes('homeRefreshFailed.replace("{count}"')
+    && homeControllerSource.includes('function summarizeHomeRefreshFailures')
+    && source.includes('this.i18n.homeRefreshFailed')
+    && source.includes('.replace("{count}"')
+    && source.includes('summary.timeout')
     && source.includes('if (failureCount > 0)');
 console.log(`${homeRefreshSummaryOk ? 'PASS' : 'FAIL'} home refresh failure-only summary`);
 if (!homeRefreshSummaryOk) allPassed = false;
