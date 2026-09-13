@@ -32,11 +32,6 @@ const WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS = Object.freeze({
     externalCost: false,
 });
 
-const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
-    WORKSPACE_PLAN_HANDLER_SPEC.name,
-    EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
-    WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name,
-]);
 const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION = 1;
@@ -58,6 +53,11 @@ const WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC = Object.freeze({
         additionalProperties: false,
     }),
 });
+const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
+    WORKSPACE_PLAN_HANDLER_SPEC.name,
+    EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
+    WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name,
+]);
 
 function normalizeWorkspaceCapabilityHandle(handle) {
     if (typeof handle === "function") return {managed: true, kind: "disposer"};

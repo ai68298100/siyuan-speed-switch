@@ -821,6 +821,10 @@
   - 目标：注册 diagnostics 时固定 canonical spec 与只读 effects，拒绝伪造权限
   - 实现：扩展 `WORKSPACE_CAPABILITY_NAMES` 与 `registerWorkspaceCapabilityDefinitions`
   - 状态：done
+- [x] T-232 Agent workspace capability 初始化顺序回归
+  - 目标：确保新增 diagnostics spec 不引入模块加载时序错误
+  - 实现：调整 `WORKSPACE_CAPABILITY_NAMES` 声明顺序并增加直接 require 自检
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
