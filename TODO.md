@@ -171,6 +171,16 @@
   - 证据：`tests/host/release-quality.test.cjs`、`docs/release-readiness.md`
   - 状态：done（2026-09-13）
 
+- [x] T-291 Chromium 烟测浏览器回退
+  - 目标：本机 Edge 自动更新后 headless 输出为空时，烟测自动回退到下一个已安装 Chromium，而不是直接失败
+  - 证据：`tests/chromium-style-smoke.cjs` 逐候选尝试、独立 profile 目录、尽力而为的临时目录清理；本机 Edge 153 失败回退 Chrome 152 通过
+  - 状态：done（2026-09-14）
+
+- [x] T-292 移动烟测源码契约行尾无关
+  - 目标：源码契约断言统一以 LF 归一化读取，Windows CRLF 工作树不再产生假失败
+  - 证据：`tests/mobile-card-smoke.cjs` 的 `readSource` 归一化；三端 smoke 与全量测试通过
+  - 状态：done（2026-09-14）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
