@@ -713,6 +713,18 @@
   - 目标：将 deadline 恢复与确认组合为单一安全调用
   - 实现：新增 `recoverAndCommitWithDeadline`，超时不消费事件
   - 状态：done
+- [x] T-205 Agent workspace registry 快照一致性校验
+  - 目标：检测容量、数量、重复 sessionId 与 disposed 状态矛盾
+  - 实现：新增 `validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot`
+  - 状态：done
+- [x] T-206 Agent workspace registry 快照差异计算
+  - 目标：为 UI/诊断提供会话新增、移除、销毁和容量变化摘要
+  - 实现：新增 `diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots`
+  - 状态：done
+- [x] T-207 Agent workspace registry 差异归一化
+  - 目标：固定差异事件类型、sessionId 与容量字段上限
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff`
+  - 状态：done
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

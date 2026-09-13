@@ -543,6 +543,46 @@ function normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
     return Object.freeze({size: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.size) || sessions.length))), maxSessions: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.maxSessions) || MAX_RUNTIME_SESSIONS))), disposed: source.disposed === true, sessions});
 }
 
+function validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
+    if (!value || typeof value !== "object") return {ok: false, reason: "invalid_snapshot"};
+    const normalized = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value);
+    if (normalized.maxSessions < 1 || normalized.size > normalized.maxSessions || normalized.sessions.length > normalized.maxSessions) return {ok: false, reason: "capacity_overflow"};
+    const ids = normalized.sessions.map((session) => session.sessionId);
+    if (new Set(ids).size !== ids.length) return {ok: false, reason: "duplicate_session"};
+    if (normalized.size !== normalized.sessions.length) return {ok: false, reason: "size_mismatch"};
+    if (normalized.disposed && normalized.sessions.length !== 0) return {ok: false, reason: "dispose_mismatch"};
+    return {ok: true, maxSessions: normalized.maxSessions, size: normalized.size};
+}
+
+function normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff(events) {
+    const allowed = ["created", "removed", "disposed", "capacity"];
+    return (Array.isArray(events) ? events : []).slice(0, 8).map((event) => {
+        const type = allowed.includes(event?.type) ? event.type : "";
+        const sessionId = typeof event?.sessionId === "string" && /^ws-[a-z0-9]{8}$/.test(event.sessionId) ? event.sessionId : "";
+        const size = Math.max(0, Math.min(MAX_RUNTIME_SESSIONS, Math.trunc(Number(event?.size) || 0)));
+        const maxSessions = Math.max(0, Math.min(MAX_RUNTIME_SESSIONS, Math.trunc(Number(event?.maxSessions) || 0)));
+        if ((type === "created" || type === "removed" || type === "disposed") && !sessionId) return null;
+        if (type === "capacity" && maxSessions < 1) return null;
+        return type === "capacity" ? {type, size, maxSessions} : {type, sessionId};
+    }).filter(Boolean);
+}
+
+function diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots(previous, current) {
+    const before = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(previous);
+    const after = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(current);
+    const events = [];
+    const beforeMap = new Map(before.sessions.map((session) => [session.sessionId, session]));
+    const afterMap = new Map(after.sessions.map((session) => [session.sessionId, session]));
+    for (const sessionId of afterMap.keys()) if (!beforeMap.has(sessionId)) events.push({type: "created", sessionId});
+    for (const sessionId of beforeMap.keys()) if (!afterMap.has(sessionId)) events.push({type: "removed", sessionId});
+    for (const [sessionId, session] of afterMap) {
+        const prior = beforeMap.get(sessionId);
+        if (prior && prior.disposed !== session.disposed && session.disposed) events.push({type: "disposed", sessionId});
+    }
+    if (before.size !== after.size || before.maxSessions !== after.maxSessions) events.push({type: "capacity", size: after.size, maxSessions: after.maxSessions});
+    return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff(events);
+}
+
 function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
     const allowed = ["created", "evicted", "removed", "pruned", "idle"];
     return (Array.isArray(events) ? events : []).slice(0, 8).map((event) => {
@@ -733,6 +773,9 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
     createWorkspaceCapabilityRuntimeSessionRegistry,
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
+    validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
+    normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff,
+    diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,
