@@ -101,6 +101,11 @@
   - 证据：`src/index.ts`、`src/index.scss`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-277 商店尺寸初始选中态
+  - 目标：打开商店时为当前已应用尺寸或默认尺寸显示明确高亮，避免用户误解尺寸按钮和添加按钮的关系
+  - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

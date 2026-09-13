@@ -4313,6 +4313,7 @@ const version = beginSearch(session);
                     tile.textContent = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
                     if (sizeKey === (added?.size || supported[0])) {
                         selectedTile = tile;
+                        tile.classList.add("is-selected");
                     }
                     tile.onclick = () => {
                         selectedTile?.classList.remove("is-selected");

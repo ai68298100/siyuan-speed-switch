@@ -27,4 +27,5 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /openHomeConfigForm\(addedInstance, def\.configSchema/);
     assert.match(source, /homeStoreSupportedSurfaces/);
     assert.match(source, /sw-home-store__support/);
+    assert.match(source, /selectedTile = tile;\s*tile\.classList\.add\("is-selected"\)/);
 });
