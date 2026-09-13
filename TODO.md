@@ -437,3 +437,7 @@
   - 目标：为六类固定动作提供 effect/确认/目标上限元数据，并生成不含正文的计划统计摘要
   - 实现：`src/agent-workspace-actions.js` 新增 `WORKSPACE_ACTION_SPECS` 与 `buildWorkspacePlanSummary`，输出步骤数、对象数、导航/写入计数和确认标记
   - 状态：in-progress
+- [ ] T-134 Agent 固定动作结果归一化
+  - 目标：将思源 handler 返回值收敛为稳定状态、合法 ID 和有界计数，阻止原始对象、正文和异常文本进入 Agent 回执
+  - 实现：`src/agent-workspace-actions.js` 新增 `normalizeWorkspaceActionResult`，按六类动作白名单输出字段；失败原因清洗为稳定 token
+  - 状态：in-progress

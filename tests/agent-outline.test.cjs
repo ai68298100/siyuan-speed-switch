@@ -6,7 +6,7 @@ const {
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
-const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
+const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
 const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
@@ -145,6 +145,19 @@ test("workspace plan summary exposes counts without content", () => {
     });
     assert.equal(Object.hasOwn(buildWorkspacePlanSummary(plan), "content"), false);
     assert.equal(buildWorkspacePlanSummary(null), null);
+});
+
+test("workspace action results stay within stable bounded output", () => {
+    assert.deepEqual(normalizeWorkspaceActionResult("open-document", {
+        status: "completed", id: "20260913083000-abcdef", title: "secret", raw: {body: "drop"},
+    }), {status: "completed", id: "20260913083000-abcdef"});
+    assert.deepEqual(normalizeWorkspaceActionResult("open-documents", {
+        status: "completed", opened: ["20260913083000-abcdef", "bad", "20260913083000-abcdef"], failed: ["20260913083001-abcdef"],
+    }), {status: "completed", opened: ["20260913083000-abcdef"], failed: ["20260913083001-abcdef"]});
+    assert.deepEqual(normalizeWorkspaceActionResult("create-document", {status: "failed", reason: "not found!", docId: "20260913083002-abcdef", message: "secret"}), {
+        status: "failed", reason: "notfound",
+    });
+    assert.deepEqual(normalizeWorkspaceActionResult("update-task-status", {status: "completed", id: "bad", done: true}), {status: "completed", done: true});
 });
 
 test("workspace execution guard prevents replay and stays bounded", () => {

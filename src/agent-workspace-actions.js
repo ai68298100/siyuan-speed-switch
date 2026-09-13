@@ -58,11 +58,35 @@ function createWorkspaceActionExecutor(handlers = {}) {
         if (typeof handler !== "function") return {status: "failed", reason: "handler_missing"};
         try {
             const result = await handler(normalized);
-            return result && typeof result === "object" ? result : {status: "completed"};
+            return normalizeWorkspaceActionResult(normalized.action, result);
         } catch (error) {
             return {status: "failed", reason: error?.reason || error?.code || "handler_failed"};
         }
     };
+}
+
+function normalizeWorkspaceActionResult(action, result) {
+    const source = result && typeof result === "object" ? result : {};
+    const status = ["completed", "skipped", "failed", "cancelled"].includes(source.status) ? source.status : "completed";
+    const out = {status};
+    if (status === "failed") out.reason = cleanResultToken(source.reason || "handler_failed");
+    if (action === "open-document" || action === "update-task-status") {
+        const id = normalizeAgentDocumentId(source.id);
+        if (id) out.id = id;
+        if (action === "update-task-status" && typeof source.done === "boolean") out.done = source.done;
+    } else if (action === "open-documents") {
+        out.opened = normalizeAgentDocumentIds(source.opened, 5);
+        out.failed = normalizeAgentDocumentIds(source.failed, 5);
+    } else if (status !== "failed" && (action === "create-document" || action === "append-to-journal")) {
+        const docId = normalizeAgentDocumentId(source.docId);
+        if (docId) out.docId = docId;
+    }
+    return out;
+}
+
+function cleanResultToken(value) {
+    const token = typeof value === "string" ? value.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32) : "handler_failed";
+    return token || "handler_failed";
 }
 
 function buildWorkspacePlanSummary(plan) {
@@ -82,4 +106,4 @@ function buildWorkspacePlanSummary(plan) {
     };
 }
 
-module.exports = {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, createWorkspaceActionExecutor, buildWorkspacePlanSummary};
+module.exports = {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, createWorkspaceActionExecutor, buildWorkspacePlanSummary};
