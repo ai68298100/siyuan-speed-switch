@@ -4132,6 +4132,14 @@
     color: var(--b3-theme-on-surface-light);
     font-size: 13px;
     text-align: center;
+
+    p {
+        margin: 0 0 12px;
+    }
+
+    .sw-home__empty-store {
+        font-size: 12px;
+    }
 }
 
 // 模块卡片（渲染层来自 home-view）

@@ -136,6 +136,16 @@
   - 证据：`src/index.ts`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-284 空面板组件商店引导
+  - 目标：组件面板为空时提供独立、可聚焦的“打开组件商店”入口，减少用户寻找添加入口的成本
+  - 证据：`src/index.ts`、`src/index.scss`、双语 i18n、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-285 配置表单恢复默认值
+  - 目标：允许用户一键恢复 schema 声明的默认值，同时保留第三方组件未知配置字段；兼容异步笔记本选项加载
+  - 证据：`src/index.ts`、双语 i18n、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

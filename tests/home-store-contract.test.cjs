@@ -55,4 +55,7 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /input:invalid, select:invalid/);
     assert.match(source, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/);
     assert.match(source, /homeConfigUnavailableValue/);
+    assert.match(source, /homeConfigReset/);
+    assert.match(source, /sw-home__empty-store/);
+    assert.match(source, /homeEmptyOpenStore/);
 });

@@ -4026,6 +4026,25 @@ const version = beginSearch(session);
         if (!root) return;
         root.innerHTML = "";
         const draft: Record<string, unknown> = {...inst.config};
+        const controls = new Map<string, HTMLInputElement | HTMLSelectElement>();
+        const resetKeys = new Set<string>();
+        const defaultValue = (field: {type: string; min?: number; defaults?: unknown; options?: string[]}) => {
+            if (field.type === "number") {
+                const fallback = Number.isFinite(field.defaults) ? Number(field.defaults) : (field.min ?? 0);
+                return Math.trunc(fallback);
+            }
+            if (field.type === "select") return (field.options || []).includes(field.defaults as string)
+                ? field.defaults as string : (field.options || [""])[0];
+            return field.defaults == null ? "" : String(field.defaults);
+        };
+        const applyDefault = (field: {key: string; type: string; min?: number; defaults?: unknown; options?: string[]}) => {
+            const value = defaultValue(field);
+            draft[field.key] = field.type === "number" ? Number(value) : value;
+            resetKeys.add(field.key);
+            const control = controls.get(field.key);
+            if (!control) return;
+            control.value = String(value);
+        };
         schema.forEach((field) => {
             const row = document.createElement("div");
             row.className = "sw-home-config__field";
@@ -4050,6 +4069,7 @@ const version = beginSearch(session);
                     : (field.defaults as string);
                 select.value = current;
                 draft[field.key] = select.value;
+                controls.set(field.key, select);
                 select.addEventListener("change", () => { draft[field.key] = select.value; });
                 row.appendChild(select);
             } else if (field.type === "notebook") {
@@ -4082,9 +4102,12 @@ const version = beginSearch(session);
                         stale.textContent = `${current} · ${this.i18n.homeConfigUnavailableValue}`;
                         select.appendChild(stale);
                     }
-                    select.value = current;
+                    select.value = resetKeys.has(field.key) ? "" : current;
+                    draft[field.key] = select.value;
+                    resetKeys.delete(field.key);
                     select.disabled = false;
                 };
+                controls.set(field.key, select);
                 select.addEventListener("change", () => { draft[field.key] = select.value; });
                 row.appendChild(select);
                 void this.loadNotebooks().then((notebooks) => {
@@ -4100,6 +4123,7 @@ const version = beginSearch(session);
                 input.placeholder = this.i18n.homeConfigDocumentPlaceholder;
                 input.value = typeof draft[field.key] === "string" ? (draft[field.key] as string) : String(field.defaults || "");
                 draft[field.key] = input.value;
+                controls.set(field.key, input);
                 const suggestions = document.createElement("datalist");
                 suggestions.id = `${controlId}-options`;
                 this.currentDocumentSetEntries().slice(0, 40).forEach((entry) => {
@@ -4129,6 +4153,7 @@ const version = beginSearch(session);
                     input.maxLength = 128;
                 }
                 draft[field.key] = field.type === "number" ? Number(input.value) : input.value;
+                controls.set(field.key, input);
                 input.addEventListener("change", () => {
                     if (field.type === "number") {
                         const parsed = Number(input.value);
@@ -4146,6 +4171,13 @@ const version = beginSearch(session);
         });
         const actions = document.createElement("div");
         actions.className = "sw-home-config__actions";
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "b3-button b3-button--text";
+        reset.textContent = this.i18n.homeConfigReset;
+        reset.addEventListener("click", () => {
+            schema.forEach((field) => applyDefault(field));
+        });
         const cancel = document.createElement("button");
         cancel.type = "button";
         cancel.className = "b3-button b3-button--text";
@@ -4171,7 +4203,7 @@ const version = beginSearch(session);
             dialog.destroy();
             onSaved();
         });
-        actions.append(cancel, save);
+        actions.append(reset, cancel, save);
         root.appendChild(actions);
     }
 
@@ -4738,7 +4770,14 @@ const version = beginSearch(session);
                 const empty = document.createElement("div");
                 empty.className = "sw-home__empty";
                 empty.setAttribute("role", "status");
-                empty.textContent = this.i18n.homeEmpty;
+                const emptyText = document.createElement("p");
+                emptyText.textContent = this.i18n.homeEmpty;
+                const openStore = document.createElement("button");
+                openStore.type = "button";
+                openStore.className = "b3-button b3-button--outline sw-home__empty-store";
+                openStore.textContent = this.i18n.homeEmptyOpenStore;
+                openStore.addEventListener("click", () => this.openHomeWidgetStore(device, renderPanel));
+                empty.append(emptyText, openStore);
                 grid.appendChild(empty);
             }
             const controllers = homeControllers;
