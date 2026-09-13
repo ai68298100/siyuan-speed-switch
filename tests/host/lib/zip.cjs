@@ -33,9 +33,13 @@ function listZipEntries(buffer) {
         const nameLength = buffer.readUInt16LE(offset + 28);
         const extraLength = buffer.readUInt16LE(offset + 30);
         const commentLength = buffer.readUInt16LE(offset + 32);
+        const compressedSize = buffer.readUInt32LE(offset + 20);
+        const uncompressedSize = buffer.readUInt32LE(offset + 24);
         const localOffset = buffer.readUInt32LE(offset + 42);
         entries.push({
             name: buffer.slice(offset + 46, offset + 46 + nameLength).toString("utf8"),
+            compressedSize,
+            uncompressedSize,
             localOffset,
         });
         offset += 46 + nameLength + extraLength + commentLength;
@@ -63,4 +67,12 @@ function listZipEntryNames(buffer) {
     return listZipEntries(buffer).map((entry) => entry.name);
 }
 
-module.exports = {listZipEntryNames, readZipEntry};
+function listZipEntryStats(buffer) {
+    return listZipEntries(buffer).map(({name, compressedSize, uncompressedSize}) => ({
+        name,
+        compressedSize,
+        uncompressedSize,
+    }));
+}
+
+module.exports = {listZipEntryNames, listZipEntryStats, readZipEntry};
