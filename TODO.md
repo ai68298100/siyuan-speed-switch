@@ -449,3 +449,7 @@
   - 目标：在审批和执行前验证步骤索引、动作白名单、写权限标记、目标数量与任务状态字段，阻止结构篡改进入 handler
   - 实现：`validateWorkspacePlan` 接入 `runWorkspacePlan`，非法计划统一失败且不调用步骤执行器
   - 状态：in-progress
+- [ ] T-137 Agent 导航宿主动作适配器
+  - 目标：将现有桌面/移动文档打开 API 封装为计划执行 handler，支持单篇、批量、旧宿主回退和取消信号
+  - 实现：新增独立 `src/agent-host-actions.js`，复用 `document-actions`；批量打开保持顺序并返回逐项 opened/failed
+  - 状态：in-progress

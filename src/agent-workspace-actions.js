@@ -50,14 +50,15 @@ function normalizeWorkspaceStep(step) {
     return out;
 }
 
-function createWorkspaceActionExecutor(handlers = {}) {
-    return async (step) => {
+function createWorkspaceActionExecutor(handlers = {}, options = {}) {
+    return async (step, index = 0) => {
         const normalized = normalizeWorkspaceStep(step);
         if (!normalized) return {status: "failed", reason: "invalid_step"};
+        if (options.signal?.aborted) return {status: "cancelled"};
         const handler = handlers[ACTION_KEYS[normalized.action]];
         if (typeof handler !== "function") return {status: "failed", reason: "handler_missing"};
         try {
-            const result = await handler(normalized);
+            const result = await handler(normalized, {index, action: normalized.action, signal: options.signal});
             return normalizeWorkspaceActionResult(normalized.action, result);
         } catch (error) {
             return {status: "failed", reason: error?.reason || error?.code || "handler_failed"};

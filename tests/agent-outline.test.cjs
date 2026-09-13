@@ -11,6 +11,7 @@ const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, exec
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
 const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
 const {createWorkspaceApprovalChallenge, validateWorkspaceApprovalChallenge} = require('../src/agent-workspace-approval.js');
+const {createNavigationActionHandlers} = require('../src/agent-host-actions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -135,11 +136,31 @@ test("workspace action adapter dispatches only normalized fixed actions", async 
     assert.equal(normalizeWorkspaceStep({action: "append-to-journal", content: "\n\t"}), null);
     const calls = [];
     const execute = createWorkspaceActionExecutor({
-        openDocument: async (step) => { calls.push(step); return {status: "completed", id: step.id}; },
+        openDocument: async (step, context) => { calls.push({step, context}); return {status: "completed", id: step.id}; },
     });
     assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed", id: "20260913083000-abcdef"});
     assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "failed", reason: "handler_missing"});
     assert.equal(calls.length, 1);
+    assert.equal(calls[0].context.action, "open-document");
+});
+
+test("workspace action executor stops before handler when signal is aborted", async () => {
+    let calls = 0;
+    const execute = createWorkspaceActionExecutor({openDocument: async () => { calls += 1; return {status: "completed", id: "20260913083000-abcdef"}; }}, {signal: {aborted: true}});
+    assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}, 2), {status: "cancelled"});
+    assert.equal(calls, 0);
+});
+
+test("navigation host adapter opens single and batch documents with cancellation", async () => {
+    const opened = [];
+    const handlers = createNavigationActionHandlers({isMobile: false, app: {}, openTab: async ({doc}) => { opened.push(doc.id); }});
+    assert.deepEqual(await handlers.openDocument({id: "20260913083000-abcdef"}), {status: "completed", id: "20260913083000-abcdef"});
+    assert.deepEqual(await handlers.openDocuments({ids: ["20260913083001-abcdef", "20260913083002-abcdef"]}), {
+        status: "completed", opened: ["20260913083001-abcdef", "20260913083002-abcdef"], failed: [],
+    });
+    const signal = {aborted: true};
+    assert.deepEqual(await handlers.openDocument({id: "20260913083003-abcdef"}, {signal}), {status: "cancelled", reason: "open_failed"});
+    assert.deepEqual(opened, ["20260913083000-abcdef", "20260913083001-abcdef", "20260913083002-abcdef"]);
 });
 
 test("workspace plan summary exposes counts without content", () => {
