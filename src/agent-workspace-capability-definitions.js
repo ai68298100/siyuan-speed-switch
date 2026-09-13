@@ -899,6 +899,25 @@ function buildWorkspaceCapabilityDefinitionsDiagnostics(definitions) {
     return Object.freeze({ok: matrix.ok, total: matrix.total, valid: matrix.valid, invalid: matrix.invalid, duplicate: matrix.duplicate});
 }
 
+function normalizeWorkspaceCapabilityDefinitionsDiagnostics(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const bounded = (input, max) => Math.max(0, Math.min(max, Math.trunc(Number(input) || 0)));
+    return Object.freeze({ok: source.ok === true, total: bounded(source.total, 8), valid: bounded(source.valid, 8), invalid: bounded(source.invalid, 8), duplicate: bounded(source.duplicate, 8)});
+}
+
+function buildWorkspaceCapabilityLifecycleDiagnostics(lifecycle) {
+    const status = lifecycle && typeof lifecycle.status === "function" ? lifecycle.status() : {registered: 0, failed: 0, unmanaged: 0, disposed: true};
+    const handleStatus = lifecycle && typeof lifecycle.handleStatus === "function" ? lifecycle.handleStatus() : {opaque: 0, invalid: 0};
+    const failureStatus = lifecycle && typeof lifecycle.failureStatus === "function" ? lifecycle.failureStatus() : {total: 0, byReason: {cancelled: 0, timeout: 0, failed: 0}};
+    const probe = lifecycle && typeof lifecycle.probe === "function" ? lifecycle.probe() : {available: false, reason: "unavailable"};
+    const bounded = (input, max) => Math.max(0, Math.min(max, Math.trunc(Number(input) || 0)));
+    return Object.freeze({probe: Object.freeze({available: probe.available === true, reason: ["ready", "unavailable", "timeout", "cancelled", "failed"].includes(probe.reason) ? probe.reason : "failed"}), status: Object.freeze({registered: bounded(status.registered, 8), failed: bounded(status.failed, 8), unmanaged: bounded(status.unmanaged, 8), disposed: status.disposed === true}), handles: Object.freeze({opaque: bounded(handleStatus.opaque, 8), invalid: bounded(handleStatus.invalid, 8)}), failures: Object.freeze({total: bounded(failureStatus.total, 8), byReason: Object.freeze({cancelled: bounded(failureStatus.byReason?.cancelled, 8), timeout: bounded(failureStatus.byReason?.timeout, 8), failed: bounded(failureStatus.byReason?.failed, 8)})})});
+}
+
+function buildWorkspaceCapabilityDefinitionLifecycleDiagnostics(definitions, lifecycle) {
+    return Object.freeze({definitions: normalizeWorkspaceCapabilityDefinitionsDiagnostics(buildWorkspaceCapabilityDefinitionsDiagnostics(definitions)), lifecycle: buildWorkspaceCapabilityLifecycleDiagnostics(lifecycle)});
+}
+
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
     let registryCursor = 0;
     let diffCursor = 0;
@@ -1183,6 +1202,9 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
     createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler,
     buildWorkspaceCapabilityDefinitionsDiagnostics,
+    normalizeWorkspaceCapabilityDefinitionsDiagnostics,
+    buildWorkspaceCapabilityLifecycleDiagnostics,
+    buildWorkspaceCapabilityDefinitionLifecycleDiagnostics,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

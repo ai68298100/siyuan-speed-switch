@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-13）：T-243~T-245 增加 definitions/lifecycle 诊断归一化、生命周期摘要及联合只读诊断包；655/655 测试、TypeScript 与 diff 检查通过。
+
 补充（2026-09-13）：T-241~T-242 增加注册失败原因归一化/lifecycle failureStatus，以及 definitions 矩阵 diagnostics 摘要；654/654 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-239~T-240 增加 capability definitions 批量矩阵校验，并以独立 `handleStatus()` 暴露 opaque/invalid 句柄计数，保持既有 runtime snapshot 兼容；652/652 测试、TypeScript 与 diff 检查通过。

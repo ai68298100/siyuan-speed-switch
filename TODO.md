@@ -865,6 +865,18 @@
   - 目标：将批量定义矩阵压缩为可供 UI/Agent 消费的有界统计
   - 实现：新增 `buildWorkspaceCapabilityDefinitionsDiagnostics`
   - 状态：done
+- [x] T-243 Agent workspace definitions diagnostics 归一化
+  - 目标：固定 definitions 摘要字段与 8 条上限
+  - 实现：新增 `normalizeWorkspaceCapabilityDefinitionsDiagnostics`
+  - 状态：done
+- [x] T-244 Agent workspace lifecycle diagnostics 摘要
+  - 目标：聚合宿主探测、注册、句柄类型与失败原因计数
+  - 实现：新增 `buildWorkspaceCapabilityLifecycleDiagnostics`
+  - 状态：done
+- [x] T-245 Agent workspace definition/lifecycle 联合诊断
+  - 目标：一次读取 definitions 矩阵与 lifecycle 运行状态
+  - 实现：新增 `buildWorkspaceCapabilityDefinitionLifecycleDiagnostics`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
