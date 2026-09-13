@@ -189,6 +189,18 @@ function validateWorkspaceCapabilityRuntimeSnapshot(value) {
     return {ok: true, version: snapshot.version};
 }
 
+function diffWorkspaceCapabilityRuntimeSnapshots(previous, current) {
+    const before = normalizeWorkspaceCapabilityRuntimeSnapshot(previous);
+    const after = normalizeWorkspaceCapabilityRuntimeSnapshot(current);
+    return Object.freeze({
+        hostChanged: before.lifecycle.host.available !== after.lifecycle.host.available || before.lifecycle.host.reason !== after.lifecycle.host.reason,
+        registrationChanged: before.lifecycle.registration.registered !== after.lifecycle.registration.registered || before.lifecycle.registration.failed !== after.lifecycle.registration.failed,
+        unmanagedChanged: before.lifecycle.registration.unmanaged !== after.lifecycle.registration.unmanaged,
+        planCountDelta: after.bridge.planCount - before.bridge.planCount,
+        bridgeDisposedChanged: before.bridge.disposed !== after.bridge.disposed,
+    });
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -203,4 +215,5 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeSnapshot,
     isWorkspaceCapabilityRuntimeSnapshotCompatible,
     validateWorkspaceCapabilityRuntimeSnapshot,
+    diffWorkspaceCapabilityRuntimeSnapshots,
 };

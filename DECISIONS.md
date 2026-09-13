@@ -140,3 +140,4 @@
 - D-134 v0.17 runtime 快照固定 version=1；归一化仅保留 host/registration/bridge 有界字段，未知键（含 token 等敏感值）一律丢弃，计数分别限制在 0~2 与 0~32。
 - D-135 v0.17 快照消费增加显式版本兼容检查；缺省版本视为旧版兼容，version=1 当前支持，未知未来版本返回 false 由调用方隔离，不尝试猜测字段含义。
 - D-136 v0.17 runtime 快照一致性校验在归一化后执行固定关系检查；只返回稳定 reason，不返回原始字段，避免溢出计数或 dispose 不一致污染诊断/UI。
+- D-137 v0.17 runtime 状态 diff 只比较归一化快照的固定字段，planCount 仅输出有界增量；不输出计划 ID、token、句柄或异常文本，便于 UI 增量刷新。

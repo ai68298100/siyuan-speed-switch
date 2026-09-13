@@ -557,3 +557,7 @@
   - 目标：阻止注册/计划计数溢出或 lifecycle 与 bridge 销毁态不一致的快照进入诊断/UI
   - 实现：新增 `validateWorkspaceCapabilityRuntimeSnapshot`，输出稳定 `unsupported_version/registration_overflow/plan_overflow/dispose_mismatch`
   - 状态：in-progress
+- [ ] T-164 Agent workspace runtime 状态转移 diff
+  - 目标：以固定字段识别两次 runtime 快照间的宿主、注册、计划和销毁变化
+  - 实现：新增 `diffWorkspaceCapabilityRuntimeSnapshots`，输出有界布尔值与计划数量增量，不携带原始快照
+  - 状态：in-progress
