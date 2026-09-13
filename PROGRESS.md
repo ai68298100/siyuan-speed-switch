@@ -15,7 +15,7 @@
 - Agent 标题搜索复用兼容提取器，支持 `data.files`、`data.documents`、`result.records` 等旧宿主包装，避免合法标题结果被误判为空。
 - 状态文档已统一到 v0.16.38，T-023 完成。
 
-验证基线：T-066~T-106 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、573/573、移动烟测和 Chromium 样式烟测；raw bundle 自律预算 345 KiB，压缩包约 294.6 KiB，条目级差异与硬上限余量均由 diagnostic 持续观测。
+验证基线：T-066~T-108 后 `pnpm verify:release` 全绿，包含 TypeScript、生产构建、574/574、移动烟测和 Chromium 样式烟测；raw bundle 自律预算 345 KiB，压缩包约 294.6 KiB，条目级差异与硬上限余量均由 diagnostic 持续观测。
 
 待处理：
 

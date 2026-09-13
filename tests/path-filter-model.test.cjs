@@ -72,3 +72,20 @@ test("path filter capability probe keeps host failures distinct from empty direc
     }
     assert.equal(normalizePathFilterProbeOutcome({kind: "timeout"}, {notebook: "bad box"}).reason, "invalid");
 });
+
+test("path filter normalization stays bounded for oversized host lists", () => {
+    const files = Array.from({length: 5000}, (_, index) => {
+        const id = `20260913${String(130000 + index).padStart(6, "0")}-bulkabc`;
+        return {id, name: `Bulk ${index}`, path: `/${id}.sy`, subFileCount: index % 2};
+    });
+    const result = normalizePathFilterListResponse({code: "0", data: {
+        box: notebook,
+        path: "/",
+        files,
+    }}, {notebook});
+    assert.equal(result.ok, true);
+    assert.equal(result.items.length, MAX_PATH_ITEMS);
+    assert.equal(result.truncated, true);
+    assert.equal(result.items[0].id, files[0].id);
+    assert.equal(result.items.at(-1).id, files[MAX_PATH_ITEMS - 1].id);
+});
