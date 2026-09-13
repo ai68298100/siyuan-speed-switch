@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -479,6 +479,18 @@ test("workspace runtime snapshot normalization is versioned and bounded", () => 
     assert.deepEqual(normalizeWorkspaceCapabilityRuntimeEvents([{type: "plans", delta: 99}, {type: "host"}, {type: "host"}, {type: "unknown"}, {type: "disposed"}]), [
         {type: "host", changed: true}, {type: "plans", delta: 32}, {type: "disposed", changed: true},
     ]);
+});
+
+test("workspace capability event queue stays bounded and consumable", () => {
+    const queue = createWorkspaceCapabilityEventQueue(2);
+    assert.equal(queue.push([{type: "host"}, {type: "plans", delta: 1}, {type: "disposed"}]), 3);
+    assert.equal(queue.size(), 2);
+    assert.deepEqual(queue.read(), [{type: "plans", delta: 1}, {type: "disposed", changed: true}]);
+    assert.deepEqual(queue.consume(1), [{type: "plans", delta: 1}]);
+    assert.equal(queue.size(), 1);
+    queue.dispose();
+    assert.equal(queue.push([{type: "host"}]), 0);
+    assert.deepEqual(queue.consume(), []);
 });
 
 test("workspace capability host probe stays stable and side-effect free", () => {

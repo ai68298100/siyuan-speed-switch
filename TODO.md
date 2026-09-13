@@ -569,3 +569,7 @@
   - 目标：对状态事件固定排序、去重和 delta 上限，防止高频变化制造 UI 噪声
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeEvents`，仅保留五类事件，最多一类一条
   - 状态：in-progress
+- [ ] T-167 Agent workspace runtime 事件队列
+  - 目标：为 UI/诊断提供有界事件缓存，支持批量读取与确认消费
+  - 实现：新增 `createWorkspaceCapabilityEventQueue`，最多保留 16 条，dispose 后停止接收事件
+  - 状态：in-progress

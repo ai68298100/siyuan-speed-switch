@@ -227,6 +227,32 @@ function normalizeWorkspaceCapabilityRuntimeEvents(events) {
     return order.filter((type) => byType.has(type)).map((type) => byType.get(type));
 }
 
+function createWorkspaceCapabilityEventQueue(maxItems = 16) {
+    const max = Math.min(16, Math.max(1, Math.trunc(Number(maxItems) || 16)));
+    const queue = [];
+    let disposed = false;
+    return Object.freeze({
+        push(events) {
+            if (disposed) return 0;
+            const normalized = normalizeWorkspaceCapabilityRuntimeEvents(events);
+            normalized.forEach((event) => queue.push(event));
+            while (queue.length > max) queue.shift();
+            return normalized.length;
+        },
+        read(limit = max) {
+            const count = Math.min(max, Math.max(0, Math.trunc(Number(limit) || max)));
+            return queue.slice(0, count).map((event) => ({...event}));
+        },
+        consume(limit = max) {
+            const items = this.read(limit);
+            queue.splice(0, items.length);
+            return items;
+        },
+        size() { return queue.length; },
+        dispose() { disposed = true; queue.length = 0; },
+    });
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -244,4 +270,5 @@ module.exports = {
     diffWorkspaceCapabilityRuntimeSnapshots,
     buildWorkspaceCapabilityRuntimeEvents,
     normalizeWorkspaceCapabilityRuntimeEvents,
+    createWorkspaceCapabilityEventQueue,
 };

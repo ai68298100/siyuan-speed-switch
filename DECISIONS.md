@@ -143,3 +143,4 @@
 - D-137 v0.17 runtime 状态 diff 只比较归一化快照的固定字段，planCount 仅输出有界增量；不输出计划 ID、token、句柄或异常文本，便于 UI 增量刷新。
 - D-138 v0.17 runtime 事件固定为 host/registration/unmanaged/plans/disposed 五类，plans delta 限制在 -32~32；事件不携带快照原文或敏感值，便于 UI/诊断增量消费。
 - D-139 v0.17 runtime 事件归一化按 host→registration→unmanaged→plans→disposed 固定顺序去重；未知类型与零 delta 丢弃，每类最多一条，避免高频生命周期事件放大。
+- D-140 v0.17 runtime 事件队列最多保留 16 条，push 时丢弃最旧事件；read 返回副本，consume 才移除，dispose 后拒绝新事件，避免无界内存和重复消费。
