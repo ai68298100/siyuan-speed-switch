@@ -119,3 +119,4 @@
 - D-113 v0.17 写入动作 adapter 只负责参数清洗和内核回调编排，不自行弹确认；任务更新复用 `flipTaskMarkdown` 仅改勾选标记，创建/追加必须以合法文档 ID 作为成功 postcondition，取消在每次内核调用前后检查。
 - D-114 v0.17 宿主 handler 通过统一 registry 按 navigation/documentSet/write 三域注入；registry 只暴露六个固定动作键并冻结，避免执行器意外发现或调用额外插件方法。
 - D-115 v0.17 以 `agent-workspace-session` 作为未来宿主接入边界：会话统一管理 challenge、token、replay guard 和动作 executor，dispose 时清理全部内存授权；审批预览只输出动作/对象计数，不输出正文。
+- D-116 v0.17 Agent bridge 只保存有界计划元数据于内存，最多 32 条；`plan/issue/execute/dispose` 是未来 capability handler 的唯一编排入口，未知 planId 或非法执行请求在宿主动作前返回稳定状态。

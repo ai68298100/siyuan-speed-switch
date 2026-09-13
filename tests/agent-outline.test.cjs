@@ -17,6 +17,7 @@ const {createDocumentSet} = require('../src/document-sets.js');
 const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
+const {createWorkspaceAgentBridge, MAX_STORED_PLANS} = require('../src/agent-workspace-bridge.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -252,6 +253,27 @@ test("workspace execution session issues, executes once, and disposes state", as
     session.dispose();
     const afterDispose = await session.execute(plan, challenge, {now: 1700000000103});
     assert.equal(afterDispose.status, "invalid_token");
+});
+
+test("workspace agent bridge provides bounded plan issue execute lifecycle", async () => {
+    const opened = [];
+    const bridge = createWorkspaceAgentBridge({
+        maxPlans: 1,
+        navigation: {isMobile: false, app: {}, openTab: async ({doc}) => opened.push(doc.id)},
+        documentSet: {getSet: async () => null, openDocument: async () => true},
+    });
+    assert.equal(MAX_STORED_PLANS, 32);
+    const plan = bridge.plan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    assert.equal(plan.summary.stepCount, 1);
+    const challenge = bridge.issue(plan.planId, "desktop", 1700000000100);
+    assert.equal(challenge.planId, plan.planId);
+    const result = await bridge.execute(challenge, 1700000000101);
+    assert.equal(result.status, "completed");
+    assert.deepEqual(opened, ["20260913083000-abcdef"]);
+    const unknown = await bridge.execute({...challenge, planId: "wp-missing"}, 1700000000101);
+    assert.equal(unknown.status, "plan_not_found");
+    bridge.dispose();
+    assert.equal(bridge.size(), 0);
 });
 
 test("workspace plan summary exposes counts without content", () => {

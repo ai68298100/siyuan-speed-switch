@@ -473,3 +473,7 @@
   - 目标：在真正执行前输出不含正文的步骤/对象/导航/写入统计，并与 challenge 同步生成
   - 实现：session `preview()` 组合 `buildWorkspacePlanSummary` 与一次性 challenge，供后续审批 UI/Agent handler 复用
   - 状态：in-progress
+- [ ] T-143 Agent 工作区 bridge facade
+  - 目标：提供统一 `plan → issue → execute → dispose` API，封装计划存储、审批会话和动作执行，供未来 Agent handler 直接调用
+  - 实现：新增独立 `src/agent-workspace-bridge.js`，计划内存最多 32 条，执行请求经现有契约归一化，销毁时清理全部状态
+  - 状态：in-progress
