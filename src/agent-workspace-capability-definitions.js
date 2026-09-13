@@ -201,6 +201,17 @@ function diffWorkspaceCapabilityRuntimeSnapshots(previous, current) {
     });
 }
 
+function buildWorkspaceCapabilityRuntimeEvents(previous, current) {
+    const diff = diffWorkspaceCapabilityRuntimeSnapshots(previous, current);
+    const events = [];
+    if (diff.hostChanged) events.push({type: "host", changed: true});
+    if (diff.registrationChanged) events.push({type: "registration", changed: true});
+    if (diff.unmanagedChanged) events.push({type: "unmanaged", changed: true});
+    if (diff.planCountDelta !== 0) events.push({type: "plans", delta: Math.max(-32, Math.min(32, diff.planCountDelta))});
+    if (diff.bridgeDisposedChanged) events.push({type: "disposed", changed: true});
+    return events;
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -216,4 +227,5 @@ module.exports = {
     isWorkspaceCapabilityRuntimeSnapshotCompatible,
     validateWorkspaceCapabilityRuntimeSnapshot,
     diffWorkspaceCapabilityRuntimeSnapshots,
+    buildWorkspaceCapabilityRuntimeEvents,
 };

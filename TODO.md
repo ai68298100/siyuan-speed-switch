@@ -561,3 +561,7 @@
   - 目标：以固定字段识别两次 runtime 快照间的宿主、注册、计划和销毁变化
   - 实现：新增 `diffWorkspaceCapabilityRuntimeSnapshots`，输出有界布尔值与计划数量增量，不携带原始快照
   - 状态：in-progress
+- [ ] T-165 Agent workspace runtime 状态事件
+  - 目标：将 runtime 快照变化转换为 UI/诊断可消费的固定事件，限制事件数量与 delta 范围
+  - 实现：新增 `buildWorkspaceCapabilityRuntimeEvents`，最多输出 host/registration/unmanaged/plans/disposed 五类事件
+  - 状态：in-progress

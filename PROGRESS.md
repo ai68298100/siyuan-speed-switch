@@ -1,6 +1,6 @@
 # 进度
 
-本轮新增（2026-09-13）：T-150 为 workspace bridge 增加显式过期计划回收 `prune(now)`，T-151 增加 capability 注册句柄卸载回收，T-152 增加 bridge 销毁态隔离，T-153 增加 capability lifecycle facade，T-154 增加有界 lifecycle status 快照，T-155 增加 bridge status 快照，T-156 增加无副作用宿主 capability 探测，T-157 增加注册句柄归一化与 unmanaged 计数，T-158 增加 lifecycle.probe() 只读入口，T-159 增加 lifecycle.snapshot() 统一状态快照，T-160 增加 runtime 组合快照，T-161 增加 runtime 快照版本化与归一化，T-162 增加版本兼容门禁，T-163 增加 runtime 一致性校验，T-164 增加 runtime 状态转移 diff；613/613 自动测试、TypeScript 与 diff 检查通过。生产 bundle 暂不接入该独立模块。
+本轮新增（2026-09-13）：T-150 为 workspace bridge 增加显式过期计划回收 `prune(now)`，T-151 增加 capability 注册句柄卸载回收，T-152 增加 bridge 销毁态隔离，T-153 增加 capability lifecycle facade，T-154 增加有界 lifecycle status 快照，T-155 增加 bridge status 快照，T-156 增加无副作用宿主 capability 探测，T-157 增加注册句柄归一化与 unmanaged 计数，T-158 增加 lifecycle.probe() 只读入口，T-159 增加 lifecycle.snapshot() 统一状态快照，T-160 增加 runtime 组合快照，T-161 增加 runtime 快照版本化与归一化，T-162 增加版本兼容门禁，T-163 增加 runtime 一致性校验，T-164 增加 runtime 状态转移 diff，T-165 增加 runtime 状态事件；613/613 自动测试、TypeScript 与 diff 检查通过。生产 bundle 暂不接入该独立模块。
 
 当前基线：`v0.16.39`（发布提交 `3d0d841`），开发头为本地 `main`；本地分支已包含未推送的性能/UI提交，T-071~T-121 已完成，T-122~T-156 已启动。正式发版继续后置。
 
