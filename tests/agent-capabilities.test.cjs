@@ -167,7 +167,7 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
             updatedAt: 1234.9,
             stat: {value: "3", label: "Tasks", progress: 150, arc: {value: 9, max: 7}},
             items: [
-                {label: "One", value: "id", count: 10001, done: false, secret: "drop"},
+                {label: "One", value: "id", secondary: "十一月十三", count: 10001, done: false, secret: "drop"},
                 {label: "", value: "drop"},
             ],
         },
@@ -179,7 +179,7 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
         device: "mobile",
         cached: true,
         updatedAt: 1234,
-        items: [{label: "One", value: "id", count: 9999, done: false}],
+        items: [{label: "One", value: "id", secondary: "十一月十三", count: 9999, done: false}],
         total: 1,
         offset: 0,
         truncated: false,

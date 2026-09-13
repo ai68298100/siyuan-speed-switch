@@ -83,6 +83,7 @@ test("home view renders calendar grid for viewType calendar", () => {
             {label: "1", value: "20260901000000-aaaaaaa"},
             {label: "2", value: ""},
             {label: "3", value: "", done: true},
+            {label: "4", value: "", secondary: "正月初四"},
         ]}},
         {calendarWeekdays: "一二三四五六日"},
     );
@@ -91,9 +92,10 @@ test("home view renders calendar grid for viewType calendar", () => {
     const grid = root.querySelector(".sw__home-calendar");
     assert.ok(grid, "calendar grid present");
     assert.equal(grid.querySelectorAll(".sw__home-calendar-head").length, 7);
-    assert.equal(grid.querySelectorAll(".sw__home-calendar-cell").length, 4);
+    assert.equal(grid.querySelectorAll(".sw__home-calendar-cell").length, 5);
     assert.equal(grid.querySelectorAll(".has-journal").length, 1);
     assert.equal(grid.querySelectorAll(".is-today").length, 1);
+    assert.equal(grid.querySelectorAll(".sw__home-calendar-secondary").length, 1);
 });
 test("home view renders week row for viewType weekdays", () => {
     const dom = new JSDOM("<!doctype html><body></body>");

@@ -65,6 +65,8 @@ function normalizeHomeViewResult(value, options = {}) {
             href: text(item?.href, 512),
             command: text(item?.command, 128),
         };
+        const secondary = text(item?.secondary, 32);
+        if (secondary) entry.secondary = secondary;
         if (typeof item?.done === "boolean") entry.done = item.done;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
         return entry;
@@ -295,7 +297,16 @@ function renderHomeModuleView(doc, view, options = {}) {
             cell.className = "sw__home-calendar-cell"
                 + (item.value ? " has-journal" : "")
                 + (item.done === true ? " is-today" : "");
-            cell.textContent = item.label || "";
+            const primary = doc.createElement("span");
+            primary.className = "sw__home-calendar-primary";
+            primary.textContent = item.label || "";
+            cell.appendChild(primary);
+            if (item.secondary) {
+                const secondary = doc.createElement("small");
+                secondary.className = "sw__home-calendar-secondary";
+                secondary.textContent = item.secondary;
+                cell.appendChild(secondary);
+            }
             if (clickable) cell.addEventListener("click", () => options.onItem(item, view));
             grid.appendChild(cell);
         });

@@ -5015,6 +5015,19 @@
 }
 
 // 日历格悬停反馈
+.sw__home-calendar-cell {
+    .sw__home-calendar-primary { line-height: 1.1; }
+
+    .sw__home-calendar-secondary {
+        display: block;
+        margin-top: 1px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 9px;
+        line-height: 1;
+        opacity: 0.72;
+    }
+}
+
 .sw__home-calendar-cell.has-journal {
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;

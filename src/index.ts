@@ -3613,11 +3613,21 @@ const version = beginSearch(session);
             const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7; // 周一开头
             const isCurrentMonth = offset === 0;
             const today = now.getDate();
-            const items: Array<{label: string; value: string; done?: boolean}> = [];
+            const showLunar = config.showLunar === "是";
+            const lunarFormatter = showLunar ? (() => {
+                try {
+                    return new Intl.DateTimeFormat("zh-CN-u-ca-chinese", {month: "numeric", day: "numeric"});
+                } catch (_) {
+                    return null;
+                }
+            })() : null;
+            const items: Array<{label: string; value: string; done?: boolean; secondary?: string}> = [];
             for (let i = 0; i < leadingBlanks; i += 1) items.push({label: "", value: ""});
             for (let day = 1; day <= daysInMonth; day += 1) {
                 const dayKey = String(day);
-                items.push({label: dayKey, value: journalByDay.get(dayKey) || "", done: isCurrentMonth && day === today});
+                const date = new Date(year, month, day);
+                const lunar = lunarFormatter ? lunarFormatter.format(date).slice(0, 16) : "";
+                items.push({label: dayKey, value: journalByDay.get(dayKey) || "", done: isCurrentMonth && day === today, ...(lunar ? {secondary: lunar} : {})});
             }
             while (items.length % 7 !== 0) items.push({label: "", value: ""});
             return {items};

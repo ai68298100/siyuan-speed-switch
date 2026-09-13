@@ -154,6 +154,7 @@ function buildAgentWidgetSnapshot(moduleId, title, value, options = {}) {
         const label = asText(item.label, 256);
         if (!label) return null;
         const entry = {label, value: asText(item.value, 256)};
+        if (item.secondary !== undefined) entry.secondary = asText(item.secondary, 32);
         if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));
         if (typeof item.done === "boolean") entry.done = item.done;
         return entry;
@@ -698,6 +699,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                                 properties: {
                                     label: {type: "string", maxLength: 256},
                                     value: {type: "string", maxLength: 256},
+                                    secondary: {type: "string", maxLength: 32},
                                     count: {type: "integer", minimum: 0, maximum: 9999},
                                     done: {type: "boolean"},
                                 },
