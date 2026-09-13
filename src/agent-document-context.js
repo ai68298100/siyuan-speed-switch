@@ -6,6 +6,35 @@ const {flattenOutline, normalizeAgentDocumentId, normalizeAgentNotebookId} = req
 
 const MAX_HEADINGS = 24;
 const MAX_PATH_LENGTH = 256;
+const MAX_TITLE_LENGTH = 256;
+
+function normalizeDocumentContextRequest(input = {}) {
+    const source = input && typeof input === "object" ? input : {};
+    const id = normalizeAgentDocumentId(source.id);
+    const rawLimit = Number(source.limit);
+    const limit = Number.isFinite(rawLimit)
+        ? Math.min(MAX_HEADINGS, Math.max(1, Math.trunc(rawLimit)))
+        : MAX_HEADINGS;
+    return {id, limit};
+}
+
+function normalizeDocumentContextPath(value) {
+    const cleaned = cleanText(value, MAX_PATH_LENGTH).replace(/\\/g, "/");
+    const rooted = cleaned.startsWith("/");
+    const body = cleaned.replace(/^\/+|\/+$/g, "");
+    return (rooted ? "/" : "") + body;
+}
+
+function extractDocumentContextRecord(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const data = source.data && typeof source.data === "object" ? source.data : source;
+    return {
+        id: data.id ?? data.root_id ?? data.rootId,
+        title: data.title ?? data.name ?? data.content,
+        notebookId: data.notebookId ?? data.notebookID ?? data.box,
+        path: data.path ?? data.hPath ?? data.hpath,
+    };
+}
 
 const DOCUMENT_CONTEXT_SPEC = Object.freeze({
     name: "document-context",
@@ -35,15 +64,15 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
 });
 
 function buildDocumentContext(value, options = {}) {
-    const source = value && typeof value === "object" ? value : {};
-    const limit = Math.min(MAX_HEADINGS, Math.max(1, Math.trunc(Number(options.limit) || MAX_HEADINGS)));
+    const source = extractDocumentContextRecord(value);
+    const limit = normalizeDocumentContextRequest(options).limit;
     return {
         id: normalizeAgentDocumentId(source.id),
-        title: cleanText(source.title, 256),
+        title: cleanText(source.title, MAX_TITLE_LENGTH),
         notebookId: normalizeAgentNotebookId(source.notebookId),
-        path: cleanText(source.path, MAX_PATH_LENGTH),
-        active: source.active === true,
-        headings: flattenOutline(source.headings, limit),
+        path: normalizeDocumentContextPath(source.path),
+        active: value?.active === true,
+        headings: flattenOutline(value?.headings, limit),
     };
 }
 
@@ -51,4 +80,13 @@ function cleanText(value, max) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
-module.exports = {MAX_HEADINGS, DOCUMENT_CONTEXT_SPEC, buildDocumentContext};
+module.exports = {
+    MAX_HEADINGS,
+    MAX_PATH_LENGTH,
+    MAX_TITLE_LENGTH,
+    DOCUMENT_CONTEXT_SPEC,
+    normalizeDocumentContextRequest,
+    normalizeDocumentContextPath,
+    extractDocumentContextRecord,
+    buildDocumentContext,
+};

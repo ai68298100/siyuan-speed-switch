@@ -204,7 +204,7 @@ pnpm verify:release
 - 韧性增强：组件读取失败但存在上次好数据时继续展示旧快照并标「缓存」，不再整块报错；错误态附带原因码便于自诊。
 - 修复 append-to-journal 智能体能力定义存在但未注册的缺口（README 宣称 10 项实际只有 9 项）；新增"能力注册守卫"测试防再犯。
 - 修复全文内容搜索因空类型筛选从未命中的问题（3.8.x 内核把空 types 视为"不搜任何类型"）。
-- 内置组件达 27 个；智能体能力真正达到 10 项（5 只读 + 2 受控导航 + 3 受控写）；675 项自动测试。
+- 内置组件达 27 个；智能体能力包含 `document-context` 在内共 12 项（7 只读 + 2 受控导航 + 3 受控写）；本轮新增契约后自动测试持续增长。
 
 ### 历史版本
 
@@ -241,7 +241,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 675 项测试；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 745 项测试（100 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -270,10 +270,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 675 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 745 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、675 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、745 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

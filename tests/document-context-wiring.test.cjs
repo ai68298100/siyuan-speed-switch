@@ -1,0 +1,49 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+
+test("document-context module is imported by the plugin entry", () => {
+    assert.match(source, /from "\.\/agent-document-context"/);
+});
+
+test("document-context capability is registered through the read-only list", () => {
+    assert.match(source, /spec: DOCUMENT_CONTEXT_SPEC/);
+    assert.match(source, /readOnlyDefinitions\.push|const readOnlyDefinitions/);
+});
+
+test("document-context defaults to the active root when id is omitted", () => {
+    assert.match(source, /const id = request\.id \|\| activeRoot/);
+});
+
+test("document-context validates the resolved id before querying", () => {
+    assert.match(source, /if \(!id \|\| !BLOCK_ID_RE\.test\(id\)\)/);
+});
+
+test("document-context uses the bounded SQL fallback for closed documents", () => {
+    assert.match(source, /SELECT id, content, box FROM blocks WHERE id='/);
+    assert.match(source, /LIMIT 1/);
+});
+
+test("document-context reuses the existing outline endpoint", () => {
+    assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id, preview: false\}\)/);
+});
+
+test("document-context uses tab metadata before the SQL fallback", () => {
+    assert.match(source, /const tab = opened\.find\(\(candidate\) =>/);
+});
+
+test("document-context marks active state by stable root id", () => {
+    assert.match(source, /active: Boolean\(activeRoot && activeRoot === id\)/);
+});
+
+test("document-context returns a structured bounded result", () => {
+    assert.match(source, /structuredContent: content, result: JSON\.stringify\(content\)/);
+});
+
+test("document-context failure text is stable and does not echo exceptions", () => {
+    assert.match(source, /return \{error: "document context unavailable"\}/);
+    assert.match(source, /logger\.warn\("Agent document context unavailable", error\)/);
+});

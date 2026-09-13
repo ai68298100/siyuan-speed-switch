@@ -101,7 +101,9 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (35): 376 KiB for v0.17 stage-1 workspace runtime diagnostics
     // wiring (D-220): slim agent-workspace-runtime cluster moved out of the
     // unshipped definitions matrix; zip grows only ~5 KiB, hard ceiling intact.
-    const budget = 376 * 1024;
+    // 2026-09-14 (36): 385 KiB for v0.17 document-context read-only wiring
+    // (bounded metadata envelope, active-tab preference and SQL fallback).
+    const budget = 385 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

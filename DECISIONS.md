@@ -1,5 +1,7 @@
 # 决策
 
+- D-225 v0.17 阶段 2 document-context 采用只读诚实接入：省略 id 读取活动 root，已打开文档优先使用页签元数据，关闭文档仅做单行 SQL（id/content/box）回退；大纲复用既有 outline 端点并限制 24 条。输出不含正文、markdown、异常文本或未知字段；真实桌面取消/权限证据继续后置，不以 mock 冒充宿主验收。
+
 - D-001 fetchKernelJson 采用硬编码端点白名单而非通配 URL | 原因：防 SSRF（Mimosa 要求） | 影响：新增内核端点须手动登记（本轮新增 `/api/riff/getNotebookRiffDueCards`）
 - D-002 组件面板尺寸型号固定 7 档而非自由像素 | 原因：用户要求 iPad 固定型号感 | 影响：无自由拖宽
 - D-003 kernelPost 重命名为 fetchKernelJson 并加白名单而非删函数 | 原因：Mimosa 误判 SSRF 是因为函数名含 fetch + 变量 URL | 影响：无
@@ -234,3 +236,4 @@
 - D-222 存储容量边界契约（tests/storage-capacity-limits.test.cjs）固化六个口径：MRU 200（首条存活+去重）、最近打开 50、文档集 24（versioned envelope+changed 标记）、home 布局每设备 64 且丢弃幽灵实例、THUMB_CACHE 40/30 与 QUICK_ACTIONS 12 常量锁定；favorites/sanitizeStringList 系列确认为"已知无上限"（用户主动行为，上限值待维护者决策，TODO 候选），由事实断言防止误解。随测试发现并修复 capMru 对非数组 truthy 输入（如被写坏的字符串 key）抛 TypeError 的缺口——统一安全降级为空数组，与其余 sanitize 家族一致；normalizeInstances 因 moduleId 去重天然有界，无需上限。
 - D-223 组件面板条目增加方向键线性导航（↑/↓ 循环移动、Home/End 跳首尾）：keydown 委托挂在面板容器自身（随 DOM 移除自然释放，无 document 级监听与卸载负担），仅当焦点已在条目按钮上时接管，避免劫持面板内其他控件（折叠/配置）与外层键盘语义；与 controller 既有 focusKey 重渲染恢复机制正交。契约测试以 jsdom 真实键盘事件断言循环边界。随轮确认三项既有事实：search-session 双会话同 key 缓存互不污染且计时器独立（补并发隔离断言与 10k 次缓存查找 <50ms 基准）；widget-catalog provider 注册/失效/恢复三态与双订阅已有覆盖；moduleId 归一化（trim/64 截断/字符白名单）达标且大小写敏感为合理设计。
 - D-224 中文搜索输入体验修复：三端（桌面弹窗/侧栏/手机端）搜索触发统一经 bindSearchInputComposition IME 守卫——composition（拼音候选中）期间的 input 事件不再触发搜索，杜绝拼音中间态作为关键词发请求并闪现错误结果；compositionend 立即补一次触发（applySearch 内部防抖+序号去重使双触发无害）；商店搜索框为纯前端过滤不发请求，不接守卫。移动烟测新增三端接线契约断言。随轮确认：focus-visible 均有主色边框替代（outline:none 不裸奔）、筛选按钮激活态在绑定时立即初始化（updateButton 无延迟）、商店对话框走思源 Dialog 标准结构（宿主管 aria）。块 ID 校验单一事实来源：agent-capabilities 提取 AGENT_BLOCK_ID_PATTERN/RE 共享常量（4 处 schema pattern + 2 处运行时正则），document-context 保持零依赖设计不动其内联 pattern；runtime 模块补 dispose 幂等/直载自检/canonical spec 身份共享三断言。
+- D-225 v0.17 阶段 2 document-context 采用只读诚实接入：省略 id 读取活动 root，已打开文档优先使用页签元数据，关闭文档仅做单行 SQL（id/content/box）回退；大纲复用既有 outline 端点并限制 24 条。输出不含正文、markdown、异常文本或未知字段；真实桌面取消/权限证据继续后置，不以 mock 冒充宿主验收。

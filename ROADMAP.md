@@ -292,7 +292,7 @@ pnpm build
 
 - 把已建成的独立契约层（`document-context`、`workspace-plan`、审批令牌、一次性执行门卫、session registry、diagnostics）择优接入生产 `addAgentCapability` 注册，坚持"上下文 → dry-run 计划 → 用户确认 → 固定动作执行 → 结果回执"主线。
 - 硬约束（2026-09-14 第二轮更新，见 D-216/D-219）：预算障碍已解除——D-219 归档内容决策执行后 `package.zip` 余量 54.5 KiB，契约模块生产接入回归常规包体预算评审（每次接入后复核 raw 自律线与 zip 余量即可，无需再走内容决策）。
-- 生产接入进度（2026-09-14）：阶段 1 `workspace-runtime-registry-diagnostics` 已完成生产接入（D-220，闭包 25 模块、zip 余量 49.4 KiB）；下一步 `document-context` 等待真实桌面取消/权限审计；计划执行链（plan/approval/execution）在 open-documents 真机点击验证后再评估。
+- 生产接入进度（2026-09-14）：阶段 1 `workspace-runtime-registry-diagnostics` 已完成生产接入（D-220，闭包 25 模块、zip 余量 49.4 KiB）；阶段 2 `document-context` 只读接入已完成（T-368~T-390），真实桌面取消/权限证据仍后置；计划执行链（plan/approval/execution）在 open-documents 真机点击验证后再评估。
 - 完成真实宿主权限、取消、卸载与确认弹窗验证（open-documents 真机点击、手机端能力矩阵）后，才评估 Agent 入口是否加入默认工具栏。
 - 路径筛选在拿到可信路径树端点证据（T-107）后开放 UI（T-103），复用已有 `path-filter-model`。
 

@@ -519,6 +519,81 @@
   - 证据：全门禁 712/712 + 三 smoke 全绿；zip 258125（余量 49075 bytes）
   - 状态：done（2026-09-14）
 
+- [x] T-368 document-context 请求归一化
+  - 目标：统一文档 ID 与 limit 边界，非法输入稳定降级
+  - 证据：`normalizeDocumentContextRequest`；契约测试
+  - 状态：done（2026-09-14）
+- [x] T-369 document-context 路径归一化
+  - 目标：统一斜杠、控制字符和长度上限
+  - 状态：done（2026-09-14）
+- [x] T-370 document-context 元数据 envelope 解包
+  - 目标：兼容 `data`、`root_id`、`box`、`hPath` 等已知字段
+  - 状态：done（2026-09-14）
+- [x] T-371 document-context 标题清洗
+  - 目标：去控制字符、合并空白并限制 256 字符
+  - 状态：done（2026-09-14）
+- [x] T-372 document-context 大纲上限
+  - 目标：复用 flattenOutline 并限制最多 24 个标题
+  - 状态：done（2026-09-14）
+- [x] T-373 document-context 输出字段白名单
+  - 目标：不回显 markdown、异常对象和未知字段
+  - 状态：done（2026-09-14）
+- [x] T-374 document-context 活动状态判定
+  - 目标：按稳定 root id 标记当前活动文档
+  - 状态：done（2026-09-14）
+- [x] T-375 document-context 活动页签优先
+  - 目标：打开文档优先复用页签标题/笔记本/路径元数据
+  - 状态：done（2026-09-14）
+- [x] T-376 document-context 关闭文档 SQL 回退
+  - 目标：对未打开文档执行受限单行 SQL 元数据查询
+  - 状态：done（2026-09-14）
+- [x] T-377 document-context 大纲接线
+  - 目标：复用 `/api/outline/getDocOutline`，保持只读
+  - 状态：done（2026-09-14）
+- [x] T-378 document-context 端点白名单复核
+  - 目标：仅使用现有 query/sql 与 outline 白名单端点
+  - 状态：done（2026-09-14）
+- [x] T-379 document-context 结构化回执
+  - 目标：统一 structuredContent/result 双通道输出
+  - 状态：done（2026-09-14）
+- [x] T-380 document-context 稳定错误语义
+  - 目标：异常统一为 `document context unavailable`，不泄漏宿主文本
+  - 状态：done（2026-09-14）
+- [x] T-381 document-context 旧宿主兼容
+  - 目标：沿用 addAgentCapability 缺失时的安全跳过行为
+  - 状态：done（2026-09-14）
+- [x] T-382 document-context schema 边界测试
+  - 目标：锁定标题、路径、笔记本 ID 和标题数组边界
+  - 状态：done（2026-09-14）
+- [x] T-383 document-context 输入污染测试
+  - 目标：覆盖循环/未知 envelope、控制字符和超长载荷
+  - 状态：done（2026-09-14）
+- [x] T-384 document-context wiring 静态门禁
+  - 目标：锁定生产入口、活动页签、SQL 回退和 outline 接线
+  - 证据：`tests/document-context-wiring.test.cjs`
+  - 状态：done（2026-09-14）
+- [x] T-385 document-context 生产注册审计
+  - 目标：确认只读 effects 与既有注册器一致
+  - 状态：done（2026-09-14）
+- [x] T-386 document-context 双语协议文档
+  - 目标：补充能力用途、输出边界和未返回正文声明
+  - 状态：done（2026-09-14）
+- [x] T-387 document-context 真实宿主前置记录
+  - 目标：记录取消/权限真实桌面验收仍为后续证据，不以 mock 替代
+  - 状态：done（2026-09-14）
+- [x] T-388 document-context 计数与 readiness 同步
+  - 目标：同步测试数、产物大小和 v0.17 阶段状态
+  - 证据：`PROGRESS.md`、`docs/release-readiness.md`、中英文 README
+  - 状态：done（2026-09-14）
+- [x] T-389 document-context 全门禁复跑
+  - 目标：通过 TypeScript、完整测试、移动与 Chromium smoke
+  - 证据：`pnpm verify:release`；745/745、smoke 全绿
+  - 状态：done（2026-09-14）
+- [x] T-390 document-context 里程碑提交
+  - 目标：按协议提交本轮 23 项契约测试与生产接线
+  - 证据：本地里程碑提交
+  - 状态：done（2026-09-14）
+
 ## 待维护者决策
 
 - [ ] T-350 收藏/置顶/分组列表容量上限值

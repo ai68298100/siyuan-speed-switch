@@ -31,11 +31,12 @@
   4. 测试镜像 `agent-outline.test.cjs` 模式（spec/effects/handler 一致性 + 输出有界）。
 - 门禁：`production-graph-isolation` 的 UNWIRED 清单相应收窄并记录 D 条目；`verify:release` 全绿。
 
-## 阶段 2：document-context 只读接入（⏸ 等待维护者授权：是否不等真实桌面审计先行接入；代码就绪 2.4 KiB）
+## 阶段 2：document-context 只读接入（✅ 已完成，2026-09-14，T-368~T-390）
 
-- T-122 自身依赖注明"真实桌面取消/权限审计后接入"；代码就绪（2.4 KiB 纯模型，大纲 ≤24 条、路径 ≤256 字符）。
-- handler 复用 `/api/outline/getDocOutline` + 活动页签解析，与现有 outline/navigation 能力同源，无新增宿主面。
-- 预算影响可忽略（+~2 KiB zip）。
+- 生产入口已注册独立 `document-context` 只读 capability：省略 id 时读取活动 root，已打开页签优先，关闭文档使用单行 SQL 元数据回退。
+- handler 复用 `/api/outline/getDocOutline` + 活动页签解析，与现有 outline/navigation 能力同源；输出标题、笔记本、路径、活动态和 ≤24 条大纲，不返回正文。
+- 输入/输出归一化、稳定错误语义和 wiring 静态门禁已落地；取消/权限真实桌面证据仍保留为后续宿主验收，不以 mock 替代。
+- 预算影响：本轮构建后复核 raw 自律线与 zip 余量，并由 release-readiness 记录。
 
 ## 阶段 3：计划执行链（前置：open-documents 真机点击验证 + 审批 UX 真机确认）
 

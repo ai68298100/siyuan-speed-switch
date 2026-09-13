@@ -61,6 +61,7 @@ import {
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {createWorkspaceRuntimeDiagnostics} from "./agent-workspace-diagnostics";
+import {DOCUMENT_CONTEXT_SPEC, buildDocumentContext, normalizeDocumentContextRequest} from "./agent-document-context";
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
@@ -288,7 +289,6 @@ declare module "./document-sets" {
     export function summarizeDocumentSetRestore(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean}): {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
     export function runDocumentSetRestore(entries: Array<{rootId: string}>, openRoot: (rootId: string, entry: unknown) => Promise<unknown> | unknown, options?: {signal?: AbortSignal; shouldContinue?: () => boolean}): Promise<{succeeded: number; failed: number; attempted: number; cancelled: boolean; results: Array<{rootId: string; ok: boolean; error?: string}>}>;
 }
-
 // 鍗＄墖涓夋寜閽墍闇€鍥炬爣 symbol锛堜笌瀹樻柟 litheness sprite 鍚屽悕鍚屽舰锛夛細
 // 鎵嬫満绔ā鏉夸笉鍚唴鑱?symbol锛屽畼鏂?sprite 鐢?loadAssets 寮傛娉ㄥ叆涓斾緷璧?App 鐗堟湰锛?
 // 棣栧抚 <use> 寮曠敤鍒扮┖ symbol 鏃舵寜閽覆鏌撲负绌虹櫧锛堜笁鎸夐挳"闅愬舰"鏍瑰洜锛夛紝鎻掍欢椤昏嚜甯﹀厹搴?
@@ -6879,6 +6879,48 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     } catch (error) {
                         logger.warn("Agent document outline unavailable", error);
                         return {error: "outline unavailable"};
+                    }
+                },
+            },
+            {
+                // v0.17 阶段 2：文档上下文只读接入。仅返回元数据与有界大纲，绝不回传正文。
+                spec: DOCUMENT_CONTEXT_SPEC as unknown as Record<string, unknown>,
+                handler: async (args: Record<string, unknown>) => {
+                    try {
+                        const request = normalizeDocumentContextRequest(args || {});
+                        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
+                        const active = this.isMobile
+                            ? opened.find((tab) => tab.id === this.getMobileActiveTabId())
+                            : this.getActiveTab();
+                        const activeRoot = active ? this.rootIdOf(active) || active.id : "";
+                        const id = request.id || activeRoot;
+                        if (!id || !BLOCK_ID_RE.test(id)) return {error: "document context unavailable"};
+                        const tab = opened.find((candidate) => (this.rootIdOf(candidate) || candidate.id) === id);
+                        let record: Record<string, unknown> = tab ? {
+                            id,
+                            title: this.titleOf(tab),
+                            notebookId: resolveSearchNotebookId(tab as unknown),
+                            path: (tab as unknown as {path?: string; hPath?: string}).path
+                                || (tab as unknown as {hPath?: string}).hPath || "",
+                        } : {id};
+                        if (!tab) {
+                            const json = await this.fetchKernelJson("/api/query/sql", {
+                                stmt: `SELECT id, content, box FROM blocks WHERE id='${id}' LIMIT 1`,
+                            });
+                            const row = (json?.data || [])[0] as {id?: string; content?: string; box?: string} | undefined;
+                            if (!row || !BLOCK_ID_RE.test(String(row.id || ""))) return {error: "document context unavailable"};
+                            record = {id: row.id, title: row.content, notebookId: row.box, path: ""};
+                        }
+                        const outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                        const content = buildDocumentContext({
+                            ...record,
+                            active: Boolean(activeRoot && activeRoot === id),
+                            headings: Array.isArray(outlineJson?.data) ? outlineJson.data : [],
+                        }, request);
+                        return {structuredContent: content, result: JSON.stringify(content)};
+                    } catch (error) {
+                        logger.warn("Agent document context unavailable", error);
+                        return {error: "document context unavailable"};
                     }
                 },
             },

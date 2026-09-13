@@ -29,11 +29,11 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 ## Native SiYuan Agent capabilities
 
-On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers ten capabilities after a runtime check. Read-only capabilities declare `localRead` only, with no writes, data egress, or external cost; controlled navigation declares no writes. Input, output, and text sizes are bounded. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; further cross-document or destructive actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
+On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers twelve capabilities after a runtime check. Read-only capabilities declare `localRead` only, with no writes, data egress, or external cost; controlled navigation declares no writes. Input, output, and text sizes are bounded. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; further cross-document or destructive actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
 
 [中文说明](./README.md)
 
-**Agent capabilities** (via `addAgentCapability`): `navigation-state` (bounded tabs, recent-open, recent-closed and favorites snapshot), `search-documents`, `home-widget-snapshot`, `get-document-outline` and `workspace-context` (read-only), `open-document` and `open-documents` — up to 5 documents per call, behind a confirmation dialog listing every title (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
+**Agent capabilities** (via `addAgentCapability`): `navigation-state` (bounded tabs, recent-open, recent-closed and favorites snapshot), `search-documents`, `home-widget-snapshot`, `get-document-outline`, `document-context` and `workspace-context` (read-only), `open-document` and `open-documents` — up to 5 documents per call, behind a confirmation dialog listing every title (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
 
 ## Core Capabilities
 
@@ -222,7 +222,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 98 `*.test.cjs` files under `tests/` and `tests/host/`, currently 701 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 100 `*.test.cjs` files under `tests/` and `tests/host/`, currently 745 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -251,7 +251,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 701)
+pnpm test               # run every unit, contract, and host release test (currently 745)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)
