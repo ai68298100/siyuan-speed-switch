@@ -505,3 +505,7 @@
   - 目标：为长期运行的 bridge 清理已过期计划元数据，避免有界计划槽位被陈旧审批占用
   - 实现：新增 `prune(now)`，按统一 expiry 语义删除过期计划并返回回收数量；不影响 session 内 token/replay 清理
   - 状态：in-progress
+- [ ] T-151 Agent workspace capability 卸载回收
+  - 目标：宿主卸载时回收已注册 capability 句柄，避免旧 handler 残留或异常冒泡
+  - 实现：新增 `disposeWorkspaceCapabilityRegistrations`，兼容 disposer、对象 disposer 与 `removeAgentCapability`，逐项隔离异常并返回计数
+  - 状态：in-progress

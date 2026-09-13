@@ -72,10 +72,36 @@ function registerWorkspaceCapabilityDefinitions(host, definitions, onError = (_e
     return registered;
 }
 
+// Best-effort lifecycle cleanup for hosts that expose a disposer or explicit
+// removeAgentCapability API.  Unknown handles are ignored; teardown must never
+// make plugin unload fail or leak an exception into the Agent channel.
+function disposeWorkspaceCapabilityRegistrations(host, registrations, onError = (_error) => {}) {
+    const items = Array.isArray(registrations) ? registrations : [];
+    let disposed = 0;
+    items.forEach((handle) => {
+        try {
+            if (typeof handle === "function") {
+                handle();
+                disposed += 1;
+            } else if (handle && typeof handle.dispose === "function") {
+                handle.dispose();
+                disposed += 1;
+            } else if (host && typeof host.removeAgentCapability === "function" && handle !== undefined && handle !== null) {
+                host.removeAgentCapability(handle);
+                disposed += 1;
+            }
+        } catch (error) {
+            onError(error);
+        }
+    });
+    return disposed;
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
     WORKSPACE_CAPABILITY_NAMES,
     createWorkspaceCapabilityDefinitions,
     registerWorkspaceCapabilityDefinitions,
+    disposeWorkspaceCapabilityRegistrations,
 };

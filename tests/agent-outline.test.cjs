@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations} = require('../src/agent-workspace-capability-definitions.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -345,6 +345,26 @@ test("workspace capability registration enforces known names and effects", () =>
     assert.deepEqual(calls[0].effects, WORKSPACE_PLAN_EFFECTS);
     assert.deepEqual(calls[1].effects, EXECUTE_WORKSPACE_PLAN_EFFECTS);
     assert.equal(typeof calls[0].handler, "function");
+});
+
+test("workspace capability registrations dispose safely across host handle styles", () => {
+    const removed = [];
+    const host = {removeAgentCapability: (handle) => removed.push(handle)};
+    let functionDisposed = 0;
+    let objectDisposed = 0;
+    const errors = [];
+    const count = disposeWorkspaceCapabilityRegistrations(host, [
+        () => { functionDisposed += 1; },
+        {dispose: () => { objectDisposed += 1; }},
+        "capability-id",
+        {dispose: () => { throw new Error("secret"); }},
+    ], (error) => errors.push(error));
+    assert.equal(count, 3);
+    assert.equal(functionDisposed, 1);
+    assert.equal(objectDisposed, 1);
+    assert.deepEqual(removed, ["capability-id"]);
+    assert.equal(errors.length, 1);
+    assert.deepEqual(disposeWorkspaceCapabilityRegistrations(null, ["ignored"]), 0);
 });
 
 test("workspace plan summary exposes counts without content", () => {
