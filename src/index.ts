@@ -4259,7 +4259,17 @@ const version = beginSearch(session);
                 }
                 const desc = document.createElement("span");
                 desc.textContent = def.description || "";
-                copy.append(title, desc);
+                const supportedDevices = Array.isArray(def.supportedDevices) ? def.supportedDevices : [device];
+                const deviceLabels: Record<string, string> = {
+                    desktop: this.i18n.homeStoreDeviceDesktop,
+                    sidebar: this.i18n.homeStoreDeviceSidebar,
+                    mobile: this.i18n.homeStoreDeviceMobile,
+                };
+                const support = document.createElement("small");
+                support.className = "sw-home-store__support";
+                const surfaceText = supportedDevices.map((item: string) => deviceLabels[item] || item).filter(Boolean).join("、");
+                support.textContent = this.i18n.homeStoreSupportedSurfaces.replace("{surfaces}", surfaceText);
+                copy.append(title, desc, support);
                 head.append(icon, copy);
                 card.appendChild(head);
                 // 迷你预览：骨架示意 + 各档尺寸按 12 列比例的整体效果

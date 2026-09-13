@@ -25,4 +25,6 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /addedInstance && Array\.isArray\(def\.configSchema\)/);
     assert.match(source, /sw-home-store__configure/);
     assert.match(source, /openHomeConfigForm\(addedInstance, def\.configSchema/);
+    assert.match(source, /homeStoreSupportedSurfaces/);
+    assert.match(source, /sw-home-store__support/);
 });

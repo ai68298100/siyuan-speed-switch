@@ -4586,6 +4586,14 @@
         color: var(--b3-theme-on-surface-light);
         font-size: 12px;
     }
+
+    .sw-home-store__support {
+        display: block;
+        margin-top: 3px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        opacity: .86;
+    }
 }
 
 .sw-home-store__sizes {

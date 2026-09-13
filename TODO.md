@@ -96,6 +96,11 @@
   - 范围：复用既有安全配置表单；保存后刷新商店与首页，不改变尺寸选择和添加按钮语义
   - 状态：done（2026-09-13）
 
+- [x] T-276 商店支持表面提示
+  - 目标：在商店卡片显示组件支持的主面板、侧栏和移动端表面，帮助用户理解当前设备筛选与跨设备布局差异
+  - 证据：`src/index.ts`、`src/index.scss`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
