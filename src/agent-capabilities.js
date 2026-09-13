@@ -89,9 +89,11 @@ function buildAgentHomeDiagnostics(items, limit = 16, windowMinutes = 60, now = 
         byType[item.type] += 1;
         byDevice[item.device] += 1;
     });
+    const completed = byType.cache + byType.empty;
+    const failures = diagnostics.length - completed;
     return {
         diagnostics: diagnostics.slice(-normalizedLimit),
-        summary: {total: diagnostics.length, windowMinutes: minutes, byType, byDevice},
+        summary: {total: diagnostics.length, windowMinutes: minutes, byType, byDevice, cacheHits: byType.cache, completed, failures},
     };
 }
 
@@ -942,8 +944,11 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                             required: HOME_DIAGNOSTIC_DEVICES,
                             additionalProperties: false,
                         },
+                        cacheHits: {type: "integer", minimum: 0, maximum: MAX_DIAGNOSTICS},
+                        completed: {type: "integer", minimum: 0, maximum: MAX_DIAGNOSTICS},
+                        failures: {type: "integer", minimum: 0, maximum: MAX_DIAGNOSTICS},
                     },
-                    required: ["total", "windowMinutes", "byType", "byDevice"],
+                    required: ["total", "windowMinutes", "byType", "byDevice", "cacheHits", "completed", "failures"],
                     additionalProperties: false,
                 }),
             },

@@ -65,6 +65,9 @@ test("agent home diagnostics normalize trusted fields and reject malformed entri
     assert.equal(result.summary.byType.failed, 1);
     assert.equal(result.summary.byType.timeout, 1);
     assert.deepEqual(result.summary.byDevice, {desktop: 1, sidebar: 1, mobile: 1});
+    assert.equal(result.summary.cacheHits, 1);
+    assert.equal(result.summary.completed, 1);
+    assert.equal(result.summary.failures, 2);
     assert.deepEqual(buildAgentHomeDiagnostics(null, 16, 60, now).diagnostics, []);
 });
 
@@ -449,6 +452,7 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
     assert.equal(AGENT_CAPABILITY_SPECS.homeDiagnostics.name, "home-adapter-diagnostics");
     assert.equal(AGENT_CAPABILITY_SPECS.homeDiagnostics.outputSchema.properties.diagnostics.maxItems, 32);
+    assert.equal(AGENT_CAPABILITY_SPECS.homeDiagnostics.outputSchema.properties.summary.properties.cacheHits.maximum, 32);
 });
 
 test("workspace-context spec and builder keep bounded read-only snapshot", () => {
