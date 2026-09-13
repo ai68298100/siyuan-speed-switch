@@ -16,6 +16,7 @@ const {createDocumentSetRestoreHandler} = require('../src/agent-document-set-act
 const {createDocumentSet} = require('../src/document-sets.js');
 const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
+const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -228,6 +229,29 @@ test("workspace host registry composes all six fixed action handlers", async () 
     assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "completed", id: "20260913083001-abcdef", done: true});
     assert.deepEqual(await execute({action: "create-document", notebook: "20260913083000-boxbox", title: "新建"}), {status: "completed", docId: "20260913083002-abcdef"});
     assert.equal(opened.length, 1);
+});
+
+test("workspace execution session issues, executes once, and disposes state", async () => {
+    const opened = [];
+    const session = createWorkspaceExecutionSession({
+        navigation: {isMobile: false, app: {}, openTab: async ({doc}) => opened.push(doc.id)},
+        documentSet: {getSet: async () => null, openDocument: async () => true},
+    });
+    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    const challenge = session.issue({...plan}, "desktop", 1700000000100);
+    assert.equal(challenge.planId, plan.planId);
+    const preview = session.preview(buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000010), "desktop", 1700000000100);
+    assert.equal(preview.stepCount, 1);
+    assert.equal(preview.requiresConfirmation, true);
+    assert.equal(Object.hasOwn(preview, "content"), false);
+    const receipt = await session.execute(plan, challenge, {now: 1700000000101});
+    assert.equal(receipt.status, "completed");
+    assert.deepEqual(opened, ["20260913083000-abcdef"]);
+    const replay = await session.execute(plan, challenge, {now: 1700000000102});
+    assert.equal(replay.status, "consumed");
+    session.dispose();
+    const afterDispose = await session.execute(plan, challenge, {now: 1700000000103});
+    assert.equal(afterDispose.status, "invalid_token");
 });
 
 test("workspace plan summary exposes counts without content", () => {

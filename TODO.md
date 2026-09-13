@@ -465,3 +465,11 @@
   - 目标：将导航、文档集恢复和写入三组 adapter 组合为统一六动作 registry，直接供计划执行器消费
   - 实现：新增独立 `src/agent-workspace-registry.js`，各组回调分域注入并冻结输出键集合；不捕获 Plugin/DOM 状态
   - 状态：in-progress
+- [ ] T-141 Agent 工作区执行会话 facade
+  - 目标：把审批 challenge、token store、replay guard、动作 registry 和执行器封装为单一会话 API
+  - 实现：新增独立 `src/agent-workspace-session.js`，提供 issue/preview/execute/dispose；会话销毁同时清理授权与重放状态
+  - 状态：in-progress
+- [ ] T-142 Agent 工作区审批预览摘要
+  - 目标：在真正执行前输出不含正文的步骤/对象/导航/写入统计，并与 challenge 同步生成
+  - 实现：session `preview()` 组合 `buildWorkspacePlanSummary` 与一次性 challenge，供后续审批 UI/Agent handler 复用
+  - 状态：in-progress
