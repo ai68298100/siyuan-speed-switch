@@ -3549,10 +3549,12 @@ const version = beginSearch(session);
             };
         });
         // 日历月视图：本月日历网格（周一开头），有日记的日期可点击直达
-        register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async () => {
+        register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async (config) => {
             const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
+            const offset = Math.min(24, Math.max(-24, Math.trunc(Number(config.monthOffset) || 0)));
+            const base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+            const year = base.getFullYear();
+            const month = base.getMonth();
             const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
             const json = await this.fetchKernelJson("/api/query/sql", {
                 stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY content LIMIT 31`,
@@ -3564,12 +3566,13 @@ const version = beginSearch(session);
             });
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7; // 周一开头
+            const isCurrentMonth = offset === 0;
             const today = now.getDate();
             const items: Array<{label: string; value: string; done?: boolean}> = [];
             for (let i = 0; i < leadingBlanks; i += 1) items.push({label: "", value: ""});
             for (let day = 1; day <= daysInMonth; day += 1) {
                 const dayKey = String(day);
-                items.push({label: dayKey, value: journalByDay.get(dayKey) || "", done: day === today});
+                items.push({label: dayKey, value: journalByDay.get(dayKey) || "", done: isCurrentMonth && day === today});
             }
             while (items.length % 7 !== 0) items.push({label: "", value: ""});
             return {items};

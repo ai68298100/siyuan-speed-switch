@@ -13,6 +13,13 @@ test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([], "mobile").length, 27);
 });
 
+test("journal-calendar viewType and monthOffset config", () => {
+    const modules = home.registerModules([]);
+    const cal = modules.find((item) => item.moduleId === "journal-calendar");
+    assert.ok(cal, "journal-calendar registered");
+    assert.equal(cal.viewType, "calendar");
+    assert.ok(Array.isArray(cal.configSchema) && cal.configSchema.length > 0, "has config");
+});
 test("flashcard-due module keeps bounded notebook config schema", () => {
     const modules = home.registerModules([]);
     const flashcard = modules.find((item) => item.moduleId === "flashcard-due");

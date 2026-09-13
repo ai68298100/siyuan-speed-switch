@@ -5030,3 +5030,8 @@
 .sw-home__cell .sw__home-module-item {
     transition: background-color 0.12s ease;
 }
+
+// ==================== 面板平滑滚动 ====================
+.sw-home .sw-home__panel-scroll {
+    scroll-behavior: smooth;
+}

@@ -74,7 +74,9 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
-        {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, viewType: "calendar"},
+        {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, viewType: "calendar", configSchema: [
+        {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 0, defaults: 0},
+    ]},
     {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
         {key: "targetDate", label: "目标日期", type: "text", defaults: ""},
