@@ -81,7 +81,16 @@ function normalizeWorkspaceActionResult(action, result) {
         const docId = normalizeAgentDocumentId(source.docId);
         if (docId) out.docId = docId;
     }
-    return out;
+    return validateWorkspaceActionPostcondition(action, out);
+}
+
+function validateWorkspaceActionPostcondition(action, result) {
+    if (result.status !== "completed") return result;
+    if (action === "open-document" && !result.id) return {status: "failed", reason: "missing_result"};
+    if (action === "open-documents" && !(result.opened?.length || result.failed?.length)) return {status: "failed", reason: "missing_result"};
+    if (action === "update-task-status" && (!result.id || typeof result.done !== "boolean")) return {status: "failed", reason: "missing_result"};
+    if ((action === "create-document" || action === "append-to-journal") && !result.docId) return {status: "failed", reason: "missing_result"};
+    return result;
 }
 
 function cleanResultToken(value) {
@@ -106,4 +115,4 @@ function buildWorkspacePlanSummary(plan) {
     };
 }
 
-module.exports = {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, createWorkspaceActionExecutor, buildWorkspacePlanSummary};
+module.exports = {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, validateWorkspaceActionPostcondition, createWorkspaceActionExecutor, buildWorkspacePlanSummary};

@@ -6,7 +6,7 @@ const {
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
-const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
+const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, validateWorkspaceActionPostcondition, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
 const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
@@ -122,9 +122,9 @@ test("workspace action adapter dispatches only normalized fixed actions", async 
     assert.equal(normalizeWorkspaceStep({action: "append-to-journal", content: "\n\t"}), null);
     const calls = [];
     const execute = createWorkspaceActionExecutor({
-        openDocument: async (step) => { calls.push(step); return {status: "completed"}; },
+        openDocument: async (step) => { calls.push(step); return {status: "completed", id: step.id}; },
     });
-    assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed"});
+    assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed", id: "20260913083000-abcdef"});
     assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "failed", reason: "handler_missing"});
     assert.equal(calls.length, 1);
 });
@@ -157,7 +157,15 @@ test("workspace action results stay within stable bounded output", () => {
     assert.deepEqual(normalizeWorkspaceActionResult("create-document", {status: "failed", reason: "not found!", docId: "20260913083002-abcdef", message: "secret"}), {
         status: "failed", reason: "notfound",
     });
-    assert.deepEqual(normalizeWorkspaceActionResult("update-task-status", {status: "completed", id: "bad", done: true}), {status: "completed", done: true});
+    assert.deepEqual(normalizeWorkspaceActionResult("update-task-status", {status: "completed", id: "bad", done: true}), {status: "failed", reason: "missing_result"});
+});
+
+test("workspace action postconditions reject false completed results", () => {
+    assert.deepEqual(validateWorkspaceActionPostcondition("open-document", {status: "completed"}), {status: "failed", reason: "missing_result"});
+    assert.deepEqual(validateWorkspaceActionPostcondition("update-task-status", {status: "completed", id: "20260913083000-abcdef"}), {status: "failed", reason: "missing_result"});
+    assert.deepEqual(validateWorkspaceActionPostcondition("create-document", {status: "completed"}), {status: "failed", reason: "missing_result"});
+    assert.deepEqual(validateWorkspaceActionPostcondition("restore-document-set", {status: "completed"}), {status: "completed"});
+    assert.deepEqual(validateWorkspaceActionPostcondition("open-document", {status: "failed", reason: "x"}), {status: "failed", reason: "x"});
 });
 
 test("workspace execution guard prevents replay and stays bounded", () => {

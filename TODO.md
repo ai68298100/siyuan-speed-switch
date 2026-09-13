@@ -441,3 +441,7 @@
   - 目标：将思源 handler 返回值收敛为稳定状态、合法 ID 和有界计数，阻止原始对象、正文和异常文本进入 Agent 回执
   - 实现：`src/agent-workspace-actions.js` 新增 `normalizeWorkspaceActionResult`，按六类动作白名单输出字段；失败原因清洗为稳定 token
   - 状态：in-progress
+- [ ] T-135 Agent 动作 postcondition 校验
+  - 目标：拒绝“completed 但缺少关键结果”的假成功，让 Agent 回执反映真实动作结果
+  - 实现：`validateWorkspaceActionPostcondition` 要求打开/更新/创建/追加动作返回合法目标或结果；恢复文档集保留无 ID 的完成语义
+  - 状态：in-progress
