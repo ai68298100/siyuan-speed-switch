@@ -4,7 +4,7 @@
 
 - 当前商店包含 **28 个内置组件**，另有 **1 个第三方目录组件**（`checkin-summary`）。
 - 27 个内置组件都有真实 adapter 注册；`checkin-summary` 没有本插件内 adapter，必须由 `siyuan-checkin` 注册后才会进入“可用组件”。依据：`src/index.ts:3300-3739`、`src/widget-catalog.js:11-22`。
-- 当前自动门禁为 **661/661 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
+- 当前自动门禁为 **667/667 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
 - 已有思源 3.8.2 桌面实测覆盖：商店添加/尺寸、闪卡待复习（空数据态）、随机回顾、本月日记、标签；其余组件仍缺少逐项真实宿主证据（见 `docs/acceptance-v0.16.37.md`）。
 - **已修复的确定缺陷（P0）**：`recent-writing-activity` 与 `today-reservations` 曾使用错误的日期正则，现已修正为匹配 `YYYYMMDD` 并显示为 `YYYY-MM-DD`，回归测试已覆盖。
 
@@ -42,7 +42,7 @@
 | `document-relations-summary` 文档关系摘要 | C | 活动文档直接子块 + markdown 引用 SQL | 无活动文档必为空；引用匹配为有限 LIKE，不是完整关系图，可能漏报 | 标注“轻量摘要/非完整关系图”；后续改引用解析 |
 | `current-document-outline` 当前文档大纲 | C | 活动文档 `/api/outline/getDocOutline` | 端点与 Agent 共用；依赖活动文档和宿主返回结构 | 增加无活动文档和旧返回包装验收 |
 | `today-reservations` 近期预约 | C | `attributes.name='custom-reservation'`、`value=YYYYMMDD` SQL；日期标签已正确格式化 | 仅兼容 dailynote-today 等插件约定，不是思源通用预约 | 商店描述已明确协议依赖；真实宿主验证第三方数据 |
-| `journal-calendar` 日历月视图 | C | SQL 按 `YYYY-MM-` 标题生成月历，已有日期可点击 | 依赖标准日期标题；无 notebook 过滤；当前仅允许过去月份偏移 | 标注命名规则；增加笔记本筛选和翻月按钮待办 |
+| `journal-calendar` 日历月视图 | C | SQL 按 `YYYY-MM-` 标题生成月历，已有日期可点击 | 依赖标准日期标题；支持可选 notebook 过滤；月份可在当前月前后 24 个月内切换 | 标注命名规则；真实宿主验证跨月、筛选和空态 |
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |
 | `countdown` 倒数日 | B | 纯前端 `YYYY-MM-DD` 计算 | 配置合法日期即可用；未配置时显示提示 | 配置控件改为日期 input，避免手填格式错误 |
 | `plugin-commands` 插件命令 | C | 枚举其他插件 `commands`，执行 `plugin::command` | 仅外部插件声明 `langKey` 且有 callback/globalCallback 才出现；命令卸载/旧格式会失效 | 增加“无可用命令”提示和执行失败反馈 |
@@ -64,7 +64,7 @@
 ### P2（体验与性能）
 
 - 标签/书签条目改用稳定 ID，降低重名和特殊字符点击风险。
-- 大库 SQL 增加耗时诊断和更严格的分页；月历增加翻月与 notebook 筛选。
+- 大库 SQL 增加耗时诊断和更严格的分页；月历已支持翻月与 notebook 筛选，后续补真实宿主验收。
 - 把“依赖活动文档/第三方插件/命名协议”变成商店可见徽标和首次使用提示。
 
 ## 限制

@@ -19,7 +19,9 @@ test("journal-calendar viewType and monthOffset config", () => {
     assert.ok(cal, "journal-calendar registered");
     assert.equal(cal.viewType, "calendar");
     assert.ok(Array.isArray(cal.configSchema) && cal.configSchema.length > 0, "has config");
-    assert.deepEqual(cal.configSchema.at(-1), {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"});
+    assert.deepEqual(cal.configSchema[0], {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 24, defaults: 0});
+    assert.deepEqual(cal.configSchema[1], {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"});
+    assert.deepEqual(cal.configSchema[2], {key: "notebook", label: "限定笔记本", type: "notebook"});
 });
 test("flashcard-due module keeps bounded notebook config schema", () => {
     const modules = home.registerModules([]);

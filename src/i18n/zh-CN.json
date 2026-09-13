@@ -105,7 +105,7 @@
   "homeStatReservations": "已预约",
   "aiJournalAppendDesc": "将向今日日记追加：「{content}」",
   "homeJournalCalendar": "日历月视图",
-  "homeDescJournalCalendar": "标题需 YYYY-MM-DD；有日记的日期高亮",
+  "homeDescJournalCalendar": "标题需 YYYY-MM-DD；支持笔记本筛选与前后 24 个月翻页",
   "homeStorePreview": "预览效果",
   "homeStoreAdd": "添加组件",
   "homeStoreApplySize": "应用尺寸",

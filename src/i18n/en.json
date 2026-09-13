@@ -105,7 +105,7 @@
   "homeStatReservations": "scheduled",
   "aiJournalAppendDesc": "Append to today's journal: \"{content}\"",
   "homeJournalCalendar": "Journal calendar",
-  "homeDescJournalCalendar": "Titles must use YYYY-MM-DD; journal days highlighted",
+  "homeDescJournalCalendar": "Titles must use YYYY-MM-DD; filter by notebook and browse ±24 months",
   "homeStorePreview": "Preview",
   "homeStoreAdd": "Add widget",
   "homeStoreApplySize": "Apply size",

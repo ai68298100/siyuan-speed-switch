@@ -3607,8 +3607,9 @@ const version = beginSearch(session);
             const year = base.getFullYear();
             const month = base.getMonth();
             const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
+            const notebookScope = buildNotebookBoxScope(config.notebook);
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '${prefix}%' ORDER BY content LIMIT 31`,
+                stmt: `SELECT id, content FROM blocks WHERE type='d'${notebookScope} AND content LIKE '${prefix}%' ORDER BY content LIMIT 31`,
             });
             const journalByDay = new Map<string, string>();
             ((json?.data || []) as Array<{id: string; content: string}>).forEach((row) => {
@@ -4603,7 +4604,7 @@ const version = beginSearch(session);
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
                     onCalendarNavigate: (direction: number) => {
                         const current = Math.trunc(Number(inst.config?.monthOffset) || 0);
-                        const next = direction === 0 ? 0 : Math.min(0, Math.max(-24, current + (direction < 0 ? -1 : 1)));
+                        const next = direction === 0 ? 0 : Math.min(24, Math.max(-24, current + (direction < 0 ? -1 : 1)));
                         if (next === current) return;
                         inst.config = {...(inst.config || {}), monthOffset: next};
                         const persisted = this.getHomeState();

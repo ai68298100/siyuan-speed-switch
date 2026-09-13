@@ -121,6 +121,19 @@ test("date-based widget labels format YYYYMMDD values for users", () => {
     }
 });
 
+test("journal calendar supports notebook scope and bidirectional month navigation", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const calendar = source.slice(
+        source.indexOf('register("journal-calendar"'),
+        source.indexOf('register("recent-writing-activity"'),
+    );
+    assert.match(calendar, /buildNotebookBoxScope\(config\.notebook\)/);
+    assert.match(calendar, /type='d'\$\{notebookScope\}/);
+    assert.match(source, /Math\.min\(24, Math\.max\(-24, current \+ \(direction < 0 \? -1 : 1\)\)\)/);
+});
+
 test("insight adapters share validated notebook scope without changing default queries", () => {
     const fs = require("node:fs");
     const path = require("node:path");

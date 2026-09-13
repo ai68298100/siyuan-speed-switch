@@ -49,12 +49,17 @@
   - 状态：done（2026-09-13）
 - [x] T-267 组件可用性审计自动化门禁
   - 范围：校验 27 个内置组件均有唯一 runtime adapter、第三方目录 provider 显式外置、SQL 组件统一使用 `stmt`，并区分正常空态与未注册状态
-  - 证据：`tests/component-availability-audit.test.cjs`；当前 666/666 测试通过
+  - 证据：`tests/component-availability-audit.test.cjs`；当前 667/667 测试通过
   - 状态：done（2026-09-13）
 - [ ] T-266 组件真实宿主验收矩阵
   - 范围：在合法已认证桌面会话逐项验证首读、刷新、配置、点击、空态和错误重试；优先 SQL/API/插件协议组件
   - 依赖：B-005；Android 仍按 D-042 后置
   - 优先级：P1
+
+- [x] T-268 月历笔记本范围与双向时间窗
+  - 目标：让 `journal-calendar` 与其他洞察组件一致，支持可选笔记本筛选，并允许查看当前月前后 24 个月
+  - 证据：`src/home-model.js`、`src/index.ts`、`tests/home-model.test.cjs`、`tests/insight-widgets.test.cjs`
+  - 状态：done（2026-09-13）
 
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
@@ -209,7 +214,7 @@
   - 状态：done（2026-09-13）
 - [x] T-072 月历导航与今日定位体验
   - 目标：为 `journal-calendar` 增加上/下月与“回到今天”快捷入口，保持现有 `monthOffset` 边界和键盘/触控热区
-  - 实现：提供上月/今天/下月按钮，`monthOffset` 严格限制在 `-24…0`，导航后持久化并强制刷新当前组件；主日期单元格点击语义保持不变
+  - 实现：提供上月/今天/下月按钮，`monthOffset` 严格限制在 `-24…24`，导航后持久化并强制刷新当前组件；主日期单元格点击语义保持不变
   - 验收：导航回调与按钮可访问性契约测试通过，完整发布门禁全绿
   - 状态：done（2026-09-13）
 - [x] T-073 面板可见性驱动读取
