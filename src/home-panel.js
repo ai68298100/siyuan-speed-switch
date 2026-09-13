@@ -26,6 +26,42 @@ function createHomePanelController(options = {}) {
     let refreshGeneration = 0;
     const controllers = new Map();
 
+    // 方向键线性导航（T-352/D-223）：↑/↓ 在全部条目按钮间移动焦点，
+    // Home/End 跳首尾，到达边界后循环。监听挂在 panel 自身——随面板
+    // DOM 移除自然释放，不产生 document 级监听或卸载清理负担。
+    function moveItemFocus(from, offset) {
+        const items = panel.querySelectorAll(".sw__home-module-item-action");
+        if (!items.length) return false;
+        const index = Array.prototype.indexOf.call(items, from);
+        const next = index < 0
+            ? (offset > 0 ? 0 : items.length - 1)
+            : (index + offset + items.length) % items.length;
+        const target = items[next];
+        if (target && typeof target.focus === "function") {
+            target.focus();
+            return true;
+        }
+        return false;
+    }
+
+    function handlePanelKeydown(event) {
+        const key = event.key;
+        const target = event.target;
+        const actionable = target && target.classList && target.classList.contains("sw__home-module-item-action");
+        if (key === "ArrowDown" || key === "ArrowUp") {
+            if (!actionable) return;
+            if (moveItemFocus(target, key === "ArrowDown" ? 1 : -1)) event.preventDefault();
+        } else if (key === "Home" || key === "End") {
+            if (!actionable) return;
+            const items = panel.querySelectorAll(".sw__home-module-item-action");
+            const edge = key === "Home" ? items[0] : items[items.length - 1];
+            if (edge && typeof edge.focus === "function") {
+                edge.focus();
+                event.preventDefault();
+            }
+        }
+    }
+
     function mount() {
         if (disposed) return null;
         if (mounted) return panel;
@@ -33,6 +69,7 @@ function createHomePanelController(options = {}) {
         panel.className = "sw__home-panel";
         panel.setAttribute("role", "region");
         panel.setAttribute("aria-label", options.title || "Home");
+        panel.addEventListener("keydown", handlePanelKeydown);
         if (modules.length === 0) {
             const empty = documentRef.createElement("p");
             empty.className = "sw__home-panel-empty";

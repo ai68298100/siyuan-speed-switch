@@ -104,3 +104,41 @@ test('disposeSearchSession aborts work and clears cached results', () => {
     assert.equal(session.cache.size, 0);
     assert.equal(session.version, 1);
 });
+
+test('concurrent sessions never share cache entries or debounce timers', () => {
+    const desktop = createSearchSession(3);
+    const sidebar = createSearchSession(3);
+
+    cacheSearchResult(desktop, '腾讯会议', ['desktop-result']);
+    cacheSearchResult(sidebar, '腾讯会议', ['sidebar-result']);
+
+    // 同 key 在两个会话中各自命中各自的缓存
+    assert.deepEqual(desktop.cache.get('腾讯会议'), ['desktop-result']);
+    assert.deepEqual(sidebar.cache.get('腾讯会议'), ['sidebar-result']);
+
+    // 各自的防抖计时器互不影响
+    const desktopTimer = setTimeout(() => {}, 50);
+    const sidebarTimer = setTimeout(() => {}, 50);
+    desktop.timer = desktopTimer;
+    sidebar.timer = sidebarTimer;
+    beginSearch(desktop, '会议');
+    assert.equal(sidebar.timer, sidebarTimer, 'sidebar timer untouched by desktop begin');
+    clearTimeout(sidebarTimer);
+
+    disposeSearchSession(desktop);
+    disposeSearchSession(sidebar);
+    assert.equal(desktop.cache.size, 0);
+    assert.equal(sidebar.cache.size, 0);
+});
+
+test('cache hit/miss cost stays negligible for repeated keystrokes', () => {
+    const session = createSearchSession(64);
+    for (let i = 0; i < 64; i += 1) cacheSearchResult(session, `query-${i}`, Array.from({length: 12}, (_, j) => ({id: j})));
+    const started = process.hrtime.bigint();
+    for (let i = 0; i < 10000; i += 1) {
+        const key = `query-${i % 64}`;
+        if (!session.cache.has(key)) throw new Error('expected hit');
+    }
+    const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
+    assert.ok(elapsed < 50, `10k cache lookups took ${elapsed.toFixed(2)}ms; Map lookup path regressed`);
+});

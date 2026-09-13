@@ -182,3 +182,36 @@ test("home panel renders an accessible empty state when no modules are available
     assert.equal(empty.getAttribute("aria-live"), "polite");
     panel.dispose();
 });
+
+test("home panel arrow keys move focus linearly across item buttons with wraparound", async () => {
+    const dom = new JSDOM("<!doctype html><body><main id='mount'></main></body>");
+    const container = dom.window.document.querySelector("#mount");
+    const panel = createHomePanelController({
+        document: dom.window.document,
+        container,
+        modules: [{moduleId: "one", title: "One"}],
+        read: async () => ({ok: true, snapshot: {items: [{label: "A"}, {label: "B"}, {label: "C"}]}}),
+    });
+    panel.mount();
+    await panel.refresh();
+    const items = container.querySelectorAll(".sw__home-module-item-action");
+    assert.equal(items.length, 3);
+    const press = (target, key) => {
+        target.dispatchEvent(new dom.window.KeyboardEvent("keydown", {key, bubbles: true, cancelable: true}));
+    };
+    items[0].focus();
+    press(items[0], "ArrowDown");
+    assert.equal(dom.window.document.activeElement, items[1]);
+    press(items[1], "ArrowDown");
+    assert.equal(dom.window.document.activeElement, items[2]);
+    press(items[2], "ArrowDown");
+    assert.equal(dom.window.document.activeElement, items[0], "wraps to first");
+    press(items[0], "ArrowUp");
+    assert.equal(dom.window.document.activeElement, items[2], "wraps to last");
+    press(items[2], "Home");
+    assert.equal(dom.window.document.activeElement, items[0]);
+    press(items[0], "End");
+    assert.equal(dom.window.document.activeElement, items[2]);
+    panel.dispose();
+    assert.equal(container.childElementCount, 0);
+});
