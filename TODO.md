@@ -297,6 +297,56 @@
   - 证据：`docs/workspace-capability-wiring-plan.md`（小型只读簇 +2 KiB zip、执行链 +7 KiB、definitions 全量 +20 KiB，硬上限内可容纳）
   - 状态：done（2026-09-14）
 
+- [x] T-316 runtime 簇机械搬移
+  - 目标：把 diagnostics 运行时簇（事件队列/恢复协调器/会话/registry/diff 队列/diagnostics handler，33 符号）逐字节搬出 definitions，未启用的 plan/execute 矩阵留在图外
+  - 证据：`src/agent-workspace-runtime.js`（38 KiB）；definitions 100268→66912 bytes 改为同名 re-export；agent-outline 84/84 不变
+  - 状态：done（2026-09-14）
+
+- [x] T-317 diagnostics 专用校验器
+  - 目标：spec 身份/schema 形状/effects 一致性校验不引用 bridge 常量
+  - 证据：`validateWorkspaceRuntimeDiagnosticsDefinition`；wrapper validation ok
+  - 状态：done（2026-09-14）
+
+- [x] T-318 wrapper 定义构造与冒烟
+  - 目标：wrapper 内联 canonical 定义（SPEC/EFFECTS 身份 + handler 工厂），全链路冒烟（创建→查询→dispose→再查询）
+  - 证据：`src/agent-workspace-diagnostics.js`；summary ready/size 0/maxSessions 8
+  - 状态：done（2026-09-14）
+
+- [x] T-319 index.ts 生产接线
+  - 目标：import、生命周期字段、只读注册通道 push、onunload 销毁四处接线；校验失败时安全跳过注册并销毁运行时
+  - 证据：`src/index.ts`；TSC 通过
+  - 状态：done（2026-09-14）
+
+- [x] T-320 隔离门禁更新
+  - 目标：WIRED 清单 +runtime/+diagnostics；UNWIRED 16 项保持图外；闭包上限 25/29
+  - 证据：`tests/production-graph-isolation.test.cjs` 3/3
+  - 状态：done（2026-09-14）
+
+- [x] T-321 生产契约测试
+  - 目标：canonical spec/effects、有界快照、会话生命周期反映、宿主异常不外泄、接线事实三处、注册面无执行链
+  - 证据：`tests/workspace-diagnostics-wiring.test.cjs` 6/6
+  - 状态：done（2026-09-14）
+
+- [x] T-322 包体校准
+  - 目标：raw 自律线按协议校准，基线随 zip 同步
+  - 证据：raw 363569→384081（376 KiB 线）；zip 252683→257760（余量 49440 bytes）；resource baseline 11 条目
+  - 状态：done（2026-09-14）
+
+- [x] T-323 文档计数同步
+  - 目标：README/readiness 同步 94 个测试文件、689 项测试与新产物尺寸
+  - 证据：`README.en-US.md`、`docs/release-readiness.md`
+  - 状态：done（2026-09-14）
+
+- [x] T-324 决策 D-220 落档
+  - 目标：诚实搬移决策、预算数字与图外保证落档
+  - 证据：`DECISIONS.md` D-220
+  - 状态：done（2026-09-14）
+
+- [x] T-325 wiring plan 阶段 1 收口
+  - 目标：接入计划标记阶段 1 完成，更新 ROADMAP 8.0.1 与 PROGRESS
+  - 证据：`docs/workspace-capability-wiring-plan.md`、ROADMAP、PROGRESS
+  - 状态：done（2026-09-14）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

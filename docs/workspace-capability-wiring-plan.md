@@ -21,10 +21,10 @@
 
 三阶段全部落地约 +29 KiB zip，硬上限内可容纳，但 definitions 全量接入后余量将回落至 ~25 KiB，需按协议校准自律线并记录。
 
-## 阶段 1：workspace-capability-diagnostics（无宿主审计依赖，可立即开工）
+## 阶段 1：workspace-capability-diagnostics（✅ 已完成，2026-09-14，D-220）
 
 - 契约已就绪（T-229~T-231、D-177~D-191）：只读 diagnostics 快照 + 异常隔离 handler + canonical effects 安全注册适配器。
-- 接入步骤：
+- 实际执行（诚实搬移路线）：33 个符号（事件队列/恢复协调器/会话/registry/diff 队列/diagnostics handler）机械搬移至 `agent-workspace-runtime.js`，definitions 改同名 re-export；diagnostics 专用校验器不引用 bridge 常量；index.ts 经包装器接入只读通道并随卸载销毁。预算：raw +20.5 KiB（自律线 376 KiB）、zip +5.1 KiB（余量 49440 bytes）；未启用的 definitions 矩阵留在图外。原步骤保留备查：
   1. 从 `agent-workspace-capability-definitions.js` 抽取 diagnostics 专用入口（或拆分模块），避免把未启用的 definitions 矩阵整体拖入 bundle；
   2. index.ts 增加 spec + handler，输出当前 definitions/lifecycle/registry 诊断摘要（未接线阶段预期为空态/禁用计数，正好为阶段 2/3 提供基础设施探针）；
   3. 卸载清理挂接现有 capability dispose 链；
