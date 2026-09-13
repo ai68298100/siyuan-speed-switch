@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, createWorkspaceCapabilityDiagnosticsDefinition, createWorkspaceCapabilityDefinitionsWithDiagnostics, normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput, validateWorkspaceCapabilityDefinition, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot, isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible, validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff, diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots, buildWorkspaceCapabilityRuntimeSessionRegistrySummary, createWorkspaceCapabilityRuntimeRegistryDiffQueue, enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline, commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay, recoverWorkspaceCapabilityRuntimeSessionRegistryDiff, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult, recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe, commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery, createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator, buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline, commitWorkspaceCapabilityRuntimeRegistryReplay, commitWorkspaceCapabilityRuntimeRegistryRecovery, recoverWorkspaceCapabilityRuntimeRegistry, normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult, recoverWorkspaceCapabilityRuntimeRegistrySafe, createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS, createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, createWorkspaceCapabilityDiagnosticsDefinition, createWorkspaceCapabilityDefinitionsWithDiagnostics, normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput, validateWorkspaceCapabilityDefinition, validateWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot, isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible, validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff, diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots, buildWorkspaceCapabilityRuntimeSessionRegistrySummary, createWorkspaceCapabilityRuntimeRegistryDiffQueue, enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline, commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay, recoverWorkspaceCapabilityRuntimeSessionRegistryDiff, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult, recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe, commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery, createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator, buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline, commitWorkspaceCapabilityRuntimeRegistryReplay, commitWorkspaceCapabilityRuntimeRegistryRecovery, recoverWorkspaceCapabilityRuntimeRegistry, normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult, recoverWorkspaceCapabilityRuntimeRegistrySafe, createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS, createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -357,6 +357,11 @@ test("workspace capability registration enforces known names and effects", () =>
     assert.deepEqual(validateWorkspaceCapabilityDefinition(definitions[0]), {ok: true, name: "workspace-plan", effects: WORKSPACE_PLAN_EFFECTS});
     assert.deepEqual(validateWorkspaceCapabilityDefinition({spec: {name: "unknown"}, handler: () => true}), {ok: false, reason: "unknown_capability"});
     assert.deepEqual(validateWorkspaceCapabilityDefinition({spec: definitions[0].spec, handler: null}), {ok: false, reason: "invalid_handler"});
+    const matrix = validateWorkspaceCapabilityDefinitions(definitions);
+    assert.equal(matrix.ok, true);
+    assert.equal(matrix.valid, 2);
+    assert.equal(matrix.invalid, 0);
+    assert.equal(validateWorkspaceCapabilityDefinitions([definitions[0], definitions[0]]).duplicate, 1);
 });
 
 test("workspace diagnostics definition is read-only and registration adapter preserves canonical effects", () => {
@@ -428,15 +433,15 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
     assert.deepEqual(second, first);
     assert.equal(lifecycle.size(), 2);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
-    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, disposed: false});
     assert.deepEqual(lifecycle.snapshot(), {
         host: {available: true, reason: "ready"},
-        registration: {registered: 2, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: false},
+        registration: {registered: 2, failed: 0, unmanaged: 0, disposed: false},
     });
     assert.equal(lifecycle.dispose(), 2);
     assert.equal(lifecycle.dispose(), 0);
     assert.equal(lifecycle.size(), 0);
-    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: true});
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: true});
     assert.deepEqual(lifecycle.register(), []);
     assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
 });
@@ -450,7 +455,7 @@ test("workspace capability lifecycle reports bounded partial registration failur
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {}, Date.now, (error) => errors.push(error));
     assert.deepEqual(lifecycle.probe(), {available: true, reason: "ready"});
     assert.deepEqual(lifecycle.register(), ["workspace-plan-handle"]);
-    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, opaque: 0, invalid: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, disposed: false});
     assert.equal(errors.length, 1);
     assert.equal(lifecycle.register().length, 1);
 });
@@ -460,14 +465,15 @@ test("workspace capability lifecycle reports opaque and invalid host handles", (
     const host = {addAgentCapability: () => index++ === 0 ? undefined : null};
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {});
     assert.equal(lifecycle.register().length, 2);
-    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 2, opaque: 1, invalid: 1, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 2, disposed: false});
+    assert.deepEqual(lifecycle.handleStatus(), {opaque: 1, invalid: 1});
 });
 
 test("workspace capability lifecycle probe is unavailable on legacy hosts", () => {
     const lifecycle = createWorkspaceCapabilityLifecycle({}, {});
     assert.deepEqual(lifecycle.probe(), {available: false, reason: "unavailable"});
     assert.deepEqual(lifecycle.register(), []);
-    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, opaque: 0, invalid: 0, disposed: false});
+    assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: false});
     assert.deepEqual(lifecycle.snapshot().host, {available: false, reason: "unavailable"});
 });
 

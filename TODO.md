@@ -849,6 +849,14 @@
   - 目标：区分 managed/opaque/invalid 宿主返回，支持旧宿主可观测性
   - 实现：lifecycle status/snapshot 增加 `opaque` 与 `invalid` 计数
   - 状态：done
+- [x] T-239 Agent workspace capability definitions 批量矩阵校验
+  - 目标：批量报告定义总数、有效/无效、重复名称与稳定原因
+  - 实现：新增 `validateWorkspaceCapabilityDefinitions`
+  - 状态：done
+- [x] T-240 Agent workspace runtime snapshot 句柄统计兼容
+  - 目标：保留既有 runtime snapshot schema，同时提供独立 opaque/invalid 句柄统计入口
+  - 实现：新增 lifecycle `handleStatus()`，避免破坏现有快照兼容
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

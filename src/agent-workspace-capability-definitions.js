@@ -115,6 +115,14 @@ function validateWorkspaceCapabilityDefinition(definition) {
     return {ok: true, name, effects};
 }
 
+function validateWorkspaceCapabilityDefinitions(definitions) {
+    const source = Array.isArray(definitions) ? definitions : [];
+    const results = source.slice(0, 8).map((definition) => validateWorkspaceCapabilityDefinition(definition));
+    const names = results.filter((result) => result.ok).map((result) => result.name);
+    const unique = new Set(names);
+    return Object.freeze({ok: results.length === source.length && results.every((result) => result.ok) && unique.size === names.length, total: results.length, valid: results.filter((result) => result.ok).length, invalid: results.filter((result) => !result.ok).length, duplicate: names.length - unique.size, results: results.map((result) => ({ok: result.ok, name: result.name || "", reason: result.reason || "ready"}))});
+}
+
 // Register only the known definitions.  Effects are selected by capability
 // name instead of trusting caller-supplied metadata, preventing a malformed
 // definition from silently downgrading an execution capability to read-only.
@@ -195,13 +203,14 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
             return count;
         },
         size() { return registrations.length; },
+        handleStatus() { return Object.freeze({opaque, invalid}); },
         status() {
-            return Object.freeze({registered: registrations.length, failed, unmanaged, opaque, invalid, disposed});
+            return Object.freeze({registered: registrations.length, failed, unmanaged, disposed});
         },
         snapshot() {
             return Object.freeze({
                 host: buildWorkspaceCapabilityProbeSnapshot(host),
-                registration: Object.freeze({registered: registrations.length, failed, unmanaged, opaque, invalid, disposed}),
+                registration: Object.freeze({registered: registrations.length, failed, unmanaged, disposed}),
             });
         },
     });
@@ -1104,6 +1113,7 @@ module.exports = {
     createWorkspaceCapabilityDefinitionsWithDiagnostics,
     normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput,
     validateWorkspaceCapabilityDefinition,
+    validateWorkspaceCapabilityDefinitions,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,

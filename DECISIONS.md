@@ -186,3 +186,4 @@
 - D-180 v0.17 lifecycle.register 接受可选 definitionsOverride 仅用于独立契约测试/宿主适配；默认路径保持原两项 workspace definitions，避免无意扩大生产注册集合。
 - D-181 v0.17 capability 注册统一先经 `validateWorkspaceCapabilityDefinition`，按 canonical spec 推导 effects；未知定义/非函数 handler 静默跳过，不进入 Agent 注册通道。
 - D-182 v0.17 lifecycle 将 host 返回句柄分为 managed/opaque/invalid 三类计数；仅用于有界诊断，不影响注册成功语义或向 Agent 暴露句柄详情。
+- D-183 v0.17 不把 opaque/invalid 字段直接加入既有 runtime snapshot，避免破坏已验证的 v1 快照契约；通过 `handleStatus()` 独立读取，后续版本再评估 schema 升级。
