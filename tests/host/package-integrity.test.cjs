@@ -10,7 +10,7 @@ function filesInZip(zipPath) {
     return listZipEntryNames(fs.readFileSync(zipPath));
 }
 
-test('package.zip, when present, contains only release files', () => {
+test('package.zip, when present, contains only release files', (t) => {
     const zip = path.join(root, 'package.zip');
     if (!fs.existsSync(zip)) {
         if (process.env.SW_REQUIRE_PACKAGE === '1') {
@@ -21,6 +21,9 @@ test('package.zip, when present, contains only release files', () => {
     const bytes = fs.statSync(zip).size;
     const budget = 300 * 1024;
     const headroom = budget - bytes;
+    if (headroom >= 0 && headroom < 1024) {
+        t.diagnostic(`package.zip headroom is only ${headroom} bytes; keep future UI changes within the hard budget`);
+    }
     assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${headroom} bytes`);
     const allowed = /^(index\.js|index\.css|icon\.png|preview\.png|README(?:\.en-US)?\.md|ROADMAP\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg)$/;
     const files = filesInZip(zip);
