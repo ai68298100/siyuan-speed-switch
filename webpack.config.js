@@ -47,7 +47,7 @@ module.exports = (env, argv) => {
                     {from: "README*.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "ROADMAP.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "docs/*.svg", to: "./dist/docs/[name][ext]"},
-                    {from: "plugin.json", to: "./dist/"},
+                    {from: "plugin.json", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "src/i18n/", to: "./dist/i18n/"},
                 ],
             }),

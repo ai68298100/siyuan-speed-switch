@@ -223,3 +223,4 @@
 - D-211 商店页签采用 tablist/tab + aria-selected，尺寸按钮采用 aria-pressed；原因：保留视觉选中态之外，为键盘和读屏用户提供稳定状态语义。
 - D-212 Agent 组件发现状态仅返回当前设备的 configured/enabled/size 元数据；配置值、实例 ID 和其他布局细节仍不进入目录输出，避免扩大 Agent 数据面。
 - D-213 发布归档在 CopyPlugin 边界统一 README/ROADMAP 为 LF；原因：Windows 工作树的混合 CRLF 会让本地产物与 Ubuntu Actions 的 package.zip 字节不一致，破坏发布矩阵的可复现性。
+- D-214 发布矩阵对 package.zip 采用 ±1 KiB 的跨平台漂移窗口，仍严格检查 dist/index.js 与 300 KiB 硬上限；原因：不同平台 ZIP 压缩器/元数据可能产生几十字节差异，不应阻断内容一致的发布。

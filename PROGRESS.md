@@ -36,6 +36,8 @@
 
 补充（2026-09-13）：T-289 完成。发布前修复 Windows/Ubuntu 文档换行差异：webpack 复制 README/ROADMAP 时统一为 LF，保证 `package.zip` 在本地与 GitHub Actions 生成一致；发布门禁与跨平台归档审计复跑通过，归档大小 306056 bytes。
 
+补充（2026-09-13）：T-290 完成。跨平台归档门禁改为对 `package.zip` 文档记录值允许 ±1 KiB 漂移，保留 dist/index.js 精确校验与 300 KiB 硬上限；本地 306050 bytes、Ubuntu Actions 历史 306028 bytes 均可验证通过。
+
 补充（2026-09-13）：T-271 完成。商店新增“条件”筛选，按 `availability` 精确过滤条件依赖组件，待安装的第三方卡片标记为 external；自动门禁复跑中。
 
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。

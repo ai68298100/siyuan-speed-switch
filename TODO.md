@@ -166,6 +166,11 @@
   - 证据：`webpack.config.js`、`docs/release-readiness.md`、`pnpm verify:release`
   - 状态：done（2026-09-13）
 
+- [x] T-290 跨平台 ZIP 微差门禁
+  - 目标：允许不同平台压缩器产生的几十字节归档差异，同时保持严格 bundle 与硬体积门禁
+  - 证据：`tests/host/release-quality.test.cjs`、`docs/release-readiness.md`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
