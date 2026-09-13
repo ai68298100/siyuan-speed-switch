@@ -779,6 +779,63 @@ function buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics(registry, dif
     return Object.freeze({summary, registry: Object.freeze({...registryStatus}), diffQueue: Object.freeze({...queueStatus}), diffCoordinator: Object.freeze({...coordinatorStatus})});
 }
 
+function normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const modes = ["events", "snapshot", "unavailable", "cancelled", "timeout", "invalid_snapshot"];
+    const mode = modes.includes(source.mode) ? source.mode : "unavailable";
+    const ok = source.ok === true && (mode === "events" || mode === "snapshot");
+    const reason = ["ready", "snapshot_required", "registry_unavailable", "queue_unavailable", "invalid_snapshot", "cancelled", "timeout", "joint_coordinator_disposed"].includes(source.reason) ? source.reason : (ok ? "ready" : mode);
+    return Object.freeze({
+        ok,
+        mode,
+        reason,
+        registry: source.registry ? normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult(source.registry) : null,
+        diff: source.diff ? normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult(source.diff) : null,
+        acknowledged: Math.max(0, Math.min(16, Math.trunc(Number(source.acknowledged) || 0))),
+    });
+}
+
+function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
+    let registryCursor = 0;
+    let diffCursor = 0;
+    let commits = 0;
+    let disposed = false;
+    const unavailable = () => ({ok: false, mode: "unavailable", reason: "joint_coordinator_disposed", registry: null, diff: null, acknowledged: 0});
+    const recoverPair = (cursor = 0, diffCursorInput = 0, limit = 8, snapshot = null) => {
+        const requestedRegistry = Math.max(registryCursor, Math.max(0, Math.trunc(Number(cursor) || 0)));
+        const requestedDiff = Math.max(diffCursor, Math.max(0, Math.trunc(Number(diffCursorInput) || 0)));
+        const registryRecovery = recoverWorkspaceCapabilityRuntimeRegistry(registry, requestedRegistry, limit);
+        const diffRecovery = recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(diffQueue, requestedDiff, limit, snapshot);
+        const ok = registryRecovery.ok === true && diffRecovery.ok === true;
+        const mode = ok && (registryRecovery.mode === "snapshot" || diffRecovery.mode === "snapshot") ? "snapshot" : ok ? "events" : (registryRecovery.mode === "invalid_snapshot" || diffRecovery.mode === "invalid_snapshot" ? "invalid_snapshot" : "unavailable");
+        const reason = ok ? (mode === "snapshot" ? "snapshot_required" : "ready") : (registryRecovery.reason || diffRecovery.reason || "unavailable");
+        return {ok, mode, reason, registry: registryRecovery, diff: diffRecovery, acknowledged: 0};
+    };
+    return Object.freeze({
+        recover(cursor = 0, diffCursorInput = 0, limit = 8, snapshot = null) { return disposed ? unavailable() : recoverPair(cursor, diffCursorInput, limit, snapshot); },
+        commit(recovery) {
+            if (disposed || !recovery || recovery.ok !== true || !recovery.registry || !recovery.diff) return 0;
+            const nextRegistry = Math.max(0, Math.trunc(Number(recovery.registry.cursor) || 0));
+            const nextDiff = Math.max(0, Math.trunc(Number(recovery.diff.cursor) || 0));
+            if (nextRegistry <= registryCursor || nextDiff <= diffCursor) return 0;
+            const registryAck = commitWorkspaceCapabilityRuntimeRegistryRecovery(registry, recovery.registry);
+            const diffAck = commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery(diffQueue, recovery.diff);
+            if ((registryAck > 0 || recovery.registry.mode === "snapshot") && (diffAck > 0 || recovery.diff.mode === "snapshot")) {
+                registryCursor = nextRegistry; diffCursor = nextDiff; commits = Math.min(32, commits + 1); return registryAck + diffAck;
+            }
+            return 0;
+        },
+        recoverAndCommit(cursor = 0, diffCursorInput = 0, limit = 8, snapshot = null) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const recovery = this.recover(cursor, diffCursorInput, limit, snapshot);
+            return normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)});
+        },
+        status() { return Object.freeze({registryCursor, diffCursor, commits, disposed}); },
+        snapshot() { return Object.freeze({coordinator: Object.freeze({registryCursor, diffCursor, commits, disposed}), registry: registry?.status?.() || {size: 0, maxSessions: 0, disposed: true}, diffQueue: diffQueue?.status?.() || {size: 0, maxItems: 0, cursor: 0, disposed: true}}); },
+        dispose() { disposed = true; },
+    });
+}
+
 function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
     const allowed = ["created", "evicted", "removed", "pruned", "idle"];
     return (Array.isArray(events) ? events : []).slice(0, 8).map((event) => {
@@ -993,6 +1050,8 @@ module.exports = {
     commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery,
     createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator,
     buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics,
+    normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult,
+    createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,

@@ -789,6 +789,14 @@
   - 目标：聚合 registry summary、registry status、diff queue/coordinator 状态
   - 实现：新增 `buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics`
   - 状态：done
+- [x] T-224 Agent workspace registry 联合恢复结果归一化
+  - 目标：统一 registry 主事件与 diff 事件两路恢复结果，限制 acknowledged 上限
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult`
+  - 状态：done
+- [x] T-225 Agent workspace registry 联合恢复协调器
+  - 目标：双游标恢复仅在两路均成功时原子确认，拒绝部分成功污染状态
+  - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

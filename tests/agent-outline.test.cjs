@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot, isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible, validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff, diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots, buildWorkspaceCapabilityRuntimeSessionRegistrySummary, createWorkspaceCapabilityRuntimeRegistryDiffQueue, enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline, commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay, recoverWorkspaceCapabilityRuntimeSessionRegistryDiff, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult, recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe, commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery, createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator, buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline, commitWorkspaceCapabilityRuntimeRegistryReplay, commitWorkspaceCapabilityRuntimeRegistryRecovery, recoverWorkspaceCapabilityRuntimeRegistry, normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult, recoverWorkspaceCapabilityRuntimeRegistrySafe, createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot, isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible, validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff, diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots, buildWorkspaceCapabilityRuntimeSessionRegistrySummary, createWorkspaceCapabilityRuntimeRegistryDiffQueue, enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline, commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay, recoverWorkspaceCapabilityRuntimeSessionRegistryDiff, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult, recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe, commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery, createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator, buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult, createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline, commitWorkspaceCapabilityRuntimeRegistryReplay, commitWorkspaceCapabilityRuntimeRegistryRecovery, recoverWorkspaceCapabilityRuntimeRegistry, normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult, recoverWorkspaceCapabilityRuntimeRegistrySafe, createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -722,6 +722,38 @@ test("workspace registry diagnostics combine summary, queue, and coordinator saf
     assert.equal(diagnostics.diffQueue.maxItems, 2);
     assert.equal(diagnostics.diffCoordinator.disposed, false);
     coordinator.dispose();
+    registry.dispose();
+});
+
+test("workspace registry joint recovery coordinator commits both queues atomically", () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
+    registry.create();
+    const diffQueue = createWorkspaceCapabilityRuntimeRegistryDiffQueue(2);
+    diffQueue.push([{type: "created", sessionId: "ws-12345678"}]);
+    const coordinator = createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue);
+    const result = coordinator.recoverAndCommit(0, 0, 8, null);
+    assert.equal(result.ok, true);
+    assert.equal(result.mode, "events");
+    assert.equal(result.acknowledged, 2);
+    assert.equal(coordinator.status().commits, 1);
+    assert.equal(coordinator.commit(result), 0);
+    coordinator.dispose();
+    registry.dispose();
+});
+
+test("workspace registry joint recovery refuses partial success", () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
+    registry.create();
+    const diffQueue = createWorkspaceCapabilityRuntimeRegistryDiffQueue(1);
+    diffQueue.push([{type: "created", sessionId: "ws-12345678"}]);
+    diffQueue.push([{type: "removed", sessionId: "ws-12345678"}]);
+    const coordinator = createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue);
+    const result = coordinator.recoverAndCommit(0, 0, 8, null);
+    assert.equal(result.ok, false);
+    assert.equal(result.acknowledged, 0);
+    assert.equal(registry.eventsSince(0).events.length, 1);
+    assert.equal(diffQueue.size(), 1);
+    assert.deepEqual(normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult({ok: true, mode: "events", registry: result.registry, diff: result.diff, acknowledged: 99}).acknowledged, 16);
     registry.dispose();
 });
 
