@@ -4032,9 +4032,12 @@ const version = beginSearch(session);
             const label = document.createElement("label");
             label.className = "sw-home-config__label";
             label.textContent = field.label;
+            const controlId = `sw-home-config-${inst.instanceId}-${field.key}`.replace(/[^A-Za-z0-9_-]/g, "-");
+            label.htmlFor = controlId;
             row.appendChild(label);
             if (field.type === "select") {
                 const select = document.createElement("select");
+                select.id = controlId;
                 select.className = "b3-select fn__block";
                 (field.options || []).forEach((option) => {
                     const optionEl = document.createElement("option");
@@ -4046,30 +4049,71 @@ const version = beginSearch(session);
                     ? (draft[field.key] as string)
                     : (field.defaults as string);
                 select.value = current;
+                draft[field.key] = select.value;
                 select.addEventListener("change", () => { draft[field.key] = select.value; });
                 row.appendChild(select);
             } else if (field.type === "notebook") {
                 // 动态笔记本下拉：值 = 笔记本 ID；笔记本列表异步加载后填充
                 const select = document.createElement("select");
+                select.id = controlId;
                 select.className = "b3-select fn__block";
                 const current = typeof draft[field.key] === "string" ? (draft[field.key] as string) : (field.defaults as string || "");
+                draft[field.key] = current;
+                select.disabled = true;
+                const loading = document.createElement("option");
+                loading.value = "";
+                loading.textContent = this.i18n.notebookLoading;
+                select.appendChild(loading);
                 const fill = (options: Array<{id: string; name: string}>) => {
                     select.innerHTML = "";
+                    const emptyOption = document.createElement("option");
+                    emptyOption.value = "";
+                    emptyOption.textContent = this.i18n.notebookPlaceholder;
+                    select.appendChild(emptyOption);
                     options.forEach((nb) => {
                         const optionEl = document.createElement("option");
                         optionEl.value = nb.id;
                         optionEl.textContent = nb.name;
                         select.appendChild(optionEl);
                     });
-                    if (current && options.some((nb) => nb.id === current)) select.value = current;
+                    if (current && !options.some((nb) => nb.id === current)) {
+                        const stale = document.createElement("option");
+                        stale.value = current;
+                        stale.textContent = `${current} · ${this.i18n.homeConfigUnavailableValue}`;
+                        select.appendChild(stale);
+                    }
+                    select.value = current;
+                    select.disabled = false;
                 };
                 select.addEventListener("change", () => { draft[field.key] = select.value; });
                 row.appendChild(select);
                 void this.loadNotebooks().then((notebooks) => {
-                    fill(notebooks.length > 0 ? notebooks : [{id: current, name: current || "—"}]);
+                    fill(notebooks);
                 });
+            } else if (field.type === "document") {
+                const input = document.createElement("input");
+                input.id = controlId;
+                input.className = "b3-text-field fn__block";
+                input.type = "text";
+                input.maxLength = 64;
+                input.pattern = "[0-9]{14}-[0-9a-zA-Z]+";
+                input.placeholder = this.i18n.homeConfigDocumentPlaceholder;
+                input.value = typeof draft[field.key] === "string" ? (draft[field.key] as string) : String(field.defaults || "");
+                draft[field.key] = input.value;
+                const suggestions = document.createElement("datalist");
+                suggestions.id = `${controlId}-options`;
+                this.currentDocumentSetEntries().slice(0, 40).forEach((entry) => {
+                    const option = document.createElement("option");
+                    option.value = entry.rootId;
+                    option.label = entry.title;
+                    suggestions.appendChild(option);
+                });
+                input.setAttribute("list", suggestions.id);
+                input.addEventListener("input", () => { draft[field.key] = input.value.slice(0, 64); });
+                row.append(input, suggestions);
             } else {
                 const input = document.createElement("input");
+                input.id = controlId;
                 input.className = "b3-text-field fn__block";
                 const current = draft[field.key] ?? field.defaults ?? "";
                 input.value = String(current);
@@ -4077,7 +4121,14 @@ const version = beginSearch(session);
                     input.type = "number";
                     input.min = String(field.min ?? 0);
                     input.max = String(field.max ?? 100);
+                } else if (field.type === "date") {
+                    input.type = "date";
+                    input.min = "1900-01-01";
+                    input.max = "2100-12-31";
+                } else {
+                    input.maxLength = 128;
                 }
+                draft[field.key] = field.type === "number" ? Number(input.value) : input.value;
                 input.addEventListener("change", () => {
                     if (field.type === "number") {
                         const parsed = Number(input.value);
@@ -4105,6 +4156,12 @@ const version = beginSearch(session);
         save.className = "b3-button b3-button--text";
         save.textContent = this.i18n.homeConfigSave;
         save.addEventListener("click", () => {
+            const invalid = root.querySelector<HTMLInputElement | HTMLSelectElement>("input:invalid, select:invalid");
+            if (invalid) {
+                invalid.reportValidity();
+                invalid.focus();
+                return;
+            }
             const next = this.getHomeState();
             const instance = (next.instances as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
             if (instance) {

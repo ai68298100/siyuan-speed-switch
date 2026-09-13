@@ -195,6 +195,8 @@
   "homeYearRemaining": "剩余 {x} 天",
   "homeConfig": "配置",
   "homeConfigSave": "保存",
+  "homeConfigDocumentPlaceholder": "输入文档 ID，或选择当前已打开文档",
+  "homeConfigUnavailableValue": "当前不可用",
   "homeTaskToggleFailed": "任务状态更新失败，请稍后重试",
   "aiCreateDocDesc": "智能体请求在笔记本「{notebook}」新建文档：\n{title}",
   "homeStatFavorites": "条收藏",

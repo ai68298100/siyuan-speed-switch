@@ -48,4 +48,11 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /else if \(registration\.registered\) \{\s*this\.homeModuleOpens\.delete\(moduleId\)/);
     assert.match(source, /clearDeferredRefreshes\(\)/);
     assert.match(source, /panelEventCleanup\?\.\(\)/);
+    assert.match(source, /field\.type === "document"/);
+    assert.match(source, /this\.currentDocumentSetEntries\(\)\.slice\(0, 40\)/);
+    assert.match(source, /input\.type = "date"/);
+    assert.match(source, /input\.min = "1900-01-01"/);
+    assert.match(source, /input:invalid, select:invalid/);
+    assert.match(source, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/);
+    assert.match(source, /homeConfigUnavailableValue/);
 });

@@ -26,6 +26,8 @@
 
 补充（2026-09-13）：T-278~T-281 完成。第三方组件目录新增 ready/unavailable/missing 三态；已添加组件在 provider 卸载后保留配置并显示可清理的失效卡，重新注册后即时恢复商店与面板。同步修复“条件”页签分类冲突，新增“已添加”筛选、筛选状态保持和无结果提示；27 个内置组件现完整进入本地化功能分组。面板重渲染会回收旧 observer、idle timer 与事件订阅；provider 热替换不会保留旧跳转回调。`pnpm verify:release` 全绿：673/673 自动测试、TypeScript、移动端和 Chromium smoke 通过；`dist/index.js` 358133 bytes、`package.zip` 304225 bytes。
 
+补充（2026-09-13）：T-282~T-283 完成。声明式配置新增严格 `date` 与 `document` 字段：倒数日使用原生日期控件，指定文档提供当前打开文档的 datalist 建议；笔记本下拉增加明确空选项并保留已失效值提示，所有控件关联 label，保存前执行原生有效性校验。Agent 配置归一化同步支持新字段；`pnpm verify:release` 全绿，674/674 自动测试、TypeScript、移动端和 Chromium smoke 通过；`dist/index.js` 360409 bytes、`package.zip` 305091 bytes。
+
 补充（2026-09-13）：T-271 完成。商店新增“条件”筛选，按 `availability` 精确过滤条件依赖组件，待安装的第三方卡片标记为 external；自动门禁复跑中。
 
 补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。

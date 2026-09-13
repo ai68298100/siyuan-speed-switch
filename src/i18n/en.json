@@ -195,6 +195,8 @@
   "homeYearRemaining": "{x} days left",
   "homeConfig": "Configure",
   "homeConfigSave": "Save",
+  "homeConfigDocumentPlaceholder": "Enter a document ID or choose an open document",
+  "homeConfigUnavailableValue": "Currently unavailable",
   "homeTaskToggleFailed": "Failed to update the task; try again later",
   "aiCreateDocDesc": "The agent wants to create a document in notebook [{notebook}]:\n{title}",
   "homeStatFavorites": "favorites",

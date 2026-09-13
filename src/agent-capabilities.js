@@ -22,7 +22,7 @@ const SEARCH_TYPES = Object.freeze(["document", "heading", "paragraph", "codeBlo
 const SEARCH_SUBTYPES = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
 const HOME_DIAGNOSTIC_TYPES = Object.freeze(["backoff", "cache", "empty", "timeout", "aborted", "failed"]);
 const HOME_DIAGNOSTIC_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
-const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "notebook"]);
+const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "notebook", "date", "document"]);
 const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter()
     : null;
@@ -116,6 +116,12 @@ function normalizeAgentWidgetConfigFields(value) {
             if (!field.options.length) return null;
             const selected = asText(raw.defaults, 32);
             field.defaultValue = field.options.includes(selected) ? selected : field.options[0];
+        } else if (type === "date") {
+            const date = asText(raw.defaults, 10);
+            const time = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
+            field.defaultValue = Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === date ? date : "";
+        } else if (type === "document") {
+            field.defaultValue = normalizeAgentRootId(raw.defaults);
         } else if (type === "text") {
             field.defaultValue = asText(raw.defaults, 128);
         }
@@ -134,6 +140,13 @@ function normalizeAgentWidgetConfig(value, schema) {
         } else if (field.type === "notebook") {
             const notebook = normalizeAgentNotebookId(source[field.key]);
             if (notebook) result[field.key] = notebook;
+        } else if (field.type === "document") {
+            const document = normalizeAgentRootId(source[field.key]);
+            if (document) result[field.key] = document;
+        } else if (field.type === "date") {
+            const date = asText(source[field.key], 10);
+            const time = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
+            if (Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === date) result[field.key] = date;
         } else if (field.type === "select") {
             const selected = asText(source[field.key], 32);
             if (field.options.includes(selected)) result[field.key] = selected;

@@ -115,11 +115,13 @@ read: async () => ({
 configSchema: [
     {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
     {key: "notebook", label: "笔记本", type: "text", defaults: ""},
+    {key: "when", label: "日期", type: "date", defaults: "2026-09-13"},
+    {key: "document", label: "文档", type: "document", defaults: ""},
     {key: "view", label: "视图", type: "select", options: ["日", "周", "月"], defaults: "月"},
 ],
 ```
 
-- 最多 8 个字段；`type` 支持 `text` / `number` / `select`；
+- 最多 8 个字段；`type` 支持 `text` / `number` / `select` / `notebook` / `date` / `document`；日期字段使用严格的 `YYYY-MM-DD`，文档字段只接受思源 block ID；
 - 用户配置持久化在面板实例上，`read(config)` 每次都会收到最新值。
 
 ### 4. `refreshOn`（自动刷新时机）

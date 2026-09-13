@@ -47,6 +47,25 @@ test('protocol v2 config fields clamp invalid ranges and defaults', () => {
     assert.deepEqual(def.configSchema[1], {key: 'mode', label: 'Mode', type: 'select', options: ['a', 'b'], defaults: 'a'});
 });
 
+test('protocol config supports validated date and document fields', () => {
+    const def = home.normalizeModuleDefinition({
+        moduleId: 'richer-fields', title: 'Richer', configSchema: [
+            {key: 'when', label: 'When', type: 'date', defaults: '2028-02-29'},
+            {key: 'badDate', label: 'Bad date', type: 'date', defaults: '2027-02-29'},
+            {key: 'document', label: 'Document', type: 'document', defaults: '20260913083000-abcdef'},
+            {key: 'badDocument', label: 'Bad document', type: 'document', defaults: 'not-an-id'},
+        ],
+    });
+    assert.deepEqual(def.configSchema, [
+        {key: 'when', label: 'When', type: 'date', defaults: '2028-02-29'},
+        {key: 'badDate', label: 'Bad date', type: 'date', defaults: ''},
+        {key: 'document', label: 'Document', type: 'document', defaults: '20260913083000-abcdef'},
+        {key: 'badDocument', label: 'Bad document', type: 'document', defaults: ''},
+    ]);
+    assert.equal(home.normalizeIsoDate('2024-02-29'), '2024-02-29');
+    assert.equal(home.normalizeIsoDate('2023-02-29'), '');
+});
+
 test('built-in modules declare size subsets and config schemas', () => {
     const modules = home.registerModules([]);
     const recent = modules.find((item) => item.moduleId === 'recent-documents');
@@ -54,6 +73,8 @@ test('built-in modules declare size subsets and config schemas', () => {
     const fixed = modules.find((item) => item.moduleId === 'fixed-document');
     assert.equal(fixed.protocolVersion, 2);
     assert.deepEqual(fixed.configSchema.map((field) => field.key), ['docId', 'title']);
+    assert.equal(fixed.configSchema[0].type, 'document');
+    assert.equal(modules.find((item) => item.moduleId === 'countdown').configSchema[1].type, 'date');
     const tasks = modules.find((item) => item.moduleId === 'today-tasks');
     assert.deepEqual(tasks.configSchema.map((field) => field.key), ['limit', 'allDocuments', 'notebook', 'showCompleted', 'days']);
 });

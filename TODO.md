@@ -126,6 +126,16 @@
   - 证据：`src/index.ts`、`src/index.scss`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-282 声明式日期与文档配置字段
+  - 目标：为倒数日和指定文档提供原生日期控件、文档 ID 建议列表及严格值校验
+  - 证据：`src/home-model.js`、`src/agent-capabilities.js`、`src/index.ts`、`tests/home-protocol-v2.test.cjs`、`tests/agent-capabilities.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-283 配置表单空值与失效值体验
+  - 目标：笔记本配置保留明确空选项；已删除笔记本以“当前不可用”保留原值；配置控件具备 label 关联、日期范围和保存前原生校验
+  - 证据：`src/index.ts`、`src/i18n/zh-CN.json`、`src/i18n/en.json`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

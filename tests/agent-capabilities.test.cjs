@@ -139,6 +139,8 @@ test("agent widget config metadata and values stay schema-bound", () => {
         {key: "mode", label: "Mode", type: "select", options: ["one", "two", "one"], defaults: "two"},
         {key: "notebook", label: "Notebook", type: "notebook"},
         {key: "query", label: "Query", type: "text", defaults: ""},
+        {key: "when", label: "When", type: "date", defaults: "2028-02-29"},
+        {key: "document", label: "Document", type: "document", defaults: "20260913083000-abcdefg"},
         {key: "bad key", label: "Bad", type: "text"},
     ];
     assert.deepEqual(normalizeAgentWidgetConfigFields(schema), [
@@ -146,20 +148,26 @@ test("agent widget config metadata and values stay schema-bound", () => {
         {key: "mode", label: "Mode", type: "select", options: ["one", "two"], defaultValue: "two"},
         {key: "notebook", label: "Notebook", type: "notebook"},
         {key: "query", label: "Query", type: "text", defaultValue: ""},
+        {key: "when", label: "When", type: "date", defaultValue: "2028-02-29"},
+        {key: "document", label: "Document", type: "document", defaultValue: "20260913083000-abcdefg"},
     ]);
     assert.deepEqual(normalizeAgentWidgetConfig({
         limit: 99,
         mode: "two",
         notebook: "20260912083000-abcdefg",
         query: "  hello\nworld  ",
+        when: "2024-02-29",
+        document: "20260914083000-hijklmn",
         unknown: "drop",
     }, schema), {
         limit: 20,
         mode: "two",
         notebook: "20260912083000-abcdefg",
         query: "hello world",
+        when: "2024-02-29",
+        document: "20260914083000-hijklmn",
     });
-    assert.deepEqual(normalizeAgentWidgetConfig({mode: "bad", notebook: "bad"}, schema), {});
+    assert.deepEqual(normalizeAgentWidgetConfig({mode: "bad", notebook: "bad", when: "2023-02-29", document: "bad"}, schema), {});
 });
 
 test("agent widget snapshot preserves bounded stats, item state, and cache metadata", () => {

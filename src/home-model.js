@@ -21,7 +21,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "days", label: "时间范围（天）", type: "number", min: 7, max: 365, defaults: 30},
     ]},
     {moduleId: "fixed-document", title: "指定文档", icon: "iconFile", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
-        {key: "docId", label: "文档 ID", type: "text", defaults: ""},
+        {key: "docId", label: "文档 ID", type: "document", defaults: ""},
         {key: "title", label: "显示名称", type: "text", defaults: ""},
     ]},
     {moduleId: "favorites", title: "收藏", icon: "iconStar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]},
@@ -90,7 +90,7 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
-        {key: "targetDate", label: "目标日期", type: "text", defaults: ""},
+        {key: "targetDate", label: "目标日期", type: "date", defaults: ""},
     ]},
     {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
@@ -135,7 +135,14 @@ function normalizeLayout(value) {
 // 协议 v2 字段归一化
 const PROTOCOL_VERSIONS = [1, 2];
 const REFRESH_EVENTS = ["switch-protyle", "loaded-protyle", "destroy-protyle"];
-const CONFIG_FIELD_TYPES = ["text", "number", "select", "notebook"];
+const CONFIG_FIELD_TYPES = ["text", "number", "select", "notebook", "date", "document"];
+
+function normalizeIsoDate(value) {
+    const raw = text(value, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return "";
+    const time = Date.parse(`${raw}T00:00:00Z`);
+    return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === raw ? raw : "";
+}
 
 function normalizeProtocolVersion(value) {
     return PROTOCOL_VERSIONS.includes(value) ? value : 1;
@@ -187,6 +194,11 @@ function normalizeConfigSchema(value) {
             field.defaults = field.options.includes(selected) ? selected : field.options[0];
         } else if (type === "notebook") {
             // 选项由宿主渲染时用思源笔记本列表动态填充
+        } else if (type === "date") {
+            field.defaults = normalizeIsoDate(raw.defaults);
+        } else if (type === "document") {
+            const defaults = text(raw.defaults, 64);
+            field.defaults = /^\d{14}-[0-9a-z]+$/i.test(defaults) ? defaults : "";
         } else {
             field.defaults = text(raw.defaults, 128);
         }
@@ -308,4 +320,4 @@ function getModuleDefinition(definitions, moduleId) {
     return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, AVAILABILITY_LEVELS, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, AVAILABILITY_LEVELS, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
