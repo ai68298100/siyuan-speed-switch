@@ -181,3 +181,4 @@
 - D-175 v0.17 registry/diff 联合恢复采用双游标原子确认：任一路失败、取消或超时都不确认另一条队列，避免跨队列状态半提交。
 - D-176 v0.17 联合恢复 signal/deadline 在双路读取前后检查终态；诊断归一化仅保留有界计数、游标和稳定 reason，避免恢复控制字段泄漏。
 - D-177 v0.17 registry diagnostics capability 先以独立只读契约存在：无输入、固定对象输出、所有计数和游标有上限；handler 异常统一降级，不暴露宿主错误。
+- D-178 v0.17 diagnostics 注册适配器按 canonical spec 名称固定 `localRead=true/localWrite=false/dataEgress=false/externalCost=false`，不信任调用方 effects，且暂不接入生产入口。

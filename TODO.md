@@ -817,6 +817,10 @@
   - 目标：将联合诊断安全包装为可注册 handler，隔离宿主异常
   - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler`
   - 状态：done
+- [x] T-231 Agent workspace diagnostics 安全注册适配器
+  - 目标：注册 diagnostics 时固定 canonical spec 与只读 effects，拒绝伪造权限
+  - 实现：扩展 `WORKSPACE_CAPABILITY_NAMES` 与 `registerWorkspaceCapabilityDefinitions`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

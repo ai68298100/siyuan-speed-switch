@@ -25,10 +25,17 @@ const EXECUTE_WORKSPACE_PLAN_EFFECTS = Object.freeze({
     dataEgress: false,
     externalCost: false,
 });
+const WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS = Object.freeze({
+    localRead: true,
+    localWrite: false,
+    dataEgress: false,
+    externalCost: false,
+});
 
 const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
     WORKSPACE_PLAN_HANDLER_SPEC.name,
     EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
+    WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name,
 ]);
 const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
 const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
@@ -75,7 +82,15 @@ function createWorkspaceCapabilityDefinitions(bridge, now = Date.now) {
     ]);
 }
 
-// Register only the two known definitions.  Effects are selected by capability
+function createWorkspaceCapabilityDiagnosticsDefinition(registry, diffQueue = null, diffCoordinator = null) {
+    return Object.freeze({
+        spec: WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC,
+        effects: WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS,
+        handler: createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler(registry, diffQueue, diffCoordinator),
+    });
+}
+
+// Register only the known definitions.  Effects are selected by capability
 // name instead of trusting caller-supplied metadata, preventing a malformed
 // definition from silently downgrading an execution capability to read-only.
 function registerWorkspaceCapabilityDefinitions(host, definitions, onError = (_error, _spec) => {}) {
@@ -88,11 +103,15 @@ function registerWorkspaceCapabilityDefinitions(host, definitions, onError = (_e
             ? spec === WORKSPACE_PLAN_HANDLER_SPEC
             : name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name
                 ? spec === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC
+                : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name
+                    ? spec === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC
                 : false;
         if (!canonical || typeof definition.handler !== "function") return;
         const effects = name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name
             ? EXECUTE_WORKSPACE_PLAN_EFFECTS
-            : WORKSPACE_PLAN_EFFECTS;
+            : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name
+                ? WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS
+                : WORKSPACE_PLAN_EFFECTS;
         try {
             registered.push(host.addAgentCapability({...spec, effects, handler: definition.handler}));
         } catch (error) {
@@ -1057,8 +1076,10 @@ module.exports = {
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
     WORKSPACE_CAPABILITY_NAMES,
     WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC,
+    WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS,
     normalizeWorkspaceCapabilityHandle,
     createWorkspaceCapabilityDefinitions,
+    createWorkspaceCapabilityDiagnosticsDefinition,
     registerWorkspaceCapabilityDefinitions,
     disposeWorkspaceCapabilityRegistrations,
     createWorkspaceCapabilityLifecycle,
