@@ -1069,10 +1069,25 @@ function createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator(queue) {
             return 0;
         },
         recoverAndCommit(cursor = 0, limit = 8, snapshot = null) { if (disposed) return {...unavailable(), acknowledged: 0}; const recovery = this.recover(cursor, limit, snapshot); return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)}); },
+        recoverAndCommitWithSignal(cursor = 0, limit = 8, snapshot = null, signal) { if (disposed) return {...unavailable(), acknowledged: 0}; if (signal?.aborted) return {...unavailable(), reason: "cancelled", acknowledged: 0}; const recovery = this.recover(cursor, limit, snapshot); if (signal?.aborted) return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({ok: false, mode: "cancelled", reason: "cancelled", acknowledged: 0}); return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)}); },
+        recoverAndCommitWithDeadline(cursor = 0, limit = 8, snapshot = null, deadline, now = Date.now) { if (disposed) return {...unavailable(), acknowledged: 0}; const expiresAt = Number(deadline); const current = typeof now === "function" ? Number(now()) : Number(now); if (Number.isFinite(expiresAt) && Number.isFinite(current) && current >= expiresAt) return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({ok: false, mode: "timeout", reason: "timeout", acknowledged: 0}); const recovery = this.recover(cursor, limit, snapshot); const after = typeof now === "function" ? Number(now()) : Number(now); if (Number.isFinite(expiresAt) && Number.isFinite(after) && after >= expiresAt) return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({ok: false, mode: "timeout", reason: "timeout", acknowledged: 0}); return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({...recovery, acknowledged: this.commit(recovery)}); },
         status() { return Object.freeze({lastCursor, commits, disposed}); },
         snapshot() { return Object.freeze({coordinator: Object.freeze({lastCursor, commits, disposed}), queue: queue?.status?.() || {size: 0, maxItems: 0, cursor: 0, disposed: true}}); },
         dispose() { disposed = true; },
     });
+}
+
+function createWorkspaceCapabilityDiagnosticsJointRecoveryHandler(coordinator, snapshotProvider = null) {
+    return function diagnosticsJointRecoveryHandler(input = {}) {
+        try {
+            const cursor = Math.max(0, Math.trunc(Number(input?.cursor) || 0));
+            const limit = Math.min(8, Math.max(1, Math.trunc(Number(input?.limit) || 8)));
+            const snapshot = typeof snapshotProvider === "function" ? snapshotProvider() : null;
+            return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult(coordinator && typeof coordinator.recover === "function" ? coordinator.recover(cursor, limit, snapshot) : {ok: false, mode: "unavailable", reason: "queue_unavailable"});
+        } catch (_error) {
+            return normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult({ok: false, mode: "unavailable", reason: "queue_unavailable"});
+        }
+    };
 }
 
 function createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator(registry, diffQueue) {
@@ -1348,6 +1363,7 @@ module.exports = {
     enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff,
     readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay,
     readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal,
+    readWorkspaceCapabilityRuntimeSessionRegistryDiffForSignal: readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal,
     readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline,
     commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay,
     recoverWorkspaceCapabilityRuntimeSessionRegistryDiff,
@@ -1382,6 +1398,7 @@ module.exports = {
     createWorkspaceCapabilityDiagnosticsRecoveryCoordinator,
     normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult,
     createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator,
+    createWorkspaceCapabilityDiagnosticsJointRecoveryHandler,
     createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,

@@ -933,6 +933,18 @@
   - 目标：将 diagnostics queue replay 与 snapshot fallback 组合为单一恢复入口
   - 实现：新增 `createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator`
   - 状态：done
+- [x] T-260 Agent workspace diagnostics 联合取消边界
+  - 目标：联合 diagnostics 恢复在取消时不读取/确认事件
+  - 实现：新增 coordinator `recoverAndCommitWithSignal`
+  - 状态：done
+- [x] T-261 Agent workspace diagnostics 联合超时边界
+  - 目标：联合 diagnostics 恢复在截止时间到达时返回 timeout
+  - 实现：新增 coordinator `recoverAndCommitWithDeadline`
+  - 状态：done
+- [x] T-262 Agent workspace diagnostics 联合 handler
+  - 目标：将联合恢复包装为输入有界、异常隔离的只读 handler
+  - 实现：新增 `createWorkspaceCapabilityDiagnosticsJointRecoveryHandler`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-13）：T-260~T-262 增加 diagnostics 联合恢复取消/超时入口与只读 handler；661/661 测试、TypeScript 与 diff 检查通过。
+
 补充（2026-09-13）：T-258~T-259 增加 diagnostics 联合恢复结果归一化与 queue/snapshot 联合 coordinator；661/661 测试、TypeScript 与 diff 检查通过。
 
 补充（2026-09-13）：T-254~T-257 增加 diagnostics replay 取消/超时边界、恢复结果归一化与 coordinator；660/660 测试、TypeScript 与 diff 检查通过。
