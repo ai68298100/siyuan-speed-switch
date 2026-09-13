@@ -428,8 +428,9 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
     const lastSeen = new Map();
     let disposed = false;
     const events = [];
+    let nextEventSequence = 1;
     const emit = (type, sessionId) => {
-        events.push({type, sessionId});
+        events.push({sequence: nextEventSequence++, type, sessionId});
         while (events.length > 8) events.shift();
         if (typeof options.onEvent === "function") {
             try { options.onEvent({type, sessionId}); } catch (_error) { /* isolate observer */ }
@@ -496,7 +497,20 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
         },
         size() { return sessions.size; },
         status() { return Object.freeze({size: sessions.size, maxSessions: max, disposed}); },
-        events(limit = 8) { return events.slice(-Math.min(8, Math.max(0, Math.trunc(Number(limit) || 8)))).map((event) => ({...event})); },
+        events(limit = 8) { return events.slice(-Math.min(8, Math.max(0, Math.trunc(Number(limit) || 8)))).map(({type, sessionId}) => ({type, sessionId})); },
+        eventCursor() { return nextEventSequence - 1; },
+        eventsSince(cursor = 0, limit = 8) {
+            const from = Math.max(0, Math.trunc(Number(cursor) || 0));
+            const count = Math.min(8, Math.max(0, Math.trunc(Number(limit) || 8)));
+            const first = events[0]?.sequence || nextEventSequence;
+            return {cursor: nextEventSequence - 1, truncated: from < first - 1, events: events.filter((event) => event.sequence > from).slice(0, count).map((event) => ({sequence: event.sequence, type: event.type, sessionId: event.sessionId}))};
+        },
+        acknowledgeEvents(cursor = 0) {
+            const upto = Math.max(0, Math.trunc(Number(cursor) || 0));
+            let removed = 0;
+            while (events.length && events[0].sequence <= upto) { events.shift(); removed += 1; }
+            return removed;
+        },
         snapshot() {
             return Object.freeze({
                 size: sessions.size,
@@ -527,6 +541,16 @@ function normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
         return {sessionId, disposed: item?.disposed === true, runtime: item?.runtime && typeof item.runtime === "object" ? item.runtime : null};
     }).filter((item) => item.sessionId) : [];
     return Object.freeze({size: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.size) || sessions.length))), maxSessions: Math.min(MAX_RUNTIME_SESSIONS, Math.max(0, Math.trunc(Number(source.maxSessions) || MAX_RUNTIME_SESSIONS))), disposed: source.disposed === true, sessions});
+}
+
+function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
+    const allowed = ["created", "evicted", "removed", "pruned", "idle"];
+    return (Array.isArray(events) ? events : []).slice(0, 8).map((event) => {
+        const type = allowed.includes(event?.type) ? event.type : "";
+        const sessionId = typeof event?.sessionId === "string" && /^ws-[a-z0-9]{8}$/.test(event.sessionId) ? event.sessionId : "";
+        const sequence = Math.max(0, Math.trunc(Number(event?.sequence) || 0));
+        return type && sessionId ? {sequence, type, sessionId} : null;
+    }).filter(Boolean);
 }
 
 module.exports = {
@@ -564,4 +588,5 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
     createWorkspaceCapabilityRuntimeSessionRegistry,
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
+    normalizeWorkspaceCapabilityRuntimeRegistryEvents,
 };

@@ -653,6 +653,14 @@
   - 目标：清理长期未访问且未销毁的 session，降低长期驻留内存
   - 实现：新增 `pruneIdle(now, maxIdleMs)`，访问 session 自动刷新 lastSeen，非法阈值不回收
   - 状态：in-progress
+- [ ] T-190 Agent workspace registry 事件游标
+  - 目标：支持 registry 生命周期事件的增量读取与确认消费
+  - 实现：新增 `eventCursor/eventsSince/acknowledgeEvents`，保留最多 8 条事件
+  - 状态：in-progress
+- [ ] T-191 Agent workspace registry 事件归一化
+  - 目标：过滤未知事件、非法 sessionId 和越界序号
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRegistryEvents`
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

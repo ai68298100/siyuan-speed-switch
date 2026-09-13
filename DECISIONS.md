@@ -161,5 +161,6 @@
 - D-157 v0.17 registry 快照归一化最多保留 8 个合法 sessionId，disposed 仅接受布尔 true；runtime 仅保留对象形态，未知 token 等字段丢弃。
 - D-158 v0.17 session registry 事件仅记录 created/evicted/removed/pruned/idle 与 sessionId，最多 8 条；onEvent 观察器异常隔离，不影响会话生命周期。
 - D-159 v0.17 idle 回收基于内存 lastSeen，默认阈值 30 分钟且最小允许 1 秒；pruneIdle 仅清理超时活跃 session，访问 get 会刷新时间，不跨会话持久化。
+- D-160 v0.17 registry 事件使用独立单调 sequence，最多缓存 8 条；eventsSince 溢出时返回 truncated，acknowledgeEvents 按游标删除，不影响 session runtime 事件队列。
 - D-151 v0.17 runtime 恢复截止时间采用显式 deadline；到达或超过 deadline 返回 timeout 且不读取/确认队列，和 cancelled 保持可区分诊断语义。
 - D-152 v0.17 恢复结果归一化固定六种 mode，成功仅允许 events/snapshot；cursor、事件数和快照均有界，未知扩展字段丢弃且不回显异常文本。
