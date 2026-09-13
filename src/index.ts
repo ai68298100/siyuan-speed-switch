@@ -4161,6 +4161,13 @@ const version = beginSearch(session);
                     heading.classList.toggle("fn__none", !visible);
                     section.classList.toggle("fn__none", !visible);
                 });
+                root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
+                    const grid = heading.nextElementSibling;
+                    if (!grid) return;
+                    const visible = Array.from(grid.children).some((card) => !card.classList.contains("fn__none"));
+                    heading.classList.toggle("fn__none", !visible);
+                    grid.classList.toggle("fn__none", !visible);
+                });
             };
             searchInput.addEventListener("input", applyFilter);
 

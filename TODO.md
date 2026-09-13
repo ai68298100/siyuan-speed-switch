@@ -81,6 +81,11 @@
   - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-273 商店筛选分组空态
+  - 目标：筛选后自动隐藏无可见卡片的功能分组标题和网格，保持商店布局紧凑
+  - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）
