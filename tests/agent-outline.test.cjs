@@ -612,6 +612,19 @@ test("workspace session registry snapshot normalization stays bounded", () => {
     assert.deepEqual(normalized, {size: 8, maxSessions: 8, disposed: false, sessions: [{sessionId: "ws-12345678", disposed: false, runtime: {ok: true}}]});
 });
 
+test("workspace session registry prunes idle sessions without touching recent ones", () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(2);
+    const stale = registry.create();
+    const recent = registry.create();
+    const now = Date.now() + 120000;
+    registry.get(recent.sessionId, now);
+    assert.equal(registry.pruneIdle(now, 60000), 1);
+    assert.equal(registry.get(stale.sessionId), null);
+    assert.equal(registry.get(recent.sessionId), recent);
+    assert.equal(registry.pruneIdle(now, 0), 0);
+    registry.dispose();
+});
+
 test("workspace runtime session snapshots are versioned and normalized", () => {
     const session = createWorkspaceCapabilityRuntimeSession(2);
     const snapshot = buildWorkspaceCapabilityRuntimeSessionSnapshot(session);

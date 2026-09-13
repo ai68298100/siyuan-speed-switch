@@ -649,6 +649,10 @@
   - 目标：记录会话创建、淘汰、移除和回收事件，供诊断/UI 观察生命周期变化
   - 实现：registry 增加有界 `events()` 与可选 `onEvent`，最多保留 8 条且隔离观察器异常
   - 状态：in-progress
+- [ ] T-189 Agent workspace session registry 空闲回收
+  - 目标：清理长期未访问且未销毁的 session，降低长期驻留内存
+  - 实现：新增 `pruneIdle(now, maxIdleMs)`，访问 session 自动刷新 lastSeen，非法阈值不回收
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

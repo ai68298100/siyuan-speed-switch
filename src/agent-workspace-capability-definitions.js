@@ -425,6 +425,7 @@ function normalizeWorkspaceCapabilityRuntimeSessionSnapshot(value) {
 function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTIME_SESSIONS, options = {}) {
     const max = Math.min(MAX_RUNTIME_SESSIONS, Math.max(1, Math.trunc(Number(maxSessions) || MAX_RUNTIME_SESSIONS)));
     const sessions = new Map();
+    const lastSeen = new Map();
     let disposed = false;
     const events = [];
     const emit = (type, sessionId) => {
@@ -439,6 +440,7 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
             if (disposed) return null;
             const session = createWorkspaceCapabilityRuntimeSession(maxItems);
             sessions.set(session.sessionId, session);
+            lastSeen.set(session.sessionId, Date.now());
             emit("created", session.sessionId);
             while (sessions.size > max) {
                 const oldest = sessions.keys().next().value;
@@ -448,15 +450,18 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
             }
             return session;
         },
-        get(sessionId) {
+        get(sessionId, now = Date.now()) {
             if (disposed || typeof sessionId !== "string") return null;
-            return sessions.get(sessionId) || null;
+            const session = sessions.get(sessionId) || null;
+            if (session) lastSeen.set(sessionId, Number.isFinite(Number(now)) ? Number(now) : Date.now());
+            return session;
         },
         remove(sessionId) {
             const session = this.get(sessionId);
             if (!session) return false;
             session.dispose();
             sessions.delete(sessionId);
+            lastSeen.delete(sessionId);
             emit("removed", sessionId);
             return true;
         },
@@ -466,8 +471,25 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
                 if (session.snapshot().disposed) {
                     session.dispose();
                     sessions.delete(sessionId);
+                    lastSeen.delete(sessionId);
                     removed += 1;
                     emit("pruned", sessionId);
+                }
+            }
+            return removed;
+        },
+        pruneIdle(now = Date.now(), maxIdleMs = 30 * 60 * 1000) {
+            const current = Number(now);
+            const idle = Number(maxIdleMs);
+            if (!Number.isFinite(current) || !Number.isFinite(idle) || idle < 1000) return 0;
+            let removed = 0;
+            for (const [sessionId, session] of sessions) {
+                if (!session.snapshot().disposed && current - (lastSeen.get(sessionId) || current) >= idle) {
+                    session.dispose();
+                    sessions.delete(sessionId);
+                    lastSeen.delete(sessionId);
+                    emit("idle", sessionId);
+                    removed += 1;
                 }
             }
             return removed;
@@ -492,6 +514,7 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
             disposed = true;
             sessions.forEach((session) => session.dispose());
             sessions.clear();
+            lastSeen.clear();
             events.length = 0;
         },
     });
