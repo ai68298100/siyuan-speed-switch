@@ -449,8 +449,31 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
             sessions.delete(sessionId);
             return true;
         },
+        prune() {
+            let removed = 0;
+            for (const [sessionId, session] of sessions) {
+                if (session.snapshot().disposed) {
+                    session.dispose();
+                    sessions.delete(sessionId);
+                    removed += 1;
+                }
+            }
+            return removed;
+        },
         size() { return sessions.size; },
         status() { return Object.freeze({size: sessions.size, maxSessions: max, disposed}); },
+        snapshot() {
+            return Object.freeze({
+                size: sessions.size,
+                maxSessions: max,
+                disposed,
+                sessions: [...sessions.values()].slice(0, max).map((session) => ({
+                    sessionId: session.sessionId,
+                    disposed: session.snapshot().disposed,
+                    runtime: session.snapshot().runtime,
+                })),
+            });
+        },
         dispose() {
             if (disposed) return;
             disposed = true;

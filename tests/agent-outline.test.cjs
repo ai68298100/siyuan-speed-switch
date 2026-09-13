@@ -630,7 +630,13 @@ test("workspace runtime session registry stays bounded and disposes sessions", (
     assert.equal(registry.remove(second.sessionId), true);
     assert.equal(registry.remove(second.sessionId), false);
     assert.equal(registry.size(), 1);
+    assert.equal(registry.snapshot().sessions.length, 1);
     assert.deepEqual(registry.status(), {size: 1, maxSessions: 2, disposed: false});
+    assert.equal(registry.prune(), 0);
+    const stale = registry.create();
+    stale.dispose();
+    assert.equal(registry.prune(), 1);
+    assert.equal(registry.get(stale.sessionId), null);
     registry.dispose();
     assert.equal(third.snapshot().disposed, true);
     assert.equal(registry.create(), null);

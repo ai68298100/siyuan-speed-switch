@@ -633,6 +633,14 @@
   - 目标：有界管理多个 runtime session，支持创建、查找、移除和统一销毁
   - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistry`，最多 8 个会话
   - 状态：in-progress
+- [ ] T-185 Agent workspace session registry 快照
+  - 目标：聚合所有 session 的有界运行状态，供诊断/UI 一次读取
+  - 实现：新增 registry `snapshot()`，仅输出 sessionId、disposed 和 runtime 状态
+  - 状态：in-progress
+- [ ] T-186 Agent workspace session registry 回收
+  - 目标：主动清理已销毁 session，避免 registry 长期持有失效引用
+  - 实现：新增 registry `prune()`，返回回收数量并保持有界
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
