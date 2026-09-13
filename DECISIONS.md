@@ -82,3 +82,5 @@
 - D-076 T-101 路径筛选先以研究草案约束范围：复用现有 `filters.paths` 安全模型，只有确认宿主公开路径枚举端点后才做桌面原型；侧栏/手机和路径树交互暂不提前承诺，避免依赖猜测 API 或引入常驻目录请求。
 - D-077 T-102 上游确认 `/api/filetree/listDocsByPath` 自 v2.8.x 存在并返回 `box/path/files`，但它未列入公开 API 清单；先以未接入 bundle 的纯模型收敛 100 项上限、路径/ID 一致性和 invalid/failed/mismatch 降级，桌面 UI 必须保留能力探测。
 - D-078 T-103 先保留路径筛选模型和端点契约，不接入生产 UI；原因：目录枚举端点未列入公开 API 清单且当前 raw bundle/压缩包余量有限，待预算释放和能力探测证据充分后再升级桌面入口。
+- D-079 T-105 侧栏路径筛选采用“单行 chip + 一次性弹层”候选，不常驻目录树；在真实桌面宿主能力探测和不少于 2 KiB 包体余量同时满足前不接入生产入口，手机端继续后置。
+- D-080 T-106 能力探测以显式 transport outcome 归类 unavailable/timeout/cancelled/failed，不解析宿主异常文本；成功空目录保持 `ready + items=[]`，避免将端点失败误报成无结果。该纯模型暂不进入生产 bundle。

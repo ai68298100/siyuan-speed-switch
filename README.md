@@ -10,7 +10,7 @@
 
 > 当前工作树包含尚未发布的搜索、组件、Agent 与 UI 增量：搜索按“已打开页签 → 已打开文档内容 → 全库标题/受限全文”分层执行，并支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；组件面板支持第三方只读模块与 Agent 发现模式；界面采用淡紫主色、浅蓝灰层级、圆角卡片、柔和阴影和少量暖色强调的现代视觉方案。这些改动仍需完成真实桌面、侧栏和 Android 思源验收，不能视为已发布版本。
 
-> 当前开发策略：继续以小步开发和自动化护栏为主，暂不强行整理为完整发布版本。类型检查、生产构建、572 项测试、移动端与 Chromium UI 烟测已通过；真实设备验收、安装升级卸载和正式发布等待维护者有时间审核，并且不会在用户确认前创建 Tag、Release 或推送。
+> 当前开发策略：继续以小步开发和自动化护栏为主，暂不强行整理为完整发布版本。类型检查、生产构建、573 项测试、移动端与 Chromium UI 烟测已通过；真实设备验收、安装升级卸载和正式发布等待维护者有时间审核，并且不会在用户确认前创建 Tag、Release 或推送。
 
 ## 目录
 
@@ -706,7 +706,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 572 项测试；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 573 项测试；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -735,10 +735,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 572 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 573 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、572 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、573 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

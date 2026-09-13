@@ -71,4 +71,24 @@ function normalizePathFilterListResponse(payload, input = {}) {
     return {ok: true, reason: "ready", items, truncated};
 }
 
-module.exports = {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterListResponse};
+function normalizePathFilterProbeOutcome(outcome = {}, input = {}) {
+    if (!buildPathFilterListRequest(input)) return {ok: false, reason: "invalid", items: [], truncated: false};
+    switch (outcome && outcome.kind) {
+        case "response":
+            return normalizePathFilterListResponse(outcome.payload, input);
+        case "unavailable":
+            return {ok: false, reason: "unavailable", items: [], truncated: false};
+        case "http": {
+            const status = Number(outcome.status);
+            return {ok: false, reason: [404, 405, 501].includes(status) ? "unavailable" : "failed", items: [], truncated: false};
+        }
+        case "timeout":
+            return {ok: false, reason: "timeout", items: [], truncated: false};
+        case "cancelled":
+            return {ok: false, reason: "cancelled", items: [], truncated: false};
+        default:
+            return {ok: false, reason: "failed", items: [], truncated: false};
+    }
+}
+
+module.exports = {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterListResponse, normalizePathFilterProbeOutcome};

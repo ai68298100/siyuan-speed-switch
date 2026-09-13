@@ -1,6 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterListResponse} = require("../src/path-filter-model");
+const {
+    MAX_PATH_ITEMS,
+    buildPathFilterListRequest,
+    normalizePathFilterListResponse,
+    normalizePathFilterProbeOutcome,
+} = require("../src/path-filter-model");
 
 const notebook = "20260913120000-boxabc";
 const rootId = "20260913120100-rootabc";
@@ -45,4 +50,25 @@ test("path filter model isolates mismatched responses and caps large lists", () 
     const result = normalizePathFilterListResponse({code: 0, data: {box: notebook, path: "/", files}}, {notebook, limit: 2});
     assert.equal(result.items.length, 2);
     assert.equal(result.truncated, true);
+});
+
+test("path filter capability probe keeps host failures distinct from empty directories", () => {
+    const empty = {code: 0, data: {box: notebook, path: "/", files: []}};
+    const matrix = [
+        [{kind: "response", payload: empty}, "ready", true],
+        [{kind: "http", status: 404}, "unavailable", false],
+        [{kind: "http", status: 503}, "failed", false],
+        [{kind: "timeout"}, "timeout", false],
+        [{kind: "cancelled"}, "cancelled", false],
+        [{kind: "response", payload: {code: 0, data: {box: "other", path: "/", files: []}}}, "mismatch", false],
+    ];
+    for (const [outcome, reason, ok] of matrix) {
+        assert.deepEqual(normalizePathFilterProbeOutcome(outcome, {notebook}), {
+            ok,
+            reason,
+            items: [],
+            truncated: false,
+        });
+    }
+    assert.equal(normalizePathFilterProbeOutcome({kind: "timeout"}, {notebook: "bad box"}).reason, "invalid");
 });
