@@ -26,6 +26,7 @@ test('release archive reports bounded per-entry resource sizes', (t) => {
 
     const entries = listZipEntryStats(fs.readFileSync(zip)).sort((left, right) => left.name.localeCompare(right.name));
     const baseline = readBaseline();
+    let baselineDrift = false;
     assert.ok(entries.length > 0 && entries.length <= MAX_ARCHIVE_ENTRIES,
         `package.zip has ${entries.length} entries; expected at most ${MAX_ARCHIVE_ENTRIES}`);
     assert.equal(new Set(entries.map((entry) => entry.name)).size, entries.length,
@@ -34,9 +35,11 @@ test('release archive reports bounded per-entry resource sizes', (t) => {
     for (const entry of entries) {
         const previous = baseline[entry.name];
         let change = 'baseline=added';
+        if (!Number.isSafeInteger(previous) || previous < 0) baselineDrift = true;
         if (Number.isSafeInteger(previous) && previous >= 0) {
             const delta = entry.compressedSize - previous;
             change = `delta=${delta >= 0 ? '+' : ''}${delta}`;
+            if (delta !== 0) baselineDrift = true;
             const growthLimit = Math.max(MAX_EXPECTED_GROWTH_BYTES, Math.ceil(previous * MAX_EXPECTED_GROWTH_RATIO));
             if (delta > growthLimit) {
                 t.diagnostic(`WARNING ${entry.name} grew by ${delta} compressed bytes (baseline=${previous}, limit=${growthLimit})`);
@@ -50,6 +53,12 @@ test('release archive reports bounded per-entry resource sizes', (t) => {
     }
 
     for (const name of Object.keys(baseline).sort()) {
-        if (!entries.some((entry) => entry.name === name)) t.diagnostic(`baseline entry removed: ${name}`);
+        if (!entries.some((entry) => entry.name === name)) {
+            baselineDrift = true;
+            t.diagnostic(`baseline entry removed: ${name}`);
+        }
+    }
+    if (baselineDrift) {
+        t.diagnostic('baseline review required: update package-resource-baseline.json only after an intentional archive change');
     }
 });
