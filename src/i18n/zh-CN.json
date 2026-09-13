@@ -139,6 +139,7 @@
   "homeBookmarks": "书签",
   "homeJournalMonthly": "本月日记",
   "homePluginCommands": "插件命令",
+  "homePluginCommandsEmpty": "暂无可执行命令；请先安装并启用声明命令的插件",
   "homeDescTags": "全库标签与数量，点击打开标签面板",
   "homeDescBookmarks": "书签与数量，点击打开书签面板",
   "homeDescJournalMonthly": "当月日记列表；标题需 YYYY-MM-DD",

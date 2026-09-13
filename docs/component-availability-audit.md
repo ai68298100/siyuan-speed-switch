@@ -45,7 +45,7 @@
 | `journal-calendar` 日历月视图 | C | SQL 按 `YYYY-MM-` 标题生成月历，已有日期可点击 | 依赖标准日期标题；支持可选 notebook 过滤；月份可在当前月前后 24 个月内切换 | 标注命名规则；真实宿主验证跨月、筛选和空态 |
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |
 | `countdown` 倒数日 | B | 纯前端 `YYYY-MM-DD` 计算 | 配置合法日期即可用；未配置时显示提示 | 配置控件改为日期 input，避免手填格式错误 |
-| `plugin-commands` 插件命令 | C | 枚举其他插件 `commands`，执行 `plugin::command` | 仅外部插件声明 `langKey` 且有 callback/globalCallback 才出现；命令卸载/旧格式会失效 | 增加“无可用命令”提示和执行失败反馈 |
+| `plugin-commands` 插件命令 | C | 枚举其他插件 `commands`，执行 `plugin::command` | 仅外部插件声明 `langKey` 且有 callback/globalCallback 才出现；命令卸载/旧格式会失效；无命令时显示安装/启用引导 | 保持空态引导；后续补真实宿主验证命令执行失败反馈 |
 | `checkin-summary` 打卡摘要 | D（可条件恢复） | 由 `siyuan-checkin` 外部插件注册 adapter | 本插件仅目录登记，无 provider 时商店只显示“需安装插件后可用”，无法独立添加；协议文档已有 provider 约定 | 保留 pending 分区；安装后做一次真实注册/读取/卸载验收 |
 
 ## 修复与验收优先级

@@ -78,6 +78,7 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-13 (25): 345 KiB for bounded refresh failure-reason summaries.
     // 2026-09-13 (26): 346 KiB for bidirectional journal-calendar navigation
     // and optional notebook scoping; package.zip remains below 300 KiB.
+    // The bounded adapter empty-hint channel stays within this same budget.
     const budget = 346 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });

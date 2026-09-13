@@ -14,6 +14,17 @@ test("home view normalizes loading, cached, empty, and bounded item states", () 
     assert.equal(normalizeHomeViewResult({ok: false, reason: "timeout"}).status, "error");
 });
 
+test("home view preserves a bounded adapter empty hint", () => {
+    const view = buildHomeModuleView({moduleId: "commands", title: "Commands"}, {
+        ok: true,
+        snapshot: {items: [], emptyHint: "  Install a command plugin  ", empty: true},
+    });
+    assert.equal(view.emptyHint, "Install a command plugin");
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const rendered = renderHomeModuleView(dom.window.document, view);
+    assert.equal(rendered.querySelector(".sw__home-module-status").textContent, "Install a command plugin");
+});
+
 test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {

@@ -61,6 +61,11 @@
   - 证据：`src/home-model.js`、`src/index.ts`、`tests/home-model.test.cjs`、`tests/insight-widgets.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-269 插件命令空态引导
+  - 目标：当没有已安装插件提供可执行命令时，显示明确的安装/启用提示，不把条件不可用误判为普通空数据
+  - 证据：`src/home-adapters.js`、`src/home-view.js`、`src/index.ts`、`tests/home-view.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

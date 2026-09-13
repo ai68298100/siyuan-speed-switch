@@ -99,7 +99,10 @@ function normalizeSnapshot(value) {
     const stat = statRaw && safeText(statRaw.value, 32)
         ? {value: safeText(statRaw.value, 32), label: safeText(statRaw.label, 32), progress: Number.isFinite(statRaw.progress) ? Math.min(100, Math.max(0, statRaw.progress)) : null}
         : null;
-    return {title: safeText(value.title, 64), items, stat, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
+    const snapshot = {title: safeText(value.title, 64), items, stat, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
+    const emptyHint = safeText(value.emptyHint, 96);
+    if (emptyHint) snapshot.emptyHint = emptyHint;
+    return snapshot;
 }
 
 const HOME_DATA_SOURCES = Object.freeze({

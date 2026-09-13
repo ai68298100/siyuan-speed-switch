@@ -3738,7 +3738,7 @@ const version = beginSearch(session);
                     || command.label.toLowerCase().includes(filter)
                     || command.pluginTitle.toLowerCase().includes(filter))
                 .slice(0, limit);
-            return {items: commands.map((command) => ({
+            return {emptyHint: commands.length > 0 ? "" : this.i18n.homePluginCommandsEmpty, items: commands.map((command) => ({
                 label: command.pluginTitle ? `${command.label} · ${command.pluginTitle}` : command.label,
                 value: "cmd:" + command.value,
             }))};

@@ -169,3 +169,11 @@ test("journal and dated-content adapters use bounded notebook-aware actions", ()
     assert.match(reservations, /Number\.isFinite\(configuredDays\)/);
     assert.match(source, /this\.openJournal\(journalNotebook\)/);
 });
+
+test("plugin command adapter provides an explicit empty-state hint", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const commands = source.slice(source.indexOf('register("plugin-commands"'), source.indexOf("private getHomeState"));
+    assert.match(commands, /emptyHint: commands\.length > 0 \? \"\" : this\.i18n\.homePluginCommandsEmpty/);
+});

@@ -78,6 +78,7 @@ function normalizeHomeViewResult(value, options = {}) {
         cached: source.cached === true,
         reason: text(source.reason, 32),
         title: text(rawSnapshot.title, 64),
+        ...(text(rawSnapshot.emptyHint, 96) ? {emptyHint: text(rawSnapshot.emptyHint, 96)} : {}),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         stat: rawSnapshot.stat && typeof rawSnapshot.stat === "object"
             ? (() => {
@@ -115,6 +116,7 @@ function buildHomeModuleView(module, result, options = {}) {
         reason: normalized.reason,
         updatedAt: normalized.updatedAt,
         items: normalized.items,
+        ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
         collapsed: options.collapsed === true,
         role: "region",
         ariaBusy: normalized.status === "loading",
@@ -409,7 +411,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         // adapter to surface a stable reason such as timeout/unsupported in a
         // localized way without exposing raw exception text.
         const reasonCode = view.status === "error" && view.reason && !labels[view.reason] ? ` · ${view.reason}` : "";
-        status.textContent = (labels[view.reason] || labels[view.status] || labels.empty) + reasonCode;
+        status.textContent = (view.status === "empty" && view.emptyHint ? view.emptyHint : (labels[view.reason] || labels[view.status] || labels.empty)) + reasonCode;
         body.appendChild(status);
         if (view.status === "error" && options.onRetry) {
             const retry = doc.createElement("button");

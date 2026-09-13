@@ -139,6 +139,7 @@
   "homeBookmarks": "Bookmarks",
   "homeJournalMonthly": "Journal this month",
   "homePluginCommands": "Plugin commands",
+  "homePluginCommandsEmpty": "No executable commands yet; install and enable a plugin that declares commands",
   "homeDescTags": "Workspace tags with counts; click to open the tag panel",
   "homeDescBookmarks": "Bookmarks with counts; click to open the bookmark panel",
   "homeDescJournalMonthly": "This month's entries; titles must use YYYY-MM-DD",
