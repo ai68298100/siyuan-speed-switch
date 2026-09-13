@@ -8,6 +8,8 @@ const MAX_PLAN_STEPS = 8;
 const MAX_PLAN_TTL_MS = 10 * 60 * 1000;
 const PLAN_ACTIONS = Object.freeze(["open-document", "open-documents", "restore-document-set", "update-task-status", "create-document", "append-to-journal"]);
 const WRITE_ACTIONS = Object.freeze(["update-task-status", "create-document", "append-to-journal"]);
+const RECEIPT_STATUSES = Object.freeze(["completed", "skipped", "failed", "cancelled"]);
+const PLAN_RESULT_STATUSES = Object.freeze(["completed", "partial", "failed", "cancelled", "expired"]);
 
 const WORKSPACE_PLAN_SPEC = Object.freeze({
     name: "workspace-plan",
@@ -69,6 +71,21 @@ const WORKSPACE_PLAN_SPEC = Object.freeze({
     }),
 });
 
+const WORKSPACE_PLAN_RECEIPT_SCHEMA = Object.freeze({
+    type: "object",
+    properties: {
+        planId: {type: "string", maxLength: 32},
+        status: {type: "string", enum: PLAN_RESULT_STATUSES},
+        completed: {type: "array", maxItems: MAX_PLAN_STEPS, items: {type: "integer", minimum: 0, maximum: MAX_PLAN_STEPS}},
+        skipped: {type: "array", maxItems: MAX_PLAN_STEPS, items: {type: "integer", minimum: 0, maximum: MAX_PLAN_STEPS}},
+        failed: {type: "array", maxItems: MAX_PLAN_STEPS, items: {type: "object", properties: {index: {type: "integer", minimum: 0, maximum: MAX_PLAN_STEPS}, reason: {type: "string", maxLength: 32}}, required: ["index", "reason"], additionalProperties: false}},
+        cancelled: {type: "array", maxItems: MAX_PLAN_STEPS, items: {type: "integer", minimum: 0, maximum: MAX_PLAN_STEPS}},
+        receipt: {type: "string", maxLength: 64},
+    },
+    required: ["planId", "status", "completed", "skipped", "failed", "cancelled", "receipt"],
+    additionalProperties: false,
+});
+
 function buildWorkspacePlan(input, now = Date.now()) {
     const source = input && typeof input === "object" ? input : {};
     const createdAt = Number.isFinite(now) && now > 0 ? Math.floor(now) : Date.now();
@@ -110,10 +127,40 @@ function isWorkspacePlanExpired(plan, now = Date.now()) {
     return !plan || !Number.isFinite(now) || Math.floor(now) >= Number(plan.expiresAt);
 }
 
+function buildWorkspaceReceipt(plan, results, now = Date.now()) {
+    const source = Array.isArray(results) ? results : [];
+    const completed = [], skipped = [], cancelled = [], failed = [];
+    for (let index = 0; index < Math.min(MAX_PLAN_STEPS, plan?.steps?.length || 0); index += 1) {
+        const result = source[index] && typeof source[index] === "object" ? source[index] : {};
+        const status = RECEIPT_STATUSES.includes(result.status) ? result.status : "skipped";
+        if (status === "completed") completed.push(index);
+        else if (status === "cancelled") cancelled.push(index);
+        else if (status === "failed") failed.push({index, reason: cleanReason(result.reason)});
+        else skipped.push(index);
+    }
+    let status = "completed";
+    if (isWorkspacePlanExpired(plan, now)) status = "expired";
+    else if (cancelled.length && !completed.length && !failed.length) status = "cancelled";
+    else if (failed.length || skipped.length || cancelled.length) status = completed.length ? "partial" : "failed";
+    return {planId: typeof plan?.planId === "string" ? plan.planId.slice(0, 32) : "", status, completed, skipped, failed, cancelled, receipt: makeReceiptId(plan?.planId, now, status)};
+}
+
+function cleanReason(value) {
+    const text = typeof value === "string" ? value.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32) : "failed";
+    return text || "failed";
+}
+
+function makeReceiptId(planId, now, status) {
+    const base = `${String(planId || "plan").slice(0, 24)}:${Math.floor(Number(now) || Date.now())}:${status}`;
+    let hash = 0;
+    for (const char of base) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    return `rc-${hash.toString(36)}`;
+}
+
 function makePlanId(createdAt, steps) {
     let hash = createdAt >>> 0;
     JSON.stringify(steps).split("").forEach((char) => { hash = (hash * 33 + char.charCodeAt(0)) >>> 0; });
     return `wp-${createdAt.toString(36)}-${hash.toString(36)}`.slice(0, 32);
 }
 
-module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, buildWorkspacePlan, isWorkspacePlanExpired};
+module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt};

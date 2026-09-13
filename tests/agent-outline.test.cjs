@@ -5,7 +5,7 @@ const {
     flattenOutline,
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
-const {WORKSPACE_PLAN_SPEC, buildWorkspacePlan, isWorkspacePlanExpired} = require('../src/agent-workspace-plan.js');
+const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt} = require('../src/agent-workspace-plan.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -57,6 +57,27 @@ test("workspace-plan is a dry-run contract with fixed actions and expiry", () =>
     assert.equal(isWorkspacePlanExpired(plan, plan.createdAt + 599999), false);
     assert.equal(isWorkspacePlanExpired(plan, plan.expiresAt), true);
     assert.equal(buildWorkspacePlan({steps: []}, 1700000000000).requiresConfirmation, false);
+});
+
+test("workspace receipt normalizes partial, cancelled and failed steps", () => {
+    const plan = buildWorkspacePlan({steps: [
+        {action: "open-document", id: "20260913083000-abcdef"},
+        {action: "update-task-status", id: "20260913083001-abcdef", done: true},
+        {action: "open-documents", ids: ["20260913083002-abcdef"]},
+    ]}, 1700000000000);
+    assert.equal(WORKSPACE_PLAN_RECEIPT_SCHEMA.properties.failed.maxItems, 8);
+    const receipt = buildWorkspaceReceipt(plan, [
+        {status: "completed"},
+        {status: "failed", reason: "not found!"},
+        {status: "cancelled"},
+    ], 1700000000100);
+    assert.equal(receipt.status, "partial");
+    assert.deepEqual(receipt.completed, [0]);
+    assert.deepEqual(receipt.failed, [{index: 1, reason: "notfound"}]);
+    assert.deepEqual(receipt.cancelled, [2]);
+    assert.match(receipt.receipt, /^rc-[a-z0-9]+$/);
+    const expired = buildWorkspaceReceipt(plan, [], plan.expiresAt);
+    assert.equal(expired.status, "expired");
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {
