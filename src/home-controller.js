@@ -168,6 +168,7 @@ function createHomeModuleController(options = {}) {
 async function refreshHomeModules(entries, options = {}) {
     const queue = Array.isArray(entries) ? entries.filter((entry) => typeof entry?.refresh === "function") : [];
     if (queue.length === 0) return [];
+    const signal = options && typeof options.signal === "object" ? options.signal : null;
     const requested = Math.trunc(Number(options.concurrency));
     const concurrency = Math.min(4, Math.max(1, Number.isFinite(requested) && requested > 0 ? requested : 2));
     const results = new Array(queue.length);
@@ -175,8 +176,12 @@ async function refreshHomeModules(entries, options = {}) {
     async function worker() {
         while (nextIndex < queue.length) {
             const index = nextIndex++;
+            if (signal?.aborted) {
+                results[index] = {ok: false, reason: "aborted"};
+                continue;
+            }
             try {
-                results[index] = await queue[index].refresh(undefined, {force: true});
+                results[index] = await queue[index].refresh(undefined, {force: true, signal});
             } catch (_) {
                 results[index] = {ok: false, reason: "failed"};
             }
@@ -188,7 +193,7 @@ async function refreshHomeModules(entries, options = {}) {
 
 function countHomeRefreshFailures(results) {
     if (!Array.isArray(results)) return 0;
-    return Math.min(64, results.reduce((count, result) => count + (result?.ok === false ? 1 : 0), 0));
+    return Math.min(64, results.reduce((count, result) => count + (result?.ok === false && !["aborted", "disposed", "stale"].includes(result?.reason) ? 1 : 0), 0));
 }
 
 module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures};

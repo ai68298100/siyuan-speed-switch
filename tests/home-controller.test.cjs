@@ -334,7 +334,25 @@ test("home refresh-all scheduler bounds concurrency and isolates failures", asyn
 });
 
 test("home refresh summary counts only bounded stable failures", () => {
-    assert.equal(countHomeRefreshFailures([{ok: true}, {ok: false}, null, {ok: false, detail: "hidden"}]), 2);
+    assert.equal(countHomeRefreshFailures([{ok: true}, {ok: false}, null, {ok: false, detail: "hidden"}, {ok: false, reason: "aborted"}]), 2);
     assert.equal(countHomeRefreshFailures(Array.from({length: 100}, () => ({ok: false}))), 64);
     assert.equal(countHomeRefreshFailures(null), 0);
+});
+
+test("home refresh-all scheduler stops queued work after cancellation", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    let release;
+    const entries = Array.from({length: 4}, () => ({refresh: (_config, options) => {
+        calls += 1;
+        assert.equal(options.signal, controller.signal);
+        return new Promise((resolve) => { release = resolve; });
+    }}));
+    const pending = refreshHomeModules(entries, {concurrency: 1, signal: controller.signal});
+    await new Promise((resolve) => setImmediate(resolve));
+    controller.abort();
+    release({ok: false, reason: "aborted"});
+    const results = await pending;
+    assert.equal(calls, 1);
+    assert.equal(results.filter((result) => result?.reason === "aborted").length, 4);
 });

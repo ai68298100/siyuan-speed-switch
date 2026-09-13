@@ -4420,6 +4420,7 @@ const version = beginSearch(session);
         const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
         const homeRefreshTimers: number[] = [];
         const homeRefreshObservers: IntersectionObserver[] = [];
+        let homeRefreshBatchController: AbortController | null = null;
 
         const defs = new Map<string, any>();
         this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
@@ -4431,6 +4432,9 @@ const version = beginSearch(session);
         });
 
         const renderPanel = () => {
+            homeRefreshBatchController?.abort();
+            homeRefreshBatchController = null;
+            homeControllers.splice(0).forEach((entry) => entry.dispose());
             root.innerHTML = "";
             const state = this.getHomeState();
             const layoutList = (state.layouts[device] || []) as Array<any>;
@@ -4463,13 +4467,16 @@ const version = beginSearch(session);
                     if (refreshAllButton.disabled) return;
                     refreshAllButton.disabled = true;
                     refreshAllButton.setAttribute("aria-busy", "true");
+                    const batchController = typeof AbortController === "function" ? new AbortController() : null;
+                    homeRefreshBatchController = batchController;
                     try {
-                        const results = await refreshHomeModules(homeControllers, {concurrency: 2});
+                        const results = await refreshHomeModules(homeControllers, {concurrency: 2, signal: batchController?.signal});
                         const failureCount = countHomeRefreshFailures(results);
                         if (failureCount > 0) {
                             showMessage(this.i18n.homeRefreshFailed.replace("{count}", String(failureCount)));
                         }
                     } finally {
+                        if (homeRefreshBatchController === batchController) homeRefreshBatchController = null;
                         if (refreshAllButton.isConnected) {
                             refreshAllButton.disabled = false;
                             refreshAllButton.setAttribute("aria-busy", "false");
@@ -4859,6 +4866,9 @@ const version = beginSearch(session);
             homeRefreshTimers.length = 0;
             homeRefreshObservers.forEach((observer) => observer.disconnect());
             homeRefreshObservers.length = 0;
+            homeRefreshBatchController?.abort();
+            homeRefreshBatchController = null;
+            homeControllers.splice(0).forEach((entry) => entry.dispose());
             this.homeRefreshCleanup?.();
             originalDestroy();
         };
