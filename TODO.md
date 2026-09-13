@@ -761,6 +761,26 @@
   - 目标：diff queue 溢出后以通过校验的 registry snapshot 恢复
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeSessionRegistryDiff`
   - 状态：done
+- [x] T-217 Agent workspace registry diff 回放取消边界
+  - 目标：diff replay 在 signal 取消前后均不消费队列
+  - 实现：新增 `readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal`
+  - 状态：done
+- [x] T-218 Agent workspace registry diff 回放超时边界
+  - 目标：diff replay 在 deadline 到达时返回 timeout 并保留队列
+  - 实现：新增 `readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline`
+  - 状态：done
+- [x] T-219 Agent workspace registry diff 恢复结果归一化
+  - 目标：固定 diff recovery 终态并限制事件/快照字段
+  - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult` 与 safe facade
+  - 状态：done
+- [x] T-220 Agent workspace registry diff 恢复确认门面
+  - 目标：events/snapshot 成功恢复统一 acknowledge，失败不消费
+  - 实现：新增 `commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery`
+  - 状态：done
+- [x] T-221 Agent workspace registry diff recovery coordinator
+  - 目标：限制 diff cursor 倒退/重复提交并支持 dispose、signal/deadline 组合调用
+  - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类

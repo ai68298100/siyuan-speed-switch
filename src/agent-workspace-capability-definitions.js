@@ -657,6 +657,25 @@ function readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay(queue, curso
     return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: Array.isArray(batch.events) ? batch.events.slice(0, 8).map((entry) => ({sequence: Math.max(0, Math.trunc(Number(entry?.sequence) || 0)), event: normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff([entry?.event])[0]})).filter((entry) => entry.event) : []};
 }
 
+function readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal(queue, cursor = 0, limit = 8, signal) {
+    const safeCursor = Math.max(0, Math.trunc(Number(cursor) || 0));
+    if (signal?.aborted) return {ok: false, reason: "cancelled", cursor: safeCursor, events: []};
+    const replay = readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay(queue, safeCursor, limit);
+    if (signal?.aborted) return {ok: false, reason: "cancelled", cursor: replay.cursor, events: []};
+    return replay;
+}
+
+function readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline(queue, cursor = 0, limit = 8, deadline, now = Date.now) {
+    const safeCursor = Math.max(0, Math.trunc(Number(cursor) || 0));
+    const expiresAt = Number(deadline);
+    const current = typeof now === "function" ? Number(now()) : Number(now);
+    if (Number.isFinite(expiresAt) && Number.isFinite(current) && current >= expiresAt) return {ok: false, reason: "timeout", cursor: safeCursor, events: []};
+    const replay = readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay(queue, safeCursor, limit);
+    const after = typeof now === "function" ? Number(now()) : Number(now);
+    if (Number.isFinite(expiresAt) && Number.isFinite(after) && after >= expiresAt) return {ok: false, reason: "timeout", cursor: replay.cursor, events: []};
+    return replay;
+}
+
 function commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay(queue, replay) {
     if (!queue || typeof queue.acknowledge !== "function" || !replay || replay.ok !== true || replay.reason !== "ready") return 0;
     return queue.acknowledge(replay.cursor);
@@ -669,6 +688,82 @@ function recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, cursor = 0,
     const validation = validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot);
     if (!validation.ok) return {ok: false, mode: "invalid_snapshot", reason: validation.reason, cursor: replay.cursor, events: [], snapshot: null};
     return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot: normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot)};
+}
+
+function normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const modes = ["events", "snapshot", "unavailable", "invalid_snapshot", "cancelled", "timeout"];
+    const mode = modes.includes(source.mode) ? source.mode : "unavailable";
+    const ok = source.ok === true && (mode === "events" || mode === "snapshot");
+    const reason = ["ready", "snapshot_required", "queue_unavailable", "invalid_snapshot", "cancelled", "timeout", "diff_coordinator_disposed"].includes(source.reason) ? source.reason : (ok ? "ready" : mode);
+    return Object.freeze({ok, mode, reason, cursor: Math.max(0, Math.min(0x7fffffff, Math.trunc(Number(source.cursor) || 0))), events: mode === "events" ? (Array.isArray(source.events) ? source.events.slice(0, 8).map((entry) => ({sequence: Math.max(0, Math.trunc(Number(entry?.sequence) || 0)), event: normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff([entry?.event])[0]})).filter((entry) => entry.event) : []) : [], snapshot: mode === "snapshot" && source.snapshot ? normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(source.snapshot) : null});
+}
+
+function recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe(queue, cursor = 0, limit = 8, snapshot = null, signal) {
+    if (signal?.aborted) return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult({ok: false, mode: "cancelled", reason: "cancelled", cursor});
+    const recovery = recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, cursor, limit, snapshot);
+    if (signal?.aborted) return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult({ok: false, mode: "cancelled", reason: "cancelled", cursor: recovery.cursor});
+    return normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult(recovery);
+}
+
+function commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery(queue, recovery) {
+    if (!queue || typeof queue.acknowledge !== "function" || !recovery || recovery.ok !== true) return 0;
+    if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
+    return queue.acknowledge(recovery.cursor);
+}
+
+function createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator(queue) {
+    let lastCursor = 0;
+    let commits = 0;
+    let disposed = false;
+    const unavailable = () => ({ok: false, mode: "unavailable", reason: "diff_coordinator_disposed", cursor: lastCursor, events: [], snapshot: null});
+    return Object.freeze({
+        recover(cursor = 0, limit = 8, snapshot = null) {
+            if (disposed) return unavailable();
+            const requested = Math.max(lastCursor, Math.max(0, Math.trunc(Number(cursor) || 0)));
+            return recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, requested, limit, snapshot);
+        },
+        commit(recovery) {
+            if (disposed || !recovery || recovery.ok !== true) return 0;
+            const cursor = Math.max(0, Math.trunc(Number(recovery.cursor) || 0));
+            if (cursor <= lastCursor || (recovery.mode !== "events" && recovery.mode !== "snapshot")) return 0;
+            const acknowledged = commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery(queue, recovery);
+            if (acknowledged > 0 || recovery.mode === "snapshot") { lastCursor = cursor; commits = Math.min(32, commits + 1); }
+            return acknowledged;
+        },
+        recoverAndCommit(cursor = 0, limit = 8, snapshot = null) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const recovery = this.recover(cursor, limit, snapshot);
+            return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
+        },
+        recoverAndCommitWithSignal(cursor = 0, limit = 8, snapshot = null, signal) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const requested = Math.max(lastCursor, Math.max(0, Math.trunc(Number(cursor) || 0)));
+            const replay = readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal(queue, requested, limit, signal);
+            const recovery = replay.ok
+                ? {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null}
+                : replay.reason === "snapshot_required" && !signal?.aborted
+                    ? recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, requested, limit, snapshot)
+                    : {...replay, mode: replay.reason === "cancelled" ? "cancelled" : "unavailable"};
+            return Object.freeze({...normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult(recovery), acknowledged: this.commit(recovery)});
+        },
+        recoverAndCommitWithDeadline(cursor = 0, limit = 8, snapshot = null, deadline, now = Date.now) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const requested = Math.max(lastCursor, Math.max(0, Math.trunc(Number(cursor) || 0)));
+            const replay = readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline(queue, requested, limit, deadline, now);
+            const recovery = replay.ok
+                ? {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null}
+                : replay.reason === "snapshot_required"
+                    ? recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, requested, limit, snapshot)
+                    : {...replay, mode: replay.reason === "timeout" ? "timeout" : "unavailable"};
+            const result = normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult(recovery);
+            const after = typeof now === "function" ? Number(now()) : Number(now);
+            if (Number.isFinite(Number(deadline)) && Number.isFinite(after) && after >= Number(deadline)) return Object.freeze({...normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult({ok: false, mode: "timeout", reason: "timeout", cursor: result.cursor}), acknowledged: 0});
+            return Object.freeze({...result, acknowledged: this.commit(result)});
+        },
+        status() { return Object.freeze({lastCursor, commits, disposed}); },
+        dispose() { disposed = true; },
+    });
 }
 
 function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
@@ -876,8 +971,14 @@ module.exports = {
     createWorkspaceCapabilityRuntimeRegistryDiffQueue,
     enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff,
     readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay,
+    readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal,
+    readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline,
     commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay,
     recoverWorkspaceCapabilityRuntimeSessionRegistryDiff,
+    normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult,
+    recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe,
+    commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery,
+    createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,
