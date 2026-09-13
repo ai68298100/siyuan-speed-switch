@@ -581,3 +581,7 @@
   - 目标：将 snapshot diff 直接写入有界事件队列，统一事件归一化与游标语义
   - 实现：新增 `enqueueWorkspaceCapabilityRuntimeDiff`，无效队列或无变化返回 0
   - 状态：in-progress
+- [ ] T-170 Agent workspace runtime 事件安全回放
+  - 目标：在游标过旧导致队列溢出时明确要求重新获取完整快照，避免不完整事件流污染 UI
+  - 实现：新增 `readWorkspaceCapabilityRuntimeEventsForReplay`，正常返回 ready 批次，溢出返回 `snapshot_required`
+  - 状态：in-progress

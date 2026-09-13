@@ -18,7 +18,7 @@ const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
 const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
 const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -508,6 +508,18 @@ test("workspace runtime diff enqueue bridges snapshots into the queue", () => {
     assert.deepEqual(queue.readSince(0).events, [{sequence: 1, event: {type: "host", changed: true}}, {sequence: 2, event: {type: "plans", delta: 2}}]);
     assert.equal(enqueueWorkspaceCapabilityRuntimeDiff(null, before, after), 0);
     assert.equal(enqueueWorkspaceCapabilityRuntimeDiff(queue, before, before), 0);
+    assert.deepEqual(readWorkspaceCapabilityRuntimeEventsForReplay(queue, 0), {ok: true, reason: "ready", cursor: 2, events: [
+        {sequence: 1, event: {type: "host", changed: true}},
+        {sequence: 2, event: {type: "plans", delta: 2}},
+    ]});
+    assert.deepEqual(readWorkspaceCapabilityRuntimeEventsForReplay(null), {ok: false, reason: "queue_unavailable", cursor: 0, events: []});
+});
+
+test("workspace runtime replay requests a fresh snapshot after queue overflow", () => {
+    const queue = createWorkspaceCapabilityEventQueue(1);
+    queue.push([{type: "host"}, {type: "disposed"}]);
+    assert.deepEqual(readWorkspaceCapabilityRuntimeEventsForReplay(queue, 0), {ok: false, reason: "snapshot_required", cursor: 2, events: []});
+    assert.deepEqual(readWorkspaceCapabilityRuntimeEventsForReplay(queue, 1), {ok: true, reason: "ready", cursor: 2, events: [{sequence: 2, event: {type: "disposed", changed: true}}]});
 });
 
 test("workspace capability host probe stays stable and side-effect free", () => {

@@ -279,6 +279,13 @@ function enqueueWorkspaceCapabilityRuntimeDiff(queue, previous, current) {
     return queue.push(buildWorkspaceCapabilityRuntimeEvents(previous, current));
 }
 
+function readWorkspaceCapabilityRuntimeEventsForReplay(queue, cursor = 0, limit = 16) {
+    if (!queue || typeof queue.readSince !== "function") return {ok: false, reason: "queue_unavailable", cursor: 0, events: []};
+    const batch = queue.readSince(cursor, limit);
+    if (!batch || batch.truncated === true) return {ok: false, reason: "snapshot_required", cursor: Number(batch?.cursor) || 0, events: []};
+    return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: Array.isArray(batch.events) ? batch.events.map((entry) => ({sequence: entry.sequence, event: {...entry.event}})) : []};
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -298,4 +305,5 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeEvents,
     createWorkspaceCapabilityEventQueue,
     enqueueWorkspaceCapabilityRuntimeDiff,
+    readWorkspaceCapabilityRuntimeEventsForReplay,
 };
