@@ -31,6 +31,8 @@ const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
     EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
 ]);
 const WORKSPACE_RUNTIME_SNAPSHOT_VERSION = 1;
+const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
+const MAX_RUNTIME_SESSIONS = 8;
 
 function normalizeWorkspaceCapabilityHandle(handle) {
     if (typeof handle === "function") return {managed: true, kind: "disposer"};
@@ -408,6 +410,56 @@ function createWorkspaceCapabilityRuntimeSession(maxItems = 16) {
     });
 }
 
+function buildWorkspaceCapabilityRuntimeSessionSnapshot(session) {
+    const source = session && typeof session.snapshot === "function" ? session.snapshot() : {};
+    const sessionId = typeof source.sessionId === "string" && /^ws-[a-z0-9]{8}$/.test(source.sessionId) ? source.sessionId : "";
+    return Object.freeze({version: WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, sessionId, disposed: source.disposed === true, runtime: source.runtime || null});
+}
+
+function normalizeWorkspaceCapabilityRuntimeSessionSnapshot(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const sessionId = typeof source.sessionId === "string" && /^ws-[a-z0-9]{8}$/.test(source.sessionId) ? source.sessionId : "";
+    return Object.freeze({version: WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, sessionId, disposed: source.disposed === true, runtime: source.runtime && typeof source.runtime === "object" ? source.runtime : null});
+}
+
+function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTIME_SESSIONS) {
+    const max = Math.min(MAX_RUNTIME_SESSIONS, Math.max(1, Math.trunc(Number(maxSessions) || MAX_RUNTIME_SESSIONS)));
+    const sessions = new Map();
+    let disposed = false;
+    return Object.freeze({
+        create(maxItems = 16) {
+            if (disposed) return null;
+            const session = createWorkspaceCapabilityRuntimeSession(maxItems);
+            sessions.set(session.sessionId, session);
+            while (sessions.size > max) {
+                const oldest = sessions.keys().next().value;
+                sessions.get(oldest)?.dispose();
+                sessions.delete(oldest);
+            }
+            return session;
+        },
+        get(sessionId) {
+            if (disposed || typeof sessionId !== "string") return null;
+            return sessions.get(sessionId) || null;
+        },
+        remove(sessionId) {
+            const session = this.get(sessionId);
+            if (!session) return false;
+            session.dispose();
+            sessions.delete(sessionId);
+            return true;
+        },
+        size() { return sessions.size; },
+        status() { return Object.freeze({size: sessions.size, maxSessions: max, disposed}); },
+        dispose() {
+            if (disposed) return;
+            disposed = true;
+            sessions.forEach((session) => session.dispose());
+            sessions.clear();
+        },
+    });
+}
+
 module.exports = {
     WORKSPACE_PLAN_EFFECTS,
     EXECUTE_WORKSPACE_PLAN_EFFECTS,
@@ -437,4 +489,9 @@ module.exports = {
     recoverWorkspaceCapabilityRuntimeSafe,
     createWorkspaceCapabilityRecoveryCoordinator,
     createWorkspaceCapabilityRuntimeSession,
+    WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION,
+    MAX_RUNTIME_SESSIONS,
+    buildWorkspaceCapabilityRuntimeSessionSnapshot,
+    normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
+    createWorkspaceCapabilityRuntimeSessionRegistry,
 };

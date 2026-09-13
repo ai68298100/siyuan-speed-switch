@@ -625,6 +625,14 @@
   - 目标：统一 queue/coordinator 的会话级创建、快照与销毁，隔离不同宿主会话的恢复状态
   - 实现：新增 `createWorkspaceCapabilityRuntimeSession`，生成有界 sessionId，dispose 同步清理 queue/coordinator
   - 状态：in-progress
+- [ ] T-183 Agent workspace session 快照版本化
+  - 目标：为 runtime session 提供稳定版本号与归一化快照
+  - 实现：新增 `build/normalizeWorkspaceCapabilityRuntimeSessionSnapshot`
+  - 状态：in-progress
+- [ ] T-184 Agent workspace session registry
+  - 目标：有界管理多个 runtime session，支持创建、查找、移除和统一销毁
+  - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistry`，最多 8 个会话
+  - 状态：in-progress
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
