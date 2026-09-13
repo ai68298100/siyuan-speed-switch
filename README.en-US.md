@@ -8,11 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> `v0.16.19` widget panel live data and mobile canvas fix: built-in widgets declare refresh triggers so data stays fresh while the panel is open; the mobile canvas stacks single-column; the widget store gains instant search. > `v0.16.13` introduces grouped tab lists (by notebook by default / favorites / created month) with a unified group+sort menu and flow layout where small groups sit side by side, and turns the second panel into a widget home: built-in recents/favorites/journal/document-set modules can be added, removed, reordered, resized, and collapsed; third-party read-only modules are supported with an open-plugin fallback. Desktop settings now follows the adaptive size mode; mobile toolbar crowding and the settings tab-strip glitch are fixed.
-
 > The current worktree contains unreleased search, widget, Agent, and UI increments: search is layered as open tabs → opened-document content → workspace title/bounded full-text fallback, with notebook, content-type, subtype, search-method, and result-order filters; the widget panel supports third-party read-only modules and Agent discovery mode. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights. These changes still require real desktop, sidebar, and Android SiYuan acceptance and must not be treated as a published release.
 
-> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 522 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
+> Current development policy: continue with small increments behind automated guardrails instead of forcing a complete release. Type check, production build, 571 tests, mobile and Chromium UI smoke tests pass; real-device acceptance, install/upgrade/uninstall checks, and formal release will wait until maintainer review. No tag, release, or push will be created before explicit user confirmation.
 
 ## Contents
 
