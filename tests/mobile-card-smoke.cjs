@@ -378,9 +378,16 @@ console.log(`${homeRefreshFocusOk ? 'PASS' : 'FAIL'} home refresh focus continui
 if (!homeRefreshFocusOk) allPassed = false;
 const homeRefreshBusyVisualOk = source.includes('refreshAllButton.setAttribute("aria-busy", "true")')
     && source.includes('refreshAllButton.disabled = true')
+    && source.includes('refreshAllButton.setAttribute("aria-busy", "false")')
     && pluginCss.includes('.sw-home__refresh');
 console.log(`${homeRefreshBusyVisualOk ? 'PASS' : 'FAIL'} home refresh busy visual contract`);
 if (!homeRefreshBusyVisualOk) allPassed = false;
+const homeRefreshSnapshotOk = source.includes('label.textContent = this.i18n.homeRetry')
+    && source.includes('label.textContent = this.i18n.homeRefreshAll')
+    && source.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRetry)')
+    && source.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll)');
+console.log(`${homeRefreshSnapshotOk ? 'PASS' : 'FAIL'} home refresh status snapshot contract`);
+if (!homeRefreshSnapshotOk) allPassed = false;
 const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('.sw__quick-actions--hidden')
     && pluginCss.includes('.sw-settings-dialog')
