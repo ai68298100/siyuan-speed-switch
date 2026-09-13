@@ -165,3 +165,5 @@
 - D-161 v0.17 registry 回放沿用 runtime 事件语义：正常返回 events，溢出返回 snapshot_required；仅 ready 回放可确认消费，恢复 snapshot 经过 registry 快照归一化。
 - D-151 v0.17 runtime 恢复截止时间采用显式 deadline；到达或超过 deadline 返回 timeout 且不读取/确认队列，和 cancelled 保持可区分诊断语义。
 - D-152 v0.17 恢复结果归一化固定六种 mode，成功仅允许 events/snapshot；cursor、事件数和快照均有界，未知扩展字段丢弃且不回显异常文本。
+- D-162 v0.17 registry 回放取消/超时采用读取前后双检查，任何非 ready 结果都不确认事件；原因：避免面板切换或截止时间竞争造成游标误推进。
+- D-163 v0.17 registry recovery coordinator 以单调 `lastCursor` 串行化 events/snapshot 提交，snapshot 成功同样确认截至游标的旧事件；销毁后统一返回 `registry_coordinator_disposed`，防止尾部任务污染已销毁 registry。

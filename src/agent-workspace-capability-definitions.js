@@ -560,10 +560,35 @@ function readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, cursor 
     return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: normalizeWorkspaceCapabilityRuntimeRegistryEvents(batch.events)};
 }
 
+function readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal(registry, cursor = 0, limit = 8, signal) {
+    const safeCursor = Math.max(0, Math.trunc(Number(cursor) || 0));
+    if (signal?.aborted) return {ok: false, reason: "cancelled", cursor: safeCursor, events: []};
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, safeCursor, limit);
+    if (signal?.aborted) return {ok: false, reason: "cancelled", cursor: replay.cursor, events: []};
+    return replay;
+}
+
+function readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline(registry, cursor = 0, limit = 8, deadline, now = Date.now) {
+    const safeCursor = Math.max(0, Math.trunc(Number(cursor) || 0));
+    const current = typeof now === "function" ? Number(now()) : Number(now);
+    const expiresAt = Number(deadline);
+    if (Number.isFinite(expiresAt) && Number.isFinite(current) && current >= expiresAt) return {ok: false, reason: "timeout", cursor: safeCursor, events: []};
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, safeCursor, limit);
+    const after = typeof now === "function" ? Number(now()) : Number(now);
+    if (Number.isFinite(expiresAt) && Number.isFinite(after) && after >= expiresAt) return {ok: false, reason: "timeout", cursor: replay.cursor, events: []};
+    return replay;
+}
+
 function commitWorkspaceCapabilityRuntimeRegistryReplay(registry, replay) {
     if (!registry || typeof registry.acknowledgeEvents !== "function" || !replay || replay.ok !== true) return 0;
     if (replay.reason !== "ready") return 0;
     return registry.acknowledgeEvents(replay.cursor);
+}
+
+function commitWorkspaceCapabilityRuntimeRegistryRecovery(registry, recovery) {
+    if (!registry || typeof registry.acknowledgeEvents !== "function" || !recovery || recovery.ok !== true) return 0;
+    if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
+    return registry.acknowledgeEvents(recovery.cursor);
 }
 
 function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, limit = 8) {
@@ -571,6 +596,42 @@ function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, limit =
     if (replay.ok) return {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null};
     if (replay.reason !== "snapshot_required" || !registry || typeof registry.snapshot !== "function") return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
     return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot: normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry.snapshot())};
+}
+
+function createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator(registry) {
+    let lastCursor = 0;
+    let commits = 0;
+    let disposed = false;
+    const unavailable = () => ({ok: false, mode: "unavailable", reason: "registry_coordinator_disposed", cursor: lastCursor, events: [], snapshot: null});
+    return Object.freeze({
+        recover(cursor = 0, limit = 8) {
+            if (disposed) return unavailable();
+            const requested = Math.max(lastCursor, Math.max(0, Math.trunc(Number(cursor) || 0)));
+            return recoverWorkspaceCapabilityRuntimeRegistry(registry, requested, limit);
+        },
+        commit(recovery) {
+            if (disposed || !recovery || recovery.ok !== true) return 0;
+            const cursor = Math.max(0, Math.trunc(Number(recovery.cursor) || 0));
+            if (cursor <= lastCursor || (recovery.mode !== "events" && recovery.mode !== "snapshot")) return 0;
+            const acknowledged = commitWorkspaceCapabilityRuntimeRegistryRecovery(registry, recovery);
+            if (acknowledged > 0 || recovery.mode === "snapshot") {
+                lastCursor = cursor;
+                commits = Math.min(32, commits + 1);
+            }
+            return acknowledged;
+        },
+        recoverAndCommit(cursor = 0, limit = 8) {
+            if (disposed) return {...unavailable(), acknowledged: 0};
+            const recovery = this.recover(cursor, limit);
+            return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
+        },
+        status() { return Object.freeze({lastCursor, commits, disposed}); },
+        snapshot() {
+            const registryStatus = registry && typeof registry.status === "function" ? registry.status() : {size: 0, maxSessions: 0, disposed: true};
+            return Object.freeze({coordinator: Object.freeze({lastCursor, commits, disposed}), registry: registryStatus});
+        },
+        dispose() { if (!disposed) disposed = true; },
+    });
 }
 
 module.exports = {
@@ -610,6 +671,10 @@ module.exports = {
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
+    readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,
+    readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline,
     commitWorkspaceCapabilityRuntimeRegistryReplay,
+    commitWorkspaceCapabilityRuntimeRegistryRecovery,
     recoverWorkspaceCapabilityRuntimeRegistry,
+    createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator,
 };

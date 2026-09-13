@@ -673,6 +673,22 @@
   - 目标：统一 registry 事件回放与溢出后的完整 snapshot 恢复
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeRegistry`
   - 状态：in-progress
+- [x] T-195 Agent workspace registry 回放取消边界
+  - 目标：registry 事件回放在会话取消后不读取、不确认事件
+  - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal`
+  - 状态：done
+- [x] T-196 Agent workspace registry 回放超时边界
+  - 目标：截止时间前后均检查超时，失败时保留 registry 事件
+  - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline`
+  - 状态：done
+- [x] T-197 Agent workspace registry 恢复确认门面
+  - 目标：events/snapshot 两种成功恢复统一确认，失败结果不消费事件
+  - 实现：新增 `commitWorkspaceCapabilityRuntimeRegistryRecovery`
+  - 状态：done
+- [x] T-198 Agent workspace registry 恢复并发协调器
+  - 目标：限制 registry 游标倒退/重复提交，并在销毁后阻断恢复
+  - 实现：新增 `createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator`
+  - 状态：done
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
