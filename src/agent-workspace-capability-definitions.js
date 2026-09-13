@@ -638,7 +638,10 @@ function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, limit =
     if (replay.ok) return {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null};
     if (replay.reason !== "snapshot_required" || !registry || typeof registry.snapshot !== "function") return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
     try {
-        return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot: normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry.snapshot())};
+        const snapshot = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(registry.snapshot());
+        const validation = validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot);
+        if (!validation.ok) return {ok: false, mode: "invalid_snapshot", reason: "invalid_snapshot", cursor: replay.cursor, events: [], snapshot: null};
+        return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot};
     } catch (_error) {
         return {ok: false, mode: "unavailable", reason: "registry_unavailable", cursor: replay.cursor, events: [], snapshot: null};
     }
@@ -646,10 +649,10 @@ function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, limit =
 
 function normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult(value) {
     const source = value && typeof value === "object" ? value : {};
-    const modes = ["events", "snapshot", "unavailable", "cancelled", "timeout"];
+    const modes = ["events", "snapshot", "unavailable", "invalid_snapshot", "cancelled", "timeout"];
     const mode = modes.includes(source.mode) ? source.mode : "unavailable";
     const ok = source.ok === true && (mode === "events" || mode === "snapshot");
-    const reason = ["ready", "snapshot_required", "registry_unavailable", "cancelled", "timeout", "registry_coordinator_disposed"].includes(source.reason)
+    const reason = ["ready", "snapshot_required", "registry_unavailable", "invalid_snapshot", "cancelled", "timeout", "registry_coordinator_disposed"].includes(source.reason)
         ? source.reason
         : (ok ? "ready" : mode);
     return Object.freeze({

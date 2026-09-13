@@ -706,6 +706,15 @@ test("workspace registry recovery normalizes failures and isolates registry exce
     assert.deepEqual(recoverWorkspaceCapabilityRuntimeRegistrySafe(broken, 0, 8, controller.signal), {ok: false, mode: "cancelled", reason: "cancelled", cursor: 0, events: [], snapshot: null});
 });
 
+test("workspace registry snapshot recovery rejects inconsistent snapshots", () => {
+    const broken = {
+        eventsSince() { return {cursor: 9, truncated: true, events: []}; },
+        snapshot() { return {size: 2, maxSessions: 2, disposed: false, sessions: [{sessionId: "ws-12345678", disposed: false, runtime: null}]}; },
+    };
+    assert.deepEqual(recoverWorkspaceCapabilityRuntimeRegistry(broken, 0), {ok: false, mode: "invalid_snapshot", reason: "invalid_snapshot", cursor: 9, events: [], snapshot: null});
+    assert.deepEqual(normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult({ok: false, mode: "invalid_snapshot", reason: "invalid_snapshot", cursor: 9, snapshot: {}}), {ok: false, mode: "invalid_snapshot", reason: "invalid_snapshot", cursor: 9, events: [], snapshot: null});
+});
+
 test("workspace registry coordinator signal and deadline paths remain bounded", () => {
     const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
     registry.create();

@@ -725,6 +725,14 @@
   - 目标：固定差异事件类型、sessionId 与容量字段上限
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff`
   - 状态：done
+- [x] T-208 Agent workspace registry 恢复快照校验接入
+  - 目标：snapshot recovery 只接受通过一致性校验的 registry 快照
+  - 实现：`recoverWorkspaceCapabilityRuntimeRegistry` 校验失败返回 `invalid_snapshot`
+  - 状态：done
+- [x] T-209 Agent workspace registry invalid_snapshot 归一化
+  - 目标：safe/coordinator 输出固定 invalid_snapshot 终态且不携带快照内容
+  - 实现：扩展 registry recovery result normalization 的终态白名单
+  - 状态：done
 - [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
