@@ -151,3 +151,4 @@
 - D-145 v0.17 恢复确认仅对 ok 的 events/snapshot 模式调用队列 acknowledge；失败或 unavailable 不删除事件，保证中断恢复可重试且不丢状态。
 - D-146 v0.17 恢复提交门面先执行既有 recover，再基于结果调用 commit；返回 acknowledged 计数，失败路径固定为 0，不引入额外副作用。
 - D-147 v0.17 recovery coordinator 以单调 lastCursor 拒绝重复/倒退提交，commits 上限 32；并发消费者共享同一 coordinator 时只允许首次成功确认推进队列。
+- D-148 v0.17 recovery coordinator dispose 后不可恢复或提交；返回 `coordinator_disposed` 与 acknowledged=0，保留历史 cursor 仅用于只读状态诊断。

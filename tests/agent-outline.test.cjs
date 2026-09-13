@@ -535,7 +535,7 @@ test("workspace runtime replay requests a fresh snapshot after queue overflow", 
     assert.equal(queued.size(), 0);
     const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queued);
     assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 2}), 0);
-    assert.deepEqual(coordinator.status(), {lastCursor: 0, commits: 0});
+    assert.deepEqual(coordinator.status(), {lastCursor: 0, commits: 0, disposed: false});
 });
 
 test("workspace runtime recovery coordinator rejects duplicate and stale commits", () => {
@@ -544,10 +544,14 @@ test("workspace runtime recovery coordinator rejects duplicate and stale commits
     const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
     const first = coordinator.recoverAndCommit(0, null);
     assert.equal(first.acknowledged, 2);
-    assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1});
+    assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1, disposed: false});
     assert.equal(coordinator.commit(first), 0);
     assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 1}), 0);
-    assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1});
+    assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1, disposed: false});
+    coordinator.dispose();
+    assert.deepEqual(coordinator.status(), {lastCursor: 2, commits: 1, disposed: true});
+    assert.deepEqual(coordinator.recoverAndCommit(2), {ok: false, mode: "unavailable", reason: "coordinator_disposed", cursor: 2, events: [], snapshot: null, acknowledged: 0});
+    assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 3}), 0);
 });
 
 test("workspace capability host probe stays stable and side-effect free", () => {

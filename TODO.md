@@ -601,3 +601,7 @@
   - 目标：防止多个消费者重复或倒退确认同一批事件
   - 实现：新增 `createWorkspaceCapabilityRecoveryCoordinator`，记录 lastCursor/commits 并拒绝重复确认
   - 状态：in-progress
+- [ ] T-175 Agent workspace runtime 恢复协调器销毁态
+  - 目标：插件卸载后阻断异步恢复、确认和事件消费，避免销毁后的尾部任务污染队列
+  - 实现：coordinator 增加不可逆 `dispose()` 与 disposed 状态，后续调用返回 `coordinator_disposed`
+  - 状态：in-progress
