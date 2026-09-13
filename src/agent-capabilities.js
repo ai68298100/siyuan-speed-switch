@@ -23,6 +23,11 @@ const SEARCH_SUBTYPES = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6", "o", 
 const HOME_DIAGNOSTIC_TYPES = Object.freeze(["backoff", "cache", "empty", "timeout", "aborted", "failed"]);
 const HOME_DIAGNOSTIC_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "notebook", "date", "document"]);
+// 块 ID（14 位时间戳-后缀）的单一事实来源：正则用于运行时校验，
+// pattern 字符串用于 JSON Schema 输出声明，两者必须保持同形。
+const AGENT_BLOCK_ID_PATTERN = "^[0-9]{14}-[0-9a-z]+$";
+const AGENT_BLOCK_ID_RE = new RegExp(AGENT_BLOCK_ID_PATTERN, "i");
+
 const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter()
     : null;
@@ -564,7 +569,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     type: "string",
                     minLength: 1,
                     maxLength: 64,
-                    pattern: "^[0-9]{14}-[0-9a-z]+$",
+                    pattern: AGENT_BLOCK_ID_PATTERN,
                 },
                 done: {type: "boolean"},
             },
@@ -593,7 +598,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     type: "string",
                     minLength: 1,
                     maxLength: 64,
-                    pattern: "^[0-9]{14}-[0-9a-z]+$",
+                    pattern: AGENT_BLOCK_ID_PATTERN,
                 },
             },
             required: ["id"],
@@ -624,7 +629,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                         type: "string",
                         minLength: 1,
                         maxLength: 64,
-                        pattern: "^[0-9]{14}-[0-9a-z]+$",
+                        pattern: AGENT_BLOCK_ID_PATTERN,
                     },
                 },
             },
@@ -811,7 +816,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     type: "string",
                     minLength: 1,
                     maxLength: 64,
-                    pattern: "^[0-9]{14}-[0-9a-z]+$",
+                    pattern: AGENT_BLOCK_ID_PATTERN,
                 },
                 limit: {type: "integer", minimum: 1, maximum: MAX_OUTLINE_ITEMS},
             },

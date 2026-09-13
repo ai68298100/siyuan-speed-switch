@@ -2531,8 +2531,31 @@ const updatedMap: {[rootId: string]: string} = {};
         });
 
         // 鎼滅储锛氬凡鎵撳紑椤电鍖归厤鏄剧ず鍦ㄤ笂鍗婇儴鍒嗭紝鍚屾椂鍏ㄥ簱鏂囨。缁撴灉鏄剧ず鍦ㄤ笅鍗婇儴鍒?
-        searchInput?.addEventListener("input", () => {
-            this.applySearch(scrollElement, searchInput, closeOverlay);
+        if (searchInput) {
+            this.bindSearchInputComposition(searchInput, () => {
+                this.applySearch(scrollElement, searchInput, closeOverlay);
+            });
+        }
+    }
+
+    /**
+     * 中文输入法（IME）守卫：composition（拼音候选中）期间的 input 事件
+     * 不触发搜索，避免拼音中间态作为关键词发出请求并闪现错误结果；
+     * compositionend 后立即补一次触发。applySearch 内部有防抖与请求
+     * 序号去重，compositionend 与随后的 input 双触发是无害的。
+     */
+    private bindSearchInputComposition(input: HTMLInputElement, onTrigger: () => void) {
+        let composing = false;
+        input.addEventListener("compositionstart", () => {
+            composing = true;
+        });
+        input.addEventListener("compositionend", () => {
+            composing = false;
+            onTrigger();
+        });
+        input.addEventListener("input", () => {
+            if (composing) return;
+            onTrigger();
         });
     }
 
@@ -10163,7 +10186,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             searchInput.value = "";
             this.applySearch(scrollElement, searchInput, closeOverlay);
         });
-        searchInput.addEventListener("input", () => {
+        this.bindSearchInputComposition(searchInput, () => {
             this.applySearch(scrollElement, searchInput, closeOverlay);
         });
         return () => {
@@ -10828,7 +10851,7 @@ if (count > 0) {
         this.sidebarSearchFilterDispose = searchInput
             ? this.bindDocSearchFilter(element, scrollElement, searchInput, refresh)
             : null;
-        searchInput.addEventListener("input", () => {
+        this.bindSearchInputComposition(searchInput, () => {
             this.applySearch(scrollElement, searchInput, refresh);
         });
 

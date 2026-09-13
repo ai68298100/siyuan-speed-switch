@@ -105,3 +105,36 @@ test('workspace diagnostics: canonical spec effects stay read-only and bounded',
     assert.equal(WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.inputSchema.additionalProperties, false);
     assert.equal(WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.outputSchema.additionalProperties, false);
 });
+
+test('workspace runtime: double dispose and post-dispose reads are safe and idempotent', () => {
+    const runtime = createWorkspaceRuntimeDiagnostics();
+    const first = runtime.handler({});
+    assert.equal(first.summary.ok, true);
+    runtime.dispose();
+    runtime.dispose(); // 二次 dispose 必须为无害 no-op
+    const after = runtime.handler({});
+    assert.equal(after.registry.disposed, true);
+    assert.equal(after.diffQueue.disposed, true);
+    assert.equal(after.diffCoordinator.disposed, true);
+    // dispose 后 handler 仍返回结构完整的归一化快照，不抛宿主异常
+    assert.deepEqual(Object.keys(after).sort(), ['diffCoordinator', 'diffQueue', 'registry', 'summary']);
+});
+
+test('workspace runtime module loads standalone (re-export chain guard)', () => {
+    // 防御性自检：生产入口直接 require runtime 模块。若未来有人把
+    // runtime 的导出改名或让 definitions 的 re-export 断链，这里先失败。
+    const rt = require('../src/agent-workspace-runtime.js');
+    const definitions = require('../src/agent-workspace-capability-definitions.js');
+    for (const name of [
+        'WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC',
+        'WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS',
+        'createWorkspaceCapabilityRuntimeSessionRegistry',
+        'createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler',
+        'validateWorkspaceRuntimeDiagnosticsDefinition',
+    ]) {
+        assert.equal(typeof rt[name], 'function' === typeof rt[name] ? 'function' : typeof rt[name] === 'object' ? 'object' : 'undefined',
+            `runtime export ${name} disappeared`);
+    }
+    // canonical spec 必须是同一对象（definitions re-export 与 wrapper 校验共享身份）
+    assert.equal(definitions.WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC, rt.WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC);
+});

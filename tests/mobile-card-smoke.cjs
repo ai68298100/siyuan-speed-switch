@@ -531,6 +531,14 @@ const ariaLabelsOk = (source.match(/class="b3-text-field sw__search" placeholder
 console.log(`${ariaLabelsOk ? 'PASS' : 'FAIL'} search and group inputs expose explicit aria-labels`);
 if (!ariaLabelsOk) allPassed = false;
 
+// T-359/D-224：三端搜索触发必须经 IME 守卫（composition 期间不发请求）。
+const imeGuardOk = source.includes('private bindSearchInputComposition(input: HTMLInputElement, onTrigger: () => void)')
+    && source.includes('addEventListener("compositionstart"')
+    && source.includes('addEventListener("compositionend"')
+    && (source.match(/this\.bindSearchInputComposition\(searchInput/g) || []).length === 3;
+console.log(`${imeGuardOk ? 'PASS' : 'FAIL'} search triggers are gated by IME composition guard on all three surfaces`);
+if (!imeGuardOk) allPassed = false;
+
 const agentSubtypeContractOk = agentSource.includes('normalizeAgentSearchSubType')
     && agentSource.includes('subType: {type: "string", enum: SEARCH_SUBTYPES}')
     && source.includes('const subType = normalizeAgentSearchSubType(args.subType)')
