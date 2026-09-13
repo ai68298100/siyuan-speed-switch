@@ -648,6 +648,29 @@ function enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, previous, c
     return queue.push(diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots(previous, current));
 }
 
+function readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay(queue, cursor = 0, limit = 8) {
+    if (!queue || typeof queue.readSince !== "function") return {ok: false, reason: "queue_unavailable", cursor: 0, events: []};
+    let batch;
+    try { batch = queue.readSince(cursor, limit); } catch (_error) { return {ok: false, reason: "queue_unavailable", cursor: 0, events: []}; }
+    if (!batch || typeof batch !== "object") return {ok: false, reason: "queue_unavailable", cursor: 0, events: []};
+    if (batch.truncated === true) return {ok: false, reason: "snapshot_required", cursor: Number(batch.cursor) || 0, events: []};
+    return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: Array.isArray(batch.events) ? batch.events.slice(0, 8).map((entry) => ({sequence: Math.max(0, Math.trunc(Number(entry?.sequence) || 0)), event: normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff([entry?.event])[0]})).filter((entry) => entry.event) : []};
+}
+
+function commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay(queue, replay) {
+    if (!queue || typeof queue.acknowledge !== "function" || !replay || replay.ok !== true || replay.reason !== "ready") return 0;
+    return queue.acknowledge(replay.cursor);
+}
+
+function recoverWorkspaceCapabilityRuntimeSessionRegistryDiff(queue, cursor = 0, limit = 8, snapshot = null) {
+    const replay = readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay(queue, cursor, limit);
+    if (replay.ok) return {ok: true, mode: "events", reason: "ready", cursor: replay.cursor, events: replay.events, snapshot: null};
+    if (replay.reason !== "snapshot_required") return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
+    const validation = validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot);
+    if (!validation.ok) return {ok: false, mode: "invalid_snapshot", reason: validation.reason, cursor: replay.cursor, events: [], snapshot: null};
+    return {ok: true, mode: "snapshot", reason: "snapshot_required", cursor: replay.cursor, events: [], snapshot: normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot)};
+}
+
 function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
     const allowed = ["created", "evicted", "removed", "pruned", "idle"];
     return (Array.isArray(events) ? events : []).slice(0, 8).map((event) => {
@@ -852,6 +875,9 @@ module.exports = {
     buildWorkspaceCapabilityRuntimeSessionRegistrySummary,
     createWorkspaceCapabilityRuntimeRegistryDiffQueue,
     enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff,
+    readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay,
+    commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay,
+    recoverWorkspaceCapabilityRuntimeSessionRegistryDiff,
     normalizeWorkspaceCapabilityRuntimeRegistryEvents,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
     readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal,

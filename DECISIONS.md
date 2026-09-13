@@ -175,3 +175,4 @@
 - D-169 v0.17 registry snapshot 使用独立 version=1 契约；未知版本在 recovery 前拒绝，避免新旧宿主误读会话状态。
 - D-170 v0.17 registry diff 不复用 runtime queue；因事件类型集合不同，使用独立最多 8 条游标队列，并仅输出 created/removed/disposed/capacity。
 - D-171 v0.17 registry summary 只返回 active/disposed/capacity 计数与一致性 reason，不暴露 session runtime、文档内容或宿主异常。
+- D-172 v0.17 registry diff queue 使用独立 replay/recovery 契约；溢出后只接受通过 snapshot validation 的完整 registry 快照，避免把生命周期差异误当 runtime 状态事件。

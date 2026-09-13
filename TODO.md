@@ -749,6 +749,18 @@
   - 目标：将前后快照差异安全写入 registry 专用队列，不污染 runtime 事件类型
   - 实现：新增 `enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff`
   - 状态：done
+- [x] T-214 Agent workspace registry 差异安全回放
+  - 目标：diff queue 支持有界 cursor replay、溢出检测与 snapshot_required
+  - 实现：新增 `readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay`
+  - 状态：done
+- [x] T-215 Agent workspace registry 差异回放确认
+  - 目标：仅确认 ready diff replay，snapshot_required/失败保留队列
+  - 实现：新增 `commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay`
+  - 状态：done
+- [x] T-216 Agent workspace registry 差异快照恢复
+  - 目标：diff queue 溢出后以通过校验的 registry snapshot 恢复
+  - 实现：新增 `recoverWorkspaceCapabilityRuntimeSessionRegistryDiff`
+  - 状态：done
 - [x] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
