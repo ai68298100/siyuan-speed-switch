@@ -132,3 +132,11 @@ test('release readiness matrix matches generated artifact sizes', () => {
     assert.match(readiness, new RegExp('`dist/index\\.js` ' + bundleBytes + ' bytes'));
     assert.match(readiness, new RegExp('`package\\.zip` ' + archiveBytes + ' bytes'));
 });
+
+test('README test-file count matches the discovered host test matrix', () => {
+    const directories = [path.join(root, 'tests'), path.join(root, 'tests', 'host')];
+    const count = directories.reduce((total, directory) => total + fs.readdirSync(directory)
+        .filter((name) => name.endsWith('.test.cjs')).length, 0);
+    const readme = fs.readFileSync(path.join(root, 'README.en-US.md'), 'utf8');
+    assert.match(readme, new RegExp('discovers all ' + count + ' `\\*\\.test\\.cjs` files'));
+});
