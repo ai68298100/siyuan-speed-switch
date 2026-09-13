@@ -409,3 +409,7 @@
   - 目标：把计划步骤映射到六类白名单动作，统一做目标二次校验、参数裁剪和 handler 缺失/异常降级
   - 实现：新增独立 `src/agent-workspace-actions.js`，仅允许 open/open-batch/restore/update/create/append；实际思源调用由宿主注入
   - 状态：in-progress
+- [ ] T-127 Agent 工作区计划一次性执行门卫
+  - 目标：阻止同一计划被 Agent 重放，统一审批、过期、运行中和已消费状态，保持会话内记录有界
+  - 实现：新增独立 `src/agent-workspace-execution.js`，最多保留 32 条计划记录，提供 begin/finish/get/clear 生命周期
+  - 状态：in-progress

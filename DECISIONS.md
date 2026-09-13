@@ -104,3 +104,4 @@
 - D-098 v0.17 执行结果统一为有界回执：每步只允许 completed/skipped/failed/cancelled，整体支持 completed/partial/failed/cancelled/expired；失败原因仅保留清洗后的稳定 token，回执不携带异常文本或正文。
 - D-099 v0.17 计划执行器采用注入式状态机：核心层只负责批准、过期、AbortSignal 和逐步结果归一化，不直接依赖思源 API；这样可先在纯测试中锁定安全语义，再由宿主 adapter 映射固定动作。
 - D-100 v0.17 固定动作适配层继续保持声明式白名单与二次清洗；每个计划步骤在真正 handler 前重新验证 ID、数量、标题和载荷，未知动作或缺少 handler 只返回稳定失败 token，不执行旁路调用。
+- D-101 v0.17 计划执行采用会话内一次性消费门卫；同一 planId 进入 running 或完成后均不得再次执行，记录最多 32 条并提供清理，避免 Agent 重试导致重复导航或重复写入。

@@ -7,6 +7,7 @@ const {
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
 const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = require('../src/agent-workspace-actions.js');
+const {normalizePlanId, createWorkspaceExecutionGuard} = require('../src/agent-workspace-execution.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -122,6 +123,22 @@ test("workspace action adapter dispatches only normalized fixed actions", async 
     assert.deepEqual(await execute({action: "open-document", id: "20260913083000-abcdef"}), {status: "completed"});
     assert.deepEqual(await execute({action: "update-task-status", id: "20260913083001-abcdef", done: true}), {status: "failed", reason: "handler_missing"});
     assert.equal(calls.length, 1);
+});
+
+test("workspace execution guard prevents replay and stays bounded", () => {
+    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    assert.equal(normalizePlanId(plan.planId), plan.planId);
+    assert.equal(normalizePlanId("javascript:bad"), "");
+    const guard = createWorkspaceExecutionGuard(1);
+    assert.deepEqual(guard.begin(plan, false, 1700000000100), {ok: false, reason: "denied"});
+    assert.deepEqual(guard.begin(plan, true, 1700000000100), {ok: true, planId: plan.planId});
+    assert.equal(guard.begin(plan, true, 1700000000101).reason, "already_running");
+    assert.equal(guard.finish(plan.planId, "rc-abc", "partial"), true);
+    assert.deepEqual(guard.get(plan.planId), {status: "partial", receipt: "rc-abc"});
+    assert.equal(guard.begin(plan, true, 1700000000102).reason, "already_consumed");
+    const other = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000001);
+    assert.equal(guard.begin(other, true, 1700000000100).ok, true);
+    assert.equal(guard.get(plan.planId), null);
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {
