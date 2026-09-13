@@ -168,12 +168,14 @@ function renderHomeModuleView(doc, view, options = {}) {
     if (options.onToggle) {
         const toggle = doc.createElement("button");
         toggle.type = "button";
-        toggle.className = "sw__home-module-toggle b3-button b3-button--outline";
+        toggle.className = "sw__home-module-toggle b3-button b3-button--text sw__home-module-fold";
         toggle.dataset.focusKey = "toggle";
         toggle.setAttribute("aria-expanded", view.collapsed === true ? "false" : "true");
         toggle.setAttribute("aria-controls", bodyId);
         toggle.setAttribute("aria-label", view.collapsed === true ? labels.expand : labels.collapse);
-        toggle.textContent = view.collapsed === true ? labels.expand : labels.collapse;
+        toggle.setAttribute("title", view.collapsed === true ? labels.expand : labels.collapse);
+        // 紧凑箭头图标替代文字按钮，减少头部常驻文字
+        toggle.innerHTML = '<svg><use xlink:href="#' + (view.collapsed === true ? "iconRight" : "iconDown") + '"></use></svg>';
         toggle.addEventListener("click", () => options.onToggle(view));
         heading.appendChild(toggle);
     }

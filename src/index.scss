@@ -4955,3 +4955,54 @@
         border-color: var(--b3-theme-primary);
     }
 }
+
+// ==================== 面板交互与显示优化 ====================
+// 折叠按钮紧凑化：箭头图标替代文字，减少头部常驻视觉噪音
+.sw-home .sw-home__cell .sw__home-module-fold {
+    min-height: 22px;
+    min-width: 22px;
+    padding: 0 3px;
+    font-size: 0;
+
+    svg { width: 12px; height: 12px; }
+}
+
+// 空状态淡色前缀
+.sw-home__cell .sw__home-module-status--empty::before {
+    content: "◦ ";
+    opacity: 0.5;
+}
+
+// 日历格悬停反馈
+.sw__home-calendar-cell.has-journal {
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+
+    &:hover {
+        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+        border-radius: 4px;
+    }
+}
+
+// 条目悬停：左侧强调色条
+.sw-home__cell .sw__home-module-item-action {
+    border-left: 2px solid transparent;
+    transition: border-color 0.15s, background-color 0.15s;
+
+    &:hover {
+        border-left-color: var(--sw-home-accent, var(--b3-theme-primary));
+        background: color-mix(in srgb, var(--b3-theme-primary) 4%, transparent);
+    }
+}
+
+// stat hero 数字在面板格子里更醒目
+.sw-home__cell .sw__home-stat-value {
+    font-size: 1.4em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.sw-home__cell .sw__home-stat-label {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
