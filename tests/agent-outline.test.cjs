@@ -9,6 +9,7 @@ const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, i
 const {ACTION_KEYS, normalizeWorkspaceStep, createWorkspaceActionExecutor} = require('../src/agent-workspace-actions.js');
 const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
 const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
+const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
     const spec = AGENT_CAPABILITY_SPECS.outline;
@@ -169,6 +170,24 @@ test("execute-workspace-plan contract requires digest and one-time approval toke
     assert.equal(normalizeExecutionRequest({...valid, approvalToken: "short"}), null);
     assert.equal(normalizeExecutionRequest({...valid, digest: "bad"}), null);
     assert.deepEqual(buildExecutionGateResult(valid, "expired"), {planId: "wp-l8-abc123", status: "expired", receipt: ""});
+});
+
+test("approval token binds plan digest, device and one-time consumption", () => {
+    const base = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
+    const plan = {...base, digest: workspacePlanDigest(base)};
+    const store = createApprovalTokenStore(1);
+    const token = store.issue(plan, "sidebar", 1700000000100, "fixture");
+    assert.match(token, /^at-[a-z0-9]{8,16}$/);
+    assert.equal(normalizeToken(token), token);
+    assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "desktop"}, 1700000000101).reason, "binding_mismatch");
+    assert.deepEqual(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}, 1700000000101), {ok: true, planId: plan.planId, device: "sidebar"});
+    assert.deepEqual(store.consume(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}, 1700000000102), {ok: true, planId: plan.planId, device: "sidebar"});
+    assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}).reason, "consumed");
+    const other = {...buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000001), digest: "pd-abcdef"};
+    const second = store.issue(other, "desktop", 1700000000100, "other");
+    assert.ok(second);
+    assert.equal(store.size(), 1);
+    assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}).reason, "invalid_token");
 });
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {

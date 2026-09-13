@@ -421,3 +421,7 @@
   - 目标：为未来 `execute-workspace-plan` 注册固定输入边界，要求 planId、digest 和一次性确认令牌，显式回显设备范围
   - 实现：新增独立 `src/agent-workspace-capability.js`，拒绝未知字段、非法摘要和短/危险确认令牌；当前仅契约模型，不执行动作
   - 状态：in-progress
+- [ ] T-130 Agent 审批令牌生命周期
+  - 目标：将用户确认绑定到 planId、digest、设备和过期时间，并保证令牌一次性消费、会话内有界保留
+  - 实现：新增独立 `src/agent-approval-token.js`，最多保留 32 个令牌，支持 issue/validate/consume/clear；令牌不携带正文或权限信息
+  - 状态：in-progress

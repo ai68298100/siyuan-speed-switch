@@ -107,3 +107,4 @@
 - D-101 v0.17 计划执行采用会话内一次性消费门卫；同一 planId 进入 running 或完成后均不得再次执行，记录最多 32 条并提供清理，避免 Agent 重试导致重复导航或重复写入。
 - D-102 v0.17 用户确认必须绑定 `workspacePlanDigest`；执行编排在任何 handler 前校验 planId、digest、批准和有效期，digest 不匹配或重复消费直接拒绝，不产生副作用。
 - D-103 v0.17 `execute-workspace-plan` 的 Agent 请求契约额外要求一次性 approvalToken；token 只作为宿主审批句柄，不承载文档内容或权限信息，默认设备回显为 desktop，未知字段一律拒绝。
+- D-104 v0.17 审批令牌仅在内存会话中存在，绑定 planId/digest/device/expiresAt，消费后立即失效，最多保留 32 条并在插件卸载时清理；不写入持久化 storage，避免陈旧授权跨会话复用。
