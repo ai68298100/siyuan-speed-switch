@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {JSDOM} = require("jsdom");
-const {createHomeModuleController} = require("../src/home-controller.js");
+const {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures} = require("../src/home-controller.js");
 
 test("home controller mounts loading state, refreshes content, and disposes cleanly", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
@@ -47,6 +47,34 @@ test("home controller falls back to a stale snapshot instead of an error page", 
     assert.equal(container.querySelector("[data-status='error']") === null, true);
     assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "stale-item");
     assert.equal(container.textContent.includes("缓存"), true);
+    controller.dispose();
+});
+test("home controller keeps ready content during a refresh", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let resolveRefresh;
+    let reads = 0;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "stable", title: "Stable"},
+        read: () => {
+            reads += 1;
+            if (reads === 1) return Promise.resolve({ok: true, snapshot: {items: [{label: "old"}]}});
+            return new Promise((resolve) => { resolveRefresh = resolve; });
+        },
+    });
+    await controller.refresh();
+    const original = container.firstElementChild;
+    const pending = controller.refresh();
+    assert.equal(container.firstElementChild, original);
+    assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "old");
+    assert.equal(container.firstElementChild.getAttribute("aria-busy"), "true");
+    assert.equal(container.querySelector(".sw__home-module-refreshing").textContent, "更新中…");
+    resolveRefresh({ok: true, snapshot: {items: [{label: "new"}]}});
+    await pending;
+    assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "new");
+    assert.equal(container.querySelector(".sw__home-module-refreshing"), null);
     controller.dispose();
 });
 test("home controller keeps the newest request when an older read resolves later", async () => {
@@ -275,4 +303,38 @@ test("home controller owns collapse state and exposes toggle", () => {
     controller.toggle();
     assert.equal(controller.getView().collapsed, true);
     controller.dispose();
+});
+
+test("home refresh-all scheduler bounds concurrency and isolates failures", async () => {
+    let active = 0;
+    let peak = 0;
+    const releases = [];
+    const entries = Array.from({length: 5}, (_, index) => ({
+        refresh: async (_config, options) => {
+            assert.equal(options.force, true);
+            active += 1;
+            peak = Math.max(peak, active);
+            await new Promise((resolve) => releases.push(resolve));
+            active -= 1;
+            if (index === 2) throw new Error("opaque");
+            return {ok: true, index};
+        },
+    }));
+    const pending = refreshHomeModules(entries, {concurrency: 2});
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(active, 2);
+    while (releases.length > 0 || active > 0) {
+        releases.shift()?.();
+        await new Promise((resolve) => setImmediate(resolve));
+    }
+    const results = await pending;
+    assert.equal(peak, 2);
+    assert.equal(results.length, 5);
+    assert.deepEqual(results[2], {ok: false, reason: "failed"});
+});
+
+test("home refresh summary counts only bounded stable failures", () => {
+    assert.equal(countHomeRefreshFailures([{ok: true}, {ok: false}, null, {ok: false, detail: "hidden"}]), 2);
+    assert.equal(countHomeRefreshFailures(Array.from({length: 100}, () => ({ok: false}))), 64);
+    assert.equal(countHomeRefreshFailures(null), 0);
 });

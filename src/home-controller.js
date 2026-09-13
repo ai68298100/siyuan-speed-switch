@@ -69,6 +69,27 @@ function createHomeModuleController(options = {}) {
         return element;
     }
 
+    function setRefreshing(active) {
+        const element = container.firstElementChild;
+        if (!element || !element.classList?.contains("sw__home-module")) return false;
+        element.classList.toggle("is-refreshing", active === true);
+        element.setAttribute("aria-busy", active === true ? "true" : "false");
+        const header = element.querySelector(".sw__home-module-header");
+        if (!header) return false;
+        let indicator = header.querySelector(".sw__home-module-refreshing");
+        if (active === true && !indicator) {
+            indicator = documentRef.createElement("span");
+            indicator.className = "sw__home-module-refreshing";
+            indicator.setAttribute("role", "status");
+            indicator.setAttribute("aria-live", "polite");
+            indicator.textContent = options.labels?.refreshing || "更新中…";
+            header.appendChild(indicator);
+        } else if (active !== true) {
+            indicator?.remove();
+        }
+        return true;
+    }
+
     async function refresh(config = options.config || {}, readOptions = {}) {
         if (disposed) return {ok: false, reason: "disposed", view: currentView};
         const token = ++generation;
@@ -85,7 +106,8 @@ function createHomeModuleController(options = {}) {
             externalAbortHandler = () => requestController.abort();
             externalSignal.addEventListener("abort", externalAbortHandler, {once: true});
         }
-        render(buildHomeModuleView(module, {loading: true}, {collapsed: currentView?.collapsed === true}));
+        const retained = currentView?.status === "ready" && setRefreshing(true);
+        if (!retained) render(buildHomeModuleView(module, {loading: true}, {collapsed: currentView?.collapsed === true}));
         try {
             if (requestController?.signal.aborted) return {ok: false, reason: "aborted", view: currentView};
             const result = await read(config, {...readOptions, signal: requestController?.signal || externalSignal});
@@ -112,6 +134,7 @@ function createHomeModuleController(options = {}) {
                 externalSignal.removeEventListener("abort", externalAbortHandler);
             }
             if (token === generation) activeController = null;
+            if (token === generation) setRefreshing(false);
         }
     }
 
@@ -142,4 +165,30 @@ function createHomeModuleController(options = {}) {
     return {mount, refresh, toggle, showError, dispose, getView: () => currentView};
 }
 
-module.exports = {createHomeModuleController};
+async function refreshHomeModules(entries, options = {}) {
+    const queue = Array.isArray(entries) ? entries.filter((entry) => typeof entry?.refresh === "function") : [];
+    if (queue.length === 0) return [];
+    const requested = Math.trunc(Number(options.concurrency));
+    const concurrency = Math.min(4, Math.max(1, Number.isFinite(requested) && requested > 0 ? requested : 2));
+    const results = new Array(queue.length);
+    let nextIndex = 0;
+    async function worker() {
+        while (nextIndex < queue.length) {
+            const index = nextIndex++;
+            try {
+                results[index] = await queue[index].refresh(undefined, {force: true});
+            } catch (_) {
+                results[index] = {ok: false, reason: "failed"};
+            }
+        }
+    }
+    await Promise.all(Array.from({length: Math.min(concurrency, queue.length)}, worker));
+    return results;
+}
+
+function countHomeRefreshFailures(results) {
+    if (!Array.isArray(results)) return 0;
+    return Math.min(64, results.reduce((count, result) => count + (result?.ok === false ? 1 : 0), 0));
+}
+
+module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures};

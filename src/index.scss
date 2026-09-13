@@ -4232,6 +4232,13 @@
     padding: 6px 2px;
 }
 
+.sw__home-module-refreshing {
+    margin-left: auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
 .sw__home-loading-skeleton {
     display: grid;
     gap: 7px;

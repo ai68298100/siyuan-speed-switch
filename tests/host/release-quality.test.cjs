@@ -74,7 +74,8 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-13 (21): 341 KiB for calendar navigation controls and labels.
     // 2026-09-13 (22): 342 KiB for visibility-gated tail reads.
     // 2026-09-13 (23): 343 KiB for the bounded home loading skeleton.
-    const budget = 343 * 1024;
+    // 2026-09-13 (24): 344 KiB for non-blocking refresh and bounded refresh-all scheduling.
+    const budget = 344 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

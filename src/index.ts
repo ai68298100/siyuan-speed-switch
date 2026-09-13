@@ -21,7 +21,7 @@ import {
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
-import {createHomeModuleController} from "./home-controller";
+import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures} from "./home-controller";
 import {WIDGET_CATALOG} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
@@ -246,6 +246,8 @@ declare module "./home-controller" {
         dispose: () => void;
         getView: () => unknown;
     } | null;
+    export function refreshHomeModules(entries: unknown[], options?: {concurrency?: number}): Promise<unknown[]>;
+    export function countHomeRefreshFailures(results: unknown): number;
 }
 declare module "./home-panel" {
     export function createHomePanelController(options: Record<string, unknown>): {
@@ -1364,6 +1366,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.homeRuntime.read(moduleId, device, config || {}, {...readOptions, size: sizeKey}),
             labels: {
                 loading: this.i18n.homeLoading,
+                refreshing: this.i18n.homeRefreshing,
                 empty: this.i18n.homeEmptyModule,
                 error: this.i18n.homeModuleError,
                 retry: this.i18n.homeRetry,
@@ -4456,8 +4459,22 @@ const version = beginSearch(session);
                 refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
                 refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
                 refreshAllButton.innerHTML = '<svg><use xlink:href="#iconRefresh"></use></svg><span>' + this.i18n.homeRefreshAll + '</span>';
-                refreshAllButton.addEventListener("click", () => {
-                    homeControllers.forEach((entry) => void entry.refresh(undefined, {force: true}));
+                refreshAllButton.addEventListener("click", async () => {
+                    if (refreshAllButton.disabled) return;
+                    refreshAllButton.disabled = true;
+                    refreshAllButton.setAttribute("aria-busy", "true");
+                    try {
+                        const results = await refreshHomeModules(homeControllers, {concurrency: 2});
+                        const failureCount = countHomeRefreshFailures(results);
+                        if (failureCount > 0) {
+                            showMessage(this.i18n.homeRefreshFailed.replace("{count}", String(failureCount)));
+                        }
+                    } finally {
+                        if (refreshAllButton.isConnected) {
+                            refreshAllButton.disabled = false;
+                            refreshAllButton.setAttribute("aria-busy", "false");
+                        }
+                    }
                 });
                 bar.appendChild(refreshAllButton);
             }
@@ -4540,6 +4557,7 @@ const version = beginSearch(session);
                     collapsed: layout.collapsed === true,
                     labels: {
                         loading: this.i18n.homeLoading,
+                        refreshing: this.i18n.homeRefreshing,
                         empty: this.i18n.homeEmptyModule,
                         error: this.i18n.homeModuleError,
                         retry: this.i18n.homeRetry,
