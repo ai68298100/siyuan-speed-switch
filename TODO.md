@@ -106,6 +106,26 @@
   - 证据：`src/index.ts`、`tests/home-store-contract.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-278 第三方组件失效与恢复状态
+  - 目标：已添加的第三方组件在 provider 卸载后不从商店消失，明确显示“当前不可用”，允许用户清理，并在 provider 恢复注册时自动恢复
+  - 证据：`src/widget-catalog.js`、`src/index.ts`、`tests/widget-catalog.test.cjs`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-279 商店筛选语义修复与已添加筛选
+  - 目标：修复“条件”页签被分类条件误过滤为空的问题，新增“已添加”筛选，并保持分类/可用性/已添加状态正交组合
+  - 证据：`src/index.ts`、双语 i18n、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-280 商店分组完整性与国际化
+  - 目标：27 个内置组件恰好进入一个功能分组，补齐日历月视图和写作打卡，所有分组标题支持中英文
+  - 证据：`src/index.ts`、双语 i18n、`tests/component-availability-audit.test.cjs`
+  - 状态：done（2026-09-13）
+
+- [x] T-281 商店与面板重渲染生命周期
+  - 目标：provider 注册变化即时刷新已打开的商店和组件面板；重渲染前回收旧 observer、idle timer 和事件订阅；商店保留搜索/页签并提供无结果提示
+  - 证据：`src/index.ts`、`src/index.scss`、`tests/home-store-contract.test.cjs`
+  - 状态：done（2026-09-13）
+
 - [x] T-023 状态文档与发布基线同步
   - 目标：让 PROGRESS/TODO/BLOCKERS/ROADMAP 明确反映 v0.16.38，避免把历史发布记录当作当前状态
   - 状态：done（2026-09-12）

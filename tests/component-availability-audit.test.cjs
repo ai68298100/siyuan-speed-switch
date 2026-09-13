@@ -59,3 +59,17 @@ test("availability levels are explicit and bounded for store cards", () => {
     assert.equal(definitions.filter((item) => item.availability === "conditional").length >= 10, true);
     assert.equal(definitions.find((item) => item.moduleId === "checkin-summary").availability, "external");
 });
+
+test("widget store functional groups cover every built-in exactly once", () => {
+    const start = source.indexOf("const BUILTIN_GROUPS:");
+    const end = source.indexOf("const groupOf", start);
+    assert.ok(start >= 0 && end > start, "store group declaration");
+    const groupedIds = [...source.slice(start, end).matchAll(/"([a-z][a-z0-9-]+)"/g)]
+        .map((match) => match[1]);
+    const builtins = home.registerModules([])
+        .filter((item) => item.category === "siyuan")
+        .map((item) => item.moduleId)
+        .sort();
+    assert.equal(new Set(groupedIds).size, groupedIds.length, "grouped module ids must be unique");
+    assert.deepEqual(groupedIds.sort(), builtins);
+});

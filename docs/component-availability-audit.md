@@ -2,9 +2,9 @@
 
 ## 结论摘要
 
-- 当前商店包含 **28 个内置组件**，另有 **1 个第三方目录组件**（`checkin-summary`）。
+- 当前商店包含 **27 个内置组件**，另有 **1 个第三方目录组件**（`checkin-summary`）。
 - 27 个内置组件都有真实 adapter 注册；`checkin-summary` 没有本插件内 adapter，必须由 `siyuan-checkin` 注册后才会进入“可用组件”。依据：`src/index.ts:3300-3739`、`src/widget-catalog.js:11-22`。
-- 当前自动门禁为 **674/674 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
+- 当前自动门禁为 **673/673 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
 - 已有思源 3.8.2 桌面实测覆盖：商店添加/尺寸、闪卡待复习（空数据态）、随机回顾、本月日记、标签；其余组件仍缺少逐项真实宿主证据（见 `docs/acceptance-v0.16.37.md`）。
 - **已修复的确定缺陷（P0）**：`recent-writing-activity` 与 `today-reservations` 曾使用错误的日期正则，现已修正为匹配 `YYYYMMDD` 并显示为 `YYYY-MM-DD`，回归测试已覆盖。
 
@@ -46,7 +46,7 @@
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |
 | `countdown` 倒数日 | B | 纯前端 `YYYY-MM-DD` 计算 | 配置合法日期即可用；未配置时显示提示 | 配置控件改为日期 input，避免手填格式错误 |
 | `plugin-commands` 插件命令 | C | 枚举其他插件 `commands`，执行 `plugin::command` | 仅外部插件声明 `langKey` 且有 callback/globalCallback 才出现；命令卸载/旧格式会失效；无命令时显示安装/启用引导 | 保持空态引导；后续补真实宿主验证命令执行失败反馈 |
-| `checkin-summary` 打卡摘要 | D（可条件恢复） | 由 `siyuan-checkin` 外部插件注册 adapter | 本插件仅目录登记，无 provider 时商店只显示“需安装插件后可用”，无法独立添加；协议文档已有 provider 约定 | 保留 pending 分区；安装后做一次真实注册/读取/卸载验收 |
+| `checkin-summary` 打卡摘要 | D（可条件恢复） | 由 `siyuan-checkin` 外部插件注册 adapter | 本插件仅目录登记；未添加且无 provider 时显示“需安装”，已添加后 provider 卸载则显示“当前不可用”并保留配置；重新注册会即时恢复 | 保留三态生命周期；安装后做一次真实注册/读取/卸载验收 |
 
 ## 修复与验收优先级
 

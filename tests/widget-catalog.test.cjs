@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {WIDGET_CATALOG} = require('../src/widget-catalog.js');
+const {WIDGET_CATALOG, WIDGET_CATALOG_STATES, resolveWidgetCatalogState} = require('../src/widget-catalog.js');
 const home = require('../src/home-model.js');
 
 test("widget catalog entries are unique, sized, and provider-tagged", () => {
@@ -25,4 +25,12 @@ test("widget catalog entries normalize as valid module definitions", () => {
         assert.equal(def.moduleId, entry.moduleId);
         assert.ok(def.sizes.length > 0);
     });
+});
+
+test("widget catalog distinguishes ready, unavailable, and missing providers", () => {
+    assert.deepEqual(WIDGET_CATALOG_STATES, ["ready", "unavailable", "missing"]);
+    assert.equal(resolveWidgetCatalogState(new Set(["checkin-summary"]), [])[0].status, "ready");
+    assert.equal(resolveWidgetCatalogState([], new Set(["checkin-summary"]))[0].status, "unavailable");
+    assert.equal(resolveWidgetCatalogState([], [])[0].status, "missing");
+    assert.equal(resolveWidgetCatalogState(null, 42)[0].status, "missing");
 });

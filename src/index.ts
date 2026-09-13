@@ -22,7 +22,7 @@ import {mountQuickActionPicker} from "./quick-actions-ui";
 import {createHomeRuntime} from "./home-runtime";
 import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries} from "./home-controller";
-import {WIDGET_CATALOG} from "./widget-catalog";
+import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
@@ -595,6 +595,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private quickActionProviderTokens = new Map<string, symbol>();
     private quickActionRegistry = createQuickActionRegistry();
     private homeRuntime = createHomeRuntime();
+    private homeModuleChangeListeners = new Set<() => void>();
     private switcherRefreshFrame: number | null = null;
     private switcherRefreshFrameCancel: (() => void) | null = null;
     private sidebarElement: HTMLElement | null = null; // 渚ц竟鏍?dock 闈㈡澘鍐呭鍏冪礌
@@ -1048,6 +1049,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.groupFlowObserver?.disconnect();
         this.groupFlowObserver = null;
         this.homeRuntime.dispose();
+        this.homeModuleChangeListeners.clear();
         this.closeHistoryMenu();
         this.sidebarHistoryDropdownDispose?.();
         this.sidebarHistoryDropdownDispose = null;
@@ -2885,16 +2887,22 @@ const version = beginSearch(session);
         open?: () => void;
     }): () => void {
         const registration = this.homeRuntime.registerAdapter(options as unknown as Record<string, unknown>);
-        const moduleId = String(options.moduleId || "");
-        if (registration.registered && typeof options.open === "function") {
+        const moduleId = String(options?.moduleId || "");
+        if (registration.registered && typeof options?.open === "function") {
             this.homeModuleOpens.set(String(options.moduleId), (options as unknown as {open: () => void}).open);
+        } else if (registration.registered) {
+            this.homeModuleOpens.delete(moduleId);
         }
-        if (registration.registered) this.homeThirdPartyIds.add(moduleId);
+        if (registration.registered) {
+            this.homeThirdPartyIds.add(moduleId);
+            this.homeModuleChangeListeners.forEach((listener) => listener());
+        }
         if (!registration.registered) return () => undefined;
         return () => {
             if (!registration.unregister()) return;
             this.homeModuleOpens.delete(moduleId);
             this.homeThirdPartyIds.delete(moduleId);
+            this.homeModuleChangeListeners.forEach((listener) => listener());
         };
     }
 
@@ -3754,6 +3762,15 @@ const version = beginSearch(session);
         this.saveDataDebounced(HOME_STATE_KEY);
     }
 
+    private removeHomeInstance(instanceId: string) {
+        const next = this.getHomeState();
+        next.instances = next.instances.filter((candidate) => candidate.instanceId !== instanceId);
+        Object.keys(next.layouts).forEach((surface) => {
+            next.layouts[surface] = (next.layouts[surface] || []).filter((candidate) => candidate.instanceId !== instanceId);
+        });
+        this.saveHomeState(next);
+    }
+
     // 文档集快速恢复（面板内直达）：复用设置的预检 + 确认 + 可取消执行链路
     private async restoreDocumentSetFromHome(setId: string) {
         const item = this.getDocumentSets().find((candidate: any) => candidate?.setId === setId);
@@ -4114,6 +4131,8 @@ const version = beginSearch(session);
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
+        let storeQuery = "";
+        let storeTab = "all";
 
         const renderStore = () => {
             root.innerHTML = "";
@@ -4143,27 +4162,24 @@ const version = beginSearch(session);
             searchInput.type = "text";
             searchInput.placeholder = this.i18n.homeStoreSearch;
             searchInput.setAttribute("aria-label", this.i18n.homeStoreSearch);
+            searchInput.value = storeQuery;
             searchBar.appendChild(searchInput);
             root.appendChild(searchBar);
+            let filterEmptyState: HTMLElement | null = null;
 
             const applyFilter = () => {
                 const query = searchInput.value.trim().toLowerCase();
                 const activeTab = tabBar.querySelector<HTMLElement>(".sw-home-store__tab.is-active");
                 const catFilter = activeTab?.dataset.tabFilter || "all";
                 const availabilityFilter = activeTab?.dataset.tabAvailability || "";
+                const addedOnly = activeTab?.dataset.tabAdded === "true";
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
                     const haystack = card.dataset.search || "";
                     const textMatch = query === "" || haystack.includes(query);
                     const catMatch = catFilter === "all" || card.dataset.category === catFilter;
                     const availabilityMatch = !availabilityFilter || card.dataset.availability === availabilityFilter;
-                    card.classList.toggle("fn__none", !textMatch || !catMatch || !availabilityMatch);
-                });
-                root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
-                    const section = heading.nextElementSibling;
-                    if (!section) return;
-                    const visible = Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
-                    heading.classList.toggle("fn__none", !visible);
-                    section.classList.toggle("fn__none", !visible);
+                    const addedMatch = !addedOnly || card.dataset.added === "true";
+                    card.classList.toggle("fn__none", !textMatch || !catMatch || !availabilityMatch || !addedMatch);
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
                     const grid = heading.nextElementSibling;
@@ -4172,28 +4188,45 @@ const version = beginSearch(session);
                     heading.classList.toggle("fn__none", !visible);
                     grid.classList.toggle("fn__none", !visible);
                 });
+                root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
+                    const section = heading.nextElementSibling;
+                    if (!section) return;
+                    const visible = heading.dataset.section === "ready"
+                        ? Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__group"))
+                            .some((group) => !group.classList.contains("fn__none"))
+                        : Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
+                    heading.classList.toggle("fn__none", !visible);
+                    if (heading.dataset.section !== "ready") section.classList.toggle("fn__none", !visible);
+                });
+                const hasVisibleCards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"))
+                    .some((card) => !card.classList.contains("fn__none"));
+                filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
             };
-            searchInput.addEventListener("input", applyFilter);
+            searchInput.addEventListener("input", () => {
+                storeQuery = searchInput.value;
+                applyFilter();
+            });
 
-            // 分类 Tab：全部 / 内置 / 插件
+            // 分类与状态 Tab：分类条件和可用性条件保持正交，避免条件组件被分类误过滤。
             const tabBar = document.createElement("div");
             tabBar.className = "sw-home-store__tabs";
-            const tabs: Array<{key: string; label: string; match: (cat: string) => boolean; availability?: string}> = [
-                {key: "all", label: this.i18n.homeStoreTabAll, match: () => true},
-                {key: "builtin", label: this.i18n.homeStoreTabBuiltin, match: (cat) => cat === "siyuan"},
-                {key: "plugin", label: this.i18n.homeStoreTabPlugin, match: (cat) => cat !== "siyuan"},
-                {key: "conditional", label: this.i18n.homeStoreTabConditional, match: () => true, availability: "conditional"},
+            const tabs: Array<{key: string; label: string; category?: string; availability?: string; addedOnly?: boolean}> = [
+                {key: "all", label: this.i18n.homeStoreTabAll},
+                {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
+                {key: "plugin", label: this.i18n.homeStoreTabPlugin, category: "plugin"},
+                {key: "conditional", label: this.i18n.homeStoreTabConditional, availability: "conditional"},
+                {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
             ];
-            let activeTab = "all";
             tabs.forEach((tab) => {
                 const btn = document.createElement("button");
                 btn.type = "button";
-                btn.className = "sw-home-store__tab" + (tab.key === "all" ? " is-active" : "");
+                btn.className = "sw-home-store__tab" + (tab.key === storeTab ? " is-active" : "");
                 btn.textContent = tab.label;
-                btn.dataset.tabFilter = tab.key;
+                btn.dataset.tabFilter = tab.category || "all";
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
+                if (tab.addedOnly) btn.dataset.tabAdded = "true";
                 btn.addEventListener("click", () => {
-                    activeTab = tab.key;
+                    storeTab = tab.key;
                     tabBar.querySelectorAll(".sw-home-store__tab").forEach((b) => b.classList.toggle("is-active", b === btn));
                     applyFilter();
                 });
@@ -4204,25 +4237,28 @@ const version = beginSearch(session);
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
             const readyHeading = document.createElement("h3");
             readyHeading.className = "sw-home-store__section";
+            readyHeading.dataset.section = "ready";
             readyHeading.textContent = this.i18n.homeStoreReady;
             root.appendChild(readyHeading);
 
             // 功能分组（内置组件按用途归类；插件组件按来源作者归类）
             const BUILTIN_GROUPS: Array<{label: string; moduleIds: string[]}> = [
-                {label: "日记与日程", moduleIds: ["today-journal", "journal-monthly", "recent-daily-notes", "today-reservations", "on-this-day"]},
-                {label: "任务与清单", moduleIds: ["today-tasks"]},
-                {label: "文档与导航", moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
-                {label: "数据洞察", moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
-                {label: "学习与记忆", moduleIds: ["flashcard-due", "random-review"]},
-                {label: "采集与速记", moduleIds: ["quick-capture", "clipped-unread"]},
-                {label: "系统与工具", moduleIds: ["tags", "bookmarks", "plugin-commands"]},
+                {label: this.i18n.homeStoreGroupJournal, moduleIds: ["today-journal", "journal-monthly", "recent-daily-notes", "today-reservations", "on-this-day", "journal-calendar", "writing-streak"]},
+                {label: this.i18n.homeStoreGroupTasks, moduleIds: ["today-tasks"]},
+                {label: this.i18n.homeStoreGroupDocuments, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
+                {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
+                {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
+                {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
+                {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
             ];
             const groupOf = (moduleId: string, def: any): string => {
                 if (def.category === "siyuan") {
                     const hit = BUILTIN_GROUPS.find((group) => group.moduleIds.includes(moduleId));
-                    return hit ? hit.label : "其他";
+                    return hit ? hit.label : this.i18n.homeStoreGroupOther;
                 }
-                return def.author ? `插件 · ${def.author}` : "插件组件";
+                return def.author
+                    ? this.i18n.homeStoreGroupPluginAuthor.replace("{author}", def.author)
+                    : this.i18n.homeStoreGroupPlugin;
             };
 
             const ready = [...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
@@ -4239,6 +4275,7 @@ const version = beginSearch(session);
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const added = instanceByModule.get(moduleId);
                 const addedInstance = instanceStateByModule.get(moduleId);
+                card.dataset.added = added ? "true" : "false";
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
@@ -4392,20 +4429,25 @@ const version = beginSearch(session);
             });
 
             // —— 分区二：需安装插件后可用（目录中登记、来源插件未就位） ——
-            const pending = WIDGET_CATALOG.filter((entry) => !activeIds.has(entry.moduleId) && !instanceByModule.has(entry.moduleId));
+            const pending = resolveWidgetCatalogState([...activeIds], [...instanceByModule.keys()])
+                .filter((item: any) => item.status !== "ready");
             if (pending.length > 0) {
                 const pendingHeading = document.createElement("h3");
                 pendingHeading.className = "sw-home-store__section";
+                pendingHeading.dataset.section = "pending";
                 pendingHeading.textContent = this.i18n.homeStorePending;
                 root.appendChild(pendingHeading);
                 const pendingGrid = document.createElement("div");
                 pendingGrid.className = "sw-home-store__grid";
-                pending.forEach((entry) => {
+                pending.forEach(({entry, status}: any) => {
+                    const unavailable = status === "unavailable";
                     const card = document.createElement("section");
-                    card.className = "sw-home-store__card sw-home-store__card--pending";
+                    card.className = "sw-home-store__card sw-home-store__card--pending"
+                        + (unavailable ? " sw-home-store__card--unavailable" : "");
                     card.dataset.search = `${entry.title} ${entry.description} ${entry.providerName}`.toLowerCase();
                     card.dataset.category = "plugin";
                     card.dataset.availability = "external";
+                    card.dataset.added = unavailable ? "true" : "false";
                     const head = document.createElement("div");
                     head.className = "sw-home-store__card-head";
                     const icon = document.createElement("svg");
@@ -4422,8 +4464,23 @@ const version = beginSearch(session);
                     card.appendChild(head);
                     const requireNote = document.createElement("p");
                     requireNote.className = "sw-home-store__require";
-                    requireNote.textContent = this.i18n.homeStoreRequires.replace("{plugin}", entry.providerName);
+                    requireNote.textContent = (unavailable ? this.i18n.homeStoreProviderUnavailable : this.i18n.homeStoreRequires)
+                        .replace("{plugin}", entry.providerName);
                     card.appendChild(requireNote);
+                    if (unavailable) {
+                        const removeButton = document.createElement("button");
+                        removeButton.type = "button";
+                        removeButton.className = "b3-button b3-button--text sw-home-store__remove-unavailable";
+                        removeButton.textContent = this.i18n.homeStoreRemoveUnavailable;
+                        removeButton.addEventListener("click", () => {
+                            const instance = instanceStateByModule.get(entry.moduleId);
+                            if (!instance) return;
+                            this.removeHomeInstance(instance.instanceId);
+                            renderStore();
+                            onChanged();
+                        });
+                        card.appendChild(removeButton);
+                    }
                     pendingGrid.appendChild(card);
                 });
                 root.appendChild(pendingGrid);
@@ -4431,10 +4488,23 @@ const version = beginSearch(session);
 
             if (ready.length === 0 && pending.length === 0) {
                 root.textContent = this.i18n.homeNoMoreModules;
+                return;
             }
+            filterEmptyState = document.createElement("p");
+            filterEmptyState.className = "sw-home-store__filter-empty fn__none";
+            filterEmptyState.setAttribute("role", "status");
+            filterEmptyState.textContent = this.i18n.homeStoreNoResults;
+            root.appendChild(filterEmptyState);
+            applyFilter();
         };
 
         renderStore();
+        const handleModuleChange = () => {
+            if (!root.isConnected) return;
+            renderStore();
+            onChanged();
+        };
+        this.homeModuleChangeListeners.add(handleModuleChange);
         // 缓冲识别：插件启停后 400ms 复扫一次安装状态（增量，不影响首屏）
         const rescanTimer = window.setTimeout(() => {
             if (root.isConnected) renderStore();
@@ -4442,6 +4512,7 @@ const version = beginSearch(session);
         const originalDestroy = storeDialog.destroy.bind(storeDialog);
         storeDialog.destroy = () => {
             window.clearTimeout(rescanTimer);
+            this.homeModuleChangeListeners.delete(handleModuleChange);
             originalDestroy();
         };
     }
@@ -4481,21 +4552,32 @@ const version = beginSearch(session);
         const homeRefreshTimers: number[] = [];
         const homeRefreshObservers: IntersectionObserver[] = [];
         let homeRefreshBatchController: AbortController | null = null;
-
-        const defs = new Map<string, any>();
-        this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
-            .concat(this.homeRuntime.listModules("sidebar"))
-            .forEach((def: any) => defs.set(def.moduleId, def));
-        const catalogIds = new Set<string>();
-        defs.forEach((_def, moduleId) => {
-            if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeModuleOpens.has(moduleId)) catalogIds.add(moduleId);
-        });
+        let panelEventCleanup: (() => void) | null = null;
+        const clearDeferredRefreshes = () => {
+            homeRefreshTimers.splice(0).forEach((handle) => {
+                const cancelIdle = (window as any).cancelIdleCallback;
+                if (typeof cancelIdle === "function") cancelIdle(handle);
+                window.clearTimeout(handle);
+            });
+            homeRefreshObservers.splice(0).forEach((observer) => observer.disconnect());
+        };
 
         const renderPanel = () => {
             homeRefreshBatchController?.abort();
             homeRefreshBatchController = null;
             homeControllers.splice(0).forEach((entry) => entry.dispose());
+            panelEventCleanup?.();
+            panelEventCleanup = null;
+            clearDeferredRefreshes();
             root.innerHTML = "";
+            const defs = new Map<string, any>();
+            this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
+                .concat(this.homeRuntime.listModules("sidebar"))
+                .forEach((def: any) => defs.set(def.moduleId, def));
+            const catalogIds = new Set<string>();
+            defs.forEach((_def, moduleId) => {
+                if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeThirdPartyIds.has(moduleId)) catalogIds.add(moduleId);
+            });
             const state = this.getHomeState();
             const layoutList = (state.layouts[device] || []) as Array<any>;
             const byId = new Map(state.instances.map((inst: any) => [inst.instanceId, inst]));
@@ -4798,10 +4880,7 @@ const version = beginSearch(session);
                             }
                         }),
                         tool(this.i18n.homeRemove, () => {
-                            const next = this.getHomeState();
-                            next.instances = (next.instances as Array<any>).filter((candidate) => candidate.instanceId !== inst.instanceId);
-                            next.layouts[device] = ((next.layouts[device] || []) as Array<any>).filter((candidate) => candidate.instanceId !== inst.instanceId);
-                            this.saveHomeState(next);
+                            this.removeHomeInstance(inst.instanceId);
                             renderPanel();
                         }),
                     );
@@ -4857,7 +4936,7 @@ const version = beginSearch(session);
                 homeRefreshCleanupFns.push(() => this.eventBus.off(event as TEventBus, handler));
             });
             if (homeRefreshCleanupFns.length > 0) {
-                this.homeRefreshCleanup = () => homeRefreshCleanupFns.forEach((fn) => fn());
+                panelEventCleanup = () => homeRefreshCleanupFns.forEach((fn) => fn());
             }
 
             // 首开延迟首读：前两个可见候选立即读取，其余交给空闲时段；旧 WebView
@@ -4936,20 +5015,20 @@ const version = beginSearch(session);
             quickHost.classList.add("sw__quick-actions--icons");
         };
 
+        const handleModuleChange = () => {
+            if (root.isConnected) renderPanel();
+        };
+        this.homeModuleChangeListeners.add(handleModuleChange);
+
         const originalDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
-            homeRefreshTimers.forEach((handle) => {
-                const cancelIdle = (window as any).cancelIdleCallback;
-                if (typeof cancelIdle === "function") cancelIdle(handle);
-                window.clearTimeout(handle);
-            });
-            homeRefreshTimers.length = 0;
-            homeRefreshObservers.forEach((observer) => observer.disconnect());
-            homeRefreshObservers.length = 0;
+            clearDeferredRefreshes();
             homeRefreshBatchController?.abort();
             homeRefreshBatchController = null;
             homeControllers.splice(0).forEach((entry) => entry.dispose());
-            this.homeRefreshCleanup?.();
+            panelEventCleanup?.();
+            panelEventCleanup = null;
+            this.homeModuleChangeListeners.delete(handleModuleChange);
             originalDestroy();
         };
         renderPanel();
@@ -8360,7 +8439,6 @@ private rootIdOf(tab: Tab): string | null {
 
     private groupFlowObserver: ResizeObserver | null = null;
     private homeRefreshTimer = 0;
-    private homeRefreshCleanup: (() => void) | null = null;
     private sidebarRefreshTimer = 0;
     private groupFlowLastWidth = 0;
 

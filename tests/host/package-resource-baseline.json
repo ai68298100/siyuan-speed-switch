@@ -3,15 +3,15 @@
   "entries": {
     "docs/architecture.svg": 1900,
     "docs/interface-map.svg": 1809,
-    "i18n/en.json": 6907,
-    "i18n/zh-CN.json": 7872,
+    "i18n/en.json": 7116,
+    "i18n/zh-CN.json": 8106,
     "icon.png": 44735,
-    "index.css": 15276,
-    "index.js": 96305,
+    "index.css": 15331,
+    "index.js": 96718,
     "plugin.json": 697,
     "preview.png": 50389,
-    "README.en-US.md": 30757,
-    "README.md": 32860,
+    "README.en-US.md": 30890,
+    "README.md": 32991,
     "ROADMAP.md": 12307
   }
 }

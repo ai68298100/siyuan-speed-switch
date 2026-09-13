@@ -20,4 +20,15 @@ const WIDGET_CATALOG = Object.freeze([
     }),
 ]);
 
-module.exports = {WIDGET_CATALOG};
+const WIDGET_CATALOG_STATES = Object.freeze(["ready", "unavailable", "missing"]);
+
+function resolveWidgetCatalogState(activeModuleIds = [], configuredModuleIds = []) {
+    const active = new Set(activeModuleIds && typeof activeModuleIds[Symbol.iterator] === "function" ? activeModuleIds : []);
+    const configured = new Set(configuredModuleIds && typeof configuredModuleIds[Symbol.iterator] === "function" ? configuredModuleIds : []);
+    return WIDGET_CATALOG.map((entry) => ({
+        entry,
+        status: active.has(entry.moduleId) ? "ready" : configured.has(entry.moduleId) ? "unavailable" : "missing",
+    }));
+}
+
+module.exports = {WIDGET_CATALOG, WIDGET_CATALOG_STATES, resolveWidgetCatalogState};

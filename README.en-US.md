@@ -174,9 +174,10 @@ Until manual acceptance is complete, this worktree is a release candidate rather
 
 - Four new builtin widgets (27 total): **Journal calendar** (month grid with journal days highlighted and clickable), **Countdown** (days remaining or elapsed to a target date), **Clipped to read** (tag-based reading queue), **Quick capture** (Flomo-style one-tap journal append).
 - Widget store UI overhaul: larger dialog (up to 960×720), builtin widgets grouped by function (7 groups), plugin widgets grouped by source author, miniature skeleton previews with proportional size rectangles, and on-demand live preview dialogs.
+- Widget store availability and interaction improvements: category, conditional, and added-state filters compose independently; configured third-party widgets retain their settings and show an unavailable state while their provider is unloaded, then recover immediately after re-registration; localized grouping, persistent filters, and an explicit no-results state complete the flow.
 - Widget panel UI polish: single-layer chrome (inner module card removed), compact chevron fold toggle, muted empty-state prefix, calendar cell hover tint, list item hover accent bar, larger stat hero numbers, rounded progress bar caps, smooth collapse animation, staggered widget loading.
 - Fixed append-to-journal agent capability that was defined but never registered; added a capability registration guard test.
-- 550 automated tests.
+- 673 automated tests.
 
 ### v0.16.38 (2026-09-12)
 

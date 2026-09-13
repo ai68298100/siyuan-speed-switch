@@ -4760,6 +4760,11 @@
     opacity: 0.85;
 }
 
+.sw-home-store__card--unavailable {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--b3-theme-primary) 34%, var(--b3-border-color));
+}
+
 .sw-home-store__require {
     margin: 10px 0 0;
     padding: 4px 10px;
@@ -4767,6 +4772,20 @@
     background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
+}
+
+.sw-home-store__remove-unavailable {
+    margin-top: 8px;
+    padding-inline: 0;
+}
+
+.sw-home-store__filter-empty {
+    margin: 18px 0;
+    padding: 18px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: 12px;
+    color: var(--b3-theme-on-surface-light);
+    text-align: center;
 }
 
 // ==================== 组件面板视觉升级：iPad 小组件质感 ====================
