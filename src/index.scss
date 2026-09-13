@@ -5028,6 +5028,13 @@
     }
 }
 
+.sw__home-calendar-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
 .sw__home-calendar-cell.has-journal {
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;

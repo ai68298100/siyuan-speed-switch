@@ -71,7 +71,8 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-13 (19): 339 KiB for stat.arc progress-ring rendering and the
     // bounded Agent snapshot contract; package.zip remains below 300 KiB.
     // 2026-09-13 (20): 340 KiB for bounded card palette presets and settings.
-    const budget = 340 * 1024;
+    // 2026-09-13 (21): 341 KiB for calendar navigation controls and labels.
+    const budget = 341 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

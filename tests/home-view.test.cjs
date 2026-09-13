@@ -97,6 +97,24 @@ test("home view renders calendar grid for viewType calendar", () => {
     assert.equal(grid.querySelectorAll(".is-today").length, 1);
     assert.equal(grid.querySelectorAll(".sw__home-calendar-secondary").length, 1);
 });
+test("home view exposes bounded calendar navigation controls", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const calls = [];
+    const view = buildHomeModuleView({moduleId: "journal-calendar", title: "Calendar", viewType: "calendar"}, {
+        ok: true, snapshot: {items: [{label: "1", value: ""}]},
+    });
+    const root = renderHomeModuleView(dom.window.document, view, {
+        labels: {previousMonth: "上月", today: "今天", nextMonth: "下月"},
+        onCalendarNavigate: (direction) => calls.push(direction),
+    });
+    const controls = root.querySelectorAll(".sw__home-module-body button");
+    assert.equal(controls.length, 3);
+    assert.equal(controls[0].getAttribute("aria-label"), "上月");
+    controls[0].click();
+    controls[1].click();
+    controls[2].click();
+    assert.deepEqual(calls, [-1, 0, 1]);
+});
 test("home view renders week row for viewType weekdays", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const view = buildHomeModuleView(

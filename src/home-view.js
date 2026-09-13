@@ -132,6 +132,9 @@ function renderHomeModuleView(doc, view, options = {}) {
         expand: "展开",
         cached: "缓存",
         updated: "更新",
+        previousMonth: "上月",
+        nextMonth: "下月",
+        today: "今天",
         ...(options.labels && typeof options.labels === "object" ? options.labels : {}),
     };
     const root = doc.createElement("section");
@@ -279,6 +282,21 @@ function renderHomeModuleView(doc, view, options = {}) {
     }
     if (view.status === "ready" && view.viewType === "calendar") {
         // 日历月视图：7 列网格；条目约定 label=日期数字、value=文档 ID（可点击）、done=今天
+        if (typeof options.onCalendarNavigate === "function") {
+            const nav = doc.createElement("div");
+            nav.className = "sw__home-calendar-nav";
+            const button = (label, direction) => {
+                const control = doc.createElement("button");
+                control.type = "button";
+                control.className = "b3-button b3-button--text sw__home-calendar-nav-button";
+                control.setAttribute("aria-label", label || "");
+                control.textContent = direction ? (direction < 0 ? "‹" : "›") : label;
+                control.addEventListener("click", () => options.onCalendarNavigate(direction, view));
+                return control;
+            };
+            nav.append(button(labels.previousMonth, -1), button(labels.today, 0), button(labels.nextMonth, 1));
+            body.appendChild(nav);
+        }
         const grid = doc.createElement("div");
         grid.className = "sw__home-calendar";
         grid.setAttribute("role", "grid");

@@ -3,7 +3,7 @@
 > 基线：发布 `v0.16.39`（`3d0d841`）；开发头：本地 `main` 基于 `72e2deb` 并有未推送提交；最后更新：2026-09-13
 > 本文描述后续开发顺序和验收标准，不代表未合并原型已经完成。
 >
-> 当前状态：开发头已包含第 28 个内置组件 writing-streak、`viewType=weekdays`、`stat.arc` 进度环、首开延迟首读、受限卡片配色预设，以及 `journal-calendar` 可选农历次级文本。类型检查、生产构建、555 项自动测试、移动端烟测和 Chromium 结构/主题烟测均已通过；raw bundle 自律预算 340 KiB，`package.zip` 仍低于 300 KiB 硬上限。当前采用“开发优先、发布后置”：手机端测试按 D-042 永久跳过，桌面端实测仅大版本节点进行；继续推进不依赖真实设备的 UI、性能、模型与兼容增量。
+> 当前状态：开发头包含 writing-streak、进度环、首开延迟、卡片配色和月历农历/导航。类型检查、构建、556 项测试及移动/Chromium smoke 均通过；raw bundle 预算 341 KiB，`package.zip` 仍低于 300 KiB。手机端按 D-042 永久跳过，桌面端仅大版本节点实测，继续推进本地 UI、性能、模型与兼容增量。
 
 > R6 当前增量支持文档集 JSON 导入/导出和独立重命名；尚未完成跨端宿主结果细化和最终人工验收。
 
@@ -414,7 +414,7 @@ pnpm build
 | Node.js | 可用 | v24.15.0；满足 `>=18` |
 | pnpm | 可用 | v11.4.0；`pnpm install --frozen-lockfile --offline` 成功 |
 | TypeScript/Webpack | 可用 | `tsc --noEmit`、生产构建成功 |
-| 自动测试 | 可用 | `pnpm test` 555/555 |
+| 自动测试 | 可用 | `pnpm test` 556/556 |
 | 移动卡片 smoke | 可用 | `pnpm test:smoke` 通过 |
 | Chromium 样式 smoke | 可用 | `pnpm test:smoke:browser` 通过 |
 | Git/GitHub CLI | 可用 | `gh auth status` 已登录；`git ls-remote origin` 可读 |
@@ -422,7 +422,7 @@ pnpm build
 
 ### 开发优先级
 
-1. **P0 自动门禁与回归**：每个功能保持类型检查、构建、555 项测试、移动/Chromium smoke 全绿；不 push、不发布。
+1. **P0 自动门禁与回归**：每个功能保持类型检查、构建、556 项测试、移动/Chromium smoke 全绿；不 push、不发布。
 2. **P1 本地只读组件**：继续扩展不依赖外部插件/网络的 home adapter，严格限制 SQL 窗口、返回条数、超时、取消和缓存。
 3. **P1 Agent/搜索兼容**：补齐取消、超时、旧宿主响应包装和错误码边界；保持只读能力默认开放，写操作维持确认流程。
 4. **P2 关系与日程调研后实现**：先确认 SiYuan 稳定字段，再做轻量关系摘要；预约块格式不稳定则只保留研究结论。

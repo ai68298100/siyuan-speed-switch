@@ -235,7 +235,7 @@ declare module "./home-runtime" {
 
 declare module "./home-view" {
     export function buildHomeModuleView(module: unknown, result: unknown, options?: {collapsed?: boolean}): unknown;
-    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onRetry?: (view: unknown) => void}): unknown;
+    export function renderHomeModuleView(doc: unknown, view: unknown, options?: {labels?: Record<string, string>; onToggle?: (view: unknown) => void; onItem?: (item: unknown, view: unknown) => void; onCalendarNavigate?: (direction: number, view: unknown) => void; onRetry?: (view: unknown) => void}): unknown;
 }
 declare module "./home-controller" {
     export function createHomeModuleController(options: Record<string, unknown>): {
@@ -4546,9 +4546,25 @@ const version = beginSearch(session);
                         expand: this.i18n.homeExpand,
                         cached: this.i18n.homeCached,
                         updated: this.i18n.homeUpdated,
+                        previousMonth: this.i18n.homeCalendarPreviousMonth,
+                        nextMonth: this.i18n.homeCalendarNextMonth,
+                        today: this.i18n.homeCalendarToday,
                     },
                     calendarWeekdays: this.i18n.homeCalendarWeekdays,
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
+                    onCalendarNavigate: (direction: number) => {
+                        const current = Math.trunc(Number(inst.config?.monthOffset) || 0);
+                        const next = direction === 0 ? 0 : Math.min(0, Math.max(-24, current + (direction < 0 ? -1 : 1)));
+                        if (next === current) return;
+                        inst.config = {...(inst.config || {}), monthOffset: next};
+                        const persisted = this.getHomeState();
+                        const target = (persisted.instances as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
+                        if (target) {
+                            target.config = {...(target.config || {}), monthOffset: next};
+                            this.saveHomeState(persisted);
+                        }
+                        void controller?.refresh(inst.config, {force: true});
+                    },
                     onToggle: () => {
                         const next = this.getHomeState();
                         const entry = ((next.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);

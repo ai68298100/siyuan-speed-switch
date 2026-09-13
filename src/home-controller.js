@@ -33,6 +33,7 @@ function createHomeModuleController(options = {}) {
             labels: options.labels,
             calendarWeekdays: options.calendarWeekdays,
             onItem: options.onItem,
+            onCalendarNavigate: options.onCalendarNavigate,
             onToggleItem: options.onToggleItem,
             onConfig: options.onConfig,
             onToggle: () => toggle(),
