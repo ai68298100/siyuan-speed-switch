@@ -46,3 +46,6 @@
 - Existing callers omitting `offset` retain first-page behavior. Offsets beyond the available result set clamp to `total` and return an explicit empty page.
 - D-041 用户长期授权（2026-09-13）：Mimosa 中危确认及同类项目级权限提示，一律默认允许并继续，不再逐次询问；涉及不可逆数据删除或超出项目范围的操作仍需确认。
 - D-042 测试策略（2026-09-13 用户指示）：手机端测试永久跳过；桌面端实测仅在大版本节点进行，其余版本跳过设备测试反馈直接进入下一项开发。
+- D-043 `stat.arc` 采用 `{value, max}` 有界数值契约：渲染层用 SVG progressbar 呈现，Agent 快照仅回显同名字段；非法或非正 `max` 丢弃，`value` 钳制到 `[0,max]`。原因：在小尺寸卡片中提高进度信息密度，同时不引入任意 SVG/样式输入。
+- D-044 raw bundle 自律预算由 337 KiB 校准至 339 KiB（2026-09-13）：进度环渲染器及 Agent `stat.arc` schema 增量约 1.5 KiB；`package.zip` 306059 字节，仍低于 300 KiB 硬上限。
+- D-045 面板首开采用“前两项立即、其余空闲/阶梯延迟”的读取调度；旧 WebView 通过 80ms `setTimeout` 回退，并在弹窗销毁时取消未执行任务。原因：降低内核请求峰值与关闭后的尾部请求，不改变“刷新全部”强制刷新语义。

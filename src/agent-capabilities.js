@@ -187,11 +187,17 @@ function buildAgentWidgetSnapshot(moduleId, title, value, options = {}) {
     };
     const stat = snapshot.stat && typeof snapshot.stat === "object" ? snapshot.stat : null;
     const statValue = stat ? asText(stat.value, 32) : "";
-    if (statValue) content.stat = {
-        value: statValue,
-        label: asText(stat.label, 32),
-        progress: Number.isFinite(stat.progress) ? Math.min(100, Math.max(0, stat.progress)) : null,
-    };
+    if (statValue) {
+        content.stat = {
+            value: statValue,
+            label: asText(stat.label, 32),
+            progress: Number.isFinite(stat.progress) ? Math.min(100, Math.max(0, stat.progress)) : null,
+        };
+        const arc = stat.arc && typeof stat.arc === "object" ? stat.arc : null;
+        const max = arc && Number.isFinite(arc.max) ? Math.min(1000000, Math.max(0, arc.max)) : 0;
+        const value = arc && Number.isFinite(arc.value) ? Math.min(max, Math.max(0, arc.value)) : -1;
+        if (max > 0 && value >= 0) content.stat.arc = {value, max};
+    }
     return content;
 }
 
@@ -671,6 +677,15 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                                 value: {type: "string", maxLength: 32},
                                 label: {type: "string", maxLength: 32},
                                 progress: {anyOf: [{type: "number", minimum: 0, maximum: 100}, {type: "null"}]},
+                                arc: {
+                                    type: "object",
+                                    properties: {
+                                        value: {type: "number", minimum: 0, maximum: 1000000},
+                                        max: {type: "number", exclusiveMinimum: 0, maximum: 1000000},
+                                    },
+                                    required: ["value", "max"],
+                                    additionalProperties: false,
+                                },
                             },
                             required: ["value", "label", "progress"],
                             additionalProperties: false,

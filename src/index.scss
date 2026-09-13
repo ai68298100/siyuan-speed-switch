@@ -4736,6 +4736,38 @@
     gap: 6px;
     padding: 4px 0 8px;
 
+    &-copy {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    &-arc {
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        margin-inline-start: auto;
+        transform: rotate(-90deg);
+        overflow: visible;
+    }
+
+    &-arc-track,
+    &-arc-fill {
+        fill: none;
+        stroke-width: 4;
+    }
+
+    &-arc-track {
+        stroke: color-mix(in srgb, var(--b3-theme-on-surface) 10%, transparent);
+    }
+
+    &-arc-fill {
+        stroke: var(--sw-home-accent, var(--b3-theme-primary));
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.35s ease;
+    }
+
     .sw__home-stat-value {
         font-size: 28px;
         font-weight: 700;

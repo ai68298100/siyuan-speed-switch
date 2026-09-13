@@ -78,11 +78,18 @@ function normalizeHomeViewResult(value, options = {}) {
         title: text(rawSnapshot.title, 64),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         stat: rawSnapshot.stat && typeof rawSnapshot.stat === "object"
-            ? {
-                value: text(rawSnapshot.stat.value, 32),
-                label: text(rawSnapshot.stat.label, 32),
-                progress: Number.isFinite(rawSnapshot.stat.progress) ? Math.min(100, Math.max(0, rawSnapshot.stat.progress)) : null,
-            }
+            ? (() => {
+                const stat = {
+                    value: text(rawSnapshot.stat.value, 32),
+                    label: text(rawSnapshot.stat.label, 32),
+                    progress: Number.isFinite(rawSnapshot.stat.progress) ? Math.min(100, Math.max(0, rawSnapshot.stat.progress)) : null,
+                };
+                const arc = rawSnapshot.stat.arc && typeof rawSnapshot.stat.arc === "object" ? rawSnapshot.stat.arc : null;
+                const max = arc && Number.isFinite(arc.max) ? Math.min(1000000, Math.max(0, arc.max)) : 0;
+                const value = arc && Number.isFinite(arc.value) ? Math.min(max, Math.max(0, arc.value)) : -1;
+                if (max > 0 && value >= 0) stat.arc = {value, max};
+                return stat;
+            })()
             : null,
         items,
     };
@@ -191,13 +198,43 @@ function renderHomeModuleView(doc, view, options = {}) {
     if (view.stat && view.stat.value) {
         const hero = doc.createElement("div");
         hero.className = "sw__home-stat";
+        const copy = doc.createElement("span");
+        copy.className = "sw__home-stat-copy";
         const value = doc.createElement("span");
         value.className = "sw__home-stat-value";
         value.textContent = view.stat.value;
         const label = doc.createElement("span");
         label.className = "sw__home-stat-label";
         label.textContent = view.stat.label || "";
-        hero.append(value, label);
+        copy.append(value, label);
+        hero.appendChild(copy);
+        if (view.stat.arc && Number.isFinite(view.stat.arc.value) && Number.isFinite(view.stat.arc.max) && view.stat.arc.max > 0) {
+            const arc = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+            const ratio = Math.min(1, Math.max(0, view.stat.arc.value / view.stat.arc.max));
+            const percent = Math.round(ratio * 100);
+            arc.classList.add("sw__home-stat-arc");
+            arc.setAttribute("viewBox", "0 0 40 40");
+            arc.setAttribute("role", "progressbar");
+            arc.setAttribute("aria-valuenow", String(percent));
+            arc.setAttribute("aria-valuemin", "0");
+            arc.setAttribute("aria-valuemax", "100");
+            arc.setAttribute("aria-label", `${view.stat.label || "Progress"} ${percent}%`);
+            const track = doc.createElementNS("http://www.w3.org/2000/svg", "circle");
+            track.classList.add("sw__home-stat-arc-track");
+            track.setAttribute("cx", "20");
+            track.setAttribute("cy", "20");
+            track.setAttribute("r", "16");
+            track.setAttribute("pathLength", "100");
+            const fill = doc.createElementNS("http://www.w3.org/2000/svg", "circle");
+            fill.classList.add("sw__home-stat-arc-fill");
+            fill.setAttribute("cx", "20");
+            fill.setAttribute("cy", "20");
+            fill.setAttribute("r", "16");
+            fill.setAttribute("pathLength", "100");
+            fill.setAttribute("stroke-dasharray", `${percent} ${100 - percent}`);
+            arc.append(track, fill);
+            hero.appendChild(arc);
+        }
         body.appendChild(hero);
         if (Number.isFinite(view.stat.progress)) {
             const bar = doc.createElement("div");

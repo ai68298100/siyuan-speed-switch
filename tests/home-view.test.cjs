@@ -112,6 +112,26 @@ test("home view renders week row for viewType weekdays", () => {
     assert.equal(row.querySelectorAll(".sw__home-weekday").length, 3);
     assert.equal(row.querySelectorAll(".sw__home-weekday.is-done").length, 2);
 });
+
+test("home view renders bounded stat arc with progress semantics", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "year-progress", title: "Year"}, {
+        ok: true,
+        snapshot: {stat: {value: "50%", label: "2026", arc: {value: 183, max: 366}}},
+    });
+    assert.deepEqual(view.stat.arc, {value: 183, max: 366});
+    const root = renderHomeModuleView(dom.window.document, view, {});
+    const arc = root.querySelector(".sw__home-stat-arc");
+    assert.ok(arc, "arc should render");
+    assert.equal(arc.getAttribute("role"), "progressbar");
+    assert.equal(arc.getAttribute("aria-valuenow"), "50");
+    assert.equal(arc.querySelector(".sw__home-stat-arc-fill").getAttribute("stroke-dasharray"), "50 50");
+
+    const clamped = buildHomeModuleView({moduleId: "bad-arc", title: "Bad"}, {
+        snapshot: {stat: {value: "x", label: "Bad", arc: {value: 99, max: 0}}},
+    });
+    assert.equal(clamped.stat.arc, undefined);
+});
 test("home view renders safe symbol and text icon fallbacks", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const symbol = renderModuleIcon(dom.window.document, "iconCalendar");

@@ -3421,7 +3421,7 @@ const version = beginSearch(session);
             const remaining = total - elapsed;
             const percent = Math.round(elapsed / total * 100);
             return {
-                stat: {value: `${percent}%`, label: `${year}`, progress: percent},
+                stat: {value: `${percent}%`, label: `${year}`, progress: percent, arc: {value: elapsed, max: total}},
                 items: [
                     {label: this.i18n.homeYearElapsed.replace("{x}", String(elapsed)), value: ""},
                     {label: this.i18n.homeYearRemaining.replace("{x}", String(remaining)), value: ""},
@@ -3553,7 +3553,14 @@ const version = beginSearch(session);
                 const day = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
                 return {label: weekLabel.slice(index, index + 1), value: "", done: written.has(dayKey(day))};
             });
-            return {stat: {value: String(streak), label: this.i18n.homeStatStreakDays}, items};
+            return {
+                stat: {
+                    value: String(streak),
+                    label: this.i18n.homeStatStreakDays,
+                    arc: {value: items.filter((item) => item.done === true).length, max: 7},
+                },
+                items,
+            };
         });
         // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数
         register("countdown", this.i18n.homeCountdown, "iconClock", this.i18n.homeDescCountdown, ["loaded-protyle"], (config) => {
@@ -4386,6 +4393,7 @@ const version = beginSearch(session);
         let editing = false;
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
         const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
+        const homeRefreshTimers: number[] = [];
 
         const defs = new Map<string, any>();
         this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
@@ -4706,9 +4714,10 @@ const version = beginSearch(session);
                 this.homeRefreshCleanup = () => homeRefreshCleanupFns.forEach((fn) => fn());
             }
 
-            // 逐个错峰刷新：避免打开时内核并发请求风暴（每次间隔 80ms）
-            controllers.forEach((entry, index) => {
-                window.setTimeout(async () => {
+            // 首开延迟首读：前两个可见候选立即读取，其余交给空闲时段；旧 WebView
+            // 没有 requestIdleCallback 时回退到 80ms 阶梯，且销毁弹窗时统一清理。
+            const scheduleRefresh = (entry: typeof controllers[number], index: number) => {
+                const run = async () => {
                     if (!dialog.element.isConnected) return;
                     const result = await entry.refresh() as { ok?: boolean } | undefined;
                     // 协议 v2：无 open 回调时可用声明式 clickCommand（"插件名::命令key"）
@@ -4731,8 +4740,21 @@ const version = beginSearch(session);
                     } else {
                         existing?.remove();
                     }
-                }, index * 80);
-            });
+                };
+                if (index < 2) {
+                    void run();
+                    return;
+                }
+                const idle = (window as any).requestIdleCallback;
+                if (typeof idle === "function") {
+                    const handle = idle((): void => { void run(); }, {timeout: 500});
+                    homeRefreshTimers.push(handle);
+                } else {
+                    const handle = window.setTimeout((): void => { void run(); }, index * 80);
+                    homeRefreshTimers.push(handle);
+                }
+            };
+            controllers.forEach(scheduleRefresh);
 
             // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
             const hint = document.createElement("div");
@@ -4758,6 +4780,12 @@ const version = beginSearch(session);
 
         const originalDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
+            homeRefreshTimers.forEach((handle) => {
+                const cancelIdle = (window as any).cancelIdleCallback;
+                if (typeof cancelIdle === "function") cancelIdle(handle);
+                window.clearTimeout(handle);
+            });
+            homeRefreshTimers.length = 0;
             this.homeRefreshCleanup?.();
             originalDestroy();
         };

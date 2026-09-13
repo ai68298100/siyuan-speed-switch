@@ -165,7 +165,7 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
         cached: true,
         snapshot: {
             updatedAt: 1234.9,
-            stat: {value: "3", label: "Tasks", progress: 150},
+            stat: {value: "3", label: "Tasks", progress: 150, arc: {value: 9, max: 7}},
             items: [
                 {label: "One", value: "id", count: 10001, done: false, secret: "drop"},
                 {label: "", value: "drop"},
@@ -184,7 +184,7 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
         offset: 0,
         truncated: false,
         appliedConfig: {limit: 20, extra: true},
-        stat: {value: "3", label: "Tasks", progress: 100},
+            stat: {value: "3", label: "Tasks", progress: 100, arc: {value: 7, max: 7}},
     });
     assert.deepEqual(buildAgentWidgetSnapshot("x", "", {ok: false, reason: "timeout"}), {
         moduleId: "x", title: "", status: "timeout", retryable: true, device: "desktop", cached: false, updatedAt: 0,
@@ -444,6 +444,7 @@ test("agent capability specs include widget snapshot and controlled open", () =>
     assert.deepEqual(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.source.enum, ["builtin", "external"]);
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.inputSchema.properties.refresh.type, "boolean");
     assert.equal(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema.anyOf.length, 2);
+    assert.deepEqual(AGENT_CAPABILITY_SPECS.homeWidgets.outputSchema.anyOf[0].properties.stat.properties.arc.required, ["value", "max"]);
     assert.equal(AGENT_CAPABILITY_SPECS.openDocument.name, "open-document");
     assert.deepEqual(AGENT_CAPABILITY_SPECS.openDocument.inputSchema.required, ["id"]);
     assert.equal(AGENT_CAPABILITY_SPECS.homeDiagnostics.name, "home-adapter-diagnostics");
