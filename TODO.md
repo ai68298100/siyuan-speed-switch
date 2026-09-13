@@ -605,3 +605,7 @@
   - 目标：插件卸载后阻断异步恢复、确认和事件消费，避免销毁后的尾部任务污染队列
   - 实现：coordinator 增加不可逆 `dispose()` 与 disposed 状态，后续调用返回 `coordinator_disposed`
   - 状态：in-progress
+- [ ] T-176 Agent workspace 恢复协调器队列绑定销毁
+  - 目标：在插件彻底卸载时可选择同时清理事件队列，普通共享消费者仍保留队列
+  - 实现：`coordinator.dispose(true)` 同步调用 queue.dispose；默认 dispose() 不清理共享队列并保持幂等
+  - 状态：in-progress

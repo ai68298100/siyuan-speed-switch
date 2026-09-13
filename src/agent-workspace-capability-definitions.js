@@ -336,7 +336,15 @@ function createWorkspaceCapabilityRecoveryCoordinator(queue) {
             return Object.freeze({...recovery, acknowledged: this.commit(recovery)});
         },
         status() { return Object.freeze({lastCursor, commits, disposed}); },
-        dispose() { disposed = true; },
+        dispose(clearQueue = false) {
+            if (disposed) return 0;
+            disposed = true;
+            if (clearQueue === true && queue && typeof queue.dispose === "function") {
+                queue.dispose();
+                return 1;
+            }
+            return 0;
+        },
     });
 }
 

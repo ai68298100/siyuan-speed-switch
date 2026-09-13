@@ -554,6 +554,16 @@ test("workspace runtime recovery coordinator rejects duplicate and stale commits
     assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 3}), 0);
 });
 
+test("workspace recovery coordinator can optionally dispose its owned queue", () => {
+    const queue = createWorkspaceCapabilityEventQueue(2);
+    queue.push([{type: "host"}]);
+    const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
+    assert.equal(coordinator.dispose(true), 1);
+    assert.equal(queue.size(), 0);
+    assert.equal(coordinator.dispose(true), 0);
+    assert.equal(coordinator.status().disposed, true);
+});
+
 test("workspace capability host probe stays stable and side-effect free", () => {
     assert.deepEqual(PROBE_REASONS, ["ready", "unavailable", "timeout", "cancelled", "failed"]);
     assert.deepEqual(probeWorkspaceCapabilityHost({addAgentCapability: () => true}), {ok: true, reason: "ready"});
