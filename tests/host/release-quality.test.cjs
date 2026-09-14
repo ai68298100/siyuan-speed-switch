@@ -113,10 +113,10 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (43): 392 KiB for event serialization/parse helpers.
     // 2026-09-14 (44): 393 KiB for bounded report event queue contracts.
     // 2026-09-14 (45): 394 KiB for safe report event replay.
-    // 2026-09-14 (48): 404 KiB for the home-store pure-model extraction
-    // (bounded filtering, semantic previews, grouping and status decisions);
-    // package.zip remains below the 300 KiB hard ceiling.
-    const budget = 404 * 1024;
+    // 2026-09-14 (49): 408 KiB for the home-store pure-model extraction and
+    // read-only Agent audit module; package.zip remains below the 300 KiB
+    // hard ceiling.
+    const budget = 408 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

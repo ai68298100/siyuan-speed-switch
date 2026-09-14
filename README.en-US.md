@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.16.41 extends capacity diagnostics for bounded report event queues with stable utilization summaries, history aggregation, change events, and consistency validation, while retaining the widget-store, configuration, and native SiYuan Agent improvements from v0.16.40.
 
-> Release note: this version passes type checking, production build, 953 automated tests, and mobile/Chromium UI smoke tests. It is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: this version passes type checking, production build, 993 automated tests, and mobile/Chromium UI smoke tests. It is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -229,7 +229,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 101 `*.test.cjs` files under `tests/` and `tests/host/`, currently 953 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 102 `*.test.cjs` files under `tests/` and `tests/host/`, currently 993 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |

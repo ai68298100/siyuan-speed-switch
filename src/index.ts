@@ -62,6 +62,7 @@ import {
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {createWorkspaceRuntimeDiagnostics} from "./agent-workspace-diagnostics";
+import {auditAgentCapabilityDefinitions, summarizeAgentCapabilityAudit} from "./agent-readonly-audit";
 import {DOCUMENT_CONTEXT_SPEC, buildDocumentContext, normalizeDocumentContextRequest} from "./agent-document-context";
 import {
     SEARCH_DEBOUNCE_MS,
@@ -7198,6 +7199,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             this.workspaceRuntimeDiagnostics.dispose();
             this.workspaceRuntimeDiagnostics = null;
         }
+        const readonlyAudit = summarizeAgentCapabilityAudit(auditAgentCapabilityDefinitions(readOnlyDefinitions));
+        if (!readonlyAudit.valid) logger.warn("Agent read-only capability audit rejected definitions", readonlyAudit);
         registerReadOnlyAgentCapabilities(pluginWithAgent, readOnlyDefinitions, (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
     }
 
