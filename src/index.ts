@@ -4565,9 +4565,13 @@ const version = beginSearch(session);
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
+        root.setAttribute("role", "region");
+        root.setAttribute("aria-label", this.i18n.homeStoreTitle);
+        root.dataset.device = device;
         let storeQuery = "";
         let storeTab = "all";
         let storeSort = "relevance";
+        root.dataset.activeTab = storeTab;
         const collapsedGroups = new Set<string>();
 
         const renderStore = () => {
@@ -4617,9 +4621,14 @@ const version = beginSearch(session);
 
             const searchBar = document.createElement("div");
             searchBar.className = "sw-home-store__search";
+            searchBar.setAttribute("role", "search");
+            searchBar.setAttribute("aria-label", this.i18n.homeStoreSearch);
             const searchInput = document.createElement("input");
             searchInput.className = "b3-text-field fn__block";
             searchInput.type = "text";
+            searchInput.setAttribute("role", "searchbox");
+            searchInput.autocomplete = "off";
+            searchInput.setAttribute("enterkeyhint", "search");
             searchInput.placeholder = this.i18n.homeStoreSearch;
             searchInput.setAttribute("aria-label", this.i18n.homeStoreSearch);
             searchInput.value = storeQuery;
@@ -4627,6 +4636,7 @@ const version = beginSearch(session);
             const clearSearchButton = document.createElement("button");
             clearSearchButton.type = "button";
             clearSearchButton.className = "b3-button b3-button--text sw-home-store__clear-search";
+            clearSearchButton.dataset.action = "clear-search";
             clearSearchButton.textContent = "×";
             clearSearchButton.setAttribute("aria-label", this.i18n.homeStoreClearSearch);
             clearSearchButton.title = this.i18n.homeStoreClearSearch;
@@ -4641,6 +4651,7 @@ const version = beginSearch(session);
             searchBar.appendChild(clearSearchButton);
             const sortSelect = document.createElement("select");
             sortSelect.className = "b3-select sw-home-store__sort";
+            sortSelect.dataset.action = "sort";
             sortSelect.setAttribute("aria-label", this.i18n.homeStoreSortLabel);
             sortSelect.title = this.i18n.homeStoreSortLabel;
             [{value: "relevance", label: this.i18n.homeStoreSortRelevance}, {value: "title", label: this.i18n.homeStoreSortTitle}, {value: "status", label: this.i18n.homeStoreSortStatus}, {value: "category", label: this.i18n.homeStoreSortCategory}].forEach((option) => {
@@ -4650,13 +4661,18 @@ const version = beginSearch(session);
                 sortSelect.appendChild(item);
             });
             sortSelect.value = normalizeHomeStoreSort(storeSort);
+            sortSelect.dataset.sort = storeSort;
+            sortSelect.setAttribute("aria-controls", "sw-home-store-result-summary");
             sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); renderStore(); });
             searchBar.appendChild(sortSelect);
             const guideButton = document.createElement("button");
             guideButton.type = "button";
             guideButton.className = "b3-button b3-button--outline sw-home-store__guide";
+            guideButton.dataset.action = "open-guide";
             guideButton.textContent = this.i18n.homeStoreGuide;
             guideButton.setAttribute("aria-label", this.i18n.homeStoreGuideTitle);
+            guideButton.setAttribute("aria-haspopup", "dialog");
+            guideButton.title = this.i18n.homeStoreGuideTitle;
             guideButton.addEventListener("click", () => this.openHomeWidgetGuide());
             searchBar.appendChild(guideButton);
             root.appendChild(searchBar);
@@ -4675,7 +4691,9 @@ const version = beginSearch(session);
                 void addedOnly;
                 // Legacy audit expression: card.dataset.added === "true"
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
-                    card.classList.toggle("fn__none", !matchesHomeStoreTokens(card.dataset, query, filter));
+                    const visible = matchesHomeStoreTokens(card.dataset, query, filter);
+                    card.classList.toggle("fn__none", !visible);
+                    card.setAttribute("aria-hidden", String(!visible));
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
                     const grid = heading.nextElementSibling;
@@ -4684,6 +4702,8 @@ const version = beginSearch(session);
                     heading.classList.toggle("fn__none", !visible);
                     grid.classList.toggle("fn__none", !visible);
                     grid.classList.toggle("fn__none", heading.dataset.collapsed === "true");
+                    heading.setAttribute("aria-hidden", String(!visible));
+                    grid.setAttribute("aria-hidden", String(!visible || heading.dataset.collapsed === "true"));
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
                     const section = heading.nextElementSibling;
@@ -4693,25 +4713,35 @@ const version = beginSearch(session);
                             .some((group) => !group.classList.contains("fn__none"))
                         : Array.from(section.children).some((card) => !card.classList.contains("fn__none"));
                     heading.classList.toggle("fn__none", !visible);
+                    heading.setAttribute("aria-hidden", String(!visible));
                     if (heading.dataset.section !== "ready") section.classList.toggle("fn__none", !visible);
                 });
                 const hasVisibleCards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"))
                     .some((card) => !card.classList.contains("fn__none"));
                 filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
+                filterEmptyState?.setAttribute("aria-hidden", String(hasVisibleCards));
                 if (resultSummary) {
                     const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"));
                     const summary = summarizeHomeStoreCards(cards.map((card) => card.dataset), query, filter);
                     resultSummary.textContent = this.i18n.homeStoreResultSummary
                         .replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
+                    resultSummary.dataset.visible = String(summary.visible);
+                    resultSummary.dataset.total = String(summary.total);
+                    resultSummary.dataset.added = String(summary.added);
                 }
                 const tabCounts = buildHomeStoreTabCounts(Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card")).map((card) => card.dataset));
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
                     const key = button.dataset.tabKey || "all";
-                    button.textContent = `${button.dataset.tabLabel || ""} · ${tabCounts[key as keyof typeof tabCounts] ?? 0}`;
+                    const count = tabCounts[key as keyof typeof tabCounts] ?? 0;
+                    button.textContent = `${button.dataset.tabLabel || ""} · ${count}`;
+                    button.dataset.count = String(count);
+                    button.setAttribute("aria-describedby", resultSummary?.id || "sw-home-store-result-summary");
+                    button.setAttribute("aria-label", `${button.dataset.tabLabel || ""} · ${count}`);
                 });
             };
             searchInput.addEventListener("input", () => {
                 storeQuery = searchInput.value;
+                root.dataset.query = normalizeHomeStoreQuery(storeQuery);
                 clearSearchButton.hidden = !normalizeHomeStoreQuery(storeQuery);
                 applyFilter();
             });
@@ -4724,10 +4754,12 @@ const version = beginSearch(session);
             // 分类与状态 Tab：分类条件和可用性条件保持正交，避免条件组件被分类误过滤。
             const tabBar = document.createElement("div");
             tabBar.className = "sw-home-store__tabs";
+            tabBar.id = "sw-home-store-tablist";
             tabBar.setAttribute("role", "tablist");
             tabBar.setAttribute("aria-label", this.i18n.homeStoreTitle);
             const activateStoreTab = (button: HTMLElement) => {
                 storeTab = button.dataset.tabKey || "all";
+                root.dataset.activeTab = storeTab;
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((candidate) => {
                     const active = candidate === button;
                     candidate.classList.toggle("is-active", active);
@@ -4777,6 +4809,8 @@ const version = beginSearch(session);
                 btn.setAttribute("aria-selected", String(tab.key === storeTab));
                 btn.setAttribute("tabindex", tab.key === storeTab ? "0" : "-1");
                 btn.dataset.tabKey = tab.key;
+                btn.dataset.count = "0";
+                btn.setAttribute("aria-controls", "sw-home-store-result-summary");
                 btn.dataset.tabFilter = tab.category || "all";
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
                 if (tab.integration) btn.dataset.tabIntegration = tab.integration;
@@ -4804,7 +4838,9 @@ const version = beginSearch(session);
             resultSummary.id = "sw-home-store-result-summary";
             resultSummary.setAttribute("role", "status");
             resultSummary.setAttribute("aria-live", "polite");
+            resultSummary.setAttribute("aria-atomic", "true");
             root.appendChild(resultSummary);
+            root.dataset.query = normalizeHomeStoreQuery(searchInput.value);
 
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
             const readyHeading = document.createElement("h3");
@@ -5153,7 +5189,9 @@ const version = beginSearch(session);
                 groupHeading.id = `sw-home-store-group-heading-${orderedGroups.indexOf(label)}`;
                 groupHeading.dataset.group = label;
                 groupHeading.dataset.collapsed = String(collapsedGroups.has(label));
+                groupHeading.setAttribute("aria-label", `${label} · ${cards.length}`);
                 const groupLabel = document.createElement("span");
+                groupLabel.className = "sw-home-store__group-label";
                 groupLabel.textContent = `${label} · ${cards.length}`;
                 const groupToggle = document.createElement("button");
                 groupToggle.type = "button";
@@ -5161,6 +5199,8 @@ const version = beginSearch(session);
                 groupToggle.textContent = collapsedGroups.has(label) ? "＋" : "－";
                 groupToggle.setAttribute("aria-label", collapsedGroups.has(label) ? this.i18n.homeStoreExpandGroup : this.i18n.homeStoreCollapseGroup);
                 groupToggle.setAttribute("aria-expanded", String(!collapsedGroups.has(label)));
+                groupToggle.dataset.group = label;
+                groupToggle.title = groupToggle.getAttribute("aria-label") || "";
                 groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
                 groupHeading.append(groupLabel, groupToggle);
                 root.appendChild(groupHeading);
@@ -5184,6 +5224,7 @@ const version = beginSearch(session);
                 pendingHeading.id = "sw-home-store-section-pending";
                 pendingHeading.dataset.section = "pending";
                 pendingHeading.textContent = this.i18n.homeStorePending;
+                pendingHeading.setAttribute("aria-label", this.i18n.homeStorePending);
                 root.appendChild(pendingHeading);
                 const pendingGrid = document.createElement("div");
                 pendingGrid.className = "sw-home-store__grid";
@@ -5203,6 +5244,7 @@ const version = beginSearch(session);
                     card.dataset.integration = "unknown";
                     card.dataset.added = unavailable ? "true" : "false";
                     card.dataset.statusTone = unavailable ? "warning" : "info";
+                    card.dataset.status = unavailable ? "unavailable" : "requires-provider";
                     card.setAttribute("aria-label", `${entry.title} · ${unavailable ? this.i18n.homeStoreProviderUnavailable : this.i18n.homeStoreRequires}`);
                     const head = document.createElement("div");
                     head.className = "sw-home-store__card-head";
@@ -5228,6 +5270,7 @@ const version = beginSearch(session);
                         const removeButton = document.createElement("button");
                         removeButton.type = "button";
                         removeButton.className = "b3-button b3-button--text sw-home-store__remove-unavailable";
+                        removeButton.dataset.action = "remove-unavailable";
                         removeButton.textContent = this.i18n.homeStoreRemoveUnavailable;
                         removeButton.setAttribute("aria-label", `${this.i18n.homeStoreRemoveUnavailable} · ${entry.title}`);
                         removeButton.title = removeButton.getAttribute("aria-label") || "";
@@ -5253,17 +5296,22 @@ const version = beginSearch(session);
             filterEmptyState = document.createElement("p");
             filterEmptyState.className = "sw-home-store__filter-empty fn__none";
             filterEmptyState.setAttribute("role", "status");
+            filterEmptyState.setAttribute("aria-live", "polite");
+            filterEmptyState.setAttribute("aria-atomic", "true");
             const emptyText = document.createElement("span");
             emptyText.textContent = this.i18n.homeStoreNoResults;
             const clearFilters = document.createElement("button");
             clearFilters.type = "button";
             clearFilters.className = "b3-button b3-button--text sw-home-store__clear-filters";
+            clearFilters.dataset.action = "clear-filters";
             clearFilters.textContent = this.i18n.homeStoreClearFilters;
             clearFilters.setAttribute("aria-label", this.i18n.homeStoreClearFilters);
             clearFilters.title = this.i18n.homeStoreClearFilters;
             clearFilters.addEventListener("click", () => {
                 storeQuery = "";
                 storeTab = "all";
+                root.dataset.query = "";
+                root.dataset.activeTab = "all";
                 searchInput.value = "";
                 clearSearchButton.hidden = true;
                 sortSelect.value = normalizeHomeStoreSort(storeSort);
