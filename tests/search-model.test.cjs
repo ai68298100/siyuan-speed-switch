@@ -125,6 +125,15 @@ test("search model: local tabs match title/path and preserve original tab refere
     assert.equal(filterOpenTabs([tabA, tabB], "" ).length, 2);
 });
 
+test("search model: local tab metadata cache invalidates when display fields change", () => {
+    const tab = {id: "tab-cache", rootId: ROOT_A, title: "旧标题", path: "工作/旧标题"};
+    assert.equal(filterOpenTabs([tab], "旧标题").length, 1);
+    tab.title = "新标题";
+    tab.path = "工作/新标题";
+    assert.equal(filterOpenTabs([tab], "旧标题").length, 0);
+    assert.equal(filterOpenTabs([tab], "新标题").length, 1);
+});
+
 test("search model: loose keyword gate stays consistent with emitted heavy fields", () => {
     // 无标题/路径时按 rootId 兜底匹配：轻量门禁与重型产出必须一致
     const bare = {id: "tab-bare", rootId: ROOT_A};

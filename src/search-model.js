@@ -20,6 +20,10 @@ const MAX_RAW_RESULTS = 5000;
 const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
     ? new Intl.Segmenter()
     : null;
+// Local tab objects live for the lifetime of a switcher surface. Cache only
+// their normalized display metadata so empty-query refreshes do not repeatedly
+// pay the grapheme-segmentation cost; WeakMap avoids retaining closed tabs.
+const TAB_META_CACHE = new WeakMap();
 const UNORDERED_FILTER_KEYS = new Set([
     "boxes", "idPath", "notebookIds", "notebooks", "pathIds", "paths", "subTypes", "subtypes", "types",
 ]);
@@ -407,6 +411,31 @@ function looseNeedle(text) {
         .toLowerCase();
 }
 
+function tabMetaSignature(tab, index) {
+    return [
+        tab.rootId, tab.rootID, tab.root_id, tab.documentId, tab.docId,
+        tab.hPath, tab.path, tab.rootPath, tab.title, tab.name, tab.label,
+        tab.notebookId, tab.notebookID, tab.box, tab.updated, tab.updatedAt, tab.id, index,
+    ].map((value) => `${typeof value}:${value ?? ""}`).join("\u0001");
+}
+
+function buildTabMeta(tab, index) {
+    const signature = tabMetaSignature(tab, index);
+    const cached = TAB_META_CACHE.get(tab);
+    if (cached && cached.signature === signature) return cached.value;
+    const rootId = tabRootId(tab);
+    const path = firstText(tab.hPath, tab.path, tab.rootPath);
+    const value = {
+        rootId: rootId || null,
+        path,
+        title: tabTitle(tab, rootId || String(tab.id || index)),
+        notebookId: resolveSearchNotebookId(tab),
+        updated: firstText(tab.updated, tab.updatedAt),
+    };
+    TAB_META_CACHE.set(tab, {signature, value});
+    return value;
+}
+
 /**
  * Filter only local tab metadata. This function never performs I/O and keeps
  * the original tab object on each item so adapters can activate it directly.
@@ -430,19 +459,16 @@ function filterOpenTabs(tabs, query, filters = {}) {
             const loose = looseNeedle(`${looseTitle} ${loosePath}`);
             if (!loose.includes(keyword)) return;
         }
-        const rootId = tabRootId(tab);
-        const path = firstText(tab.hPath, tab.path, tab.rootPath);
-        const title = tabTitle(tab, rootId || String(tab.id || index));
-        const notebookId = resolveSearchNotebookId(tab);
-        if (notebook && notebookId !== notebook) return;
+        const meta = buildTabMeta(tab, index);
+        if (notebook && meta.notebookId !== notebook) return;
         items.push({
             kind: "tab",
-            rootId: rootId || null,
+            rootId: meta.rootId,
             tab,
-            title,
-            path,
-            notebookId,
-            updated: firstText(tab.updated, tab.updatedAt),
+            title: meta.title,
+            path: meta.path,
+            notebookId: meta.notebookId,
+            updated: meta.updated,
             source: "tabs",
         });
     });
