@@ -107,7 +107,8 @@ test('production bundle remains within the mobile performance budget when built'
     // package.zip remains below the 300 KiB hard ceiling.
     // 2026-09-14 (38): 387 KiB for report-history trimming and aggregation.
     // 2026-09-14 (39): 388 KiB for bounded report-window transport helpers.
-    const budget = 388 * 1024;
+    // 2026-09-14 (40): 389 KiB for report envelope validation contracts.
+    const budget = 389 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

@@ -1,5 +1,9 @@
 # 决策
 
+- D-252（2026-09-14）：报告 envelope 验证使 raw bundle 达 398,027 bytes，较 388 KiB 自律线超出 715 bytes；按真实增量校准至 389 KiB，`package.zip` 261,907 bytes，300 KiB 硬上限余量 44,093 bytes。
+
+- D-251（2026-09-14）：容量报告验证器固定 reason 枚举（invalid_input/invalid_version/health_missing/trend_missing/summary_missing/invalid_trend/invalid_summary/ok），不暴露报告内容，仅校验 envelope 形状和摘要桶数量。
+
 - D-250（2026-09-14）：报告窗口验证器仅输出 `valid/reason/size` 三字段；reason 固定为 invalid_input/reports_missing/reports_overflow/invalid_bounds/bounds_order/invalid_truncated/ok，避免暴露样本内容。
 
 - D-249（2026-09-14）：报告窗口传输辅助使 raw bundle 达 396,667 bytes，较 387 KiB 自律线超出 379 bytes；校准至 388 KiB，`package.zip` 261,603 bytes，300 KiB 硬上限余量 44,997 bytes。

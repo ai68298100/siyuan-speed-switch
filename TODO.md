@@ -596,6 +596,30 @@
 
 ## 待维护者决策
 
+- [x] T-835 报告验证函数
+- [x] T-836 version 校验
+- [x] T-837 health 区段校验
+- [x] T-838 trend 区段校验
+- [x] T-839 summary 区段校验
+- [x] T-840 invalid_input reason
+- [x] T-841 invalid_version reason
+- [x] T-842 health_missing reason
+- [x] T-843 trend_missing reason
+- [x] T-844 summary_missing reason
+- [x] T-845 invalid_trend reason
+- [x] T-846 invalid_summary reason
+- [x] T-847 报告样本白名单
+- [x] T-848 报告字段固定
+- [x] T-849 报告验证纯函数
+- [x] T-850 完整报告回归
+- [x] T-851 缺失区段回归
+- [x] T-852 版本边界回归
+- [x] T-853 决策 D-251 落档
+- [x] T-854 状态文档同步
+
+  - 状态：done（2026-09-14）
+  - 证据：`src/util.js`、`tests/util.test.cjs`、`tests/storage-capacity-limits.test.cjs`
+
 - [x] T-815 窗口验证函数
 - [x] T-816 输入对象校验
 - [x] T-817 reports 字段校验
