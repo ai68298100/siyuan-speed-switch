@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -74,6 +74,21 @@ test('serializeStorageCapacitySnapshot does not mutate source objects', () => {
     const before = JSON.stringify(source);
     serializeStorageCapacitySnapshot(source);
     assert.equal(JSON.stringify(source), before);
+});
+
+test('parseStorageCapacitySnapshot restores valid serialized snapshots', () => {
+    const input = {favorites: {used: 9, max: 10, status: 'ok'}};
+    assert.deepEqual(parseStorageCapacitySnapshot(serializeStorageCapacitySnapshot(input)), normalizeStorageCapacitySnapshot(input));
+});
+
+test('parseStorageCapacitySnapshot safely handles invalid JSON and non-strings', () => {
+    const empty = normalizeStorageCapacitySnapshot({});
+    assert.deepEqual(parseStorageCapacitySnapshot('{bad'), empty);
+    assert.deepEqual(parseStorageCapacitySnapshot(null), empty);
+});
+
+test('parseStorageCapacitySnapshot rejects oversized payloads before parsing', () => {
+    assert.deepEqual(parseStorageCapacitySnapshot('x'.repeat(256001)), normalizeStorageCapacitySnapshot({}));
 });
 
 // ── clampNum ──

@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -121,4 +121,12 @@ test('capacity: serialized snapshot preserves fixed bucket order', () => {
     const serialized = serializeStorageCapacitySnapshot({favoriteGroups: {used: 1, max: 64}});
     assert.ok(serialized.indexOf('"favorites"') < serialized.indexOf('"pinned"'));
     assert.ok(serialized.indexOf('"pinned"') < serialized.indexOf('"favoriteGroups"'));
+});
+
+test('capacity: parse/serialize round trip keeps all buckets bounded', () => {
+    const source = {favorites: {used: 512, max: 512}, pinned: {used: 64, max: 64}, favoriteGroups: {used: 64, max: 64}};
+    const parsed = parseStorageCapacitySnapshot(serializeStorageCapacitySnapshot(source));
+    assert.equal(parsed.favorites.status, 'near');
+    assert.equal(parsed.pinned.status, 'near');
+    assert.equal(parsed.favoriteGroups.status, 'near');
 });

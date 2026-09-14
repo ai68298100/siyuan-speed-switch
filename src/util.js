@@ -390,6 +390,18 @@ function serializeStorageCapacitySnapshot(input) {
     return JSON.stringify(normalized);
 }
 
+/** Parse a serialized capacity snapshot and normalize untrusted payloads. */
+function parseStorageCapacitySnapshot(serialized) {
+    if (typeof serialized !== "string" || serialized.length > 256000) {
+        return normalizeStorageCapacitySnapshot({});
+    }
+    try {
+        return normalizeStorageCapacitySnapshot(JSON.parse(serialized));
+    } catch (_error) {
+        return normalizeStorageCapacitySnapshot({});
+    }
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -641,4 +653,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
