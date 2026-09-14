@@ -263,6 +263,10 @@
 
 2026-09-15 本轮最终验证：2923/2923 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 512849 bytes、`dist/index.css` 130723 bytes、`package.zip` 304653 bytes。即将同步至本地集市目录，仍不执行远端 push。
 
+2026-09-15 本轮完成 T-3365~T-3394（30 项）：组件商店真实预览弹窗补齐 moduleId/device/size 语义、aria-busy/live 状态、真实 controller 强制刷新、断连轮询、统一销毁和触发焦点恢复，并新增 30 项预览生命周期契约回归。
+
+2026-09-15 本轮最终验证：2954/2954 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 513367 bytes、`dist/index.css` 130723 bytes、`package.zip` 304800 bytes。预览修复产物即将同步至本地集市目录，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

@@ -1406,6 +1406,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     private openStoreWidgetPreview(moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile") {
+        const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
         const sizeKey = sizes.includes("medium") ? "medium" : sizes[0];
         const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
@@ -1417,8 +1418,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
         if (!container) return;
+        container.dataset.moduleId = moduleId;
+        container.dataset.device = device;
+        container.dataset.size = sizeKey;
+        container.setAttribute("role", "region");
+        container.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
+        container.setAttribute("aria-busy", "true");
         const body = document.createElement("div");
         body.className = "sw-store-preview__body";
+        body.setAttribute("role", "status");
+        body.setAttribute("aria-live", "polite");
         container.appendChild(body);
         let controller: ReturnType<typeof createHomeModuleController> | null = null;
         controller = createHomeModuleController({
@@ -1451,13 +1460,29 @@ export default class SpeedSwitchPlugin extends Plugin {
                 })();
             },
         });
+        let disposed = false;
+        let disposeTimer = 0;
+        const disposePreview = () => {
+            if (disposed) return;
+            disposed = true;
+            controller?.dispose();
+            if (disposeTimer) window.clearInterval(disposeTimer);
+            if (opener?.isConnected) opener.focus();
+        };
+        const originalDestroy = dialog.destroy.bind(dialog);
+        dialog.destroy = () => {
+            disposePreview();
+            originalDestroy();
+        };
         controller.mount();
-        void controller.refresh({}, {force: true});
+        const markPreviewReady = () => {
+            if (!disposed) container.setAttribute("aria-busy", "false");
+        };
+        void controller.refresh({}, {force: true}).then(markPreviewReady, markPreviewReady);
         // 宿主 Dialog 关闭无回调：轮询断连即释放控制器，避免悬空读取
-        const disposeTimer = window.setInterval(() => {
+        disposeTimer = window.setInterval(() => {
             if (!dialog.element.isConnected) {
-                controller?.dispose();
-                window.clearInterval(disposeTimer);
+                disposePreview();
             }
         }, 1500);
     }

@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 
 test("widget store previews refresh real data and separate size selection from commit", () => {
-    assert.match(source, /controller\.mount\(\);\s*void controller\.refresh\(\{\}, \{force: true\}\);/);
+    assert.match(source, /controller\.mount\(\);\s*const markPreviewReady = \(\) =>/);
     assert.match(source, /homeStoreApplySize/);
     assert.match(source, /homeStoreAdd/);
     assert.match(source, /tile\.dataset\.size = sizeKey/);
