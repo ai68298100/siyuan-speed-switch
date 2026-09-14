@@ -3,6 +3,8 @@
 const WEATHER_CONDITIONS = Object.freeze(["clear", "cloudy", "fog", "rain", "snow", "storm"]);
 const TEMPERATURE_UNITS = Object.freeze(["°C", "°F"]);
 const BANGUMI_DAY_RANGES = Object.freeze(["今天", "明天", "本周"]);
+const EXTERNAL_FEED_PROVIDERS = Object.freeze(["dailyhot", "newsnow"]);
+const DAILYHOT_ROUTES = Object.freeze(["weibo", "zhihu", "bilibili", "baidu", "douyin", "douban-movie", "ithome", "36kr", "sspai", "v2ex"]);
 
 function boundedText(value, max = 128) {
     return typeof value === "string"
@@ -292,10 +294,121 @@ function buildBangumiSnapshot(payload, config, labels = {}, now = Date.now()) {
     };
 }
 
+function normalizeFeedConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const requestedLimit = Math.trunc(Number(source.limit));
+    return {
+        endpoint: boundedText(source.endpoint, 512),
+        limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
+        showHot: source.showHot !== "否" && source.showHot !== false,
+    };
+}
+
+function isLocalFeedHost(hostname) {
+    const host = String(hostname || "").toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
+}
+
+function normalizeConfiguredFeedUrl(value, provider) {
+    const kind = EXTERNAL_FEED_PROVIDERS.includes(provider) ? provider : "";
+    const raw = boundedText(value, 512);
+    if (!kind || !raw) return "";
+    try {
+        const url = new URL(raw);
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && isLocalFeedHost(url.hostname)))
+            || url.username || url.password || url.hash) return "";
+        if (kind === "dailyhot") {
+            const match = url.pathname.match(/^\/(?:api\/)?([a-z0-9-]{2,32})\/?$/);
+            if (!match || !DAILYHOT_ROUTES.includes(match[1]) || url.search) return "";
+        } else {
+            if (url.pathname.replace(/\/$/, "") !== "/api/s") return "";
+            const entries = [...url.searchParams.entries()];
+            if (entries.length !== 1 || entries[0][0] !== "id" || !/^[a-z0-9-]{2,48}$/.test(entries[0][1])) return "";
+        }
+        return url.href;
+    } catch (_) {
+        return "";
+    }
+}
+
+function normalizeExternalItemHref(value) {
+    const raw = boundedText(value, 512);
+    if (!raw) return "";
+    try {
+        const url = new URL(raw);
+        return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : "";
+    } catch (_) {
+        return "";
+    }
+}
+
+function normalizeFeedTimestamp(value, fallback = 0) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric < 100000000000 ? numeric * 1000 : numeric;
+    const parsed = typeof value === "string" ? Date.parse(value) : NaN;
+    return Number.isFinite(parsed) ? parsed : (Number.isFinite(Number(fallback)) ? Number(fallback) : 0);
+}
+
+function normalizeExternalFeedPayload(payload, provider, limit = 8) {
+    if (!EXTERNAL_FEED_PROVIDERS.includes(provider) || !payload || typeof payload !== "object") return null;
+    const requested = Math.min(12, Math.max(3, Math.trunc(Number(limit)) || 8));
+    const rawItems = Array.isArray(payload.data) ? payload.data : (Array.isArray(payload.items) ? payload.items : []);
+    const seen = new Set();
+    const items = rawItems.slice(0, 48).reduce((result, raw, index) => {
+        const title = boundedText(raw?.title || raw?.name, 160);
+        const href = normalizeExternalItemHref(raw?.url || raw?.mobileUrl || raw?.link);
+        const key = href || boundedText(raw?.id, 96) || title;
+        if (!title || !key || seen.has(key) || result.length >= requested) return result;
+        seen.add(key);
+        const hot = typeof raw?.hot === "string" || Number.isFinite(Number(raw?.hot)) ? boundedText(String(raw.hot), 32) : "";
+        const publishedAt = normalizeFeedTimestamp(raw?.pubDate || raw?.timestamp || raw?.date, 0);
+        result.push({title, href, hot, publishedAt, rank: index + 1});
+        return result;
+    }, []);
+    const updatedAt = normalizeFeedTimestamp(payload.updateTime || payload.updatedTime, 0);
+    return {
+        title: boundedText(payload.title || payload.name || payload.id, 64),
+        items,
+        updatedAt,
+        upstreamCached: payload.fromCache === true || payload.from === "cache" || payload.status === "cache",
+    };
+}
+
+function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
+    const normalizedConfig = normalizeFeedConfig(config);
+    const feed = normalizeExternalFeedPayload(envelope?.payload, provider, normalizedConfig.limit);
+    if (!feed) return null;
+    const sourceName = provider === "newsnow" ? "NewsNow" : "DailyHotApi";
+    const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
+    const items = feed.items.map((item) => ({
+        label: item.title,
+        value: "",
+        href: item.href,
+        rank: item.rank,
+        secondary: normalizedConfig.showHot && item.hot
+            ? `${boundedText(labels.hot, 16) || "热度"} ${item.hot}`
+            : "",
+    }));
+    items.push({
+        label: `${boundedText(labels.source, 32) || "数据来源"}：${sourceName}`,
+        value: "",
+        href: provider === "newsnow" ? "https://github.com/ourongxing/newsnow" : "https://github.com/imsyy/DailyHotApi",
+    });
+    return {
+        title: feed.title || sourceName,
+        items,
+        emptyHint: items.length === 1 ? (boundedText(labels.empty, 96) || "当前来源暂无内容") : "",
+        updatedAt: feed.updatedAt || normalizeFeedTimestamp(envelope?.fetchedAt, Date.now()),
+        sourceHealth: health === "fresh" && feed.upstreamCached ? "cached" : health,
+    };
+}
+
 module.exports = {
     WEATHER_CONDITIONS,
     TEMPERATURE_UNITS,
     BANGUMI_DAY_RANGES,
+    EXTERNAL_FEED_PROVIDERS,
+    DAILYHOT_ROUTES,
     normalizeWeatherConfig,
     normalizeWeatherLocale,
     buildWeatherGeocodingUrl,
@@ -313,4 +426,11 @@ module.exports = {
     normalizeBangumiCover,
     normalizeBangumiCalendar,
     buildBangumiSnapshot,
+    normalizeFeedConfig,
+    isLocalFeedHost,
+    normalizeConfiguredFeedUrl,
+    normalizeExternalItemHref,
+    normalizeFeedTimestamp,
+    normalizeExternalFeedPayload,
+    buildExternalFeedSnapshot,
 };

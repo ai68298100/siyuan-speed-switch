@@ -1,4 +1,6 @@
 # 决策
+- D-310（2026-09-14）：DailyHotApi/NewsNow 不内置第三方公共演示地址，只接受用户填写的完整端点；远程端点必须 HTTPS，本机 loopback 可用 HTTP。DailyHot 仅放行已审计热榜路由且禁止 query，NewsNow 仅放行单一 `id` 的 `/api/s`；不支持凭据、任意路径或透传额外参数。组件未配置时零联网，成功缓存 30 分钟，来源失败时显式展示过期缓存而不影响其他组件。
+- D-309（2026-09-14）：两类用户端点 feed、来源健康、排行卡 UI 与安全回归使 raw bundle 达 488352 bytes，较 472 KiB 自律线超出 5024 bytes；按真实功能增量校准至 480 KiB。生产图仍为 31，`package.zip` 为 292225 bytes，继续低于 300 KiB 硬上限并保留 14975 bytes 余量。
 - D-304（2026-09-14）：内置月历参考 `gradypark86/siyuan-plugin-calendar` 的月份导航、完整六周、日记标记和日记属性识别，但不引入其 Vue/Day.js 运行时或复制组件源码；在现有轻量 Home 协议中独立实现。日记定位以思源 `custom-dailynote-YYYYMMDD` 属性为主、`YYYY-MM-DD` 标题为兼容回退，确保自定义日记路径/标题仍可识别。
 - D-305（2026-09-14）：完整 42 格月历、日记属性查询和日期状态渲染使 raw bundle 达 459745 bytes，较 448 KiB 自律线超出 993 bytes；按真实功能增量校准至 450 KiB。`package.zip` 为 278551 bytes，仍低于 300 KiB 硬上限并保留 28649 bytes 余量。
 - D-306（2026-09-14）：非思源数据组件建立独立“生活信息”来源层；目录必须声明 provider、license/terms、auth、integration、privacy 和 platforms。没有完成配置或本地桥接时不允许伪装为可添加组件，公共演示端点不作为稳定性承诺。

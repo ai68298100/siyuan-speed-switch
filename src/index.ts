@@ -27,8 +27,8 @@ import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, clearLifeWidgetCaches} from "./life-widget-network";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -1411,6 +1411,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 expand: this.i18n.homeExpand,
                 cached: this.i18n.homeCached,
                 updated: this.i18n.homeUpdated,
+                sourceFresh: this.i18n.homeSourceFresh,
+                sourceCached: this.i18n.homeSourceCached,
+                sourceStale: this.i18n.homeSourceStale,
             },
             calendarWeekdays: this.i18n.homeCalendarWeekdays,
             onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
@@ -3578,6 +3581,26 @@ const version = beginSearch(session);
             if (snapshot.items.length === 1) return {title: snapshot.title, emptyHint: this.i18n.homeBangumiEmpty, items: [], updatedAt: snapshot.updatedAt};
             return snapshot;
         }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
+        // 用户端点资讯源：默认配置为空时完全不联网。端点仅允许 HTTPS（本机可用 HTTP），
+        // 且必须符合 DailyHotApi/NewsNow 的已知只读路由；网络失败时保留并标记过期缓存。
+        const registerExternalFeed = (moduleId: string, provider: "dailyhot" | "newsnow", title: string, icon: string, description: string) => {
+            register(moduleId, title, icon, description, [], async (config, _device, context) => {
+                const normalized = normalizeFeedConfig(config);
+                const endpoint = normalizeConfiguredFeedUrl(normalized.endpoint, provider);
+                if (!endpoint) return {emptyHint: this.i18n.homeFeedConfigHint, items: []};
+                const envelope = await loadConfiguredFeed(endpoint, {signal: context?.signal});
+                const snapshot = buildExternalFeedSnapshot(envelope, normalized, provider, {
+                    hot: this.i18n.homeFeedHot,
+                    source: this.i18n.homeFeedSource,
+                    empty: this.i18n.homeFeedEmpty,
+                });
+                if (!snapshot) throw new Error("invalid_external_feed");
+                if (snapshot.items.length === 1) return {...snapshot, items: []};
+                return snapshot;
+            }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
+        };
+        registerExternalFeed("external-hot-news-dailyhot", "dailyhot", this.i18n.homeDailyHot, "iconGraph", this.i18n.homeDescDailyHot);
+        registerExternalFeed("external-news-newsnow", "newsnow", this.i18n.homeNewsNow, "iconList", this.i18n.homeDescNewsNow);
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
@@ -4521,6 +4544,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupDocuments, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
                 {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time", "external-weather-open-meteo", "external-anime-bangumi"]},
+                {label: this.i18n.homeStoreGroupNews, moduleIds: ["external-hot-news-dailyhot", "external-news-newsnow"]},
                 {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
                 {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
                 {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
@@ -4604,7 +4628,9 @@ const version = beginSearch(session);
                         ? this.i18n.homeStorePrivacyLocation
                         : externalInfo.privacy === "local-only"
                             ? this.i18n.homeStorePrivacyLocal
-                            : this.i18n.homeStorePrivacyNone;
+                            : externalInfo.privacy === "endpoint-only"
+                                ? this.i18n.homeStorePrivacyEndpoint
+                                : this.i18n.homeStorePrivacyNone;
                     addChip(privacyLabel, "privacy");
                     copy.appendChild(sourceMeta);
                 }
@@ -4623,6 +4649,8 @@ const version = beginSearch(session);
                     preview.innerHTML = '<span class="p-weather-temp">21°</span><span class="p-weather-icon">⛅</span><span class="p-weather-days"><i></i><i></i><i></i></span>';
                 } else if (kind === "media") {
                     preview.innerHTML = '<span class="p-media-grid"><i></i><i></i><i></i><i></i></span>';
+                } else if (kind === "feed") {
+                    preview.innerHTML = '<span class="p-feed-list"><i><b>1</b><em></em></i><i><b>2</b><em></em></i><i><b>3</b><em></em></i></span>';
                 } else if (kind === "tasks") {
                     preview.innerHTML = `<span class="p-task-list"><i></i><i></i><i></i></span>`;
                 } else if (kind === "outline" || kind === "documents") {
@@ -4685,10 +4713,12 @@ const version = beginSearch(session);
                     const next = this.getHomeState();
                     const layoutList = (next.layouts[device] || []) as Array<any>;
                     const entry = added && layoutList.find((candidate) => candidate.instanceId === added.instanceId);
+                    let createdInstance: {instanceId: string; moduleId: string; config: Record<string, unknown>} | null = null;
                     if (entry) {
                         Object.assign(entry, {size: sizeKey, w, h});
                     } else {
-                        (next.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
+                        createdInstance = {instanceId: moduleId, moduleId, config: {}};
+                        (next.instances as Array<any>).push({...createdInstance, enabled: true});
                         layoutList.push({instanceId: moduleId, x: 0, y: 0, w, h, collapsed: false, size: sizeKey});
                     }
                     next.layouts[device] = layoutList;
@@ -4698,6 +4728,12 @@ const version = beginSearch(session);
                     }
                     renderStore();
                     onChanged();
+                    if (createdInstance && Array.isArray(def.configSchema) && def.configSchema.length > 0) {
+                        this.openHomeConfigForm(createdInstance, def.configSchema, () => {
+                            renderStore();
+                            onChanged();
+                        });
+                    }
                 };
                 tiles.appendChild(addButton);
                 if (addedInstance && Array.isArray(def.configSchema) && def.configSchema.length > 0) {
@@ -5103,6 +5139,9 @@ const version = beginSearch(session);
                         expand: this.i18n.homeExpand,
                         cached: this.i18n.homeCached,
                         updated: this.i18n.homeUpdated,
+                        sourceFresh: this.i18n.homeSourceFresh,
+                        sourceCached: this.i18n.homeSourceCached,
+                        sourceStale: this.i18n.homeSourceStale,
                         previousMonth: this.i18n.homeCalendarPreviousMonth,
                         nextMonth: this.i18n.homeCalendarNextMonth,
                         today: this.i18n.homeCalendarToday,
@@ -5389,7 +5428,7 @@ const version = beginSearch(session);
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi"]);
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow"]);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });

@@ -121,6 +121,7 @@ function normalizeSnapshot(value, options = {}) {
         if (secondary) entry.secondary = secondary;
         // 协议 v2.2：count 为非负整数（如标签出现次数），渲染为行内比例条
         if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));
+        if (Number.isFinite(item.rank) && item.rank > 0) entry.rank = Math.min(9999, Math.trunc(item.rank));
         if (typeof item.done === "boolean") entry.done = item.done;
         if (item.outside === true) entry.outside = true;
         if (["off", "work"].includes(item.holiday)) entry.holiday = item.holiday;
@@ -134,6 +135,7 @@ function normalizeSnapshot(value, options = {}) {
         ? {value: safeText(statRaw.value, 32), label: safeText(statRaw.label, 32), progress: Number.isFinite(statRaw.progress) ? Math.min(100, Math.max(0, statRaw.progress)) : null}
         : null;
     const snapshot = {title: safeText(value.title, 64), items, stat, updatedAt: Number.isFinite(value.updatedAt) ? value.updatedAt : 0, empty: items.length === 0};
+    if (["fresh", "cached", "stale"].includes(value.sourceHealth)) snapshot.sourceHealth = value.sourceHealth;
     const emptyHint = safeText(value.emptyHint, 96);
     if (emptyHint) snapshot.emptyHint = emptyHint;
     return snapshot;

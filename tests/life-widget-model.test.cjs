@@ -120,3 +120,46 @@ test("Bangumi snapshot includes source attribution", () => assert.equal(model.bu
 test("Bangumi snapshot omits covers when configured", () => assert.equal(model.buildBangumiSnapshot(bangumiCalendar, {showCovers: "否"}, {}, new Date(2026, 8, 14, 12)).items[0].image, undefined));
 test("Bangumi snapshot uses localized range labels", () => assert.match(model.buildBangumiSnapshot(bangumiCalendar, {}, {today: "Airing"}, new Date(2026, 8, 14, 12)).title, /^Airing/));
 test("Bangumi snapshot rejects malformed payloads", () => assert.equal(model.buildBangumiSnapshot({}, {}, {}), null));
+
+const dailyHotPayload = {
+    title: "微博热搜", updateTime: "2026-09-14T12:00:00Z", fromCache: false,
+    data: [
+        {id: "a", title: "事件 A", url: "https://example.com/a", hot: 12345},
+        {id: "b", title: "事件 B", mobileUrl: "https://example.com/b", hot: "热"},
+    ],
+};
+const newsNowPayload = {id: "zhihu", items: [{id: "n1", title: "资讯一", url: "https://example.com/n1"}]};
+
+test("feed config defaults to eight items", () => assert.equal(model.normalizeFeedConfig({}).limit, 8));
+test("feed config clamps low limits", () => assert.equal(model.normalizeFeedConfig({limit: 1}).limit, 3));
+test("feed config clamps high limits", () => assert.equal(model.normalizeFeedConfig({limit: 99}).limit, 12));
+test("feed config hides heat explicitly", () => assert.equal(model.normalizeFeedConfig({showHot: "否"}).showHot, false));
+test("feed config bounds endpoint text", () => assert.equal(model.normalizeFeedConfig({endpoint: "x".repeat(600)}).endpoint.length, 512));
+test("configured DailyHot accepts a known API route", () => assert.equal(model.normalizeConfiguredFeedUrl("https://hot.example/api/weibo", "dailyhot"), "https://hot.example/api/weibo"));
+test("configured DailyHot accepts a legacy root route", () => assert.equal(model.normalizeConfiguredFeedUrl("https://hot.example/zhihu", "dailyhot"), "https://hot.example/zhihu"));
+test("configured DailyHot rejects unknown routes", () => assert.equal(model.normalizeConfiguredFeedUrl("https://hot.example/admin", "dailyhot"), ""));
+test("configured DailyHot rejects query parameters", () => assert.equal(model.normalizeConfiguredFeedUrl("https://hot.example/weibo?token=x", "dailyhot"), ""));
+test("configured NewsNow accepts one source id", () => assert.equal(model.normalizeConfiguredFeedUrl("https://news.example/api/s?id=zhihu", "newsnow"), "https://news.example/api/s?id=zhihu"));
+test("configured NewsNow rejects missing source ids", () => assert.equal(model.normalizeConfiguredFeedUrl("https://news.example/api/s", "newsnow"), ""));
+test("configured NewsNow rejects extra query parameters", () => assert.equal(model.normalizeConfiguredFeedUrl("https://news.example/api/s?id=zhihu&x=1", "newsnow"), ""));
+test("configured feeds require HTTPS for remote hosts", () => assert.equal(model.normalizeConfiguredFeedUrl("http://news.example/api/s?id=zhihu", "newsnow"), ""));
+test("configured feeds allow local HTTP development", () => assert.equal(model.normalizeConfiguredFeedUrl("http://127.0.0.1:4444/api/s?id=zhihu", "newsnow"), "http://127.0.0.1:4444/api/s?id=zhihu"));
+test("configured feeds reject embedded credentials", () => assert.equal(model.normalizeConfiguredFeedUrl("https://u:p@news.example/api/s?id=zhihu", "newsnow"), ""));
+test("configured feeds reject fragments", () => assert.equal(model.normalizeConfiguredFeedUrl("https://news.example/api/s?id=zhihu#x", "newsnow"), ""));
+test("external item href accepts web links", () => assert.equal(model.normalizeExternalItemHref("https://example.com/a"), "https://example.com/a"));
+test("external item href rejects executable links", () => assert.equal(model.normalizeExternalItemHref("javascript:alert(1)"), ""));
+test("feed timestamp accepts seconds", () => assert.equal(model.normalizeFeedTimestamp(1700000000), 1700000000000));
+test("feed timestamp accepts ISO dates", () => assert.equal(model.normalizeFeedTimestamp("2026-09-14T12:00:00Z"), Date.parse("2026-09-14T12:00:00Z")));
+test("DailyHot payload reads data arrays", () => assert.equal(model.normalizeExternalFeedPayload(dailyHotPayload, "dailyhot", 8).items.length, 2));
+test("NewsNow payload reads item arrays", () => assert.equal(model.normalizeExternalFeedPayload(newsNowPayload, "newsnow", 8).items[0].title, "资讯一"));
+test("feed payload removes duplicate links", () => {
+    const payload = {data: [{title: "A", url: "https://example.com/a"}, {title: "B", url: "https://example.com/a"}]};
+    assert.equal(model.normalizeExternalFeedPayload(payload, "dailyhot", 8).items.length, 1);
+});
+test("feed payload rejects unknown providers", () => assert.equal(model.normalizeExternalFeedPayload(dailyHotPayload, "other", 8), null));
+test("feed snapshot includes bounded rank", () => assert.equal(model.buildExternalFeedSnapshot({payload: dailyHotPayload, status: "fresh"}, {}, "dailyhot").items[0].rank, 1));
+test("feed snapshot exposes heat when enabled", () => assert.match(model.buildExternalFeedSnapshot({payload: dailyHotPayload}, {}, "dailyhot", {hot: "热度"}).items[0].secondary, /12345/));
+test("feed snapshot hides heat when configured", () => assert.equal(model.buildExternalFeedSnapshot({payload: dailyHotPayload}, {showHot: "否"}, "dailyhot").items[0].secondary, ""));
+test("feed snapshot preserves stale health", () => assert.equal(model.buildExternalFeedSnapshot({payload: dailyHotPayload, status: "stale"}, {}, "dailyhot").sourceHealth, "stale"));
+test("feed snapshot reflects upstream cache", () => assert.equal(model.buildExternalFeedSnapshot({payload: {...dailyHotPayload, fromCache: true}, status: "fresh"}, {}, "dailyhot").sourceHealth, "cached"));
+test("feed snapshot includes official attribution", () => assert.equal(model.buildExternalFeedSnapshot({payload: newsNowPayload}, {}, "newsnow").items.at(-1).href, "https://github.com/ourongxing/newsnow"));

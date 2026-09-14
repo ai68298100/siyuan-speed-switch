@@ -6,6 +6,8 @@ const geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=Beijing&coun
 const weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=1&longitude=2";
 const holidayUrl = "https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/2026.json";
 const bangumiUrl = "https://api.bgm.tv/calendar";
+const dailyHotUrl = "https://hot.example/api/weibo";
+const newsNowUrl = "https://news.example/api/s?id=zhihu";
 const response = (body, options = {}) => ({
     ok: options.ok !== false,
     headers: {get: (name) => name === "content-length" ? String(options.length ?? String(body).length) : null},
@@ -19,6 +21,7 @@ test("network constants keep bounded payloads and TTLs", () => {
     assert.equal(network.WEATHER_TTL_MS, 15 * 60 * 1000);
     assert.equal(network.HOLIDAY_TTL_MS, 24 * 60 * 60 * 1000);
     assert.equal(network.BANGUMI_TTL_MS, 30 * 60 * 1000);
+    assert.equal(network.FEED_TTL_MS, 30 * 60 * 1000);
 });
 test("network allowlist accepts geocoding", () => assert.equal(network.allowedLifeWidgetUrl(geoUrl), true));
 test("network allowlist accepts forecast", () => assert.equal(network.allowedLifeWidgetUrl(weatherUrl), true));
@@ -87,4 +90,42 @@ test("Bangumi loader expires after thirty minutes", async () => {
 });
 test("Bangumi loader shares the bounded fetch policy", async () => {
     await assert.rejects(network.loadBangumiCalendar({fetchImpl: async () => response("x".repeat(network.MAX_RESPONSE_BYTES + 1), {length: 0})}), /response_too_large/);
+});
+test("feed allowlist accepts DailyHot API routes", () => assert.equal(network.allowedConfiguredFeedUrl(dailyHotUrl), true));
+test("feed allowlist accepts DailyHot root routes", () => assert.equal(network.allowedConfiguredFeedUrl("https://hot.example/weibo"), true));
+test("feed allowlist accepts NewsNow source routes", () => assert.equal(network.allowedConfiguredFeedUrl(newsNowUrl), true));
+test("feed allowlist permits HTTP only on localhost", () => assert.equal(network.allowedConfiguredFeedUrl("http://localhost:4444/api/s?id=zhihu"), true));
+test("feed allowlist blocks remote HTTP", () => assert.equal(network.allowedConfiguredFeedUrl("http://news.example/api/s?id=zhihu"), false));
+test("feed allowlist blocks DailyHot queries", () => assert.equal(network.allowedConfiguredFeedUrl(`${dailyHotUrl}?x=1`), false));
+test("feed allowlist blocks NewsNow extra queries", () => assert.equal(network.allowedConfiguredFeedUrl(`${newsNowUrl}&x=1`), false));
+test("feed allowlist blocks unknown paths", () => assert.equal(network.allowedConfiguredFeedUrl("https://hot.example/private"), false));
+test("bounded fetch requires explicit configured-feed permission", async () => assert.rejects(network.fetchBoundedLifeJson(dailyHotUrl, {fetchImpl: async () => response("{}")} ), /blocked_endpoint/));
+test("bounded fetch accepts an allowed configured feed explicitly", async () => assert.deepEqual(await network.fetchBoundedLifeJson(dailyHotUrl, {allowConfiguredFeed: true, fetchImpl: async () => response('{"ok":true}')}), {ok: true}));
+test("bounded fetch refuses redirect following", async () => {
+    let requestOptions = null;
+    await network.fetchBoundedLifeJson(dailyHotUrl, {allowConfiguredFeed: true, fetchImpl: async (_url, options) => { requestOptions = options; return response("{}"); }});
+    assert.equal(requestOptions.redirect, "error");
+});
+test("configured feed loader returns fresh data", async () => assert.equal((await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl: async () => response('{"data":[]}'), now: 100})).status, "fresh"));
+test("configured feed loader reuses fresh cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"data":[]}'); };
+    await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 100});
+    const cached = await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 200});
+    assert.equal(cached.status, "cached");
+    assert.equal(calls, 1);
+});
+test("configured feed loader exposes stale cache after failure", async () => {
+    await network.loadConfiguredFeed(newsNowUrl, {fetchImpl: async () => response('{"items":[{"title":"old"}]}'), now: 100});
+    const stale = await network.loadConfiguredFeed(newsNowUrl, {fetchImpl: async () => { throw new Error("offline"); }, now: 100 + network.FEED_TTL_MS});
+    assert.equal(stale.status, "stale");
+    assert.equal(stale.payload.items[0].title, "old");
+});
+test("configured feed loader fails without a stale cache", async () => assert.rejects(network.loadConfiguredFeed(dailyHotUrl, {fetchImpl: async () => { throw new Error("offline"); }}), /offline/));
+test("configured feed loader force refresh bypasses a fresh cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response(`{"n":${calls}}`); };
+    await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 100});
+    const fresh = await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 200, force: true});
+    assert.equal(fresh.payload.n, 2);
 });

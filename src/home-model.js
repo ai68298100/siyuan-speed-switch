@@ -47,6 +47,16 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条目上限", type: "number", min: 2, max: 12, defaults: 6},
         {key: "showCovers", label: "显示封面", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
+    {moduleId: "external-hot-news-dailyhot", title: "热搜事件", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "endpoint", label: "DailyHotApi 完整接口", type: "text", defaults: ""},
+        {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
+        {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
+    {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
+        {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
+        {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
         {key: "notebook", label: "限定笔记本", type: "notebook"},

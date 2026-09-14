@@ -134,7 +134,10 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (56): 472 KiB for Bangumi schedule normalization, triple
     // cover allowlisting, responsive media cards and store source disclosure;
     // production graph remains 31 and package.zip stays below 300 KiB.
-    const budget = 472 * 1024;
+    // 2026-09-14 (57): 480 KiB for two opt-in user-endpoint feeds, strict
+    // route validation, stale-cache health and ranked responsive cards;
+    // production graph remains 31 and package.zip stays below 300 KiB.
+    const budget = 480 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

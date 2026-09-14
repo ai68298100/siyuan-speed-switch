@@ -98,6 +98,7 @@ function normalizeHomeViewResult(value, options = {}) {
         if (item?.outside === true) entry.outside = true;
         if (["off", "work"].includes(item?.holiday)) entry.holiday = item.holiday;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
+        if (Number.isFinite(item?.rank) && item.rank > 0) entry.rank = Math.min(9999, Math.trunc(item.rank));
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
@@ -109,6 +110,7 @@ function normalizeHomeViewResult(value, options = {}) {
         title: text(rawSnapshot.title, 64),
         ...(text(rawSnapshot.emptyHint, 96) ? {emptyHint: text(rawSnapshot.emptyHint, 96)} : {}),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
+        sourceHealth: ["fresh", "cached", "stale"].includes(rawSnapshot.sourceHealth) ? rawSnapshot.sourceHealth : "",
         stat: rawSnapshot.stat && typeof rawSnapshot.stat === "object"
             ? (() => {
                 const stat = {
@@ -148,6 +150,7 @@ function buildHomeModuleView(module, result, options = {}) {
         cached: normalized.cached,
         reason: normalized.reason,
         updatedAt: normalized.updatedAt,
+        sourceHealth: normalized.sourceHealth,
         items: normalized.items,
         ...(normalized.title ? {contextTitle: normalized.title} : {}),
         ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
@@ -168,6 +171,9 @@ function renderHomeModuleView(doc, view, options = {}) {
         expand: "展开",
         cached: "缓存",
         updated: "更新",
+        sourceFresh: "实时",
+        sourceCached: "缓存源",
+        sourceStale: "过期缓存",
         previousMonth: "上月",
         nextMonth: "下月",
         today: "今天",
@@ -210,6 +216,13 @@ function renderHomeModuleView(doc, view, options = {}) {
         meta.textContent = parts.join(" · ");
         meta.setAttribute("aria-label", meta.textContent);
         heading.appendChild(meta);
+    }
+    if (view.sourceHealth) {
+        const health = doc.createElement("span");
+        health.className = `sw__home-source-health is-${view.sourceHealth}`;
+        health.dataset.health = view.sourceHealth;
+        health.textContent = view.sourceHealth === "fresh" ? labels.sourceFresh : view.sourceHealth === "cached" ? labels.sourceCached : labels.sourceStale;
+        heading.appendChild(health);
     }
     if (view.configurable && options.onConfig) {
         const configButton = doc.createElement("button");
@@ -467,6 +480,13 @@ function renderHomeModuleView(doc, view, options = {}) {
             if (item.href) button.dataset.href = item.href;
             if (item.command) button.dataset.command = item.command;
             button.classList.toggle("is-done", item.done === true);
+            if (Number.isFinite(item.rank) && item.rank > 0) {
+                const rank = doc.createElement("span");
+                rank.className = "sw__home-module-item-rank";
+                rank.textContent = String(item.rank);
+                rank.setAttribute("aria-hidden", "true");
+                button.appendChild(rank);
+            }
             const itemLabel = doc.createElement("span");
             itemLabel.className = "sw__home-module-item-label";
             itemLabel.textContent = item.label || item.value || item.href || "";

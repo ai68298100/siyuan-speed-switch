@@ -14,11 +14,14 @@ const PREVIEW_KINDS = Object.freeze({
     "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown", "flashcard-due": "tasks",
     "random-review": "tasks", "current-document-outline": "outline", "recent-documents": "documents", favorites: "documents",
     "external-local-time": "stat", "external-weather-open-meteo": "weather", "external-anime-bangumi": "media",
+    "external-hot-news-dailyhot": "feed", "external-news-newsnow": "feed",
 });
 const SOURCE_INFO = Object.freeze({
     "external-local-time": Object.freeze({providerName: "SiYuan runtime", integration: "direct", privacy: "local-only"}),
     "external-weather-open-meteo": Object.freeze({providerName: "Open-Meteo", integration: "http", privacy: "location-only"}),
     "external-anime-bangumi": Object.freeze({providerName: "Bangumi", integration: "http", privacy: "none"}),
+    "external-hot-news-dailyhot": Object.freeze({providerName: "DailyHotApi", integration: "http", privacy: "endpoint-only"}),
+    "external-news-newsnow": Object.freeze({providerName: "NewsNow", integration: "http", privacy: "endpoint-only"}),
 });
 
 function boundedText(value, max = 256) {
@@ -111,7 +114,7 @@ function resolveHomeStoreSourceInfo(moduleId) {
 }
 
 function normalizeHomeStorePreviewKind(value) {
-    return ["calendar", "tasks", "stat", "progress", "chart", "countdown", "outline", "documents", "weather", "media", "plugin", "list"].includes(value)
+    return ["calendar", "tasks", "stat", "progress", "chart", "countdown", "outline", "documents", "weather", "media", "feed", "plugin", "list"].includes(value)
         ? value : "list";
 }
 

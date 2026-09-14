@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
 
-> Release note: v0.17.0 passed type checking, production build, 1513 automated tests, and mobile/Chromium UI smoke tests. The current development head adds offline Local Date & Time, an Open-Meteo weather card, an opt-in Chinese-holiday calendar overlay, and a real-cover Bangumi Anime Schedule, bringing the automated matrix to 1711 tests. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: v0.17.0 passed type checking, production build, 1513 automated tests, and mobile/Chromium UI smoke tests. The current development head adds time, weather, holiday calendar overlays, Bangumi Anime Schedule, plus user-endpoint DailyHotApi trends and NewsNow feeds, bringing the automated matrix to 1771 tests. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -176,8 +176,9 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 - A pure catalog records nine researched external-widget candidates with source, licensing/terms, credentials, privacy, platform, and honest availability metadata. Sources without a production adapter are not presented as ready-to-add widgets.
 - Open-Meteo weather now loads only after a city is configured, with an iPad-like gradient, current conditions, feels-like temperature, 2–5 day forecast, endpoint allowlisting, timeouts, response bounds, 15-minute caching, and attribution.
 - Bangumi Anime Schedule now selects today, tomorrow, or the week using the device's local weekday and presents real 3:4 official cover cards with lazy loading, exact endpoint/cover allowlists, and a 30-minute cache. It does not claim personalized recommendations.
-- The journal calendar can optionally show holiday-cn public holidays and adjusted workdays alongside lunar labels. Store cards now disclose source, connectivity, and privacy. The staged trends, media, and activity plan remains documented in [`docs/external-widget-source-audit.md`](docs/external-widget-source-audit.md). The current head contains 30 built-in widgets across 8 functional store groups.
-- The development head passes 1711 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
+- The journal calendar can optionally show holiday-cn public holidays and adjusted workdays alongside lunar labels. Store cards now disclose source, connectivity, and privacy. The staged trends, media, and activity plan remains documented in [`docs/external-widget-source-audit.md`](docs/external-widget-source-audit.md). The current head contains 32 built-in widgets across 9 functional store groups.
+- DailyHotApi **Trending now** and NewsNow **Live news** accept only complete self-hosted endpoints and make no request until configured. Remote endpoints require HTTPS; 128 KiB/8.5-second request bounds, a 30-minute cache, and a visible stale-cache state isolate source failures. Ranked gradient cards retain a compact mobile layout.
+- The development head passes 1771 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
 
 ### v0.17.0 (2026-09-14)
 
@@ -245,7 +246,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 106 `*.test.cjs` files under `tests/` and `tests/host/`, currently 1711 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 106 `*.test.cjs` files under `tests/` and `tests/host/`, currently 1771 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -274,7 +275,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 1711)
+pnpm test               # run every unit, contract, and host release test (currently 1771)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

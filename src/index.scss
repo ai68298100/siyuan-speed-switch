@@ -4619,6 +4619,22 @@
     }
 }
 
+.sw__home-source-health {
+    flex: none;
+    padding: 2px 6px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
+    border-radius: 999px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+
+    &.is-fresh { border-color: color-mix(in srgb, #3b9861 52%, transparent); color: #2f8150; }
+    &.is-cached { border-color: color-mix(in srgb, #4f79bd 52%, transparent); color: #3f68a9; }
+    &.is-stale { border-color: color-mix(in srgb, #d58932 58%, transparent); color: #aa6418; }
+}
+
 .sw-home-store__status {
     display: block;
     margin-top: 3px;
@@ -5144,6 +5160,10 @@
     .p-weather-days i { width: 100%; height: 8px; background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent); }
     .p-media-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 34px; }
     .p-media-grid i { width: 100%; height: 100%; border-radius: 5px; background: linear-gradient(160deg, color-mix(in srgb, var(--b3-theme-primary) 42%, transparent), color-mix(in srgb, #df6f8a 34%, transparent)); }
+    .p-feed-list { display: grid; gap: 5px; }
+    .p-feed-list i { display: grid; grid-template-columns: 13px 1fr; align-items: center; gap: 5px; background: transparent; }
+    .p-feed-list b { display: grid; place-items: center; width: 13px; height: 13px; border-radius: 4px; background: color-mix(in srgb, #ef5a50 74%, transparent); color: #fff; font-size: 7px; }
+    .p-feed-list em { display: block; width: 86%; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--b3-border-color) 75%, transparent); }
     .p-task-list { display: grid; gap: 5px; }
     .p-task-list i { position: relative; width: 80%; height: 7px; margin-left: 14px; }
     .p-task-list i::before { content: ""; position: absolute; left: -12px; top: 0; width: 7px; height: 7px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 60%, transparent); border-radius: 2px; }
@@ -5218,6 +5238,87 @@
     .sw-home-store__tabs { overflow-x: auto; scrollbar-width: thin; }
     .sw-home-store__tab { flex: 0 0 auto; padding-inline: 12px !important; }
     .sw-home-store__card { padding: 11px 12px; }
+}
+
+// 用户配置资讯源：以排行榜式卡片呈现，更接近平板系统的新闻小组件；
+// 来源健康状态始终可见，失败时明确提示正在展示过期缓存。
+.sw-home__cell[data-module-id="external-hot-news-dailyhot"],
+.sw-home__cell[data-module-id="external-news-newsnow"] {
+    overflow: hidden;
+    border-color: color-mix(in srgb, #e06259 48%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 4%, rgba(255, 255, 255, 0.54), transparent 28%),
+        linear-gradient(145deg, color-mix(in srgb, #fff0e8 76%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #f2d6df 58%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #c64742;
+
+    .sw__home-module-list { gap: 3px; }
+    .sw__home-module-item { border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 52%, transparent); }
+    .sw__home-module-item:last-child { border-bottom: 0; }
+    .sw__home-module-item-action {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        align-items: center;
+        gap: 7px;
+        min-height: 34px;
+        padding: 5px 7px;
+        border-left: 0;
+        white-space: normal;
+
+        &::before { display: none; }
+    }
+    .sw__home-module-item-rank {
+        grid-row: 1 / span 2;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: color-mix(in srgb, var(--sw-home-accent) 15%, transparent);
+        color: var(--sw-home-accent);
+        font-size: 10px;
+        font-weight: 750;
+    }
+    .sw__home-module-item:nth-child(-n + 3) .sw__home-module-item-rank {
+        background: var(--sw-home-accent);
+        color: #fff;
+    }
+    .sw__home-module-item-label {
+        min-width: 0;
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sw__home-module-item-secondary {
+        grid-column: 2;
+        color: color-mix(in srgb, var(--sw-home-accent) 72%, var(--b3-theme-on-surface-light));
+        font-size: 9px;
+    }
+    .sw__home-module-item.has-link:last-child .sw__home-module-item-action {
+        display: block;
+        min-height: 24px;
+        padding-block: 4px 1px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 9px;
+        opacity: 0.76;
+    }
+}
+
+.sw-home__cell[data-module-id="external-news-newsnow"] {
+    border-color: color-mix(in srgb, #4d76c7 48%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 4%, rgba(255, 255, 255, 0.54), transparent 28%),
+        linear-gradient(145deg, color-mix(in srgb, #e8f2ff 76%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #dcdafa 58%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #426ab3;
+}
+
+@media (max-width: 560px) {
+    .sw-home__cell[data-module-id="external-hot-news-dailyhot"],
+    .sw-home__cell[data-module-id="external-news-newsnow"] {
+        .sw__home-module-item-action { min-height: 31px; }
+        .sw__home-module-item-label { font-size: 11px; }
+    }
 }
 
 // Bangumi 每日放送：真实封面媒体网格，接近平板系统小组件的信息密度；

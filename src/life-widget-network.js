@@ -5,6 +5,7 @@ const WEATHER_TTL_MS = 15 * 60 * 1000;
 const LOCATION_TTL_MS = 24 * 60 * 60 * 1000;
 const HOLIDAY_TTL_MS = 24 * 60 * 60 * 1000;
 const BANGUMI_TTL_MS = 30 * 60 * 1000;
+const FEED_TTL_MS = 30 * 60 * 1000;
 const responseCache = new Map();
 
 function allowedLifeWidgetUrl(url) {
@@ -23,6 +24,22 @@ function allowedLifeWidgetUrl(url) {
     }
 }
 
+function allowedConfiguredFeedUrl(value) {
+    if (typeof value !== "string" || value.length > 512) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && local)) || url.username || url.password || url.hash) return false;
+        const daily = url.pathname.match(/^\/(?:api\/)?(weibo|zhihu|bilibili|baidu|douyin|douban-movie|ithome|36kr|sspai|v2ex)\/?$/);
+        if (daily) return url.search === "";
+        if (url.pathname.replace(/\/$/, "") !== "/api/s") return false;
+        const entries = [...url.searchParams.entries()];
+        return entries.length === 1 && entries[0][0] === "id" && /^[a-z0-9-]{2,48}$/.test(entries[0][1]);
+    } catch (_) {
+        return false;
+    }
+}
+
 function cacheRead(key, ttl, now = Date.now()) {
     const entry = responseCache.get(key);
     if (!entry || now - entry.at >= ttl) return null;
@@ -36,7 +53,8 @@ function cacheWrite(key, value, now = Date.now()) {
 }
 
 async function fetchBoundedLifeJson(url, options = {}) {
-    if (!allowedLifeWidgetUrl(url)) throw new Error("blocked_endpoint");
+    const configuredFeedAllowed = options.allowConfiguredFeed === true && allowedConfiguredFeedUrl(url);
+    if (!allowedLifeWidgetUrl(url) && !configuredFeedAllowed) throw new Error("blocked_endpoint");
     const fetchImpl = typeof options.fetchImpl === "function" ? options.fetchImpl : globalThis.fetch;
     if (typeof fetchImpl !== "function") throw new Error("unsupported");
     const externalSignal = options.signal && typeof options.signal === "object" ? options.signal : null;
@@ -54,7 +72,10 @@ async function fetchBoundedLifeJson(url, options = {}) {
         rejectTimeout?.(new Error("timeout"));
     }, timeoutMs);
     try {
-        const request = fetchImpl(url, controller ? {signal: controller.signal, headers: {Accept: "application/json"}} : {headers: {Accept: "application/json"}});
+        const requestOptions = controller
+            ? {signal: controller.signal, headers: {Accept: "application/json"}, redirect: "error"}
+            : {headers: {Accept: "application/json"}, redirect: "error"};
+        const request = fetchImpl(url, requestOptions);
         const response = await Promise.race([request, timeout]);
         if (!response?.ok) throw new Error("http_error");
         const declared = Number(response.headers?.get?.("content-length"));
@@ -99,6 +120,24 @@ async function loadBangumiCalendar(options = {}) {
     return cacheWrite("bangumi:calendar", await fetchBoundedLifeJson(url, options), options.now);
 }
 
+async function loadConfiguredFeed(url, options = {}) {
+    if (!allowedConfiguredFeedUrl(url)) throw new Error("blocked_endpoint");
+    const key = `feed:${url}`;
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < FEED_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchBoundedLifeJson(url, {...options, allowConfiguredFeed: true});
+        cacheWrite(key, payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
+
 function clearLifeWidgetCaches() {
     responseCache.clear();
 }
@@ -113,12 +152,15 @@ module.exports = {
     LOCATION_TTL_MS,
     HOLIDAY_TTL_MS,
     BANGUMI_TTL_MS,
+    FEED_TTL_MS,
     allowedLifeWidgetUrl,
+    allowedConfiguredFeedUrl,
     fetchBoundedLifeJson,
     loadWeatherLocation,
     loadWeatherForecast,
     loadHolidayYear,
     loadBangumiCalendar,
+    loadConfiguredFeed,
     clearLifeWidgetCaches,
     lifeWidgetCacheSize,
 };

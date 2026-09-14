@@ -6,12 +6,15 @@ const home = require("../src/home-model.js");
 const catalog = require("../src/widget-catalog.js");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
-const registeredIds = [...source.matchAll(/register\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]);
+const registeredIds = [
+    ...[...source.matchAll(/register\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),
+    ...[...source.matchAll(/registerExternalFeed\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),
+];
 
 test("every built-in widget has exactly one runtime adapter", () => {
     const definitions = home.registerModules([]);
     const builtins = definitions.filter((item) => item.category === "siyuan").map((item) => item.moduleId);
-    assert.equal(builtins.length, 30);
+    assert.equal(builtins.length, 32);
     assert.equal(new Set(builtins).size, builtins.length);
     for (const moduleId of builtins) {
         assert.equal(registeredIds.filter((id) => id === moduleId).length, 1, `${moduleId} adapter registration`);
@@ -72,4 +75,10 @@ test("widget store functional groups cover every built-in exactly once", () => {
         .sort();
     assert.equal(new Set(groupedIds).size, groupedIds.length, "grouped module ids must be unique");
     assert.deepEqual(groupedIds.sort(), builtins);
+});
+
+test("new configurable widgets open setup after the explicit add action", () => {
+    assert.match(source, /let createdInstance:/);
+    assert.match(source, /if \(createdInstance && Array\.isArray\(def\.configSchema\)/);
+    assert.match(source, /this\.openHomeConfigForm\(createdInstance, def\.configSchema/);
 });

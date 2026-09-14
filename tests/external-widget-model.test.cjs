@@ -65,12 +65,12 @@ test("catalog lookup rejects malformed ids", () => assert.equal(model.findExtern
 test("query filter matches provider names", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {query: "Open-Meteo"}).length, 1));
 test("query filter is case insensitive", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {query: "TMDB"}).length, 1));
 test("category filter selects media candidates", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {category: "media"}).length, 2));
-test("availability filter selects conditional candidates", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {availability: "conditional"}).length, 3));
+test("availability filter selects conditional candidates", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {availability: "conditional"}).length, 1));
 test("platform filter excludes desktop-only candidates on mobile", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {platform: "mobile"}).some((entry) => entry.moduleId === "external-active-window"), false));
 test("malformed filter input returns empty", () => assert.deepEqual(model.filterExternalWidgets(null, {query: "time"}), []));
 
 test("catalog summary reports all availability classes", () => assert.deepEqual(model.summarizeExternalWidgets(), {
-    total: 9, builtin: 1, external: 3, conditional: 3, bridge: 1, reference: 1, needsConfiguration: 5,
+    total: 9, builtin: 1, external: 5, conditional: 1, bridge: 1, reference: 1, needsConfiguration: 5,
 }));
 test("catalog summary handles malformed input", () => assert.deepEqual(model.summarizeExternalWidgets(null), {
     total: 0, builtin: 0, external: 0, conditional: 0, bridge: 0, reference: 0, needsConfiguration: 0,
@@ -86,6 +86,11 @@ test("configured credential widgets become ready", () => assert.equal(model.reso
 test("local bridges require their service by default", () => assert.equal(model.resolveExternalWidgetStoreState(model.findExternalWidget("external-activitywatch-time")).status, "needs-local-service"));
 test("available local bridges become ready", () => assert.equal(model.resolveExternalWidgetStoreState(model.findExternalWidget("external-activitywatch-time"), {endpointAvailable: true}).status, "ready"));
 test("reference candidates can never be added", () => assert.equal(model.resolveExternalWidgetStoreState(model.findExternalWidget("external-active-window")).canAdd, false));
+test("production feed widgets can be added before endpoint setup", () => {
+    assert.equal(model.resolveExternalWidgetStoreState(model.findExternalWidget("external-hot-news-dailyhot")).canAdd, true);
+    assert.equal(model.resolveExternalWidgetStoreState(model.findExternalWidget("external-news-newsnow")).canAdd, true);
+});
+test("NewsNow catalog points to the maintained source repository", () => assert.equal(model.findExternalWidget("external-news-newsnow").sourceUrl, "https://github.com/ourongxing/newsnow"));
 
 test("production registers the offline local clock adapter", () => {
     const fs = require("node:fs");
@@ -116,4 +121,13 @@ test("production registers and caches the Bangumi schedule adapter", () => {
     assert.match(source, /register\("external-anime-bangumi"/);
     assert.match(source, /loadBangumiCalendar/);
     assert.match(source, /cacheTtlMs: 30 \* 60 \* 1000/);
+});
+test("production registers user-endpoint feed adapters without default URLs", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    assert.match(source, /registerExternalFeed\("external-hot-news-dailyhot"/);
+    assert.match(source, /registerExternalFeed\("external-news-newsnow"/);
+    assert.match(source, /normalizeConfiguredFeedUrl/);
+    assert.match(source, /loadConfiguredFeed/);
 });

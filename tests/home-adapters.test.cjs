@@ -648,3 +648,19 @@ guarded("home adapters: diagnostic capacity stays bounded under repeated empty r
     assert.equal(adapters.consumeHomeAdapterDiagnostics("desktop").length, 0);
     adapters.consumeHomeAdapterDiagnostics("mobile");
 });
+
+guarded("home adapters preserve feed rank and source health", async () => {
+    adapters.clearHomeSnapshotCache();
+    const map = adapters.registerHomeAdapters([{moduleId: "feed", supportedDevices: ["desktop"], read: () => ({
+        sourceHealth: "stale", items: [{label: "A", rank: 2}],
+    })}]);
+    const result = await adapters.readHomeModule(map, "feed", "desktop");
+    assert.equal(result.snapshot.sourceHealth, "stale");
+    assert.equal(result.snapshot.items[0].rank, 2);
+});
+
+guarded("home adapters discard invalid feed health and rank", () => {
+    const snapshot = adapters.normalizeSnapshot({sourceHealth: "broken", items: [{label: "A", rank: -1}]});
+    assert.equal(snapshot.sourceHealth, undefined);
+    assert.equal(snapshot.items[0].rank, undefined);
+});

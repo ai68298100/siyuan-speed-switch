@@ -29,7 +29,7 @@ test("home view builds a stable accessible module contract", () => {
     const view = buildHomeModuleView({moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan"}, {ok: true, snapshot: {items: [{label: "One"}]}}, {collapsed: true});
     assert.deepEqual(view, {
         moduleId: "tasks", title: "Tasks", icon: "iconCheck", category: "siyuan", status: "ready", cached: false,
-        reason: "", updatedAt: 0, stat: null, items: [{label: "One", value: "", href: "", command: ""}], viewType: "", configurable: false, collapsed: true,
+        reason: "", updatedAt: 0, sourceHealth: "", stat: null, items: [{label: "One", value: "", href: "", command: ""}], viewType: "", configurable: false, collapsed: true,
         role: "region", ariaBusy: false,
     });
     assert.equal(buildHomeModuleView(null, {}), null);
@@ -158,6 +158,24 @@ test("home view renders weather context, secondary forecasts, and safe attributi
     assert.equal(root.querySelector(".sw__home-module-context").textContent, "北京 · 中国");
     assert.equal(root.querySelector(".sw__home-module-item-secondary").textContent, "晴 · 降水 10%");
     assert.equal(view.items[1].href, "https://open-meteo.com/");
+});
+
+test("home view renders ranked feeds and stale source health", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "external-hot-news-dailyhot", title: "热搜事件"}, {ok: true, snapshot: {
+        sourceHealth: "stale", items: [{label: "事件 A", rank: 1, secondary: "热度 123"}],
+    }});
+    const root = renderHomeModuleView(dom.window.document, view, {labels: {sourceStale: "过期缓存"}});
+    assert.equal(root.querySelector(".sw__home-source-health").textContent, "过期缓存");
+    assert.equal(root.querySelector(".sw__home-source-health").dataset.health, "stale");
+    assert.equal(root.querySelector(".sw__home-module-item-rank").textContent, "1");
+    assert.equal(root.querySelector(".sw__home-module-item-secondary").textContent, "热度 123");
+});
+
+test("home view drops malformed feed source health and rank", () => {
+    const view = normalizeHomeViewResult({snapshot: {sourceHealth: "bad", items: [{label: "A", rank: -3}]}});
+    assert.equal(view.sourceHealth, "");
+    assert.equal(view.items[0].rank, undefined);
 });
 
 test("home view renders a semantic media cover grid", () => {

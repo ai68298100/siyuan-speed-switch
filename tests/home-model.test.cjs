@@ -4,13 +4,13 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 31);
+    assert.equal(modules.length, 33);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 31);
+    assert.equal(home.modulesForDevice([], "mobile").length, 33);
 });
 
 test("journal-calendar viewType and monthOffset config", () => {
@@ -42,6 +42,18 @@ test("Bangumi schedule module exposes media presentation and bounded config", ()
     assert.deepEqual(bangumi.supportedDevices, ["desktop", "sidebar", "mobile"]);
     assert.deepEqual(bangumi.sizes, ["medium", "wide", "large", "full"]);
     assert.deepEqual(bangumi.configSchema.map((field) => field.key), ["dayRange", "limit", "showCovers"]);
+});
+test("user-endpoint feeds expose bounded opt-in configuration", () => {
+    const modules = home.registerModules([]);
+    for (const moduleId of ["external-hot-news-dailyhot", "external-news-newsnow"]) {
+        const feed = modules.find((item) => item.moduleId === moduleId);
+        assert.ok(feed);
+        assert.equal(feed.availability, "external");
+        assert.equal(feed.readOnly, true);
+        assert.deepEqual(feed.supportedDevices, ["desktop", "sidebar", "mobile"]);
+        assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot"]);
+        assert.deepEqual(feed.sizes, ["medium", "wide", "large", "full"]);
+    }
 });
 test("home modules expose bounded availability levels", () => {
     const modules = home.registerModules([]);

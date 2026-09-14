@@ -105,6 +105,14 @@ ${links}
     </ul></div>
   </section>
 </div></section></div>
+<div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-hot-news-dailyhot"><div class="sw-home__cell-body">
+  <section class="sw__home-module" data-module-id="external-hot-news-dailyhot">
+    <div class="sw__home-module-header"><strong class="sw__home-module-title">热搜事件</strong><span class="sw__home-source-health is-stale">过期缓存</span></div>
+    <div class="sw__home-module-body"><ul class="sw__home-module-list">
+      ${Array.from({length: 4}, (_, index) => `<li class="sw__home-module-item"><button class="sw__home-module-item-action"><span class="sw__home-module-item-rank">${index + 1}</span><span class="sw__home-module-item-label">热搜事件 ${index + 1}</span><small class="sw__home-module-item-secondary">热度 ${1000 - index}</small></button></li>`).join('')}
+    </ul></div>
+  </section>
+</div></section></div>
 </div>
 <script>
 window.addEventListener('load', () => {
@@ -138,6 +146,11 @@ window.addEventListener('load', () => {
     mediaCover: measure('.sw__home-media-cover'),
     mediaCoverRadius: getComputedStyle(document.querySelector('.sw__home-media-cover')).borderRadius,
     mediaSourceColumn: getComputedStyle(document.querySelector('.sw__home-media-item.is-source')).gridColumn,
+    feedBackground: getComputedStyle(document.querySelector('[data-module-id="external-hot-news-dailyhot"].sw-home__cell')).backgroundImage,
+    feedAction: measure('[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-action'),
+    feedColumns: getComputedStyle(document.querySelector('[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-action')).gridTemplateColumns,
+    feedRank: measure('[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-rank'),
+    feedHealthRadius: getComputedStyle(document.querySelector('[data-module-id="external-hot-news-dailyhot"] .sw__home-source-health')).borderRadius,
   };
   document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
 });
@@ -217,6 +230,12 @@ try {
         && Math.abs(coverRatio - 0.75) < 0.03
         && result.mediaCoverRadius === '12px'
         && result.mediaSourceColumn === '1 / -1';
+    const feedOk = result.feedBackground.includes('gradient')
+        && result.feedAction.display === 'grid'
+        && result.feedColumns.split(' ').filter(Boolean).length === 2
+        && result.feedRank.width === '22px'
+        && result.feedRank.height === '22px'
+        && parseFloat(result.feedHealthRadius) > 8;
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);
     console.log(`${switchOk ? 'PASS' : 'FAIL'} Chromium settings switch`);
@@ -224,7 +243,8 @@ try {
     console.log(`${calendarOk ? 'PASS' : 'FAIL'} Chromium six-week calendar widget`);
     console.log(`${weatherOk ? 'PASS' : 'FAIL'} Chromium responsive weather widget`);
     console.log(`${mediaOk ? 'PASS' : 'FAIL'} Chromium responsive media widget`);
-    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk && weatherOk && mediaOk ? 0 : 1;
+    console.log(`${feedOk ? 'PASS' : 'FAIL'} Chromium ranked feed widget`);
+    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk && weatherOk && mediaOk && feedOk ? 0 : 1;
 } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
