@@ -8,6 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const {readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline} = require('../src/util.js');
 
 const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
@@ -287,6 +288,14 @@ test('capacity: coordinator cancellation/deadline paths never acknowledge', () =
     const coordinator = createStorageCapacityReportEventCoordinator(queue);
     coordinator.recoverWithSignal({}, {aborted: true});
     coordinator.recoverWithDeadline({}, Date.now() - 1);
+    assert.equal(queue.snapshot().size, 1);
+});
+
+test('capacity: guarded readers return events on success without consuming', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    assert.equal(readStorageCapacityReportEventsWithSignal(queue, 0, {aborted: false}).events.length, 1);
+    assert.equal(readStorageCapacityReportEventsWithDeadline(queue, 0, Date.now() + 1000).events.length, 1);
     assert.equal(queue.snapshot().size, 1);
 });
 

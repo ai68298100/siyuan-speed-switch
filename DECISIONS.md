@@ -1,4 +1,5 @@
 # 决策
+- D-268（2026-09-14）：事件队列读取 signal/deadline 门面只做读取前终态检查；cancelled/timeout/queue_unavailable 返回稳定 reason，不确认、不推进游标，成功读取保持原队列状态。
 - D-267（2026-09-14）：容量事件协调器仅在 events/snapshot 成功恢复后执行 acknowledge；recoverAndCommit 的取消、超时、失败路径统一 committed=false 且保留队列。
 - D-266（2026-09-14）：协调器 signal/deadline 入口使 raw bundle 达 402,311 bytes，按真实增量将自律线校准至 395 KiB；`package.zip` 263,119 bytes，硬上限余量 42,577 bytes。
 - D-265（2026-09-14）：事件协调器 signal/deadline 入口在读取前检查终态；取消返回 cancelled、截止时间返回 timeout，均保持队列和游标不变，成功时复用单调恢复/提交语义。
