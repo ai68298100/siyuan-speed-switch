@@ -87,3 +87,36 @@ test('history status latest sequence survives eviction', () => { const h = a.cre
 test('production registration records initial audit snapshot', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /agentReadOnlyAuditHistory\.record\(buildAgentReadOnlyAuditSnapshot/); });
 test('production unload records disposed audit snapshot', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /disposed:\s*true/); assert.match(source, /agentReadOnlyAuditHistory\.dispose\(\)/); });
 test('production reload resets disposed audit history', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /agentReadOnlyAuditHistory\.status\(\)\.disposed/); assert.match(source, /agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory\(8\)/); });
+
+// v0.17 audit history summary/replay contract (T-1313~T-1342)
+test('history events expose bounded constant', () => assert.equal(a.MAX_HISTORY_EVENTS, 8));
+test('history records initial event', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(h.events()[0].type, 'initial'); });
+test('history records lifecycle event type', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({status: 'ready'}); h.record({status: 'failed'}); assert.equal(h.events(1)[0].type, 'status_changed'); });
+test('history events use monotonic sequence', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); h.record({}); assert.deepEqual(h.events().map((e) => e.sequence), [1, 2]); });
+test('history events are cursor filtered', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); h.record({}); assert.deepEqual(h.events(1).map((e) => e.sequence), [2]); });
+test('history events are bounded', () => { const h = a.createAgentReadOnlyAuditHistory(32); for (let i = 0; i < 20; i++) h.record({}); assert.ok(h.events().length <= 8); });
+test('history events are defensive copies', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); const e = h.events(); e[0].type = 'status_changed'; assert.equal(h.events()[0].type, 'initial'); });
+test('history events clear on dispose', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); h.dispose(); assert.deepEqual(h.events(), []); });
+test('history event type normalizes unknown values', () => assert.equal(a.normalizeAgentAuditHistoryEventType('secret'), 'unchanged'));
+test('history event type preserves disposed change', () => assert.equal(a.normalizeAgentAuditHistoryEventType('disposed_changed'), 'disposed_changed'));
+test('history event builder emits initial', () => assert.deepEqual(a.buildAgentAuditHistoryEvent(null, {}, 3), {sequence: 3, type: 'initial', count: 0}));
+test('history event builder clamps sequence', () => assert.equal(a.buildAgentAuditHistoryEvent(null, {}, -2).sequence, 0));
+test('history event builder clamps count', () => assert.equal(a.buildAgentAuditHistoryEvent({status: 'ready'}, {status: 'failed'}, 1).count, 1));
+test('history event normalization has fixed keys', () => assert.deepEqual(Object.keys(a.normalizeAgentAuditHistoryEvent({sequence: 2, type: 'initial', count: 1})).sort(), ['count', 'sequence', 'type']));
+test('history event normalization strips text', () => assert.equal(a.normalizeAgentAuditHistoryEvent({type: 'secret', sequence: 'x'}).type, 'unchanged'));
+test('history summary reports empty state', () => { const h = a.createAgentReadOnlyAuditHistory(4); assert.deepEqual(a.buildAgentReadOnlyAuditHistorySummary(h), {size: 0, capacity: 4, latestSequence: 0, disposed: false, hasLatest: false}); });
+test('history summary reports latest state', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); const s = a.buildAgentReadOnlyAuditHistorySummary(h); assert.equal(s.hasLatest, true); assert.equal(s.latestSequence, 1); });
+test('history summary isolates hostile history', () => { const s = a.buildAgentReadOnlyAuditHistorySummary({status() { throw Error('secret'); }, latest() { throw Error('secret'); }}); assert.equal(s.size, 0); assert.equal(s.hasLatest, false); });
+test('history summary normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({}).version, 1));
+test('history summary normalizer bounds size', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({size: 999}).size, 32));
+test('history summary normalizer bounds capacity', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({capacity: 999}).capacity, 32));
+test('history summary normalizer booleanizes fields', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({disposed: 1}).disposed, false));
+test('history summary compatibility accepts canonical shape', () => assert.equal(a.isAgentReadOnlyAuditHistorySummaryCompatible({version: 1, size: 1, capacity: 2, latestSequence: 1, disposed: false, hasLatest: true}), true));
+test('history summary compatibility rejects overflow size', () => assert.equal(a.isAgentReadOnlyAuditHistorySummaryCompatible({version: 1, size: 3, capacity: 2, latestSequence: 3}), false));
+test('history summary compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditHistorySummaryCompatible({version: 2, size: 0, capacity: 1, latestSequence: 0}), false));
+test('history summary serialization is deterministic', () => assert.equal(a.serializeAgentReadOnlyAuditHistorySummary({size: 1, capacity: 2, latestSequence: 1, disposed: false, hasLatest: true}), '{"version":1,"size":1,"capacity":2,"latestSequence":1,"disposed":false,"hasLatest":true}'));
+test('history summary parser round trips', () => { const value = a.serializeAgentReadOnlyAuditHistorySummary({size: 1}); assert.equal(a.parseAgentReadOnlyAuditHistorySummary(value).size, 1); });
+test('history summary parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistorySummary('{bad').version, 1));
+test('history summary parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistorySummary('x'.repeat(1000)).size, 0));
+test('history event selector filters and caps', () => assert.deepEqual(a.selectAgentReadOnlyAuditHistoryEvents([{sequence: 1, type: 'initial'}, {sequence: 2, type: 'status_changed'}], 0, 1).map((e) => e.sequence), [1]));
+test('history event selector handles malformed input', () => assert.deepEqual(a.selectAgentReadOnlyAuditHistoryEvents(null), []));

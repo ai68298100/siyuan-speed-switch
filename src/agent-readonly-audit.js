@@ -9,6 +9,7 @@ const STATUS = Object.freeze(["ready", "unavailable", "failed", "cancelled", "ti
 const REASONS = Object.freeze(["cancelled", "timeout", "permission_denied", "unavailable", "failed"]);
 const SAFE_EFFECTS = Object.freeze(["localRead"]);
 const MAX_ITEMS = 32;
+const MAX_HISTORY_EVENTS = 8;
 
 function text(value, max = 96) {
     if (typeof value !== "string") return "";
@@ -129,13 +130,17 @@ function createAgentReadOnlyAuditHistory(limit = 8) {
     let disposed = false;
     let sequence = 0;
     const entries = [];
+    const events = [];
     return {
         record(snapshot) {
             if (disposed) return {accepted: false, sequence};
             const normalized = normalizeAgentReadOnlyAuditSnapshot(snapshot);
+            const previous = entries.length ? entries[entries.length - 1].snapshot : null;
             const entry = Object.freeze({sequence: ++sequence, snapshot: normalized});
             entries.push(entry);
+            events.push(Object.freeze(buildAgentAuditHistoryEvent(previous, normalized, entry.sequence)));
             while (entries.length > capacity) entries.shift();
+            while (events.length > Math.min(capacity, MAX_HISTORY_EVENTS)) events.shift();
             return {accepted: true, sequence: entry.sequence};
         },
         list() {
@@ -149,8 +154,12 @@ function createAgentReadOnlyAuditHistory(limit = 8) {
             const parsed = Number.isFinite(Number(cursor)) ? Math.max(0, Math.trunc(Number(cursor))) : 0;
             return entries.filter((entry) => entry.sequence > parsed).map((entry) => ({sequence: entry.sequence, snapshot: normalizeAgentReadOnlyAuditSnapshot(entry.snapshot)})).slice(0, capacity);
         },
+        events(cursor = 0) {
+            const parsed = normalizeAgentAuditCursor(cursor);
+            return events.filter((event) => event.sequence > parsed).map(normalizeAgentAuditHistoryEvent).slice(0, MAX_HISTORY_EVENTS);
+        },
         status() { return {size: entries.length, capacity, disposed, latestSequence: sequence}; },
-        dispose() { disposed = true; entries.length = 0; },
+        dispose() { disposed = true; entries.length = 0; events.length = 0; },
     };
 }
 
@@ -164,6 +173,54 @@ function normalizeAgentAuditCursor(value) {
     return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
 }
 
+function normalizeAgentAuditHistoryEventType(value) {
+    const allowed = ["initial", "validity_changed", "status_changed", "device_changed", "disposed_changed", "unchanged"];
+    return allowed.includes(value) ? value : "unchanged";
+}
+
+function buildAgentAuditHistoryEvent(previous, next, sequence = 0) {
+    const event = buildAgentAuditLifecycleEvent(previous, next);
+    return {sequence: normalizeAgentAuditCursor(sequence), type: normalizeAgentAuditHistoryEventType(previous ? event.type : "initial"), count: normalizeAgentAuditCount(event.count, MAX_HISTORY_EVENTS)};
+}
+
+function normalizeAgentAuditHistoryEvent(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {sequence: normalizeAgentAuditCursor(source.sequence), type: normalizeAgentAuditHistoryEventType(source.type), count: normalizeAgentAuditCount(source.count, MAX_HISTORY_EVENTS)};
+}
+
+function buildAgentReadOnlyAuditHistorySummary(history) {
+    let status = {};
+    let latest = null;
+    try { status = history && typeof history.status === "function" ? history.status() : {}; } catch (_) { status = {}; }
+    try { latest = history && typeof history.latest === "function" ? history.latest() : null; } catch (_) { latest = null; }
+    return {size: normalizeAgentAuditCount(status.size, 32), capacity: normalizeAgentAuditHistoryLimit(status.capacity), latestSequence: normalizeAgentAuditCursor(status.latestSequence), disposed: normalizeAgentAuditBoolean(status.disposed), hasLatest: Boolean(latest && latest.snapshot)};
+}
+
+function normalizeAgentReadOnlyAuditHistorySummary(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {version: 1, size: normalizeAgentAuditCount(source.size, 32), capacity: normalizeAgentAuditHistoryLimit(source.capacity), latestSequence: normalizeAgentAuditCursor(source.latestSequence), disposed: normalizeAgentAuditBoolean(source.disposed), hasLatest: normalizeAgentAuditBoolean(source.hasLatest)};
+}
+
+function isAgentReadOnlyAuditHistorySummaryCompatible(value) {
+    const summary = normalizeAgentReadOnlyAuditHistorySummary(value);
+    return value && value.version === 1 && summary.size <= summary.capacity && summary.latestSequence >= summary.size;
+}
+
+function serializeAgentReadOnlyAuditHistorySummary(value) {
+    return JSON.stringify(normalizeAgentReadOnlyAuditHistorySummary(value));
+}
+
+function parseAgentReadOnlyAuditHistorySummary(value) {
+    if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditHistorySummary({});
+    try { return normalizeAgentReadOnlyAuditHistorySummary(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditHistorySummary({}); }
+}
+
+function selectAgentReadOnlyAuditHistoryEvents(events, cursor = 0, limit = MAX_HISTORY_EVENTS) {
+    const max = Math.min(MAX_HISTORY_EVENTS, Math.max(1, normalizeAgentAuditCount(limit, MAX_HISTORY_EVENTS)));
+    const parsed = normalizeAgentAuditCursor(cursor);
+    return (Array.isArray(events) ? events : []).map(normalizeAgentAuditHistoryEvent).filter((event) => event.sequence > parsed).slice(0, max);
+}
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -173,5 +230,9 @@ module.exports = {
     buildAgentReadOnlyAuditSnapshot, normalizeAgentReadOnlyAuditSnapshot, isAgentReadOnlyAuditSnapshotCompatible,
     buildAgentAuditFailure, buildAgentAuditDeviceMatrix, diffAgentReadOnlyAuditSnapshots, normalizeAgentAuditEvent,
     buildAgentReadOnlyAuditEvents, normalizeAgentReadOnlyAuditEvents,
-    normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
+    MAX_HISTORY_EVENTS, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
+    normalizeAgentAuditHistoryEventType, buildAgentAuditHistoryEvent, normalizeAgentAuditHistoryEvent,
+    buildAgentReadOnlyAuditHistorySummary, normalizeAgentReadOnlyAuditHistorySummary,
+    isAgentReadOnlyAuditHistorySummaryCompatible, serializeAgentReadOnlyAuditHistorySummary,
+    parseAgentReadOnlyAuditHistorySummary, selectAgentReadOnlyAuditHistoryEvents,
 };
