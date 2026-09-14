@@ -470,6 +470,41 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（298 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1523~T-1552 Agent 传输队列维护与健康报告（本轮 30 项）
+
+- [x] T-1523 队列清理
+- [x] T-1524 清理数量
+- [x] T-1525 清理 cursor
+- [x] T-1526 异常队列安全清理
+- [x] T-1527 队列重置
+- [x] T-1528 重置 version=1
+- [x] T-1529 重置 previousCursor
+- [x] T-1530 只读 peek
+- [x] T-1531 peek 数量上限
+- [x] T-1532 队列健康报告
+- [x] T-1533 健康风险字段
+- [x] T-1534 健康固定字段
+- [x] T-1535 健康兼容性
+- [x] T-1536 健康序列化
+- [x] T-1537 健康安全解析
+- [x] T-1538 批量 envelope 合并
+- [x] T-1539 批量去重
+- [x] T-1540 批量容量上限
+- [x] T-1541 批量按状态筛选
+- [x] T-1542 状态筛选容量
+- [x] T-1543 cancellation version=1
+- [x] T-1544 cancellation 状态降级
+- [x] T-1545 cancellation requestId
+- [x] T-1546 cancellation 未确认标记
+- [x] T-1547 cancellation 固定字段
+- [x] T-1548 cancellation 序列化
+- [x] T-1549 cancellation 安全解析
+- [x] T-1550 timeout 回执
+- [x] T-1551 timeout requestId
+- [x] T-1552 队列健康与事件摘要边界
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（328 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合

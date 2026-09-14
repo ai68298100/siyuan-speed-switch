@@ -517,6 +517,24 @@ function normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult(value) { con
 function serializeAgentReadOnlyAuditTransportQueueReplayResult(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportQueueReplayResult(value)); }
 function parseAgentReadOnlyAuditTransportQueueReplayResult(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportQueueReplayResult({}); try { return normalizeAgentReadOnlyAuditTransportQueueReplayResult(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportQueueReplayResult({}); } }
 
+function clearAgentReadOnlyAuditTransportQueue(queue) { if (!queue || typeof queue.acknowledge !== "function" || typeof queue.status !== "function") return {cleared: 0, cursor: 0}; const status = queue.status(); const result = queue.acknowledge(status.latestSequence); return {cleared: normalizeAgentAuditCount(result.acknowledged, MAX_TRANSPORT_QUEUE), cursor: normalizeAgentAuditTransportCursor(result.cursor)}; }
+function resetAgentReadOnlyAuditTransportQueue(queue) { const result = clearAgentReadOnlyAuditTransportQueue(queue); return {version: 1, previousCursor: result.cursor, cleared: result.cleared}; }
+function peekAgentReadOnlyAuditTransportQueue(queue, limit = MAX_TRANSPORT_ITEMS) { const max = Math.min(MAX_TRANSPORT_ITEMS, Math.max(1, normalizeAgentAuditCount(limit, MAX_TRANSPORT_ITEMS))); return queue && typeof queue.list === "function" ? queue.list(0).slice(0, max) : []; }
+function buildAgentReadOnlyAuditTransportQueueHealth(queue) { const summary = summarizeAgentReadOnlyAuditTransportQueue(queue); return {version: 1, risk: normalizeAgentAuditQueueRisk(classifyAgentReadOnlyAuditTransportQueueRisk(summary)), size: summary.size, capacity: summary.capacity, utilization: summary.utilization, disposed: summary.disposed}; }
+function normalizeAgentReadOnlyAuditTransportQueueHealth(value) { const source = value && typeof value === "object" ? value : {}; const summary = normalizeAgentReadOnlyAuditTransportQueueSummary(source); return {version: 1, risk: normalizeAgentAuditQueueRisk(source.risk), size: summary.size, capacity: summary.capacity, utilization: summary.utilization, disposed: summary.disposed}; }
+function isAgentReadOnlyAuditTransportQueueHealthCompatible(value) { const health = normalizeAgentReadOnlyAuditTransportQueueHealth(value); return value && value.version === 1 && health.size <= health.capacity; }
+function serializeAgentReadOnlyAuditTransportQueueHealth(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportQueueHealth(value)); }
+function parseAgentReadOnlyAuditTransportQueueHealth(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportQueueHealth({}); try { return normalizeAgentReadOnlyAuditTransportQueueHealth(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportQueueHealth({}); } }
+function mergeAgentReadOnlyAuditTransportBatches(left, right) { const a = normalizeAgentReadOnlyAuditTransportBatch(left).items; const b = normalizeAgentReadOnlyAuditTransportBatch(right).items; const seen = new Set(); const items = [...a, ...b].filter((item) => { const key = `${item.type}:${item.requestId}:${item.checksum}`; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, MAX_TRANSPORT_ITEMS); return {version: 1, total: items.length, items}; }
+function selectAgentReadOnlyAuditTransportBatchByStatus(value, status = "ok", limit = MAX_TRANSPORT_ITEMS) { const wanted = normalizeAgentAuditTransportStatus(status); const max = Math.min(MAX_TRANSPORT_ITEMS, Math.max(1, normalizeAgentAuditCount(limit, MAX_TRANSPORT_ITEMS))); return normalizeAgentReadOnlyAuditTransportBatch(value).items.filter((item) => item.status === wanted).slice(0, max); }
+function buildAgentReadOnlyAuditTransportCancellation(status = "unavailable", requestId = "") { const normalized = normalizeAgentAuditTransportStatus(status); return {version: 1, status: normalized === "ok" ? "unavailable" : normalized, requestId: normalizeAgentAuditRequestId(requestId), acknowledged: false}; }
+function normalizeAgentReadOnlyAuditTransportCancellation(value) { const source = value && typeof value === "object" ? value : {}; const result = buildAgentReadOnlyAuditTransportCancellation(source.status, source.requestId); return result; }
+function isAgentReadOnlyAuditTransportCancellation(value) { return normalizeAgentReadOnlyAuditTransportCancellation(value).acknowledged === false; }
+function buildAgentReadOnlyAuditTransportTimeout(requestId = "") { return {version: 1, status: "oversized", requestId: normalizeAgentAuditRequestId(requestId), acknowledged: false}; }
+function normalizeAgentReadOnlyAuditTransportTimeout(value) { return buildAgentReadOnlyAuditTransportTimeout(value?.requestId); }
+function serializeAgentReadOnlyAuditTransportCancellation(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportCancellation(value)); }
+function parseAgentReadOnlyAuditTransportCancellation(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportCancellation({}); try { return normalizeAgentReadOnlyAuditTransportCancellation(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportCancellation({}); } }
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -575,4 +593,13 @@ module.exports = {
     isAgentReadOnlyAuditTransportQueueReplayResultCompatible, buildAgentReadOnlyAuditTransportQueueAcknowledgeResult,
     normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult, serializeAgentReadOnlyAuditTransportQueueReplayResult,
     parseAgentReadOnlyAuditTransportQueueReplayResult,
+    clearAgentReadOnlyAuditTransportQueue, resetAgentReadOnlyAuditTransportQueue,
+    peekAgentReadOnlyAuditTransportQueue, buildAgentReadOnlyAuditTransportQueueHealth,
+    normalizeAgentReadOnlyAuditTransportQueueHealth, isAgentReadOnlyAuditTransportQueueHealthCompatible,
+    serializeAgentReadOnlyAuditTransportQueueHealth, parseAgentReadOnlyAuditTransportQueueHealth,
+    mergeAgentReadOnlyAuditTransportBatches, selectAgentReadOnlyAuditTransportBatchByStatus,
+    buildAgentReadOnlyAuditTransportCancellation, normalizeAgentReadOnlyAuditTransportCancellation,
+    isAgentReadOnlyAuditTransportCancellation, buildAgentReadOnlyAuditTransportTimeout,
+    normalizeAgentReadOnlyAuditTransportTimeout, serializeAgentReadOnlyAuditTransportCancellation,
+    parseAgentReadOnlyAuditTransportCancellation,
 };

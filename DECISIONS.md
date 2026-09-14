@@ -347,3 +347,4 @@
 - D-295 v0.17 审计传输封装采用轻量 FNV-1a checksum、固定 requestId 清洗和最多 8 条批量 envelope；校验失败只返回稳定 status/retryable，不回显 payload 或异常。原因是跨宿主交换需要完整性提示，但不应引入加密依赖或扩大数据面。
 - D-296 v0.17 审计传输队列最多保留 16 条 envelope，使用单调 sequence/cursor 确认，恢复快照和 utilization 摘要均为 version=1；dispose 后拒绝新入队。原因是跨宿主回放需要可恢复进度，同时必须限制内存和重复消费。
 - D-297 v0.17 传输队列风险按 utilization 70%/90% 划分 warning/critical，检查点与 replay result 均限制 cursor 单调增长和固定字段；原因是诊断消费者需要快速识别积压，而不应读取队列内部对象。
+- D-298 v0.17 传输队列维护操作仅提供内部 clear/reset/peek 模型，健康报告固定风险字段；取消/超时回执永不 acknowledge。原因是恢复流程需要可测试的安全边界，但不能让诊断通道隐式具备消费或写入权限。
