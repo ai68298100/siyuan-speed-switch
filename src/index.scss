@@ -4936,6 +4936,7 @@
     min-width: 88px;
     font-weight: 600;
     white-space: nowrap;
+    touch-action: manipulation;
 
     &:focus-visible { box-shadow: var(--sw-focus-ring); }
 }
@@ -4944,6 +4945,7 @@
     min-height: 28px;
     padding-inline: 8px;
     white-space: nowrap;
+    touch-action: manipulation;
 }
 
 .sw-home-store__remove {
@@ -4951,6 +4953,15 @@
     padding-inline: 8px;
     color: var(--b3-theme-error, var(--b3-theme-warning));
     white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.sw-home-store__group-toggle,
+.sw-home-store__clear-search,
+.sw-home-store__clear-filters,
+.sw-home-store__guide,
+.sw-home-store__remove-unavailable {
+    touch-action: manipulation;
 }
 
 // ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================
@@ -5305,6 +5316,7 @@
 
         &[data-count="0"] { opacity: .58; }
         &[aria-selected="true"] { scroll-margin-inline: 12px; }
+        &[aria-current="page"] { font-variant-numeric: tabular-nums; }
 
         &:hover { color: var(--b3-theme-on-background); background: color-mix(in srgb, var(--b3-theme-primary) 6%, transparent); }
 
@@ -5723,6 +5735,7 @@
     color: var(--b3-theme-on-background);
     text-align: start;
     cursor: pointer;
+    touch-action: manipulation;
 
     &:focus-visible {
         outline: 2px solid var(--sw-home-accent, var(--b3-theme-primary));

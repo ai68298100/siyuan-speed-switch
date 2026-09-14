@@ -4683,6 +4683,9 @@ const version = beginSearch(session);
                 const query = normalizeHomeStoreQuery(searchInput.value);
                 const activeTab = tabBar.querySelector<HTMLElement>(".sw-home-store__tab.is-active");
                 const filter = resolveHomeStoreFilter(activeTab?.dataset.tabKey || storeTab);
+                root.dataset.activeFilter = filter.tab;
+                root.dataset.sort = storeSort;
+                const focusedBeforeFilter = document.activeElement instanceof HTMLElement ? document.activeElement : null;
                 // Compatibility note: the model now owns this predicate; keep
                 // the legacy field shape documented for downstream audits.
                 const availabilityFilter = activeTab?.dataset.tabAvailability || "";
@@ -4694,6 +4697,7 @@ const version = beginSearch(session);
                     const visible = matchesHomeStoreTokens(card.dataset, query, filter);
                     card.classList.toggle("fn__none", !visible);
                     card.setAttribute("aria-hidden", String(!visible));
+                    card.dataset.filterMatch = String(visible);
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
                     const grid = heading.nextElementSibling;
@@ -4718,6 +4722,12 @@ const version = beginSearch(session);
                 });
                 const hasVisibleCards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"))
                     .some((card) => !card.classList.contains("fn__none"));
+                const focusedCard = focusedBeforeFilter?.closest<HTMLElement>(".sw-home-store__card");
+                if (focusedCard && focusedCard.classList.contains("fn__none")) {
+                    const nextCard = root.querySelector<HTMLElement>(".sw-home-store__card:not(.fn__none)");
+                    if (nextCard) nextCard.focus({preventScroll: true});
+                    else searchInput.focus({preventScroll: true});
+                }
                 filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
                 filterEmptyState?.setAttribute("aria-hidden", String(hasVisibleCards));
                 if (resultSummary) {
@@ -4764,6 +4774,7 @@ const version = beginSearch(session);
                     const active = candidate === button;
                     candidate.classList.toggle("is-active", active);
                     candidate.setAttribute("aria-selected", String(active));
+                    candidate.setAttribute("aria-current", active ? "page" : "false");
                     candidate.setAttribute("tabindex", active ? "0" : "-1");
                 });
                 applyFilter();
@@ -4807,6 +4818,7 @@ const version = beginSearch(session);
                 btn.dataset.tabLabel = tab.label;
                 btn.setAttribute("role", "tab");
                 btn.setAttribute("aria-selected", String(tab.key === storeTab));
+                btn.setAttribute("aria-current", tab.key === storeTab ? "page" : "false");
                 btn.setAttribute("tabindex", tab.key === storeTab ? "0" : "-1");
                 btn.dataset.tabKey = tab.key;
                 btn.dataset.count = "0";
@@ -5087,6 +5099,14 @@ const version = beginSearch(session);
                         addButton.dataset.selectedSize = sizeKey;
                         addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${tile.textContent || sizeKey}`);
                     };
+                    tile.addEventListener("keydown", (event) => {
+                        const tilesForCard = Array.from(tiles.querySelectorAll<HTMLButtonElement>(".sw-home-store__size"));
+                        const index = tilesForCard.indexOf(tile);
+                        if (index < 0 || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                        event.preventDefault();
+                        const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tilesForCard.length - 1 : (index + (event.key === "ArrowLeft" ? -1 : 1) + tilesForCard.length) % tilesForCard.length;
+                        tilesForCard[nextIndex]?.focus();
+                    });
                     tiles.appendChild(tile);
                 });
                 tiles.insertAdjacentHTML("beforeend", `<button class="b3-button b3-button--outline sw-home-store__add">${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd}</button>`);
@@ -5319,6 +5339,7 @@ const version = beginSearch(session);
                     const active = button.dataset.tabKey === "all";
                     button.classList.toggle("is-active", active);
                     button.setAttribute("aria-selected", String(active));
+                    button.setAttribute("aria-current", active ? "page" : "false");
                     button.setAttribute("tabindex", active ? "0" : "-1");
                 });
                 applyFilter();
