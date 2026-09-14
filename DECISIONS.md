@@ -349,3 +349,4 @@
 - D-297 v0.17 传输队列风险按 utilization 70%/90% 划分 warning/critical，检查点与 replay result 均限制 cursor 单调增长和固定字段；原因是诊断消费者需要快速识别积压，而不应读取队列内部对象。
 - D-298 v0.17 传输队列维护操作仅提供内部 clear/reset/peek 模型，健康报告固定风险字段；取消/超时回执永不 acknowledge。原因是恢复流程需要可测试的安全边界，但不能让诊断通道隐式具备消费或写入权限。
 - D-299 v0.17 传输恢复协调器以单调 cursor 串行提交，空队列不产生 commit，取消/超时/销毁均不确认；协调器状态与事件均固定 version=1。原因是多次回放必须避免重复确认和半提交。
+- D-300 v0.17 协调器健康固定为 idle/active/blocked/disposed，批量结果与 successRate 只保留计数；commit window 和 recovery summary 均不携带 envelope payload。原因是统一诊断多个协调器时需要可比较指标，而不是内部传输内容。

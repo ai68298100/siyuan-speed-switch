@@ -418,3 +418,37 @@ test('coordinator result parser isolates malformed', () => assert.equal(a.parseA
 test('coordinator dispose is idempotent', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); c.dispose(); c.dispose(); assert.equal(c.snapshot().disposed, true); });
 test('coordinator recover does not double commit empty queue', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(a.createAgentReadOnlyAuditTransportQueue()); assert.equal(c.recover().acknowledged, false); });
 test('coordinator status remains bounded', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); assert.ok(c.snapshot().commits <= 16); });
+
+// v0.17 coordinator health/batch contract (T-1613~T-1642)
+test('coordinator health constants fixed', () => assert.deepEqual(a.AUDIT_COORDINATOR_HEALTH, ['idle', 'active', 'blocked', 'disposed']));
+test('coordinator health unknown defaults idle', () => assert.equal(a.normalizeAgentAuditCoordinatorHealth('secret'), 'idle'));
+test('committed coordinator health idle', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({status: 'committed'}), 'idle'));
+test('ready coordinator health active', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({status: 'ready'}), 'active'));
+test('cancelled coordinator health blocked', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({status: 'cancelled'}), 'blocked'));
+test('disposed coordinator health disposed', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({disposed: true}), 'disposed'));
+test('coordinator diff detects status', () => assert.equal(a.diffAgentReadOnlyAuditTransportCoordinatorSnapshots({status: 'ready'}, {status: 'committed'}).statusChanged, true));
+test('coordinator diff detects cursor delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportCoordinatorSnapshots({cursor: 1}, {cursor: 3}).cursorDelta, 2));
+test('coordinator diff detects commit delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportCoordinatorSnapshots({commits: 1}, {commits: 2}).commitDelta, 1));
+test('coordinator health report version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealthReport({}).version, 1));
+test('coordinator health report fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCoordinatorHealthReport({})).sort(), ['commits', 'cursor', 'disposed', 'health', 'status', 'version'].sort()));
+test('coordinator health report compatibility', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorHealthReportCompatible({version: 1, health: 'idle', status: 'committed'}), true));
+test('coordinator health report serialization', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorHealthReport({health: 'blocked'}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorHealthReport(value).health, 'blocked'); });
+test('coordinator health report parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorHealthReport('{bad').version, 1));
+test('coordinator diff events include status', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({status: 'ready'}, {status: 'committed'})[0].type, 'status_changed'));
+test('coordinator diff events include cursor', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({cursor: 0}, {cursor: 1}).some((e) => e.type === 'cursor_changed')));
+test('coordinator diff events include commits', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({commits: 0}, {commits: 1}).some((e) => e.type === 'commits_changed')));
+test('coordinator diff events include disposed', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({disposed: false}, {disposed: true}).some((e) => e.type === 'disposed_changed')));
+test('coordinator diff events normalize delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorDiffEvents([{type: 'cursor_changed', delta: 99}])[0].delta, 16));
+test('coordinator diff events deduplicate', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorDiffEvents([{type: 'cursor_changed'}, {type: 'cursor_changed'}]).length, 1));
+test('coordinator diff summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportCoordinatorDiffEvents([])).sort(), ['lifecycle', 'negative', 'positive', 'total', 'version'].sort()));
+test('commit window version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorCommitWindow({}).version, 1));
+test('commit window preserves cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorCommitWindow({cursor: 2}).cursor, 2));
+test('commit window clamps limit', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorCommitWindow({limit: 99}).limit, 8));
+test('commit window compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorCommitWindowCompatible({version: 1, cursor: 0, commits: 0, limit: 1, closed: false}), true));
+test('commit window serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorCommitWindow({cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorCommitWindow(value).cursor, 2); });
+test('commit window parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorCommitWindow('{bad').version, 1));
+test('coordinator batch result counts committed', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorBatchResult([{status: 'committed'}]).committed, 1));
+test('coordinator batch result compatibility', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorBatchResultCompatible({version: 1, total: 1, committed: 1, blocked: 0, disposed: 0}), true));
+test('coordinator batch result serialization', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorBatchResult({total: 1, committed: 1}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorBatchResult(value).committed, 1); });
+test('recovery summary success rate', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorRecoverySummary([{status: 'committed'}]).successRate, 1));
+test('recovery summary clamps success rate', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorRecoverySummary({successRate: 9}).successRate, 1));

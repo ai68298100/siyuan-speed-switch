@@ -575,6 +575,41 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（390 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1613~T-1642 Agent 协调器健康与批量结果（本轮 30 项）
+
+- [x] T-1613 协调器健康枚举
+- [x] T-1614 健康未知值降级
+- [x] T-1615 committed idle 判定
+- [x] T-1616 ready active 判定
+- [x] T-1617 cancelled blocked 判定
+- [x] T-1618 disposed 判定
+- [x] T-1619 协调器状态差异
+- [x] T-1620 cursorDelta 计算
+- [x] T-1621 commitDelta 计算
+- [x] T-1622 健康报告 version=1
+- [x] T-1623 健康报告固定字段
+- [x] T-1624 健康报告兼容性
+- [x] T-1625 健康报告序列化
+- [x] T-1626 健康报告安全解析
+- [x] T-1627 status_changed 差异事件
+- [x] T-1628 cursor_changed 差异事件
+- [x] T-1629 commits_changed 差异事件
+- [x] T-1630 disposed_changed 差异事件
+- [x] T-1631 差异事件数量上限
+- [x] T-1632 差异 delta 归一化
+- [x] T-1633 差异事件去重
+- [x] T-1634 差异事件统计摘要
+- [x] T-1635 commit window version=1
+- [x] T-1636 commit window cursor
+- [x] T-1637 commit window limit 上限
+- [x] T-1638 commit window 兼容性
+- [x] T-1639 commit window 序列化
+- [x] T-1640 commit window 安全解析
+- [x] T-1641 batch result committed 统计
+- [x] T-1642 recovery successRate 摘要
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（422 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合
