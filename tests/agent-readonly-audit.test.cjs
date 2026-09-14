@@ -220,3 +220,37 @@ test('recovery plan compatibility accepts canonical', () => assert.equal(a.isAge
 test('recovery plan compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditHistoryRecoveryPlanCompatible({version: 1, cursor: 2, nextCursor: 1, reports: [], complete: true}), false));
 test('recovery plan serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryRecoveryPlan({cursor: 1, nextCursor: 2, reports: []}); assert.equal(a.parseAgentReadOnlyAuditHistoryRecoveryPlan(value).nextCursor, 2); });
 test('recovery plan parser isolates malformed payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryRecoveryPlan('{bad').version, 1));
+
+// v0.17 audit transport envelope/batch contract (T-1433~T-1462)
+test('transport types are fixed', () => assert.deepEqual(a.AUDIT_TRANSPORT_TYPES, ['report', 'window', 'recovery']));
+test('transport statuses are fixed', () => assert.deepEqual(a.AUDIT_TRANSPORT_STATUS, ['ok', 'invalid', 'oversized', 'unavailable']));
+test('transport item cap is eight', () => assert.equal(a.MAX_TRANSPORT_ITEMS, 8));
+test('transport type normalizes unknown', () => assert.equal(a.normalizeAgentAuditTransportType('secret'), 'report'));
+test('transport status normalizes unknown', () => assert.equal(a.normalizeAgentAuditTransportStatus('secret'), 'invalid'));
+test('request id strips unsafe characters', () => assert.equal(a.normalizeAgentAuditRequestId('a b/1'), 'ab1'));
+test('request id bounds length', () => assert.equal(a.normalizeAgentAuditRequestId('x'.repeat(100)).length, 64));
+test('checksum is deterministic', () => assert.equal(a.checksumAgentAuditPayload('x'), a.checksumAgentAuditPayload('x')));
+test('checksum has fixed hex length', () => assert.equal(a.checksumAgentAuditPayload('x').length, 8));
+test('envelope uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportEnvelope('report', {health: 'healthy'}).version, 1));
+test('envelope preserves type', () => assert.equal(a.buildAgentReadOnlyAuditTransportEnvelope('window', {reports: []}).type, 'window'));
+test('envelope preserves request id', () => assert.equal(a.buildAgentReadOnlyAuditTransportEnvelope('report', {}, 'req-1').requestId, 'req-1'));
+test('envelope computes checksum', () => assert.match(a.buildAgentReadOnlyAuditTransportEnvelope('report', {}).checksum, /^[a-f0-9]{8}$/));
+test('envelope normalizer has fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportEnvelope({})).sort(), ['checksum', 'payload', 'requestId', 'status', 'type', 'version']));
+test('envelope compatibility accepts canonical', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}); assert.equal(a.isAgentReadOnlyAuditTransportEnvelopeCompatible(e), true); });
+test('envelope compatibility rejects tampered checksum', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}); e.checksum = 'deadbeef'; assert.equal(a.isAgentReadOnlyAuditTransportEnvelopeCompatible(e), false); });
+test('envelope serialization round trips', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('window', {reports: []}); assert.equal(a.parseAgentReadOnlyAuditTransportEnvelope(a.serializeAgentReadOnlyAuditTransportEnvelope(e)).type, 'window'); });
+test('envelope parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditTransportEnvelope('{bad').status, 'invalid'));
+test('envelope parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditTransportEnvelope('x'.repeat(40000)).status, 'oversized'));
+test('envelope verification returns request id', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}, 'r'); assert.equal(a.verifyAgentReadOnlyAuditTransportEnvelope(e).requestId, 'r'); });
+test('envelope verification rejects tampering', () => assert.equal(a.verifyAgentReadOnlyAuditTransportEnvelope({}).ok, false));
+test('transport batch uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportBatch([]).version, 1));
+test('transport batch caps items', () => assert.equal(a.buildAgentReadOnlyAuditTransportBatch(Array.from({length: 20}, () => a.buildAgentReadOnlyAuditTransportEnvelope('report', {}))).items.length, 8));
+test('transport batch normalizer fixes total', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportBatch({items: [{}]}).total, 0));
+test('transport batch compatibility accepts empty', () => assert.equal(a.isAgentReadOnlyAuditTransportBatchCompatible({version: 1, total: 0, items: []}), true));
+test('transport batch compatibility rejects total mismatch', () => assert.equal(a.isAgentReadOnlyAuditTransportBatchCompatible({version: 1, total: 1, items: []}), false));
+test('transport batch serialization round trips', () => { const b = a.buildAgentReadOnlyAuditTransportBatch([]); assert.equal(a.parseAgentReadOnlyAuditTransportBatch(a.serializeAgentReadOnlyAuditTransportBatch(b)).total, 0); });
+test('transport batch parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportBatch('{bad').total, 0));
+test('transport batch summary has status counters', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportBatch({}).statuses).sort(), ['invalid', 'ok', 'oversized', 'unavailable']));
+test('transport batch summary counts valid items', () => { const b = a.buildAgentReadOnlyAuditTransportBatch([a.buildAgentReadOnlyAuditTransportEnvelope('report', {})]); assert.equal(a.summarizeAgentReadOnlyAuditTransportBatch(b).valid, 1); });
+test('transport failure marks unavailable retryable', () => assert.equal(a.isAgentReadOnlyAuditTransportFailureRetryable({status: 'unavailable'}), true));
+test('transport failure marks invalid nonretryable', () => assert.equal(a.isAgentReadOnlyAuditTransportFailureRetryable({status: 'invalid'}), false));

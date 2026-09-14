@@ -12,6 +12,9 @@ const MAX_ITEMS = 32;
 const MAX_HISTORY_EVENTS = 8;
 const AUDIT_HEALTH = Object.freeze(["empty", "healthy", "degraded", "unavailable"]);
 const AUDIT_TRENDS = Object.freeze(["stable", "improving", "degrading"]);
+const AUDIT_TRANSPORT_TYPES = Object.freeze(["report", "window", "recovery"]);
+const AUDIT_TRANSPORT_STATUS = Object.freeze(["ok", "invalid", "oversized", "unavailable"]);
+const MAX_TRANSPORT_ITEMS = 8;
 
 function text(value, max = 96) {
     if (typeof value !== "string") return "";
@@ -418,6 +421,52 @@ function parseAgentReadOnlyAuditHistoryRecoveryPlan(value) {
     try { return normalizeAgentReadOnlyAuditHistoryRecoveryPlan(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditHistoryRecoveryPlan({}); }
 }
 
+function normalizeAgentAuditTransportType(value) { return AUDIT_TRANSPORT_TYPES.includes(value) ? value : "report"; }
+function normalizeAgentAuditTransportStatus(value) { return AUDIT_TRANSPORT_STATUS.includes(value) ? value : "invalid"; }
+function normalizeAgentAuditRequestId(value) { return text(value, 64).replace(/[^a-z0-9._-]/gi, ""); }
+function normalizeAgentAuditChecksum(value) { return text(value, 16).toLowerCase().replace(/[^a-f0-9]/g, ""); }
+function checksumAgentAuditPayload(value) { const input = typeof value === "string" ? value : JSON.stringify(value ?? null); let hash = 2166136261; for (let i = 0; i < input.length; i += 1) { hash ^= input.charCodeAt(i); hash = Math.imul(hash, 16777619); } return (hash >>> 0).toString(16).padStart(8, "0"); }
+
+function buildAgentReadOnlyAuditTransportEnvelope(type, payload, requestId = "") {
+    const normalizedType = normalizeAgentAuditTransportType(type);
+    const body = normalizedType === "report" ? normalizeAgentReadOnlyAuditHistoryReport(payload) : normalizedType === "window" ? normalizeAgentReadOnlyAuditHistoryWindow(payload) : normalizeAgentReadOnlyAuditHistoryRecoveryPlan(payload);
+    const serialized = JSON.stringify(body);
+    return {version: 1, type: normalizedType, status: "ok", requestId: normalizeAgentAuditRequestId(requestId), checksum: checksumAgentAuditPayload(serialized), payload: body};
+}
+
+function normalizeAgentReadOnlyAuditTransportEnvelope(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const type = normalizeAgentAuditTransportType(source.type);
+    const payload = type === "report" ? normalizeAgentReadOnlyAuditHistoryReport(source.payload) : type === "window" ? normalizeAgentReadOnlyAuditHistoryWindow(source.payload) : normalizeAgentReadOnlyAuditHistoryRecoveryPlan(source.payload);
+    return {version: 1, type, status: normalizeAgentAuditTransportStatus(source.status), requestId: normalizeAgentAuditRequestId(source.requestId), checksum: normalizeAgentAuditChecksum(source.checksum), payload};
+}
+
+function isAgentReadOnlyAuditTransportEnvelopeCompatible(value) {
+    const envelope = normalizeAgentReadOnlyAuditTransportEnvelope(value);
+    if (!value || value.version !== 1 || !AUDIT_TRANSPORT_TYPES.includes(envelope.type) || !AUDIT_TRANSPORT_STATUS.includes(envelope.status)) return false;
+    const payloadText = JSON.stringify(envelope.payload);
+    return envelope.status !== "ok" || envelope.checksum === checksumAgentAuditPayload(payloadText);
+}
+
+function serializeAgentReadOnlyAuditTransportEnvelope(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportEnvelope(value)); }
+function parseAgentReadOnlyAuditTransportEnvelope(value) { if (typeof value !== "string" || value.length > 32768) return {version: 1, type: "report", status: "oversized", requestId: "", checksum: "", payload: normalizeAgentReadOnlyAuditHistoryReport({})}; try { return normalizeAgentReadOnlyAuditTransportEnvelope(JSON.parse(value)); } catch (_) { return {version: 1, type: "report", status: "invalid", requestId: "", checksum: "", payload: normalizeAgentReadOnlyAuditHistoryReport({})}; } }
+
+function verifyAgentReadOnlyAuditTransportEnvelope(value) {
+    const envelope = normalizeAgentReadOnlyAuditTransportEnvelope(value);
+    if (!isAgentReadOnlyAuditTransportEnvelopeCompatible(value)) return {ok: false, status: envelope.status === "ok" ? "invalid" : envelope.status, requestId: envelope.requestId};
+    return {ok: true, status: "ok", requestId: envelope.requestId};
+}
+
+function buildAgentReadOnlyAuditTransportBatch(items) { const list = Array.isArray(items) ? items.slice(0, MAX_TRANSPORT_ITEMS).map((item) => normalizeAgentReadOnlyAuditTransportEnvelope(item)) : []; return {version: 1, total: list.length, items: list}; }
+function normalizeAgentReadOnlyAuditTransportBatch(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, total: normalizeAgentAuditCount(source.total, MAX_TRANSPORT_ITEMS), items: (Array.isArray(source.items) ? source.items : []).slice(0, MAX_TRANSPORT_ITEMS).map(normalizeAgentReadOnlyAuditTransportEnvelope)}; }
+function isAgentReadOnlyAuditTransportBatchCompatible(value) { const batch = normalizeAgentReadOnlyAuditTransportBatch(value); return value && value.version === 1 && batch.total === batch.items.length && batch.items.every(isAgentReadOnlyAuditTransportEnvelopeCompatible); }
+function serializeAgentReadOnlyAuditTransportBatch(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportBatch(value)); }
+function parseAgentReadOnlyAuditTransportBatch(value) { if (typeof value !== "string" || value.length > 65536) return {version: 1, total: 0, items: []}; try { return normalizeAgentReadOnlyAuditTransportBatch(JSON.parse(value)); } catch (_) { return {version: 1, total: 0, items: []}; } }
+function summarizeAgentReadOnlyAuditTransportBatch(value) { const batch = normalizeAgentReadOnlyAuditTransportBatch(value); const statuses = {ok: 0, invalid: 0, oversized: 0, unavailable: 0}; batch.items.forEach((item) => { statuses[item.status] += 1; }); return {version: 1, total: batch.items.length, statuses, valid: batch.items.filter(isAgentReadOnlyAuditTransportEnvelopeCompatible).length}; }
+function buildAgentReadOnlyAuditTransportFailure(status = "invalid", requestId = "") { const normalized = normalizeAgentAuditTransportStatus(status); return {version: 1, status: normalized, requestId: normalizeAgentAuditRequestId(requestId), retryable: normalized === "unavailable" || normalized === "oversized"}; }
+function normalizeAgentReadOnlyAuditTransportFailure(value) { const source = value && typeof value === "object" ? value : {}; const result = buildAgentReadOnlyAuditTransportFailure(source.status, source.requestId); return result; }
+function isAgentReadOnlyAuditTransportFailureRetryable(value) { return normalizeAgentReadOnlyAuditTransportFailure(value).retryable; }
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -427,7 +476,7 @@ module.exports = {
     buildAgentReadOnlyAuditSnapshot, normalizeAgentReadOnlyAuditSnapshot, isAgentReadOnlyAuditSnapshotCompatible,
     buildAgentAuditFailure, buildAgentAuditDeviceMatrix, diffAgentReadOnlyAuditSnapshots, normalizeAgentAuditEvent,
     buildAgentReadOnlyAuditEvents, normalizeAgentReadOnlyAuditEvents,
-    MAX_HISTORY_EVENTS, AUDIT_HEALTH, AUDIT_TRENDS, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
+    MAX_HISTORY_EVENTS, AUDIT_HEALTH, AUDIT_TRENDS, AUDIT_TRANSPORT_TYPES, AUDIT_TRANSPORT_STATUS, MAX_TRANSPORT_ITEMS, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
     normalizeAgentAuditHistoryEventType, buildAgentAuditHistoryEvent, normalizeAgentAuditHistoryEvent,
     buildAgentReadOnlyAuditHistorySummary, normalizeAgentReadOnlyAuditHistorySummary,
     isAgentReadOnlyAuditHistorySummaryCompatible, serializeAgentReadOnlyAuditHistorySummary,
@@ -449,4 +498,13 @@ module.exports = {
     buildAgentReadOnlyAuditHistoryRecoveryPlan, normalizeAgentReadOnlyAuditHistoryRecoveryPlan,
     isAgentReadOnlyAuditHistoryRecoveryPlanCompatible, serializeAgentReadOnlyAuditHistoryRecoveryPlan,
     parseAgentReadOnlyAuditHistoryRecoveryPlan,
+    normalizeAgentAuditTransportType, normalizeAgentAuditTransportStatus, normalizeAgentAuditRequestId,
+    normalizeAgentAuditChecksum, checksumAgentAuditPayload, buildAgentReadOnlyAuditTransportEnvelope,
+    normalizeAgentReadOnlyAuditTransportEnvelope, isAgentReadOnlyAuditTransportEnvelopeCompatible,
+    serializeAgentReadOnlyAuditTransportEnvelope, parseAgentReadOnlyAuditTransportEnvelope,
+    verifyAgentReadOnlyAuditTransportEnvelope, buildAgentReadOnlyAuditTransportBatch,
+    normalizeAgentReadOnlyAuditTransportBatch, isAgentReadOnlyAuditTransportBatchCompatible,
+    serializeAgentReadOnlyAuditTransportBatch, parseAgentReadOnlyAuditTransportBatch,
+    summarizeAgentReadOnlyAuditTransportBatch, buildAgentReadOnlyAuditTransportFailure,
+    normalizeAgentReadOnlyAuditTransportFailure, isAgentReadOnlyAuditTransportFailureRetryable,
 };

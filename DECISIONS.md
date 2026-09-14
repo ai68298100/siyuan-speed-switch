@@ -344,3 +344,4 @@
 - D-292 v0.17 审计历史健康报告固定为 empty/healthy/degraded/unavailable 四态，并只聚合事件计数与摘要元数据；原因是诊断消费者需要快速判断生命周期质量，但不应读取具体能力定义或宿主错误。
 - D-293 v0.17 审计报告差异采用健康等级排序（unavailable < degraded < empty < healthy）推导 improving/degrading/stable 趋势；窗口最多 8 份报告，序列化仍为 version=1。原因是趋势判断必须可重复且有界，不能依赖时间戳或宿主实现细节。
 - D-294 v0.17 审计窗口合并按 latestSequence 去重并升序排列，恢复计划仅返回 cursor 之后最多 8 份报告；零 sequence 使用健康/大小/事件摘要回退键。原因是多宿主采样合并必须确定性且不能重复消费。
+- D-295 v0.17 审计传输封装采用轻量 FNV-1a checksum、固定 requestId 清洗和最多 8 条批量 envelope；校验失败只返回稳定 status/retryable，不回显 payload 或异常。原因是跨宿主交换需要完整性提示，但不应引入加密依赖或扩大数据面。

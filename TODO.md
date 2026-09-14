@@ -365,6 +365,41 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（204 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1433~T-1462 Agent 审计传输封装与批量交换（本轮 30 项）
+
+- [x] T-1433 传输类型枚举
+- [x] T-1434 传输状态枚举
+- [x] T-1435 传输数量上限
+- [x] T-1436 类型未知值降级
+- [x] T-1437 状态未知值降级
+- [x] T-1438 requestId 清洗
+- [x] T-1439 requestId 长度上限
+- [x] T-1440 payload checksum
+- [x] T-1441 checksum 固定长度
+- [x] T-1442 envelope version=1
+- [x] T-1443 envelope type 保留
+- [x] T-1444 envelope requestId 保留
+- [x] T-1445 envelope 固定字段
+- [x] T-1446 envelope 兼容性校验
+- [x] T-1447 checksum 篡改检测
+- [x] T-1448 envelope 稳定序列化
+- [x] T-1449 envelope 非法 JSON 降级
+- [x] T-1450 envelope 载荷上限
+- [x] T-1451 envelope verification 回执
+- [x] T-1452 verification 篡改拒绝
+- [x] T-1453 batch version=1
+- [x] T-1454 batch 数量上限
+- [x] T-1455 batch total 归一化
+- [x] T-1456 batch 兼容性校验
+- [x] T-1457 batch total 一致性
+- [x] T-1458 batch 稳定序列化
+- [x] T-1459 batch 非法 JSON 降级
+- [x] T-1460 batch 状态计数
+- [x] T-1461 transport failure 回执
+- [x] T-1462 transport failure 重试判定
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（236 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合
