@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.40-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.16.41-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,9 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.16.40 focuses on widget-store, configuration, and native SiYuan Agent collaboration: the store provides live previews, availability/added filters, provider-unavailable retention and recovery, and one-click filter clearing; the empty widget panel links directly to the store; configuration supports strict date/document validation, reset-to-defaults, and unavailable notebook feedback; Agent widget discovery reports configured/enabled/size state for the current device. The UI uses lavender accents, blue-grey surfaces, rounded cards, soft elevation, and restrained warm highlights.
+> v0.16.41 extends capacity diagnostics for bounded report event queues with stable utilization summaries, history aggregation, change events, and consistency validation, while retaining the widget-store, configuration, and native SiYuan Agent improvements from v0.16.40.
 
-> Release note: this version passes type checking, production build, 675 automated tests, and mobile/Chromium UI smoke tests. This is not a release candidate anymore; it is the published `v0.16.40` release. Real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: this version passes type checking, production build, 888 automated tests, and mobile/Chromium UI smoke tests. It is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -166,9 +166,16 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This version is published as `v0.16.40`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
+This version is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
 
 ## Changelog
+
+### v0.16.41 (2026-09-14)
+
+- Capacity diagnostics now provide stable event-queue utilization summaries, serialization/parsing, diffs, and bounded change events.
+- Summary history is capped at 16 samples and exposes warning counts, peak utilization, and latest lifecycle state.
+- Derived fields are always recomputed; malformed, oversized, or inconsistent payloads downgrade safely with stable validation reasons.
+- Release gates pass: 888 automated tests, TypeScript, mobile smoke, and Chromium smoke; the production archive remains below the 300 KiB hard limit.
 
 ### v0.16.40 (2026-09-13)
 
