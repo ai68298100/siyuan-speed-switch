@@ -425,6 +425,15 @@ test('createStorageCapacityReportEventCoordinator isolates disposal', () => {
     assert.equal(coordinator.recover().reason, 'coordinator_disposed');
 });
 
+test('coordinator signal and deadline recovery preserve queue state', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    const coordinator = createStorageCapacityReportEventCoordinator(queue);
+    assert.equal(coordinator.recoverWithSignal({}, {aborted: true}).reason, 'cancelled');
+    assert.equal(coordinator.recoverWithDeadline({}, Date.now() - 1).reason, 'timeout');
+    assert.equal(queue.snapshot().size, 1);
+});
+
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {
     assert.deepEqual(parseStorageCapacityReportEvents('{bad'), []);
     assert.deepEqual(parseStorageCapacityReportEvents('x'.repeat(64001)), []);

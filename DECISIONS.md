@@ -1,4 +1,6 @@
 # 决策
+- D-266（2026-09-14）：协调器 signal/deadline 入口使 raw bundle 达 402,311 bytes，按真实增量将自律线校准至 395 KiB；`package.zip` 263,119 bytes，硬上限余量 42,577 bytes。
+- D-265（2026-09-14）：事件协调器 signal/deadline 入口在读取前检查终态；取消返回 cancelled、截止时间返回 timeout，均保持队列和游标不变，成功时复用单调恢复/提交语义。
 
 - D-264（2026-09-14）：报告事件协调器维护单调 lastCursor；恢复结果游标不得回退，提交仅接受不小于当前游标的整数，dispose 后统一返回 coordinator_disposed，不再触碰队列。
 

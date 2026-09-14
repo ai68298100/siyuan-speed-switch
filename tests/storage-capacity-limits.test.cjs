@@ -281,6 +281,15 @@ test('capacity: coordinator snapshot is fixed and commits are monotonic', () => 
     assert.equal(coordinator.commit(-1).committed, false);
 });
 
+test('capacity: coordinator cancellation/deadline paths never acknowledge', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    const coordinator = createStorageCapacityReportEventCoordinator(queue);
+    coordinator.recoverWithSignal({}, {aborted: true});
+    coordinator.recoverWithDeadline({}, Date.now() - 1);
+    assert.equal(queue.snapshot().size, 1);
+});
+
 test('capacity: health diff keeps transition lists within the declared buckets', () => {
     const diff = diffStorageCapacityHealth({over: ['favorites', 'bad']}, {near: ['pinned', 'favoriteGroups']});
     assert.deepEqual(diff.removedOver, ['favorites']);

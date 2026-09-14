@@ -595,6 +595,28 @@
   - 状态：done（2026-09-14）
 
 ## 待维护者决策
+- [x] T-995 协调器 signal 恢复
+- [x] T-996 协调器 deadline 恢复
+- [x] T-997 signal 取消检测
+- [x] T-998 deadline 超时检测
+- [x] T-999 取消 reason
+- [x] T-1000 超时 reason
+- [x] T-1001 成功恢复复用
+- [x] T-1002 队列不消费
+- [x] T-1003 游标保持
+- [x] T-1004 销毁态兼容
+- [x] T-1005 signal 回归
+- [x] T-1006 deadline 回归
+- [x] T-1007 队列边界回归
+- [x] T-1008 reason 固定
+- [x] T-1009 协调器快照
+- [x] T-1010 非法 signal 安全
+- [x] T-1011 非法 deadline 安全
+- [x] T-1012 容量专项
+- [x] T-1013 决策 D-265 落档
+- [x] T-1014 状态文档同步
+  - 状态：done（2026-09-14）
+  - 证据：`src/util.js`、`tests/util.test.cjs`、`tests/storage-capacity-limits.test.cjs`
 
 - [x] T-975 事件协调器
 - [x] T-976 协调器恢复入口
