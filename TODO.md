@@ -6272,3 +6272,53 @@
 - [x] T-4629 指南链接唯一
 - [x] T-4630 状态列表数量与 ID
 - [x] T-4631 全目录快照健康默认
+- [x] T-4632 weather 查询筛选
+- [x] T-4633 ActivityWatch 查询筛选
+- [x] T-4634 API 查询筛选
+- [x] T-4635 time 分类筛选
+- [x] T-4636 weather 分类筛选
+- [x] T-4637 trending 分类筛选
+- [x] T-4638 holiday 分类筛选
+- [x] T-4639 media 分类筛选
+- [x] T-4640 activity 分类筛选
+- [x] T-4641 desktop 平台筛选
+- [x] T-4642 sidebar 平台筛选
+- [x] T-4643 mobile 平台筛选
+- [x] T-4644 external 可用性筛选
+- [x] T-4645 conditional 可用性筛选
+- [x] T-4646 builtin 可用性筛选
+- [x] T-4647 reference 可用性筛选
+- [x] T-4648 media mobile 组合筛选
+- [x] T-4649 trending external 组合筛选
+- [x] T-4650 external mobile 组合筛选
+- [x] T-4651 API conditional 组合筛选
+- [x] T-4652 空 query 全量
+- [x] T-4653 空白 query 全量
+- [x] T-4654 moduleId 查询
+- [x] T-4655 本地化标题查询
+- [x] T-4656 provider 大小写查询
+- [x] T-4657 标题排序数量
+- [x] T-4658 标题排序稳定保留
+- [x] T-4659 availability 排序数量
+- [x] T-4660 未知排序回退
+- [x] T-4661 availability 并列稳定
+- [x] T-4662 builtin 摘要
+- [x] T-4663 external 摘要
+- [x] T-4664 conditional 摘要
+- [x] T-4665 bridge 摘要
+- [x] T-4666 reference 摘要
+- [x] T-4667 auth 摘要
+- [x] T-4668 非法 category 分组回退
+- [x] T-4669 自定义分组顺序
+- [x] T-4670 指南链接空白清理
+- [x] T-4671 指南链接斜杠清理
+- [x] T-4672 指南链接连字符
+- [x] T-4673 指南链接 query 清理
+- [x] T-4674 指南链接 fragment 清理
+- [x] T-4675 API Key 步骤
+- [x] T-4676 endpoint 步骤
+- [x] T-4677 local-service 步骤
+- [x] T-4678 HTTP 步骤
+- [x] T-4679 direct 无步骤
+- [x] T-4680 reference 单步骤
+- [x] T-4681 隐私级别映射
