@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
 
-> Release note: the v0.17.0 candidate passes type checking, production build, 1513 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, transport, recovery, joint-snapshot, checkpoint-window, and diagnostics-projection contracts for read-only Agent audits without opening new write actions. Real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: v0.17.0 passed type checking, production build, 1513 automated tests, and mobile/Chromium UI smoke tests. The current development head adds a separate life-information source layer and a fully offline local date/time widget, bringing the automated matrix to 1588 tests. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -170,6 +170,13 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 
 ## Changelog
 
+### Current development head (unreleased)
+
+- The widget store adds a Life Information group and a fully offline Local Date & Time widget for desktop, sidebar, and mobile. It refreshes on real minute boundaries and releases its heartbeat while hidden or disposed.
+- A pure catalog records nine researched external-widget candidates with source, licensing/terms, credentials, privacy, platform, and honest availability metadata. Sources without a production adapter are not presented as ready-to-add widgets.
+- The staged weather, holiday, trends, media, and activity plan is documented in [`docs/external-widget-source-audit.md`](docs/external-widget-source-audit.md). The current head contains 28 built-in widgets across 8 functional store groups.
+- The development head passes 1588 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
+
 ### v0.17.0 (2026-09-14)
 
 - Read-only SiYuan Agent audits now include bounded lifecycle history, health reports, trend windows, transport envelopes, queues, and recovery coordinators.
@@ -236,7 +243,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 102 `*.test.cjs` files under `tests/` and `tests/host/`, currently 997 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 104 `*.test.cjs` files under `tests/` and `tests/host/`, currently 1588 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -265,7 +272,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 751)
+pnpm test               # run every unit, contract, and host release test (currently 1588)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

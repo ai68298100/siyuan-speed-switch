@@ -35,6 +35,7 @@ test('summary respects filter', () => assert.equal(model.summarizeHomeStoreCards
 test('search text combines definition and id', () => assert.match(model.buildHomeStoreSearchText({title: '标题', description: '描述'}, 'module-id'), /module-id/));
 test('preview calendar kind is semantic', () => assert.equal(model.resolveHomeStorePreviewKind('journal-calendar', 'builtin'), 'calendar'));
 test('preview tasks kind is semantic', () => assert.equal(model.resolveHomeStorePreviewKind('today-tasks', 'builtin'), 'tasks'));
+test('offline local time preview uses stat semantics', () => assert.equal(model.resolveHomeStorePreviewKind('external-local-time', 'builtin'), 'stat'));
 test('unknown plugin preview uses plugin kind', () => assert.equal(model.resolveHomeStorePreviewKind('x', 'plugin'), 'plugin'));
 test('unknown builtin preview uses list kind', () => assert.equal(model.resolveHomeStorePreviewKind('x', 'builtin'), 'list'));
 test('preview kind normalization rejects unknown', () => assert.equal(model.normalizeHomeStorePreviewKind('x'), 'list'));

@@ -4,13 +4,13 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 28);
+    assert.equal(modules.length, 29);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 28);
+    assert.equal(home.modulesForDevice([], "mobile").length, 29);
 });
 
 test("journal-calendar viewType and monthOffset config", () => {
@@ -183,4 +183,12 @@ test("home model mobile recovery remains stable over repeated rotations", () => 
         state = home.normalizeHomeState({...baseline, layouts: {mobile: baseline.layouts.mobile.map((entry) => ({...entry, viewport: index, scrollTop: index * 10}))}});
     }
     assert.deepEqual(state, baseline);
+});
+
+test("default modules include an offline three-surface local clock", () => {
+    const clock = home.DEFAULT_MODULES.find((item) => item.moduleId === "external-local-time");
+    assert.ok(clock);
+    assert.deepEqual(clock.supportedDevices, ["desktop", "sidebar", "mobile"]);
+    assert.deepEqual(clock.sizes, ["xs", "small", "medium"]);
+    assert.equal(home.normalizeModuleDefinition(clock).availability, "ready");
 });

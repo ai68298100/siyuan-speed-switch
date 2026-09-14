@@ -26,6 +26,7 @@ import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreCardStatus} from "./home-store-model";
+import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -3521,6 +3522,12 @@ const version = beginSearch(session);
                 ],
             };
         });
+        // 生活信息组件首批：完全离线的本地时钟。使用浏览器 Intl，避免引入日期库、
+        // 网络服务或定位权限；面板存活期间由单一分钟定时器强制刷新。
+        register("external-local-time", this.i18n.homeLocalTime, "iconClock", this.i18n.homeDescLocalTime, [], () => {
+            const locale = document.documentElement.lang || navigator.language || "zh-CN";
+            return buildLocalTimeSnapshot(new Date(), locale, {localTime: this.i18n.homeLocalTimeZone});
+        });
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
@@ -4438,6 +4445,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupTasks, moduleIds: ["today-tasks"]},
                 {label: this.i18n.homeStoreGroupDocuments, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
+                {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time"]},
                 {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
                 {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
                 {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
@@ -4797,6 +4805,7 @@ const version = beginSearch(session);
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
         const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
         const homeRefreshTimers: number[] = [];
+        let homeClockTimer = 0;
         const homeRefreshObservers: IntersectionObserver[] = [];
         let homeRefreshBatchController: AbortController | null = null;
         let panelEventCleanup: (() => void) | null = null;
@@ -4807,6 +4816,8 @@ const version = beginSearch(session);
                 window.clearTimeout(handle);
             });
             homeRefreshObservers.splice(0).forEach((observer) => observer.disconnect());
+            if (homeClockTimer) window.clearTimeout(homeClockTimer);
+            homeClockTimer = 0;
         };
 
         const renderPanel = () => {
@@ -5247,6 +5258,30 @@ const version = beginSearch(session);
                 }
             };
             controllers.forEach(scheduleRefresh);
+
+            // 同一面板只建立一个对齐分钟边界的心跳；只刷新本地时钟，不触发网络组件。
+            if (controllers.some((entry) => entry.moduleId === "external-local-time")) {
+                const refreshClock = () => controllers.filter((entry) => entry.moduleId === "external-local-time")
+                    .forEach((entry) => { void entry.refresh(undefined, {force: true}); });
+                const scheduleClock = () => {
+                    if (!root.isConnected || homeClockTimer) return;
+                    homeClockTimer = window.setTimeout(() => {
+                        homeClockTimer = 0;
+                        if (document.visibilityState !== "hidden") refreshClock();
+                        scheduleClock();
+                    }, millisecondsToNextMinute());
+                };
+                const handleVisibility = () => {
+                    if (document.visibilityState !== "hidden") refreshClock();
+                };
+                document.addEventListener("visibilitychange", handleVisibility);
+                const previousCleanup = panelEventCleanup;
+                panelEventCleanup = () => {
+                    previousCleanup?.();
+                    document.removeEventListener("visibilitychange", handleVisibility);
+                };
+                scheduleClock();
+            }
 
             // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
             const hint = document.createElement("div");

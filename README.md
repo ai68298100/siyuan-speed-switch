@@ -10,7 +10,7 @@
 
 > v0.17.0 增强思源智能体只读协作：新增生命周期审计、传输队列、联合恢复、checkpoint 窗口和 diagnostics 投影契约，同时保留组件商店、配置体验与多端导航能力。
 
-> 当前开发策略：正式发布基线已通过类型检查、生产构建、1513 项自动测试、移动端与 Chromium UI 烟测；当前开发头新增 Agent 只读审计生命周期历史、回放、健康报告、趋势窗口、合并恢复、传输队列、联合检查点窗口与 diagnostics 投影契约，仍不开放新的写入动作。收藏/置顶/分组容量边界已锁定（512/64/64），路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
+> 当前开发策略：正式发布基线已通过类型检查、生产构建、1513 项自动测试、移动端与 Chromium UI 烟测；当前开发头建立独立“生活信息”组件来源层，首个“时间与日期”组件完全离线并按分钟更新，当前自动测试增至 1588 项。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -185,6 +185,13 @@ pnpm verify:release
 
 ## 更新日志
 
+### 当前开发头（未发布）
+
+- 组件商店新增“生活信息”分组和完全离线的“时间与日期”组件，覆盖桌面、侧栏与手机端；组件按真实分钟边界更新，页面隐藏或面板销毁时停止无效刷新。
+- 建立 9 个外部生活组件候选的纯模型目录，记录来源、许可/条款、凭据、隐私、端侧和可用状态；尚未完成真实适配的来源不会显示成可直接添加。
+- 天气、节假日、热点、影视与使用时长的来源审计和分阶段接入策略见 [`docs/external-widget-source-audit.md`](docs/external-widget-source-audit.md)。当前内置组件共 28 个，组件商店共 8 个内置功能分组。
+- 当前开发头通过 1588 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
+
 ### v0.17.0（2026-09-14）
 
 - 思源智能体只读审计增强：生命周期历史、健康报告、趋势窗口、传输封装、有限队列与恢复协调器均提供固定字段和脱敏输出。
@@ -255,7 +262,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 1513 项测试（102 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 1588 项测试（104 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -284,10 +291,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 1513 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 1588 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、1513 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、1588 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
