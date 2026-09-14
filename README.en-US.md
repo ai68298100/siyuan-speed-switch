@@ -166,7 +166,7 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release candidate is `v0.17.0` and is not published yet; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
+This release is published as `v0.17.0`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
 
 ## Changelog
 
