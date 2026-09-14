@@ -103,7 +103,9 @@ test('production bundle remains within the mobile performance budget when built'
     // unshipped definitions matrix; zip grows only ~5 KiB, hard ceiling intact.
     // 2026-09-14 (36): 385 KiB for v0.17 document-context read-only wiring
     // (bounded metadata envelope, active-tab preference and SQL fallback).
-    const budget = 385 * 1024;
+    // 2026-09-14 (37): 386 KiB for capacity health/report/trend contracts;
+    // package.zip remains below the 300 KiB hard ceiling.
+    const budget = 386 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

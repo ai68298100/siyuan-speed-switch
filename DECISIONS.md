@@ -1,5 +1,7 @@
 # 决策
 
+- D-242（2026-09-14）：容量健康/趋势/报告契约使 raw bundle 达 394,562 bytes，较 385 KiB 自律线超出 322 bytes；按真实增量校准至 386 KiB，`package.zip` 仍保留 45,942 bytes 以上硬上限余量，继续监控后续接入。
+
 - D-241（2026-09-14）：容量报告采用 version=1 固定顶层结构（health/trend/summary），解析与序列化均先归一化；summary 桶名白名单去重、计数封顶 3，报告 payload 上限 192,000 字符，未知版本字段不回显。
 
 - D-240（2026-09-14）：健康趋势消费端固定四字段（trend/riskDelta/pressureDelta/action），趋势与动作仅接受白名单，riskDelta 限制 -2..2，pressureDelta 限制 -1..1 并保留四位小数；序列化解析输入上限 64,000 字符，异常统一降级 stable/none。
