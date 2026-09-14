@@ -120,3 +120,36 @@ test('history summary parser isolates malformed json', () => assert.equal(a.pars
 test('history summary parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistorySummary('x'.repeat(1000)).size, 0));
 test('history event selector filters and caps', () => assert.deepEqual(a.selectAgentReadOnlyAuditHistoryEvents([{sequence: 1, type: 'initial'}, {sequence: 2, type: 'status_changed'}], 0, 1).map((e) => e.sequence), [1]));
 test('history event selector handles malformed input', () => assert.deepEqual(a.selectAgentReadOnlyAuditHistoryEvents(null), []));
+
+// v0.17 audit health/report contract (T-1343~T-1372)
+test('health constants are fixed', () => assert.deepEqual(a.AUDIT_HEALTH, ['empty', 'healthy', 'degraded', 'unavailable']));
+test('health normalizes unknown values', () => assert.equal(a.normalizeAgentAuditHealth('secret'), 'unavailable'));
+test('health preserves healthy value', () => assert.equal(a.normalizeAgentAuditHealth('healthy'), 'healthy'));
+test('empty history health is empty', () => assert.equal(a.buildAgentReadOnlyAuditHistoryHealth(a.createAgentReadOnlyAuditHistory()), 'empty'));
+test('recorded history health is healthy', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(h.health(), 'healthy'); });
+test('disposed history health is unavailable', () => { const h = a.createAgentReadOnlyAuditHistory(); h.dispose(); assert.equal(h.health(), 'unavailable'); });
+test('event summary has fixed counters', () => assert.deepEqual(Object.keys(a.buildAgentReadOnlyAuditEventSummary([]).counts).sort(), ['device_changed', 'disposed_changed', 'initial', 'status_changed', 'unchanged', 'validity_changed']));
+test('event summary counts initial event', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([{type: 'initial'}]).counts.initial, 1));
+test('event summary bounds total', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary(Array.from({length: 20}, () => ({type: 'initial'}))).total, 8));
+test('event summary latest type is stable', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([{type: 'initial'}, {type: 'status_changed'}]).latestType, 'status_changed'));
+test('event summary empty latest type', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([]).latestType, 'unchanged'));
+test('event summary ignores unknown event types', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([{type: 'secret'}]).counts.unchanged, 1));
+test('event summary normalizer fixes malformed counts', () => assert.equal(a.normalizeAgentReadOnlyAuditEventSummary({counts: {initial: 99}}).counts.initial, 8));
+test('event summary normalizer keeps fixed keys', () => assert.equal(Object.keys(a.normalizeAgentReadOnlyAuditEventSummary({}).counts).length, 6));
+test('event summary normalizer bounds total', () => assert.equal(a.normalizeAgentReadOnlyAuditEventSummary({total: 99}).total, 8));
+test('history object exposes event summary', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(h.eventSummary().total, 1); });
+test('history object exposes health', () => { const h = a.createAgentReadOnlyAuditHistory(); assert.equal(typeof h.health, 'function'); });
+test('report uses version one', () => assert.equal(a.buildAgentReadOnlyAuditHistoryReport(a.createAgentReadOnlyAuditHistory()).version, 1));
+test('report exposes empty health', () => assert.equal(a.buildAgentReadOnlyAuditHistoryReport(a.createAgentReadOnlyAuditHistory()).health, 'empty'));
+test('report exposes summary and events', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); const report = a.buildAgentReadOnlyAuditHistoryReport(h); assert.equal(report.summary.hasLatest, true); assert.equal(report.events.total, 1); });
+test('report is fixed top-level shape', () => assert.deepEqual(Object.keys(a.buildAgentReadOnlyAuditHistoryReport(a.createAgentReadOnlyAuditHistory())).sort(), ['events', 'health', 'summary', 'version']));
+test('report normalizer defaults safely', () => { const report = a.normalizeAgentReadOnlyAuditHistoryReport(null); assert.equal(report.version, 1); assert.equal(report.health, 'unavailable'); });
+test('report normalizer strips unknown fields', () => assert.equal('secret' in a.normalizeAgentReadOnlyAuditHistoryReport({secret: 'x'}), false));
+test('report compatibility accepts canonical report', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(a.isAgentReadOnlyAuditHistoryReportCompatible(a.buildAgentReadOnlyAuditHistoryReport(h)), true); });
+test('report compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditHistoryReportCompatible({version: 2}), false));
+test('report compatibility rejects invalid summary relation', () => assert.equal(a.isAgentReadOnlyAuditHistoryReportCompatible({version: 1, health: 'healthy', summary: {size: 3, capacity: 1, latestSequence: 3}, events: {}}), false));
+test('report serialization is deterministic', () => { const json = a.serializeAgentReadOnlyAuditHistoryReport({health: 'empty'}); assert.match(json, /"version":1/); });
+test('report parser round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryReport({health: 'healthy'}); assert.equal(a.parseAgentReadOnlyAuditHistoryReport(value).health, 'healthy'); });
+test('report parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistoryReport('{bad').version, 1));
+test('report parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryReport('x'.repeat(5000)).version, 1));
+test('report health never leaks host errors', () => { const hostile = {status() { throw Error('secret'); }, latest() { throw Error('secret'); }, events() { throw Error('secret'); }}; assert.equal(a.buildAgentReadOnlyAuditHistoryReport(hostile).health, 'empty'); });

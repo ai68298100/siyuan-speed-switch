@@ -10,6 +10,7 @@ const REASONS = Object.freeze(["cancelled", "timeout", "permission_denied", "una
 const SAFE_EFFECTS = Object.freeze(["localRead"]);
 const MAX_ITEMS = 32;
 const MAX_HISTORY_EVENTS = 8;
+const AUDIT_HEALTH = Object.freeze(["empty", "healthy", "degraded", "unavailable"]);
 
 function text(value, max = 96) {
     if (typeof value !== "string") return "";
@@ -158,6 +159,8 @@ function createAgentReadOnlyAuditHistory(limit = 8) {
             const parsed = normalizeAgentAuditCursor(cursor);
             return events.filter((event) => event.sequence > parsed).map(normalizeAgentAuditHistoryEvent).slice(0, MAX_HISTORY_EVENTS);
         },
+        health() { return buildAgentReadOnlyAuditHistoryHealth(this); },
+        eventSummary() { return buildAgentReadOnlyAuditEventSummary(this.events()); },
         status() { return {size: entries.length, capacity, disposed, latestSequence: sequence}; },
         dispose() { disposed = true; entries.length = 0; events.length = 0; },
     };
@@ -221,6 +224,56 @@ function selectAgentReadOnlyAuditHistoryEvents(events, cursor = 0, limit = MAX_H
     return (Array.isArray(events) ? events : []).map(normalizeAgentAuditHistoryEvent).filter((event) => event.sequence > parsed).slice(0, max);
 }
 
+function normalizeAgentAuditHealth(value) { return AUDIT_HEALTH.includes(value) ? value : "unavailable"; }
+
+function buildAgentReadOnlyAuditHistoryHealth(history) {
+    const summary = buildAgentReadOnlyAuditHistorySummary(history);
+    if (summary.disposed) return "unavailable";
+    if (!summary.hasLatest || summary.size === 0) return "empty";
+    if (summary.size > summary.capacity || summary.latestSequence < summary.size) return "degraded";
+    return "healthy";
+}
+
+function buildAgentReadOnlyAuditEventSummary(events) {
+    const counts = {initial: 0, validity_changed: 0, status_changed: 0, device_changed: 0, disposed_changed: 0, unchanged: 0};
+    const list = Array.isArray(events) ? events.map(normalizeAgentAuditHistoryEvent).slice(0, MAX_HISTORY_EVENTS) : [];
+    list.forEach((event) => { counts[event.type] += 1; });
+    const latest = list.length ? list[list.length - 1] : null;
+    return {total: list.length, latestType: latest ? latest.type : "unchanged", counts};
+}
+
+function normalizeAgentReadOnlyAuditEventSummary(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const raw = source.counts && typeof source.counts === "object" ? source.counts : {};
+    const counts = {};
+    ["initial", "validity_changed", "status_changed", "device_changed", "disposed_changed", "unchanged"].forEach((type) => { counts[type] = normalizeAgentAuditCount(raw[type], MAX_HISTORY_EVENTS); });
+    return {total: normalizeAgentAuditCount(source.total, MAX_HISTORY_EVENTS), latestType: normalizeAgentAuditHistoryEventType(source.latestType), counts};
+}
+
+function buildAgentReadOnlyAuditHistoryReport(history) {
+    const summary = buildAgentReadOnlyAuditHistorySummary(history);
+    let events = [];
+    try { events = history && typeof history.events === "function" ? history.events() : []; } catch (_) { events = []; }
+    return {version: 1, health: normalizeAgentAuditHealth(buildAgentReadOnlyAuditHistoryHealth(history)), summary, events: buildAgentReadOnlyAuditEventSummary(events)};
+}
+
+function normalizeAgentReadOnlyAuditHistoryReport(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {version: 1, health: normalizeAgentAuditHealth(source.health), summary: normalizeAgentReadOnlyAuditHistorySummary(source.summary), events: normalizeAgentReadOnlyAuditEventSummary(source.events)};
+}
+
+function isAgentReadOnlyAuditHistoryReportCompatible(value) {
+    const report = normalizeAgentReadOnlyAuditHistoryReport(value);
+    return value && value.version === 1 && AUDIT_HEALTH.includes(report.health) && isAgentReadOnlyAuditHistorySummaryCompatible({version: 1, ...report.summary});
+}
+
+function serializeAgentReadOnlyAuditHistoryReport(value) { return JSON.stringify(normalizeAgentReadOnlyAuditHistoryReport(value)); }
+
+function parseAgentReadOnlyAuditHistoryReport(value) {
+    if (typeof value !== "string" || value.length > 2048) return normalizeAgentReadOnlyAuditHistoryReport({});
+    try { return normalizeAgentReadOnlyAuditHistoryReport(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditHistoryReport({}); }
+}
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -230,9 +283,13 @@ module.exports = {
     buildAgentReadOnlyAuditSnapshot, normalizeAgentReadOnlyAuditSnapshot, isAgentReadOnlyAuditSnapshotCompatible,
     buildAgentAuditFailure, buildAgentAuditDeviceMatrix, diffAgentReadOnlyAuditSnapshots, normalizeAgentAuditEvent,
     buildAgentReadOnlyAuditEvents, normalizeAgentReadOnlyAuditEvents,
-    MAX_HISTORY_EVENTS, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
+    MAX_HISTORY_EVENTS, AUDIT_HEALTH, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
     normalizeAgentAuditHistoryEventType, buildAgentAuditHistoryEvent, normalizeAgentAuditHistoryEvent,
     buildAgentReadOnlyAuditHistorySummary, normalizeAgentReadOnlyAuditHistorySummary,
     isAgentReadOnlyAuditHistorySummaryCompatible, serializeAgentReadOnlyAuditHistorySummary,
     parseAgentReadOnlyAuditHistorySummary, selectAgentReadOnlyAuditHistoryEvents,
+    normalizeAgentAuditHealth, buildAgentReadOnlyAuditHistoryHealth, buildAgentReadOnlyAuditEventSummary,
+    normalizeAgentReadOnlyAuditEventSummary, buildAgentReadOnlyAuditHistoryReport,
+    normalizeAgentReadOnlyAuditHistoryReport, isAgentReadOnlyAuditHistoryReportCompatible,
+    serializeAgentReadOnlyAuditHistoryReport, parseAgentReadOnlyAuditHistoryReport,
 };
