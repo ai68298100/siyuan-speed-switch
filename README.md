@@ -10,7 +10,7 @@
 
 > v0.17.0 增强思源智能体只读协作：新增生命周期审计、传输队列、联合恢复、checkpoint 窗口和 diagnostics 投影契约，同时保留组件商店、配置体验与多端导航能力。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、3240 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、3284 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -195,7 +195,7 @@ pnpm verify:release
 - 新增 DailyHotApi **热搜事件**与 NewsNow **实时资讯**：只接受用户填写的自建完整端点，默认零联网；远程地址必须 HTTPS，响应受 128 KiB/8.5 秒边界保护，30 分钟缓存失败后明确显示“过期缓存”。排行榜采用平板式渐变卡片、前三名强调和移动端紧凑布局。
 - 新增 ActivityWatch **使用时长**：只允许本机回环地址，通过思源本机代理执行固定聚合 Query，显示应用级时长排行，不读取窗口标题；商店可按离线、本机服务、外部 API 筛选，并在“设备与专注”分组展示。
 - 手机端组件面板采用单列纵向布局：每行一个组件、统一尺寸，避免窄屏并排压缩；页签列表的列数设置不影响组件面板。
-- 当前开发头已通过 3240 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
+- 当前开发头已通过 3284 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
 
 ### v0.17.0（2026-09-14）
 
@@ -267,7 +267,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 3240 项测试（143 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 3284 项测试（143 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -296,10 +296,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 3240 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 3284 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、3240 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、3284 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
