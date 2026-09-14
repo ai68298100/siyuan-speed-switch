@@ -519,3 +519,38 @@ test('joint recovery outcome caps total', () => assert.equal(a.normalizeAgentRea
 test('joint failure status normalizes unknown', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointFailure('invalid').status, 'ready'));
 test('joint snapshot event count bounded', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointSnapshotEvents({total: 1, committed: 1, disposed: false, cursor: 1}, {total: 2, committed: 2, disposed: true, cursor: 2}).length <= 8));
 test('joint recovery outcome rejects over-count compatibility', () => assert.equal(a.isAgentReadOnlyAuditTransportJointRecoveryOutcomeCompatible({version: 1, status: 'partial', total: 1, committed: 2, blocked: 0, disposed: 0}), false));
+
+// v0.17 joint checkpoint window consistency contract (T-1703~T-1732)
+test('joint result compatibility rejects missing version', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({status: 'ready'}), false));
+test('joint result compatibility rejects acknowledged partial', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({version: 1, status: 'partial', acknowledged: true}), false));
+test('joint result compatibility accepts acknowledged committed', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({version: 1, status: 'committed', acknowledged: true}), true));
+test('joint snapshot diff exposes total delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({total: 1}, {total: 3}).totalDelta, 2));
+test('joint snapshot diff exposes committed delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({committed: 3}, {committed: 1}).committedDelta, -2));
+test('joint snapshot events preserve total delta', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointSnapshotEvents({total: 1}, {total: 3})[0].delta, 2));
+test('joint checkpoint normalizes disposed count', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpoint({disposed: 3}).disposed, 3));
+test('joint checkpoint compatibility rejects disposed overflow', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointCompatible({version: 1, total: 1, disposed: 2}), false));
+test('joint checkpoint window limit is bounded', () => assert.equal(a.normalizeAgentAuditJointWindowLimit(99), 8));
+test('joint checkpoint dedupe keeps latest cursor value', () => assert.equal(a.dedupeAgentReadOnlyAuditTransportJointCheckpoints([{cursor: 2, total: 1}, {cursor: 2, total: 3}])[0].total, 3));
+test('joint checkpoint window sorts cursors', () => assert.deepEqual(a.buildAgentReadOnlyAuditTransportJointCheckpointWindow([{cursor: 3}, {cursor: 1}]).map((x) => x.cursor), [1, 3]));
+test('joint checkpoint window trims newest bounded set', () => assert.deepEqual(a.buildAgentReadOnlyAuditTransportJointCheckpointWindow([{cursor: 1}, {cursor: 2}, {cursor: 3}], 2).map((x) => x.cursor), [2, 3]));
+test('joint checkpoint window has version one', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpointWindow({}).version, 1));
+test('joint checkpoint window compatibility accepts ordered values', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointWindowCompatible({version: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}, {version: 1, cursor: 2, total: 1, disposed: 0}]}), true));
+test('joint checkpoint window compatibility rejects duplicate cursors', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointWindowCompatible({version: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}, {version: 1, cursor: 1, total: 1, disposed: 0}]}), false));
+test('joint checkpoint window serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointCheckpointWindow(a.serializeAgentReadOnlyAuditTransportJointCheckpointWindow({checkpoints: [{cursor: 4}]})).checkpoints[0].cursor, 4));
+test('joint checkpoint window parser isolates hostile json', () => assert.deepEqual(a.parseAgentReadOnlyAuditTransportJointCheckpointWindow('{bad').checkpoints, []));
+test('joint checkpoint window summary empty', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindow({}).progress, 'empty'));
+test('joint checkpoint window summary advancing', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindow({checkpoints: [{cursor: 1}, {cursor: 2}]}).progress, 'advancing'));
+test('joint checkpoint window summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindow({})).sort(), ['disposed', 'latestCursor', 'progress', 'size', 'total', 'version'].sort()));
+test('joint checkpoint window summary compatibility rejects overflow disposed', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointWindowSummaryCompatible({version: 1, size: 1, latestCursor: 1, total: 1, disposed: 2, progress: 'stalled'}), false));
+test('joint checkpoint window diff computes cursor delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointCheckpointWindows({checkpoints: [{cursor: 1}]}, {checkpoints: [{cursor: 3}]}).cursorDelta, 2));
+test('joint checkpoint window events mark advance', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpointWindowEvents({checkpoints: [{cursor: 1}]}, {checkpoints: [{cursor: 2}]})[0].type, 'cursor_advanced'));
+test('joint checkpoint window events mark regression', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpointWindowEvents({checkpoints: [{cursor: 2}]}, {checkpoints: [{cursor: 1}]})[0].type, 'cursor_regressed'));
+test('joint checkpoint window event normalizer clamps delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvent({delta: 99}).delta, 8));
+test('joint checkpoint window event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents([{type: 'size_changed'}, {type: 'size_changed'}]).length, 1));
+test('joint checkpoint window event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents([])).sort(), ['advancing', 'regressing', 'structural', 'total', 'version'].sort()));
+test('joint checkpoint selector respects cursor', () => assert.deepEqual(a.selectAgentReadOnlyAuditTransportJointCheckpointsAfter({checkpoints: [{cursor: 1}, {cursor: 2}]}, 1).map((x) => x.cursor), [2]));
+test('joint checkpoint windows merge deterministically', () => assert.deepEqual(a.mergeAgentReadOnlyAuditTransportJointCheckpointWindows({checkpoints: [{cursor: 2}]}, {checkpoints: [{cursor: 1}]}).checkpoints.map((x) => x.cursor), [1, 2]));
+test('joint checkpoint window trim keeps bounded tail', () => assert.deepEqual(a.trimAgentReadOnlyAuditTransportJointCheckpointWindow({checkpoints: [{cursor: 1}, {cursor: 2}, {cursor: 3}]}, 2).checkpoints.map((x) => x.cursor), [2, 3]));
+test('joint checkpoint recovery plan advances cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan({checkpoints: [{cursor: 1}, {cursor: 2}]}, 0, 1).nextCursor, 1));
+test('joint checkpoint recovery plan compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointRecoveryPlanCompatible({version: 1, cursor: 0, nextCursor: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}], complete: true}), true));
+test('joint checkpoint recovery plan serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(a.serializeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan({cursor: 2, nextCursor: 3, checkpoints: [{cursor: 3}]})).nextCursor, 3));

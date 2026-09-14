@@ -680,6 +680,46 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（485 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1703~T-1737 Agent 联合检查点窗口与一致性（本轮 35 项）
+
+- [x] T-1703 联合结果 version 兼容性
+- [x] T-1704 联合结果确认状态一致性
+- [x] T-1705 联合结果 committed 确认
+- [x] T-1706 联合快照 totalDelta
+- [x] T-1707 联合快照 committedDelta
+- [x] T-1708 联合快照事件 delta
+- [x] T-1709 checkpoint disposed 计数
+- [x] T-1710 checkpoint disposed 上限
+- [x] T-1711 检查点窗口 limit 上限
+- [x] T-1712 检查点 cursor 去重
+- [x] T-1713 检查点 cursor 排序
+- [x] T-1714 检查点窗口尾部裁剪
+- [x] T-1715 检查点窗口 version=1
+- [x] T-1716 检查点窗口规范兼容性
+- [x] T-1717 重复 cursor 兼容性拒绝
+- [x] T-1718 检查点窗口序列化
+- [x] T-1719 检查点窗口恶意解析隔离
+- [x] T-1720 检查点窗口空状态
+- [x] T-1721 检查点窗口 advancing 状态
+- [x] T-1722 检查点窗口摘要固定字段
+- [x] T-1723 检查点窗口摘要计数一致性
+- [x] T-1724 检查点窗口差异 cursorDelta
+- [x] T-1725 cursor advanced 事件
+- [x] T-1726 cursor regressed 事件
+- [x] T-1727 检查点事件 delta 脱敏上限
+- [x] T-1728 检查点事件去重
+- [x] T-1729 检查点事件摘要固定字段
+- [x] T-1730 cursor 增量选择
+- [x] T-1731 检查点窗口合并
+- [x] T-1732 检查点窗口裁剪
+- [x] T-1733 检查点恢复计划 cursor
+- [x] T-1734 检查点恢复计划兼容性
+- [x] T-1735 检查点恢复计划序列化
+- [x] T-1736 恢复计划单调 cursor
+- [x] T-1737 联合一致性回归汇总
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（518 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合

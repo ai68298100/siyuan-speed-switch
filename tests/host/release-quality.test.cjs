@@ -120,7 +120,9 @@ test('production bundle remains within the mobile performance budget when built'
     // aggregation, trend windows and event replay
     // and versioned summary serialization; package.zip remains below the
     // unchanged 300 KiB hard ceiling.
-    const budget = 440 * 1024;
+    // 2026-09-14 (51): 444 KiB for joint checkpoint-window consistency,
+    // bounded cursor recovery plans and deterministic window summaries.
+    const budget = 444 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

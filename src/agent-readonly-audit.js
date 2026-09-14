@@ -611,7 +611,12 @@ function normalizeAgentReadOnlyAuditTransportJointHealth(value) { const source =
 function isAgentReadOnlyAuditTransportJointHealthCompatible(value) { const health = normalizeAgentReadOnlyAuditTransportJointHealth(value); return value && value.version === 1 && health.healthy + health.blocked + health.disposed <= health.total; }
 function createAgentReadOnlyAuditTransportJointCoordinator(coordinators) { let disposed = false; let status = "ready"; let commits = 0; let cursor = 0; return {prepare() { if (disposed) return {version: 1, status: "disposed", snapshot: buildAgentReadOnlyAuditTransportJointSnapshot([])}; status = "prepared"; return {version: 1, status, snapshot: buildAgentReadOnlyAuditTransportJointSnapshot(coordinators)}; }, commit(results = []) { if (disposed) return {version: 1, status: "disposed", acknowledged: false, commits, cursor}; const list = Array.isArray(results) ? results.slice(0, MAX_TRANSPORT_ITEMS).map(normalizeAgentReadOnlyAuditTransportCoordinatorResult) : []; if (!list.length || list.some((result) => result.status !== "committed" || !result.acknowledged)) return {version: 1, status: "partial", acknowledged: false, commits, cursor}; status = "committed"; commits += 1; cursor = Math.max(cursor, ...list.map((result) => result.cursor)); return {version: 1, status, acknowledged: true, commits, cursor}; }, snapshot() { return {version: 1, status: disposed ? "disposed" : status, commits, cursor, disposed}; }, dispose() { disposed = true; status = "disposed"; } }; }
 function normalizeAgentReadOnlyAuditTransportJointResult(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, status: normalizeAgentAuditJointStatus(source.status), acknowledged: normalizeAgentAuditBoolean(source.acknowledged), commits: normalizeAgentAuditCount(source.commits, MAX_TRANSPORT_QUEUE), cursor: normalizeAgentAuditTransportCursor(source.cursor)}; }
-function isAgentReadOnlyAuditTransportJointResultCompatible(value) { const result = normalizeAgentReadOnlyAuditTransportJointResult(value); return value && value.version === 1 && result.status !== "partial" || result.status === "partial"; }
+function isAgentReadOnlyAuditTransportJointResultCompatible(value) {
+    const result = normalizeAgentReadOnlyAuditTransportJointResult(value);
+    return !!value && typeof value === "object" && value.version === 1
+        && AUDIT_JOINT_STATUS.includes(value.status)
+        && (!result.acknowledged || result.status === "committed");
+}
 function buildAgentReadOnlyAuditTransportJointEvents(previous, next) { const a = normalizeAgentReadOnlyAuditTransportJointResult(previous); const b = normalizeAgentReadOnlyAuditTransportJointResult(next); const events = []; if (a.status !== b.status) events.push({type: "status_changed"}); if (a.cursor !== b.cursor) events.push({type: "cursor_changed"}); if (a.commits !== b.commits) events.push({type: "commits_changed"}); if (a.acknowledged !== b.acknowledged) events.push({type: "acknowledged_changed"}); return events.slice(0, MAX_HISTORY_EVENTS); }
 function normalizeAgentReadOnlyAuditTransportJointEvents(events) { if (!Array.isArray(events)) return []; const allowed = ["status_changed", "cursor_changed", "commits_changed", "acknowledged_changed"]; const seen = new Set(); return events.map((event) => ({type: allowed.includes(event?.type) ? event.type : "status_changed"})).filter((event) => { if (seen.has(event.type)) return false; seen.add(event.type); return true; }).slice(0, MAX_HISTORY_EVENTS); }
 function summarizeAgentReadOnlyAuditTransportJointEvents(events) { const list = normalizeAgentReadOnlyAuditTransportJointEvents(events); return {version: 1, total: list.length, lifecycle: list.filter((e) => e.type === "status_changed").length, cursor: list.filter((e) => e.type === "cursor_changed").length, commits: list.filter((e) => e.type === "commits_changed").length, acknowledged: list.filter((e) => e.type === "acknowledged_changed").length}; }
@@ -624,22 +629,76 @@ function parseAgentReadOnlyAuditTransportJointResult(value) { if (typeof value !
 
 function normalizeAgentAuditJointCursor(value) { return normalizeAgentAuditTransportCursor(value); }
 function jointHealthRank(value) { return {disposed: 0, blocked: 1, active: 2, idle: 3}[normalizeAgentReadOnlyAuditTransportJointHealth({health: value}).health]; }
-function diffAgentReadOnlyAuditTransportJointSnapshots(previous, next) { const a = normalizeAgentReadOnlyAuditTransportJointSnapshot(previous); const b = normalizeAgentReadOnlyAuditTransportJointSnapshot(next); return {totalChanged: a.total !== b.total, committedChanged: a.committed !== b.committed, disposedChanged: a.disposed !== b.disposed, cursorChanged: a.cursor !== b.cursor, cursorDelta: b.cursor - a.cursor}; }
-function buildAgentReadOnlyAuditTransportJointSnapshotEvents(previous, next) { const diff = diffAgentReadOnlyAuditTransportJointSnapshots(previous, next); const events = []; if (diff.totalChanged) events.push({type: "total_changed", delta: 0}); if (diff.committedChanged) events.push({type: "committed_changed", delta: boundedJointDelta(diff.committedChanged)}); if (diff.disposedChanged) events.push({type: "disposed_changed", delta: 0}); if (diff.cursorChanged) events.push({type: "cursor_changed", delta: diff.cursorDelta}); return events.slice(0, MAX_HISTORY_EVENTS).map(normalizeAgentReadOnlyAuditTransportJointSnapshotEvent); }
+function diffAgentReadOnlyAuditTransportJointSnapshots(previous, next) {
+    const a = normalizeAgentReadOnlyAuditTransportJointSnapshot(previous);
+    const b = normalizeAgentReadOnlyAuditTransportJointSnapshot(next);
+    return {totalChanged: a.total !== b.total, committedChanged: a.committed !== b.committed, disposedChanged: a.disposed !== b.disposed, cursorChanged: a.cursor !== b.cursor, totalDelta: b.total - a.total, committedDelta: b.committed - a.committed, disposedDelta: b.disposed - a.disposed, cursorDelta: b.cursor - a.cursor};
+}
+function buildAgentReadOnlyAuditTransportJointSnapshotEvents(previous, next) {
+    const diff = diffAgentReadOnlyAuditTransportJointSnapshots(previous, next);
+    const events = [];
+    if (diff.totalChanged) events.push({type: "total_changed", delta: diff.totalDelta});
+    if (diff.committedChanged) events.push({type: "committed_changed", delta: diff.committedDelta});
+    if (diff.disposedChanged) events.push({type: "disposed_changed", delta: diff.disposedDelta});
+    if (diff.cursorChanged) events.push({type: "cursor_changed", delta: diff.cursorDelta});
+    return events.slice(0, MAX_HISTORY_EVENTS).map(normalizeAgentReadOnlyAuditTransportJointSnapshotEvent);
+}
 function boundedJointDelta(value) { return Math.max(-MAX_TRANSPORT_ITEMS, Math.min(MAX_TRANSPORT_ITEMS, Math.trunc(Number(value) || 0))); }
 function normalizeAgentReadOnlyAuditTransportJointSnapshotEvent(value) { const source = value && typeof value === "object" ? value : {}; const allowed = ["total_changed", "committed_changed", "disposed_changed", "cursor_changed"]; return {type: allowed.includes(source.type) ? source.type : "total_changed", delta: boundedJointDelta(source.delta)}; }
 function normalizeAgentReadOnlyAuditTransportJointSnapshotEvents(events) { if (!Array.isArray(events)) return []; const seen = new Set(); return events.map(normalizeAgentReadOnlyAuditTransportJointSnapshotEvent).filter((event) => { if (seen.has(event.type)) return false; seen.add(event.type); return true; }).slice(0, MAX_HISTORY_EVENTS); }
 function summarizeAgentReadOnlyAuditTransportJointSnapshotEvents(events) { const list = normalizeAgentReadOnlyAuditTransportJointSnapshotEvents(events); return {version: 1, total: list.length, structural: list.filter((e) => e.type === "total_changed").length, progress: list.filter((e) => e.type === "cursor_changed" || e.type === "committed_changed").length, lifecycle: list.filter((e) => e.type === "disposed_changed").length}; }
 function buildAgentReadOnlyAuditTransportJointCheckpoint(snapshot) { const normalized = normalizeAgentReadOnlyAuditTransportJointSnapshot(snapshot); return {version: 1, cursor: normalized.cursor, total: normalized.total, disposed: normalized.disposed}; }
-function normalizeAgentReadOnlyAuditTransportJointCheckpoint(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, cursor: normalizeAgentAuditJointCursor(source.cursor), total: normalizeAgentAuditCount(source.total, MAX_TRANSPORT_ITEMS), disposed: normalizeAgentAuditBoolean(source.disposed)}; }
-function isAgentReadOnlyAuditTransportJointCheckpointCompatible(value) { const checkpoint = normalizeAgentReadOnlyAuditTransportJointCheckpoint(value); return value && value.version === 1 && checkpoint.cursor >= 0; }
+function normalizeAgentReadOnlyAuditTransportJointCheckpoint(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, cursor: normalizeAgentAuditJointCursor(source.cursor), total: normalizeAgentAuditCount(source.total, MAX_TRANSPORT_ITEMS), disposed: normalizeAgentAuditCount(source.disposed, MAX_TRANSPORT_ITEMS)}; }
+function isAgentReadOnlyAuditTransportJointCheckpointCompatible(value) { const checkpoint = normalizeAgentReadOnlyAuditTransportJointCheckpoint(value); return !!value && typeof value === "object" && value.version === 1 && checkpoint.disposed <= checkpoint.total; }
 function serializeAgentReadOnlyAuditTransportJointCheckpoint(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportJointCheckpoint(value)); }
 function parseAgentReadOnlyAuditTransportJointCheckpoint(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportJointCheckpoint({}); try { return normalizeAgentReadOnlyAuditTransportJointCheckpoint(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportJointCheckpoint({}); } }
 function buildAgentReadOnlyAuditTransportJointRecoveryOutcome(results) { const summary = buildAgentReadOnlyAuditTransportCoordinatorBatchResult(results); return {version: 1, status: summary.total && summary.committed === summary.total ? "committed" : "partial", ...summary, acknowledged: summary.total > 0 && summary.committed === summary.total}; }
 function normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome(value) { const source = value && typeof value === "object" ? value : {}; const summary = normalizeAgentReadOnlyAuditTransportCoordinatorBatchResult(source); return {version: 1, status: normalizeAgentAuditJointStatus(source.status), ...summary, acknowledged: normalizeAgentAuditBoolean(source.acknowledged)}; }
-function isAgentReadOnlyAuditTransportJointRecoveryOutcomeCompatible(value) { const result = normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome(value); return value && value.version === 1 && result.committed + result.blocked + result.disposed <= result.total; }
+function isAgentReadOnlyAuditTransportJointRecoveryOutcomeCompatible(value) {
+    const result = normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome(value);
+    const allCommitted = result.total > 0 && result.committed === result.total;
+    return !!value && typeof value === "object" && value.version === 1 && ["committed", "partial"].includes(value.status)
+        && result.committed + result.blocked + result.disposed <= result.total
+        && result.acknowledged === (result.status === "committed" && allCommitted);
+}
 function serializeAgentReadOnlyAuditTransportJointRecoveryOutcome(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome(value)); }
 function parseAgentReadOnlyAuditTransportJointRecoveryOutcome(value) { if (typeof value !== "string" || value.length > 1024) return normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome({status: "partial"}); try { return normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome({status: "partial"}); } }
+
+const MAX_JOINT_CHECKPOINTS = MAX_HISTORY_EVENTS;
+const AUDIT_JOINT_WINDOW_PROGRESS = Object.freeze(["empty", "stalled", "advancing", "regressing"]);
+function normalizeAgentAuditJointWindowLimit(value) { const parsed = normalizeAgentAuditCount(value, MAX_JOINT_CHECKPOINTS); return Math.max(1, parsed || MAX_JOINT_CHECKPOINTS); }
+function dedupeAgentReadOnlyAuditTransportJointCheckpoints(checkpoints) {
+    if (!Array.isArray(checkpoints)) return [];
+    const byCursor = new Map();
+    checkpoints.slice(0, MAX_JOINT_CHECKPOINTS * 2).forEach((checkpoint) => { const normalized = normalizeAgentReadOnlyAuditTransportJointCheckpoint(checkpoint); byCursor.set(normalized.cursor, normalized); });
+    return [...byCursor.values()].sort((left, right) => left.cursor - right.cursor);
+}
+function buildAgentReadOnlyAuditTransportJointCheckpointWindow(checkpoints, limit = MAX_JOINT_CHECKPOINTS) { return dedupeAgentReadOnlyAuditTransportJointCheckpoints(checkpoints).slice(-normalizeAgentAuditJointWindowLimit(limit)); }
+function normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(value) { const source = value && typeof value === "object" && !Array.isArray(value) ? value : {}; return {version: 1, checkpoints: buildAgentReadOnlyAuditTransportJointCheckpointWindow(source.checkpoints)}; }
+function isAgentReadOnlyAuditTransportJointCheckpointWindowCompatible(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value) || value.version !== 1 || !Array.isArray(value.checkpoints)) return false;
+    const window = normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(value);
+    return window.checkpoints.length === value.checkpoints.length && window.checkpoints.length <= MAX_JOINT_CHECKPOINTS && window.checkpoints.every((checkpoint, index) => isAgentReadOnlyAuditTransportJointCheckpointCompatible(value.checkpoints[index]) && (index === 0 || checkpoint.cursor > window.checkpoints[index - 1].cursor));
+}
+function serializeAgentReadOnlyAuditTransportJointCheckpointWindow(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(value)); }
+function parseAgentReadOnlyAuditTransportJointCheckpointWindow(value) { if (typeof value !== "string" || value.length > 4096) return normalizeAgentReadOnlyAuditTransportJointCheckpointWindow({}); try { return normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportJointCheckpointWindow({}); } }
+function normalizeAgentAuditJointWindowProgress(value) { return AUDIT_JOINT_WINDOW_PROGRESS.includes(value) ? value : "empty"; }
+function summarizeAgentReadOnlyAuditTransportJointCheckpointWindow(value) { const checkpoints = normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(value).checkpoints; const latest = checkpoints.at(-1); const previous = checkpoints.at(-2); const progress = !latest ? "empty" : !previous || latest.cursor === previous.cursor ? "stalled" : latest.cursor > previous.cursor ? "advancing" : "regressing"; return {version: 1, size: checkpoints.length, latestCursor: latest?.cursor || 0, total: latest?.total || 0, disposed: latest?.disposed || 0, progress}; }
+function normalizeAgentReadOnlyAuditTransportJointCheckpointWindowSummary(value) { const source = value && typeof value === "object" && !Array.isArray(value) ? value : {}; return {version: 1, size: normalizeAgentAuditCount(source.size, MAX_JOINT_CHECKPOINTS), latestCursor: normalizeAgentAuditJointCursor(source.latestCursor), total: normalizeAgentAuditCount(source.total, MAX_TRANSPORT_ITEMS), disposed: normalizeAgentAuditCount(source.disposed, MAX_TRANSPORT_ITEMS), progress: normalizeAgentAuditJointWindowProgress(source.progress)}; }
+function isAgentReadOnlyAuditTransportJointCheckpointWindowSummaryCompatible(value) { const summary = normalizeAgentReadOnlyAuditTransportJointCheckpointWindowSummary(value); return !!value && typeof value === "object" && !Array.isArray(value) && value.version === 1 && AUDIT_JOINT_WINDOW_PROGRESS.includes(value.progress) && summary.disposed <= summary.total; }
+function diffAgentReadOnlyAuditTransportJointCheckpointWindows(previous, next) { const a = summarizeAgentReadOnlyAuditTransportJointCheckpointWindow(previous); const b = summarizeAgentReadOnlyAuditTransportJointCheckpointWindow(next); return {sizeDelta: b.size - a.size, cursorDelta: b.latestCursor - a.latestCursor, totalDelta: b.total - a.total, disposedDelta: b.disposed - a.disposed, progress: b.progress}; }
+function normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvent(value) { const source = value && typeof value === "object" ? value : {}; const allowed = ["cursor_advanced", "cursor_regressed", "size_changed", "total_changed", "disposed_changed"]; return {type: allowed.includes(source.type) ? source.type : "size_changed", delta: boundedJointDelta(source.delta)}; }
+function buildAgentReadOnlyAuditTransportJointCheckpointWindowEvents(previous, next) { const diff = diffAgentReadOnlyAuditTransportJointCheckpointWindows(previous, next); const events = []; if (diff.cursorDelta > 0) events.push({type: "cursor_advanced", delta: diff.cursorDelta}); if (diff.cursorDelta < 0) events.push({type: "cursor_regressed", delta: diff.cursorDelta}); if (diff.sizeDelta) events.push({type: "size_changed", delta: diff.sizeDelta}); if (diff.totalDelta) events.push({type: "total_changed", delta: diff.totalDelta}); if (diff.disposedDelta) events.push({type: "disposed_changed", delta: diff.disposedDelta}); return normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents(events); }
+function normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents(events) { if (!Array.isArray(events)) return []; const seen = new Set(); return events.map(normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvent).filter((event) => { if (seen.has(event.type)) return false; seen.add(event.type); return true; }).slice(0, MAX_HISTORY_EVENTS); }
+function summarizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents(events) { const list = normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents(events); return {version: 1, total: list.length, advancing: list.filter((event) => event.type === "cursor_advanced").length, regressing: list.filter((event) => event.type === "cursor_regressed").length, structural: list.filter((event) => ["size_changed", "total_changed", "disposed_changed"].includes(event.type)).length}; }
+function selectAgentReadOnlyAuditTransportJointCheckpointsAfter(value, cursor = 0, limit = MAX_JOINT_CHECKPOINTS) { const parsed = normalizeAgentAuditJointCursor(cursor); return normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(value).checkpoints.filter((checkpoint) => checkpoint.cursor > parsed).slice(0, normalizeAgentAuditJointWindowLimit(limit)); }
+function mergeAgentReadOnlyAuditTransportJointCheckpointWindows(left, right, limit = MAX_JOINT_CHECKPOINTS) { const a = normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(left).checkpoints; const b = normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(right).checkpoints; return {version: 1, checkpoints: buildAgentReadOnlyAuditTransportJointCheckpointWindow([...a, ...b], limit)}; }
+function trimAgentReadOnlyAuditTransportJointCheckpointWindow(value, limit = MAX_JOINT_CHECKPOINTS) { return {version: 1, checkpoints: buildAgentReadOnlyAuditTransportJointCheckpointWindow(normalizeAgentReadOnlyAuditTransportJointCheckpointWindow(value).checkpoints, limit)}; }
+function buildAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(value, cursor = 0, limit = MAX_JOINT_CHECKPOINTS) { const parsed = normalizeAgentAuditJointCursor(cursor); const allPending = selectAgentReadOnlyAuditTransportJointCheckpointsAfter(value, parsed, MAX_JOINT_CHECKPOINTS); const checkpoints = allPending.slice(0, normalizeAgentAuditJointWindowLimit(limit)); return {version: 1, cursor: parsed, nextCursor: checkpoints.at(-1)?.cursor || parsed, checkpoints, complete: checkpoints.length === allPending.length}; }
+function normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(value) { const source = value && typeof value === "object" && !Array.isArray(value) ? value : {}; return {version: 1, cursor: normalizeAgentAuditJointCursor(source.cursor), nextCursor: normalizeAgentAuditJointCursor(source.nextCursor), checkpoints: buildAgentReadOnlyAuditTransportJointCheckpointWindow(source.checkpoints), complete: normalizeAgentAuditBoolean(source.complete)}; }
+function isAgentReadOnlyAuditTransportJointCheckpointRecoveryPlanCompatible(value) { const plan = normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(value); return !!value && typeof value === "object" && !Array.isArray(value) && value.version === 1 && Array.isArray(value.checkpoints) && plan.nextCursor >= plan.cursor && plan.checkpoints.every((checkpoint, index) => isAgentReadOnlyAuditTransportJointCheckpointCompatible(value.checkpoints[index]) && checkpoint.cursor > plan.cursor && (index === 0 || checkpoint.cursor > plan.checkpoints[index - 1].cursor)) && (!plan.checkpoints.length || plan.nextCursor === plan.checkpoints.at(-1).cursor); }
+function serializeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(value)); }
+function parseAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(value) { if (typeof value !== "string" || value.length > 4096) return normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan({}); try { return normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan({}); } }
 
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
@@ -754,4 +813,24 @@ module.exports = {
     buildAgentReadOnlyAuditTransportJointRecoveryOutcome, normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome,
     isAgentReadOnlyAuditTransportJointRecoveryOutcomeCompatible, serializeAgentReadOnlyAuditTransportJointRecoveryOutcome,
     parseAgentReadOnlyAuditTransportJointRecoveryOutcome,
+    MAX_JOINT_CHECKPOINTS, AUDIT_JOINT_WINDOW_PROGRESS, normalizeAgentAuditJointWindowLimit,
+    dedupeAgentReadOnlyAuditTransportJointCheckpoints, buildAgentReadOnlyAuditTransportJointCheckpointWindow,
+    normalizeAgentReadOnlyAuditTransportJointCheckpointWindow, isAgentReadOnlyAuditTransportJointCheckpointWindowCompatible,
+    serializeAgentReadOnlyAuditTransportJointCheckpointWindow, parseAgentReadOnlyAuditTransportJointCheckpointWindow,
+    normalizeAgentAuditJointWindowProgress, summarizeAgentReadOnlyAuditTransportJointCheckpointWindow,
+    normalizeAgentReadOnlyAuditTransportJointCheckpointWindowSummary,
+    isAgentReadOnlyAuditTransportJointCheckpointWindowSummaryCompatible,
+    diffAgentReadOnlyAuditTransportJointCheckpointWindows,
+    normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvent,
+    buildAgentReadOnlyAuditTransportJointCheckpointWindowEvents,
+    normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents,
+    summarizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents,
+    selectAgentReadOnlyAuditTransportJointCheckpointsAfter,
+    mergeAgentReadOnlyAuditTransportJointCheckpointWindows,
+    trimAgentReadOnlyAuditTransportJointCheckpointWindow,
+    buildAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan,
+    normalizeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan,
+    isAgentReadOnlyAuditTransportJointCheckpointRecoveryPlanCompatible,
+    serializeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan,
+    parseAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan,
 };
