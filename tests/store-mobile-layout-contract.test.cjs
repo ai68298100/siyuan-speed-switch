@@ -341,6 +341,54 @@ test('preview controller receives cached-source label', () => assert.match(sourc
 test('preview controller receives stale-source label', () => assert.match(source, /sourceStale: this\.i18n\.homeSourceStale/));
 test('preview disconnect watcher checks dialog connectivity', () => assert.match(source, /if \(!dialog\.element\.isConnected\)/));
 
+// T-3855~T-3894: field accessibility, async notebook safety and preview provenance.
+test('config title includes module id', () => assert.match(source, /title: `\$\{this\.i18n\.homeConfig\} · \$\{inst\.moduleId\}`/));
+test('config dialog content uses home-config root', () => assert.match(source, /sw-home-config/));
+test('config field labels expose field text', () => assert.match(source, /label\.textContent = field\.label/));
+test('config generated control id includes instance id', () => assert.match(source, /sw-home-config-\$\{inst\.instanceId\}/));
+test('config generated control id includes field key', () => assert.match(source, /\$\{field\.key\}`\.replace/));
+test('config select control receives generated id', () => assert.match(source, /select\.id = controlId/));
+test('config notebook control receives generated id', () => assert.match(source, /select\.id = controlId[\s\S]*?notebook/));
+test('config document control receives generated id', () => assert.match(source, /input\.id = controlId/));
+test('config label and control are placed in same row', () => assert.match(source, /row\.appendChild\(label\)[\s\S]*?row\.appendChild\((select|input)\)/));
+test('config select value starts from draft', () => assert.match(source, /select\.value = current/));
+test('config select draft starts from selected value', () => assert.match(source, /draft\[field\.key\] = select\.value/));
+test('config notebook current value reads draft', () => assert.match(source, /typeof draft\[field\.key\] === "string"/));
+test('config notebook current value is bounded by option list', () => assert.match(source, /!options\.some\(\(nb\) => nb\.id === current\)/));
+test('config stale notebook option uses current id', () => assert.match(source, /stale\.value = current/));
+test('config stale notebook option is labelled unavailable', () => assert.match(source, /stale\.textContent = `\$\{current\} · \$\{this\.i18n\.homeConfigUnavailableValue\}`/));
+test('config notebook selects restored value after fill', () => assert.match(source, /select\.value = resetKeys\.has\(field\.key\) \? "" : current/));
+test('config notebook change listener is installed', () => assert.match(source, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
+test('config notebook promise checks field options', () => assert.match(source, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*fill\(notebooks\)/));
+test('config document input has placeholder', () => assert.match(source, /input\.placeholder = this\.i18n\.homeConfigDocumentPlaceholder/));
+test('config document input starts from draft', () => assert.match(source, /input\.value = typeof draft\[field\.key\] === "string"/));
+test('config document input records initial draft', () => assert.match(source, /draft\[field\.key\] = input\.value/));
+test('config document suggestions use root ids', () => assert.match(source, /option\.value = entry\.rootId/));
+test('config document suggestions use titles', () => assert.match(source, /option\.label = entry\.title/));
+test('config document input references datalist', () => assert.match(source, /input\.setAttribute\("list", suggestions\.id\)/));
+test('config date input has bounded year range', () => assert.match(source, /1900-01-01[\s\S]*2100-12-31/));
+test('config numeric input stores numeric draft', () => assert.match(source, /draft\[field\.key\] = field\.type === "number" \? Number\(input\.value\) : input\.value/));
+test('config numeric change rejects non-finite values', () => assert.match(source, /Number\.isFinite\(parsed\) \? Math\.min/));
+test('config numeric invalid fallback uses default', () => assert.match(source, /: field\.defaults \?\? min/));
+test('config text change truncates to protocol bound', () => assert.match(source, /input\.value\.slice\(0, 128\)/));
+test('config default helper handles null defaults', () => assert.match(source, /return field\.defaults == null \? "" : String\(field\.defaults\)/));
+test('config default helper truncates number defaults', () => assert.match(source, /return Math\.trunc\(fallback\)/));
+test('config reset updates control only when present', () => assert.match(source, /const control = controls\.get\(field\.key\);\s*if \(!control\) return/));
+test('config reset writes string control values', () => assert.match(source, /control\.value = String\(value\)/));
+test('config reset button iterates schema', () => assert.match(source, /reset\.addEventListener\("click", \(\) => \{\s*schema\.forEach/));
+test('config cancel button has localized label', () => assert.match(source, /cancel\.textContent = this\.i18n\.cancel/));
+test('config save button has localized label', () => assert.match(source, /save\.textContent = this\.i18n\.homeConfigSave/));
+test('config save validates before reading home state', () => assert.match(source, /if \(invalid\) \{[\s\S]*?return;\s*\}\s*const next = this\.getHomeState\(\)/));
+test('config save copies only draft fields', () => assert.match(source, /instance\.config = \{\.\.\.draft\}/));
+test('preview source fallback provider is SiYuan', () => assert.match(source, /sourceInfo\?\.providerName \|\| "SiYuan"/));
+test('preview integration fallback is offline-safe', () => assert.match(source, /sourceInfo\?\.integration === "http" \? "network" : sourceInfo\?\.integration === "local-bridge" \? "local" : "offline"/));
+test('preview privacy metadata is always emitted', () => assert.match(source, /addMeta\(privacy, "privacy"\)/));
+test('preview surface map covers desktop', () => assert.match(source, /desktop: this\.i18n\.homeStoreDeviceDesktop/));
+test('preview surface map covers sidebar', () => assert.match(source, /sidebar: this\.i18n\.homeStoreDeviceSidebar/));
+test('preview surface map covers mobile', () => assert.match(source, /mobile: this\.i18n\.homeStoreDeviceMobile/));
+test('preview body labels source freshness', () => assert.match(source, /sourceFresh: this\.i18n\.homeSourceFresh/));
+test('preview body labels updated time', () => assert.match(source, /updated: this\.i18n\.homeUpdated/));
+
 // T-3815~T-3854: dialog content, field labels and async configuration contracts.
 test('guide hint uses localized content', () => assert.match(source, /hint\.textContent = this\.i18n\.homeStoreGuideHint/));
 test('guide hint has a dedicated class', () => assert.match(source, /hint\.className = "sw-home-store-guide__hint"/));
