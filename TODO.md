@@ -505,6 +505,76 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（328 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1553~T-1582 Agent 传输回放取消与协调器（本轮 30 项）
+
+- [x] T-1553 回放状态枚举
+- [x] T-1554 状态未知值降级
+- [x] T-1555 deadline 归一化
+- [x] T-1556 非法 deadline 处理
+- [x] T-1557 signal aborted 检测
+- [x] T-1558 deadline 过期检测
+- [x] T-1559 replay outcome version
+- [x] T-1560 replay outcome 固定字段
+- [x] T-1561 terminal 状态判断
+- [x] T-1562 队列不可用回执
+- [x] T-1563 取消前置检查
+- [x] T-1564 超时前置检查
+- [x] T-1565 回放数量统计
+- [x] T-1566 回放 cursor 推进
+- [x] T-1567 成功结果归一化
+- [x] T-1568 取消不读取队列
+- [x] T-1569 超时不读取队列
+- [x] T-1570 acknowledge 成功门面
+- [x] T-1571 cancelled 不确认
+- [x] T-1572 timeout 不确认
+- [x] T-1573 原子 replay/ack
+- [x] T-1574 unavailable 不确认
+- [x] T-1575 replay error version
+- [x] T-1576 timeout retryable
+- [x] T-1577 invalid nonretryable
+- [x] T-1578 replay error 固定字段
+- [x] T-1579 outcome 稳定序列化
+- [x] T-1580 outcome 安全解析
+- [x] T-1581 count 上限
+- [x] T-1582 cursor 边界保护
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（359 项专项测试）
+  - 状态：done（2026-09-14）
+
+### T-1583~T-1612 Agent 传输恢复协调器（本轮 30 项）
+
+- [x] T-1583 协调器状态枚举
+- [x] T-1584 状态未知值降级
+- [x] T-1585 协调器初始 ready
+- [x] T-1586 recover 成功提交
+- [x] T-1587 recover cursor 推进
+- [x] T-1588 commits 计数
+- [x] T-1589 取消保留队列
+- [x] T-1590 超时保留队列
+- [x] T-1591 disposed recover 安全
+- [x] T-1592 snapshot version=1
+- [x] T-1593 snapshot 固定字段
+- [x] T-1594 snapshot 兼容性
+- [x] T-1595 snapshot 序列化
+- [x] T-1596 snapshot 安全解析
+- [x] T-1597 status_changed 事件
+- [x] T-1598 cursor_changed 事件
+- [x] T-1599 commits_changed 事件
+- [x] T-1600 disposed_changed 事件
+- [x] T-1601 事件上限
+- [x] T-1602 事件类型归一化
+- [x] T-1603 事件去重
+- [x] T-1604 事件摘要固定字段
+- [x] T-1605 result version=1
+- [x] T-1606 committed terminal
+- [x] T-1607 ready 非 terminal
+- [x] T-1608 result 固定字段
+- [x] T-1609 result 序列化
+- [x] T-1610 result 安全解析
+- [x] T-1611 dispose 幂等
+- [x] T-1612 空队列不重复提交
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（390 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合

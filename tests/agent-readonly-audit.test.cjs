@@ -385,3 +385,36 @@ test('replay count bounded', () => assert.equal(a.buildAgentReadOnlyAuditTranspo
 test('replay cursor bounded', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome('ok', -1, 0).cursor, 0));
 test('acknowledge result preserves cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueAcknowledgeResult(2, 1).cursor, 2));
 test('queue replay does not acknowledge on timeout', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q, {deadline: 1, now: 2}); assert.equal(q.list().length, 1); });
+
+// v0.17 transport coordinator contract (T-1583~T-1612)
+test('coordinator statuses are fixed', () => assert.deepEqual(a.AUDIT_COORDINATOR_STATUS, ['ready', 'committed', 'cancelled', 'timeout', 'disposed']));
+test('coordinator status unknown defaults ready', () => assert.equal(a.normalizeAgentAuditCoordinatorStatus('secret'), 'ready'));
+test('coordinator starts ready', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(a.createAgentReadOnlyAuditTransportQueue()); assert.equal(c.snapshot().status, 'ready'); });
+test('coordinator recover commits queue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover().status, 'committed'); });
+test('coordinator recover advances cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover().cursor, 1); });
+test('coordinator recover increments commits', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover().commits, 1); });
+test('coordinator cancellation preserves queue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover({signal: {aborted: true}}).acknowledged, false); assert.equal(q.list().length, 1); });
+test('coordinator timeout preserves queue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover({deadline: 1, now: 2}).acknowledged, false); assert.equal(q.list().length, 1); });
+test('coordinator disposed recover is safe', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); c.dispose(); assert.equal(c.recover().status, 'disposed'); });
+test('coordinator snapshot uses version one', () => assert.equal(a.createAgentReadOnlyAuditTransportCoordinator(null).snapshot().version, 1));
+test('coordinator snapshot fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot({})).sort(), ['commits', 'cursor', 'disposed', 'status', 'version'].sort()));
+test('coordinator snapshot compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorSnapshotCompatible({version: 1, status: 'ready', cursor: 0, commits: 0, disposed: false}), true));
+test('coordinator snapshot serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorSnapshot({cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorSnapshot(value).cursor, 2); });
+test('coordinator snapshot parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorSnapshot('{bad').version, 1));
+test('coordinator events detect status', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({status: 'ready'}, {status: 'committed'})[0].type, 'status_changed'));
+test('coordinator events detect cursor', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({cursor: 0}, {cursor: 1}).some((e) => e.type === 'cursor_changed')));
+test('coordinator events detect commits', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({commits: 0}, {commits: 1}).some((e) => e.type === 'commits_changed')));
+test('coordinator events detect disposal', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({disposed: false}, {disposed: true}).some((e) => e.type === 'disposed_changed')));
+test('coordinator events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({}, {status: 'committed', cursor: 1, commits: 1, disposed: true}).length <= 8));
+test('coordinator event normalizer fixed type', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorEvents([{}])[0].type, 'status_changed'));
+test('coordinator event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorEvents([{type: 'cursor_changed'}, {type: 'cursor_changed'}]).length, 1));
+test('coordinator event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportCoordinatorEvents([])).sort(), ['commits', 'cursor', 'disposed', 'status', 'total', 'version'].sort()));
+test('coordinator result uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorResult('committed').version, 1));
+test('coordinator result terminal committed', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorResultTerminal({status: 'committed'}), true));
+test('coordinator result nonterminal ready', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorResultTerminal({status: 'ready'}), false));
+test('coordinator result normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCoordinatorResult({})).sort(), ['acknowledged', 'commits', 'cursor', 'status', 'version'].sort()));
+test('coordinator result serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorResult({status: 'committed', cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorResult(value).cursor, 2); });
+test('coordinator result parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorResult('{bad').version, 1));
+test('coordinator dispose is idempotent', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); c.dispose(); c.dispose(); assert.equal(c.snapshot().disposed, true); });
+test('coordinator recover does not double commit empty queue', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(a.createAgentReadOnlyAuditTransportQueue()); assert.equal(c.recover().acknowledged, false); });
+test('coordinator status remains bounded', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); assert.ok(c.snapshot().commits <= 16); });

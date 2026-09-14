@@ -552,6 +552,29 @@ function isAgentReadOnlyAuditTransportReplayRetryable(value) { return normalizeA
 function serializeAgentReadOnlyAuditTransportReplayOutcome(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportReplayOutcome(value)); }
 function parseAgentReadOnlyAuditTransportReplayOutcome(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportReplayOutcome({status: "invalid"}); try { return normalizeAgentReadOnlyAuditTransportReplayOutcome(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportReplayOutcome({status: "invalid"}); } }
 
+const AUDIT_COORDINATOR_STATUS = Object.freeze(["ready", "committed", "cancelled", "timeout", "disposed"]);
+function normalizeAgentAuditCoordinatorStatus(value) { return AUDIT_COORDINATOR_STATUS.includes(value) ? value : "ready"; }
+function createAgentReadOnlyAuditTransportCoordinator(queue) {
+    let disposed = false; let cursor = 0; let commits = 0;
+    return {
+        recover(options = {}) { if (disposed) return {version: 1, status: "disposed", cursor, commits, acknowledged: false}; const outcome = replayAgentReadOnlyAuditTransportQueue(queue, {...options, cursor}); if (outcome.status !== "ok") return {version: 1, status: normalizeAgentAuditCoordinatorStatus(outcome.status), cursor, commits, acknowledged: false}; if (outcome.count === 0) return {version: 1, status: "ready", cursor, commits, acknowledged: false}; const ack = acknowledgeAgentReadOnlyAuditTransportQueue(queue, outcome); if (!ack.acknowledged) return {version: 1, status: "ready", cursor, commits, acknowledged: false}; cursor = Math.max(cursor, outcome.cursor); commits += 1; return {version: 1, status: "committed", cursor, commits, acknowledged: true}; },
+        snapshot() { return {version: 1, status: disposed ? "disposed" : commits ? "committed" : "ready", cursor, commits, disposed}; },
+        dispose() { disposed = true; },
+    };
+}
+function normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, status: normalizeAgentAuditCoordinatorStatus(source.status), cursor: normalizeAgentAuditTransportCursor(source.cursor), commits: normalizeAgentAuditCount(source.commits, MAX_TRANSPORT_QUEUE), disposed: normalizeAgentAuditBoolean(source.disposed)}; }
+function isAgentReadOnlyAuditTransportCoordinatorSnapshotCompatible(value) { const snapshot = normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot(value); return value && value.version === 1 && snapshot.commits >= 0; }
+function serializeAgentReadOnlyAuditTransportCoordinatorSnapshot(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot(value)); }
+function parseAgentReadOnlyAuditTransportCoordinatorSnapshot(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot({}); try { return normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot({}); } }
+function buildAgentReadOnlyAuditTransportCoordinatorEvents(previous, next) { const a = normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot(previous); const b = normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot(next); const events = []; if (a.status !== b.status) events.push({type: "status_changed"}); if (a.cursor !== b.cursor) events.push({type: "cursor_changed"}); if (a.commits !== b.commits) events.push({type: "commits_changed"}); if (a.disposed !== b.disposed) events.push({type: "disposed_changed"}); return events.slice(0, MAX_HISTORY_EVENTS); }
+function normalizeAgentReadOnlyAuditTransportCoordinatorEvents(events) { if (!Array.isArray(events)) return []; const allowed = ["status_changed", "cursor_changed", "commits_changed", "disposed_changed"]; const seen = new Set(); return events.map((event) => ({type: allowed.includes(event?.type) ? event.type : "status_changed"})).filter((event) => { if (seen.has(event.type)) return false; seen.add(event.type); return true; }).slice(0, MAX_HISTORY_EVENTS); }
+function summarizeAgentReadOnlyAuditTransportCoordinatorEvents(events) { const list = normalizeAgentReadOnlyAuditTransportCoordinatorEvents(events); return {version: 1, total: list.length, status: list.filter((e) => e.type === "status_changed").length, cursor: list.filter((e) => e.type === "cursor_changed").length, commits: list.filter((e) => e.type === "commits_changed").length, disposed: list.filter((e) => e.type === "disposed_changed").length}; }
+function buildAgentReadOnlyAuditTransportCoordinatorResult(status, cursor = 0, commits = 0, acknowledged = false) { return {version: 1, status: normalizeAgentAuditCoordinatorStatus(status), cursor: normalizeAgentAuditTransportCursor(cursor), commits: normalizeAgentAuditCount(commits, MAX_TRANSPORT_QUEUE), acknowledged: normalizeAgentAuditBoolean(acknowledged)}; }
+function normalizeAgentReadOnlyAuditTransportCoordinatorResult(value) { const source = value && typeof value === "object" ? value : {}; return buildAgentReadOnlyAuditTransportCoordinatorResult(source.status, source.cursor, source.commits, source.acknowledged); }
+function isAgentReadOnlyAuditTransportCoordinatorResultTerminal(value) { return ["committed", "cancelled", "timeout", "disposed"].includes(normalizeAgentReadOnlyAuditTransportCoordinatorResult(value).status); }
+function serializeAgentReadOnlyAuditTransportCoordinatorResult(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportCoordinatorResult(value)); }
+function parseAgentReadOnlyAuditTransportCoordinatorResult(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportCoordinatorResult({}); try { return normalizeAgentReadOnlyAuditTransportCoordinatorResult(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportCoordinatorResult({}); } }
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -610,6 +633,13 @@ module.exports = {
     isAgentReadOnlyAuditTransportQueueReplayResultCompatible, buildAgentReadOnlyAuditTransportQueueAcknowledgeResult,
     normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult, serializeAgentReadOnlyAuditTransportQueueReplayResult,
     parseAgentReadOnlyAuditTransportQueueReplayResult,
+    AUDIT_COORDINATOR_STATUS, normalizeAgentAuditCoordinatorStatus, createAgentReadOnlyAuditTransportCoordinator,
+    normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot, isAgentReadOnlyAuditTransportCoordinatorSnapshotCompatible,
+    serializeAgentReadOnlyAuditTransportCoordinatorSnapshot, parseAgentReadOnlyAuditTransportCoordinatorSnapshot,
+    buildAgentReadOnlyAuditTransportCoordinatorEvents, normalizeAgentReadOnlyAuditTransportCoordinatorEvents,
+    summarizeAgentReadOnlyAuditTransportCoordinatorEvents, buildAgentReadOnlyAuditTransportCoordinatorResult,
+    normalizeAgentReadOnlyAuditTransportCoordinatorResult, isAgentReadOnlyAuditTransportCoordinatorResultTerminal,
+    serializeAgentReadOnlyAuditTransportCoordinatorResult, parseAgentReadOnlyAuditTransportCoordinatorResult,
     AUDIT_REPLAY_STATUS, normalizeAgentAuditReplayStatus, normalizeAgentAuditDeadline,
     isAgentAuditSignalAborted, isAgentAuditDeadlineExpired,
     buildAgentReadOnlyAuditTransportReplayOutcome, normalizeAgentReadOnlyAuditTransportReplayOutcome,
