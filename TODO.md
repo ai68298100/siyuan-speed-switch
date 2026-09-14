@@ -6022,3 +6022,53 @@
 - [x] T-4379 汇总过滤原始值
 - [x] T-4380 指南链接与隐私级别
 - [x] T-4381 组合状态诊断边界
+- [x] T-4382 time 分类归一化
+- [x] T-4383 weather 分类归一化
+- [x] T-4384 trending 分类归一化
+- [x] T-4385 holiday 分类归一化
+- [x] T-4386 media 分类归一化
+- [x] T-4387 activity 分类归一化
+- [x] T-4388 builtin 可用性归一化
+- [x] T-4389 external 可用性归一化
+- [x] T-4390 conditional 可用性归一化
+- [x] T-4391 bridge 可用性归一化
+- [x] T-4392 reference 可用性归一化
+- [x] T-4393 none 认证归一化
+- [x] T-4394 api-key 认证归一化
+- [x] T-4395 user-endpoint 认证归一化
+- [x] T-4396 local-service 认证归一化
+- [x] T-4397 direct 集成归一化
+- [x] T-4398 HTTP 集成归一化
+- [x] T-4399 local-bridge 集成归一化
+- [x] T-4400 reference 集成归一化
+- [x] T-4401 平台顺序与去重
+- [x] T-4402 非数组平台安全
+- [x] T-4403 平台非法值过滤
+- [x] T-4404 空平台列表安全
+- [x] T-4405 null 条目安全
+- [x] T-4406 原始类型条目安全
+- [x] T-4407 标题空白清理
+- [x] T-4408 控制字符清理
+- [x] T-4409 moduleId 长度上限
+- [x] T-4410 title 长度上限
+- [x] T-4411 providerName 长度上限
+- [x] T-4412 sourceUrl 长度上限
+- [x] T-4413 license 长度上限
+- [x] T-4414 privacy 长度上限
+- [x] T-4415 description 长度上限
+- [x] T-4416 缺省 category
+- [x] T-4417 缺省 availability
+- [x] T-4418 缺省 auth
+- [x] T-4419 缺省 integration
+- [x] T-4420 尺寸去重与清理
+- [x] T-4421 空尺寸过滤
+- [x] T-4422 尺寸数量上限
+- [x] T-4423 非数组尺寸安全
+- [x] T-4424 元数据字段保留
+- [x] T-4425 输出固定键集合
+- [x] T-4426 非数组目录筛选
+- [x] T-4427 非法平台筛选忽略
+- [x] T-4428 provider 大小写搜索
+- [x] T-4429 query 空白清理
+- [x] T-4430 category fallback 筛选
+- [x] T-4431 availability fallback 筛选
