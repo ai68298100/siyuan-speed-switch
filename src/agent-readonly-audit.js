@@ -343,6 +343,81 @@ function summarizeAgentReadOnlyAuditHistoryWindow(value) {
     return {version: 1, size: reports.length, latestHealth: latest ? latest.health : "empty", trend: diff.trend, healthChanged: diff.healthChanged};
 }
 
+function normalizeAgentAuditReportSequence(value) { return normalizeAgentAuditCursor(value); }
+
+function dedupeAgentReadOnlyAuditHistoryReports(reports) {
+    const seen = new Set();
+    const list = Array.isArray(reports) ? reports.map(normalizeAgentReadOnlyAuditHistoryReport) : [];
+    return list.filter((report) => {
+        const sequence = normalizeAgentAuditReportSequence(report.summary.latestSequence);
+        const key = sequence > 0 ? `seq:${sequence}` : `fallback:${report.health}:${report.summary.size}:${report.events.total}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+function mergeAgentReadOnlyAuditHistoryWindows(left, right, limit = MAX_HISTORY_EVENTS) {
+    const a = normalizeAgentReadOnlyAuditHistoryWindow(left).reports;
+    const b = normalizeAgentReadOnlyAuditHistoryWindow(right).reports;
+    return {version: 1, reports: buildAgentReadOnlyAuditHistoryWindow(dedupeAgentReadOnlyAuditHistoryReports([...a, ...b]).sort((x, y) => x.summary.latestSequence - y.summary.latestSequence), limit)};
+}
+
+function trimAgentReadOnlyAuditHistoryWindow(value, limit = MAX_HISTORY_EVENTS) {
+    const window = normalizeAgentReadOnlyAuditHistoryWindow(value);
+    return {version: 1, reports: buildAgentReadOnlyAuditHistoryWindow(window.reports, limit)};
+}
+
+function selectAgentReadOnlyAuditReportsByHealth(value, health = "healthy", limit = MAX_HISTORY_EVENTS) {
+    const wanted = normalizeAgentAuditHealth(health);
+    const max = Math.min(MAX_HISTORY_EVENTS, Math.max(1, normalizeAgentAuditCount(limit, MAX_HISTORY_EVENTS)));
+    return normalizeAgentReadOnlyAuditHistoryWindow(value).reports.filter((report) => report.health === wanted).slice(-max);
+}
+
+function summarizeAgentReadOnlyAuditHistoryWindowHealth(value) {
+    const reports = normalizeAgentReadOnlyAuditHistoryWindow(value).reports;
+    const counts = {empty: 0, healthy: 0, degraded: 0, unavailable: 0};
+    reports.forEach((report) => { counts[normalizeAgentAuditHealth(report.health)] += 1; });
+    return {version: 1, total: reports.length, counts, latestHealth: reports.length ? reports[reports.length - 1].health : "empty"};
+}
+
+function normalizeAgentReadOnlyAuditHistoryWindowHealth(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const raw = source.counts && typeof source.counts === "object" ? source.counts : {};
+    const counts = {};
+    ["empty", "healthy", "degraded", "unavailable"].forEach((health) => { counts[health] = normalizeAgentAuditCount(raw[health], MAX_HISTORY_EVENTS); });
+    return {version: 1, total: normalizeAgentAuditCount(source.total, MAX_HISTORY_EVENTS), counts, latestHealth: normalizeAgentAuditHealth(source.latestHealth)};
+}
+
+function isAgentReadOnlyAuditHistoryWindowHealthCompatible(value) {
+    const summary = normalizeAgentReadOnlyAuditHistoryWindowHealth(value);
+    const sum = Object.values(summary.counts).reduce((total, count) => total + count, 0);
+    return value && value.version === 1 && sum === summary.total;
+}
+
+function buildAgentReadOnlyAuditHistoryRecoveryPlan(value, cursor = 0, limit = MAX_HISTORY_EVENTS) {
+    const window = normalizeAgentReadOnlyAuditHistoryWindow(value);
+    const parsed = normalizeAgentAuditCursor(cursor);
+    const reports = window.reports.filter((report) => report.summary.latestSequence > parsed).slice(0, Math.min(MAX_HISTORY_EVENTS, Math.max(1, normalizeAgentAuditCount(limit, MAX_HISTORY_EVENTS))));
+    return {version: 1, cursor: parsed, nextCursor: reports.length ? reports[reports.length - 1].summary.latestSequence : parsed, reports, complete: reports.length < limit};
+}
+
+function normalizeAgentReadOnlyAuditHistoryRecoveryPlan(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {version: 1, cursor: normalizeAgentAuditCursor(source.cursor), nextCursor: normalizeAgentAuditCursor(source.nextCursor), reports: buildAgentReadOnlyAuditHistoryWindow(source.reports, MAX_HISTORY_EVENTS), complete: normalizeAgentAuditBoolean(source.complete)};
+}
+
+function isAgentReadOnlyAuditHistoryRecoveryPlanCompatible(value) {
+    const plan = normalizeAgentReadOnlyAuditHistoryRecoveryPlan(value);
+    return value && value.version === 1 && plan.nextCursor >= plan.cursor && plan.reports.every(isAgentReadOnlyAuditHistoryReportCompatible);
+}
+
+function serializeAgentReadOnlyAuditHistoryRecoveryPlan(value) { return JSON.stringify(normalizeAgentReadOnlyAuditHistoryRecoveryPlan(value)); }
+function parseAgentReadOnlyAuditHistoryRecoveryPlan(value) {
+    if (typeof value !== "string" || value.length > 16384) return normalizeAgentReadOnlyAuditHistoryRecoveryPlan({});
+    try { return normalizeAgentReadOnlyAuditHistoryRecoveryPlan(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditHistoryRecoveryPlan({}); }
+}
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -367,4 +442,11 @@ module.exports = {
     buildAgentReadOnlyAuditHistoryWindow, normalizeAgentReadOnlyAuditHistoryWindow,
     isAgentReadOnlyAuditHistoryWindowCompatible, serializeAgentReadOnlyAuditHistoryWindow,
     parseAgentReadOnlyAuditHistoryWindow, summarizeAgentReadOnlyAuditHistoryWindow,
+    normalizeAgentAuditReportSequence, dedupeAgentReadOnlyAuditHistoryReports,
+    mergeAgentReadOnlyAuditHistoryWindows, trimAgentReadOnlyAuditHistoryWindow,
+    selectAgentReadOnlyAuditReportsByHealth, summarizeAgentReadOnlyAuditHistoryWindowHealth,
+    normalizeAgentReadOnlyAuditHistoryWindowHealth, isAgentReadOnlyAuditHistoryWindowHealthCompatible,
+    buildAgentReadOnlyAuditHistoryRecoveryPlan, normalizeAgentReadOnlyAuditHistoryRecoveryPlan,
+    isAgentReadOnlyAuditHistoryRecoveryPlanCompatible, serializeAgentReadOnlyAuditHistoryRecoveryPlan,
+    parseAgentReadOnlyAuditHistoryRecoveryPlan,
 };

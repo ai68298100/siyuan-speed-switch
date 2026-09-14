@@ -343,3 +343,4 @@
 - D-291 v0.17 审计回放契约暂保持纯模型，不直接扩展现有 Agent diagnostics output schema；原因是先验证事件稳定性和宿主兼容边界，避免在真实宿主证据完成前扩大生产输出字段。
 - D-292 v0.17 审计历史健康报告固定为 empty/healthy/degraded/unavailable 四态，并只聚合事件计数与摘要元数据；原因是诊断消费者需要快速判断生命周期质量，但不应读取具体能力定义或宿主错误。
 - D-293 v0.17 审计报告差异采用健康等级排序（unavailable < degraded < empty < healthy）推导 improving/degrading/stable 趋势；窗口最多 8 份报告，序列化仍为 version=1。原因是趋势判断必须可重复且有界，不能依赖时间戳或宿主实现细节。
+- D-294 v0.17 审计窗口合并按 latestSequence 去重并升序排列，恢复计划仅返回 cursor 之后最多 8 份报告；零 sequence 使用健康/大小/事件摘要回退键。原因是多宿主采样合并必须确定性且不能重复消费。

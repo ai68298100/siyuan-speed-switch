@@ -186,3 +186,37 @@ test('history window serialization round trips', () => { const value = a.seriali
 test('history window parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistoryWindow('{bad').version, 1));
 test('history window parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryWindow('x'.repeat(20000)).reports.length, 0));
 test('history window summary reports latest trend', () => { const value = {reports: [{health: 'degraded'}, {health: 'healthy'}]}; assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindow(value).trend, 'improving'); });
+
+// v0.17 audit window merge/recovery contract (T-1403~T-1432)
+test('report sequence normalizes negative values', () => assert.equal(a.normalizeAgentAuditReportSequence(-2), 0));
+test('report sequence truncates fractions', () => assert.equal(a.normalizeAgentAuditReportSequence(2.8), 2));
+test('report dedupe removes repeated sequence', () => assert.equal(a.dedupeAgentReadOnlyAuditHistoryReports([{summary: {latestSequence: 1}}, {summary: {latestSequence: 1}}]).length, 1));
+test('report dedupe preserves distinct sequence', () => assert.equal(a.dedupeAgentReadOnlyAuditHistoryReports([{summary: {latestSequence: 1}}, {summary: {latestSequence: 2}}]).length, 2));
+test('report dedupe fallback handles zero sequence', () => assert.equal(a.dedupeAgentReadOnlyAuditHistoryReports([{health: 'empty', summary: {size: 0}, events: {total: 0}}, {health: 'empty', summary: {size: 0}, events: {total: 0}}]).length, 1));
+test('window merge combines reports', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: [{summary: {latestSequence: 1}}]}, {reports: [{summary: {latestSequence: 2}}]}).reports.length, 2));
+test('window merge deduplicates reports', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: [{summary: {latestSequence: 1}}]}, {reports: [{summary: {latestSequence: 1}}]}).reports.length, 1));
+test('window merge sorts by sequence', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: [{summary: {latestSequence: 2}}]}, {reports: [{summary: {latestSequence: 1}}]}).reports[0].summary.latestSequence, 1));
+test('window merge caps output', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: Array.from({length: 8}, (_, i) => ({summary: {latestSequence: i + 1}}))}, {reports: [{summary: {latestSequence: 9}}]}).reports.length, 8));
+test('window trim keeps newest', () => assert.equal(a.trimAgentReadOnlyAuditHistoryWindow({reports: [{health: 'empty'}, {health: 'healthy'}]}, 1).reports[0].health, 'healthy'));
+test('window trim applies bound', () => assert.equal(a.trimAgentReadOnlyAuditHistoryWindow({reports: Array.from({length: 20}, () => ({health: 'empty'}))}).reports.length, 8));
+test('report selection by health filters', () => assert.equal(a.selectAgentReadOnlyAuditReportsByHealth({reports: [{health: 'healthy'}, {health: 'degraded'}]}, 'healthy').length, 1));
+test('report selection by health bounds', () => assert.equal(a.selectAgentReadOnlyAuditReportsByHealth({reports: Array.from({length: 8}, () => ({health: 'healthy'}))}, 'healthy', 2).length, 2));
+test('report selection unknown health degrades', () => assert.equal(a.selectAgentReadOnlyAuditReportsByHealth({reports: [{health: 'healthy'}]}, 'secret').length, 0));
+test('window health summary has fixed counts', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditHistoryWindowHealth({}).counts).sort(), ['degraded', 'empty', 'healthy', 'unavailable']));
+test('window health summary counts reports', () => assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindowHealth({reports: [{health: 'healthy'}]}).counts.healthy, 1));
+test('window health summary latest health', () => assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindowHealth({reports: [{health: 'healthy'}, {health: 'degraded'}]}).latestHealth, 'degraded'));
+test('window health normalizer bounds counts', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryWindowHealth({counts: {healthy: 99}}).counts.healthy, 8));
+test('window health normalizer fixed keys', () => assert.equal(Object.keys(a.normalizeAgentReadOnlyAuditHistoryWindowHealth({}).counts).length, 4));
+test('window health compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowHealthCompatible({version: 1, total: 1, counts: {empty: 0, healthy: 1, degraded: 0, unavailable: 0}, latestHealth: 'healthy'}), true));
+test('window health compatibility rejects count mismatch', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowHealthCompatible({version: 1, total: 1, counts: {empty: 0, healthy: 0, degraded: 0, unavailable: 0}}), false));
+test('recovery plan starts at cursor', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: [{summary: {latestSequence: 2}}]}, 1).cursor, 1));
+test('recovery plan selects newer reports', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: [{summary: {latestSequence: 1}}, {summary: {latestSequence: 2}}]}, 1).reports.length, 1));
+test('recovery plan advances next cursor', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: [{summary: {latestSequence: 2}}]}, 0).nextCursor, 2));
+test('recovery plan no reports keeps cursor', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: []}, 3).nextCursor, 3));
+test('recovery plan complete flag is bounded', () => assert.equal(typeof a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: []}, 0, 2).complete, 'boolean'));
+test('recovery plan normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryRecoveryPlan({}).version, 1));
+test('recovery plan normalizer bounds cursor', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryRecoveryPlan({cursor: -1}).cursor, 0));
+test('recovery plan compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditHistoryRecoveryPlanCompatible({version: 1, cursor: 0, nextCursor: 1, reports: [], complete: true}), true));
+test('recovery plan compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditHistoryRecoveryPlanCompatible({version: 1, cursor: 2, nextCursor: 1, reports: [], complete: true}), false));
+test('recovery plan serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryRecoveryPlan({cursor: 1, nextCursor: 2, reports: []}); assert.equal(a.parseAgentReadOnlyAuditHistoryRecoveryPlan(value).nextCursor, 2); });
+test('recovery plan parser isolates malformed payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryRecoveryPlan('{bad').version, 1));
