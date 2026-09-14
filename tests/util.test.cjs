@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -133,6 +133,16 @@ test('summarizeStorageCapacityDiff reports changed buckets and direction counts'
 
 test('summarizeStorageCapacityDiff returns a stable empty summary', () => {
     assert.deepEqual(summarizeStorageCapacityDiff({}, {}), {changedBuckets: [], changedCount: 0, increased: 0, decreased: 0, statusChanges: 0, changed: false});
+});
+
+test('classifyStorageCapacityRisk escalates over to critical and near to warning', () => {
+    assert.equal(classifyStorageCapacityRisk({favorites: {used: 2, max: 2}}), 'warning');
+    assert.equal(classifyStorageCapacityRisk({pinned: {used: 9, max: 2}}), 'critical');
+    assert.equal(classifyStorageCapacityRisk({favorites: {used: 1, max: 10}}), 'normal');
+});
+
+test('classifyStorageCapacityRisk ignores untrusted status fields', () => {
+    assert.equal(classifyStorageCapacityRisk({favorites: {used: 1, max: 10, status: 'critical'}}), 'normal');
 });
 
 // ── clampNum ──
