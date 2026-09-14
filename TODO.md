@@ -612,37 +612,72 @@
 
 ### T-1643~T-1672 Agent 协调器联合恢复与聚合（本轮 30 项）
 
-- [x] T-1643 联合健康状态枚举
-- [x] T-1644 联合健康未知值降级
-- [x] T-1645 idle 状态判定
-- [x] T-1646 active 状态判定
-- [x] T-1647 blocked 状态判定
-- [x] T-1648 disposed 状态判定
-- [x] T-1649 协调器状态差异
-- [x] T-1650 cursorDelta 计算
-- [x] T-1651 commitDelta 计算
-- [x] T-1652 健康报告 version=1
-- [x] T-1653 健康报告固定字段
-- [x] T-1654 健康报告兼容性
-- [x] T-1655 健康报告序列化
-- [x] T-1656 健康报告安全解析
-- [x] T-1657 status_changed 事件
-- [x] T-1658 cursor_changed 事件
-- [x] T-1659 commits_changed 事件
-- [x] T-1660 disposed_changed 事件
-- [x] T-1661 差异事件数量上限
-- [x] T-1662 差异 delta 归一化
-- [x] T-1663 差异事件去重
-- [x] T-1664 差异事件统计
-- [x] T-1665 commit window version=1
-- [x] T-1666 commit window cursor
-- [x] T-1667 commit window limit 上限
-- [x] T-1668 commit window 兼容性
-- [x] T-1669 commit window 序列化
-- [x] T-1670 commit window 安全解析
-- [x] T-1671 批量结果 committed 统计
-- [x] T-1672 successRate 聚合
-  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（422 项专项测试）
+- [x] T-1643 联合状态枚举
+- [x] T-1644 联合状态未知值降级
+- [x] T-1645 联合快照 version=1
+- [x] T-1646 联合快照总数统计
+- [x] T-1647 hostile coordinator 隔离
+- [x] T-1648 联合快照固定字段
+- [x] T-1649 联合快照兼容性
+- [x] T-1650 联合健康 idle
+- [x] T-1651 联合健康 blocked
+- [x] T-1652 联合健康 disposed
+- [x] T-1653 联合健康固定字段
+- [x] T-1654 联合健康兼容性
+- [x] T-1655 prepare 阶段
+- [x] T-1656 全部成功 commit
+- [x] T-1657 partial commit 拒绝
+- [x] T-1658 联合 cursor 推进
+- [x] T-1659 联合 coordinator 快照
+- [x] T-1660 联合 dispose 幂等
+- [x] T-1661 联合结果固定字段
+- [x] T-1662 联合结果兼容性
+- [x] T-1663 status_changed 事件
+- [x] T-1664 cursor_changed 事件
+- [x] T-1665 commits_changed 事件
+- [x] T-1666 acknowledged_changed 事件
+- [x] T-1667 联合事件去重
+- [x] T-1668 联合事件摘要
+- [x] T-1669 联合恢复计划 version=1
+- [x] T-1670 联合恢复计划 cursor
+- [x] T-1671 联合恢复计划兼容性
+- [x] T-1672 联合失败回执与安全序列化
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（455 项专项测试）
+  - 状态：done（2026-09-14）
+
+### T-1673~T-1702 Agent 联合快照与恢复结果（本轮 30 项）
+
+- [x] T-1673 联合 cursor 归一化
+- [x] T-1674 联合健康等级排序
+- [x] T-1675 联合 total 差异
+- [x] T-1676 联合 committed 差异
+- [x] T-1677 联合 disposed 差异
+- [x] T-1678 联合 cursorDelta
+- [x] T-1679 total_changed 事件
+- [x] T-1680 cursor_changed 事件
+- [x] T-1681 事件 delta 上限
+- [x] T-1682 事件固定字段
+- [x] T-1683 事件去重
+- [x] T-1684 事件摘要固定字段
+- [x] T-1685 checkpoint version=1
+- [x] T-1686 checkpoint cursor
+- [x] T-1687 checkpoint 固定字段
+- [x] T-1688 checkpoint 兼容性
+- [x] T-1689 checkpoint 序列化
+- [x] T-1690 checkpoint 安全解析
+- [x] T-1691 recovery committed 判定
+- [x] T-1692 recovery partial 判定
+- [x] T-1693 recovery acknowledgement
+- [x] T-1694 partial 不确认
+- [x] T-1695 recovery 固定字段
+- [x] T-1696 recovery 兼容性
+- [x] T-1697 recovery 序列化
+- [x] T-1698 recovery 安全解析
+- [x] T-1699 recovery 计数上限
+- [x] T-1700 联合失败回执
+- [x] T-1701 联合事件数量上限
+- [x] T-1702 恶意联合结果隔离
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（485 项专项测试）
   - 状态：done（2026-09-14）
 
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
