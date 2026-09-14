@@ -9,6 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline} = require('../src/util.js');
+const {normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus} = require('../src/util.js');
 
 const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
@@ -297,6 +298,12 @@ test('capacity: guarded readers return events on success without consuming', () 
     assert.equal(readStorageCapacityReportEventsWithSignal(queue, 0, {aborted: false}).events.length, 1);
     assert.equal(readStorageCapacityReportEventsWithDeadline(queue, 0, Date.now() + 1000).events.length, 1);
     assert.equal(queue.snapshot().size, 1);
+});
+
+test('capacity: queue status snapshot remains fixed and bounded', () => {
+    const queue = createStorageCapacityReportEventQueue(2);
+    assert.deepEqual(Object.keys(getStorageCapacityReportEventQueueStatus(queue)), ['cursor', 'size', 'capacity', 'disposed', 'truncated']);
+    assert.equal(normalizeStorageCapacityReportEventQueueStatus({size: 99, capacity: 2}).size, 2);
 });
 
 test('capacity: health diff keeps transition lists within the declared buckets', () => {

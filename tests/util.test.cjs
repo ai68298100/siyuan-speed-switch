@@ -3,6 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const {readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline} = require('../src/util.js');
+const {normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus} = require('../src/util.js');
 const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
@@ -458,6 +459,15 @@ test('queue signal/deadline readers preserve cancellation and timeout semantics'
     assert.equal(readStorageCapacityReportEventsWithSignal(queue, 0, {aborted: true}).reason, 'cancelled');
     assert.equal(readStorageCapacityReportEventsWithDeadline(queue, 0, Date.now() - 1).reason, 'timeout');
     assert.equal(queue.snapshot().size, 1);
+});
+
+test('queue status normalizer bounds counters and preserves lifecycle flags', () => {
+    assert.deepEqual(normalizeStorageCapacityReportEventQueueStatus({cursor: 9, size: 40, capacity: 4, disposed: true, truncated: true}), {cursor: 9, size: 4, capacity: 4, disposed: true, truncated: true});
+    assert.deepEqual(normalizeStorageCapacityReportEventQueueStatus(null), {cursor: 0, size: 0, capacity: 8, disposed: false, truncated: false});
+});
+
+test('queue status reader safely handles missing queues', () => {
+    assert.deepEqual(getStorageCapacityReportEventQueueStatus(null), normalizeStorageCapacityReportEventQueueStatus({}));
 });
 
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {
