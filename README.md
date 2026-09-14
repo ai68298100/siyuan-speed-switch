@@ -10,7 +10,7 @@
 
 > v0.17.0 增强思源智能体只读协作：新增生命周期审计、传输队列、联合恢复、checkpoint 窗口和 diagnostics 投影契约，同时保留组件商店、配置体验与多端导航能力。
 
-> 当前开发策略：正式发布基线已通过类型检查、生产构建、1513 项自动测试、移动端与 Chromium UI 烟测；当前开发头已接入完全离线的“时间与日期”、Open-Meteo 近期天气和可选中国节假日日历层，自动测试增至 1656 项。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：正式发布基线已通过类型检查、生产构建、1513 项自动测试、移动端与 Chromium UI 烟测；当前开发头已接入完全离线的“时间与日期”、Open-Meteo 近期天气、可选中国节假日日历层和 Bangumi“每日放送”真实封面组件，自动测试增至 1711 项。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -190,8 +190,9 @@ pnpm verify:release
 - 组件商店新增“生活信息”分组和完全离线的“时间与日期”组件，覆盖桌面、侧栏与手机端；组件按真实分钟边界更新，页面隐藏或面板销毁时停止无效刷新。
 - 建立 9 个外部生活组件候选的纯模型目录，记录来源、许可/条款、凭据、隐私、端侧和可用状态；尚未完成真实适配的来源不会显示成可直接添加。
 - 新增 Open-Meteo **近期天气**：用户手填城市后才联网，显示大温度、天气状态、体感温度和 2–5 日预报；三端采用 iPad 式渐变卡片，并具备端点白名单、超时、响应上限、15 分钟缓存和来源署名。
-- 日历月视图可选显示 holiday-cn 中国法定节假日与调休班标识，并与农历文本共存；天气、节假日、热点、影视与使用时长的来源审计见 [`docs/external-widget-source-audit.md`](docs/external-widget-source-audit.md)。当前内置组件共 29 个，组件商店共 8 个内置功能分组。
-- 当前开发头通过 1656 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
+- 新增 Bangumi **每日放送**：按设备本地星期显示今日、明日或本周条目，采用真实 3:4 官方封面卡、图片懒加载、精确端点/封面白名单和 30 分钟缓存；不把节目表描述成个性化推荐。
+- 日历月视图可选显示 holiday-cn 中国法定节假日与调休班标识，并与农历文本共存；商店卡片新增来源、联网状态和隐私摘要。天气、节假日、热点、影视与使用时长的来源审计见 [`docs/external-widget-source-audit.md`](docs/external-widget-source-audit.md)。当前内置组件共 30 个，组件商店共 8 个内置功能分组。
+- 当前开发头通过 1711 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
 
 ### v0.17.0（2026-09-14）
 
@@ -263,7 +264,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 1656 项测试（106 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 1711 项测试（106 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -292,10 +293,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 1656 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 1711 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、1656 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、1711 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

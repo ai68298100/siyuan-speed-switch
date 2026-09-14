@@ -12,6 +12,14 @@ const forecast = {
         precipitation_probability_max: [10, 80, 40],
     },
 };
+const bangumiCalendar = [
+    {weekday: {id: 1, cn: "星期一"}, items: [
+        {id: 101, name: "Alpha", name_cn: "阿尔法", images: {large: "https://lain.bgm.tv/pic/cover/l/test.jpg"}, rating: {score: 8.26}, rank: 12},
+        {id: 102, name: "Beta", name_cn: "", images: {common: "https://lain.bgm.tv/pic/cover/c/test.jpg"}},
+    ]},
+    {weekday: {id: 2, cn: "星期二"}, items: [{id: 201, name: "Tuesday", rating: {score: 7}}]},
+    {weekday: {id: 7, cn: "星期日"}, items: [{id: 701, name: "Sunday"}]},
+];
 
 test("weather config strips controls from city", () => assert.equal(model.normalizeWeatherConfig({city: " 北\n京 "}).city, "北 京"));
 test("weather config bounds city", () => assert.equal(model.normalizeWeatherConfig({city: "x".repeat(90)}).city.length, 64));
@@ -61,3 +69,54 @@ test("holiday presentation separates off and work", () => {
     assert.deepEqual(model.holidayPresentation({name: "春节", isOffDay: false}, {work: "班"}), {kind: "work", label: "春节 · 班"});
 });
 test("holiday presentation rejects malformed entries", () => assert.equal(model.holidayPresentation({name: "春节"}), null));
+test("Bangumi config defaults to today", () => assert.equal(model.normalizeBangumiConfig({}).dayRange, "今天"));
+test("Bangumi config keeps tomorrow", () => assert.equal(model.normalizeBangumiConfig({dayRange: "明天"}).dayRange, "明天"));
+test("Bangumi config keeps week", () => assert.equal(model.normalizeBangumiConfig({dayRange: "本周"}).dayRange, "本周"));
+test("Bangumi config rejects unknown ranges", () => assert.equal(model.normalizeBangumiConfig({dayRange: "全部"}).dayRange, "今天"));
+test("Bangumi config clamps low limits", () => assert.equal(model.normalizeBangumiConfig({limit: 0}).limit, 2));
+test("Bangumi config clamps high limits", () => assert.equal(model.normalizeBangumiConfig({limit: 99}).limit, 12));
+test("Bangumi config defaults to six entries", () => assert.equal(model.normalizeBangumiConfig({}).limit, 6));
+test("Bangumi config can hide covers", () => assert.equal(model.normalizeBangumiConfig({showCovers: "否"}).showCovers, false));
+test("Bangumi config shows covers by default", () => assert.equal(model.normalizeBangumiConfig({}).showCovers, true));
+test("Bangumi weekday uses ISO Monday", () => assert.equal(model.bangumiWeekdayId(new Date(2026, 8, 14, 12)), 1));
+test("Bangumi weekday maps Sunday to seven", () => assert.equal(model.bangumiWeekdayId(new Date(2026, 8, 20, 12)), 7));
+test("Bangumi weekday rejects invalid dates safely", () => assert.equal(model.bangumiWeekdayId("bad"), 1));
+test("Bangumi cover accepts the official HTTPS cover host", () => assert.equal(model.normalizeBangumiCover("https://lain.bgm.tv/pic/cover/l/a.jpg"), "https://lain.bgm.tv/pic/cover/l/a.jpg"));
+test("Bangumi cover rejects HTTP", () => assert.equal(model.normalizeBangumiCover("http://lain.bgm.tv/pic/cover/l/a.jpg"), ""));
+test("Bangumi cover rejects lookalike hosts", () => assert.equal(model.normalizeBangumiCover("https://lain.bgm.tv.example.com/pic/cover/l/a.jpg"), ""));
+test("Bangumi cover rejects non-cover paths", () => assert.equal(model.normalizeBangumiCover("https://lain.bgm.tv/avatar/a.jpg"), ""));
+test("Bangumi calendar rejects non-arrays", () => assert.deepEqual(model.normalizeBangumiCalendar({}), []));
+test("Bangumi calendar normalizes weekdays", () => assert.deepEqual(model.normalizeBangumiCalendar(bangumiCalendar).map((day) => day.weekday), [1, 2, 7]));
+test("Bangumi calendar prefers Chinese titles", () => assert.equal(model.normalizeBangumiCalendar(bangumiCalendar)[0].items[0].title, "阿尔法"));
+test("Bangumi calendar falls back to original titles", () => assert.equal(model.normalizeBangumiCalendar(bangumiCalendar)[0].items[1].title, "Beta"));
+test("Bangumi calendar rounds scores to one decimal", () => assert.equal(model.normalizeBangumiCalendar(bangumiCalendar)[0].items[0].score, 8.3));
+test("Bangumi calendar drops duplicate subjects within a day", () => {
+    const payload = [{weekday: {id: 1}, items: [{id: 1, name: "A"}, {id: 1, name: "B"}]}];
+    assert.equal(model.normalizeBangumiCalendar(payload)[0].items.length, 1);
+});
+test("Bangumi calendar drops malformed weekday ids", () => assert.deepEqual(model.normalizeBangumiCalendar([{weekday: {id: 0}, items: []}]), []));
+test("Bangumi snapshot selects the local weekday", () => {
+    const snapshot = model.buildBangumiSnapshot(bangumiCalendar, {}, {}, new Date(2026, 8, 14, 12));
+    assert.deepEqual(snapshot.items.slice(0, -1).map((item) => item.label), ["阿尔法", "Beta"]);
+});
+test("Bangumi snapshot selects tomorrow independently of server order", () => {
+    const snapshot = model.buildBangumiSnapshot([...bangumiCalendar].reverse(), {dayRange: "明天"}, {}, new Date(2026, 8, 14, 12));
+    assert.equal(snapshot.items[0].label, "Tuesday");
+});
+test("Bangumi snapshot wraps Sunday tomorrow to Monday", () => {
+    const snapshot = model.buildBangumiSnapshot(bangumiCalendar, {dayRange: "明天"}, {}, new Date(2026, 8, 20, 12));
+    assert.equal(snapshot.items[0].label, "阿尔法");
+});
+test("Bangumi week snapshot starts from the local weekday", () => {
+    const snapshot = model.buildBangumiSnapshot(bangumiCalendar, {dayRange: "本周", limit: 12}, {}, new Date(2026, 8, 15, 12));
+    assert.match(snapshot.items[0].secondary, /^周二/);
+});
+test("Bangumi snapshot keeps a bounded number of titles", () => {
+    const many = [{weekday: {id: 1}, items: Array.from({length: 30}, (_, id) => ({id: id + 1, name: `A${id}`}))}];
+    assert.equal(model.buildBangumiSnapshot(many, {limit: 4}, {}, new Date(2026, 8, 14, 12)).items.length, 5);
+});
+test("Bangumi snapshot exposes safe subject links", () => assert.equal(model.buildBangumiSnapshot(bangumiCalendar, {}, {}, new Date(2026, 8, 14, 12)).items[0].href, "https://bgm.tv/subject/101"));
+test("Bangumi snapshot includes source attribution", () => assert.equal(model.buildBangumiSnapshot(bangumiCalendar, {}, {}, new Date(2026, 8, 14, 12)).items.at(-1).href, "https://bgm.tv/calendar"));
+test("Bangumi snapshot omits covers when configured", () => assert.equal(model.buildBangumiSnapshot(bangumiCalendar, {showCovers: "否"}, {}, new Date(2026, 8, 14, 12)).items[0].image, undefined));
+test("Bangumi snapshot uses localized range labels", () => assert.match(model.buildBangumiSnapshot(bangumiCalendar, {}, {today: "Airing"}, new Date(2026, 8, 14, 12)).title, /^Airing/));
+test("Bangumi snapshot rejects malformed payloads", () => assert.equal(model.buildBangumiSnapshot({}, {}, {}), null));

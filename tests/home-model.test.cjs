@@ -4,13 +4,13 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 30);
+    assert.equal(modules.length, 31);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 30);
+    assert.equal(home.modulesForDevice([], "mobile").length, 31);
 });
 
 test("journal-calendar viewType and monthOffset config", () => {
@@ -32,6 +32,16 @@ test("weather module exposes opt-in location config and iPad-friendly sizes", ()
     assert.deepEqual(weather.supportedDevices, ["desktop", "sidebar", "mobile"]);
     assert.deepEqual(weather.sizes, ["small", "medium", "wide", "large"]);
     assert.deepEqual(weather.configSchema.map((field) => field.key), ["city", "temperatureUnit", "forecastDays"]);
+});
+
+test("Bangumi schedule module exposes media presentation and bounded config", () => {
+    const bangumi = home.registerModules([]).find((item) => item.moduleId === "external-anime-bangumi");
+    assert.ok(bangumi);
+    assert.equal(bangumi.availability, "external");
+    assert.equal(bangumi.viewType, "media");
+    assert.deepEqual(bangumi.supportedDevices, ["desktop", "sidebar", "mobile"]);
+    assert.deepEqual(bangumi.sizes, ["medium", "wide", "large", "full"]);
+    assert.deepEqual(bangumi.configSchema.map((field) => field.key), ["dayRange", "limit", "showCovers"]);
 });
 test("home modules expose bounded availability levels", () => {
     const modules = home.registerModules([]);

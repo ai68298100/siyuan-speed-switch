@@ -4,12 +4,14 @@ const MAX_RESPONSE_BYTES = 128 * 1024;
 const WEATHER_TTL_MS = 15 * 60 * 1000;
 const LOCATION_TTL_MS = 24 * 60 * 60 * 1000;
 const HOLIDAY_TTL_MS = 24 * 60 * 60 * 1000;
+const BANGUMI_TTL_MS = 30 * 60 * 1000;
 const responseCache = new Map();
 
 function allowedLifeWidgetUrl(url) {
     if (typeof url !== "string" || url.length > 1024) return false;
     if (url.startsWith("https://geocoding-api.open-meteo.com/v1/search?")
         || url.startsWith("https://api.open-meteo.com/v1/forecast?")) return true;
+    if (url === "https://api.bgm.tv/calendar") return true;
     try {
         const parsed = new URL(url);
         return parsed.protocol === "https:"
@@ -90,6 +92,13 @@ async function loadHolidayYear(year, options = {}) {
     return cacheWrite(`holiday:${normalizedYear}`, await fetchBoundedLifeJson(url, options), options.now);
 }
 
+async function loadBangumiCalendar(options = {}) {
+    const url = "https://api.bgm.tv/calendar";
+    const cached = cacheRead("bangumi:calendar", BANGUMI_TTL_MS, options.now);
+    if (cached) return cached;
+    return cacheWrite("bangumi:calendar", await fetchBoundedLifeJson(url, options), options.now);
+}
+
 function clearLifeWidgetCaches() {
     responseCache.clear();
 }
@@ -103,11 +112,13 @@ module.exports = {
     WEATHER_TTL_MS,
     LOCATION_TTL_MS,
     HOLIDAY_TTL_MS,
+    BANGUMI_TTL_MS,
     allowedLifeWidgetUrl,
     fetchBoundedLifeJson,
     loadWeatherLocation,
     loadWeatherForecast,
     loadHolidayYear,
+    loadBangumiCalendar,
     clearLifeWidgetCaches,
     lifeWidgetCacheSize,
 };

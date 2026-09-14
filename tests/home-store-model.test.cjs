@@ -37,6 +37,17 @@ test('preview calendar kind is semantic', () => assert.equal(model.resolveHomeSt
 test('preview tasks kind is semantic', () => assert.equal(model.resolveHomeStorePreviewKind('today-tasks', 'builtin'), 'tasks'));
 test('offline local time preview uses stat semantics', () => assert.equal(model.resolveHomeStorePreviewKind('external-local-time', 'builtin'), 'stat'));
 test('weather preview has a dedicated visual kind', () => assert.equal(model.resolveHomeStorePreviewKind('external-weather-open-meteo', 'builtin'), 'weather'));
+test('Bangumi preview has a dedicated media kind', () => assert.equal(model.resolveHomeStorePreviewKind('external-anime-bangumi', 'builtin'), 'media'));
+test('media preview kind survives normalization', () => assert.equal(model.normalizeHomeStorePreviewKind('media'), 'media'));
+test('weather preview kind survives normalization', () => assert.equal(model.normalizeHomeStorePreviewKind('weather'), 'weather'));
+test('store source info exposes Bangumi network metadata', () => assert.deepEqual(model.resolveHomeStoreSourceInfo('external-anime-bangumi'), {providerName: 'Bangumi', integration: 'http', privacy: 'none'}));
+test('store source info exposes location-only weather privacy', () => assert.equal(model.resolveHomeStoreSourceInfo('external-weather-open-meteo').privacy, 'location-only'));
+test('store source info returns defensive copies', () => {
+    const info = model.resolveHomeStoreSourceInfo('external-local-time');
+    info.providerName = 'changed';
+    assert.equal(model.resolveHomeStoreSourceInfo('external-local-time').providerName, 'SiYuan runtime');
+});
+test('store source info rejects unknown widgets', () => assert.equal(model.resolveHomeStoreSourceInfo('missing'), null));
 test('unknown plugin preview uses plugin kind', () => assert.equal(model.resolveHomeStorePreviewKind('x', 'plugin'), 'plugin'));
 test('unknown builtin preview uses list kind', () => assert.equal(model.resolveHomeStorePreviewKind('x', 'builtin'), 'list'));
 test('preview kind normalization rejects unknown', () => assert.equal(model.normalizeHomeStorePreviewKind('x'), 'list'));

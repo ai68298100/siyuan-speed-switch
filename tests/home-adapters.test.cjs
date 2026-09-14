@@ -41,6 +41,20 @@ test("home adapter snapshots allow only explicit safe link protocols", () => {
     assert.equal(snapshot.items[2].href, "");
 });
 
+test("home adapter snapshots preserve official Bangumi cover images", () => {
+    const snapshot = adapters.normalizeSnapshot({items: [{label: "A", image: "https://lain.bgm.tv/pic/cover/l/a.jpg"}]});
+    assert.equal(snapshot.items[0].image, "https://lain.bgm.tv/pic/cover/l/a.jpg");
+});
+
+test("home adapter snapshots strip untrusted media images", () => {
+    const snapshot = adapters.normalizeSnapshot({items: [
+        {label: "A", image: "https://example.com/a.jpg"},
+        {label: "B", image: "javascript:alert(1)"},
+    ]});
+    assert.equal(snapshot.items[0].image, undefined);
+    assert.equal(snapshot.items[1].image, undefined);
+});
+
 test("home adapters bound provider timeout and cache policies", () => {
     const map = adapters.registerHomeAdapters([{moduleId: "policy", supportedDevices: ["desktop"], timeoutMs: 99999, cacheTtlMs: -1, read: () => ({})}]);
     assert.equal(map.get("policy").timeoutMs, 10000);

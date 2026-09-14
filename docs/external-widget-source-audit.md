@@ -4,7 +4,7 @@
 
 ## 结论
 
-首批采用分层接入：本地时间、Open-Meteo 天气已经内置，holiday-cn 已作为日历可选覆盖层接入；Bangumi 仍处于候选阶段；热榜和新闻要求可配置/自部署端点；TMDB 要求用户 API Key；使用时长仅连接用户本机 ActivityWatch。活动窗口读取暂不接入生产。
+首批采用分层接入：本地时间、Open-Meteo 天气和 Bangumi 每日放送已经内置，holiday-cn 已作为日历可选覆盖层接入；热榜和新闻要求可配置/自部署端点；TMDB 要求用户 API Key；使用时长仅连接用户本机 ActivityWatch。活动窗口读取暂不接入生产。
 
 | 候选组件 | 来源 | 许可/条款 | 凭据 | 建议状态 | 关键边界 |
 | --- | --- | --- | --- | --- | --- |
@@ -14,13 +14,13 @@
 | 实时新闻 | [NewsNow](https://github.com/newsnext/newsnow) | MIT | 用户端点 | 候选 | 自部署可获得缓存与来源管理；禁止后台高频抓取 |
 | 中国节假日 | [holiday-cn](https://github.com/NateScarlet/holiday-cn) | MIT | 无 | 已接入 | 默认关闭；每年静态 JSON 内存缓存 24 小时；年份交界同时检查下一年度公告 |
 | 电影推荐 | [TMDB API](https://developer.themoviedb.org/docs) | TMDB API 条款 | API Key | 条件组件 | Key 只存插件私有配置；必须展示 attribution；首期只做趋势/发现，不声称个性化推荐 |
-| 番剧推荐 | [Bangumi API](https://github.com/bangumi/api) | API 使用约定 | 无 | 下一批 | 使用明确 User-Agent；限制频率；不抓取网页 DOM |
+| 每日放送 | [Bangumi API](https://github.com/bangumi/api) | API 使用约定 | 无 | 已接入 | legacy `/calendar` 整周读取后按本地星期筛选；30 分钟缓存；WebView 使用宿主浏览器 UA；仅加载官方封面域名，不抓取网页 DOM |
 | 使用时长 | [ActivityWatch](https://github.com/ActivityWatch/activitywatch) | MPL-2.0 | 本地服务 | 桌面候选 | 只连接 loopback；默认只显示应用级汇总，不暴露窗口标题；移动端不支持 |
 | 当前应用状态 | [get-windows](https://github.com/sindresorhus/get-windows) | MIT | 本地原生能力 | 仅参考 | 需要原生 Node/系统权限，思源插件沙箱与移动端无法可靠承诺 |
 
 ## 实际连通性抽查
 
-2026-09-14 从开发机进行只读请求：Open-Meteo、holiday-cn CDN 与 Bangumi API 返回 HTTP 200；DailyHotApi 公共演示端点出现 TLS 连接失败。这只是一次开发环境抽查，不构成长期 SLA，但足以说明热榜必须允许用户自建端点，且 UI 要显示来源健康状态与缓存时间。
+2026-09-14 初次只读抽查中 Open-Meteo、holiday-cn CDN 与 Bangumi API 返回 HTTP 200，DailyHotApi 公共演示端点出现 TLS 连接失败；本轮再次检查 Bangumi 时开发机到 `api.bgm.tv:443` 连接超时。两次结果共同说明任何公共来源都不能被视为长期 SLA：UI 必须显示来源/联网/隐私信息，运行时必须超时、缓存并把失败限制在单一组件。
 
 ## 商店信息架构
 
@@ -53,7 +53,7 @@
 1. 已完成：外部来源纯模型、可用性/凭据/平台/隐私契约，以及离线时间组件。
 2. 已完成：Open-Meteo 天气采用城市手选、15 分钟缓存和三端响应式卡片渲染。
 3. 已完成：holiday-cn 节假日/调休标记复用现有月历，不新增第二套月历。
-4. Bangumi：每日一部/本周热门的轻量海报卡，图片懒加载。
-5. DailyHot/NewsNow：用户端点、来源健康、缓存时间与逐源失败隔离。
+4. 已完成：Bangumi 每日放送按本地星期展示 3:4 官方封面卡，支持今日/明日/本周、图片懒加载和 30 分钟缓存；不宣称个性化推荐。
+5. 下一步：DailyHot/NewsNow 用户端点、来源健康、缓存时间与逐源失败隔离。
 6. ActivityWatch：桌面实验开关、loopback 白名单、应用级聚合和隐私说明。
 7. TMDB：API Key 安全存储、attribution 和趋势发现；个性化推荐另行评估。

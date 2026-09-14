@@ -5142,6 +5142,8 @@
     .p-weather-icon { align-self: flex-end; margin-top: -25px; font-size: 22px; }
     .p-weather-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
     .p-weather-days i { width: 100%; height: 8px; background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent); }
+    .p-media-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 34px; }
+    .p-media-grid i { width: 100%; height: 100%; border-radius: 5px; background: linear-gradient(160deg, color-mix(in srgb, var(--b3-theme-primary) 42%, transparent), color-mix(in srgb, #df6f8a 34%, transparent)); }
     .p-task-list { display: grid; gap: 5px; }
     .p-task-list i { position: relative; width: 80%; height: 7px; margin-left: 14px; }
     .p-task-list i::before { content: ""; position: absolute; left: -12px; top: 0; width: 7px; height: 7px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 60%, transparent); border-radius: 2px; }
@@ -5187,12 +5189,114 @@
     font-size: 11px;
 }
 
+.sw-home-store__source-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.sw-home-store__source-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    border-radius: 999px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 9px;
+    line-height: 1.3;
+
+    &.is-online { border-color: color-mix(in srgb, #d58b32 45%, transparent); color: #a76618; }
+    &.is-offline { border-color: color-mix(in srgb, #4f9f68 45%, transparent); color: #3b8252; }
+    &.is-privacy { opacity: 0.82; }
+}
+
 @media (max-width: 560px) {
     .sw-home-store { padding: 10px 12px 14px; }
     .sw-home-store__grid { grid-template-columns: 1fr; gap: 10px; }
     .sw-home-store__tabs { overflow-x: auto; scrollbar-width: thin; }
     .sw-home-store__tab { flex: 0 0 auto; padding-inline: 12px !important; }
     .sw-home-store__card { padding: 11px 12px; }
+}
+
+// Bangumi 每日放送：真实封面媒体网格，接近平板系统小组件的信息密度；
+// 图片只允许 life-widget 模型与 view 双重校验后的 lain.bgm.tv HTTPS 封面。
+.sw-home__cell[data-module-id="external-anime-bangumi"] {
+    overflow: hidden;
+    border-color: color-mix(in srgb, #d86682 52%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 255, 255, 0.46), transparent 25%),
+        linear-gradient(145deg, color-mix(in srgb, #f6d6de 64%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #d8d5f5 56%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #a83f61;
+}
+
+.sw__home-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    gap: 9px;
+    margin: 0;
+    padding: 3px 0 0;
+    list-style: none;
+}
+
+.sw__home-media-item {
+    min-width: 0;
+
+    &.is-source { grid-column: 1 / -1; }
+}
+
+.sw__home-media-action {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    text-align: start;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid var(--sw-home-accent, var(--b3-theme-primary));
+        outline-offset: 2px;
+    }
+}
+
+.sw__home-media-cover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--b3-border-color) 48%, transparent);
+    box-shadow: 0 5px 14px rgba(57, 31, 47, 0.13);
+    object-fit: cover;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sw__home-media-action:hover .sw__home-media-cover {
+    box-shadow: 0 8px 20px rgba(57, 31, 47, 0.2);
+    transform: translateY(-2px);
+}
+
+.sw__home-media-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sw__home-media-title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+.sw__home-media-secondary { color: var(--b3-theme-on-surface-light); font-size: 9px; }
+.sw__home-media-item.is-source .sw__home-media-action { display: block; padding: 2px 0; color: var(--b3-theme-on-surface-light); font-size: 9px; }
+.sw__home-media-item.is-source .sw__home-media-title { font-size: 9px; font-weight: 500; }
+
+@media (max-width: 560px) {
+    .sw__home-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 // ==================== 商店实时预览弹窗 ====================

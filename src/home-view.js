@@ -29,6 +29,18 @@ function safeHref(value) {
     }
 }
 
+function safeImageHref(value) {
+    const href = text(value, 512);
+    if (!href) return "";
+    try {
+        const url = new URL(href);
+        return url.protocol === "https:" && url.hostname === "lain.bgm.tv" && url.pathname.startsWith("/pic/cover/")
+            ? url.href : "";
+    } catch (_) {
+        return "";
+    }
+}
+
 function formatUpdatedAt(value) {
     const raw = Number(value);
     if (!Number.isFinite(raw) || raw <= 0) return "";
@@ -78,6 +90,8 @@ function normalizeHomeViewResult(value, options = {}) {
             href: safeHref(item?.href),
             command: text(item?.command, 128),
         };
+        const image = safeImageHref(item?.image);
+        if (image) entry.image = image;
         const secondary = text(item?.secondary, 32);
         if (secondary) entry.secondary = secondary;
         if (typeof item?.done === "boolean") entry.done = item.done;
@@ -128,7 +142,7 @@ function buildHomeModuleView(module, result, options = {}) {
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
-        viewType: definition.viewType === "calendar" ? "calendar" : (definition.viewType === "weekdays" ? "weekdays" : ""),
+        viewType: ["calendar", "weekdays", "media"].includes(definition.viewType) ? definition.viewType : "",
         status: normalized.status,
         stat: normalized.stat,
         cached: normalized.cached,
@@ -376,6 +390,49 @@ function renderHomeModuleView(doc, view, options = {}) {
                 cell.addEventListener("click", () => options.onItem(item, view));
             }
             grid.appendChild(cell);
+        });
+        body.appendChild(grid);
+        root.appendChild(body);
+        return root;
+    }
+    if (view.status === "ready" && view.viewType === "media") {
+        const grid = doc.createElement("ul");
+        grid.className = "sw__home-media-grid";
+        grid.setAttribute("role", "list");
+        (Array.isArray(view.items) ? view.items : []).forEach((item, index) => {
+            const row = doc.createElement("li");
+            row.className = "sw__home-media-item" + (item.image ? " has-cover" : " is-source");
+            const button = doc.createElement("button");
+            button.type = "button";
+            button.className = "sw__home-media-action";
+            button.dataset.focusKey = `media-${index}`;
+            if (item.href) button.dataset.href = item.href;
+            if (item.image) {
+                const image = doc.createElement("img");
+                image.className = "sw__home-media-cover";
+                image.src = item.image;
+                image.alt = "";
+                image.loading = "lazy";
+                image.decoding = "async";
+                image.referrerPolicy = "no-referrer";
+                button.appendChild(image);
+            }
+            const copy = doc.createElement("span");
+            copy.className = "sw__home-media-copy";
+            const title = doc.createElement("strong");
+            title.className = "sw__home-media-title";
+            title.textContent = item.label || item.href || "";
+            copy.appendChild(title);
+            if (item.secondary) {
+                const secondary = doc.createElement("small");
+                secondary.className = "sw__home-media-secondary";
+                secondary.textContent = item.secondary;
+                copy.appendChild(secondary);
+            }
+            button.appendChild(copy);
+            if (typeof options.onItem === "function") button.addEventListener("click", () => options.onItem(item, view));
+            row.appendChild(button);
+            grid.appendChild(row);
         });
         body.appendChild(grid);
         root.appendChild(body);

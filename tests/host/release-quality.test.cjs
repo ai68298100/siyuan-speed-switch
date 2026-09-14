@@ -131,7 +131,10 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (55): 463 KiB for bounded Open-Meteo weather, holiday-cn
     // calendar overlays, dedicated life-widget caches and theme-safe card UI;
     // package.zip remains below the unchanged 300 KiB hard ceiling.
-    const budget = 463 * 1024;
+    // 2026-09-14 (56): 472 KiB for Bangumi schedule normalization, triple
+    // cover allowlisting, responsive media cards and store source disclosure;
+    // production graph remains 31 and package.zip stays below 300 KiB.
+    const budget = 472 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

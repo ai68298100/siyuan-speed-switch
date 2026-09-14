@@ -2,6 +2,7 @@
 
 const WEATHER_CONDITIONS = Object.freeze(["clear", "cloudy", "fog", "rain", "snow", "storm"]);
 const TEMPERATURE_UNITS = Object.freeze(["°C", "°F"]);
+const BANGUMI_DAY_RANGES = Object.freeze(["今天", "明天", "本周"]);
 
 function boundedText(value, max = 128) {
     return typeof value === "string"
@@ -191,9 +192,110 @@ function holidayPresentation(entry, labels = {}) {
     };
 }
 
+function normalizeBangumiConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const dayRange = BANGUMI_DAY_RANGES.includes(source.dayRange) ? source.dayRange : "今天";
+    const requestedLimit = Math.trunc(Number(source.limit));
+    const limit = Number.isFinite(requestedLimit) ? Math.min(12, Math.max(2, requestedLimit)) : 6;
+    return {dayRange, limit, showCovers: source.showCovers !== "否" && source.showCovers !== false};
+}
+
+function bangumiWeekdayId(value = Date.now()) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(date.getTime())) return 1;
+    return date.getDay() === 0 ? 7 : date.getDay();
+}
+
+function normalizeBangumiCover(value) {
+    const raw = boundedText(value, 512);
+    if (!raw) return "";
+    try {
+        const url = new URL(raw);
+        return url.protocol === "https:" && url.hostname === "lain.bgm.tv" && url.pathname.startsWith("/pic/cover/")
+            ? url.href : "";
+    } catch (_) {
+        return "";
+    }
+}
+
+function normalizeBangumiCalendar(payload) {
+    if (!Array.isArray(payload)) return [];
+    const seenDays = new Set();
+    return payload.slice(0, 7).reduce((days, rawDay) => {
+        const weekday = Math.trunc(Number(rawDay?.weekday?.id));
+        if (weekday < 1 || weekday > 7 || seenDays.has(weekday) || !Array.isArray(rawDay?.items)) return days;
+        seenDays.add(weekday);
+        const seenSubjects = new Set();
+        const items = rawDay.items.slice(0, 48).reduce((subjects, rawSubject) => {
+            const id = Math.trunc(Number(rawSubject?.id));
+            const title = boundedText(rawSubject?.name_cn, 96) || boundedText(rawSubject?.name, 96);
+            if (!Number.isSafeInteger(id) || id <= 0 || !title || seenSubjects.has(id)) return subjects;
+            seenSubjects.add(id);
+            const score = Number(rawSubject?.rating?.score);
+            const rank = Math.trunc(Number(rawSubject?.rank));
+            subjects.push({
+                id,
+                title,
+                originalTitle: boundedText(rawSubject?.name, 96),
+                image: normalizeBangumiCover(rawSubject?.images?.large || rawSubject?.images?.common || rawSubject?.images?.medium),
+                score: Number.isFinite(score) && score >= 0 && score <= 10 ? Math.round(score * 10) / 10 : null,
+                rank: Number.isFinite(rank) && rank > 0 ? Math.min(999999, rank) : null,
+            });
+            return subjects;
+        }, []);
+        days.push({weekday, label: boundedText(rawDay?.weekday?.cn, 16), items});
+        return days;
+    }, []).sort((a, b) => a.weekday - b.weekday);
+}
+
+function buildBangumiSnapshot(payload, config, labels = {}, now = Date.now()) {
+    const calendar = normalizeBangumiCalendar(payload);
+    if (calendar.length === 0) return null;
+    const normalized = normalizeBangumiConfig(config);
+    const today = bangumiWeekdayId(now);
+    const tomorrow = today === 7 ? 1 : today + 1;
+    const requestedDays = normalized.dayRange === "明天"
+        ? [tomorrow]
+        : normalized.dayRange === "本周"
+            ? Array.from({length: 7}, (_, index) => ((today - 1 + index) % 7) + 1)
+            : [today];
+    const byDay = new Map(calendar.map((day) => [day.weekday, day]));
+    const dayNames = Array.isArray(labels.weekdays) && labels.weekdays.length >= 7
+        ? labels.weekdays.map((item) => boundedText(item, 16))
+        : ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+    const selected = [];
+    requestedDays.forEach((weekday) => {
+        const day = byDay.get(weekday);
+        day?.items.forEach((subject) => {
+            if (selected.length >= normalized.limit) return;
+            const score = Number.isFinite(subject.score) && subject.score > 0 ? `★ ${subject.score.toFixed(1)}` : "";
+            const dayLabel = normalized.dayRange === "本周" ? dayNames[weekday - 1] : "";
+            selected.push({
+                label: subject.title,
+                value: "",
+                secondary: [dayLabel, score].filter(Boolean).join(" · "),
+                href: `https://bgm.tv/subject/${subject.id}`,
+                ...(normalized.showCovers && subject.image ? {image: subject.image} : {}),
+            });
+        });
+    });
+    const rangeLabel = normalized.dayRange === "明天"
+        ? (boundedText(labels.tomorrow, 24) || "明天")
+        : normalized.dayRange === "本周"
+            ? (boundedText(labels.week, 24) || "本周")
+            : (boundedText(labels.today, 24) || "今天");
+    selected.push({label: boundedText(labels.source, 48) || "数据来源：Bangumi", value: "", href: "https://bgm.tv/calendar"});
+    return {
+        title: `${rangeLabel} · ${Math.max(0, selected.length - 1)} ${boundedText(labels.entries, 16) || "部"}`,
+        items: selected,
+        updatedAt: Number.isFinite(Number(now)) ? Number(now) : Date.now(),
+    };
+}
+
 module.exports = {
     WEATHER_CONDITIONS,
     TEMPERATURE_UNITS,
+    BANGUMI_DAY_RANGES,
     normalizeWeatherConfig,
     normalizeWeatherLocale,
     buildWeatherGeocodingUrl,
@@ -206,4 +308,9 @@ module.exports = {
     normalizeHolidayPayload,
     mergeHolidayPayloads,
     holidayPresentation,
+    normalizeBangumiConfig,
+    bangumiWeekdayId,
+    normalizeBangumiCover,
+    normalizeBangumiCalendar,
+    buildBangumiSnapshot,
 };

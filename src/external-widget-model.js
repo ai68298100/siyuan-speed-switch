@@ -111,7 +111,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
     }),
     catalogEntry({
         moduleId: "external-anime-bangumi",
-        title: "番剧推荐",
+        title: "每日放送",
         category: "media",
         availability: "external",
         auth: "none",
@@ -121,8 +121,8 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "API terms",
         privacy: "none",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["small", "medium", "wide"],
-        description: "面向中文用户的番剧条目推荐；请求需要遵守 User-Agent 和接口频率约定",
+        sizes: ["medium", "wide", "large", "full"],
+        description: "读取 Bangumi 兼容日历接口并按本地星期展示每日放送；不宣称个性化推荐",
     }),
     catalogEntry({
         moduleId: "external-activitywatch-time",

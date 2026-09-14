@@ -34,6 +34,8 @@ test("NewsNow recommends a user endpoint", () => assert.equal(model.findExternal
 test("holiday data requires no credentials", () => assert.equal(model.findExternalWidget("external-holiday-cn").auth, "none"));
 test("TMDB is gated by an API key", () => assert.equal(model.findExternalWidget("external-movie-tmdb").auth, "api-key"));
 test("Bangumi is available on all three plugin surfaces", () => assert.deepEqual(model.findExternalWidget("external-anime-bangumi").platforms, ["desktop", "sidebar", "mobile"]));
+test("Bangumi is honestly labeled as a schedule", () => assert.equal(model.findExternalWidget("external-anime-bangumi").title, "每日放送"));
+test("Bangumi catalog does not claim personalization", () => assert.match(model.findExternalWidget("external-anime-bangumi").description, /不宣称个性化推荐/));
 test("ActivityWatch is local-service only", () => assert.equal(model.findExternalWidget("external-activitywatch-time").auth, "local-service"));
 test("ActivityWatch does not claim mobile support", () => assert.equal(model.findExternalWidget("external-activitywatch-time").platforms.includes("mobile"), false));
 test("native active-window probe remains reference only", () => assert.equal(model.findExternalWidget("external-active-window").availability, "reference"));
@@ -106,4 +108,12 @@ test("production clock heartbeat is disposed with the panel", () => {
     const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
     assert.match(source, /window\.clearTimeout\(homeClockTimer\)/);
     assert.match(source, /removeEventListener\("visibilitychange"/);
+});
+test("production registers and caches the Bangumi schedule adapter", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    assert.match(source, /register\("external-anime-bangumi"/);
+    assert.match(source, /loadBangumiCalendar/);
+    assert.match(source, /cacheTtlMs: 30 \* 60 \* 1000/);
 });

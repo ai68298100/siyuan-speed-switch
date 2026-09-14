@@ -96,6 +96,15 @@ ${links}
     </div>
   </section>
 </div></section></div>
+<div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-anime-bangumi"><div class="sw-home__cell-body">
+  <section class="sw__home-module" data-module-id="external-anime-bangumi">
+    <div class="sw__home-module-header"><strong class="sw__home-module-title">每日放送</strong></div>
+    <div class="sw__home-module-body"><ul class="sw__home-media-grid">
+      ${Array.from({length: 4}, (_, index) => `<li class="sw__home-media-item has-cover"><button class="sw__home-media-action"><img class="sw__home-media-cover"><span class="sw__home-media-copy"><strong class="sw__home-media-title">番剧 ${index + 1}</strong><small class="sw__home-media-secondary">★ 8.${index}</small></span></button></li>`).join('')}
+      <li class="sw__home-media-item is-source"><button class="sw__home-media-action"><strong class="sw__home-media-title">数据来源：Bangumi</strong></button></li>
+    </ul></div>
+  </section>
+</div></section></div>
 </div>
 <script>
 window.addEventListener('load', () => {
@@ -123,6 +132,12 @@ window.addEventListener('load', () => {
     weatherGrid: measure('[data-module-id="external-weather-open-meteo"] .sw__home-module-list'),
     weatherColumnsValue: getComputedStyle(document.querySelector('[data-module-id="external-weather-open-meteo"] .sw__home-module-list')).gridTemplateColumns,
     weatherTemperature: getComputedStyle(document.querySelector('[data-module-id="external-weather-open-meteo"] .sw__home-stat-value')).fontSize,
+    mediaBackground: getComputedStyle(document.querySelector('[data-module-id="external-anime-bangumi"].sw-home__cell')).backgroundImage,
+    mediaGrid: measure('.sw__home-media-grid'),
+    mediaColumnsValue: getComputedStyle(document.querySelector('.sw__home-media-grid')).gridTemplateColumns,
+    mediaCover: measure('.sw__home-media-cover'),
+    mediaCoverRadius: getComputedStyle(document.querySelector('.sw__home-media-cover')).borderRadius,
+    mediaSourceColumn: getComputedStyle(document.querySelector('.sw__home-media-item.is-source')).gridColumn,
   };
   document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
 });
@@ -195,13 +210,21 @@ try {
         && result.weatherGrid.display === 'grid'
         && result.weatherColumnsValue.split(' ').filter(Boolean).length === 2
         && parseFloat(result.weatherTemperature) >= 34;
+    const coverRatio = parseFloat(result.mediaCover.width) / parseFloat(result.mediaCover.height);
+    const mediaOk = result.mediaBackground.includes('gradient')
+        && result.mediaGrid.display === 'grid'
+        && result.mediaColumnsValue.split(' ').filter(Boolean).length === 2
+        && Math.abs(coverRatio - 0.75) < 0.03
+        && result.mediaCoverRadius === '12px'
+        && result.mediaSourceColumn === '1 / -1';
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);
     console.log(`${switchOk ? 'PASS' : 'FAIL'} Chromium settings switch`);
     console.log(`${docCardsOk ? 'PASS' : 'FAIL'} Chromium document search cards`);
     console.log(`${calendarOk ? 'PASS' : 'FAIL'} Chromium six-week calendar widget`);
     console.log(`${weatherOk ? 'PASS' : 'FAIL'} Chromium responsive weather widget`);
-    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk && weatherOk ? 0 : 1;
+    console.log(`${mediaOk ? 'PASS' : 'FAIL'} Chromium responsive media widget`);
+    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk && weatherOk && mediaOk ? 0 : 1;
 } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

@@ -42,6 +42,11 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "temperatureUnit", label: "温度单位", type: "select", options: ["°C", "°F"], defaults: "°C"},
         {key: "forecastDays", label: "预报天数", type: "number", min: 2, max: 5, defaults: 4},
     ]},
+    {moduleId: "external-anime-bangumi", title: "每日放送", icon: "iconVideo", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, viewType: "media", configSchema: [
+        {key: "dayRange", label: "放送范围", type: "select", options: ["今天", "明天", "本周"], defaults: "今天"},
+        {key: "limit", label: "条目上限", type: "number", min: 2, max: 12, defaults: 6},
+        {key: "showCovers", label: "显示封面", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
@@ -238,7 +243,7 @@ function normalizeModuleDefinition(value) {
         description: text(value.description, 96),
         availability,
         protocolVersion: normalizeProtocolVersion(value.protocolVersion),
-        viewType: value.viewType === "calendar" ? "calendar" : (value.viewType === "weekdays" ? "weekdays" : ""),
+        viewType: ["calendar", "weekdays", "media"].includes(value.viewType) ? value.viewType : "",
         author: text(value.author, 64),
         homepage: normalizeHomepage(value.homepage),
         clickCommand: normalizeClickCommand(value.clickCommand),

@@ -160,6 +160,45 @@ test("home view renders weather context, secondary forecasts, and safe attributi
     assert.equal(view.items[1].href, "https://open-meteo.com/");
 });
 
+test("home view renders a semantic media cover grid", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const calls = [];
+    const view = buildHomeModuleView(
+        {moduleId: "external-anime-bangumi", title: "每日放送", viewType: "media"},
+        {ok: true, snapshot: {items: [
+            {label: "阿尔法", secondary: "★ 8.3", image: "https://lain.bgm.tv/pic/cover/l/a.jpg", href: "https://bgm.tv/subject/101"},
+            {label: "数据来源：Bangumi", href: "https://bgm.tv/calendar"},
+        ]}},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {onItem: (item) => calls.push(item.href)});
+    assert.equal(view.viewType, "media");
+    assert.equal(root.querySelectorAll(".sw__home-media-item").length, 2);
+    assert.equal(root.querySelectorAll(".sw__home-media-cover").length, 1);
+    assert.equal(root.querySelectorAll(".sw__home-media-item.is-source").length, 1);
+    root.querySelector(".sw__home-media-action").click();
+    assert.deepEqual(calls, ["https://bgm.tv/subject/101"]);
+});
+
+test("media covers are lazy, async, and referrer-free", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView({moduleId: "media", title: "Media", viewType: "media"}, {snapshot: {items: [
+        {label: "A", image: "https://lain.bgm.tv/pic/cover/l/a.jpg"},
+    ]}});
+    const image = renderHomeModuleView(dom.window.document, view, {}).querySelector("img");
+    assert.equal(image.loading, "lazy");
+    assert.equal(image.decoding, "async");
+    assert.equal(image.referrerPolicy, "no-referrer");
+    assert.equal(image.alt, "");
+});
+
+test("home view strips untrusted media covers", () => {
+    const view = buildHomeModuleView({moduleId: "media", title: "Media", viewType: "media"}, {snapshot: {items: [
+        {label: "A", image: "https://example.com/a.jpg"},
+        {label: "B", image: "http://lain.bgm.tv/pic/cover/l/b.jpg"},
+    ]}});
+    assert.equal(view.items.every((item) => !item.image), true);
+});
+
 test("home view strips executable item links", () => {
     const view = buildHomeModuleView({moduleId: "unsafe", title: "Unsafe"}, {ok: true, snapshot: {items: [
         {label: "unsafe", href: "javascript:alert(1)"},

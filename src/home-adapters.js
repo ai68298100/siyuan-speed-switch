@@ -49,6 +49,18 @@ function safeHref(value) {
     }
 }
 
+function safeImageHref(value) {
+    const href = safeText(value, 512);
+    if (!href) return "";
+    try {
+        const url = new URL(href);
+        return url.protocol === "https:" && url.hostname === "lain.bgm.tv" && url.pathname.startsWith("/pic/cover/")
+            ? url.href : "";
+    } catch (_) {
+        return "";
+    }
+}
+
 function normalizeAdapter(adapter) {
     if (!adapter || typeof adapter !== "object") return null;
     const moduleId = safeText(adapter.moduleId, 64);
@@ -103,6 +115,8 @@ function normalizeSnapshot(value, options = {}) {
     const items = rawItems.slice(0, maxItems).map((item) => {
         if (!item || typeof item !== "object") return null;
         const entry = {label: safeText(item.label), value: safeText(item.value), href: safeHref(item.href), command: safeText(item.command, 128)};
+        const image = safeImageHref(item.image);
+        if (image) entry.image = image;
         const secondary = safeText(item.secondary, 32);
         if (secondary) entry.secondary = secondary;
         // 协议 v2.2：count 为非负整数（如标签出现次数），渲染为行内比例条

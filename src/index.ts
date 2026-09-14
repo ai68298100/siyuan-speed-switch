@@ -25,10 +25,10 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreCardStatus} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, clearLifeWidgetCaches} from "./life-widget-network";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -3558,6 +3558,26 @@ const version = beginSearch(session);
             if (!snapshot) throw new Error("invalid_weather");
             return snapshot;
         }, {timeoutMs: 7500, cacheTtlMs: 15 * 60 * 1000});
+        // Bangumi 每日放送：仅在用户添加组件后请求整周兼容日历数据，再按本地星期选择。
+        // 浏览器 WebView 使用自身 User-Agent；接口返回、封面地址和跳转地址都经过独立白名单归一化。
+        register("external-anime-bangumi", this.i18n.homeBangumi, "iconVideo", this.i18n.homeDescBangumi, [], async (config, _device, context) => {
+            const payload = await loadBangumiCalendar({signal: context?.signal});
+            const locale = document.documentElement.lang || navigator.language || "zh-CN";
+            const english = locale.toLowerCase().startsWith("en");
+            const snapshot = buildBangumiSnapshot(payload, config, {
+                today: this.i18n.homeBangumiToday,
+                tomorrow: this.i18n.homeBangumiTomorrow,
+                week: this.i18n.homeBangumiWeek,
+                entries: this.i18n.homeBangumiEntries,
+                source: this.i18n.homeBangumiSource,
+                weekdays: english
+                    ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                    : ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+            });
+            if (!snapshot) throw new Error("invalid_bangumi_calendar");
+            if (snapshot.items.length === 1) return {title: snapshot.title, emptyHint: this.i18n.homeBangumiEmpty, items: [], updatedAt: snapshot.updatedAt};
+            return snapshot;
+        }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
@@ -4500,7 +4520,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupTasks, moduleIds: ["today-tasks"]},
                 {label: this.i18n.homeStoreGroupDocuments, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
-                {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time", "external-weather-open-meteo"]},
+                {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time", "external-weather-open-meteo", "external-anime-bangumi"]},
                 {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
                 {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
                 {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
@@ -4521,9 +4541,10 @@ const version = beginSearch(session);
                     : (a.def.category === "siyuan" ? -1 : 1)));
 
             const buildReadyCard = (moduleId: string, def: any) => {
+                const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
-                card.dataset.search = buildHomeStoreSearchText(def, moduleId);
+                card.dataset.search = `${buildHomeStoreSearchText(def, moduleId)} ${externalInfo?.providerName || ""}`.toLowerCase();
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
                 card.dataset.availability = def.availability || "ready";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
@@ -4567,6 +4588,26 @@ const version = beginSearch(session);
                     ? `${this.i18n.homeStoreStatusAdded} · ${this.i18n.homeStoreStatusCurrent.replace("{size}", HOME_WIDGET_SIZE_LABELS[cardStatus.sizeKey as HomeWidgetSize] || cardStatus.sizeKey)}`
                     : this.i18n.homeStoreStatusNotAdded;
                 copy.append(title, status, desc, support);
+                if (externalInfo) {
+                    const sourceMeta = document.createElement("div");
+                    sourceMeta.className = "sw-home-store__source-meta";
+                    const addChip = (label: string, kind: string) => {
+                        const chip = document.createElement("span");
+                        chip.className = `sw-home-store__source-chip is-${kind}`;
+                        chip.textContent = label;
+                        sourceMeta.appendChild(chip);
+                    };
+                    addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
+                    addChip(externalInfo.integration === "direct" ? this.i18n.homeStoreNetworkOffline : this.i18n.homeStoreNetworkOnline,
+                        externalInfo.integration === "direct" ? "offline" : "online");
+                    const privacyLabel = externalInfo.privacy === "location-only"
+                        ? this.i18n.homeStorePrivacyLocation
+                        : externalInfo.privacy === "local-only"
+                            ? this.i18n.homeStorePrivacyLocal
+                            : this.i18n.homeStorePrivacyNone;
+                    addChip(privacyLabel, "privacy");
+                    copy.appendChild(sourceMeta);
+                }
                 head.append(icon, copy);
                 card.appendChild(head);
                 // 迷你预览：骨架示意 + 各档尺寸按 12 列比例的整体效果
@@ -4580,6 +4621,8 @@ const version = beginSearch(session);
                     preview.innerHTML = `<span class="p-calendar-head"></span><span class="p-calendar-grid">${Array.from({length: 21}, () => "<i></i>").join("")}</span>`;
                 } else if (kind === "weather") {
                     preview.innerHTML = '<span class="p-weather-temp">21°</span><span class="p-weather-icon">⛅</span><span class="p-weather-days"><i></i><i></i><i></i></span>';
+                } else if (kind === "media") {
+                    preview.innerHTML = '<span class="p-media-grid"><i></i><i></i><i></i><i></i></span>';
                 } else if (kind === "tasks") {
                     preview.innerHTML = `<span class="p-task-list"><i></i><i></i><i></i></span>`;
                 } else if (kind === "outline" || kind === "documents") {
@@ -5344,21 +5387,22 @@ const version = beginSearch(session);
                 scheduleClock();
             }
 
-            // 联网生活组件采用独立低频心跳；天气最多每 15 分钟更新一次，切回前台时
+            // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            if (controllers.some((entry) => entry.moduleId === "external-weather-open-meteo")) {
-                const refreshWeather = (force = false) => controllers.filter((entry) => entry.moduleId === "external-weather-open-meteo")
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi"]);
+            if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
+                const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });
                 const scheduleLife = () => {
                     if (!root.isConnected || homeLifeTimer) return;
                     homeLifeTimer = window.setTimeout(() => {
                         homeLifeTimer = 0;
-                        if (document.visibilityState !== "hidden") refreshWeather(true);
+                        if (document.visibilityState !== "hidden") refreshLife(true);
                         scheduleLife();
                     }, 15 * 60 * 1000);
                 };
                 const handleLifeVisibility = () => {
-                    if (document.visibilityState !== "hidden") refreshWeather(false);
+                    if (document.visibilityState !== "hidden") refreshLife(false);
                 };
                 document.addEventListener("visibilitychange", handleLifeVisibility);
                 const previousCleanup = panelEventCleanup;

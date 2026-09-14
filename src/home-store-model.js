@@ -13,7 +13,12 @@ const PREVIEW_KINDS = Object.freeze({
     "journal-calendar": "calendar", "today-tasks": "tasks", "note-stats": "stat", "year-progress": "progress",
     "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown", "flashcard-due": "tasks",
     "random-review": "tasks", "current-document-outline": "outline", "recent-documents": "documents", favorites: "documents",
-    "external-local-time": "stat", "external-weather-open-meteo": "weather",
+    "external-local-time": "stat", "external-weather-open-meteo": "weather", "external-anime-bangumi": "media",
+});
+const SOURCE_INFO = Object.freeze({
+    "external-local-time": Object.freeze({providerName: "SiYuan runtime", integration: "direct", privacy: "local-only"}),
+    "external-weather-open-meteo": Object.freeze({providerName: "Open-Meteo", integration: "http", privacy: "location-only"}),
+    "external-anime-bangumi": Object.freeze({providerName: "Bangumi", integration: "http", privacy: "none"}),
 });
 
 function boundedText(value, max = 256) {
@@ -100,8 +105,13 @@ function resolveHomeStorePreviewKind(moduleId, category) {
     return normalizeHomeStoreCategory(category) === "plugin" ? "plugin" : "list";
 }
 
+function resolveHomeStoreSourceInfo(moduleId) {
+    const entry = typeof moduleId === "string" ? SOURCE_INFO[moduleId] : null;
+    return entry ? {...entry} : null;
+}
+
 function normalizeHomeStorePreviewKind(value) {
-    return ["calendar", "tasks", "stat", "progress", "chart", "countdown", "outline", "documents", "plugin", "list"].includes(value)
+    return ["calendar", "tasks", "stat", "progress", "chart", "countdown", "outline", "documents", "weather", "media", "plugin", "list"].includes(value)
         ? value : "list";
 }
 
@@ -200,7 +210,7 @@ module.exports = {
     normalizeHomeStoreQuery, normalizeHomeStoreTab, normalizeHomeStoreDevice, normalizeHomeStoreCategory,
     normalizeHomeStoreAvailability, resolveHomeStoreFilter, normalizeHomeStoreCard, matchesHomeStoreCard,
     filterHomeStoreCards, isHomeStoreAdded, countHomeStoreCards, summarizeHomeStoreCards, buildHomeStoreSearchText,
-    resolveHomeStorePreviewKind, normalizeHomeStorePreviewKind, resolveHomeStoreCardStatus,
+    resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, normalizeHomeStorePreviewKind, resolveHomeStoreCardStatus,
     resolveHomeStoreSizeSelection, isHomeStoreSizeSupported, normalizeHomeStoreSupportedSurfaces,
     isHomeStoreConditional, isHomeStoreExternal, shouldShowHomeStoreSection, shouldShowHomeStoreGroup,
     normalizeHomeStoreGroupLabel, groupHomeStoreCards, orderHomeStoreGroups, dedupeHomeStoreCards,
