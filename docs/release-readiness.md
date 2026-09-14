@@ -10,10 +10,10 @@
 | 版本元数据 | 已通过 | `0.16.41` 已同步 `package.json`、`plugin.json`、中英文 README |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 发布动作 | 待执行 | 版本提交、`v0.16.41` tag 与 Release 需本轮完成 |
+| GitHub 发布动作 | 已通过 | `v0.16.41` 已推送；CI/Release workflow 全绿，Release 资产 `package.zip` 264020 bytes |
 
 ## 建议发布顺序
 
-1. 等待 GitHub Actions 完成 `v0.16.41` 的构建与 Release 上传。
+1. 已完成 GitHub Actions 构建与 Release 上传：[`v0.16.41`](https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.16.41)。
 2. 在真实思源桌面会话中补做路径筛选、窄侧栏和安装升级检查。
 3. Android 真机验收按 D-042 后置，不以浏览器 smoke 替代真实设备证据。
