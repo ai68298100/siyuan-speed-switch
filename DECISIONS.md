@@ -1,5 +1,7 @@
 # 决策
 
+- D-250（2026-09-14）：报告窗口验证器仅输出 `valid/reason/size` 三字段；reason 固定为 invalid_input/reports_missing/reports_overflow/invalid_bounds/bounds_order/invalid_truncated/ok，避免暴露样本内容。
+
 - D-249（2026-09-14）：报告窗口传输辅助使 raw bundle 达 396,667 bytes，较 387 KiB 自律线超出 379 bytes；校准至 388 KiB，`package.zip` 261,603 bytes，300 KiB 硬上限余量 44,997 bytes。
 
 - D-248（2026-09-14）：报告窗口传输采用固定五字段结构，样本最多 16 条；start/end/total 均限制在 0..64，条目先归一化去重，序列化解析 payload 上限 192,000 字符，异常统一为空窗口。

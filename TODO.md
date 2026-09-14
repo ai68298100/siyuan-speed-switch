@@ -596,6 +596,30 @@
 
 ## 待维护者决策
 
+- [x] T-815 窗口验证函数
+- [x] T-816 输入对象校验
+- [x] T-817 reports 字段校验
+- [x] T-818 reports 容量校验
+- [x] T-819 start 边界校验
+- [x] T-820 end 边界校验
+- [x] T-821 total 边界校验
+- [x] T-822 索引单调性校验
+- [x] T-823 truncated 布尔校验
+- [x] T-824 invalid_input reason
+- [x] T-825 reports_missing reason
+- [x] T-826 reports_overflow reason
+- [x] T-827 invalid_bounds reason
+- [x] T-828 bounds_order reason
+- [x] T-829 invalid_truncated reason
+- [x] T-830 ok reason
+- [x] T-831 size 元数据
+- [x] T-832 验证回归测试
+- [x] T-833 决策 D-250 落档
+- [x] T-834 状态文档同步
+
+  - 状态：done（2026-09-14）
+  - 证据：`src/util.js`、`tests/util.test.cjs`、`tests/storage-capacity-limits.test.cjs`
+
 - [x] T-795 窗口归一化函数
 - [x] T-796 窗口报告数组校验
 - [x] T-797 窗口样本容量上限
