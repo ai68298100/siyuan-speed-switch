@@ -441,6 +441,52 @@ test('add action describes size label', () => assert.match(source, /addButton\.s
 test('preview action announces dialog', () => assert.match(source, /previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));
 test('preview action invokes live preview', () => assert.match(source, /previewButton\.onclick = \(\) => this\.openStoreWidgetPreview\(moduleId, def, device\)/));
 
+// T-3935~T-3974: add/apply/configure/remove transition contracts.
+test('size selection removes previous selected class', () => assert.match(source, /selectedTile\?\.classList\.remove\("is-selected"\)/));
+test('size selection clears previous pressed state', () => assert.match(source, /selectedTile\?\.setAttribute\("aria-pressed", "false"\)/));
+test('size selection clears previous data state', () => assert.match(source, /selectedTile\.dataset\.selected = "false"/));
+test('size selection assigns new selected tile', () => assert.match(source, /selectedTile = tile/));
+test('size selection applies selected class', () => assert.match(source, /tile\.classList\.add\("is-selected"\)/));
+test('size selection sets pressed state', () => assert.match(source, /tile\.setAttribute\("aria-pressed", "true"\)/));
+test('size selection sets data state', () => assert.match(source, /tile\.dataset\.selected = "true"/));
+test('size selection records selected size on group', () => assert.match(source, /tiles\.dataset\.selectedSize = sizeKey/));
+test('size selection records selected size on action', () => assert.match(source, /addButton\.dataset\.selectedSize = sizeKey/));
+test('size selection updates action accessible label', () => assert.match(source, /addButton\.setAttribute\("aria-label", `\$\{added \? this\.i18n\.homeStoreApplySize : this\.i18n\.homeStoreAdd/));
+test('size buttons support ArrowLeft', () => assert.match(source, /\["ArrowLeft", "ArrowRight", "Home", "End"\]/));
+test('size buttons support ArrowRight', () => assert.match(source, /event\.key === "ArrowLeft" \? -1 : 1/));
+test('size buttons support Home', () => assert.match(source, /event\.key === "Home" \? 0/));
+test('size buttons support End', () => assert.match(source, /event\.key === "End" \? tilesForCard\.length - 1/));
+test('size button navigation prevents default', () => assert.match(source, /event\.preventDefault\(\);\s*const nextIndex/));
+test('size button navigation focuses next tile', () => assert.match(source, /tilesForCard\[nextIndex\]\?\.focus\(\)/));
+test('add action reads selected tile size', () => assert.match(source, /const sizeKey = selectedTile!\.dataset\.size/));
+test('add action resolves widget dimensions', () => assert.match(source, /const \{w, h\} = HOME_WIDGET_SIZES\[sizeKey as HomeWidgetSize\]!/));
+test('add action reads fresh home state', () => assert.match(source, /const next = this\.getHomeState\(\)/));
+test('add action scopes layout to device', () => assert.match(source, /const layoutList = \(next\.layouts\[device\] \|\| \[\]\)/));
+test('apply action locates existing instance layout', () => assert.match(source, /layoutList\.find\(\(candidate\) => candidate\.instanceId === added\.instanceId\)/));
+test('apply action updates size and dimensions', () => assert.match(source, /Object\.assign\(entry, \{size: sizeKey, w, h\}\)/));
+test('add action creates instance with module id', () => assert.match(source, /createdInstance = \{instanceId: moduleId, moduleId, config: \{\}\}/));
+test('add action enables new instance', () => assert.match(source, /\{\.\.\.createdInstance, enabled: true\}/));
+test('add action starts layout at origin', () => assert.match(source, /layoutList\.push\(\{instanceId: moduleId, x: 0, y: 0/));
+test('add action preserves collapsed default', () => assert.match(source, /collapsed: false, size: sizeKey/));
+test('add action writes device layout', () => assert.match(source, /next\.layouts\[device\] = layoutList/));
+test('add action persists home state', () => assert.match(source, /this\.saveHomeState\(next\)/));
+test('conditional add announces prerequisite', () => assert.match(source, /if \(!added && def\.availability === "conditional"\)/));
+test('conditional add uses localized hint', () => assert.match(source, /homeStoreConditionalHint/));
+test('add action rerenders store', () => assert.match(source, /this\.saveHomeState\(next\);[\s\S]*?renderStore\(\)/));
+test('add action notifies parent change', () => assert.match(source, /renderStore\(\);\s*onChanged\(\)/));
+test('new configurable instance opens config form', () => assert.match(source, /if \(createdInstance && Array\.isArray\(def\.configSchema\)/));
+test('new config form receives created instance', () => assert.match(source, /this\.openHomeConfigForm\(createdInstance, def\.configSchema/));
+test('new config save rerenders store', () => assert.match(source, /this\.openHomeConfigForm\(createdInstance, def\.configSchema, \(\) => \{\s*renderStore\(\)/));
+test('existing configurable card renders configure action', () => assert.match(source, /if \(addedInstance && Array\.isArray\(def\.configSchema\)/));
+test('configure action uses added instance', () => assert.match(source, /this\.openHomeConfigForm\(addedInstance, def\.configSchema/));
+test('configure action rerenders after save', () => assert.match(source, /openHomeConfigForm\(addedInstance, def\.configSchema, \(\) => \{\s*renderStore\(\)/));
+test('remove action only renders for added cards', () => assert.match(source, /if \(added\) \{\s*const removeButton/));
+test('remove action calls instance removal', () => assert.match(source, /this\.removeHomeInstance\(added\.instanceId\)/));
+test('remove action rerenders store', () => assert.match(source, /this\.removeHomeInstance\(added\.instanceId\); renderStore\(\)/));
+test('remove action notifies parent change', () => assert.match(source, /renderStore\(\); onChanged\(\); \};\s*tiles\.appendChild\(removeButton\)/));
+test('configure action announces dialog', () => assert.match(source, /configButton\.setAttribute\("aria-haspopup", "dialog"\)/));
+test('remove action label includes module title', () => assert.match(source, /removeButton\.setAttribute\("aria-label", `\$\{this\.i18n\.homeStoreRemove\} · \$\{def\.title \|\| moduleId\}`\)/));
+
 // T-3815~T-3854: dialog content, field labels and async configuration contracts.
 test('guide hint uses localized content', () => assert.match(source, /hint\.textContent = this\.i18n\.homeStoreGuideHint/));
 test('guide hint has a dedicated class', () => assert.match(source, /hint\.className = "sw-home-store-guide__hint"/));
