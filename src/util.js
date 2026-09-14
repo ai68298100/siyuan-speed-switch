@@ -784,6 +784,7 @@ function createStorageCapacityReportEventQueue(max = 8) {
         read(after = 0) { if (disposed) return {events: [], cursor, disposed: true, truncated: false}; const base = Number.isInteger(after) && after >= 0 ? after : 0; const truncated = events.length > 0 && base < events[0].cursor - 1; return {events: events.filter((item) => item.cursor > base).map((item) => item.event), cursor, disposed: false, truncated}; },
         acknowledge(to = 0) { if (disposed) return {removed: 0, disposed: true}; const target = Number.isInteger(to) && to >= 0 ? to : 0; const before = events.length; while (events.length && events[0].cursor <= target) events.shift(); return {removed: before - events.length, disposed: false}; },
         snapshot() { return {cursor, size: events.length, capacity: limit, disposed}; },
+        clear() { if (disposed) return {cleared: 0, disposed: true}; const count = events.length; events.length = 0; return {cleared: count, disposed: false}; },
         dispose() { disposed = true; events.length = 0; },
     };
 }

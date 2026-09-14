@@ -470,6 +470,20 @@ test('queue status reader safely handles missing queues', () => {
     assert.deepEqual(getStorageCapacityReportEventQueueStatus(null), normalizeStorageCapacityReportEventQueueStatus({}));
 });
 
+test('event queue clear removes history but keeps queue usable', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    assert.equal(queue.clear().cleared, 1);
+    assert.equal(queue.snapshot().disposed, false);
+    assert.equal(queue.enqueue([{type: 'usage_trend', direction: 'down'}]).accepted, 1);
+});
+
+test('event queue clear is safe after dispose', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.dispose();
+    assert.deepEqual(queue.clear(), {cleared: 0, disposed: true});
+});
+
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {
     assert.deepEqual(parseStorageCapacityReportEvents('{bad'), []);
     assert.deepEqual(parseStorageCapacityReportEvents('x'.repeat(64001)), []);

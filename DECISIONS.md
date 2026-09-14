@@ -1,4 +1,5 @@
 # 决策
+- D-270（2026-09-14）：事件队列 clear 仅清空现有事件并返回 cleared 计数，不改变 cursor/capacity；dispose 后 clear 返回 disposed=true，确保清理与销毁语义可区分。
 - D-269（2026-09-14）：事件队列状态固定五字段，capacity 默认 8、最大 32，cursor 上限 1,000,000、size 不超过 capacity；缺失或污染快照统一安全降级。
 - D-268（2026-09-14）：事件队列读取 signal/deadline 门面只做读取前终态检查；cancelled/timeout/queue_unavailable 返回稳定 reason，不确认、不推进游标，成功读取保持原队列状态。
 - D-267（2026-09-14）：容量事件协调器仅在 events/snapshot 成功恢复后执行 acknowledge；recoverAndCommit 的取消、超时、失败路径统一 committed=false 且保留队列。

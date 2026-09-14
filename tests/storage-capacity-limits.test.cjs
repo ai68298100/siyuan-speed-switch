@@ -306,6 +306,13 @@ test('capacity: queue status snapshot remains fixed and bounded', () => {
     assert.equal(normalizeStorageCapacityReportEventQueueStatus({size: 99, capacity: 2}).size, 2);
 });
 
+test('capacity: clear keeps lifecycle distinct from dispose', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    queue.clear();
+    assert.equal(queue.snapshot().disposed, false);
+});
+
 test('capacity: health diff keeps transition lists within the declared buckets', () => {
     const diff = diffStorageCapacityHealth({over: ['favorites', 'bad']}, {near: ['pinned', 'favoriteGroups']});
     assert.deepEqual(diff.removedOver, ['favorites']);
