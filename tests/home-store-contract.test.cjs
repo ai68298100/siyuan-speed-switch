@@ -65,4 +65,13 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /searchInput\.focus\(\)/);
     assert.match(source, /includeState: true/);
     assert.match(source, /configuredModuleIds/);
+    assert.match(source, /homeStoreResultSummary/);
+    assert.match(source, /homeStoreChooseSize/);
+    assert.match(source, /homeStoreStatusCurrent/);
+    assert.match(source, /collapsedGroups = new Set/);
+    assert.match(source, /homeStoreCollapseGroup/);
+    assert.match(source, /homeStoreExpandGroup/);
+    assert.match(source, /sw-home-store__remove/);
+    assert.match(source, /PREVIEW_KINDS/);
+    assert.match(source, /p-calendar-grid/);
 });

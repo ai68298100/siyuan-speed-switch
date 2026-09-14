@@ -4530,9 +4530,15 @@
 }
 
 .sw-home-store__section {
-    margin: 14px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 6%, transparent);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 650;
     color: var(--b3-theme-on-surface);
 
     &:first-child { margin-top: 0; }
@@ -4545,6 +4551,9 @@
 }
 
 .sw-home-store__card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     padding: 12px 14px;
     border: 1px solid var(--b3-border-color);
     border-radius: var(--sw-radius-card, 14px);
@@ -4570,6 +4579,8 @@
         font-size: 13px;
     }
 
+    > div { min-width: 0; }
+
     .sw-home-store__availability {
         display: inline-block;
         margin-left: 4px;
@@ -4593,6 +4604,10 @@
         margin-top: 2px;
         color: var(--b3-theme-on-surface-light);
         font-size: 12px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .sw-home-store__support {
@@ -4604,10 +4619,29 @@
     }
 }
 
+.sw-home-store__status {
+    display: block;
+    margin-top: 3px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    font-weight: 500;
+
+    &.is-added { color: var(--b3-theme-primary); }
+}
+
 .sw-home-store__sizes {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    align-items: center;
+    margin-top: auto;
+}
+
+.sw-home-store__choose-size {
+    flex: 1 0 100%;
+    margin-bottom: 1px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
 }
 
 .sw-home-store__size {
@@ -4647,6 +4681,12 @@
 .sw-home-store__configure {
     min-height: 28px;
     padding-inline: 8px;
+}
+
+.sw-home-store__remove {
+    min-height: 28px;
+    padding-inline: 8px;
+    color: var(--b3-theme-error, var(--b3-theme-warning));
 }
 
 // ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================
@@ -5086,6 +5126,16 @@
             }
         }
     }
+
+    .p-calendar-head { width: 42%; height: 8px; background: color-mix(in srgb, var(--b3-theme-primary) 48%, transparent); }
+    .p-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .p-calendar-grid i { width: 100%; height: 6px; border-radius: 2px; background: color-mix(in srgb, var(--b3-border-color) 72%, transparent); }
+    .p-task-list { display: grid; gap: 5px; }
+    .p-task-list i { position: relative; width: 80%; height: 7px; margin-left: 14px; }
+    .p-task-list i::before { content: ""; position: absolute; left: -12px; top: 0; width: 7px; height: 7px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 60%, transparent); border-radius: 2px; }
+    .p-bars { display: flex; align-items: flex-end; gap: 5px; height: 32px; }
+    .p-bars i { flex: 1; height: 40%; background: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent); }
+    .p-bars i:nth-child(2) { height: 70%; } .p-bars i:nth-child(3) { height: 52%; } .p-bars i:nth-child(4) { height: 84%; } .p-bars i:nth-child(5) { height: 62%; }
 }
 
 .sw-home-store__preview-sizes {
@@ -5096,11 +5146,41 @@
 }
 
 .sw-home-store__group {
-    margin: 12px 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 16px 0 7px;
+    padding: 0 2px;
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.04em;
+
+    .sw-home-store__group-toggle {
+        width: 24px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        cursor: pointer;
+        &:hover, &:focus-visible { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); outline: none; }
+    }
+}
+
+.sw-home-store__summary {
+    margin: 8px 0 2px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+}
+
+@media (max-width: 560px) {
+    .sw-home-store { padding: 10px 12px 14px; }
+    .sw-home-store__grid { grid-template-columns: 1fr; gap: 10px; }
+    .sw-home-store__tabs { overflow-x: auto; scrollbar-width: thin; }
+    .sw-home-store__tab { flex: 0 0 auto; padding-inline: 12px !important; }
+    .sw-home-store__card { padding: 11px 12px; }
 }
 
 // ==================== 商店实时预览弹窗 ====================

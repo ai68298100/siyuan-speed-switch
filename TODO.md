@@ -125,6 +125,11 @@
   - 证据：`src/index.ts`、双语 i18n、`tests/component-availability-audit.test.cjs`
   - 状态：done（2026-09-13）
 
+- [x] T-325 商店视觉与交互第二轮优化
+  - 范围：结果概览、轻量可折叠分组、卡片状态摘要、语义化预览、移除入口和移动端单列布局
+  - 证据：`src/index.ts`、`src/index.scss`、双语 i18n、`tests/home-store-contract.test.cjs`；TSC 与专项测试通过
+  - 状态：done（2026-09-14）
+
 - [x] T-281 商店与面板重渲染生命周期
   - 目标：provider 注册变化即时刷新已打开的商店和组件面板；重渲染前回收旧 observer、idle timer 和事件订阅；商店保留搜索/页签并提供无结果提示
   - 证据：`src/index.ts`、`src/index.scss`、`tests/home-store-contract.test.cjs`

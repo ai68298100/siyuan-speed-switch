@@ -4264,6 +4264,7 @@ const version = beginSearch(session);
         if (!root) return;
         let storeQuery = "";
         let storeTab = "all";
+        const collapsedGroups = new Set<string>();
 
         const renderStore = () => {
             root.innerHTML = "";
@@ -4297,6 +4298,7 @@ const version = beginSearch(session);
             searchBar.appendChild(searchInput);
             root.appendChild(searchBar);
             let filterEmptyState: HTMLElement | null = null;
+            let resultSummary: HTMLElement | null = null;
 
             const applyFilter = () => {
                 const query = searchInput.value.trim().toLowerCase();
@@ -4318,6 +4320,7 @@ const version = beginSearch(session);
                     const visible = Array.from(grid.children).some((card) => !card.classList.contains("fn__none"));
                     heading.classList.toggle("fn__none", !visible);
                     grid.classList.toggle("fn__none", !visible);
+                    grid.classList.toggle("fn__none", heading.dataset.collapsed === "true");
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__section").forEach((heading) => {
                     const section = heading.nextElementSibling;
@@ -4332,6 +4335,13 @@ const version = beginSearch(session);
                 const hasVisibleCards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"))
                     .some((card) => !card.classList.contains("fn__none"));
                 filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
+                if (resultSummary) {
+                    const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"));
+                    const visible = cards.filter((card) => !card.classList.contains("fn__none")).length;
+                    const added = cards.filter((card) => card.dataset.added === "true").length;
+                    resultSummary.textContent = this.i18n.homeStoreResultSummary
+                        .replace("{visible}", String(visible)).replace("{total}", String(cards.length)).replace("{added}", String(added));
+                }
             };
             searchInput.addEventListener("input", () => {
                 storeQuery = searchInput.value;
@@ -4371,6 +4381,10 @@ const version = beginSearch(session);
                 tabBar.appendChild(btn);
             });
             root.appendChild(tabBar);
+            resultSummary = document.createElement("div");
+            resultSummary.className = "sw-home-store__summary";
+            resultSummary.setAttribute("role", "status");
+            root.appendChild(resultSummary);
 
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
             const readyHeading = document.createElement("h3");
@@ -4444,26 +4458,41 @@ const version = beginSearch(session);
                 support.className = "sw-home-store__support";
                 const surfaceText = supportedDevices.map((item: string) => deviceLabels[item] || item).filter(Boolean).join("、");
                 support.textContent = this.i18n.homeStoreSupportedSurfaces.replace("{surfaces}", surfaceText);
-                copy.append(title, desc, support);
+                const status = document.createElement("small");
+                status.className = "sw-home-store__status" + (added ? " is-added" : "");
+                status.textContent = added
+                    ? `${this.i18n.homeStoreStatusAdded} · ${this.i18n.homeStoreStatusCurrent.replace("{size}", HOME_WIDGET_SIZE_LABELS[(added.size || supported[0]) as HomeWidgetSize] || (added.size || supported[0]))}`
+                    : this.i18n.homeStoreStatusNotAdded;
+                copy.append(title, status, desc, support);
                 head.append(icon, copy);
                 card.appendChild(head);
                 // 迷你预览：骨架示意 + 各档尺寸按 12 列比例的整体效果
-                const STAT_KINDS = ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown", "flashcard-due", "random-review"];
-                const kind = STAT_KINDS.includes(moduleId) ? "stat" : "list";
+                const PREVIEW_KINDS: Record<string, string> = {
+                    "journal-calendar": "calendar", "today-tasks": "tasks", "note-stats": "stat", "year-progress": "progress",
+                    "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown", "flashcard-due": "tasks",
+                    "random-review": "tasks", "current-document-outline": "outline", "recent-documents": "documents", "favorites": "documents",
+                };
+                const kind = PREVIEW_KINDS[moduleId] || (def.category === "siyuan" ? "list" : "plugin");
                 const preview = document.createElement("div");
                 preview.className = "sw-home-store__preview";
                 preview.dataset.kind = kind;
                 preview.setAttribute("aria-hidden", "true");
-                if (kind === "stat") {
+                if (kind === "calendar") {
+                    preview.innerHTML = `<span class="p-calendar-head"></span><span class="p-calendar-grid">${Array.from({length: 21}, () => "<i></i>").join("")}</span>`;
+                } else if (kind === "tasks") {
+                    preview.innerHTML = `<span class="p-task-list"><i></i><i></i><i></i></span>`;
+                } else if (kind === "outline" || kind === "documents") {
+                    preview.innerHTML = `<i class="p-line w1"></i><i class="p-line w2"></i><i class="p-line w3"></i><i class="p-line w2"></i>`;
+                } else if (kind === "chart" || kind === "progress") {
+                    preview.innerHTML = `<span class="p-bars"><i></i><i></i><i></i><i></i><i></i></span>`;
+                } else if (kind === "countdown" || kind === "stat") {
                     const hero = document.createElement("i");
                     hero.className = "p-hero";
                     preview.appendChild(hero);
+                    ["w1", "w2"].forEach((w) => { const line = document.createElement("i"); line.className = `p-line ${w}`; preview.appendChild(line); });
+                } else {
+                    ["w1", "w2", "w3"].forEach((w) => { const line = document.createElement("i"); line.className = `p-line ${w}`; preview.appendChild(line); });
                 }
-                ["w1", "w2", "w3"].forEach((w) => {
-                    const line = document.createElement("i");
-                    line.className = `p-line ${w}`;
-                    preview.appendChild(line);
-                });
                 // 各档尺寸的整体效果：按 w/12 比例宽度的成比例缩略框
                 const supportedSizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const sizesRow = document.createElement("div");
@@ -4480,6 +4509,10 @@ const version = beginSearch(session);
                 card.appendChild(preview);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
+                const sizeLabel = document.createElement("span");
+                sizeLabel.className = "sw-home-store__choose-size";
+                sizeLabel.textContent = this.i18n.homeStoreChooseSize;
+                tiles.appendChild(sizeLabel);
                 let selectedTile: HTMLButtonElement | undefined;
                 supported.forEach((sizeKey) => {
                     const tile = document.createElement("button");
@@ -4537,6 +4570,14 @@ const version = beginSearch(session);
                     };
                     tiles.appendChild(configButton);
                 }
+                if (added) {
+                    const removeButton = document.createElement("button");
+                    removeButton.type = "button";
+                    removeButton.className = "b3-button b3-button--text sw-home-store__remove";
+                    removeButton.textContent = this.i18n.homeStoreRemove;
+                    removeButton.onclick = () => { this.removeHomeInstance(added.instanceId); renderStore(); onChanged(); };
+                    tiles.appendChild(removeButton);
+                }
                 const previewButton = document.createElement("button");
                 previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
                 previewButton.textContent = this.i18n.homeStorePreview;
@@ -4561,7 +4602,18 @@ const version = beginSearch(session);
                 const cards = readyGroups.get(label)!;
                 const groupHeading = document.createElement("h3");
                 groupHeading.className = "sw-home-store__group";
-                groupHeading.textContent = `${label} · ${cards.length}`;
+                groupHeading.dataset.group = label;
+                groupHeading.dataset.collapsed = String(collapsedGroups.has(label));
+                const groupLabel = document.createElement("span");
+                groupLabel.textContent = `${label} · ${cards.length}`;
+                const groupToggle = document.createElement("button");
+                groupToggle.type = "button";
+                groupToggle.className = "sw-home-store__group-toggle";
+                groupToggle.textContent = collapsedGroups.has(label) ? "＋" : "－";
+                groupToggle.setAttribute("aria-label", collapsedGroups.has(label) ? this.i18n.homeStoreExpandGroup : this.i18n.homeStoreCollapseGroup);
+                groupToggle.setAttribute("aria-expanded", String(!collapsedGroups.has(label)));
+                groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
+                groupHeading.append(groupLabel, groupToggle);
                 root.appendChild(groupHeading);
                 const groupGrid = document.createElement("div");
                 groupGrid.className = "sw-home-store__grid";
