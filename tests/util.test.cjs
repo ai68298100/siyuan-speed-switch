@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -210,6 +210,24 @@ test('normalizeStorageCapacityTrend fixes enums and bounds numbers', () => {
 test('serializeStorageCapacityTrend and parseStorageCapacityTrend are deterministic', () => {
     const value = {trend: 'degrading', riskDelta: 1, pressureDelta: 0.123456, action: 'trim'};
     assert.deepEqual(parseStorageCapacityTrend(serializeStorageCapacityTrend(value)), normalizeStorageCapacityTrend(value));
+});
+
+test('buildStorageCapacityReport composes health, trend, and summary', () => {
+    const report = buildStorageCapacityReport({favorites: {used: 1, max: 10}}, {favorites: {used: 9, max: 10}});
+    assert.equal(report.version, 1);
+    assert.equal(report.health.risk, 'warning');
+    assert.equal(report.trend.trend, 'degrading');
+    assert.equal(report.summary.changed, true);
+});
+
+test('normalizeStorageCapacityReport fixes summary counts and buckets', () => {
+    const report = normalizeStorageCapacityReport({version: 9, summary: {changedBuckets: ['favorites', 'bad', 'favorites'], increased: 9, decreased: -1, statusChanges: 8}});
+    assert.deepEqual(report.summary, {changedBuckets: ['favorites'], changedCount: 1, increased: 3, decreased: 0, statusChanges: 3, changed: true});
+});
+
+test('serializeStorageCapacityReport and parseStorageCapacityReport round trip', () => {
+    const report = buildStorageCapacityReport({}, {used: 1, max: 10});
+    assert.deepEqual(parseStorageCapacityReport(serializeStorageCapacityReport(report)), normalizeStorageCapacityReport(report));
 });
 
 // ── clampNum ──

@@ -1,5 +1,7 @@
 # 决策
 
+- D-241（2026-09-14）：容量报告采用 version=1 固定顶层结构（health/trend/summary），解析与序列化均先归一化；summary 桶名白名单去重、计数封顶 3，报告 payload 上限 192,000 字符，未知版本字段不回显。
+
 - D-240（2026-09-14）：健康趋势消费端固定四字段（trend/riskDelta/pressureDelta/action），趋势与动作仅接受白名单，riskDelta 限制 -2..2，pressureDelta 限制 -1..1 并保留四位小数；序列化解析输入上限 64,000 字符，异常统一降级 stable/none。
 
 - D-239（2026-09-14）：容量趋势按风险等级优先、压力差值辅助判定；风险变化直接决定趋势，同级时压力变化超过 ±0.05 才判定 degrading/improving，否则 stable；压力差值固定四位小数，建议动作沿用当前健康摘要。

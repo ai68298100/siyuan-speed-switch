@@ -587,6 +587,36 @@ function parseStorageCapacityTrend(serialized) {
     try { return normalizeStorageCapacityTrend(JSON.parse(serialized)); } catch (_error) { return normalizeStorageCapacityTrend({}); }
 }
 
+/** Compose snapshot health, trend, and change summary into one read-only report. */
+function buildStorageCapacityReport(previous, current) {
+    const previousHealth = buildStorageCapacityHealth(previous);
+    const health = buildStorageCapacityHealth(current);
+    const trend = assessStorageCapacityTrend(previousHealth, health);
+    const summary = summarizeStorageCapacityDiff(previous, current);
+    return {version: 1, health, trend, summary};
+}
+
+function normalizeStorageCapacityReport(input) {
+    const source = input && typeof input === "object" ? input : {};
+    const health = normalizeStorageCapacityHealth(source.health);
+    const trend = normalizeStorageCapacityTrend(source.trend);
+    const rawSummary = source.summary && typeof source.summary === "object" ? source.summary : {};
+    const changedBuckets = Array.isArray(rawSummary.changedBuckets)
+        ? [...new Set(rawSummary.changedBuckets.filter((name) => ["favorites", "pinned", "favoriteGroups"].includes(name)))].slice(0, 3)
+        : [];
+    const count = changedBuckets.length;
+    return {version: 1, health, trend, summary: {changedBuckets, changedCount: count, increased: Math.max(0, Math.min(3, Math.trunc(Number(rawSummary.increased) || 0))), decreased: Math.max(0, Math.min(3, Math.trunc(Number(rawSummary.decreased) || 0))), statusChanges: Math.max(0, Math.min(3, Math.trunc(Number(rawSummary.statusChanges) || 0))), changed: count > 0}};
+}
+
+function serializeStorageCapacityReport(input) {
+    return JSON.stringify(normalizeStorageCapacityReport(input));
+}
+
+function parseStorageCapacityReport(serialized) {
+    if (typeof serialized !== "string" || serialized.length > 192000) return normalizeStorageCapacityReport({});
+    try { return normalizeStorageCapacityReport(JSON.parse(serialized)); } catch (_error) { return normalizeStorageCapacityReport({}); }
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -838,4 +868,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
