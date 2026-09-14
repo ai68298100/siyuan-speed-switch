@@ -1,5 +1,7 @@
 # 决策
 
+- D-263（2026-09-14）：事件队列恢复在未溢出时返回最多 8 条 events；溢出且缺失快照返回 snapshot_required，提供快照则返回归一化 snapshot；不可用/销毁队列统一失败，不隐式消费事件。
+
 - D-262（2026-09-14）：报告事件回放门面使 raw bundle 达 401,188 bytes，较 393 KiB 自律线超出 820 bytes；校准至 394 KiB，`package.zip` 262,823 bytes，300 KiB 硬上限余量 42,889 bytes。
 
 - D-261（2026-09-14）：报告事件回放最多返回 8 条；取消、超时、队列不可用或销毁时均不确认事件，只有显式 `acknowledge=true` 且成功读取才消费，结果 reason 固定为 ok/cancelled/timeout/queue_unavailable/queue_disposed。
