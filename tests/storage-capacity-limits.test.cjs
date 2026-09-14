@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -177,4 +177,11 @@ test('capacity: health normalizer keeps over and near buckets disjoint', () => {
 test('capacity: health serialization rejects oversized payloads', () => {
     assert.equal(parseStorageCapacityHealth('x'.repeat(128001)).risk, 'normal');
     assert.equal(JSON.parse(serializeStorageCapacityHealth({risk: 'critical'})).recommendation, 'none');
+});
+
+test('capacity: health diff keeps transition lists within the declared buckets', () => {
+    const diff = diffStorageCapacityHealth({over: ['favorites', 'bad']}, {near: ['pinned', 'favoriteGroups']});
+    assert.deepEqual(diff.removedOver, ['favorites']);
+    assert.deepEqual(diff.addedNear, ['pinned', 'favoriteGroups']);
+    assert.equal(diff.direction, 'stable');
 });

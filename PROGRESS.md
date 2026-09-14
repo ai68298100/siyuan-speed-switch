@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第十七轮）：完成 20 项开发（T-635~T-654），新增 `diffStorageCapacityHealth`，输出风险/建议动作变化、使用量与上限增量、上升/下降/稳定趋势及超限/临界桶变更，所有输入先归一化并保持固定白名单。终验：795/795 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 392739 bytes、`package.zip` 260586 bytes（300 KiB 余量 46400 bytes）。
+
 补充（2026-09-14 第十六轮）：完成 20 项开发（T-615~T-634），新增健康摘要归一化、稳定序列化与解析，白名单过滤超限/临界桶、重算风险与建议动作、封顶计数并保持固定字段；补充污染、长度、互斥和往返回归。终验：792/792 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 392266 bytes、`package.zip` 260419 bytes（300 KiB 余量 46707 bytes）。
 
 补充（2026-09-14 第十五轮）：完成 20 项开发（T-595~T-614），新增 `buildStorageCapacityHealth`，聚合三类容量桶的总使用量/总上限、超限与临界桶及建议动作（none/monitor/trim），输出固定且有界。终验：787/787 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 391524 bytes、`package.zip` 260243 bytes（300 KiB 余量 46883 bytes）。
