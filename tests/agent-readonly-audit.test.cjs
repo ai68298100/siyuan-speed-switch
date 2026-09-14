@@ -352,3 +352,36 @@ test('timeout preserves request id', () => assert.equal(a.normalizeAgentReadOnly
 test('queue health disposed risk', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.dispose(); assert.equal(a.buildAgentReadOnlyAuditTransportQueueHealth(q).risk, 'disposed'); });
 test('queue reset is safe after dispose', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.dispose(); assert.equal(a.resetAgentReadOnlyAuditTransportQueue(q).cleared, 0); });
 test('queue event summary remains bounded', () => assert.ok(a.summarizeAgentReadOnlyAuditTransportQueueEvents(Array.from({length: 20}, () => ({type: 'size_changed'}))).total <= 1));
+
+// v0.17 transport queue cancellation/replay contract (T-1553~T-1582)
+test('replay statuses are fixed', () => assert.deepEqual(a.AUDIT_REPLAY_STATUS, ['ok', 'cancelled', 'timeout', 'unavailable', 'invalid']));
+test('replay status unknown degrades', () => assert.equal(a.normalizeAgentAuditReplayStatus('secret'), 'invalid'));
+test('deadline normalizes positive values', () => assert.equal(a.normalizeAgentAuditDeadline(12.9), 12));
+test('deadline rejects nonpositive', () => assert.equal(a.normalizeAgentAuditDeadline(0), 0));
+test('aborted signal detects true', () => assert.equal(a.isAgentAuditSignalAborted({aborted: true}), true));
+test('aborted signal ignores false', () => assert.equal(a.isAgentAuditSignalAborted({aborted: false}), false));
+test('deadline expiry detects passed time', () => assert.equal(a.isAgentAuditDeadlineExpired(10, 11), true));
+test('deadline expiry ignores future time', () => assert.equal(a.isAgentAuditDeadlineExpired(20, 11), false));
+test('replay outcome uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome().version, 1));
+test('replay outcome fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportReplayOutcome({})).sort(), ['acknowledged', 'count', 'cursor', 'status', 'version'].sort()));
+test('replay outcome status terminal', () => assert.equal(a.isAgentReadOnlyAuditTransportReplayOutcomeTerminal({status: 'ok'}), true));
+test('replay queue unavailable is stable', () => assert.equal(a.replayAgentReadOnlyAuditTransportQueue(null).status, 'unavailable'));
+test('replay queue cancelled before read', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q, {signal: {aborted: true}}).status, 'cancelled'); });
+test('replay queue timeout before read', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q, {deadline: 1, now: 2}).status, 'timeout'); });
+test('replay queue returns count', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q).count, 1); });
+test('replay queue advances cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q).cursor, 1); });
+test('acknowledge rejects cancelled outcome', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.acknowledgeAgentReadOnlyAuditTransportQueue(q, {status: 'cancelled'}).acknowledged, false); });
+test('acknowledge accepts ok outcome', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.acknowledgeAgentReadOnlyAuditTransportQueue(q, {status: 'ok', cursor: 1}).acknowledged, true); });
+test('replay and acknowledge consumes success', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const result = a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q); assert.equal(result.acknowledged, true); assert.equal(q.list().length, 0); });
+test('replay and acknowledge preserves cancellation', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const result = a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q, {signal: {aborted: true}}); assert.equal(result.acknowledged, false); assert.equal(q.list().length, 1); });
+test('replay error uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayError('timeout').version, 1));
+test('replay error timeout retryable', () => assert.equal(a.isAgentReadOnlyAuditTransportReplayRetryable({status: 'timeout'}), true));
+test('replay error invalid nonretryable', () => assert.equal(a.isAgentReadOnlyAuditTransportReplayRetryable({status: 'invalid'}), false));
+test('replay error normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportReplayError({})).sort(), ['cursor', 'retryable', 'status', 'version'].sort()));
+test('replay serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportReplayOutcome({status: 'ok', cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportReplayOutcome(value).cursor, 2); });
+test('replay parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportReplayOutcome('{bad').status, 'invalid'));
+test('replay parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditTransportReplayOutcome('x'.repeat(1000)).status, 'invalid'));
+test('replay count bounded', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome('ok', 0, 99).count, 8));
+test('replay cursor bounded', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome('ok', -1, 0).cursor, 0));
+test('acknowledge result preserves cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueAcknowledgeResult(2, 1).cursor, 2));
+test('queue replay does not acknowledge on timeout', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q, {deadline: 1, now: 2}); assert.equal(q.list().length, 1); });

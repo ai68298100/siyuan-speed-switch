@@ -535,6 +535,23 @@ function normalizeAgentReadOnlyAuditTransportTimeout(value) { return buildAgentR
 function serializeAgentReadOnlyAuditTransportCancellation(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportCancellation(value)); }
 function parseAgentReadOnlyAuditTransportCancellation(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportCancellation({}); try { return normalizeAgentReadOnlyAuditTransportCancellation(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportCancellation({}); } }
 
+const AUDIT_REPLAY_STATUS = Object.freeze(["ok", "cancelled", "timeout", "unavailable", "invalid"]);
+function normalizeAgentAuditReplayStatus(value) { return AUDIT_REPLAY_STATUS.includes(value) ? value : "invalid"; }
+function normalizeAgentAuditDeadline(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0; }
+function isAgentAuditSignalAborted(signal) { return Boolean(signal && signal.aborted === true); }
+function isAgentAuditDeadlineExpired(deadline, now = Date.now()) { const parsed = normalizeAgentAuditDeadline(deadline); return parsed > 0 && Number(now) >= parsed; }
+function buildAgentReadOnlyAuditTransportReplayOutcome(status = "ok", cursor = 0, count = 0) { return {version: 1, status: normalizeAgentAuditReplayStatus(status), cursor: normalizeAgentAuditTransportCursor(cursor), count: normalizeAgentAuditCount(count, MAX_TRANSPORT_ITEMS), acknowledged: false}; }
+function normalizeAgentReadOnlyAuditTransportReplayOutcome(value) { const source = value && typeof value === "object" ? value : {}; return buildAgentReadOnlyAuditTransportReplayOutcome(source.status, source.cursor, source.count); }
+function isAgentReadOnlyAuditTransportReplayOutcomeTerminal(value) { return ["ok", "cancelled", "timeout", "unavailable", "invalid"].includes(normalizeAgentReadOnlyAuditTransportReplayOutcome(value).status); }
+function replayAgentReadOnlyAuditTransportQueue(queue, options = {}) { if (!queue || typeof queue.list !== "function") return buildAgentReadOnlyAuditTransportReplayOutcome("unavailable"); if (isAgentAuditSignalAborted(options.signal)) return buildAgentReadOnlyAuditTransportReplayOutcome("cancelled", options.cursor); if (isAgentAuditDeadlineExpired(options.deadline, options.now)) return buildAgentReadOnlyAuditTransportReplayOutcome("timeout", options.cursor); const entries = queue.list(options.cursor).slice(0, MAX_TRANSPORT_ITEMS); return buildAgentReadOnlyAuditTransportReplayOutcome("ok", entries.length ? entries[entries.length - 1].sequence : options.cursor, entries.length); }
+function acknowledgeAgentReadOnlyAuditTransportQueue(queue, outcome) { const result = normalizeAgentReadOnlyAuditTransportReplayOutcome(outcome); if (result.status !== "ok" || !queue || typeof queue.acknowledge !== "function") return {acknowledged: false, cursor: result.cursor}; const ack = queue.acknowledge(result.cursor); return {acknowledged: true, cursor: normalizeAgentAuditTransportCursor(ack.cursor)}; }
+function replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(queue, options = {}) { const outcome = replayAgentReadOnlyAuditTransportQueue(queue, options); const acknowledgment = acknowledgeAgentReadOnlyAuditTransportQueue(queue, outcome); return {...outcome, acknowledged: acknowledgment.acknowledged}; }
+function buildAgentReadOnlyAuditTransportReplayError(status, cursor = 0) { const normalized = normalizeAgentAuditReplayStatus(status); return {version: 1, status: normalized, cursor: normalizeAgentAuditTransportCursor(cursor), retryable: normalized === "timeout" || normalized === "unavailable"}; }
+function normalizeAgentReadOnlyAuditTransportReplayError(value) { const source = value && typeof value === "object" ? value : {}; return buildAgentReadOnlyAuditTransportReplayError(source.status, source.cursor); }
+function isAgentReadOnlyAuditTransportReplayRetryable(value) { return normalizeAgentReadOnlyAuditTransportReplayError(value).retryable; }
+function serializeAgentReadOnlyAuditTransportReplayOutcome(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportReplayOutcome(value)); }
+function parseAgentReadOnlyAuditTransportReplayOutcome(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportReplayOutcome({status: "invalid"}); try { return normalizeAgentReadOnlyAuditTransportReplayOutcome(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportReplayOutcome({status: "invalid"}); } }
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -593,6 +610,14 @@ module.exports = {
     isAgentReadOnlyAuditTransportQueueReplayResultCompatible, buildAgentReadOnlyAuditTransportQueueAcknowledgeResult,
     normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult, serializeAgentReadOnlyAuditTransportQueueReplayResult,
     parseAgentReadOnlyAuditTransportQueueReplayResult,
+    AUDIT_REPLAY_STATUS, normalizeAgentAuditReplayStatus, normalizeAgentAuditDeadline,
+    isAgentAuditSignalAborted, isAgentAuditDeadlineExpired,
+    buildAgentReadOnlyAuditTransportReplayOutcome, normalizeAgentReadOnlyAuditTransportReplayOutcome,
+    isAgentReadOnlyAuditTransportReplayOutcomeTerminal, replayAgentReadOnlyAuditTransportQueue,
+    acknowledgeAgentReadOnlyAuditTransportQueue, replayAndAcknowledgeAgentReadOnlyAuditTransportQueue,
+    buildAgentReadOnlyAuditTransportReplayError, normalizeAgentReadOnlyAuditTransportReplayError,
+    isAgentReadOnlyAuditTransportReplayRetryable, serializeAgentReadOnlyAuditTransportReplayOutcome,
+    parseAgentReadOnlyAuditTransportReplayOutcome,
     clearAgentReadOnlyAuditTransportQueue, resetAgentReadOnlyAuditTransportQueue,
     peekAgentReadOnlyAuditTransportQueue, buildAgentReadOnlyAuditTransportQueueHealth,
     normalizeAgentReadOnlyAuditTransportQueueHealth, isAgentReadOnlyAuditTransportQueueHealthCompatible,
