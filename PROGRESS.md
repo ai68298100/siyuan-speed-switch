@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第八轮）：完成 20 项开发（T-455~T-474），新增 `normalizeStorageCapacitySnapshot` 消费端归一化，统一清洗三类容量桶、重算 truncated/status、封顶超大使用量并丢弃未知字段；新增确定性、污染输入、阈值与超大值回归测试。终验：764/764 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 389827 bytes、`package.zip` 259721 bytes（300 KiB 余量 47479 bytes）。
+
 补充（2026-09-14 第七轮）：完成 20 项开发（T-435~T-454），新增只读 `buildStorageCapacitySnapshot`，分别报告收藏、置顶、分组的 used/max/truncated/status（ok/near/over）；对异常输入和超大数组做安全降级与使用量封顶，不改变既有存储格式。新增容量快照回归，终验 760/760 测试、TypeScript、移动与 Chromium smoke 全绿；`dist/index.js` 389428 bytes、`package.zip` 259614 bytes（300 KiB 余量 47586 bytes）。
 
 补充（2026-09-14 第六轮）：完成 20 项开发（T-415~T-434），统一容量上限解析并新增有界容量摘要；收藏、置顶、分组 getter 增加读取期防御清洗与安全回写，运行时脏数据不再直接进入 UI 或持久化链。新增归一化、摘要、干净/污染输入回归测试，保持旧调用兼容。终验产物：`dist/index.js` 388997 bytes、`package.zip` 259379 bytes；757/757 测试、TypeScript 与三类 smoke 全绿。

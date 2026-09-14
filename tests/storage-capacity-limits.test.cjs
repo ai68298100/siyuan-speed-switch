@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -108,4 +108,11 @@ test('capacity: snapshot exposes all user-list buckets independently', () => {
     assert.deepEqual(Object.keys(snapshot), ['favorites', 'pinned', 'favoriteGroups']);
     assert.equal(snapshot.favorites.status, 'near');
     assert.equal(snapshot.favoriteGroups.status, 'near');
+});
+
+test('capacity: normalized snapshots remain schema-shaped and deterministic', () => {
+    const normalized = normalizeStorageCapacitySnapshot({favoriteGroups: {used: 58, max: 64, status: 'ok'}});
+    assert.deepEqual(Object.keys(normalized), ['favorites', 'pinned', 'favoriteGroups']);
+    assert.equal(normalized.favoriteGroups.status, 'near');
+    assert.equal(normalized.favorites.used, 0);
 });

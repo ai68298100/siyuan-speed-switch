@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -38,6 +38,25 @@ test('buildStorageCapacitySnapshot marks over-capacity lists and bounds malforme
     assert.equal(snapshot.favorites.truncated, true);
     assert.equal(snapshot.favorites.used, 1000000);
     assert.equal(snapshot.pinned.used, 0);
+});
+
+test('normalizeStorageCapacitySnapshot recomputes status from trusted numeric fields', () => {
+    const result = normalizeStorageCapacitySnapshot({favorites: {used: 9, max: 10, status: 'ok', truncated: false}});
+    assert.equal(result.favorites.status, 'near');
+    assert.equal(result.favorites.truncated, false);
+});
+
+test('normalizeStorageCapacitySnapshot drops unknown fields and fixes malformed values', () => {
+    const result = normalizeStorageCapacitySnapshot({favorites: {used: 'bad', max: -2, extra: 'drop'}, unknown: {used: 4}});
+    assert.deepEqual(Object.keys(result), ['favorites', 'pinned', 'favoriteGroups']);
+    assert.deepEqual(result.favorites, {used: 0, max: 0, truncated: false, status: 'ok'});
+});
+
+test('normalizeStorageCapacitySnapshot caps huge usage and derives over state', () => {
+    const result = normalizeStorageCapacitySnapshot({pinned: {used: 9000000, max: 64, truncated: false}});
+    assert.equal(result.pinned.used, 1000000);
+    assert.equal(result.pinned.status, 'over');
+    assert.equal(result.pinned.truncated, true);
 });
 
 // ── clampNum ──
