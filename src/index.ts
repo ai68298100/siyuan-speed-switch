@@ -4705,6 +4705,26 @@ const version = beginSearch(session);
                     : this.i18n.homeStoreGroupPlugin;
             };
 
+            // 可用与待安装卡片共享同一套键盘焦点模型：卡片本身只作为
+            // 可编程焦点锚点，不抢占内部按钮的 Enter/Space 语义。
+            const bindStoreCardKeyboard = (card: HTMLElement) => {
+                card.tabIndex = -1;
+                card.setAttribute("role", "group");
+                card.addEventListener("keydown", (event) => {
+                    const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card:not(.fn__none)"));
+                    const index = cards.indexOf(card);
+                    if (index < 0) return;
+                    let next = -1;
+                    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % cards.length;
+                    if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + cards.length) % cards.length;
+                    if (event.key === "Home") next = 0;
+                    if (event.key === "End") next = cards.length - 1;
+                    if (next < 0) return;
+                    event.preventDefault();
+                    cards[next].focus();
+                });
+            };
+
             const ready = sortHomeStoreCards([...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId), search: `${defs.get(moduleId)?.title || moduleId}`, category: defs.get(moduleId)?.category === "siyuan" ? "builtin" : "plugin", availability: defs.get(moduleId)?.availability || "ready", added: instanceByModule.has(moduleId)})), storeSort)
                 .filter((item) => !!item.def);
 
@@ -4712,8 +4732,7 @@ const version = beginSearch(session);
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
-                card.tabIndex = -1;
-                card.setAttribute("role", "group");
+                bindStoreCardKeyboard(card);
                 card.dataset.moduleId = moduleId;
                 card.dataset.search = `${buildHomeStoreSearchText(def, moduleId)} ${externalInfo?.providerName || ""}`.toLowerCase();
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
@@ -4728,19 +4747,6 @@ const version = beginSearch(session);
                 card.dataset.statusTone = resolveHomeStoreStatusTone(card.dataset);
                 card.dataset.integrationTone = resolveHomeStoreIntegrationTone(card.dataset);
                 card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
-                card.addEventListener("keydown", (event) => {
-                    const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card:not(.fn__none)"));
-                    const index = cards.indexOf(card);
-                    if (index < 0) return;
-                    let next = -1;
-                    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % cards.length;
-                    if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + cards.length) % cards.length;
-                    if (event.key === "Home") next = 0;
-                    if (event.key === "End") next = cards.length - 1;
-                    if (next < 0) return;
-                    event.preventDefault();
-                    cards[next].focus();
-                });
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
@@ -5003,10 +5009,15 @@ const version = beginSearch(session);
                     const card = document.createElement("section");
                     card.className = "sw-home-store__card sw-home-store__card--pending"
                         + (unavailable ? " sw-home-store__card--unavailable" : "");
+                    bindStoreCardKeyboard(card);
+                    card.dataset.moduleId = entry.moduleId;
                     card.dataset.search = `${entry.title} ${entry.description} ${entry.providerName}`.toLowerCase();
                     card.dataset.category = "plugin";
                     card.dataset.availability = "external";
+                    card.dataset.integration = "unknown";
                     card.dataset.added = unavailable ? "true" : "false";
+                    card.dataset.statusTone = unavailable ? "warning" : "info";
+                    card.setAttribute("aria-label", `${entry.title} · ${unavailable ? this.i18n.homeStoreProviderUnavailable : this.i18n.homeStoreRequires}`);
                     const head = document.createElement("div");
                     head.className = "sw-home-store__card-head";
                     const icon = document.createElement("svg");
@@ -5016,6 +5027,7 @@ const version = beginSearch(session);
                     const copy = document.createElement("div");
                     const title = document.createElement("strong");
                     title.textContent = entry.title;
+                    title.id = `sw-home-store-title-${entry.moduleId}`;
                     const desc = document.createElement("span");
                     desc.textContent = entry.description;
                     copy.append(title, desc);
@@ -5031,6 +5043,8 @@ const version = beginSearch(session);
                         removeButton.type = "button";
                         removeButton.className = "b3-button b3-button--text sw-home-store__remove-unavailable";
                         removeButton.textContent = this.i18n.homeStoreRemoveUnavailable;
+                        removeButton.setAttribute("aria-label", `${this.i18n.homeStoreRemoveUnavailable} · ${entry.title}`);
+                        removeButton.title = removeButton.getAttribute("aria-label") || "";
                         removeButton.addEventListener("click", () => {
                             const instance = instanceStateByModule.get(entry.moduleId);
                             if (!instance) return;

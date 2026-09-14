@@ -251,6 +251,10 @@
 
 2026-09-15 本轮验证：2830/2830 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与发布包审计全绿；`dist/index.js` 510321 bytes、`dist/index.css` 130663 bytes、`package.zip` 304122 bytes，均在当前预算内。产物已同步至 `D:\小飞驴的SIYUAN\data\plugins\siyuan-speed-switch`，三项 SHA-256 与工作区产物一致。
 
+2026-09-15 本轮完成 T-3275~T-3304（30 项）：待安装/不可用组件卡片统一接入卡片键盘导航、焦点锚点、group 语义、moduleId/分类/集成/状态数据与可访问标签；不可用移除操作补齐 aria-label 与 tooltip，并新增 30 项契约回归。
+
+2026-09-15 本轮最终验证：2862/2862 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 510734 bytes、`dist/index.css` 130663 bytes、`package.zip` 304220 bytes。产物已同步至 `D:\小飞驴的SIYUAN\data\plugins\siyuan-speed-switch`，JS/CSS/ZIP SHA-256 均与工作区一致。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

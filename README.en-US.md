@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
 
-> The current development head passes type checking, production build, 2830 automated tests, and mobile/Chromium UI smoke tests. It adds time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge. The store now filters Offline, Local service, and External API sources. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 2862 automated tests, and mobile/Chromium UI smoke tests. It adds time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge. The store now filters Offline, Local service, and External API sources. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -180,7 +180,7 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 - DailyHotApi **Trending now** and NewsNow **Live news** accept only complete self-hosted endpoints and make no request until configured. Remote endpoints require HTTPS; 128 KiB/8.5-second request bounds, a 30-minute cache, and a visible stale-cache state isolate source failures. Ranked gradient cards retain a compact mobile layout.
 - ActivityWatch **App usage** only allows loopback endpoints, uses SiYuan's local proxy for a fixed aggregate query, exposes app-level durations without window titles, and is available on desktop/sidebar only.
 - The mobile widget panel uses one vertical column and one unified size per widget; tab-list column settings do not affect the widget panel.
-- The development head passes 2830 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
+- The development head passes 2862 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
 
 ### v0.17.0 (2026-09-14)
 
@@ -248,7 +248,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 132 `*.test.cjs` files under `tests/` and `tests/host/`, currently 2830 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 133 `*.test.cjs` files under `tests/` and `tests/host/`, currently 2862 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -277,7 +277,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 2830)
+pnpm test               # run every unit, contract, and host release test (currently 2862)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)
