@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.16.41-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,7 +8,7 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> v0.16.41 扩展容量诊断：事件队列利用率摘要支持稳定归一化、历史聚合、变化事件和一致性校验，同时保留 v0.16.40 的组件商店、配置体验与思源智能体协作改进。
+> v0.17.0 增强思源智能体只读协作：新增生命周期审计、传输队列、联合恢复、checkpoint 窗口和 diagnostics 投影契约，同时保留组件商店、配置体验与多端导航能力。
 
 > 当前开发策略：正式发布基线已通过类型检查、生产构建、1509 项自动测试、移动端与 Chromium UI 烟测；当前开发头新增 Agent 只读审计生命周期历史、回放、健康报告、趋势窗口、合并恢复、传输队列、联合检查点窗口与 diagnostics 投影契约，仍不开放新的写入动作。收藏/置顶/分组容量边界已锁定（512/64/64），路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
 
@@ -181,9 +181,16 @@ pnpm verify:release
 4. 主题：默认明暗主题、Neo 等第三方主题，以及窗口缩放和旋转后的布局。
 5. 生命周期：安装、升级、卸载、重启后数据迁移，以及 API 失败/取消/权限拒绝。
 
-本版本已作为 `v0.16.41` 发布；路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍记录为后续兼容性补充。
+本版本候选为 `v0.17.0`，当前尚未正式发布；路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍记录为后续兼容性补充。
 
 ## 更新日志
+
+### v0.17.0（2026-09-14）
+
+- 思源智能体只读审计增强：生命周期历史、健康报告、趋势窗口、传输封装、有限队列与恢复协调器均提供固定字段和脱敏输出。
+- 联合恢复增强：支持多协调器原子提交、联合快照、checkpoint 窗口、cursor 增量恢复、diagnostics 状态/风险投影和分页消费。
+- 安全边界保持不变：不新增 Agent 写入能力，不暴露 handler、实例、文档正文或宿主异常文本；所有输出均有数量和载荷上限。
+- 发版门禁：1509 项自动测试、TypeScript、移动端 smoke、Chromium smoke、生产依赖图和包体检查全部通过。
 
 ### v0.16.41（2026-09-14）
 

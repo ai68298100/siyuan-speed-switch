@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.16.41-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.17.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,9 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.16.41 extends capacity diagnostics for bounded report event queues with stable utilization summaries, history aggregation, change events, and consistency validation, while retaining the widget-store, configuration, and native SiYuan Agent improvements from v0.16.40.
+> v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
 
-> Release note: the current development head passes type checking, production build, 1509 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, transport, recovery, joint-snapshot, checkpoint-window, and diagnostics-projection contracts for read-only Agent audits without opening new write actions. It is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: the v0.17.0 candidate passes type checking, production build, 1509 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, transport, recovery, joint-snapshot, checkpoint-window, and diagnostics-projection contracts for read-only Agent audits without opening new write actions. Real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -166,9 +166,16 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This version is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
+This release candidate is `v0.17.0` and is not published yet; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
 
 ## Changelog
+
+### v0.17.0 (2026-09-14)
+
+- Read-only SiYuan Agent audits now include bounded lifecycle history, health reports, trend windows, transport envelopes, queues, and recovery coordinators.
+- Joint recovery adds atomic multi-coordinator commits, checkpoint windows, cursor-based incremental recovery, diagnostics status/risk projections, and bounded pagination.
+- Safety boundaries remain unchanged: no new Agent write actions, no handler/instance/document-body leakage, and all outputs are bounded and sanitized.
+- Release gates pass: 1509 automated tests, TypeScript, mobile smoke, Chromium smoke, production graph, and package-size checks.
 
 ### v0.16.41 (2026-09-14)
 
