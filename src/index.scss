@@ -4726,7 +4726,8 @@
     .sw-home-store__card,
     .sw-home-store__tab,
     .sw-home-store__group-toggle,
-    .sw-home-store__clear-search {
+    .sw-home-store__clear-search,
+    .sw-home-store__clear-filters {
         forced-color-adjust: auto;
         border-color: CanvasText;
         color: CanvasText;
@@ -5501,7 +5502,8 @@
 
 .sw-home-store__sizes,
 .sw-home-store__group-toggle,
-.sw-home-store__clear-search {
+.sw-home-store__clear-search,
+.sw-home-store__clear-filters {
     user-select: none;
 }
 

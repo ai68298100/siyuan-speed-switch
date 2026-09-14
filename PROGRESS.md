@@ -255,6 +255,10 @@
 
 2026-09-15 本轮最终验证：2862/2862 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 510734 bytes、`dist/index.css` 130663 bytes、`package.zip` 304220 bytes。产物已同步至 `D:\小飞驴的SIYUAN\data\plugins\siyuan-speed-switch`，JS/CSS/ZIP SHA-256 均与工作区一致。
 
+2026-09-15 本轮完成 T-3305~T-3334（30 项）：组件商店记录触发元素并在关闭后恢复焦点；空结果清空操作同步查询词、Tab、计数和 roving tabindex；补齐 Tab、分区、分组、网格的 ARIA 关联、控件 tooltip 与高对比度/防误选样式，并新增 30 项焦点恢复契约回归。
+
+2026-09-15 本轮最终验证：2892/2892 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 511481 bytes、`dist/index.css` 130723 bytes、`package.zip` 304389 bytes。产物即将同步至本地集市目录，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

@@ -4475,6 +4475,7 @@ const version = beginSearch(session);
     // （组件目录中已登记、来源插件未就位的组件，标注需安装的插件名）。
     // 渲染后 400ms 异步复扫一次安装状态（增量识别，不影响首屏）。
     private openHomeWidgetStore(device: "desktop" | "sidebar" | "mobile", onChanged: () => void) {
+        const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const storeDialog = new Dialog({
             title: this.i18n.homeStoreTitle,
             content: '<div class="speed-switch sw-home-store"></div>',
@@ -4523,6 +4524,7 @@ const version = beginSearch(session);
             clearSearchButton.className = "b3-button b3-button--text sw-home-store__clear-search";
             clearSearchButton.textContent = "×";
             clearSearchButton.setAttribute("aria-label", this.i18n.homeStoreClearSearch);
+            clearSearchButton.title = this.i18n.homeStoreClearSearch;
             clearSearchButton.hidden = !storeQuery;
             clearSearchButton.addEventListener("click", () => {
                 storeQuery = "";
@@ -4535,6 +4537,7 @@ const version = beginSearch(session);
             const sortSelect = document.createElement("select");
             sortSelect.className = "b3-select sw-home-store__sort";
             sortSelect.setAttribute("aria-label", this.i18n.homeStoreSortLabel);
+            sortSelect.title = this.i18n.homeStoreSortLabel;
             [{value: "relevance", label: this.i18n.homeStoreSortRelevance}, {value: "title", label: this.i18n.homeStoreSortTitle}, {value: "status", label: this.i18n.homeStoreSortStatus}, {value: "category", label: this.i18n.homeStoreSortCategory}].forEach((option) => {
                 const item = document.createElement("option");
                 item.value = option.value;
@@ -4617,6 +4620,7 @@ const version = beginSearch(session);
             const tabBar = document.createElement("div");
             tabBar.className = "sw-home-store__tabs";
             tabBar.setAttribute("role", "tablist");
+            tabBar.setAttribute("aria-label", this.i18n.homeStoreTitle);
             const activateStoreTab = (button: HTMLElement) => {
                 storeTab = button.dataset.tabKey || "all";
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((candidate) => {
@@ -4671,6 +4675,7 @@ const version = beginSearch(session);
             root.appendChild(tabBar);
             resultSummary = document.createElement("div");
             resultSummary.className = "sw-home-store__summary";
+            resultSummary.id = "sw-home-store-result-summary";
             resultSummary.setAttribute("role", "status");
             resultSummary.setAttribute("aria-live", "polite");
             root.appendChild(resultSummary);
@@ -4678,6 +4683,7 @@ const version = beginSearch(session);
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
             const readyHeading = document.createElement("h3");
             readyHeading.className = "sw-home-store__section";
+            readyHeading.id = "sw-home-store-section-ready";
             readyHeading.dataset.section = "ready";
             readyHeading.textContent = this.i18n.homeStoreReady;
             root.appendChild(readyHeading);
@@ -4971,6 +4977,7 @@ const version = beginSearch(session);
                 const cards = readyGroups.get(label)!;
                 const groupHeading = document.createElement("h3");
                 groupHeading.className = "sw-home-store__group";
+                groupHeading.id = `sw-home-store-group-heading-${orderedGroups.indexOf(label)}`;
                 groupHeading.dataset.group = label;
                 groupHeading.dataset.collapsed = String(collapsedGroups.has(label));
                 const groupLabel = document.createElement("span");
@@ -4988,6 +4995,8 @@ const version = beginSearch(session);
                 groupGrid.className = "sw-home-store__grid";
                 const groupId = `sw-home-store-group-${orderedGroups.indexOf(label)}`;
                 groupGrid.id = groupId;
+                groupGrid.setAttribute("role", "group");
+                groupGrid.setAttribute("aria-labelledby", groupHeading.id);
                 groupToggle.setAttribute("aria-controls", groupId);
                 cards.forEach((card) => groupGrid.appendChild(card));
                 root.appendChild(groupGrid);
@@ -4999,11 +5008,15 @@ const version = beginSearch(session);
             if (pending.length > 0) {
                 const pendingHeading = document.createElement("h3");
                 pendingHeading.className = "sw-home-store__section";
+                pendingHeading.id = "sw-home-store-section-pending";
                 pendingHeading.dataset.section = "pending";
                 pendingHeading.textContent = this.i18n.homeStorePending;
                 root.appendChild(pendingHeading);
                 const pendingGrid = document.createElement("div");
                 pendingGrid.className = "sw-home-store__grid";
+                pendingGrid.id = "sw-home-store-pending-grid";
+                pendingGrid.setAttribute("role", "group");
+                pendingGrid.setAttribute("aria-labelledby", pendingHeading.id);
                 pending.forEach(({entry, status}: any) => {
                     const unavailable = status === "unavailable";
                     const card = document.createElement("section");
@@ -5070,16 +5083,21 @@ const version = beginSearch(session);
             emptyText.textContent = this.i18n.homeStoreNoResults;
             const clearFilters = document.createElement("button");
             clearFilters.type = "button";
-            clearFilters.className = "b3-button b3-button--text";
+            clearFilters.className = "b3-button b3-button--text sw-home-store__clear-filters";
             clearFilters.textContent = this.i18n.homeStoreClearFilters;
+            clearFilters.setAttribute("aria-label", this.i18n.homeStoreClearFilters);
+            clearFilters.title = this.i18n.homeStoreClearFilters;
             clearFilters.addEventListener("click", () => {
                 storeQuery = "";
                 storeTab = "all";
                 searchInput.value = "";
+                clearSearchButton.hidden = true;
+                sortSelect.value = normalizeHomeStoreSort(storeSort);
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
-                    const active = button.dataset.tabFilter === "all" && !button.dataset.tabAvailability && !button.dataset.tabAdded;
+                    const active = button.dataset.tabKey === "all";
                     button.classList.toggle("is-active", active);
                     button.setAttribute("aria-selected", String(active));
+                    button.setAttribute("tabindex", active ? "0" : "-1");
                 });
                 applyFilter();
                 searchInput.focus();
@@ -5105,6 +5123,7 @@ const version = beginSearch(session);
             window.clearTimeout(rescanTimer);
             this.homeModuleChangeListeners.delete(handleModuleChange);
             originalDestroy();
+            if (opener?.isConnected) opener.focus();
         };
     }
 
