@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -183,6 +183,12 @@ test('capacity: trend action follows normalized current recommendation', () => {
     const trend = assessStorageCapacityTrend({over: ['favorites'], used: 20, max: 20}, {near: ['favorites'], used: 18, max: 20});
     assert.equal(trend.action, 'monitor');
     assert.equal(trend.trend, 'improving');
+});
+
+test('capacity: normalized trend keeps a fixed four-field shape', () => {
+    assert.deepEqual(Object.keys(normalizeStorageCapacityTrend({})), ['trend', 'riskDelta', 'pressureDelta', 'action']);
+    assert.equal(parseStorageCapacityTrend('bad').trend, 'stable');
+    assert.equal(JSON.parse(serializeStorageCapacityTrend({trend: 'improving'})).action, 'none');
 });
 
 test('capacity: health diff keeps transition lists within the declared buckets', () => {

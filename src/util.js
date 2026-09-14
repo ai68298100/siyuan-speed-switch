@@ -561,6 +561,32 @@ function assessStorageCapacityTrend(previous, current) {
     return {trend, riskDelta, pressureDelta: Number(pressureDelta.toFixed(4)), action: after.recommendation};
 }
 
+/** Normalize a serialized trend result to fixed enums and bounded numbers. */
+function normalizeStorageCapacityTrend(input) {
+    const source = input && typeof input === "object" ? input : {};
+    const trends = new Set(["degrading", "improving", "stable"]);
+    const actions = new Set(["none", "monitor", "trim"]);
+    const riskRaw = Number(source.riskDelta);
+    const pressureRaw = Number(source.pressureDelta);
+    const riskDelta = Number.isFinite(riskRaw) ? Math.max(-2, Math.min(2, Math.trunc(riskRaw))) : 0;
+    const pressure = Number.isFinite(pressureRaw) ? Math.max(-1, Math.min(1, pressureRaw)) : 0;
+    return {
+        trend: trends.has(source.trend) ? source.trend : "stable",
+        riskDelta,
+        pressureDelta: Number(pressure.toFixed(4)),
+        action: actions.has(source.action) ? source.action : "none",
+    };
+}
+
+function serializeStorageCapacityTrend(input) {
+    return JSON.stringify(normalizeStorageCapacityTrend(input));
+}
+
+function parseStorageCapacityTrend(serialized) {
+    if (typeof serialized !== "string" || serialized.length > 64000) return normalizeStorageCapacityTrend({});
+    try { return normalizeStorageCapacityTrend(JSON.parse(serialized)); } catch (_error) { return normalizeStorageCapacityTrend({}); }
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -812,4 +838,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
