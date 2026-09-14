@@ -740,6 +740,31 @@ function reconcileStorageCapacityReport(input) {
     };
 }
 
+/** Convert a report diff into a bounded, stable event list. */
+function buildStorageCapacityReportEvents(previous, current) {
+    const diff = diffStorageCapacityHealth(previous?.health || previous, current?.health || current);
+    const events = [];
+    if (diff.riskChanged) events.push({type: "risk_changed", from: diff.fromRisk, to: diff.toRisk});
+    if (diff.direction !== "stable") events.push({type: "usage_trend", direction: diff.direction});
+    if (diff.addedOver.length) events.push({type: "over_capacity", buckets: diff.addedOver.slice(0, 3)});
+    if (diff.removedOver.length) events.push({type: "over_capacity_cleared", buckets: diff.removedOver.slice(0, 3)});
+    if (diff.addedNear.length) events.push({type: "near_capacity", buckets: diff.addedNear.slice(0, 3)});
+    if (diff.removedNear.length) events.push({type: "near_capacity_cleared", buckets: diff.removedNear.slice(0, 3)});
+    return events.slice(0, 8);
+}
+
+function normalizeStorageCapacityReportEvents(input) {
+    const allowed = new Set(["risk_changed", "usage_trend", "over_capacity", "over_capacity_cleared", "near_capacity", "near_capacity_cleared"]);
+    const source = Array.isArray(input) ? input : [];
+    return source.filter((event) => event && typeof event === "object" && allowed.has(event.type)).slice(0, 8).map((event) => {
+        const normalized = {type: event.type};
+        if (event.type === "risk_changed") { normalized.from = ["normal", "warning", "critical"].includes(event.from) ? event.from : "normal"; normalized.to = ["normal", "warning", "critical"].includes(event.to) ? event.to : "normal"; }
+        if (event.type === "usage_trend") normalized.direction = ["up", "down"].includes(event.direction) ? event.direction : "up";
+        if (event.type !== "risk_changed" && event.type !== "usage_trend") normalized.buckets = [...new Set((Array.isArray(event.buckets) ? event.buckets : []).filter((name) => ["favorites", "pinned", "favoriteGroups"].includes(name)))].slice(0, 3);
+        return normalized;
+    });
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -991,4 +1016,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};

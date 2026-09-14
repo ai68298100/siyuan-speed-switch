@@ -1,5 +1,9 @@
 # 决策
 
+- D-256（2026-09-14）：容量报告事件构建使 raw bundle 达 399,531 bytes，较 390 KiB 自律线超出 1,131 bytes；校准至 391 KiB，`package.zip` 262,301 bytes，300 KiB 硬上限余量 43,699 bytes。
+
+- D-255（2026-09-14）：容量报告事件类型固定为 risk_changed/usage_trend/over_capacity/over_capacity_cleared/near_capacity/near_capacity_cleared，最多 8 条；事件仅输出风险枚举、趋势枚举和三类桶白名单，未知字段与类型丢弃。
+
 - D-254（2026-09-14）：报告一致性修复使 raw bundle 达 398,231 bytes，较 389 KiB 自律线超出 204 bytes；按真实增量校准至 390 KiB，`package.zip` 261,966 bytes，300 KiB 硬上限余量 44,034 bytes。
 
 - D-253（2026-09-14）：容量报告一致性修复始终输出 version=1；summary.changed/changedCount 按 changedBuckets 重算，trend.action 强制与 health.recommendation 对齐，所有输入先归一化且不回显未知字段。

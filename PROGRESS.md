@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第二十九轮）：完成 20 项开发（T-875~T-894），新增容量报告事件构建/归一化，将风险、趋势及超限/临界桶变化转换为最多 8 条固定事件，过滤未知类型并限制桶白名单。终验：832/832 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 399531 bytes、`package.zip` 262301 bytes（300 KiB 余量 43699 bytes）。raw bundle 自律线按 D-256 校准至 391 KiB。
+
 补充（2026-09-14 第二十八轮）：完成 20 项开发（T-855~T-874），新增 `reconcileStorageCapacityReport`，修复报告 version、summary 计数/标记及 trend action 与 health recommendation 不一致问题，统一输出固定安全结构。终验：829/829 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 398231 bytes、`package.zip` 261966 bytes（300 KiB 余量 44034 bytes）。raw bundle 自律线按 D-254 校准至 390 KiB。
 
 补充（2026-09-14 第二十七轮）：完成 20 项开发（T-835~T-854），新增 `validateStorageCapacityReport`，校验 version=1、health/trend/summary 三段和 summary 桶上限，返回固定 valid/reason 结果。终验：826/826 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 398027 bytes、`package.zip` 261907 bytes（300 KiB 余量 44093 bytes）。raw bundle 自律线按 D-252 校准至 389 KiB。
