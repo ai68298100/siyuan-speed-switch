@@ -2,9 +2,22 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const home = require("../src/home-model.js");
 
+test("mobile home size is unified", () => {
+    assert.equal(home.resolveMobileHomeSize(["small", "medium"]), "medium");
+    assert.equal(home.resolveMobileHomeSize(["large", "full"]), "large");
+    assert.equal(home.resolveMobileHomeSize([]), "medium");
+});
+
+test("mobile persisted layouts canonicalize to full-width rows", () => {
+    assert.deepEqual(home.normalizeMobileLayout({x: 9, w: 2, y: 4}), {x: 0, y: 4, w: 12, h: 1, collapsed: false, size: ""});
+    const state = home.normalizeHomeState({instances: [{moduleId: "today-tasks", instanceId: "task"}], layouts: {mobile: [{instanceId: "task", x: 8, w: 2, y: 3}]}});
+    assert.deepEqual(state.layouts.mobile[0].x, 0);
+    assert.deepEqual(state.layouts.mobile[0].w, 12);
+});
+
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 33);
+    assert.equal(modules.length, 34);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
@@ -54,6 +67,13 @@ test("user-endpoint feeds expose bounded opt-in configuration", () => {
         assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot"]);
         assert.deepEqual(feed.sizes, ["medium", "wide", "large", "full"]);
     }
+});
+test("ActivityWatch module is desktop local-service only", () => {
+    const item = home.registerModules([]).find((entry) => entry.moduleId === "external-activitywatch-time");
+    assert.ok(item);
+    assert.deepEqual(item.supportedDevices, ["desktop", "sidebar"]);
+    assert.deepEqual(item.configSchema.map((field) => field.key), ["endpoint", "hours", "limit"]);
+    assert.equal(item.configSchema[0].defaults, "http://127.0.0.1:5600");
 });
 test("home modules expose bounded availability levels", () => {
     const modules = home.registerModules([]);
@@ -184,7 +204,7 @@ test("home model ignores unknown mobile render fields at narrow widths", () => {
         mobile: [{instanceId: "j", x: -10, y: -1, w: 0, h: 99, collapsed: false, gridColumns: 99, dragHandle: "bad"}],
     }});
     const entry = state.layouts.mobile[0];
-    assert.deepEqual(entry, {instanceId: "j", x: 0, y: 0, w: 1, h: 12, collapsed: false, size: ""});
+    assert.deepEqual(entry, {instanceId: "j", x: 0, y: 0, w: 12, h: 12, collapsed: false, size: ""});
     assert.deepEqual(home.normalizeHomeState(state), state);
 });
 

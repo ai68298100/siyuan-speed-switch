@@ -8,6 +8,8 @@ const holidayUrl = "https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/20
 const bangumiUrl = "https://api.bgm.tv/calendar";
 const dailyHotUrl = "https://hot.example/api/weibo";
 const newsNowUrl = "https://news.example/api/s?id=zhihu";
+const activityWatchUrl = "http://127.0.0.1:5600/api/0/query/";
+const activityRequest = {url: activityWatchUrl, cacheKey: "local:24:6", body: {timeperiods: ["2026-09-13T00:00:00.000Z/2026-09-14T00:00:00.000Z"], query: ["RETURN = {};"]}};
 const response = (body, options = {}) => ({
     ok: options.ok !== false,
     headers: {get: (name) => name === "content-length" ? String(options.length ?? String(body).length) : null},
@@ -22,6 +24,7 @@ test("network constants keep bounded payloads and TTLs", () => {
     assert.equal(network.HOLIDAY_TTL_MS, 24 * 60 * 60 * 1000);
     assert.equal(network.BANGUMI_TTL_MS, 30 * 60 * 1000);
     assert.equal(network.FEED_TTL_MS, 30 * 60 * 1000);
+    assert.equal(network.ACTIVITYWATCH_TTL_MS, 5 * 60 * 1000);
 });
 test("network allowlist accepts geocoding", () => assert.equal(network.allowedLifeWidgetUrl(geoUrl), true));
 test("network allowlist accepts forecast", () => assert.equal(network.allowedLifeWidgetUrl(weatherUrl), true));
@@ -128,4 +131,38 @@ test("configured feed loader force refresh bypasses a fresh cache", async () => 
     await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 100});
     const fresh = await network.loadConfiguredFeed(dailyHotUrl, {fetchImpl, now: 200, force: true});
     assert.equal(fresh.payload.n, 2);
+});
+test("ActivityWatch allowlist accepts the exact loopback query route", () => assert.equal(network.allowedActivityWatchUrl(activityWatchUrl), true));
+test("ActivityWatch allowlist accepts localhost HTTPS", () => assert.equal(network.allowedActivityWatchUrl("https://localhost:5600/api/0/query/"), true));
+test("ActivityWatch allowlist rejects remote services", () => assert.equal(network.allowedActivityWatchUrl("https://example.com/api/0/query/"), false));
+test("ActivityWatch allowlist rejects raw events routes", () => assert.equal(network.allowedActivityWatchUrl("http://127.0.0.1:5600/api/0/buckets/x/events"), false));
+test("ActivityWatch allowlist rejects query parameters", () => assert.equal(network.allowedActivityWatchUrl(`${activityWatchUrl}?x=1`), false));
+test("ActivityWatch fetch uses POST JSON and blocks redirects", async () => {
+    let options;
+    await network.fetchActivityWatchQuery(activityWatchUrl, activityRequest.body, {fetchImpl: async (_url, init) => { options = init; return response("[{}]"); }});
+    assert.equal(options.method, "POST");
+    assert.equal(options.redirect, "error");
+    assert.equal(options.headers["Content-Type"], "application/json");
+});
+test("ActivityWatch fetch blocks oversized requests", async () => assert.rejects(network.fetchActivityWatchQuery(activityWatchUrl, {query: ["x".repeat(9000)]}), /request_too_large/));
+test("ActivityWatch fetch blocks oversized responses", async () => assert.rejects(network.fetchActivityWatchQuery(activityWatchUrl, {}, {fetchImpl: async () => response("x", {length: network.MAX_RESPONSE_BYTES + 1})}), /response_too_large/));
+test("ActivityWatch loader returns fresh data", async () => assert.equal((await network.loadActivityWatchSummary(activityRequest, {fetchImpl: async () => response("[{}]"), now: 100})).status, "fresh"));
+test("ActivityWatch loader reuses its five-minute cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response("[{}]"); };
+    await network.loadActivityWatchSummary(activityRequest, {fetchImpl, now: 100});
+    assert.equal((await network.loadActivityWatchSummary(activityRequest, {fetchImpl, now: 200})).status, "cached");
+    assert.equal(calls, 1);
+});
+test("ActivityWatch loader returns stale data after a failure", async () => {
+    await network.loadActivityWatchSummary(activityRequest, {fetchImpl: async () => response('[{"duration":1,"app_events":[]}]'), now: 100});
+    const stale = await network.loadActivityWatchSummary(activityRequest, {fetchImpl: async () => { throw new Error("offline"); }, now: 100 + network.ACTIVITYWATCH_TTL_MS});
+    assert.equal(stale.status, "stale");
+});
+test("ActivityWatch force refresh bypasses fresh cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response("[{}]"); };
+    await network.loadActivityWatchSummary(activityRequest, {fetchImpl, now: 100});
+    await network.loadActivityWatchSummary(activityRequest, {fetchImpl, now: 200, force: true});
+    assert.equal(calls, 2);
 });

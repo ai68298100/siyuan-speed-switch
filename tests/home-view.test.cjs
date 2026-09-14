@@ -85,6 +85,17 @@ test("home view renderer exposes bounded states and activation hooks", () => {
     assert.equal(localized.querySelector('[role="alert"]').textContent, "请求超时");
 });
 
+test("home view keeps long mobile labels in semantic item controls", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = renderHomeModuleView(dom.window.document, buildHomeModuleView({moduleId: "tasks", title: "A very long title"}, {
+        ok: true, snapshot: {items: [{label: "一个很长很长的待办项目标题", value: "task"}]},
+    }));
+    const item = view.querySelector(".sw__home-module-item-action");
+    assert.equal(item?.tagName, "BUTTON");
+    assert.equal(item?.getAttribute("type"), "button");
+    assert.equal(item?.textContent, "一个很长很长的待办项目标题");
+});
+
 test("home view renders calendar grid for viewType calendar", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const view = buildHomeModuleView(

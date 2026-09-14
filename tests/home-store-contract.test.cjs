@@ -40,6 +40,13 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /homeStoreNoResults/);
     assert.match(source, /let storeQuery = ""/);
     assert.match(source, /let storeTab = "all"/);
+    assert.match(source, /let storeSort = "relevance"/);
+    assert.match(source, /homeStoreSortLabel/);
+    assert.match(source, /sortHomeStoreCards/);
+    assert.match(source, /matchesHomeStoreTokens/);
+    assert.match(source, /buildHomeStoreTabCounts/);
+    assert.match(source, /card\.dataset\.moduleId = moduleId/);
+    assert.match(source, /btn\.dataset\.tabLabel = tab\.label/);
     assert.match(source, /homeStoreGroupJournal/);
     assert.match(source, /"journal-calendar", "writing-streak"/);
     assert.match(source, /readyHeading\.dataset\.section = "ready"/);

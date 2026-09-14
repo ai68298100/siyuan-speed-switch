@@ -24,11 +24,11 @@ import {buildHomeModuleView, renderHomeModuleView} from "./home-view";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries} from "./home-controller";
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
-import {normalizeHomeState} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus} from "./home-store-model";
+import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, clearLifeWidgetCaches} from "./life-widget-network";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -1379,6 +1379,32 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 鎵撳紑/鍒涘缓褰撴棩鏃ヨ锛氶粯璁ゆ棩璁版湰鏈缃椂鍏堝脊鍑轰笅鎷夐€夋嫨
     // 快速记录：Flomo 式弹窗，输入一句追加到今日日记末尾（未配置日记本时先让用户选择）
     // 商店实时预览：以默认尺寸渲染真实组件（数据与面板同源），关闭窗口即释放实例
+    private openHomeWidgetGuide() {
+        const dialog = new Dialog({
+            title: this.i18n.homeStoreGuideTitle,
+            content: '<div class="speed-switch sw-home-store-guide"></div>',
+            width: this.isMobile ? "min(520px, 94vw)" : "min(720px, 76vw)",
+            height: this.isMobile ? "min(640px, 82vh)" : "min(620px, 78vh)",
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw-home-store-guide");
+        if (!root) return;
+        const hint = document.createElement("p");
+        hint.className = "sw-home-store-guide__hint";
+        hint.textContent = this.i18n.homeStoreGuideHint;
+        root.appendChild(hint);
+        const link = document.createElement("a");
+        link.className = "b3-button b3-button--outline sw-home-store-guide__link";
+        link.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/component-store-guide.md";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = this.i18n.homeStoreGuide;
+        root.appendChild(link);
+        const note = document.createElement("p");
+        note.className = "sw-home-store-guide__note";
+        note.textContent = "docs/component-store-guide.md";
+        root.appendChild(note);
+    }
+
     private openStoreWidgetPreview(moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile") {
         const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
         const sizeKey = sizes.includes("medium") ? "medium" : sizes[0];
@@ -1939,7 +1965,12 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private buildSettingsMobile(s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
+        const panelNote = document.createElement("p");
+        panelNote.className = "sw-settings__tip sw-settings__mobile-home-note";
+        panelNote.textContent = this.i18n.mobileHomePanelFixed;
+        panelNote.setAttribute("role", "note");
         wrapper.append(
+            panelNote,
             this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
                 this.switcher(s.fabEnabled, (v) => {
                     this.updateSettings({fabEnabled: v});
@@ -3343,6 +3374,36 @@ const version = beginSearch(session);
         }
     }
 
+    // ActivityWatch 默认 CORS 只允许自身 Web UI。这里复用思源公开的 JSON 正向代理，
+    // 但目标在发出前仍必须命中“回环地址 + 固定 query 路由”，避免形成任意 SSRF 通道。
+    private async fetchActivityWatchViaKernel(url: string, init: {body?: string}): Promise<any> {
+        if (!allowedActivityWatchUrl(url)) throw new Error("blocked_endpoint");
+        const response = await fetch("/api/network/forwardProxy", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                url,
+                method: "POST",
+                timeout: 5000,
+                contentType: "application/json",
+                headers: [{Accept: "application/json"}],
+                payload: typeof init?.body === "string" ? init.body : "{}",
+                payloadEncoding: "text",
+                responseEncoding: "text",
+            }),
+        });
+        if (!response.ok) throw new Error("proxy_http_error");
+        const envelope = await response.json();
+        const data = envelope?.code === 0 && envelope?.data && typeof envelope.data === "object" ? envelope.data : null;
+        const body = typeof data?.body === "string" ? data.body : "";
+        const status = Number(data?.status);
+        return {
+            ok: Number.isFinite(status) && status >= 200 && status < 300,
+            headers: {get: (name: string) => name.toLowerCase() === "content-length" ? String(body.length) : null},
+            text: async () => body,
+        };
+    }
+
     // 内置只读适配器：面板数据全部来自插件既有领域数据（最近/收藏/日记/文档集/指定文档）。
     // 注册定义覆盖 home-model DEFAULT_MODULES 的同名项（标题随 i18n）。
     private registerBuiltinHomeAdapters() {
@@ -3601,6 +3662,22 @@ const version = beginSearch(session);
         };
         registerExternalFeed("external-hot-news-dailyhot", "dailyhot", this.i18n.homeDailyHot, "iconGraph", this.i18n.homeDescDailyHot);
         registerExternalFeed("external-news-newsnow", "newsnow", this.i18n.homeNewsNow, "iconList", this.i18n.homeDescNewsNow);
+        register("external-activitywatch-time", this.i18n.homeActivityWatch, "iconClock", this.i18n.homeDescActivityWatch, [], async (config, _device, context) => {
+            const request = buildActivityWatchRequest(config, Date.now());
+            if (!request) return {emptyHint: this.i18n.homeActivityWatchConfigHint, items: []};
+            const envelope = await loadActivityWatchSummary(request, {
+                signal: context?.signal,
+                timeoutMs: 5000,
+                fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init),
+            });
+            const snapshot = buildActivityWatchSnapshot(envelope, config, {
+                range: this.i18n.homeActivityWatchRange,
+                total: this.i18n.homeActivityWatchTotal,
+                empty: this.i18n.homeActivityWatchEmpty,
+            });
+            if (!snapshot) throw new Error("invalid_activitywatch_payload");
+            return snapshot;
+        }, {timeoutMs: 7000, cacheTtlMs: 5 * 60 * 1000});
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
@@ -4408,6 +4485,7 @@ const version = beginSearch(session);
         if (!root) return;
         let storeQuery = "";
         let storeTab = "all";
+        let storeSort = "relevance";
         const collapsedGroups = new Set<string>();
 
         const renderStore = () => {
@@ -4440,6 +4518,39 @@ const version = beginSearch(session);
             searchInput.setAttribute("aria-label", this.i18n.homeStoreSearch);
             searchInput.value = storeQuery;
             searchBar.appendChild(searchInput);
+            const clearSearchButton = document.createElement("button");
+            clearSearchButton.type = "button";
+            clearSearchButton.className = "b3-button b3-button--text sw-home-store__clear-search";
+            clearSearchButton.textContent = "×";
+            clearSearchButton.setAttribute("aria-label", this.i18n.homeStoreClearSearch);
+            clearSearchButton.hidden = !storeQuery;
+            clearSearchButton.addEventListener("click", () => {
+                storeQuery = "";
+                searchInput.value = "";
+                clearSearchButton.hidden = true;
+                applyFilter();
+                searchInput.focus();
+            });
+            searchBar.appendChild(clearSearchButton);
+            const sortSelect = document.createElement("select");
+            sortSelect.className = "b3-select sw-home-store__sort";
+            sortSelect.setAttribute("aria-label", this.i18n.homeStoreSortLabel);
+            [{value: "relevance", label: this.i18n.homeStoreSortRelevance}, {value: "title", label: this.i18n.homeStoreSortTitle}, {value: "status", label: this.i18n.homeStoreSortStatus}, {value: "category", label: this.i18n.homeStoreSortCategory}].forEach((option) => {
+                const item = document.createElement("option");
+                item.value = option.value;
+                item.textContent = option.label;
+                sortSelect.appendChild(item);
+            });
+            sortSelect.value = normalizeHomeStoreSort(storeSort);
+            sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); renderStore(); });
+            searchBar.appendChild(sortSelect);
+            const guideButton = document.createElement("button");
+            guideButton.type = "button";
+            guideButton.className = "b3-button b3-button--outline sw-home-store__guide";
+            guideButton.textContent = this.i18n.homeStoreGuide;
+            guideButton.setAttribute("aria-label", this.i18n.homeStoreGuideTitle);
+            guideButton.addEventListener("click", () => this.openHomeWidgetGuide());
+            searchBar.appendChild(guideButton);
             root.appendChild(searchBar);
             let filterEmptyState: HTMLElement | null = null;
             let resultSummary: HTMLElement | null = null;
@@ -4456,7 +4567,7 @@ const version = beginSearch(session);
                 void addedOnly;
                 // Legacy audit expression: card.dataset.added === "true"
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
-                    card.classList.toggle("fn__none", !matchesHomeStoreCard(card.dataset, query, filter));
+                    card.classList.toggle("fn__none", !matchesHomeStoreTokens(card.dataset, query, filter));
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
                     const grid = heading.nextElementSibling;
@@ -4485,19 +4596,43 @@ const version = beginSearch(session);
                     resultSummary.textContent = this.i18n.homeStoreResultSummary
                         .replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
                 }
+                const tabCounts = buildHomeStoreTabCounts(Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card")).map((card) => card.dataset));
+                tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
+                    const key = button.dataset.tabKey || "all";
+                    button.textContent = `${button.dataset.tabLabel || ""} · ${tabCounts[key as keyof typeof tabCounts] ?? 0}`;
+                });
             };
             searchInput.addEventListener("input", () => {
                 storeQuery = searchInput.value;
+                clearSearchButton.hidden = !normalizeHomeStoreQuery(storeQuery);
                 applyFilter();
+            });
+            searchInput.addEventListener("keydown", (event) => {
+                if (event.key !== "Escape" || !searchInput.value) return;
+                event.preventDefault();
+                clearSearchButton.click();
             });
 
             // 分类与状态 Tab：分类条件和可用性条件保持正交，避免条件组件被分类误过滤。
             const tabBar = document.createElement("div");
             tabBar.className = "sw-home-store__tabs";
             tabBar.setAttribute("role", "tablist");
-            const tabs: Array<{key: string; label: string; category?: string; availability?: string; addedOnly?: boolean}> = [
+            const activateStoreTab = (button: HTMLElement) => {
+                storeTab = button.dataset.tabKey || "all";
+                tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((candidate) => {
+                    const active = candidate === button;
+                    candidate.classList.toggle("is-active", active);
+                    candidate.setAttribute("aria-selected", String(active));
+                    candidate.setAttribute("tabindex", active ? "0" : "-1");
+                });
+                applyFilter();
+            };
+            const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
                 {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
+                {key: "offline", label: this.i18n.homeStoreTabOffline, integration: "offline"},
+                {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},
+                {key: "network", label: this.i18n.homeStoreTabNetwork, integration: "network"},
                 {key: "plugin", label: this.i18n.homeStoreTabPlugin, category: "plugin"},
                 {key: "conditional", label: this.i18n.homeStoreTabConditional, availability: "conditional"},
                 {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
@@ -4507,20 +4642,29 @@ const version = beginSearch(session);
                 btn.type = "button";
                 btn.className = "sw-home-store__tab" + (tab.key === storeTab ? " is-active" : "");
                 btn.textContent = tab.label;
+                btn.dataset.tabLabel = tab.label;
                 btn.setAttribute("role", "tab");
                 btn.setAttribute("aria-selected", String(tab.key === storeTab));
+                btn.setAttribute("tabindex", tab.key === storeTab ? "0" : "-1");
                 btn.dataset.tabKey = tab.key;
                 btn.dataset.tabFilter = tab.category || "all";
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
+                if (tab.integration) btn.dataset.tabIntegration = tab.integration;
                 if (tab.addedOnly) btn.dataset.tabAdded = "true";
-                btn.addEventListener("click", () => {
-                    storeTab = tab.key;
-                    tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((b) => {
-                        const active = b === btn;
-                        b.classList.toggle("is-active", active);
-                        b.setAttribute("aria-selected", String(active));
-                    });
-                    applyFilter();
+                btn.addEventListener("click", () => activateStoreTab(btn));
+                btn.addEventListener("keydown", (event) => {
+                    const buttons = Array.from(tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab"));
+                    const index = buttons.indexOf(btn);
+                    if (index < 0) return;
+                    let next = -1;
+                    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % buttons.length;
+                    if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + buttons.length) % buttons.length;
+                    if (event.key === "Home") next = 0;
+                    if (event.key === "End") next = buttons.length - 1;
+                    if (next < 0) return;
+                    event.preventDefault();
+                    activateStoreTab(buttons[next]);
+                    buttons[next].focus();
                 });
                 tabBar.appendChild(btn);
             });
@@ -4528,6 +4672,7 @@ const version = beginSearch(session);
             resultSummary = document.createElement("div");
             resultSummary.className = "sw-home-store__summary";
             resultSummary.setAttribute("role", "status");
+            resultSummary.setAttribute("aria-live", "polite");
             root.appendChild(resultSummary);
 
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
@@ -4545,6 +4690,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
                 {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time", "external-weather-open-meteo", "external-anime-bangumi"]},
                 {label: this.i18n.homeStoreGroupNews, moduleIds: ["external-hot-news-dailyhot", "external-news-newsnow"]},
+                {label: this.i18n.homeStoreGroupFocus, moduleIds: ["external-activitywatch-time"]},
                 {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
                 {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
                 {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
@@ -4559,22 +4705,42 @@ const version = beginSearch(session);
                     : this.i18n.homeStoreGroupPlugin;
             };
 
-            const ready = [...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId)}))
-                .filter((item) => !!item.def)
-                .sort((a, b) => (a.def.category === b.def.category ? a.moduleId.localeCompare(b.moduleId)
-                    : (a.def.category === "siyuan" ? -1 : 1)));
+            const ready = sortHomeStoreCards([...activeIds].map((moduleId) => ({moduleId, def: defs.get(moduleId), search: `${defs.get(moduleId)?.title || moduleId}`, category: defs.get(moduleId)?.category === "siyuan" ? "builtin" : "plugin", availability: defs.get(moduleId)?.availability || "ready", added: instanceByModule.has(moduleId)})), storeSort)
+                .filter((item) => !!item.def);
 
             const buildReadyCard = (moduleId: string, def: any) => {
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
+                card.tabIndex = -1;
+                card.setAttribute("role", "group");
+                card.dataset.moduleId = moduleId;
                 card.dataset.search = `${buildHomeStoreSearchText(def, moduleId)} ${externalInfo?.providerName || ""}`.toLowerCase();
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
                 card.dataset.availability = def.availability || "ready";
+                card.dataset.integration = externalInfo?.integration === "http" ? "network"
+                    : externalInfo?.integration === "local-bridge" ? "local"
+                        : externalInfo?.integration === "direct" || def.category === "siyuan" ? "offline" : "unknown";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const added = instanceByModule.get(moduleId);
                 const addedInstance = instanceStateByModule.get(moduleId);
                 card.dataset.added = added ? "true" : "false";
+                card.dataset.statusTone = resolveHomeStoreStatusTone(card.dataset);
+                card.dataset.integrationTone = resolveHomeStoreIntegrationTone(card.dataset);
+                card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
+                card.addEventListener("keydown", (event) => {
+                    const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card:not(.fn__none)"));
+                    const index = cards.indexOf(card);
+                    if (index < 0) return;
+                    let next = -1;
+                    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % cards.length;
+                    if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + cards.length) % cards.length;
+                    if (event.key === "Home") next = 0;
+                    if (event.key === "End") next = cards.length - 1;
+                    if (next < 0) return;
+                    event.preventDefault();
+                    cards[next].focus();
+                });
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
                 const icon = document.createElement("svg");
@@ -4584,12 +4750,14 @@ const version = beginSearch(session);
                 const copy = document.createElement("div");
                 const title = document.createElement("strong");
                 title.textContent = def.title || moduleId;
+                title.id = `sw-home-store-title-${moduleId}`;
                 const availability = def.availability === "conditional" || def.availability === "external" ? def.availability : "";
                 if (availability) {
                     const badge = document.createElement("em");
                     badge.className = `sw-home-store__availability sw-home-store__availability--${availability}`;
                     badge.textContent = availability === "external" ? this.i18n.homeStoreAvailabilityExternal : this.i18n.homeStoreAvailabilityConditional;
                     badge.setAttribute("aria-label", badge.textContent);
+                    badge.title = badge.textContent;
                     title.appendChild(document.createTextNode(" "));
                     title.appendChild(badge);
                 }
@@ -4603,6 +4771,7 @@ const version = beginSearch(session);
                 };
                 const support = document.createElement("small");
                 support.className = "sw-home-store__support";
+                support.setAttribute("aria-label", this.i18n.homeStoreSupportedSurfaces);
                 const surfaceText = supportedDevices.map((item: string) => deviceLabels[item] || item).filter(Boolean).join("、");
                 support.textContent = this.i18n.homeStoreSupportedSurfaces.replace("{surfaces}", surfaceText);
                 const status = document.createElement("small");
@@ -4619,11 +4788,16 @@ const version = beginSearch(session);
                         const chip = document.createElement("span");
                         chip.className = `sw-home-store__source-chip is-${kind}`;
                         chip.textContent = label;
+                        chip.title = label;
                         sourceMeta.appendChild(chip);
                     };
                     addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
-                    addChip(externalInfo.integration === "direct" ? this.i18n.homeStoreNetworkOffline : this.i18n.homeStoreNetworkOnline,
-                        externalInfo.integration === "direct" ? "offline" : "online");
+                    const networkLabel = externalInfo.integration === "direct"
+                        ? this.i18n.homeStoreNetworkOffline
+                        : externalInfo.integration === "local-bridge"
+                            ? this.i18n.homeStoreNetworkLocal
+                            : this.i18n.homeStoreNetworkOnline;
+                    addChip(networkLabel, externalInfo.integration === "direct" ? "offline" : externalInfo.integration === "local-bridge" ? "local" : "online");
                     const privacyLabel = externalInfo.privacy === "location-only"
                         ? this.i18n.homeStorePrivacyLocation
                         : externalInfo.privacy === "local-only"
@@ -4651,6 +4825,8 @@ const version = beginSearch(session);
                     preview.innerHTML = '<span class="p-media-grid"><i></i><i></i><i></i><i></i></span>';
                 } else if (kind === "feed") {
                     preview.innerHTML = '<span class="p-feed-list"><i><b>1</b><em></em></i><i><b>2</b><em></em></i><i><b>3</b><em></em></i></span>';
+                } else if (kind === "activity") {
+                    preview.innerHTML = '<span class="p-activity-total">4h 18m</span><span class="p-activity-bars"><i style="--p:88%"></i><i style="--p:62%"></i><i style="--p:37%"></i></span>';
                 } else if (kind === "tasks") {
                     preview.innerHTML = `<span class="p-task-list"><i></i><i></i><i></i></span>`;
                 } else if (kind === "outline" || kind === "documents") {
@@ -4666,7 +4842,8 @@ const version = beginSearch(session);
                     ["w1", "w2", "w3"].forEach((w) => { const line = document.createElement("i"); line.className = `p-line ${w}`; preview.appendChild(line); });
                 }
                 // 各档尺寸的整体效果：按 w/12 比例宽度的成比例缩略框
-                const supportedSizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                const declaredSizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
+                const supportedSizes: string[] = device === "mobile" ? [resolveMobileHomeSize(declaredSizes)] : declaredSizes;
                 const sizesRow = document.createElement("div");
                 sizesRow.className = "sw-home-store__preview-sizes";
                 supportedSizes.forEach((sizeKey) => {
@@ -4691,6 +4868,7 @@ const version = beginSearch(session);
                     tile.className = "sw-home-store__size";
                     tile.dataset.size = sizeKey;
                     tile.textContent = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
+                    tile.setAttribute("aria-label", this.i18n.homeStoreSizeHint.replace("{size}", tile.textContent || ""));
                     if (sizeKey === (added?.size || supported[0])) {
                         selectedTile = tile;
                         tile.classList.add("is-selected");
@@ -4707,6 +4885,7 @@ const version = beginSearch(session);
                 });
                 tiles.insertAdjacentHTML("beforeend", `<button class="b3-button b3-button--outline sw-home-store__add">${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd}</button>`);
                 const addButton = tiles.lastElementChild as HTMLButtonElement;
+                addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId}`);
                 addButton.onclick = () => {
                     const sizeKey = selectedTile!.dataset.size;
                     const {w, h} = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize]!;
@@ -4742,6 +4921,7 @@ const version = beginSearch(session);
                     configButton.className = "b3-button b3-button--text sw-home-store__configure";
                     configButton.textContent = this.i18n.homeConfig;
                     configButton.setAttribute("aria-label", `${this.i18n.homeConfig} · ${def.title || moduleId}`);
+                    configButton.title = configButton.getAttribute("aria-label") || "";
                     configButton.onclick = () => {
                         this.openHomeConfigForm(addedInstance, def.configSchema, () => {
                             renderStore();
@@ -4755,12 +4935,15 @@ const version = beginSearch(session);
                     removeButton.type = "button";
                     removeButton.className = "b3-button b3-button--text sw-home-store__remove";
                     removeButton.textContent = this.i18n.homeStoreRemove;
+                    removeButton.setAttribute("aria-label", `${this.i18n.homeStoreRemove} · ${def.title || moduleId}`);
                     removeButton.onclick = () => { this.removeHomeInstance(added.instanceId); renderStore(); onChanged(); };
                     tiles.appendChild(removeButton);
                 }
                 const previewButton = document.createElement("button");
                 previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
                 previewButton.textContent = this.i18n.homeStorePreview;
+                previewButton.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
+                previewButton.title = previewButton.getAttribute("aria-label") || "";
                 previewButton.onclick = () => this.openStoreWidgetPreview(moduleId, def, device);
                 tiles.appendChild(previewButton);
                 card.appendChild(tiles);
@@ -4797,6 +4980,9 @@ const version = beginSearch(session);
                 root.appendChild(groupHeading);
                 const groupGrid = document.createElement("div");
                 groupGrid.className = "sw-home-store__grid";
+                const groupId = `sw-home-store-group-${orderedGroups.indexOf(label)}`;
+                groupGrid.id = groupId;
+                groupToggle.setAttribute("aria-controls", groupId);
                 cards.forEach((card) => groupGrid.appendChild(card));
                 root.appendChild(groupGrid);
             });
@@ -5096,7 +5282,7 @@ const version = beginSearch(session);
                 if (!def) return;
                 // 型号迁移与解析：旧宽度档就近映射，再限定到该模块声明的型号集合
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
-                const sizeKey = this.migrateHomeLayoutSize(layout, supported);
+                const sizeKey = this.isMobile ? resolveMobileHomeSize(supported) : this.migrateHomeLayoutSize(layout, supported);
                 const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
                 if (layout.size !== sizeKey || layout.w !== preset.w || layout.h !== preset.h) {
                     layout.size = sizeKey;
@@ -5114,8 +5300,8 @@ const version = beginSearch(session);
                 cell.className = "sw-home__cell";
                 cell.dataset.size = sizeKey;
                 cell.dataset.moduleId = inst.moduleId;
-                cell.style.gridColumn = `span ${Math.min(12, preset.w)}`;
-                cell.style.gridRow = `span ${Math.max(1, preset.h)}`;
+                cell.style.gridColumn = this.isMobile ? "1 / -1" : `span ${Math.min(12, preset.w)}`;
+                cell.style.gridRow = this.isMobile ? "auto" : `span ${Math.max(1, preset.h)}`;
                 // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
                 if (homePalette === "auto") {
                     cell.style.setProperty("--sw-home-accent", SpeedSwitchPlugin.HOME_ACCENTS[[...inst.moduleId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % SpeedSwitchPlugin.HOME_ACCENTS.length]);
@@ -5428,7 +5614,7 @@ const version = beginSearch(session);
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow"]);
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-activitywatch-time"]);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });

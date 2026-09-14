@@ -48,6 +48,7 @@ module.exports = (env, argv) => {
                     // map SVG ships because the market renders it from README.
                     {from: "README*.md", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "docs/*.svg", to: "./dist/docs/[name][ext]"},
+                    {from: "docs/component-store-guide.md", to: "./dist/docs/component-store-guide.md", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     {from: "plugin.json", to: "./dist/", transform: (content) => content.toString().replace(/\r\n?/g, "\n")},
                     // Ship locale files minified: sources stay pretty for diffs,
                     // the archive only needs JSON.parse-able content. This buys

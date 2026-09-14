@@ -163,3 +163,37 @@ test("feed snapshot hides heat when configured", () => assert.equal(model.buildE
 test("feed snapshot preserves stale health", () => assert.equal(model.buildExternalFeedSnapshot({payload: dailyHotPayload, status: "stale"}, {}, "dailyhot").sourceHealth, "stale"));
 test("feed snapshot reflects upstream cache", () => assert.equal(model.buildExternalFeedSnapshot({payload: {...dailyHotPayload, fromCache: true}, status: "fresh"}, {}, "dailyhot").sourceHealth, "cached"));
 test("feed snapshot includes official attribution", () => assert.equal(model.buildExternalFeedSnapshot({payload: newsNowPayload}, {}, "newsnow").items.at(-1).href, "https://github.com/ourongxing/newsnow"));
+
+const activityPayload = [{
+    app_events: [
+        {duration: 5400, data: {app: "Code.exe"}},
+        {duration: 1800, data: {app: "Browser"}},
+        {duration: 1, data: {app: ""}},
+    ],
+    duration: 7200,
+}];
+test("ActivityWatch defaults to the standard loopback endpoint", () => assert.equal(model.normalizeActivityWatchConfig({}).endpoint, "http://127.0.0.1:5600"));
+test("ActivityWatch accepts localhost custom ports", () => assert.equal(model.normalizeActivityWatchEndpoint("http://localhost:5601/"), "http://localhost:5601"));
+test("ActivityWatch accepts IPv6 loopback", () => assert.equal(model.normalizeActivityWatchEndpoint("http://[::1]:5600"), "http://[::1]:5600"));
+test("ActivityWatch rejects remote hosts", () => assert.equal(model.normalizeActivityWatchEndpoint("https://example.com"), ""));
+test("ActivityWatch rejects credentials", () => assert.equal(model.normalizeActivityWatchEndpoint("http://u:p@localhost:5600"), ""));
+test("ActivityWatch rejects paths", () => assert.equal(model.normalizeActivityWatchEndpoint("http://localhost:5600/api"), ""));
+test("ActivityWatch rejects query and fragments", () => assert.equal(model.normalizeActivityWatchEndpoint("http://localhost:5600/?x=1#x"), ""));
+test("ActivityWatch clamps range and app limit", () => assert.deepEqual(model.normalizeActivityWatchConfig({hours: 999, limit: 1}).hours, 168));
+test("ActivityWatch request targets only query API", () => assert.equal(model.buildActivityWatchRequest({}).url, "http://127.0.0.1:5600/api/0/query/"));
+test("ActivityWatch request carries one bounded time period", () => assert.equal(model.buildActivityWatchRequest({hours: 24}, Date.parse("2026-09-14T12:00:00Z")).body.timeperiods[0], "2026-09-13T12:00:00.000Z/2026-09-14T12:00:00.000Z"));
+test("ActivityWatch query aggregates only by app", () => {
+    const query = model.buildActivityWatchRequest({}).body.query.join("\n");
+    assert.match(query, /merge_events_by_keys\(events, \["app"\]\)/);
+    assert.doesNotMatch(query, /title/);
+});
+test("ActivityWatch query limits server-side results", () => assert.match(model.buildActivityWatchRequest({limit: 4}).body.query.join("\n"), /limit_events\(app_events, 4\)/));
+test("ActivityWatch payload reads app durations", () => assert.equal(model.normalizeActivityWatchPayload(activityPayload).apps[0].seconds, 5400));
+test("ActivityWatch payload filters nameless apps", () => assert.equal(model.normalizeActivityWatchPayload(activityPayload).apps.length, 2));
+test("ActivityWatch payload rejects raw event arrays", () => assert.equal(model.normalizeActivityWatchPayload([{duration: 2, data: {app: "x"}}]), null));
+test("ActivityWatch duration formats minutes", () => assert.equal(model.formatActivityDuration(1500), "25m"));
+test("ActivityWatch duration formats hours", () => assert.equal(model.formatActivityDuration(7500), "2h 5m"));
+test("ActivityWatch snapshot exposes total foreground time", () => assert.equal(model.buildActivityWatchSnapshot({payload: activityPayload}, {}).stat.value, "2h"));
+test("ActivityWatch snapshot exposes ranked app rows", () => assert.equal(model.buildActivityWatchSnapshot({payload: activityPayload}, {}).items[1].rank, 2));
+test("ActivityWatch snapshot preserves stale health", () => assert.equal(model.buildActivityWatchSnapshot({payload: activityPayload, status: "stale"}, {}).sourceHealth, "stale"));
+test("ActivityWatch snapshot never exposes window titles", () => assert.doesNotMatch(JSON.stringify(model.buildActivityWatchSnapshot({payload: activityPayload}, {})), /title.*window/i));

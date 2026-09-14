@@ -3,6 +3,7 @@
 const HOME_SCHEMA_VERSION = 1;
 const DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const DEFAULT_LAYOUT = Object.freeze({x: 0, y: 0, w: 1, h: 1, collapsed: false});
+const MOBILE_HOME_SIZE = "medium";
 const AVAILABILITY_LEVELS = Object.freeze(["ready", "conditional", "external"]);
 const CONDITIONAL_MODULES = new Set([
     "today-tasks", "bookmarks", "journal-monthly", "flashcard-due", "quick-capture",
@@ -56,6 +57,11 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
+    {moduleId: "external-activitywatch-time", title: "使用时长", icon: "iconClock", category: "siyuan", availability: "external", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "endpoint", label: "ActivityWatch 本机地址", type: "text", defaults: "http://127.0.0.1:5600"},
+        {key: "hours", label: "统计范围（小时）", type: "number", min: 1, max: 168, defaults: 24},
+        {key: "limit", label: "应用上限", type: "number", min: 3, max: 10, defaults: 6},
     ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
@@ -151,6 +157,16 @@ function normalizeLayout(value) {
     };
     const size = ["small", "medium", "wide", "large"].includes(source.size) ? source.size : "";
     return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
+}
+
+function resolveMobileHomeSize(value) {
+    const sizes = Array.isArray(value) ? value : [];
+    return sizes.includes(MOBILE_HOME_SIZE) ? MOBILE_HOME_SIZE : (sizes[0] || MOBILE_HOME_SIZE);
+}
+
+function normalizeMobileLayout(value) {
+    const normalized = normalizeLayout(value);
+    return {...normalized, x: 0, w: 12};
 }
 
 
@@ -299,7 +315,8 @@ function normalizeHomeState(value) {
     const layouts = {};
     DEVICES.forEach((device) => {
         const entries = source.layouts?.[device];
-        layouts[device] = Array.isArray(entries) ? entries.slice(0, 64).map((entry) => ({instanceId: text(entry?.instanceId, 64), ...normalizeLayout(entry)})).filter((entry) => entry.instanceId) : [];
+        const normalizeEntry = device === "mobile" ? normalizeMobileLayout : normalizeLayout;
+        layouts[device] = Array.isArray(entries) ? entries.slice(0, 64).map((entry) => ({instanceId: text(entry?.instanceId, 64), ...normalizeEntry(entry)})).filter((entry) => entry.instanceId) : [];
     });
     const activeIds = new Set(instances.map((item) => item.instanceId));
     DEVICES.forEach((device) => {
@@ -342,4 +359,4 @@ function getModuleDefinition(definitions, moduleId) {
     return registerModules(definitions).find((item) => item.moduleId === text(moduleId, 64)) || null;
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, AVAILABILITY_LEVELS, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};
+module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_LAYOUT, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts};

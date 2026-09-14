@@ -7,7 +7,11 @@ const {listZipEntryStats} = require(path.join(__dirname, 'lib', 'zip.cjs'));
 const root = path.resolve(__dirname, '..', '..');
 const baselinePath = path.join(__dirname, 'package-resource-baseline.json');
 const MAX_ARCHIVE_ENTRIES = 32;
-const MAX_COMPRESSED_ENTRY_BYTES = 128 * 1024;
+// v0.20 adds the bounded ActivityWatch query adapter and three orthogonal
+// connectivity filters. Keep a hard per-entry ceiling with a small reviewed
+// allowance above the previous 128 KiB budget; package.zip still has its
+// independent 300 KiB release ceiling.
+const MAX_COMPRESSED_ENTRY_BYTES = 136 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 

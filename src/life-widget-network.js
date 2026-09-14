@@ -6,6 +6,7 @@ const LOCATION_TTL_MS = 24 * 60 * 60 * 1000;
 const HOLIDAY_TTL_MS = 24 * 60 * 60 * 1000;
 const BANGUMI_TTL_MS = 30 * 60 * 1000;
 const FEED_TTL_MS = 30 * 60 * 1000;
+const ACTIVITYWATCH_TTL_MS = 5 * 60 * 1000;
 const responseCache = new Map();
 
 function allowedLifeWidgetUrl(url) {
@@ -35,6 +36,18 @@ function allowedConfiguredFeedUrl(value) {
         if (url.pathname.replace(/\/$/, "") !== "/api/s") return false;
         const entries = [...url.searchParams.entries()];
         return entries.length === 1 && entries[0][0] === "id" && /^[a-z0-9-]{2,48}$/.test(entries[0][1]);
+    } catch (_) {
+        return false;
+    }
+}
+
+function allowedActivityWatchUrl(value) {
+    if (typeof value !== "string" || value.length > 320) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        return local && ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
+            && !url.search && !url.hash && url.pathname === "/api/0/query/";
     } catch (_) {
         return false;
     }
@@ -138,6 +151,63 @@ async function loadConfiguredFeed(url, options = {}) {
     }
 }
 
+async function fetchActivityWatchQuery(url, body, options = {}) {
+    if (!allowedActivityWatchUrl(url) || !body || typeof body !== "object") throw new Error("blocked_endpoint");
+    const serialized = JSON.stringify(body);
+    if (serialized.length > 8192) throw new Error("request_too_large");
+    const fetchImpl = typeof options.fetchImpl === "function" ? options.fetchImpl : globalThis.fetch;
+    if (typeof fetchImpl !== "function") throw new Error("unsupported");
+    const externalSignal = options.signal && typeof options.signal === "object" ? options.signal : null;
+    if (externalSignal?.aborted) throw new Error("aborted");
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let timedOut = false;
+    const abort = () => controller?.abort();
+    externalSignal?.addEventListener?.("abort", abort, {once: true});
+    const timeoutMs = Math.min(10000, Math.max(500, Math.trunc(Number(options.timeoutMs)) || 5000));
+    let rejectTimeout = null;
+    const timeout = new Promise((_, reject) => { rejectTimeout = reject; });
+    const timer = setTimeout(() => { timedOut = true; controller?.abort(); rejectTimeout?.(new Error("timeout")); }, timeoutMs);
+    try {
+        const request = fetchImpl(url, {
+            method: "POST", body: serialized, redirect: "error",
+            headers: {Accept: "application/json", "Content-Type": "application/json"},
+            ...(controller ? {signal: controller.signal} : {}),
+        });
+        const response = await Promise.race([request, timeout]);
+        if (!response?.ok) throw new Error("http_error");
+        const declared = Number(response.headers?.get?.("content-length"));
+        if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) throw new Error("response_too_large");
+        const text = await response.text();
+        if (typeof text !== "string" || text.length > MAX_RESPONSE_BYTES) throw new Error("response_too_large");
+        try { return JSON.parse(text); } catch (_) { throw new Error("invalid_json"); }
+    } catch (error) {
+        if (timedOut) throw new Error("timeout");
+        if (externalSignal?.aborted) throw new Error("aborted");
+        throw error instanceof Error ? error : new Error("failed");
+    } finally {
+        clearTimeout(timer);
+        externalSignal?.removeEventListener?.("abort", abort);
+    }
+}
+
+async function loadActivityWatchSummary(request, options = {}) {
+    if (!request || !allowedActivityWatchUrl(request.url)) throw new Error("blocked_endpoint");
+    const key = `activitywatch:${String(request.cacheKey || request.url).slice(0, 512)}`;
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < ACTIVITYWATCH_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchActivityWatchQuery(request.url, request.body, options);
+        cacheWrite(key, payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
+
 function clearLifeWidgetCaches() {
     responseCache.clear();
 }
@@ -153,14 +223,18 @@ module.exports = {
     HOLIDAY_TTL_MS,
     BANGUMI_TTL_MS,
     FEED_TTL_MS,
+    ACTIVITYWATCH_TTL_MS,
     allowedLifeWidgetUrl,
     allowedConfiguredFeedUrl,
+    allowedActivityWatchUrl,
     fetchBoundedLifeJson,
     loadWeatherLocation,
     loadWeatherForecast,
     loadHolidayYear,
     loadBangumiCalendar,
     loadConfiguredFeed,
+    fetchActivityWatchQuery,
+    loadActivityWatchSummary,
     clearLifeWidgetCaches,
     lifeWidgetCacheSize,
 };

@@ -5,6 +5,7 @@ const TEMPERATURE_UNITS = Object.freeze(["°C", "°F"]);
 const BANGUMI_DAY_RANGES = Object.freeze(["今天", "明天", "本周"]);
 const EXTERNAL_FEED_PROVIDERS = Object.freeze(["dailyhot", "newsnow"]);
 const DAILYHOT_ROUTES = Object.freeze(["weibo", "zhihu", "bilibili", "baidu", "douyin", "douban-movie", "ithome", "36kr", "sspai", "v2ex"]);
+const ACTIVITYWATCH_DEFAULT_ENDPOINT = "http://127.0.0.1:5600";
 
 function boundedText(value, max = 128) {
     return typeof value === "string"
@@ -403,12 +404,106 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
     };
 }
 
+function normalizeActivityWatchEndpoint(value) {
+    const raw = boundedText(value, 256) || ACTIVITYWATCH_DEFAULT_ENDPOINT;
+    try {
+        const url = new URL(raw);
+        if (!["http:", "https:"].includes(url.protocol) || !isLocalFeedHost(url.hostname)
+            || url.username || url.password || url.search || url.hash) return "";
+        if (url.pathname !== "/" && url.pathname !== "") return "";
+        const port = url.port ? Number(url.port) : (url.protocol === "https:" ? 443 : 80);
+        if (!Number.isInteger(port) || port < 1 || port > 65535) return "";
+        return `${url.protocol}//${url.host}`;
+    } catch (_) {
+        return "";
+    }
+}
+
+function normalizeActivityWatchConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const requestedHours = Math.trunc(Number(source.hours));
+    const requestedLimit = Math.trunc(Number(source.limit));
+    return {
+        endpoint: normalizeActivityWatchEndpoint(source.endpoint),
+        hours: Number.isFinite(requestedHours) ? Math.min(168, Math.max(1, requestedHours)) : 24,
+        limit: Number.isFinite(requestedLimit) ? Math.min(10, Math.max(3, requestedLimit)) : 6,
+    };
+}
+
+function buildActivityWatchRequest(config, now = Date.now()) {
+    const normalized = normalizeActivityWatchConfig(config);
+    const end = Number.isFinite(Number(now)) ? Number(now) : Date.now();
+    if (!normalized.endpoint) return null;
+    const start = end - normalized.hours * 60 * 60 * 1000;
+    const query = [
+        'events = flood(query_bucket(find_bucket("aw-watcher-window_")));',
+        'duration = sum_durations(events);',
+        'app_events = sort_by_duration(merge_events_by_keys(events, ["app"]));',
+        `app_events = limit_events(app_events, ${normalized.limit});`,
+        'RETURN = {"app_events": app_events, "duration": duration};',
+    ];
+    return {
+        url: `${normalized.endpoint}/api/0/query/`,
+        body: {timeperiods: [`${new Date(start).toISOString()}/${new Date(end).toISOString()}`], query},
+        config: normalized,
+        cacheKey: `${normalized.endpoint}:${normalized.hours}:${normalized.limit}`,
+    };
+}
+
+function normalizeActivityWatchPayload(payload, limit = 6) {
+    const result = Array.isArray(payload) ? payload[0] : null;
+    if (!result || typeof result !== "object" || !Array.isArray(result.app_events)) return null;
+    const requested = Math.min(10, Math.max(3, Math.trunc(Number(limit)) || 6));
+    const seen = new Set();
+    const apps = result.app_events.slice(0, 32).reduce((items, event) => {
+        const app = boundedText(event?.data?.app, 80);
+        const seconds = finiteNumber(event?.duration, 0, 7 * 24 * 60 * 60, 0);
+        const key = app.toLocaleLowerCase();
+        if (!app || seconds <= 0 || seen.has(key) || items.length >= requested) return items;
+        seen.add(key);
+        items.push({app, seconds});
+        return items;
+    }, []);
+    const duration = finiteNumber(result.duration, 0, 7 * 24 * 60 * 60, apps.reduce((sum, item) => sum + item.seconds, 0));
+    return {apps, duration};
+}
+
+function formatActivityDuration(seconds) {
+    const minutes = Math.max(0, Math.round(finiteNumber(seconds, 0, 7 * 24 * 60 * 60) / 60));
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
+function buildActivityWatchSnapshot(envelope, config, labels = {}) {
+    const normalized = normalizeActivityWatchConfig(config);
+    const activity = normalizeActivityWatchPayload(envelope?.payload, normalized.limit);
+    if (!activity) return null;
+    const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
+    return {
+        title: (boundedText(labels.range, 48) || "近 {hours} 小时").replace("{hours}", String(normalized.hours)),
+        stat: {value: formatActivityDuration(activity.duration), label: boundedText(labels.total, 32) || "前台使用"},
+        items: activity.apps.map((item, index) => ({
+            label: item.app,
+            value: "",
+            secondary: formatActivityDuration(item.seconds),
+            count: Math.max(1, Math.round(item.seconds / 60)),
+            rank: index + 1,
+        })),
+        emptyHint: activity.apps.length ? "" : (boundedText(labels.empty, 96) || "当前范围暂无使用记录"),
+        updatedAt: Number(envelope?.fetchedAt) || Date.now(),
+        sourceHealth: health,
+    };
+}
+
 module.exports = {
     WEATHER_CONDITIONS,
     TEMPERATURE_UNITS,
     BANGUMI_DAY_RANGES,
     EXTERNAL_FEED_PROVIDERS,
     DAILYHOT_ROUTES,
+    ACTIVITYWATCH_DEFAULT_ENDPOINT,
     normalizeWeatherConfig,
     normalizeWeatherLocale,
     buildWeatherGeocodingUrl,
@@ -433,4 +528,10 @@ module.exports = {
     normalizeFeedTimestamp,
     normalizeExternalFeedPayload,
     buildExternalFeedSnapshot,
+    normalizeActivityWatchEndpoint,
+    normalizeActivityWatchConfig,
+    buildActivityWatchRequest,
+    normalizeActivityWatchPayload,
+    formatActivityDuration,
+    buildActivityWatchSnapshot,
 };
