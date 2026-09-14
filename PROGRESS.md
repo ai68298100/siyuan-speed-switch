@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第三十四轮）：完成 20 项开发（T-975~T-994），新增 `createStorageCapacityReportEventCoordinator`，统一事件恢复/提交、单调游标、stale_cursor 防护、快照与销毁态隔离。终验：847/847 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 402098 bytes、`package.zip` 263068 bytes（300 KiB 余量 42588 bytes）。
+
 补充（2026-09-14 第三十三轮）：完成 20 项开发（T-955~T-974），新增 `recoverStorageCapacityReportEventQueue`，检测事件队列溢出并在需要时返回归一化 snapshot_required/snapshot 结果；队列不可用或销毁返回稳定失败 reason。终验：844/844 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 401584 bytes、`package.zip` 262874 bytes（300 KiB 余量 42838 bytes）。
 
 补充（2026-09-14 第三十二轮）：完成 20 项开发（T-935~T-954），新增 `replayStorageCapacityReportEvents` 安全回放门面，支持 bounded limit、溢出/事件模式、可选确认及取消/超时/销毁保护，失败路径不消费队列。终验：841/841 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 401188 bytes、`package.zip` 262823 bytes（300 KiB 余量 42889 bytes）。raw bundle 自律线按 D-262 校准至 394 KiB。

@@ -1,5 +1,7 @@
 # 决策
 
+- D-264（2026-09-14）：报告事件协调器维护单调 lastCursor；恢复结果游标不得回退，提交仅接受不小于当前游标的整数，dispose 后统一返回 coordinator_disposed，不再触碰队列。
+
 - D-263（2026-09-14）：事件队列恢复在未溢出时返回最多 8 条 events；溢出且缺失快照返回 snapshot_required，提供快照则返回归一化 snapshot；不可用/销毁队列统一失败，不隐式消费事件。
 
 - D-262（2026-09-14）：报告事件回放门面使 raw bundle 达 401,188 bytes，较 393 KiB 自律线超出 820 bytes；校准至 394 KiB，`package.zip` 262,823 bytes，300 KiB 硬上限余量 42,889 bytes。
