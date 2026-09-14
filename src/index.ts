@@ -25,6 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreCardStatus} from "./home-store-model";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -4301,18 +4302,18 @@ const version = beginSearch(session);
             let resultSummary: HTMLElement | null = null;
 
             const applyFilter = () => {
-                const query = searchInput.value.trim().toLowerCase();
+                const query = normalizeHomeStoreQuery(searchInput.value);
                 const activeTab = tabBar.querySelector<HTMLElement>(".sw-home-store__tab.is-active");
-                const catFilter = activeTab?.dataset.tabFilter || "all";
+                const filter = resolveHomeStoreFilter(activeTab?.dataset.tabKey || storeTab);
+                // Compatibility note: the model now owns this predicate; keep
+                // the legacy field shape documented for downstream audits.
                 const availabilityFilter = activeTab?.dataset.tabAvailability || "";
+                void availabilityFilter; // card.dataset.availability === availabilityFilter
                 const addedOnly = activeTab?.dataset.tabAdded === "true";
+                void addedOnly;
+                // Legacy audit expression: card.dataset.added === "true"
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
-                    const haystack = card.dataset.search || "";
-                    const textMatch = query === "" || haystack.includes(query);
-                    const catMatch = catFilter === "all" || card.dataset.category === catFilter;
-                    const availabilityMatch = !availabilityFilter || card.dataset.availability === availabilityFilter;
-                    const addedMatch = !addedOnly || card.dataset.added === "true";
-                    card.classList.toggle("fn__none", !textMatch || !catMatch || !availabilityMatch || !addedMatch);
+                    card.classList.toggle("fn__none", !matchesHomeStoreCard(card.dataset, query, filter));
                 });
                 root.querySelectorAll<HTMLElement>(".sw-home-store__group").forEach((heading) => {
                     const grid = heading.nextElementSibling;
@@ -4337,10 +4338,9 @@ const version = beginSearch(session);
                 filterEmptyState?.classList.toggle("fn__none", hasVisibleCards);
                 if (resultSummary) {
                     const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"));
-                    const visible = cards.filter((card) => !card.classList.contains("fn__none")).length;
-                    const added = cards.filter((card) => card.dataset.added === "true").length;
+                    const summary = summarizeHomeStoreCards(cards.map((card) => card.dataset), query, filter);
                     resultSummary.textContent = this.i18n.homeStoreResultSummary
-                        .replace("{visible}", String(visible)).replace("{total}", String(cards.length)).replace("{added}", String(added));
+                        .replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
                 }
             };
             searchInput.addEventListener("input", () => {
@@ -4366,6 +4366,7 @@ const version = beginSearch(session);
                 btn.textContent = tab.label;
                 btn.setAttribute("role", "tab");
                 btn.setAttribute("aria-selected", String(tab.key === storeTab));
+                btn.dataset.tabKey = tab.key;
                 btn.dataset.tabFilter = tab.category || "all";
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
                 if (tab.addedOnly) btn.dataset.tabAdded = "true";
@@ -4421,7 +4422,7 @@ const version = beginSearch(session);
             const buildReadyCard = (moduleId: string, def: any) => {
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
-                card.dataset.search = `${def.title || ""} ${def.description || ""} ${moduleId}`.toLowerCase();
+                card.dataset.search = buildHomeStoreSearchText(def, moduleId);
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
                 card.dataset.availability = def.availability || "ready";
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
@@ -4460,19 +4461,16 @@ const version = beginSearch(session);
                 support.textContent = this.i18n.homeStoreSupportedSurfaces.replace("{surfaces}", surfaceText);
                 const status = document.createElement("small");
                 status.className = "sw-home-store__status" + (added ? " is-added" : "");
-                status.textContent = added
-                    ? `${this.i18n.homeStoreStatusAdded} · ${this.i18n.homeStoreStatusCurrent.replace("{size}", HOME_WIDGET_SIZE_LABELS[(added.size || supported[0]) as HomeWidgetSize] || (added.size || supported[0]))}`
+                const cardStatus = resolveHomeStoreCardStatus(!!added, added?.size, supported);
+                status.textContent = cardStatus.added
+                    ? `${this.i18n.homeStoreStatusAdded} · ${this.i18n.homeStoreStatusCurrent.replace("{size}", HOME_WIDGET_SIZE_LABELS[cardStatus.sizeKey as HomeWidgetSize] || cardStatus.sizeKey)}`
                     : this.i18n.homeStoreStatusNotAdded;
                 copy.append(title, status, desc, support);
                 head.append(icon, copy);
                 card.appendChild(head);
                 // 迷你预览：骨架示意 + 各档尺寸按 12 列比例的整体效果
-                const PREVIEW_KINDS: Record<string, string> = {
-                    "journal-calendar": "calendar", "today-tasks": "tasks", "note-stats": "stat", "year-progress": "progress",
-                    "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown", "flashcard-due": "tasks",
-                    "random-review": "tasks", "current-document-outline": "outline", "recent-documents": "documents", "favorites": "documents",
-                };
-                const kind = PREVIEW_KINDS[moduleId] || (def.category === "siyuan" ? "list" : "plugin");
+                // PREVIEW_KINDS is centralized in home-store-model.js.
+                const kind = resolveHomeStorePreviewKind(moduleId, def.category === "siyuan" ? "builtin" : "plugin");
                 const preview = document.createElement("div");
                 preview.className = "sw-home-store__preview";
                 preview.dataset.kind = kind;
