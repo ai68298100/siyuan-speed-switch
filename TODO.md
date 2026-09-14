@@ -6222,3 +6222,53 @@
 - [x] T-4579 批次成功与队列统计
 - [x] T-4580 回执固定结构与原因
 - [x] T-4581 回执合并、调度与清理
+- [x] T-4582 模块 ID 稳定性
+- [x] T-4583 标题非空
+- [x] T-4584 provider 非空
+- [x] T-4585 source URL 非空
+- [x] T-4586 source URL HTTPS
+- [x] T-4587 license 非空
+- [x] T-4588 privacy 非空
+- [x] T-4589 description 有界
+- [x] T-4590 平台非空
+- [x] T-4591 尺寸非空
+- [x] T-4592 分类声明一致
+- [x] T-4593 availability 声明一致
+- [x] T-4594 auth 声明一致
+- [x] T-4595 integration 声明一致
+- [x] T-4596 平台声明一致
+- [x] T-4597 尺寸唯一
+- [x] T-4598 平台唯一
+- [x] T-4599 external 可添加
+- [x] T-4600 builtin 可添加
+- [x] T-4601 conditional 需设置
+- [x] T-4602 reference 不可添加
+- [x] T-4603 认证组件有设置指引
+- [x] T-4604 无认证组件元数据
+- [x] T-4605 HTTP 网络提示
+- [x] T-4606 reference 限制提示
+- [x] T-4607 local-service 提示
+- [x] T-4608 TMDB conditional
+- [x] T-4609 TMDB preferences-only
+- [x] T-4610 DailyHot endpoint-only
+- [x] T-4611 NewsNow endpoint-only
+- [x] T-4612 ActivityWatch local-only
+- [x] T-4613 active-window desktop-only
+- [x] T-4614 local clock direct
+- [x] T-4615 weather location-only
+- [x] T-4616 holiday HTTP
+- [x] T-4617 Bangumi HTTP
+- [x] T-4618 可用性汇总分区
+- [x] T-4619 分类分组总数
+- [x] T-4620 time 分组
+- [x] T-4621 weather 分组
+- [x] T-4622 trending 分组
+- [x] T-4623 holiday 分组
+- [x] T-4624 media 分组
+- [x] T-4625 activity 分组
+- [x] T-4626 全目录标题排序
+- [x] T-4627 availability 首项
+- [x] T-4628 availability 末项
+- [x] T-4629 指南链接唯一
+- [x] T-4630 状态列表数量与 ID
+- [x] T-4631 全目录快照健康默认
