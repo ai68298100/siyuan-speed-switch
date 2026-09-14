@@ -133,7 +133,7 @@
   "homeDescDocSets": "Saved workspace snapshots with bounded restore",
   "homeDescFixed": "Pin a frequently used document",
   "homeTodayTasks": "Today's tasks",
-  "homeDescTasks": "Open tasks in current documents; all-workspace scan is configurable",
+  "homeDescTasks": "Tasks in today’s journal; optionally scan recently updated tasks across the workspace",
   "homeTags": "Tags",
   "homeBookmarks": "Bookmarks",
   "homeJournalMonthly": "Journal this month",

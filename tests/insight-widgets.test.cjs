@@ -134,6 +134,20 @@ test("journal calendar supports notebook scope and bidirectional month navigatio
     assert.match(source, /Math\.min\(24, Math\.max\(-24, current \+ \(direction < 0 \? -1 : 1\)\)\)/);
 });
 
+test("today tasks default to today's journal and expose an explicit empty hint", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const tasks = source.slice(
+        source.indexOf('register("today-tasks"'),
+        source.indexOf('register("tags"'),
+    );
+    assert.match(tasks, /d\.content=\x27\$\{todayTitle\}\x27/);
+    assert.match(tasks, /blocks b JOIN blocks d ON d\.id=b\.root_id AND d\.type=\x27d\x27/);
+    assert.match(tasks, /emptyHint: !scanAll && total === 0/);
+    assert.match(tasks, /stateCondition\.replace\(\/\\bmarkdown\\b\/g, "b\.markdown"\)/);
+});
+
 test("insight adapters share validated notebook scope without changing default queries", () => {
     const fs = require("node:fs");
     const path = require("node:path");

@@ -3365,7 +3365,9 @@ const version = beginSearch(session);
             const title = typeof config.title === "string" && config.title ? config.title : docId;
             return {items: docId && BLOCK_ID_RE.test(docId) ? [{label: title, value: docId}] : []};
         });
-        // 今日待办：SQL 扫描当前打开文档中的未完成任务块，点击跳块
+        // 今日待办：默认读取“今日日记”文档中的任务块；开启全库扫描后才扩大到
+        // 最近窗口内的全库任务。旧实现默认扫描当前打开文档，既不代表“今天”，
+        // 也会让日记里的任务在未打开时完全消失。
         register("today-tasks", this.i18n.homeTodayTasks, "iconCheck", this.i18n.homeDescTasks, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
             // 协议 v2 configSchema：limit（条数）、allDocuments（"是"=扫描全库）、notebook（按笔记本 ID 过滤，优先于 allDocuments）
             const limit = Math.min(12, Math.max(1, Math.trunc(Number(config.limit) || 8)));
@@ -3379,29 +3381,37 @@ const version = beginSearch(session);
             const stateCondition = showCompleted
                 ? `(markdown LIKE '%[ ] %' OR markdown LIKE '%[x] %' OR markdown LIKE '%[X] %')`
                 : `markdown LIKE '%[ ] %'`;
-            let scope = "";
-            if (notebookFilter) {
-                scope = ` AND box='${notebookFilter}' AND updated >= '${since}'`;
-            } else if (!scanAll) {
-                const openIds = sanitizeDocIds(this.currentDocumentSetEntries().map((entry) => entry.rootId));
-                scope = ` AND root_id IN ('${openIds.join("','")}')`;
-                if (openIds.length === 0) return {items: []};
-            }
+            const today = new Date();
+            const pad = (value: number) => String(value).padStart(2, "0");
+            const todayTitle = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+            const escapedNotebook = notebookFilter.replace(/'/g, "''");
+            const notebookScope = notebookFilter ? ` AND d.box='${escapedNotebook}'` : "";
+            // 默认范围是今日日记（文档标题 YYYY-MM-DD），而不是当前打开页签。
+            // 全库模式保留旧的时间窗语义，避免一次性扫描超大工作空间。
+            const scope = scanAll
+                ? `${notebookFilter ? ` AND b.box='${escapedNotebook}'` : ""} AND b.updated >= '${since}'`
+                : ` AND d.content='${todayTitle}'${notebookScope}`;
+            const fromClause = scanAll
+                ? "blocks b"
+                : "blocks b JOIN blocks d ON d.id=b.root_id AND d.type='d'";
             const [json, countJson] = await Promise.all([
                 this.fetchKernelJson("/api/query/sql", {
-                    stmt: `SELECT id, content, markdown FROM blocks WHERE type='p' AND ${stateCondition}${scope} ORDER BY updated DESC LIMIT ${limit}`,
+                    stmt: `SELECT b.id, b.content, b.markdown FROM ${fromClause} WHERE b.type='p' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope} ORDER BY b.updated DESC LIMIT ${limit}`,
                 }),
                 this.fetchKernelJson("/api/query/sql", {
-                    stmt: `SELECT COUNT(*) AS total FROM blocks WHERE type='p' AND ${stateCondition}${scope}`,
+                    stmt: `SELECT COUNT(*) AS total FROM ${fromClause} WHERE b.type='p' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope}`,
                 }),
             ]);
             const rows = (json?.data || []) as Array<{id: string; content: string; markdown?: string}>;
             const total = Number((countJson?.data || [])[0]?.total) || 0;
-            return {stat: {value: String(total), label: this.i18n.homeStatTasks}, items: rows.map((row) => ({
+            return {
+                emptyHint: !scanAll && total === 0 ? `今天（${todayTitle}）还没有可显示的待办` : "",
+                stat: {value: String(total), label: this.i18n.homeStatTasks}, items: rows.map((row) => ({
                 label: row.content,
                 value: row.id,
                 done: /\[[xX]\]/.test(String(row.markdown || "")),
-            })).filter((item) => !!item.label && !!item.value)};
+                })).filter((item) => !!item.label && !!item.value),
+            };
         });
         // 标签：getTag，点击打开思源标签面板（data 在 3.8.x 内核直接是数组，兼容旧的 data.tags 包装）
         register("tags", this.i18n.homeTags, "iconTags", this.i18n.homeDescTags, [], async () => {

@@ -133,7 +133,7 @@
   "homeDescDocSets": "保存的工作区快照，可预览恢复",
   "homeDescFixed": "固定展示某个常用文档",
   "homeTodayTasks": "今日待办",
-  "homeDescTasks": "当前打开文档中的未完成任务；可配置全库扫描",
+  "homeDescTasks": "今日日记中的待办任务；可切换为近期开启的全库扫描",
   "homeTags": "标签",
   "homeBookmarks": "书签",
   "homeJournalMonthly": "本月日记",

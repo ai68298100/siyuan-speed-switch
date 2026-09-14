@@ -29,13 +29,23 @@ function createHomeRuntime(definitions = []) {
         // becomes part of persisted or Agent-facing metadata.
         // When the adapter omits `sizes`, inherit the builtin default so the
         // registration override does not collapse the size menu to "medium".
-        const inherited = Array.isArray(raw?.sizes) && raw.sizes.length > 0 ? {} : (() => {
-            const base = moduleDefinitions.find((item) => item && item.moduleId === moduleId);
-            return base && Array.isArray(base.sizes) && base.sizes.length > 0 ? {sizes: base.sizes} : {};
-        })();
+        // Built-in adapters are executable overrides of a catalog definition.
+        // Preserve the catalog's presentation/protocol metadata when the
+        // adapter only supplies runtime fields (read/title/icon/etc.).  The
+        // old code inherited sizes alone, which silently dropped viewType
+        // (calendar/weekday rendering) and configSchema from every built-in
+        // adapter registration.
+        const base = moduleDefinitions.find((item) => item && item.moduleId === moduleId);
+        const inherited = base ? {
+            viewType: base.viewType,
+            protocolVersion: base.protocolVersion,
+            configSchema: base.configSchema,
+            refreshOn: base.refreshOn,
+            sizes: base.sizes,
+        } : {};
         const definition = normalizeModuleDefinition({
-            ...raw,
             ...inherited,
+            ...raw,
             moduleId,
             title: raw?.title || moduleId,
             supportedDevices: raw?.supportedDevices || candidate.supportedDevices,

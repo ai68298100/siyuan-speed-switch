@@ -1,4 +1,5 @@
 # 进度
+补充（2026-09-14 组件面板专项）：修复内置 adapter 覆盖目录定义时丢失 `viewType/configSchema` 的问题，日历月视图恢复真实 7 列网格；`today-tasks` 默认改为读取今日日记 `YYYY-MM-DD` 文档内任务，并对无任务提供明确空态。新增运行时元数据与任务 SQL 回归测试。
 补充（2026-09-14 发布完成）：`v0.16.41` 经 D-278 分层性能门禁后最终 CI/Release 全绿；远端 `main`=`3cecf19`，Release 资产 `package.zip` 264020 bytes，地址：https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.16.41。
 补充（2026-09-14 第四十三轮）：完成 31 项开发（T-1155~T-1185），扩展事件队列利用率摘要差异、变化事件、历史聚合、序列化/解析与一致性校验；新增 27 项专项回归。TypeScript 通过；完整测试 888 项，构建产物 `dist/index.js` 405674 bytes、`package.zip` 264035 bytes，已同步发布矩阵。
 补充（2026-09-14 第四十二轮）：完成 20 项开发（T-1135~T-1154），新增事件队列利用率摘要，输出 size/capacity/utilization/risk/disposed 固定字段。

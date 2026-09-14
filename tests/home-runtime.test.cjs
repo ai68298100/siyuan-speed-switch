@@ -14,33 +14,16 @@ test("home runtime registers a device-scoped read-only module and reads bounded 
 });
 
 test("adapter registration inherits builtin sizes when omitted", () => {
-    const runtime = createHomeRuntime([
-        {moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: ["desktop"], readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]},
-    ]);
+    const runtime = createHomeRuntime([{moduleId: "recent-documents", title: "近期文档", icon: "iconHistory", category: "siyuan", supportedDevices: ["desktop"], readOnly: true, sizes: ["small", "medium", "wide", "large", "full"]}]);
     const registration = runtime.registerAdapter({moduleId: "recent-documents", title: "近期文档", supportedDevices: ["desktop"], read: () => ({items: []})});
     assert.equal(registration.registered, true);
-    const def = runtime.listModules("desktop").find((item) => item.moduleId === "recent-documents");
-    assert.deepEqual(def.sizes, ["small", "medium", "wide", "large", "full"]);
+    assert.deepEqual(runtime.listModules("desktop").find((item) => item.moduleId === "recent-documents").sizes, ["small", "medium", "wide", "large", "full"]);
     runtime.dispose();
 });
+
 test("home runtime preserves bounded protocol metadata for discovery", () => {
     const runtime = createHomeRuntime();
-    const registration = runtime.registerAdapter({
-        moduleId: "meta-module",
-        title: "Meta module",
-        description: "A discoverable module",
-        icon: "iconInfo",
-        category: "plugin",
-        supportedDevices: ["desktop"],
-        sizes: ["small", "wide", "invalid"],
-        protocolVersion: 2,
-        author: "Example",
-        homepage: "https://example.com/widget",
-        clickCommand: "example::open",
-        configSchema: [{key: "limit", label: "Limit", type: "number", min: 1, max: 8, defaults: 4}],
-        refreshOn: ["loaded-protyle", "unsafe-event"],
-        read: () => ({}),
-    });
+    const registration = runtime.registerAdapter({moduleId: "meta-module", title: "Meta module", description: "A discoverable module", icon: "iconInfo", category: "plugin", supportedDevices: ["desktop"], sizes: ["small", "wide", "invalid"], protocolVersion: 2, author: "Example", homepage: "https://example.com/widget", clickCommand: "example::open", configSchema: [{key: "limit", label: "Limit", type: "number", min: 1, max: 8, defaults: 4}], refreshOn: ["loaded-protyle", "unsafe-event"], read: () => ({})});
     const definition = runtime.listModules("desktop").find((item) => item.moduleId === "meta-module");
     assert.equal(registration.registered, true);
     assert.equal(definition.description, "A discoverable module");
@@ -74,13 +57,7 @@ test("home runtime unregister removes dynamic modules from device listings", () 
 
 test("home runtime forces third-party module definitions to remain read-only", () => {
     const runtime = createHomeRuntime();
-    const registration = runtime.registerAdapter({
-        moduleId: "writable-claim",
-        title: "Writable claim",
-        supportedDevices: ["desktop"],
-        readOnly: false,
-        read: () => ({}),
-    });
+    const registration = runtime.registerAdapter({moduleId: "writable-claim", title: "Writable claim", supportedDevices: ["desktop"], readOnly: false, read: () => ({})});
     assert.equal(registration.registered, true);
     assert.equal(runtime.listModules("desktop").find((item) => item.moduleId === "writable-claim").readOnly, true);
     runtime.dispose();
@@ -101,5 +78,16 @@ test("home runtime rejects adapter ids that would normalize to another id", () =
     assert.equal(spaced.registered, false);
     assert.equal(scripted.registered, false);
     assert.equal(runtime.listModules("desktop").some((item) => item.moduleId === "badid"), false);
+    runtime.dispose();
+});
+
+test("adapter registration preserves catalog presentation and config metadata", () => {
+    const runtime = createHomeRuntime();
+    const result = runtime.registerAdapter({moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", supportedDevices: ["desktop"], read: () => ({items: []})});
+    assert.equal(result.registered, true);
+    const definition = runtime.listModules("desktop").find((item) => item.moduleId === "journal-calendar");
+    assert.equal(definition.viewType, "calendar");
+    assert.deepEqual(definition.configSchema.map((field) => field.key), ["monthOffset", "showLunar", "notebook"]);
+    assert.deepEqual(definition.sizes, ["medium", "wide"]);
     runtime.dispose();
 });
