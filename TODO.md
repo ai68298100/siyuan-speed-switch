@@ -757,7 +757,7 @@
 - [x] T-1770 diagnostics 多源 cursor 合并
 - [x] T-1771 diagnostics 批量有界
 - [x] T-1772 diagnostics 批量兼容与序列化
-  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（553 项专项测试）
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（556 项专项测试）
   - 状态：done（2026-09-14）
 
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
