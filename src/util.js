@@ -782,6 +782,7 @@ function createStorageCapacityReportEventQueue(max = 8) {
     return {
         enqueue(input) { if (disposed) return {accepted: 0, disposed: true}; const normalized = normalizeStorageCapacityReportEvents(input); normalized.forEach((event) => { cursor += 1; events.push({cursor, event}); }); while (events.length > limit) events.shift(); return {accepted: normalized.length, disposed: false}; },
         read(after = 0) { if (disposed) return {events: [], cursor, disposed: true, truncated: false}; const base = Number.isInteger(after) && after >= 0 ? after : 0; const truncated = events.length > 0 && base < events[0].cursor - 1; return {events: events.filter((item) => item.cursor > base).map((item) => item.event), cursor, disposed: false, truncated}; },
+        peek(limit = 8) { if (disposed) return {events: [], cursor, disposed: true}; const count = Math.max(0, Math.min(8, Number.isInteger(limit) ? limit : 8)); return {events: events.slice(0, count).map((item) => item.event), cursor, disposed: false}; },
         acknowledge(to = 0) { if (disposed) return {removed: 0, disposed: true}; const target = Number.isInteger(to) && to >= 0 ? to : 0; const before = events.length; while (events.length && events[0].cursor <= target) events.shift(); return {removed: before - events.length, disposed: false}; },
         snapshot() { return {cursor, size: events.length, capacity: limit, disposed}; },
         clear() { if (disposed) return {cleared: 0, disposed: true}; const count = events.length; events.length = 0; return {cleared: count, disposed: false}; },

@@ -595,6 +595,27 @@
   - 状态：done（2026-09-14）
 
 ## 待维护者决策
+- [x] T-1115 队列 peek
+- [x] T-1116 peek 只读
+- [x] T-1117 peek 数量上限
+- [x] T-1118 peek 游标保持
+- [x] T-1119 peek 不确认
+- [x] T-1120 peek 不消费
+- [x] T-1121 peek 销毁隔离
+- [x] T-1122 peek 非法上限
+- [x] T-1123 peek 结果固定
+- [x] T-1124 peek 回归
+- [x] T-1125 peek 容量专项
+- [x] T-1126 peek 空队列
+- [x] T-1127 peek 事件归一化
+- [x] T-1128 peek 生命周期
+- [x] T-1129 peek 游标回归
+- [x] T-1130 peek 不变异回归
+- [x] T-1131 peek 8 条边界
+- [x] T-1132 peek reason
+- [x] T-1133 决策 D-272 落档
+- [x] T-1134 状态文档同步
+  - 状态：done（2026-09-14）
 - [x] T-1095 队列 reset
 - [x] T-1096 reset 游标
 - [x] T-1097 reset 事件

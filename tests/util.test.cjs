@@ -491,6 +491,14 @@ test('event queue reset clears events and rewinds cursor', () => {
     assert.equal(queue.snapshot().cursor, 0);
 });
 
+test('event queue peek is read-only and bounded', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    assert.equal(queue.peek(1).events.length, 1);
+    assert.equal(queue.snapshot().cursor, 1);
+    assert.equal(queue.snapshot().size, 1);
+});
+
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {
     assert.deepEqual(parseStorageCapacityReportEvents('{bad'), []);
     assert.deepEqual(parseStorageCapacityReportEvents('x'.repeat(64001)), []);
