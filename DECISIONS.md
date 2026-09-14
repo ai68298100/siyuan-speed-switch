@@ -1,4 +1,5 @@
 # 决策
+- D-274（2026-09-14）：事件队列摘要差异仅输出 size/utilization 增量、风险与生命周期变化；历史最多保留 16 条并统计 warning/峰值，所有派生字段经归一化重算，校验失败返回稳定 reason，不暴露原始载荷。
 - D-273（2026-09-14）：事件队列利用率按 size/capacity 计算并保留四位小数，达到 90% 标记 warning；缺失或销毁队列安全降级，不改变队列状态。
 - D-272（2026-09-14）：事件队列 peek 仅用于只读预览，最多返回 8 条，不推进 cursor、不 acknowledge、不改变 size；dispose 后返回空事件和 disposed=true。
 - D-271（2026-09-14）：事件队列 reset 与 clear 区分：reset 同时清空事件并将 cursor 归零，返回 previousCursor；dispose 后 reset 不修改状态并返回 disposed=true。

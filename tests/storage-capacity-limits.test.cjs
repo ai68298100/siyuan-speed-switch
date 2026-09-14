@@ -10,6 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline} = require('../src/util.js');
 const {normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus} = require('../src/util.js');
+const {normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary} = require('../src/util.js');
 
 const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
@@ -318,4 +319,89 @@ test('capacity: health diff keeps transition lists within the declared buckets',
     assert.deepEqual(diff.removedOver, ['favorites']);
     assert.deepEqual(diff.addedNear, ['pinned', 'favoriteGroups']);
     assert.equal(diff.direction, 'stable');
+});
+
+test('capacity queue summary normalizes a valid payload', () => {
+    assert.deepEqual(normalizeStorageCapacityReportEventQueueSummary({size: 2, capacity: 4, disposed: true}), {size: 2, capacity: 4, utilization: 0.5, risk: 'normal', disposed: true});
+});
+test('capacity queue summary defaults malformed input', () => {
+    assert.deepEqual(normalizeStorageCapacityReportEventQueueSummary(null), {size: 0, capacity: 8, utilization: 0, risk: 'normal', disposed: false});
+});
+test('capacity queue summary rejects arrays as objects', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary([]).capacity, 8);
+});
+test('capacity queue summary floors fractional size', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({size: 2.9, capacity: 4}).size, 2);
+});
+test('capacity queue summary clamps oversized capacity', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({capacity: 99}).capacity, 32);
+});
+test('capacity queue summary clamps size to capacity', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({size: 9, capacity: 3}).size, 3);
+});
+test('capacity queue summary treats zero capacity as safe default', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({capacity: 0}).capacity, 8);
+});
+test('capacity queue summary computes warning threshold at ninety percent', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({size: 9, capacity: 10}).risk, 'warning');
+});
+test('capacity queue summary keeps below-threshold risk normal', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({size: 8, capacity: 10}).risk, 'normal');
+});
+test('capacity queue summary rounds utilization to four decimals', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({size: 1, capacity: 3}).utilization, 0.3333);
+});
+test('capacity queue summary booleanizes disposed strictly', () => {
+    assert.equal(normalizeStorageCapacityReportEventQueueSummary({disposed: 1}).disposed, false);
+});
+test('capacity queue summary serialization round-trips', () => {
+    const value = parseStorageCapacityReportEventQueueSummary(serializeStorageCapacityReportEventQueueSummary({size: 3, capacity: 4}));
+    assert.deepEqual(value, {size: 3, capacity: 4, utilization: 0.75, risk: 'normal', disposed: false});
+});
+test('capacity queue summary parser isolates malformed JSON', () => {
+    assert.equal(parseStorageCapacityReportEventQueueSummary('{bad').size, 0);
+});
+test('capacity queue summary parser bounds oversized payloads', () => {
+    assert.equal(parseStorageCapacityReportEventQueueSummary('x'.repeat(32001)).capacity, 8);
+});
+test('capacity queue summary has fixed output keys', () => {
+    assert.deepEqual(Object.keys(normalizeStorageCapacityReportEventQueueSummary({})), ['size', 'capacity', 'utilization', 'risk', 'disposed']);
+});
+test('capacity queue summary diff reports size and utilization deltas', () => {
+    assert.deepEqual(diffStorageCapacityReportEventQueueSummary({size: 1, capacity: 4}, {size: 3, capacity: 4}), {sizeDelta: 2, utilizationDelta: 0.5, riskChanged: false, disposedChanged: false});
+});
+test('capacity queue summary diff detects risk changes', () => {
+    assert.equal(diffStorageCapacityReportEventQueueSummary({size: 1, capacity: 2}, {size: 2, capacity: 2}).riskChanged, true);
+});
+test('capacity queue summary diff detects lifecycle changes', () => {
+    assert.equal(diffStorageCapacityReportEventQueueSummary({disposed: false}, {disposed: true}).disposedChanged, true);
+});
+test('capacity queue summary events include changed size', () => {
+    assert.deepEqual(buildStorageCapacityReportEventQueueSummaryEvents({size: 1, capacity: 4}, {size: 2, capacity: 4})[0], {type: 'size_changed', delta: 1});
+});
+test('capacity queue summary events are bounded and stable', () => {
+    assert.ok(buildStorageCapacityReportEventQueueSummaryEvents({size: 1, capacity: 2}, {size: 2, capacity: 2}).length <= 3);
+});
+test('capacity queue summary history keeps newest bounded samples', () => {
+    const history = normalizeStorageCapacityReportEventQueueSummaryHistory([{size: 1}, {size: 2}, {size: 3}], 2);
+    assert.deepEqual(history.map((item) => item.size), [2, 3]);
+});
+test('capacity queue summary history normalizes non-array input', () => {
+    assert.deepEqual(normalizeStorageCapacityReportEventQueueSummaryHistory(null), []);
+});
+test('capacity queue summary history reports warning count and peak', () => {
+    const summary = summarizeStorageCapacityReportEventQueueSummaryHistory([{size: 1, capacity: 2}, {size: 2, capacity: 2}]);
+    assert.deepEqual(summary, {samples: 2, warningSamples: 1, peakUtilization: 1, latestRisk: 'warning', latestDisposed: false});
+});
+test('capacity queue summary history serialization round-trips', () => {
+    assert.equal(parseStorageCapacityReportEventQueueSummaryHistory(serializeStorageCapacityReportEventQueueSummaryHistory([{size: 2, capacity: 4}]))[0].utilization, 0.5);
+});
+test('capacity queue summary history parser isolates malformed JSON', () => {
+    assert.deepEqual(parseStorageCapacityReportEventQueueSummaryHistory('nope'), []);
+});
+test('capacity queue summary validator accepts canonical shape', () => {
+    assert.equal(validateStorageCapacityReportEventQueueSummary({size: 1, capacity: 2, utilization: 0.5, risk: 'normal', disposed: false}).valid, true);
+});
+test('capacity queue summary validator rejects inconsistent derived fields', () => {
+    assert.equal(validateStorageCapacityReportEventQueueSummary({size: 1, capacity: 2, utilization: 0.9, risk: 'warning', disposed: false}).reason, 'inconsistent');
 });

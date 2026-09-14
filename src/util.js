@@ -826,9 +826,59 @@ function getStorageCapacityReportEventQueueStatus(queue) {
     return normalizeStorageCapacityReportEventQueueStatus(queue.snapshot());
 }
 function summarizeStorageCapacityReportEventQueue(queue) {
-    const status = getStorageCapacityReportEventQueueStatus(queue);
-    const utilization = status.capacity > 0 ? Number((status.size / status.capacity).toFixed(4)) : 0;
-    return {size: status.size, capacity: status.capacity, utilization, risk: utilization >= 0.9 ? "warning" : "normal", disposed: status.disposed};
+    return normalizeStorageCapacityReportEventQueueSummary(getStorageCapacityReportEventQueueStatus(queue));
+}
+function normalizeStorageCapacityReportEventQueueSummary(input) {
+    const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+    const number = (value, fallback, max) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), max) : fallback;
+    };
+    const capacity = number(source.capacity, 8, 32);
+    const size = Math.min(number(source.size, 0, 32), capacity);
+    const utilization = Number((size / capacity).toFixed(4));
+    return {size, capacity, utilization, risk: utilization >= 0.9 ? "warning" : "normal", disposed: source.disposed === true};
+}
+function serializeStorageCapacityReportEventQueueSummary(input) {
+    return JSON.stringify(normalizeStorageCapacityReportEventQueueSummary(input));
+}
+function parseStorageCapacityReportEventQueueSummary(serialized) {
+    if (typeof serialized !== "string" || serialized.length > 32000) return normalizeStorageCapacityReportEventQueueSummary({});
+    try { return normalizeStorageCapacityReportEventQueueSummary(JSON.parse(serialized)); } catch (_error) { return normalizeStorageCapacityReportEventQueueSummary({}); }
+}
+function diffStorageCapacityReportEventQueueSummary(previous, current) {
+    const from = normalizeStorageCapacityReportEventQueueSummary(previous);
+    const to = normalizeStorageCapacityReportEventQueueSummary(current);
+    return {sizeDelta: to.size - from.size, utilizationDelta: Number((to.utilization - from.utilization).toFixed(4)), riskChanged: from.risk !== to.risk, disposedChanged: from.disposed !== to.disposed};
+}
+function buildStorageCapacityReportEventQueueSummaryEvents(previous, current) {
+    const diff = diffStorageCapacityReportEventQueueSummary(previous, current);
+    const events = [];
+    if (diff.sizeDelta !== 0) events.push({type: "size_changed", delta: diff.sizeDelta});
+    if (diff.riskChanged) events.push({type: "risk_changed"});
+    if (diff.disposedChanged) events.push({type: "lifecycle_changed"});
+    return events.slice(0, 3);
+}
+function normalizeStorageCapacityReportEventQueueSummaryHistory(input, max = 16) {
+    const limit = Math.max(1, Math.min(32, Number.isInteger(max) ? max : 16));
+    return (Array.isArray(input) ? input : []).slice(-limit).map(normalizeStorageCapacityReportEventQueueSummary);
+}
+function summarizeStorageCapacityReportEventQueueSummaryHistory(input) {
+    const history = normalizeStorageCapacityReportEventQueueSummaryHistory(input);
+    const latest = history[history.length - 1] || normalizeStorageCapacityReportEventQueueSummary({});
+    return {samples: history.length, warningSamples: history.filter((item) => item.risk === "warning").length, peakUtilization: history.reduce((peak, item) => Math.max(peak, item.utilization), 0), latestRisk: latest.risk, latestDisposed: latest.disposed};
+}
+function serializeStorageCapacityReportEventQueueSummaryHistory(input) { return JSON.stringify(normalizeStorageCapacityReportEventQueueSummaryHistory(input)); }
+function parseStorageCapacityReportEventQueueSummaryHistory(serialized) {
+    if (typeof serialized !== "string" || serialized.length > 64000) return [];
+    try { return normalizeStorageCapacityReportEventQueueSummaryHistory(JSON.parse(serialized)); } catch (_error) { return []; }
+}
+function validateStorageCapacityReportEventQueueSummary(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) return {valid: false, reason: "invalid_input"};
+    const normalized = normalizeStorageCapacityReportEventQueueSummary(input);
+    if (normalized.size !== input.size || normalized.capacity !== input.capacity || normalized.disposed !== input.disposed) return {valid: false, reason: "invalid_shape"};
+    if (normalized.utilization !== input.utilization || normalized.risk !== input.risk) return {valid: false, reason: "inconsistent"};
+    return {valid: true, reason: "ok"};
 }
 
 function recoverStorageCapacityReportEventQueue(queue, snapshot) {
@@ -1107,4 +1157,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
