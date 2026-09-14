@@ -1438,26 +1438,49 @@ export default class SpeedSwitchPlugin extends Plugin {
         container.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
         container.setAttribute("aria-busy", "true");
         const sourceInfo = resolveHomeStoreSourceInfo(moduleId);
+        const previewId = `sw-store-preview-${moduleId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+        container.dataset.integration = sourceInfo?.integration || "direct";
+        container.dataset.privacy = sourceInfo?.privacy || "none";
         const meta = document.createElement("div");
         meta.className = "sw-store-preview__meta";
         meta.setAttribute("role", "note");
+        meta.id = `${previewId}-meta`;
+        meta.dataset.moduleId = moduleId;
+        meta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
         const addMeta = (label: string, tone: string) => {
             const chip = document.createElement("span");
             chip.className = `sw-store-preview__meta-chip is-${tone}`;
             chip.textContent = label;
             chip.title = label;
+            chip.dataset.tone = tone;
+            chip.setAttribute("aria-label", label);
             meta.appendChild(chip);
+        };
+        const surfaceLabels: Record<string, string> = {
+            desktop: this.i18n.homeStoreDeviceDesktop,
+            sidebar: this.i18n.homeStoreDeviceSidebar,
+            mobile: this.i18n.homeStoreDeviceMobile,
         };
         const integration = resolveStoreNetworkLabel(sourceInfo, this.i18n);
         const privacy = resolveStorePrivacyLabel(sourceInfo, this.i18n);
         addMeta(this.i18n.homeStoreSource.replace("{source}", sourceInfo?.providerName || "SiYuan"), "source");
         addMeta(integration, sourceInfo?.integration === "http" ? "network" : sourceInfo?.integration === "local-bridge" ? "local" : "offline");
         addMeta(privacy, "privacy");
+        addMeta(this.i18n.homeStorePreviewSurface.replace("{surface}", surfaceLabels[device] || device), "context");
+        addMeta(this.i18n.homeStorePreviewSize.replace("{size}", sizeKey), "context");
         container.appendChild(meta);
         const body = document.createElement("div");
         body.className = "sw-store-preview__body";
+        body.id = `${previewId}-body`;
+        body.dataset.moduleId = moduleId;
+        body.dataset.device = device;
+        body.dataset.size = sizeKey;
         body.setAttribute("role", "status");
         body.setAttribute("aria-live", "polite");
+        body.setAttribute("aria-atomic", "true");
+        body.setAttribute("aria-busy", "true");
+        body.tabIndex = 0;
+        body.setAttribute("aria-describedby", meta.id);
         container.appendChild(body);
         let controller: ReturnType<typeof createHomeModuleController> | null = null;
         controller = createHomeModuleController({
@@ -1506,7 +1529,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
         controller.mount();
         const markPreviewReady = () => {
-            if (!disposed) container.setAttribute("aria-busy", "false");
+            if (!disposed) {
+                container.setAttribute("aria-busy", "false");
+                body.setAttribute("aria-busy", "false");
+            }
         };
         void controller.refresh({}, {force: true}).then(markPreviewReady, markPreviewReady);
         // 宿主 Dialog 关闭无回调：轮询断连即释放控制器，避免悬空读取

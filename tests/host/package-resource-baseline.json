@@ -1,17 +1,17 @@
 {
   "version": 1,
   "entries": {
-    "index.css": 19179,
-    "index.js": 137487,
+    "index.css": 19286,
+    "index.js": 137705,
     "icon.png": 44735,
     "preview.png": 50389,
-    "README.en-US.md": 12155,
-    "README.md": 14579,
+    "README.en-US.md": 12156,
+    "README.md": 14580,
     "docs/component-store-guide.md": 3128,
     "docs/architecture.svg": 1897,
     "docs/interface-map.svg": 1805,
     "plugin.json": 691,
-    "i18n/en.json": 8398,
-    "i18n/zh-CN.json": 9482
+    "i18n/en.json": 8421,
+    "i18n/zh-CN.json": 9501
   }
 }

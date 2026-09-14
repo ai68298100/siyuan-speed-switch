@@ -271,6 +271,10 @@
 
 2026-09-15 本轮最终验证：2985/2985 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 514187 bytes（503 KiB 自律线内）、`dist/index.css` 131629 bytes、`package.zip` 305199 bytes（300 KiB 硬上限内）。来源/联网/隐私提示已纳入发布包，基线与发布准备矩阵同步更新。产物待同步至本地集市目录，仍不执行远端 push。
 
+2026-09-15 本轮完成 T-3425~T-3454（30 项）：预览弹窗补齐主面板/侧栏/移动端与尺寸上下文、唯一作用域 ID、integration/privacy 数据属性、正文 busy/atomic/键盘聚焦语义；来源说明改为滚动顶部 sticky 区域，补齐窄屏、强制配色、长文本和半透明背景兼容，并新增 36 项预览上下文契约回归。
+
+2026-09-15 本轮最终验证：3021/3021 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 514980 bytes（503 KiB 自律线内）、`dist/index.css` 132311 bytes、`package.zip` 305568 bytes（300 KiB 硬上限内）。产物待同步至本地集市目录，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

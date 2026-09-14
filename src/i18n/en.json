@@ -111,6 +111,8 @@
   "homeJournalCalendar": "Journal calendar",
   "homeDescJournalCalendar": "Reads SiYuan daily-note attributes with a date-title fallback; optionally overlays China holidays/workdays and browses ±24 months",
   "homeStorePreview": "Preview",
+  "homeStorePreviewSurface": "Preview surface: {surface}",
+  "homeStorePreviewSize": "Preview size: {size}",
   "homeStoreAdd": "Add widget",
   "homeStoreApplySize": "Apply size",
   "homeCalendarWeekdays": "MTWTFSS",

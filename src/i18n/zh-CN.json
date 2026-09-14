@@ -111,6 +111,8 @@
   "homeJournalCalendar": "日历月视图",
   "homeDescJournalCalendar": "读取思源日记属性并兼容日期标题；可选中国节假日/调休标记，支持笔记本筛选与前后 24 个月翻页",
   "homeStorePreview": "预览效果",
+  "homeStorePreviewSurface": "预览端：{surface}",
+  "homeStorePreviewSize": "预览尺寸：{size}",
   "homeStoreAdd": "添加组件",
   "homeStoreApplySize": "应用尺寸",
   "homeCalendarWeekdays": "一二三四五六日",
