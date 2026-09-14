@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第二十五轮）：完成 20 项开发（T-795~T-814），新增报告窗口归一化、稳定序列化与解析链，固定 start/end/total/truncated 元数据并限制最多 16 条样本，污染输入安全降级。终验：820/820 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 396667 bytes、`package.zip` 261603 bytes（300 KiB 余量 44997 bytes）。raw bundle 自律线按 D-249 校准至 388 KiB。
+
 补充（2026-09-14 第二十四轮）：完成 20 项开发（T-775~T-794），新增 `summarizeStorageCapacityReportWindow`，在窗口元数据基础上汇总样本数、最新风险/趋势及 critical/degrading/improving 计数，统一限制索引范围并隔离污染输入。终验：817/817 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 396112 bytes、`package.zip` 261485 bytes（300 KiB 余量 45495 bytes）。
 
 补充（2026-09-14 第二十三轮）：完成 20 项开发（T-755~T-774），新增 `selectStorageCapacityReportWindow`，在历史归一化/去重后选择最近窗口，输出 start/end/total/truncated 元数据并限制默认 16 条窗口。终验：814/814 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 395530 bytes、`package.zip` 261361 bytes（300 KiB 余量 45619 bytes）。
