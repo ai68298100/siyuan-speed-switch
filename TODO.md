@@ -5972,3 +5972,53 @@
 - [x] T-4329 按健康筛选历史
 - [x] T-4330 历史筛选数量上限
 - [x] T-4331 历史汇总、合并与序列化
+- [x] T-4332 builtin 状态可添加
+- [x] T-4333 external 状态可添加
+- [x] T-4334 conditional 状态需配置
+- [x] T-4335 conditional 配置完成
+- [x] T-4336 bridge 状态需本地服务
+- [x] T-4337 bridge 服务就绪
+- [x] T-4338 reference 状态不可添加
+- [x] T-4339 非法可用性回退
+- [x] T-4340 模块 ID 标准化
+- [x] T-4341 configure 动作
+- [x] T-4342 start-service 动作
+- [x] T-4343 learn-more 动作
+- [x] T-4344 显式错误 retry 动作
+- [x] T-4345 stale retry 动作
+- [x] T-4346 error retry 动作
+- [x] T-4347 healthy add 动作
+- [x] T-4348 不可添加 learn-more
+- [x] T-4349 显式可添加未知状态
+- [x] T-4350 external 状态标签
+- [x] T-4351 ready 状态标签
+- [x] T-4352 config 状态标签
+- [x] T-4353 local-service 状态标签
+- [x] T-4354 reference 状态标签
+- [x] T-4355 unavailable 状态标签
+- [x] T-4356 空状态未知标签
+- [x] T-4357 healthy 状态描述
+- [x] T-4358 stale 状态描述
+- [x] T-4359 error 状态描述
+- [x] T-4360 offline 外部状态描述
+- [x] T-4361 offline builtin 状态保持
+- [x] T-4362 诊断原因清理
+- [x] T-4363 unknown health 默认
+- [x] T-4364 conditional 配置动作优先级
+- [x] T-4365 bridge 服务动作优先级
+- [x] T-4366 builtin 可选状态
+- [x] T-4367 external 可选状态
+- [x] T-4368 ready 可选状态
+- [x] T-4369 needs-config 不可选
+- [x] T-4370 reference 不可选
+- [x] T-4371 unavailable 不可选
+- [x] T-4372 null 状态不可选
+- [x] T-4373 汇总可选项
+- [x] T-4374 汇总配置项
+- [x] T-4375 汇总不可用项
+- [x] T-4376 汇总参考项
+- [x] T-4377 汇总健康项
+- [x] T-4378 汇总降级项
+- [x] T-4379 汇总过滤原始值
+- [x] T-4380 指南链接与隐私级别
+- [x] T-4381 组合状态诊断边界
