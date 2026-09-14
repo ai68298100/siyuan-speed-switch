@@ -484,6 +484,13 @@ test('event queue clear is safe after dispose', () => {
     assert.deepEqual(queue.clear(), {cleared: 0, disposed: true});
 });
 
+test('event queue reset clears events and rewinds cursor', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    assert.deepEqual(queue.reset(), {reset: true, previousCursor: 1, disposed: false});
+    assert.equal(queue.snapshot().cursor, 0);
+});
+
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {
     assert.deepEqual(parseStorageCapacityReportEvents('{bad'), []);
     assert.deepEqual(parseStorageCapacityReportEvents('x'.repeat(64001)), []);

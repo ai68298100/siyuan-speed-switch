@@ -595,6 +595,27 @@
   - 状态：done（2026-09-14）
 
 ## 待维护者决策
+- [x] T-1095 队列 reset
+- [x] T-1096 reset 游标
+- [x] T-1097 reset 事件
+- [x] T-1098 reset 计数
+- [x] T-1099 reset 可用性
+- [x] T-1100 reset 销毁隔离
+- [x] T-1101 reset 旧游标回显
+- [x] T-1102 reset 结果固定
+- [x] T-1103 reset 回归
+- [x] T-1104 reset 生命周期
+- [x] T-1105 reset 容量
+- [x] T-1106 reset 读取
+- [x] T-1107 reset 入队
+- [x] T-1108 reset 确认
+- [x] T-1109 reset 污染隔离
+- [x] T-1110 reset 空队列
+- [x] T-1111 reset reason
+- [x] T-1112 reset 专项测试
+- [x] T-1113 决策 D-271 落档
+- [x] T-1114 状态文档同步
+  - 状态：done（2026-09-14）
 - [x] T-1075 队列显式清理
 - [x] T-1076 清理计数
 - [x] T-1077 清理后可用
