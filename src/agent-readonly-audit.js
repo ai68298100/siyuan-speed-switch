@@ -496,6 +496,27 @@ function isAgentReadOnlyAuditTransportQueueRecoveryCompatible(value) { const rec
 function serializeAgentReadOnlyAuditTransportQueueRecovery(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportQueueRecovery(value)); }
 function parseAgentReadOnlyAuditTransportQueueRecovery(value) { if (typeof value !== "string" || value.length > 32768) return normalizeAgentReadOnlyAuditTransportQueueRecovery({}); try { return normalizeAgentReadOnlyAuditTransportQueueRecovery(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportQueueRecovery({}); } }
 
+const AUDIT_QUEUE_RISKS = Object.freeze(["normal", "warning", "critical", "disposed"]);
+function normalizeAgentAuditQueueRisk(value) { return AUDIT_QUEUE_RISKS.includes(value) ? value : "normal"; }
+function classifyAgentReadOnlyAuditTransportQueueRisk(value) { const summary = normalizeAgentReadOnlyAuditTransportQueueSummary(value); const utilization = summary.utilization || (summary.capacity ? summary.size / summary.capacity : 0); if (summary.disposed) return "disposed"; if (utilization >= 0.9) return "critical"; if (utilization >= 0.7) return "warning"; return "normal"; }
+function diffAgentReadOnlyAuditTransportQueueSnapshots(previous, next) { const a = normalizeAgentReadOnlyAuditTransportQueueSnapshot(previous); const b = normalizeAgentReadOnlyAuditTransportQueueSnapshot(next); return {sizeChanged: a.size !== b.size, capacityChanged: a.capacity !== b.capacity, sequenceChanged: a.latestSequence !== b.latestSequence, disposedChanged: a.disposed !== b.disposed, sizeDelta: b.size - a.size}; }
+function buildAgentReadOnlyAuditTransportQueueEvents(previous, next) { const diff = diffAgentReadOnlyAuditTransportQueueSnapshots(previous, next); const events = []; if (diff.sizeChanged) events.push({type: "size_changed", delta: diff.sizeDelta}); if (diff.capacityChanged) events.push({type: "capacity_changed", delta: 0}); if (diff.sequenceChanged) events.push({type: "sequence_changed", delta: 0}); if (diff.disposedChanged) events.push({type: "disposed_changed", delta: 0}); return events.slice(0, MAX_HISTORY_EVENTS).map(normalizeAgentReadOnlyAuditTransportQueueEvent); }
+function normalizeAgentReadOnlyAuditTransportQueueEvent(value) { const source = value && typeof value === "object" ? value : {}; const allowed = ["size_changed", "capacity_changed", "sequence_changed", "disposed_changed"]; return {type: allowed.includes(source.type) ? source.type : "size_changed", delta: Math.max(-MAX_TRANSPORT_QUEUE, Math.min(MAX_TRANSPORT_QUEUE, Math.trunc(Number(source.delta) || 0)))}; }
+function normalizeAgentReadOnlyAuditTransportQueueEvents(events) { if (!Array.isArray(events)) return []; const seen = new Set(); return events.map(normalizeAgentReadOnlyAuditTransportQueueEvent).filter((event) => { if (seen.has(event.type)) return false; seen.add(event.type); return true; }).slice(0, MAX_HISTORY_EVENTS); }
+function summarizeAgentReadOnlyAuditTransportQueueEvents(events) { const list = normalizeAgentReadOnlyAuditTransportQueueEvents(events); return {version: 1, total: list.length, growth: list.filter((e) => e.type === "size_changed" && e.delta > 0).length, shrink: list.filter((e) => e.type === "size_changed" && e.delta < 0).length, lifecycle: list.filter((e) => e.type === "disposed_changed").length}; }
+function buildAgentReadOnlyAuditTransportQueueCheckpoint(queue) { const snapshot = buildAgentReadOnlyAuditTransportQueueSnapshot(queue); return {version: 1, cursor: snapshot.latestSequence, snapshot}; }
+function normalizeAgentReadOnlyAuditTransportQueueCheckpoint(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, cursor: normalizeAgentAuditTransportCursor(source.cursor), snapshot: normalizeAgentReadOnlyAuditTransportQueueSnapshot(source.snapshot)}; }
+function isAgentReadOnlyAuditTransportQueueCheckpointCompatible(value) { const checkpoint = normalizeAgentReadOnlyAuditTransportQueueCheckpoint(value); return value && value.version === 1 && checkpoint.cursor >= checkpoint.snapshot.latestSequence; }
+function serializeAgentReadOnlyAuditTransportQueueCheckpoint(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportQueueCheckpoint(value)); }
+function parseAgentReadOnlyAuditTransportQueueCheckpoint(value) { if (typeof value !== "string" || value.length > 1024) return normalizeAgentReadOnlyAuditTransportQueueCheckpoint({}); try { return normalizeAgentReadOnlyAuditTransportQueueCheckpoint(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportQueueCheckpoint({}); } }
+function buildAgentReadOnlyAuditTransportQueueReplayResult(entries, cursor = 0) { const list = Array.isArray(entries) ? entries.slice(0, MAX_TRANSPORT_ITEMS) : []; const parsed = normalizeAgentAuditTransportCursor(cursor); return {version: 1, cursor: parsed, nextCursor: list.length ? normalizeAgentAuditTransportCursor(list[list.length - 1]?.sequence) : parsed, count: list.length, complete: list.length < MAX_TRANSPORT_ITEMS}; }
+function normalizeAgentReadOnlyAuditTransportQueueReplayResult(value) { const source = value && typeof value === "object" ? value : {}; return {version: 1, cursor: normalizeAgentAuditTransportCursor(source.cursor), nextCursor: normalizeAgentAuditTransportCursor(source.nextCursor), count: normalizeAgentAuditCount(source.count, MAX_TRANSPORT_ITEMS), complete: normalizeAgentAuditBoolean(source.complete)}; }
+function isAgentReadOnlyAuditTransportQueueReplayResultCompatible(value) { const result = normalizeAgentReadOnlyAuditTransportQueueReplayResult(value); return value && value.version === 1 && result.nextCursor >= result.cursor && result.count <= MAX_TRANSPORT_ITEMS; }
+function buildAgentReadOnlyAuditTransportQueueAcknowledgeResult(cursor, acknowledged = 0) { return {version: 1, cursor: normalizeAgentAuditTransportCursor(cursor), acknowledged: normalizeAgentAuditCount(acknowledged, MAX_TRANSPORT_QUEUE)}; }
+function normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult(value) { const source = value && typeof value === "object" ? value : {}; return buildAgentReadOnlyAuditTransportQueueAcknowledgeResult(source.cursor, source.acknowledged); }
+function serializeAgentReadOnlyAuditTransportQueueReplayResult(value) { return JSON.stringify(normalizeAgentReadOnlyAuditTransportQueueReplayResult(value)); }
+function parseAgentReadOnlyAuditTransportQueueReplayResult(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportQueueReplayResult({}); try { return normalizeAgentReadOnlyAuditTransportQueueReplayResult(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportQueueReplayResult({}); } }
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -544,4 +565,14 @@ module.exports = {
     isAgentReadOnlyAuditTransportQueueSummaryCompatible, buildAgentReadOnlyAuditTransportQueueRecovery,
     normalizeAgentReadOnlyAuditTransportQueueRecovery, isAgentReadOnlyAuditTransportQueueRecoveryCompatible,
     serializeAgentReadOnlyAuditTransportQueueRecovery, parseAgentReadOnlyAuditTransportQueueRecovery,
+    AUDIT_QUEUE_RISKS, normalizeAgentAuditQueueRisk, classifyAgentReadOnlyAuditTransportQueueRisk,
+    diffAgentReadOnlyAuditTransportQueueSnapshots, buildAgentReadOnlyAuditTransportQueueEvents,
+    normalizeAgentReadOnlyAuditTransportQueueEvent, normalizeAgentReadOnlyAuditTransportQueueEvents,
+    summarizeAgentReadOnlyAuditTransportQueueEvents, buildAgentReadOnlyAuditTransportQueueCheckpoint,
+    normalizeAgentReadOnlyAuditTransportQueueCheckpoint, isAgentReadOnlyAuditTransportQueueCheckpointCompatible,
+    serializeAgentReadOnlyAuditTransportQueueCheckpoint, parseAgentReadOnlyAuditTransportQueueCheckpoint,
+    buildAgentReadOnlyAuditTransportQueueReplayResult, normalizeAgentReadOnlyAuditTransportQueueReplayResult,
+    isAgentReadOnlyAuditTransportQueueReplayResultCompatible, buildAgentReadOnlyAuditTransportQueueAcknowledgeResult,
+    normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult, serializeAgentReadOnlyAuditTransportQueueReplayResult,
+    parseAgentReadOnlyAuditTransportQueueReplayResult,
 };

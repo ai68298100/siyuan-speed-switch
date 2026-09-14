@@ -288,3 +288,35 @@ test('queue recovery normalizer adds version', () => assert.equal(a.normalizeAge
 test('queue recovery compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueRecoveryCompatible({version: 1, cursor: 2, nextCursor: 1, entries: [], complete: true}), false));
 test('queue recovery serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueRecovery({cursor: 1, nextCursor: 1, entries: []}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueRecovery(value).cursor, 1); });
 test('queue recovery parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueRecovery('{bad').version, 1));
+
+// v0.17 transport queue metrics/checkpoint contract (T-1493~T-1522)
+test('queue risk constants are fixed', () => assert.deepEqual(a.AUDIT_QUEUE_RISKS, ['normal', 'warning', 'critical', 'disposed']));
+test('queue risk normalizes unknown', () => assert.equal(a.normalizeAgentAuditQueueRisk('secret'), 'normal'));
+test('queue risk normal is low utilization', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({size: 1, capacity: 10}), 'normal'));
+test('queue risk warning threshold', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({size: 7, capacity: 10}), 'warning'));
+test('queue risk critical threshold', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({size: 9, capacity: 10}), 'critical'));
+test('queue risk disposed state', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({disposed: true}), 'disposed'));
+test('queue diff detects size', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({size: 1}, {size: 2}).sizeChanged, true));
+test('queue diff computes size delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({size: 1}, {size: 3}).sizeDelta, 2));
+test('queue diff detects capacity', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({capacity: 1}, {capacity: 2}).capacityChanged, true));
+test('queue diff detects sequence', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({latestSequence: 1}, {latestSequence: 2}).sequenceChanged, true));
+test('queue diff detects disposal', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({disposed: false}, {disposed: true}).disposedChanged, true));
+test('queue events include size change', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueEvents({size: 1}, {size: 2})[0].type, 'size_changed'));
+test('queue events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditTransportQueueEvents({size: 1, capacity: 1, latestSequence: 1, disposed: false}, {size: 2, capacity: 2, latestSequence: 2, disposed: true}).length <= 8));
+test('queue event normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportQueueEvent({})).sort(), ['delta', 'type']));
+test('queue event normalizer clamps delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueEvent({delta: 99}).delta, 16));
+test('queue event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueEvents([{type: 'size_changed'}, {type: 'size_changed'}]).length, 1));
+test('queue event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportQueueEvents([])).sort(), ['growth', 'lifecycle', 'shrink', 'total', 'version'].sort()));
+test('queue event summary counts growth', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportQueueEvents([{type: 'size_changed', delta: 1}]).growth, 1));
+test('queue checkpoint uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueCheckpoint(a.createAgentReadOnlyAuditTransportQueue()).version, 1));
+test('queue checkpoint cursor matches latest', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.buildAgentReadOnlyAuditTransportQueueCheckpoint(q).cursor, 1); });
+test('queue checkpoint normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportQueueCheckpoint({})).sort(), ['cursor', 'snapshot', 'version']));
+test('queue checkpoint compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueCheckpointCompatible({version: 1, cursor: 1, snapshot: {latestSequence: 1}}), true));
+test('queue checkpoint serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueCheckpoint({cursor: 1, snapshot: {latestSequence: 1}}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueCheckpoint(value).cursor, 1); });
+test('queue checkpoint parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueCheckpoint('{bad').version, 1));
+test('queue replay result uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueReplayResult([]).version, 1));
+test('queue replay result advances cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueReplayResult([{sequence: 2}], 1).nextCursor, 2));
+test('queue replay result compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueReplayResultCompatible({version: 1, cursor: 2, nextCursor: 1, count: 0, complete: true}), false));
+test('queue acknowledge result normalizes fields', () => assert.deepEqual(a.normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult({cursor: 2, acknowledged: 3}), {version: 1, cursor: 2, acknowledged: 3}));
+test('queue replay serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueReplayResult({cursor: 1, nextCursor: 2, count: 1}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueReplayResult(value).nextCursor, 2); });
+test('queue replay parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueReplayResult('{bad').version, 1));

@@ -346,3 +346,4 @@
 - D-294 v0.17 审计窗口合并按 latestSequence 去重并升序排列，恢复计划仅返回 cursor 之后最多 8 份报告；零 sequence 使用健康/大小/事件摘要回退键。原因是多宿主采样合并必须确定性且不能重复消费。
 - D-295 v0.17 审计传输封装采用轻量 FNV-1a checksum、固定 requestId 清洗和最多 8 条批量 envelope；校验失败只返回稳定 status/retryable，不回显 payload 或异常。原因是跨宿主交换需要完整性提示，但不应引入加密依赖或扩大数据面。
 - D-296 v0.17 审计传输队列最多保留 16 条 envelope，使用单调 sequence/cursor 确认，恢复快照和 utilization 摘要均为 version=1；dispose 后拒绝新入队。原因是跨宿主回放需要可恢复进度，同时必须限制内存和重复消费。
+- D-297 v0.17 传输队列风险按 utilization 70%/90% 划分 warning/critical，检查点与 replay result 均限制 cursor 单调增长和固定字段；原因是诊断消费者需要快速识别积压，而不应读取队列内部对象。

@@ -435,6 +435,41 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（268 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1493~T-1522 Agent 审计传输队列指标与检查点（本轮 30 项）
+
+- [x] T-1493 队列风险枚举
+- [x] T-1494 风险未知值降级
+- [x] T-1495 normal 风险判定
+- [x] T-1496 warning 阈值判定
+- [x] T-1497 critical 阈值判定
+- [x] T-1498 disposed 风险判定
+- [x] T-1499 队列 size 差异
+- [x] T-1500 sizeDelta 计算
+- [x] T-1501 capacity 差异
+- [x] T-1502 sequence 差异
+- [x] T-1503 disposed 差异
+- [x] T-1504 size_changed 事件
+- [x] T-1505 队列事件上限
+- [x] T-1506 队列事件固定字段
+- [x] T-1507 delta 数值边界
+- [x] T-1508 队列事件去重
+- [x] T-1509 队列事件统计固定字段
+- [x] T-1510 growth 统计
+- [x] T-1511 checkpoint version=1
+- [x] T-1512 checkpoint cursor
+- [x] T-1513 checkpoint 固定字段
+- [x] T-1514 checkpoint 兼容性
+- [x] T-1515 checkpoint 序列化
+- [x] T-1516 checkpoint 安全解析
+- [x] T-1517 replay result version=1
+- [x] T-1518 replay nextCursor
+- [x] T-1519 replay 兼容性
+- [x] T-1520 acknowledge result 归一化
+- [x] T-1521 replay 稳定序列化
+- [x] T-1522 replay 非法 JSON 隔离
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（298 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合
