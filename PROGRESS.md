@@ -267,6 +267,10 @@
 
 2026-09-15 本轮最终验证：2954/2954 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 513367 bytes、`dist/index.css` 130723 bytes、`package.zip` 304800 bytes。预览修复产物即将同步至本地集市目录，仍不执行远端 push。
 
+2026-09-15 本轮完成 T-3395~T-3424（30 项）：预览弹窗增加来源、联网/本机/离线状态和隐私提示，使用可复制的语义 chip 展示 Open-Meteo、Bangumi、ActivityWatch 等实际数据边界，并新增 30 项来源透明度契约回归。
+
+2026-09-15 本轮最终验证：2985/2985 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 514187 bytes（503 KiB 自律线内）、`dist/index.css` 131629 bytes、`package.zip` 305199 bytes（300 KiB 硬上限内）。来源/联网/隐私提示已纳入发布包，基线与发布准备矩阵同步更新。产物待同步至本地集市目录，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

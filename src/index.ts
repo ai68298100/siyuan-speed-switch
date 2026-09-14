@@ -65,6 +65,19 @@ import {
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {createWorkspaceRuntimeDiagnostics} from "./agent-workspace-diagnostics";
+
+const resolveStoreNetworkLabel = (sourceInfo: any, i18n: any) => sourceInfo?.integration === "http"
+    ? i18n.homeStoreNetworkOnline
+    : sourceInfo?.integration === "local-bridge"
+        ? i18n.homeStoreNetworkLocal
+        : i18n.homeStoreNetworkOffline;
+const resolveStorePrivacyLabel = (sourceInfo: any, i18n: any) => sourceInfo?.privacy === "location-only"
+    ? i18n.homeStorePrivacyLocation
+    : sourceInfo?.privacy === "local-only"
+        ? i18n.homeStorePrivacyLocal
+        : sourceInfo?.privacy === "endpoint-only"
+            ? i18n.homeStorePrivacyEndpoint
+            : i18n.homeStorePrivacyNone;
 import {
     auditAgentCapabilityDefinitions,
     summarizeAgentCapabilityAudit,
@@ -1424,6 +1437,23 @@ export default class SpeedSwitchPlugin extends Plugin {
         container.setAttribute("role", "region");
         container.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
         container.setAttribute("aria-busy", "true");
+        const sourceInfo = resolveHomeStoreSourceInfo(moduleId);
+        const meta = document.createElement("div");
+        meta.className = "sw-store-preview__meta";
+        meta.setAttribute("role", "note");
+        const addMeta = (label: string, tone: string) => {
+            const chip = document.createElement("span");
+            chip.className = `sw-store-preview__meta-chip is-${tone}`;
+            chip.textContent = label;
+            chip.title = label;
+            meta.appendChild(chip);
+        };
+        const integration = resolveStoreNetworkLabel(sourceInfo, this.i18n);
+        const privacy = resolveStorePrivacyLabel(sourceInfo, this.i18n);
+        addMeta(this.i18n.homeStoreSource.replace("{source}", sourceInfo?.providerName || "SiYuan"), "source");
+        addMeta(integration, sourceInfo?.integration === "http" ? "network" : sourceInfo?.integration === "local-bridge" ? "local" : "offline");
+        addMeta(privacy, "privacy");
+        container.appendChild(meta);
         const body = document.createElement("div");
         body.className = "sw-store-preview__body";
         body.setAttribute("role", "status");
@@ -4874,17 +4904,19 @@ const version = beginSearch(session);
                         sourceMeta.appendChild(chip);
                     };
                     addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
-                    const networkLabel = externalInfo.integration === "direct"
+                    const integrationKind = externalInfo.integration;
+                    const privacyKind = externalInfo.privacy;
+                    const networkLabel = integrationKind === "direct"
                         ? this.i18n.homeStoreNetworkOffline
-                        : externalInfo.integration === "local-bridge"
+                        : integrationKind === "local-bridge"
                             ? this.i18n.homeStoreNetworkLocal
                             : this.i18n.homeStoreNetworkOnline;
-                    addChip(networkLabel, externalInfo.integration === "direct" ? "offline" : externalInfo.integration === "local-bridge" ? "local" : "online");
-                    const privacyLabel = externalInfo.privacy === "location-only"
+                    addChip(networkLabel, integrationKind === "direct" ? "offline" : integrationKind === "local-bridge" ? "local" : "online");
+                    const privacyLabel = privacyKind === "location-only"
                         ? this.i18n.homeStorePrivacyLocation
-                        : externalInfo.privacy === "local-only"
+                        : privacyKind === "local-only"
                             ? this.i18n.homeStorePrivacyLocal
-                            : externalInfo.privacy === "endpoint-only"
+                            : privacyKind === "endpoint-only"
                                 ? this.i18n.homeStorePrivacyEndpoint
                                 : this.i18n.homeStorePrivacyNone;
                     addChip(privacyLabel, "privacy");
