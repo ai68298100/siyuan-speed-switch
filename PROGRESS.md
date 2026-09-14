@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第二十三轮）：完成 20 项开发（T-755~T-774），新增 `selectStorageCapacityReportWindow`，在历史归一化/去重后选择最近窗口，输出 start/end/total/truncated 元数据并限制默认 16 条窗口。终验：814/814 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 395530 bytes、`package.zip` 261361 bytes（300 KiB 余量 45619 bytes）。
+
 补充（2026-09-14 第二十二轮）：完成 20 项开发（T-735~T-754），新增 `trimStorageCapacityReportHistory`，对报告历史执行归一化、去重、容量裁剪并保留最新条目，非数组/非法上限安全降级。终验：811/811 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 395363 bytes、`package.zip` 261272 bytes（300 KiB 余量 45708 bytes）。raw bundle 自律线按 D-245 校准至 387 KiB。
 
 补充（2026-09-14 第二十一轮）：完成 20 项开发（T-715~T-734），新增 `summarizeStorageCapacityReports`，对最多 64 条报告汇总最新风险/趋势、风险与趋势分布及关键计数，污染和空历史安全降级。终验：808/808 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 395000 bytes、`package.zip` 261175 bytes（300 KiB 余量 45805 bytes）。
