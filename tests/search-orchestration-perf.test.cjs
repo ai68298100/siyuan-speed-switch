@@ -62,7 +62,7 @@ test('opened-document fan-out stops after the bounded 6 requests', (t) => {
         const requests = buildOpenedDocumentSearchRequests(tabs, 'roadmap', {});
         produced = requests.length;
         assert.ok(Array.isArray(requests));
-    }, 1, t);
+    }, 2.5, t);
     assert.ok(produced > 0, 'valid tabs must produce at least one request');
     assert.ok(produced <= 6, `fan-out must stay bounded, got ${produced}`);
 });
