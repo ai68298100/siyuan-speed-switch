@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -177,6 +177,12 @@ test('capacity: health normalizer keeps over and near buckets disjoint', () => {
 test('capacity: health serialization rejects oversized payloads', () => {
     assert.equal(parseStorageCapacityHealth('x'.repeat(128001)).risk, 'normal');
     assert.equal(JSON.parse(serializeStorageCapacityHealth({risk: 'critical'})).recommendation, 'none');
+});
+
+test('capacity: trend action follows normalized current recommendation', () => {
+    const trend = assessStorageCapacityTrend({over: ['favorites'], used: 20, max: 20}, {near: ['favorites'], used: 18, max: 20});
+    assert.equal(trend.action, 'monitor');
+    assert.equal(trend.trend, 'improving');
 });
 
 test('capacity: health diff keeps transition lists within the declared buckets', () => {

@@ -546,6 +546,21 @@ function diffStorageCapacityHealth(previous, current) {
     };
 }
 
+/** Classify health direction from risk and aggregate utilization changes. */
+function assessStorageCapacityTrend(previous, current) {
+    const before = normalizeStorageCapacityHealth(previous);
+    const after = normalizeStorageCapacityHealth(current);
+    const rank = {normal: 0, warning: 1, critical: 2};
+    const riskDelta = rank[after.risk] - rank[before.risk];
+    const beforePressure = before.max > 0 ? before.used / before.max : 0;
+    const afterPressure = after.max > 0 ? after.used / after.max : 0;
+    const pressureDelta = afterPressure - beforePressure;
+    const degrading = riskDelta > 0 || (riskDelta === 0 && pressureDelta > 0.05);
+    const improving = riskDelta < 0 || (riskDelta === 0 && pressureDelta < -0.05);
+    const trend = degrading ? "degrading" : (improving ? "improving" : "stable");
+    return {trend, riskDelta, pressureDelta: Number(pressureDelta.toFixed(4)), action: after.recommendation};
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -797,4 +812,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
