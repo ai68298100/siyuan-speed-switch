@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -23,6 +23,21 @@ test('buildCapacitySummary reports bounded usage and truncation', () => {
 test('buildCapacitySummary treats malformed values as empty usage', () => {
     assert.deepEqual(buildCapacitySummary('corrupt', 5), {used: 0, max: 5, truncated: false});
     assert.deepEqual(buildCapacitySummary(null, 'bad'), {used: 0, max: 0, truncated: false});
+});
+
+test('buildStorageCapacitySnapshot reports independent list status', () => {
+    const snapshot = buildStorageCapacitySnapshot({favorites: Array(9).fill(0), pinned: Array(64).fill(0), favoriteGroups: ['a']}, {favorites: 10, pinned: 64, favoriteGroups: 4});
+    assert.equal(snapshot.favorites.status, 'near');
+    assert.equal(snapshot.pinned.status, 'near');
+    assert.equal(snapshot.favoriteGroups.status, 'ok');
+});
+
+test('buildStorageCapacitySnapshot marks over-capacity lists and bounds malformed input', () => {
+    const snapshot = buildStorageCapacitySnapshot({favorites: Array(2000000).fill(0)}, {favorites: 512, pinned: 64, favoriteGroups: 64});
+    assert.equal(snapshot.favorites.status, 'over');
+    assert.equal(snapshot.favorites.truncated, true);
+    assert.equal(snapshot.favorites.used, 1000000);
+    assert.equal(snapshot.pinned.used, 0);
 });
 
 // ── clampNum ──

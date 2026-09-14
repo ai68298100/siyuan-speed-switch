@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第七轮）：完成 20 项开发（T-435~T-454），新增只读 `buildStorageCapacitySnapshot`，分别报告收藏、置顶、分组的 used/max/truncated/status（ok/near/over）；对异常输入和超大数组做安全降级与使用量封顶，不改变既有存储格式。新增容量快照回归，终验 760/760 测试、TypeScript、移动与 Chromium smoke 全绿；`dist/index.js` 389428 bytes、`package.zip` 259614 bytes（300 KiB 余量 47586 bytes）。
+
 补充（2026-09-14 第六轮）：完成 20 项开发（T-415~T-434），统一容量上限解析并新增有界容量摘要；收藏、置顶、分组 getter 增加读取期防御清洗与安全回写，运行时脏数据不再直接进入 UI 或持久化链。新增归一化、摘要、干净/污染输入回归测试，保持旧调用兼容。终验产物：`dist/index.js` 388997 bytes、`package.zip` 259379 bytes；757/757 测试、TypeScript 与三类 smoke 全绿。
 
 补充（2026-09-14 第五轮）：完成 24 项开发（T-350、T-391~T-414），收口收藏/置顶/分组容量决策（512/64/64）。sanitize 函数新增可选上限，加载期和运行时写入统一去重、保序、裁剪并安全回写；新增容量常量、边界/污染/兼容测试，README、DECISIONS、TODO 同步。门禁：751/751 测试、TypeScript、移动烟测与 Chromium smoke 全部通过；`dist/index.js` 388739 bytes、`package.zip` 259228 bytes（300 KiB 余量 47972 bytes）。

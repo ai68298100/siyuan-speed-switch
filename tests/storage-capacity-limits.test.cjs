@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -101,4 +101,11 @@ test('capacity: malformed runtime reads self-heal and report changed', () => {
     assert.equal(sanitizeFavorites([{key: 'ok'}, null, {key: 'ok'}], constants.FAVORITES_MAX).changed, true);
     assert.equal(sanitizeStringList(['ok', '', 'ok', 3], constants.PINNED_MAX).changed, true);
     assert.equal(sanitizeStringList(['group', null], constants.FAVORITE_GROUPS_MAX).changed, true);
+});
+
+test('capacity: snapshot exposes all user-list buckets independently', () => {
+    const snapshot = buildStorageCapacitySnapshot({favorites: Array(512).fill(0), pinned: [], favoriteGroups: Array(64).fill('g')}, {favorites: 512, pinned: 64, favoriteGroups: 64});
+    assert.deepEqual(Object.keys(snapshot), ['favorites', 'pinned', 'favoriteGroups']);
+    assert.equal(snapshot.favorites.status, 'near');
+    assert.equal(snapshot.favoriteGroups.status, 'near');
 });
