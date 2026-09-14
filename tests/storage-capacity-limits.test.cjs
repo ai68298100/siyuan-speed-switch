@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -159,4 +159,10 @@ test('capacity: diff summary remains bounded to the three declared buckets', () 
 test('capacity: aggregate risk classification is stable across all buckets', () => {
     assert.equal(classifyStorageCapacityRisk({favoriteGroups: {used: 58, max: 64}}), 'warning');
     assert.equal(classifyStorageCapacityRisk({favorites: {used: 513, max: 512}, pinned: {used: 1, max: 64}}), 'critical');
+});
+
+test('capacity: health summary keeps a fixed bounded shape', () => {
+    const health = buildStorageCapacityHealth({});
+    assert.deepEqual(Object.keys(health), ['risk', 'used', 'max', 'over', 'near', 'recommendation']);
+    assert.equal(health.recommendation, 'none');
 });

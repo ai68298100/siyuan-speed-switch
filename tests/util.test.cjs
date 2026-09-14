@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -143,6 +143,18 @@ test('classifyStorageCapacityRisk escalates over to critical and near to warning
 
 test('classifyStorageCapacityRisk ignores untrusted status fields', () => {
     assert.equal(classifyStorageCapacityRisk({favorites: {used: 1, max: 10, status: 'critical'}}), 'normal');
+});
+
+test('buildStorageCapacityHealth aggregates usage and recommendations', () => {
+    const health = buildStorageCapacityHealth({favorites: {used: 512, max: 512}, pinned: {used: 1, max: 64}});
+    assert.deepEqual(health, {risk: 'warning', used: 513, max: 576, over: [], near: ['favorites'], recommendation: 'monitor'});
+});
+
+test('buildStorageCapacityHealth marks over buckets for trimming', () => {
+    const health = buildStorageCapacityHealth({favoriteGroups: {used: 65, max: 64}});
+    assert.equal(health.risk, 'critical');
+    assert.deepEqual(health.over, ['favoriteGroups']);
+    assert.equal(health.recommendation, 'trim');
 });
 
 // ── clampNum ──
