@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第二十一轮）：完成 20 项开发（T-715~T-734），新增 `summarizeStorageCapacityReports`，对最多 64 条报告汇总最新风险/趋势、风险与趋势分布及关键计数，污染和空历史安全降级。终验：808/808 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 395000 bytes、`package.zip` 261175 bytes（300 KiB 余量 45805 bytes）。
+
 补充（2026-09-14 第二十轮）：完成 20 项开发（T-695~T-714），新增固定版本 `buildStorageCapacityReport` 及归一化/序列化/解析链，组合 health/trend/summary 三段，限制摘要桶白名单与计数范围，支持安全往返。终验：805/805 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 394562 bytes、`package.zip` 261038 bytes（300 KiB 余量 45942 bytes）。raw bundle 自律线按 D-242 校准至 386 KiB。
 
 补充（2026-09-14 第十九轮）：完成 20 项开发（T-675~T-694），新增健康趋势结果归一化、稳定序列化与解析；趋势/动作枚举白名单、风险与压力差值边界、精度和解析长度上限均已固化。终验：801/801 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 393682 bytes、`package.zip` 260842 bytes（300 KiB 余量 46144 bytes）。

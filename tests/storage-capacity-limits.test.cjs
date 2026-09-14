@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -197,6 +197,12 @@ test('capacity: report keeps fixed top-level sections and version', () => {
     assert.equal(normalizeStorageCapacityReport(report).version, 1);
     assert.equal(parseStorageCapacityReport('bad').version, 1);
     assert.equal(JSON.parse(serializeStorageCapacityReport(report)).version, 1);
+});
+
+test('capacity: report history summary exposes fixed counters', () => {
+    const summary = summarizeStorageCapacityReports([]);
+    assert.deepEqual(Object.keys(summary), ['samples', 'latestRisk', 'latestTrend', 'riskCounts', 'trendCounts', 'criticalSamples', 'degradingSamples', 'improvingSamples']);
+    assert.equal(summary.samples, 0);
 });
 
 test('capacity: health diff keeps transition lists within the declared buckets', () => {

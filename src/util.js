@@ -617,6 +617,29 @@ function parseStorageCapacityReport(serialized) {
     try { return normalizeStorageCapacityReport(JSON.parse(serialized)); } catch (_error) { return normalizeStorageCapacityReport({}); }
 }
 
+/** Aggregate a bounded report history for trend/risk dashboards. */
+function summarizeStorageCapacityReports(reports) {
+    const list = Array.isArray(reports) ? reports.slice(0, 64) : [];
+    const riskCounts = {normal: 0, warning: 0, critical: 0};
+    const trendCounts = {stable: 0, improving: 0, degrading: 0};
+    list.forEach((report) => {
+        const normalized = normalizeStorageCapacityReport(report);
+        riskCounts[normalized.health.risk] += 1;
+        trendCounts[normalized.trend.trend] += 1;
+    });
+    const latest = list.length > 0 ? normalizeStorageCapacityReport(list[list.length - 1]) : normalizeStorageCapacityReport({});
+    return {
+        samples: list.length,
+        latestRisk: latest.health.risk,
+        latestTrend: latest.trend.trend,
+        riskCounts,
+        trendCounts,
+        criticalSamples: riskCounts.critical,
+        degradingSamples: trendCounts.degrading,
+        improvingSamples: trendCounts.improving,
+    };
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -868,4 +891,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};

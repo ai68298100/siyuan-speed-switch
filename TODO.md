@@ -596,6 +596,30 @@
 
 ## 待维护者决策
 
+- [x] T-715 报告历史汇总函数
+- [x] T-716 报告样本上限
+- [x] T-717 最新风险提取
+- [x] T-718 最新趋势提取
+- [x] T-719 风险计数 normal
+- [x] T-720 风险计数 warning
+- [x] T-721 风险计数 critical
+- [x] T-722 趋势计数 stable
+- [x] T-723 趋势计数 improving
+- [x] T-724 趋势计数 degrading
+- [x] T-725 critical 样本计数
+- [x] T-726 degrading 样本计数
+- [x] T-727 improving 样本计数
+- [x] T-728 污染报告归一化
+- [x] T-729 空历史安全降级
+- [x] T-730 固定汇总字段
+- [x] T-731 汇总桶顺序固定
+- [x] T-732 历史汇总回归测试
+- [x] T-733 决策 D-243 落档
+- [x] T-734 状态文档同步
+
+  - 状态：done（2026-09-14）
+  - 证据：`src/util.js`、`tests/util.test.cjs`、`tests/storage-capacity-limits.test.cjs`
+
 - [x] T-695 容量报告构建函数
 - [x] T-696 报告版本字段
 - [x] T-697 报告健康区段
