@@ -10,7 +10,7 @@
 
 > v0.16.41 扩展容量诊断：事件队列利用率摘要支持稳定归一化、历史聚合、变化事件和一致性校验，同时保留 v0.16.40 的组件商店、配置体验与思源智能体协作改进。
 
-> 当前开发策略：正式发布基线已通过类型检查、生产构建、1406 项自动测试、移动端与 Chromium UI 烟测；当前开发头新增 Agent 只读审计生命周期历史、回放、健康报告、趋势窗口、合并恢复与联合快照契约，仍不开放新的写入动作。收藏/置顶/分组容量边界已锁定（512/64/64），路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
+> 当前开发策略：正式发布基线已通过类型检查、生产构建、1438 项自动测试、移动端与 Chromium UI 烟测；当前开发头新增 Agent 只读审计生命周期历史、回放、健康报告、趋势窗口、合并恢复、传输队列与联合恢复契约，仍不开放新的写入动作。收藏/置顶/分组容量边界已锁定（512/64/64），路径筛选真实宿主能力、窄侧栏和 Android 真机验收仍作为后续兼容性补充。
 
 ## 目录
 
@@ -248,7 +248,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 997 项测试（102 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 1438 项测试（102 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -277,10 +277,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 751 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 1438 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、751 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、1438 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

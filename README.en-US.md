@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.16.41 extends capacity diagnostics for bounded report event queues with stable utilization summaries, history aggregation, change events, and consistency validation, while retaining the widget-store, configuration, and native SiYuan Agent improvements from v0.16.40.
 
-> Release note: the current development head passes type checking, production build, 1406 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, recovery, and joint-snapshot contracts for read-only Agent audits without opening new write actions. It is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: the current development head passes type checking, production build, 1438 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, transport, recovery, and joint-snapshot contracts for read-only Agent audits without opening new write actions. It is published as `v0.16.41`; real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
