@@ -259,6 +259,10 @@
 
 2026-09-15 本轮最终验证：2892/2892 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 511481 bytes、`dist/index.css` 130723 bytes、`package.zip` 304389 bytes。产物即将同步至本地集市目录，仍不执行远端 push。
 
+2026-09-15 本轮完成 T-3335~T-3364（30 项）：组件商店重绘前记录卡片/Tab/分组/搜索/排序焦点与滚动位置，重绘后按稳定 moduleId/tabKey/分组标签恢复焦点并避免滚动跳动；空状态、排序、模块变化和插件复扫均复用恢复路径，新增 30 项重绘焦点契约回归。
+
+2026-09-15 本轮最终验证：2923/2923 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 512849 bytes、`dist/index.css` 130723 bytes、`package.zip` 304653 bytes。即将同步至本地集市目录，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

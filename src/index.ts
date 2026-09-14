@@ -4490,6 +4490,30 @@ const version = beginSearch(session);
         const collapsedGroups = new Set<string>();
 
         const renderStore = () => {
+            const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            const previousScrollTop = root.scrollTop;
+            let focusKind = "none";
+            let focusValue = "";
+            if (activeElement && root.contains(activeElement)) {
+                const card = activeElement.closest<HTMLElement>(".sw-home-store__card");
+                const tab = activeElement.closest<HTMLElement>(".sw-home-store__tab");
+                const groupToggle = activeElement.closest<HTMLElement>(".sw-home-store__group-toggle");
+                const group = groupToggle?.closest<HTMLElement>(".sw-home-store__group");
+                if (card?.dataset.moduleId) {
+                    focusKind = "card";
+                    focusValue = card.dataset.moduleId;
+                } else if (tab?.dataset.tabKey) {
+                    focusKind = "tab";
+                    focusValue = tab.dataset.tabKey;
+                } else if (group?.dataset.group) {
+                    focusKind = "group";
+                    focusValue = group.dataset.group;
+                } else if (activeElement.matches(".sw-home-store__search input")) {
+                    focusKind = "search";
+                } else if (activeElement.matches(".sw-home-store__sort")) {
+                    focusKind = "sort";
+                }
+            }
             root.innerHTML = "";
             const state = this.getHomeState();
             const instanceByModule = new Map<string, any>();
@@ -4630,6 +4654,27 @@ const version = beginSearch(session);
                     candidate.setAttribute("tabindex", active ? "0" : "-1");
                 });
                 applyFilter();
+            };
+
+            const restoreStoreView = () => {
+                root.scrollTop = Math.min(previousScrollTop, root.scrollHeight);
+                let target: HTMLElement | undefined;
+                if (focusKind === "card" && focusValue) {
+                    target = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"))
+                        .find((card) => card.dataset.moduleId === focusValue && !card.classList.contains("fn__none"));
+                } else if (focusKind === "tab" && focusValue) {
+                    target = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__tab"))
+                        .find((tab) => tab.dataset.tabKey === focusValue);
+                } else if (focusKind === "group" && focusValue) {
+                    target = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__group"))
+                        .find((group) => group.dataset.group === focusValue)
+                        ?.querySelector<HTMLElement>(".sw-home-store__group-toggle") || undefined;
+                } else if (focusKind === "search") {
+                    target = root.querySelector<HTMLElement>(".sw-home-store__search input") || undefined;
+                } else if (focusKind === "sort") {
+                    target = root.querySelector<HTMLElement>(".sw-home-store__sort") || undefined;
+                }
+                if (target) target.focus({preventScroll: true});
             };
             const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
@@ -5074,6 +5119,7 @@ const version = beginSearch(session);
 
             if (ready.length === 0 && pending.length === 0) {
                 root.textContent = this.i18n.homeNoMoreModules;
+                restoreStoreView();
                 return;
             }
             filterEmptyState = document.createElement("p");
@@ -5105,6 +5151,7 @@ const version = beginSearch(session);
             filterEmptyState.append(emptyText, clearFilters);
             root.appendChild(filterEmptyState);
             applyFilter();
+            restoreStoreView();
         };
 
         renderStore();
