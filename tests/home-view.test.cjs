@@ -129,6 +129,45 @@ test("home view retains a complete calendar and renders iPad-style date states",
     assert.equal(root.querySelectorAll(".sw__home-calendar-marker").length, 1);
     assert.equal(root.querySelector(".has-journal").type, "button");
 });
+test("home view renders holiday overlays without losing lunar context", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView(
+        {moduleId: "journal-calendar", title: "Calendar", viewType: "calendar"},
+        {ok: true, snapshot: {title: "2026-10", items: [
+            {label: "1", secondary: "国庆节 · 八月廿一", holiday: "off"},
+            {label: "10", secondary: "国庆节 · 班", holiday: "work"},
+        ]}},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {});
+    assert.equal(root.querySelectorAll(".is-holiday").length, 1);
+    assert.equal(root.querySelectorAll(".is-workday").length, 1);
+    assert.match(root.querySelector(".is-holiday").getAttribute("aria-label"), /国庆节/);
+    assert.match(root.querySelector(".is-holiday .sw__home-calendar-secondary").textContent, /八月廿一/);
+});
+
+test("home view renders weather context, secondary forecasts, and safe attribution", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView(
+        {moduleId: "external-weather-open-meteo", title: "近期天气"},
+        {ok: true, snapshot: {title: "北京 · 中国", stat: {value: "21°", label: "⛅ 多云"}, items: [
+            {label: "今天 ☀️ 18° / 27°", secondary: "晴 · 降水 10%"},
+            {label: "Open-Meteo", href: "https://open-meteo.com/"},
+        ]}},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {});
+    assert.equal(root.querySelector(".sw__home-module-context").textContent, "北京 · 中国");
+    assert.equal(root.querySelector(".sw__home-module-item-secondary").textContent, "晴 · 降水 10%");
+    assert.equal(view.items[1].href, "https://open-meteo.com/");
+});
+
+test("home view strips executable item links", () => {
+    const view = buildHomeModuleView({moduleId: "unsafe", title: "Unsafe"}, {ok: true, snapshot: {items: [
+        {label: "unsafe", href: "javascript:alert(1)"},
+        {label: "safe", href: "https://example.com"},
+    ]}});
+    assert.equal(view.items[0].href, "");
+    assert.equal(view.items[1].href, "https://example.com");
+});
 test("home view loading state includes a bounded static-safe skeleton", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const view = buildHomeModuleView({moduleId: "loading", title: "Loading"}, {loading: true});

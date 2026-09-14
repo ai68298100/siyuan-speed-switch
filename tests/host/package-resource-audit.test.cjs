@@ -7,7 +7,7 @@ const {listZipEntryStats} = require(path.join(__dirname, 'lib', 'zip.cjs'));
 const root = path.resolve(__dirname, '..', '..');
 const baselinePath = path.join(__dirname, 'package-resource-baseline.json');
 const MAX_ARCHIVE_ENTRIES = 32;
-const MAX_COMPRESSED_ENTRY_BYTES = 120 * 1024;
+const MAX_COMPRESSED_ENTRY_BYTES = 128 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 

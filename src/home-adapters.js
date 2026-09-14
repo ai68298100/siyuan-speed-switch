@@ -38,6 +38,17 @@ function safeText(value, max = MAX_TEXT) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
 }
 
+function safeHref(value) {
+    const href = safeText(value, 512);
+    if (!href) return "";
+    try {
+        const url = new URL(href);
+        return ["https:", "http:", "siyuan:"].includes(url.protocol) ? href : "";
+    } catch (_) {
+        return "";
+    }
+}
+
 function normalizeAdapter(adapter) {
     if (!adapter || typeof adapter !== "object") return null;
     const moduleId = safeText(adapter.moduleId, 64);
@@ -45,7 +56,9 @@ function normalizeAdapter(adapter) {
     const supportedDevices = Array.isArray(adapter.supportedDevices)
         ? DEVICES.filter((device) => adapter.supportedDevices.includes(device)) : [];
     if (!supportedDevices.length) return null;
-    return {moduleId, supportedDevices, read: adapter.read};
+    const timeoutMs = Number.isFinite(adapter.timeoutMs) ? Math.min(10000, Math.max(100, Math.trunc(adapter.timeoutMs))) : DEFAULT_READ_TIMEOUT_MS;
+    const cacheTtlMs = Number.isFinite(adapter.cacheTtlMs) ? Math.min(3600000, Math.max(0, Math.trunc(adapter.cacheTtlMs))) : DEFAULT_CACHE_TTL_MS;
+    return {moduleId, supportedDevices, read: adapter.read, timeoutMs, cacheTtlMs};
 }
 
 function registerHomeAdapters(adapters = []) {
@@ -89,13 +102,14 @@ function normalizeSnapshot(value, options = {}) {
     const maxItems = Math.min(CALENDAR_MAX_SNAPSHOT_ITEMS, Math.max(1, requestedMax));
     const items = rawItems.slice(0, maxItems).map((item) => {
         if (!item || typeof item !== "object") return null;
-        const entry = {label: safeText(item.label), value: safeText(item.value), href: safeText(item.href, 512), command: safeText(item.command, 128)};
+        const entry = {label: safeText(item.label), value: safeText(item.value), href: safeHref(item.href), command: safeText(item.command, 128)};
         const secondary = safeText(item.secondary, 32);
         if (secondary) entry.secondary = secondary;
         // 协议 v2.2：count 为非负整数（如标签出现次数），渲染为行内比例条
         if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));
         if (typeof item.done === "boolean") entry.done = item.done;
         if (item.outside === true) entry.outside = true;
+        if (["off", "work"].includes(item.holiday)) entry.holiday = item.holiday;
         return entry;
         // 协议 v2：command 为 "插件名::命令key"，点击由宿主代为执行（有界格式）
         
@@ -140,7 +154,7 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
         recordDiagnostic("backoff", moduleId, device);
         return {ok: false, reason: "backoff", snapshot: cached?.snapshot || normalizeSnapshot(null)};
     }
-    const ttl = Number.isFinite(options.cacheTtlMs) ? Math.max(0, options.cacheTtlMs) : DEFAULT_CACHE_TTL_MS;
+    const ttl = Number.isFinite(options.cacheTtlMs) ? Math.max(0, options.cacheTtlMs) : adapter.cacheTtlMs;
     if (options.force !== true && ttl > 0) {
         const cached = snapshotCache.get(cacheKey);
         if (cached && now - cached.at < ttl) {
@@ -154,7 +168,7 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
     let abortHandler = null;
     let signal = null;
     try {
-        const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : DEFAULT_READ_TIMEOUT_MS;
+        const timeout = Number.isFinite(options.timeoutMs) ? Math.max(1, options.timeoutMs) : adapter.timeoutMs;
         const timeoutPromise = new Promise((_, reject) => {
             timeoutHandle = setTimeout(() => reject(new Error("timeout")), timeout);
         });
@@ -168,6 +182,7 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
             // 尺寸感知接口（协议 v2.3）：第三参携带当前型号，适配器可按尺寸裁剪内容
             Promise.resolve(adapter.read(normalizeConfig(config), device, {
                 size: typeof options.size === "string" ? options.size.slice(0, 16) : "",
+                signal,
             })),
             timeoutPromise,
             ...(abortPromise ? [abortPromise] : []),

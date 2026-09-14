@@ -37,6 +37,11 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"]},
     {moduleId: "external-local-time", title: "时间与日期", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
+    {moduleId: "external-weather-open-meteo", title: "近期天气", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "city", label: "城市或邮编", type: "text", defaults: ""},
+        {key: "temperatureUnit", label: "温度单位", type: "select", options: ["°C", "°F"], defaults: "°C"},
+        {key: "forecastDays", label: "预报天数", type: "number", min: 2, max: 5, defaults: 4},
+    ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
@@ -84,6 +89,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["large", "full"], protocolVersion: 2, viewType: "calendar", configSchema: [
         {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 24, defaults: 0},
         {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"},
+        {key: "showHolidays", label: "显示中国节假日", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
     {moduleId: "writing-streak", title: "写作打卡", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, viewType: "weekdays", configSchema: [

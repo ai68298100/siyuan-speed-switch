@@ -84,8 +84,8 @@ test('production graph traversal reaches every wired runtime module', () => {
 
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
-    // 2026-09-14 阶段 1 接入后闭包为 25 个模块（+runtime/+diagnostics，
-    // D-220）；超过 29 说明引入了新生产模块，必须复核包体预算后再放行。
+    // 2026-09-14 生活组件第二阶段新增两个经审计的生产模块：纯数据模型与
+    // 白名单网络层。当前闭包为 31；继续增长必须重新复核 300 KiB 包体门禁。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 29, `production graph grew to ${graph.size} modules; audit baseline is 25`);
+    assert.ok(graph.size <= 31, `production graph grew to ${graph.size} modules; audited ceiling is 31`);
 });

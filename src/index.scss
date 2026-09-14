@@ -4877,6 +4877,14 @@
     }
 
     .sw__home-module-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+    .sw__home-module-context {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     .sw__home-module-toggle, .sw__home-module-meta { font-size: 11px; }
 }
 
@@ -5130,6 +5138,10 @@
     .p-calendar-head { width: 42%; height: 8px; background: color-mix(in srgb, var(--b3-theme-primary) 48%, transparent); }
     .p-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
     .p-calendar-grid i { width: 100%; height: 6px; border-radius: 2px; background: color-mix(in srgb, var(--b3-border-color) 72%, transparent); }
+    .p-weather-temp { font-size: 20px; font-weight: 720; color: color-mix(in srgb, var(--b3-theme-primary) 72%, white); }
+    .p-weather-icon { align-self: flex-end; margin-top: -25px; font-size: 22px; }
+    .p-weather-days { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+    .p-weather-days i { width: 100%; height: 8px; background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent); }
     .p-task-list { display: grid; gap: 5px; }
     .p-task-list i { position: relative; width: 80%; height: 7px; margin-left: 14px; }
     .p-task-list i::before { content: ""; position: absolute; left: -12px; top: 0; width: 7px; height: 7px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 60%, transparent); border-radius: 2px; }
@@ -5365,6 +5377,18 @@
         font-weight: 750;
     }
 
+    &.is-holiday:not(.is-today) .sw__home-calendar-primary {
+        color: var(--b3-theme-error, #d23f31);
+        font-weight: 720;
+    }
+
+    &.is-workday:not(.is-today) .sw__home-calendar-primary {
+        color: color-mix(in srgb, var(--b3-theme-on-background) 68%, var(--b3-theme-primary));
+    }
+
+    &.is-holiday .sw__home-calendar-secondary { color: var(--b3-theme-error, #d23f31); opacity: 0.88; }
+    &.is-workday .sw__home-calendar-secondary { color: var(--b3-theme-primary); opacity: 0.88; }
+
     &.has-journal {
         color: inherit;
 
@@ -5398,6 +5422,61 @@
 
     &:hover {
         background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 12%, transparent);
+    }
+}
+
+// 天气组件：借鉴 iPad 卡片的单块渐变、超大温度与横向预报，但使用主题变量、
+// 不引入远程背景图片，确保深浅主题和窄侧栏仍可读。
+.sw-home__cell[data-module-id="external-weather-open-meteo"] {
+    overflow: hidden;
+    border-color: #6f9ed9;
+    background:
+        radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.32), transparent 24%),
+        linear-gradient(145deg, #468ed8 0%, #7164c8 100%);
+    --sw-home-accent: #ffffff;
+
+    .sw__home-module-header,
+    .sw__home-module-context,
+    .sw__home-module-title,
+    .sw__home-module-meta,
+    .sw__home-stat-label,
+    .sw__home-stat-value { color: #fff; }
+
+    .sw__home-module-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
+    .sw__home-module-context { opacity: 0.82; }
+    .sw__home-stat { padding-block: 7px 12px; }
+    .sw__home-stat-value { font-size: clamp(34px, 5vw, 52px); font-weight: 520; letter-spacing: -0.055em; }
+    .sw__home-stat-label { opacity: 0.88; }
+    .sw__home-module-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+    .sw__home-module-item {
+        min-width: 0;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.12);
+
+        &.has-link { grid-column: 1 / -1; background: transparent; }
+    }
+    .sw__home-module-item-action {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        width: 100%;
+        padding: 7px 4px;
+        border-left: 0;
+        color: #fff;
+        text-align: center;
+
+        &::before { display: none; }
+    }
+    .sw__home-module-item-label { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .sw__home-module-item-secondary { color: rgba(255, 255, 255, 0.72); font-size: 9px; white-space: nowrap; }
+    .sw__home-module-item.has-link .sw__home-module-item-action { align-items: flex-start; padding-block: 3px 0; opacity: 0.72; font-size: 9px; }
+    .sw__home-module-toggle { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+}
+
+@media (max-width: 560px) {
+    .sw-home__cell[data-module-id="external-weather-open-meteo"] .sw__home-module-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     }
 }
 

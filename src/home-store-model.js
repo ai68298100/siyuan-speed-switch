@@ -13,7 +13,7 @@ const PREVIEW_KINDS = Object.freeze({
     "journal-calendar": "calendar", "today-tasks": "tasks", "note-stats": "stat", "year-progress": "progress",
     "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown", "flashcard-due": "tasks",
     "random-review": "tasks", "current-document-outline": "outline", "recent-documents": "documents", favorites: "documents",
-    "external-local-time": "stat",
+    "external-local-time": "stat", "external-weather-open-meteo": "weather",
 });
 
 function boundedText(value, max = 256) {

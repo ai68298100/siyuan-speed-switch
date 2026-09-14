@@ -27,6 +27,36 @@ test("home adapter snapshots keep fields consistent across devices", () => {
     const snapshot = adapters.normalizeSnapshot({title: "T", items: [{label: "L", value: "V", href: "/x"}], updatedAt: 1});
     for (const key of ["title", "items", "updatedAt", "empty"]) assert.equal(Object.prototype.hasOwnProperty.call(snapshot, key), true);
     assert.equal(snapshot.empty, false);
+    assert.equal(snapshot.items[0].href, "");
+});
+
+test("home adapter snapshots allow only explicit safe link protocols", () => {
+    const snapshot = adapters.normalizeSnapshot({items: [
+        {label: "web", href: "https://open-meteo.com/"},
+        {label: "siyuan", href: "siyuan://blocks/one"},
+        {label: "script", href: "javascript:alert(1)"},
+    ]});
+    assert.equal(snapshot.items[0].href, "https://open-meteo.com/");
+    assert.equal(snapshot.items[1].href, "siyuan://blocks/one");
+    assert.equal(snapshot.items[2].href, "");
+});
+
+test("home adapters bound provider timeout and cache policies", () => {
+    const map = adapters.registerHomeAdapters([{moduleId: "policy", supportedDevices: ["desktop"], timeoutMs: 99999, cacheTtlMs: -1, read: () => ({})}]);
+    assert.equal(map.get("policy").timeoutMs, 10000);
+    assert.equal(map.get("policy").cacheTtlMs, 0);
+});
+
+test("home adapters pass size and cancellation context to readers", async () => {
+    let captured = null;
+    const signal = {aborted: false};
+    const map = adapters.registerHomeAdapters([{moduleId: "context", supportedDevices: ["desktop"], read: (_config, _device, context) => {
+        captured = context;
+        return {title: "ok"};
+    }}]);
+    await adapters.readHomeModule(map, "context", "desktop", {}, {size: "large", signal, cacheTtlMs: 0});
+    assert.equal(captured.size, "large");
+    assert.equal(captured.signal, signal);
 });
 
 test("calendar adapter keeps a complete six-week grid and visual metadata", async () => {

@@ -37,7 +37,7 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siyuan-speed-switch-smoke
 const profileDir = path.join(tempDir, 'profile');
 const htmlPath = path.join(tempDir, 'index.html');
 const links = cssPaths.map((cssPath) => `<link rel="stylesheet" href="${pathToFileURL(cssPath).href}">`).join('\n');
-const calendarCells = Array.from({length: 42}, (_, index) => `<span class="sw__home-calendar-cell${index < 2 || index > 32 ? ' is-outside' : ''}${index === 10 ? ' is-today has-journal' : ''}"><span class="sw__home-calendar-primary">${(index % 31) + 1}</span>${index === 10 ? '<span class="sw__home-calendar-marker"></span>' : ''}</span>`).join('');
+const calendarCells = Array.from({length: 42}, (_, index) => `<span class="sw__home-calendar-cell${index < 2 || index > 32 ? ' is-outside' : ''}${index === 10 ? ' is-today has-journal' : ''}${index === 15 ? ' is-holiday' : ''}"><span class="sw__home-calendar-primary">${(index % 31) + 1}</span>${index === 10 ? '<span class="sw__home-calendar-marker"></span>' : ''}${index === 15 ? '<span class="sw__home-calendar-secondary">国庆节</span>' : ''}</span>`).join('');
 const html = `<!doctype html>
 <html class="neo-mobile neo-mode-dark" data-theme-mode="dark">
 <head>
@@ -79,11 +79,20 @@ ${links}
   <div class="sw-settings__item-main"><div class="sw-settings__item-title">Setting</div></div>
   <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
 </div></div>
-<div class="sw-home"><section class="sw-home__cell" data-size="large"><div class="sw-home__cell-body">
+<div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
   <section class="sw__home-module" data-module-id="journal-calendar">
     <div class="sw__home-module-body">
       <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
       <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span>${calendarCells}</div>
+    </div>
+  </section>
+</div></section></div>
+<div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-weather-open-meteo"><div class="sw-home__cell-body">
+  <section class="sw__home-module" data-module-id="external-weather-open-meteo">
+    <div class="sw__home-module-header"><strong class="sw__home-module-title">近期天气</strong></div>
+    <div class="sw__home-module-context">北京 · 中国</div>
+    <div class="sw__home-module-body"><div class="sw__home-stat"><strong class="sw__home-stat-value">21°</strong><span class="sw__home-stat-label">⛅ 多云</span></div>
+      <ul class="sw__home-module-list">${Array.from({length: 4}, (_, index) => `<li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周${index + 1} 18° / 27°</span><span class="sw__home-module-item-secondary">降水 10%</span></span></li>`).join('')}</ul>
     </div>
   </section>
 </div></section></div>
@@ -109,6 +118,11 @@ window.addEventListener('load', () => {
     calendarPeriod: document.querySelector('.sw__home-calendar-period').textContent,
     calendarTodayRadius: getComputedStyle(document.querySelector('.is-today .sw__home-calendar-primary')).borderRadius,
     calendarMarkerWidth: getComputedStyle(document.querySelector('.sw__home-calendar-marker')).width,
+    calendarHolidayColor: getComputedStyle(document.querySelector('.is-holiday .sw__home-calendar-primary')).color,
+    weatherBackground: getComputedStyle(document.querySelector('[data-module-id="external-weather-open-meteo"].sw-home__cell')).backgroundImage,
+    weatherGrid: measure('[data-module-id="external-weather-open-meteo"] .sw__home-module-list'),
+    weatherColumnsValue: getComputedStyle(document.querySelector('[data-module-id="external-weather-open-meteo"] .sw__home-module-list')).gridTemplateColumns,
+    weatherTemperature: getComputedStyle(document.querySelector('[data-module-id="external-weather-open-meteo"] .sw__home-stat-value')).fontSize,
   };
   document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
 });
@@ -175,13 +189,19 @@ try {
         && result.calendarCells === 42
         && result.calendarPeriod === '2026年9月'
         && result.calendarTodayRadius === '50%'
-        && result.calendarMarkerWidth === '4px';
+        && result.calendarMarkerWidth === '4px'
+        && result.calendarHolidayColor !== '';
+    const weatherOk = result.weatherBackground.includes('gradient')
+        && result.weatherGrid.display === 'grid'
+        && result.weatherColumnsValue.split(' ').filter(Boolean).length === 2
+        && parseFloat(result.weatherTemperature) >= 34;
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);
     console.log(`${switchOk ? 'PASS' : 'FAIL'} Chromium settings switch`);
     console.log(`${docCardsOk ? 'PASS' : 'FAIL'} Chromium document search cards`);
     console.log(`${calendarOk ? 'PASS' : 'FAIL'} Chromium six-week calendar widget`);
-    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk ? 0 : 1;
+    console.log(`${weatherOk ? 'PASS' : 'FAIL'} Chromium responsive weather widget`);
+    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk && weatherOk ? 0 : 1;
 } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

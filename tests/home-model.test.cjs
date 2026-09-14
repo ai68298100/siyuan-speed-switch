@@ -4,13 +4,13 @@ const home = require("../src/home-model.js");
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 29);
+    assert.equal(modules.length, 30);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 29);
+    assert.equal(home.modulesForDevice([], "mobile").length, 30);
 });
 
 test("journal-calendar viewType and monthOffset config", () => {
@@ -22,7 +22,16 @@ test("journal-calendar viewType and monthOffset config", () => {
     assert.ok(Array.isArray(cal.configSchema) && cal.configSchema.length > 0, "has config");
     assert.deepEqual(cal.configSchema[0], {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 24, defaults: 0});
     assert.deepEqual(cal.configSchema[1], {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"});
-    assert.deepEqual(cal.configSchema[2], {key: "notebook", label: "限定笔记本", type: "notebook"});
+    assert.deepEqual(cal.configSchema[2], {key: "showHolidays", label: "显示中国节假日", type: "select", options: ["否", "是"], defaults: "否"});
+    assert.deepEqual(cal.configSchema[3], {key: "notebook", label: "限定笔记本", type: "notebook"});
+});
+test("weather module exposes opt-in location config and iPad-friendly sizes", () => {
+    const weather = home.registerModules([]).find((item) => item.moduleId === "external-weather-open-meteo");
+    assert.ok(weather);
+    assert.equal(weather.availability, "external");
+    assert.deepEqual(weather.supportedDevices, ["desktop", "sidebar", "mobile"]);
+    assert.deepEqual(weather.sizes, ["small", "medium", "wide", "large"]);
+    assert.deepEqual(weather.configSchema.map((field) => field.key), ["city", "temperatureUnit", "forecastDays"]);
 });
 test("home modules expose bounded availability levels", () => {
     const modules = home.registerModules([]);

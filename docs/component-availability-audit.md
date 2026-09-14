@@ -2,9 +2,9 @@
 
 ## 结论摘要
 
-- 当前商店包含 **27 个内置组件**，另有 **1 个第三方目录组件**（`checkin-summary`）。
-- 27 个内置组件都有真实 adapter 注册；`checkin-summary` 没有本插件内 adapter，必须由 `siyuan-checkin` 注册后才会进入“可用组件”。依据：`src/index.ts:3300-3739`、`src/widget-catalog.js:11-22`。
-- 当前自动门禁为 **674/674 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
+- 当前商店包含 **29 个内置组件**，另有 **1 个第三方目录组件**（`checkin-summary`）。
+- 29 个内置组件都有真实 adapter 注册；`checkin-summary` 没有本插件内 adapter，必须由 `siyuan-checkin` 注册后才会进入“可用组件”。
+- 当前自动门禁为 **1656/1656 通过**。这证明协议、归一化、超时、缓存和渲染边界成立，不等同于每个组件都已在真实思源数据上验收。
 - 已有思源 3.8.2 桌面实测覆盖：商店添加/尺寸、闪卡待复习（空数据态）、随机回顾、本月日记、标签；其余组件仍缺少逐项真实宿主证据（见 `docs/acceptance-v0.16.37.md`）。
 - **已修复的确定缺陷（P0）**：`recent-writing-activity` 与 `today-reservations` 曾使用错误的日期正则，现已修正为匹配 `YYYYMMDD` 并显示为 `YYYY-MM-DD`，回归测试已覆盖；内置 adapter 注册丢失 `viewType/configSchema` 的问题也已修复，日历会按真实网格渲染。
 
@@ -30,6 +30,8 @@
 | `journal-monthly` 本月日记 | C | SQL 按 `YYYY-MM` 标题，首项打开/创建今日日记 | 桌面实测显示 2026-09-11；严格依赖标准日记标题 | 商店显示“标题需 YYYY-MM-DD” |
 | `note-stats` 笔记统计 | B | SQL 聚合文档数、`length` 字数、本周新增/修改 | 查询真实存在；`length` 依赖思源 blocks 字段语义，尚无旧宿主证据 | 对空库/字段缺失增加明确降级说明 |
 | `year-progress` 年度进度 | A | 纯前端日期计算 | 无内核依赖，最稳定 | 保持 |
+| `external-local-time` 时间与日期 | A | 浏览器本地时间与 Intl 格式化 | 完全离线；三端按分钟边界刷新，隐藏和销毁时暂停 | 保持；真实宿主补主题/时区抽查 |
+| `external-weather-open-meteo` 近期天气 | B/C | Open-Meteo 地理编码与预测 API | 用户明确配置城市后才联网；固定白名单、超时、响应上限、分层缓存、来源署名和三端渲染均有自动回归 | 真实宿主验证代理网络、深浅主题、窄侧栏和城市歧义 |
 | `recent-edits` 近期编辑 | B | SQL 文档 `updated DESC`，点击打开 | 使用 `type='d'`，数据源明确；尚未覆盖大库性能 | 增加分页/大库耗时观测 |
 | `flashcard-due` 闪卡待复习 | C | `/api/riff/getNotebookRiffDueCards`；按笔记本或最多 6 本聚合 | 3.8.2 桌面已验证组件添加、空到期态、失败重试；依赖 riff API 和笔记本列表 | 商店标注“思源闪卡 API；全部模式最多 6 本” |
 | `random-review` 随机回顾 | B | SQL `ORDER BY random()` 抽 3 篇旧文档 | 桌面实测真实抽出 2024 文档；空库/文档少时为空是正常 | 增加“可回顾文档不足”空态文案 |
@@ -42,7 +44,7 @@
 | `document-relations-summary` 文档关系摘要 | C | 活动文档直接子块 + markdown 引用 SQL | 无活动文档必为空；引用匹配为有限 LIKE，不是完整关系图，可能漏报 | 标注“轻量摘要/非完整关系图”；后续改引用解析 |
 | `current-document-outline` 当前文档大纲 | C | 活动文档 `/api/outline/getDocOutline` | 端点与 Agent 共用；依赖活动文档和宿主返回结构 | 增加无活动文档和旧返回包装验收 |
 | `today-reservations` 近期预约 | C | `attributes.name='custom-reservation'`、`value=YYYYMMDD` SQL；日期标签已正确格式化 | 仅兼容 dailynote-today 等插件约定，不是思源通用预约 | 商店描述已明确协议依赖；真实宿主验证第三方数据 |
-| `journal-calendar` 日历月视图 | C | SQL 以日记属性为主、日期标题为兼容回退，生成固定 6 周 × 7 列月历，已有日记显示圆点并可点击 | 运行时保留完整 42 格、跨月弱化日期、周末色、今日圆形高亮、年月标题和前后 24 个月切换 | 真实宿主验证自定义日记路径、跨月、筛选和窄卡片密度 |
+| `journal-calendar` 日历月视图 | C | SQL 以日记属性为主、日期标题为兼容回退，生成固定 6 周 × 7 列月历，已有日记显示圆点并可点击 | 保留完整 42 格、跨月/周末/今日/日记状态；可选加载 holiday-cn 节假日与调休班标识并与农历共存 | 真实宿主验证自定义日记路径、跨年节假日、筛选和窄卡片密度 |
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |
 | `countdown` 倒数日 | B | 纯前端 `YYYY-MM-DD` 计算 | 配置合法日期即可用；未配置时显示提示 | 配置控件改为日期 input，避免手填格式错误 |
 | `plugin-commands` 插件命令 | C | 枚举其他插件 `commands`，执行 `plugin::command` | 仅外部插件声明 `langKey` 且有 callback/globalCallback 才出现；命令卸载/旧格式会失效；无命令时显示安装/启用引导 | 保持空态引导；后续补真实宿主验证命令执行失败反馈 |

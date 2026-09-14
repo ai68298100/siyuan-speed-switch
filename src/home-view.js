@@ -19,6 +19,16 @@ function text(value, max = MAX_TEXT) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
 }
 
+function safeHref(value) {
+    const href = text(value, 512);
+    if (!href) return "";
+    try {
+        return ["https:", "http:", "siyuan:"].includes(new URL(href).protocol) ? href : "";
+    } catch (_) {
+        return "";
+    }
+}
+
 function formatUpdatedAt(value) {
     const raw = Number(value);
     if (!Number.isFinite(raw) || raw <= 0) return "";
@@ -65,13 +75,14 @@ function normalizeHomeViewResult(value, options = {}) {
         const entry = {
             label: text(item?.label),
             value: text(item?.value),
-            href: text(item?.href, 512),
+            href: safeHref(item?.href),
             command: text(item?.command, 128),
         };
         const secondary = text(item?.secondary, 32);
         if (secondary) entry.secondary = secondary;
         if (typeof item?.done === "boolean") entry.done = item.done;
         if (item?.outside === true) entry.outside = true;
+        if (["off", "work"].includes(item?.holiday)) entry.holiday = item.holiday;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
@@ -124,7 +135,7 @@ function buildHomeModuleView(module, result, options = {}) {
         reason: normalized.reason,
         updatedAt: normalized.updatedAt,
         items: normalized.items,
-        ...(isCalendar && normalized.title ? {contextTitle: normalized.title} : {}),
+        ...(normalized.title ? {contextTitle: normalized.title} : {}),
         ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
         collapsed: options.collapsed === true,
         role: "region",
@@ -169,6 +180,12 @@ function renderHomeModuleView(doc, view, options = {}) {
     title.id = titleId;
     title.textContent = view.title || view.moduleId;
     heading.appendChild(title);
+    if (view.contextTitle && view.viewType !== "calendar") {
+        const context = doc.createElement("span");
+        context.className = "sw__home-module-context";
+        context.textContent = view.contextTitle;
+        heading.appendChild(context);
+    }
     const updatedAt = formatUpdatedAt(view.updatedAt);
     if (view.cached || updatedAt) {
         const meta = doc.createElement("span");
@@ -332,6 +349,7 @@ function renderHomeModuleView(doc, view, options = {}) {
                 + (item.value ? " has-journal" : "")
                 + (item.done === true ? " is-today" : "")
                 + (item.outside === true ? " is-outside" : "")
+                + (item.holiday === "off" ? " is-holiday" : item.holiday === "work" ? " is-workday" : "")
                 + (index % 7 >= 5 ? " is-weekend" : "");
             cell.setAttribute("role", "gridcell");
             if (clickable) cell.type = "button";
@@ -351,7 +369,7 @@ function renderHomeModuleView(doc, view, options = {}) {
                 marker.setAttribute("aria-hidden", "true");
                 cell.appendChild(marker);
             }
-            const ariaParts = [view.contextTitle, item.label, item.value ? labels.hasJournal : ""].filter(Boolean);
+            const ariaParts = [view.contextTitle, item.label, item.secondary, item.value ? labels.hasJournal : ""].filter(Boolean);
             if (ariaParts.length) cell.setAttribute("aria-label", ariaParts.join(" "));
             if (clickable) {
                 cell.dataset.focusKey = `calendar-day-${index}`;
@@ -392,7 +410,17 @@ function renderHomeModuleView(doc, view, options = {}) {
             if (item.href) button.dataset.href = item.href;
             if (item.command) button.dataset.command = item.command;
             button.classList.toggle("is-done", item.done === true);
-            button.textContent = item.label || item.value || item.href || "";
+            const itemLabel = doc.createElement("span");
+            itemLabel.className = "sw__home-module-item-label";
+            itemLabel.textContent = item.label || item.value || item.href || "";
+            button.appendChild(itemLabel);
+            if (item.secondary) {
+                const secondary = doc.createElement("small");
+                secondary.className = "sw__home-module-item-secondary";
+                secondary.textContent = item.secondary;
+                button.appendChild(secondary);
+            }
+            if (item.href) row.classList.add("has-link");
             if (canToggle && typeof item.done === "boolean") {
                 const check = doc.createElement("button");
                 check.type = "button";

@@ -128,7 +128,10 @@ test('production bundle remains within the mobile performance budget when built'
     // complete six-week calendar view; package.zip remains below 300 KiB.
     // 2026-09-14 (54): 451 KiB for the offline local date/time renderer and its
     // minute-boundary, visibility-aware lifecycle; package.zip stays below 300 KiB.
-    const budget = 451 * 1024;
+    // 2026-09-14 (55): 463 KiB for bounded Open-Meteo weather, holiday-cn
+    // calendar overlays, dedicated life-widget caches and theme-safe card UI;
+    // package.zip remains below the unchanged 300 KiB hard ceiling.
+    const budget = 463 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

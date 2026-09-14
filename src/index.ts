@@ -27,6 +27,8 @@ import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreCardStatus} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -1079,6 +1081,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.groupFlowObserver?.disconnect();
         this.groupFlowObserver = null;
         this.homeRuntime.dispose();
+        clearLifeWidgetCaches();
         this.homeModuleChangeListeners.clear();
         this.closeHistoryMenu();
         this.sidebarHistoryDropdownDispose?.();
@@ -3346,15 +3349,15 @@ const version = beginSearch(session);
             icon: string,
             description: string,
             refreshOn: string[],
-            read: (config: Record<string, unknown>) =>
-                { title?: string; items: Array<{ label: string; value: string }> } |
-                Promise<{ title?: string; items: Array<{ label: string; value: string }> }>,
+            read: (config: Record<string, unknown>, device?: string, context?: {size?: string; signal?: AbortSignal | null}) => any | Promise<any>,
+            policies: {timeoutMs?: number; cacheTtlMs?: number} = {},
         ) => {
             const result = this.homeRuntime.registerAdapter({
                 moduleId, title, icon, description, category: "siyuan",
                 supportedDevices: ["desktop", "sidebar", "mobile"],
                 refreshOn,
                 read,
+                ...policies,
             });
             if (result.registered) this.homeBuiltinAdapterIds.add(moduleId);
         };
@@ -3528,6 +3531,33 @@ const version = beginSearch(session);
             const locale = document.documentElement.lang || navigator.language || "zh-CN";
             return buildLocalTimeSnapshot(new Date(), locale, {localTime: this.i18n.homeLocalTimeZone});
         });
+        // Open-Meteo 天气：用户添加后仍需显式配置城市；不请求浏览器定位，也不发送笔记数据。
+        // 地理编码缓存 24 小时、天气缓存 15 分钟，界面保留 CC BY 4.0 归因链接。
+        register("external-weather-open-meteo", this.i18n.homeWeather, "iconCloud", this.i18n.homeDescWeather, [], async (config, _device, context) => {
+            const normalized = normalizeWeatherConfig(config);
+            if (normalized.city.length < 2) return {emptyHint: this.i18n.homeWeatherConfigHint, items: []};
+            const locale = document.documentElement.lang || navigator.language || "zh-CN";
+            const geocodingUrl = buildWeatherGeocodingUrl(normalized, locale);
+            const locationPayload = await loadWeatherLocation(geocodingUrl, {signal: context?.signal});
+            const location = normalizeWeatherLocation(locationPayload);
+            if (!location) return {emptyHint: this.i18n.homeWeatherCityNotFound, items: []};
+            const forecastUrl = buildWeatherForecastUrl(location, normalized);
+            const forecast = await loadWeatherForecast(forecastUrl, {signal: context?.signal});
+            const snapshot = buildWeatherSnapshot(location, forecast, normalized, {
+                locale,
+                today: this.i18n.homeWeatherToday,
+                clear: this.i18n.homeWeatherClear,
+                cloudy: this.i18n.homeWeatherCloudy,
+                fog: this.i18n.homeWeatherFog,
+                rain: this.i18n.homeWeatherRain,
+                snow: this.i18n.homeWeatherSnow,
+                storm: this.i18n.homeWeatherStorm,
+                feelsLike: this.i18n.homeWeatherFeelsLike,
+                rainChance: this.i18n.homeWeatherRainChance,
+            });
+            if (!snapshot) throw new Error("invalid_weather");
+            return snapshot;
+        }, {timeoutMs: 7500, cacheTtlMs: 15 * 60 * 1000});
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const limit = Math.min(20, Math.max(1, Math.trunc(Number(config.limit) || 10)));
@@ -3684,7 +3714,7 @@ const version = beginSearch(session);
             };
         });
         // 日历月视图：本月日历网格（周一开头），有日记的日期可点击直达
-        register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async (config) => {
+        register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async (config, _device, context) => {
             const now = new Date();
             const offset = Math.min(24, Math.max(-24, Math.trunc(Number(config.monthOffset) || 0)));
             const base = new Date(now.getFullYear(), now.getMonth() + offset, 1);
@@ -3712,13 +3742,37 @@ const version = beginSearch(session);
                     return null;
                 }
             })() : null;
-            const items: Array<{label: string; value: string; done?: boolean; outside?: boolean; secondary?: string}> = [];
             const gridStart = new Date(year, month, 1 - leadingBlanks);
+            const gridDates = Array.from({length: 42}, (_unused, index) =>
+                new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index));
+            let holidays = new Map<string, {date: string; name: string; isOffDay: boolean}>();
+            if (config.showHolidays === "是") {
+                // holiday-cn 说明 12 月日期可能由下一年度公告修订，因此网格涉及的每个
+                // 年份同时检查其下一年度文件；最多三个年度请求且均受 24 小时缓存约束。
+                const yearSet = new Set<number>();
+                gridDates.forEach((date) => {
+                    yearSet.add(date.getFullYear());
+                    yearSet.add(date.getFullYear() + 1);
+                });
+                const years = [...yearSet].slice(0, 3);
+                const payloads = await Promise.all(years.map(async (entryYear) => {
+                    try {
+                        return await loadHolidayYear(entryYear, {signal: context?.signal});
+                    } catch (_) {
+                        return null;
+                    }
+                }));
+                holidays = mergeHolidayPayloads(payloads.filter(Boolean));
+            }
+            const items: Array<{label: string; value: string; done?: boolean; outside?: boolean; secondary?: string; holiday?: string}> = [];
             for (let index = 0; index < 42; index += 1) {
-                const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index);
+                const date = gridDates[index];
                 const inMonth = date.getFullYear() === year && date.getMonth() === month;
                 const dayKey = String(date.getDate());
                 const lunar = inMonth && lunarFormatter ? lunarFormatter.format(date).slice(0, 16) : "";
+                const isoDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                const holiday = holidayPresentation(holidays.get(isoDate), {work: this.i18n.homeHolidayWork});
+                const secondary = [holiday?.label, lunar].filter(Boolean).join(" · ").slice(0, 32);
                 const isToday = date.getFullYear() === now.getFullYear()
                     && date.getMonth() === now.getMonth()
                     && date.getDate() === now.getDate();
@@ -3727,7 +3781,8 @@ const version = beginSearch(session);
                     value: inMonth ? journalByDay.get(dayKey) || "" : "",
                     ...(isToday ? {done: true} : {}),
                     ...(inMonth ? {} : {outside: true}),
-                    ...(lunar ? {secondary: lunar} : {}),
+                    ...(secondary ? {secondary} : {}),
+                    ...(holiday ? {holiday: holiday.kind} : {}),
                 });
             }
             const title = this.i18n.homeCalendarMonthFormat
@@ -4445,7 +4500,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupTasks, moduleIds: ["today-tasks"]},
                 {label: this.i18n.homeStoreGroupDocuments, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
-                {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time"]},
+                {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time", "external-weather-open-meteo"]},
                 {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
                 {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
                 {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
@@ -4523,6 +4578,8 @@ const version = beginSearch(session);
                 preview.setAttribute("aria-hidden", "true");
                 if (kind === "calendar") {
                     preview.innerHTML = `<span class="p-calendar-head"></span><span class="p-calendar-grid">${Array.from({length: 21}, () => "<i></i>").join("")}</span>`;
+                } else if (kind === "weather") {
+                    preview.innerHTML = '<span class="p-weather-temp">21°</span><span class="p-weather-icon">⛅</span><span class="p-weather-days"><i></i><i></i><i></i></span>';
                 } else if (kind === "tasks") {
                     preview.innerHTML = `<span class="p-task-list"><i></i><i></i><i></i></span>`;
                 } else if (kind === "outline" || kind === "documents") {
@@ -4806,6 +4863,7 @@ const version = beginSearch(session);
         const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
         const homeRefreshTimers: number[] = [];
         let homeClockTimer = 0;
+        let homeLifeTimer = 0;
         const homeRefreshObservers: IntersectionObserver[] = [];
         let homeRefreshBatchController: AbortController | null = null;
         let panelEventCleanup: (() => void) | null = null;
@@ -4818,6 +4876,8 @@ const version = beginSearch(session);
             homeRefreshObservers.splice(0).forEach((observer) => observer.disconnect());
             if (homeClockTimer) window.clearTimeout(homeClockTimer);
             homeClockTimer = 0;
+            if (homeLifeTimer) window.clearTimeout(homeLifeTimer);
+            homeLifeTimer = 0;
         };
 
         const renderPanel = () => {
@@ -4974,6 +5034,7 @@ const version = beginSearch(session);
                 const cell = document.createElement("section");
                 cell.className = "sw-home__cell";
                 cell.dataset.size = sizeKey;
+                cell.dataset.moduleId = inst.moduleId;
                 cell.style.gridColumn = `span ${Math.min(12, preset.w)}`;
                 cell.style.gridRow = `span ${Math.max(1, preset.h)}`;
                 // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
@@ -5281,6 +5342,31 @@ const version = beginSearch(session);
                     document.removeEventListener("visibilitychange", handleVisibility);
                 };
                 scheduleClock();
+            }
+
+            // 联网生活组件采用独立低频心跳；天气最多每 15 分钟更新一次，切回前台时
+            // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
+            if (controllers.some((entry) => entry.moduleId === "external-weather-open-meteo")) {
+                const refreshWeather = (force = false) => controllers.filter((entry) => entry.moduleId === "external-weather-open-meteo")
+                    .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });
+                const scheduleLife = () => {
+                    if (!root.isConnected || homeLifeTimer) return;
+                    homeLifeTimer = window.setTimeout(() => {
+                        homeLifeTimer = 0;
+                        if (document.visibilityState !== "hidden") refreshWeather(true);
+                        scheduleLife();
+                    }, 15 * 60 * 1000);
+                };
+                const handleLifeVisibility = () => {
+                    if (document.visibilityState !== "hidden") refreshWeather(false);
+                };
+                document.addEventListener("visibilitychange", handleLifeVisibility);
+                const previousCleanup = panelEventCleanup;
+                panelEventCleanup = () => {
+                    previousCleanup?.();
+                    document.removeEventListener("visibilitychange", handleLifeVisibility);
+                };
+                scheduleLife();
             }
 
             // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
