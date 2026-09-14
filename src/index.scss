@@ -4642,6 +4642,26 @@
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     background: var(--sw-page-bg, var(--b3-theme-background));
+
+    &[aria-busy="true"] {
+        cursor: progress;
+    }
+
+    &[aria-busy="true"] .sw-home-store__summary {
+        opacity: .72;
+    }
+
+    &[data-focus-kind="card"] .sw-home-store__card:focus-visible {
+        scroll-margin-block: 18px;
+    }
+
+    .sw-home-store__group[role="heading"] {
+        scroll-margin-block: 12px;
+    }
+
+    .sw-home-store__sizes[aria-orientation="horizontal"] {
+        overscroll-behavior-inline: contain;
+    }
 }
 
 .sw-home-store__section {

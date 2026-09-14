@@ -287,6 +287,10 @@
 
 2026-09-15 本轮最终验证：3153/3153 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke、18 项宿主发布审计与完整 `verify:release` 全部通过；当前 `dist/index.js` 519242 bytes（508 KiB 自律线内）、`dist/index.css` 133419 bytes、`package.zip` 306597 bytes（300 KiB 硬上限内，余量 603 bytes）。README、发布准备矩阵和压缩条目基线已同步，产物将同步至本地集市目录；仍不执行远端 push。
 
+2026-09-15 本轮完成 T-3545~T-3574（30 项）：组件商店新增渲染版本与 aria-busy 状态、可用/待安装/可见/已添加数量元数据，结果摘要区分 ready/results/empty，Tab 与尺寸按钮补齐集合位置语义，卡片标题关联、分区/功能组 heading 层级、尺寸横向方向和分组网格标识完善；重绘焦点增加卡片/分组/搜索回退与滚动边距，新增 46 项渲染状态契约回归。
+
+2026-09-15 本轮最终验证：3199/3199 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke、18 项宿主发布审计与完整 `verify:release` 全部通过；当前 `dist/index.js` 520736 bytes（509 KiB 自律线内）、`dist/index.css` 133807 bytes、`package.zip` 307020 bytes（300 KiB 硬上限内，余量 180 bytes）。README、发布准备矩阵和压缩条目基线已同步，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

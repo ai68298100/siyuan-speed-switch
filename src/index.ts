@@ -4572,9 +4572,13 @@ const version = beginSearch(session);
         let storeTab = "all";
         let storeSort = "relevance";
         root.dataset.activeTab = storeTab;
+        root.dataset.renderVersion = "0";
+        root.setAttribute("aria-busy", "false");
         const collapsedGroups = new Set<string>();
 
         const renderStore = () => {
+            root.setAttribute("aria-busy", "true");
+            root.dataset.renderVersion = String(Number(root.dataset.renderVersion || "0") + 1);
             const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             const previousScrollTop = root.scrollTop;
             let focusKind = "none";
@@ -4618,6 +4622,7 @@ const version = beginSearch(session);
             defs.forEach((_def: any, moduleId: string) => {
                 if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeThirdPartyIds.has(moduleId)) activeIds.add(moduleId);
             });
+            root.dataset.readyCount = String(activeIds.size);
 
             const searchBar = document.createElement("div");
             searchBar.className = "sw-home-store__search";
@@ -4738,6 +4743,10 @@ const version = beginSearch(session);
                     resultSummary.dataset.visible = String(summary.visible);
                     resultSummary.dataset.total = String(summary.total);
                     resultSummary.dataset.added = String(summary.added);
+                    resultSummary.dataset.state = summary.visible > 0 ? "results" : "empty";
+                    root.dataset.visibleCount = String(summary.visible);
+                    root.dataset.totalCount = String(summary.total);
+                    root.dataset.addedCount = String(summary.added);
                 }
                 const tabCounts = buildHomeStoreTabCounts(Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card")).map((card) => card.dataset));
                 tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab").forEach((button) => {
@@ -4798,7 +4807,18 @@ const version = beginSearch(session);
                 } else if (focusKind === "sort") {
                     target = root.querySelector<HTMLElement>(".sw-home-store__sort") || undefined;
                 }
+                if (!target && focusKind === "card") {
+                    target = root.querySelector<HTMLElement>(".sw-home-store__card:not(.fn__none)") || undefined;
+                }
+                if (!target && focusKind === "group") {
+                    target = root.querySelector<HTMLElement>(".sw-home-store__group-toggle") || undefined;
+                }
+                if (!target && focusKind !== "none") {
+                    target = root.querySelector<HTMLElement>(".sw-home-store__search input") || undefined;
+                }
                 if (target) target.focus({preventScroll: true});
+                root.dataset.focusKind = focusKind;
+                if (focusValue) root.dataset.focusValue = focusValue;
             };
             const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
@@ -4810,7 +4830,7 @@ const version = beginSearch(session);
                 {key: "conditional", label: this.i18n.homeStoreTabConditional, availability: "conditional"},
                 {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
             ];
-            tabs.forEach((tab) => {
+            tabs.forEach((tab, tabIndex) => {
                 const btn = document.createElement("button");
                 btn.type = "button";
                 btn.className = "sw-home-store__tab" + (tab.key === storeTab ? " is-active" : "");
@@ -4823,6 +4843,8 @@ const version = beginSearch(session);
                 btn.dataset.tabKey = tab.key;
                 btn.dataset.count = "0";
                 btn.setAttribute("aria-controls", "sw-home-store-result-summary");
+                btn.setAttribute("aria-setsize", String(tabs.length));
+                btn.setAttribute("aria-posinset", String(tabIndex + 1));
                 btn.dataset.tabFilter = tab.category || "all";
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
                 if (tab.integration) btn.dataset.tabIntegration = tab.integration;
@@ -4851,12 +4873,15 @@ const version = beginSearch(session);
             resultSummary.setAttribute("role", "status");
             resultSummary.setAttribute("aria-live", "polite");
             resultSummary.setAttribute("aria-atomic", "true");
+            resultSummary.dataset.state = "ready";
             root.appendChild(resultSummary);
             root.dataset.query = normalizeHomeStoreQuery(searchInput.value);
 
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
             const readyHeading = document.createElement("h3");
             readyHeading.className = "sw-home-store__section";
+            readyHeading.setAttribute("role", "heading");
+            readyHeading.setAttribute("aria-level", "2");
             readyHeading.id = "sw-home-store-section-ready";
             readyHeading.dataset.section = "ready";
             readyHeading.textContent = this.i18n.homeStoreReady;
@@ -4939,6 +4964,7 @@ const version = beginSearch(session);
                 const title = document.createElement("strong");
                 title.textContent = def.title || moduleId;
                 title.id = `sw-home-store-title-${moduleId}`;
+                card.setAttribute("aria-labelledby", title.id);
                 const availability = def.availability === "conditional" || def.availability === "external" ? def.availability : "";
                 if (availability) {
                     const badge = document.createElement("em");
@@ -4968,6 +4994,7 @@ const version = beginSearch(session);
                 status.id = `sw-home-store-status-${moduleId}`;
                 status.dataset.state = added ? "added" : "available";
                 status.setAttribute("aria-live", "polite");
+                status.setAttribute("aria-atomic", "true");
                 card.setAttribute("aria-describedby", status.id);
                 const cardStatus = resolveHomeStoreCardStatus(!!added, added?.size, supported);
                 status.textContent = cardStatus.added
@@ -5062,6 +5089,7 @@ const version = beginSearch(session);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
                 tiles.setAttribute("role", "group");
+                tiles.setAttribute("aria-orientation", "horizontal");
                 tiles.dataset.moduleId = moduleId;
                 tiles.dataset.selectedSize = added?.size || supported[0];
                 const actionId = `sw-home-store-action-${moduleId}`;
@@ -5072,7 +5100,7 @@ const version = beginSearch(session);
                 tiles.appendChild(sizeLabel);
                 tiles.setAttribute("aria-labelledby", sizeLabel.id);
                 let selectedTile: HTMLButtonElement | undefined;
-                supported.forEach((sizeKey) => {
+                supported.forEach((sizeKey, sizeIndex) => {
                     const tile = document.createElement("button");
                     tile.type = "button";
                     tile.className = "sw-home-store__size";
@@ -5087,6 +5115,8 @@ const version = beginSearch(session);
                         tile.classList.add("is-selected");
                     }
                     tile.setAttribute("aria-pressed", String(tile === selectedTile));
+                    tile.setAttribute("aria-setsize", String(supported.length));
+                    tile.setAttribute("aria-posinset", String(sizeIndex + 1));
                     tile.onclick = () => {
                         selectedTile?.classList.remove("is-selected");
                         selectedTile?.setAttribute("aria-pressed", "false");
@@ -5114,6 +5144,7 @@ const version = beginSearch(session);
                 addButton.type = "button";
                 addButton.id = actionId;
                 addButton.dataset.action = added ? "apply-size" : "add";
+                addButton.dataset.moduleId = moduleId;
                 addButton.dataset.selectedSize = selectedTile?.dataset.size || supported[0];
                 addButton.textContent = added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
                 addButton.setAttribute("aria-describedby", sizeLabel.id);
@@ -5206,6 +5237,8 @@ const version = beginSearch(session);
                 const cards = readyGroups.get(label)!;
                 const groupHeading = document.createElement("h3");
                 groupHeading.className = "sw-home-store__group";
+                groupHeading.setAttribute("role", "heading");
+                groupHeading.setAttribute("aria-level", "3");
                 groupHeading.id = `sw-home-store-group-heading-${orderedGroups.indexOf(label)}`;
                 groupHeading.dataset.group = label;
                 groupHeading.dataset.collapsed = String(collapsedGroups.has(label));
@@ -5229,6 +5262,7 @@ const version = beginSearch(session);
                 const groupId = `sw-home-store-group-${orderedGroups.indexOf(label)}`;
                 groupGrid.id = groupId;
                 groupGrid.setAttribute("role", "group");
+                groupGrid.dataset.group = label;
                 groupGrid.setAttribute("aria-labelledby", groupHeading.id);
                 groupToggle.setAttribute("aria-controls", groupId);
                 cards.forEach((card) => groupGrid.appendChild(card));
@@ -5238,9 +5272,12 @@ const version = beginSearch(session);
             // —— 分区二：需安装插件后可用（目录中登记、来源插件未就位） ——
             const pending = resolveWidgetCatalogState([...activeIds], [...instanceByModule.keys()])
                 .filter((item: any) => item.status !== "ready");
+            root.dataset.pendingCount = String(pending.length);
             if (pending.length > 0) {
                 const pendingHeading = document.createElement("h3");
                 pendingHeading.className = "sw-home-store__section";
+                pendingHeading.setAttribute("role", "heading");
+                pendingHeading.setAttribute("aria-level", "2");
                 pendingHeading.id = "sw-home-store-section-pending";
                 pendingHeading.dataset.section = "pending";
                 pendingHeading.textContent = this.i18n.homeStorePending;
@@ -5276,6 +5313,7 @@ const version = beginSearch(session);
                     const title = document.createElement("strong");
                     title.textContent = entry.title;
                     title.id = `sw-home-store-title-${entry.moduleId}`;
+                    card.setAttribute("aria-labelledby", title.id);
                     const desc = document.createElement("span");
                     desc.textContent = entry.description;
                     copy.append(title, desc);
@@ -5309,12 +5347,16 @@ const version = beginSearch(session);
             }
 
             if (ready.length === 0 && pending.length === 0) {
+                root.dataset.readyCount = "0";
+                root.dataset.pendingCount = "0";
                 root.textContent = this.i18n.homeNoMoreModules;
                 restoreStoreView();
+                root.setAttribute("aria-busy", "false");
                 return;
             }
             filterEmptyState = document.createElement("p");
             filterEmptyState.className = "sw-home-store__filter-empty fn__none";
+            filterEmptyState.dataset.state = "empty-filter";
             filterEmptyState.setAttribute("role", "status");
             filterEmptyState.setAttribute("aria-live", "polite");
             filterEmptyState.setAttribute("aria-atomic", "true");
@@ -5349,6 +5391,7 @@ const version = beginSearch(session);
             root.appendChild(filterEmptyState);
             applyFilter();
             restoreStoreView();
+            root.setAttribute("aria-busy", "false");
         };
 
         renderStore();
