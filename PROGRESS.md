@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第三十一轮）：完成 20 项开发（T-915~T-934），新增 `createStorageCapacityReportEventQueue`，提供有界入队、游标读取、溢出检测、确认消费、快照与销毁态隔离，队列默认 8 条且最多 32 条。终验：838/838 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 400463 bytes、`package.zip` 262610 bytes（300 KiB 余量 43102 bytes）。raw bundle 自律线按 D-260 校准至 393 KiB。
+
 补充（2026-09-14 第三十轮）：完成 20 项开发（T-895~T-914），新增容量报告事件稳定序列化/解析链，限制 payload 长度与事件数量，统一复用事件归一化并隔离未知字段。终验：835/835 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 399681 bytes、`package.zip` 262302 bytes（300 KiB 余量 43696 bytes）。raw bundle 自律线按 D-258 校准至 392 KiB。
 
 补充（2026-09-14 第二十九轮）：完成 20 项开发（T-875~T-894），新增容量报告事件构建/归一化，将风险、趋势及超限/临界桶变化转换为最多 8 条固定事件，过滤未知类型并限制桶白名单。终验：832/832 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 399531 bytes、`package.zip` 262301 bytes（300 KiB 余量 43699 bytes）。raw bundle 自律线按 D-256 校准至 391 KiB。
