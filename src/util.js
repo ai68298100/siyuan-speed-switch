@@ -437,6 +437,32 @@ function diffStorageCapacitySnapshots(previous, current) {
     return diff;
 }
 
+/** Summarize a capacity diff into bounded, UI-friendly change metadata. */
+function summarizeStorageCapacityDiff(previous, current) {
+    const diff = diffStorageCapacitySnapshots(previous, current);
+    const changedBuckets = [];
+    let increased = 0;
+    let decreased = 0;
+    let statusChanges = 0;
+    ["favorites", "pinned", "favoriteGroups"].forEach((name) => {
+        const item = diff[name];
+        if (item.usedDelta !== 0 || item.maxDelta !== 0 || item.statusChanged || item.truncatedChanged) {
+            changedBuckets.push(name);
+        }
+        if (item.usedDelta > 0) increased += 1;
+        if (item.usedDelta < 0) decreased += 1;
+        if (item.statusChanged || item.truncatedChanged) statusChanges += 1;
+    });
+    return {
+        changedBuckets,
+        changedCount: changedBuckets.length,
+        increased,
+        decreased,
+        statusChanges,
+        changed: changedBuckets.length > 0,
+    };
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -688,4 +714,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};

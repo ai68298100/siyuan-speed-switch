@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -147,4 +147,11 @@ test('capacity: diff keeps fixed bucket order and stable boolean flags', () => {
     assert.deepEqual(Object.keys(diff), ['favorites', 'pinned', 'favoriteGroups']);
     assert.equal(diff.favorites.statusChanged, true);
     assert.equal(diff.favorites.truncatedChanged, false);
+});
+
+test('capacity: diff summary remains bounded to the three declared buckets', () => {
+    const summary = summarizeStorageCapacityDiff({favorites: {used: 1, max: 2}}, {favorites: {used: 2, max: 2}, pinned: {used: 1, max: 2}});
+    assert.equal(summary.changedCount, 2);
+    assert.deepEqual(summary.changedBuckets, ['favorites', 'pinned']);
+    assert.equal(summary.increased, 2);
 });

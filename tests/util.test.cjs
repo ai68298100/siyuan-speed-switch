@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -121,6 +121,18 @@ test('diffStorageCapacitySnapshots reports bounded per-bucket deltas', () => {
 test('diffStorageCapacitySnapshots normalizes malformed snapshots before diffing', () => {
     const diff = diffStorageCapacitySnapshots(null, {favoriteGroups: {used: 'bad', max: 4}});
     assert.deepEqual(diff.favoriteGroups, {usedDelta: 0, maxDelta: 4, statusChanged: false, truncatedChanged: false});
+});
+
+test('summarizeStorageCapacityDiff reports changed buckets and direction counts', () => {
+    const summary = summarizeStorageCapacityDiff(
+        {favorites: {used: 1, max: 10}, pinned: {used: 8, max: 10}},
+        {favorites: {used: 9, max: 10}, pinned: {used: 2, max: 10}},
+    );
+    assert.deepEqual(summary, {changedBuckets: ['favorites', 'pinned'], changedCount: 2, increased: 1, decreased: 1, statusChanges: 1, changed: true});
+});
+
+test('summarizeStorageCapacityDiff returns a stable empty summary', () => {
+    assert.deepEqual(summarizeStorageCapacityDiff({}, {}), {changedBuckets: [], changedCount: 0, increased: 0, decreased: 0, statusChanges: 0, changed: false});
 });
 
 // ── clampNum ──
