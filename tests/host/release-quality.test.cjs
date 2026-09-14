@@ -110,7 +110,8 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (40): 389 KiB for report envelope validation contracts.
     // 2026-09-14 (41): 390 KiB for report consistency reconciliation.
     // 2026-09-14 (42): 391 KiB for report event contracts.
-    const budget = 391 * 1024;
+    // 2026-09-14 (43): 392 KiB for event serialization/parse helpers.
+    const budget = 392 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

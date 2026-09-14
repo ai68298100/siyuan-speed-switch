@@ -1,5 +1,9 @@
 # 决策
 
+- D-258（2026-09-14）：报告事件序列化/解析使 raw bundle 达 399,681 bytes，较 391 KiB 自律线超出 657 bytes；校准至 392 KiB，`package.zip` 262,302 bytes，300 KiB 硬上限余量 43,696 bytes。
+
+- D-257（2026-09-14）：容量报告事件序列化/解析仅接受最多 64,000 字符和 8 条事件，解析失败统一返回空数组；事件字段顺序与桶白名单固定，避免日志/传输面被异常 payload 放大。
+
 - D-256（2026-09-14）：容量报告事件构建使 raw bundle 达 399,531 bytes，较 390 KiB 自律线超出 1,131 bytes；校准至 391 KiB，`package.zip` 262,301 bytes，300 KiB 硬上限余量 43,699 bytes。
 
 - D-255（2026-09-14）：容量报告事件类型固定为 risk_changed/usage_trend/over_capacity/over_capacity_cleared/near_capacity/near_capacity_cleared，最多 8 条；事件仅输出风险枚举、趋势枚举和三类桶白名单，未知字段与类型丢弃。
