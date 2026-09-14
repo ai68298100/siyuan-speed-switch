@@ -720,6 +720,46 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（518 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1738~T-1772 Agent 联合 diagnostics 投影与分页消费（本轮 35 项）
+
+- [x] T-1738 diagnostics 状态枚举
+- [x] T-1739 diagnostics 风险枚举
+- [x] T-1740 状态未知值降级
+- [x] T-1741 风险未知值降级
+- [x] T-1742 empty 状态推导
+- [x] T-1743 ready 状态推导
+- [x] T-1744 degraded 状态推导
+- [x] T-1745 blocked 状态推导
+- [x] T-1746 disposed 状态推导
+- [x] T-1747 critical 风险推导
+- [x] T-1748 warning 风险推导
+- [x] T-1749 diagnostics version=1
+- [x] T-1750 diagnostics 固定字段
+- [x] T-1751 diagnostics 脱敏未知字段
+- [x] T-1752 diagnostics 计数一致性
+- [x] T-1753 diagnostics acknowledgement 一致性
+- [x] T-1754 diagnostics 序列化
+- [x] T-1755 diagnostics 恶意解析隔离
+- [x] T-1756 diagnostics 风险差异
+- [x] T-1757 diagnostics cursor 差异
+- [x] T-1758 diagnostics 状态事件
+- [x] T-1759 diagnostics cursor 事件
+- [x] T-1760 diagnostics delta 上限
+- [x] T-1761 diagnostics 事件去重
+- [x] T-1762 diagnostics 事件摘要
+- [x] T-1763 diagnostics 分页 cursor
+- [x] T-1764 diagnostics 分页 nextCursor
+- [x] T-1765 diagnostics 分页数量上限
+- [x] T-1766 diagnostics 分页固定字段
+- [x] T-1767 diagnostics 分页兼容性
+- [x] T-1768 diagnostics 分页序列化
+- [x] T-1769 diagnostics 多源风险合并
+- [x] T-1770 diagnostics 多源 cursor 合并
+- [x] T-1771 diagnostics 批量有界
+- [x] T-1772 diagnostics 批量兼容与序列化
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（553 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合

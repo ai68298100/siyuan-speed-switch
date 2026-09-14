@@ -352,3 +352,4 @@
 - D-300 v0.17 协调器健康固定为 idle/active/blocked/disposed，批量结果与 successRate 只保留计数；commit window 和 recovery summary 均不携带 envelope payload。原因是统一诊断多个协调器时需要可比较指标，而不是内部传输内容。
 - D-301 v0.17 联合恢复继续沿用单协调器固定字段与计数聚合，不在生产 diagnostics 输出中暴露队列条目；健康报告仅用于后续只读消费。原因是多协调器聚合不应绕过既有脱敏边界。
 - D-302 v0.17 联合检查点窗口按 cursor 去重并升序保留最近 8 条；恢复计划只选择 cursor 之后的检查点并要求 nextCursor 单调，窗口事件只输出计数与有限 delta。原因是断点续传需要确定性和可恢复性，同时不能把联合协调器内部条目带入只读诊断输出。
+- D-303 v0.17 联合 diagnostics 只输出状态、风险、计数、cursor、恢复状态和 acknowledgement；分页最多 8 条检查点，多源合并按最高风险与最新 cursor 聚合，不暴露协调器实例或传输条目。原因是上层消费需要稳定摘要，但不能绕过既有只读脱敏边界。
