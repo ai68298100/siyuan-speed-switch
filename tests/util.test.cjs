@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -89,6 +89,24 @@ test('parseStorageCapacitySnapshot safely handles invalid JSON and non-strings',
 
 test('parseStorageCapacitySnapshot rejects oversized payloads before parsing', () => {
     assert.deepEqual(parseStorageCapacitySnapshot('x'.repeat(256001)), normalizeStorageCapacitySnapshot({}));
+});
+
+test('mergeStorageCapacitySnapshots takes per-bucket maxima and recomputes status', () => {
+    const merged = mergeStorageCapacitySnapshots(
+        {favorites: {used: 5, max: 10}, pinned: {used: 2, max: 4}},
+        {favorites: {used: 9, max: 8}, favoriteGroups: {used: 3, max: 4}},
+    );
+    assert.equal(merged.favorites.used, 9);
+    assert.equal(merged.favorites.max, 10);
+    assert.equal(merged.favorites.status, 'near');
+    assert.equal(merged.pinned.used, 2);
+    assert.equal(merged.favoriteGroups.used, 3);
+});
+
+test('mergeStorageCapacitySnapshots ignores malformed sources and is deterministic', () => {
+    const first = mergeStorageCapacitySnapshots(null, {pinned: {used: 1, max: 2}});
+    const second = mergeStorageCapacitySnapshots({pinned: {used: 1, max: 2}}, null);
+    assert.deepEqual(first, second);
 });
 
 // ── clampNum ──

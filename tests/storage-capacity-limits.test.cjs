@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -129,4 +129,15 @@ test('capacity: parse/serialize round trip keeps all buckets bounded', () => {
     assert.equal(parsed.favorites.status, 'near');
     assert.equal(parsed.pinned.status, 'near');
     assert.equal(parsed.favoriteGroups.status, 'near');
+});
+
+test('capacity: merged snapshots preserve all three bounded buckets', () => {
+    const merged = mergeStorageCapacitySnapshots(
+        {favorites: {used: 200, max: 512}},
+        {pinned: {used: 64, max: 64}},
+        {favoriteGroups: {used: 60, max: 64}},
+    );
+    assert.deepEqual(Object.keys(merged), ['favorites', 'pinned', 'favoriteGroups']);
+    assert.equal(merged.pinned.status, 'near');
+    assert.equal(merged.favoriteGroups.status, 'near');
 });

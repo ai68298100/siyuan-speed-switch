@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第十一轮）：完成 20 项开发（T-515~T-534），新增 `mergeStorageCapacitySnapshots`，按收藏/置顶/分组逐桶取最大使用量与上限，再统一归一化状态；支持多来源、缺失来源和污染输入安全汇总。终验：775/775 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 390260 bytes、`package.zip` 259843 bytes（300 KiB 余量 47357 bytes）。
+
 补充（2026-09-14 第十轮）：完成 20 项开发（T-495~T-514），新增 `parseStorageCapacitySnapshot` 安全解析入口，限制输入长度、捕获 JSON 异常并统一归一化三类容量桶；补充往返、非法 JSON、超大 payload、字段隔离和边界回归。终验 772/772 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 390038 bytes、`package.zip` 259767 bytes（300 KiB 余量 47433 bytes）。
 
 补充（2026-09-14 第九轮）：完成 20 项开发（T-475~T-494），新增 `serializeStorageCapacitySnapshot`，序列化前统一归一化容量快照，固定三类桶与字段顺序，隔离污染输入并保持源对象不可变；补充确定性、字段顺序、空值和异常安全回归。终验 768/768 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 389885 bytes、`package.zip` 259734 bytes（300 KiB 余量 47466 bytes）。
