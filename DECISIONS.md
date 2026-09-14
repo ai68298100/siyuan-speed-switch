@@ -1,5 +1,7 @@
 # 决策
 
+- D-237（2026-09-14）：健康摘要消费端仅接受三类固定桶名，over 与 near 互斥并去重；risk/recommendation 始终由桶列表重算，used/max 各自限制在 3,000,000 内，序列化解析输入上限 128,000 字符。
+
 - D-236（2026-09-14）：容量健康摘要聚合三类桶并输出固定字段；建议动作与风险一一对应（normal→none、warning→monitor、critical→trim），总使用量封顶 3,000,000，桶名仅允许内置三项。
 
 - D-235（2026-09-14）：容量风险等级固定为 normal/warning/critical；任一桶 over 即 critical，否则任一桶 near 即 warning，其余为 normal。分类只信任归一化后的 used/max，不接受外部 status 字段，保证风险提示不会被污染数据绕过。

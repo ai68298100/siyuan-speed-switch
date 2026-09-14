@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -155,6 +155,21 @@ test('buildStorageCapacityHealth marks over buckets for trimming', () => {
     assert.equal(health.risk, 'critical');
     assert.deepEqual(health.over, ['favoriteGroups']);
     assert.equal(health.recommendation, 'trim');
+});
+
+test('normalizeStorageCapacityHealth filters buckets and recomputes risk', () => {
+    const result = normalizeStorageCapacityHealth({risk: 'normal', used: '9', max: 10, over: ['pinned', 'pinned', 'bad'], near: ['pinned', 'favorites'], recommendation: 'none'});
+    assert.deepEqual(result, {risk: 'critical', used: 9, max: 10, over: ['pinned'], near: ['favorites'], recommendation: 'trim'});
+});
+
+test('normalizeStorageCapacityHealth clamps counters and handles malformed input', () => {
+    assert.deepEqual(normalizeStorageCapacityHealth({used: 9000000, max: -1, over: 'bad'}), {risk: 'normal', used: 3000000, max: 0, over: [], near: [], recommendation: 'none'});
+});
+
+test('serializeStorageCapacityHealth and parseStorageCapacityHealth round trip safely', () => {
+    const source = {over: ['favorites'], used: 10, max: 20};
+    assert.deepEqual(parseStorageCapacityHealth(serializeStorageCapacityHealth(source)), normalizeStorageCapacityHealth(source));
+    assert.deepEqual(parseStorageCapacityHealth('{bad'), normalizeStorageCapacityHealth({}));
 });
 
 // ── clampNum ──
