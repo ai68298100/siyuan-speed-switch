@@ -7483,7 +7483,12 @@ private rootIdOf(tab: Tab): string | null {
     // 璇诲彇缃《鍒楄〃
     private getPinned(): string[] {
         const data = this.data[PINNED_KEY];
-        return Array.isArray(data) ? (data as string[]) : [];
+        const result = sanitizeStringList(data, PINNED_MAX);
+        if (result.changed) {
+            this.data[PINNED_KEY] = result.items;
+            this.saveDataDebounced(PINNED_KEY);
+        }
+        return result.items;
     }
 
     // 鍒囨崲缃《鐘舵€侊紝杩斿洖鍒囨崲鍚庢槸鍚︿负缃《
@@ -7509,7 +7514,12 @@ private rootIdOf(tab: Tab): string | null {
     // 璇诲彇鏀惰棌鍒楄〃锛堟渶杩戞敹钘忓湪鍓嶏級
     private getFavorites(): IFavoriteItem[] {
         const data = this.data[FAV_KEY];
-        return Array.isArray(data) ? (data as IFavoriteItem[]) : [];
+        const result = sanitizeFavorites(data, FAVORITES_MAX);
+        if (result.changed) {
+            this.data[FAV_KEY] = result.items;
+            this.saveDataDebounced(FAV_KEY);
+        }
+        return result.items;
     }
 
     private saveFavorites(list: IFavoriteItem[]) {
@@ -8077,7 +8087,12 @@ private rootIdOf(tab: Tab): string | null {
     // 鍒嗙粍娉ㄥ唽琛紙鍏佽瀛樺湪绌哄垎缁勶細璁剧疆椤垫柊寤哄悗灏氭湭鏀惰棌浠讳綍椤电鐨勫垎缁勶級
     private getFavGroupRegistry(): string[] {
         const data = this.data[FAV_GROUPS_KEY];
-        return Array.isArray(data) ? (data as unknown[]).filter((name): name is string => typeof name === "string" && !!name) : [];
+        const result = sanitizeStringList(data, FAVORITE_GROUPS_MAX);
+        if (result.changed) {
+            this.data[FAV_GROUPS_KEY] = result.items;
+            this.saveDataDebounced(FAV_GROUPS_KEY);
+        }
+        return result.items;
     }
 
     private saveFavGroupRegistry(names: string[]) {

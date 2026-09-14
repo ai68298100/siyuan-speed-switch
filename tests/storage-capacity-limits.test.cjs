@@ -89,3 +89,16 @@ test('capacity: pinned and group string lists clamp independently', () => {
     assert.equal(sanitizeStringList(strings, constants.FAVORITE_GROUPS_MAX).items.length, constants.FAVORITE_GROUPS_MAX);
     assert.equal(sanitizeStringList(strings).items.length, 800, 'omitting max preserves pure-function compatibility');
 });
+
+test('capacity: clean runtime reads remain unchanged after defensive sanitization', () => {
+    const favorites = Array.from({length: 3}, (_, index) => ({key: `k${index}`, title: `T${index}`, rootId: null, group: ''}));
+    assert.equal(sanitizeFavorites(favorites, constants.FAVORITES_MAX).changed, false);
+    assert.equal(sanitizeStringList(['p1', 'p2'], constants.PINNED_MAX).changed, false);
+    assert.equal(sanitizeStringList(['g1', 'g2'], constants.FAVORITE_GROUPS_MAX).changed, false);
+});
+
+test('capacity: malformed runtime reads self-heal and report changed', () => {
+    assert.equal(sanitizeFavorites([{key: 'ok'}, null, {key: 'ok'}], constants.FAVORITES_MAX).changed, true);
+    assert.equal(sanitizeStringList(['ok', '', 'ok', 3], constants.PINNED_MAX).changed, true);
+    assert.equal(sanitizeStringList(['group', null], constants.FAVORITE_GROUPS_MAX).changed, true);
+});

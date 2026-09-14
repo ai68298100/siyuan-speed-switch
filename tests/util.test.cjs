@@ -2,7 +2,28 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+
+test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
+    assert.equal(normalizeCapacityLimit(4.9), 4);
+    assert.equal(normalizeCapacityLimit('8'), 8);
+});
+
+test('normalizeCapacityLimit rejects non-positive, non-finite, and missing values', () => {
+    for (const value of [0, -1, NaN, Infinity, null, undefined, 'bad']) {
+        assert.equal(normalizeCapacityLimit(value), 0);
+    }
+});
+
+test('buildCapacitySummary reports bounded usage and truncation', () => {
+    assert.deepEqual(buildCapacitySummary([1, 2, 3], 2), {used: 3, max: 2, truncated: true});
+    assert.deepEqual(buildCapacitySummary([1], 2), {used: 1, max: 2, truncated: false});
+});
+
+test('buildCapacitySummary treats malformed values as empty usage', () => {
+    assert.deepEqual(buildCapacitySummary('corrupt', 5), {used: 0, max: 5, truncated: false});
+    assert.deepEqual(buildCapacitySummary(null, 'bad'), {used: 0, max: 0, truncated: false});
+});
 
 // ── clampNum ──
 test('clampNum: numbers within range pass through', () => {

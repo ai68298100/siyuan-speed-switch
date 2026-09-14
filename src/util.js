@@ -328,8 +328,20 @@ function sanitizeDocIds(values) {
  * @param {number} max
  * @returns {string[]}
  */
+function normalizeCapacityLimit(max) {
+    const numeric = Number(max);
+    return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
+}
+
+/** Return a bounded, serializable usage summary for a persisted list. */
+function buildCapacitySummary(values, max) {
+    const limit = normalizeCapacityLimit(max);
+    const size = Array.isArray(values) ? values.length : 0;
+    return {used: size, max: limit, truncated: limit > 0 && size > limit};
+}
+
 function capMru(values, max) {
-    const limit = typeof max === "number" && max > 0 ? Math.floor(max) : 0;
+    const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
         // 损坏/非法输入统一安全降级，与其余 sanitize 家族保持一致；
         // 非数组的 truthy 值（如被写坏的字符串）此前会直接抛错。
@@ -367,7 +379,7 @@ function sanitizeStringList(values, max) {
         seen.add(value);
         items.push(value);
     });
-    const limit = Number.isFinite(Number(max)) && Number(max) > 0 ? Math.floor(Number(max)) : 0;
+    const limit = normalizeCapacityLimit(max);
     const bounded = limit > 0 ? items.slice(0, limit) : items;
     return {items: bounded, changed: bounded.length !== values.length};
 }
@@ -413,7 +425,7 @@ function sanitizeFavorites(values, max) {
         }
         items.push({key, title, rootId, group});
     });
-    const limit = Number.isFinite(Number(max)) && Number(max) > 0 ? Math.floor(Number(max)) : 0;
+    const limit = normalizeCapacityLimit(max);
     const bounded = limit > 0 ? items.slice(0, limit) : items;
     return {items: bounded, changed: changed || bounded.length !== values.length};
 }
@@ -579,4 +591,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
