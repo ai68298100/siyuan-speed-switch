@@ -6072,3 +6072,53 @@
 - [x] T-4429 query 空白清理
 - [x] T-4430 category fallback 筛选
 - [x] T-4431 availability fallback 筛选
+- [x] T-4432 unknown 健康归一化
+- [x] T-4433 healthy 健康归一化
+- [x] T-4434 cached 健康归一化
+- [x] T-4435 stale 健康归一化
+- [x] T-4436 offline 健康归一化
+- [x] T-4437 error 健康归一化
+- [x] T-4438 null 健康值回退
+- [x] T-4439 数字健康值回退
+- [x] T-4440 安全原因标点
+- [x] T-4441 原因尖括号清理
+- [x] T-4442 原因非法标点清理
+- [x] T-4443 原因长度上限
+- [x] T-4444 非字符串原因安全
+- [x] T-4445 零时间戳
+- [x] T-4446 小数时间戳截断
+- [x] T-4447 时间戳 fallback
+- [x] T-4448 负 fallback 归零
+- [x] T-4449 超大 fallback
+- [x] T-4450 快照版本固定
+- [x] T-4451 快照 status 默认
+- [x] T-4452 快照 status 长度上限
+- [x] T-4453 快照 action 非法回退
+- [x] T-4454 快照 reason 清理
+- [x] T-4455 快照 timestamp 截断
+- [x] T-4456 快照 moduleId 上限
+- [x] T-4457 原始快照输入安全
+- [x] T-4458 构建快照 status
+- [x] T-4459 构建快照 retry action
+- [x] T-4460 构建快照诊断原因
+- [x] T-4461 构建快照模块 ID 来源
+- [x] T-4462 构建快照默认时间
+- [x] T-4463 快照兼容最小形状
+- [x] T-4464 快照兼容 null
+- [x] T-4465 快照兼容数组
+- [x] T-4466 快照版本类型校验
+- [x] T-4467 快照序列化 action
+- [x] T-4468 快照序列化 health
+- [x] T-4469 空字符串解析
+- [x] T-4470 对象解析安全
+- [x] T-4471 status diff
+- [x] T-4472 action diff
+- [x] T-4473 reason diff
+- [x] T-4474 diff 模块 ID fallback
+- [x] T-4475 transition 模块 ID
+- [x] T-4476 历史顺序保持
+- [x] T-4477 历史容量上限
+- [x] T-4478 追加不修改原数组
+- [x] T-4479 裁剪不修改原数组
+- [x] T-4480 最新/筛选/汇总边界
+- [x] T-4481 合并与历史序列化
