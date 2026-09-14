@@ -400,6 +400,41 @@
   - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（236 项专项测试）
   - 状态：done（2026-09-14）
 
+### T-1463~T-1492 Agent 审计传输队列与恢复（本轮 30 项）
+
+- [x] T-1463 传输队列容量
+- [x] T-1464 传输 cursor 归一化
+- [x] T-1465 队列初始空态
+- [x] T-1466 enqueue 接受 envelope
+- [x] T-1467 enqueue sequence
+- [x] T-1468 sequence 单调递增
+- [x] T-1469 队列淘汰旧项
+- [x] T-1470 list cursor 过滤
+- [x] T-1471 list 副本隔离
+- [x] T-1472 latest 最新值
+- [x] T-1473 acknowledge 游标确认
+- [x] T-1474 acknowledge 数量
+- [x] T-1475 队列 status 固定字段
+- [x] T-1476 dispose 清理队列
+- [x] T-1477 dispose 后拒绝 enqueue
+- [x] T-1478 队列快照 version=1
+- [x] T-1479 队列快照兼容性
+- [x] T-1480 队列快照容量校验
+- [x] T-1481 队列快照序列化
+- [x] T-1482 队列快照安全解析
+- [x] T-1483 按类型筛选队列
+- [x] T-1484 类型筛选数量上限
+- [x] T-1485 队列 utilization 摘要
+- [x] T-1486 队列 hasLatest 标记
+- [x] T-1487 utilization 归一化
+- [x] T-1488 队列摘要兼容性
+- [x] T-1489 队列恢复 cursor
+- [x] T-1490 队列恢复 nextCursor
+- [x] T-1491 队列恢复 version/兼容性
+- [x] T-1492 队列恢复稳定序列化与安全解析
+  - 证据：`src/agent-readonly-audit.js`、`tests/agent-readonly-audit.test.cjs`（268 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合

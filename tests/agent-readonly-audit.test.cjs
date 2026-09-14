@@ -254,3 +254,37 @@ test('transport batch summary has status counters', () => assert.deepEqual(Objec
 test('transport batch summary counts valid items', () => { const b = a.buildAgentReadOnlyAuditTransportBatch([a.buildAgentReadOnlyAuditTransportEnvelope('report', {})]); assert.equal(a.summarizeAgentReadOnlyAuditTransportBatch(b).valid, 1); });
 test('transport failure marks unavailable retryable', () => assert.equal(a.isAgentReadOnlyAuditTransportFailureRetryable({status: 'unavailable'}), true));
 test('transport failure marks invalid nonretryable', () => assert.equal(a.isAgentReadOnlyAuditTransportFailureRetryable({status: 'invalid'}), false));
+
+// v0.17 transport queue/recovery contract (T-1463~T-1492)
+test('transport queue cap is fixed', () => assert.equal(a.MAX_TRANSPORT_QUEUE, 16));
+test('transport cursor normalizes negatives', () => assert.equal(a.normalizeAgentAuditTransportCursor(-1), 0));
+test('transport queue starts empty', () => assert.equal(a.createAgentReadOnlyAuditTransportQueue().list().length, 0));
+test('transport queue enqueue accepts envelope', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); assert.equal(q.enqueue(a.buildAgentReadOnlyAuditTransportEnvelope('report', {})).accepted, true); });
+test('transport queue enqueue returns sequence', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); assert.equal(q.enqueue({}).sequence, 1); });
+test('transport queue sequence monotonic', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.enqueue({}); assert.deepEqual(q.list().map((e) => e.sequence), [1, 2]); });
+test('transport queue evicts oldest', () => { const q = a.createAgentReadOnlyAuditTransportQueue(2); q.enqueue({}); q.enqueue({}); q.enqueue({}); assert.deepEqual(q.list().map((e) => e.sequence), [2, 3]); });
+test('transport queue list cursor filters', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.enqueue({}); assert.equal(q.list(1).length, 1); });
+test('transport queue list returns copies', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const list = q.list(); list[0].envelope.status = 'invalid'; assert.equal(q.latest().envelope.status, 'invalid'); });
+test('transport queue latest returns newest', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({requestId: 'a'}); q.enqueue({requestId: 'b'}); assert.equal(q.latest().envelope.requestId, 'b'); });
+test('transport queue acknowledge removes through cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.enqueue({}); assert.equal(q.acknowledge(1).acknowledged, 1); });
+test('transport queue acknowledge is bounded', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(q.acknowledge(99).acknowledged, 1); });
+test('transport queue status fixed fields', () => assert.deepEqual(Object.keys(a.createAgentReadOnlyAuditTransportQueue().status()).sort(), ['capacity', 'disposed', 'latestSequence', 'size']));
+test('transport queue dispose clears entries', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.dispose(); assert.equal(q.list().length, 0); });
+test('transport queue dispose rejects enqueue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.dispose(); assert.equal(q.enqueue({}).accepted, false); });
+test('queue snapshot uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueSnapshot(a.createAgentReadOnlyAuditTransportQueue()).version, 1));
+test('queue snapshot compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueSnapshotCompatible({version: 1, size: 0, capacity: 1, latestSequence: 0, disposed: false}), true));
+test('queue snapshot compatibility rejects overflow', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueSnapshotCompatible({version: 1, size: 2, capacity: 1, latestSequence: 2}), false));
+test('queue snapshot serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueSnapshot({size: 1, capacity: 2, latestSequence: 1}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueSnapshot(value).size, 1); });
+test('queue snapshot parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueSnapshot('{bad').version, 1));
+test('queue type selection filters', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({type: 'report'}); q.enqueue({type: 'window'}); assert.equal(a.selectAgentReadOnlyAuditTransportQueueByType(q, 'window').length, 1); });
+test('queue type selection bounds', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); for (let i = 0; i < 8; i++) q.enqueue({type: 'report'}); assert.equal(a.selectAgentReadOnlyAuditTransportQueueByType(q, 'report', 0, 2).length, 2); });
+test('queue summary exposes utilization', () => { const q = a.createAgentReadOnlyAuditTransportQueue(2); q.enqueue({}); assert.equal(a.summarizeAgentReadOnlyAuditTransportQueue(q).utilization, 0.5); });
+test('queue summary has latest flag', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); assert.equal(a.summarizeAgentReadOnlyAuditTransportQueue(q).hasLatest, false); });
+test('queue summary normalizer clamps utilization', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueSummary({utilization: 9}).utilization, 1));
+test('queue summary compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueSummaryCompatible({version: 1, size: 0, capacity: 1, latestSequence: 0, disposed: false, hasLatest: false, utilization: 0}), true));
+test('queue recovery starts at cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const plan = a.buildAgentReadOnlyAuditTransportQueueRecovery(q, 0); assert.equal(plan.cursor, 0); });
+test('queue recovery advances cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.buildAgentReadOnlyAuditTransportQueueRecovery(q).nextCursor, 1); });
+test('queue recovery normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueRecovery({}).version, 1));
+test('queue recovery compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueRecoveryCompatible({version: 1, cursor: 2, nextCursor: 1, entries: [], complete: true}), false));
+test('queue recovery serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueRecovery({cursor: 1, nextCursor: 1, entries: []}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueRecovery(value).cursor, 1); });
+test('queue recovery parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueRecovery('{bad').version, 1));
