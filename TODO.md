@@ -6428,3 +6428,58 @@
 - [x] T-4785 错误分类输入隔离
 - [x] T-4786 队列回执字段隔离
 - [x] T-4787 状态摘要输入隔离
+- [x] T-4788 商店状态固定键
+- [x] T-4789 builtin 配置无影响
+- [x] T-4790 external endpoint 无影响
+- [x] T-4791 conditional 严格配置标记
+- [x] T-4792 conditional ready 状态
+- [x] T-4793 bridge 严格服务标记
+- [x] T-4794 bridge ready 状态
+- [x] T-4795 状态未知选项隔离
+- [x] T-4796 null 条目安全
+- [x] T-4797 原始条目安全
+- [x] T-4798 moduleId 边界
+- [x] T-4799 configure 动作优先级
+- [x] T-4800 start-service 动作优先级
+- [x] T-4801 reference 动作优先级
+- [x] T-4802 stale 重试动作
+- [x] T-4803 offline 动作保持 add
+- [x] T-4804 error 强制重试
+- [x] T-4805 canAdd 严格布尔
+- [x] T-4806 缺省 canAdd
+- [x] T-4807 null 状态动作
+- [x] T-4808 ready 状态标签
+- [x] T-4809 needs-config 状态标签
+- [x] T-4810 local-service 状态标签
+- [x] T-4811 reference 状态标签
+- [x] T-4812 unavailable 状态标签
+- [x] T-4813 未知状态标签
+- [x] T-4814 状态描述固定键
+- [x] T-4815 非法健康归一化
+- [x] T-4816 reason 边界
+- [x] T-4817 external offline 状态
+- [x] T-4818 builtin offline 状态
+- [x] T-4819 conditional offline 状态
+- [x] T-4820 bridge offline 状态
+- [x] T-4821 reference offline 状态
+- [x] T-4822 stale 可重试
+- [x] T-4823 offline 可重试
+- [x] T-4824 error 可重试
+- [x] T-4825 unknown 不可重试
+- [x] T-4826 healthy 不可重试
+- [x] T-4827 selectable 严格布尔
+- [x] T-4828 selectable external
+- [x] T-4829 selectable ready
+- [x] T-4830 reference 不可选
+- [x] T-4831 unavailable 不可选
+- [x] T-4832 显式 addable 状态
+- [x] T-4833 状态摘要空列表
+- [x] T-4834 setup 严格布尔计数
+- [x] T-4835 selectable 严格布尔计数
+- [x] T-4836 degraded 混合计数
+- [x] T-4837 标题排序 fallback
+- [x] T-4838 availability fallback 稳定排序
+- [x] T-4839 null filter 显式拒绝
+- [x] T-4840 guide anchor 清理
+- [x] T-4841 setup 步骤顺序
+- [x] T-4842 privacy 数值拒绝
