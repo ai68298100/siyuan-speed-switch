@@ -151,9 +151,10 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-15 (63): 502 KiB for rerender focus/scroll restoration and
     // semantic empty-state recovery; package.zip remains below the 300 KiB
     // hard ceiling.
-    // 2026-09-15 (64): 503 KiB for preview source/network/privacy disclosure
-    // chips; package.zip remains below the unchanged 300 KiB hard ceiling.
-    const budget = 503 * 1024;
+    // 2026-09-15 (65): 505 KiB for widget-store action semantics, selected
+    // size metadata, and accessibility state; package.zip remains below the
+    // unchanged 300 KiB hard ceiling.
+    const budget = 505 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

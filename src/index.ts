@@ -4875,6 +4875,8 @@ const version = beginSearch(session);
                 const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
                 const added = instanceByModule.get(moduleId);
                 const addedInstance = instanceStateByModule.get(moduleId);
+                card.dataset.supportedSizes = supported.join(",");
+                card.dataset.currentSize = added?.size || "";
                 card.dataset.added = added ? "true" : "false";
                 card.dataset.statusTone = resolveHomeStoreStatusTone(card.dataset);
                 card.dataset.integrationTone = resolveHomeStoreIntegrationTone(card.dataset);
@@ -4912,8 +4914,13 @@ const version = beginSearch(session);
                 support.setAttribute("aria-label", this.i18n.homeStoreSupportedSurfaces);
                 const surfaceText = supportedDevices.map((item: string) => deviceLabels[item] || item).filter(Boolean).join("、");
                 support.textContent = this.i18n.homeStoreSupportedSurfaces.replace("{surfaces}", surfaceText);
+                support.title = support.textContent;
                 const status = document.createElement("small");
                 status.className = "sw-home-store__status" + (added ? " is-added" : "");
+                status.id = `sw-home-store-status-${moduleId}`;
+                status.dataset.state = added ? "added" : "available";
+                status.setAttribute("aria-live", "polite");
+                card.setAttribute("aria-describedby", status.id);
                 const cardStatus = resolveHomeStoreCardStatus(!!added, added?.size, supported);
                 status.textContent = cardStatus.added
                     ? `${this.i18n.homeStoreStatusAdded} · ${this.i18n.homeStoreStatusCurrent.replace("{size}", HOME_WIDGET_SIZE_LABELS[cardStatus.sizeKey as HomeWidgetSize] || cardStatus.sizeKey)}`
@@ -4922,11 +4929,15 @@ const version = beginSearch(session);
                 if (externalInfo) {
                     const sourceMeta = document.createElement("div");
                     sourceMeta.className = "sw-home-store__source-meta";
+                    sourceMeta.setAttribute("role", "note");
+                    sourceMeta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
                     const addChip = (label: string, kind: string) => {
                         const chip = document.createElement("span");
                         chip.className = `sw-home-store__source-chip is-${kind}`;
                         chip.textContent = label;
                         chip.title = label;
+                        chip.dataset.kind = kind;
+                        chip.setAttribute("aria-label", label);
                         sourceMeta.appendChild(chip);
                     };
                     addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
@@ -4956,6 +4967,8 @@ const version = beginSearch(session);
                 const preview = document.createElement("div");
                 preview.className = "sw-home-store__preview";
                 preview.dataset.kind = kind;
+                preview.dataset.moduleId = moduleId;
+                card.dataset.previewKind = kind;
                 preview.setAttribute("aria-hidden", "true");
                 if (kind === "calendar") {
                     preview.innerHTML = `<span class="p-calendar-head"></span><span class="p-calendar-grid">${Array.from({length: 21}, () => "<i></i>").join("")}</span>`;
@@ -4986,10 +4999,12 @@ const version = beginSearch(session);
                 const supportedSizes: string[] = device === "mobile" ? [resolveMobileHomeSize(declaredSizes)] : declaredSizes;
                 const sizesRow = document.createElement("div");
                 sizesRow.className = "sw-home-store__preview-sizes";
+                sizesRow.setAttribute("role", "presentation");
                 supportedSizes.forEach((sizeKey) => {
                     const sizePreset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
                     const box = document.createElement("i");
                     box.className = "p-size" + (added && added.size === sizeKey ? " is-current" : "");
+                    box.dataset.size = sizeKey;
                     box.style.width = `${Math.max(9, Math.round(sizePreset.w / 12 * 100))}%`;
                     box.title = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
                     sizesRow.appendChild(box);
@@ -4998,17 +5013,27 @@ const version = beginSearch(session);
                 card.appendChild(preview);
                 const tiles = document.createElement("div");
                 tiles.className = "sw-home-store__sizes";
+                tiles.setAttribute("role", "group");
+                tiles.dataset.moduleId = moduleId;
+                tiles.dataset.selectedSize = added?.size || supported[0];
+                const actionId = `sw-home-store-action-${moduleId}`;
                 const sizeLabel = document.createElement("span");
                 sizeLabel.className = "sw-home-store__choose-size";
+                sizeLabel.id = `sw-home-store-size-label-${moduleId}`;
                 sizeLabel.textContent = this.i18n.homeStoreChooseSize;
                 tiles.appendChild(sizeLabel);
+                tiles.setAttribute("aria-labelledby", sizeLabel.id);
                 let selectedTile: HTMLButtonElement | undefined;
                 supported.forEach((sizeKey) => {
                     const tile = document.createElement("button");
+                    tile.type = "button";
                     tile.className = "sw-home-store__size";
                     tile.dataset.size = sizeKey;
+                    tile.dataset.selected = String(sizeKey === (added?.size || supported[0]));
                     tile.textContent = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
                     tile.setAttribute("aria-label", this.i18n.homeStoreSizeHint.replace("{size}", tile.textContent || ""));
+                    tile.setAttribute("aria-controls", actionId);
+                    tile.title = tile.getAttribute("aria-label") || "";
                     if (sizeKey === (added?.size || supported[0])) {
                         selectedTile = tile;
                         tile.classList.add("is-selected");
@@ -5017,15 +5042,27 @@ const version = beginSearch(session);
                     tile.onclick = () => {
                         selectedTile?.classList.remove("is-selected");
                         selectedTile?.setAttribute("aria-pressed", "false");
+                        if (selectedTile) selectedTile.dataset.selected = "false";
                         selectedTile = tile;
                         tile.classList.add("is-selected");
                         tile.setAttribute("aria-pressed", "true");
+                        tile.dataset.selected = "true";
+                        tiles.dataset.selectedSize = sizeKey;
+                        addButton.dataset.selectedSize = sizeKey;
+                        addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${tile.textContent || sizeKey}`);
                     };
                     tiles.appendChild(tile);
                 });
                 tiles.insertAdjacentHTML("beforeend", `<button class="b3-button b3-button--outline sw-home-store__add">${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd}</button>`);
                 const addButton = tiles.lastElementChild as HTMLButtonElement;
-                addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId}`);
+                addButton.type = "button";
+                addButton.id = actionId;
+                addButton.dataset.action = added ? "apply-size" : "add";
+                addButton.dataset.selectedSize = selectedTile?.dataset.size || supported[0];
+                addButton.textContent = added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
+                addButton.setAttribute("aria-describedby", sizeLabel.id);
+                addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${selectedTile?.textContent || supported[0]}`);
+                addButton.title = addButton.getAttribute("aria-label") || "";
                 addButton.onclick = () => {
                     const sizeKey = selectedTile!.dataset.size;
                     const {w, h} = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize]!;
@@ -5054,13 +5091,16 @@ const version = beginSearch(session);
                         });
                     }
                 };
-                tiles.appendChild(addButton);
+                // The add action is inserted above so legacy host selectors that
+                // inspect the final size-row child continue to work.
                 if (addedInstance && Array.isArray(def.configSchema) && def.configSchema.length > 0) {
                     const configButton = document.createElement("button");
                     configButton.type = "button";
                     configButton.className = "b3-button b3-button--text sw-home-store__configure";
+                    configButton.dataset.action = "configure";
                     configButton.textContent = this.i18n.homeConfig;
                     configButton.setAttribute("aria-label", `${this.i18n.homeConfig} · ${def.title || moduleId}`);
+                    configButton.setAttribute("aria-haspopup", "dialog");
                     configButton.title = configButton.getAttribute("aria-label") || "";
                     configButton.onclick = () => {
                         this.openHomeConfigForm(addedInstance, def.configSchema, () => {
@@ -5074,15 +5114,20 @@ const version = beginSearch(session);
                     const removeButton = document.createElement("button");
                     removeButton.type = "button";
                     removeButton.className = "b3-button b3-button--text sw-home-store__remove";
+                    removeButton.dataset.action = "remove";
                     removeButton.textContent = this.i18n.homeStoreRemove;
                     removeButton.setAttribute("aria-label", `${this.i18n.homeStoreRemove} · ${def.title || moduleId}`);
+                    removeButton.title = removeButton.getAttribute("aria-label") || "";
                     removeButton.onclick = () => { this.removeHomeInstance(added.instanceId); renderStore(); onChanged(); };
                     tiles.appendChild(removeButton);
                 }
                 const previewButton = document.createElement("button");
+                previewButton.type = "button";
                 previewButton.className = "sw-home-store__size sw-home-store__preview-btn";
+                previewButton.dataset.action = "preview";
                 previewButton.textContent = this.i18n.homeStorePreview;
                 previewButton.setAttribute("aria-label", `${this.i18n.homeStorePreview} · ${def.title || moduleId}`);
+                previewButton.setAttribute("aria-haspopup", "dialog");
                 previewButton.title = previewButton.getAttribute("aria-label") || "";
                 previewButton.onclick = () => this.openStoreWidgetPreview(moduleId, def, device);
                 tiles.appendChild(previewButton);

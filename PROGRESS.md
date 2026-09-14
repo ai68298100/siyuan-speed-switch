@@ -275,6 +275,10 @@
 
 2026-09-15 本轮最终验证：3021/3021 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 514980 bytes（503 KiB 自律线内）、`dist/index.css` 132311 bytes、`package.zip` 305568 bytes（300 KiB 硬上限内）。产物待同步至本地集市目录，仍不执行远端 push。
 
+2026-09-15 本轮完成 T-3455~T-3484（30 项）：组件商店尺寸选择器补齐 group/label/pressed/selectedSize 语义，添加操作明确区分 add 与 apply-size 并显示当前尺寸；卡片状态、来源、预览、配置、移除操作均补充稳定 action/state 数据和可访问描述，按钮在窄屏下保持可读；新增 44 项商店操作契约回归。
+
+2026-09-15 本轮最终验证：3065/3065 自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与完整 `verify:release` 全部通过；当前 `dist/index.js` 516589 bytes（505 KiB 自律线内）、`dist/index.css` 132616 bytes、`package.zip` 305920 bytes（300 KiB 硬上限内）。产物待同步至本地集市目录，仍不执行远端 push。
+
 已完成：
 
 - 组件商店第二轮体验优化：新增筛选结果概览（显示数/总数/已添加数）、分组折叠状态与 ARIA、卡片“已添加/当前尺寸”状态摘要、语义化预览（日期网格/任务勾选/统计柱状/文档列表）、已添加组件移除入口；移动端改为单列卡片并优化横向页签滚动。

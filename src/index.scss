@@ -4886,6 +4886,8 @@
     gap: 6px;
     align-items: center;
     margin-top: auto;
+    min-width: 0;
+    padding-top: 2px;
 }
 
 .sw-home-store__choose-size {
@@ -4922,22 +4924,31 @@
         background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
         color: var(--b3-theme-primary);
     }
+
+    &[data-selected="true"] { box-shadow: 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 20%, transparent); }
 }
 
 .sw-home-store__add {
     min-height: 28px;
     margin-left: auto;
+    min-width: 88px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &:focus-visible { box-shadow: var(--sw-focus-ring); }
 }
 
 .sw-home-store__configure {
     min-height: 28px;
     padding-inline: 8px;
+    white-space: nowrap;
 }
 
 .sw-home-store__remove {
     min-height: 28px;
     padding-inline: 8px;
     color: var(--b3-theme-error, var(--b3-theme-warning));
+    white-space: nowrap;
 }
 
 // ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================
