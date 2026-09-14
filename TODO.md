@@ -596,6 +596,30 @@
 
 ## 待维护者决策
 
+- [x] T-855 报告一致性修复函数
+- [x] T-856 报告版本修复
+- [x] T-857 health 区段修复
+- [x] T-858 trend 区段修复
+- [x] T-859 summary 区段修复
+- [x] T-860 changedCount 重算
+- [x] T-861 changed 重算
+- [x] T-862 trend action 对齐
+- [x] T-863 风险建议一致性
+- [x] T-864 摘要桶重用归一化
+- [x] T-865 固定顶层字段
+- [x] T-866 固定嵌套字段
+- [x] T-867 恶意字段隔离
+- [x] T-868 空报告降级
+- [x] T-869 异常输入安全
+- [x] T-870 一致性回归测试
+- [x] T-871 修复动作回归测试
+- [x] T-872 版本回归测试
+- [x] T-873 决策 D-253 落档
+- [x] T-874 状态文档同步
+
+  - 状态：done（2026-09-14）
+  - 证据：`src/util.js`、`tests/util.test.cjs`、`tests/storage-capacity-limits.test.cjs`
+
 - [x] T-835 报告验证函数
 - [x] T-836 version 校验
 - [x] T-837 health 区段校验

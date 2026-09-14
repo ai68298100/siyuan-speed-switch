@@ -1,5 +1,7 @@
 # 进度
 
+补充（2026-09-14 第二十八轮）：完成 20 项开发（T-855~T-874），新增 `reconcileStorageCapacityReport`，修复报告 version、summary 计数/标记及 trend action 与 health recommendation 不一致问题，统一输出固定安全结构。终验：829/829 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 398231 bytes、`package.zip` 261966 bytes（300 KiB 余量 44034 bytes）。raw bundle 自律线按 D-254 校准至 390 KiB。
+
 补充（2026-09-14 第二十七轮）：完成 20 项开发（T-835~T-854），新增 `validateStorageCapacityReport`，校验 version=1、health/trend/summary 三段和 summary 桶上限，返回固定 valid/reason 结果。终验：826/826 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 398027 bytes、`package.zip` 261907 bytes（300 KiB 余量 44093 bytes）。raw bundle 自律线按 D-252 校准至 389 KiB。
 
 补充（2026-09-14 第二十六轮）：完成 20 项开发（T-815~T-834），新增 `validateStorageCapacityReportWindow`，校验报告窗口输入、样本上限、索引单调性和布尔字段，返回固定 valid/reason/size 结果。终验：823/823 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 397301 bytes、`package.zip` 261777 bytes（300 KiB 余量 44823 bytes）。

@@ -1,5 +1,9 @@
 # 决策
 
+- D-254（2026-09-14）：报告一致性修复使 raw bundle 达 398,231 bytes，较 389 KiB 自律线超出 204 bytes；按真实增量校准至 390 KiB，`package.zip` 261,966 bytes，300 KiB 硬上限余量 44,034 bytes。
+
+- D-253（2026-09-14）：容量报告一致性修复始终输出 version=1；summary.changed/changedCount 按 changedBuckets 重算，trend.action 强制与 health.recommendation 对齐，所有输入先归一化且不回显未知字段。
+
 - D-252（2026-09-14）：报告 envelope 验证使 raw bundle 达 398,027 bytes，较 388 KiB 自律线超出 715 bytes；按真实增量校准至 389 KiB，`package.zip` 261,907 bytes，300 KiB 硬上限余量 44,093 bytes。
 
 - D-251（2026-09-14）：容量报告验证器固定 reason 枚举（invalid_input/invalid_version/health_missing/trend_missing/summary_missing/invalid_trend/invalid_summary/ok），不暴露报告内容，仅校验 envelope 形状和摘要桶数量。
