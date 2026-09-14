@@ -389,6 +389,58 @@ test('preview surface map covers mobile', () => assert.match(source, /mobile: th
 test('preview body labels source freshness', () => assert.match(source, /sourceFresh: this\.i18n\.homeSourceFresh/));
 test('preview body labels updated time', () => assert.match(source, /updated: this\.i18n\.homeUpdated/));
 
+// T-3895~T-3934: ready-card metadata, size controls and action-state contracts.
+test('ready card uses section semantics', () => assert.match(source, /card\.className = "sw-home-store__card"/));
+test('ready card keyboard binding is installed', () => assert.match(source, /bindStoreCardKeyboard\(card\)/));
+test('ready card records module id', () => assert.match(source, /card\.dataset\.moduleId = moduleId/));
+test('ready card search text includes provider', () => assert.match(source, /buildHomeStoreSearchText\(def, moduleId\).*externalInfo\?\.providerName/));
+test('ready card records normalized category', () => assert.match(source, /card\.dataset\.category = def\.category === "siyuan" \? "builtin" : "plugin"/));
+test('ready card records availability', () => assert.match(source, /card\.dataset\.availability = def\.availability \|\| "ready"/));
+test('ready card maps direct widgets offline', () => assert.match(source, /externalInfo\?\.integration === "direct" \|\| def\.category === "siyuan" \? "offline"/));
+test('ready card falls back to medium size', () => assert.match(source, /Array\.isArray\(def\.sizes\) && def\.sizes\.length > 0 \? def\.sizes : \["medium"\]/));
+test('ready card records supported sizes', () => assert.match(source, /card\.dataset\.supportedSizes = supported\.join\(","\)/));
+test('ready card records current size', () => assert.match(source, /card\.dataset\.currentSize = added\?\.size \|\| ""/));
+test('ready card records added state', () => assert.match(source, /card\.dataset\.added = added \? "true" : "false"/));
+test('ready card records status tone', () => assert.match(source, /card\.dataset\.statusTone = resolveHomeStoreStatusTone\(card\.dataset\)/));
+test('ready card records integration tone', () => assert.match(source, /card\.dataset\.integrationTone = resolveHomeStoreIntegrationTone\(card\.dataset\)/));
+test('ready card exposes accessible summary label', () => assert.match(source, /card\.setAttribute\("aria-label", resolveHomeStoreCardA11y/));
+test('ready card icon has viewBox', () => assert.match(source, /icon\.setAttribute\("viewBox", "0 0 24 24"\)/));
+test('ready card icon is hidden from assistive tech', () => assert.match(source, /icon\.setAttribute\("aria-hidden", "true"\)/));
+test('ready card title uses fallback module id', () => assert.match(source, /title\.textContent = def\.title \|\| moduleId/));
+test('ready card title has stable id', () => assert.match(source, /title\.id = `sw-home-store-title-\$\{moduleId\}`/));
+test('ready card references title with aria-labelledby', () => assert.match(source, /card\.setAttribute\("aria-labelledby", title\.id\)/));
+test('conditional badge exposes accessible label', () => assert.match(source, /badge\.setAttribute\("aria-label", badge\.textContent\)/));
+test('conditional badge exposes tooltip', () => assert.match(source, /badge\.title = badge\.textContent/));
+test('ready card support text has accessible label', () => assert.match(source, /support\.setAttribute\("aria-label", this\.i18n\.homeStoreSupportedSurfaces\)/));
+test('ready card support text has tooltip', () => assert.match(source, /support\.title = support\.textContent/));
+test('ready card status has stable id', () => assert.match(source, /status\.id = `sw-home-store-status-\$\{moduleId\}`/));
+test('ready card status records added state', () => assert.match(source, /status\.dataset\.state = added \? "added" : "available"/));
+test('ready card status is polite live', () => assert.match(source, /status\.setAttribute\("aria-live", "polite"\)/));
+test('ready card status is atomic', () => assert.match(source, /status\.setAttribute\("aria-atomic", "true"\)/));
+test('ready card describes status', () => assert.match(source, /card\.setAttribute\("aria-describedby", status\.id\)/));
+test('source metadata uses note role', () => assert.match(source, /sourceMeta\.setAttribute\("role", "note"\)/));
+test('source metadata uses guide hint label', () => assert.match(source, /sourceMeta\.setAttribute\("aria-label", this\.i18n\.homeStoreGuideHint\)/));
+test('source chip records kind', () => assert.match(source, /chip\.dataset\.kind = kind/));
+test('source chip exposes label', () => assert.match(source, /chip\.setAttribute\("aria-label", label\)/));
+test('card preview records kind', () => assert.match(source, /preview\.dataset\.kind = kind/));
+test('card preview is decorative', () => assert.match(source, /preview\.setAttribute\("aria-hidden", "true"\)/));
+test('card preview records module id', () => assert.match(source, /preview\.dataset\.moduleId = moduleId/));
+test('preview size rail is presentational', () => assert.match(source, /sizesRow\.setAttribute\("role", "presentation"\)/));
+test('preview size boxes record size', () => assert.match(source, /box\.dataset\.size = sizeKey/));
+test('preview size boxes expose title', () => assert.match(source, /box\.title = HOME_WIDGET_SIZE_LABELS/));
+test('size group has stable module id', () => assert.match(source, /tiles\.dataset\.moduleId = moduleId/));
+test('size group has selected size state', () => assert.match(source, /tiles\.dataset\.selectedSize = added\?\.size \|\| supported\[0\]/));
+test('size label has stable id', () => assert.match(source, /sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}`/));
+test('size group references its label', () => assert.match(source, /tiles\.setAttribute\("aria-labelledby", sizeLabel\.id\)/));
+test('size button has accessible hint', () => assert.match(source, /tile\.setAttribute\("aria-label", this\.i18n\.homeStoreSizeHint/));
+test('size button controls action', () => assert.match(source, /tile\.setAttribute\("aria-controls", actionId\)/));
+test('size button exposes set size', () => assert.match(source, /tile\.setAttribute\("aria-setsize", String\(supported\.length\)\)/));
+test('size button exposes position', () => assert.match(source, /tile\.setAttribute\("aria-posinset", String\(sizeIndex \+ 1\)\)/));
+test('size selection updates action label', () => assert.match(source, /addButton\.setAttribute\("aria-label", `\$\{added \? this\.i18n\.homeStoreApplySize : this\.i18n\.homeStoreAdd\}/));
+test('add action describes size label', () => assert.match(source, /addButton\.setAttribute\("aria-describedby", sizeLabel\.id\)/));
+test('preview action announces dialog', () => assert.match(source, /previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));
+test('preview action invokes live preview', () => assert.match(source, /previewButton\.onclick = \(\) => this\.openStoreWidgetPreview\(moduleId, def, device\)/));
+
 // T-3815~T-3854: dialog content, field labels and async configuration contracts.
 test('guide hint uses localized content', () => assert.match(source, /hint\.textContent = this\.i18n\.homeStoreGuideHint/));
 test('guide hint has a dedicated class', () => assert.match(source, /hint\.className = "sw-home-store-guide__hint"/));
