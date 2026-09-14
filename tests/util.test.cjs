@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -57,6 +57,23 @@ test('normalizeStorageCapacitySnapshot caps huge usage and derives over state', 
     assert.equal(result.pinned.used, 1000000);
     assert.equal(result.pinned.status, 'over');
     assert.equal(result.pinned.truncated, true);
+});
+
+test('serializeStorageCapacitySnapshot is deterministic and schema-shaped', () => {
+    const serialized = serializeStorageCapacitySnapshot({pinned: {used: 2, max: 10}, favorites: {used: 9, max: 10}});
+    assert.equal(serialized, '{"favorites":{"used":9,"max":10,"truncated":false,"status":"near"},"pinned":{"used":2,"max":10,"truncated":false,"status":"ok"},"favoriteGroups":{"used":0,"max":0,"truncated":false,"status":"ok"}}');
+});
+
+test('serializeStorageCapacitySnapshot tolerates malformed input without throwing', () => {
+    assert.doesNotThrow(() => serializeStorageCapacitySnapshot(null));
+    assert.deepEqual(JSON.parse(serializeStorageCapacitySnapshot('bad')), normalizeStorageCapacitySnapshot({}));
+});
+
+test('serializeStorageCapacitySnapshot does not mutate source objects', () => {
+    const source = {favorites: {used: 3, max: 5, status: 'over'}};
+    const before = JSON.stringify(source);
+    serializeStorageCapacitySnapshot(source);
+    assert.equal(JSON.stringify(source), before);
 });
 
 // ── clampNum ──

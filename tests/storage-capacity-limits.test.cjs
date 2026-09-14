@@ -9,7 +9,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot} = require('../src/util.js');
+const {capMru, sanitizeOpenHistory, sanitizeFavorites, sanitizeStringList, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot} = require('../src/util.js');
 const {normalizeDocumentSets, DOCUMENT_SET_MAX} = require('../src/document-sets.js');
 const {normalizeHomeState} = require('../src/home-model.js');
 const constants = require('../src/constants.ts');
@@ -115,4 +115,10 @@ test('capacity: normalized snapshots remain schema-shaped and deterministic', ()
     assert.deepEqual(Object.keys(normalized), ['favorites', 'pinned', 'favoriteGroups']);
     assert.equal(normalized.favoriteGroups.status, 'near');
     assert.equal(normalized.favorites.used, 0);
+});
+
+test('capacity: serialized snapshot preserves fixed bucket order', () => {
+    const serialized = serializeStorageCapacitySnapshot({favoriteGroups: {used: 1, max: 64}});
+    assert.ok(serialized.indexOf('"favorites"') < serialized.indexOf('"pinned"'));
+    assert.ok(serialized.indexOf('"pinned"') < serialized.indexOf('"favoriteGroups"'));
 });
