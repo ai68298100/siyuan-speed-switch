@@ -116,11 +116,11 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-14 (49): 408 KiB for the home-store pure-model extraction and
     // read-only Agent audit module; package.zip remains below the 300 KiB
     // hard ceiling.
-    // 2026-09-14 (50): 412 KiB for bounded Agent audit history health/report
-    // aggregation and event replay
+    // 2026-09-14 (50): 414 KiB for bounded Agent audit history health/report
+    // aggregation, trend windows and event replay
     // and versioned summary serialization; package.zip remains below the
     // unchanged 300 KiB hard ceiling.
-    const budget = 412 * 1024;
+    const budget = 414 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

@@ -11,6 +11,7 @@ const SAFE_EFFECTS = Object.freeze(["localRead"]);
 const MAX_ITEMS = 32;
 const MAX_HISTORY_EVENTS = 8;
 const AUDIT_HEALTH = Object.freeze(["empty", "healthy", "degraded", "unavailable"]);
+const AUDIT_TRENDS = Object.freeze(["stable", "improving", "degrading"]);
 
 function text(value, max = 96) {
     if (typeof value !== "string") return "";
@@ -274,6 +275,74 @@ function parseAgentReadOnlyAuditHistoryReport(value) {
     try { return normalizeAgentReadOnlyAuditHistoryReport(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditHistoryReport({}); }
 }
 
+function normalizeAgentAuditTrend(value) { return AUDIT_TRENDS.includes(value) ? value : "stable"; }
+function auditHealthRank(value) { return {unavailable: 0, degraded: 1, empty: 2, healthy: 3}[normalizeAgentAuditHealth(value)]; }
+
+function diffAgentReadOnlyAuditHistoryReports(previous, next) {
+    const a = normalizeAgentReadOnlyAuditHistoryReport(previous);
+    const b = normalizeAgentReadOnlyAuditHistoryReport(next);
+    const healthDelta = auditHealthRank(b.health) - auditHealthRank(a.health);
+    return {healthChanged: a.health !== b.health, healthDelta, sizeChanged: a.summary.size !== b.summary.size, sequenceChanged: a.summary.latestSequence !== b.summary.latestSequence, eventsChanged: a.events.total !== b.events.total, trend: normalizeAgentAuditTrend(healthDelta > 0 ? "improving" : healthDelta < 0 ? "degrading" : "stable")};
+}
+
+function buildAgentReadOnlyAuditHistoryReportEvents(previous, next) {
+    const diff = diffAgentReadOnlyAuditHistoryReports(previous, next);
+    const result = [];
+    if (diff.healthChanged) result.push({type: "health_changed", trend: diff.trend});
+    if (diff.sizeChanged) result.push({type: "size_changed", trend: "stable"});
+    if (diff.sequenceChanged) result.push({type: "sequence_changed", trend: "stable"});
+    if (diff.eventsChanged) result.push({type: "events_changed", trend: "stable"});
+    return result.slice(0, MAX_HISTORY_EVENTS).map(normalizeAgentReadOnlyAuditHistoryReportEvent);
+}
+
+function normalizeAgentReadOnlyAuditHistoryReportEvent(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const allowed = ["health_changed", "size_changed", "sequence_changed", "events_changed"];
+    return {type: allowed.includes(source.type) ? source.type : "events_changed", trend: normalizeAgentAuditTrend(source.trend)};
+}
+
+function normalizeAgentReadOnlyAuditHistoryReportEvents(events) {
+    if (!Array.isArray(events)) return [];
+    const seen = new Set();
+    return events.map(normalizeAgentReadOnlyAuditHistoryReportEvent).filter((event) => { if (seen.has(event.type)) return false; seen.add(event.type); return true; }).slice(0, MAX_HISTORY_EVENTS);
+}
+
+function summarizeAgentReadOnlyAuditHistoryReportEvents(events) {
+    const list = normalizeAgentReadOnlyAuditHistoryReportEvents(events);
+    return {total: list.length, improving: list.filter((event) => event.trend === "improving").length, degrading: list.filter((event) => event.trend === "degrading").length, stable: list.filter((event) => event.trend === "stable").length};
+}
+
+function buildAgentReadOnlyAuditHistoryWindow(reports, limit = 8) {
+    const max = Math.min(MAX_HISTORY_EVENTS, Math.max(1, normalizeAgentAuditCount(limit, MAX_HISTORY_EVENTS)));
+    return (Array.isArray(reports) ? reports : []).map(normalizeAgentReadOnlyAuditHistoryReport).slice(-max);
+}
+
+function normalizeAgentReadOnlyAuditHistoryWindow(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const reports = buildAgentReadOnlyAuditHistoryWindow(source.reports, MAX_HISTORY_EVENTS);
+    return {version: 1, reports};
+}
+
+function isAgentReadOnlyAuditHistoryWindowCompatible(value) {
+    const window = normalizeAgentReadOnlyAuditHistoryWindow(value);
+    return value && value.version === 1 && window.reports.length <= MAX_HISTORY_EVENTS && window.reports.every(isAgentReadOnlyAuditHistoryReportCompatible);
+}
+
+function serializeAgentReadOnlyAuditHistoryWindow(value) { return JSON.stringify(normalizeAgentReadOnlyAuditHistoryWindow(value)); }
+function parseAgentReadOnlyAuditHistoryWindow(value) {
+    if (typeof value !== "string" || value.length > 16384) return normalizeAgentReadOnlyAuditHistoryWindow({});
+    try { return normalizeAgentReadOnlyAuditHistoryWindow(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditHistoryWindow({}); }
+}
+
+function summarizeAgentReadOnlyAuditHistoryWindow(value) {
+    const window = normalizeAgentReadOnlyAuditHistoryWindow(value);
+    const reports = window.reports;
+    const latest = reports.length ? reports[reports.length - 1] : null;
+    const previous = reports.length > 1 ? reports[reports.length - 2] : null;
+    const diff = latest && previous ? diffAgentReadOnlyAuditHistoryReports(previous, latest) : {healthChanged: false, healthDelta: 0, sizeChanged: false, sequenceChanged: false, eventsChanged: false, trend: "stable"};
+    return {version: 1, size: reports.length, latestHealth: latest ? latest.health : "empty", trend: diff.trend, healthChanged: diff.healthChanged};
+}
+
 module.exports = {
     DEVICES, STATUS, REASONS, SAFE_EFFECTS, MAX_ITEMS,
     normalizeAgentCapabilityName, normalizeAgentAuditDevice, normalizeAgentAuditStatus, normalizeAgentAuditReason,
@@ -283,7 +352,7 @@ module.exports = {
     buildAgentReadOnlyAuditSnapshot, normalizeAgentReadOnlyAuditSnapshot, isAgentReadOnlyAuditSnapshotCompatible,
     buildAgentAuditFailure, buildAgentAuditDeviceMatrix, diffAgentReadOnlyAuditSnapshots, normalizeAgentAuditEvent,
     buildAgentReadOnlyAuditEvents, normalizeAgentReadOnlyAuditEvents,
-    MAX_HISTORY_EVENTS, AUDIT_HEALTH, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
+    MAX_HISTORY_EVENTS, AUDIT_HEALTH, AUDIT_TRENDS, normalizeAgentAuditHistoryLimit, createAgentReadOnlyAuditHistory, buildAgentAuditLifecycleEvent, normalizeAgentAuditCursor,
     normalizeAgentAuditHistoryEventType, buildAgentAuditHistoryEvent, normalizeAgentAuditHistoryEvent,
     buildAgentReadOnlyAuditHistorySummary, normalizeAgentReadOnlyAuditHistorySummary,
     isAgentReadOnlyAuditHistorySummaryCompatible, serializeAgentReadOnlyAuditHistorySummary,
@@ -292,4 +361,10 @@ module.exports = {
     normalizeAgentReadOnlyAuditEventSummary, buildAgentReadOnlyAuditHistoryReport,
     normalizeAgentReadOnlyAuditHistoryReport, isAgentReadOnlyAuditHistoryReportCompatible,
     serializeAgentReadOnlyAuditHistoryReport, parseAgentReadOnlyAuditHistoryReport,
+    normalizeAgentAuditTrend, auditHealthRank, diffAgentReadOnlyAuditHistoryReports,
+    buildAgentReadOnlyAuditHistoryReportEvents, normalizeAgentReadOnlyAuditHistoryReportEvent,
+    normalizeAgentReadOnlyAuditHistoryReportEvents, summarizeAgentReadOnlyAuditHistoryReportEvents,
+    buildAgentReadOnlyAuditHistoryWindow, normalizeAgentReadOnlyAuditHistoryWindow,
+    isAgentReadOnlyAuditHistoryWindowCompatible, serializeAgentReadOnlyAuditHistoryWindow,
+    parseAgentReadOnlyAuditHistoryWindow, summarizeAgentReadOnlyAuditHistoryWindow,
 };

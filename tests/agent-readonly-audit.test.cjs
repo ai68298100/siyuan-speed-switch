@@ -153,3 +153,36 @@ test('report parser round trips', () => { const value = a.serializeAgentReadOnly
 test('report parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistoryReport('{bad').version, 1));
 test('report parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryReport('x'.repeat(5000)).version, 1));
 test('report health never leaks host errors', () => { const hostile = {status() { throw Error('secret'); }, latest() { throw Error('secret'); }, events() { throw Error('secret'); }}; assert.equal(a.buildAgentReadOnlyAuditHistoryReport(hostile).health, 'empty'); });
+
+// v0.17 audit report diff/trend/window contract (T-1373~T-1402)
+test('trend constants are fixed', () => assert.deepEqual(a.AUDIT_TRENDS, ['stable', 'improving', 'degrading']));
+test('trend normalizes unknown values', () => assert.equal(a.normalizeAgentAuditTrend('secret'), 'stable'));
+test('trend preserves improving value', () => assert.equal(a.normalizeAgentAuditTrend('improving'), 'improving'));
+test('health rank orders healthy highest', () => assert.ok(a.auditHealthRank('healthy') > a.auditHealthRank('degraded')));
+test('health rank orders unavailable lowest', () => assert.equal(a.auditHealthRank('unavailable'), 0));
+test('report diff detects health change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'degraded'}, {health: 'healthy'}).healthChanged, true));
+test('report diff computes improving trend', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'degraded'}, {health: 'healthy'}).trend, 'improving'));
+test('report diff computes degrading trend', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'healthy'}, {health: 'unavailable'}).trend, 'degrading'));
+test('report diff computes stable trend', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'healthy'}, {health: 'healthy'}).trend, 'stable'));
+test('report diff detects summary size change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({summary: {size: 1}}, {summary: {size: 2}}).sizeChanged, true));
+test('report diff detects sequence change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({summary: {latestSequence: 1}}, {summary: {latestSequence: 2}}).sequenceChanged, true));
+test('report diff detects event total change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({events: {total: 1}}, {events: {total: 2}}).eventsChanged, true));
+test('report events include health change', () => assert.equal(a.buildAgentReadOnlyAuditHistoryReportEvents({health: 'degraded'}, {health: 'healthy'})[0].type, 'health_changed'));
+test('report events include size change', () => assert.ok(a.buildAgentReadOnlyAuditHistoryReportEvents({summary: {size: 1}}, {summary: {size: 2}}).some((e) => e.type === 'size_changed')));
+test('report events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditHistoryReportEvents({health: 'empty', summary: {size: 1, latestSequence: 1}, events: {total: 1}}, {health: 'healthy', summary: {size: 2, latestSequence: 2}, events: {total: 2}}).length <= 8));
+test('report event normalizer fixes unknown type', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryReportEvent({type: 'secret'}).type, 'events_changed'));
+test('report event normalizer keeps trend bounded', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryReportEvent({trend: 'secret'}).trend, 'stable'));
+test('report event normalizer deduplicates types', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryReportEvents([{type: 'size_changed'}, {type: 'size_changed'}]).length, 1));
+test('report event summary counts trends', () => assert.deepEqual(a.summarizeAgentReadOnlyAuditHistoryReportEvents([{type: 'health_changed', trend: 'improving'}]), {total: 1, improving: 1, degrading: 0, stable: 0}));
+test('report event summary bounds list', () => assert.equal(a.summarizeAgentReadOnlyAuditHistoryReportEvents(Array.from({length: 20}, () => ({type: 'size_changed'}))).total, 1));
+test('history window starts empty', () => assert.deepEqual(a.buildAgentReadOnlyAuditHistoryWindow(null), []));
+test('history window keeps newest reports', () => assert.equal(a.buildAgentReadOnlyAuditHistoryWindow([{health: 'empty'}, {health: 'healthy'}], 1)[0].health, 'healthy'));
+test('history window caps reports', () => assert.equal(a.buildAgentReadOnlyAuditHistoryWindow(Array.from({length: 20}, () => ({health: 'empty'}))).length, 8));
+test('history window normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryWindow({}).version, 1));
+test('history window normalizer strips unknown fields', () => assert.equal('secret' in a.normalizeAgentReadOnlyAuditHistoryWindow({secret: 1}), false));
+test('history window compatibility accepts canonical shape', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowCompatible({version: 1, reports: []}), true));
+test('history window compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowCompatible({version: 2, reports: []}), false));
+test('history window serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryWindow({reports: [{health: 'healthy'}]}); assert.equal(a.parseAgentReadOnlyAuditHistoryWindow(value).reports[0].health, 'healthy'); });
+test('history window parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistoryWindow('{bad').version, 1));
+test('history window parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryWindow('x'.repeat(20000)).reports.length, 0));
+test('history window summary reports latest trend', () => { const value = {reports: [{health: 'degraded'}, {health: 'healthy'}]}; assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindow(value).trend, 'improving'); });
