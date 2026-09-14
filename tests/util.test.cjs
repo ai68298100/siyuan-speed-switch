@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -107,6 +107,20 @@ test('mergeStorageCapacitySnapshots ignores malformed sources and is determinist
     const first = mergeStorageCapacitySnapshots(null, {pinned: {used: 1, max: 2}});
     const second = mergeStorageCapacitySnapshots({pinned: {used: 1, max: 2}}, null);
     assert.deepEqual(first, second);
+});
+
+test('diffStorageCapacitySnapshots reports bounded per-bucket deltas', () => {
+    const diff = diffStorageCapacitySnapshots(
+        {favorites: {used: 1, max: 10}, pinned: {used: 6, max: 10}},
+        {favorites: {used: 9, max: 10}, pinned: {used: 10, max: 10}},
+    );
+    assert.deepEqual(diff.favorites, {usedDelta: 8, maxDelta: 0, statusChanged: true, truncatedChanged: false});
+    assert.deepEqual(diff.pinned, {usedDelta: 4, maxDelta: 0, statusChanged: true, truncatedChanged: false});
+});
+
+test('diffStorageCapacitySnapshots normalizes malformed snapshots before diffing', () => {
+    const diff = diffStorageCapacitySnapshots(null, {favoriteGroups: {used: 'bad', max: 4}});
+    assert.deepEqual(diff.favoriteGroups, {usedDelta: 0, maxDelta: 4, statusChanged: false, truncatedChanged: false});
 });
 
 // ── clampNum ──

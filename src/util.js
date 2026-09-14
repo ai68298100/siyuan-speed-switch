@@ -419,6 +419,24 @@ function mergeStorageCapacitySnapshots(...snapshots) {
     return normalizeStorageCapacitySnapshot(merged);
 }
 
+/** Compute a bounded, deterministic diff between two capacity snapshots. */
+function diffStorageCapacitySnapshots(previous, current) {
+    const before = normalizeStorageCapacitySnapshot(previous);
+    const after = normalizeStorageCapacitySnapshot(current);
+    const diff = {};
+    ["favorites", "pinned", "favoriteGroups"].forEach((name) => {
+        const from = before[name];
+        const to = after[name];
+        diff[name] = {
+            usedDelta: to.used - from.used,
+            maxDelta: to.max - from.max,
+            statusChanged: from.status !== to.status,
+            truncatedChanged: from.truncated !== to.truncated,
+        };
+    });
+    return diff;
+}
+
 function capMru(values, max) {
     const limit = normalizeCapacityLimit(max);
     if (!Array.isArray(values)) {
@@ -670,4 +688,4 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
