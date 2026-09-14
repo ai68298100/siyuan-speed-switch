@@ -2,7 +2,7 @@
 // 后续如需测试 TS 源码，可以走 src/index.ts 的 plain JS 单元 + DOM 抽测（tests/mobile-card-smoke.cjs）
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -373,6 +373,24 @@ test('createStorageCapacityReportEventQueue isolates dispose and malformed enque
     queue.dispose();
     assert.equal(queue.snapshot().disposed, true);
     assert.equal(queue.read().disposed, true);
+});
+
+test('replayStorageCapacityReportEvents reads bounded events and optionally acknowledges', () => {
+    const queue = createStorageCapacityReportEventQueue(4);
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    const replay = replayStorageCapacityReportEvents(queue, {acknowledge: true, limit: 1});
+    assert.equal(replay.mode, 'events');
+    assert.equal(replay.acknowledged, 1);
+    assert.equal(queue.snapshot().size, 0);
+});
+
+test('replayStorageCapacityReportEvents preserves queue on cancel, timeout, and unavailable queue', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    assert.equal(replayStorageCapacityReportEvents(queue, {signal: {aborted: true}}).mode, 'cancelled');
+    assert.equal(replayStorageCapacityReportEvents(queue, {deadline: Date.now() - 1}).mode, 'timeout');
+    assert.equal(replayStorageCapacityReportEvents(null).mode, 'failed');
+    assert.equal(queue.snapshot().size, 1);
 });
 
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {

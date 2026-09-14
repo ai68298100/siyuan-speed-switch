@@ -1,5 +1,9 @@
 # 决策
 
+- D-262（2026-09-14）：报告事件回放门面使 raw bundle 达 401,188 bytes，较 393 KiB 自律线超出 820 bytes；校准至 394 KiB，`package.zip` 262,823 bytes，300 KiB 硬上限余量 42,889 bytes。
+
+- D-261（2026-09-14）：报告事件回放最多返回 8 条；取消、超时、队列不可用或销毁时均不确认事件，只有显式 `acknowledge=true` 且成功读取才消费，结果 reason 固定为 ok/cancelled/timeout/queue_unavailable/queue_disposed。
+
 - D-260（2026-09-14）：报告事件队列使 raw bundle 达 400,463 bytes，较 392 KiB 自律线超出 1,167 bytes；校准至 393 KiB，`package.zip` 262,610 bytes，300 KiB 硬上限余量 43,102 bytes。
 
 - D-259（2026-09-14）：容量报告事件队列默认 8 条、最大 32 条；入队前归一化，游标单调递增，超限丢弃最旧事件并通过 truncated 标记提示；dispose 后只读返回稳定 disposed 状态，不再接受新事件。

@@ -4,8 +4,8 @@
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
-| TypeScript、自动测试、UI smoke | 已通过 | `pnpm verify:release`；838/838 |
-| 生产产物与包体 | 已通过 | `dist/index.js` 400463 bytes；`package.zip` 262610 bytes（300 KiB 硬上限余量 43102 bytes，跨平台允许 ±1 KiB） |
+| TypeScript、自动测试、UI smoke | 已通过 | `pnpm verify:release`；841/841 |
+| 生产产物与包体 | 已通过 | `dist/index.js` 401188 bytes；`package.zip` 262823 bytes（300 KiB 硬上限余量 42889 bytes，跨平台允许 ±1 KiB） |
 | 归档可复现性 | 已通过 | 连续构建 SHA-256 一致；ZIP 条目固定为 1980-01-01 00:00 |
 | 版本元数据 | 已通过 | `0.16.40` 已同步 `package.json`、`plugin.json`、中英文 README |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
