@@ -1,4 +1,5 @@
 # 进度
+补充（2026-09-14 第三十六轮）：完成 20 项开发（T-1015~T-1034），为容量事件协调器增加 recoverAndCommit 原子恢复提交及 signal/deadline 变体，成功才确认队列，取消/超时/失败均不消费。
 补充（2026-09-14 第三十五轮）：完成 20 项开发（T-995~T-1014），为事件协调器增加 signal/deadline 恢复入口，取消/超时均不消费队列，成功路径复用既有恢复逻辑。终验：849/849 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 402311 bytes、`package.zip` 263119 bytes（300 KiB 余量 42577 bytes）。
 
 补充（2026-09-14 第三十四轮）：完成 20 项开发（T-975~T-994），新增 `createStorageCapacityReportEventCoordinator`，统一事件恢复/提交、单调游标、stale_cursor 防护、快照与销毁态隔离。终验：847/847 测试、TypeScript、生产构建与发布质量检查通过；`dist/index.js` 402098 bytes、`package.zip` 263068 bytes（300 KiB 余量 42588 bytes）。

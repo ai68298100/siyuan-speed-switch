@@ -434,6 +434,23 @@ test('coordinator signal and deadline recovery preserve queue state', () => {
     assert.equal(queue.snapshot().size, 1);
 });
 
+test('coordinator recoverAndCommit acknowledges successful events only', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    const coordinator = createStorageCapacityReportEventCoordinator(queue);
+    assert.equal(coordinator.recoverAndCommit().committed, true);
+    assert.equal(queue.snapshot().size, 0);
+});
+
+test('coordinator atomic signal/deadline failures preserve queue', () => {
+    const queue = createStorageCapacityReportEventQueue();
+    queue.enqueue([{type: 'usage_trend', direction: 'up'}]);
+    const coordinator = createStorageCapacityReportEventCoordinator(queue);
+    assert.equal(coordinator.recoverAndCommitWithSignal({}, {aborted: true}).committed, false);
+    assert.equal(coordinator.recoverAndCommitWithDeadline({}, Date.now() - 1).committed, false);
+    assert.equal(queue.snapshot().size, 1);
+});
+
 test('parseStorageCapacityReportEvents safely rejects malformed and oversized payloads', () => {
     assert.deepEqual(parseStorageCapacityReportEvents('{bad'), []);
     assert.deepEqual(parseStorageCapacityReportEvents('x'.repeat(64001)), []);
