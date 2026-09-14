@@ -29,6 +29,25 @@ test("home adapter snapshots keep fields consistent across devices", () => {
     assert.equal(snapshot.empty, false);
 });
 
+test("calendar adapter keeps a complete six-week grid and visual metadata", async () => {
+    adapters.clearHomeSnapshotCache();
+    const items = Array.from({length: 42}, (_, index) => ({
+        label: String(index + 1),
+        value: index === 8 ? "20260909000000-aaaaaaa" : "",
+        secondary: index === 8 ? "七月廿八" : "",
+        outside: index < 2,
+    }));
+    const map = adapters.registerHomeAdapters([{
+        moduleId: "journal-calendar",
+        supportedDevices: ["desktop"],
+        read: () => ({title: "2026年9月", items}),
+    }]);
+    const result = await adapters.readHomeModule(map, "journal-calendar", "desktop", {}, {cacheTtlMs: 0});
+    assert.equal(result.snapshot.items.length, 42);
+    assert.equal(result.snapshot.items[0].outside, true);
+    assert.equal(result.snapshot.items[8].secondary, "七月廿八");
+});
+
 test("home adapter bridge deduplicates concurrent reads by device and config", async () => {
     adapters.clearHomeSnapshotCache();
     let reads = 0;

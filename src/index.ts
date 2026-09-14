@@ -3398,32 +3398,39 @@ const version = beginSearch(session);
             const since = this.taskWindowStart(days);
             const showCompleted = config.showCompleted === "是";
             // 显示已完成时同时匹配未勾选与已勾选（含大写 X）；否则只看未完成任务
+            // 思源任务的规范数据库形态是列表项 type='i' / subtype='t'；
+            // markdown 前缀可能是 "* [ ]"、"- [ ]" 等，SQL 只做宽门槛，
+            // 最终由 taskPattern 在 JS 中确认 checkbox。
             const stateCondition = showCompleted
-                ? `(markdown LIKE '%[ ] %' OR markdown LIKE '%[x] %' OR markdown LIKE '%[X] %')`
-                : `markdown LIKE '%[ ] %'`;
+                ? `(markdown LIKE '%[ ]%' OR markdown LIKE '%[x]%' OR markdown LIKE '%[X]%')`
+                : `markdown LIKE '%[ ]%'`;
+            const taskPattern = /\[[ xX]\](?:\s|$)/;
             const today = new Date();
             const pad = (value: number) => String(value).padStart(2, "0");
             const todayTitle = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+            const todayAttr = `custom-dailynote-${todayTitle.replace(/-/g, "")}`;
             const escapedNotebook = notebookFilter.replace(/'/g, "''");
             const notebookScope = notebookFilter ? ` AND d.box='${escapedNotebook}'` : "";
-            // 默认范围是今日日记（文档标题 YYYY-MM-DD），而不是当前打开页签。
+            // 默认范围优先使用思源今日日记属性，日期标题仅作为旧数据的兼容回退。
             // 全库模式保留旧的时间窗语义，避免一次性扫描超大工作空间。
             const scope = scanAll
                 ? `${notebookFilter ? ` AND b.box='${escapedNotebook}'` : ""} AND b.updated >= '${since}'`
-                : ` AND d.content='${todayTitle}'${notebookScope}`;
+                : ` AND (d.id IN (SELECT block_id FROM attributes WHERE name='${todayAttr}') OR d.content LIKE '${todayTitle}%')${notebookScope}`;
             const fromClause = scanAll
                 ? "blocks b"
                 : "blocks b JOIN blocks d ON d.id=b.root_id AND d.type='d'";
             const [json, countJson] = await Promise.all([
                 this.fetchKernelJson("/api/query/sql", {
-                    stmt: `SELECT b.id, b.content, b.markdown FROM ${fromClause} WHERE b.type='p' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope} ORDER BY b.updated DESC LIMIT ${limit}`,
+                    stmt: `SELECT b.id, b.content, b.markdown FROM ${fromClause} WHERE b.type='i' AND b.subtype='t' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope} ORDER BY b.updated DESC LIMIT ${Math.max(limit, 24)}`,
                 }),
                 this.fetchKernelJson("/api/query/sql", {
-                    stmt: `SELECT COUNT(*) AS total FROM ${fromClause} WHERE b.type='p' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope}`,
+                    stmt: `SELECT COUNT(*) AS total FROM ${fromClause} WHERE b.type='i' AND b.subtype='t' AND ${stateCondition.replace(/\bmarkdown\b/g, "b.markdown")}${scope}`,
                 }),
             ]);
-            const rows = (json?.data || []) as Array<{id: string; content: string; markdown?: string}>;
-            const total = Number((countJson?.data || [])[0]?.total) || 0;
+            const rows = ((json?.data || []) as Array<{id: string; content: string; markdown?: string}>)
+                .filter((row) => taskPattern.test(String(row.markdown || "")))
+                .slice(0, limit);
+            const total = Math.max(0, Number((countJson?.data || [])[0]?.total) || 0);
             return {
                 emptyHint: !scanAll && total === 0 ? `今天（${todayTitle}）还没有可显示的待办` : "",
                 stat: {value: String(total), label: this.i18n.homeStatTasks}, items: rows.map((row) => ({
@@ -3677,19 +3684,19 @@ const version = beginSearch(session);
             const year = base.getFullYear();
             const month = base.getMonth();
             const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
-            const notebookScope = buildNotebookBoxScope(config.notebook);
+            const attrPrefix = `custom-dailynote-${year}${String(month + 1).padStart(2, "0")}`;
+            const notebookScope = buildNotebookBoxScope(config.notebook, "b");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, content FROM blocks WHERE type='d'${notebookScope} AND content LIKE '${prefix}%' ORDER BY content LIMIT 31`,
+                stmt: `SELECT b.id, b.content, b.updated, a.name AS daily_attr FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name GLOB '${attrPrefix}[0-3][0-9]' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR b.content LIKE '${prefix}%') ORDER BY b.updated DESC LIMIT 64`,
             });
             const journalByDay = new Map<string, string>();
-            ((json?.data || []) as Array<{id: string; content: string}>).forEach((row) => {
-                const day = Number(String(row.content).slice(prefix.length, prefix.length + 2));
-                if (Number.isFinite(day) && day >= 1) journalByDay.set(String(day), row.id);
+            ((json?.data || []) as Array<{id: string; content: string; daily_attr?: string}>).forEach((row) => {
+                const attrMatch = String(row.daily_attr || "").match(new RegExp(`^${attrPrefix}(\\d{2})$`));
+                const titleMatch = String(row.content).match(new RegExp(`^${prefix}(\\d{2})(?:\\D|$)`));
+                const day = Number(attrMatch?.[1] || titleMatch?.[1] || 0);
+                if (day >= 1 && day <= 31 && !journalByDay.has(String(day))) journalByDay.set(String(day), row.id);
             });
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
             const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7; // 周一开头
-            const isCurrentMonth = offset === 0;
-            const today = now.getDate();
             const showLunar = config.showLunar === "是";
             const lunarFormatter = showLunar ? (() => {
                 try {
@@ -3698,16 +3705,28 @@ const version = beginSearch(session);
                     return null;
                 }
             })() : null;
-            const items: Array<{label: string; value: string; done?: boolean; secondary?: string}> = [];
-            for (let i = 0; i < leadingBlanks; i += 1) items.push({label: "", value: ""});
-            for (let day = 1; day <= daysInMonth; day += 1) {
-                const dayKey = String(day);
-                const date = new Date(year, month, day);
-                const lunar = lunarFormatter ? lunarFormatter.format(date).slice(0, 16) : "";
-                items.push({label: dayKey, value: journalByDay.get(dayKey) || "", done: isCurrentMonth && day === today, ...(lunar ? {secondary: lunar} : {})});
+            const items: Array<{label: string; value: string; done?: boolean; outside?: boolean; secondary?: string}> = [];
+            const gridStart = new Date(year, month, 1 - leadingBlanks);
+            for (let index = 0; index < 42; index += 1) {
+                const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index);
+                const inMonth = date.getFullYear() === year && date.getMonth() === month;
+                const dayKey = String(date.getDate());
+                const lunar = inMonth && lunarFormatter ? lunarFormatter.format(date).slice(0, 16) : "";
+                const isToday = date.getFullYear() === now.getFullYear()
+                    && date.getMonth() === now.getMonth()
+                    && date.getDate() === now.getDate();
+                items.push({
+                    label: dayKey,
+                    value: inMonth ? journalByDay.get(dayKey) || "" : "",
+                    ...(isToday ? {done: true} : {}),
+                    ...(inMonth ? {} : {outside: true}),
+                    ...(lunar ? {secondary: lunar} : {}),
+                });
             }
-            while (items.length % 7 !== 0) items.push({label: "", value: ""});
-            return {items};
+            const title = this.i18n.homeCalendarMonthFormat
+                .replace("{year}", String(year))
+                .replace("{month}", String(month + 1));
+            return {title, items};
         });
         // 快速记录：Flomo 式一键记一句到今日日记（点击后弹输入框，需确认追加）
         // 近期写作活跃度：按天聚合“创建的内容块”数量（不是文档数），只读且限制窗口。
@@ -4972,6 +4991,7 @@ const version = beginSearch(session);
                         previousMonth: this.i18n.homeCalendarPreviousMonth,
                         nextMonth: this.i18n.homeCalendarNextMonth,
                         today: this.i18n.homeCalendarToday,
+                        hasJournal: this.i18n.homeCalendarHasJournal,
                     },
                     calendarWeekdays: this.i18n.homeCalendarWeekdays,
                     onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),

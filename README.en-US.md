@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
 
-> Release note: the v0.17.0 candidate passes type checking, production build, 1509 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, transport, recovery, joint-snapshot, checkpoint-window, and diagnostics-projection contracts for read-only Agent audits without opening new write actions. Real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
+> Release note: the v0.17.0 candidate passes type checking, production build, 1513 automated tests, and mobile/Chromium UI smoke tests. It adds bounded lifecycle history, replay, health-report, trend-window, merge, transport, recovery, joint-snapshot, checkpoint-window, and diagnostics-projection contracts for read-only Agent audits without opening new write actions. Real-host path-filter capability, narrow-sidebar, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -175,7 +175,7 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 - Read-only SiYuan Agent audits now include bounded lifecycle history, health reports, trend windows, transport envelopes, queues, and recovery coordinators.
 - Joint recovery adds atomic multi-coordinator commits, checkpoint windows, cursor-based incremental recovery, diagnostics status/risk projections, and bounded pagination.
 - Safety boundaries remain unchanged: no new Agent write actions, no handler/instance/document-body leakage, and all outputs are bounded and sanitized.
-- Release gates pass: 1509 automated tests, TypeScript, mobile smoke, Chromium smoke, production graph, and package-size checks.
+- Release gates pass: 1513 automated tests, TypeScript, mobile smoke, Chromium smoke, production graph, and package-size checks.
 
 ### v0.16.41 (2026-09-14)
 
@@ -193,7 +193,7 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 
 ### v0.16.39 (2026-09-13)
 
-- Four new builtin widgets (27 total): **Journal calendar** (month grid with journal days highlighted and clickable), **Countdown** (days remaining or elapsed to a target date), **Clipped to read** (tag-based reading queue), **Quick capture** (Flomo-style one-tap journal append).
+- The built-in **Journal calendar** now renders a complete 6-week × 7-column month: it detects SiYuan daily-note attributes with a date-title fallback, shows the month, adjacent dates, weekends, today, and journal dots, opens existing journals, and navigates ±24 months. The same release also includes **Countdown**, **Clipped to read**, and **Quick capture**.
 - Widget store UI overhaul: larger dialog (up to 960×720), builtin widgets grouped by function (7 groups), plugin widgets grouped by source author, miniature skeleton previews with proportional size rectangles, and on-demand live preview dialogs.
 - Widget store availability and interaction improvements: category, conditional, and added-state filters compose independently; configured third-party widgets retain their settings and show an unavailable state while their provider is unloaded, then recover immediately after re-registration; localized grouping, persistent filters, and an explicit no-results state complete the flow.
 - Configuration UX improvements: countdown uses a native date picker, pinned documents offer suggestions from currently open documents with block-ID validation, and notebook filters preserve an explicit empty option plus unavailable-value feedback before save.

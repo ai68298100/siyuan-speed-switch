@@ -5227,31 +5227,42 @@
     opacity: 0.5;
 }
 
-// 日历格悬停反馈
-.sw__home-calendar-cell {
-    .sw__home-calendar-primary { line-height: 1.1; }
+// 日历采用固定 6 周月视图，视觉结构接近系统日历小组件。
+.sw__home-module[data-module-id="journal-calendar"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
 
-    .sw__home-calendar-secondary {
-        display: block;
-        margin-top: 1px;
-        color: var(--b3-theme-on-surface-light);
-        font-size: 9px;
-        line-height: 1;
-        opacity: 0.72;
+    .sw__home-module-body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
     }
 }
 
 .sw__home-calendar-nav {
-    display: flex;
-    justify-content: flex-end;
-    gap: 2px;
-    margin-bottom: 4px;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto 28px;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 6px;
 
     button {
-        min-width: 28px;
-        min-height: 28px;
-        padding: 2px 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 26px;
+        min-height: 26px;
+        padding: 2px 7px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--sw-home-accent, var(--b3-theme-primary));
+        font-size: 12px;
         line-height: 1;
+
+        &:hover { background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 11%, transparent); }
 
         &:focus-visible {
             outline: none;
@@ -5260,12 +5271,101 @@
     }
 }
 
+.sw__home-calendar-period {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--b3-theme-on-background);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// 日历必须显式声明 7 列网格；否则 span/button 会退化为连续文本，
+// 在窄面板和默认主题下尤其明显。
+.sw__home-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: 18px repeat(6, minmax(20px, 1fr));
+    flex: 1;
+    gap: 2px 3px;
+    align-items: stretch;
+    width: 100%;
+    min-height: 140px;
+}
+
+.sw__home-calendar-head,
 .sw__home-calendar-cell {
-    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.sw__home-calendar-head {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+
+    &:nth-child(6),
+    &:nth-child(7) { color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 68%, var(--b3-theme-on-surface-light)); }
+}
+
+.sw__home-calendar-cell {
+    position: relative;
+    flex-direction: column;
+    min-height: 20px;
+    padding: 1px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+
+    .sw__home-calendar-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 21px;
+        height: 21px;
+        border-radius: 50%;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    .sw__home-calendar-secondary {
+        display: block;
+        max-width: 100%;
+        margin-top: -1px;
+        overflow: hidden;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 7px;
+        line-height: 1;
+        opacity: 0.72;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &.is-weekend:not(.is-outside) .sw__home-calendar-primary {
+        color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 72%, var(--b3-theme-on-background));
+    }
+
+    &.is-outside {
+        opacity: 0.32;
+    }
+
+    &.is-today .sw__home-calendar-primary {
+        background: var(--sw-home-accent, var(--b3-theme-primary));
+        color: var(--b3-theme-on-primary, #fff);
+        font-weight: 750;
+    }
 
     &.has-journal {
-        border: 0;
-        background: transparent;
         color: inherit;
 
         &:focus-visible {
@@ -5273,6 +5373,17 @@
             box-shadow: var(--sw-focus-ring);
         }
     }
+}
+
+.sw__home-calendar-marker {
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--sw-home-accent, var(--b3-theme-primary));
+    transform: translateX(-50%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5286,8 +5397,7 @@
     transition: background-color 0.15s, color 0.15s;
 
     &:hover {
-        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
-        border-radius: 4px;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 12%, transparent);
     }
 }
 

@@ -108,6 +108,27 @@ test("home view renders calendar grid for viewType calendar", () => {
     assert.equal(grid.querySelectorAll(".is-today").length, 1);
     assert.equal(grid.querySelectorAll(".sw__home-calendar-secondary").length, 1);
 });
+
+test("home view retains a complete calendar and renders iPad-style date states", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const items = Array.from({length: 42}, (_, index) => ({
+        label: String((index % 31) + 1),
+        value: index === 10 ? "20260909000000-aaaaaaa" : "",
+        outside: index < 2 || index > 31,
+        done: index === 10,
+    }));
+    const view = buildHomeModuleView(
+        {moduleId: "journal-calendar", title: "日历月视图", viewType: "calendar"},
+        {ok: true, snapshot: {title: "2026年9月", items}},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {onItem: () => {}, onCalendarNavigate: () => {}});
+    assert.equal(view.contextTitle, "2026年9月");
+    assert.equal(root.querySelector(".sw__home-calendar-period").textContent, "2026年9月");
+    assert.equal(root.querySelectorAll(".sw__home-calendar-cell").length, 42);
+    assert.equal(root.querySelectorAll(".is-outside").length, 12);
+    assert.equal(root.querySelectorAll(".sw__home-calendar-marker").length, 1);
+    assert.equal(root.querySelector(".has-journal").type, "button");
+});
 test("home view loading state includes a bounded static-safe skeleton", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const view = buildHomeModuleView({moduleId: "loading", title: "Loading"}, {loading: true});

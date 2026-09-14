@@ -88,6 +88,6 @@ test("adapter registration preserves catalog presentation and config metadata", 
     const definition = runtime.listModules("desktop").find((item) => item.moduleId === "journal-calendar");
     assert.equal(definition.viewType, "calendar");
     assert.deepEqual(definition.configSchema.map((field) => field.key), ["monthOffset", "showLunar", "notebook"]);
-    assert.deepEqual(definition.sizes, ["medium", "wide"]);
+    assert.deepEqual(definition.sizes, ["large", "full"]);
     runtime.dispose();
 });

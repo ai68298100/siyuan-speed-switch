@@ -21,7 +21,7 @@
 | --- | --- | --- | --- | --- |
 | `recent-documents` 近期文档 | B | 本地打开历史；点击 rootId 打开 | adapter 已注册；空历史是合法空态 | 保持；补一条“无历史”验收 |
 | `today-journal` 今日日记 | B | `openJournal`，必要时选择笔记本并创建 | 动作协议真实存在；依赖日记本配置/权限 | 商店标注“可创建今日日记” |
-| `today-tasks` 今日待办 | B/C | `/api/query/sql` 查询今日日记文档中的任务块，点击受控更新勾选；可选近期开启全库扫描 | 默认按文档标题 `YYYY-MM-DD` 定位今日日记，不再依赖当前页签；无今日日记时显示明确空态 | 真实验收日期标题、任务块和全库模式；后续支持显式到期日期 |
+| `today-tasks` 今日待办 | B/C | `/api/query/sql` 查询今日日记中的规范任务列表项（`type=i/subtype=t`），点击受控更新勾选；可选近期全库扫描 | 默认以 `custom-dailynote-YYYYMMDD` 属性定位思源日记，并兼容 `YYYY-MM-DD` 标题，不再依赖当前页签 | 真实验收自定义日记路径、任务块和全库模式；后续支持显式到期日期 |
 | `fixed-document` 指定文档 | B | 配置合法 block ID 后打开 | `BLOCK_ID_RE` 校验；未配置时为空态，不是故障 | 配置表单增加文档选择器，减少手填 ID |
 | `favorites` 收藏 | B | 本地收藏；rootId 优先、旧 key 迁移后打开 | `jumpToFavorite` 已兼容移动/桌面和旧数据；无收藏为空态 | 补旧收藏迁移的真实回归 |
 | `document-sets` 文档集 | B | 本地文档集预检、确认、逐项恢复 | 复用恢复链，缺失/取消不伪造成功 | 商店描述增加“需先创建文档集” |
@@ -42,7 +42,7 @@
 | `document-relations-summary` 文档关系摘要 | C | 活动文档直接子块 + markdown 引用 SQL | 无活动文档必为空；引用匹配为有限 LIKE，不是完整关系图，可能漏报 | 标注“轻量摘要/非完整关系图”；后续改引用解析 |
 | `current-document-outline` 当前文档大纲 | C | 活动文档 `/api/outline/getDocOutline` | 端点与 Agent 共用；依赖活动文档和宿主返回结构 | 增加无活动文档和旧返回包装验收 |
 | `today-reservations` 近期预约 | C | `attributes.name='custom-reservation'`、`value=YYYYMMDD` SQL；日期标签已正确格式化 | 仅兼容 dailynote-today 等插件约定，不是思源通用预约 | 商店描述已明确协议依赖；真实宿主验证第三方数据 |
-| `journal-calendar` 日历月视图 | C | SQL 按 `YYYY-MM-DD` 标题生成 7 列月历，已有日期显示标记并可点击 | 过去因 adapter 元数据丢失而退化为普通列表；现已恢复 `viewType: calendar`，支持可选 notebook 过滤和前后 24 个月切换 | 标注命名规则；真实宿主验证跨月、筛选和空态 |
+| `journal-calendar` 日历月视图 | C | SQL 以日记属性为主、日期标题为兼容回退，生成固定 6 周 × 7 列月历，已有日记显示圆点并可点击 | 运行时保留完整 42 格、跨月弱化日期、周末色、今日圆形高亮、年月标题和前后 24 个月切换 | 真实宿主验证自定义日记路径、跨月、筛选和窄卡片密度 |
 | `writing-streak` 写作打卡 | B/C | SQL 按 `created` 的 `YYYYMMDD` 聚合近 7 天 | 只读统计，依赖 created 格式；无写入“打卡”动作 | 名称改为“写作连续天数”或明确统计口径 |
 | `countdown` 倒数日 | B | 纯前端 `YYYY-MM-DD` 计算 | 配置合法日期即可用；未配置时显示提示 | 配置控件改为日期 input，避免手填格式错误 |
 | `plugin-commands` 插件命令 | C | 枚举其他插件 `commands`，执行 `plugin::command` | 仅外部插件声明 `langKey` 且有 callback/globalCallback 才出现；命令卸载/旧格式会失效；无命令时显示安装/启用引导 | 保持空态引导；后续补真实宿主验证命令执行失败反馈 |

@@ -19,6 +19,7 @@ const {DEVICES, getModuleDefinition, normalizeConfig} = (() => {
 })();
 
 const MAX_SNAPSHOT_ITEMS = 24;
+const CALENDAR_MAX_SNAPSHOT_ITEMS = 42;
 const MAX_TEXT = 256;
 const DEFAULT_READ_TIMEOUT_MS = 800;
 const DEFAULT_CACHE_TTL_MS = 3000;
@@ -81,15 +82,20 @@ function canReadAdapter(adapter, device) {
     return !!adapter && DEVICES.includes(device) && adapter.supportedDevices.includes(device);
 }
 
-function normalizeSnapshot(value) {
+function normalizeSnapshot(value, options = {}) {
     if (!value || typeof value !== "object") return {title: "", items: [], updatedAt: 0, empty: true};
     const rawItems = Array.isArray(value.items) ? value.items : [];
-    const items = rawItems.slice(0, MAX_SNAPSHOT_ITEMS).map((item) => {
+    const requestedMax = Number.isFinite(options.maxItems) ? Math.trunc(options.maxItems) : MAX_SNAPSHOT_ITEMS;
+    const maxItems = Math.min(CALENDAR_MAX_SNAPSHOT_ITEMS, Math.max(1, requestedMax));
+    const items = rawItems.slice(0, maxItems).map((item) => {
         if (!item || typeof item !== "object") return null;
         const entry = {label: safeText(item.label), value: safeText(item.value), href: safeText(item.href, 512), command: safeText(item.command, 128)};
+        const secondary = safeText(item.secondary, 32);
+        if (secondary) entry.secondary = secondary;
         // 协议 v2.2：count 为非负整数（如标签出现次数），渲染为行内比例条
         if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));
         if (typeof item.done === "boolean") entry.done = item.done;
+        if (item.outside === true) entry.outside = true;
         return entry;
         // 协议 v2：command 为 "插件名::命令key"，点击由宿主代为执行（有界格式）
         
@@ -166,7 +172,9 @@ async function readHomeModule(adapters, moduleId, device, config = {}, options =
             timeoutPromise,
             ...(abortPromise ? [abortPromise] : []),
         ]);
-        const snapshot = normalizeSnapshot(value);
+        const snapshot = normalizeSnapshot(value, {
+            maxItems: adapter.moduleId === "journal-calendar" ? CALENDAR_MAX_SNAPSHOT_ITEMS : MAX_SNAPSHOT_ITEMS,
+        });
         if (readGenerations.get(cacheKey) === generation) snapshotCache.set(cacheKey, {at: Date.now(), snapshot});
         failureBackoff.delete(cacheKey);
         if (snapshot.empty) recordDiagnostic("empty", moduleId, device);
@@ -243,4 +251,4 @@ function consumeHomeAdapterDiagnostics(device) {
     return filtered.map((item) => ({...item}));
 }
 
-module.exports = {MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};
+module.exports = {MAX_SNAPSHOT_ITEMS, CALENDAR_MAX_SNAPSHOT_ITEMS, DEFAULT_READ_TIMEOUT_MS, DEFAULT_CACHE_TTL_MS, MAX_DIAGNOSTICS, HOME_DATA_SOURCES, getHomeDataSourceContract, registerHomeAdapters, unregisterHomeAdapter, canReadAdapter, normalizeSnapshot, readHomeModule, clearHomeSnapshotCache, getHomeAdapterDiagnostics, consumeHomeAdapterDiagnostics, planHomeRefresh, planHomeLifecycleRefresh, coalesceHomeRefreshEvents};

@@ -129,8 +129,13 @@ test("journal calendar supports notebook scope and bidirectional month navigatio
         source.indexOf('register("journal-calendar"'),
         source.indexOf('register("recent-writing-activity"'),
     );
-    assert.match(calendar, /buildNotebookBoxScope\(config\.notebook\)/);
+    assert.match(calendar, /buildNotebookBoxScope\(config\.notebook, "b"\)/);
     assert.match(calendar, /type='d'\$\{notebookScope\}/);
+    assert.match(calendar, /custom-dailynote-/);
+    assert.match(calendar, /LEFT JOIN attributes/);
+    assert.match(calendar, /index < 42/);
+    assert.match(calendar, /outside: true/);
+    assert.match(calendar, /homeCalendarMonthFormat/);
     assert.match(source, /Math\.min\(24, Math\.max\(-24, current \+ \(direction < 0 \? -1 : 1\)\)\)/);
 });
 
@@ -142,10 +147,30 @@ test("today tasks default to today's journal and expose an explicit empty hint",
         source.indexOf('register("today-tasks"'),
         source.indexOf('register("tags"'),
     );
-    assert.match(tasks, /d\.content=\x27\$\{todayTitle\}\x27/);
+    assert.match(tasks, /attributes WHERE name=\x27\$\{todayAttr\}\x27/);
+    assert.match(tasks, /d\.content LIKE \x27\$\{todayTitle\}%\x27/);
     assert.match(tasks, /blocks b JOIN blocks d ON d\.id=b\.root_id AND d\.type=\x27d\x27/);
     assert.match(tasks, /emptyHint: !scanAll && total === 0/);
-    assert.match(tasks, /stateCondition\.replace\(\/\\bmarkdown\\b\/g, "b\.markdown"\)/);
+    assert.match(tasks, /b\.type=\x27i\x27 AND b\.subtype=\x27t\x27/);
+    assert.match(tasks, /taskPattern\.test/);
+});
+
+test("today tasks accepts common checkbox markdown variants", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const tasks = source.slice(source.indexOf('register("today-tasks"'), source.indexOf('register("tags"'));
+    assert.match(tasks, /markdown LIKE '%\[ \]%'/);
+    assert.ok(tasks.includes('const taskPattern = /\\[[ xX]\\](?:\\s|$)/;'));
+});
+
+test("calendar rendering declares a seven-column grid", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
+    const calendar = source.slice(source.indexOf(".sw__home-calendar {"), source.indexOf(".sw__home-calendar-head {"));
+    assert.match(calendar, /display: grid/);
+    assert.match(calendar, /repeat\(7, minmax\(0, 1fr\)\)/);
 });
 
 test("insight adapters share validated notebook scope without changing default queries", () => {

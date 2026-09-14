@@ -80,7 +80,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
-    {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, viewType: "calendar", configSchema: [
+    {moduleId: "journal-calendar", title: "日历月视图", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["large", "full"], protocolVersion: 2, viewType: "calendar", configSchema: [
         {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 24, defaults: 0},
         {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "notebook", label: "限定笔记本", type: "notebook"},

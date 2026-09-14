@@ -124,7 +124,9 @@ test('production bundle remains within the mobile performance budget when built'
     // bounded cursor recovery plans and deterministic window summaries.
     // 2026-09-14 (52): 448 KiB for the read-only diagnostics projection,
     // pagination and multi-source aggregation contracts.
-    const budget = 448 * 1024;
+    // 2026-09-14 (53): 450 KiB for daily-note attribute lookup and the native
+    // complete six-week calendar view; package.zip remains below 300 KiB.
+    const budget = 450 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

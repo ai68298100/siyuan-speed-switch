@@ -37,6 +37,7 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'siyuan-speed-switch-smoke
 const profileDir = path.join(tempDir, 'profile');
 const htmlPath = path.join(tempDir, 'index.html');
 const links = cssPaths.map((cssPath) => `<link rel="stylesheet" href="${pathToFileURL(cssPath).href}">`).join('\n');
+const calendarCells = Array.from({length: 42}, (_, index) => `<span class="sw__home-calendar-cell${index < 2 || index > 32 ? ' is-outside' : ''}${index === 10 ? ' is-today has-journal' : ''}"><span class="sw__home-calendar-primary">${(index % 31) + 1}</span>${index === 10 ? '<span class="sw__home-calendar-marker"></span>' : ''}</span>`).join('');
 const html = `<!doctype html>
 <html class="neo-mobile neo-mode-dark" data-theme-mode="dark">
 <head>
@@ -78,6 +79,14 @@ ${links}
   <div class="sw-settings__item-main"><div class="sw-settings__item-title">Setting</div></div>
   <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
 </div></div>
+<div class="sw-home"><section class="sw-home__cell" data-size="large"><div class="sw-home__cell-body">
+  <section class="sw__home-module" data-module-id="journal-calendar">
+    <div class="sw__home-module-body">
+      <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
+      <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span>${calendarCells}</div>
+    </div>
+  </section>
+</div></section></div>
 </div>
 <script>
 window.addEventListener('load', () => {
@@ -94,8 +103,14 @@ window.addEventListener('load', () => {
     docGrid: measure('.sw__doc-grid'),
     docItem: measure('.sw__doc-item'),
     docTitleClamp: getComputedStyle(document.querySelector('.sw__doc-title')).webkitLineClamp,
+    calendarGrid: measure('.sw__home-calendar'),
+    calendarColumns: getComputedStyle(document.querySelector('.sw__home-calendar')).gridTemplateColumns.split(' ').filter(Boolean).length,
+    calendarCells: document.querySelectorAll('.sw__home-calendar-cell').length,
+    calendarPeriod: document.querySelector('.sw__home-calendar-period').textContent,
+    calendarTodayRadius: getComputedStyle(document.querySelector('.is-today .sw__home-calendar-primary')).borderRadius,
+    calendarMarkerWidth: getComputedStyle(document.querySelector('.sw__home-calendar-marker')).width,
   };
-  document.body.dataset.result = btoa(JSON.stringify(result));
+  document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
 });
 </script>
 </body>
@@ -155,11 +170,18 @@ try {
         && result.docItem.display === 'grid'
         && result.docItem.minHeight === '84px'
         && result.docTitleClamp === '2';
+    const calendarOk = result.calendarGrid.display === 'grid'
+        && result.calendarColumns === 7
+        && result.calendarCells === 42
+        && result.calendarPeriod === '2026年9月'
+        && result.calendarTodayRadius === '50%'
+        && result.calendarMarkerWidth === '4px';
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);
     console.log(`${switchOk ? 'PASS' : 'FAIL'} Chromium settings switch`);
     console.log(`${docCardsOk ? 'PASS' : 'FAIL'} Chromium document search cards`);
-    process.exitCode = actionOk && switchOk && docCardsOk ? 0 : 1;
+    console.log(`${calendarOk ? 'PASS' : 'FAIL'} Chromium six-week calendar widget`);
+    process.exitCode = actionOk && switchOk && docCardsOk && calendarOk ? 0 : 1;
 } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

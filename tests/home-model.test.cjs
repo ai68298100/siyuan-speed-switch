@@ -18,6 +18,7 @@ test("journal-calendar viewType and monthOffset config", () => {
     const cal = modules.find((item) => item.moduleId === "journal-calendar");
     assert.ok(cal, "journal-calendar registered");
     assert.equal(cal.viewType, "calendar");
+    assert.deepEqual(cal.sizes, ["large", "full"]);
     assert.ok(Array.isArray(cal.configSchema) && cal.configSchema.length > 0, "has config");
     assert.deepEqual(cal.configSchema[0], {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 24, defaults: 0});
     assert.deepEqual(cal.configSchema[1], {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"});

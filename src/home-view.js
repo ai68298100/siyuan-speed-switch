@@ -1,6 +1,7 @@
 "use strict";
 
 const MAX_ITEMS = 24;
+const CALENDAR_MAX_ITEMS = 42;
 const MAX_TEXT = 256;
 const STATUSES = new Set(["loading", "ready", "empty", "error"]);
 let renderSequence = 0;
@@ -58,7 +59,9 @@ function normalizeHomeViewResult(value, options = {}) {
     const source = value && typeof value === "object" ? value : {};
     const rawSnapshot = source.snapshot && typeof source.snapshot === "object" ? source.snapshot : {};
     const rawItems = Array.isArray(rawSnapshot.items) ? rawSnapshot.items : [];
-    const items = rawItems.slice(0, MAX_ITEMS).map((item) => {
+    const requestedMax = Number.isFinite(options.maxItems) ? Math.trunc(options.maxItems) : MAX_ITEMS;
+    const maxItems = Math.min(CALENDAR_MAX_ITEMS, Math.max(1, requestedMax));
+    const items = rawItems.slice(0, maxItems).map((item) => {
         const entry = {
             label: text(item?.label),
             value: text(item?.value),
@@ -68,6 +71,7 @@ function normalizeHomeViewResult(value, options = {}) {
         const secondary = text(item?.secondary, 32);
         if (secondary) entry.secondary = secondary;
         if (typeof item?.done === "boolean") entry.done = item.done;
+        if (item?.outside === true) entry.outside = true;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
@@ -102,7 +106,11 @@ function buildHomeModuleView(module, result, options = {}) {
     const definition = module && typeof module === "object" ? module : {};
     const moduleId = text(definition.moduleId, 64);
     if (!moduleId) return null;
-    const normalized = normalizeHomeViewResult(result, {keepEmptyItems: definition.viewType === "calendar"});
+    const isCalendar = definition.viewType === "calendar";
+    const normalized = normalizeHomeViewResult(result, {
+        keepEmptyItems: isCalendar,
+        maxItems: isCalendar ? CALENDAR_MAX_ITEMS : MAX_ITEMS,
+    });
     return {
         moduleId,
         title: text(definition.title, 64) || moduleId,
@@ -116,6 +124,7 @@ function buildHomeModuleView(module, result, options = {}) {
         reason: normalized.reason,
         updatedAt: normalized.updatedAt,
         items: normalized.items,
+        ...(isCalendar && normalized.title ? {contextTitle: normalized.title} : {}),
         ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
         collapsed: options.collapsed === true,
         role: "region",
@@ -137,6 +146,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         previousMonth: "上月",
         nextMonth: "下月",
         today: "今天",
+        hasJournal: "有日记",
         ...(options.labels && typeof options.labels === "object" ? options.labels : {}),
     };
     const root = doc.createElement("section");
@@ -293,10 +303,14 @@ function renderHomeModuleView(doc, view, options = {}) {
                 control.className = "b3-button b3-button--text sw__home-calendar-nav-button";
                 control.setAttribute("aria-label", label || "");
                 control.textContent = direction ? (direction < 0 ? "‹" : "›") : label;
+                control.dataset.focusKey = direction < 0 ? "calendar-prev" : direction > 0 ? "calendar-next" : "calendar-today";
                 control.addEventListener("click", () => options.onCalendarNavigate(direction, view));
                 return control;
             };
-            nav.append(button(labels.previousMonth, -1), button(labels.today, 0), button(labels.nextMonth, 1));
+            const period = doc.createElement("strong");
+            period.className = "sw__home-calendar-period";
+            period.textContent = view.contextTitle || "";
+            nav.append(button(labels.previousMonth, -1), period, button(labels.today, 0), button(labels.nextMonth, 1));
             body.appendChild(nav);
         }
         const grid = doc.createElement("div");
@@ -311,12 +325,16 @@ function renderHomeModuleView(doc, view, options = {}) {
             head.textContent = label;
             grid.appendChild(head);
         });
-        (Array.isArray(view.items) ? view.items : []).forEach((item) => {
+        (Array.isArray(view.items) ? view.items : []).forEach((item, index) => {
             const clickable = Boolean(item.value) && typeof options.onItem === "function";
             const cell = doc.createElement(clickable ? "button" : "span");
             cell.className = "sw__home-calendar-cell"
                 + (item.value ? " has-journal" : "")
-                + (item.done === true ? " is-today" : "");
+                + (item.done === true ? " is-today" : "")
+                + (item.outside === true ? " is-outside" : "")
+                + (index % 7 >= 5 ? " is-weekend" : "");
+            cell.setAttribute("role", "gridcell");
+            if (clickable) cell.type = "button";
             const primary = doc.createElement("span");
             primary.className = "sw__home-calendar-primary";
             primary.textContent = item.label || "";
@@ -327,7 +345,18 @@ function renderHomeModuleView(doc, view, options = {}) {
                 secondary.textContent = item.secondary;
                 cell.appendChild(secondary);
             }
-            if (clickable) cell.addEventListener("click", () => options.onItem(item, view));
+            if (item.value) {
+                const marker = doc.createElement("span");
+                marker.className = "sw__home-calendar-marker";
+                marker.setAttribute("aria-hidden", "true");
+                cell.appendChild(marker);
+            }
+            const ariaParts = [view.contextTitle, item.label, item.value ? labels.hasJournal : ""].filter(Boolean);
+            if (ariaParts.length) cell.setAttribute("aria-label", ariaParts.join(" "));
+            if (clickable) {
+                cell.dataset.focusKey = `calendar-day-${index}`;
+                cell.addEventListener("click", () => options.onItem(item, view));
+            }
             grid.appendChild(cell);
         });
         body.appendChild(grid);
@@ -427,4 +456,4 @@ function renderHomeModuleView(doc, view, options = {}) {
     return root;
 }
 
-module.exports = {MAX_ITEMS, MAX_TEXT, normalizeHomeViewResult, buildHomeModuleView, renderHomeModuleView, renderModuleIcon, formatUpdatedAt};
+module.exports = {MAX_ITEMS, CALENDAR_MAX_ITEMS, MAX_TEXT, normalizeHomeViewResult, buildHomeModuleView, renderHomeModuleView, renderModuleIcon, formatUpdatedAt};
