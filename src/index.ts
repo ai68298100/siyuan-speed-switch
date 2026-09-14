@@ -62,7 +62,12 @@ import {
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {createWorkspaceRuntimeDiagnostics} from "./agent-workspace-diagnostics";
-import {auditAgentCapabilityDefinitions, summarizeAgentCapabilityAudit} from "./agent-readonly-audit";
+import {
+    auditAgentCapabilityDefinitions,
+    summarizeAgentCapabilityAudit,
+    buildAgentReadOnlyAuditSnapshot,
+    createAgentReadOnlyAuditHistory,
+} from "./agent-readonly-audit";
 import {DOCUMENT_CONTEXT_SPEC, buildDocumentContext, normalizeDocumentContextRequest} from "./agent-document-context";
 import {
     SEARCH_DEBOUNCE_MS,
@@ -591,6 +596,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
     // v0.17 阶段 1（D-220）：workspace 运行时只读诊断能力的生命周期持有者
     private workspaceRuntimeDiagnostics: ReturnType<typeof createWorkspaceRuntimeDiagnostics> | null = null;
+    // v0.17：保留有界的 Agent 只读注册生命周期快照，仅供插件内部诊断使用。
+    private agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory(8);
     private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
@@ -637,6 +644,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onload() {
         this.isUnloading = false;
         this.lifecycleGeneration += 1;
+        // 允许同一插件实例在宿主热重载后重新开始一段独立的审计历史。
+        if (this.agentReadOnlyAuditHistory.status().disposed) {
+            this.agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory(8);
+        }
         this.isMobile = getFrontend() === "mobile" || getFrontend() === "browser-mobile";
 
         // 灏芥棭娉ㄥ叆鍗＄墖鎸夐挳鍥炬爣锛氬畼鏂?sprite 涓哄紓姝ユ敞鍏ワ紝棣栧抚娓叉煋鐨勪笁鎸夐挳鍙兘寮曠敤鍒扮┖ symbol
@@ -1047,6 +1058,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         // v0.17 阶段 1（D-220）：销毁 workspace 诊断运行时（registry/queue/coordinator）
         this.workspaceRuntimeDiagnostics?.dispose();
         this.workspaceRuntimeDiagnostics = null;
+        // v0.17：卸载前写入脱敏 disposed 快照，再销毁历史容器；不向 Agent/UI 透传明细。
+        this.agentReadOnlyAuditHistory.record(buildAgentReadOnlyAuditSnapshot({
+            status: "unavailable",
+            reason: "unavailable",
+            disposed: true,
+        }));
+        this.agentReadOnlyAuditHistory.dispose();
         this.switcherRefreshers.clear();
         this.quickActionAdapters.clear();
         this.quickActionAdapterTargets.clear();
@@ -7201,6 +7219,13 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         }
         const readonlyAudit = summarizeAgentCapabilityAudit(auditAgentCapabilityDefinitions(readOnlyDefinitions));
         if (!readonlyAudit.valid) logger.warn("Agent read-only capability audit rejected definitions", readonlyAudit);
+        this.agentReadOnlyAuditHistory.record(buildAgentReadOnlyAuditSnapshot({
+            audit: readonlyAudit,
+            device: this.isMobile ? "mobile" : "desktop",
+            status: readonlyAudit.valid ? "ready" : "failed",
+            reason: readonlyAudit.valid ? "unavailable" : "failed",
+            disposed: false,
+        }));
         registerReadOnlyAgentCapabilities(pluginWithAgent, readOnlyDefinitions, (error, spec) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
     }
 

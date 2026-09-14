@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const a = require('../src/agent-readonly-audit.js');
 
 const read = (name = 'demo') => ({name, effects: ['localRead'], devices: ['desktop', 'mobile']});
@@ -48,3 +50,40 @@ test('audit events emit validity change', () => assert.equal(a.buildAgentReadOnl
 test('audit events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditEvents({status: 'ready'}, {status: 'failed'}).length <= 8));
 test('event normalization removes duplicate events', () => assert.equal(a.normalizeAgentReadOnlyAuditEvents([{type: 'x', status: 'ready', reason: 'failed'}, {type: 'x', status: 'ready', reason: 'failed'}]).length, 1));
 test('event normalization caps events', () => assert.equal(a.normalizeAgentReadOnlyAuditEvents(Array.from({length: 20}, (_, i) => ({type: String(i)}))).length, 8));
+
+// v0.17 lifecycle history contract (T-1283~T-1312)
+test('history limit defaults to eight', () => assert.equal(a.normalizeAgentAuditHistoryLimit(), 8));
+test('history limit clamps to one', () => assert.equal(a.normalizeAgentAuditHistoryLimit(0), 1));
+test('history limit clamps to thirty two', () => assert.equal(a.normalizeAgentAuditHistoryLimit(99), 32));
+test('history starts empty', () => assert.deepEqual(a.createAgentReadOnlyAuditHistory(3).list(), []));
+test('history record accepts snapshot', () => assert.equal(a.createAgentReadOnlyAuditHistory().record({status: 'ready'}).accepted, true));
+test('history record returns sequence', () => assert.equal(a.createAgentReadOnlyAuditHistory().record({status: 'ready'}).sequence, 1));
+test('history sequences are monotonic', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); h.record({}); assert.deepEqual(h.list().map((x) => x.sequence), [1, 2]); });
+test('history evicts oldest beyond capacity', () => { const h = a.createAgentReadOnlyAuditHistory(2); h.record({device: 'desktop'}); h.record({device: 'mobile'}); h.record({device: 'sidebar'}); assert.deepEqual(h.list().map((x) => x.sequence), [2, 3]); });
+test('history list returns defensive snapshots', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({status: 'ready'}); const list = h.list(); list[0].snapshot.status = 'failed'; assert.equal(h.latest().snapshot.status, 'ready'); });
+test('history latest returns newest item', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({device: 'desktop'}); h.record({device: 'mobile'}); assert.equal(h.latest().snapshot.device, 'mobile'); });
+test('history latest is null when empty', () => assert.equal(a.createAgentReadOnlyAuditHistory().latest(), null));
+test('history since reads entries after cursor', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({device: 'desktop'}); h.record({device: 'mobile'}); assert.deepEqual(h.since(1).map((x) => x.sequence), [2]); });
+test('history since invalid cursor degrades to zero', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(h.since('bad').length, 1); });
+test('history since is bounded by capacity', () => { const h = a.createAgentReadOnlyAuditHistory(2); h.record({}); h.record({}); h.record({}); assert.equal(h.since(0).length, 2); });
+test('history status reports capacity', () => { const h = a.createAgentReadOnlyAuditHistory(4); assert.equal(h.status().capacity, 4); });
+test('history status reports disposed flag', () => { const h = a.createAgentReadOnlyAuditHistory(); h.dispose(); assert.equal(h.status().disposed, true); });
+test('history dispose clears entries', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); h.dispose(); assert.equal(h.list().length, 0); });
+test('history dispose is idempotent', () => { const h = a.createAgentReadOnlyAuditHistory(); h.dispose(); h.dispose(); assert.equal(h.status().disposed, true); });
+test('history rejects records after dispose', () => { const h = a.createAgentReadOnlyAuditHistory(); h.dispose(); assert.equal(h.record({}).accepted, false); });
+test('history snapshots normalize nested audit', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({audit: {valid: 1, total: 99}}); assert.deepEqual(h.latest().snapshot.audit, {valid: false, total: 32, validCount: 0, invalidCount: 0, duplicates: 0}); });
+test('lifecycle event reports unchanged snapshots', () => assert.deepEqual(a.buildAgentAuditLifecycleEvent({status: 'ready'}, {status: 'ready'}), {type: 'unchanged', count: 0}));
+test('lifecycle event reports status changes', () => assert.deepEqual(a.buildAgentAuditLifecycleEvent({status: 'ready'}, {status: 'failed'}), {type: 'status_changed', count: 1}));
+test('lifecycle event count is bounded', () => assert.ok(a.buildAgentAuditLifecycleEvent({audit: {valid: true}, status: 'ready', device: 'desktop', disposed: false}, {audit: {valid: false}, status: 'failed', device: 'mobile', disposed: true}).count <= 8));
+test('cursor normalizes negative values', () => assert.equal(a.normalizeAgentAuditCursor(-4), 0));
+test('cursor truncates fractional values', () => assert.equal(a.normalizeAgentAuditCursor(2.9), 2));
+test('cursor rejects nonfinite values', () => assert.equal(a.normalizeAgentAuditCursor('bad'), 0));
+test('history preserves device field', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({device: 'mobile'}); assert.equal(h.latest().snapshot.device, 'mobile'); });
+test('history preserves status field', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({status: 'timeout'}); assert.equal(h.latest().snapshot.status, 'timeout'); });
+test('history preserves stable reason only', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({reason: 'secret stack trace'}); assert.equal(h.latest().snapshot.reason, 'failed'); });
+test('history summary does not leak item details', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({audit: {valid: true, items: [{handler: 'secret'}]}}); assert.equal('items' in h.latest().snapshot.audit, false); });
+test('duplicate snapshots still receive distinct sequences', () => { const h = a.createAgentReadOnlyAuditHistory(); const a1 = h.record({status: 'ready'}); const a2 = h.record({status: 'ready'}); assert.notEqual(a1.sequence, a2.sequence); });
+test('history status latest sequence survives eviction', () => { const h = a.createAgentReadOnlyAuditHistory(1); h.record({}); h.record({}); assert.equal(h.status().latestSequence, 2); });
+test('production registration records initial audit snapshot', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /agentReadOnlyAuditHistory\.record\(buildAgentReadOnlyAuditSnapshot/); });
+test('production unload records disposed audit snapshot', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /disposed:\s*true/); assert.match(source, /agentReadOnlyAuditHistory\.dispose\(\)/); });
+test('production reload resets disposed audit history', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /agentReadOnlyAuditHistory\.status\(\)\.disposed/); assert.match(source, /agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory\(8\)/); });

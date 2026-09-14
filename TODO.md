@@ -190,6 +190,41 @@
   - 证据：`src/agent-readonly-audit.js`、`src/index.ts`、`tests/agent-readonly-audit.test.cjs`（40 项审计测试）
   - 状态：done（2026-09-14）
 
+### T-1283~T-1312 Agent 只读审计生命周期历史（本轮 30 项）
+
+- [x] T-1283 历史容量归一化
+- [x] T-1284 历史容量上下限
+- [x] T-1285 初始空历史
+- [x] T-1286 record 接受快照
+- [x] T-1287 record 拒绝销毁态
+- [x] T-1288 sequence 单调递增
+- [x] T-1289 历史超限淘汰旧项
+- [x] T-1290 list 返回副本
+- [x] T-1291 latest 读取最新项
+- [x] T-1292 latest 空态
+- [x] T-1293 since 游标读取
+- [x] T-1294 since 非法游标降级
+- [x] T-1295 since 结果上限
+- [x] T-1296 status 返回容量
+- [x] T-1297 status 返回 disposed
+- [x] T-1298 dispose 清空历史
+- [x] T-1299 dispose 幂等
+- [x] T-1300 dispose 后 record 拒绝
+- [x] T-1301 快照深层归一化
+- [x] T-1302 生命周期事件构建
+- [x] T-1303 unchanged 事件
+- [x] T-1304 事件数量上限
+- [x] T-1305 cursor 归一化
+- [x] T-1306 重复快照独立 sequence
+- [x] T-1307 设备字段保留
+- [x] T-1308 status 字段保留
+- [x] T-1309 reason 字段脱敏
+- [x] T-1310 审计摘要不泄漏 item 详情
+- [x] T-1311 插件注册前写入初始快照
+- [x] T-1312 插件卸载前写入 disposed 快照
+  - 证据：`src/agent-readonly-audit.js`、`src/index.ts`、`tests/agent-readonly-audit.test.cjs`（79 项专项测试）
+  - 状态：done（2026-09-14）
+
 ### T-1223~T-1252 商店纯模型稳定化（本轮 30 项）
 
 - [x] T-1223 固定商店页签集合
