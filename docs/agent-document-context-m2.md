@@ -21,3 +21,9 @@ while preserving the legacy `outlineAvailable` boolean for compatibility.
 Unknown values are discarded, all fields are required schema enums, and the
 host continues to resolve notebook names from its existing in-memory cache
 without adding a network request to an Agent call.
+
+For older hosts that expose notebook labels directly on a tab, the host uses
+the cache first and then accepts the bounded `notebookName`, `notebook`, or
+`boxName` aliases. Status derivation is implemented as pure helpers so the
+desktop, sidebar, and mobile contracts can be regression-tested without a
+running kernel.

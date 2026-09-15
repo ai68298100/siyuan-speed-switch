@@ -72,6 +72,34 @@ test("document-context keeps notebook lookup cache-only", () => {
     assert.doesNotMatch(source, /fetchKernelJson\("\/api\/notebook/);
 });
 
+test("document-context falls back to tab notebookName aliases", () => {
+    assert.match(source, /tabNotebookName = tab/);
+    assert.match(source, /\.notebookName/);
+    assert.match(source, /\.boxName/);
+});
+
+test("document-context keeps SQL fallback query bounded", () => {
+    assert.match(source, /SELECT id, content, box FROM blocks WHERE id='/);
+    assert.match(source, /LIMIT 1/);
+});
+
+test("document-context does not claim a kernel path for SQL rows", () => {
+    assert.match(source, /path: "", pathSource: "none"/);
+});
+
+test("document-context computes outline status from bounded response data", () => {
+    assert.match(source, /Array\.isArray\(outlineJson\?\.data\)/);
+    assert.match(source, /outlineJson\.data\.length > 0/);
+});
+
+test("document-context still emits outline availability boolean", () => {
+    assert.match(source, /outlineAvailable,/);
+});
+
+test("document-context continues to return structured content", () => {
+    assert.match(source, /structuredContent: content/);
+});
+
 test("document-context returns a structured bounded result", () => {
     assert.match(source, /structuredContent: content, result: JSON\.stringify\(content\)/);
 });

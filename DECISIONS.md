@@ -1,4 +1,7 @@
 # 决策
+- D-339（2026-09-15）：document-context M2 纯函数与旧宿主 notebook 别名回退使 raw bundle 增加约 257 bytes，移动端自律线由 546 KiB 调整为 547 KiB；package.zip 仍受 320 KiB 硬上限、白名单和单条目门禁约束。
+- D-337（2026-09-15）：document-context 的状态推导集中为纯函数并在归一化后执行；metadataStatus 仅接受非空字符串核心字段，outlineStatus 在 outlineAvailable=false 时强制为 unavailable，避免宿主传入布尔/伪状态造成误判。
+- D-338（2026-09-15）：打开页签的 notebookName 采用“缓存名称 > 页签 notebookName/notebook/boxName 别名”顺序；所有候选仍经过长度与控制字符清洗，不触发额外网络请求。
 - D-334（2026-09-15）：document-context 的 metadataStatus 只由归一化后的 id/title/notebookId 推导：三者齐全为 complete，仅部分存在为 partial，全部缺失为 unavailable；不接受调用方覆盖，避免状态伪造。
 - D-335（2026-09-15）：document-context 的 pathSource 明确区分 tab/kernel/none。当前关闭文档 SQL 回退不扩大查询字段，路径缺失保持 none，待真实宿主验证 hPath 契约后再扩展 kernel 路径。
 - D-336（2026-09-15）：document-context 保留 outlineAvailable 兼容旧消费者，同时新增 outlineStatus 区分 available/empty/unavailable；空大纲不是失败，异常也不回显宿主错误文本。

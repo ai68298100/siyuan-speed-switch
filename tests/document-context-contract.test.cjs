@@ -3,7 +3,8 @@ const assert = require("node:assert/strict");
 const {
     MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SOURCES, DOCUMENT_CONTEXT_METADATA_STATES, DOCUMENT_CONTEXT_PATH_SOURCES, DOCUMENT_CONTEXT_OUTLINE_STATES, DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest, normalizeDocumentContextPath,
-    extractDocumentContextRecord, buildDocumentContext,
+    extractDocumentContextRecord, buildDocumentContext, normalizeDocumentContextSource,
+    deriveDocumentContextMetadataStatus, deriveDocumentContextPathSource, deriveDocumentContextOutlineStatus,
 } = require("../src/agent-document-context.js");
 
 const validId = "20260914083000-abcdef";
@@ -297,4 +298,88 @@ test("context output remains detached after status derivation", () => {
     const output = buildDocumentContext(input);
     input.headings.push({id: validId, name: "mutated"});
     assert.equal(output.outlineStatus, "empty");
+});
+
+test("source normalizer preserves active source", () => {
+    assert.equal(normalizeDocumentContextSource("active", false), "active");
+});
+
+test("source normalizer preserves opened source", () => {
+    assert.equal(normalizeDocumentContextSource("opened", true), "opened");
+});
+
+test("source normalizer defaults active unknown input to active", () => {
+    assert.equal(normalizeDocumentContextSource("remote", true), "active");
+});
+
+test("source normalizer defaults inactive unknown input to kernel", () => {
+    assert.equal(normalizeDocumentContextSource("remote", false), "kernel");
+});
+
+test("metadata derivation is deterministic for complete values", () => {
+    assert.equal(deriveDocumentContextMetadataStatus(validId, "T", validNotebook), "complete");
+});
+
+test("metadata derivation treats empty title as partial", () => {
+    assert.equal(deriveDocumentContextMetadataStatus(validId, "", validNotebook), "partial");
+});
+
+test("metadata derivation treats all empty values as unavailable", () => {
+    assert.equal(deriveDocumentContextMetadataStatus("", "", ""), "unavailable");
+});
+
+test("metadata derivation does not accept boolean truthiness as complete", () => {
+    assert.equal(deriveDocumentContextMetadataStatus(validId, true, validNotebook), "partial");
+});
+
+test("path source helper forces none when unavailable", () => {
+    assert.equal(deriveDocumentContextPathSource("tab", false, "opened"), "none");
+});
+
+test("path source helper preserves explicit tab source", () => {
+    assert.equal(deriveDocumentContextPathSource("tab", true, "kernel"), "tab");
+});
+
+test("path source helper preserves explicit kernel source", () => {
+    assert.equal(deriveDocumentContextPathSource("kernel", true, "opened"), "kernel");
+});
+
+test("path source helper defaults active paths to tab", () => {
+    assert.equal(deriveDocumentContextPathSource("", true, "active"), "tab");
+});
+
+test("path source helper defaults kernel paths to kernel", () => {
+    assert.equal(deriveDocumentContextPathSource("", true, "kernel"), "kernel");
+});
+
+test("path source helper rejects unknown source values", () => {
+    assert.equal(deriveDocumentContextPathSource("remote", true, "opened"), "tab");
+});
+
+test("outline helper forces unavailable after failure", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("available", false, [{title: "H"}]), "unavailable");
+});
+
+test("outline helper preserves explicit available state", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("available", true, []), "available");
+});
+
+test("outline helper preserves explicit empty state", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("empty", true, [{title: "H"}]), "empty");
+});
+
+test("outline helper derives available from non-empty headings", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("", true, [{title: "H"}]), "available");
+});
+
+test("outline helper derives empty from an empty list", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("", true, []), "empty");
+});
+
+test("outline helper rejects explicit unavailable on success", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("unavailable", true, []), "empty");
+});
+
+test("outline helper handles malformed heading containers", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("", true, "bad"), "empty");
 });

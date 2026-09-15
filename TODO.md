@@ -1,5 +1,41 @@
 # TODO
 
+## T-5907~T-5940 Agent document-context M2 host compatibility (2026-09-15)
+- [x] T-5907 source normalizer extraction
+- [x] T-5908 source normalizer active fallback
+- [x] T-5909 source normalizer kernel fallback
+- [x] T-5910 source normalizer opened preservation
+- [x] T-5911 metadata derivation helper
+- [x] T-5912 metadata complete count
+- [x] T-5913 metadata partial count
+- [x] T-5914 metadata unavailable count
+- [x] T-5915 metadata string-type guard
+- [x] T-5916 path source helper extraction
+- [x] T-5917 path unavailable override
+- [x] T-5918 path tab preservation
+- [x] T-5919 path kernel preservation
+- [x] T-5920 path active fallback
+- [x] T-5921 path kernel fallback
+- [x] T-5922 path unknown fallback
+- [x] T-5923 outline status helper extraction
+- [x] T-5924 outline failure override
+- [x] T-5925 outline available preservation
+- [x] T-5926 outline empty preservation
+- [x] T-5927 outline non-empty derivation
+- [x] T-5928 outline empty derivation
+- [x] T-5929 outline unavailable rejection on success
+- [x] T-5930 malformed outline container guard
+- [x] T-5931 tab notebook name fallback
+- [x] T-5932 notebook alias fallback
+- [x] T-5933 cache-first notebook precedence
+- [x] T-5934 bounded SQL fallback regression
+- [x] T-5935 kernel path none regression
+- [x] T-5936 outline response bounded regression
+- [x] T-5937 boolean compatibility regression
+- [x] T-5938 structured result regression
+- [x] T-5939 97-case document-context gate
+- [x] T-5940 M2 host compatibility batch record
+
 ## T-5874~T-5906 Agent document-context M2 status and provenance (2026-09-15)
 - [x] T-5874 metadata status enum
 - [x] T-5875 metadata status schema

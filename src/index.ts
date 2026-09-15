@@ -8097,11 +8097,18 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         const isActiveDocument = Boolean(activeRoot && activeRoot === id);
                         const contextSource = isActiveDocument ? "active" : (tab ? "opened" : "kernel");
                         const notebookMap = new Map((this.notebookListCache || []).map((notebook) => [notebook.id, notebook.name]));
+                        const tabNotebookId = tab ? resolveSearchNotebookId(tab as unknown) : "";
+                        const tabNotebookName = tab
+                            ? notebookMap.get(tabNotebookId)
+                                || (tab as unknown as {notebookName?: string; notebook?: string; boxName?: string}).notebookName
+                                || (tab as unknown as {notebook?: string}).notebook
+                                || (tab as unknown as {boxName?: string}).boxName || ""
+                            : "";
                         let record: Record<string, unknown> = tab ? {
                             id,
                             title: this.titleOf(tab),
-                            notebookId: resolveSearchNotebookId(tab as unknown),
-                            notebookName: notebookMap.get(resolveSearchNotebookId(tab as unknown)) || "",
+                            notebookId: tabNotebookId,
+                            notebookName: tabNotebookName,
                             path: (tab as unknown as {path?: string; hPath?: string}).path
                                 || (tab as unknown as {hPath?: string}).hPath || "",
                             pathSource: "tab",

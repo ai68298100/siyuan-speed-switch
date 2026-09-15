@@ -12,6 +12,28 @@ const DOCUMENT_CONTEXT_METADATA_STATES = Object.freeze(["complete", "partial", "
 const DOCUMENT_CONTEXT_PATH_SOURCES = Object.freeze(["tab", "kernel", "none"]);
 const DOCUMENT_CONTEXT_OUTLINE_STATES = Object.freeze(["available", "empty", "unavailable"]);
 
+function normalizeDocumentContextSource(value, active = false) {
+    return DOCUMENT_CONTEXT_SOURCES.includes(value) ? value : (active ? "active" : "kernel");
+}
+
+function deriveDocumentContextMetadataStatus(id, title, notebookId) {
+    const present = (value) => typeof value === "string" && value.length > 0;
+    const count = [id, title, notebookId].filter(present).length;
+    return count === 3 ? "complete" : (count > 0 ? "partial" : "unavailable");
+}
+
+function deriveDocumentContextPathSource(value, pathAvailable, contextSource) {
+    if (!pathAvailable) return "none";
+    if (DOCUMENT_CONTEXT_PATH_SOURCES.includes(value)) return value;
+    return contextSource === "kernel" ? "kernel" : "tab";
+}
+
+function deriveDocumentContextOutlineStatus(value, outlineAvailable, headings) {
+    if (outlineAvailable === false) return "unavailable";
+    if (DOCUMENT_CONTEXT_OUTLINE_STATES.includes(value) && value !== "unavailable") return value;
+    return Array.isArray(headings) && headings.length ? "available" : "empty";
+}
+
 function normalizeDocumentContextRequest(input = {}) {
     const source = input && typeof input === "object" ? input : {};
     const id = normalizeAgentDocumentId(source.id);
@@ -81,23 +103,17 @@ function buildDocumentContext(value, options = {}) {
     const limit = normalizeDocumentContextRequest(options).limit;
     const active = value?.active === true;
     const requestedSource = typeof value?.source === "string" ? value.source : "";
-    const contextSource = DOCUMENT_CONTEXT_SOURCES.includes(requestedSource)
-        ? requestedSource
-        : (active ? "active" : "kernel");
+    const contextSource = normalizeDocumentContextSource(requestedSource, active);
     const path = normalizeDocumentContextPath(source.path);
     const pathAvailable = path.length > 0;
-    const pathSource = DOCUMENT_CONTEXT_PATH_SOURCES.includes(value?.pathSource)
-        ? value.pathSource
-        : (pathAvailable ? (contextSource === "kernel" ? "kernel" : "tab") : "none");
+    const pathSource = deriveDocumentContextPathSource(value?.pathSource, pathAvailable, contextSource);
     const id = normalizeAgentDocumentId(source.id);
     const title = cleanText(source.title, MAX_TITLE_LENGTH);
     const notebookId = normalizeAgentNotebookId(source.notebookId);
-    const metadataStatus = id && title && notebookId ? "complete" : (id || title || notebookId ? "partial" : "unavailable");
+    const metadataStatus = deriveDocumentContextMetadataStatus(id, title, notebookId);
     const outlineAvailable = value?.outlineAvailable !== false;
     const headings = flattenOutline(value?.headings, limit);
-    const outlineStatus = DOCUMENT_CONTEXT_OUTLINE_STATES.includes(value?.outlineStatus)
-        ? value.outlineStatus
-        : (!outlineAvailable ? "unavailable" : (headings.length ? "available" : "empty"));
+    const outlineStatus = deriveDocumentContextOutlineStatus(value?.outlineStatus, outlineAvailable, headings);
     return {
         id,
         title,
@@ -127,6 +143,10 @@ module.exports = {
     DOCUMENT_CONTEXT_METADATA_STATES,
     DOCUMENT_CONTEXT_PATH_SOURCES,
     DOCUMENT_CONTEXT_OUTLINE_STATES,
+    normalizeDocumentContextSource,
+    deriveDocumentContextMetadataStatus,
+    deriveDocumentContextPathSource,
+    deriveDocumentContextOutlineStatus,
     DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest,
     normalizeDocumentContextPath,
