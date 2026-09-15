@@ -22,6 +22,7 @@ const PREVIEW_KINDS = Object.freeze({
     "external-hot-news-dailyhot": "feed", "external-news-newsnow": "feed",
     "external-world-clock": "stat", "external-news-hackernews": "feed",
     "external-status-uptimekuma": "stat", "external-fx-frankfurter": "stat",
+    "external-quote-daily": "stat", "external-device-battery": "stat",
     "external-activitywatch-time": "activity",
 });
 const SOURCE_INFO = Object.freeze({
@@ -35,6 +36,8 @@ const SOURCE_INFO = Object.freeze({
     "external-activitywatch-time": Object.freeze({providerName: "ActivityWatch", integration: "local-bridge", privacy: "local-only"}),
     "external-status-uptimekuma": Object.freeze({providerName: "Uptime Kuma", integration: "http", privacy: "endpoint-only"}),
     "external-fx-frankfurter": Object.freeze({providerName: "Frankfurter (ECB)", integration: "http", privacy: "none"}),
+    "external-quote-daily": Object.freeze({providerName: "内置语录集", integration: "direct", privacy: "local-only"}),
+    "external-device-battery": Object.freeze({providerName: "Battery Status API", integration: "direct", privacy: "local-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
@@ -717,12 +720,14 @@ const HOME_CONFIG_KINDS = Object.freeze({
     "external-anime-bangumi": "media", "external-hot-news-dailyhot": "feed",
     "external-news-newsnow": "feed", "external-news-hackernews": "feed", "external-world-clock": "clock",
     "external-status-uptimekuma": "status", "external-fx-frankfurter": "finance",
+    "external-quote-daily": "insight", "external-device-battery": "device",
     "external-activitywatch-time": "activity",
 });
 const HOME_CONFIG_PLACEHOLDERS = Object.freeze({
     "external-weather-open-meteo:city": "city", "external-hot-news-dailyhot:endpoint": "dailyhot-endpoint",
-    "external-news-newsnow:endpoint": "newsnow-endpoint", "external-activitywatch-time:endpoint": "activitywatch-endpoint",
+    "external-news-newsnow:endpoint": "newsnow-endpoint",     "external-activitywatch-time:endpoint": "activitywatch-endpoint",
     "external-world-clock:cities": "world-clock-cities",
+    "external-quote-daily:quotes": "daily-quotes",
     "fixed-document:docId": "document", "fixed-document:title": "document-title", "countdown:title": "countdown-title",
     "plugin-commands:filter": "command-filter", "clipped-unread:tag": "tag",
 });

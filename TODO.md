@@ -1,5 +1,20 @@
 # TODO
 
+## T-6207~T-6218 组件扩充第三批 P2 第一部分：每日引言 + 设备电量（2026-09-16，已完成）
+
+- [x] T-6207 每日引言模型 `src/quote-model.js`：48 条公有领域古籍语录集（逐条标注篇目）、FNV-1a 本地日期键确定性轮换（同日稳定、跨日轮换、时区无关）、自定义语录多行解析（`——`/`—`/`──`/`|` 分隔出处、去空行去重、上限 50 条/160 字）
+- [x] T-6208 设备电量模型 `src/battery-model.js`：Battery Status API 读数归一化（level 百分比、充电状态、充/放电时长估计上限 7 天）、level 0 视为已知 Chromium 实现缺陷降级、纯函数无网络
+- [x] T-6209 接线：DEFAULT_MODULES +2（quote 全端/textarea 配置；battery 仅 desktop+sidebar）+ register（quote 挂分钟心跳跨天轮换；battery 能力探测 + 诚实降级文案 + 30s 缓存）+ 分组（quote→洞见组、battery→系统组）
+- [x] T-6210 通用 `textarea` 配置字段类型：renderField 新分支（rows 6、maxLength 4000、placeholder 支持）+ controls 类型扩展 HTMLTextAreaElement
+- [x] T-6211 external-widget-model 目录 +2（quote→新分类 inspiration、battery→新分类 device；均 builtin/direct/local-only），目录 13→15、语义分组 7→9
+- [x] T-6212 home-store-model 四映射 + 占位符 token（`external-quote-daily:quotes`）+ 双语 i18n（11 个新 key）
+- [x] T-6213 新增测试：quote-model 10 项、battery-model 8 项；计数同步（目录 15 处、audit 37→39、home-model 38→40/mobile 38、心跳正则、分组契约、controls 类型、生产图 WIRED +2 与闭包 32→34、README 5652→5670/159 文件）
+- [x] T-6214 负向验证（D-361 协议）：注入轮换漂移（哈希恒 0）→1 项失败；注入缺陷防御移除（level 0 视为有效）→2 项失败；均字节级还原
+- [x] T-6215 修复 i18n 写入脚本引入的真实换行控制字符（JSON 非法），改用 Edit 精确修复并验证 599 key 双语一致
+- [x] T-6216 同步 roadmap 第三批标注（quote/battery 已交付、Miniflux 单独成批、iCal 不接入）、发布矩阵（index.js 596190、package.zip 306310，余量 190242/217978）
+- [x] T-6217 跑通 `pnpm verify:release` 5670/5670 + 两套 UI 烟测
+- [x] T-6218 记录 D-371、D-372
+
 ## T-6193~T-6206 组件扩充第二批 P1 + 小项（2026-09-16，已完成）
 
 - [x] T-6193 修正 4 个存量外部组件 sizes 口径不一致（以 DEFAULT_MODULES 为权威：weather+large、dailyhot→medium/wide/large/full、newsnow+full、activitywatch+large）；新增 `tests/external-catalog-sizes-contract.test.cjs` 门禁并完成负向验证

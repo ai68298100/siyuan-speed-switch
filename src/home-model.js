@@ -68,6 +68,10 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "base", label: "基准货币（3 位代码）", type: "text", defaults: "CNY"},
         {key: "quotes", label: "目标货币（逗号分隔，1-6 个）", type: "text", defaults: "USD,EUR,JPY,GBP,HKD"},
     ]},
+    {moduleId: "external-quote-daily", title: "每日引言", icon: "iconQuote", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "quotes", label: "自定义语录（每行一条，可选 —— 分隔出处）", type: "textarea", defaults: ""},
+    ]},
+    {moduleId: "external-device-battery", title: "设备电量", icon: "iconDashboard", category: "siyuan", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["xs", "small", "medium"]},
     {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},

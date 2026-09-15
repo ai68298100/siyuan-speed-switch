@@ -295,7 +295,7 @@ test('home config save invokes refresh callback', () => assert.match(source, /di
 // T-3775~T-3814: configuration field semantics and preview metadata details.
 test('home config mounts a dedicated root', () => assert.match(source, /content: '<div class="speed-switch sw-home-config"><\/div>'/));
 test('home config clears stale root content', () => assert.match(source, /root\.innerHTML = ""/));
-test('home config tracks controls by field key', () => assert.match(source, /const controls = new Map<string, HTMLInputElement \| HTMLSelectElement>\(\)/));
+test('home config tracks controls by field key', () => assert.match(source, /const controls = new Map<string, HTMLInputElement \| HTMLSelectElement \| HTMLTextAreaElement>\(\)/));
 test('home config tracks reset keys', () => assert.match(source, /const resetKeys = new Set<string>\(\)/));
 test('home config number defaults use finite values', () => assert.match(source, /Number\.isFinite\(field\.defaults\)/));
 test('home config select defaults stay within options', () => assert.match(source, /\(field\.options \|\| \[\]\)\.includes\(field\.defaults as string\)/));
@@ -542,10 +542,10 @@ test('store declares built-in group metadata with descriptions', () => assert.ma
 test('store groups journal modules explicitly', () => assert.match(source, /homeStoreGroupJournal, description: this\.i18n\.homeStoreGroupJournalHint, moduleIds: \["today-journal", "journal-monthly"/));
 test('store groups task and execution modules explicitly', () => assert.match(source, /homeStoreGroupTasks, description: this\.i18n\.homeStoreGroupTasksHint, moduleIds: \["today-tasks", "countdown", "quick-capture", "clipped-unread"\]/));
 test('store groups document modules explicitly', () => assert.match(source, /homeStoreGroupDocuments, description: this\.i18n\.homeStoreGroupDocumentsHint, moduleIds: \["recent-documents", "favorites"/));
-test('store groups insight modules explicitly', () => assert.match(source, /homeStoreGroupInsights, description: this\.i18n\.homeStoreGroupInsightsHint, moduleIds: \["note-stats", "year-progress", "today-writing", "recent-writing-activity"\]/));
+test('store groups insight modules explicitly', () => assert.match(source, /homeStoreGroupInsights, description: this\.i18n\.homeStoreGroupInsightsHint, moduleIds: \["note-stats", "year-progress", "today-writing", "recent-writing-activity", "external-quote-daily"\]/));
 test('store groups life and information modules explicitly', () => assert.match(source, /homeStoreGroupLife, description: this\.i18n\.homeStoreGroupLifeHint, moduleIds: \["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter"\]/));
 test('store groups learning modules explicitly', () => assert.match(source, /homeStoreGroupLearning, description: this\.i18n\.homeStoreGroupLearningHint, moduleIds: \["flashcard-due", "random-review"\]/));
-test('store groups system modules explicitly', () => assert.match(source, /homeStoreGroupSystem, description: this\.i18n\.homeStoreGroupSystemHint, moduleIds: \["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma"\]/));
+test('store groups system modules explicitly', () => assert.match(source, /homeStoreGroupSystem, description: this\.i18n\.homeStoreGroupSystemHint, moduleIds: \["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma", "external-device-battery"\]/));
 test('store resolves built-in group by module id', () => assert.match(source, /const hit = BUILTIN_GROUPS\.find\(\(group\) => group\.moduleIds\.includes\(moduleId\)\)/));
 test('store has an explicit other built-in group fallback', () => assert.match(source, /return hit \? hit\.label : this\.i18n\.homeStoreGroupOther/));
 test('store resolves plugin group by author', () => assert.match(source, /return def\.author\s*\?\s*this\.i18n\.homeStoreGroupPluginAuthor\.replace\("\{author\}", def\.author\)/));

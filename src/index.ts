@@ -28,6 +28,8 @@ import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute, buildWorldClockSnapshot} from "./local-time-model";
+import {buildDailyQuoteSnapshot} from "./quote-model";
+import {buildBatterySnapshot} from "./battery-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
@@ -3969,6 +3971,39 @@ const version = beginSearch(session);
                 return {emptyHint: `${this.i18n.homeFxEmpty} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 8500, cacheTtlMs: 12 * 60 * 60 * 1000});
+        // 每日引言：完全离线的本地语录集，按本地日期稳定轮换；无网络请求。
+        // 自定义语录（多行，整体替换内置集）走 textarea 配置；挂到分钟心跳以在跨天时轮换。
+        register("external-quote-daily", this.i18n.homeQuote, "iconQuote", this.i18n.homeDescQuote, [], (config) => {
+            const snapshot = buildDailyQuoteSnapshot(new Date(), config, {
+                title: this.i18n.homeQuote,
+                source: this.i18n.homeQuoteSource,
+                customSource: this.i18n.homeQuoteCustomSource,
+            });
+            if (!snapshot) return {emptyHint: this.i18n.homeQuoteEmpty, items: []};
+            return snapshot;
+        });
+        // 设备电量：完全本地。能力探测在宿主层——不支持 Battery Status API 的宿主
+        // 显示诚实降级文案而非空白；移动端 WebView 普遍不支持，故不声明移动端。
+        register("external-device-battery", this.i18n.homeBattery, "iconDashboard", this.i18n.homeDescBattery, [], async (config, _device, context) => {
+            const getBattery = (navigator as unknown as {getBattery?: () => Promise<any>}).getBattery;
+            if (typeof getBattery !== "function") return {emptyHint: this.i18n.homeBatteryUnsupported, items: []};
+            try {
+                const manager = await getBattery.call(navigator);
+                const snapshot = buildBatterySnapshot(manager, {
+                    title: this.i18n.homeBattery,
+                    charging: this.i18n.homeBatteryCharging,
+                    discharging: this.i18n.homeBatteryDischarging,
+                    hours: this.i18n.homeBatteryHours,
+                    minutes: this.i18n.homeBatteryMinutes,
+                    source: this.i18n.homeQuoteSource,
+                });
+                if (!snapshot) return {emptyHint: this.i18n.homeBatteryUnsupported, items: []};
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: this.i18n.homeBatteryUnsupported, items: []};
+            }
+        }, {timeoutMs: 3000, cacheTtlMs: 30 * 1000});
         register("external-activitywatch-time", this.i18n.homeActivityWatch, "iconClock", this.i18n.homeDescActivityWatch, [], async (config, _device, context) => {
             const request = buildActivityWatchRequest(config, Date.now());
             if (!request) return {emptyHint: this.i18n.homeActivityWatchConfigHint, items: []};
@@ -4660,7 +4695,7 @@ const version = beginSearch(session);
         if (meta.childElementCount > 0) root.append(meta);
         const draft: Record<string, unknown> = {...inst.config};
         const initial: Record<string, unknown> = {...inst.config};
-        const controls = new Map<string, HTMLInputElement | HTMLSelectElement>();
+        const controls = new Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>();
         const resetKeys = new Set<string>();
         let updateSummary: () => void = () => undefined;
         const defaultValue = (field: {type: string; min?: number; defaults?: unknown; options?: string[]}) => {
@@ -4682,7 +4717,8 @@ const version = beginSearch(session);
             updateSummary();
         };
         const placeholderText = (token: string) => token === "document" ? this.i18n.homeConfigDocumentPlaceholder
-            : token === "world-clock-cities" ? this.i18n.homeConfigWorldClockCitiesPlaceholder : "";
+            : token === "world-clock-cities" ? this.i18n.homeConfigWorldClockCitiesPlaceholder
+            : token === "daily-quotes" ? this.i18n.homeConfigDailyQuotesPlaceholder : "";
         const hintText = (token: string, field: {min?: number; max?: number}) => token === "number"
             ? `${field.min ?? 0}–${field.max ?? 100}` : token ? this.i18n.homeStoreGuideHint : "";
         const renderField = (field: typeof schema[number], section: HTMLElement) => {
@@ -4780,6 +4816,20 @@ const version = beginSearch(session);
                 input.setAttribute("list", suggestions.id);
                 input.addEventListener("input", () => { draft[field.key] = input.value.slice(0, 64); updateSummary(); });
                 row.append(input, suggestions);
+            } else if (field.type === "textarea") {
+                // 多行文本配置（如自定义语录）：行数有界（≤10 行渲染高度），提交值上限 4000 字符。
+                const area = document.createElement("textarea");
+                area.id = controlId;
+                area.className = "b3-text-field fn__block";
+                area.rows = 6;
+                area.maxLength = 4000;
+                area.value = typeof draft[field.key] === "string" ? (draft[field.key] as string) : String(field.defaults || "");
+                draft[field.key] = area.value;
+                area.placeholder = placeholderText(resolveHomeConfigPlaceholder(inst.moduleId, field.key));
+                controls.set(field.key, area);
+                area.addEventListener("input", () => { draft[field.key] = area.value.slice(0, 4000); });
+                area.addEventListener("change", updateSummary);
+                row.appendChild(area);
             } else {
                 const input = document.createElement("input");
                 input.id = controlId;
@@ -5296,10 +5346,10 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupJournal, description: this.i18n.homeStoreGroupJournalHint, moduleIds: ["today-journal", "journal-monthly", "recent-daily-notes", "today-reservations", "on-this-day", "journal-calendar", "writing-streak"]},
                 {label: this.i18n.homeStoreGroupTasks, description: this.i18n.homeStoreGroupTasksHint, moduleIds: ["today-tasks", "countdown", "quick-capture", "clipped-unread"]},
                 {label: this.i18n.homeStoreGroupDocuments, description: this.i18n.homeStoreGroupDocumentsHint, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
-                {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity"]},
+                {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "external-quote-daily"]},
                 {label: this.i18n.homeStoreGroupLearning, description: this.i18n.homeStoreGroupLearningHint, moduleIds: ["flashcard-due", "random-review"]},
                 {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter"]},
-                {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma"]},
+                {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma", "external-device-battery"]},
             ];
             const groupDescriptionOf = (moduleId: string, def: any): string => {
                 if (def.category === "siyuan") {
@@ -6394,7 +6444,7 @@ const version = beginSearch(session);
             controllers.forEach(scheduleRefresh);
 
             // 同一面板只建立一个对齐分钟边界的心跳；只刷新本地时钟与世界时钟，不触发网络组件。
-            const clockModuleIds = new Set(["external-local-time", "external-world-clock"]);
+            const clockModuleIds = new Set(["external-local-time", "external-world-clock", "external-quote-daily"]);
             if (controllers.some((entry) => clockModuleIds.has(entry.moduleId))) {
                 const refreshClock = () => controllers.filter((entry) => clockModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, {force: true}); });

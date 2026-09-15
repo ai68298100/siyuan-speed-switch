@@ -4,7 +4,7 @@
 // 商店可以先据此诚实展示“可直接使用 / 需配置 / 需本地桥接 / 仅参考”，
 // 等具体 provider 通过独立适配器和真实宿主验收后再进入生产组件列表。
 
-const EXTERNAL_WIDGET_CATEGORIES = Object.freeze(["time", "weather", "trending", "holiday", "media", "activity", "finance"]);
+const EXTERNAL_WIDGET_CATEGORIES = Object.freeze(["time", "weather", "trending", "holiday", "media", "activity", "finance", "inspiration", "device"]);
 const EXTERNAL_WIDGET_AVAILABILITY = Object.freeze(["builtin", "external", "conditional", "bridge", "reference"]);
 const EXTERNAL_WIDGET_AUTH = Object.freeze(["none", "api-key", "user-endpoint", "local-service"]);
 const EXTERNAL_WIDGET_PLATFORMS = Object.freeze(["desktop", "sidebar", "mobile"]);
@@ -207,6 +207,36 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         platforms: ["desktop", "sidebar", "mobile"],
         sizes: ["small", "medium", "wide"],
         description: "读取欧洲央行每日参考汇率的免 Key 公开接口；固定端点白名单，展示为参考值而非实时行情",
+    }),
+    catalogEntry({
+        moduleId: "external-quote-daily",
+        title: "每日引言",
+        category: "inspiration",
+        availability: "builtin",
+        auth: "none",
+        integration: "direct",
+        providerName: "内置语录集（公有领域古籍原文）",
+        sourceUrl: "https://github.com/ai68298100/siyuan-speed-switch",
+        license: "CC0（语录原文为公有领域）",
+        privacy: "local-only",
+        platforms: ["desktop", "sidebar", "mobile"],
+        sizes: ["xs", "small", "medium"],
+        description: "完全离线的中文古籍语录集，按日期稳定轮换；支持自定义语录整体替换内置集，无网络请求",
+    }),
+    catalogEntry({
+        moduleId: "external-device-battery",
+        title: "设备电量",
+        category: "device",
+        availability: "builtin",
+        auth: "none",
+        integration: "direct",
+        providerName: "浏览器 Battery Status API",
+        sourceUrl: "https://developer.mozilla.org/docs/Web/API/Battery_Status_API",
+        license: "platform",
+        privacy: "local-only",
+        platforms: ["desktop", "sidebar"],
+        sizes: ["xs", "small", "medium"],
+        description: "读取本机电量与充电状态；宿主不支持该 API 时显示不可用提示，仅桌面与侧栏声明支持",
     }),
     catalogEntry({
         moduleId: "external-active-window",

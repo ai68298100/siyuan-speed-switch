@@ -40,11 +40,11 @@
 - **汇率参考（external-fx-frankfurter）**：基准货币 + 目标货币配置，ECB 日频；卡片标注"参考汇率，非实时"。实现要点：实测弃用 v1 域名（301）改用 `api.frankfurter.dev/v2/rates`（返回数组）；货币代码在配置层即过滤 ECB 白名单，避免生成注定被网络门禁拦截的请求；12 小时缓存。
 - 两项均只需现有网络层，无需新基础设施；目录新增 `finance` 分类（7 个语义分组）。
 
-### 第三批（P2）
-- **Miniflux 未读（external-rss-miniflux）**：用户实例 + API Token；`/v1/entries?status=unread&limit=N`；先做凭据经代理头的传递与脱敏审计。
-- **iCal 只读日程（external-schedule-ical）**：解析器体积与 CORS（任意主机）是两个未决点；若走内核代理需先评估任意域名放行策略，**不达门槛不接入**。
-- **每日引言（external-quote-daily）**：待渠道复核条款/CORS；离线回退方案（本地语录集）可作为零风险替代。
-- **电池/设备状态**：`navigator.getBattery` 在思源桌面（Chromium）实测可用后再登记，移动端不宣称。
+### 第三批（P2，部分交付，2026-09-16）
+- **每日引言（external-quote-daily，已交付）**：采用零风险替代方案——完全离线的内置语录集（48 条公有领域中国古籍原文，逐条标注篇目），按本地日期确定性哈希稳定轮换；自定义语录（多行 textarea，`——`/`|` 分隔出处）整体替换内置集；无网络请求、无白名单需求。在线引言渠道（ZenQuotes/Quotable 等）的条款与 CORS 复核未完成前不接入在线版。
+- **电池/设备状态（external-device-battery，已交付）**：浏览器 Battery Status API，完全本地；能力探测在宿主层，宿主不支持时显示诚实降级文案；移动端 WebView 普遍不支持，故仅声明桌面/侧栏；level 0 视为已知的 Chromium 实现缺陷而非真实电量，降级处理。
+- **Miniflux 未读（external-rss-miniflux，待做）**：用户实例 + API Token；`/v1/entries?status=unread&limit=N`；先做凭据经代理头的传递与脱敏审计（Token 在内核代理请求体、错误消息、缓存 key 中的暴露面），单独成批。
+- **iCal 只读日程（external-schedule-ical，不接入）**：解析器体积与 CORS（任意主机）两个未决点仍未解决；若走内核代理需先评估任意域名放行策略，**不达门槛不接入**。
 
 ### 仅研究（不承诺）
 TMDB 趋势（Key 撤销 + attribution 方案已定，执行顺位低）、Jellyfin/Immich/Koel（GPL/AGPL 与凭据）、股票/加密/体育（不稳定接口）、Owncast/Syncthing/Beszel（v0.22 后按需求拉取）。

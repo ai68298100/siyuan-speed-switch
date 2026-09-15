@@ -97,9 +97,9 @@ test('production graph traversal reaches every wired runtime module', () => {
 
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
-    // 2026-09-14 生活组件第二阶段新增两个经审计的生产模块:纯数据模型与
-    // 白名单网络层。当前闭包为 31(含随后经 D-352 确认已接线的
-    // agent-document-context);继续增长须复核 512 KiB 包体门禁(D-353)。
+    // 2026-09-16 第三批 P2 新增两个完全离线的生产模块（quote-model/battery-model，
+    // 均为无网络请求的纯数据模型）。当前闭包为 34；继续增长须复核 512 KiB 包体
+    // 门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 32, `production graph grew to ${graph.size} modules; audited ceiling is 32`);
+    assert.ok(graph.size <= 34, `production graph grew to ${graph.size} modules; audited ceiling is 34`);
 });
