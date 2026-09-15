@@ -30,6 +30,16 @@ const SOURCE_INFO = Object.freeze({
     "external-news-newsnow": Object.freeze({providerName: "NewsNow", integration: "http", privacy: "endpoint-only"}),
     "external-activitywatch-time": Object.freeze({providerName: "ActivityWatch", integration: "local-bridge", privacy: "local-only"}),
 });
+const DEPENDENCY_INFO = Object.freeze({
+    "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
+    "external-anime-bangumi": Object.freeze({kind: "external-api", required: true, name: "Bangumi API", installUrl: "https://github.com/bangumi/api", projectUrl: "https://github.com/bangumi/api", setup: "添加组件后读取公开节目表；无需 API Key", network: "公网 HTTPS；读取节目表与官方封面", platforms: "desktop/sidebar/mobile"}),
+    "external-hot-news-dailyhot": Object.freeze({kind: "self-hosted-api", required: true, name: "DailyHotApi", installUrl: "https://github.com/imsyy/DailyHotApi", projectUrl: "https://github.com/imsyy/DailyHotApi", setup: "先部署服务，再填写完整 HTTPS 端点；不提供内置公共演示地址", network: "公网或自建 HTTPS；仅读取公开榜单", platforms: "desktop/sidebar/mobile"}),
+    "external-news-newsnow": Object.freeze({kind: "self-hosted-api", required: true, name: "NewsNow", installUrl: "https://github.com/ourongxing/newsnow", projectUrl: "https://github.com/ourongxing/newsnow", setup: "先部署服务，再填写 /api/s?id=... 完整端点；不提供内置公共演示地址", network: "公网或自建 HTTPS；仅读取标题、来源和时间", platforms: "desktop/sidebar/mobile"}),
+    "external-activitywatch-time": Object.freeze({kind: "local-service", required: true, name: "ActivityWatch", installUrl: "https://activitywatch.net/downloads/", projectUrl: "https://github.com/ActivityWatch/activitywatch", setup: "安装并启动本机服务，默认 127.0.0.1:5600；仅桌面/侧栏支持", network: "仅 loopback 本机 Query API；不读取窗口标题", platforms: "desktop/sidebar"}),
+    "journal-calendar": Object.freeze({kind: "optional-data", required: false, name: "holiday-cn", installUrl: "https://github.com/NateScarlet/holiday-cn", projectUrl: "https://github.com/NateScarlet/holiday-cn", setup: "开启中国节假日/调休覆盖层后按年度读取静态 JSON；不开启仍可使用日历", network: "公网 HTTPS CDN；仅节假日数据", platforms: "desktop/sidebar/mobile"}),
+    "checkin-summary": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用提供方插件后重新打开商店；本插件不内置打卡数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行请求", platforms: "desktop/sidebar/mobile"}),
+    "plugin-commands": Object.freeze({kind: "plugin", required: false, name: "其他插件命令提供方", installUrl: "https://github.com/siyuan-note/bazaar", projectUrl: "https://github.com/siyuan-note/bazaar", setup: "仅在其他插件公开兼容 commands 且已启用时显示；无提供方时为空", network: "由提供方插件决定", platforms: "desktop/sidebar/mobile"}),
+});
 
 function boundedText(value, max = 256) {
     if (typeof value !== "string") return "";
@@ -823,6 +833,10 @@ function normalizeHomeStoreSetupUrl(value) { const text = boundedText(value, 512
 function buildHomeStoreSetupLink(value, labels = {}) { const href = normalizeHomeStoreSetupUrl(value); return {href, enabled: !!href, text: boundedText(labels.text, 64) || (href ? "打开设置说明" : "暂无设置链接")}; }
 function summarizeHomeStoreConfigCompletion(schema, draft) { const fields = Array.isArray(schema) ? schema.filter((field) => field && typeof field === "object" && homeConfigText(field.key, 64)) : []; const missing = fields.filter((field) => { const value = draft?.[field.key]; return value == null || String(value).trim() === ""; }).map((field) => homeConfigText(field.label || field.key, 64)); return {total: fields.length, configured: fields.length - missing.length, missing: missing.slice(0, 12), complete: fields.length === 0 || missing.length === 0}; }
 function buildHomeStoreConfigMissingText(schema, draft, labels = {}) { const summary = summarizeHomeStoreConfigCompletion(schema, draft); if (summary.complete) return boundedText(labels.complete, 96) || "配置已完成"; return (boundedText(labels.missing, 96) || "还需配置：{fields}").replace("{fields}", summary.missing.join("、")); }
+function normalizeHomeStoreDependencyKind(value) { return ["external-api", "self-hosted-api", "local-service", "optional-data", "plugin"].includes(value) ? value : "unknown"; }
+function resolveHomeStoreDependencyInfo(moduleId) { const entry = DEPENDENCY_INFO[homeConfigText(moduleId, 96)]; return entry ? {...entry, kind: normalizeHomeStoreDependencyKind(entry.kind)} : null; }
+function buildHomeStoreDependencyNotice(moduleId, labels = {}) { const info = resolveHomeStoreDependencyInfo(moduleId); if (!info) return null; const prefix = info.required ? (boundedText(labels.required, 48) || "需要前置依赖") : (boundedText(labels.optional, 48) || "可选数据源"); return {...info, notice: `${prefix}：${info.name} · ${info.setup}`}; }
+function listHomeStoreDependencies(moduleIds) { const list = Array.isArray(moduleIds) ? moduleIds : Object.keys(DEPENDENCY_INFO); return list.map((id) => ({moduleId: id, info: resolveHomeStoreDependencyInfo(id)})).filter((entry) => !!entry.info); }
 function normalizeHomeStoreBatchAction(value) { return ["add", "remove", "configure"].includes(value) ? value : "add"; }
 function isHomeStoreBatchEligible(card, action = "add") { const item = normalizeHomeStoreCard(card); const key = normalizeHomeStoreBatchAction(action); if (key === "add") return !item.added && item.availability === "ready"; if (key === "remove") return item.added; return item.added && item.configurable; }
 function partitionHomeStoreBatchCards(cards, selectedIds, action = "add") { const selected = new Set(normalizeHomeStoreSelectionIds(selectedIds, 128)); const list = Array.isArray(cards) ? cards : []; const eligible = []; const skipped = []; list.forEach((card) => { const id = normalizeHomeStoreCardId(card?.moduleId || card?.id); if (!id || !selected.has(id)) return; (isHomeStoreBatchEligible(card, action) ? eligible : skipped).push(id); }); return {eligible: [...new Set(eligible)], skipped: [...new Set(skipped)]}; }
@@ -837,7 +851,7 @@ function resolveHomeStoreBatchError(accepted, skipped) { const ok = Number(accep
 function buildHomeStoreBatchReceipt(result, error = "none") { const value = result && typeof result === "object" ? result : {}; return {action: normalizeHomeStoreBatchAction(value.action), accepted: Math.max(0, Math.trunc(Number(value.accepted) || 0)), skipped: Math.max(0, Math.trunc(Number(value.skipped) || 0)), error: normalizeHomeStoreBatchError(error)}; }
 
 module.exports = {
-    STORE_TABS, STORE_DEVICES, STORE_AVAILABILITY, STORE_CATEGORIES, STORE_INTEGRATIONS, STORE_SORTS,
+    STORE_TABS, STORE_DEVICES, STORE_AVAILABILITY, STORE_CATEGORIES, STORE_INTEGRATIONS, STORE_SORTS, DEPENDENCY_INFO,
     normalizeHomeStoreQuery, normalizeHomeStoreTab, normalizeHomeStoreDevice, normalizeHomeStoreCategory,
     normalizeHomeStoreSort, normalizeHomeStoreCardId, tokenizeHomeStoreQuery, matchesHomeStoreTokens,
     resolveHomeStoreStatusRank, compareHomeStoreCards, sortHomeStoreCards, countHomeStoreByAvailability,
@@ -889,6 +903,7 @@ module.exports = {
     buildHomeStoreCardStateSummary, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel,
     normalizeHomeStoreSetupUrl, buildHomeStoreSetupLink, summarizeHomeStoreConfigCompletion,
     buildHomeStoreConfigMissingText,
+    normalizeHomeStoreDependencyKind, resolveHomeStoreDependencyInfo, buildHomeStoreDependencyNotice, listHomeStoreDependencies,
     normalizeHomeStoreBatchAction, isHomeStoreBatchEligible, partitionHomeStoreBatchCards,
     buildHomeStoreBatchResult, buildHomeStoreBatchResultText, resolveHomeStoreBatchActionLabel,
     buildHomeStoreBatchSelectionHint, resolveHomeStoreBatchFocusAfterResult, shouldKeepHomeStoreSelectionAfterBatch,

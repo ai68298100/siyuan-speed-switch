@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -5123,6 +5123,7 @@ const version = beginSearch(session);
 
             const buildReadyCard = (moduleId: string, def: any) => {
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
+                const dependencyInfo = resolveHomeStoreDependencyInfo(moduleId);
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
                 bindStoreCardKeyboard(card);
@@ -5246,6 +5247,24 @@ const version = beginSearch(session);
                     addChip(this.i18n.homeStorePluginSource.replace("{source}", def.author || this.i18n.homeStoreTabPlugin), "plugin");
                 } else {
                     addChip(this.i18n.homeStoreBuiltInSource, "offline");
+                }
+                if (dependencyInfo) {
+                    const dependencyChip = document.createElement("span");
+                    dependencyChip.className = `sw-home-store__source-chip is-dependency sw-home-store__dependency-${dependencyInfo.kind}`;
+                    dependencyChip.textContent = dependencyInfo.required ? "需前置依赖" : "可选数据源";
+                    dependencyChip.title = dependencyInfo.setup;
+                    dependencyChip.setAttribute("aria-label", `${dependencyInfo.name}：${dependencyInfo.setup}`);
+                    sourceMeta.appendChild(dependencyChip);
+                    if (dependencyInfo.installUrl) {
+                        const dependencyLink = document.createElement("a");
+                        dependencyLink.className = "sw-home-store__dependency-link";
+                        dependencyLink.href = dependencyInfo.installUrl;
+                        dependencyLink.target = "_blank";
+                        dependencyLink.rel = "noopener noreferrer";
+                        dependencyLink.textContent = "安装地址";
+                        dependencyLink.title = `${dependencyInfo.name} 安装地址`;
+                        sourceMeta.appendChild(dependencyLink);
+                    }
                 }
                 addChip(Array.isArray(def.configSchema) && def.configSchema.length > 0 ? this.i18n.homeStoreConfigReady : this.i18n.homeStoreConfigNone, "config");
                 buildHomeStoreCardBadges(card.dataset, {recommended: this.i18n.homeStoreTabRecommended, configurable: this.i18n.homeStoreConfigReady, added: this.i18n.homeStoreStatusAdded})
