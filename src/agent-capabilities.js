@@ -306,6 +306,14 @@ function normalizeAgentLimit(value, fallback = 12) {
     return Math.min(MAX_ITEMS, Math.max(1, parsed));
 }
 
+function normalizeAgentTimestamp(value, fallback = 0) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return Math.max(0, Math.min(9999999999999, Math.trunc(Number(fallback) || 0)));
+    }
+    return Math.max(0, Math.min(9999999999999, Math.trunc(parsed)));
+}
+
 function normalizeAgentSearchOffset(value, total = MAX_SEARCH_ITEMS) {
     const parsed = Number.parseInt(String(value), 10);
     const upper = Math.min(MAX_SEARCH_ITEMS * 2, Math.max(0, Number.parseInt(String(total), 10) || 0));
@@ -430,6 +438,8 @@ function buildAgentWorkspaceContext(input = {}) {
     const openRoots = new Set(openTabs.map((item) => item.rootId || item.id).filter(Boolean));
     return {
         device: source.device === "mobile" ? "mobile" : "desktop",
+        generatedAt: normalizeAgentTimestamp(source.generatedAt),
+        syncing: source.syncing === true,
         activeDocument: {id: asText(active.id, 64), title: asText(active.title, 256)},
         openTabs,
         closedTabs: limitAgentItems(excludeAgentItems(source.closedTabs, openRoots), limit),
@@ -882,6 +892,8 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
             type: "object",
             properties: {
                 device: {type: "string", enum: ["desktop", "mobile"]},
+                generatedAt: {type: "integer", minimum: 0, maximum: 9999999999999},
+                syncing: {type: "boolean"},
                 activeDocument: Object.freeze({
                     type: "object",
                     properties: {
@@ -928,7 +940,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     additionalProperties: false,
                 }),
             },
-            required: ["device", "activeDocument", "openTabs", "closedTabs", "documentSets", "quickActions", "todayJournal"],
+            required: ["device", "generatedAt", "syncing", "activeDocument", "openTabs", "closedTabs", "documentSets", "quickActions", "todayJournal"],
             additionalProperties: false,
         }),
     }),
@@ -1173,6 +1185,7 @@ module.exports = {
     normalizeAgentNotebook,
     normalizeAgentSearchPaths,
     normalizeAgentLimit,
+    normalizeAgentTimestamp,
     normalizeAgentSearchOffset,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,

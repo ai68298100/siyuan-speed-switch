@@ -7388,3 +7388,35 @@
 - [x] T-5731 watchdog 发布矩阵更新
 - [x] T-5732 watchdog 批次收尾
 - [x] T-5733 打开文档请求规划达到上限后提前终止遍历，降低高负载 p95 抖动
+- [x] T-5734 Agent 工作区时间戳归一化
+- [x] T-5735 Agent 工作区时间戳上限
+- [x] T-5736 Agent 工作区非法时间回退
+- [x] T-5737 Agent 工作区同步标志
+- [x] T-5738 Agent 工作区设备归一化
+- [x] T-5739 Agent 工作区 limit 传递
+- [x] T-5740 Agent 工作区页签上限
+- [x] T-5741 Agent 工作区关闭页签上限
+- [x] T-5742 Agent 工作区重复根文档过滤
+- [x] T-5743 Agent 工作区快照字段固定
+- [x] T-5744 Agent 工作区 schema 时间戳
+- [x] T-5745 Agent 工作区 schema 同步字段
+- [x] T-5746 Agent 工作区 schema 必填字段
+- [x] T-5747 Agent 工作区 schema 上限
+- [x] T-5748 Agent 工作区 schema 禁止未知字段
+- [x] T-5749 Agent 工作区输入兼容
+- [x] T-5750 Agent 工作区旧快照兼容
+- [x] T-5751 Agent 工作区源数据不变性
+- [x] T-5752 Agent 工作区数组隔离
+- [x] T-5753 Agent 工作区活动文档保留
+- [x] T-5754 Agent 工作区移动端语义
+- [x] T-5755 Agent 工作区非法设备回退
+- [x] T-5756 Agent 工作区文档集上限
+- [x] T-5757 Agent 工作区快捷入口上限
+- [x] T-5758 Agent 工作区同步期间只读提示
+- [x] T-5759 Agent 工作区快照生成时刻
+- [x] T-5760 Agent 工作区输出字段审计
+- [x] T-5761 Agent 工作区回归测试
+- [x] T-5762 Agent 工作区 TypeScript 门禁
+- [x] T-5763 Agent 工作区完整测试门禁
+- [x] T-5764 Agent 工作区发布构建门禁
+- [x] T-5765 Agent 工作区批次记录

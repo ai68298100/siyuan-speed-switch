@@ -501,6 +501,8 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
     });
     assert.deepEqual(context, {
         device: "mobile",
+        generatedAt: 0,
+        syncing: false,
         activeDocument: {id: "20260911083000-abcdef", title: "读书笔记"},
         openTabs: [{id: "20260911083000-abcdef", title: "读书笔记", source: "tabs"}],
         closedTabs: [{id: "20260911083000-abcdeg", rootId: "20260911083000-abcdeg", title: "旧笔记", source: "closed"}],
@@ -510,6 +512,8 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
     });
     const empty = buildAgentWorkspaceContext(null);
     assert.equal(empty.device, "desktop");
+    assert.equal(empty.generatedAt, 0);
+    assert.equal(empty.syncing, false);
     assert.deepEqual(empty.activeDocument, {id: "", title: ""});
     assert.deepEqual(empty.openTabs, []);
     assert.deepEqual(empty.closedTabs, []);

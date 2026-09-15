@@ -8269,6 +8269,9 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             if (BLOCK_ID_RE.test(found)) todayJournal.docId = found;
                         }
                         const content = buildAgentWorkspaceContext({
+                            limit,
+                            generatedAt: Date.now(),
+                            syncing: this.syncing,
                             device,
                             activeDocument: {id: active ? (this.rootIdOf(active) || "") : "", title: active ? this.titleOf(active) : ""},
                             openTabs: opened.map((tab) => ({
