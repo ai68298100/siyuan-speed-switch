@@ -1,4 +1,5 @@
 # 决策
+- D-346（2026-09-15）：document-context 新增 includeOutline，默认读取大纲以兼容旧调用；显式 false 时跳过 `/api/outline/getDocOutline`，输出 outlineStatus=not-requested，避免 Agent 将主动省略误判为请求失败。
 - D-345（2026-09-15）：notebookNameSource 使 raw bundle 比 547 KiB 自律线高 69 bytes，按实际功能增量将告警线校准为 548 KiB；320 KiB package.zip 硬上限、归档白名单和压缩条目门禁均不变。
 - D-344（2026-09-15）：notebookNameSource 增加约 429 bytes raw bundle，仍保持 547 KiB 自律线和 320 KiB 归档硬上限；归档白名单与单条目基线同步更新。
 - D-343（2026-09-15）：document-context 的 notebookNameSource 固定为 cache/tab/none；缓存名称优先于页签别名，SQL 回退只能标记 cache 或 none，不因 notebookId 存在而虚构 notebookName。
@@ -408,3 +409,4 @@
 - D-331 (2026-09-15): document-context exposes bounded source provenance (active/opened/kernel) and required outlineAvailable. Metadata failures remain terminal; outline failures return a safe read-only context with empty headings and no exception text.
 - D-332 (2026-09-15): official `siyuan-note/plugin-sample` is treated as a normative API/lifecycle reference only. Adopt its `onLayoutReady`, platform declaration, i18n, publish privacy and packaging guidance; do not import kernel plugin or startup appearance code into the current package.
 - D-333 (2026-09-15): `document-context` may expose notebookName from the existing in-memory notebook cache, but must not trigger a new network request per Agent call. Missing cache names remain empty; pathAvailable is derived solely from normalized path text.
+- D-347（2026-09-15）：Agent `document-context` 的 `includeOutline` 默认值保持 `true` 以兼容旧调用；仅显式 `false` 跳过 `/api/outline/getDocOutline`，并以 `outlineStatus=not-requested` 区分调用方主动关闭与真实请求失败的 `unavailable`。跳过路径仍返回只读元数据与空 `headings`，不改变权限、结构或错误泄露边界。

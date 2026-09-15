@@ -10,7 +10,7 @@ const MAX_TITLE_LENGTH = 256;
 const DOCUMENT_CONTEXT_SOURCES = Object.freeze(["active", "opened", "kernel"]);
 const DOCUMENT_CONTEXT_METADATA_STATES = Object.freeze(["complete", "partial", "unavailable"]);
 const DOCUMENT_CONTEXT_PATH_SOURCES = Object.freeze(["tab", "kernel", "none"]);
-const DOCUMENT_CONTEXT_OUTLINE_STATES = Object.freeze(["available", "empty", "unavailable"]);
+const DOCUMENT_CONTEXT_OUTLINE_STATES = Object.freeze(["available", "empty", "unavailable", "not-requested"]);
 const DOCUMENT_CONTEXT_METADATA_FIELDS = Object.freeze(["id", "title", "notebookId"]);
 const DOCUMENT_CONTEXT_PATH_REASONS = Object.freeze(["available", "not-provided"]);
 const DOCUMENT_CONTEXT_NOTEBOOK_NAME_SOURCES = Object.freeze(["cache", "tab", "none"]);
@@ -47,6 +47,7 @@ function deriveDocumentContextNotebookNameSource(value, notebookName) {
 }
 
 function deriveDocumentContextOutlineStatus(value, outlineAvailable, headings) {
+    if (value === "not-requested") return "not-requested";
     if (outlineAvailable === false) return "unavailable";
     if (DOCUMENT_CONTEXT_OUTLINE_STATES.includes(value) && value !== "unavailable") return value;
     return Array.isArray(headings) && headings.length ? "available" : "empty";
@@ -59,7 +60,7 @@ function normalizeDocumentContextRequest(input = {}) {
     const limit = Number.isFinite(rawLimit)
         ? Math.min(MAX_HEADINGS, Math.max(1, Math.trunc(rawLimit)))
         : MAX_HEADINGS;
-    return {id, limit};
+    return {id, limit, includeOutline: source.includeOutline !== false};
 }
 
 function normalizeDocumentContextPath(value) {
@@ -91,6 +92,7 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
         properties: {
             id: {type: "string", minLength: 1, maxLength: 64, pattern: "^[0-9]{14}-[0-9a-z]+$"},
             limit: {type: "integer", minimum: 1, maximum: MAX_HEADINGS},
+            includeOutline: {type: "boolean", default: true},
         },
         additionalProperties: false,
     }),

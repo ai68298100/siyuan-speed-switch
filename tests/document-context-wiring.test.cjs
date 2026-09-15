@@ -62,7 +62,7 @@ test("document-context marks tab metadata path provenance", () => {
 });
 
 test("document-context reports outline empty versus unavailable", () => {
-    assert.match(source, /outlineStatus: outlineAvailable/);
+    assert.match(source, /outlineStatus: !request\.includeOutline/);
     assert.match(source, /\? "available"/);
     assert.match(source, /: "unavailable"/);
 });
@@ -162,6 +162,38 @@ test("document-context cache lookup remains in-memory", () => {
 
 test("document-context does not add notebook network calls", () => {
     assert.doesNotMatch(source, /fetchKernelJson\("\/api\/notebook/);
+});
+
+test("document-context normalizes includeOutline input", () => {
+    assert.match(source, /normalizeDocumentContextRequest\(args \|\| \{\}\)/);
+});
+
+test("document-context skips outline request when disabled", () => {
+    assert.match(source, /if \(request\.includeOutline\)/);
+});
+
+test("document-context marks skipped outline as not-requested", () => {
+    assert.match(source, /!request\.includeOutline \? "not-requested"/);
+});
+
+test("document-context keeps headings empty when outline is skipped", () => {
+    assert.match(source, /headings: outlineAvailable \? outlineJson\.data : \[\]/);
+});
+
+test("document-context preserves outline failure distinction", () => {
+    assert.match(source, /: "unavailable"\),/);
+});
+
+test("document-context keeps outline endpoint preview disabled", () => {
+    assert.match(source, /preview: false/);
+});
+
+test("document-context remains metadata-first for skip mode", () => {
+    assert.match(source, /let record: Record<string, unknown>/);
+});
+
+test("document-context skip mode still builds structured output", () => {
+    assert.match(source, /structuredContent: content/);
 });
 
 test("document-context returns a structured bounded result", () => {

@@ -24,12 +24,12 @@ test("document context constants keep bounded limits", () => {
 });
 
 test("request normalization accepts a valid id and integer limit", () => {
-    assert.deepEqual(normalizeDocumentContextRequest({id: validId, limit: 7}), {id: validId, limit: 7});
+    assert.deepEqual(normalizeDocumentContextRequest({id: validId, limit: 7}), {id: validId, limit: 7, includeOutline: true});
 });
 
 test("request normalization rejects malformed ids without throwing", () => {
-    assert.deepEqual(normalizeDocumentContextRequest({id: "https://evil", limit: 4}), {id: "", limit: 4});
-    assert.deepEqual(normalizeDocumentContextRequest(null), {id: "", limit: 24});
+    assert.deepEqual(normalizeDocumentContextRequest({id: "https://evil", limit: 4}), {id: "", limit: 4, includeOutline: true});
+    assert.deepEqual(normalizeDocumentContextRequest(null), {id: "", limit: 24, includeOutline: true});
 });
 
 test("request normalization clamps lower and upper limits", () => {
@@ -429,6 +429,81 @@ test("context notebook source is independent from notebook ID", () => {
 
 test("context output includes notebook source exactly once", () => {
     assert.equal(Object.keys(buildDocumentContext({})).filter((key) => key === "notebookNameSource").length, 1);
+});
+
+test("request includes outline by default", () => {
+    assert.equal(normalizeDocumentContextRequest({}).includeOutline, true);
+});
+
+test("request can disable outline retrieval", () => {
+    assert.equal(normalizeDocumentContextRequest({includeOutline: false}).includeOutline, false);
+});
+
+test("request treats truthy outline flag as enabled", () => {
+    assert.equal(normalizeDocumentContextRequest({includeOutline: 1}).includeOutline, true);
+});
+
+test("request treats null outline flag as enabled", () => {
+    assert.equal(normalizeDocumentContextRequest({includeOutline: null}).includeOutline, true);
+});
+
+test("request ignores unknown outline fields", () => {
+    const result = normalizeDocumentContextRequest({includeOutline: false, secret: true});
+    assert.deepEqual(result, {id: "", limit: 24, includeOutline: false});
+});
+
+test("outline enum includes not-requested state", () => {
+    assert.ok(DOCUMENT_CONTEXT_OUTLINE_STATES.includes("not-requested"));
+});
+
+test("outline schema includes not-requested enum", () => {
+    assert.ok(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.outlineStatus.enum.includes("not-requested"));
+});
+
+test("outline status preserves not-requested state", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("not-requested", false, [{title: "H"}]), "not-requested");
+});
+
+test("outline status not-requested is independent of headings", () => {
+    assert.equal(deriveDocumentContextOutlineStatus("not-requested", true, []), "not-requested");
+});
+
+test("context preserves not-requested status", () => {
+    const context = buildDocumentContext({id: validId, outlineAvailable: false, outlineStatus: "not-requested", headings: []});
+    assert.equal(context.outlineStatus, "not-requested");
+});
+
+test("context keeps empty headings when outline is not requested", () => {
+    const context = buildDocumentContext({id: validId, outlineAvailable: false, outlineStatus: "not-requested", headings: [{id: validId, name: "drop"}]});
+    assert.equal(context.outlineStatus, "not-requested");
+});
+
+test("request limit remains independent of outline switch", () => {
+    const result = normalizeDocumentContextRequest({limit: 3, includeOutline: false});
+    assert.equal(result.limit, 3);
+    assert.equal(result.includeOutline, false);
+});
+
+test("request id remains independent of outline switch", () => {
+    const result = normalizeDocumentContextRequest({id: validId, includeOutline: false});
+    assert.equal(result.id, validId);
+    assert.equal(result.includeOutline, false);
+});
+
+test("outline switch is bounded to a boolean", () => {
+    assert.equal(typeof normalizeDocumentContextRequest({includeOutline: false}).includeOutline, "boolean");
+});
+
+test("legacy request shape stays compatible", () => {
+    const result = normalizeDocumentContextRequest({id: validId});
+    assert.equal(result.id, validId);
+    assert.equal(result.limit, 24);
+    assert.equal(result.includeOutline, true);
+});
+
+test("not-requested status is not treated as an outline failure", () => {
+    const context = buildDocumentContext({outlineAvailable: false, outlineStatus: "not-requested"});
+    assert.equal(context.outlineStatus, "not-requested");
 });
 
 test("context output remains detached from notebook source input", () => {

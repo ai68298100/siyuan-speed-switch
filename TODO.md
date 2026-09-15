@@ -1,5 +1,41 @@
 # TODO
 
+## T-6009~T-6042 Agent document-context outline demand control (2026-09-15)
+- [x] T-6009 includeOutline request field
+- [x] T-6010 includeOutline boolean schema
+- [x] T-6011 includeOutline default true
+- [x] T-6012 includeOutline false normalization
+- [x] T-6013 includeOutline truthy fallback
+- [x] T-6014 includeOutline null fallback
+- [x] T-6015 unknown request isolation
+- [x] T-6016 outline not-requested enum
+- [x] T-6017 outline not-requested schema
+- [x] T-6018 outline not-requested helper
+- [x] T-6019 outline skip headings isolation
+- [x] T-6020 outline skip failure distinction
+- [x] T-6021 legacy request compatibility
+- [x] T-6022 limit independence
+- [x] T-6023 id independence
+- [x] T-6024 boolean bound regression
+- [x] T-6025 metadata-first skip path
+- [x] T-6026 structured output skip path
+- [x] T-6027 host conditional request
+- [x] T-6028 host skip request branch
+- [x] T-6029 host not-requested status
+- [x] T-6030 host empty headings fallback
+- [x] T-6031 preview false preservation
+- [x] T-6032 unavailable outline preservation
+- [x] T-6033 request schema additionalProperties
+- [x] T-6034 output schema required update
+- [x] T-6035 output key order update
+- [x] T-6036 focused contract tests
+- [x] T-6037 focused wiring tests
+- [x] T-6038 performance intent documentation
+- [x] T-6039 package budget review
+- [x] T-6040 full regression gate
+- [x] T-6041 local market sync
+- [x] T-6042 outline demand-control batch record
+
 ## T-5975~T-6008 Agent document-context notebook provenance (2026-09-15)
 - [x] T-5975 notebook source enum
 - [x] T-5976 notebook source schema

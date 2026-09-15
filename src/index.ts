@@ -8131,23 +8131,25 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             const kernelNotebookName = notebookMap.get(String(row.box || "")) || "";
                             record = {id: row.id, title: row.content, notebookId: row.box, notebookName: kernelNotebookName, notebookNameSource: kernelNotebookName ? "cache" : "none", path: "", pathSource: "none"};
                         }
-                        let outlineAvailable = true;
+                        let outlineAvailable = request.includeOutline;
                         let outlineJson: any = null;
-                        try {
-                            outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
-                            outlineAvailable = Boolean(outlineJson && outlineJson.code === 0 && Array.isArray(outlineJson.data));
-                        } catch (error) {
-                            outlineAvailable = false;
-                            logger.warn("Agent document context outline unavailable", error);
+                        if (request.includeOutline) {
+                            try {
+                                outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                                outlineAvailable = Boolean(outlineJson && outlineJson.code === 0 && Array.isArray(outlineJson.data));
+                            } catch (error) {
+                                outlineAvailable = false;
+                                logger.warn("Agent document context outline unavailable", error);
+                            }
                         }
                         const content = buildDocumentContext({
                             ...record,
                             active: isActiveDocument,
                             source: contextSource,
                             outlineAvailable,
-                            outlineStatus: outlineAvailable
+                            outlineStatus: !request.includeOutline ? "not-requested" : (outlineAvailable
                                 ? ((Array.isArray(outlineJson?.data) && outlineJson.data.length > 0) ? "available" : "empty")
-                                : "unavailable",
+                                : "unavailable"),
                             headings: outlineAvailable ? outlineJson.data : [],
                         }, request);
                         return {structuredContent: content, result: JSON.stringify(content)};

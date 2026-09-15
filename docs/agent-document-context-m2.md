@@ -28,6 +28,11 @@ sanitized result, so callers cannot override them with arbitrary text.
 SiYuan's existing notebook list cache, `tab` means an older host exposed a
 bounded notebook alias on the tab, and `none` means no name was available.
 The source is diagnostic-only and never triggers a notebook network request.
+
+Callers may set `includeOutline: false` when only metadata is needed. The host
+then skips the outline endpoint and returns an empty `headings` list with
+`outlineStatus: "not-requested"`; this is distinct from
+`outlineStatus: "unavailable"`, which indicates a failed outline request.
 Unknown values are discarded, all fields are required schema enums, and the
 host continues to resolve notebook names from its existing in-memory cache
 without adding a network request to an Agent call.
