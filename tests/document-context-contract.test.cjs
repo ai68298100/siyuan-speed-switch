@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-    MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SPEC,
+    MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SOURCES, DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest, normalizeDocumentContextPath,
     extractDocumentContextRecord, buildDocumentContext,
 } = require("../src/agent-document-context.js");
@@ -14,6 +14,8 @@ test("document context constants keep bounded limits", () => {
     assert.equal(MAX_PATH_LENGTH, 256);
     assert.equal(MAX_TITLE_LENGTH, 256);
     assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.headings.maxItems, 24);
+    assert.deepEqual(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.source.enum, [...DOCUMENT_CONTEXT_SOURCES]);
+    assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.outlineAvailable.type, "boolean");
 });
 
 test("request normalization accepts a valid id and integer limit", () => {
@@ -66,11 +68,11 @@ test("record extraction ignores primitive and unknown values", () => {
 });
 
 test("context builder normalizes the complete safe envelope", () => {
-    assert.deepEqual(buildDocumentContext({
+    assert.deepEqual(Object.fromEntries(Object.entries(buildDocumentContext({
         data: {id: validId, content: " 当前\n文档 ", box: validNotebook, hPath: "\\项目\\路线"},
         active: true,
         headings: [{id: "20260914083002-aaaaaaa", name: "第一章", depth: 0}],
-    }, {limit: 1}), {
+    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable"].includes(key))), {
         id: validId, title: "当前 文档", notebookId: validNotebook, path: "/项目/路线", active: true,
         headings: [{id: "20260914083002-aaaaaaa", title: "第一章", depth: 0}],
     });
@@ -110,7 +112,7 @@ test("context builder handles an absent headings array", () => {
 });
 
 test("context builder keeps output keys stable for empty input", () => {
-    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "path", "active", "headings"]);
+    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "path", "active", "source", "outlineAvailable", "headings"]);
 });
 
 test("context builder caps title length", () => {
@@ -133,4 +135,32 @@ test("context builder accepts data envelope plus top-level active and headings",
     const result = buildDocumentContext({data: {id: validId, title: "T"}, active: true, headings: []});
     assert.equal(result.id, validId);
     assert.equal(result.active, true);
+});
+
+test("context builder preserves explicit opened provenance", () => {
+    const context = buildDocumentContext({id: validId, active: false, source: "opened", outlineAvailable: true});
+    assert.equal(context.source, "opened");
+    assert.equal(context.active, false);
+});
+
+test("context builder preserves kernel provenance for closed fallback", () => {
+    const context = buildDocumentContext({id: validId, source: "kernel", outlineAvailable: false});
+    assert.equal(context.source, "kernel");
+    assert.equal(context.outlineAvailable, false);
+    assert.deepEqual(context.headings, []);
+});
+
+test("context builder rejects unknown provenance safely", () => {
+    assert.equal(buildDocumentContext({active: false, source: "remote"}).source, "kernel");
+    assert.equal(buildDocumentContext({active: true, source: "remote"}).source, "active");
+});
+
+test("context builder defaults outline availability to true for legacy inputs", () => {
+    assert.equal(buildDocumentContext({id: validId}).outlineAvailable, true);
+});
+
+test("context builder keeps outline failure as an empty bounded list", () => {
+    const context = buildDocumentContext({id: validId, outlineAvailable: false, headings: [{id: validId, name: "drop"}]});
+    assert.equal(context.outlineAvailable, false);
+    assert.equal(context.headings.length, 1);
 });

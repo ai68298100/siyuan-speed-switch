@@ -8094,6 +8094,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         const id = request.id || activeRoot;
                         if (!id || !BLOCK_ID_RE.test(id)) return {error: "document context unavailable"};
                         const tab = opened.find((candidate) => (this.rootIdOf(candidate) || candidate.id) === id);
+                        const isActiveDocument = Boolean(activeRoot && activeRoot === id);
+                        const contextSource = isActiveDocument ? "active" : (tab ? "opened" : "kernel");
                         let record: Record<string, unknown> = tab ? {
                             id,
                             title: this.titleOf(tab),
@@ -8102,18 +8104,34 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                                 || (tab as unknown as {hPath?: string}).hPath || "",
                         } : {id};
                         if (!tab) {
-                            const json = await this.fetchKernelJson("/api/query/sql", {
-                                stmt: `SELECT id, content, box FROM blocks WHERE id='${id}' LIMIT 1`,
-                            });
+                            let json: any;
+                            try {
+                                json = await this.fetchKernelJson("/api/query/sql", {
+                                    stmt: `SELECT id, content, box FROM blocks WHERE id='${id}' LIMIT 1`,
+                                });
+                            } catch (error) {
+                                logger.warn("Agent document context metadata unavailable", error);
+                                return {error: "document context unavailable"};
+                            }
                             const row = (json?.data || [])[0] as {id?: string; content?: string; box?: string} | undefined;
                             if (!row || !BLOCK_ID_RE.test(String(row.id || ""))) return {error: "document context unavailable"};
                             record = {id: row.id, title: row.content, notebookId: row.box, path: ""};
                         }
-                        const outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                        let outlineAvailable = true;
+                        let outlineJson: any = null;
+                        try {
+                            outlineJson = await this.fetchKernelJson("/api/outline/getDocOutline", {id, preview: false});
+                            outlineAvailable = Boolean(outlineJson && outlineJson.code === 0 && Array.isArray(outlineJson.data));
+                        } catch (error) {
+                            outlineAvailable = false;
+                            logger.warn("Agent document context outline unavailable", error);
+                        }
                         const content = buildDocumentContext({
                             ...record,
-                            active: Boolean(activeRoot && activeRoot === id),
-                            headings: Array.isArray(outlineJson?.data) ? outlineJson.data : [],
+                            active: isActiveDocument,
+                            source: contextSource,
+                            outlineAvailable,
+                            headings: outlineAvailable ? outlineJson.data : [],
                         }, request);
                         return {structuredContent: content, result: JSON.stringify(content)};
                     } catch (error) {

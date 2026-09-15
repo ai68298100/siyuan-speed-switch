@@ -36,7 +36,24 @@ test("document-context uses tab metadata before the SQL fallback", () => {
 });
 
 test("document-context marks active state by stable root id", () => {
-    assert.match(source, /active: Boolean\(activeRoot && activeRoot === id\)/);
+    assert.match(source, /const isActiveDocument = Boolean\(activeRoot && activeRoot === id\)/);
+    assert.match(source, /active: isActiveDocument/);
+});
+
+test("document-context reports active/opened/kernel provenance", () => {
+    assert.match(source, /const contextSource = isActiveDocument \? "active" : \(tab \? "opened" : "kernel"\)/);
+    assert.match(source, /source: contextSource/);
+});
+
+test("document-context separates metadata and outline failures", () => {
+    assert.match(source, /Agent document context metadata unavailable/);
+    assert.match(source, /Agent document context outline unavailable/);
+    assert.match(source, /outlineAvailable = false/);
+});
+
+test("document-context exposes bounded outline availability", () => {
+    assert.match(source, /outlineAvailable = Boolean\(outlineJson && outlineJson\.code === 0 && Array\.isArray\(outlineJson\.data\)\)/);
+    assert.match(source, /outlineAvailable,/);
 });
 
 test("document-context returns a structured bounded result", () => {

@@ -1,5 +1,39 @@
 # TODO
 
+## T-5798~T-5829 Agent document-context M2 provenance and outline resilience (2026-09-15)
+- [x] T-5798 document-context source enum
+- [x] T-5799 active provenance normalization
+- [x] T-5800 opened provenance normalization
+- [x] T-5801 kernel provenance normalization
+- [x] T-5802 unknown provenance fallback
+- [x] T-5803 active root source selection
+- [x] T-5804 opened tab source selection
+- [x] T-5805 closed document kernel source selection
+- [x] T-5806 outlineAvailable output field
+- [x] T-5807 outlineAvailable schema boolean
+- [x] T-5808 outlineAvailable required field
+- [x] T-5809 outline success detection
+- [x] T-5810 outline empty result handling
+- [x] T-5811 outline request exception isolation
+- [x] T-5812 outline failure stable warning
+- [x] T-5813 metadata request exception isolation
+- [x] T-5814 metadata failure stable error
+- [x] T-5815 metadata failure does not query outline
+- [x] T-5816 opened tab metadata precedence
+- [x] T-5817 kernel SQL fallback preservation
+- [x] T-5818 active flag/source consistency
+- [x] T-5819 source enum contract freeze
+- [x] T-5820 output key order regression
+- [x] T-5821 unknown source regression
+- [x] T-5822 explicit opened regression
+- [x] T-5823 explicit kernel regression
+- [x] T-5824 outline unavailable regression
+- [x] T-5825 wiring provenance regression
+- [x] T-5826 wiring failure isolation regression
+- [x] T-5827 read-only effects unchanged
+- [x] T-5828 document-context capacity audit
+- [x] T-5829 document-context batch record
+
 ## T-5383~T-5422 商店视图偏好与批量管理（2026-09-15，已完成）
 - [ ] T-5383 新增商店视图模式枚举
 - [ ] T-5384 归一化网格视图
