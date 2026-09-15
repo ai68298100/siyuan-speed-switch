@@ -11980,6 +11980,7 @@ if (count > 0) {
         this.sidebarSearchFilterDispose = null;
         this.sidebarElement = element;
         element.classList.add("speed-switch", "sw__body", "sw--sidebar");
+        this.setSyncPresentation(this.syncing);
         // 渚ц竟鏍忕缉鐣ュ浘甯冨眬锛歟nlarge锛堥粯璁わ級鏀惧ぇ濉弧鏍忓锛沜olumns 鎸夊搴﹁嚜鍔ㄥ鍔犲垪鏁?
         element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");
         element.innerHTML = this.buildSidebarHtml();
@@ -12108,7 +12109,7 @@ if (count > 0) {
         if (this.sidebarRefreshTimer) return;
         this.sidebarRefreshTimer = window.setTimeout(() => {
             this.sidebarRefreshTimer = 0;
-            if (this.sidebarElement?.isConnected) this.refreshSidebar();
+            if (!this.syncing && this.sidebarElement?.isConnected) this.refreshSidebar();
         }, 150);
     }
 
@@ -12125,6 +12126,7 @@ if (count > 0) {
 
     // 鍒锋柊渚ц竟鏍忓垪琛紙闈㈡澘浠嶈繛鎺ュ湪 DOM 涓婃椂锛?
     private refreshSidebar() {
+        if (this.syncing) return;
         if (this.sidebarElement?.isConnected) {
             this.renderSidebarPanel(this.sidebarElement);
         }

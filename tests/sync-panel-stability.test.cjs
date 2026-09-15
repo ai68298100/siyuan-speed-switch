@@ -19,3 +19,6 @@ test('loaded protyle does not refresh during sync', () => assert.match(source, /
 test('home root is positioned for sync notice', () => assert.match(css, /\.sw-home \{[\s\S]*?position: relative/));
 test('sync notice blocks pointer churn', () => assert.match(css, /&\.sw--syncing \{[\s\S]*?pointer-events: none/));
 test('sync notice uses bounded overlay text', () => assert.match(css, /正在同步，组件面板暂时保持稳定/));
+test('newly rendered sidebar inherits current sync state', () => assert.match(source, /this\.setSyncPresentation\(this\.syncing\)/));
+test('scheduled sidebar refresh is gated while syncing', () => assert.match(source, /if \(!this\.syncing && this\.sidebarElement\?\.isConnected\)/));
+test('direct sidebar refresh is gated while syncing', () => assert.match(source, /private refreshSidebar\(\) \{\s*if \(this\.syncing\) return;/));
