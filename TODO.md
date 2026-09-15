@@ -1,5 +1,53 @@
 # TODO
 
+## T-5830~T-5861 Agent document-context metadata completeness (2026-09-15)
+- [x] T-5830 notebookName output field
+- [x] T-5831 notebookName schema bound
+- [x] T-5832 pathAvailable output field
+- [x] T-5833 pathAvailable schema bound
+- [x] T-5834 pathAvailable required field
+- [x] T-5835 tab notebook cache lookup
+- [x] T-5836 kernel notebook cache lookup
+- [x] T-5837 missing notebook name fallback
+- [x] T-5838 missing path false state
+- [x] T-5839 normalized path true state
+- [x] T-5840 notebook name text sanitization
+- [x] T-5841 notebook name length cap
+- [x] T-5842 notebook name alias extraction
+- [x] T-5843 notebook name unknown-field isolation
+- [x] T-5844 path state deterministic derivation
+- [x] T-5845 path state legacy compatibility
+- [x] T-5846 output key order update
+- [x] T-5847 schema required list update
+- [x] T-5848 schema additionalProperties guard
+- [x] T-5849 opened metadata precedence regression
+- [x] T-5850 closed SQL fallback regression
+- [x] T-5851 active source regression
+- [x] T-5852 kernel source regression
+- [x] T-5853 notebook cache isolation regression
+- [x] T-5854 path normalization regression
+- [x] T-5855 malformed metadata regression
+- [x] T-5856 bounded text regression
+- [x] T-5857 read-only effect regression
+- [x] T-5858 document-context capacity audit
+- [x] T-5859 document-context targeted test gate
+- [x] T-5860 document-context release gate
+- [x] T-5861 document-context batch record
+
+## T-5862~T-5873 Official plugin-sample audit (2026-09-15)
+- [x] T-5862 clone official sample repository
+- [x] T-5863 inspect template purpose
+- [x] T-5864 inspect frontend lifecycle guidance
+- [x] T-5865 inspect top bar and Dock examples
+- [x] T-5866 inspect event bus examples
+- [x] T-5867 inspect settings and i18n guidance
+- [x] T-5868 inspect plugin.json platform fields
+- [x] T-5869 inspect publish-data privacy model
+- [x] T-5870 inspect kernel plugin boundary
+- [x] T-5871 inspect build and package workflow
+- [x] T-5872 record reusable recommendations
+- [x] T-5873 sample audit document
+
 ## T-5798~T-5829 Agent document-context M2 provenance and outline resilience (2026-09-15)
 - [x] T-5798 document-context source enum
 - [x] T-5799 active provenance normalization

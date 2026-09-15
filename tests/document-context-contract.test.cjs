@@ -16,6 +16,7 @@ test("document context constants keep bounded limits", () => {
     assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.headings.maxItems, 24);
     assert.deepEqual(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.source.enum, [...DOCUMENT_CONTEXT_SOURCES]);
     assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.outlineAvailable.type, "boolean");
+    assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.pathAvailable.type, "boolean");
 });
 
 test("request normalization accepts a valid id and integer limit", () => {
@@ -72,7 +73,7 @@ test("context builder normalizes the complete safe envelope", () => {
         data: {id: validId, content: " 当前\n文档 ", box: validNotebook, hPath: "\\项目\\路线"},
         active: true,
         headings: [{id: "20260914083002-aaaaaaa", name: "第一章", depth: 0}],
-    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable"].includes(key))), {
+    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "notebookName", "pathAvailable"].includes(key))), {
         id: validId, title: "当前 文档", notebookId: validNotebook, path: "/项目/路线", active: true,
         headings: [{id: "20260914083002-aaaaaaa", title: "第一章", depth: 0}],
     });
@@ -112,7 +113,7 @@ test("context builder handles an absent headings array", () => {
 });
 
 test("context builder keeps output keys stable for empty input", () => {
-    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "path", "active", "source", "outlineAvailable", "headings"]);
+    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "active", "source", "outlineAvailable", "headings"]);
 });
 
 test("context builder caps title length", () => {
@@ -163,4 +164,39 @@ test("context builder keeps outline failure as an empty bounded list", () => {
     const context = buildDocumentContext({id: validId, outlineAvailable: false, headings: [{id: validId, name: "drop"}]});
     assert.equal(context.outlineAvailable, false);
     assert.equal(context.headings.length, 1);
+});
+
+test("context builder extracts notebook name aliases", () => {
+    assert.equal(buildDocumentContext({id: validId, notebookName: " 工作 "}).notebookName, "工作");
+    assert.equal(buildDocumentContext({id: validId, notebook: "阅读"}).notebookName, "阅读");
+});
+
+test("context builder bounds notebook name text", () => {
+    assert.equal(buildDocumentContext({notebookName: "x".repeat(999)}).notebookName.length, 128);
+});
+
+test("context builder strips notebook name controls", () => {
+    assert.equal(buildDocumentContext({notebookName: "a\n\tb"}).notebookName, "a b");
+});
+
+test("context builder derives path availability", () => {
+    assert.equal(buildDocumentContext({path: "/docs"}).pathAvailable, true);
+    assert.equal(buildDocumentContext({path: "   "}).pathAvailable, false);
+});
+
+test("context builder keeps path availability aligned after normalization", () => {
+    const context = buildDocumentContext({path: "\\docs\\路线"});
+    assert.equal(context.path, "/docs/路线");
+    assert.equal(context.pathAvailable, true);
+});
+
+test("context builder keeps notebook and path fields bounded together", () => {
+    const context = buildDocumentContext({notebookName: "n".repeat(500), path: "p".repeat(500)});
+    assert.equal(context.notebookName.length, 128);
+    assert.equal(context.path.length, 256);
+    assert.equal(context.pathAvailable, true);
+});
+
+test("context builder preserves empty notebook name for missing cache", () => {
+    assert.equal(buildDocumentContext({id: validId}).notebookName, "");
 });

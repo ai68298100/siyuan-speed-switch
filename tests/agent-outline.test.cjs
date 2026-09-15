@@ -40,7 +40,7 @@ test("document-context groundwork keeps a bounded read-only contract", () => {
         notebookId: "20260913083000-boxbox", path: " /项目/路线 ", active: true,
         headings: [{id: "20260913083001-aaaaaaa", name: "第一章", depth: 0}], markdown: "drop",
     }, {limit: 1});
-    assert.deepEqual(Object.fromEntries(Object.entries(context).filter(([key]) => !["source", "outlineAvailable"].includes(key))), {
+    assert.deepEqual(Object.fromEntries(Object.entries(context).filter(([key]) => !["source", "outlineAvailable", "notebookName", "pathAvailable"].includes(key))), {
         id: "20260913083000-abcdef", title: "当前文档 标题", notebookId: "20260913083000-boxbox",
         path: "/项目/路线", active: true,
         headings: [{id: "20260913083001-aaaaaaa", title: "第一章", depth: 0}],

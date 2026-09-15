@@ -394,3 +394,5 @@
 2026-09-15 D-326 同步生命周期采用深度计数而非单布尔翻转：连续 `sync-start` 只在最后一个对应 `sync-end` 后解冻，任意 `sync-fail` 直接清零并恢复；同步期间记录一次待刷新意图，结束时统一调度。原因是宿主可能在批量同步或重试时产生重叠事件，单个结束事件提前解冻会重新引入面板跳变。
 2026-09-15 D-327 增加 120 秒同步 watchdog：每次同步开始重置计时器，正常结束/失败/卸载均清理；若宿主丢失结束事件，watchdog 清零深度、解除 busy 并安排一次侧栏刷新。原因是永久冻结比一次延迟恢复更难恢复，且 120 秒足以覆盖常规同步并保留异常自愈路径。
 - D-331 (2026-09-15): document-context exposes bounded source provenance (active/opened/kernel) and required outlineAvailable. Metadata failures remain terminal; outline failures return a safe read-only context with empty headings and no exception text.
+- D-332 (2026-09-15): official `siyuan-note/plugin-sample` is treated as a normative API/lifecycle reference only. Adopt its `onLayoutReady`, platform declaration, i18n, publish privacy and packaging guidance; do not import kernel plugin or startup appearance code into the current package.
+- D-333 (2026-09-15): `document-context` may expose notebookName from the existing in-memory notebook cache, but must not trigger a new network request per Agent call. Missing cache names remain empty; pathAvailable is derived solely from normalized path text.

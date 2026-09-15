@@ -29,10 +29,12 @@ function normalizeDocumentContextPath(value) {
 function extractDocumentContextRecord(value) {
     const source = value && typeof value === "object" ? value : {};
     const data = source.data && typeof source.data === "object" ? source.data : source;
+    const notebookName = data.notebookName ?? data.notebook ?? data.boxName;
     return {
         id: data.id ?? data.root_id ?? data.rootId,
         title: data.title ?? data.name ?? data.content,
         notebookId: data.notebookId ?? data.notebookID ?? data.box,
+        ...(notebookName === undefined ? {} : {notebookName}),
         path: data.path ?? data.hPath ?? data.hpath,
     };
 }
@@ -55,13 +57,15 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
             id: {type: "string", maxLength: 64},
             title: {type: "string", maxLength: 256},
             notebookId: {type: "string", maxLength: 64},
+            notebookName: {type: "string", maxLength: 128},
             path: {type: "string", maxLength: MAX_PATH_LENGTH},
+            pathAvailable: {type: "boolean"},
             active: {type: "boolean"},
             source: {type: "string", enum: [...DOCUMENT_CONTEXT_SOURCES]},
             outlineAvailable: {type: "boolean"},
             headings: {type: "array", maxItems: MAX_HEADINGS, items: {type: "object", maxProperties: 3, additionalProperties: false}},
         },
-        required: ["id", "title", "notebookId", "path", "active", "source", "outlineAvailable", "headings"],
+        required: ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "active", "source", "outlineAvailable", "headings"],
         additionalProperties: false,
     }),
 });
@@ -78,7 +82,9 @@ function buildDocumentContext(value, options = {}) {
         id: normalizeAgentDocumentId(source.id),
         title: cleanText(source.title, MAX_TITLE_LENGTH),
         notebookId: normalizeAgentNotebookId(source.notebookId),
+        notebookName: cleanText(source.notebookName, 128),
         path: normalizeDocumentContextPath(source.path),
+        pathAvailable: normalizeDocumentContextPath(source.path).length > 0,
         active,
         source: contextSource,
         outlineAvailable: value?.outlineAvailable !== false,
