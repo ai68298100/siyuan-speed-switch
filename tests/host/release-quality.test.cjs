@@ -157,7 +157,7 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-15 (67): 508 KiB ceiling accommodates the focus-continuity,
     // size-button keyboard navigation, and touch-action contracts while
     // retaining a visible margin below the archive hard limit.
-    // 2026-09-15 (74): 535 KiB ceiling accommodates batch execution and
+    // 2026-09-15 (75): 540 KiB ceiling accommodates dependency catalog and
     // receipt metadata while retaining a reviewed
     // margin below the archive ceiling.
     // 2026-09-15 (70): 520 KiB ceiling accommodates semantic config sections,
@@ -166,7 +166,7 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-15 (69): 510 KiB ceiling accommodates the shared SiYuan
     // forward-proxy path for external life widgets and graceful unavailable
     // states; the independent 300 KiB archive ceiling remains unchanged.
-    const budget = 535 * 1024;
+    const budget = 540 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
