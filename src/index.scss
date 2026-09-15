@@ -5030,7 +5030,8 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     margin-top: 3px;
     color: var(--b3-theme-on-surface-light);
     font-size: 11px;
-    font-weight: 500;
+    // 同块内更早还有一条 font-weight: 500，但会被下面的 550（可变字体的细粒度
+    // 权重）完全覆盖，从未生效。只保留实际生效的值（D-364）。
     font-variant-numeric: tabular-nums;
     text-rendering: optimizeLegibility;
     letter-spacing: 0.01em;
@@ -5657,7 +5658,7 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     padding: 0 2px;
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
-    font-weight: 600;
+    // 同块内更早的 font-weight: 600 会被下面的 650 完全覆盖，从未生效（D-364）。
     letter-spacing: 0.04em;
     box-sizing: border-box;
     overflow-wrap: anywhere;
