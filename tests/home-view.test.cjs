@@ -393,3 +393,19 @@ test("home view renders config button only for configurable widgets", () => {
     const plainRoot = renderHomeModuleView(doc, plainView, {onConfig: () => calls.push("bad")});
     assert.equal(plainRoot.querySelectorAll(".sw__home-module-toggle").length, 0);
 });
+
+test("home view reuses the cached updated-at formatter across cards", () => {
+    // The formatter is cached for speed; repeated calls must stay correct
+    // rather than returning the first card's timestamp for every card.
+    const morning = new Date(2026, 8, 15, 9, 5).getTime();
+    const evening = new Date(2026, 8, 15, 21, 30).getTime();
+    const first = formatUpdatedAt(morning);
+    const second = formatUpdatedAt(morning);
+    const other = formatUpdatedAt(evening);
+    assert.notEqual(first, "");
+    assert.equal(first, second, "same input must render identically through the cache");
+    assert.notEqual(first, other, "cached formatter must still format the supplied date");
+    assert.notEqual(formatUpdatedAt(evening), "");
+    assert.equal(formatUpdatedAt(-1), "");
+    assert.equal(formatUpdatedAt(Number.NaN), "");
+});

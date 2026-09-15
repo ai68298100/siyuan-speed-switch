@@ -1,5 +1,13 @@
 # TODO
 
+## T-6059~T-6064 卡片时间戳格式化器缓存（2026-09-15，已完成）
+- [x] T-6059 测量 DateTimeFormat 构造成本：63µs vs 复用 2µs
+- [x] T-6060 formatUpdatedAt 改为模块级缓存实例
+- [x] T-6061 时区失效键选型：getTimezoneOffset 0.3µs vs resolvedOptions 68µs
+- [x] T-6062 契约测试：缓存复用后不同时间戳仍输出各自结果
+- [x] T-6063 全量门禁验证：TypeScript、5565 项测试、生产构建与两项 smoke
+- [x] T-6064 发布矩阵产物大小同步（index.js 560476、package.zip 320649）
+
 ## T-6051~T-6058 每调用构造昂贵对象治理（2026-09-15，已完成）
 - [x] T-6051 扫描生产源码中每调用构造的 Intl.Segmenter / RegExp / DateTimeFormat
 - [x] T-6052 日记月历：把两个前缀正则提出 64 行 SQL 结果循环

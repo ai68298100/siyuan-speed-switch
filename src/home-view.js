@@ -41,6 +41,13 @@ function safeImageHref(value) {
     }
 }
 
+// Intl.DateTimeFormat captures the host timezone when it is constructed, so a
+// single instance is reused across cards (building one costs ~60us versus ~2us
+// per format call) and only rebuilt when the reported UTC offset changes; a
+// machine crossing timezones therefore still renders current wall-clock times.
+let updatedAtFormatter = null;
+let updatedAtFormatterOffset = null;
+
 function formatUpdatedAt(value) {
     const raw = Number(value);
     if (!Number.isFinite(raw) || raw <= 0) return "";
@@ -48,7 +55,14 @@ function formatUpdatedAt(value) {
     const date = new Date(timestamp);
     if (!Number.isFinite(date.getTime())) return "";
     try {
-        return new Intl.DateTimeFormat(undefined, {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"}).format(date);
+        const offset = new Date().getTimezoneOffset();
+        if (!updatedAtFormatter || offset !== updatedAtFormatterOffset) {
+            updatedAtFormatter = new Intl.DateTimeFormat(undefined, {
+                month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+            });
+            updatedAtFormatterOffset = offset;
+        }
+        return updatedAtFormatter.format(date);
     } catch (_) {
         return "";
     }
