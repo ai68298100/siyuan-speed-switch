@@ -4065,10 +4065,15 @@ const version = beginSearch(session);
             const json = await this.fetchKernelJson("/api/query/sql", {
                 stmt: `SELECT b.id, b.content, b.updated, a.name AS daily_attr FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name GLOB '${attrPrefix}[0-3][0-9]' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR b.content LIKE '${prefix}%') ORDER BY b.updated DESC LIMIT 64`,
             });
+            // Hoist both matchers: they depend only on the month prefix, so
+            // compiling them per row would rebuild identical regexes up to 64
+            // times on every calendar render.
+            const attrRe = new RegExp(`^${attrPrefix}(\\d{2})$`);
+            const titleRe = new RegExp(`^${prefix}(\\d{2})(?:\\D|$)`);
             const journalByDay = new Map<string, string>();
             ((json?.data || []) as Array<{id: string; content: string; daily_attr?: string}>).forEach((row) => {
-                const attrMatch = String(row.daily_attr || "").match(new RegExp(`^${attrPrefix}(\\d{2})$`));
-                const titleMatch = String(row.content).match(new RegExp(`^${prefix}(\\d{2})(?:\\D|$)`));
+                const attrMatch = String(row.daily_attr || "").match(attrRe);
+                const titleMatch = String(row.content).match(titleRe);
                 const day = Number(attrMatch?.[1] || titleMatch?.[1] || 0);
                 if (day >= 1 && day <= 31 && !journalByDay.has(String(day))) journalByDay.set(String(day), row.id);
             });

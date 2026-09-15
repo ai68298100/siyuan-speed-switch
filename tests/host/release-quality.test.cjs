@@ -237,3 +237,17 @@ test('README test-file count matches the discovered host test matrix', () => {
     const readme = fs.readFileSync(path.join(root, 'README.en-US.md'), 'utf8');
     assert.match(readme, new RegExp('discovers all ' + count + ' `\\*\\.test\\.cjs` files'));
 });
+
+test('production sources hoist Intl.Segmenter instead of building one per call', () => {
+    // Constructing a segmenter costs far more than segmenting short text, so
+    // each module must hoist a single instance rather than rebuild it inside
+    // label/icon/normalization helpers.
+    const offenders = [];
+    for (const name of fs.readdirSync(path.join(root, 'src'))) {
+        if (!/\.(?:ts|js)$/.test(name)) continue;
+        const source = fs.readFileSync(path.join(root, 'src', name), 'utf8');
+        const built = source.match(/new\s+Intl\.Segmenter\s*\(/g) || [];
+        if (built.length > 1) offenders.push(`${name}:${built.length}`);
+    }
+    assert.deepEqual(offenders, [], `per-call Intl.Segmenter construction: ${offenders.join(', ')}`);
+});

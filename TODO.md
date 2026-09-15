@@ -1,5 +1,15 @@
 # TODO
 
+## T-6051~T-6058 每调用构造昂贵对象治理（2026-09-15，已完成）
+- [x] T-6051 扫描生产源码中每调用构造的 Intl.Segmenter / RegExp / DateTimeFormat
+- [x] T-6052 日记月历：把两个前缀正则提出 64 行 SQL 结果循环
+- [x] T-6053 快捷入口：graphemeLength 复用模块级 Segmenter
+- [x] T-6054 快捷入口：normalizeLabel 复用模块级 Segmenter
+- [x] T-6055 宿主页静态门禁：单文件最多 1 处 new Intl.Segmenter(
+- [x] T-6056 源码扫描记录 util.js 已存在的 graphemeLength 重复实现（暂不收敛）
+- [x] T-6057 全量门禁验证：TypeScript、5564 项测试、生产构建与两项 smoke
+- [x] T-6058 发布矩阵产物大小同步（index.js 560365、package.zip 320582）
+
 ## T-6043~T-6050 搜索文本归一化性能修复（2026-09-15，已完成）
 - [x] T-6043 定位性能基准失败：200 页签扇出均值 3.098ms 超 2.5ms 预算
 - [x] T-6044 热点剖析：normalizeText 对每个字符串执行全量 Intl.Segmenter 切分
