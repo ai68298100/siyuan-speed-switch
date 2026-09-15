@@ -1,5 +1,22 @@
 # TODO
 
+## T-6193~T-6206 组件扩充第二批 P1 + 小项（2026-09-16，已完成）
+
+- [x] T-6193 修正 4 个存量外部组件 sizes 口径不一致（以 DEFAULT_MODULES 为权威：weather+large、dailyhot→medium/wide/large/full、newsnow+full、activitywatch+large）；新增 `tests/external-catalog-sizes-contract.test.cjs` 门禁并完成负向验证
+- [x] T-6194 世界时钟 cities 配置项补 HOME_CONFIG_PLACEHOLDERS 占位提示 + `placeholderText` token 扩展 + 双语 i18n
+- [x] T-6195 Uptime Kuma 网络：`allowedUptimeKumaUrl`（用户端点 + 已知路由 `/api/status-page/{slug}` 与 `/heartbeat/{slug}`，slug 字符集约束，拒绝查询/userinfo/fragment/远程 http）+ `loadUptimeKumaPage`（5 分钟缓存 + 陈旧回退）
+- [x] T-6196 Uptime Kuma 模型：`normalizeUptimeKumaConfig`/`normalizeUptimeKumaStatus`（monitorList 上限 24 + incident 标题）/`normalizeUptimeKumaHeartbeat`（latest beat + uptimeList 24h）/`buildUptimeKumaSnapshot`（stat `${up}/${total}`、incident 置顶、双 envelope 健康取较差者）/`buildUptimeKumaPageUrl`
+- [x] T-6197 Frankfurter 网络：`allowedFrankfurterUrl`（主机 api.frankfurter.dev + 路径 /v2/rates + 恰 2 参数 + base/quotes ECB 白名单 + quotes 1-6 且不含 base）+ `loadFrankfurterRates`（12 小时缓存）
+- [x] T-6198 Frankfurter 模型：`normalizeFrankfurterConfig`（配置层即过滤 ECB 白名单，默认 CNY，quotes 1-6 去重去 base）/`buildFrankfurterRequestUrl`/`buildFrankfurterSnapshot`（rate 有限性/范围校验、来源行带日期）；清理 `emptyHint` 不可达死分支
+- [x] T-6199 网络层新增受控 `isAllowed` 门禁谓词：loader 内部先各自白名单校验再传入 `fetchBoundedLifeJson`，不引入任意 URL 通道
+- [x] T-6200 接线：DEFAULT_MODULES + register（Uptime Kuma 双 envelope 经内核代理 8500ms/5min；Frankfurter 8500ms/12h）+ lifeModuleIds + BUILTIN_GROUPS（fx→生活组、uptime→系统组）+ 双语 i18n
+- [x] T-6201 external-widget-model 目录登记 2 条（uptimekuma external/http/endpoint-only 归 activity；fx external/http/none 新增 finance 分类），目录 11→13
+- [x] T-6202 home-store-model 四映射成对登记（SOURCE_INFO/DEPENDENCY_INFO/PREVIEW_KINDS/CONFIG_KINDS）
+- [x] T-6203 新增测试：网络层 15 项、模型层 15 项、契约行 12 项；既有计数断言同步（目录计数、home-model 36/35→38/37、依赖摘要 9→11、分组契约、可用性审计 35→37）
+- [x] T-6204 负向验证（D-361 协议）：注入 Uptime Kuma startsWith 漂移→先暴露测试盲区（补 slug 前缀与 heartbeat 路径误用用例后再验证→1 项失败）；注入 Frankfurter 主机漂移→6 项失败；均字节级还原
+- [x] T-6205 同步 roadmap 第二批交付标注、README 中英文测试数字 5610→5652（157 个测试文件）、发布矩阵产物尺寸（index.js 582792、package.zip 301677）
+- [x] T-6206 记录 D-369、D-370
+
 ## T-6177~T-6192 第三方（非思源插件）组件扩充第一批（2026-09-16，已完成）
 
 - [x] T-6177 多渠道调研：HN Algolia（免 Key/CORS/万次每小时）、Frankfurter（ECB 免 Key）、Uptime Kuma 状态页（免认证只读）、Miniflux（X-Auth-Token）、Obsidian 仪表盘与 Notion 小组件生态（仅类型灵感，iframe 不可用）
@@ -18,6 +35,10 @@
 - [x] T-6190 同步 README 中英文测试数字 5581→5610
 - [x] T-6191 跑通 `pnpm verify:release` 5610/5610 + 移动端/Chromium 烟测
 - [x] T-6192 记录 D-368
+
+### 后续小项（已并入第二批处理）
+- [x] T-6193 修正 4 个存量外部组件 sizes 在 DEFAULT_MODULES 与 EXTERNAL_WIDGET_CATALOG 间的口径不一致（以 DEFAULT_MODULES 为权威）
+- [x] T-6194 为世界时钟 cities 配置项补 HOME_CONFIG_PLACEHOLDERS 占位提示（如 Asia/Shanghai, America/New_York）
 
 ## T-6169~T-6176 UI 第二轮：按下反馈（2026-09-16，已完成）
 

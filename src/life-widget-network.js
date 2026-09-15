@@ -10,6 +10,11 @@ const ACTIVITYWATCH_TTL_MS = 5 * 60 * 1000;
 const HACKER_NEWS_TTL_MS = 30 * 60 * 1000;
 // 固定端点：一次请求拿首页 12 条，条数上限在渲染层按配置截断，避免动态参数进白名单。
 const HACKER_NEWS_FRONT_PAGE_URL = "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12";
+const UPTIME_KUMA_TTL_MS = 5 * 60 * 1000;
+const FRANKFURTER_TTL_MS = 12 * 60 * 60 * 1000;
+// Frankfurter：v1 域名（api.frankfurter.app/latest）已 301 迁移，fetch 的 redirect:"error"
+// 会直接失败，因此只放行 v2 固定主机与路径；货币代码走 ECB 支持的白名单，不接受任意字符串。
+const FRANKFURTER_CURRENCIES = Object.freeze(["AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR"]);
 const responseCache = new Map();
 
 function allowedLifeWidgetUrl(url) {
@@ -31,8 +36,48 @@ function allowedLifeWidgetUrl(url) {
     }
 }
 
-function allowedConfiguredFeedUrl(value) {
-    if (typeof value !== "string" || value.length > 512) return false;
+// Uptime Kuma：沿用"用户端点 + 已知路由"先例——主机由用户填写，路径必须精确等于
+// /api/status-page/{slug} 或 /api/status-page/heartbeat/{slug}；slug 字符集受约束，
+// 查询串、userinfo、fragment 一律拒绝。状态页接口本身免认证且只读。
+function allowedUptimeKumaUrl(value, slug, heartbeat = false) {
+    if (typeof value !== "string" || value.length > 320) return false;
+    if (typeof slug !== "string" || !/^[a-z0-9][a-z0-9-]{1,63}$/.test(slug)) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && local))
+            || url.username || url.password || url.search || url.hash) return false;
+        const expected = `/api/status-page/${heartbeat ? "heartbeat/" : ""}${slug}`;
+        return url.pathname === expected;
+    } catch (_) {
+        return false;
+    }
+}
+
+// Frankfurter：固定主机与路径，base/quotes 两个参数均来自 ECB 货币白名单；
+// quotes 1-6 个且不得包含基准货币；其余任何参数、userinfo、fragment 一律拒绝。
+function allowedFrankfurterUrl(value) {
+    if (typeof value !== "string" || value.length > 320) return false;
+    try {
+        const url = new URL(value);
+        if (url.protocol !== "https:" || url.hostname !== "api.frankfurter.dev"
+            || url.pathname !== "/v2/rates" || url.username || url.password || url.search === ""
+            || url.hash) return false;
+        const entries = [...url.searchParams.entries()];
+        if (entries.length !== 2) return false;
+        const params = Object.fromEntries(entries);
+        if (!FRANKFURTER_CURRENCIES.includes(params.base)) return false;
+        const quotes = String(params.quotes || "").split(",");
+        if (quotes.length < 1 || quotes.length > 6) return false;
+        const unique = new Set(quotes);
+        if (unique.size !== quotes.length || unique.has(params.base)) return false;
+        return quotes.every((code) => FRANKFURTER_CURRENCIES.includes(code));
+    } catch (_) {
+        return false;
+    }
+}
+
+function allowedConfiguredFeedUrl(value) {    if (typeof value !== "string" || value.length > 512) return false;
     try {
         const url = new URL(value);
         const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
@@ -73,7 +118,10 @@ function cacheWrite(key, value, now = Date.now()) {
 
 async function fetchBoundedLifeJson(url, options = {}) {
     const configuredFeedAllowed = options.allowConfiguredFeed === true && allowedConfiguredFeedUrl(url);
-    if (!allowedLifeWidgetUrl(url) && !configuredFeedAllowed) throw new Error("blocked_endpoint");
+    // 自定义端点门禁：仅当调用方传入确定性谓词（loader 内部先用各自白名单校验过）时放行，
+    // 且谓词只针对该 loader 固定的端点形态，不引入任何"任意 URL"通道。
+    const customAllowed = typeof options.isAllowed === "function" && options.isAllowed(url) === true;
+    if (!allowedLifeWidgetUrl(url) && !configuredFeedAllowed && !customAllowed) throw new Error("blocked_endpoint");
     const fetchImpl = typeof options.fetchImpl === "function" ? options.fetchImpl : globalThis.fetch;
     if (typeof fetchImpl !== "function") throw new Error("unsupported");
     const externalSignal = options.signal && typeof options.signal === "object" ? options.signal : null;
@@ -230,6 +278,44 @@ async function loadActivityWatchSummary(request, options = {}) {
     }
 }
 
+// Uptime Kuma 状态页与心跳页共享同一"新鲜/缓存/陈旧"加载语义；5 分钟缓存
+// 匹配其检查间隔量级，失败时回退陈旧缓存，与用户端点 feed 行为一致。
+async function loadUptimeKumaPage(url, slug, heartbeat, options = {}) {
+    if (!allowedUptimeKumaUrl(url, slug, heartbeat)) throw new Error("blocked_endpoint");
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const key = `uptimekuma:${heartbeat ? "hb" : "status"}:${url}`;
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < UPTIME_KUMA_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchBoundedLifeJson(url, {...options, isAllowed: (candidate) => allowedUptimeKumaUrl(candidate, slug, heartbeat)});
+        cacheWrite(key, payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
+
+async function loadFrankfurterRates(url, options = {}) {
+    if (!allowedFrankfurterUrl(url)) throw new Error("blocked_endpoint");
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const key = `frankfurter:${url}`;
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < FRANKFURTER_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchBoundedLifeJson(url, {...options, isAllowed: (candidate) => allowedFrankfurterUrl(candidate)});
+        cacheWrite(key, payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
+
 function clearLifeWidgetCaches() {
     responseCache.clear();
 }
@@ -248,14 +334,21 @@ module.exports = {
     ACTIVITYWATCH_TTL_MS,
     HACKER_NEWS_TTL_MS,
     HACKER_NEWS_FRONT_PAGE_URL,
+    UPTIME_KUMA_TTL_MS,
+    FRANKFURTER_TTL_MS,
+    FRANKFURTER_CURRENCIES,
     allowedLifeWidgetUrl,
     allowedConfiguredFeedUrl,
     allowedActivityWatchUrl,
+    allowedUptimeKumaUrl,
+    allowedFrankfurterUrl,
     fetchBoundedLifeJson,
     loadWeatherLocation,
     loadWeatherForecast,
     loadHolidayYear,
     loadHackerNewsFrontPage,
+    loadUptimeKumaPage,
+    loadFrankfurterRates,
     loadBangumiCalendar,
     loadConfiguredFeed,
     fetchActivityWatchQuery,

@@ -249,3 +249,107 @@ test("Hacker News snapshot appends the source row", () => {
 });
 test("Hacker News snapshot rejects an empty hit list", () =>
     assert.equal(model.buildHackerNewsSnapshot({status: "fresh", payload: {hits: []}}, {}, {}), null));
+
+// Uptime Kuma：配置规范化 → 状态页/心跳解析 → 快照组装。
+test("Uptime Kuma config normalizes origin and slug", () => {
+    assert.deepEqual(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com/", slug: "Main"}), {origin: "https://status.example.com", slug: "main"});
+});
+test("Uptime Kuma config rejects remote http and malformed input", () => {
+    assert.equal(model.normalizeUptimeKumaConfig({endpoint: "http://status.example.com", slug: "main"}).origin, "");
+    assert.equal(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com/admin", slug: "main"}).origin, "");
+    assert.equal(model.normalizeUptimeKumaConfig({endpoint: "https://user:pass@status.example.com", slug: "main"}).origin, "");
+    assert.equal(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com", slug: "Bad_Slug"}).slug, "");
+    assert.deepEqual(model.normalizeUptimeKumaConfig(null), {origin: "", slug: ""});
+});
+test("Uptime Kuma page URL builds status and heartbeat routes", () => {
+    const config = {endpoint: "https://status.example.com", slug: "main"};
+    assert.equal(model.buildUptimeKumaPageUrl(config), "https://status.example.com/api/status-page/main");
+    assert.equal(model.buildUptimeKumaPageUrl(config, true), "https://status.example.com/api/status-page/heartbeat/main");
+    assert.equal(model.buildUptimeKumaPageUrl({endpoint: "", slug: "main"}), "");
+});
+test("Uptime Kuma status parse keeps bounded monitors and incident", () => {
+    const status = model.normalizeUptimeKumaStatus({
+        config: {title: "服务面板"},
+        incident: {title: "计划维护"},
+        publicGroupList: [{monitorList: [{id: 1, name: "官网"}, {id: "bad", name: ""}, {id: 2, name: "API"}]}],
+    });
+    assert.equal(status.title, "服务面板");
+    assert.equal(status.incident, "计划维护");
+    assert.deepEqual(status.monitors, [{id: 1, name: "官网"}, {id: 2, name: "API"}]);
+    assert.equal(model.normalizeUptimeKumaStatus(null), null);
+});
+test("Uptime Kuma heartbeat parse keeps latest beat and 24h uptime", () => {
+    const heartbeat = model.normalizeUptimeKumaHeartbeat({
+        heartbeatList: {"1": [{status: 0, ping: 10}, {status: 1, ping: 42}]},
+        uptimeList: {"1_24": 0.995, "2_24": 2},
+    });
+    assert.deepEqual(heartbeat.latest["1"], {up: true, ping: 42});
+    assert.equal(heartbeat.uptime["1_24"], 0.995);
+    assert.equal(heartbeat.uptime["2_24"], undefined);
+});
+const uptimeStatusEnvelope = {status: "fresh", fetchedAt: 1000, payload: {
+    config: {title: "服务面板"},
+    incident: {title: "计划维护"},
+    publicGroupList: [{monitorList: [{id: 1, name: "官网"}, {id: 2, name: "API"}]}],
+}};
+const uptimeHeartbeatEnvelope = {status: "cached", fetchedAt: 2000, payload: {
+    heartbeatList: {"1": [{status: 1, ping: 42}], "2": [{status: 0, ping: -1}]},
+    uptimeList: {"1_24": 0.995, "2_24": 0.87},
+}};
+test("Uptime Kuma snapshot counts availability and pins the incident", () => {
+    const snapshot = model.buildUptimeKumaSnapshot(uptimeStatusEnvelope, uptimeHeartbeatEnvelope, {}, {title: "服务状态", stat: "在线服务", up: "正常", down: "异常", incident: "事件", source: "数据来源"});
+    assert.equal(snapshot.title, "服务面板");
+    assert.deepEqual(snapshot.stat, {value: "1/2", label: "在线服务"});
+    assert.match(snapshot.items[0].label, /事件：计划维护/);
+    assert.equal(snapshot.items[1].label, "官网");
+    assert.equal(snapshot.items[1].value, "正常 · 42ms · 99.50%");
+    assert.equal(snapshot.items[2].value, "异常 · 87.00%");
+    assert.match(snapshot.items[3].label, /数据来源：Uptime Kuma/);
+    assert.equal(snapshot.sourceHealth, "cached");
+    assert.equal(snapshot.updatedAt, 2000);
+});
+test("Uptime Kuma snapshot trusts the worse envelope health", () => {
+    const snapshot = model.buildUptimeKumaSnapshot({...uptimeStatusEnvelope, status: "stale"}, uptimeHeartbeatEnvelope, {}, {});
+    assert.equal(snapshot.sourceHealth, "stale");
+});
+test("Uptime Kuma snapshot requires at least one monitor", () =>
+    assert.equal(model.buildUptimeKumaSnapshot({status: "fresh", payload: {publicGroupList: []}}, uptimeHeartbeatEnvelope, {}, {}), null));
+
+// Frankfurter：货币白名单规范化 → 请求 URL → 快照组装。
+test("Frankfurter config defaults to CNY base and filters quotes", () => {
+    assert.deepEqual(model.normalizeFrankfurterConfig({base: "usd", quotes: " eur, jpy；EUR，XXX, usd, CNY, a, GBP"}), {base: "USD", quotes: ["EUR", "JPY", "CNY", "GBP"]});
+    assert.deepEqual(model.normalizeFrankfurterConfig({base: "XXX", quotes: "USD"}), {base: "CNY", quotes: ["USD"]});
+    assert.deepEqual(model.normalizeFrankfurterConfig(null), {base: "CNY", quotes: []});
+    assert.deepEqual(model.normalizeFrankfurterConfig({quotes: "USD,EUR,JPY,GBP,HKD,SGD,AUD"}), {base: "CNY", quotes: ["USD", "EUR", "JPY", "GBP", "HKD", "SGD"]});
+});
+test("Frankfurter request URL is exact and allowlist-compatible", () => {
+    assert.equal(model.buildFrankfurterRequestUrl({base: "CNY", quotes: ["USD", "EUR"]}), "https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD,EUR");
+    assert.equal(model.buildFrankfurterRequestUrl({base: "CNY", quotes: []}), "");
+});
+const frankfurterEnvelope = {status: "fresh", fetchedAt: 5000, payload: [
+    {date: "2026-09-15", base: "CNY", quote: "USD", rate: 0.1402},
+    {date: "2026-09-15", base: "CNY", quote: "EUR", rate: 0.1203},
+    {date: "2026-09-15", base: "CNY", quote: "XXX", rate: -1},
+]};
+test("Frankfurter snapshot lists validated rates and keeps the date", () => {
+    const snapshot = model.buildFrankfurterSnapshot(frankfurterEnvelope, {base: "CNY", quotes: ["USD", "EUR"]}, {title: "参考汇率", source: "数据来源", empty: "未取到"});
+    assert.equal(snapshot.title, "参考汇率 · CNY");
+    assert.deepEqual(snapshot.stat, {value: "0.1402", label: "CNY → USD"});
+    assert.equal(snapshot.items[1].label, "CNY → EUR");
+    assert.equal(snapshot.items[1].value, "0.1203");
+    assert.match(snapshot.items[2].label, /数据来源：Frankfurter（ECB） · 2026-09-15/);
+    assert.equal(snapshot.emptyHint, "");
+    assert.equal(snapshot.sourceHealth, "fresh");
+    assert.equal(snapshot.updatedAt, 5000);
+});
+test("Frankfurter snapshot returns null without rows or matching quotes", () => {
+    assert.equal(model.buildFrankfurterSnapshot({status: "fresh", payload: []}, {}, {}), null);
+    assert.equal(model.buildFrankfurterSnapshot(frankfurterEnvelope, {base: "CNY", quotes: ["JPY"]}, {}), null);
+});
+test("Frankfurter snapshot always appends the source row after rates", () => {
+    const snapshot = model.buildFrankfurterSnapshot(frankfurterEnvelope, {base: "CNY", quotes: ["USD"]}, {empty: "未取到"});
+    assert.equal(snapshot.items.length, 2);
+    assert.equal(snapshot.items[0].label, "CNY → USD");
+    assert.match(snapshot.items[1].label, /数据来源：Frankfurter（ECB）/);
+    assert.equal(snapshot.emptyHint, "");
+});

@@ -4,7 +4,7 @@
 // 商店可以先据此诚实展示“可直接使用 / 需配置 / 需本地桥接 / 仅参考”，
 // 等具体 provider 通过独立适配器和真实宿主验收后再进入生产组件列表。
 
-const EXTERNAL_WIDGET_CATEGORIES = Object.freeze(["time", "weather", "trending", "holiday", "media", "activity"]);
+const EXTERNAL_WIDGET_CATEGORIES = Object.freeze(["time", "weather", "trending", "holiday", "media", "activity", "finance"]);
 const EXTERNAL_WIDGET_AVAILABILITY = Object.freeze(["builtin", "external", "conditional", "bridge", "reference"]);
 const EXTERNAL_WIDGET_AUTH = Object.freeze(["none", "api-key", "user-endpoint", "local-service"]);
 const EXTERNAL_WIDGET_PLATFORMS = Object.freeze(["desktop", "sidebar", "mobile"]);
@@ -55,7 +55,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "AGPL-3.0",
         privacy: "location-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["small", "medium", "wide"],
+        sizes: ["small", "medium", "wide", "large"],
         description: "按用户选择的城市读取当前天气与短期预报；不上传笔记内容",
     }),
     catalogEntry({
@@ -70,7 +70,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "MIT",
         privacy: "endpoint-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["small", "medium", "wide"],
+        sizes: ["medium", "wide", "large", "full"],
         description: "聚合微博、知乎、B站等热榜；默认公共服务不作为稳定性保证，支持用户自建地址",
     }),
     catalogEntry({
@@ -85,7 +85,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "MIT",
         privacy: "endpoint-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["medium", "wide", "large"],
+        sizes: ["medium", "wide", "large", "full"],
         description: "适合自部署后提供缓存和来源管理的新闻阅读组件",
     }),
     catalogEntry({
@@ -175,8 +175,38 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "MPL-2.0",
         privacy: "local-only",
         platforms: ["desktop", "sidebar"],
-        sizes: ["small", "medium", "wide"],
+        sizes: ["small", "medium", "wide", "large"],
         description: "已接入用户本机 ActivityWatch 聚合查询，仅显示应用名和时长；不读取窗口标题，移动端不宣称支持",
+    }),
+    catalogEntry({
+        moduleId: "external-status-uptimekuma",
+        title: "服务状态",
+        category: "activity",
+        availability: "external",
+        auth: "user-endpoint",
+        integration: "http",
+        providerName: "Uptime Kuma（公开状态页 API）",
+        sourceUrl: "https://github.com/louislam/uptime-kuma",
+        license: "MIT",
+        privacy: "endpoint-only",
+        platforms: ["desktop", "sidebar", "mobile"],
+        sizes: ["small", "medium", "wide"],
+        description: "读取用户自建 Uptime Kuma 已发布状态页的监控在线率与公告；仅访问免认证只读路由，需自行部署服务",
+    }),
+    catalogEntry({
+        moduleId: "external-fx-frankfurter",
+        title: "汇率参考",
+        category: "finance",
+        availability: "external",
+        auth: "none",
+        integration: "http",
+        providerName: "Frankfurter（ECB 参考汇率）",
+        sourceUrl: "https://frankfurter.dev",
+        license: "MIT",
+        privacy: "none",
+        platforms: ["desktop", "sidebar", "mobile"],
+        sizes: ["small", "medium", "wide"],
+        description: "读取欧洲央行每日参考汇率的免 Key 公开接口；固定端点白名单，展示为参考值而非实时行情",
     }),
     catalogEntry({
         moduleId: "external-active-window",

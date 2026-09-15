@@ -58,3 +58,17 @@ test("network code disables redirects", () => assert.match(network, /redirect: "
 test("network code keeps cancellation signal", () => assert.match(network, /externalSignal\?\.addEventListener/));
 test("network code cleans cancellation listener", () => assert.match(network, /externalSignal\?\.removeEventListener/));
 test("network code isolates malformed JSON", () => assert.match(network, /throw new Error\("invalid_json"\)/));
+
+test("Uptime Kuma uses the proxy fetcher", () => assert.match(source, /loadUptimeKumaPage\(statusUrl, normalized\.slug, false, \{signal: context\?\.signal, fetchImpl\}\)/));
+test("Uptime Kuma loads the heartbeat page through the same gate", () => assert.match(source, /loadUptimeKumaPage\(heartbeatUrl, normalized\.slug, true, \{signal: context\?\.signal, fetchImpl\}\)/));
+test("Uptime Kuma preserves configuration empty state", () => assert.match(source, /homeUptimeKumaConfigHint, items: \[\]\}/));
+test("Uptime Kuma catches unavailable errors", () => assert.match(source, /external-status-uptimekuma[\s\S]*?homeFeedEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Uptime Kuma keeps abort semantics", () => assert.match(source, /external-status-uptimekuma[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Uptime Kuma stays known-route constrained", () => assert.match(network, /\/api\/status-page\/\$\{heartbeat \? "heartbeat\/" : ""\}\$\{slug\}/));
+
+test("Frankfurter uses the proxy fetcher", () => assert.match(source, /loadFrankfurterRates\(url, \{[\s\S]{0,120}fetchImpl: \(reqUrl: string, init: \{body\?: string\}\) => this\.fetchActivityWatchViaKernel/));
+test("Frankfurter preserves configuration empty state", () => assert.match(source, /if \(!url\) return \{emptyHint: this\.i18n\.homeFxEmpty, items: \[\]\}\;/));
+test("Frankfurter catches unavailable errors", () => assert.match(source, /external-fx-frankfurter[\s\S]*?homeFxEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Frankfurter keeps abort semantics", () => assert.match(source, /external-fx-frankfurter[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Frankfurter stays host and parameter allowlisted", () => assert.match(network, /api\.frankfurter\.dev/));
+test("Frankfurter snapshot labels itself as reference", () => assert.match(model, /参考汇率/));

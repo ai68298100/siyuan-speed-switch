@@ -28,8 +28,8 @@ import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute, buildWorldClockSnapshot} from "./local-time-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -3920,6 +3920,55 @@ const version = beginSearch(session);
                 return {emptyHint: `${this.i18n.homeFeedEmpty} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
+        // Uptime Kuma 服务状态：用户自建服务 + 已发布状态页，两条免认证只读路由
+        // （状态页配置 + 心跳）走"已知路由"白名单；5 分钟缓存，失败显示陈旧缓存。
+        register("external-status-uptimekuma", this.i18n.homeUptimeKuma, "iconCloud", this.i18n.homeDescUptimeKuma, [], async (config, _device, context) => {
+            const normalized = normalizeUptimeKumaConfig(config);
+            const statusUrl = buildUptimeKumaPageUrl(normalized, false);
+            const heartbeatUrl = buildUptimeKumaPageUrl(normalized, true);
+            if (!statusUrl || !heartbeatUrl) return {emptyHint: this.i18n.homeUptimeKumaConfigHint, items: []};
+            const fetchImpl = (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init);
+            try {
+                const statusEnvelope = await loadUptimeKumaPage(statusUrl, normalized.slug, false, {signal: context?.signal, fetchImpl});
+                const heartbeatEnvelope = await loadUptimeKumaPage(heartbeatUrl, normalized.slug, true, {signal: context?.signal, fetchImpl});
+                const snapshot = buildUptimeKumaSnapshot(statusEnvelope, heartbeatEnvelope, normalized, {
+                    title: this.i18n.homeUptimeKuma,
+                    stat: this.i18n.homeUptimeKumaStat,
+                    up: this.i18n.homeUptimeKumaUp,
+                    down: this.i18n.homeUptimeKumaDown,
+                    incident: this.i18n.homeUptimeKumaIncident,
+                    source: this.i18n.homeFeedSource,
+                });
+                if (!snapshot) throw new Error("invalid_uptimekuma_status_page");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeFeedEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 5 * 60 * 1000});
+        // Frankfurter 汇率参考：免 Key 公开接口，货币代码受 ECB 白名单约束；
+        // ECB 每日更新一次，12 小时缓存；卡片明确标注"参考值，不承诺实时"。
+        register("external-fx-frankfurter", this.i18n.homeFx, "iconGraph", this.i18n.homeDescFx, [], async (config, _device, context) => {
+            const normalized = normalizeFrankfurterConfig(config);
+            const url = buildFrankfurterRequestUrl(normalized);
+            if (!url) return {emptyHint: this.i18n.homeFxEmpty, items: []};
+            try {
+                const envelope = await loadFrankfurterRates(url, {
+                    signal: context?.signal,
+                    fetchImpl: (reqUrl: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(reqUrl, init),
+                });
+                const snapshot = buildFrankfurterSnapshot(envelope, normalized, {
+                    title: this.i18n.homeFxTitle,
+                    source: this.i18n.homeFxSource,
+                    empty: this.i18n.homeFxEmpty,
+                });
+                if (!snapshot) throw new Error("invalid_frankfurter_rates");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeFxEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 12 * 60 * 60 * 1000});
         register("external-activitywatch-time", this.i18n.homeActivityWatch, "iconClock", this.i18n.homeDescActivityWatch, [], async (config, _device, context) => {
             const request = buildActivityWatchRequest(config, Date.now());
             if (!request) return {emptyHint: this.i18n.homeActivityWatchConfigHint, items: []};
@@ -4632,7 +4681,8 @@ const version = beginSearch(session);
             control.value = String(value);
             updateSummary();
         };
-        const placeholderText = (token: string) => token === "document" ? this.i18n.homeConfigDocumentPlaceholder : "";
+        const placeholderText = (token: string) => token === "document" ? this.i18n.homeConfigDocumentPlaceholder
+            : token === "world-clock-cities" ? this.i18n.homeConfigWorldClockCitiesPlaceholder : "";
         const hintText = (token: string, field: {min?: number; max?: number}) => token === "number"
             ? `${field.min ?? 0}–${field.max ?? 100}` : token ? this.i18n.homeStoreGuideHint : "";
         const renderField = (field: typeof schema[number], section: HTMLElement) => {
@@ -5248,8 +5298,8 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupDocuments, description: this.i18n.homeStoreGroupDocumentsHint, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity"]},
                 {label: this.i18n.homeStoreGroupLearning, description: this.i18n.homeStoreGroupLearningHint, moduleIds: ["flashcard-due", "random-review"]},
-                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time"]},
-                {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
+                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter"]},
+                {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma"]},
             ];
             const groupDescriptionOf = (moduleId: string, def: any): string => {
                 if (def.category === "siyuan") {
@@ -6370,7 +6420,7 @@ const version = beginSearch(session);
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time"]);
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter"]);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });

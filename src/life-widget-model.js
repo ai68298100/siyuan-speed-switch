@@ -1,5 +1,8 @@
 "use strict";
 
+// 单向依赖网络模块仅取 ECB 货币白名单常量（network 模块无副作用、无反向依赖）。
+const {FRANKFURTER_CURRENCIES} = require("./life-widget-network.js");
+
 const WEATHER_CONDITIONS = Object.freeze(["clear", "cloudy", "fog", "rain", "snow", "storm"]);
 const TEMPERATURE_UNITS = Object.freeze(["°C", "°F"]);
 const BANGUMI_DAY_RANGES = Object.freeze(["今天", "明天", "本周"]);
@@ -455,6 +458,175 @@ function buildHackerNewsSnapshot(envelope, config, labels = {}) {
     };
 }
 
+// Uptime Kuma 服务状态：公开状态页 JSON → 有界监控项列表。
+// 只消费 id/name/type/status/ping/uptime 等公开字段，不读取任何告警配置。
+function normalizeUptimeKumaConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const rawOrigin = boundedText(source.endpoint, 256);
+    const rawSlug = boundedText(source.slug, 64).toLowerCase();
+    let origin = "";
+    try {
+        const url = new URL(rawOrigin);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol === "https:" || (url.protocol === "http:" && local))
+            && !url.username && !url.password && (url.pathname === "/" || url.pathname === "")
+            && !url.search && !url.hash) {
+            origin = `${url.protocol}//${url.host}`;
+        }
+    } catch (_) { /* 留空触发配置提示 */ }
+    const slug = /^[a-z0-9][a-z0-9-]{1,63}$/.test(rawSlug) ? rawSlug : "";
+    return {origin, slug};
+}
+
+function normalizeUptimeKumaStatus(payload) {
+    if (!payload || typeof payload !== "object") return null;
+    const groups = Array.isArray(payload.publicGroupList) ? payload.publicGroupList : [];
+    const monitors = groups.slice(0, 8).reduce((result, group) => {
+        const list = group && Array.isArray(group.monitorList) ? group.monitorList : [];
+        list.forEach((monitor) => {
+            if (result.length >= 24) return;
+            const id = Number(monitor?.id);
+            const name = boundedText(monitor?.name, 96);
+            if (!Number.isFinite(id) || !name) return;
+            result.push({id, name});
+        });
+        return result;
+    }, []);
+    const title = payload.config && typeof payload.config === "object" ? boundedText(payload.config.title, 64) : "";
+    const incident = payload.incident && typeof payload.incident === "object"
+        ? boundedText(payload.incident.title, 96) : "";
+    return {title, incident, monitors};
+}
+
+function normalizeUptimeKumaHeartbeat(payload) {
+    if (!payload || typeof payload !== "object") return null;
+    const beats = payload.heartbeatList && typeof payload.heartbeatList === "object" ? payload.heartbeatList : {};
+    const uptimes = payload.uptimeList && typeof payload.uptimeList === "object" ? payload.uptimeList : {};
+    const latest = {};
+    Object.keys(beats).slice(0, 32).forEach((key) => {
+        const list = Array.isArray(beats[key]) ? beats[key] : [];
+        const last = list.length > 0 ? list[list.length - 1] : null;
+        if (!last || typeof last !== "object") return;
+        const ping = Number(last.ping);
+        latest[key] = {
+            up: Number(last.status) === 1,
+            ping: Number.isFinite(ping) && ping >= 0 ? Math.min(600000, Math.trunc(ping)) : null,
+        };
+    });
+    const uptime = {};
+    Object.keys(uptimes).slice(0, 32).forEach((key) => {
+        const value = Number(uptimes[key]);
+        if (Number.isFinite(value) && value >= 0 && value <= 1) uptime[key] = value;
+    });
+    return {latest, uptime};
+}
+
+function buildUptimeKumaSnapshot(statusEnvelope, heartbeatEnvelope, config, labels = {}) {
+    const status = normalizeUptimeKumaStatus(statusEnvelope?.payload);
+    const heartbeat = normalizeUptimeKumaHeartbeat(heartbeatEnvelope?.payload);
+    if (!status || !status.monitors.length) return null;
+    const upText = boundedText(labels.up, 16) || "正常";
+    const downText = boundedText(labels.down, 16) || "异常";
+    const items = [];
+    if (status.incident) {
+        items.push({label: `${boundedText(labels.incident, 16) || "事件"}：${status.incident}`, value: "", rank: 1});
+    }
+    let upCount = 0;
+    status.monitors.forEach((monitor) => {
+        const beat = heartbeat?.latest[String(monitor.id)];
+        const isUp = beat ? beat.up : false;
+        if (isUp) upCount += 1;
+        const uptime24 = heartbeat?.uptime[`${monitor.id}_24`];
+        const uptimeText = Number.isFinite(uptime24) ? ` · ${(uptime24 * 100).toFixed(2)}%` : "";
+        const pingText = beat && beat.ping !== null ? ` · ${beat.ping}ms` : "";
+        items.push({
+            label: monitor.name,
+            value: `${isUp ? upText : downText}${pingText}${uptimeText}`,
+            rank: items.length + 1,
+        });
+    });
+    items.push({
+        label: `${boundedText(labels.source, 32) || "数据来源"}：Uptime Kuma`,
+        value: "",
+    });
+    const healthOf = (envelope) => ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
+    const health = healthOf(statusEnvelope) === "stale" || healthOf(heartbeatEnvelope) === "stale" ? "stale"
+        : (healthOf(statusEnvelope) === "fresh" && healthOf(heartbeatEnvelope) === "fresh") ? "fresh" : "cached";
+    return {
+        title: status.title || boundedText(labels.title, 64) || "服务状态",
+        stat: {value: `${upCount}/${status.monitors.length}`, label: boundedText(labels.stat, 24) || "在线服务"},
+        items,
+        updatedAt: Number.isFinite(Number(heartbeatEnvelope?.fetchedAt)) ? Number(heartbeatEnvelope.fetchedAt) : Date.now(),
+        sourceHealth: health,
+    };
+}
+
+function buildUptimeKumaPageUrl(config, heartbeat = false) {
+    const normalized = normalizeUptimeKumaConfig(config);
+    if (!normalized.origin || !normalized.slug) return "";
+    return `${normalized.origin}/api/status-page/${heartbeat ? "heartbeat/" : ""}${normalized.slug}`;
+}
+
+// Frankfurter 汇率：ECB 日频参考价，货币代码受白名单约束（见 life-widget-network）。
+function normalizeFrankfurterConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const rawBase = boundedText(source.base, 8).toUpperCase();
+    const rawQuotes = Array.isArray(source.quotes) ? source.quotes.map(String).join(",")
+        : (typeof source.quotes === "string" ? source.quotes : "");
+    // base/quotes 都在配置层就过滤到 ECB 白名单：避免用户拼错的货币代码
+    // 生成注定被网络白名单拦截的请求，导致卡片静默失效。
+    const base = FRANKFURTER_CURRENCIES.includes(rawBase) ? rawBase : "CNY";
+    const quotes = [...new Set(rawQuotes.split(/[,，;；\s]+/)
+        .map((code) => code.toUpperCase().slice(0, 3))
+        .filter((code) => /^[A-Z]{3}$/.test(code) && FRANKFURTER_CURRENCIES.includes(code)))]
+        .filter((code) => code !== base)
+        .slice(0, 6);
+    return {base, quotes};
+}
+
+function buildFrankfurterRequestUrl(config) {
+    const normalized = normalizeFrankfurterConfig(config);
+    if (!normalized.quotes.length) return "";
+    return `https://api.frankfurter.dev/v2/rates?base=${normalized.base}&quotes=${normalized.quotes.join(",")}`;
+}
+
+function buildFrankfurterSnapshot(envelope, config, labels = {}) {
+    const normalized = normalizeFrankfurterConfig(config);
+    const rows = Array.isArray(envelope?.payload) ? envelope.payload : [];
+    if (!rows.length) return null;
+    const byQuote = new Map();
+    rows.forEach((row) => {
+        if (!row || typeof row !== "object") return;
+        const quote = boundedText(row.quote, 8).toUpperCase();
+        const rate = Number(row.rate);
+        const date = boundedText(row.date, 16);
+        if (!/^[A-Z]{3}$/.test(quote) || !Number.isFinite(rate) || rate <= 0 || rate > 1000000 || byQuote.has(quote)) return;
+        byQuote.set(quote, {rate, date});
+    });
+    const items = normalized.quotes.reduce((result, quote) => {
+        const hit = byQuote.get(quote);
+        if (hit) result.push({label: `${normalized.base} → ${quote}`, value: String(hit.rate), rank: result.length + 1});
+        return result;
+    }, []);
+    if (!items.length) return null;
+    const dates = [...new Set([...byQuote.values()].map((hit) => hit.date).filter(Boolean))];
+    items.push({
+        label: `${boundedText(labels.source, 32) || "数据来源"}：Frankfurter（ECB）${dates[0] ? ` · ${dates[0]}` : ""}`,
+        value: "",
+    });
+    const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
+    return {
+        title: `${boundedText(labels.title, 48) || "参考汇率"} · ${normalized.base}`,
+        stat: {value: items[0].value, label: items[0].label},
+        items,
+        // 无匹配货币时在 items.length 检查处直接返回 null，由调用方显示重试提示；
+        // 到达这里说明至少有一条汇率，来源行恒在，emptyHint 恒为空。
+        emptyHint: "",
+        updatedAt: Number.isFinite(Number(envelope?.fetchedAt)) ? Number(envelope.fetchedAt) : Date.now(),
+        sourceHealth: health,
+    };
+}
+
 function normalizeActivityWatchEndpoint(value) {
     const raw = boundedText(value, 256) || ACTIVITYWATCH_DEFAULT_ENDPOINT;
     try {
@@ -581,6 +753,14 @@ module.exports = {
     buildExternalFeedSnapshot,
     normalizeHackerNewsConfig,
     buildHackerNewsSnapshot,
+    normalizeUptimeKumaConfig,
+    normalizeUptimeKumaStatus,
+    normalizeUptimeKumaHeartbeat,
+    buildUptimeKumaSnapshot,
+    buildUptimeKumaPageUrl,
+    normalizeFrankfurterConfig,
+    buildFrankfurterRequestUrl,
+    buildFrankfurterSnapshot,
     normalizeActivityWatchEndpoint,
     normalizeActivityWatchConfig,
     buildActivityWatchRequest,

@@ -60,6 +60,14 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showMeta", label: "显示得分与评论", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
+    {moduleId: "external-status-uptimekuma", title: "服务状态", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "endpoint", label: "Uptime Kuma 完整地址", type: "text", defaults: ""},
+        {key: "slug", label: "状态页 slug", type: "text", defaults: ""},
+    ]},
+    {moduleId: "external-fx-frankfurter", title: "汇率参考", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "base", label: "基准货币（3 位代码）", type: "text", defaults: "CNY"},
+        {key: "quotes", label: "目标货币（逗号分隔，1-6 个）", type: "text", defaults: "USD,EUR,JPY,GBP,HKD"},
+    ]},
     {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},

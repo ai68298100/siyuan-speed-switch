@@ -35,10 +35,10 @@
 - **Hacker News 热门（external-news-hackernews）**：无 Key 公开 API，固定端点白名单 + 思源内核代理，30 分钟缓存，排序列表卡；三端。渠道：GitHub 高 Star 池 P0。
 - 同时把 P1/P2 候选写入本路线图（不登记生产目录，防止"可添加但不可用"误导）。
 
-### 第二批（P1，下一批）
-- **Uptime Kuma 服务状态（external-status-uptimekuma）**：用户端点 + `slug` 配置；只读状态页 JSON（monitorList + heartbeat + uptimeList）；来源健康与陈旧缓存。
-- **汇率参考（external-fx-frankfurter）**：基准货币 + 目标货币配置，ECB 日频；卡片标注"参考汇率，非实时"。
-- 两项均只需现有网络层，无需新基础设施。
+### 第二批（P1，已交付，2026-09-16）
+- **Uptime Kuma 服务状态（external-status-uptimekuma）**：用户端点 + `slug` 配置；只读状态页 JSON（monitorList + heartbeat + uptimeList）；来源健康与陈旧缓存。实现要点：slug 字符集约束 `/^[a-z0-9][a-z0-9-]{1,63}$/`、状态页与心跳双 envelope 健康取较差者、5 分钟缓存。
+- **汇率参考（external-fx-frankfurter）**：基准货币 + 目标货币配置，ECB 日频；卡片标注"参考汇率，非实时"。实现要点：实测弃用 v1 域名（301）改用 `api.frankfurter.dev/v2/rates`（返回数组）；货币代码在配置层即过滤 ECB 白名单，避免生成注定被网络门禁拦截的请求；12 小时缓存。
+- 两项均只需现有网络层，无需新基础设施；目录新增 `finance` 分类（7 个语义分组）。
 
 ### 第三批（P2）
 - **Miniflux 未读（external-rss-miniflux）**：用户实例 + API Token；`/v1/entries?status=unread&limit=N`；先做凭据经代理头的传递与脱敏审计。

@@ -21,6 +21,7 @@ const PREVIEW_KINDS = Object.freeze({
     "external-local-time": "stat", "external-weather-open-meteo": "weather", "external-anime-bangumi": "media",
     "external-hot-news-dailyhot": "feed", "external-news-newsnow": "feed",
     "external-world-clock": "stat", "external-news-hackernews": "feed",
+    "external-status-uptimekuma": "stat", "external-fx-frankfurter": "stat",
     "external-activitywatch-time": "activity",
 });
 const SOURCE_INFO = Object.freeze({
@@ -32,6 +33,8 @@ const SOURCE_INFO = Object.freeze({
     "external-news-newsnow": Object.freeze({providerName: "NewsNow", integration: "http", privacy: "endpoint-only"}),
     "external-news-hackernews": Object.freeze({providerName: "Hacker News (Algolia)", integration: "http", privacy: "none"}),
     "external-activitywatch-time": Object.freeze({providerName: "ActivityWatch", integration: "local-bridge", privacy: "local-only"}),
+    "external-status-uptimekuma": Object.freeze({providerName: "Uptime Kuma", integration: "http", privacy: "endpoint-only"}),
+    "external-fx-frankfurter": Object.freeze({providerName: "Frankfurter (ECB)", integration: "http", privacy: "none"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
@@ -40,6 +43,8 @@ const DEPENDENCY_INFO = Object.freeze({
     "external-news-newsnow": Object.freeze({kind: "self-hosted-api", required: true, name: "NewsNow", installUrl: "https://github.com/ourongxing/newsnow", projectUrl: "https://github.com/ourongxing/newsnow", setup: "先部署服务，再填写 /api/s?id=... 完整端点；不提供内置公共演示地址", network: "公网或自建 HTTPS；仅读取标题、来源和时间", platforms: "desktop/sidebar/mobile"}),
     "external-news-hackernews": Object.freeze({kind: "external-api", required: false, name: "Hacker News（Algolia）", installUrl: "https://hn.algolia.com/api/v1", projectUrl: "https://github.com/HackerNews/API", setup: "添加后即读取免 Key 公开接口；固定端点白名单，无需配置或凭据", network: "公网 HTTPS（经思源内核代理）；仅读取首页标题、得分与评论数", platforms: "desktop/sidebar/mobile"}),
     "external-activitywatch-time": Object.freeze({kind: "local-service", required: true, name: "ActivityWatch", installUrl: "https://activitywatch.net/downloads/", projectUrl: "https://github.com/ActivityWatch/activitywatch", setup: "安装并启动本机服务，默认 127.0.0.1:5600；仅桌面/侧栏支持", network: "仅 loopback 本机 Query API；不读取窗口标题", platforms: "desktop/sidebar"}),
+    "external-status-uptimekuma": Object.freeze({kind: "self-hosted-api", required: true, name: "Uptime Kuma", installUrl: "https://github.com/louislam/uptime-kuma", projectUrl: "https://github.com/louislam/uptime-kuma", setup: "自行部署 Uptime Kuma 并发布状态页，再填写实例地址与状态页 slug；仅访问免认证只读路由", network: "公网或自建 HTTPS；仅读取监控在线率与公告", platforms: "desktop/sidebar/mobile"}),
+    "external-fx-frankfurter": Object.freeze({kind: "external-api", required: false, name: "Frankfurter（ECB 参考汇率）", installUrl: "https://frankfurter.dev", projectUrl: "https://github.com/frankfurter-dev/frankfurter", setup: "添加后即读取免 Key 公开接口；端点白名单锁定 api.frankfurter.dev，展示为参考值而非实时行情", network: "公网 HTTPS（经思源内核代理）；仅发送货币代码", platforms: "desktop/sidebar/mobile"}),
     "journal-calendar": Object.freeze({kind: "optional-data", required: false, name: "holiday-cn", installUrl: "https://github.com/NateScarlet/holiday-cn", projectUrl: "https://github.com/NateScarlet/holiday-cn", setup: "开启中国节假日/调休覆盖层后按年度读取静态 JSON；不开启仍可使用日历", network: "公网 HTTPS CDN；仅节假日数据", platforms: "desktop/sidebar/mobile"}),
     "checkin-summary": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用提供方插件后重新打开商店；本插件不内置打卡数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行请求", platforms: "desktop/sidebar/mobile"}),
     "plugin-commands": Object.freeze({kind: "plugin", required: false, name: "其他插件命令提供方", installUrl: "https://github.com/siyuan-note/bazaar", projectUrl: "https://github.com/siyuan-note/bazaar", setup: "仅在其他插件公开兼容 commands 且已启用时显示；无提供方时为空", network: "由提供方插件决定", platforms: "desktop/sidebar/mobile"}),
@@ -711,11 +716,13 @@ const HOME_CONFIG_KINDS = Object.freeze({
     "plugin-commands": "plugin", "external-weather-open-meteo": "weather",
     "external-anime-bangumi": "media", "external-hot-news-dailyhot": "feed",
     "external-news-newsnow": "feed", "external-news-hackernews": "feed", "external-world-clock": "clock",
+    "external-status-uptimekuma": "status", "external-fx-frankfurter": "finance",
     "external-activitywatch-time": "activity",
 });
 const HOME_CONFIG_PLACEHOLDERS = Object.freeze({
     "external-weather-open-meteo:city": "city", "external-hot-news-dailyhot:endpoint": "dailyhot-endpoint",
     "external-news-newsnow:endpoint": "newsnow-endpoint", "external-activitywatch-time:endpoint": "activitywatch-endpoint",
+    "external-world-clock:cities": "world-clock-cities",
     "fixed-document:docId": "document", "fixed-document:title": "document-title", "countdown:title": "countdown-title",
     "plugin-commands:filter": "command-filter", "clipped-unread:tag": "tag",
 });

@@ -200,3 +200,93 @@ test("Hacker News loader exposes stale cache after failure", async () => {
 });
 test("Hacker News loader fails without a stale cache", async () =>
     assert.rejects(network.loadHackerNewsFrontPage({fetchImpl: async () => { throw new Error("offline"); }}), /offline/));
+
+// Uptime Kuma：用户端点 + 已知路由白名单 + 5 分钟缓存 + 陈旧缓存回退。
+const uptimeOrigin = "https://status.example.com";
+const uptimeSlug = "main";
+test("network allowlist accepts exact Uptime Kuma status and heartbeat routes", () => {
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/${uptimeSlug}`, uptimeSlug), true);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/heartbeat/${uptimeSlug}`, uptimeSlug, true), true);
+});
+test("network allowlist rejects Uptime Kuma path drift and injection", () => {
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/other`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/${uptimeSlug}extra`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/heartbeat/${uptimeSlug}`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/${uptimeSlug}?x=1`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/${uptimeSlug}#f`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`https://user:pass@status.example.com/api/status-page/${uptimeSlug}`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/${uptimeSlug}`, "Main"), false);
+    assert.equal(network.allowedUptimeKumaUrl(`${uptimeOrigin}/api/status-page/${uptimeSlug}`, "a"), false);
+    assert.equal(network.allowedUptimeKumaUrl(`http://status.example.com/api/status-page/${uptimeSlug}`, uptimeSlug), false);
+    assert.equal(network.allowedUptimeKumaUrl(`http://127.0.0.1:3001/api/status-page/${uptimeSlug}`, uptimeSlug), true);
+});
+test("Uptime Kuma loader returns fresh data", async () =>
+    assert.equal((await network.loadUptimeKumaPage(`${uptimeOrigin}/api/status-page/${uptimeSlug}`, uptimeSlug, false, {fetchImpl: async () => response('{"publicGroupList":[]}'), now: 100})).status, "fresh"));
+test("Uptime Kuma loader reuses its five-minute cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"publicGroupList":[]}'); };
+    const url = `${uptimeOrigin}/api/status-page/heartbeat/${uptimeSlug}`;
+    await network.loadUptimeKumaPage(url, uptimeSlug, true, {fetchImpl, now: 100});
+    assert.equal((await network.loadUptimeKumaPage(url, uptimeSlug, true, {fetchImpl, now: 200})).status, "cached");
+    assert.equal(calls, 1);
+});
+test("Uptime Kuma loader expires after five minutes", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"publicGroupList":[]}'); };
+    const url = `${uptimeOrigin}/api/status-page/${uptimeSlug}`;
+    await network.loadUptimeKumaPage(url, uptimeSlug, false, {fetchImpl, now: 100});
+    await network.loadUptimeKumaPage(url, uptimeSlug, false, {fetchImpl, now: 100 + network.UPTIME_KUMA_TTL_MS});
+    assert.equal(calls, 2);
+});
+test("Uptime Kuma loader exposes stale cache after failure", async () => {
+    const url = `${uptimeOrigin}/api/status-page/${uptimeSlug}`;
+    await network.loadUptimeKumaPage(url, uptimeSlug, false, {fetchImpl: async () => response('{"publicGroupList":[]}'), now: 100});
+    const stale = await network.loadUptimeKumaPage(url, uptimeSlug, false, {fetchImpl: async () => { throw new Error("offline"); }, now: 100 + network.UPTIME_KUMA_TTL_MS});
+    assert.equal(stale.status, "stale");
+});
+test("Uptime Kuma loader blocks drifted endpoints", async () =>
+    assert.rejects(network.loadUptimeKumaPage(`${uptimeOrigin}/admin`, uptimeSlug, false, {fetchImpl: async () => response("{}")}), /blocked_endpoint/));
+
+// Frankfurter：固定主机/路径 + ECB 货币白名单 + 12 小时缓存。
+const frankfurterUrl = "https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD,EUR";
+test("network allowlist accepts the exact Frankfurter v2 rates endpoint", () =>
+    assert.equal(network.allowedFrankfurterUrl(frankfurterUrl), true));
+test("network allowlist rejects Frankfurter host, path and parameter drift", () => {
+    assert.equal(network.allowedFrankfurterUrl("http://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://evil.example/v2/rates?base=CNY&quotes=USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.app/v2/rates?base=CNY&quotes=USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v1/rates?base=CNY&quotes=USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=CNY"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD&x=1"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=XXX&quotes=USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=CNY&quotes=CNY,USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD,USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD,EUR,JPY,GBP,HKD,SGD,AUD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://user:pass@api.frankfurter.dev/v2/rates?base=CNY&quotes=USD"), false);
+    assert.equal(network.allowedFrankfurterUrl("https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD#f"), false);
+});
+test("Frankfurter loader returns fresh data", async () =>
+    assert.equal((await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl: async () => response("[]"), now: 100})).status, "fresh"));
+test("Frankfurter loader reuses its twelve-hour cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response("[]"); };
+    await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl, now: 100});
+    assert.equal((await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl, now: 200})).status, "cached");
+    assert.equal(calls, 1);
+});
+test("Frankfurter loader expires after twelve hours", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response("[]"); };
+    await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl, now: 100});
+    await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl, now: 100 + network.FRANKFURTER_TTL_MS});
+    assert.equal(calls, 2);
+});
+test("Frankfurter loader exposes stale cache after failure", async () => {
+    await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl: async () => response('[{"date":"2026-09-15","base":"CNY","quote":"USD","rate":0.14}]'), now: 100});
+    const stale = await network.loadFrankfurterRates(frankfurterUrl, {fetchImpl: async () => { throw new Error("offline"); }, now: 100 + network.FRANKFURTER_TTL_MS});
+    assert.equal(stale.status, "stale");
+    assert.equal(stale.payload[0].rate, 0.14);
+});
+test("Frankfurter loader blocks drifted endpoints", async () =>
+    assert.rejects(network.loadFrankfurterRates("https://api.frankfurter.dev/v2/latest?base=CNY", {fetchImpl: async () => response("[]")}), /blocked_endpoint/));
