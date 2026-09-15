@@ -40,4 +40,17 @@ test('release archive carries the current candidate documentation', () => {
         'ROADMAP.md must stay out of the release archive (D-219)');
 });
 
-test('final audit is read-only', () => assert.equal(typeof fs.readFileSync, 'function'));
+test('final audit is read-only', () => {
+    // 原断言为 assert.equal(typeof fs.readFileSync, 'function')，恒为真、零覆盖
+    // （凡有 fs 模块该断言必过）。改为真正校验本审计只读：源码中不得出现任何
+    // 写/删/改文件的调用，否则审计会污染它正在检查的产物。
+    // 禁用词按"词根 + 后缀"拼接构造——若直接写成完整字面量，它们本身就会出现在
+    // 本文件源码里，使 includes 恒为真、断言又退化回恒真。
+    const self = fs.readFileSync(__filename, 'utf8');
+    const suffix = ['Sy', 'nc'].join('');
+    for (const stem of ['writeFile', 'appendFile', 'unlink', 'rm', 'rmdir', 'rename', 'mkdir', 'copyFile', 'truncate', 'chmod']) {
+        const forbidden = stem + suffix;
+        assert.equal(self.includes(forbidden), false,
+            `the audit must stay read-only but references ${forbidden}`);
+    }
+});

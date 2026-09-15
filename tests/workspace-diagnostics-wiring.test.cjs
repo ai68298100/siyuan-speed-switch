@@ -126,14 +126,25 @@ test('workspace runtime module loads standalone (re-export chain guard)', () => 
     const rt = require('../src/agent-workspace-runtime.js');
     const definitions = require('../src/agent-workspace-capability-definitions.js');
     for (const name of [
-        'WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC',
-        'WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS',
         'createWorkspaceCapabilityRuntimeSessionRegistry',
         'createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler',
         'validateWorkspaceRuntimeDiagnosticsDefinition',
     ]) {
-        assert.equal(typeof rt[name], 'function' === typeof rt[name] ? 'function' : typeof rt[name] === 'object' ? 'object' : 'undefined',
-            `runtime export ${name} disappeared`);
+        // 这里必须是真正的存在性断言：此前写成
+        // assert.equal(typeof rt[name], 'function' === typeof rt[name] ? ... )
+        // 的三元式，化简后右侧恒等于 typeof rt[name] 自身，于是 function /
+        // object / undefined 三种情况全部通过——导出被改名或删掉时静默放过，
+        // 与上方"断链这里先失败"的注释意图正好相反（同类问题见 D-354/D-359）。
+        assert.equal(typeof rt[name], 'function', `runtime export ${name} disappeared or is no longer a function`);
+    }
+    for (const name of [
+        'WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC',
+        'WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS',
+    ]) {
+        // typeof null 也是 'object'，故额外排除 null。
+        assert.equal(typeof rt[name], 'object', `runtime export ${name} disappeared or is no longer an object`);
+        assert.notEqual(rt[name], null, `runtime export ${name} is null`);
+        assert.deepEqual(Object.keys(rt[name]).length > 0, true, `runtime export ${name} is empty`);
     }
     // canonical spec 必须是同一对象（definitions re-export 与 wrapper 校验共享身份）
     assert.equal(definitions.WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC, rt.WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC);
