@@ -141,7 +141,8 @@ test("document-context computes kernel notebook source", () => {
 });
 
 test("document-context gives cache names precedence over aliases", () => {
-    assert.match(source, /cachedNotebookName\n\s*\|\|/);
+    // \r?\n: index.ts is CRLF on checkouts with core.autocrlf=true.
+    assert.match(source, /cachedNotebookName\r?\n\s*\|\|/);
 });
 
 test("document-context keeps notebook source read-only", () => {

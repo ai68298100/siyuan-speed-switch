@@ -1,5 +1,14 @@
 # TODO
 
+## T-6079~T-6084 工作树遗留门禁失败清理（2026-09-16，已完成）
+
+- [x] T-6079 定位 i18n 门禁失败根因：`src/i18n/zh-CN.json` 残留探针 key `zzzParityProbeKey`（值"探针"），系此前验证 parity 门禁是否真生效时植入、事后未清理
+- [x] T-6080 确认该 key 同时触发"zh-CN 与 en 的 key 集合不一致"与"存在源码未引用的死 key"两项失败，且 `en.json` 中无对应项
+- [x] T-6081 逐 key 比对确认同批 105+/104− 格式化改动为零值变化（555 个同名 key 全部一致），据此保留格式化、仅删除探针 key
+- [x] T-6082 定位 `document-context` 跨行断言失败根因：`core.autocrlf=true` 使 `src/index.ts` 工作树全为 CRLF，而正则写死 `\n`；实际代码语义完好，属测试对行尾敏感
+- [x] T-6083 全仓扫描 7 处跨行正则，确认仅 1 处受影响；并按既有先例（`store-mobile-layout-contract.test.cjs:695`）改为 `\r?\n`，使断言行尾无关
+- [x] T-6084 跑通 `pnpm verify:release` 5565/5565；记录 D-356
+
 ## T-6073~T-6078 生产依赖图隔离门禁失效修复（2026-09-16，已完成）
 
 - [x] T-6073 核实 UNWIRED 清单与生产图实际闭包的一致性，发现 `agent-document-context` 已在图内却仍列为未接线
