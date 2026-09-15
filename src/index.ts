@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -5117,6 +5117,9 @@ const version = beginSearch(session);
                 card.dataset.cardTone = resolveHomeStoreCardTone(card.dataset);
                 card.dataset.configurable = String(Array.isArray(def.configSchema) && def.configSchema.length > 0);
                 card.dataset.recommended = String(def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready");
+                const installability = normalizeHomeStoreInstallability(undefined, {added: !!added, availability: def.availability || "ready"});
+                card.dataset.installability = installability;
+                card.dataset.installHint = resolveHomeStoreInstallabilityReason(installability);
                 card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
@@ -5322,6 +5325,13 @@ const version = beginSearch(session);
                 addButton.setAttribute("aria-describedby", sizeLabel.id);
                 addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${selectedTile?.textContent || supported[0]}`);
                 addButton.title = addButton.getAttribute("aria-label") || "";
+                addButton.dataset.installability = installability;
+                if (!added && !canHomeStoreInstall(card.dataset, {installability})) {
+                    addButton.disabled = true;
+                    addButton.title = resolveHomeStoreInstallabilityReason(installability);
+                    addButton.setAttribute("aria-label", `${resolveHomeStoreInstallabilityReason(installability)} 路 ${def.title || moduleId}`);
+                }
+                addButton.style.minHeight = `${resolveHomeStoreTouchTargetSize(device)}px`;
                 addButton.onclick = () => {
                     const sizeKey = selectedTile!.dataset.size;
                     const {w, h} = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize]!;

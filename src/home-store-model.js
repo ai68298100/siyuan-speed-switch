@@ -741,6 +741,59 @@ function resolveHomeConfigIntegration(sourceInfo, category) {
     if (sourceInfo?.integration === "direct") return "offline"; return homeConfigText(category, 32) && category !== "siyuan" ? "plugin" : "offline";
 }
 
+// Interaction resilience semantics shared by all store surfaces.
+const STORE_ACTION_STATES = Object.freeze(["idle", "pending", "success", "error"]);
+const STORE_ERROR_KINDS = Object.freeze(["aborted", "timeout", "offline", "unauthorized", "not-found", "invalid", "unknown"]);
+const STORE_CACHE_STATES = Object.freeze(["none", "fresh", "stale", "expired"]);
+const STORE_HEALTH_STATES = Object.freeze(["unknown", "healthy", "degraded", "unavailable"]);
+function normalizeHomeStoreActionState(value) { return STORE_ACTION_STATES.includes(value) ? value : "idle"; }
+function resolveHomeStoreActionState(action, context = {}) {
+    const key = normalizeHomeStoreAction(action); const state = normalizeHomeStoreActionState(context?.state);
+    if (!isHomeStoreActionEnabled(key, context?.card || context)) return "idle";
+    if (state === "pending") return "pending"; if (context?.error) return "error"; if (context?.completed === true) return "success"; return state;
+}
+function buildHomeStoreActionFeedback(action, context = {}, labels = {}) {
+    const state = resolveHomeStoreActionState(action, context); const key = normalizeHomeStoreAction(action);
+    const fallback = ({add: "添加", configure: "配置", remove: "移除", preview: "预览", "apply-size": "应用尺寸"})[key] || key;
+    const text = boundedText(labels[state] || labels[key] || fallback, 96) || fallback;
+    return {action: key, state, text, busy: state === "pending", dismissible: state === "success" || state === "error"};
+}
+function normalizeHomeStoreRetryPolicy(value = {}) {
+    const source = value && typeof value === "object" ? value : {};
+    const maxAttempts = Number.isFinite(Number(source.maxAttempts)) ? Math.min(5, Math.max(0, Math.trunc(Number(source.maxAttempts)))) : 2;
+    const baseDelayMs = Number.isFinite(Number(source.baseDelayMs)) ? Math.min(30000, Math.max(100, Math.trunc(Number(source.baseDelayMs)))) : 500;
+    const factor = Number.isFinite(Number(source.factor)) ? Math.min(4, Math.max(1, Number(source.factor))) : 2;
+    return {maxAttempts, baseDelayMs, factor};
+}
+function computeHomeStoreRetryDelay(attempt, policy = {}) { const config = normalizeHomeStoreRetryPolicy(policy); const n = Number.isFinite(Number(attempt)) ? Math.max(0, Math.trunc(Number(attempt))) : 0; return Math.min(30000, Math.round(config.baseDelayMs * Math.pow(config.factor, n))); }
+function normalizeHomeStoreErrorKind(value) { return STORE_ERROR_KINDS.includes(value) ? value : "unknown"; }
+function shouldRetryHomeStoreError(kind, attempt, policy = {}) { const key = normalizeHomeStoreErrorKind(kind); const config = normalizeHomeStoreRetryPolicy(policy); return ["timeout", "offline", "unknown"].includes(key) && Number(attempt) < config.maxAttempts; }
+function classifyHomeStoreError(error) { const text = boundedText(error?.message || error, 160).toLowerCase(); if (/abort|cancel/.test(text)) return "aborted"; if (/timeout|timed out/.test(text)) return "timeout"; if (/offline|network|fetch|connection/.test(text)) return "offline"; if (/401|403|unauthor/.test(text)) return "unauthorized"; if (/404|not found/.test(text)) return "not-found"; if (/invalid|schema|parse/.test(text)) return "invalid"; return "unknown"; }
+function resolveHomeStoreErrorMessage(kind, labels = {}) { const key = normalizeHomeStoreErrorKind(kind); return boundedText(labels[key], 128) || ({aborted: "操作已取消", timeout: "请求超时", offline: "网络不可用", unauthorized: "需要授权", "not-found": "内容不存在", invalid: "数据格式无效", unknown: "暂时无法完成"})[key]; }
+function normalizeHomeStoreSourceHealth(value) { return STORE_HEALTH_STATES.includes(value) ? value : "unknown"; }
+function resolveHomeStoreSourceHealthTone(value) { return ({unknown: "neutral", healthy: "success", degraded: "warning", unavailable: "error"})[normalizeHomeStoreSourceHealth(value)]; }
+function buildHomeStoreSourceHealthSummary(source, health, labels = {}) { const name = boundedText(source, 64) || "来源"; const key = normalizeHomeStoreSourceHealth(health); return {source: name, health: key, tone: resolveHomeStoreSourceHealthTone(key), text: boundedText(labels[key], 96) || key}; }
+function normalizeHomeStoreCacheState(value) { return STORE_CACHE_STATES.includes(value) ? value : "none"; }
+function resolveHomeStoreCacheTone(value) { return ({none: "neutral", fresh: "success", stale: "warning", expired: "error"})[normalizeHomeStoreCacheState(value)]; }
+function buildHomeStoreCacheLabel(value, labels = {}) { const key = normalizeHomeStoreCacheState(value); return boundedText(labels[key], 64) || key; }
+function normalizeHomeStoreInstallability(value, card) { if (value === true || value === "ready") return "ready"; if (value === false || value === "blocked") return "blocked"; if (["added", "conditional", "external"].includes(value)) return value; const item = normalizeHomeStoreCard(card); return item.added ? "added" : item.availability === "external" ? "external" : item.availability === "conditional" ? "conditional" : "ready"; }
+function resolveHomeStoreInstallabilityReason(value, labels = {}) { const key = normalizeHomeStoreInstallability(value); return boundedText(labels[key], 96) || ({ready: "可直接添加", added: "已添加", conditional: "完成配置后可用", external: "需外部服务", blocked: "暂不可添加"})[key]; }
+function canHomeStoreInstall(card, context = {}) { const state = normalizeHomeStoreInstallability(context.installability, card); return state === "ready" || state === "conditional"; }
+function buildHomeStoreInstallHint(card, context = {}, labels = {}) { const state = normalizeHomeStoreInstallability(context.installability, card); return {state, canInstall: canHomeStoreInstall(card, context), text: resolveHomeStoreInstallabilityReason(state, labels)}; }
+function normalizeHomeStoreTouchTarget(value) { const n = Number(value); return Number.isFinite(n) ? Math.min(64, Math.max(32, Math.trunc(n))) : 44; }
+function resolveHomeStoreTouchTargetSize(surface) { return normalizeHomeStoreDevice(surface) === "mobile" ? 48 : 40; }
+function shouldUseHomeStoreSingleColumn(surface, width) { if (normalizeHomeStoreDevice(surface) === "mobile") return true; const n = Number(width); return Number.isFinite(n) && n < 560; }
+function resolveHomeStorePageWindow(page, pages, radius = 2) { const total = Math.max(1, Math.trunc(Number(pages) || 1)); const current = Math.min(total, Math.max(1, Math.trunc(Number(page) || 1))); const span = Math.min(5, Math.max(1, Math.trunc(Number(radius) || 2) * 2 + 1)); const half = Math.floor(span / 2); let start = Math.max(1, current - half); let end = Math.min(total, start + span - 1); start = Math.max(1, end - span + 1); return {page: current, pages: total, start, end}; }
+function buildHomeStorePaginationLabel(page, pages, labels = {}) { const window = resolveHomeStorePageWindow(page, pages); return (boundedText(labels.text, 96) || "第 {page} / {pages} 页").replace("{page}", String(window.page)).replace("{pages}", String(window.pages)); }
+function normalizeHomeStoreFocusTarget(value) { return ["card", "tab", "search", "sort", "group", "empty"].includes(value) ? value : "card"; }
+function resolveHomeStoreFocusTarget(status, preferred) { if (status === "empty") return "empty"; return normalizeHomeStoreFocusTarget(preferred); }
+function buildHomeStoreAnnouncement(action, state, title, labels = {}) { const feedback = buildHomeStoreActionFeedback(action, {state, completed: state === "success"}, labels); return boundedText(`${boundedText(title, 96)}：${feedback.text}`, 160); }
+function normalizeHomeStoreOperationLog(value, max = 20) { const list = Array.isArray(value) ? value : []; const limit = Math.min(50, Math.max(1, Math.trunc(Number(max) || 20))); return list.filter((entry) => entry && typeof entry === "object").slice(-limit).map((entry) => ({action: normalizeHomeStoreAction(entry.action), state: normalizeHomeStoreActionState(entry.state), at: Number.isFinite(Number(entry.at)) ? Number(entry.at) : 0})); }
+function appendHomeStoreOperationLog(log, entry, max = 20) { return normalizeHomeStoreOperationLog([...normalizeHomeStoreOperationLog(log, max), entry], max); }
+function summarizeHomeStoreOperations(log) { const list = normalizeHomeStoreOperationLog(log); return {total: list.length, success: list.filter((x) => x.state === "success").length, error: list.filter((x) => x.state === "error").length, pending: list.filter((x) => x.state === "pending").length}; }
+function resolveHomeStoreRecoveryAction(errorKind) { return ({aborted: "none", timeout: "retry", offline: "retry", unauthorized: "configure", "not-found": "refresh", invalid: "refresh", unknown: "retry"})[normalizeHomeStoreErrorKind(errorKind)] || "retry"; }
+function buildHomeStoreRecoveryPlan(errorKind, attempt, policy = {}) { const kind = normalizeHomeStoreErrorKind(errorKind); return {kind, action: resolveHomeStoreRecoveryAction(kind), retryable: shouldRetryHomeStoreError(kind, attempt, policy), delayMs: computeHomeStoreRetryDelay(attempt, policy)}; }
+
 module.exports = {
     STORE_TABS, STORE_DEVICES, STORE_AVAILABILITY, STORE_CATEGORIES, STORE_INTEGRATIONS, STORE_SORTS,
     normalizeHomeStoreQuery, normalizeHomeStoreTab, normalizeHomeStoreDevice, normalizeHomeStoreCategory,
@@ -775,4 +828,15 @@ module.exports = {
     buildHomeStoreFilterChip, normalizeHomeStoreResultCounts, buildHomeStoreResultSummary, resolveHomeStoreCardTone,
     buildHomeStoreCardBadges, isHomeStoreCardConfigurable, countHomeStoreByStatus, normalizeHomeStoreViewState, serializeHomeStoreViewState,
     parseHomeStoreViewState, sameHomeStoreViewState, resetHomeStoreViewState, toggleHomeStoreDensity, buildHomeStoreViewSummary,
+    STORE_ACTION_STATES, STORE_ERROR_KINDS, STORE_CACHE_STATES, STORE_HEALTH_STATES,
+    normalizeHomeStoreActionState, resolveHomeStoreActionState, buildHomeStoreActionFeedback,
+    normalizeHomeStoreRetryPolicy, computeHomeStoreRetryDelay, normalizeHomeStoreErrorKind,
+    shouldRetryHomeStoreError, classifyHomeStoreError, resolveHomeStoreErrorMessage,
+    normalizeHomeStoreSourceHealth, resolveHomeStoreSourceHealthTone, buildHomeStoreSourceHealthSummary,
+    normalizeHomeStoreCacheState, resolveHomeStoreCacheTone, buildHomeStoreCacheLabel,
+    normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, buildHomeStoreInstallHint,
+    normalizeHomeStoreTouchTarget, resolveHomeStoreTouchTargetSize, shouldUseHomeStoreSingleColumn,
+    resolveHomeStorePageWindow, buildHomeStorePaginationLabel, normalizeHomeStoreFocusTarget, resolveHomeStoreFocusTarget,
+    buildHomeStoreAnnouncement, normalizeHomeStoreOperationLog, appendHomeStoreOperationLog, summarizeHomeStoreOperations,
+    resolveHomeStoreRecoveryAction, buildHomeStoreRecoveryPlan,
 };
