@@ -234,7 +234,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 151 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5235 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 152 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5266 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |

@@ -823,6 +823,18 @@ function normalizeHomeStoreSetupUrl(value) { const text = boundedText(value, 512
 function buildHomeStoreSetupLink(value, labels = {}) { const href = normalizeHomeStoreSetupUrl(value); return {href, enabled: !!href, text: boundedText(labels.text, 64) || (href ? "打开设置说明" : "暂无设置链接")}; }
 function summarizeHomeStoreConfigCompletion(schema, draft) { const fields = Array.isArray(schema) ? schema.filter((field) => field && typeof field === "object" && homeConfigText(field.key, 64)) : []; const missing = fields.filter((field) => { const value = draft?.[field.key]; return value == null || String(value).trim() === ""; }).map((field) => homeConfigText(field.label || field.key, 64)); return {total: fields.length, configured: fields.length - missing.length, missing: missing.slice(0, 12), complete: fields.length === 0 || missing.length === 0}; }
 function buildHomeStoreConfigMissingText(schema, draft, labels = {}) { const summary = summarizeHomeStoreConfigCompletion(schema, draft); if (summary.complete) return boundedText(labels.complete, 96) || "配置已完成"; return (boundedText(labels.missing, 96) || "还需配置：{fields}").replace("{fields}", summary.missing.join("、")); }
+function normalizeHomeStoreBatchAction(value) { return ["add", "remove", "configure"].includes(value) ? value : "add"; }
+function isHomeStoreBatchEligible(card, action = "add") { const item = normalizeHomeStoreCard(card); const key = normalizeHomeStoreBatchAction(action); if (key === "add") return !item.added && item.availability === "ready"; if (key === "remove") return item.added; return item.added && item.configurable; }
+function partitionHomeStoreBatchCards(cards, selectedIds, action = "add") { const selected = new Set(normalizeHomeStoreSelectionIds(selectedIds, 128)); const list = Array.isArray(cards) ? cards : []; const eligible = []; const skipped = []; list.forEach((card) => { const id = normalizeHomeStoreCardId(card?.moduleId || card?.id); if (!id || !selected.has(id)) return; (isHomeStoreBatchEligible(card, action) ? eligible : skipped).push(id); }); return {eligible: [...new Set(eligible)], skipped: [...new Set(skipped)]}; }
+function buildHomeStoreBatchResult(eligible, skipped, action = "add") { const accepted = normalizeHomeStoreSelectionIds(eligible, 128); const ignored = normalizeHomeStoreSelectionIds(skipped, 128); return {action: normalizeHomeStoreBatchAction(action), accepted: accepted.length, skipped: ignored.length, ids: accepted, skippedIds: ignored, ok: accepted.length > 0}; }
+function buildHomeStoreBatchResultText(result, labels = {}) { const value = result && typeof result === "object" ? result : {}; const action = normalizeHomeStoreBatchAction(value.action); const accepted = Math.max(0, Math.trunc(Number(value.accepted) || 0)); const skipped = Math.max(0, Math.trunc(Number(value.skipped) || 0)); const template = boundedText(labels[action], 128) || "已处理 {accepted} 项，跳过 {skipped} 项"; return template.replace("{accepted}", String(accepted)).replace("{skipped}", String(skipped)); }
+function resolveHomeStoreBatchActionLabel(action, labels = {}) { const key = normalizeHomeStoreBatchAction(action); return boundedText(labels[key], 64) || ({add: "批量添加", remove: "批量移除", configure: "批量配置"})[key]; }
+function buildHomeStoreBatchSelectionHint(selected, cards, action = "add", labels = {}) { const partition = partitionHomeStoreBatchCards(cards, selected, action); const result = buildHomeStoreBatchResult(partition.eligible, partition.skipped, action); return {...result, text: buildHomeStoreBatchResultText(result, labels)}; }
+function resolveHomeStoreBatchFocusAfterResult(result) { return result?.skipped > 0 ? "selection" : result?.accepted > 0 ? "summary" : "selection"; }
+function shouldKeepHomeStoreSelectionAfterBatch(result) { return Number(result?.skipped) > 0; }
+function normalizeHomeStoreBatchError(value) { return ["none", "partial", "failed"].includes(value) ? value : "none"; }
+function resolveHomeStoreBatchError(accepted, skipped) { const ok = Number(accepted) > 0; const ignored = Number(skipped) > 0; return !ok && ignored ? "failed" : ok && ignored ? "partial" : "none"; }
+function buildHomeStoreBatchReceipt(result, error = "none") { const value = result && typeof result === "object" ? result : {}; return {action: normalizeHomeStoreBatchAction(value.action), accepted: Math.max(0, Math.trunc(Number(value.accepted) || 0)), skipped: Math.max(0, Math.trunc(Number(value.skipped) || 0)), error: normalizeHomeStoreBatchError(error)}; }
 
 module.exports = {
     STORE_TABS, STORE_DEVICES, STORE_AVAILABILITY, STORE_CATEGORIES, STORE_INTEGRATIONS, STORE_SORTS,
@@ -877,4 +889,8 @@ module.exports = {
     buildHomeStoreCardStateSummary, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel,
     normalizeHomeStoreSetupUrl, buildHomeStoreSetupLink, summarizeHomeStoreConfigCompletion,
     buildHomeStoreConfigMissingText,
+    normalizeHomeStoreBatchAction, isHomeStoreBatchEligible, partitionHomeStoreBatchCards,
+    buildHomeStoreBatchResult, buildHomeStoreBatchResultText, resolveHomeStoreBatchActionLabel,
+    buildHomeStoreBatchSelectionHint, resolveHomeStoreBatchFocusAfterResult, shouldKeepHomeStoreSelectionAfterBatch,
+    normalizeHomeStoreBatchError, resolveHomeStoreBatchError, buildHomeStoreBatchReceipt,
 };
