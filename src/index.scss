@@ -1220,6 +1220,10 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     --sw-surface-muted: color-mix(in srgb, var(--b3-theme-surface) 86%, #e4e8f2 14%);
     --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
     --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 12%, transparent);
+    // 按下态：比 hover 的 accent-soft 更实一档，作为可点击列表项/标签的即时反馈。
+    // 独立成令牌是为了让 prefers-contrast: more 能一并覆盖（见文件末尾），
+    // 否则高对比度下按下反而比悬停更浅。
+    --sw-accent-pressed: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 20%, transparent);
     --sw-warm-soft: color-mix(in srgb, var(--sw-warm-accent) 13%, transparent);
     --sw-hover-bg: var(--b3-list-hover, var(--sw-accent-soft));
     --sw-focus-ring: 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 24%, transparent);
@@ -3278,6 +3282,9 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
 
     &:hover,
     &:focus-visible { background: var(--sw-accent-soft, var(--b3-list-hover)); outline: none; }
+
+    // 按下反馈：此前只有 hover，点击瞬间没有可见变化。
+    &:active { background: var(--sw-accent-pressed, var(--sw-accent-soft, var(--b3-list-hover))); }
 }
 
 .sw-second-panel__empty {
@@ -3409,6 +3416,12 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
     }
+
+    // 按下反馈里的缩放属于位移类动效，即便过渡被压到 0.01ms 仍会瞬间跳变。
+    // 减弱动效时改用纯颜色反馈（背景仍会加深，功能提示不丢失）。
+    .speed-switch .sw__icon-btn:active {
+        transform: none;
+    }
 }
 
 // ==================== 现代柔和视觉层（第一面板 / 第二面板 / 移动端共享） ====================
@@ -3465,10 +3478,19 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
             width: 36px;
             height: 36px;
             border-radius: 11px;
+            transition: transform $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
 
             &:hover,
             &:focus-visible {
                 background: var(--sw-accent-soft);
+            }
+
+            // 按下反馈：此前只有 hover，点击瞬间没有任何可见变化——按下去"没反应"，
+            // 手感偏钝。Apple 流体设计的首要原则是响应必须立刻开始，故补上即时缩放。
+            // 120ms 令牌保证按下与释放都跟手。
+            &:active {
+                background: var(--sw-accent-soft);
+                transform: scale(0.94);
             }
         }
     }
@@ -3664,6 +3686,9 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
         border-radius: 10px;
 
         &:hover { background: var(--sw-accent-soft); }
+
+        // 按下反馈：与 hover 同色系但更实一档（此前点击无可见变化）。
+        &:active { background: var(--sw-accent-pressed, var(--sw-accent-soft)); }
 
         &.is-active {
             background: var(--sw-accent-soft);
@@ -5495,6 +5520,9 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
 
         &:hover { color: var(--b3-theme-on-background); background: color-mix(in srgb, var(--b3-theme-primary) 6%, transparent); }
 
+        // 按下反馈：比 hover 更实一档，点击瞬间给出可见响应。
+        &:active { color: var(--b3-theme-on-background); background: color-mix(in srgb, var(--b3-theme-primary) 13%, transparent); }
+
         &:focus-visible {
             outline: 2px solid var(--b3-theme-primary);
             outline-offset: -2px;
@@ -6434,6 +6462,8 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     .speed-switch,
     .sw-settings {
         --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 20%, transparent);
+        // 按下态须始终比悬停更实，故一并抬高一档，避免高对比度下反馈反转。
+        --sw-accent-pressed: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 30%, transparent);
         --sw-surface-muted: var(--b3-theme-surface);
         --sw-control-bg: var(--b3-theme-surface);
     }
