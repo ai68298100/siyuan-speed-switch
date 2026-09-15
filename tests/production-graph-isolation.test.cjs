@@ -25,7 +25,6 @@ const UNWIRED_CONTRACT_MODULES = [
     'agent-workspace-registry',
     'agent-workspace-session',
     'agent-write-actions',
-    'path-filter-model',
 ];
 
 const WIRED_SANITY_MODULES = [
@@ -35,6 +34,10 @@ const WIRED_SANITY_MODULES = [
     'agent-workspace-runtime',
     'home-adapters',
     'home-controller',
+    // T-103（D-365/D-366）：path-filter-model 随桌面路径筛选进入生产。
+    // 它是首个接入的 v0.18 契约模块，且为只读——仅构造 listDocsByPath 请求
+    // 并归一化响应，不含任何写入动作。
+    'path-filter-model',
     'search-model',
 ];
 
@@ -98,5 +101,5 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 白名单网络层。当前闭包为 31(含随后经 D-352 确认已接线的
     // agent-document-context);继续增长须复核 512 KiB 包体门禁(D-353)。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 31, `production graph grew to ${graph.size} modules; audited ceiling is 31`);
+    assert.ok(graph.size <= 32, `production graph grew to ${graph.size} modules; audited ceiling is 32`);
 });

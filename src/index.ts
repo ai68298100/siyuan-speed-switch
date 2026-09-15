@@ -6,6 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
+import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -621,6 +622,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
     private docSearchFilters = new WeakMap<HTMLElement, IDocSearchFilters>();
     private docSearchNotebookNames = new WeakMap<HTMLElement, Map<string, string>>();
+    // v0.18 路径筛选（T-103）：内核请求辅助函数自带 5s 超时且不接受外部 signal，
+    // 因此用代际标记实现取消——每次打开路径菜单自增，过期响应直接丢弃。
+    private docSearchPathGeneration = 0;
+    private docSearchPathTitles = new WeakMap<HTMLElement, Map<string, string>>();
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
@@ -3507,6 +3512,9 @@ const version = beginSearch(session);
         "/api/filetree/getDoc", "/api/filetree/createDocWithMd",
         "/api/block/updateBlock", "/api/block/insertBlock", "/api/block/appendBlock",
         "/api/outline/getDocOutline", "/api/riff/getNotebookRiffDueCards",
+        // v0.18 路径筛选（T-103）：只读列目录，用于搜索筛选选择路径前缀。
+        // 真实宿主证据见 docs/path-filter-host-evidence.md（D-365）。
+        "/api/filetree/listDocsByPath",
     ]);
 
     private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
@@ -3558,6 +3566,9 @@ const version = beginSearch(session);
                     break;
                 case "/api/riff/getNotebookRiffDueCards":
                     response = await fetch("/api/riff/getNotebookRiffDueCards", init);
+                    break;
+                case "/api/filetree/listDocsByPath":
+                    response = await fetch("/api/filetree/listDocsByPath", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -7246,6 +7257,31 @@ const version = beginSearch(session);
         return wrapper;
     }
 
+    // v0.18 路径筛选（T-103）：只读列目录，供搜索筛选选择路径前缀。
+    // 内核辅助函数在守卫失败、超时、非 2xx 时统一返回 null，无法区分"端点不存在"
+    // 与"网络失败"，故一律按 unavailable 降级提示，且不阻塞其他筛选维度。
+    // 取消通过代际标记实现：请求发出前后各比对一次，过期结果直接丢弃。
+    // 真实宿主行为见 docs/path-filter-host-evidence.md（D-365）——包括"不存在的
+    // 路径返回空列表而非错误"，因此无需为已删除的路径前缀设计专门分支。
+    private async loadDocSearchPathChildren(notebook: string, path: string, generation: number) {
+        const input = {notebook, path, limit: MAX_PATH_ITEMS};
+        const request = buildPathFilterListRequest(input);
+        const cancelled = () => normalizePathFilterProbeOutcome({kind: "cancelled"}, input);
+        if (!request) return normalizePathFilterProbeOutcome({kind: "response", payload: null}, input);
+        if (generation !== this.docSearchPathGeneration) return cancelled();
+        let payload: unknown = null;
+        try {
+            payload = await this.fetchKernelJson("/api/filetree/listDocsByPath", request.body);
+        } catch (_) {
+            payload = null;
+        }
+        if (generation !== this.docSearchPathGeneration) return cancelled();
+        if (payload === null || payload === undefined) {
+            return normalizePathFilterProbeOutcome({kind: "unavailable"}, input);
+        }
+        return normalizePathFilterProbeOutcome({kind: "response", payload}, input);
+    }
+
     private bindDocSearchFilter(
         container: HTMLElement,
         scrollElement: HTMLElement,
@@ -7292,6 +7328,79 @@ const version = beginSearch(session);
             updateButton();
             this.applySearch(scrollElement, searchInput, onClose);
             searchInput.focus({preventScroll: true});
+        };
+        // v0.18 路径筛选（T-103）：逐级浏览目录并选择路径前缀。
+        // 每次打开自增代际标记，使在途请求作废（内核辅助函数不接受外部 signal）。
+        const openPathMenu = (notebook: string, path: string) => {
+            const generation = ++this.docSearchPathGeneration;
+            const rect = button.getBoundingClientRect();
+            const position = {x: rect.left, y: rect.bottom};
+            const openAsMenu = (items: IMenu[]) => {
+                const menu = new Menu("swSearchPath");
+                items.forEach((item) => menu.addItem(item));
+                activeMenu?.close();
+                activeMenu = menu;
+                menu.open(position);
+            };
+            openAsMenu([{label: this.i18n.searchPathLoading, disabled: true}]);
+            void this.loadDocSearchPathChildren(notebook, path, generation).then((result) => {
+                if (!button.isConnected || generation !== this.docSearchPathGeneration) return;
+                const items: IMenu[] = [];
+                if (!result.ok) {
+                    items.push({
+                        label: result.reason === "unavailable"
+                            ? this.i18n.searchPathUnavailable
+                            : this.i18n.searchPathFailed,
+                        disabled: true,
+                    });
+                    openAsMenu(items);
+                    return;
+                }
+                const titles = this.docSearchPathTitles.get(scrollElement) || new Map<string, string>();
+                result.items.forEach((item) => titles.set(item.path, item.title));
+                this.docSearchPathTitles.set(scrollElement, titles);
+                if (path !== "/") {
+                    const parent = path.slice(0, path.lastIndexOf("/")) || "/";
+                    items.push({
+                        label: this.i18n.searchPathUp,
+                        icon: "iconUp",
+                        click: () => openPathMenu(notebook, parent),
+                    });
+                }
+                items.push({
+                    label: this.i18n.searchPathHere,
+                    icon: "iconFilter",
+                    click: () => commitFilters((next) => {
+                        const list = next.paths || [];
+                        if (!list.includes(path)) next.paths = [...list, path];
+                    }),
+                });
+                items.push({type: "separator"});
+                if (result.items.length === 0) {
+                    items.push({label: this.i18n.searchNoPaths, disabled: true});
+                }
+                result.items.forEach((item) => {
+                    const pick = () => commitFilters((next) => {
+                        const list = next.paths || [];
+                        if (!list.includes(item.path)) next.paths = [...list, item.path];
+                    });
+                    if (item.hasChildren) {
+                        items.push({
+                            label: item.title,
+                            icon: "iconFolder",
+                            submenu: [
+                                {label: this.i18n.searchPathHere, icon: "iconFilter", click: pick},
+                                {type: "separator"},
+                                {label: this.i18n.searchPathBrowse, icon: "iconFolder", click: () => openPathMenu(notebook, item.path)},
+                            ],
+                        });
+                    } else {
+                        items.push({label: item.title, icon: "iconFiles", click: pick});
+                    }
+                });
+                if (result.truncated) items.push({label: this.i18n.searchPathTruncated, disabled: true});
+                openAsMenu(items);
+            });
         };
         const onClick = async (event: MouseEvent) => {
             event.preventDefault();
@@ -7376,6 +7485,41 @@ const version = beginSearch(session);
             const menu = new Menu("swSearchFilter");
             activeMenu = menu;
             menu.addItem({type: "submenu", label: this.i18n.searchFilterNotebook, icon: "iconFiles", submenu: notebookSub});
+            // v0.18 路径筛选（T-103）：路径前缀依赖笔记本，故紧随其后；
+            // 未选笔记本时给明确前置提示，而非隐藏入口。
+            const currentNotebook = typeof current.notebook === "string" ? current.notebook : "";
+            const currentPaths = current.paths || [];
+            const pathSub: IMenu[] = [];
+            if (!currentNotebook) {
+                pathSub.push({label: this.i18n.searchPathPickNotebook, disabled: true});
+            } else {
+                pathSub.push({
+                    label: this.i18n.searchAllPaths,
+                    icon: "iconGlobalGraph",
+                    checked: currentPaths.length === 0,
+                    click: () => commitFilters((next) => delete next.paths),
+                });
+                const pathTitles = this.docSearchPathTitles.get(scrollElement);
+                currentPaths.forEach((value) => {
+                    const fallback = value.split("/").pop()?.replace(/\.sy$/, "") || value;
+                    pathSub.push({
+                        label: (pathTitles?.get(value) || fallback).slice(0, 40),
+                        icon: "iconTrashcan",
+                        click: () => commitFilters((next) => {
+                            const rest = (next.paths || []).filter((entry) => entry !== value);
+                            if (rest.length > 0) next.paths = rest;
+                            else delete next.paths;
+                        }),
+                    });
+                });
+                pathSub.push({type: "separator"});
+                pathSub.push({
+                    label: this.i18n.searchPathBrowse,
+                    icon: "iconFolder",
+                    click: () => openPathMenu(currentNotebook, "/"),
+                });
+            }
+            menu.addItem({type: "submenu", label: this.i18n.searchFilterPath, icon: "iconFolder", submenu: pathSub});
             menu.addItem({
                 type: "submenu",
                 label: this.i18n.searchContentType,
@@ -7471,6 +7615,8 @@ const version = beginSearch(session);
             const notebookName = scrollElement ? this.docSearchNotebookNames.get(scrollElement)?.get(notebookId) : "";
             parts.push(`${this.i18n.searchFilterNotebook}: ${(notebookName || notebookId).slice(0, 32)}`);
         }
+        const pathCount = filters.paths?.length || 0;
+        if (pathCount > 0) parts.push(`${this.i18n.searchFilterPath}: ${pathCount}`);
         const typeLabels: Record<string, string> = {
             document: this.i18n.searchTypeDocument,
             heading: this.i18n.searchTypeHeading,

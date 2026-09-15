@@ -5,7 +5,39 @@ const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
-test("path filter remains model-gated until the host endpoint is approved", () => {
-    assert.match(source, /delete next\.paths/);
-    assert.doesNotMatch(source, /listDocsByPath/);
+// 2026-09-16：宿主端点获批，本门禁从"禁止接入生产"转为"约束接入方式"。
+// 放宽依据 = docs/path-filter-host-evidence.md（D-365）：在真实宿主
+// （内核 3.8.4-beta.2，已认证会话）实测 /api/filetree/listDocsByPath 返回
+// 200 / code 0 / 22ms，box 与 path 回显均等于请求值，响应结构与
+// path-filter-model 的校验假设逐项吻合，故端点获批这一前提已成立。
+// 仍未取证的是"最窄可用侧栏宽度"（UI 度量），因此本次只接入桌面筛选弹层，
+// 侧栏入口不在本轮范围内。
+
+test("path filter is wired now that the host endpoint is approved", () => {
+    assert.match(source, /delete next\.paths/, "清除路径筛选的分支必须保留");
+    assert.match(source, /listDocsByPath/, "端点获批后应已接入（见 D-365）");
+});
+
+test("path filter endpoint is allowlisted and called with a literal URL", () => {
+    // 安全约束：新增端点必须进白名单，且请求使用字面量 URL（不存在变量 URL 请求）
+    assert.match(source, /"\/api\/filetree\/listDocsByPath",/, "端点必须在 KERNEL_ENDPOINTS 白名单内");
+    assert.match(source, /fetch\("\/api\/filetree\/listDocsByPath", init\)/, "必须使用字面量 URL 发起请求");
+});
+
+test("path filter keeps generation-token cancellation", () => {
+    // fetchKernelJson 不接受外部 signal，取消只能靠代际标记；此约束不得退化。
+    assert.match(source, /private docSearchPathGeneration = 0/);
+    const uses = [...source.matchAll(/this\.docSearchPathGeneration/g)].length;
+    assert.ok(uses >= 3, `代际标记应至少在自增与两处比对中使用，实测 ${uses} 处`);
+});
+
+test("path filter degrades instead of blocking when the endpoint is unavailable", () => {
+    assert.match(source, /searchPathUnavailable/, "端点不可用时须给出降级提示");
+    assert.match(source, /kind: "unavailable"/, "失败须映射为 unavailable 而非抛出");
+});
+
+test("path filter stays read-only", () => {
+    // 只读边界：路径筛选不得引入任何写入端点
+    assert.doesNotMatch(source, /listDocsByPath[\s\S]{0,120}(updateBlock|insertBlock|appendBlock|createDocWithMd|removeDoc)/,
+        "路径筛选不得与写入端点组合使用");
 });
