@@ -6544,3 +6544,70 @@
 - [x] T-4901 已添加配置动作
 - [x] T-4902 未配置尺寸动作
 - [x] T-4903 未添加添加动作
+- [x] T-4904 卡片归一化输入隔离
+- [x] T-4905 筛选输入集合隔离
+- [x] T-4906 筛选引用语义
+- [x] T-4907 摘要 malformed 输入
+- [x] T-4908 冻结卡片计数
+- [x] T-4909 搜索文本 malformed
+- [x] T-4910 搜索文本长度上限
+- [x] T-4911 builtin preview 回退
+- [x] T-4912 plugin preview 回退
+- [x] T-4913 source 非字符串拒绝
+- [x] T-4914 source 返回副本
+- [x] T-4915 preview 类型安全回退
+- [x] T-4916 card status added 归一化
+- [x] T-4917 card status 尺寸回退
+- [x] T-4918 size 选项过滤
+- [x] T-4919 size 支持 malformed
+- [x] T-4920 surface fallback 过滤
+- [x] T-4921 conditional malformed 安全
+- [x] T-4922 external 谓词
+- [x] T-4923 section 正数可见
+- [x] T-4924 section Infinity 拒绝
+- [x] T-4925 group query 可见性
+- [x] T-4926 group label 清理
+- [x] T-4927 group label 长度上限
+- [x] T-4928 group 插入顺序
+- [x] T-4929 group preferred 缺省
+- [x] T-4930 dedupe 输入隔离
+- [x] T-4931 dedupe 空 ID
+- [x] T-4932 dedupe 长 ID
+- [x] T-4933 collapsed set 副本
+- [x] T-4934 collapsed primitive 安全
+- [x] T-4935 toggle 输入隔离
+- [x] T-4936 toggle 标签清理
+- [x] T-4937 action falsey added
+- [x] T-4938 action false configured
+- [x] T-4939 token 空 query
+- [x] T-4940 token added 过滤
+- [x] T-4941 unknown availability 排名
+- [x] T-4942 title tie 稳定
+- [x] T-4943 sort malformed 输入
+- [x] T-4944 availability malformed 归一化
+- [x] T-4945 integration malformed 归一化
+- [x] T-4946 tab count malformed
+- [x] T-4947 page fractional 截断
+- [x] T-4948 page size fractional 截断
+- [x] T-4949 page 输入隔离
+- [x] T-4950 focus 负值钳制
+- [x] T-4951 focus 负 delta
+- [x] T-4952 collapsed malformed 序列化
+- [x] T-4953 unknown empty action
+- [x] T-4954 empty action label 回退
+- [x] T-4955 group key punctuation 回退
+- [x] T-4956 group id 非有限值
+- [x] T-4957 full density
+- [x] T-4958 density 未知回退
+- [x] T-4959 layout 尺寸回退
+- [x] T-4960 source summary 空标签
+- [x] T-4961 identity alias
+- [x] T-4962 identity 空 ID
+- [x] T-4963 score 大小写
+- [x] T-4964 rank 输入隔离
+- [x] T-4965 empty query summary
+- [x] T-4966 filter badge 本地化
+- [x] T-4967 keyboard surface 回退
+- [x] T-4968 source label 长度
+- [x] T-4969 status label 长度
+- [x] T-4970 tooltip 确定性
