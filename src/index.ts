@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -639,10 +639,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     private recentClosedSyncTimer: number | null = null;
     private lifecycleGeneration = 0;
     private isUnloading = false;
+    private syncing = false;
     private globalEventHandlers: {
         switchProtyle: () => void;
         loadedProtyle: () => void;
         destroyProtyle: () => void;
+        syncStart: () => void;
+        syncEnd: () => void;
+        syncFail: () => void;
     } | null = null;
     private favCollapsed = new Set<string>(); // 鏀惰棌涓嬫媺涓凡鎶樺彔鐨勫垎缁勫悕锛堝凡鎸佷箙鍖栵紝閲嶅惎鍚庢仮澶嶏級
     private fabElement: HTMLElement | null = null; // 鎵嬫満绔偓娴寜閽?
@@ -992,19 +996,42 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 椤电澧炲噺锛堟枃妗ｆ墦寮€/鍏抽棴锛夋椂鍒锋柊鎵€鏈夊凡鎵撳紑瑙嗗浘
         const loadedProtyle = () => {
             this.captureRecentOpenSnapshot();
+            if (this.syncing) return;
             // 侧栏全量重建合并调度：批量开关文档时不再逐事件重建
             this.scheduleSidebarRefresh();
             this.scheduleOpenSwitchersRefresh();
         };
         const destroyProtyle = () => {
             this.scheduleRecentClosedSync();
+            if (this.syncing) return;
             this.scheduleSidebarRefresh();
             this.scheduleOpenSwitchersRefresh();
         };
-        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle};
+        const syncStart = () => {
+            this.setSyncPresentation(true);
+        };
+        const syncFinish = () => {
+            this.setSyncPresentation(false);
+            this.scheduleSidebarRefresh();
+        };
+        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle, syncStart, syncEnd: syncFinish, syncFail: syncFinish};
         this.eventBus.on("switch-protyle", switchProtyle);
         this.eventBus.on("loaded-protyle-static", loadedProtyle);
         this.eventBus.on("destroy-protyle", destroyProtyle);
+        this.eventBus.on("sync-start", syncStart);
+        this.eventBus.on("sync-end", syncFinish);
+        this.eventBus.on("sync-fail", syncFinish);
+    }
+
+    private setSyncPresentation(syncing: boolean) {
+        this.syncing = syncing;
+        const roots: HTMLElement[] = [];
+        if (this.sidebarElement) roots.push(this.sidebarElement);
+        document.querySelectorAll<HTMLElement>(".sw-home").forEach((root) => roots.push(root));
+        roots.forEach((root) => {
+            root.classList.toggle("sw--syncing", syncing);
+            root.setAttribute("aria-busy", String(syncing));
+        });
     }
 
     private registerSwitcherRefresh(callback: () => void): () => void {
@@ -1063,6 +1090,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.eventBus.off("switch-protyle", globalEventHandlers.switchProtyle);
             this.eventBus.off("loaded-protyle-static", globalEventHandlers.loadedProtyle);
             this.eventBus.off("destroy-protyle", globalEventHandlers.destroyProtyle);
+            this.eventBus.off("sync-start", globalEventHandlers.syncStart);
+            this.eventBus.off("sync-end", globalEventHandlers.syncEnd);
+            this.eventBus.off("sync-fail", globalEventHandlers.syncFail);
         }
         this.globalEventHandlers = null;
         this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
@@ -5173,6 +5203,9 @@ const version = beginSearch(session);
             const buildReadyCard = (moduleId: string, def: any) => {
                 const externalInfo = resolveHomeStoreSourceInfo(moduleId);
                 const dependencyInfo = resolveHomeStoreDependencyInfo(moduleId);
+                const dependencySummary = buildHomeStoreDependencySummary(moduleId, {
+                    required: "需前置依赖", optional: "可选数据源", none: "无额外依赖",
+                });
                 const card = document.createElement("section");
                 card.className = "sw-home-store__card";
                 bindStoreCardKeyboard(card);
@@ -5208,7 +5241,9 @@ const version = beginSearch(session);
                 card.dataset.cardTone = resolveHomeStoreCardTone(card.dataset);
                 card.dataset.configurable = String(Array.isArray(def.configSchema) && def.configSchema.length > 0);
                 card.dataset.recommended = String(def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready");
-                card.dataset.dependency = dependencyInfo ? (dependencyInfo.required ? "required" : "optional") : "none";
+                card.dataset.dependency = dependencySummary.state;
+                card.dataset.dependencyName = dependencySummary.name;
+                card.dataset.dependencySetup = dependencySummary.setup;
                 const installability = normalizeHomeStoreInstallability(undefined, {added: !!added, availability: def.availability || "ready"});
                 card.dataset.installability = installability;
                 card.dataset.installHint = resolveHomeStoreInstallabilityReason(installability);
@@ -5301,7 +5336,7 @@ const version = beginSearch(session);
                 if (dependencyInfo) {
                     const dependencyChip = document.createElement("span");
                     dependencyChip.className = `sw-home-store__source-chip is-dependency sw-home-store__dependency-${dependencyInfo.kind}`;
-                    dependencyChip.textContent = dependencyInfo.required ? "需前置依赖" : "可选数据源";
+                    dependencyChip.textContent = dependencySummary.label;
                     dependencyChip.title = dependencyInfo.setup;
                     dependencyChip.setAttribute("aria-label", `${dependencyInfo.name}：${dependencyInfo.setup}`);
                     sourceMeta.appendChild(dependencyChip);

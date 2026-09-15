@@ -859,6 +859,28 @@ function summarizeHomeStoreDependencies(moduleIds) {
     });
     return {total: entries.length, required, optional, kinds, entries};
 }
+function resolveHomeStoreDependencyState(moduleId) {
+    const info = resolveHomeStoreDependencyInfo(moduleId);
+    return info ? (info.required ? "required" : "optional") : "none";
+}
+function resolveHomeStoreDependencyLabel(moduleId, labels = {}) {
+    const state = resolveHomeStoreDependencyState(moduleId);
+    return boundedText(labels[state] || state, 48);
+}
+function buildHomeStoreDependencySummary(moduleId, labels = {}) {
+    const info = resolveHomeStoreDependencyInfo(moduleId);
+    const state = info ? (info.required ? "required" : "optional") : "none";
+    return {
+        state,
+        label: boundedText(labels[state] || state, 48),
+        name: info ? boundedText(info.name, 96) : "",
+        setup: info ? boundedText(info.setup, 256) : "",
+        network: info ? boundedText(info.network, 256) : "",
+        platforms: info ? boundedText(info.platforms, 96) : "",
+        installUrl: info && typeof info.installUrl === "string" ? info.installUrl : "",
+        projectUrl: info && typeof info.projectUrl === "string" ? info.projectUrl : "",
+    };
+}
 function normalizeHomeStoreBatchAction(value) { return ["add", "remove", "configure"].includes(value) ? value : "add"; }
 function isHomeStoreBatchEligible(card, action = "add") { const item = normalizeHomeStoreCard(card); const key = normalizeHomeStoreBatchAction(action); if (key === "add") return !item.added && item.availability === "ready"; if (key === "remove") return item.added; return item.added && item.configurable; }
 function partitionHomeStoreBatchCards(cards, selectedIds, action = "add") { const selected = new Set(normalizeHomeStoreSelectionIds(selectedIds, 128)); const list = Array.isArray(cards) ? cards : []; const eligible = []; const skipped = []; list.forEach((card) => { const id = normalizeHomeStoreCardId(card?.moduleId || card?.id); if (!id || !selected.has(id)) return; (isHomeStoreBatchEligible(card, action) ? eligible : skipped).push(id); }); return {eligible: [...new Set(eligible)], skipped: [...new Set(skipped)]}; }
@@ -925,7 +947,7 @@ module.exports = {
     buildHomeStoreCardStateSummary, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel,
     normalizeHomeStoreSetupUrl, buildHomeStoreSetupLink, summarizeHomeStoreConfigCompletion,
     buildHomeStoreConfigMissingText,
-    normalizeHomeStoreDependencyKind, resolveHomeStoreDependencyInfo, buildHomeStoreDependencyNotice, listHomeStoreDependencies, summarizeHomeStoreDependencies,
+    normalizeHomeStoreDependencyKind, resolveHomeStoreDependencyInfo, buildHomeStoreDependencyNotice, listHomeStoreDependencies, summarizeHomeStoreDependencies, resolveHomeStoreDependencyState, resolveHomeStoreDependencyLabel, buildHomeStoreDependencySummary,
     normalizeHomeStoreBatchAction, isHomeStoreBatchEligible, partitionHomeStoreBatchCards,
     buildHomeStoreBatchResult, buildHomeStoreBatchResultText, resolveHomeStoreBatchActionLabel,
     buildHomeStoreBatchSelectionHint, resolveHomeStoreBatchFocusAfterResult, shouldKeepHomeStoreSelectionAfterBatch,

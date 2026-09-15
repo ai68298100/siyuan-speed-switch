@@ -38,3 +38,15 @@ test('dependency summary counts required and optional entries', () => { const su
 test('dependency summary exposes kind histogram', () => { const summary = model.summarizeHomeStoreDependencies(); assert.equal(summary.kinds['external-api'], 2); assert.equal(summary.kinds['self-hosted-api'], 2); });
 test('dependency summary accepts a restricted module list', () => { const summary = model.summarizeHomeStoreDependencies(['journal-calendar','missing']); assert.equal(summary.total, 1); assert.equal(summary.optional, 1); });
 test('dependency summary entries retain module ids', () => { const summary = model.summarizeHomeStoreDependencies(['external-weather-open-meteo']); assert.equal(summary.entries[0].moduleId, 'external-weather-open-meteo'); });
+test('dependency state resolves required module', () => assert.equal(model.resolveHomeStoreDependencyState('external-weather-open-meteo'), 'required'));
+test('dependency state resolves optional module', () => assert.equal(model.resolveHomeStoreDependencyState('journal-calendar'), 'optional'));
+test('dependency state resolves unknown module', () => assert.equal(model.resolveHomeStoreDependencyState('missing'), 'none'));
+test('dependency label uses caller labels', () => assert.equal(model.resolveHomeStoreDependencyLabel('journal-calendar', {optional: '可选'}), '可选'));
+test('dependency label bounds caller labels', () => assert.equal(model.resolveHomeStoreDependencyLabel('journal-calendar', {optional: 'x'.repeat(100)}).length, 48));
+test('dependency summary exposes required state', () => assert.equal(model.buildHomeStoreDependencySummary('external-activitywatch-time').state, 'required'));
+test('dependency summary exposes provider name', () => assert.equal(model.buildHomeStoreDependencySummary('external-activitywatch-time').name, 'ActivityWatch'));
+test('dependency summary exposes setup instructions', () => assert.match(model.buildHomeStoreDependencySummary('external-news-newsnow').setup, /api/));
+test('dependency summary exposes network boundary', () => assert.match(model.buildHomeStoreDependencySummary('external-weather-open-meteo').network, /HTTPS/));
+test('dependency summary exposes platforms', () => assert.equal(model.buildHomeStoreDependencySummary('external-activitywatch-time').platforms, 'desktop/sidebar'));
+test('dependency summary keeps install url safe', () => assert.match(model.buildHomeStoreDependencySummary('external-weather-open-meteo').installUrl, /^https:\/\//));
+test('unknown dependency summary has no install url', () => assert.equal(model.buildHomeStoreDependencySummary('missing').installUrl, ''));
