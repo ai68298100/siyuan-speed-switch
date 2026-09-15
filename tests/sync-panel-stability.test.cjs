@@ -32,3 +32,13 @@ test('sync start records pending refresh', () => assert.match(source, /this\.syn
 test('sync finish clears pending refresh', () => assert.match(source, /this\.syncRefreshPending = false/));
 test('sync state is exposed to roots', () => assert.match(source, /root\.dataset\.syncing = String\(syncing\)/));
 test('unload clears sync depth', () => assert.match(source, /this\.syncDepth = 0;[\s\S]*this\.syncRefreshPending = false/));
+test('sync watchdog constant is defined', () => assert.match(source, /SYNC_WATCHDOG_MS/));
+test('sync start arms watchdog', () => assert.match(source, /this\.armSyncWatchdog\(\)/));
+test('sync finish clears watchdog', () => assert.match(source, /this\.clearSyncWatchdog\(\)/));
+test('watchdog timer is stored', () => assert.match(source, /private syncWatchdogTimer: number \| null = null/));
+test('watchdog clears existing timer', () => assert.match(source, /private armSyncWatchdog\(\) \{\s*this\.clearSyncWatchdog\(\)/));
+test('watchdog exits when sync already finished', () => assert.match(source, /this\.syncWatchdogTimer = null;[\s\S]*if \(!this\.syncing\) return/));
+test('watchdog resets depth', () => assert.match(source, /this\.syncDepth = 0;[\s\S]*this\.setSyncPresentation\(false\)/));
+test('watchdog schedules recovery refresh', () => assert.match(source, /this\.setSyncPresentation\(false\);[\s\S]*this\.scheduleSidebarRefresh\(\)/));
+test('watchdog clears on unload', () => assert.match(source, /this\.syncing = false;[\s\S]*this\.clearSyncWatchdog\(\)/));
+test('watchdog uses bounded timeout', () => assert.match(source, /SYNC_WATCHDOG_MS\);/));

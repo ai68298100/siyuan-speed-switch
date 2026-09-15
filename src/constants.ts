@@ -38,6 +38,8 @@ export const DOCUMENT_SET_IMPORT_MAX_BYTES = 512 * 1024;
 export const TAB_SETTLE_MS = 30;
 // 批量开关页签后的最长状态确认时间，超时的操作不计入成功数量
 export const TAB_VERIFY_TIMEOUT_MS = 1500;
+// 同步开始事件丢失结束事件时的安全兜底，避免组件面板永久保持 busy。
+export const SYNC_WATCHDOG_MS = 120000;
 
 // ==================== UI 反馈 ====================
 

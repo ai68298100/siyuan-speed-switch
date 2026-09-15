@@ -862,10 +862,11 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
     const maxDocuments = Math.max(1, Math.min(12, Number(options.maxDocuments) || 6));
     const seen = new Set();
     const requests = [];
-    (Array.isArray(tabs) ? tabs : []).forEach((tab) => {
-        if (requests.length >= maxDocuments) return;
+    const candidates = Array.isArray(tabs) ? tabs : [];
+    for (const tab of candidates) {
+        if (requests.length >= maxDocuments) break;
         const scope = buildOpenedDocumentScope(tab);
-        if (!scope || seen.has(scope.rootId)) return;
+        if (!scope || seen.has(scope.rootId)) continue;
         const request = buildOpenedDocumentSearchRequest({
             query,
             tab,
@@ -877,10 +878,10 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
             filters: options.filters,
             pageSize: options.pageSize,
         });
-        if (!request) return;
+        if (!request) continue;
         seen.add(scope.rootId);
         requests.push(request);
-    });
+    }
     return requests;
 }
 

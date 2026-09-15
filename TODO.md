@@ -7355,3 +7355,36 @@
 - [x] T-5698 同步发布门禁
 - [x] T-5699 同步本地集市同步
 - [x] T-5700 同步批次文档记录
+- [x] T-5701 同步 watchdog 常量
+- [x] T-5702 watchdog 定时器字段
+- [x] T-5703 watchdog 启动接线
+- [x] T-5704 watchdog 重置接线
+- [x] T-5705 watchdog 完成清理
+- [x] T-5706 watchdog 失败清理
+- [x] T-5707 watchdog 卸载清理
+- [x] T-5708 watchdog 状态检测
+- [x] T-5709 watchdog 深度清零
+- [x] T-5710 watchdog 刷新恢复
+- [x] T-5711 watchdog 重入防护
+- [x] T-5712 watchdog 结束事件回归
+- [x] T-5713 watchdog 失败事件回归
+- [x] T-5714 watchdog 丢失事件回归
+- [x] T-5715 watchdog 重叠事件回归
+- [x] T-5716 watchdog 定时器回归
+- [x] T-5717 watchdog 清理回归
+- [x] T-5718 watchdog 深度回归
+- [x] T-5719 watchdog 刷新回归
+- [x] T-5720 watchdog 状态回归
+- [x] T-5721 watchdog TypeScript 门禁
+- [x] T-5722 watchdog 完整测试门禁
+- [x] T-5723 watchdog 移动端门禁
+- [x] T-5724 watchdog Chromium 门禁
+- [x] T-5725 watchdog 包体审计
+- [x] T-5726 watchdog 文档同步
+- [x] T-5727 watchdog 决策记录
+- [x] T-5728 watchdog 进度记录
+- [x] T-5729 watchdog 本地集市构建
+- [x] T-5730 watchdog 本地集市哈希
+- [x] T-5731 watchdog 发布矩阵更新
+- [x] T-5732 watchdog 批次收尾
+- [x] T-5733 打开文档请求规划达到上限后提前终止遍历，降低高负载 p95 抖动

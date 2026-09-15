@@ -166,10 +166,10 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-15 (69): 510 KiB ceiling accommodates the shared SiYuan
     // forward-proxy path for external life widgets and graceful unavailable
     // states; the independent 300 KiB archive ceiling remains unchanged.
-    // 2026-09-15 (77): 543 KiB accommodates sync-stability event wiring and
+    // 2026-09-15 (78): 544 KiB accommodates sync watchdog recovery wiring and
     // the bounded overlay while retaining a visible margin below the archive
     // hard ceiling.
-    const budget = 543 * 1024;
+    const budget = 544 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

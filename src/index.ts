@@ -100,6 +100,7 @@ import {
     DOCUMENT_SET_IMPORT_MAX_BYTES,
     TAB_SETTLE_MS,
     TAB_VERIFY_TIMEOUT_MS,
+    SYNC_WATCHDOG_MS,
     DIALOG_WIDTH_MIN_PX,
     DIALOG_WIDTH_MAX_PX,
     DIALOG_HEIGHT_MIN_PX,
@@ -642,6 +643,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private syncing = false;
     private syncDepth = 0;
     private syncRefreshPending = false;
+    private syncWatchdogTimer: number | null = null;
     private globalEventHandlers: {
         switchProtyle: () => void;
         loadedProtyle: () => void;
@@ -1012,6 +1014,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const syncStart = () => {
             this.syncDepth += 1;
             this.syncRefreshPending = true;
+            this.armSyncWatchdog();
             this.setSyncPresentation(true);
         };
         const syncFinish = (failed = false) => {
@@ -1021,6 +1024,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.syncDepth -= 1;
             }
             if (this.syncDepth > 0) return;
+            this.clearSyncWatchdog();
             this.syncRefreshPending = false;
             this.setSyncPresentation(false);
             this.scheduleSidebarRefresh();
@@ -1046,6 +1050,25 @@ export default class SpeedSwitchPlugin extends Plugin {
             root.setAttribute("aria-busy", String(syncing));
             root.dataset.syncing = String(syncing);
         });
+    }
+
+    private clearSyncWatchdog() {
+        if (this.syncWatchdogTimer !== null) {
+            window.clearTimeout(this.syncWatchdogTimer);
+            this.syncWatchdogTimer = null;
+        }
+    }
+
+    private armSyncWatchdog() {
+        this.clearSyncWatchdog();
+        this.syncWatchdogTimer = window.setTimeout(() => {
+            this.syncWatchdogTimer = null;
+            if (!this.syncing) return;
+            this.syncDepth = 0;
+            this.syncRefreshPending = false;
+            this.setSyncPresentation(false);
+            this.scheduleSidebarRefresh();
+        }, SYNC_WATCHDOG_MS);
     }
 
     private registerSwitcherRefresh(callback: () => void): () => void {
@@ -1112,6 +1135,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.syncDepth = 0;
         this.syncRefreshPending = false;
         this.syncing = false;
+        this.clearSyncWatchdog();
         this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
         this.activeDocSearchSessions.clear();
         this.activeAgentSearchControllers.forEach((controller) => controller.abort());
