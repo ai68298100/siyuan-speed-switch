@@ -8,7 +8,7 @@ const srcDir = path.join(root, 'src');
 
 // v0.17 契约层模块:独立存在、独立测试,但尚未决定接入生产 bundle。
 // 任何模块进入本清单的生产闭包都必须先通过包体预算决策(D-216),
-// 防止 155 KiB 源码无声涌入仅剩 ~1 KiB 余量的 300 KiB 硬上限归档。
+// 防止源码无声涌入仅剩少量余量的 320 KiB 硬上限归档。
 const UNWIRED_CONTRACT_MODULES = [
     'agent-approval-token',
     'agent-document-context',
@@ -85,7 +85,7 @@ test('production graph traversal reaches every wired runtime module', () => {
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
     // 2026-09-14 生活组件第二阶段新增两个经审计的生产模块：纯数据模型与
-    // 白名单网络层。当前闭包为 31；继续增长必须重新复核 300 KiB 包体门禁。
+    // 白名单网络层。当前闭包为 31；继续增长必须重新复核 320 KiB 包体门禁。
     t.diagnostic(`production import graph modules: ${graph.size}`);
     assert.ok(graph.size <= 31, `production graph grew to ${graph.size} modules; audited ceiling is 31`);
 });

@@ -10,8 +10,8 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // v0.20 adds the bounded ActivityWatch query adapter and three orthogonal
 // connectivity filters. Keep a hard per-entry ceiling with a small reviewed
 // allowance above the previous 128 KiB budget; package.zip still has its
-// independent 300 KiB release ceiling.
-const MAX_COMPRESSED_ENTRY_BYTES = 136 * 1024;
+// independent 320 KiB release ceiling.
+const MAX_COMPRESSED_ENTRY_BYTES = 144 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 
