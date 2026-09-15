@@ -6611,3 +6611,49 @@
 - [x] T-4968 source label 长度
 - [x] T-4969 status label 长度
 - [x] T-4970 tooltip 确定性
+- [x] T-4971 商店搜索 role
+- [x] T-4972 搜索框 role
+- [x] T-4973 搜索 enter 提示
+- [x] T-4974 清除搜索 action
+- [x] T-4975 清除搜索焦点
+- [x] T-4976 排序 action
+- [x] T-4977 排序摘要关联
+- [x] T-4978 指南 dialog 语义
+- [x] T-4979 指南打开动作
+- [x] T-4980 tablist 语义
+- [x] T-4981 tab 按钮语义
+- [x] T-4982 tab roving tabindex
+- [x] T-4983 tab selected 更新
+- [x] T-4984 tab current 更新
+- [x] T-4985 tab 计数 dataset
+- [x] T-4986 结果 status 区域
+- [x] T-4987 结果 live 区域
+- [x] T-4988 结果 atomic 属性
+- [x] T-4989 ready 标题层级
+- [x] T-4990 pending 标题层级
+- [x] T-4991 卡片 moduleId
+- [x] T-4992 卡片 aria-label
+- [x] T-4993 尺寸按钮类型
+- [x] T-4994 尺寸 pressed 状态
+- [x] T-4995 尺寸 action 关联
+- [x] T-4996 add action 元数据
+- [x] T-4997 add moduleId
+- [x] T-4998 add size 状态
+- [x] T-4999 add 描述关联
+- [x] T-5000 add 保存状态
+- [x] T-5001 add 重绘状态
+- [x] T-5002 conditional 提示
+- [x] T-5003 configure dialog
+- [x] T-5004 configure 打开表单
+- [x] T-5005 remove action
+- [x] T-5006 remove 实例
+- [x] T-5007 preview dialog
+- [x] T-5008 preview 打开模块
+- [x] T-5009 group expanded
+- [x] T-5010 group controls
+- [x] T-5011 unavailable 移除
+- [x] T-5012 unavailable 重绘
+- [x] T-5013 filter aria-hidden
+- [x] T-5014 filter 卡片焦点
+- [x] T-5015 filter 搜索焦点回退
+- [x] T-5016 空商店状态
