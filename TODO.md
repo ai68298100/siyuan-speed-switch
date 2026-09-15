@@ -1,5 +1,16 @@
 # TODO
 
+## T-6151~T-6158 真实宿主只读实测与证据采集（2026-09-16，已完成）
+
+- [x] T-6151 探测本机思源实例：`SiYuan-Kernel.exe` PID 20364 监听 `127.0.0.1:6806`
+- [x] T-6152 确认认证边界：`/api/system/version` 免认证返回 3.8.4-beta.2；业务端点未认证返回 401
+- [x] T-6153 定位工作空间与凭据来源（token 仅在内存使用，未打印、未落盘）
+- [x] T-6154 实测 `/api/notebook/lsNotebooks` 与 **`/api/filetree/listDocsByPath`**（200 / code 0 / 22ms）
+- [x] T-6155 逐项比对响应结构与 `path-filter-model.js` 假设：`box`/`path` 回显一致、`files[]` 字段齐备，`mismatch` 分支不会误触发
+- [x] T-6156 采集边界行为：不存在路径→空列表而非错误；不存在 notebook/缺参数→`code:-1`；`maxListCount` 被遵守（截断探测成立）
+- [x] T-6157 产出脱敏证据文档 `docs/path-filter-host-evidence.md`（不含任何笔记名/标题/路径内容）
+- [x] T-6158 更新 B-005（部分解除）与 T-107（完成 2/3，保持未完成）；记录 D-365
+
 ## T-6143~T-6150 样式表健康度扫描（2026-09-16，已完成）
 
 - [x] T-6143 扫描 CSS 自定义属性：17 个全部被 `var()` 引用，**无死变量**
@@ -4568,7 +4579,7 @@
   - 状态：done（2026-09-13）
 - [ ] T-107 路径筛选真实宿主能力证据
   - 目标：在下一次桌面大版本验收中记录端点可用性、响应结构和最窄侧栏宽度，再决定是否拆分 T-103a/T-105a 生产入口
-  - 状态：queued（等待真实桌面节点；不以浏览器模拟替代）
+  - 状态：**进行中（2026-09-16 完成 2/3）**。已在真实宿主（内核 3.8.4-beta.2，本机已认证会话）取得**端点可用性**（`/api/filetree/listDocsByPath` 200/22ms/code 0）与**响应结构**（`box`/`path` 回显一致、`files[]` 含 `id`/`name`/`path`/`subFileCount`，与 `path-filter-model.js` 假设逐项吻合），并额外汇总边界行为（不存在路径→空列表而非错误、`maxListCount` 被遵守、缺参/不存在 notebook→`code:-1`）；详见 `docs/path-filter-host-evidence.md`（脱敏，只读采集）。**仅剩"最窄可用侧栏宽度"未取**（属 UI 度量），故本项保持未完成。待该项完成后即可依据本证据放宽 `tests/path-filter-ui-contract.test.cjs` 并拆分 T-103a/T-105a 生产入口。
 - [x] T-108 路径筛选大列表性能边界
   - 目标：验证异常大目录响应不会突破 100 项输出上限、去重边界或截断语义
   - 实现：新增 5000 项响应压力回归，确认字符串 `code`、首尾稳定性与 `truncated` 元数据；不增加生产 bundle
