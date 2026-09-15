@@ -640,6 +640,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private lifecycleGeneration = 0;
     private isUnloading = false;
     private syncing = false;
+    private syncDepth = 0;
+    private syncRefreshPending = false;
     private globalEventHandlers: {
         switchProtyle: () => void;
         loadedProtyle: () => void;
@@ -1008,19 +1010,30 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.scheduleOpenSwitchersRefresh();
         };
         const syncStart = () => {
+            this.syncDepth += 1;
+            this.syncRefreshPending = true;
             this.setSyncPresentation(true);
         };
-        const syncFinish = () => {
+        const syncFinish = (failed = false) => {
+            if (failed) {
+                this.syncDepth = 0;
+            } else if (this.syncDepth > 0) {
+                this.syncDepth -= 1;
+            }
+            if (this.syncDepth > 0) return;
+            this.syncRefreshPending = false;
             this.setSyncPresentation(false);
             this.scheduleSidebarRefresh();
         };
-        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle, syncStart, syncEnd: syncFinish, syncFail: syncFinish};
+        const syncEnd = () => syncFinish(false);
+        const syncFail = () => syncFinish(true);
+        this.globalEventHandlers = {switchProtyle, loadedProtyle, destroyProtyle, syncStart, syncEnd, syncFail};
         this.eventBus.on("switch-protyle", switchProtyle);
         this.eventBus.on("loaded-protyle-static", loadedProtyle);
         this.eventBus.on("destroy-protyle", destroyProtyle);
         this.eventBus.on("sync-start", syncStart);
-        this.eventBus.on("sync-end", syncFinish);
-        this.eventBus.on("sync-fail", syncFinish);
+        this.eventBus.on("sync-end", syncEnd);
+        this.eventBus.on("sync-fail", syncFail);
     }
 
     private setSyncPresentation(syncing: boolean) {
@@ -1031,6 +1044,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         roots.forEach((root) => {
             root.classList.toggle("sw--syncing", syncing);
             root.setAttribute("aria-busy", String(syncing));
+            root.dataset.syncing = String(syncing);
         });
     }
 
@@ -1095,6 +1109,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.eventBus.off("sync-fail", globalEventHandlers.syncFail);
         }
         this.globalEventHandlers = null;
+        this.syncDepth = 0;
+        this.syncRefreshPending = false;
+        this.syncing = false;
         this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
         this.activeDocSearchSessions.clear();
         this.activeAgentSearchControllers.forEach((controller) => controller.abort());

@@ -22,3 +22,13 @@ test('sync notice uses bounded overlay text', () => assert.match(css, /正在同
 test('newly rendered sidebar inherits current sync state', () => assert.match(source, /this\.setSyncPresentation\(this\.syncing\)/));
 test('scheduled sidebar refresh is gated while syncing', () => assert.match(source, /if \(!this\.syncing && this\.sidebarElement\?\.isConnected\)/));
 test('direct sidebar refresh is gated while syncing', () => assert.match(source, /private refreshSidebar\(\) \{\s*if \(this\.syncing\) return;/));
+test('overlapping sync starts use a depth counter', () => assert.match(source, /private syncDepth = 0/));
+test('sync start increments depth', () => assert.match(source, /this\.syncDepth \+= 1/));
+test('sync end decrements depth before unfreezing', () => assert.match(source, /this\.syncDepth -= 1/));
+test('nested sync does not finish early', () => assert.match(source, /if \(this\.syncDepth > 0\) return/));
+test('sync failure clears all nested depth', () => assert.match(source, /if \(failed\) \{\s*this\.syncDepth = 0/));
+test('sync refresh intent is tracked', () => assert.match(source, /private syncRefreshPending = false/));
+test('sync start records pending refresh', () => assert.match(source, /this\.syncRefreshPending = true/));
+test('sync finish clears pending refresh', () => assert.match(source, /this\.syncRefreshPending = false/));
+test('sync state is exposed to roots', () => assert.match(source, /root\.dataset\.syncing = String\(syncing\)/));
+test('unload clears sync depth', () => assert.match(source, /this\.syncDepth = 0;[\s\S]*this\.syncRefreshPending = false/));
