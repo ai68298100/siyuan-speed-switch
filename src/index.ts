@@ -4703,7 +4703,9 @@ const version = beginSearch(session);
         let storeQuery = "";
         let storeTab = "all";
         let storeSort = "relevance";
-        root.dataset.activeTab = storeTab;
+        let storeDensity: "comfortable" | "compact" = "comfortable";
+            root.dataset.activeTab = storeTab;
+            root.dataset.density = storeDensity;
         root.dataset.renderVersion = "0";
         root.setAttribute("aria-busy", "false");
         const collapsedGroups = new Set<string>();
@@ -4802,6 +4804,26 @@ const version = beginSearch(session);
             sortSelect.setAttribute("aria-controls", "sw-home-store-result-summary");
             sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); renderStore(); });
             searchBar.appendChild(sortSelect);
+            const densityButton = document.createElement("button");
+            densityButton.type = "button";
+            densityButton.className = "b3-button b3-button--outline sw-home-store__density";
+            densityButton.dataset.action = "toggle-density";
+            const densityLabel = storeDensity === "compact" ? this.i18n.homeStoreDensityCompact : this.i18n.homeStoreDensityComfortable;
+            densityButton.textContent = densityLabel;
+            densityButton.setAttribute("aria-label", `${this.i18n.homeStoreDensity} · ${densityLabel}`);
+            densityButton.title = densityButton.getAttribute("aria-label") || "";
+            densityButton.setAttribute("aria-pressed", String(storeDensity === "compact"));
+            densityButton.addEventListener("click", () => { storeDensity = storeDensity === "compact" ? "comfortable" : "compact"; renderStore(); });
+            searchBar.appendChild(densityButton);
+            const resetViewButton = document.createElement("button");
+            resetViewButton.type = "button";
+            resetViewButton.className = "b3-button b3-button--text sw-home-store__reset-view";
+            resetViewButton.dataset.action = "reset-view";
+            resetViewButton.textContent = this.i18n.homeStoreResetView;
+            resetViewButton.setAttribute("aria-label", this.i18n.homeStoreResetView);
+            resetViewButton.title = this.i18n.homeStoreResetView;
+            resetViewButton.addEventListener("click", () => { storeQuery = ""; storeTab = "all"; storeSort = "relevance"; storeDensity = "comfortable"; collapsedGroups.clear(); renderStore(); });
+            searchBar.appendChild(resetViewButton);
             const guideButton = document.createElement("button");
             guideButton.type = "button";
             guideButton.className = "b3-button b3-button--outline sw-home-store__guide";
@@ -4952,8 +4974,10 @@ const version = beginSearch(session);
                 root.dataset.focusKind = focusKind;
                 if (focusValue) root.dataset.focusValue = focusValue;
             };
-            const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean}> = [
+            const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
+                {key: "recommended", label: this.i18n.homeStoreTabRecommended, recommendedOnly: true},
+                {key: "configurable", label: this.i18n.homeStoreTabConfigurable, configurableOnly: true},
                 {key: "builtin", label: this.i18n.homeStoreTabBuiltin, category: "builtin"},
                 {key: "offline", label: this.i18n.homeStoreTabOffline, integration: "offline"},
                 {key: "local", label: this.i18n.homeStoreTabLocal, integration: "local"},
@@ -5090,6 +5114,8 @@ const version = beginSearch(session);
                 card.dataset.added = added ? "true" : "false";
                 card.dataset.statusTone = resolveHomeStoreStatusTone(card.dataset);
                 card.dataset.integrationTone = resolveHomeStoreIntegrationTone(card.dataset);
+                card.dataset.configurable = String(Array.isArray(def.configSchema) && def.configSchema.length > 0);
+                card.dataset.recommended = String(def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready");
                 card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";

@@ -4687,6 +4687,13 @@
     }
 }
 
+.sw-home-store[data-density="compact"] .sw-home-store__card {
+    padding-block: 8px;
+    gap: 7px;
+}
+.sw-home-store[data-density="compact"] .sw-home-store__preview { min-height: 72px; }
+.sw-home-store[data-density="compact"] .sw-home-store__group-description { display: none; }
+
 .sw-home-store__section {
     display: flex;
     align-items: center;

@@ -5,7 +5,7 @@
 // grouping, status and preview decisions so future store surfaces remain
 // behaviorally aligned.
 
-const STORE_TABS = Object.freeze(["all", "builtin", "offline", "local", "network", "plugin", "conditional", "added"]);
+const STORE_TABS = Object.freeze(["all", "recommended", "configurable", "builtin", "offline", "local", "network", "plugin", "conditional", "added"]);
 const STORE_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const STORE_AVAILABILITY = Object.freeze(["ready", "conditional", "external"]);
 const STORE_CATEGORIES = Object.freeze(["builtin", "plugin"]);
@@ -105,6 +105,8 @@ function buildHomeStoreTabCounts(cards) {
     const all = Array.isArray(cards) ? cards : [];
     return {
         all: all.length,
+        recommended: all.filter((card) => isHomeStoreRecommended(card)).length,
+        configurable: all.filter((card) => normalizeHomeStoreCard(card).configurable).length,
         builtin: all.filter((card) => normalizeHomeStoreCard(card).category === "builtin").length,
         plugin: all.filter((card) => normalizeHomeStoreCard(card).category === "plugin").length,
         offline: all.filter((card) => normalizeHomeStoreCard(card).integration === "offline").length,
@@ -424,6 +426,23 @@ function resetHomeStoreSearchState() {
     return {query: "", tab: "all", sort: "relevance"};
 }
 
+const STORE_DENSITIES = Object.freeze(["comfortable", "compact"]);
+function normalizeHomeStoreDensity(value) { return STORE_DENSITIES.includes(value) ? value : "comfortable"; }
+function normalizeHomeStoreViewState(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const collapsed = normalizeHomeStoreCollapsedGroups(source.collapsedGroups);
+    return {query: normalizeHomeStoreQuery(source.query), tab: normalizeHomeStoreTab(source.tab), sort: normalizeHomeStoreSort(source.sort), density: normalizeHomeStoreDensity(source.density), collapsedGroups: [...collapsed].sort()};
+}
+function serializeHomeStoreViewState(value) { return JSON.stringify(normalizeHomeStoreViewState(value)); }
+function parseHomeStoreViewState(value) { try { return normalizeHomeStoreViewState(JSON.parse(typeof value === "string" ? value : "")); } catch (_error) { return normalizeHomeStoreViewState({}); } }
+function sameHomeStoreViewState(left, right) { return serializeHomeStoreViewState(left) === serializeHomeStoreViewState(right); }
+function resetHomeStoreViewState() { return {query: "", tab: "all", sort: "relevance", density: "comfortable", collapsedGroups: []}; }
+function toggleHomeStoreDensity(value) { return normalizeHomeStoreDensity(value) === "compact" ? "comfortable" : "compact"; }
+function buildHomeStoreViewSummary(value, labels = {}) {
+    const state = normalizeHomeStoreViewState(value);
+    return [boundedText(labels.tab, 32), resolveHomeStoreSortLabel(state.sort, labels), state.density, state.collapsedGroups.length ? `${state.collapsedGroups.length}` : ""].filter(Boolean).join(" · ");
+}
+
 function normalizeHomeStoreTab(value) {
     return STORE_TABS.includes(value) ? value : "all";
 }
@@ -448,6 +467,8 @@ function resolveHomeStoreFilter(tab) {
         availability: key === "conditional" ? "conditional" : "",
         integration: STORE_INTEGRATIONS.includes(key) ? key : "",
         addedOnly: key === "added",
+        recommendedOnly: key === "recommended",
+        configurableOnly: key === "configurable",
     };
 }
 
@@ -459,6 +480,8 @@ function normalizeHomeStoreCard(card) {
         availability: normalizeHomeStoreAvailability(source.availability),
         integration: STORE_INTEGRATIONS.includes(source.integration) ? source.integration : "unknown",
         added: source.added === true || source.added === "true",
+        configurable: source.configurable === true || source.configurable === "true",
+        recommended: source.recommended === true || source.recommended === "true",
     };
 }
 
@@ -470,7 +493,14 @@ function matchesHomeStoreCard(card, query, filter) {
         && (!active.category || active.category === "all" || item.category === active.category)
         && (!active.availability || item.availability === active.availability)
         && (!active.integration || item.integration === active.integration)
-        && (!active.addedOnly || item.added);
+        && (!active.addedOnly || item.added)
+        && (!active.recommendedOnly || isHomeStoreRecommended(item))
+        && (!active.configurableOnly || item.configurable);
+}
+
+function isHomeStoreRecommended(card) {
+    const item = normalizeHomeStoreCard(card);
+    return item.recommended || (item.category === "builtin" && item.availability === "ready" && item.integration === "offline");
 }
 
 function filterHomeStoreCards(cards, query, filter) {
@@ -692,7 +722,7 @@ module.exports = {
     normalizeHomeStoreStatusLabel, buildHomeStoreTooltip, normalizeHomeStoreSearchState,
     sameHomeStoreSearchState, resetHomeStoreSearchState,
     normalizeHomeStoreAvailability, resolveHomeStoreFilter, normalizeHomeStoreCard, matchesHomeStoreCard,
-    filterHomeStoreCards, isHomeStoreAdded, countHomeStoreCards, summarizeHomeStoreCards, buildHomeStoreSearchText,
+    filterHomeStoreCards, isHomeStoreAdded, isHomeStoreRecommended, countHomeStoreCards, summarizeHomeStoreCards, buildHomeStoreSearchText,
     resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, normalizeHomeStorePreviewKind, resolveHomeStoreCardStatus,
     resolveHomeStoreSizeSelection, isHomeStoreSizeSupported, normalizeHomeStoreSupportedSurfaces,
     isHomeStoreConditional, isHomeStoreExternal, shouldShowHomeStoreSection, shouldShowHomeStoreGroup,
@@ -700,4 +730,6 @@ module.exports = {
     normalizeHomeStoreCollapsedGroups, toggleHomeStoreGroup, resolveHomeStoreAction, getHomeStoreTabKeys,
     resolveHomeConfigKind, resolveHomeConfigSection, buildHomeConfigSections, resolveHomeConfigPlaceholder,
     resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration,
+    STORE_DENSITIES, normalizeHomeStoreDensity, normalizeHomeStoreViewState, serializeHomeStoreViewState,
+    parseHomeStoreViewState, sameHomeStoreViewState, resetHomeStoreViewState, toggleHomeStoreDensity, buildHomeStoreViewSummary,
 };

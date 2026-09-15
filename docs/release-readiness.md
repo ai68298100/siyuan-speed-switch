@@ -4,8 +4,8 @@
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
-| TypeScript、自动测试、UI smoke | 已通过 | 配置模型回归与完整测试待本轮终验；TypeScript、移动端 smoke、Chromium smoke 与 31 模块生产图通过 |
-| 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 529232 bytes（520 KiB 自律线内）；`dist/index.css` 139256 bytes；`package.zip` 309137 bytes（320 KiB 硬上限余量 18543 bytes） |
+| TypeScript、自动测试、UI smoke | 已通过 | 专项 `home-store-model` 402/402；完整测试既有发布契约通过；TypeScript、移动端 smoke、Chromium smoke 与 31 模块生产图通过 |
+| 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 531979 bytes（520 KiB 自律线内）；`dist/index.css` 139501 bytes；`package.zip` 310008 bytes（320 KiB 硬上限余量 17672 bytes） |
 | 归档可复现性 | 已通过 | 连续构建 SHA-256 一致；ZIP 条目固定为 1980-01-01 00:00 |
 | 版本元数据 | 已通过 | `0.17.0` 已同步 `package.json`、`plugin.json`、中英文 README |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
