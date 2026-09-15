@@ -7,11 +7,11 @@ const root = path.resolve(__dirname, '..');
 const srcDir = path.join(root, 'src');
 
 // v0.17 契约层模块:独立存在、独立测试,但尚未决定接入生产 bundle。
-// 任何模块进入本清单的生产闭包都必须先通过包体预算决策(D-216),
-// 防止源码无声涌入仅剩少量余量的 320 KiB 硬上限归档。
+// 任何模块进入本清单的生产闭包都必须先通过包体预算决策(D-216)。
+// 归档硬上限已于 2026-09-15 由 320 KiB 上调至经审核的 512 KiB(D-353),
+// 余量约 225 KiB,因此预算不再是"无声涌入"式的风险,但仍须逐次评审。
 const UNWIRED_CONTRACT_MODULES = [
     'agent-approval-token',
-    'agent-document-context',
     'agent-document-set-actions',
     'agent-host-actions',
     'agent-workspace-actions',
@@ -30,6 +30,7 @@ const UNWIRED_CONTRACT_MODULES = [
 
 const WIRED_SANITY_MODULES = [
     'agent-capabilities',
+    'agent-document-context',
     'agent-workspace-diagnostics',
     'agent-workspace-runtime',
     'home-adapters',
@@ -66,26 +67,36 @@ function collectProductionGraph() {
     return seen;
 }
 
+// The traversal stores resolved filenames, so keys carry their extension
+// (e.g. "agent-workspace-runtime.js"). Both gates must resolve names the same
+// way: an earlier version checked only the bare name and `${name}.ts` here
+// while the sanity gate below also checked `${name}.js`, so every plain-`.js`
+// contract module could enter the production graph undetected -- agent-document-
+// context was in the graph while still listed as unwired and the leak assertion
+// still reported nothing (see D-354).
+function inGraph(graph, name) {
+    return graph.has(name) || graph.has(`${name}.js`) || graph.has(`${name}.ts`);
+}
+
 test('unwired agent contract modules stay out of the production import graph', () => {
     const graph = collectProductionGraph();
-    const leaked = UNWIRED_CONTRACT_MODULES.filter((module) => graph.has(module)
-        || graph.has(`${module}.ts`));
+    const leaked = UNWIRED_CONTRACT_MODULES.filter((module) => inGraph(graph, module));
     assert.deepEqual(leaked, [],
         `contract modules reached the production graph without a bundle-budget decision: ${leaked.join(', ')}`);
 });
 
 test('production graph traversal reaches every wired runtime module', () => {
     const graph = collectProductionGraph();
-    const has = (module) => graph.has(module) || graph.has(`${module}.js`) || graph.has(`${module}.ts`);
-    const missing = WIRED_SANITY_MODULES.filter((module) => !has(module));
+    const missing = WIRED_SANITY_MODULES.filter((module) => !inGraph(graph, module));
     assert.deepEqual(missing, [],
         `traversal failed to reach wired modules (traversal regression): ${missing.join(', ')}`);
 });
 
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
-    // 2026-09-14 生活组件第二阶段新增两个经审计的生产模块：纯数据模型与
-    // 白名单网络层。当前闭包为 31；继续增长必须重新复核 320 KiB 包体门禁。
+    // 2026-09-14 生活组件第二阶段新增两个经审计的生产模块:纯数据模型与
+    // 白名单网络层。当前闭包为 31(含随后经 D-352 确认已接线的
+    // agent-document-context);继续增长须复核 512 KiB 包体门禁(D-353)。
     t.diagnostic(`production import graph modules: ${graph.size}`);
     assert.ok(graph.size <= 31, `production graph grew to ${graph.size} modules; audited ceiling is 31`);
 });
