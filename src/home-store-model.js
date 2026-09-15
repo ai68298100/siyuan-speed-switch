@@ -427,7 +427,48 @@ function resetHomeStoreSearchState() {
 }
 
 const STORE_DENSITIES = Object.freeze(["comfortable", "compact"]);
+const STORE_ACTIONS = Object.freeze(["add", "configure", "remove", "preview", "apply-size"]);
 function normalizeHomeStoreDensity(value) { return STORE_DENSITIES.includes(value) ? value : "comfortable"; }
+function normalizeHomeStoreAction(value) { return STORE_ACTIONS.includes(value) ? value : "preview"; }
+function resolveHomeStoreDensityLabel(value, labels = {}) {
+    const key = normalizeHomeStoreDensity(value);
+    return boundedText(labels[key], 48) || key;
+}
+function buildHomeStoreFilterChip(filter, labels = {}) {
+    const normalized = resolveHomeStoreFilter(filter?.tab);
+    return {key: normalized.tab, label: boundedText(labels[normalized.tab], 48) || normalized.tab, active: normalized.tab !== "all"};
+}
+function normalizeHomeStoreResultCounts(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const toCount = (item) => Number.isFinite(Number(item)) ? Math.max(0, Math.trunc(Number(item))) : 0;
+    const total = toCount(source.total); const visible = Math.min(total, toCount(source.visible)); const added = Math.min(total, toCount(source.added));
+    return {visible, total, added};
+}
+function buildHomeStoreResultSummary(value, template = "显示 {visible} / {total} · 已添加 {added}") {
+    const counts = normalizeHomeStoreResultCounts(value);
+    return boundedText(template, 160).replace("{visible}", String(counts.visible)).replace("{total}", String(counts.total)).replace("{added}", String(counts.added));
+}
+function resolveHomeStoreCardTone(card) {
+    const item = normalizeHomeStoreCard(card);
+    if (item.added) return "success";
+    if (item.availability === "conditional") return "warning";
+    if (item.integration === "network") return "network";
+    if (item.integration === "local") return "local";
+    return "neutral";
+}
+function buildHomeStoreCardBadges(card, labels = {}) {
+    const item = normalizeHomeStoreCard(card); const badges = [];
+    if (item.recommended) badges.push(boundedText(labels.recommended || "推荐", 32));
+    if (item.configurable) badges.push(boundedText(labels.configurable || "可配置", 32));
+    if (item.added) badges.push(boundedText(labels.added || "已添加", 32));
+    return badges.filter(Boolean).slice(0, 4);
+}
+function isHomeStoreCardConfigurable(card) { return normalizeHomeStoreCard(card).configurable; }
+function countHomeStoreByStatus(cards) {
+    const counts = {added: 0, ready: 0, conditional: 0, external: 0};
+    (Array.isArray(cards) ? cards : []).forEach((card) => { const item = normalizeHomeStoreCard(card); const key = item.added ? "added" : item.availability; if (Object.prototype.hasOwnProperty.call(counts, key)) counts[key] += 1; });
+    return counts;
+}
 function normalizeHomeStoreViewState(value) {
     const source = value && typeof value === "object" ? value : {};
     const collapsed = normalizeHomeStoreCollapsedGroups(source.collapsedGroups);
@@ -730,6 +771,8 @@ module.exports = {
     normalizeHomeStoreCollapsedGroups, toggleHomeStoreGroup, resolveHomeStoreAction, getHomeStoreTabKeys,
     resolveHomeConfigKind, resolveHomeConfigSection, buildHomeConfigSections, resolveHomeConfigPlaceholder,
     resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration,
-    STORE_DENSITIES, normalizeHomeStoreDensity, normalizeHomeStoreViewState, serializeHomeStoreViewState,
+    STORE_DENSITIES, STORE_ACTIONS, normalizeHomeStoreDensity, normalizeHomeStoreAction, resolveHomeStoreDensityLabel,
+    buildHomeStoreFilterChip, normalizeHomeStoreResultCounts, buildHomeStoreResultSummary, resolveHomeStoreCardTone,
+    buildHomeStoreCardBadges, isHomeStoreCardConfigurable, countHomeStoreByStatus, normalizeHomeStoreViewState, serializeHomeStoreViewState,
     parseHomeStoreViewState, sameHomeStoreViewState, resetHomeStoreViewState, toggleHomeStoreDensity, buildHomeStoreViewSummary,
 };

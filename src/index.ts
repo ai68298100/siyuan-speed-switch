@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -4808,7 +4808,7 @@ const version = beginSearch(session);
             densityButton.type = "button";
             densityButton.className = "b3-button b3-button--outline sw-home-store__density";
             densityButton.dataset.action = "toggle-density";
-            const densityLabel = storeDensity === "compact" ? this.i18n.homeStoreDensityCompact : this.i18n.homeStoreDensityComfortable;
+            const densityLabel = resolveHomeStoreDensityLabel(storeDensity, {compact: this.i18n.homeStoreDensityCompact, comfortable: this.i18n.homeStoreDensityComfortable});
             densityButton.textContent = densityLabel;
             densityButton.setAttribute("aria-label", `${this.i18n.homeStoreDensity} · ${densityLabel}`);
             densityButton.title = densityButton.getAttribute("aria-label") || "";
@@ -4892,8 +4892,8 @@ const version = beginSearch(session);
                 if (resultSummary) {
                     const cards = Array.from(root.querySelectorAll<HTMLElement>(".sw-home-store__card"));
                     const summary = summarizeHomeStoreCards(cards.map((card) => card.dataset), query, filter);
-                    resultSummary.textContent = this.i18n.homeStoreResultSummary
-                        .replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
+                    // Legacy summary contract: this.i18n.homeStoreResultSummary.replace("{visible}", String(summary.visible)).replace("{total}", String(summary.total)).replace("{added}", String(summary.added));
+                    resultSummary.textContent = buildHomeStoreResultSummary(summary, this.i18n.homeStoreResultSummary);
                     resultSummary.dataset.visible = String(summary.visible);
                     resultSummary.dataset.total = String(summary.total);
                     resultSummary.dataset.added = String(summary.added);
@@ -5114,6 +5114,7 @@ const version = beginSearch(session);
                 card.dataset.added = added ? "true" : "false";
                 card.dataset.statusTone = resolveHomeStoreStatusTone(card.dataset);
                 card.dataset.integrationTone = resolveHomeStoreIntegrationTone(card.dataset);
+                card.dataset.cardTone = resolveHomeStoreCardTone(card.dataset);
                 card.dataset.configurable = String(Array.isArray(def.configSchema) && def.configSchema.length > 0);
                 card.dataset.recommended = String(def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready");
                 card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
@@ -5202,6 +5203,9 @@ const version = beginSearch(session);
                     addChip(this.i18n.homeStoreBuiltInSource, "offline");
                 }
                 addChip(Array.isArray(def.configSchema) && def.configSchema.length > 0 ? this.i18n.homeStoreConfigReady : this.i18n.homeStoreConfigNone, "config");
+                buildHomeStoreCardBadges(card.dataset, {recommended: this.i18n.homeStoreTabRecommended, configurable: this.i18n.homeStoreConfigReady, added: this.i18n.homeStoreStatusAdded})
+                    .filter((label) => label !== this.i18n.homeStoreConfigReady)
+                    .forEach((label) => addChip(label, label === this.i18n.homeStoreTabRecommended ? "recommended" : label === this.i18n.homeStoreStatusAdded ? "added" : "config"));
                 if (sourceMeta.childElementCount > 0) copy.appendChild(sourceMeta);
                 head.append(icon, copy);
                 card.appendChild(head);

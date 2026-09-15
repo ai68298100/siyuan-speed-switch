@@ -4693,6 +4693,13 @@
 }
 .sw-home-store[data-density="compact"] .sw-home-store__preview { min-height: 72px; }
 .sw-home-store[data-density="compact"] .sw-home-store__group-description { display: none; }
+.sw-home-store[data-density="compact"] .sw-home-store__source-chip { padding-inline: 5px; font-size: 10px; }
+.sw-home-store__source-chip.is-recommended { color: var(--b3-theme-primary); background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
+.sw-home-store__source-chip.is-added { color: var(--b3-theme-success); background: color-mix(in srgb, var(--b3-theme-success) 12%, transparent); }
+.sw-home-store__search { position: sticky; top: 0; z-index: 3; background: var(--b3-theme-background); padding-block: 4px; }
+@media (prefers-reduced-motion: reduce) {
+    .sw-home-store__card { transition: none !important; }
+}
 
 .sw-home-store__section {
     display: flex;
