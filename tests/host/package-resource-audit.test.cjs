@@ -10,7 +10,8 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // v0.20+ adds the dependency catalog and installation guidance. Keep a hard
 // per-entry ceiling with a small reviewed allowance above the previous 144 KiB
 // budget; package.zip still has its
-// independent 320 KiB release ceiling.
+// independent 512 KiB release ceiling (raised from 320 KiB by D-353; the stale
+// figure here was noted in docs/host-gate-audit.md and corrected by D-360).
 const MAX_COMPRESSED_ENTRY_BYTES = 148 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;

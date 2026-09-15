@@ -18,6 +18,15 @@ test('release workflow remains aligned with preflight intent', () => {
 });
 
 test('final consistency diagnostics stay bounded', () => {
-    const diagnostics = ['rollback: documented', 'cli-preflight: documented', 'dry-run: documented'];
-    assert.ok(diagnostics.join('; ').length < 256);
+    // 原实现自造三个诊断字符串再断言其拼接长度 < 256，恒真且与真实诊断无关
+    // （见 docs/host-gate-audit.md）。现改用真实诊断实现，并以极端输入检验有界性：
+    // 50 条超长失败信息必须仍被截断到有界输出，否则诊断本身会成为日志炸弹。
+    const {formatReleaseDiagnostics} = require('./release-diagnostics.cjs');
+    const stress = Array.from({length: 50}, (unused, index) => ({
+        kind: 'resource',
+        message: `missing very-long-resource-name-${index}-${'x'.repeat(200)}.js`,
+    }));
+    const result = formatReleaseDiagnostics(stress);
+    assert.ok(result.length > 0, 'diagnostics must not be empty for a non-empty failure list');
+    assert.ok(result.length <= 480, `diagnostics must stay bounded under load, got ${result.length} chars`);
 });

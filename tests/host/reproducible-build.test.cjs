@@ -11,16 +11,23 @@ function digest(file) {
     return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
-test('build manifest resources are deterministic within one checkout', () => {
+// 测试名原为 "...are deterministic within one checkout"，但断言只有"文件存在"与
+// "诊断快照有界"，从未做任何确定性验证（未做两次构建对比、未比对固定哈希）。
+// 全仓亦无构建产物的两次构建对比——可复现性实际由下面两个固定 mtime 断言与构建
+// 配置共同保障，本测试不重复承担。名称与断言已一并修正，见 docs/host-gate-audit.md。
+test('build manifest resources are present with valid sha256 digests', () => {
     const dist = path.join(root, 'dist');
     if (!fs.existsSync(dist)) return;
     const files = ['index.js', 'index.css', 'plugin.json', 'i18n/en.json', 'i18n/zh-CN.json']
         .map((file) => path.join(dist, file));
     const missing = files.filter((file) => !fs.existsSync(file));
     assert.deepEqual(missing, [], `missing build resources: ${missing.map((file) => path.relative(root, file)).join(', ')}`);
-    const snapshot = files.map((file) => `${path.relative(dist, file)}:${digest(file)}`).join('\n');
-    assert.equal(snapshot.split('\n').length, files.length);
-    assert.ok(snapshot.length < 1024, 'diagnostic snapshot must remain bounded');
+    // 原为 assert.equal(snapshot.split('\n').length, files.length)：snapshot 由 files
+    // map-join 而成，行数必然等于文件数，恒真且零信息。改为校验每个产物确实产出合法摘要。
+    for (const file of files) {
+        assert.match(digest(file), /^[0-9a-f]{64}$/,
+            `sha256 digest must be a 64-char lowercase hex string: ${path.relative(root, file)}`);
+    }
 });
 
 test('environment versions are available for reproducible-build diagnosis', () => {

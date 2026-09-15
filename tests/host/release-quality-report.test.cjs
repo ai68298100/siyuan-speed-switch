@@ -7,10 +7,18 @@ const {classifyReleaseFailure, formatReleaseDiagnostics} = require('./release-di
 const root = path.resolve(__dirname, '..', '..');
 
 test('release quality report exposes all required gate categories', () => {
-    const categories = ['package', 'manifest', 'drift', 'resource'];
-    const report = categories.map((category) => ({category, status: 'pass'}));
-    assert.deepEqual(report.map((item) => item.category), categories);
-    assert.equal(report.every((item) => item.status === 'pass'), true);
+    // 原实现自造 categories 数组、再 map 出 report 并断言二者一致——恒等式，
+    // 且其类别（package/drift）连生产实现都不识别（见下方 RELEASE_UNKNOWN 用例）。
+    // 现改为直接校验真实诊断实现支持的类别覆盖，见 docs/host-gate-audit.md。
+    const supported = ['build', 'resource', 'manifest', 'remote', 'environment'];
+    const codes = supported.map((kind) => classifyReleaseFailure({kind, message: 'probe'}).code);
+    assert.deepEqual(codes.filter((code) => code === 'RELEASE_UNKNOWN'), [],
+        'every documented failure kind must map to a known code');
+    assert.equal(new Set(codes).size, supported.length,
+        'each failure kind must map to a distinct code');
+    for (const code of codes) {
+        assert.match(code, /^[A-Z][A-Z_]*$/, `codes must stay stable and machine-readable: ${code}`);
+    }
 });
 
 test('missing release resources produce bounded actionable attribution', () => {

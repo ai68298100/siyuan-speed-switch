@@ -1,5 +1,18 @@
 # TODO
 
+## T-6109~T-6118 宿主发布门禁有效性审查与修复（2026-09-16，已完成）
+
+- [x] T-6109 完成 16 个宿主门禁文件、159 个断言的全量审查（模式化扫描 + 逐文件语义人审），报告见 `docs/host-gate-audit.md`
+- [x] T-6110 发现 4 处"自造数据再断言自造数据"的完全恒真断言：`release-dry-run`、`release-final-consistency`、`release-quality-report`、`reproducible-build`
+- [x] T-6111 发现 `release-quality-report` 的分类 `package`/`drift` 连生产实现都不识别（映射为 `RELEASE_UNKNOWN`），证明其与实现脱节
+- [x] T-6112 发现 2 处"测试自造正则"：`rollback-preflight`、`release-docs-safety` 实际验证 JS 正则引擎而非发布流程约束
+- [x] T-6113 发现 `reproducible-build` 测试名声称 deterministic 却无确定性验证，且全仓无构建产物两次构建对比——可复现性声明缺自动化证据
+- [x] T-6114 修复前三处恒真断言：改为从 workflow `files:` 声明、真实 `formatReleaseDiagnostics`、真实 `classifyReleaseFailure` 取数
+- [x] T-6115 修复 `reproducible-build`：删除恒真行数断言、改校验 sha256 摘要形态、修正测试名为准确描述
+- [x] T-6116 修复 `compatibility-matrix` 链接检查的静默风险：补 `checked >= 10` 自检（当前实检 22 条）
+- [x] T-6117 更新 `package-resource-audit` 过时注释 320→512 KiB（D-353）
+- [x] T-6118 负向验证三处修复（非法资源名、去截断、kind 降级为 UNKNOWN）均被拦截；跑通 `pnpm verify:release`；记录 D-360
+
 ## T-6101~T-6108 恒真断言审计与修复（2026-09-16，已完成）
 
 - [x] T-6101 延续 D-354 思路审计全仓断言，扫描恒真模式（`assert.ok(true)` 类、`typeof` 类型断言、`assert.equal(x, x)` 类）

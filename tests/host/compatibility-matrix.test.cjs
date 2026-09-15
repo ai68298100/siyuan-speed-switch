@@ -27,6 +27,7 @@ test('readme exposes a complete release-candidate path', () => {
 test('documentation local links resolve from the repository', () => {
     const documents = ['README.md', 'README.en-US.md', 'ROADMAP.md'];
     const missing = [];
+    let checked = 0;
     const linkPattern = /\[[^\]]+\]\(([^)\s]+)(?:\s+[^)]*)?\)/g;
     for (const document of documents) {
         const source = fs.readFileSync(path.join(root, document), 'utf8');
@@ -35,10 +36,15 @@ test('documentation local links resolve from the repository', () => {
             if (/^(?:https?:|mailto:|#)/i.test(target)) continue;
             const relative = target.split('#', 1)[0].split('?', 1)[0];
             if (!relative) continue;
+            checked += 1;
             const resolved = path.resolve(root, path.dirname(document), relative);
             if (!fs.existsSync(resolved)) missing.push(`${document} -> ${target}`);
         }
     }
+    // 自检：若 linkPattern 因文档改版而匹配不到链接，missing 会恒为空、测试仍显示
+    // 绿色。锚定一个下限，使"正则失效"表现为失败而非静默通过（见 docs/host-gate-audit.md）。
+    // 当前实际检查 22 条，下限 10 留出文档精简的余量。
+    assert.ok(checked >= 10, `expected to check at least 10 local links, only checked ${checked}`);
     assert.deepEqual(missing, [], `broken documentation links: ${missing.join(', ')}`);
 });
 
