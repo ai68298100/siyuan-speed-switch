@@ -6421,3 +6421,19 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
         opacity: 0.65;
     }
 }
+
+// ==================== 高对比度偏好（prefers-contrast: more）====================
+// Apple 无障碍指南要求适配"增强对比度"偏好。与上方 forced-colors 分工明确：
+// forced-colors 是系统强制覆盖（改用 CanvasText / Canvas 等系统色）；
+// prefers-contrast 仍属用户偏好——继续沿用主题色，只把低透明度的软层收紧为
+// 更实的表面色，使层次边界不再依赖细微的透明度差。
+// 这里仅覆盖令牌，不改布局、尺寸或阴影，因此默认外观完全不受影响。
+// 置于文件末尾，以便同时命中 .speed-switch 与 .sw-settings 两个令牌作用域。
+@media (prefers-contrast: more) {
+    .speed-switch,
+    .sw-settings {
+        --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 20%, transparent);
+        --sw-surface-muted: var(--b3-theme-surface);
+        --sw-control-bg: var(--b3-theme-surface);
+    }
+}

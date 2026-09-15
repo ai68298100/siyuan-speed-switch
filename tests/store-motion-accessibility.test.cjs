@@ -52,3 +52,21 @@ test('motion tokens stay declared in the stylesheet', () => {
         assert.match(css, new RegExp('\\' + token + '\\s*:'), `令牌 ${token} 必须保持定义`);
     }
 });
+
+// 高对比度偏好（D-363）：Apple 无障碍指南要求适配 prefers-contrast: more。
+// 与 forced-colors（系统强制色）分工不同，它沿用主题色、只收紧低透明度软层。
+test('high contrast preference is honoured for both token scopes', () => {
+    assert.match(css, /@media \(prefers-contrast: more\)/, '必须存在 prefers-contrast 适配');
+    const block = css.slice(css.indexOf('@media (prefers-contrast: more)'));
+    assert.match(block, /\.speed-switch/, '需覆盖 .speed-switch 令牌作用域');
+    assert.match(block, /\.sw-settings/, '需覆盖 .sw-settings 令牌作用域');
+});
+
+test('high contrast override stays token-only', () => {
+    // 该适配被承诺为"纯增量、不影响默认外观"，因此不得改动布局属性。
+    const start = css.indexOf('@media (prefers-contrast: more)');
+    const block = css.slice(start, css.indexOf('\n}', start) + 2);
+    for (const prop of ['padding:', 'margin:', 'width:', 'height:', 'font-size:', 'display:']) {
+        assert.equal(block.includes(prop), false, `高对比度覆盖不应改动布局属性 ${prop}`);
+    }
+});
