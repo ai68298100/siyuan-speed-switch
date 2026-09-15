@@ -4907,19 +4907,24 @@ const version = beginSearch(session);
             readyHeading.textContent = this.i18n.homeStoreReady;
             root.appendChild(readyHeading);
 
-            // 功能分组（内置组件按用途归类；插件组件按来源作者归类）
-            const BUILTIN_GROUPS: Array<{label: string; moduleIds: string[]}> = [
-                {label: this.i18n.homeStoreGroupJournal, moduleIds: ["today-journal", "journal-monthly", "recent-daily-notes", "today-reservations", "on-this-day", "journal-calendar", "writing-streak"]},
-                {label: this.i18n.homeStoreGroupTasks, moduleIds: ["today-tasks"]},
-                {label: this.i18n.homeStoreGroupDocuments, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
-                {label: this.i18n.homeStoreGroupInsights, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "countdown"]},
-                {label: this.i18n.homeStoreGroupLife, moduleIds: ["external-local-time", "external-weather-open-meteo", "external-anime-bangumi"]},
-                {label: this.i18n.homeStoreGroupNews, moduleIds: ["external-hot-news-dailyhot", "external-news-newsnow"]},
-                {label: this.i18n.homeStoreGroupFocus, moduleIds: ["external-activitywatch-time"]},
-                {label: this.i18n.homeStoreGroupLearning, moduleIds: ["flashcard-due", "random-review"]},
-                {label: this.i18n.homeStoreGroupCapture, moduleIds: ["quick-capture", "clipped-unread"]},
-                {label: this.i18n.homeStoreGroupSystem, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
+            // 功能分组只表达“这个组件解决什么问题”；联网、本机服务、条件可用等
+            // 前置条件继续由上方筛选页签和卡片徽标表达，避免两套分类互相混淆。
+            const BUILTIN_GROUPS: Array<{label: string; description: string; moduleIds: string[]}> = [
+                {label: this.i18n.homeStoreGroupJournal, description: this.i18n.homeStoreGroupJournalHint, moduleIds: ["today-journal", "journal-monthly", "recent-daily-notes", "today-reservations", "on-this-day", "journal-calendar", "writing-streak"]},
+                {label: this.i18n.homeStoreGroupTasks, description: this.i18n.homeStoreGroupTasksHint, moduleIds: ["today-tasks", "countdown", "quick-capture", "clipped-unread"]},
+                {label: this.i18n.homeStoreGroupDocuments, description: this.i18n.homeStoreGroupDocumentsHint, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
+                {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity"]},
+                {label: this.i18n.homeStoreGroupLearning, description: this.i18n.homeStoreGroupLearningHint, moduleIds: ["flashcard-due", "random-review"]},
+                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-activitywatch-time"]},
+                {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
             ];
+            const groupDescriptionOf = (moduleId: string, def: any): string => {
+                if (def.category === "siyuan") {
+                    const hit = BUILTIN_GROUPS.find((group) => group.moduleIds.includes(moduleId));
+                    return hit?.description || this.i18n.homeStoreGroupOtherHint;
+                }
+                return this.i18n.homeStoreGroupPluginHint;
+            };
             const groupOf = (moduleId: string, def: any): string => {
                 if (def.category === "siyuan") {
                     const hit = BUILTIN_GROUPS.find((group) => group.moduleIds.includes(moduleId));
@@ -5063,12 +5068,11 @@ const version = beginSearch(session);
                 preview.className = "sw-home-store__preview";
                 preview.dataset.kind = kind;
                 preview.dataset.moduleId = moduleId;
-                card.dataset.previewKind = kind;
                 preview.setAttribute("aria-hidden", "true");
                 if (kind === "calendar") {
-                    preview.innerHTML = `<span class="p-calendar-head"></span><span class="p-calendar-grid">${Array.from({length: 21}, () => "<i></i>").join("")}</span>`;
+                    preview.innerHTML = `<span class="p-calendar-grid">${Array.from({length: 28}, () => "<i></i>").join("")}</span>`;
                 } else if (kind === "weather") {
-                    preview.innerHTML = '<span class="p-weather-temp">21°</span><span class="p-weather-icon">⛅</span><span class="p-weather-days"><i></i><i></i><i></i></span>';
+                    preview.innerHTML = '<span class="p-weather-temp">21°</span><span class="p-weather-icon">⛅</span>';
                 } else if (kind === "media") {
                     preview.innerHTML = '<span class="p-media-grid"><i></i><i></i><i></i><i></i></span>';
                 } else if (kind === "feed") {
@@ -5244,9 +5248,11 @@ const version = beginSearch(session);
 
             // 按组渲染：组头（含数量）+ 组内网格；搜索过滤沿用卡片隐藏逻辑
             const readyGroups = new Map<string, HTMLElement[]>();
+            const readyGroupDescriptions = new Map<string, string>();
             ready.forEach(({moduleId, def}) => {
                 const label = groupOf(moduleId, def);
                 if (!readyGroups.has(label)) readyGroups.set(label, []);
+                if (!readyGroupDescriptions.has(label)) readyGroupDescriptions.set(label, groupDescriptionOf(moduleId, def));
                 readyGroups.get(label)!.push(buildReadyCard(moduleId, def));
             });
             const orderedGroups = [
@@ -5263,9 +5269,15 @@ const version = beginSearch(session);
                 groupHeading.dataset.group = label;
                 groupHeading.dataset.collapsed = String(collapsedGroups.has(label));
                 groupHeading.setAttribute("aria-label", `${label} · ${cards.length}`);
+                const descriptionId = `sw-home-store-group-description-${orderedGroups.indexOf(label)}`;
+                groupHeading.setAttribute("aria-describedby", descriptionId);
                 const groupLabel = document.createElement("span");
                 groupLabel.className = "sw-home-store__group-label";
                 groupLabel.textContent = `${label} · ${cards.length}`;
+                const groupDescription = document.createElement("span");
+                groupDescription.className = "sw-home-store__group-description";
+                groupDescription.id = descriptionId;
+                groupDescription.textContent = readyGroupDescriptions.get(label) || this.i18n.homeStoreGroupOtherHint;
                 const groupToggle = document.createElement("button");
                 groupToggle.type = "button";
                 groupToggle.className = "sw-home-store__group-toggle";
@@ -5275,7 +5287,7 @@ const version = beginSearch(session);
                 groupToggle.dataset.group = label;
                 groupToggle.title = groupToggle.getAttribute("aria-label") || "";
                 groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
-                groupHeading.append(groupLabel, groupToggle);
+                groupHeading.append(groupLabel, groupDescription, groupToggle);
                 root.appendChild(groupHeading);
                 const groupGrid = document.createElement("div");
                 groupGrid.className = "sw-home-store__grid";

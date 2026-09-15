@@ -65,7 +65,7 @@ test("availability levels are explicit and bounded for store cards", () => {
 
 test("widget store functional groups cover every built-in exactly once", () => {
     const start = source.indexOf("const BUILTIN_GROUPS:");
-    const end = source.indexOf("const groupOf", start);
+    const end = source.indexOf("const groupDescriptionOf", start);
     assert.ok(start >= 0 && end > start, "store group declaration");
     const groupedIds = [...source.slice(start, end).matchAll(/"([a-z][a-z0-9-]+)"/g)]
         .map((match) => match[1]);

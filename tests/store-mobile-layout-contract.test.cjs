@@ -538,21 +538,22 @@ test('config save only applies when instance exists', () => assert.match(source,
 test('config save invokes callback after destroy', () => assert.match(source, /dialog\.destroy\(\);\s*onSaved\(\)/));
 
 // T-3975~T-4014: store grouping, pending and unavailable catalog contracts.
-test('store declares built-in group metadata', () => assert.match(source, /const BUILTIN_GROUPS: Array<\{label: string; moduleIds: string\[\]\}> = \[/));
-test('store groups journal modules explicitly', () => assert.match(source, /homeStoreGroupJournal, moduleIds: \["today-journal", "journal-monthly"/));
-test('store groups task modules explicitly', () => assert.match(source, /homeStoreGroupTasks, moduleIds: \["today-tasks"\]/));
-test('store groups document modules explicitly', () => assert.match(source, /homeStoreGroupDocuments, moduleIds: \["recent-documents", "favorites"/));
-test('store groups insight modules explicitly', () => assert.match(source, /homeStoreGroupInsights, moduleIds: \["note-stats", "year-progress"/));
-test('store groups life modules explicitly', () => assert.match(source, /homeStoreGroupLife, moduleIds: \["external-local-time", "external-weather-open-meteo"/));
-test('store groups news modules explicitly', () => assert.match(source, /homeStoreGroupNews, moduleIds: \["external-hot-news-dailyhot", "external-news-newsnow"\]/));
-test('store groups focus modules explicitly', () => assert.match(source, /homeStoreGroupFocus, moduleIds: \["external-activitywatch-time"\]/));
-test('store groups learning modules explicitly', () => assert.match(source, /homeStoreGroupLearning, moduleIds: \["flashcard-due", "random-review"\]/));
-test('store groups capture modules explicitly', () => assert.match(source, /homeStoreGroupCapture, moduleIds: \["quick-capture", "clipped-unread"\]/));
-test('store groups system modules explicitly', () => assert.match(source, /homeStoreGroupSystem, moduleIds: \["tags", "bookmarks", "plugin-commands"\]/));
+test('store declares built-in group metadata with descriptions', () => assert.match(source, /const BUILTIN_GROUPS: Array<\{label: string; description: string; moduleIds: string\[\]\}> = \[/));
+test('store groups journal modules explicitly', () => assert.match(source, /homeStoreGroupJournal, description: this\.i18n\.homeStoreGroupJournalHint, moduleIds: \["today-journal", "journal-monthly"/));
+test('store groups task and execution modules explicitly', () => assert.match(source, /homeStoreGroupTasks, description: this\.i18n\.homeStoreGroupTasksHint, moduleIds: \["today-tasks", "countdown", "quick-capture", "clipped-unread"\]/));
+test('store groups document modules explicitly', () => assert.match(source, /homeStoreGroupDocuments, description: this\.i18n\.homeStoreGroupDocumentsHint, moduleIds: \["recent-documents", "favorites"/));
+test('store groups insight modules explicitly', () => assert.match(source, /homeStoreGroupInsights, description: this\.i18n\.homeStoreGroupInsightsHint, moduleIds: \["note-stats", "year-progress", "today-writing", "recent-writing-activity"\]/));
+test('store groups life and information modules explicitly', () => assert.match(source, /homeStoreGroupLife, description: this\.i18n\.homeStoreGroupLifeHint, moduleIds: \["external-local-time", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-activitywatch-time"\]/));
+test('store groups learning modules explicitly', () => assert.match(source, /homeStoreGroupLearning, description: this\.i18n\.homeStoreGroupLearningHint, moduleIds: \["flashcard-due", "random-review"\]/));
+test('store groups system modules explicitly', () => assert.match(source, /homeStoreGroupSystem, description: this\.i18n\.homeStoreGroupSystemHint, moduleIds: \["tags", "bookmarks", "plugin-commands"\]/));
 test('store resolves built-in group by module id', () => assert.match(source, /const hit = BUILTIN_GROUPS\.find\(\(group\) => group\.moduleIds\.includes\(moduleId\)\)/));
 test('store has an explicit other built-in group fallback', () => assert.match(source, /return hit \? hit\.label : this\.i18n\.homeStoreGroupOther/));
 test('store resolves plugin group by author', () => assert.match(source, /return def\.author\s*\?\s*this\.i18n\.homeStoreGroupPluginAuthor\.replace\("\{author\}", def\.author\)/));
 test('store has a generic plugin group fallback', () => assert.match(source, /: this\.i18n\.homeStoreGroupPlugin/));
+test('store resolves group descriptions independently of availability', () => assert.match(source, /const groupDescriptionOf = \(moduleId: string, def: any\): string =>/));
+test('store exposes other built-in description', () => assert.match(source, /this\.i18n\.homeStoreGroupOtherHint/));
+test('store exposes plugin group description', () => assert.match(source, /this\.i18n\.homeStoreGroupPluginHint/));
+test('store keeps group descriptions separate from filter tabs', () => assert.match(source, /联网、本机服务、条件可用等[\s\S]*?筛选页签/));
 test('store builds ready groups from ready cards', () => assert.match(source, /const readyGroups = new Map<string, HTMLElement\[\]>\(\);[\s\S]*?ready\.forEach/));
 test('store creates missing ready group buckets', () => assert.match(source, /if \(!readyGroups\.has\(label\)\) readyGroups\.set\(label, \[\]\)/));
 test('store appends cards into matching group', () => assert.match(source, /readyGroups\.get\(label\)!\.push\(buildReadyCard\(moduleId, def\)\)/));
@@ -563,6 +564,10 @@ test('store group heading uses level three', () => assert.match(source, /groupHe
 test('store group heading has stable positional id', () => assert.match(source, /groupHeading\.id = `sw-home-store-group-heading-\$\{orderedGroups\.indexOf\(label\)\}`/));
 test('store group heading records group key', () => assert.match(source, /groupHeading\.dataset\.group = label/));
 test('store group heading exposes item count', () => assert.match(source, /groupHeading\.setAttribute\("aria-label", `\$\{label\} · \$\{cards\.length\}`\)/));
+test('store group heading references description for assistive tech', () => assert.match(source, /groupHeading\.setAttribute\("aria-describedby", descriptionId\)/));
+test('store group description has dedicated class', () => assert.match(source, /groupDescription\.className = "sw-home-store__group-description"/));
+test('store group description uses textContent', () => assert.match(source, /groupDescription\.textContent = readyGroupDescriptions\.get\(label\)/));
+test('store group description has stable id', () => assert.match(source, /const descriptionId = `sw-home-store-group-description-\$\{orderedGroups\.indexOf\(label\)\}`/));
 test('store group label exposes item count', () => assert.match(source, /groupLabel\.textContent = `\$\{label\} · \$\{cards\.length\}`/));
 test('store group toggle tracks collapsed state', () => assert.match(source, /groupHeading\.dataset\.collapsed = String\(collapsedGroups\.has\(label\)\)/));
 test('store group toggle tracks expanded state', () => assert.match(source, /groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));

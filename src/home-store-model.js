@@ -12,9 +12,12 @@ const STORE_CATEGORIES = Object.freeze(["builtin", "plugin"]);
 const STORE_INTEGRATIONS = Object.freeze(["offline", "local", "network"]);
 const STORE_SORTS = Object.freeze(["relevance", "title", "status", "category"]);
 const PREVIEW_KINDS = Object.freeze({
-    "journal-calendar": "calendar", "today-tasks": "tasks", "note-stats": "stat", "year-progress": "progress",
-    "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown", "flashcard-due": "tasks",
-    "random-review": "tasks", "current-document-outline": "outline", "recent-documents": "documents", favorites: "documents",
+    "today-journal": "documents", "journal-monthly": "calendar", "recent-daily-notes": "documents", "today-reservations": "tasks",
+    "on-this-day": "documents", "journal-calendar": "calendar", "writing-streak": "progress", "today-tasks": "tasks",
+    "note-stats": "stat", "year-progress": "progress", "today-writing": "progress", "recent-writing-activity": "chart", "countdown": "countdown",
+    "flashcard-due": "tasks", "random-review": "tasks", "quick-capture": "tasks", "clipped-unread": "feed",
+    "recent-documents": "documents", "favorites": "documents", "document-sets": "documents", "fixed-document": "documents", "recent-edits": "documents",
+    "current-document-outline": "outline", "document-relations-summary": "outline",
     "external-local-time": "stat", "external-weather-open-meteo": "weather", "external-anime-bangumi": "media",
     "external-hot-news-dailyhot": "feed", "external-news-newsnow": "feed",
     "external-activitywatch-time": "activity",
