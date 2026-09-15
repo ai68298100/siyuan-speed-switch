@@ -627,6 +627,97 @@ function buildFrankfurterSnapshot(envelope, config, labels = {}) {
     };
 }
 
+// Miniflux 未读：用户自建 Miniflux 实例的未读文章列表。
+// 配置 = 实例 origin + API Token + 条目上限；Token 只进请求头，绝不进 URL。
+const MINIFLUX_MAX_ENTRIES = 50;
+const MINIFLUX_DEFAULT_LIMIT = 20;
+
+function normalizeMinifluxToken(value) {
+    const token = typeof value === "string" ? value.trim() : "";
+    if (!token || token.length > 128 || /[\r\n\u0000-\u001f\u007f]/.test(token)) return "";
+    return token;
+}
+
+function normalizeMinifluxConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const rawOrigin = boundedText(source.endpoint, 256);
+    let origin = "";
+    try {
+        const url = new URL(rawOrigin);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol === "https:" || (url.protocol === "http:" && local))
+            && !url.username && !url.password && (url.pathname === "/" || url.pathname === "")
+            && !url.search && !url.hash) {
+            origin = `${url.protocol}//${url.host}`;
+        }
+    } catch (_) { /* 留空触发配置提示 */ }
+    return {
+        origin,
+        token: normalizeMinifluxToken(source.token),
+        limit: Number.isFinite(Math.trunc(Number(source.limit)))
+            ? Math.min(MINIFLUX_MAX_ENTRIES, Math.max(1, Math.trunc(Number(source.limit))))
+            : MINIFLUX_DEFAULT_LIMIT,
+    };
+}
+
+function buildMinifluxRequestUrl(config) {
+    const normalized = normalizeMinifluxConfig(config);
+    if (!normalized.origin) return "";
+    return `${normalized.origin}/v1/entries?status=unread&limit=${normalized.limit}`;
+}
+
+// 条目 URL 信任边界：Miniflux 是用户自己的阅读器实例、条目来自用户订阅的源，
+// 信任级别高于公开 API（HN 因此拒绝一切非 HTTPS），但仍拒绝 javascript:/data: 等
+// 危险 scheme；http 站点允许（自建源常见形态）。
+function normalizeMinifluxEntryUrl(value) {
+    const url = boundedText(value, 512);
+    if (!/^https?:\/\//i.test(url)) return "";
+    return url;
+}
+
+function normalizeMinifluxEntries(payload) {
+    if (!payload || typeof payload !== "object" || !Array.isArray(payload.entries)) return null;
+    const total = Number(payload.total);
+    const entries = [];
+    for (const raw of payload.entries) {
+        if (!raw || typeof raw !== "object" || entries.length >= MINIFLUX_MAX_ENTRIES) break;
+        const id = raw.id !== undefined && raw.id !== null ? String(raw.id).slice(0, 64) : "";
+        const title = boundedText(raw.title, 96);
+        const url = normalizeMinifluxEntryUrl(raw.url);
+        if (!id || !title) continue;
+        entries.push({
+            id,
+            title,
+            url,
+            feed: boundedText(raw.feed?.title, 64),
+            published: boundedText(typeof raw.published_at === "string" ? raw.published_at.slice(0, 10) : "", 10),
+        });
+    }
+    return {total: Number.isFinite(total) && total >= 0 ? total : entries.length, entries};
+}
+
+function buildMinifluxSnapshot(envelope, config, labels = {}) {
+    const parsed = normalizeMinifluxEntries(envelope?.payload);
+    if (!parsed || !parsed.entries.length) return null;
+    const items = parsed.entries.map((entry, index) => {
+        const meta = [entry.feed, entry.published].filter(Boolean).join(" · ");
+        return {label: entry.title, value: meta, href: entry.url || undefined, rank: index + 1};
+    });
+    items.push({
+        label: `${boundedText(labels.source, 32) || "数据来源"}：Miniflux`,
+        value: "",
+    });
+    const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
+    return {
+        title: boundedText(labels.title, 48) || "未读文章",
+        stat: {value: String(parsed.total), label: boundedText(labels.unread, 24) || "未读"},
+        items,
+        emptyHint: "",
+        updatedAt: Number.isFinite(Number(envelope?.fetchedAt)) ? Number(envelope.fetchedAt) : Date.now(),
+        sourceHealth: health,
+    };
+}
+
 function normalizeActivityWatchEndpoint(value) {
     const raw = boundedText(value, 256) || ACTIVITYWATCH_DEFAULT_ENDPOINT;
     try {
@@ -761,6 +852,11 @@ module.exports = {
     normalizeFrankfurterConfig,
     buildFrankfurterRequestUrl,
     buildFrankfurterSnapshot,
+    normalizeMinifluxToken,
+    normalizeMinifluxConfig,
+    buildMinifluxRequestUrl,
+    normalizeMinifluxEntries,
+    buildMinifluxSnapshot,
     normalizeActivityWatchEndpoint,
     normalizeActivityWatchConfig,
     buildActivityWatchRequest,

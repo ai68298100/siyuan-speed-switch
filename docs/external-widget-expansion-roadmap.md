@@ -43,7 +43,7 @@
 ### 第三批（P2，部分交付，2026-09-16）
 - **每日引言（external-quote-daily，已交付）**：采用零风险替代方案——完全离线的内置语录集（48 条公有领域中国古籍原文，逐条标注篇目），按本地日期确定性哈希稳定轮换；自定义语录（多行 textarea，`——`/`|` 分隔出处）整体替换内置集；无网络请求、无白名单需求。在线引言渠道（ZenQuotes/Quotable 等）的条款与 CORS 复核未完成前不接入在线版。
 - **电池/设备状态（external-device-battery，已交付）**：浏览器 Battery Status API，完全本地；能力探测在宿主层，宿主不支持时显示诚实降级文案；移动端 WebView 普遍不支持，故仅声明桌面/侧栏；level 0 视为已知的 Chromium 实现缺陷而非真实电量，降级处理。
-- **Miniflux 未读（external-rss-miniflux，待做）**：用户实例 + API Token；`/v1/entries?status=unread&limit=N`；先做凭据经代理头的传递与脱敏审计（Token 在内核代理请求体、错误消息、缓存 key 中的暴露面），单独成批。
+- **Miniflux 未读（external-rss-miniflux，已交付）**：用户实例 + API Token；`/v1/entries?status=unread&limit=N`（N=1-50）。凭据设计：Token 只经 `X-Auth-Token` 请求头传递（不进 URL/缓存 key/错误消息/快照），配置层清洗（拒绝 CR/LF/控制字符/超 128 字符，防 header 注入）；URL 走"已知路由"白名单（恰两个受控参数）；缓存 key 基于 URL 天然不含凭据；Token 仅出现在发往本机内核（127.0.0.1:6806）的代理请求体中，内核侧日志行为不可控已在组件描述中声明。
 - **iCal 只读日程（external-schedule-ical，不接入）**：解析器体积与 CORS（任意主机）两个未决点仍未解决；若走内核代理需先评估任意域名放行策略，**不达门槛不接入**。
 
 ### 仅研究（不承诺）

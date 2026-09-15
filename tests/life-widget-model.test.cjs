@@ -353,3 +353,59 @@ test("Frankfurter snapshot always appends the source row after rates", () => {
     assert.match(snapshot.items[1].label, /数据来源：Frankfurter（ECB）/);
     assert.equal(snapshot.emptyHint, "");
 });
+
+// Miniflux：配置规范化 → 请求 URL → 条目解析 → 快照组装。
+test("Miniflux config normalizes origin, token and limit", () => {
+    assert.deepEqual(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com/", token: " abc123 ", limit: "35"}), {origin: "https://rss.example.com", token: "abc123", limit: 35});
+    assert.deepEqual(model.normalizeMinifluxConfig(null), {origin: "", token: "", limit: 20});
+});
+test("Miniflux config rejects remote http, userinfo and drift", () => {
+    assert.equal(model.normalizeMinifluxConfig({endpoint: "http://rss.example.com", token: "t"}).origin, "");
+    assert.equal(model.normalizeMinifluxConfig({endpoint: "https://user:pass@rss.example.com", token: "t"}).origin, "");
+    assert.equal(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com/v1/entries", token: "t"}).origin, "");
+    assert.equal(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com", token: "a\nb"}).token, "");
+    assert.equal(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com", token: "x".repeat(129)}).token, "");
+});
+test("Miniflux request URL builds the exact unread route", () => {
+    assert.equal(model.buildMinifluxRequestUrl({endpoint: "https://rss.example.com", token: "t", limit: 20}), "https://rss.example.com/v1/entries?status=unread&limit=20");
+    assert.equal(model.buildMinifluxRequestUrl({token: "t"}), "");
+});
+test("Miniflux entries parse keeps bounded fields and drops unsafe rows", () => {
+    const parsed = model.normalizeMinifluxEntries({
+        total: 42,
+        entries: [
+            {id: 1, title: "文章一", url: "https://a.example/x", feed: {title: "源A"}, published_at: "2026-09-16T01:02:03Z"},
+            {id: 2, title: "js 注入", url: "javascript:alert(1)"},
+            {id: 3, title: "http 源", url: "http://b.example/y"},
+            {title: "缺 id", url: "https://a.example/y"},
+            {id: 4},
+        ],
+    });
+    assert.equal(parsed.total, 42);
+    assert.equal(parsed.entries.length, 3);
+    assert.equal(parsed.entries[0].published, "2026-09-16");
+    assert.equal(parsed.entries[1].url, "");
+    assert.equal(parsed.entries[2].url, "http://b.example/y");
+    assert.equal(model.normalizeMinifluxEntries({entries: "bad"}), null);
+    assert.equal(model.normalizeMinifluxEntries(null), null);
+});
+const minifluxEnvelope = {status: "fresh", fetchedAt: 7000, payload: {total: 42, entries: [
+    {id: 1, title: "文章一", url: "https://a.example/x", feed: {title: "源A"}, published_at: "2026-09-16T01:02:03Z"},
+    {id: 2, title: "文章二", url: "http://b.example/y", feed: {title: "源B"}, published_at: "2026-09-15T00:00:00Z"},
+]}};
+test("Miniflux snapshot lists unread with feed meta and the source row", () => {
+    const snapshot = model.buildMinifluxSnapshot(minifluxEnvelope, {endpoint: "https://rss.example.com", token: "t"}, {title: "未读文章", unread: "未读", source: "数据来源"});
+    assert.equal(snapshot.title, "未读文章");
+    assert.deepEqual(snapshot.stat, {value: "42", label: "未读"});
+    assert.equal(snapshot.items[0].label, "文章一");
+    assert.equal(snapshot.items[0].value, "源A · 2026-09-16");
+    assert.equal(snapshot.items[0].href, "https://a.example/x");
+    assert.equal(snapshot.items[1].href, "http://b.example/y");
+    assert.match(snapshot.items[2].label, /数据来源：Miniflux/);
+    assert.equal(snapshot.sourceHealth, "fresh");
+    assert.equal(snapshot.updatedAt, 7000);
+});
+test("Miniflux snapshot trusts stale health and rejects empty lists", () => {
+    assert.equal(model.buildMinifluxSnapshot({...minifluxEnvelope, status: "stale"}, {}, {}).sourceHealth, "stale");
+    assert.equal(model.buildMinifluxSnapshot({status: "fresh", payload: {total: 0, entries: []}}, {}, {}), null);
+});

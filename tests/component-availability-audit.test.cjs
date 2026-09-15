@@ -14,7 +14,7 @@ const registeredIds = [
 test("every built-in widget has exactly one runtime adapter", () => {
     const definitions = home.registerModules([]);
     const builtins = definitions.filter((item) => item.category === "siyuan").map((item) => item.moduleId);
-    assert.equal(builtins.length, 39);
+    assert.equal(builtins.length, 40);
     assert.equal(new Set(builtins).size, builtins.length);
     for (const moduleId of builtins) {
         assert.equal(registeredIds.filter((id) => id === moduleId).length, 1, `${moduleId} adapter registration`);

@@ -68,6 +68,11 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "base", label: "基准货币（3 位代码）", type: "text", defaults: "CNY"},
         {key: "quotes", label: "目标货币（逗号分隔，1-6 个）", type: "text", defaults: "USD,EUR,JPY,GBP,HKD"},
     ]},
+    {moduleId: "external-rss-miniflux", title: "未读文章", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "endpoint", label: "Miniflux 实例地址", type: "text", defaults: ""},
+        {key: "token", label: "API Token（设置 → API 密钥）", type: "text", defaults: ""},
+        {key: "limit", label: "条目上限", type: "number", min: 1, max: 50, defaults: 20},
+    ]},
     {moduleId: "external-quote-daily", title: "每日引言", icon: "iconQuote", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "quotes", label: "自定义语录（每行一条，可选 —— 分隔出处）", type: "textarea", defaults: ""},
     ]},

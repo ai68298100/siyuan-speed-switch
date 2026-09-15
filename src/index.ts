@@ -30,8 +30,8 @@ import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, s
 import {buildLocalTimeSnapshot, millisecondsToNextMinute, buildWorldClockSnapshot} from "./local-time-model";
 import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -3589,7 +3589,7 @@ const version = beginSearch(session);
     // 外部生活组件在桌面 WebView 中可能受 CORS/代理环境影响。这里复用思源公开的
     // JSON 正向代理；目标在发出前仍必须命中生活组件 HTTPS 白名单或 ActivityWatch
     // 回环地址 + 固定 query 路由，避免形成任意 SSRF 通道。
-    private async fetchActivityWatchViaKernel(url: string, init: {body?: string}): Promise<any> {
+    private async fetchActivityWatchViaKernel(url: string, init: {body?: string; headers?: Record<string, string>}): Promise<any> {
         if (!allowedActivityWatchUrl(url) && !allowedLifeWidgetUrl(url)) throw new Error("blocked_endpoint");
         const isPost = typeof init?.body === "string";
         const proxyBody: Record<string, unknown> = {
@@ -3600,6 +3600,13 @@ const version = beginSearch(session);
             headers: [{Accept: "application/json"}],
             responseEncoding: "text",
         };
+        // 附加请求头（如 Miniflux 的 X-Auth-Token）：逐键合并进代理头数组。
+        // 值只进入发往本机内核的代理请求体；不写入任何插件日志、缓存或错误消息。
+        const extraHeaders = init?.headers && typeof init.headers === "object" ? init.headers : {};
+        for (const [name, value] of Object.entries(extraHeaders)) {
+            if (!/^[A-Za-z0-9-]+$/.test(name) || typeof value !== "string" || !value) continue;
+            proxyBody.headers = [...(proxyBody.headers as Array<Record<string, string>>), {[name]: value}];
+        }
         if (isPost) {
             proxyBody.payload = init.body;
             proxyBody.payloadEncoding = "text";
@@ -3971,6 +3978,30 @@ const version = beginSearch(session);
                 return {emptyHint: `${this.i18n.homeFxEmpty} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 8500, cacheTtlMs: 12 * 60 * 60 * 1000});
+        // Miniflux 未读：用户自建实例 + API Token。Token 仅经 X-Auth-Token 请求头传递
+        // （不进 URL/缓存 key/错误消息），URL 走"已知路由"白名单；15 分钟缓存。
+        register("external-rss-miniflux", this.i18n.homeMiniflux, "iconRss", this.i18n.homeDescMiniflux, [], async (config, _device, context) => {
+            const normalized = normalizeMinifluxConfig(config);
+            const url = buildMinifluxRequestUrl(normalized);
+            if (!url || !normalized.token) return {emptyHint: this.i18n.homeMinifluxConfigHint, items: []};
+            try {
+                const envelope = await loadMinifluxEntries(url, normalized.token, {
+                    signal: context?.signal,
+                    fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
+                });
+                const snapshot = buildMinifluxSnapshot(envelope, normalized, {
+                    title: this.i18n.homeMiniflux,
+                    unread: this.i18n.homeMinifluxStat,
+                    source: this.i18n.homeQuoteSource,
+                });
+                if (!snapshot) throw new Error("invalid_miniflux_entries");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                if (error?.message === "invalid_token") return {emptyHint: this.i18n.homeMinifluxConfigHint, items: []};
+                return {emptyHint: `${this.i18n.homeMinifluxEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 15 * 60 * 1000});
         // 每日引言：完全离线的本地语录集，按本地日期稳定轮换；无网络请求。
         // 自定义语录（多行，整体替换内置集）走 textarea 配置；挂到分钟心跳以在跨天时轮换。
         register("external-quote-daily", this.i18n.homeQuote, "iconQuote", this.i18n.homeDescQuote, [], (config) => {
@@ -4718,7 +4749,8 @@ const version = beginSearch(session);
         };
         const placeholderText = (token: string) => token === "document" ? this.i18n.homeConfigDocumentPlaceholder
             : token === "world-clock-cities" ? this.i18n.homeConfigWorldClockCitiesPlaceholder
-            : token === "daily-quotes" ? this.i18n.homeConfigDailyQuotesPlaceholder : "";
+            : token === "daily-quotes" ? this.i18n.homeConfigDailyQuotesPlaceholder
+            : token === "miniflux-endpoint" ? this.i18n.homeConfigMinifluxEndpointPlaceholder : "";
         const hintText = (token: string, field: {min?: number; max?: number}) => token === "number"
             ? `${field.min ?? 0}–${field.max ?? 100}` : token ? this.i18n.homeStoreGuideHint : "";
         const renderField = (field: typeof schema[number], section: HTMLElement) => {
@@ -5348,7 +5380,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupDocuments, description: this.i18n.homeStoreGroupDocumentsHint, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "external-quote-daily"]},
                 {label: this.i18n.homeStoreGroupLearning, description: this.i18n.homeStoreGroupLearningHint, moduleIds: ["flashcard-due", "random-review"]},
-                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter"]},
+                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter", "external-rss-miniflux"]},
                 {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma", "external-device-battery"]},
             ];
             const groupDescriptionOf = (moduleId: string, def: any): string => {
@@ -6470,7 +6502,7 @@ const version = beginSearch(session);
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter"]);
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter", "external-rss-miniflux"]);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });

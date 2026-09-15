@@ -1,5 +1,18 @@
 # TODO
 
+## T-6219~T-6228 组件扩充第三批 P2 第二部分：Miniflux 未读（2026-09-16，已完成）
+
+- [x] T-6219 凭据传递设计审计：Token 只走 `X-Auth-Token` 请求头（不进 URL——缓存 key 基于 URL 天然不含凭据；不进错误消息——全部固定字面量；不进快照）；配置层 `normalizeMinifluxToken` 清洗（拒绝 CR/LF/控制字符/超 128 字符，防 header 注入）；Token 暴露面收窄到"发往本机内核的代理请求体"，内核侧日志行为不可控已在目录描述声明
+- [x] T-6220 网络层：`allowedMinifluxUrl`（https 或本机 http + `/v1/entries` + 恰两参数 status=unread/limit=1-50 + 拒 userinfo/fragment/额外参数）+ `loadMinifluxEntries`（15 分钟缓存 + 陈旧回退 + 畸形 Token 请求前拒绝）+ `fetchBoundedLifeJson` 新增受控 `extraHeaders` 合入
+- [x] T-6221 内核代理扩展：`fetchActivityWatchViaKernel` 接受 `init.headers`（对象），逐键校验头名 `[A-Za-z0-9-]+` 后合入代理头数组；既有调用零变化
+- [x] T-6222 模型层：`normalizeMinifluxConfig`/`buildMinifluxRequestUrl`/`normalizeMinifluxEntries`（有界解析，条目 URL 拒绝 javascript:/data: 等危险 scheme、允许 http 自建源）/`buildMinifluxSnapshot`（stat 未读总数、feed·日期元信息、来源行）
+- [x] T-6223 接线：DEFAULT_MODULES（endpoint+token+limit）+ register（8500ms/15min，invalid_token 与配置缺失同显配置提示）+ lifeModuleIds + 生活分组 + 目录条目（trending 分类、api-key 凭据、AGPL-3.0）+ 四映射 + 占位符 + 双语 i18n（6 个新 key）
+- [x] T-6224 新增测试：网络层 8 项（含 X-Auth-Token 头传递断言、缓存 key 不含 Token 断言、畸形 Token 零网络请求断言）、模型层 7 项、契约行 7 项（含"Token 不进 URL"静态扫描）
+- [x] T-6225 计数同步：目录 15→16（trending 4、api 查询 7、needsConfiguration 7）、home-model 41/mobile 39、audit 39→40、依赖摘要 12 项（self-hosted-api 4）、README 5670→5691
+- [x] T-6226 负向验证（D-361 协议）：注入 limit 白名单放宽→1 项失败；注入 Token 校验移除→1 项失败（首次注入因脚本转义层级错误未实际发生，按行级锚点修正后验证）；均字节级还原
+- [x] T-6227 同步 roadmap（Miniflux 已交付）与发布矩阵（index.js 601480、package.zip 307872，余量 184952/216416）；`pnpm verify:release` 5691/5691 + 两套 UI 烟测
+- [x] T-6228 记录 D-373
+
 ## T-6207~T-6218 组件扩充第三批 P2 第一部分：每日引言 + 设备电量（2026-09-16，已完成）
 
 - [x] T-6207 每日引言模型 `src/quote-model.js`：48 条公有领域古籍语录集（逐条标注篇目）、FNV-1a 本地日期键确定性轮换（同日稳定、跨日轮换、时区无关）、自定义语录多行解析（`——`/`—`/`──`/`|` 分隔出处、去空行去重、上限 50 条/160 字）

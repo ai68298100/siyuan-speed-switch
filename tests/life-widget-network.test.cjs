@@ -290,3 +290,57 @@ test("Frankfurter loader exposes stale cache after failure", async () => {
 });
 test("Frankfurter loader blocks drifted endpoints", async () =>
     assert.rejects(network.loadFrankfurterRates("https://api.frankfurter.dev/v2/latest?base=CNY", {fetchImpl: async () => response("[]")}), /blocked_endpoint/));
+
+// Miniflux：用户实例 + 已知路由白名单 + X-Auth-Token 请求头（凭据不进 URL/缓存 key）。
+const minifluxUrl = "https://rss.example.com/v1/entries?status=unread&limit=20";
+test("network allowlist accepts the exact Miniflux unread route", () =>
+    assert.equal(network.allowedMinifluxUrl(minifluxUrl), true));
+test("network allowlist rejects Miniflux route drift and injection", () => {
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=read&limit=20"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=51"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20&x=1"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/me?status=unread&limit=20"), false);
+    assert.equal(network.allowedMinifluxUrl("http://rss.example.com/v1/entries?status=unread&limit=20"), false);
+    assert.equal(network.allowedMinifluxUrl("https://user:pass@rss.example.com/v1/entries?status=unread&limit=20"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20#f"), false);
+    assert.equal(network.allowedMinifluxUrl("http://127.0.0.1:8080/v1/entries?status=unread&limit=5"), true);
+});
+test("Miniflux loader sends the token via the X-Auth-Token header", async () => {
+    let seen = null;
+    const fetchImpl = async (url, init) => { seen = init; return response('{"total":0,"entries":[]}'); };
+    await network.loadMinifluxEntries(minifluxUrl, "secret-token", {fetchImpl, now: 100});
+    assert.equal(seen.headers["X-Auth-Token"], "secret-token");
+});
+test("Miniflux loader rejects malformed tokens before any request", async () => {
+    let called = false;
+    const fetchImpl = async () => { called = true; return response("{}"); };
+    await assert.rejects(network.loadMinifluxEntries(minifluxUrl, "bad\ntoken", {fetchImpl}), /invalid_token/);
+    await assert.rejects(network.loadMinifluxEntries(minifluxUrl, "", {fetchImpl}), /invalid_token/);
+    await assert.rejects(network.loadMinifluxEntries(minifluxUrl, "x".repeat(129), {fetchImpl}), /invalid_token/);
+    assert.equal(called, false, "no network request with a malformed token");
+});
+test("Miniflux loader caches by URL so the token never enters the cache key", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"total":1,"entries":[]}'); };
+    await network.loadMinifluxEntries(minifluxUrl, "token-a", {fetchImpl, now: 100});
+    const second = await network.loadMinifluxEntries(minifluxUrl, "token-b", {fetchImpl, now: 200});
+    assert.equal(second.status, "cached");
+    assert.equal(calls, 1);
+});
+test("Miniflux loader returns fresh data and expires after fifteen minutes", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"total":0,"entries":[]}'); };
+    await network.loadMinifluxEntries(minifluxUrl, "t", {fetchImpl, now: 100});
+    await network.loadMinifluxEntries(minifluxUrl, "t", {fetchImpl, now: 100 + network.MINIFLUX_TTL_MS});
+    assert.equal(calls, 2);
+});
+test("Miniflux loader exposes stale cache after failure", async () => {
+    await network.loadMinifluxEntries(minifluxUrl, "t", {fetchImpl: async () => response('{"total":3,"entries":[]}'), now: 100});
+    const stale = await network.loadMinifluxEntries(minifluxUrl, "t", {fetchImpl: async () => { throw new Error("offline"); }, now: 100 + network.MINIFLUX_TTL_MS});
+    assert.equal(stale.status, "stale");
+    assert.equal(stale.payload.total, 3);
+});
+test("Miniflux loader blocks drifted endpoints", async () =>
+    assert.rejects(network.loadMinifluxEntries("https://rss.example.com/v1/me", "t", {fetchImpl: async () => response("{}")}), /blocked_endpoint/));

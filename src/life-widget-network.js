@@ -12,6 +12,7 @@ const HACKER_NEWS_TTL_MS = 30 * 60 * 1000;
 const HACKER_NEWS_FRONT_PAGE_URL = "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12";
 const UPTIME_KUMA_TTL_MS = 5 * 60 * 1000;
 const FRANKFURTER_TTL_MS = 12 * 60 * 60 * 1000;
+const MINIFLUX_TTL_MS = 15 * 60 * 1000;
 // Frankfurter：v1 域名（api.frankfurter.app/latest）已 301 迁移，fetch 的 redirect:"error"
 // 会直接失败，因此只放行 v2 固定主机与路径；货币代码走 ECB 支持的白名单，不接受任意字符串。
 const FRANKFURTER_CURRENCIES = Object.freeze(["AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR"]);
@@ -56,6 +57,27 @@ function allowedUptimeKumaUrl(value, slug, heartbeat = false) {
 
 // Frankfurter：固定主机与路径，base/quotes 两个参数均来自 ECB 货币白名单；
 // quotes 1-6 个且不得包含基准货币；其余任何参数、userinfo、fragment 一律拒绝。
+// Miniflux：用户自建实例 + "已知路由"白名单（origin + /v1/entries + 恰两个受控参数：
+// status=unread 固定、limit 为 1-50 的纯数字）；https 或本机 http，拒绝 userinfo/fragment/
+// 额外参数。API Token 走 X-Auth-Token 请求头而非 URL——缓存 key 基于 URL，天然不含凭据。
+function allowedMinifluxUrl(value) {
+    if (typeof value !== "string" || value.length > 320) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && local))
+            || url.username || url.password || url.hash || url.pathname !== "/v1/entries") return false;
+        const entries = [...url.searchParams.entries()];
+        if (entries.length !== 2) return false;
+        const params = Object.fromEntries(entries);
+        if (params.status !== "unread") return false;
+        if (!/^(?:[1-9]|[1-4][0-9]|50)$/.test(params.limit || "")) return false;
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
 function allowedFrankfurterUrl(value) {
     if (typeof value !== "string" || value.length > 320) return false;
     try {
@@ -140,8 +162,8 @@ async function fetchBoundedLifeJson(url, options = {}) {
     }, timeoutMs);
     try {
         const requestOptions = controller
-            ? {signal: controller.signal, headers: {Accept: "application/json"}, redirect: "error"}
-            : {headers: {Accept: "application/json"}, redirect: "error"};
+            ? {signal: controller.signal, headers: {Accept: "application/json", ...(options.extraHeaders || {})}, redirect: "error"}
+            : {headers: {Accept: "application/json", ...(options.extraHeaders || {})}, redirect: "error"};
         const request = fetchImpl(url, requestOptions);
         const response = await Promise.race([request, timeout]);
         if (!response?.ok) throw new Error("http_error");
@@ -316,6 +338,33 @@ async function loadFrankfurterRates(url, options = {}) {
     }
 }
 
+// Miniflux：15 分钟缓存（阅读节奏量级），失败回退陈旧缓存。Token 经 extraHeaders
+// 传入请求头；凭据只出现在发往本机内核的代理请求体中，不进 URL/缓存 key/错误消息。
+async function loadMinifluxEntries(url, token, options = {}) {
+    if (!allowedMinifluxUrl(url)) throw new Error("blocked_endpoint");
+    if (typeof token !== "string" || !token || /[\r\n\u0000-\u001f\u007f]/.test(token) || token.length > 128) {
+        throw new Error("invalid_token");
+    }
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const key = `miniflux:${url}`;
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < MINIFLUX_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchBoundedLifeJson(url, {
+            ...options,
+            extraHeaders: {"X-Auth-Token": token},
+            isAllowed: (candidate) => allowedMinifluxUrl(candidate),
+        });
+        cacheWrite(key, payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
+
 function clearLifeWidgetCaches() {
     responseCache.clear();
 }
@@ -336,12 +385,14 @@ module.exports = {
     HACKER_NEWS_FRONT_PAGE_URL,
     UPTIME_KUMA_TTL_MS,
     FRANKFURTER_TTL_MS,
+    MINIFLUX_TTL_MS,
     FRANKFURTER_CURRENCIES,
     allowedLifeWidgetUrl,
     allowedConfiguredFeedUrl,
     allowedActivityWatchUrl,
     allowedUptimeKumaUrl,
     allowedFrankfurterUrl,
+    allowedMinifluxUrl,
     fetchBoundedLifeJson,
     loadWeatherLocation,
     loadWeatherForecast,
@@ -349,6 +400,7 @@ module.exports = {
     loadHackerNewsFrontPage,
     loadUptimeKumaPage,
     loadFrankfurterRates,
+    loadMinifluxEntries,
     loadBangumiCalendar,
     loadConfiguredFeed,
     fetchActivityWatchQuery,

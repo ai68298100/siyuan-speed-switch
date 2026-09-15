@@ -72,3 +72,14 @@ test("Frankfurter catches unavailable errors", () => assert.match(source, /exter
 test("Frankfurter keeps abort semantics", () => assert.match(source, /external-fx-frankfurter[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
 test("Frankfurter stays host and parameter allowlisted", () => assert.match(network, /api\.frankfurter\.dev/));
 test("Frankfurter snapshot labels itself as reference", () => assert.match(model, /参考汇率/));
+
+test("Miniflux uses the proxy fetcher", () => assert.match(source, /loadMinifluxEntries\(url, normalized\.token, \{[\s\S]{0,120}fetchImpl: \(reqUrl: string, init: \{body\?: string; headers\?: Record<string, string>\}\) => this\.fetchActivityWatchViaKernel/));
+test("Miniflux preserves configuration empty state", () => assert.match(source, /if \(!url \|\| !normalized\.token\) return \{emptyHint: this\.i18n\.homeMinifluxConfigHint, items: \[\]\}\;/));
+test("Miniflux catches unavailable errors", () => assert.match(source, /external-rss-miniflux[\s\S]*?homeMinifluxEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Miniflux keeps abort semantics", () => assert.match(source, /external-rss-miniflux[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Miniflux stays known-route constrained", () => assert.match(network, /\/v1\/entries/));
+test("Miniflux token never enters the request URL", () => {
+    assert.match(network, /X-Auth-Token/);
+    assert.doesNotMatch(network, /token[^;\n]*[`'"]\s*\+/);
+});
+test("Miniflux token is sanitized before use", () => assert.match(model, /normalizeMinifluxToken/));
