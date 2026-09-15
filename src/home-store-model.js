@@ -837,6 +837,17 @@ function normalizeHomeStoreDependencyKind(value) { return ["external-api", "self
 function resolveHomeStoreDependencyInfo(moduleId) { const entry = DEPENDENCY_INFO[homeConfigText(moduleId, 96)]; return entry ? {...entry, kind: normalizeHomeStoreDependencyKind(entry.kind)} : null; }
 function buildHomeStoreDependencyNotice(moduleId, labels = {}) { const info = resolveHomeStoreDependencyInfo(moduleId); if (!info) return null; const prefix = info.required ? (boundedText(labels.required, 48) || "需要前置依赖") : (boundedText(labels.optional, 48) || "可选数据源"); return {...info, notice: `${prefix}：${info.name} · ${info.setup}`}; }
 function listHomeStoreDependencies(moduleIds) { const list = Array.isArray(moduleIds) ? moduleIds : Object.keys(DEPENDENCY_INFO); return list.map((id) => ({moduleId: id, info: resolveHomeStoreDependencyInfo(id)})).filter((entry) => !!entry.info); }
+function summarizeHomeStoreDependencies(moduleIds) {
+    const entries = listHomeStoreDependencies(moduleIds);
+    const kinds = {};
+    let required = 0;
+    let optional = 0;
+    entries.forEach(({info}) => {
+        if (info.required) required += 1; else optional += 1;
+        kinds[info.kind] = (kinds[info.kind] || 0) + 1;
+    });
+    return {total: entries.length, required, optional, kinds, entries};
+}
 function normalizeHomeStoreBatchAction(value) { return ["add", "remove", "configure"].includes(value) ? value : "add"; }
 function isHomeStoreBatchEligible(card, action = "add") { const item = normalizeHomeStoreCard(card); const key = normalizeHomeStoreBatchAction(action); if (key === "add") return !item.added && item.availability === "ready"; if (key === "remove") return item.added; return item.added && item.configurable; }
 function partitionHomeStoreBatchCards(cards, selectedIds, action = "add") { const selected = new Set(normalizeHomeStoreSelectionIds(selectedIds, 128)); const list = Array.isArray(cards) ? cards : []; const eligible = []; const skipped = []; list.forEach((card) => { const id = normalizeHomeStoreCardId(card?.moduleId || card?.id); if (!id || !selected.has(id)) return; (isHomeStoreBatchEligible(card, action) ? eligible : skipped).push(id); }); return {eligible: [...new Set(eligible)], skipped: [...new Set(skipped)]}; }
@@ -903,7 +914,7 @@ module.exports = {
     buildHomeStoreCardStateSummary, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel,
     normalizeHomeStoreSetupUrl, buildHomeStoreSetupLink, summarizeHomeStoreConfigCompletion,
     buildHomeStoreConfigMissingText,
-    normalizeHomeStoreDependencyKind, resolveHomeStoreDependencyInfo, buildHomeStoreDependencyNotice, listHomeStoreDependencies,
+    normalizeHomeStoreDependencyKind, resolveHomeStoreDependencyInfo, buildHomeStoreDependencyNotice, listHomeStoreDependencies, summarizeHomeStoreDependencies,
     normalizeHomeStoreBatchAction, isHomeStoreBatchEligible, partitionHomeStoreBatchCards,
     buildHomeStoreBatchResult, buildHomeStoreBatchResultText, resolveHomeStoreBatchActionLabel,
     buildHomeStoreBatchSelectionHint, resolveHomeStoreBatchFocusAfterResult, shouldKeepHomeStoreSelectionAfterBatch,

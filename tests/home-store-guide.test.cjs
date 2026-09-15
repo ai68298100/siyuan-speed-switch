@@ -17,6 +17,8 @@ test('store implementation exposes a guide entry point and jumpable guide dialog
     assert.match(source, /homeStoreGuide/);
     assert.match(source, /openHomeWidgetGuide/);
     assert.match(source, /sw-home-store__guide/);
+    assert.match(source, /external-component-installation\.md/);
+    assert.match(source, /summarizeHomeStoreDependencies/);
 });
 
 test('GitHub candidate audit keeps at least ten explicit, linkable component sources', () => {

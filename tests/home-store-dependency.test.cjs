@@ -34,3 +34,7 @@ test('dependency info includes setup field', () => assert.ok(model.resolveHomeSt
 test('dependency info includes privacy network boundary', () => assert.ok(model.resolveHomeStoreDependencyInfo('external-activitywatch-time').network));
 test('optional dependency notice remains visible', () => assert.ok(model.buildHomeStoreDependencyNotice('journal-calendar')));
 test('dependency list preserves requested order', () => assert.deepEqual(model.listHomeStoreDependencies(['journal-calendar','external-weather-open-meteo']).map((x) => x.moduleId), ['journal-calendar','external-weather-open-meteo']));
+test('dependency summary counts required and optional entries', () => { const summary = model.summarizeHomeStoreDependencies(); assert.equal(summary.total, 8); assert.equal(summary.required, 6); assert.equal(summary.optional, 2); });
+test('dependency summary exposes kind histogram', () => { const summary = model.summarizeHomeStoreDependencies(); assert.equal(summary.kinds['external-api'], 2); assert.equal(summary.kinds['self-hosted-api'], 2); });
+test('dependency summary accepts a restricted module list', () => { const summary = model.summarizeHomeStoreDependencies(['journal-calendar','missing']); assert.equal(summary.total, 1); assert.equal(summary.optional, 1); });
+test('dependency summary entries retain module ids', () => { const summary = model.summarizeHomeStoreDependencies(['external-weather-open-meteo']); assert.equal(summary.entries[0].moduleId, 'external-weather-open-meteo'); });

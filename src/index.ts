@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -1416,6 +1416,52 @@ export default class SpeedSwitchPlugin extends Plugin {
         note.className = "sw-home-store-guide__note";
         note.textContent = "docs/component-store-guide.md";
         root.appendChild(note);
+
+        const dependencyTitle = document.createElement("h3");
+        dependencyTitle.className = "sw-home-store-guide__dependency-title";
+        dependencyTitle.textContent = "非思源本体依赖";
+        root.appendChild(dependencyTitle);
+        const dependencySummary = summarizeHomeStoreDependencies();
+        const dependencySummaryText = document.createElement("p");
+        dependencySummaryText.className = "sw-home-store-guide__dependency-summary";
+        dependencySummaryText.textContent = `已整理 ${dependencySummary.total} 项：${dependencySummary.required} 项需前置依赖，${dependencySummary.optional} 项为可选数据源。`;
+        root.appendChild(dependencySummaryText);
+        const dependencyList = document.createElement("ul");
+        dependencyList.className = "sw-home-store-guide__dependency-list";
+        dependencyList.setAttribute("aria-label", "非思源本体依赖清单");
+        dependencySummary.entries.forEach(({info}) => {
+            const item = document.createElement("li");
+            item.className = `sw-home-store-guide__dependency-item is-${info.required ? "required" : "optional"}`;
+            const name = document.createElement("strong");
+            name.textContent = info.name;
+            item.appendChild(name);
+            const badge = document.createElement("span");
+            badge.className = "sw-home-store-guide__dependency-badge";
+            badge.textContent = info.required ? "需前置依赖" : "可选数据源";
+            item.appendChild(badge);
+            const setup = document.createElement("span");
+            setup.className = "sw-home-store-guide__dependency-setup";
+            setup.textContent = info.setup;
+            item.appendChild(setup);
+            if (info.installUrl) {
+                const install = document.createElement("a");
+                install.href = info.installUrl;
+                install.target = "_blank";
+                install.rel = "noopener noreferrer";
+                install.textContent = "安装地址";
+                install.setAttribute("aria-label", `${info.name} 安装地址`);
+                item.appendChild(install);
+            }
+            dependencyList.appendChild(item);
+        });
+        root.appendChild(dependencyList);
+        const dependencyLink = document.createElement("a");
+        dependencyLink.className = "b3-button b3-button--outline sw-home-store-guide__dependency-link";
+        dependencyLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/external-component-installation.md";
+        dependencyLink.target = "_blank";
+        dependencyLink.rel = "noopener noreferrer";
+        dependencyLink.textContent = "查看非思源组件安装说明";
+        root.appendChild(dependencyLink);
     }
 
     private openStoreWidgetPreview(moduleId: string, def: any, device: "desktop" | "sidebar" | "mobile") {
