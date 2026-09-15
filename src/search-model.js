@@ -40,6 +40,12 @@ function normalizeText(value, maxLength) {
         .replace(/\s+/g, " ")
         .trim();
     if (maxLength <= 0) return text;
+    // A grapheme always consumes at least one UTF-16 code unit, so a string
+    // already within the limit can never be shortened by grapheme slicing:
+    // the segmented result would be byte-identical to the input. Short-circuit
+    // before segmentation so hot paths (scope/path/block-id resolution over
+    // hundreds of tabs) stop paying Intl.Segmenter cost for short input.
+    if (text.length <= maxLength) return text;
     // Search cards are short, so the small allocation is preferable to
     // rendering a broken trailing emoji or combining sequence.
     if (GRAPHEME_SEGMENTER) {

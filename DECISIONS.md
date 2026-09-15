@@ -1,4 +1,5 @@
 # 决策
+- D-348（2026-09-15）：`normalizeText` 在清洗后文本长度已 ≤ 上限时直接返回，跳过 `Intl.Segmenter` 全量字素切分。依据：一个字素至少占用一个 UTF-16 码元，故码元长度不超限时字素切分结果与原串恒等；20 万例随机组合字符/ZWJ emoji/控制字符/空白比对零差异，并新增两项契约测试锁定"短串原样返回、超长仍按字素截断"。效果：`buildOpenedDocumentScope`×7 由 0.4567ms 降至 0.0145ms，200 页签扇出由 0.8164ms 降至 0.0436ms，全量测试耗时由约 58s 降至约 21s；此前两项失败的性能基准（200 页签扇出 3.098ms/预算 2.5ms、病态全不可解析 11.67ms/预算 25ms）分别降至 0.0353ms 与 0.2481ms，全部回到预算内。不改动任何输出语义、schema 或安全边界；`dist/index.js` 560396→560411 bytes（548 KiB 自律线余量 741 bytes），`package.zip` 320580→320588 bytes（320 KiB 硬上限余量 7092 bytes），归档门禁不变。
 - D-346（2026-09-15）：document-context 新增 includeOutline，默认读取大纲以兼容旧调用；显式 false 时跳过 `/api/outline/getDocOutline`，输出 outlineStatus=not-requested，避免 Agent 将主动省略误判为请求失败。
 - D-345（2026-09-15）：notebookNameSource 使 raw bundle 比 547 KiB 自律线高 69 bytes，按实际功能增量将告警线校准为 548 KiB；320 KiB package.zip 硬上限、归档白名单和压缩条目门禁均不变。
 - D-344（2026-09-15）：notebookNameSource 增加约 429 bytes raw bundle，仍保持 547 KiB 自律线和 320 KiB 归档硬上限；归档白名单与单条目基线同步更新。

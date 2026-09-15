@@ -1,5 +1,15 @@
 # TODO
 
+## T-6043~T-6050 搜索文本归一化性能修复（2026-09-15，已完成）
+- [x] T-6043 定位性能基准失败：200 页签扇出均值 3.098ms 超 2.5ms 预算
+- [x] T-6044 热点剖析：normalizeText 对每个字符串执行全量 Intl.Segmenter 切分
+- [x] T-6045 normalizeText 增加长度快速路径（码元长度 ≤ 上限时直接返回）
+- [x] T-6046 等价性随机比对：20 万例组合字符/ZWJ emoji/控制字符零差异
+- [x] T-6047 契约测试：短串经快速路径后输出与原串恒等
+- [x] T-6048 契约测试：超长输入仍按字素截断至 256
+- [x] T-6049 全量门禁验证：TypeScript、5563 项测试、生产构建与两项 smoke
+- [x] T-6050 发布矩阵产物大小同步（index.js 560411、package.zip 320588）
+
 ## T-6009~T-6042 Agent document-context outline demand control (2026-09-15)
 - [x] T-6009 includeOutline request field
 - [x] T-6010 includeOutline boolean schema

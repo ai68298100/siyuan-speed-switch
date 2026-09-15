@@ -592,3 +592,21 @@ test("fulltext fallback declares default types because 3.8.x treats empty types 
     const scoped = buildFullTextSearchRequest({query: "会议", filters: {types: {codeBlock: true}}});
     assert.deepEqual(scoped.body.types, {codeBlock: true});
 });
+
+test("normalizeText short-circuit keeps grapheme output identical for short input", () => {
+    // A grapheme never spans fewer than one UTF-16 code unit, so text already
+    // within the limit must be returned untouched instead of re-segmented.
+    const short = "e\u0301 文档 \u{1F468}\u200D\u{1F469}\u200D\u{1F467} 笔记";
+    const [document] = normalizeTitleSearchDocuments([{id: ROOT_A, rootId: ROOT_A, title: short, path: "box-a/a.sy"}]);
+    assert.equal(document.title, short);
+});
+
+test("normalizeText still truncates by grapheme when input exceeds the limit", () => {
+    // 300 thumbs-up graphemes: 600 code units, so the over-limit branch runs
+    // and the grapheme cap (not the code-unit cap) decides the output.
+    const long = "\u{1F44D}".repeat(300);
+    assert.ok(long.length > 256, "fixture must exceed the title limit in code units");
+    const [document] = normalizeTitleSearchDocuments([{id: ROOT_A, rootId: ROOT_A, title: long, path: "box-a/a.sy"}]);
+    const graphemes = [...new Intl.Segmenter().segment(document.title)].length;
+    assert.equal(graphemes, 256, "over-long titles are cut at the grapheme boundary");
+});
