@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
 
-> The current development head passes type checking, production build, 4938 automated tests, and mobile/Chromium UI smoke tests. It adds time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge. The store now filters Offline, Local service, and External API sources. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 4982 automated tests, and mobile/Chromium UI smoke tests. It adds time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge. The store now filters Offline, Local service, and External API sources. Agent safety boundaries remain unchanged; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -180,7 +180,7 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 - DailyHotApi **Trending now** and NewsNow **Live news** accept only complete self-hosted endpoints and make no request until configured. Remote endpoints require HTTPS; 128 KiB/8.5-second request bounds, a 30-minute cache, and a visible stale-cache state isolate source failures. Ranked gradient cards retain a compact mobile layout.
 - ActivityWatch **App usage** only allows loopback endpoints, uses SiYuan's local proxy for a fixed aggregate query, exposes app-level durations without window titles, and is available on desktop/sidebar only.
 - The mobile widget panel uses one vertical column and one unified size per widget; tab-list column settings do not affect the widget panel.
-- The development head passes 4938 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
+- The development head passes 4982 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
 
 ### v0.17.0 (2026-09-14)
 
@@ -188,20 +188,6 @@ This release is published as `v0.17.0`; real-host path-filter capability, narrow
 - Joint recovery adds atomic multi-coordinator commits, checkpoint windows, cursor-based incremental recovery, diagnostics status/risk projections, and bounded pagination.
 - Safety boundaries remain unchanged: no new Agent write actions, no handler/instance/document-body leakage, and all outputs are bounded and sanitized.
 - Release gates pass: 1513 automated tests, TypeScript, mobile smoke, Chromium smoke, production graph, and package-size checks.
-
-### v0.16.41 (2026-09-14)
-
-- Capacity diagnostics now provide stable event-queue utilization summaries, serialization/parsing, diffs, and bounded change events.
-- Summary history is capped at 16 samples and exposes warning counts, peak utilization, and latest lifecycle state.
-- Derived fields are always recomputed; malformed, oversized, or inconsistent payloads downgrade safely with stable validation reasons.
-- Release gates pass: 888 automated tests, TypeScript, mobile smoke, and Chromium smoke; the production archive remains below the 300 KiB hard limit.
-
-### v0.16.40 (2026-09-13)
-
-- Agent widget discovery now reports current-device `configured`, `enabled`, and applied `size` metadata when `moduleId` is omitted, without exposing widget configuration values.
-- Widget store usability and accessibility improvements: one-click clearing for no-result filters, standard `tablist`/`tab`/`aria-selected` semantics, and `aria-pressed` size selection state.
-- Empty-panel and configuration improvements: a direct “Open widget store” CTA, schema-scoped reset-to-defaults, preservation of unknown third-party fields, and safe coordination with asynchronous notebook loading.
-- Release gates and documentation refreshed: 751 automated tests, TypeScript, mobile smoke, and Chromium smoke pass; favorite/pin/group capacity limits (512/64/64) are enforced on read and write, and the production archive remains below the 300 KiB hard limit.
 
 ### v0.16.39 (2026-09-13)
 
@@ -248,7 +234,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 145 `*.test.cjs` files under `tests/` and `tests/host/`, currently 4938 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 146 `*.test.cjs` files under `tests/` and `tests/host/`, currently 4982 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -277,7 +263,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 4938)
+pnpm test               # run every unit, contract, and host release test (currently 4982)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

@@ -6770,3 +6770,47 @@
 - [x] T-5127 cache capacity
 - [x] T-5128 cache clear idempotence
 - [x] T-5129 cache empty size
++- [x] T-5130 生活代理白名单
+- [x] T-5131 代理阻断
+- [x] T-5132 代理端点
+- [x] T-5133 代理方法
+- [x] T-5134 代理 GET
+- [x] T-5135 代理超时
+- [x] T-5136 代理 JSON
+- [x] T-5137 代理 POST 载荷
+- [x] T-5138 代理编码
+- [x] T-5139 代理 envelope
+- [x] T-5140 代理状态
+- [x] T-5141 代理 body
+- [x] T-5142 天气地理编码代理
+- [x] T-5143 天气预报代理
+- [x] T-5144 天气配置空态
+- [x] T-5145 天气城市空态
+- [x] T-5146 天气失败空态
+- [x] T-5147 天气取消
+- [x] T-5148 Bangumi 代理
+- [x] T-5149 Bangumi 空排期
+- [x] T-5150 Bangumi 失败空态
+- [x] T-5151 Bangumi 取消
+- [x] T-5152 Bangumi 非推荐
+- [x] T-5153 ActivityWatch 代理
+- [x] T-5154 ActivityWatch 配置空态
+- [x] T-5155 ActivityWatch 失败空态
+- [x] T-5156 ActivityWatch 取消
+- [x] T-5157 ActivityWatch 回环
+- [x] T-5158 ActivityWatch 启动说明
+- [x] T-5159 资讯源选择性联网
+- [x] T-5160 资讯源 stale
+- [x] T-5161 资讯源配置说明
+- [x] T-5162 隐私不外发
+- [x] T-5163 缓存说明
+- [x] T-5164 重试说明
+- [x] T-5165 天气模型
+- [x] T-5166 Bangumi 模型
+- [x] T-5167 ActivityWatch 模型
+- [x] T-5168 响应上限
+- [x] T-5169 缓存容量
+- [x] T-5170 重定向阻断
+- [x] T-5171 取消监听
+- [x] T-5172 监听清理
+- [x] T-5173 JSON 异常

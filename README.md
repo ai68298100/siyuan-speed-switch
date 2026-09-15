@@ -10,7 +10,7 @@
 
 > v0.17.0 增强思源智能体只读协作：新增生命周期审计、传输队列、联合恢复、checkpoint 窗口和 diagnostics 投影契约，同时保留组件商店、配置体验与多端导航能力。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、4938 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、4982 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -195,7 +195,7 @@ pnpm verify:release
 - 新增 DailyHotApi **热搜事件**与 NewsNow **实时资讯**：只接受用户填写的自建完整端点，默认零联网；远程地址必须 HTTPS，响应受 128 KiB/8.5 秒边界保护，30 分钟缓存失败后明确显示“过期缓存”。排行榜采用平板式渐变卡片、前三名强调和移动端紧凑布局。
 - 新增 ActivityWatch **使用时长**：只允许本机回环地址，通过思源本机代理执行固定聚合 Query，显示应用级时长排行，不读取窗口标题；商店可按离线、本机服务、外部 API 筛选，并在“设备与专注”分组展示。
 - 手机端组件面板采用单列纵向布局：每行一个组件、统一尺寸，避免窄屏并排压缩；页签列表的列数设置不影响组件面板。
-- 当前开发头已通过 4938 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
+- 当前开发头已通过 4982 项自动测试、TypeScript、生产构建、移动端烟测与 Chromium UI 烟测；详细产物数据见发布准备矩阵。
 
 ### v0.17.0（2026-09-14）
 
@@ -203,20 +203,6 @@ pnpm verify:release
 - 联合恢复增强：支持多协调器原子提交、联合快照、checkpoint 窗口、cursor 增量恢复、diagnostics 状态/风险投影和分页消费。
 - 安全边界保持不变：不新增 Agent 写入能力，不暴露 handler、实例、文档正文或宿主异常文本；所有输出均有数量和载荷上限。
 - 发版门禁：1513 项自动测试、TypeScript、移动端 smoke、Chromium smoke、生产依赖图和包体检查全部通过。
-
-### v0.16.41（2026-09-14）
-
-- 容量诊断增强：事件队列利用率摘要支持稳定归一化、序列化/解析、差异计算和变化事件。
-- 历史观测增强：摘要历史最多保留 16 条，提供 warning 计数、峰值利用率和最新生命周期状态。
-- 安全性增强：所有摘要派生字段统一重算，非法输入、超长载荷和不一致结构均安全降级并返回稳定校验原因。
-- 发布门禁：888 项自动测试、TypeScript、移动端和 Chromium smoke 全部通过，生产包继续低于 300 KiB 硬上限。
-
-### v0.16.40（2026-09-13）
-
-- Agent 组件发现增强：`home-widget-snapshot` 省略 `moduleId` 时返回当前设备的已添加、启用和应用尺寸状态，仍保持只读且不返回配置值。
-- 组件商店体验增强：无结果时可一键清除搜索/页签筛选；页签补齐 `tablist/tab/aria-selected`，尺寸选择补齐 `aria-pressed`，键盘和读屏反馈更明确。
-- 空面板与配置体验增强：空面板新增直达组件商店按钮；配置表单支持恢复 schema 默认值，同时保留第三方未知配置字段并兼容异步笔记本加载。
-- 发布门禁与文档同步：751 项自动测试、TypeScript、移动端和 Chromium smoke 全部通过；收藏/置顶/分组容量边界（512/64/64）已纳入读写门禁，生产包继续低于 300 KiB 硬上限。
 
 ### v0.16.39（2026-09-13）
 
@@ -267,7 +253,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 4938 项测试（145 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 4982 项测试（146 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -296,10 +282,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 4938 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 4982 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、4938 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、4982 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

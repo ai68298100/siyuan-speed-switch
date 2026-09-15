@@ -28,7 +28,7 @@ import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -3455,23 +3455,28 @@ const version = beginSearch(session);
         }
     }
 
-    // ActivityWatch 默认 CORS 只允许自身 Web UI。这里复用思源公开的 JSON 正向代理，
-    // 但目标在发出前仍必须命中“回环地址 + 固定 query 路由”，避免形成任意 SSRF 通道。
+    // 外部生活组件在桌面 WebView 中可能受 CORS/代理环境影响。这里复用思源公开的
+    // JSON 正向代理；目标在发出前仍必须命中生活组件 HTTPS 白名单或 ActivityWatch
+    // 回环地址 + 固定 query 路由，避免形成任意 SSRF 通道。
     private async fetchActivityWatchViaKernel(url: string, init: {body?: string}): Promise<any> {
-        if (!allowedActivityWatchUrl(url)) throw new Error("blocked_endpoint");
+        if (!allowedActivityWatchUrl(url) && !allowedLifeWidgetUrl(url)) throw new Error("blocked_endpoint");
+        const isPost = typeof init?.body === "string";
+        const proxyBody: Record<string, unknown> = {
+            url,
+            method: isPost ? "POST" : "GET",
+            timeout: 8000,
+            contentType: "application/json",
+            headers: [{Accept: "application/json"}],
+            responseEncoding: "text",
+        };
+        if (isPost) {
+            proxyBody.payload = init.body;
+            proxyBody.payloadEncoding = "text";
+        }
         const response = await fetch("/api/network/forwardProxy", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                url,
-                method: "POST",
-                timeout: 5000,
-                contentType: "application/json",
-                headers: [{Accept: "application/json"}],
-                payload: typeof init?.body === "string" ? init.body : "{}",
-                payloadEncoding: "text",
-                responseEncoding: "text",
-            }),
+            body: JSON.stringify(proxyBody),
         });
         if (!response.ok) throw new Error("proxy_http_error");
         const envelope = await response.json();
@@ -3681,47 +3686,57 @@ const version = beginSearch(session);
         register("external-weather-open-meteo", this.i18n.homeWeather, "iconCloud", this.i18n.homeDescWeather, [], async (config, _device, context) => {
             const normalized = normalizeWeatherConfig(config);
             if (normalized.city.length < 2) return {emptyHint: this.i18n.homeWeatherConfigHint, items: []};
-            const locale = document.documentElement.lang || navigator.language || "zh-CN";
-            const geocodingUrl = buildWeatherGeocodingUrl(normalized, locale);
-            const locationPayload = await loadWeatherLocation(geocodingUrl, {signal: context?.signal});
-            const location = normalizeWeatherLocation(locationPayload);
-            if (!location) return {emptyHint: this.i18n.homeWeatherCityNotFound, items: []};
-            const forecastUrl = buildWeatherForecastUrl(location, normalized);
-            const forecast = await loadWeatherForecast(forecastUrl, {signal: context?.signal});
-            const snapshot = buildWeatherSnapshot(location, forecast, normalized, {
-                locale,
-                today: this.i18n.homeWeatherToday,
-                clear: this.i18n.homeWeatherClear,
-                cloudy: this.i18n.homeWeatherCloudy,
-                fog: this.i18n.homeWeatherFog,
-                rain: this.i18n.homeWeatherRain,
-                snow: this.i18n.homeWeatherSnow,
-                storm: this.i18n.homeWeatherStorm,
-                feelsLike: this.i18n.homeWeatherFeelsLike,
-                rainChance: this.i18n.homeWeatherRainChance,
-            });
-            if (!snapshot) throw new Error("invalid_weather");
-            return snapshot;
+            try {
+                const locale = document.documentElement.lang || navigator.language || "zh-CN";
+                const geocodingUrl = buildWeatherGeocodingUrl(normalized, locale);
+                const locationPayload = await loadWeatherLocation(geocodingUrl, {signal: context?.signal, fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init)});
+                const location = normalizeWeatherLocation(locationPayload);
+                if (!location) return {emptyHint: this.i18n.homeWeatherCityNotFound, items: []};
+                const forecastUrl = buildWeatherForecastUrl(location, normalized);
+                const forecast = await loadWeatherForecast(forecastUrl, {signal: context?.signal, fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init)});
+                const snapshot = buildWeatherSnapshot(location, forecast, normalized, {
+                    locale,
+                    today: this.i18n.homeWeatherToday,
+                    clear: this.i18n.homeWeatherClear,
+                    cloudy: this.i18n.homeWeatherCloudy,
+                    fog: this.i18n.homeWeatherFog,
+                    rain: this.i18n.homeWeatherRain,
+                    snow: this.i18n.homeWeatherSnow,
+                    storm: this.i18n.homeWeatherStorm,
+                    feelsLike: this.i18n.homeWeatherFeelsLike,
+                    rainChance: this.i18n.homeWeatherRainChance,
+                });
+                if (!snapshot) throw new Error("invalid_weather");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeModuleError} · ${this.i18n.homeRetry}`, items: []};
+            }
         }, {timeoutMs: 7500, cacheTtlMs: 15 * 60 * 1000});
         // Bangumi 每日放送：仅在用户添加组件后请求整周兼容日历数据，再按本地星期选择。
         // 浏览器 WebView 使用自身 User-Agent；接口返回、封面地址和跳转地址都经过独立白名单归一化。
         register("external-anime-bangumi", this.i18n.homeBangumi, "iconVideo", this.i18n.homeDescBangumi, [], async (config, _device, context) => {
-            const payload = await loadBangumiCalendar({signal: context?.signal});
-            const locale = document.documentElement.lang || navigator.language || "zh-CN";
-            const english = locale.toLowerCase().startsWith("en");
-            const snapshot = buildBangumiSnapshot(payload, config, {
-                today: this.i18n.homeBangumiToday,
-                tomorrow: this.i18n.homeBangumiTomorrow,
-                week: this.i18n.homeBangumiWeek,
-                entries: this.i18n.homeBangumiEntries,
-                source: this.i18n.homeBangumiSource,
-                weekdays: english
-                    ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-                    : ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
-            });
-            if (!snapshot) throw new Error("invalid_bangumi_calendar");
-            if (snapshot.items.length === 1) return {title: snapshot.title, emptyHint: this.i18n.homeBangumiEmpty, items: [], updatedAt: snapshot.updatedAt};
-            return snapshot;
+            try {
+                const payload = await loadBangumiCalendar({signal: context?.signal, fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init)});
+                const locale = document.documentElement.lang || navigator.language || "zh-CN";
+                const english = locale.toLowerCase().startsWith("en");
+                const snapshot = buildBangumiSnapshot(payload, config, {
+                    today: this.i18n.homeBangumiToday,
+                    tomorrow: this.i18n.homeBangumiTomorrow,
+                    week: this.i18n.homeBangumiWeek,
+                    entries: this.i18n.homeBangumiEntries,
+                    source: this.i18n.homeBangumiSource,
+                    weekdays: english
+                        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                        : ["周一", "周二", "周三", "周四", "周五", "周六", "周日"],
+                });
+                if (!snapshot) throw new Error("invalid_bangumi_calendar");
+                if (snapshot.items.length === 1) return {title: snapshot.title, emptyHint: this.i18n.homeBangumiEmpty, items: [], updatedAt: snapshot.updatedAt};
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeBangumiEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
         }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         // 用户端点资讯源：默认配置为空时完全不联网。端点仅允许 HTTPS（本机可用 HTTP），
         // 且必须符合 DailyHotApi/NewsNow 的已知只读路由；网络失败时保留并标记过期缓存。
@@ -3746,18 +3761,23 @@ const version = beginSearch(session);
         register("external-activitywatch-time", this.i18n.homeActivityWatch, "iconClock", this.i18n.homeDescActivityWatch, [], async (config, _device, context) => {
             const request = buildActivityWatchRequest(config, Date.now());
             if (!request) return {emptyHint: this.i18n.homeActivityWatchConfigHint, items: []};
-            const envelope = await loadActivityWatchSummary(request, {
-                signal: context?.signal,
-                timeoutMs: 5000,
-                fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init),
-            });
-            const snapshot = buildActivityWatchSnapshot(envelope, config, {
-                range: this.i18n.homeActivityWatchRange,
-                total: this.i18n.homeActivityWatchTotal,
-                empty: this.i18n.homeActivityWatchEmpty,
-            });
-            if (!snapshot) throw new Error("invalid_activitywatch_payload");
-            return snapshot;
+                try {
+                    const envelope = await loadActivityWatchSummary(request, {
+                        signal: context?.signal,
+                        timeoutMs: 5000,
+                        fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init),
+                    });
+                    const snapshot = buildActivityWatchSnapshot(envelope, config, {
+                        range: this.i18n.homeActivityWatchRange,
+                        total: this.i18n.homeActivityWatchTotal,
+                        empty: this.i18n.homeActivityWatchEmpty,
+                    });
+                    if (!snapshot) throw new Error("invalid_activitywatch_payload");
+                    return snapshot;
+                } catch (error) {
+                    if (error?.message === "aborted") throw error;
+                    return {emptyHint: `${this.i18n.homeActivityWatchConfigHint} · ${this.i18n.homeRetry}`, items: []};
+                }
         }, {timeoutMs: 7000, cacheTtlMs: 5 * 60 * 1000});
         // 近期编辑：全库最近修改的文档列表，点击直达
         register("recent-edits", this.i18n.homeRecentEdits, "iconEdit", this.i18n.homeDescRecentEdits, ["loaded-protyle", "destroy-protyle"], async (config) => {
