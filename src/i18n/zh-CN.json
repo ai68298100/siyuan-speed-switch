@@ -192,6 +192,8 @@
   "homeStoreTabNetwork": "外部 API",
   "homeStoreTabPlugin": "插件",
   "homeStoreTabConditional": "条件",
+  "homeStoreTabRequires": "需前置依赖",
+  "homeStoreTabOptional": "可选数据源",
   "homeStoreTabAdded": "已添加",
   "homeStoreSearch": "搜索组件…",
   "homeStoreSortLabel": "组件排序",

@@ -5,7 +5,7 @@
 // grouping, status and preview decisions so future store surfaces remain
 // behaviorally aligned.
 
-const STORE_TABS = Object.freeze(["all", "recommended", "configurable", "builtin", "offline", "local", "network", "plugin", "conditional", "added"]);
+const STORE_TABS = Object.freeze(["all", "recommended", "configurable", "builtin", "offline", "local", "network", "plugin", "conditional", "requires", "optional", "added"]);
 const STORE_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 const STORE_AVAILABILITY = Object.freeze(["ready", "conditional", "external"]);
 const STORE_CATEGORIES = Object.freeze(["builtin", "plugin"]);
@@ -113,7 +113,7 @@ function countHomeStoreByIntegration(cards) {
 
 function buildHomeStoreTabCounts(cards) {
     const all = Array.isArray(cards) ? cards : [];
-    return {
+    const counts = {
         all: all.length,
         recommended: all.filter((card) => isHomeStoreRecommended(card)).length,
         configurable: all.filter((card) => normalizeHomeStoreCard(card).configurable).length,
@@ -125,6 +125,12 @@ function buildHomeStoreTabCounts(cards) {
         conditional: all.filter((card) => normalizeHomeStoreCard(card).availability === "conditional").length,
         added: all.filter(isHomeStoreAdded).length,
     };
+    const normalized = all.map(normalizeHomeStoreCard);
+    if (normalized.some((card) => card.dependency === "required" || card.dependency === "optional")) {
+        counts.requires = normalized.filter((card) => card.dependency === "required").length;
+        counts.optional = normalized.filter((card) => card.dependency === "optional").length;
+    }
+    return counts;
 }
 
 function resolveHomeStoreCardA11y(card, labels = {}) {
@@ -512,7 +518,7 @@ function normalizeHomeStoreAvailability(value) {
 
 function resolveHomeStoreFilter(tab) {
     const key = normalizeHomeStoreTab(tab);
-    return {
+    const normalized = {
         tab: key,
         category: key === "builtin" || key === "plugin" ? key : "all",
         availability: key === "conditional" ? "conditional" : "",
@@ -521,11 +527,13 @@ function resolveHomeStoreFilter(tab) {
         recommendedOnly: key === "recommended",
         configurableOnly: key === "configurable",
     };
+    if (key === "requires" || key === "optional") normalized.dependency = key === "requires" ? "required" : "optional";
+    return normalized;
 }
 
 function normalizeHomeStoreCard(card) {
     const source = card && typeof card === "object" ? card : {};
-    return {
+    const normalized = {
         search: boundedText(source.search, 512).toLowerCase(),
         category: normalizeHomeStoreCategory(source.category),
         availability: normalizeHomeStoreAvailability(source.availability),
@@ -534,6 +542,8 @@ function normalizeHomeStoreCard(card) {
         configurable: source.configurable === true || source.configurable === "true",
         recommended: source.recommended === true || source.recommended === "true",
     };
+    if (source.dependency === "required" || source.dependency === "optional") normalized.dependency = source.dependency;
+    return normalized;
 }
 
 function matchesHomeStoreCard(card, query, filter) {
@@ -546,7 +556,8 @@ function matchesHomeStoreCard(card, query, filter) {
         && (!active.integration || item.integration === active.integration)
         && (!active.addedOnly || item.added)
         && (!active.recommendedOnly || isHomeStoreRecommended(item))
-        && (!active.configurableOnly || item.configurable);
+        && (!active.configurableOnly || item.configurable)
+        && (!active.dependency || item.dependency === active.dependency);
 }
 
 function isHomeStoreRecommended(card) {

@@ -1,8 +1,8 @@
 # Release readiness
 
-<!-- Current artifact snapshot: dist/index.js 553504 bytes; dist/index.css 142230 bytes; package.zip 316939 bytes; mobile self-regulation line 542 KiB. -->
+<!-- Current artifact snapshot: dist/index.js 554246 bytes; dist/index.css 142230 bytes; package.zip 317426 bytes; mobile self-regulation line 542 KiB. -->
 
-Current build: `dist/index.js` 553504 bytes; `dist/index.css` 142230 bytes; `package.zip` 316939 bytes.
+Current build: `dist/index.js` 554246 bytes; `dist/index.css` 142230 bytes; `package.zip` 317426 bytes.
 
 评估日期：2026-09-15（v0.17.0 发布后开发头）；真实宿主补充验收仍按兼容性任务持续跟进。
 

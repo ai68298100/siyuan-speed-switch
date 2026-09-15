@@ -4,7 +4,7 @@ const model = require('../src/home-store-model.js');
 
 const card = (overrides = {}) => ({search: '日记 today-journal', category: 'builtin', availability: 'ready', integration: 'offline', added: false, ...overrides});
 
-test('store tab keys expose recommendation and configuration filters', () => assert.deepEqual(model.getHomeStoreTabKeys(), ['all', 'recommended', 'configurable', 'builtin', 'offline', 'local', 'network', 'plugin', 'conditional', 'added']));
+test('store tab keys expose recommendation, dependency and configuration filters', () => assert.deepEqual(model.getHomeStoreTabKeys(), ['all', 'recommended', 'configurable', 'builtin', 'offline', 'local', 'network', 'plugin', 'conditional', 'requires', 'optional', 'added']));
 test('invalid tab falls back to all', () => assert.equal(model.normalizeHomeStoreTab('x'), 'all'));
 test('device normalization falls back to desktop', () => assert.equal(model.normalizeHomeStoreDevice('tablet'), 'desktop'));
 test('known devices normalize', () => assert.equal(model.normalizeHomeStoreDevice('mobile'), 'mobile'));
@@ -139,7 +139,15 @@ test('relevance sorting keeps added ahead', () => assert.equal(model.sortHomeSto
 test('sort handles malformed input', () => assert.deepEqual(model.sortHomeStoreCards(null), []));
 test('availability counts are fixed shape', () => assert.deepEqual(model.countHomeStoreByAvailability([card(), card({availability: 'conditional'}), card({availability: 'external'})]), {ready: 1, conditional: 1, external: 1}));
 test('integration counts include unknown bucket', () => assert.equal(model.countHomeStoreByIntegration([card({integration: 'x'})]).unknown, 1));
-test('tab counts expose all tabs', () => assert.deepEqual(Object.keys(model.buildHomeStoreTabCounts([card({added: true})])).sort(), ['added', 'all', 'builtin', 'conditional', 'configurable', 'local', 'network', 'offline', 'plugin', 'recommended']));
+test('tab counts expose all legacy tabs without dependency cards', () => assert.deepEqual(Object.keys(model.buildHomeStoreTabCounts([card({added: true})])).sort(), ['added', 'all', 'builtin', 'conditional', 'configurable', 'local', 'network', 'offline', 'plugin', 'recommended']));
+test('requires filter selects required dependency cards', () => assert.equal(model.matchesHomeStoreCard(card({dependency: 'required'}), '', model.resolveHomeStoreFilter('requires')), true));
+test('requires filter rejects optional dependency cards', () => assert.equal(model.matchesHomeStoreCard(card({dependency: 'optional'}), '', model.resolveHomeStoreFilter('requires')), false));
+test('optional filter selects optional dependency cards', () => assert.equal(model.matchesHomeStoreCard(card({dependency: 'optional'}), '', model.resolveHomeStoreFilter('optional')), true));
+test('optional filter rejects cards without dependency', () => assert.equal(model.matchesHomeStoreCard(card(), '', model.resolveHomeStoreFilter('optional')), false));
+test('dependency card normalization keeps required state', () => assert.equal(model.normalizeHomeStoreCard({dependency: 'required'}).dependency, 'required'));
+test('invalid dependency state is omitted', () => assert.equal(model.normalizeHomeStoreCard({dependency: 'remote'}).dependency, undefined));
+test('dependency tab counts are emitted for dependency cards', () => assert.equal(model.buildHomeStoreTabCounts([card({dependency: 'required'}), card({dependency: 'optional'})]).requires, 1));
+test('dependency tab counts separate optional cards', () => assert.equal(model.buildHomeStoreTabCounts([card({dependency: 'required'}), card({dependency: 'optional'})]).optional, 1));
 test('tab counts count added cards', () => assert.equal(model.buildHomeStoreTabCounts([card({added: true})]).added, 1));
 test('a11y label includes added state', () => assert.match(model.resolveHomeStoreCardA11y(card({search: '时间', added: true}), {title: '时间', added: '已添加'}), /已添加/));
 test('a11y label handles missing labels', () => assert.match(model.resolveHomeStoreCardA11y(card({search: 'x'})), /x/));

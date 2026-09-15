@@ -5047,7 +5047,7 @@ const version = beginSearch(session);
                 root.dataset.focusKind = focusKind;
                 if (focusValue) root.dataset.focusValue = focusValue;
             };
-            const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean}> = [
+            const tabs: Array<{key: string; label: string; category?: string; availability?: string; integration?: string; addedOnly?: boolean; recommendedOnly?: boolean; configurableOnly?: boolean; dependency?: string}> = [
                 {key: "all", label: this.i18n.homeStoreTabAll},
                 {key: "recommended", label: this.i18n.homeStoreTabRecommended, recommendedOnly: true},
                 {key: "configurable", label: this.i18n.homeStoreTabConfigurable, configurableOnly: true},
@@ -5057,6 +5057,8 @@ const version = beginSearch(session);
                 {key: "network", label: this.i18n.homeStoreTabNetwork, integration: "network"},
                 {key: "plugin", label: this.i18n.homeStoreTabPlugin, category: "plugin"},
                 {key: "conditional", label: this.i18n.homeStoreTabConditional, availability: "conditional"},
+                {key: "requires", label: this.i18n.homeStoreTabRequires, dependency: "required"},
+                {key: "optional", label: this.i18n.homeStoreTabOptional, dependency: "optional"},
                 {key: "added", label: this.i18n.homeStoreTabAdded, addedOnly: true},
             ];
             tabs.forEach((tab, tabIndex) => {
@@ -5078,6 +5080,7 @@ const version = beginSearch(session);
                 if (tab.availability) btn.dataset.tabAvailability = tab.availability;
                 if (tab.integration) btn.dataset.tabIntegration = tab.integration;
                 if (tab.addedOnly) btn.dataset.tabAdded = "true";
+                if (tab.dependency) btn.dataset.tabDependency = tab.dependency;
                 btn.addEventListener("click", () => activateStoreTab(btn));
                 btn.addEventListener("keydown", (event) => {
                     const buttons = Array.from(tabBar.querySelectorAll<HTMLElement>(".sw-home-store__tab"));
@@ -5205,6 +5208,7 @@ const version = beginSearch(session);
                 card.dataset.cardTone = resolveHomeStoreCardTone(card.dataset);
                 card.dataset.configurable = String(Array.isArray(def.configSchema) && def.configSchema.length > 0);
                 card.dataset.recommended = String(def.category === "siyuan" && !externalInfo && (def.availability || "ready") === "ready");
+                card.dataset.dependency = dependencyInfo ? (dependencyInfo.required ? "required" : "optional") : "none";
                 const installability = normalizeHomeStoreInstallability(undefined, {added: !!added, availability: def.availability || "ready"});
                 card.dataset.installability = installability;
                 card.dataset.installHint = resolveHomeStoreInstallabilityReason(installability);

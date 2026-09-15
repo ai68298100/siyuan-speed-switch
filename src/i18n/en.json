@@ -192,6 +192,8 @@
   "homeStoreTabNetwork": "External API",
   "homeStoreTabPlugin": "Plugins",
   "homeStoreTabConditional": "Conditional",
+  "homeStoreTabRequires": "Requires setup",
+  "homeStoreTabOptional": "Optional data",
   "homeStoreTabAdded": "Added",
   "homeStoreSearch": "Search widgets…",
   "homeStoreSortLabel": "Widget sorting",
