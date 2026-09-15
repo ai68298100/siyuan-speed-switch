@@ -156,7 +156,7 @@ Run the fixed local gate before manual acceptance:
 pnpm verify:release
 ```
 
-The command runs type checking, a production build, the complete automated suite, the mobile UI smoke test, and the Chromium style smoke test. The release workflow additionally enforces `package.zip` allowlisted contents, metadata consistency, no remote runtime dependencies, and the 300 KiB archive budget.
+The command runs type checking, a production build, the complete automated suite, the mobile UI smoke test, and the Chromium style smoke test. The release workflow additionally enforces `package.zip` allowlisted contents, metadata consistency, no remote runtime dependencies, and the reviewed 320 KiB archive budget.
 
 Then verify in a real SiYuan environment:
 
@@ -234,7 +234,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 148 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5075 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 149 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5118 tests in total. UI smoke tests run separately:
 
 | File | Scope | Cases |
 | --- | --- | --- |
@@ -263,7 +263,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5075)
+pnpm test               # run every unit, contract, and host release test (currently 5118)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

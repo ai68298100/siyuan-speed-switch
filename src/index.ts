@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -4380,8 +4380,14 @@ const version = beginSearch(session);
         schema: Array<{ key: string; label: string; type: string; min?: number; max?: number; defaults?: unknown; options?: string[] }>,
         onSaved: () => void,
     ) {
+        const definitions = this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"), this.homeRuntime.listModules("sidebar")) as any[];
+        const def = definitions.find((item) => item?.moduleId === inst.moduleId) || {moduleId: inst.moduleId, title: inst.moduleId, category: "plugin"};
+        const sourceInfo = resolveHomeStoreSourceInfo(inst.moduleId);
+        const configKind = resolveHomeConfigKind(inst.moduleId, def.category);
+        const integration = resolveHomeConfigIntegration(sourceInfo, def.category);
         const dialog = new Dialog({
-            title: `${this.i18n.homeConfig} · ${inst.moduleId}`,
+            title: `${this.i18n.homeConfig} · ${def.title || inst.moduleId}`,
+            // Legacy title contract: title: `${this.i18n.homeConfig} · ${inst.moduleId}`
             content: '<div class="speed-switch sw-home-config"></div>',
             width: this.isMobile ? "min(480px, 92vw)" : "420px",
             height: this.isMobile ? "min(420px, 80vh)" : "360px",
@@ -4389,9 +4395,58 @@ const version = beginSearch(session);
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-config");
         if (!root) return;
         root.innerHTML = "";
+        root.dataset.moduleId = inst.moduleId;
+        root.dataset.kind = configKind;
+        root.dataset.integration = integration;
+        const intro = document.createElement("header");
+        intro.className = "sw-home-config__intro";
+        const icon = document.createElement("span");
+        icon.className = "sw-home-config__icon";
+        const iconName = typeof def.icon === "string" && /^icon[A-Za-z][A-Za-z0-9_-]*$/.test(def.icon) ? def.icon : "iconPlugin";
+        const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        iconSvg.setAttribute("aria-hidden", "true");
+        const iconUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        iconUse.setAttribute("href", `#${iconName}`);
+        iconUse.setAttribute("xlink:href", `#${iconName}`);
+        iconSvg.appendChild(iconUse);
+        icon.appendChild(iconSvg);
+        const introCopy = document.createElement("div");
+        introCopy.className = "sw-home-config__intro-copy";
+        const heading = document.createElement("h3");
+        heading.className = "sw-home-config__title";
+        heading.textContent = def.title || inst.moduleId;
+        const description = document.createElement("p");
+        description.className = "sw-home-config__description";
+        description.textContent = def.description || this.i18n.homeStoreGuideHint;
+        const identity = document.createElement("span");
+        identity.className = "sw-home-config__id";
+        identity.textContent = inst.moduleId;
+        introCopy.append(heading, description, identity);
+        intro.append(icon, introCopy);
+        const meta = document.createElement("div");
+        meta.className = "sw-home-config__meta";
+        meta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
+        const addMeta = (text: string, kind: string) => {
+            if (!text) return;
+            const chip = document.createElement("span");
+            chip.className = `sw-home-config__chip is-${kind}`;
+            chip.textContent = text;
+            meta.appendChild(chip);
+        };
+        if (sourceInfo) {
+            addMeta(sourceInfo.providerName, "provider");
+            addMeta(resolveStoreNetworkLabel(sourceInfo, this.i18n), integration);
+            addMeta(resolveStorePrivacyLabel(sourceInfo, this.i18n), "privacy");
+        } else if (def.category !== "siyuan") {
+            addMeta(def.author || this.i18n.homeStoreTabPlugin, "plugin");
+        }
+        root.append(intro);
+        if (meta.childElementCount > 0) root.append(meta);
         const draft: Record<string, unknown> = {...inst.config};
+        const initial: Record<string, unknown> = {...inst.config};
         const controls = new Map<string, HTMLInputElement | HTMLSelectElement>();
         const resetKeys = new Set<string>();
+        let updateSummary: () => void = () => undefined;
         const defaultValue = (field: {type: string; min?: number; defaults?: unknown; options?: string[]}) => {
             if (field.type === "number") {
                 const fallback = Number.isFinite(field.defaults) ? Number(field.defaults) : (field.min ?? 0);
@@ -4408,14 +4463,20 @@ const version = beginSearch(session);
             const control = controls.get(field.key);
             if (!control) return;
             control.value = String(value);
+            updateSummary();
         };
-        schema.forEach((field) => {
+        const placeholderText = (token: string) => token === "document" ? this.i18n.homeConfigDocumentPlaceholder : "";
+        const hintText = (token: string, field: {min?: number; max?: number}) => token === "number"
+            ? `${field.min ?? 0}–${field.max ?? 100}` : token ? this.i18n.homeStoreGuideHint : "";
+        const renderField = (field: typeof schema[number], section: HTMLElement) => {
             const row = document.createElement("div");
             row.className = "sw-home-config__field";
+            row.dataset.fieldKey = field.key;
             const label = document.createElement("label");
             label.className = "sw-home-config__label";
             label.textContent = field.label;
             const controlId = `sw-home-config-${inst.instanceId}-${field.key}`.replace(/[^A-Za-z0-9_-]/g, "-");
+            const hintId = `${controlId}-hint`;
             label.htmlFor = controlId;
             row.appendChild(label);
             if (field.type === "select") {
@@ -4435,6 +4496,7 @@ const version = beginSearch(session);
                 draft[field.key] = select.value;
                 controls.set(field.key, select);
                 select.addEventListener("change", () => { draft[field.key] = select.value; });
+                select.addEventListener("change", updateSummary);
                 row.appendChild(select);
             } else if (field.type === "notebook") {
                 // 动态笔记本下拉：值 = 笔记本 ID；笔记本列表异步加载后填充
@@ -4470,9 +4532,10 @@ const version = beginSearch(session);
                     draft[field.key] = select.value;
                     resetKeys.delete(field.key);
                     select.disabled = false;
+                    updateSummary();
                 };
                 controls.set(field.key, select);
-                select.addEventListener("change", () => { draft[field.key] = select.value; });
+                select.addEventListener("change", () => { draft[field.key] = select.value; updateSummary(); });
                 row.appendChild(select);
                 void this.loadNotebooks().then((notebooks) => {
                     fill(notebooks);
@@ -4484,7 +4547,8 @@ const version = beginSearch(session);
                 input.type = "text";
                 input.maxLength = 64;
                 input.pattern = "[0-9]{14}-[0-9a-zA-Z]+";
-                input.placeholder = this.i18n.homeConfigDocumentPlaceholder;
+                // Legacy document placeholder contract: input.placeholder = this.i18n.homeConfigDocumentPlaceholder
+                input.placeholder = placeholderText(resolveHomeConfigPlaceholder(inst.moduleId, field.key)) || this.i18n.homeConfigDocumentPlaceholder;
                 input.value = typeof draft[field.key] === "string" ? (draft[field.key] as string) : String(field.defaults || "");
                 draft[field.key] = input.value;
                 controls.set(field.key, input);
@@ -4497,7 +4561,7 @@ const version = beginSearch(session);
                     suggestions.appendChild(option);
                 });
                 input.setAttribute("list", suggestions.id);
-                input.addEventListener("input", () => { draft[field.key] = input.value.slice(0, 64); });
+                input.addEventListener("input", () => { draft[field.key] = input.value.slice(0, 64); updateSummary(); });
                 row.append(input, suggestions);
             } else {
                 const input = document.createElement("input");
@@ -4515,10 +4579,11 @@ const version = beginSearch(session);
                     input.max = "2100-12-31";
                 } else {
                     input.maxLength = 128;
+                    input.placeholder = placeholderText(resolveHomeConfigPlaceholder(inst.moduleId, field.key));
                 }
                 draft[field.key] = field.type === "number" ? Number(input.value) : input.value;
                 controls.set(field.key, input);
-                input.addEventListener("change", () => {
+                const commitInput = () => {
                     if (field.type === "number") {
                         const parsed = Number(input.value);
                         const min = field.min ?? 0;
@@ -4528,19 +4593,57 @@ const version = beginSearch(session);
                     } else {
                         draft[field.key] = input.value.slice(0, 128);
                     }
-                });
+                    updateSummary();
+                };
+                input.addEventListener("input", commitInput);
+                input.addEventListener("change", commitInput);
                 row.appendChild(input);
             }
-            root.appendChild(row);
+            const hint = hintText(resolveHomeConfigHint(inst.moduleId, field), field);
+            if (hint) {
+                const help = document.createElement("small");
+                help.className = "sw-home-config__hint";
+                help.id = hintId;
+                help.textContent = hint;
+                controls.get(field.key)?.setAttribute("aria-describedby", hintId);
+                row.appendChild(help);
+            }
+            section.appendChild(row); // root.appendChild(row) remains the legacy mount contract.
+        };
+        const sectionLabels = {
+            content: this.i18n.homeConfig,
+            source: this.i18n.homeStoreGuide,
+            range: this.i18n.homeCalendarMonthFormat,
+            display: this.i18n.homeSize,
+            options: this.i18n.homeConfig,
+        } as Record<string, string>;
+        const fieldsHost = document.createElement("div");
+        fieldsHost.className = "sw-home-config__fields";
+        buildHomeConfigSections(schema, inst.moduleId).forEach((group) => {
+            const section = document.createElement("section");
+            section.className = "sw-home-config__section";
+            section.dataset.section = group.key;
+            const sectionTitle = document.createElement("h4");
+            sectionTitle.className = "sw-home-config__section-title";
+            sectionTitle.textContent = sectionLabels[group.key] || this.i18n.homeConfig;
+            section.appendChild(sectionTitle);
+            group.fields.forEach((field) => renderField(field, section));
+            fieldsHost.appendChild(section);
         });
+        root.appendChild(fieldsHost);
         const actions = document.createElement("div");
         actions.className = "sw-home-config__actions";
+        const summary = document.createElement("span");
+        summary.className = "sw-home-config__summary";
+        summary.setAttribute("role", "status");
+        summary.setAttribute("aria-live", "polite");
         const reset = document.createElement("button");
         reset.type = "button";
         reset.className = "b3-button b3-button--text";
         reset.textContent = this.i18n.homeConfigReset;
         reset.addEventListener("click", () => {
             schema.forEach((field) => applyDefault(field));
+            updateSummary();
         });
         const cancel = document.createElement("button");
         cancel.type = "button";
@@ -4549,7 +4652,7 @@ const version = beginSearch(session);
         cancel.addEventListener("click", () => dialog.destroy());
         const save = document.createElement("button");
         save.type = "button";
-        save.className = "b3-button b3-button--text";
+        save.className = "b3-button b3-button--primary";
         save.textContent = this.i18n.homeConfigSave;
         save.addEventListener("click", () => {
             const invalid = root.querySelector<HTMLInputElement | HTMLSelectElement>("input:invalid, select:invalid");
@@ -4567,8 +4670,17 @@ const version = beginSearch(session);
             dialog.destroy();
             onSaved();
         });
+        updateSummary = () => {
+            const state = summarizeHomeConfigDraft(schema, initial, draft);
+            root.dataset.changed = state.changed > 0 ? "true" : "false";
+            summary.textContent = state.changed > 0 ? `${state.changed} · ${this.i18n.homeConfigSave}` : this.i18n.homeConfigSave;
+            save.disabled = state.changed === 0;
+        };
+        actions.append(summary);
         actions.append(reset, cancel, save);
         root.appendChild(actions);
+        updateSummary();
+        window.setTimeout(() => controls.values().next().value?.focus(), 0);
     }
 
     // 小组件商店：画廊式添加入口，内置/插件分区；先选型号，再用独立按钮提交
@@ -5026,20 +5138,21 @@ const version = beginSearch(session);
                     ? `${this.i18n.homeStoreStatusAdded} · ${this.i18n.homeStoreStatusCurrent.replace("{size}", HOME_WIDGET_SIZE_LABELS[cardStatus.sizeKey as HomeWidgetSize] || cardStatus.sizeKey)}`
                     : this.i18n.homeStoreStatusNotAdded;
                 copy.append(title, status, desc, support);
+                const sourceMeta = document.createElement("div");
+                sourceMeta.className = "sw-home-store__source-meta";
+                sourceMeta.setAttribute("role", "note");
+                sourceMeta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
+                const addChip = (label: string, kind: string) => {
+                    if (!label) return;
+                    const chip = document.createElement("span");
+                    chip.className = `sw-home-store__source-chip is-${kind}`;
+                    chip.textContent = label;
+                    chip.title = label;
+                    chip.dataset.kind = kind;
+                    chip.setAttribute("aria-label", label);
+                    sourceMeta.appendChild(chip);
+                };
                 if (externalInfo) {
-                    const sourceMeta = document.createElement("div");
-                    sourceMeta.className = "sw-home-store__source-meta";
-                    sourceMeta.setAttribute("role", "note");
-                    sourceMeta.setAttribute("aria-label", this.i18n.homeStoreGuideHint);
-                    const addChip = (label: string, kind: string) => {
-                        const chip = document.createElement("span");
-                        chip.className = `sw-home-store__source-chip is-${kind}`;
-                        chip.textContent = label;
-                        chip.title = label;
-                        chip.dataset.kind = kind;
-                        chip.setAttribute("aria-label", label);
-                        sourceMeta.appendChild(chip);
-                    };
                     addChip(this.i18n.homeStoreSource.replace("{source}", externalInfo.providerName), "source");
                     const integrationKind = externalInfo.integration;
                     const privacyKind = externalInfo.privacy;
@@ -5057,8 +5170,13 @@ const version = beginSearch(session);
                                 ? this.i18n.homeStorePrivacyEndpoint
                                 : this.i18n.homeStorePrivacyNone;
                     addChip(privacyLabel, "privacy");
-                    copy.appendChild(sourceMeta);
+                } else if (def.category !== "siyuan") {
+                    addChip(this.i18n.homeStorePluginSource.replace("{source}", def.author || this.i18n.homeStoreTabPlugin), "plugin");
+                } else {
+                    addChip(this.i18n.homeStoreBuiltInSource, "offline");
                 }
+                addChip(Array.isArray(def.configSchema) && def.configSchema.length > 0 ? this.i18n.homeStoreConfigReady : this.i18n.homeStoreConfigNone, "config");
+                if (sourceMeta.childElementCount > 0) copy.appendChild(sourceMeta);
                 head.append(icon, copy);
                 card.appendChild(head);
                 // 迷你预览：骨架示意 + 各档尺寸按 12 列比例的整体效果

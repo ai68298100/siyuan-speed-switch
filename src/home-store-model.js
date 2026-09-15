@@ -602,6 +602,74 @@ function getHomeStoreTabKeys() {
     return [...STORE_TABS];
 }
 
+// Configuration presentation semantics live beside the store model so the
+// production graph does not gain a second runtime module for a UI-only helper.
+const HOME_CONFIG_SECTIONS = Object.freeze(["content", "source", "range", "display", "options"]);
+const HOME_CONFIG_KINDS = Object.freeze({
+    "today-tasks": "tasks", "today-reservations": "tasks", "flashcard-due": "study",
+    "fixed-document": "document", "journal-monthly": "journal", "recent-daily-notes": "journal",
+    "journal-calendar": "calendar", "writing-streak": "progress", "countdown": "countdown",
+    "note-stats": "insight", "today-writing": "insight", "recent-writing-activity": "insight",
+    "recent-edits": "document", "document-relations-summary": "document", "current-document-outline": "document",
+    "random-review": "review", "on-this-day": "review", "clipped-unread": "reading",
+    "plugin-commands": "plugin", "external-weather-open-meteo": "weather",
+    "external-anime-bangumi": "media", "external-hot-news-dailyhot": "feed",
+    "external-news-newsnow": "feed", "external-activitywatch-time": "activity",
+});
+const HOME_CONFIG_PLACEHOLDERS = Object.freeze({
+    "external-weather-open-meteo:city": "city", "external-hot-news-dailyhot:endpoint": "dailyhot-endpoint",
+    "external-news-newsnow:endpoint": "newsnow-endpoint", "external-activitywatch-time:endpoint": "activitywatch-endpoint",
+    "fixed-document:docId": "document", "fixed-document:title": "document-title", "countdown:title": "countdown-title",
+    "plugin-commands:filter": "command-filter", "clipped-unread:tag": "tag",
+});
+function homeConfigText(value, max = 96) {
+    return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+}
+function resolveHomeConfigKind(moduleId, category) {
+    const id = homeConfigText(moduleId, 64);
+    return HOME_CONFIG_KINDS[id] || (homeConfigText(category, 32) && category !== "siyuan" ? "plugin" : "general");
+}
+function resolveHomeConfigSection(moduleId, fieldKey) {
+    const id = homeConfigText(moduleId, 64); const key = homeConfigText(fieldKey, 64);
+    if (key === "title" || (id === "countdown" && key === "targetDate") || (id === "fixed-document" && key === "docId")) return "content";
+    if (["notebook", "endpoint", "city", "tag"].includes(key)) return "source";
+    if (["days", "hours", "dayRange", "monthOffset"].includes(key)) return "range";
+    if (key === "filter") return id === "plugin-commands" ? "source" : "options";
+    if (key === "limit" || key === "temperatureUnit" || key.startsWith("show")) return "display";
+    return "options";
+}
+function buildHomeConfigSections(schema, moduleId) {
+    const groups = new Map(HOME_CONFIG_SECTIONS.map((key) => [key, []]));
+    (Array.isArray(schema) ? schema : []).forEach((field) => {
+        if (!field || typeof field !== "object" || !homeConfigText(field.key, 64)) return;
+        groups.get(resolveHomeConfigSection(moduleId, field.key)).push(field);
+    });
+    return HOME_CONFIG_SECTIONS.map((key) => ({key, fields: groups.get(key)})).filter((entry) => entry.fields.length > 0);
+}
+function resolveHomeConfigPlaceholder(moduleId, fieldKey) {
+    return HOME_CONFIG_PLACEHOLDERS[`${homeConfigText(moduleId, 64)}:${homeConfigText(fieldKey, 64)}`] || "";
+}
+function resolveHomeConfigHint(moduleId, field) {
+    const key = homeConfigText(field?.key, 64);
+    if (key === "notebook") return "notebook"; if (key === "endpoint") return moduleId === "external-activitywatch-time" ? "local-endpoint" : "network-endpoint";
+    if (key === "city") return "city"; if (key === "monthOffset") return "month-offset"; if (key === "filter") return "filter";
+    if (field?.type === "date") return "date"; if (field?.type === "number") return "number"; return "";
+}
+function homeConfigComparable(value, field) {
+    if (field?.type === "number") { const number = Number(value); return Number.isFinite(number) ? Math.trunc(number) : null; }
+    return value == null ? "" : String(value);
+}
+function summarizeHomeConfigDraft(schema, initial, draft) {
+    const fields = Array.isArray(schema) ? schema.filter((field) => field && typeof field === "object" && homeConfigText(field.key, 64)) : [];
+    let configured = 0; let changed = 0;
+    fields.forEach((field) => { const current = homeConfigComparable(draft?.[field.key], field); const before = homeConfigComparable(initial?.[field.key], field); if (current !== "" && current !== null) configured += 1; if (current !== before) changed += 1; });
+    return {total: fields.length, configured, changed};
+}
+function resolveHomeConfigIntegration(sourceInfo, category) {
+    if (sourceInfo?.integration === "http") return "network"; if (sourceInfo?.integration === "local-bridge") return "local";
+    if (sourceInfo?.integration === "direct") return "offline"; return homeConfigText(category, 32) && category !== "siyuan" ? "plugin" : "offline";
+}
+
 module.exports = {
     STORE_TABS, STORE_DEVICES, STORE_AVAILABILITY, STORE_CATEGORIES, STORE_INTEGRATIONS, STORE_SORTS,
     normalizeHomeStoreQuery, normalizeHomeStoreTab, normalizeHomeStoreDevice, normalizeHomeStoreCategory,
@@ -630,4 +698,6 @@ module.exports = {
     isHomeStoreConditional, isHomeStoreExternal, shouldShowHomeStoreSection, shouldShowHomeStoreGroup,
     normalizeHomeStoreGroupLabel, groupHomeStoreCards, orderHomeStoreGroups, dedupeHomeStoreCards,
     normalizeHomeStoreCollapsedGroups, toggleHomeStoreGroup, resolveHomeStoreAction, getHomeStoreTabKeys,
+    resolveHomeConfigKind, resolveHomeConfigSection, buildHomeConfigSections, resolveHomeConfigPlaceholder,
+    resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration,
 };

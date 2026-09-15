@@ -171,7 +171,7 @@
 pnpm verify:release
 ```
 
-它依次执行类型检查、生产构建、完整自动测试、移动端 UI 烟测和 Chromium 样式烟测。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 300 KiB 体积上限。
+它依次执行类型检查、生产构建、完整自动测试、移动端 UI 烟测和 Chromium 样式烟测。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 320 KiB 体积上限。
 
 自动门禁通过后，再在真实思源环境逐项确认：
 
@@ -253,7 +253,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5075 项测试（148 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5118 项测试（149 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -282,10 +282,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5075 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5118 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、5075 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、5118 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

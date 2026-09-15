@@ -4633,6 +4633,29 @@
     }
 }
 
+// 组件配置面板：语义分组、短提示和移动端单列由 DOM class 驱动。
+.sw-home-config { height: 100%; padding: 12px 14px 0; box-sizing: border-box; overflow: auto; background: var(--sw-page-bg, var(--b3-theme-background)); }
+.sw-home-config__intro { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--b3-border-color); border-radius: 10px; background: var(--b3-theme-surface); }
+.sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: 9px; color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
+.sw-home-config__icon svg { width: 18px; height: 18px; }
+.sw-home-config__intro-copy, .sw-home-config__field { min-width: 0; }
+.sw-home-config__title { margin: 0; font-size: 14px; }
+.sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.4; }
+.sw-home-config__description { margin: 3px 0; }
+.sw-home-config__id { color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 0 2px; }
+.sw-home-config__chip { padding: 2px 6px; border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config__fields { display: grid; gap: 8px; padding: 10px 0 14px; }
+.sw-home-config__section { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid var(--b3-border-color); border-radius: 9px; background: var(--b3-theme-surface); }
+.sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: 11px; }
+.sw-home-config__field { display: flex; flex-direction: column; gap: 3px; }
+.sw-home-config__label { font-size: 12px; }
+.sw-home-config__hint { min-height: 1.2em; margin: 0; }
+.sw-home-config__actions { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin-inline: -14px; padding: 8px 14px 10px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background); }
+.sw-home-config__summary { min-width: 0; margin-right: auto; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config[data-changed="true"] .sw-home-config__summary { color: var(--b3-theme-primary); }
+@media (max-width: 520px) { .sw-home-config__actions { flex-wrap: wrap; } .sw-home-config__summary { flex-basis: 100%; } .sw-home-config__actions .b3-button { min-height: 40px; } }
+
 // ==================== 小组件商店画廊 ====================
 .sw-home-store {
     height: 100%;
@@ -5607,6 +5630,8 @@
     &.is-offline { border-color: color-mix(in srgb, #4f9f68 45%, transparent); color: #3b8252; }
     &.is-local { border-color: color-mix(in srgb, #6655c8 48%, transparent); color: #5c49b6; }
     &.is-privacy { opacity: 0.82; }
+    &.is-plugin { border-color: color-mix(in srgb, #7b61bd 48%, transparent); color: #6b50aa; }
+    &.is-config { border-color: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent); color: var(--b3-theme-primary); }
 }
 
 // ActivityWatch：本机聚合用时以系统“屏幕使用时间”风格呈现。
