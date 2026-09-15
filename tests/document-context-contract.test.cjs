@@ -4,7 +4,7 @@ const {
     MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SOURCES, DOCUMENT_CONTEXT_METADATA_STATES, DOCUMENT_CONTEXT_PATH_SOURCES, DOCUMENT_CONTEXT_OUTLINE_STATES, DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest, normalizeDocumentContextPath,
     extractDocumentContextRecord, buildDocumentContext, normalizeDocumentContextSource,
-    deriveDocumentContextMetadataStatus, deriveDocumentContextMissingFields, deriveDocumentContextPathSource, deriveDocumentContextPathReason, deriveDocumentContextOutlineStatus,
+    deriveDocumentContextMetadataStatus, deriveDocumentContextMissingFields, deriveDocumentContextPathSource, deriveDocumentContextPathReason, deriveDocumentContextNotebookNameSource, deriveDocumentContextOutlineStatus,
 } = require("../src/agent-document-context.js");
 
 const validId = "20260914083000-abcdef";
@@ -77,7 +77,7 @@ test("context builder normalizes the complete safe envelope", () => {
         data: {id: validId, content: " 当前\n文档 ", box: validNotebook, hPath: "\\项目\\路线"},
         active: true,
         headings: [{id: "20260914083002-aaaaaaa", name: "第一章", depth: 0}],
-    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "outlineStatus", "metadataStatus", "metadataMissing", "pathSource", "pathReason", "notebookName", "pathAvailable"].includes(key))), {
+    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "outlineStatus", "metadataStatus", "metadataMissing", "pathSource", "pathReason", "notebookName", "notebookNameSource", "pathAvailable"].includes(key))), {
         id: validId, title: "当前 文档", notebookId: validNotebook, path: "/项目/路线", active: true,
         headings: [{id: "20260914083002-aaaaaaa", title: "第一章", depth: 0}],
     });
@@ -117,7 +117,7 @@ test("context builder handles an absent headings array", () => {
 });
 
 test("context builder keeps output keys stable for empty input", () => {
-    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "pathReason", "metadataStatus", "metadataMissing", "active", "source", "outlineAvailable", "outlineStatus", "headings"]);
+    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "notebookNameSource", "path", "pathAvailable", "pathSource", "pathReason", "metadataStatus", "metadataMissing", "active", "source", "outlineAvailable", "outlineStatus", "headings"]);
 });
 
 test("context builder caps title length", () => {
@@ -365,6 +365,77 @@ test("context metadata missing does not echo unknown keys", () => {
 
 test("context metadata missing remains bounded", () => {
     assert.ok(buildDocumentContext({}).metadataMissing.length <= 3);
+});
+
+test("notebook source helper reports none for empty names", () => {
+    assert.equal(deriveDocumentContextNotebookNameSource("cache", ""), "none");
+});
+
+test("notebook source helper preserves cache source", () => {
+    assert.equal(deriveDocumentContextNotebookNameSource("cache", "Work"), "cache");
+});
+
+test("notebook source helper preserves tab source", () => {
+    assert.equal(deriveDocumentContextNotebookNameSource("tab", "Work"), "tab");
+});
+
+test("notebook source helper defaults unknown source to tab", () => {
+    assert.equal(deriveDocumentContextNotebookNameSource("remote", "Work"), "tab");
+});
+
+test("notebook source helper rejects non-string names", () => {
+    assert.equal(deriveDocumentContextNotebookNameSource("cache", 1), "none");
+});
+
+test("context exposes none notebook source when name is missing", () => {
+    assert.equal(buildDocumentContext({}).notebookNameSource, "none");
+});
+
+test("context preserves explicit cache notebook source", () => {
+    assert.equal(buildDocumentContext({notebookName: "Work", notebookNameSource: "cache"}).notebookNameSource, "cache");
+});
+
+test("context preserves explicit tab notebook source", () => {
+    assert.equal(buildDocumentContext({notebookName: "Work", notebookNameSource: "tab"}).notebookNameSource, "tab");
+});
+
+test("context ignores notebook source when the name is empty", () => {
+    assert.equal(buildDocumentContext({notebookName: "", notebookNameSource: "cache"}).notebookNameSource, "none");
+});
+
+test("context rejects unknown notebook source values", () => {
+    assert.equal(buildDocumentContext({notebookName: "Work", notebookNameSource: "remote"}).notebookNameSource, "tab");
+});
+
+test("context notebook source survives control cleanup", () => {
+    const context = buildDocumentContext({notebookName: " Work\n", notebookNameSource: "cache"});
+    assert.equal(context.notebookName, "Work");
+    assert.equal(context.notebookNameSource, "cache");
+});
+
+test("context notebook source is bounded enum text", () => {
+    assert.ok(["cache", "tab", "none"].includes(buildDocumentContext({}).notebookNameSource));
+});
+
+test("context notebook source does not alter metadata completeness", () => {
+    const context = buildDocumentContext({id: validId, title: "T", notebookId: validNotebook, notebookName: "Work", notebookNameSource: "cache"});
+    assert.equal(context.metadataStatus, "complete");
+});
+
+test("context notebook source is independent from notebook ID", () => {
+    const context = buildDocumentContext({notebookId: validNotebook, notebookName: "Work", notebookNameSource: "tab"});
+    assert.equal(context.notebookNameSource, "tab");
+});
+
+test("context output includes notebook source exactly once", () => {
+    assert.equal(Object.keys(buildDocumentContext({})).filter((key) => key === "notebookNameSource").length, 1);
+});
+
+test("context output remains detached from notebook source input", () => {
+    const input = {notebookName: "Work", notebookNameSource: "cache"};
+    const output = buildDocumentContext(input);
+    input.notebookNameSource = "tab";
+    assert.equal(output.notebookNameSource, "cache");
 });
 
 test("source normalizer preserves active source", () => {

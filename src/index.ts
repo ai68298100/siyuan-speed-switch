@@ -8098,17 +8098,20 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                         const contextSource = isActiveDocument ? "active" : (tab ? "opened" : "kernel");
                         const notebookMap = new Map((this.notebookListCache || []).map((notebook) => [notebook.id, notebook.name]));
                         const tabNotebookId = tab ? resolveSearchNotebookId(tab as unknown) : "";
+                        const cachedNotebookName = tab ? notebookMap.get(tabNotebookId) || "" : "";
                         const tabNotebookName = tab
-                            ? notebookMap.get(tabNotebookId)
+                            ? cachedNotebookName
                                 || (tab as unknown as {notebookName?: string; notebook?: string; boxName?: string}).notebookName
                                 || (tab as unknown as {notebook?: string}).notebook
                                 || (tab as unknown as {boxName?: string}).boxName || ""
                             : "";
+                        const tabNotebookNameSource = cachedNotebookName ? "cache" : (tabNotebookName ? "tab" : "none");
                         let record: Record<string, unknown> = tab ? {
                             id,
                             title: this.titleOf(tab),
                             notebookId: tabNotebookId,
                             notebookName: tabNotebookName,
+                            notebookNameSource: tabNotebookNameSource,
                             path: (tab as unknown as {path?: string; hPath?: string}).path
                                 || (tab as unknown as {hPath?: string}).hPath || "",
                             pathSource: "tab",
@@ -8125,7 +8128,8 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             }
                             const row = (json?.data || [])[0] as {id?: string; content?: string; box?: string} | undefined;
                             if (!row || !BLOCK_ID_RE.test(String(row.id || ""))) return {error: "document context unavailable"};
-                            record = {id: row.id, title: row.content, notebookId: row.box, notebookName: notebookMap.get(String(row.box || "")) || "", path: "", pathSource: "none"};
+                            const kernelNotebookName = notebookMap.get(String(row.box || "")) || "";
+                            record = {id: row.id, title: row.content, notebookId: row.box, notebookName: kernelNotebookName, notebookNameSource: kernelNotebookName ? "cache" : "none", path: "", pathSource: "none"};
                         }
                         let outlineAvailable = true;
                         let outlineJson: any = null;

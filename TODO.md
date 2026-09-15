@@ -1,5 +1,41 @@
 # TODO
 
+## T-5975~T-6008 Agent document-context notebook provenance (2026-09-15)
+- [x] T-5975 notebook source enum
+- [x] T-5976 notebook source schema
+- [x] T-5977 notebook source required field
+- [x] T-5978 empty name none derivation
+- [x] T-5979 cache source derivation
+- [x] T-5980 tab source derivation
+- [x] T-5981 unknown source fallback
+- [x] T-5982 non-string name guard
+- [x] T-5983 context none source output
+- [x] T-5984 context cache source output
+- [x] T-5985 context tab source output
+- [x] T-5986 empty-name source override guard
+- [x] T-5987 unknown source isolation
+- [x] T-5988 control cleanup regression
+- [x] T-5989 enum bound regression
+- [x] T-5990 metadata independence regression
+- [x] T-5991 notebook ID independence regression
+- [x] T-5992 stable output-key regression
+- [x] T-5993 detached output regression
+- [x] T-5994 tab cache source wiring
+- [x] T-5995 kernel cache source wiring
+- [x] T-5996 cache precedence wiring
+- [x] T-5997 readonly notebook source wiring
+- [x] T-5998 builder normalization wiring
+- [x] T-5999 kernel pathless regression
+- [x] T-6000 in-memory cache regression
+- [x] T-6001 no notebook network regression
+- [x] T-6002 schema enum regression
+- [x] T-6003 source documentation update
+- [x] T-6004 100+ contract gate
+- [x] T-6005 host compatibility gate
+- [x] T-6006 package resource gate
+- [x] T-6007 market sync
+- [x] T-6008 notebook provenance batch record
+
 ## T-5941~T-5974 Agent document-context explainability (2026-09-15)
 - [x] T-5941 metadata field enum
 - [x] T-5942 metadata missing schema

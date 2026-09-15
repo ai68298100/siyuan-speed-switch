@@ -13,6 +13,7 @@ const DOCUMENT_CONTEXT_PATH_SOURCES = Object.freeze(["tab", "kernel", "none"]);
 const DOCUMENT_CONTEXT_OUTLINE_STATES = Object.freeze(["available", "empty", "unavailable"]);
 const DOCUMENT_CONTEXT_METADATA_FIELDS = Object.freeze(["id", "title", "notebookId"]);
 const DOCUMENT_CONTEXT_PATH_REASONS = Object.freeze(["available", "not-provided"]);
+const DOCUMENT_CONTEXT_NOTEBOOK_NAME_SOURCES = Object.freeze(["cache", "tab", "none"]);
 
 function normalizeDocumentContextSource(value, active = false) {
     return DOCUMENT_CONTEXT_SOURCES.includes(value) ? value : (active ? "active" : "kernel");
@@ -38,6 +39,11 @@ function deriveDocumentContextPathSource(value, pathAvailable, contextSource) {
 
 function deriveDocumentContextPathReason(pathAvailable) {
     return pathAvailable === true ? "available" : "not-provided";
+}
+
+function deriveDocumentContextNotebookNameSource(value, notebookName) {
+    if (typeof notebookName !== "string" || notebookName.length === 0) return "none";
+    return DOCUMENT_CONTEXT_NOTEBOOK_NAME_SOURCES.includes(value) && value !== "none" ? value : "tab";
 }
 
 function deriveDocumentContextOutlineStatus(value, outlineAvailable, headings) {
@@ -95,6 +101,7 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
             title: {type: "string", maxLength: 256},
             notebookId: {type: "string", maxLength: 64},
             notebookName: {type: "string", maxLength: 128},
+            notebookNameSource: {type: "string", enum: [...DOCUMENT_CONTEXT_NOTEBOOK_NAME_SOURCES]},
             path: {type: "string", maxLength: MAX_PATH_LENGTH},
             pathAvailable: {type: "boolean"},
             pathSource: {type: "string", enum: [...DOCUMENT_CONTEXT_PATH_SOURCES]},
@@ -107,7 +114,7 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
             outlineStatus: {type: "string", enum: [...DOCUMENT_CONTEXT_OUTLINE_STATES]},
             headings: {type: "array", maxItems: MAX_HEADINGS, items: {type: "object", maxProperties: 3, additionalProperties: false}},
         },
-        required: ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "pathReason", "metadataStatus", "metadataMissing", "active", "source", "outlineAvailable", "outlineStatus", "headings"],
+        required: ["id", "title", "notebookId", "notebookName", "notebookNameSource", "path", "pathAvailable", "pathSource", "pathReason", "metadataStatus", "metadataMissing", "active", "source", "outlineAvailable", "outlineStatus", "headings"],
         additionalProperties: false,
     }),
 });
@@ -127,6 +134,8 @@ function buildDocumentContext(value, options = {}) {
     const metadataStatus = deriveDocumentContextMetadataStatus(id, title, notebookId);
     const metadataMissing = deriveDocumentContextMissingFields(id, title, notebookId);
     const pathReason = deriveDocumentContextPathReason(pathAvailable);
+    const notebookName = cleanText(source.notebookName, 128);
+    const notebookNameSource = deriveDocumentContextNotebookNameSource(value?.notebookNameSource, notebookName);
     const outlineAvailable = value?.outlineAvailable !== false;
     const headings = flattenOutline(value?.headings, limit);
     const outlineStatus = deriveDocumentContextOutlineStatus(value?.outlineStatus, outlineAvailable, headings);
@@ -134,7 +143,8 @@ function buildDocumentContext(value, options = {}) {
         id,
         title,
         notebookId,
-        notebookName: cleanText(source.notebookName, 128),
+        notebookName,
+        notebookNameSource,
         path,
         pathAvailable,
         pathSource,
@@ -163,11 +173,13 @@ module.exports = {
     DOCUMENT_CONTEXT_OUTLINE_STATES,
     DOCUMENT_CONTEXT_METADATA_FIELDS,
     DOCUMENT_CONTEXT_PATH_REASONS,
+    DOCUMENT_CONTEXT_NOTEBOOK_NAME_SOURCES,
     normalizeDocumentContextSource,
     deriveDocumentContextMetadataStatus,
     deriveDocumentContextMissingFields,
     deriveDocumentContextPathSource,
     deriveDocumentContextPathReason,
+    deriveDocumentContextNotebookNameSource,
     deriveDocumentContextOutlineStatus,
     DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest,

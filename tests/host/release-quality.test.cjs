@@ -166,10 +166,9 @@ test('production bundle remains within the mobile performance budget when built'
     // 2026-09-15 (69): 510 KiB ceiling accommodates the shared SiYuan
     // forward-proxy path for external life widgets and graceful unavailable
     // states; the independent 300 KiB archive ceiling remains unchanged.
-    // 2026-09-15 (81): 547 KiB accommodates document-context status helpers
-    // and legacy tab notebook aliases while retaining a visible margin below
-    // the archive hard ceiling.
-    const budget = 547 * 1024;
+    // 2026-09-15 (82): 548 KiB accommodates explicit notebook-name provenance
+    // while retaining a visible margin below the archive hard ceiling.
+    const budget = 548 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

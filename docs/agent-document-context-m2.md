@@ -23,6 +23,11 @@ while preserving the legacy `outlineAvailable` boolean for compatibility.
 in fixed order. `pathReason` is `available` when a normalized path exists and
 `not-provided` otherwise. These explainability fields are derived from the
 sanitized result, so callers cannot override them with arbitrary text.
+
+`notebookNameSource` explains the notebook label: `cache` means it came from
+SiYuan's existing notebook list cache, `tab` means an older host exposed a
+bounded notebook alias on the tab, and `none` means no name was available.
+The source is diagnostic-only and never triggers a notebook network request.
 Unknown values are discarded, all fields are required schema enums, and the
 host continues to resolve notebook names from its existing in-memory cache
 without adding a network request to an Agent call.

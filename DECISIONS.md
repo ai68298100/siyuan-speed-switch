@@ -1,4 +1,7 @@
 # 决策
+- D-345（2026-09-15）：notebookNameSource 使 raw bundle 比 547 KiB 自律线高 69 bytes，按实际功能增量将告警线校准为 548 KiB；320 KiB package.zip 硬上限、归档白名单和压缩条目门禁均不变。
+- D-344（2026-09-15）：notebookNameSource 增加约 429 bytes raw bundle，仍保持 547 KiB 自律线和 320 KiB 归档硬上限；归档白名单与单条目基线同步更新。
+- D-343（2026-09-15）：document-context 的 notebookNameSource 固定为 cache/tab/none；缓存名称优先于页签别名，SQL 回退只能标记 cache 或 none，不因 notebookId 存在而虚构 notebookName。
 - D-342（2026-09-15）：metadataMissing 与 pathReason 仅作为解释性只读字段，固定枚举/顺序/上限，不改变已有状态判断和 SQL 查询边界；package.zip 仍低于 320 KiB 硬上限。
 - D-340（2026-09-15）：document-context 新增 metadataMissing，仅允许 `id/title/notebookId` 三个枚举值并保持固定顺序；该列表由归一化字段推导，不接受调用方输入，帮助 Agent 解释 partial/unavailable 原因。
 - D-341（2026-09-15）：document-context 新增 pathReason=`available|not-provided`，与 pathAvailable/pathSource 独立但一致推导；不因调用方传入伪造原因而改变真实路径状态。

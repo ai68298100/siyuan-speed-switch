@@ -106,7 +106,7 @@ test("document-context forwards bounded metadata fields", () => {
 });
 
 test("document-context keeps closed fallback metadata explicit", () => {
-    assert.match(source, /notebookName: notebookMap\.get/);
+    assert.match(source, /kernelNotebookName = notebookMap\.get/);
     assert.match(source, /pathSource: "none"/);
 });
 
@@ -128,6 +128,40 @@ test("document-context outline request keeps preview disabled", () => {
 
 test("document-context keeps stable unavailable error", () => {
     assert.match(source, /document context unavailable/);
+});
+
+test("document-context computes cache notebook source", () => {
+    assert.match(source, /tabNotebookNameSource = cachedNotebookName/);
+    assert.match(source, /notebookNameSource: tabNotebookNameSource/);
+});
+
+test("document-context computes kernel notebook source", () => {
+    assert.match(source, /kernelNotebookName/);
+    assert.match(source, /notebookNameSource: kernelNotebookName \? "cache" : "none"/);
+});
+
+test("document-context gives cache names precedence over aliases", () => {
+    assert.match(source, /cachedNotebookName\n\s*\|\|/);
+});
+
+test("document-context keeps notebook source read-only", () => {
+    assert.doesNotMatch(source, /notebookNameSource\s*=\s*request/);
+});
+
+test("document-context keeps notebook source bounded by builder", () => {
+    assert.match(source, /buildDocumentContext\(/);
+});
+
+test("document-context kernel fallback remains pathless", () => {
+    assert.match(source, /path: "", pathSource: "none"/);
+});
+
+test("document-context cache lookup remains in-memory", () => {
+    assert.match(source, /this\.notebookListCache \|\| \[\]/);
+});
+
+test("document-context does not add notebook network calls", () => {
+    assert.doesNotMatch(source, /fetchKernelJson\("\/api\/notebook/);
 });
 
 test("document-context returns a structured bounded result", () => {
