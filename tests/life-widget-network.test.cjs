@@ -166,3 +166,37 @@ test("ActivityWatch force refresh bypasses fresh cache", async () => {
     await network.loadActivityWatchSummary(activityRequest, {fetchImpl, now: 200, force: true});
     assert.equal(calls, 2);
 });
+
+// Hacker News：字面量端点白名单 + 30 分钟缓存 + 陈旧缓存回退。
+test("network allowlist accepts the exact Hacker News front page endpoint", () =>
+    assert.equal(network.allowedLifeWidgetUrl(network.HACKER_NEWS_FRONT_PAGE_URL), true));
+test("network allowlist rejects Hacker News parameter injection", () => {
+    assert.equal(network.allowedLifeWidgetUrl(`${network.HACKER_NEWS_FRONT_PAGE_URL}&x=1`), false);
+    assert.equal(network.allowedLifeWidgetUrl("https://hn.algolia.com/api/v1/search?tags=front_page"), false);
+    assert.equal(network.allowedLifeWidgetUrl("https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=999"), false);
+    assert.equal(network.allowedLifeWidgetUrl("https://evil.example/api/v1/search?tags=front_page&hitsPerPage=12"), false);
+});
+test("Hacker News loader returns fresh data", async () =>
+    assert.equal((await network.loadHackerNewsFrontPage({fetchImpl: async () => response('{"hits":[]}'), now: 100})).status, "fresh"));
+test("Hacker News loader reuses its thirty-minute cache", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"hits":[]}'); };
+    await network.loadHackerNewsFrontPage({fetchImpl, now: 100});
+    assert.equal((await network.loadHackerNewsFrontPage({fetchImpl, now: 200})).status, "cached");
+    assert.equal(calls, 1);
+});
+test("Hacker News loader expires after thirty minutes", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response('{"hits":[]}'); };
+    await network.loadHackerNewsFrontPage({fetchImpl, now: 100});
+    await network.loadHackerNewsFrontPage({fetchImpl, now: 100 + network.HACKER_NEWS_TTL_MS});
+    assert.equal(calls, 2);
+});
+test("Hacker News loader exposes stale cache after failure", async () => {
+    await network.loadHackerNewsFrontPage({fetchImpl: async () => response('{"hits":[{"title":"old"}]}'), now: 100});
+    const stale = await network.loadHackerNewsFrontPage({fetchImpl: async () => { throw new Error("offline"); }, now: 100 + network.HACKER_NEWS_TTL_MS});
+    assert.equal(stale.status, "stale");
+    assert.equal(stale.payload.hits[0].title, "old");
+});
+test("Hacker News loader fails without a stale cache", async () =>
+    assert.rejects(network.loadHackerNewsFrontPage({fetchImpl: async () => { throw new Error("offline"); }}), /offline/));

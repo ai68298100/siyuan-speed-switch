@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {normalizeClockLocale, buildLocalTimeSnapshot, millisecondsToNextMinute} = require("../src/local-time-model.js");
+const {normalizeClockLocale, buildLocalTimeSnapshot, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, WORLD_CLOCK_MAX_CITIES} = require("../src/local-time-model.js");
 
 test("clock locale keeps a supported BCP 47 tag", () => assert.equal(normalizeClockLocale("en-US"), "en-US"));
 test("clock locale converts underscores used by SiYuan", () => assert.equal(normalizeClockLocale("zh_CN"), "zh-CN"));
@@ -28,3 +28,40 @@ test("minute delay aligns an exact minute to the next minute", () => assert.equa
 test("minute delay aligns the final millisecond with a small guard", () => assert.equal(millisecondsToNextMinute(179999), 26));
 test("minute delay never falls below its guard", () => assert.ok(millisecondsToNextMinute(Number.MAX_SAFE_INTEGER) >= 25));
 test("minute delay handles malformed input", () => assert.equal(millisecondsToNextMinute(Number.NaN), 60025));
+
+// 世界时钟：完全离线的多城市时间，配置归一化 + Intl timeZone 渲染。
+test("world clock config keeps only valid IANA zones", () => {
+    const config = normalizeWorldClockConfig({cities: "Asia/Shanghai, Bad/Zone,  ,America/New_York;Europe/London，Asia/Shanghai"});
+    assert.deepEqual(config.cities, ["Asia/Shanghai", "America/New_York", "Europe/London"]);
+});
+test("world clock config bounds the city list", () => {
+    const many = Array.from({length: 20}, (_, index) => `Etc/GMT+${index}`).join(",");
+    assert.equal(normalizeWorldClockConfig({cities: many}).cities.length, WORLD_CLOCK_MAX_CITIES);
+});
+test("world clock config rejects non-string input", () => assert.deepEqual(normalizeWorldClockConfig({cities: 42}).cities, []));
+test("world clock falls back to local and UTC when unconfigured", () => {
+    const snapshot = buildWorldClockSnapshot(new Date(2026, 8, 14, 7, 5), {}, {worldClock: "世界时钟", local: "本地"});
+    assert.equal(snapshot.items.length, 2);
+    assert.equal(snapshot.items[0].label, "本地");
+    assert.equal(snapshot.items[1].label, "UTC");
+    assert.match(snapshot.items[0].value, /^\d{2}:\d{2}/);
+});
+test("world clock renders configured zones with UTC appended", () => {
+    const snapshot = buildWorldClockSnapshot(new Date(2026, 8, 14, 7, 5), {cities: "Asia/Shanghai"}, {});
+    assert.equal(snapshot.items.length, 2);
+    assert.equal(snapshot.items[0].label, "Shanghai");
+    assert.match(snapshot.items[0].value, /^\d{2}:\d{2}/);
+    assert.equal(snapshot.items[1].label, "UTC");
+});
+test("world clock keeps the same instant across zones", () => {
+    const instant = new Date("2026-09-14T00:00:00.000Z");
+    const snapshot = buildWorldClockSnapshot(instant, {cities: "Asia/Shanghai,Pacific/Honolulu"}, {});
+    const hour = (row) => Number(row.value.match(/^(\d{2}):/)[1]);
+    assert.equal((hour(snapshot.items[0]) - hour(snapshot.items[1]) + 24) % 24, 18);
+});
+test("world clock stat mirrors the first row", () => {
+    const snapshot = buildWorldClockSnapshot(new Date(2026, 8, 14, 7, 5), {}, {worldClock: "世界时钟"});
+    assert.equal(snapshot.stat.label, "世界时钟");
+    assert.equal(snapshot.stat.value, snapshot.items[0].value);
+});
+test("world clock safely handles invalid Date", () => assert.doesNotThrow(() => buildWorldClockSnapshot(new Date("bad"), {cities: "Asia/Shanghai"})));

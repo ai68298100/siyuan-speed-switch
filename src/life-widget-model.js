@@ -404,6 +404,57 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
     };
 }
 
+function normalizeHackerNewsConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const requestedLimit = Math.trunc(Number(source.limit));
+    return {
+        limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
+        showMeta: source.showMeta !== "否" && source.showMeta !== false,
+    };
+}
+
+// Hacker News 首页快照：Algolia hits → 有界排序列表。标题/链接/得分/评论数全部
+// 经 boundedText 清洗；无外链的文本帖回退到 HN 讨论页；条目去重且数量有界。
+function buildHackerNewsSnapshot(envelope, config, labels = {}) {
+    const normalizedConfig = normalizeHackerNewsConfig(config);
+    const hits = Array.isArray(envelope?.payload?.hits) ? envelope.payload.hits : [];
+    if (!hits.length) return null;
+    const seen = new Set();
+    const items = hits.slice(0, 24).reduce((result, hit, index) => {
+        if (result.length >= normalizedConfig.limit) return result;
+        if (!hit || typeof hit !== "object") return result;
+        const title = boundedText(hit.title, 160);
+        if (!title || seen.has(hit.objectID) || seen.has(title)) return result;
+        const discussionHref = normalizeExternalItemHref(
+            Number.isFinite(Number(hit.objectID)) ? `https://news.ycombinator.com/item?id=${Number(hit.objectID)}` : "");
+        const href = normalizeExternalItemHref(hit.url) || discussionHref;
+        if (!href) return result;
+        seen.add(hit.objectID);
+        seen.add(title);
+        const points = Math.max(0, Math.trunc(Number(hit.points)) || 0);
+        const comments = Math.max(0, Math.trunc(Number(hit.num_comments)) || 0);
+        const secondary = normalizedConfig.showMeta
+            ? `${boundedText(labels.points, 16) || "分"} ${points} · ${boundedText(labels.comments, 16) || "评"} ${comments}`
+            : "";
+        result.push({label: title, value: "", href, rank: result.length + 1, secondary, publishedAt: normalizeFeedTimestamp(hit.created_at_i, 0)});
+        return result;
+    }, []);
+    items.push({
+        label: `${boundedText(labels.source, 32) || "数据来源"}：Hacker News`,
+        value: "",
+        href: "https://news.ycombinator.com/",
+    });
+    const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
+    const newest = items.reduce((latest, item) => Math.max(latest, Number(item.publishedAt) || 0), 0);
+    return {
+        title: boundedText(labels.title, 64) || "Hacker News",
+        items,
+        emptyHint: items.length === 1 ? (boundedText(labels.empty, 96) || "当前来源暂无内容") : "",
+        updatedAt: newest || normalizeFeedTimestamp(envelope?.fetchedAt, Date.now()),
+        sourceHealth: health,
+    };
+}
+
 function normalizeActivityWatchEndpoint(value) {
     const raw = boundedText(value, 256) || ACTIVITYWATCH_DEFAULT_ENDPOINT;
     try {
@@ -528,6 +579,8 @@ module.exports = {
     normalizeFeedTimestamp,
     normalizeExternalFeedPayload,
     buildExternalFeedSnapshot,
+    normalizeHackerNewsConfig,
+    buildHackerNewsSnapshot,
     normalizeActivityWatchEndpoint,
     normalizeActivityWatchConfig,
     buildActivityWatchRequest,

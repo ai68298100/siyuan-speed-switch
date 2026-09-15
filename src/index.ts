@@ -27,9 +27,9 @@ import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
-import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
+import {buildLocalTimeSnapshot, millisecondsToNextMinute, buildWorldClockSnapshot} from "./local-time-model";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot} from "./life-widget-model";
+import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -3810,6 +3810,16 @@ const version = beginSearch(session);
             const locale = document.documentElement.lang || navigator.language || "zh-CN";
             return buildLocalTimeSnapshot(new Date(), locale, {localTime: this.i18n.homeLocalTimeZone});
         });
+        // 世界时钟：完全离线。用户配置 IANA 时区列表后用 Intl 按时区渲染；
+        // 空配置回退本地 + UTC，开箱可用；与本地时钟共用分钟边界心跳。
+        register("external-world-clock", this.i18n.homeWorldClock, "iconClock", this.i18n.homeDescWorldClock, [], (config) => {
+            const locale = document.documentElement.lang || navigator.language || "zh-CN";
+            return buildWorldClockSnapshot(new Date(), config, {
+                locale,
+                worldClock: this.i18n.homeWorldClock,
+                local: this.i18n.homeWorldClockLocal,
+            });
+        });
         // Open-Meteo 天气：用户添加后仍需显式配置城市；不请求浏览器定位，也不发送笔记数据。
         // 地理编码缓存 24 小时、天气缓存 15 分钟，界面保留 CC BY 4.0 归因链接。
         register("external-weather-open-meteo", this.i18n.homeWeather, "iconCloud", this.i18n.homeDescWeather, [], async (config, _device, context) => {
@@ -3887,6 +3897,29 @@ const version = beginSearch(session);
         };
         registerExternalFeed("external-hot-news-dailyhot", "dailyhot", this.i18n.homeDailyHot, "iconGraph", this.i18n.homeDescDailyHot);
         registerExternalFeed("external-news-newsnow", "newsnow", this.i18n.homeNewsNow, "iconList", this.i18n.homeDescNewsNow);
+        // Hacker News 热门：唯一一个免 Key 的固定公开端点（Algolia HN Search），字面量 URL
+        // 进 allowedLifeWidgetUrl 白名单并经思源内核代理；30 分钟缓存，失败显示陈旧缓存。
+        register("external-news-hackernews", this.i18n.homeHackerNews, "iconGraph", this.i18n.homeDescHackerNews, [], async (config, _device, context) => {
+            try {
+                const envelope = await loadHackerNewsFrontPage({
+                    signal: context?.signal,
+                    fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init),
+                });
+                const snapshot = buildHackerNewsSnapshot(envelope, normalizeHackerNewsConfig(config), {
+                    title: this.i18n.homeHackerNews,
+                    points: this.i18n.homeHackerNewsPoints,
+                    comments: this.i18n.homeHackerNewsComments,
+                    source: this.i18n.homeFeedSource,
+                    empty: this.i18n.homeFeedEmpty,
+                });
+                if (!snapshot) throw new Error("invalid_hackernews_front_page");
+                if (snapshot.items.length === 1) return {...snapshot, items: []};
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeFeedEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         register("external-activitywatch-time", this.i18n.homeActivityWatch, "iconClock", this.i18n.homeDescActivityWatch, [], async (config, _device, context) => {
             const request = buildActivityWatchRequest(config, Date.now());
             if (!request) return {emptyHint: this.i18n.homeActivityWatchConfigHint, items: []};
@@ -5215,7 +5248,7 @@ const version = beginSearch(session);
                 {label: this.i18n.homeStoreGroupDocuments, description: this.i18n.homeStoreGroupDocumentsHint, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity"]},
                 {label: this.i18n.homeStoreGroupLearning, description: this.i18n.homeStoreGroupLearningHint, moduleIds: ["flashcard-due", "random-review"]},
-                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-activitywatch-time"]},
+                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time"]},
                 {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands"]},
             ];
             const groupDescriptionOf = (moduleId: string, def: any): string => {
@@ -6310,9 +6343,10 @@ const version = beginSearch(session);
             };
             controllers.forEach(scheduleRefresh);
 
-            // 同一面板只建立一个对齐分钟边界的心跳；只刷新本地时钟，不触发网络组件。
-            if (controllers.some((entry) => entry.moduleId === "external-local-time")) {
-                const refreshClock = () => controllers.filter((entry) => entry.moduleId === "external-local-time")
+            // 同一面板只建立一个对齐分钟边界的心跳；只刷新本地时钟与世界时钟，不触发网络组件。
+            const clockModuleIds = new Set(["external-local-time", "external-world-clock"]);
+            if (controllers.some((entry) => clockModuleIds.has(entry.moduleId))) {
+                const refreshClock = () => controllers.filter((entry) => clockModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, {force: true}); });
                 const scheduleClock = () => {
                     if (!root.isConnected || homeClockTimer) return;
@@ -6336,7 +6370,7 @@ const version = beginSearch(session);
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-activitywatch-time"]);
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time"]);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });

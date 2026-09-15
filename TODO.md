@@ -1,5 +1,24 @@
 # TODO
 
+## T-6177~T-6192 第三方（非思源插件）组件扩充第一批（2026-09-16，已完成）
+
+- [x] T-6177 多渠道调研：HN Algolia（免 Key/CORS/万次每小时）、Frankfurter（ECB 免 Key）、Uptime Kuma 状态页（免认证只读）、Miniflux（X-Auth-Token）、Obsidian 仪表盘与 Notion 小组件生态（仅类型灵感，iframe 不可用）
+- [x] T-6178 产出 `docs/external-widget-expansion-roadmap.md`（范围语义、渠道结论、准入门槛、三批路线、仅研究清单）
+- [x] T-6179 明确登记语义：外部来源登记面为 external-widget-model + home-store-model + home-model 三处成对；widget-catalog.js 仅限思源插件 provider
+- [x] T-6180 世界时钟模型：`normalizeWorldClockConfig`/`buildWorldClockSnapshot`（IANA 校验、去重、上限 8、空配置回退本地+UTC、per-zone DateTimeFormat 缓存）
+- [x] T-6181 世界时钟接线：DEFAULT_MODULES + register + 分钟心跳扩展（clockModuleIds 集合）+ 生活分组 + 双语 i18n + 商店 SOURCE_INFO/PREVIEW_KINDS/CONFIG_KINDS
+- [x] T-6182 HN 模型：`normalizeHackerNewsConfig`/`buildHackerNewsSnapshot`（objectID/href/标题三重去重、无外链回退 HN 讨论页、非 HTTPS scheme 拒绝、来源行、stale 健康透传）
+- [x] T-6183 HN 网络：字面量端点 `https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12` 进 allowedLifeWidgetUrl（参数全固定，任何变化拒绝）+ `loadHackerNewsFrontPage`（30 分钟缓存 + 陈旧回退）
+- [x] T-6184 HN 接线：register（8500ms 超时/30 分钟缓存）+ 思源内核代理 fetchImpl + lifeModuleIds 低频心跳 + DEPENDENCY_INFO
+- [x] T-6185 external-widget-model 目录登记 2 条（世界时钟 builtin/direct/local-only；HN external/http/none），目录 9→11
+- [x] T-6186 新增测试：世界时钟 8 项、HN 快照 9 项、HN 网络 7 项、生产接线断言 2 项；既有计数断言同步（目录 19 处、home-model、依赖摘要、分组契约、可用性审计 33→35）
+- [x] T-6187 负向验证（D-361 协议）：注入白名单放宽（startsWith）1 项失败；注入删除 DEFAULT_MODULES 条目 2 项失败；均字节级还原
+- [x] T-6188 修复 3 处测试预期与实现的去重语义偏差（标题重复条目有意丢弃、limit 钳制最小 3）
+- [x] T-6189 同步 docs/release-readiness.md 产物尺寸（index.js 571944、package.zip 298315）
+- [x] T-6190 同步 README 中英文测试数字 5581→5610
+- [x] T-6191 跑通 `pnpm verify:release` 5610/5610 + 移动端/Chromium 烟测
+- [x] T-6192 记录 D-368
+
 ## T-6169~T-6176 UI 第二轮：按下反馈（2026-09-16，已完成）
 
 - [x] T-6169 审计交互态覆盖：`:hover` 55 处 vs `:active` 10 处，其中仅 2 处为真正的物理反馈

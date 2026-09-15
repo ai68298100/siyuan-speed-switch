@@ -48,7 +48,7 @@ test('insight group excludes countdown', () => {
     const insight = source.match(/homeStoreGroupInsights,[\s\S]*?moduleIds: \[([^\]]+)/)?.[1] || '';
     assert.doesNotMatch(insight, /countdown/);
 });
-test('life group combines feeds and local service by purpose', () => assert.match(source, /"external-news-newsnow", "external-activitywatch-time"/));
+test('life group combines feeds and local service by purpose', () => assert.match(source, /"external-news-newsnow", "external-news-hackernews", "external-activitywatch-time"/));
 test('system group contains plugin commands', () => assert.match(source, /homeStoreGroupSystem,[\s\S]*?"plugin-commands"/));
 test('unknown built-in widgets receive an other hint', () => assert.match(source, /return hit\?\.description \|\| this\.i18n\.homeStoreGroupOtherHint/));
 test('plugin widgets receive a source hint', () => assert.match(source, /return this\.i18n\.homeStoreGroupPluginHint/));

@@ -38,6 +38,9 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"]},
     {moduleId: "external-local-time", title: "时间与日期", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
+    {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "cities", label: "城市时区（IANA，逗号分隔，如 Asia/Shanghai）", type: "text", defaults: ""},
+    ]},
     {moduleId: "external-weather-open-meteo", title: "近期天气", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "city", label: "城市或邮编", type: "text", defaults: ""},
         {key: "temperatureUnit", label: "温度单位", type: "select", options: ["°C", "°F"], defaults: "°C"},
@@ -52,6 +55,10 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "endpoint", label: "DailyHotApi 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
+    {moduleId: "external-news-hackernews", title: "Hacker News 热门", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
+        {key: "showMeta", label: "显示得分与评论", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},

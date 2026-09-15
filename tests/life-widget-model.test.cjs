@@ -197,3 +197,55 @@ test("ActivityWatch snapshot exposes total foreground time", () => assert.equal(
 test("ActivityWatch snapshot exposes ranked app rows", () => assert.equal(model.buildActivityWatchSnapshot({payload: activityPayload}, {}).items[1].rank, 2));
 test("ActivityWatch snapshot preserves stale health", () => assert.equal(model.buildActivityWatchSnapshot({payload: activityPayload, status: "stale"}, {}).sourceHealth, "stale"));
 test("ActivityWatch snapshot never exposes window titles", () => assert.doesNotMatch(JSON.stringify(model.buildActivityWatchSnapshot({payload: activityPayload}, {})), /title.*window/i));
+
+// Hacker News 热门：Algolia hits → 有界排序列表快照。
+const hackerNewsEnvelope = {status: "fresh", fetchedAt: 1000, payload: {hits: [
+    {objectID: "1", title: "First story", url: "https://example.com/a", points: 120, num_comments: 45, created_at_i: 1757800000},
+    {objectID: "2", title: "Second story", url: "", points: 10, num_comments: 2, created_at_i: 1757800100},
+    {objectID: "3", title: "First story", url: "https://example.com/dup", points: 5, num_comments: 0, created_at_i: 1757800200},
+    {objectID: "4", title: "", url: "https://example.com/empty", points: 1, num_comments: 0},
+    {objectID: "javascript:alert(1)", title: "Malicious", url: "javascript:alert(1)", points: 1, num_comments: 0},
+]}};
+test("Hacker News config clamps the story limit", () => {
+    assert.equal(model.normalizeHackerNewsConfig({limit: 999}).limit, 12);
+    assert.equal(model.normalizeHackerNewsConfig({limit: 0}).limit, 3);
+    assert.equal(model.normalizeHackerNewsConfig({}).limit, 8);
+    assert.equal(model.normalizeHackerNewsConfig({showMeta: "否"}).showMeta, false);
+});
+test("Hacker News snapshot builds a ranked list with meta", () => {
+    const snapshot = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {}, {points: "分", comments: "评"});
+    assert.equal(snapshot.title, "Hacker News");
+    assert.equal(snapshot.items.length, 3);
+    assert.equal(snapshot.items[0].rank, 1);
+    assert.equal(snapshot.items[0].label, "First story");
+    assert.equal(snapshot.items[0].href, "https://example.com/a");
+    assert.match(snapshot.items[0].secondary, /分 120 · 评 45/);
+});
+test("Hacker News snapshot falls back to the discussion link", () => {
+    const snapshot = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {}, {});
+    assert.equal(snapshot.items[1].href, "https://news.ycombinator.com/item?id=2");
+});
+test("Hacker News snapshot drops duplicates and unsafe links", () => {
+    const snapshot = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {}, {});
+    const labels = snapshot.items.map((item) => item.label);
+    assert.equal(labels.filter((label) => label === "First story").length, 1);
+    assert.equal(labels.includes("Malicious"), false);
+});
+test("Hacker News snapshot hides meta when configured", () =>
+    assert.equal(model.buildHackerNewsSnapshot(hackerNewsEnvelope, {showMeta: "否"}, {}).items[0].secondary, ""));
+test("Hacker News snapshot honors the story limit", () =>
+    // limit 1 被钳制为最小 3；样本中仅 2 条有效故事，加来源行为 3 项。
+    assert.equal(model.buildHackerNewsSnapshot(hackerNewsEnvelope, {limit: 1}, {}).items.length, 3));
+test("Hacker News snapshot keeps stale health and newest timestamp", () => {
+    const snapshot = model.buildHackerNewsSnapshot({...hackerNewsEnvelope, status: "stale"}, {}, {});
+    assert.equal(snapshot.sourceHealth, "stale");
+    assert.equal(snapshot.updatedAt, 1757800100000);
+});
+test("Hacker News snapshot appends the source row", () => {
+    const snapshot = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {}, {source: "数据来源"});
+    const last = snapshot.items[snapshot.items.length - 1];
+    assert.match(last.label, /数据来源：Hacker News/);
+    assert.equal(last.href, "https://news.ycombinator.com/");
+});
+test("Hacker News snapshot rejects an empty hit list", () =>
+    assert.equal(model.buildHackerNewsSnapshot({status: "fresh", payload: {hits: []}}, {}, {}), null));

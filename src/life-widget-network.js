@@ -7,6 +7,9 @@ const HOLIDAY_TTL_MS = 24 * 60 * 60 * 1000;
 const BANGUMI_TTL_MS = 30 * 60 * 1000;
 const FEED_TTL_MS = 30 * 60 * 1000;
 const ACTIVITYWATCH_TTL_MS = 5 * 60 * 1000;
+const HACKER_NEWS_TTL_MS = 30 * 60 * 1000;
+// 固定端点：一次请求拿首页 12 条，条数上限在渲染层按配置截断，避免动态参数进白名单。
+const HACKER_NEWS_FRONT_PAGE_URL = "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12";
 const responseCache = new Map();
 
 function allowedLifeWidgetUrl(url) {
@@ -14,6 +17,9 @@ function allowedLifeWidgetUrl(url) {
     if (url.startsWith("https://geocoding-api.open-meteo.com/v1/search?")
         || url.startsWith("https://api.open-meteo.com/v1/forecast?")) return true;
     if (url === "https://api.bgm.tv/calendar") return true;
+    // Hacker News 首页采用与 Bangumi 同级的"字面量端点"策略：协议、主机、路径、
+    // 查询全部固定，任何参数变化（含 hitsPerPage 注入）都视为外部端点拒绝。
+    if (url === HACKER_NEWS_FRONT_PAGE_URL) return true;
     try {
         const parsed = new URL(url);
         return parsed.protocol === "https:"
@@ -133,8 +139,24 @@ async function loadBangumiCalendar(options = {}) {
     return cacheWrite("bangumi:calendar", await fetchBoundedLifeJson(url, options), options.now);
 }
 
-async function loadConfiguredFeed(url, options = {}) {
-    if (!allowedConfiguredFeedUrl(url)) throw new Error("blocked_endpoint");
+// Hacker News 首页：固定端点 + 30 分钟缓存 + 失败回退陈旧缓存（与用户端点 feed 同一健康语义）。
+async function loadHackerNewsFrontPage(options = {}) {
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const cached = responseCache.get("hackernews:front_page");
+    if (options.force !== true && cached && now - cached.at < HACKER_NEWS_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchBoundedLifeJson(HACKER_NEWS_FRONT_PAGE_URL, options);
+        cacheWrite("hackernews:front_page", payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
+
+async function loadConfiguredFeed(url, options = {}) {    if (!allowedConfiguredFeedUrl(url)) throw new Error("blocked_endpoint");
     const key = `feed:${url}`;
     const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
     const cached = responseCache.get(key);
@@ -224,6 +246,8 @@ module.exports = {
     BANGUMI_TTL_MS,
     FEED_TTL_MS,
     ACTIVITYWATCH_TTL_MS,
+    HACKER_NEWS_TTL_MS,
+    HACKER_NEWS_FRONT_PAGE_URL,
     allowedLifeWidgetUrl,
     allowedConfiguredFeedUrl,
     allowedActivityWatchUrl,
@@ -231,6 +255,7 @@ module.exports = {
     loadWeatherLocation,
     loadWeatherForecast,
     loadHolidayYear,
+    loadHackerNewsFrontPage,
     loadBangumiCalendar,
     loadConfiguredFeed,
     fetchActivityWatchQuery,
