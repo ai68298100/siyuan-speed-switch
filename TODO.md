@@ -6721,3 +6721,52 @@
 - [x] T-5078 天气天数上限
 - [x] T-5079 Bangumi 数量上限
 - [x] T-5080 ActivityWatch 公网配置拒绝
++- [x] T-5081 life URL null
+- [x] T-5082 life URL array
+- [x] T-5083 life URL length
+- [x] T-5084 geocode prefix
+- [x] T-5085 forecast prefix
+- [x] T-5086 feed null
+- [x] T-5087 feed length
+- [x] T-5088 feed username
+- [x] T-5089 feed hash
+- [x] T-5090 feed source id
+- [x] T-5091 activity non-string
+- [x] T-5092 activity length
+- [x] T-5093 activity credentials
+- [x] T-5094 activity fragment
+- [x] T-5095 bounded Accept
+- [x] T-5096 bounded redirect
+- [x] T-5097 bounded signal
+- [x] T-5098 bounded opaque rejection
+- [x] T-5099 bounded missing length
+- [x] T-5100 bounded HTTP ordering
+- [x] T-5101 bounded listener cleanup
+- [x] T-5102 activity content type
+- [x] T-5103 activity body serialization
+- [x] T-5104 activity array serialization
+- [x] T-5105 activity null body
+- [x] T-5106 activity opaque rejection
+- [x] T-5107 activity malformed JSON
+- [x] T-5108 location cache key
+- [x] T-5109 weather TTL boundary
+- [x] T-5110 holiday lower clamp
+- [x] T-5111 holiday fractional year
+- [x] T-5112 holiday cache separation
+- [x] T-5113 Bangumi signal
+- [x] T-5114 feed fresh timestamp
+- [x] T-5115 feed cached timestamp
+- [x] T-5116 feed stale timestamp
+- [x] T-5117 feed HTTP stale
+- [x] T-5118 feed force refresh
+- [x] T-5119 feed provider isolation
+- [x] T-5120 activity fresh timestamp
+- [x] T-5121 activity cached timestamp
+- [x] T-5122 activity stale payload
+- [x] T-5123 activity force refresh
+- [x] T-5124 activity cache key isolation
+- [x] T-5125 activity missing request
+- [x] T-5126 activity endpoint rejection
+- [x] T-5127 cache capacity
+- [x] T-5128 cache clear idempotence
+- [x] T-5129 cache empty size
