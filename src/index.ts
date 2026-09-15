@@ -25,7 +25,7 @@ import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures
 import {resolveWidgetCatalogState} from "./widget-catalog";
 import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
-import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize} from "./home-store-model";
+import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary} from "./home-store-model";
 import {buildLocalTimeSnapshot, millisecondsToNextMinute} from "./local-time-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, mergeHolidayPayloads, holidayPresentation, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot} from "./life-widget-model";
 import {loadWeatherLocation, loadWeatherForecast, loadHolidayYear, loadBangumiCalendar, loadConfiguredFeed, loadActivityWatchSummary, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches} from "./life-widget-network";
@@ -5120,6 +5120,7 @@ const version = beginSearch(session);
                 const installability = normalizeHomeStoreInstallability(undefined, {added: !!added, availability: def.availability || "ready"});
                 card.dataset.installability = installability;
                 card.dataset.installHint = resolveHomeStoreInstallabilityReason(installability);
+                card.dataset.primaryAction = resolveHomeStorePrimaryAction(card.dataset);
                 card.setAttribute("aria-label", resolveHomeStoreCardA11y(card.dataset, {title: def.title || moduleId, added: this.i18n.homeStoreStatusAdded, notAdded: this.i18n.homeStoreStatusNotAdded}));
                 const head = document.createElement("div");
                 head.className = "sw-home-store__card-head";
@@ -5322,6 +5323,12 @@ const version = beginSearch(session);
                 addButton.dataset.moduleId = moduleId;
                 addButton.dataset.selectedSize = selectedTile?.dataset.size || supported[0];
                 addButton.textContent = added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
+                if (!added && def.availability === "external") {
+                    addButton.textContent = resolveHomeStorePrimaryActionLabel(card.dataset, {guide: this.i18n.homeStoreGuide || "查看说明"});
+                    addButton.dataset.action = "guide";
+                }
+                const stateSummary = buildHomeStoreCardStateSummary(card.dataset, {conditional: this.i18n.homeStoreAvailabilityConditional, external: this.i18n.homeStoreAvailabilityExternal});
+                addButton.dataset.stateSummary = stateSummary.text;
                 addButton.setAttribute("aria-describedby", sizeLabel.id);
                 addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${selectedTile?.textContent || supported[0]}`);
                 addButton.title = addButton.getAttribute("aria-label") || "";

@@ -794,6 +794,36 @@ function summarizeHomeStoreOperations(log) { const list = normalizeHomeStoreOper
 function resolveHomeStoreRecoveryAction(errorKind) { return ({aborted: "none", timeout: "retry", offline: "retry", unauthorized: "configure", "not-found": "refresh", invalid: "refresh", unknown: "retry"})[normalizeHomeStoreErrorKind(errorKind)] || "retry"; }
 function buildHomeStoreRecoveryPlan(errorKind, attempt, policy = {}) { const kind = normalizeHomeStoreErrorKind(errorKind); return {kind, action: resolveHomeStoreRecoveryAction(kind), retryable: shouldRetryHomeStoreError(kind, attempt, policy), delayMs: computeHomeStoreRetryDelay(attempt, policy)}; }
 
+// Discovery and batch-management semantics. The UI can opt into these helpers
+// without coupling selection state to persisted widget instances.
+const STORE_VIEW_MODES = Object.freeze(["grid", "list", "compact"]);
+const STORE_SELECTION_MODES = Object.freeze(["none", "some", "all"]);
+function normalizeHomeStoreViewMode(value) { return STORE_VIEW_MODES.includes(value) ? value : "grid"; }
+function resolveHomeStoreViewModeLabel(value, labels = {}) { const key = normalizeHomeStoreViewMode(value); return boundedText(labels[key], 48) || key; }
+function resolveHomeStoreViewClass(value) { return `is-${normalizeHomeStoreViewMode(value)}`; }
+function normalizeHomeStoreSelectionIds(values, max = 64) {
+    const limit = Math.min(128, Math.max(1, Math.trunc(Number(max) || 64))); const list = Array.isArray(values) ? values : [];
+    return [...new Set(list.map((value) => normalizeHomeStoreCardId(value)).filter(Boolean))].slice(0, limit);
+}
+function normalizeHomeStoreSelectionMode(value) { return STORE_SELECTION_MODES.includes(value) ? value : "none"; }
+function toggleHomeStoreSelection(values, id, max = 64) { const next = normalizeHomeStoreSelectionIds(values, max); const key = normalizeHomeStoreCardId(id); if (!key) return next; const index = next.indexOf(key); if (index >= 0) next.splice(index, 1); else if (next.length < Math.min(128, Math.max(1, Math.trunc(Number(max) || 64)))) next.push(key); return next; }
+function clearHomeStoreSelection() { return []; }
+function selectHomeStoreVisible(values, visibleIds, max = 64) { const existing = normalizeHomeStoreSelectionIds(values, max); const visible = normalizeHomeStoreSelectionIds(visibleIds, max); return normalizeHomeStoreSelectionIds([...existing, ...visible], max); }
+function resolveHomeStoreSelectionMode(selected, visibleIds) { const chosen = normalizeHomeStoreSelectionIds(selected); const visible = normalizeHomeStoreSelectionIds(visibleIds); if (!visible.length || !chosen.length) return "none"; const count = visible.filter((id) => chosen.includes(id)).length; return count === visible.length ? "all" : count > 0 ? "some" : "none"; }
+function buildHomeStoreSelectionSummary(selected, visibleIds, labels = {}) { const chosen = normalizeHomeStoreSelectionIds(selected); const visible = normalizeHomeStoreSelectionIds(visibleIds); const mode = resolveHomeStoreSelectionMode(chosen, visible); const text = boundedText(labels[mode], 96) || ({none: "未选择组件", some: "已选择部分组件", all: "已选择当前结果"})[mode]; return {selected: chosen.length, visible: visible.length, mode, text}; }
+function resolveHomeStoreSelectAllState(selected, visibleIds) { const mode = resolveHomeStoreSelectionMode(selected, visibleIds); return {checked: mode === "all", indeterminate: mode === "some", mode}; }
+function normalizeHomeStoreBatchLimit(value, fallback = 8) { const n = Number(value); return Number.isFinite(n) ? Math.min(32, Math.max(1, Math.trunc(n))) : fallback; }
+function canHomeStoreBatchOperate(selected, limit = 8) { return normalizeHomeStoreSelectionIds(selected, normalizeHomeStoreBatchLimit(limit)).length > 0; }
+function buildHomeStoreBatchPlan(selected, action, limit = 8) { const ids = normalizeHomeStoreSelectionIds(selected, normalizeHomeStoreBatchLimit(limit)); return {action: normalizeHomeStoreAction(action), ids, accepted: ids.length > 0 && ids.length <= normalizeHomeStoreBatchLimit(limit), truncated: ids.length >= normalizeHomeStoreBatchLimit(limit)}; }
+function buildHomeStoreFilterSuggestion(query, tab, labels = {}) { const text = normalizeHomeStoreQuery(query); const key = normalizeHomeStoreTab(tab); if (text) return {kind: "search", action: "clear-search", text: boundedText(labels.search, 96) || "清除搜索词"}; if (key !== "all") return {kind: "filter", action: "clear-filters", text: boundedText(labels[key], 96) || "清除当前筛选"}; return {kind: "browse", action: "open-guide", text: boundedText(labels.browse, 96) || "查看组件说明"}; }
+function buildHomeStoreCardStateSummary(card, labels = {}) { const item = normalizeHomeStoreCard(card); const availability = item.availability; const integration = item.integration; return {availability, integration, configurable: item.configurable, added: item.added, text: [boundedText(labels[availability], 48) || availability, boundedText(labels[integration], 48) || integration].filter(Boolean).join(" · ")}; }
+function resolveHomeStorePrimaryAction(card) { const item = normalizeHomeStoreCard(card); if (item.added) return item.configurable ? "configure" : "apply-size"; if (item.availability === "external") return "guide"; if (item.availability === "conditional") return "configure"; return "add"; }
+function resolveHomeStorePrimaryActionLabel(card, labels = {}) { const action = resolveHomeStorePrimaryAction(card); return boundedText(labels[action], 64) || ({add: "添加", configure: "配置", "apply-size": "应用尺寸", guide: "查看说明"})[action]; }
+function normalizeHomeStoreSetupUrl(value) { const text = boundedText(value, 512); if (!text) return ""; try { const url = new URL(text); if (url.protocol === "https:" || (url.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(url.hostname))) return url.toString(); } catch (_) {} return ""; }
+function buildHomeStoreSetupLink(value, labels = {}) { const href = normalizeHomeStoreSetupUrl(value); return {href, enabled: !!href, text: boundedText(labels.text, 64) || (href ? "打开设置说明" : "暂无设置链接")}; }
+function summarizeHomeStoreConfigCompletion(schema, draft) { const fields = Array.isArray(schema) ? schema.filter((field) => field && typeof field === "object" && homeConfigText(field.key, 64)) : []; const missing = fields.filter((field) => { const value = draft?.[field.key]; return value == null || String(value).trim() === ""; }).map((field) => homeConfigText(field.label || field.key, 64)); return {total: fields.length, configured: fields.length - missing.length, missing: missing.slice(0, 12), complete: fields.length === 0 || missing.length === 0}; }
+function buildHomeStoreConfigMissingText(schema, draft, labels = {}) { const summary = summarizeHomeStoreConfigCompletion(schema, draft); if (summary.complete) return boundedText(labels.complete, 96) || "配置已完成"; return (boundedText(labels.missing, 96) || "还需配置：{fields}").replace("{fields}", summary.missing.join("、")); }
+
 module.exports = {
     STORE_TABS, STORE_DEVICES, STORE_AVAILABILITY, STORE_CATEGORIES, STORE_INTEGRATIONS, STORE_SORTS,
     normalizeHomeStoreQuery, normalizeHomeStoreTab, normalizeHomeStoreDevice, normalizeHomeStoreCategory,
@@ -839,4 +869,12 @@ module.exports = {
     resolveHomeStorePageWindow, buildHomeStorePaginationLabel, normalizeHomeStoreFocusTarget, resolveHomeStoreFocusTarget,
     buildHomeStoreAnnouncement, normalizeHomeStoreOperationLog, appendHomeStoreOperationLog, summarizeHomeStoreOperations,
     resolveHomeStoreRecoveryAction, buildHomeStoreRecoveryPlan,
+    STORE_VIEW_MODES, STORE_SELECTION_MODES, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel,
+    resolveHomeStoreViewClass, normalizeHomeStoreSelectionIds, normalizeHomeStoreSelectionMode,
+    toggleHomeStoreSelection, clearHomeStoreSelection, selectHomeStoreVisible, resolveHomeStoreSelectionMode,
+    buildHomeStoreSelectionSummary, resolveHomeStoreSelectAllState, normalizeHomeStoreBatchLimit,
+    canHomeStoreBatchOperate, buildHomeStoreBatchPlan, buildHomeStoreFilterSuggestion,
+    buildHomeStoreCardStateSummary, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel,
+    normalizeHomeStoreSetupUrl, buildHomeStoreSetupLink, summarizeHomeStoreConfigCompletion,
+    buildHomeStoreConfigMissingText,
 };
