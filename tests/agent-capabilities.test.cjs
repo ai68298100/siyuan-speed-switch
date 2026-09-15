@@ -496,7 +496,7 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
         closedTabs: [{id: "20260911083000-abcdeg", rootId: "20260911083000-abcdeg", title: "旧笔记", source: "closed"}],
         documentSets: [{name: "工作", count: 3}, {name: "", count: 9}, {count: 2}],
         quickActions: [{label: "搜索", kind: "builtin"}, {kind: "dock"}],
-        todayJournal: {configured: true, docId: "20260911083000-abcdeg"},
+        todayJournal: {configured: true, docId: "20260911083000-abcdeg", status: "found"},
         bogus: "dropped",
     });
     assert.deepEqual(context, {
@@ -508,7 +508,7 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
         closedTabs: [{id: "20260911083000-abcdeg", rootId: "20260911083000-abcdeg", title: "旧笔记", source: "closed"}],
         documentSets: [{name: "工作", count: 3}],
         quickActions: [{label: "搜索", kind: "builtin"}],
-        todayJournal: {configured: true, docId: "20260911083000-abcdeg"},
+        todayJournal: {configured: true, docId: "20260911083000-abcdeg", status: "found"},
     });
     const empty = buildAgentWorkspaceContext(null);
     assert.equal(empty.device, "desktop");
@@ -517,7 +517,7 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
     assert.deepEqual(empty.activeDocument, {id: "", title: ""});
     assert.deepEqual(empty.openTabs, []);
     assert.deepEqual(empty.closedTabs, []);
-    assert.deepEqual(empty.todayJournal, {configured: false, docId: ""});
+    assert.deepEqual(empty.todayJournal, {configured: false, docId: "", status: "unconfigured"});
 });
 test("every agent capability spec is registered in the plugin entry", () => {
     const fs = require("node:fs");

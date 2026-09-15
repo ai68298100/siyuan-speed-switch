@@ -61,6 +61,7 @@ import {
     normalizeAgentDocumentId,
     normalizeAgentDocumentIds,
     normalizeAgentNotebookId,
+    normalizeAgentJournalStatus,
     buildNotebookBoxScope,
     registerAgentActionCapability,
 } from "./agent-capabilities";
@@ -8257,17 +8258,35 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             .map((action) => ({label: action.label, kind: action.kind}));
                         // 今日日记只读探测：按日期前缀查当日文档（绝不调用 createDailyNote——那会创建）
                         const journalNotebookId = normalizeAgentNotebookId(settings.journalNotebook);
-                        let todayJournal = {configured: false, docId: ""};
+                        let todayJournal: {configured: boolean; docId: string; status: string} = {
+                            configured: false,
+                            docId: "",
+                            status: "unconfigured",
+                        };
                         if (journalNotebookId) {
                             todayJournal.configured = true;
-                            const now = new Date();
-                            const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-                            const journalJson = await this.fetchKernelJson("/api/query/sql", {
-                                stmt: `SELECT id FROM blocks WHERE type='d' AND box='${journalNotebookId}' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 1`,
-                            });
-                            const found = ((journalJson?.data || [])[0] as {id?: string} | undefined)?.id || "";
-                            if (BLOCK_ID_RE.test(found)) todayJournal.docId = found;
+                            if (this.syncing) {
+                                todayJournal.status = "syncing";
+                            } else {
+                                const now = new Date();
+                                const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                                const journalJson = await this.fetchKernelJson("/api/query/sql", {
+                                    stmt: `SELECT id FROM blocks WHERE type='d' AND box='${journalNotebookId}' AND content LIKE '${prefix}%' ORDER BY created DESC LIMIT 1`,
+                                });
+                                if (!journalJson) {
+                                    todayJournal.status = "unavailable";
+                                } else {
+                                    const found = ((journalJson.data || [])[0] as {id?: string} | undefined)?.id || "";
+                                    if (BLOCK_ID_RE.test(found)) {
+                                        todayJournal.docId = found;
+                                        todayJournal.status = "found";
+                                    } else {
+                                        todayJournal.status = "missing";
+                                    }
+                                }
+                            }
                         }
+                        todayJournal.status = normalizeAgentJournalStatus(todayJournal.status, todayJournal.configured, todayJournal.docId);
                         const content = buildAgentWorkspaceContext({
                             limit,
                             generatedAt: Date.now(),

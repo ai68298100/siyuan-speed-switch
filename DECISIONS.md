@@ -1,4 +1,5 @@
 # 决策
+- D-330（2026-09-15）：`workspace-context.todayJournal.status` 采用 `unconfigured/found/missing/unavailable/syncing` 五态；同步期间不发起只读 SQL 探测并返回 `syncing`，空结果为 `missing`，内核请求失败为 `unavailable`，避免 Agent 把“没有今日日记”和“数据不可用”混为一谈。
 - D-329（2026-09-15）：`workspace-context` 新增有界 `generatedAt` 与 `syncing` 字段，并由生产 handler 传入真实快照时刻与同步状态；Agent 可识别同步期间的只读冻结快照，旧输入仍归一化为零时间戳和非同步状态，不开放任何新写入能力。
 - D-328（2026-09-15）：打开文档请求规划达到上限后立即终止遍历，避免高负载场景无效扫描；保持请求数量上限与结果顺序不变，以降低性能基准抖动风险。
 - D-323（2026-09-15）：推荐/可配置视图、卡片密度和来源徽章新增模型与提示后 raw bundle 达 533727 bytes，将移动端自律线校准为 524 KiB；归档 310447 bytes 仍低于 320 KiB 硬门禁，保留约 17 KiB 余量。

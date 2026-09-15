@@ -314,6 +314,14 @@ function normalizeAgentTimestamp(value, fallback = 0) {
     return Math.max(0, Math.min(9999999999999, Math.trunc(parsed)));
 }
 
+const AGENT_JOURNAL_STATUSES = Object.freeze(["unconfigured", "found", "missing", "unavailable", "syncing"]);
+
+function normalizeAgentJournalStatus(value, configured = false, docId = "") {
+    if (AGENT_JOURNAL_STATUSES.includes(value)) return value;
+    if (configured !== true) return "unconfigured";
+    return docId ? "found" : "missing";
+}
+
 function normalizeAgentSearchOffset(value, total = MAX_SEARCH_ITEMS) {
     const parsed = Number.parseInt(String(value), 10);
     const upper = Math.min(MAX_SEARCH_ITEMS * 2, Math.max(0, Number.parseInt(String(total), 10) || 0));
@@ -455,6 +463,7 @@ function buildAgentWorkspaceContext(input = {}) {
         todayJournal: {
             configured: journal.configured === true,
             docId: asText(journal.docId, 64),
+            status: normalizeAgentJournalStatus(journal.status, journal.configured === true, journal.docId),
         },
     };
 }
@@ -935,8 +944,9 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     properties: {
                         configured: {type: "boolean"},
                         docId: {type: "string", maxLength: 64},
+                        status: {type: "string", enum: ["unconfigured", "found", "missing", "unavailable", "syncing"]},
                     },
-                    required: ["configured", "docId"],
+                    required: ["configured", "docId", "status"],
                     additionalProperties: false,
                 }),
             },
@@ -1186,6 +1196,8 @@ module.exports = {
     normalizeAgentSearchPaths,
     normalizeAgentLimit,
     normalizeAgentTimestamp,
+    normalizeAgentJournalStatus,
+    AGENT_JOURNAL_STATUSES,
     normalizeAgentSearchOffset,
     normalizeAgentSearchMethod,
     normalizeAgentSearchOrder,
