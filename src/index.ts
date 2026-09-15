@@ -8104,6 +8104,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             notebookName: notebookMap.get(resolveSearchNotebookId(tab as unknown)) || "",
                             path: (tab as unknown as {path?: string; hPath?: string}).path
                                 || (tab as unknown as {hPath?: string}).hPath || "",
+                            pathSource: "tab",
                         } : {id};
                         if (!tab) {
                             let json: any;
@@ -8117,7 +8118,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             }
                             const row = (json?.data || [])[0] as {id?: string; content?: string; box?: string} | undefined;
                             if (!row || !BLOCK_ID_RE.test(String(row.id || ""))) return {error: "document context unavailable"};
-                            record = {id: row.id, title: row.content, notebookId: row.box, notebookName: notebookMap.get(String(row.box || "")) || "", path: ""};
+                            record = {id: row.id, title: row.content, notebookId: row.box, notebookName: notebookMap.get(String(row.box || "")) || "", path: "", pathSource: "none"};
                         }
                         let outlineAvailable = true;
                         let outlineJson: any = null;
@@ -8133,6 +8134,9 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                             active: isActiveDocument,
                             source: contextSource,
                             outlineAvailable,
+                            outlineStatus: outlineAvailable
+                                ? ((Array.isArray(outlineJson?.data) && outlineJson.data.length > 0) ? "available" : "empty")
+                                : "unavailable",
                             headings: outlineAvailable ? outlineJson.data : [],
                         }, request);
                         return {structuredContent: content, result: JSON.stringify(content)};

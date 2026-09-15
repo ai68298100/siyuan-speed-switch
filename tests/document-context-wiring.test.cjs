@@ -56,6 +56,22 @@ test("document-context exposes bounded outline availability", () => {
     assert.match(source, /outlineAvailable,/);
 });
 
+test("document-context marks tab metadata path provenance", () => {
+    assert.match(source, /pathSource: "tab"/);
+    assert.match(source, /pathSource: "none"/);
+});
+
+test("document-context reports outline empty versus unavailable", () => {
+    assert.match(source, /outlineStatus: outlineAvailable/);
+    assert.match(source, /\? "available"/);
+    assert.match(source, /: "unavailable"/);
+});
+
+test("document-context keeps notebook lookup cache-only", () => {
+    assert.match(source, /new Map\(\(this\.notebookListCache \|\| \[\]\)\.map/);
+    assert.doesNotMatch(source, /fetchKernelJson\("\/api\/notebook/);
+});
+
 test("document-context returns a structured bounded result", () => {
     assert.match(source, /structuredContent: content, result: JSON\.stringify\(content\)/);
 });

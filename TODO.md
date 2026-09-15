@@ -1,5 +1,40 @@
 # TODO
 
+## T-5874~T-5906 Agent document-context M2 status and provenance (2026-09-15)
+- [x] T-5874 metadata status enum
+- [x] T-5875 metadata status schema
+- [x] T-5876 metadata status required field
+- [x] T-5877 complete metadata derivation
+- [x] T-5878 partial metadata derivation
+- [x] T-5879 unavailable metadata derivation
+- [x] T-5880 post-normalization status derivation
+- [x] T-5881 metadata unknown-field isolation
+- [x] T-5882 path source enum
+- [x] T-5883 path source schema
+- [x] T-5884 path source required field
+- [x] T-5885 tab path attribution
+- [x] T-5886 kernel path attribution
+- [x] T-5887 missing path attribution
+- [x] T-5888 invalid path source fallback
+- [x] T-5889 explicit path source preservation
+- [x] T-5890 path availability independence
+- [x] T-5891 outline status enum
+- [x] T-5892 outline status schema
+- [x] T-5893 outline status required field
+- [x] T-5894 available outline derivation
+- [x] T-5895 empty outline derivation
+- [x] T-5896 unavailable outline derivation
+- [x] T-5897 invalid outline status fallback
+- [x] T-5898 explicit outline status preservation
+- [x] T-5899 outline boolean compatibility
+- [x] T-5900 stable output key order
+- [x] T-5901 host tab provenance wiring
+- [x] T-5902 host kernel fallback provenance wiring
+- [x] T-5903 cache-only notebook lookup regression
+- [x] T-5904 M2 contract documentation
+- [x] T-5905 targeted contract and wiring gate
+- [x] T-5906 M2 batch record
+
 ## T-5830~T-5861 Agent document-context metadata completeness (2026-09-15)
 - [x] T-5830 notebookName output field
 - [x] T-5831 notebookName schema bound

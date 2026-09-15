@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-    MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SOURCES, DOCUMENT_CONTEXT_SPEC,
+    MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SOURCES, DOCUMENT_CONTEXT_METADATA_STATES, DOCUMENT_CONTEXT_PATH_SOURCES, DOCUMENT_CONTEXT_OUTLINE_STATES, DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest, normalizeDocumentContextPath,
     extractDocumentContextRecord, buildDocumentContext,
 } = require("../src/agent-document-context.js");
@@ -15,6 +15,9 @@ test("document context constants keep bounded limits", () => {
     assert.equal(MAX_TITLE_LENGTH, 256);
     assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.headings.maxItems, 24);
     assert.deepEqual(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.source.enum, [...DOCUMENT_CONTEXT_SOURCES]);
+    assert.deepEqual(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.metadataStatus.enum, [...DOCUMENT_CONTEXT_METADATA_STATES]);
+    assert.deepEqual(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.pathSource.enum, [...DOCUMENT_CONTEXT_PATH_SOURCES]);
+    assert.deepEqual(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.outlineStatus.enum, [...DOCUMENT_CONTEXT_OUTLINE_STATES]);
     assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.outlineAvailable.type, "boolean");
     assert.equal(DOCUMENT_CONTEXT_SPEC.outputSchema.properties.pathAvailable.type, "boolean");
 });
@@ -73,7 +76,7 @@ test("context builder normalizes the complete safe envelope", () => {
         data: {id: validId, content: " 当前\n文档 ", box: validNotebook, hPath: "\\项目\\路线"},
         active: true,
         headings: [{id: "20260914083002-aaaaaaa", name: "第一章", depth: 0}],
-    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "notebookName", "pathAvailable"].includes(key))), {
+    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "outlineStatus", "metadataStatus", "pathSource", "notebookName", "pathAvailable"].includes(key))), {
         id: validId, title: "当前 文档", notebookId: validNotebook, path: "/项目/路线", active: true,
         headings: [{id: "20260914083002-aaaaaaa", title: "第一章", depth: 0}],
     });
@@ -113,7 +116,7 @@ test("context builder handles an absent headings array", () => {
 });
 
 test("context builder keeps output keys stable for empty input", () => {
-    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "active", "source", "outlineAvailable", "headings"]);
+    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "metadataStatus", "active", "source", "outlineAvailable", "outlineStatus", "headings"]);
 });
 
 test("context builder caps title length", () => {
@@ -199,4 +202,99 @@ test("context builder keeps notebook and path fields bounded together", () => {
 
 test("context builder preserves empty notebook name for missing cache", () => {
     assert.equal(buildDocumentContext({id: validId}).notebookName, "");
+});
+
+test("context builder reports complete metadata when core fields exist", () => {
+    assert.equal(buildDocumentContext({id: validId, title: "T", notebookId: validNotebook}).metadataStatus, "complete");
+});
+
+test("context builder reports partial metadata for a missing notebook", () => {
+    assert.equal(buildDocumentContext({id: validId, title: "T"}).metadataStatus, "partial");
+});
+
+test("context builder reports unavailable metadata for an empty record", () => {
+    assert.equal(buildDocumentContext({}).metadataStatus, "unavailable");
+});
+
+test("metadata status is derived after id normalization", () => {
+    assert.equal(buildDocumentContext({id: "bad", title: "T", notebookId: validNotebook}).metadataStatus, "partial");
+});
+
+test("metadata status does not expose unknown input values", () => {
+    const context = buildDocumentContext({metadataStatus: "complete", secret: "x"});
+    assert.equal(context.metadataStatus, "unavailable");
+    assert.equal(Object.hasOwn(context, "secret"), false);
+});
+
+test("tab paths are attributed to tab source", () => {
+    const context = buildDocumentContext({id: validId, path: "/docs", source: "opened"});
+    assert.equal(context.pathSource, "tab");
+});
+
+test("kernel paths are attributed to kernel source", () => {
+    const context = buildDocumentContext({id: validId, path: "/docs", source: "kernel"});
+    assert.equal(context.pathSource, "kernel");
+});
+
+test("missing paths use the none source", () => {
+    assert.equal(buildDocumentContext({id: validId, source: "opened"}).pathSource, "none");
+});
+
+test("explicit path source is bounded to the known enum", () => {
+    assert.equal(buildDocumentContext({path: "/docs", pathSource: "remote", source: "opened"}).pathSource, "tab");
+});
+
+test("path source none wins when an explicit none value is supplied", () => {
+    assert.equal(buildDocumentContext({path: "/docs", pathSource: "none"}).pathSource, "none");
+});
+
+test("path source does not change normalized path availability", () => {
+    const context = buildDocumentContext({path: " \\\\docs\\\\", pathSource: "none"});
+    assert.equal(context.pathAvailable, true);
+    assert.equal(context.path, "/docs");
+});
+
+test("outline status is available for bounded headings", () => {
+    const context = buildDocumentContext({id: validId, headings: [{id: validId, name: "H"}]});
+    assert.equal(context.outlineStatus, "available");
+});
+
+test("outline status is empty for a successful empty response", () => {
+    const context = buildDocumentContext({id: validId, outlineAvailable: true, headings: []});
+    assert.equal(context.outlineStatus, "empty");
+});
+
+test("outline status is unavailable after a failed response", () => {
+    const context = buildDocumentContext({id: validId, outlineAvailable: false, headings: []});
+    assert.equal(context.outlineStatus, "unavailable");
+});
+
+test("outline status rejects unknown values", () => {
+    const context = buildDocumentContext({id: validId, outlineStatus: "secret", headings: []});
+    assert.equal(context.outlineStatus, "empty");
+});
+
+test("explicit outline status remains stable when valid", () => {
+    const context = buildDocumentContext({id: validId, outlineStatus: "available", headings: []});
+    assert.equal(context.outlineStatus, "available");
+});
+
+test("outline availability and status stay independently readable", () => {
+    const context = buildDocumentContext({id: validId, outlineAvailable: false, outlineStatus: "unavailable"});
+    assert.equal(context.outlineAvailable, false);
+    assert.equal(context.outlineStatus, "unavailable");
+});
+
+test("new metadata fields are primitive and bounded", () => {
+    const context = buildDocumentContext({id: validId, title: "T", notebookId: validNotebook, path: "/x"});
+    assert.equal(typeof context.metadataStatus, "string");
+    assert.equal(typeof context.pathSource, "string");
+    assert.equal(typeof context.outlineStatus, "string");
+});
+
+test("context output remains detached after status derivation", () => {
+    const input = {id: validId, title: "T", notebookId: validNotebook, headings: []};
+    const output = buildDocumentContext(input);
+    input.headings.push({id: validId, name: "mutated"});
+    assert.equal(output.outlineStatus, "empty");
 });

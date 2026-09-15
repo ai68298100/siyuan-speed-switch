@@ -8,6 +8,9 @@ const MAX_HEADINGS = 24;
 const MAX_PATH_LENGTH = 256;
 const MAX_TITLE_LENGTH = 256;
 const DOCUMENT_CONTEXT_SOURCES = Object.freeze(["active", "opened", "kernel"]);
+const DOCUMENT_CONTEXT_METADATA_STATES = Object.freeze(["complete", "partial", "unavailable"]);
+const DOCUMENT_CONTEXT_PATH_SOURCES = Object.freeze(["tab", "kernel", "none"]);
+const DOCUMENT_CONTEXT_OUTLINE_STATES = Object.freeze(["available", "empty", "unavailable"]);
 
 function normalizeDocumentContextRequest(input = {}) {
     const source = input && typeof input === "object" ? input : {};
@@ -60,12 +63,15 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
             notebookName: {type: "string", maxLength: 128},
             path: {type: "string", maxLength: MAX_PATH_LENGTH},
             pathAvailable: {type: "boolean"},
+            pathSource: {type: "string", enum: [...DOCUMENT_CONTEXT_PATH_SOURCES]},
+            metadataStatus: {type: "string", enum: [...DOCUMENT_CONTEXT_METADATA_STATES]},
             active: {type: "boolean"},
             source: {type: "string", enum: [...DOCUMENT_CONTEXT_SOURCES]},
             outlineAvailable: {type: "boolean"},
+            outlineStatus: {type: "string", enum: [...DOCUMENT_CONTEXT_OUTLINE_STATES]},
             headings: {type: "array", maxItems: MAX_HEADINGS, items: {type: "object", maxProperties: 3, additionalProperties: false}},
         },
-        required: ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "active", "source", "outlineAvailable", "headings"],
+        required: ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "metadataStatus", "active", "source", "outlineAvailable", "outlineStatus", "headings"],
         additionalProperties: false,
     }),
 });
@@ -78,17 +84,34 @@ function buildDocumentContext(value, options = {}) {
     const contextSource = DOCUMENT_CONTEXT_SOURCES.includes(requestedSource)
         ? requestedSource
         : (active ? "active" : "kernel");
+    const path = normalizeDocumentContextPath(source.path);
+    const pathAvailable = path.length > 0;
+    const pathSource = DOCUMENT_CONTEXT_PATH_SOURCES.includes(value?.pathSource)
+        ? value.pathSource
+        : (pathAvailable ? (contextSource === "kernel" ? "kernel" : "tab") : "none");
+    const id = normalizeAgentDocumentId(source.id);
+    const title = cleanText(source.title, MAX_TITLE_LENGTH);
+    const notebookId = normalizeAgentNotebookId(source.notebookId);
+    const metadataStatus = id && title && notebookId ? "complete" : (id || title || notebookId ? "partial" : "unavailable");
+    const outlineAvailable = value?.outlineAvailable !== false;
+    const headings = flattenOutline(value?.headings, limit);
+    const outlineStatus = DOCUMENT_CONTEXT_OUTLINE_STATES.includes(value?.outlineStatus)
+        ? value.outlineStatus
+        : (!outlineAvailable ? "unavailable" : (headings.length ? "available" : "empty"));
     return {
-        id: normalizeAgentDocumentId(source.id),
-        title: cleanText(source.title, MAX_TITLE_LENGTH),
-        notebookId: normalizeAgentNotebookId(source.notebookId),
+        id,
+        title,
+        notebookId,
         notebookName: cleanText(source.notebookName, 128),
-        path: normalizeDocumentContextPath(source.path),
-        pathAvailable: normalizeDocumentContextPath(source.path).length > 0,
+        path,
+        pathAvailable,
+        pathSource,
+        metadataStatus,
         active,
         source: contextSource,
-        outlineAvailable: value?.outlineAvailable !== false,
-        headings: flattenOutline(value?.headings, limit),
+        outlineAvailable,
+        outlineStatus,
+        headings,
     };
 }
 
@@ -101,6 +124,9 @@ module.exports = {
     MAX_PATH_LENGTH,
     MAX_TITLE_LENGTH,
     DOCUMENT_CONTEXT_SOURCES,
+    DOCUMENT_CONTEXT_METADATA_STATES,
+    DOCUMENT_CONTEXT_PATH_SOURCES,
+    DOCUMENT_CONTEXT_OUTLINE_STATES,
     DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest,
     normalizeDocumentContextPath,
