@@ -156,7 +156,7 @@ Run the fixed local gate before manual acceptance:
 pnpm verify:release
 ```
 
-The command runs type checking, a production build, the complete automated suite, the mobile UI smoke test, and the Chromium style smoke test. The release workflow additionally enforces `package.zip` allowlisted contents, metadata consistency, no remote runtime dependencies, and the reviewed 320 KiB archive budget.
+The command runs type checking, a production build, the complete automated suite, the mobile UI smoke test, and the Chromium style smoke test. The release workflow additionally enforces `package.zip` allowlisted contents, metadata consistency, no remote runtime dependencies, and the reviewed 512 KiB archive budget (SiYuan imposes no plugin package size limit; this is a self-discipline line, raised from 320 KiB on 2026-09-15).
 
 Then verify in a real SiYuan environment:
 

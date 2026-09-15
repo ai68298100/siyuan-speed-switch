@@ -19,10 +19,15 @@ test('package.zip, when present, contains only release files', (t) => {
         return;
     }
     const bytes = fs.statSync(zip).size;
-    // Reviewed release ceiling: 320 KiB. The previous 300 KiB limit predates
-    // the semantic home-config/store surfaces and no longer reflects the
-    // shipped feature set.
-    const budget = 320 * 1024;
+    // Reviewed release ceiling: 512 KiB. SiYuan imposes no size limit on
+    // package.zip (plugin-sample only caps icon.png at 20 KB and preview.png at
+    // 200 KB) and GitHub Release assets allow 2 GB. The earlier 300 KiB and
+    // 320 KiB figures were self-imposed and predated the semantic home-config
+    // and store surfaces. Raised 2026-09-15 so the v0.18 controlled-execution
+    // chain has room without another content-trimming decision. The allowlist,
+    // metadata, duplicate-entry and remote-dependency gates are unchanged;
+    // only the byte ceiling moves.
+    const budget = 512 * 1024;
     const headroom = budget - bytes;
     if (headroom >= 0 && headroom < 1024) {
         t.diagnostic(`package.zip headroom is only ${headroom} bytes; keep future UI changes within the hard budget`);

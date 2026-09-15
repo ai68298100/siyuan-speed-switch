@@ -1,5 +1,16 @@
 # TODO
 
+## T-6065~T-6072 包体上限重校准与集市图标合规（2026-09-15，已完成）
+
+- [x] T-6065 核查思源官方对插件包大小的实际约束（结论：无 `package.zip` 限制，仅 `icon.png` ≤ 20 KB、`preview.png` ≤ 200 KB）
+- [x] T-6066 将 `package.zip` 硬上限由 320 KiB 上调至 512 KiB（`package-integrity`、`package-budget-checkpoint`）
+- [x] T-6067 将 `dist/index.js` 自律线由 548 KiB 上调至 768 KiB（`release-quality`）
+- [x] T-6068 修正 `icon.png` 超出官方 20 KB 规范的问题（256×256 44720 → 160×160 18376 bytes，无损路径）
+- [x] T-6069 压缩方案比选：BILINEAR 原生 RGBA 20059 bytes 超 421；zlib 多策略重压无增益；清理透明区杂色无收益（alpha 仅 1 取值）；zopfli 为唯一无损达标路径
+- [x] T-6070 同步中英文 README、ROADMAP v0.20 条目、`docs/external-widget-source-audit.md` 中的旧上限数字
+- [x] T-6071 重新构建并同步 `docs/release-readiness.md` 产物数据（该文件的字节数由宿主页门禁硬校验）
+- [x] T-6072 记录 D-353 并跑通 `pnpm verify:release`（5565/5565，退出码 0）
+
 ## T-6059~T-6064 卡片时间戳格式化器缓存（2026-09-15，已完成）
 - [x] T-6059 测量 DateTimeFormat 构造成本：63µs vs 复用 2µs
 - [x] T-6060 formatUpdatedAt 改为模块级缓存实例
