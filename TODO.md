@@ -1,5 +1,41 @@
 # TODO
 
+## T-5941~T-5974 Agent document-context explainability (2026-09-15)
+- [x] T-5941 metadata field enum
+- [x] T-5942 metadata missing schema
+- [x] T-5943 metadata missing required field
+- [x] T-5944 missing core field derivation
+- [x] T-5945 missing title derivation
+- [x] T-5946 complete missing list derivation
+- [x] T-5947 non-string missing guard
+- [x] T-5948 canonical missing order
+- [x] T-5949 path reason enum
+- [x] T-5950 path reason schema
+- [x] T-5951 path reason required field
+- [x] T-5952 available path reason
+- [x] T-5953 missing path reason
+- [x] T-5954 strict path reason input
+- [x] T-5955 normalized path reason
+- [x] T-5956 caller path reason isolation
+- [x] T-5957 context partial missing output
+- [x] T-5958 context complete missing output
+- [x] T-5959 context unavailable missing output
+- [x] T-5960 missing output bound
+- [x] T-5961 unknown missing key isolation
+- [x] T-5962 source helper compatibility
+- [x] T-5963 tab notebook fallback wiring
+- [x] T-5964 notebookName alias wiring
+- [x] T-5965 boxName alias wiring
+- [x] T-5966 cache-first precedence wiring
+- [x] T-5967 SQL projection regression
+- [x] T-5968 closed path none regression
+- [x] T-5969 outline array-length regression
+- [x] T-5970 read-only fallback regression
+- [x] T-5971 structured result regression
+- [x] T-5972 100-case document-context gate
+- [x] T-5973 explainability documentation
+- [x] T-5974 explainability batch record
+
 ## T-5907~T-5940 Agent document-context M2 host compatibility (2026-09-15)
 - [x] T-5907 source normalizer extraction
 - [x] T-5908 source normalizer active fallback

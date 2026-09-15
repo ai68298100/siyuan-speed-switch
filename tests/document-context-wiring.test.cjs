@@ -100,6 +100,36 @@ test("document-context continues to return structured content", () => {
     assert.match(source, /structuredContent: content/);
 });
 
+test("document-context forwards bounded metadata fields", () => {
+    assert.match(source, /notebookName: tabNotebookName/);
+    assert.match(source, /pathSource: "tab"/);
+});
+
+test("document-context keeps closed fallback metadata explicit", () => {
+    assert.match(source, /notebookName: notebookMap\.get/);
+    assert.match(source, /pathSource: "none"/);
+});
+
+test("document-context does not widen SQL projection for path diagnostics", () => {
+    assert.doesNotMatch(source, /SELECT id, content, box, path/);
+});
+
+test("document-context outline empty state is based on array length", () => {
+    assert.match(source, /outlineJson\.data\.length > 0/);
+});
+
+test("document-context does not expose metadata missing input", () => {
+    assert.doesNotMatch(source, /metadataMissing:/);
+});
+
+test("document-context outline request keeps preview disabled", () => {
+    assert.match(source, /getDocOutline", \{id, preview: false\}/);
+});
+
+test("document-context keeps stable unavailable error", () => {
+    assert.match(source, /document context unavailable/);
+});
+
 test("document-context returns a structured bounded result", () => {
     assert.match(source, /structuredContent: content, result: JSON\.stringify\(content\)/);
 });

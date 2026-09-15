@@ -4,7 +4,7 @@ const {
     MAX_HEADINGS, MAX_PATH_LENGTH, MAX_TITLE_LENGTH, DOCUMENT_CONTEXT_SOURCES, DOCUMENT_CONTEXT_METADATA_STATES, DOCUMENT_CONTEXT_PATH_SOURCES, DOCUMENT_CONTEXT_OUTLINE_STATES, DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest, normalizeDocumentContextPath,
     extractDocumentContextRecord, buildDocumentContext, normalizeDocumentContextSource,
-    deriveDocumentContextMetadataStatus, deriveDocumentContextPathSource, deriveDocumentContextOutlineStatus,
+    deriveDocumentContextMetadataStatus, deriveDocumentContextMissingFields, deriveDocumentContextPathSource, deriveDocumentContextPathReason, deriveDocumentContextOutlineStatus,
 } = require("../src/agent-document-context.js");
 
 const validId = "20260914083000-abcdef";
@@ -77,7 +77,7 @@ test("context builder normalizes the complete safe envelope", () => {
         data: {id: validId, content: " 当前\n文档 ", box: validNotebook, hPath: "\\项目\\路线"},
         active: true,
         headings: [{id: "20260914083002-aaaaaaa", name: "第一章", depth: 0}],
-    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "outlineStatus", "metadataStatus", "pathSource", "notebookName", "pathAvailable"].includes(key))), {
+    }, {limit: 1})).filter(([key]) => !["source", "outlineAvailable", "outlineStatus", "metadataStatus", "metadataMissing", "pathSource", "pathReason", "notebookName", "pathAvailable"].includes(key))), {
         id: validId, title: "当前 文档", notebookId: validNotebook, path: "/项目/路线", active: true,
         headings: [{id: "20260914083002-aaaaaaa", title: "第一章", depth: 0}],
     });
@@ -117,7 +117,7 @@ test("context builder handles an absent headings array", () => {
 });
 
 test("context builder keeps output keys stable for empty input", () => {
-    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "metadataStatus", "active", "source", "outlineAvailable", "outlineStatus", "headings"]);
+    assert.deepEqual(Object.keys(buildDocumentContext({})), ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "pathReason", "metadataStatus", "metadataMissing", "active", "source", "outlineAvailable", "outlineStatus", "headings"]);
 });
 
 test("context builder caps title length", () => {
@@ -298,6 +298,73 @@ test("context output remains detached after status derivation", () => {
     const output = buildDocumentContext(input);
     input.headings.push({id: validId, name: "mutated"});
     assert.equal(output.outlineStatus, "empty");
+});
+
+test("missing fields list reports all absent core metadata", () => {
+    assert.deepEqual(deriveDocumentContextMissingFields("", "", ""), ["id", "title", "notebookId"]);
+});
+
+test("missing fields list reports only absent title", () => {
+    assert.deepEqual(deriveDocumentContextMissingFields(validId, "", validNotebook), ["title"]);
+});
+
+test("missing fields list is empty for complete metadata", () => {
+    assert.deepEqual(deriveDocumentContextMissingFields(validId, "T", validNotebook), []);
+});
+
+test("missing fields list rejects truthy non-string values", () => {
+    assert.deepEqual(deriveDocumentContextMissingFields(validId, 1, validNotebook), ["title"]);
+});
+
+test("missing fields list preserves canonical field order", () => {
+    assert.deepEqual(deriveDocumentContextMissingFields("", "T", ""), ["id", "notebookId"]);
+});
+
+test("path reason reports available paths", () => {
+    assert.equal(deriveDocumentContextPathReason(true), "available");
+});
+
+test("path reason reports missing paths", () => {
+    assert.equal(deriveDocumentContextPathReason(false), "not-provided");
+});
+
+test("path reason is boolean-strict", () => {
+    assert.equal(deriveDocumentContextPathReason(1), "not-provided");
+});
+
+test("context exposes missing fields for partial metadata", () => {
+    const context = buildDocumentContext({id: validId, title: "T"});
+    assert.deepEqual(context.metadataMissing, ["notebookId"]);
+});
+
+test("context exposes an empty missing list for complete metadata", () => {
+    const context = buildDocumentContext({id: validId, title: "T", notebookId: validNotebook});
+    assert.deepEqual(context.metadataMissing, []);
+});
+
+test("context exposes all missing fields for empty metadata", () => {
+    assert.deepEqual(buildDocumentContext({}).metadataMissing, ["id", "title", "notebookId"]);
+});
+
+test("context path reason follows normalized path", () => {
+    assert.equal(buildDocumentContext({path: "  /docs  "}).pathReason, "available");
+});
+
+test("context path reason is not-provided for whitespace path", () => {
+    assert.equal(buildDocumentContext({path: " \t "}).pathReason, "not-provided");
+});
+
+test("context path reason ignores caller override", () => {
+    assert.equal(buildDocumentContext({path: "/docs", pathReason: "not-provided"}).pathReason, "available");
+});
+
+test("context metadata missing does not echo unknown keys", () => {
+    const context = buildDocumentContext({id: validId, title: "T", notebookId: validNotebook, metadataMissing: ["secret"]});
+    assert.deepEqual(context.metadataMissing, []);
+});
+
+test("context metadata missing remains bounded", () => {
+    assert.ok(buildDocumentContext({}).metadataMissing.length <= 3);
 });
 
 test("source normalizer preserves active source", () => {

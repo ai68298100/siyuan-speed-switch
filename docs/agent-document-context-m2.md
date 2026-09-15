@@ -18,6 +18,11 @@ not claim a path it did not receive.
 
 `outlineStatus` distinguishes a successful empty outline from a failed request
 while preserving the legacy `outlineAvailable` boolean for compatibility.
+
+`metadataMissing` lists the missing core fields (`id`, `title`, or `notebookId`)
+in fixed order. `pathReason` is `available` when a normalized path exists and
+`not-provided` otherwise. These explainability fields are derived from the
+sanitized result, so callers cannot override them with arbitrary text.
 Unknown values are discarded, all fields are required schema enums, and the
 host continues to resolve notebook names from its existing in-memory cache
 without adding a network request to an Agent call.

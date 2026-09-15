@@ -11,6 +11,8 @@ const DOCUMENT_CONTEXT_SOURCES = Object.freeze(["active", "opened", "kernel"]);
 const DOCUMENT_CONTEXT_METADATA_STATES = Object.freeze(["complete", "partial", "unavailable"]);
 const DOCUMENT_CONTEXT_PATH_SOURCES = Object.freeze(["tab", "kernel", "none"]);
 const DOCUMENT_CONTEXT_OUTLINE_STATES = Object.freeze(["available", "empty", "unavailable"]);
+const DOCUMENT_CONTEXT_METADATA_FIELDS = Object.freeze(["id", "title", "notebookId"]);
+const DOCUMENT_CONTEXT_PATH_REASONS = Object.freeze(["available", "not-provided"]);
 
 function normalizeDocumentContextSource(value, active = false) {
     return DOCUMENT_CONTEXT_SOURCES.includes(value) ? value : (active ? "active" : "kernel");
@@ -22,10 +24,20 @@ function deriveDocumentContextMetadataStatus(id, title, notebookId) {
     return count === 3 ? "complete" : (count > 0 ? "partial" : "unavailable");
 }
 
+function deriveDocumentContextMissingFields(id, title, notebookId) {
+    return [id, title, notebookId].map((value, index) => ({value, field: DOCUMENT_CONTEXT_METADATA_FIELDS[index]}))
+        .filter(({value}) => typeof value !== "string" || value.length === 0)
+        .map(({field}) => field);
+}
+
 function deriveDocumentContextPathSource(value, pathAvailable, contextSource) {
     if (!pathAvailable) return "none";
     if (DOCUMENT_CONTEXT_PATH_SOURCES.includes(value)) return value;
     return contextSource === "kernel" ? "kernel" : "tab";
+}
+
+function deriveDocumentContextPathReason(pathAvailable) {
+    return pathAvailable === true ? "available" : "not-provided";
 }
 
 function deriveDocumentContextOutlineStatus(value, outlineAvailable, headings) {
@@ -87,13 +99,15 @@ const DOCUMENT_CONTEXT_SPEC = Object.freeze({
             pathAvailable: {type: "boolean"},
             pathSource: {type: "string", enum: [...DOCUMENT_CONTEXT_PATH_SOURCES]},
             metadataStatus: {type: "string", enum: [...DOCUMENT_CONTEXT_METADATA_STATES]},
+            metadataMissing: {type: "array", maxItems: 3, items: {type: "string", enum: [...DOCUMENT_CONTEXT_METADATA_FIELDS]}},
+            pathReason: {type: "string", enum: [...DOCUMENT_CONTEXT_PATH_REASONS]},
             active: {type: "boolean"},
             source: {type: "string", enum: [...DOCUMENT_CONTEXT_SOURCES]},
             outlineAvailable: {type: "boolean"},
             outlineStatus: {type: "string", enum: [...DOCUMENT_CONTEXT_OUTLINE_STATES]},
             headings: {type: "array", maxItems: MAX_HEADINGS, items: {type: "object", maxProperties: 3, additionalProperties: false}},
         },
-        required: ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "metadataStatus", "active", "source", "outlineAvailable", "outlineStatus", "headings"],
+        required: ["id", "title", "notebookId", "notebookName", "path", "pathAvailable", "pathSource", "pathReason", "metadataStatus", "metadataMissing", "active", "source", "outlineAvailable", "outlineStatus", "headings"],
         additionalProperties: false,
     }),
 });
@@ -111,6 +125,8 @@ function buildDocumentContext(value, options = {}) {
     const title = cleanText(source.title, MAX_TITLE_LENGTH);
     const notebookId = normalizeAgentNotebookId(source.notebookId);
     const metadataStatus = deriveDocumentContextMetadataStatus(id, title, notebookId);
+    const metadataMissing = deriveDocumentContextMissingFields(id, title, notebookId);
+    const pathReason = deriveDocumentContextPathReason(pathAvailable);
     const outlineAvailable = value?.outlineAvailable !== false;
     const headings = flattenOutline(value?.headings, limit);
     const outlineStatus = deriveDocumentContextOutlineStatus(value?.outlineStatus, outlineAvailable, headings);
@@ -122,7 +138,9 @@ function buildDocumentContext(value, options = {}) {
         path,
         pathAvailable,
         pathSource,
+        pathReason,
         metadataStatus,
+        metadataMissing,
         active,
         source: contextSource,
         outlineAvailable,
@@ -143,9 +161,13 @@ module.exports = {
     DOCUMENT_CONTEXT_METADATA_STATES,
     DOCUMENT_CONTEXT_PATH_SOURCES,
     DOCUMENT_CONTEXT_OUTLINE_STATES,
+    DOCUMENT_CONTEXT_METADATA_FIELDS,
+    DOCUMENT_CONTEXT_PATH_REASONS,
     normalizeDocumentContextSource,
     deriveDocumentContextMetadataStatus,
+    deriveDocumentContextMissingFields,
     deriveDocumentContextPathSource,
+    deriveDocumentContextPathReason,
     deriveDocumentContextOutlineStatus,
     DOCUMENT_CONTEXT_SPEC,
     normalizeDocumentContextRequest,
