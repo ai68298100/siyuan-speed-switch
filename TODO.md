@@ -1,6 +1,11 @@
 # TODO
 
 
+## T-6259 v0.20 数据连续性第一批：存储版本迁移演练与恢复报告（2026-09-16，已完成）
+
+- [x] T-6259 存储迁移演练纯模型（D-386）：新建 src/storage-migration.js——runStorageMigration 以 loadData 全量 payload 为输入输出迁移数据 + 有界恢复报告（每 key 一条固定记录、note ≤80 字符、无时间戳无原始回显）；per-key 处理器全部委托既有 sanitize 家族（capMru/sanitizeStringList/sanitizeFavorites/sanitizeOpenHistory/normalizeClosedEntries/sanitizeQuickActions/migrateQuickActionDefaults/normalizeDocumentSets）确保演练与宿主 sanitizePersistentData 同源；对象类 key（settings/home_state/thumb_cache）本批仅形状分类（inspect），深度迁移随接线批次注册；**演练优先两步走**——本批不接 onload、不进生产闭包（dist/index.js 601607 不变），宿主接线单独批次执行。新增 tests/storage-migration.test.cjs 13 项：演练纯度、健康直通、脏数据清洗与 kept/removed 记账、上限覆盖、垃圾重置、defaults 版本标记语义、文档集旧形态/schemaVersion 迁移、inspect 泄漏防护、双契约（宿主委托清单 + constants 上限一致性）——双契约负向验证均精确失败后字节级还原；README 双语计数同步（5716 项/161 文件）；全量 5716/5716、tsc 0 错误、构建通过
+
+
 ## T-6258 乱码修复批次：PUA 损坏注释全量恢复（2026-09-16，已完成）
 
 - [x] T-6258 v0.16.9（ac889f2）编码事故遗留的 351 行 PUA 损坏注释全量恢复（D-385）：scripts/restore_pua.py 四阶段匹配（唯一 ASCII 锚 → 有损逆向 3-gram 重叠 + 块邻近先验 → 等分重复注释取同内容 → 中文分段全包含）自动解析 322 行（原文源 ed3858d=v0.16.8 零 PUA）；29 行自动匹配器无法判定的行以 MANUAL 映射人工定源——26 行经 ed3858d grep 逐行核对（含 L2286 短变体/长变体、L5538/L5549 置顶 vs 收藏、L2177/L7412/L8035 三条孤儿条目变体的精确区分），2 行 born-corrupted（L2550/L2585，registerQuickActionAdapter 与 doc-search session 为 v0.16.9 新增、原文从未入库）按有损逆向 + 上下文语义重建，嵌入缩进空格数（8 空格 // 与 5 空格 *）证明原始换行被吞、恢复时拆回多行（2 行/3 行）；关键机制发现：PUA 字符经 gb18030 编码可还原为原始 2 字节（L462/L2077 无损严格双向转换验证成功），€ (U+20AC) 须覆写为单字节 0x80（cp936 映射与 gb18030 分歧）；全 src 目录 PUA 清零校验通过；tsc 0 错误、全量测试 5703/5703、verify:release 全绿（含 mobile-card-smoke 与 Chromium smoke，证明无测试依赖损坏注释文本）
