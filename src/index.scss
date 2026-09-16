@@ -4845,9 +4845,8 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
 .sw-home-store__source-chip.is-dependency { color: var(--b3-theme-warning); background: color-mix(in srgb, var(--b3-theme-warning) 14%, transparent); font-weight: 600; }
 .sw-home-store__dependency-link { color: var(--b3-theme-primary); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
 .sw-home-store__search { position: sticky; top: 0; z-index: 3; background: var(--b3-theme-background); padding-block: 4px; }
-@media (prefers-reduced-motion: reduce) {
-    .sw-home-store__card { transition: none !important; }
-}
+// （T-6280 第十五批去重）card 的减弱动效覆盖原先在此与下方 4944 分支的分组规则各写一份，
+// 完全被后者包含，已删；现仅保留 card+tab 的分组覆盖。
 
 .sw-home-store__section {
     display: flex;
