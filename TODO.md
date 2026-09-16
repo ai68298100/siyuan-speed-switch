@@ -8141,3 +8141,14 @@
   - 实现：新增 `src/ical-model.js`——`normalizeIcalSubscriptionConfig`（https/http+本机、.ics 路径、拒绝 URL 内嵌凭据、窗口 1~60 天、条目 1~12 钳制）、RFC 5545 折行展开与 VEVENT 有界解析（源 256 KiB 上限、解析 500 条上限、超限按 parse_failed 拒绝而非静默截断）、`upcomingIcalEvents`（结束不早于 now、开始不越 windowDays 窗口、按开始时间升序）、稳定失败 token（invalid_url/parse_failed/empty）
   - 测试：`tests/ical-model.test.cjs` 17 项（配置归一化、三态日期解析、折行展开、字段提取、恶意值拒绝、超限拒绝、窗口过滤/排序/钳制）；负向验证：破坏折行展开 → 精确 FAIL，md5 还原
   - 状态：done（2026-09-17）；接入 adapter/catalog 时复用本模块，无需改动解析层
+- [x] T-6285 倍增复杂度性能门禁边际重测加固（2026-09-17 第二十九批）
+  - 目标：本会话性能门禁假失败 4 次（3.06~3.42x vs 天花板 3，均单独复跑即绿）——min-of-N 采样下 LARGE 侧撞调度毛刺仍使比值边际超顶，彻底修复
+  - 实现：`tests/perf-complexity-gate.test.cjs` 新增 `measureDoublingRatio`（attempts=2）：比值超顶时两侧各重测一轮取最小比值；天花板语义不变（复杂度类别判据，非噪声余量）；内嵌 self-check 测试用可控 fake minTime 同时验证「毛刺被吸收」与「注入 O(n²)（实测 4.06x）仍被拦截」两方向，负向验证内建于测试文件
+  - 验证：连续 5 轮门禁运行全绿；README 双语计数同步（5844→5845）
+  - 状态：done（2026-09-17）；D-393「先单独复跑再判定」的人工兜底已自动化进门禁（D-396 入账）
+- [x] T-6286 iCal 订阅组件生产接入（v0.21 生活信息支线，2026-09-17 第三十批）
+  - 目标：把 T-6284 纯模型接入生产全链——adapter/catalog/store/网络/i18n/依赖目录/商店分组
+  - 实现：`src/life-widget-network.js` 新增 `allowedIcalFeedUrl`/`loadIcalText`/`fetchBoundedLifeText`（复用内核代理 + 30 分钟 TTL 缓存）；`src/home-external-adapters.ts` 新增 ical adapter（复用 `upcomingIcalEvents`）；`src/external-widget-model.js` catalog 第 17 条（category time、auth user-endpoint、privacy endpoint-only、sourceUrl=RFC 5545）；`src/home-store-model.js` 三处映射（kind/feed、SOURCE_INFO、DEPENDENCY_INFO user-feed required:false）；`src/home-store-ui.ts` 生活分组纳入；i18n 双语各 4 key（homeIcal/homeDescIcal/homeIcalConfigHint/homeIcalEmpty）
+  - 门禁级联修复：catalog 硬编码计数 16→17 共 17 处、home-model 41→42 与 39→40、依赖目录 12→13（optional 4→5）、production graph 天花板 42→43、生活分组源码契约正则
+  - 负向验证（天然级联实证）：接线中途 10 项门禁精确失败并逐一指向漂移点（adapter 计数 41≠40、availability 分区、依赖清单缺 ical、i18n 死 key ×4、生产图 43>42、生活分组契约正则）——各门禁判别力以真实漂移验证，非一次性注入
+  - 状态：done（2026-09-17）；真机联网渲染待 acceptance-runbook 验收

@@ -7,8 +7,9 @@
 import {buildLocalTimeSnapshot, buildWorldClockSnapshot} from "./local-time-model";
 import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot} from "./life-widget-model";
-import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadActivityWatchSummary} from "./life-widget-network";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot} from "./life-widget-model";
+import {parseIcsEvents, upcomingIcalEvents} from "./ical-model";
+import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadActivityWatchSummary} from "./life-widget-network";
 
 export type HomeExternalAdapterRegister = (
     moduleId: string,
@@ -215,6 +216,24 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 return {emptyHint: `${this.i18n.homeMinifluxEmpty} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 8500, cacheTtlMs: 15 * 60 * 1000});
+        // iCal 订阅：用户提供的 .ics 订阅地址（https/本机）。文本经内核代理抓取，
+        // RFC 5545 有界解析后只渲染未来窗口内的日程；30 分钟缓存，失效回退 stale。
+        register("external-ical-events", this.i18n.homeIcal, "iconCalendar", this.i18n.homeDescIcal, [], async (config, _device, context) => {
+            const normalized = normalizeIcalSubscriptionConfig(config);
+            if (!normalized.url) return {emptyHint: this.i18n.homeIcalConfigHint, items: []};
+            try {
+                const feed = await loadIcalText(normalized.url, {
+                    signal: context?.signal,
+                    fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
+                });
+                const snapshot = buildIcalSnapshot(feed.text, normalized, {empty: this.i18n.homeIcalEmpty}, undefined, feed.status);
+                if (!snapshot) throw new Error("invalid_ical_payload");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeIcalEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         // 每日引言：完全离线的本地语录集，按本地日期稳定轮换；无网络请求。
         // 自定义语录（多行，整体替换内置集）走 textarea 配置；挂到分钟心跳以在跨天时轮换。
         register("external-quote-daily", this.i18n.homeQuote, "iconQuote", this.i18n.homeDescQuote, [], (config) => {

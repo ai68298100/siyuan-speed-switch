@@ -73,6 +73,11 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "token", label: "API Token（设置 → API 密钥）", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 1, max: 50, defaults: 20},
     ]},
+    {moduleId: "external-ical-events", title: "iCal 日程", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "url", label: "iCal 订阅地址（.ics）", type: "text", defaults: ""},
+        {key: "windowDays", label: "日程窗口（天）", type: "number", min: 1, max: 60, defaults: 14},
+        {key: "maxEvents", label: "条目上限", type: "number", min: 1, max: 12, defaults: 6},
+    ]},
     {moduleId: "external-quote-daily", title: "每日引言", icon: "iconQuote", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "quotes", label: "自定义语录（每行一条，可选 —— 分隔出处）", type: "textarea", defaults: ""},
     ]},

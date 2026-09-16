@@ -13,6 +13,41 @@ const HACKER_NEWS_FRONT_PAGE_URL = "https://hn.algolia.com/api/v1/search?tags=fr
 const UPTIME_KUMA_TTL_MS = 5 * 60 * 1000;
 const FRANKFURTER_TTL_MS = 12 * 60 * 60 * 1000;
 const MINIFLUX_TTL_MS = 15 * 60 * 1000;
+
+// iCal 订阅：用户提供的 .ics 地址（https 或 http+本机、无 URL 凭据）；30 分钟缓存，
+// 失效回退 stale 缓存。响应是文本（RFC 5545），不走 JSON 解析。
+const ICAL_TTL_MS = 30 * 60 * 1000;
+
+function allowedIcalFeedUrl(value) {
+    if (typeof value !== "string" || value.length > 512) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && local)) || url.username || url.password) return false;
+        return /\.ics$/i.test(url.pathname);
+    } catch (_) {
+        return false;
+    }
+}
+
+async function loadIcalText(url, options = {}) {
+    if (!allowedIcalFeedUrl(url)) throw new Error("blocked_endpoint");
+    const key = `ical:${url}`;
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < ICAL_TTL_MS) {
+        return {text: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const text = await fetchBoundedLifeText(url, {...options, isAllowed: (candidate) => allowedIcalFeedUrl(candidate)});
+        if (typeof text !== "string" || !text) throw new Error("empty_response");
+        cacheWrite(key, text, now);
+        return {text, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
+        throw error;
+    }
+}
 // Frankfurter：v1 域名（api.frankfurter.app/latest）已 301 迁移，fetch 的 redirect:"error"
 // 会直接失败，因此只放行 v2 固定主机与路径；货币代码走 ECB 支持的白名单，不接受任意字符串。
 const FRANKFURTER_CURRENCIES = Object.freeze(["AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR"]);
@@ -180,6 +215,11 @@ async function fetchBoundedLifeJson(url, options = {}) {
         clearTimeout(timer);
         externalSignal?.removeEventListener?.("abort", abort);
     }
+}
+
+// 文本抓取变体：与 JSON 抓取共享 bounded/超时/取消流程，但不做 JSON 解析。
+async function fetchBoundedLifeText(url, options = {}) {
+    return fetchBoundedLifeJson(url, {...options, responseKind: "text"});
 }
 
 async function loadWeatherLocation(url, options = {}) {
@@ -401,6 +441,9 @@ module.exports = {
     loadUptimeKumaPage,
     loadFrankfurterRates,
     loadMinifluxEntries,
+    loadIcalText,
+    allowedIcalFeedUrl,
+    ICAL_TTL_MS,
     loadBangumiCalendar,
     loadConfiguredFeed,
     fetchActivityWatchQuery,

@@ -407,6 +407,33 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
     };
 }
 
+// iCal 订阅快照：解析 ics 文本 → 未来窗口内的日程条目（有界）。
+const {parseIcsEvents, upcomingIcalEvents, normalizeIcalSubscriptionConfig} = require("./ical-model.js");
+
+function buildIcalSnapshot(icsText, config, labels = {}, now = Date.now(), status = "fresh") {
+    const normalized = normalizeIcalSubscriptionConfig(config);
+    const parsed = parseIcsEvents(icsText);
+    if (!parsed.ok) return null;
+    const upcoming = upcomingIcalEvents(parsed.events, now, {windowDays: normalized.windowDays, maxEvents: normalized.maxEvents});
+    const pad = (n) => String(n).padStart(2, "0");
+    const items = upcoming.map((event) => {
+        const d = new Date(event.start);
+        const stamp = `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        return {
+            label: `${stamp} ${event.summary}`,
+            value: event.location || "",
+            href: "",
+        };
+    });
+    return {
+        title: normalized.title,
+        items,
+        emptyHint: items.length === 0 ? (boundedText(labels.empty, 96) || "窗口内暂无日程") : "",
+        updatedAt: now,
+        sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
+    };
+}
+
 function normalizeHackerNewsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const requestedLimit = Math.trunc(Number(source.limit));
@@ -854,6 +881,10 @@ module.exports = {
     buildFrankfurterSnapshot,
     normalizeMinifluxToken,
     normalizeMinifluxConfig,
+    normalizeIcalSubscriptionConfig,
+    parseIcsEvents,
+    upcomingIcalEvents,
+    buildIcalSnapshot,
     buildMinifluxRequestUrl,
     normalizeMinifluxEntries,
     buildMinifluxSnapshot,
