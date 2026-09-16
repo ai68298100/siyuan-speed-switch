@@ -8160,3 +8160,8 @@
   - 审计结论（caf4）：仅 6 张未跟踪截图，与 main 已提交版本逐字节相同（md5 全 yes）
   - 处置：a4d8 完整 diff 留档 `.workbuddy/memory/a4d8-experiment-2026-09-09.patch`（237 行）后移除两个 worktree；`git worktree list` 只剩 main，本地分支只剩 main；origin 远端 7 条 feature 分支未动（push 权限范围）
   - 状态：done（2026-09-17）；分支/worktree 收口全部完成
+- [x] T-6288 GitHub 贡献热力图纯模型（v0.21 生活信息支线，2026-09-17 第三十二批）
+  - 目标：ROADMAP/source-audit 里 iCal 之后的第 ④ 位候选落地契约/纯模型层（同 T-6284 契约先行先例，宿主接入另行接线）
+  - 实现：新增 `src/github-model.js`——`normalizeGithubContribConfig`（username 遵循 GitHub 规则：字母/数字/内部连字符 ≤39；windowDays 钳 28~366 默认 84；可选 PAT 有界 200 字符、只允许走请求头）；`githubEventsEndpoint`（官方 REST `users/{u}/events/public` 的分页权威形状：per_page ≤100、≤3 页）；`parseGithubEvents` 有界解析（源 256 KiB、事件 ≤600、日期桶 ≤400，超限按 parse_failed 拒绝而非静默截断；带偏移时间戳归一 UTC 日期桶）；计数口径诚实声明：PushEvent 按 payload.size 加权（单事件钳 100、非法回退 1）、其余事件计 1、WatchEvent（star）不计——与 GitHub 官方口径的已知差异写入模块头注释；`buildContributionGrid` 周×7 渲染格子（周日对齐、窗口外与补位格 level -1、量化阈值 1/3/5/8、now 注入确定化）
+  - 测试：`tests/github-model.test.cjs` 18 项（username 边界、窗口钳制、token 有界、分页钳制、加权与 Watch 剔除、UTC 桶确定性、超限拒绝、非时间戳跳过、量化阈值、周对齐/窗口裁剪/now 注入）；负向验证：注入「WatchEvent 也计数」→ 仅目标项 8 精确 FAIL，md5 字节级还原
+  - 状态：done（2026-09-17）；网络层/adapter/catalog 接入待产品确认后复用本模块
