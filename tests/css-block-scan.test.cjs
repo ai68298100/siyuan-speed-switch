@@ -74,6 +74,45 @@ test("topLevel scoping is not satisfied by an override rule", () => {
         "topLevel 作用域只认基础规则，才守得住那条声明");
 });
 
+// {atRule} 的存在理由：`atDepth` 只说"被几层 at-rule 包着"，说不出"是哪一条"，
+// 于是"窄屏分支里必须有 X"会退让成"任意 at-rule 里都算"（T-6283）。
+test("atRule scoping distinguishes which branch a rule sits in", () => {
+    const broken = `
+.base { display: block; }
+@media (max-width: 560px) { .base { max-width: 100%; } }
+@media print { .base { page-break-inside: avoid; } }
+`;
+    // 深度够（atDepth > 0）却身份不对：把声明挪去 print 分支，只按"非顶层"断言仍会通过
+    assert.equal(findRules(broken, ".base").filter((rule) => rule.atDepth > 0).length, 2,
+        "两个分支各有一条 .base 覆盖规则");
+    assert.equal(declaresIn(broken, ".base", /max-width: 100%/, {atRule: /max-width:\s*560px/}), true);
+    assert.equal(declaresIn(broken, ".base", /max-width: 100%/, {atRule: /@media print/}), false,
+        "print 分支里没有这条声明 —— 身份不匹配时必须失败（这正是深度不够用的地方）");
+    // 字符串形式按子串匹配
+    assert.equal(declaresIn(broken, ".base", /max-width: 100%/, {atRule: "(max-width: 560px)"}), true);
+    // 条件链要完整：`@media (max-width: 560px) and (prefers-reduced-motion: reduce)` 这类
+    // 复合查询必须能被整条命中，而不是只留下某一个片段
+    const composed = `
+@media (max-width: 560px) and (prefers-reduced-motion: reduce) {
+    .card { content-visibility: visible; }
+}
+`;
+    assert.deepEqual(parseRules(composed)[0].atRules, ["@media (max-width: 560px) and (prefers-reduced-motion: reduce)"]);
+    assert.equal(declaresIn(composed, ".card", /content-visibility: visible/, {atRule: /prefers-reduced-motion/}), true);
+});
+
+test("topLevel and atRule can be combined", () => {
+    const css = `
+.a { color: red; }
+@media print { .a { color: blue; } }
+`;
+    assert.equal(declaresIn(css, ".a", /color: red/, {topLevel: true}), true);
+    assert.equal(declaresIn(css, ".a", /color: red/, {topLevel: true, atRule: /print/}), false,
+        "既要基础规则、又要落在 print 分支——两者互斥时必须失败，而不是让一个条件覆盖另一个");
+    assert.equal(declaresIn(css, ".a", /color: blue/, {topLevel: true, atRule: /print/}), false);
+    assert.equal(declaresIn(css, ".a", /color: blue/, {atRule: /print/}), true);
+});
+
 test("comments never satisfy a declaration assertion", () => {
     const css = `
 .card {

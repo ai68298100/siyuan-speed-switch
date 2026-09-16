@@ -22,6 +22,12 @@
 //     里常有一条同名覆盖规则，`declaresIn(..., {topLevel: true})` 才能守住"基础规则里
 //     那条声明"——2026-09-16 实测 `.sw-home-store__summary` 的 max-width 删掉后断言仍绿，
 //     就是因为手机端覆盖规则替他满足了断言（T-6280）。
+//   - 每条规则还记 `atRules`（**外层 at-rule 的前导条件链**，如
+//     `["@media (max-width: 560px)"]`）。`atDepth` 只说"被几层包着"、说不出"是哪一条"，
+//     于是"窄屏分支里必须有 X"会退让成"任意 at-rule 里都算"：实测
+//     `store-box-sizing-contract` 的 `card keeps max width full`——`max-width: 100%` **只存在
+//     于 560px 分支**，加 `{topLevel: true}` 会假红，不加则"把它挪去 `@media print`"断言仍通过。
+//     `declaresIn(..., {atRule: /max-width:\s*560px/})` 才能把它钉在正确的分支上（T-6283）。
 //   - 不做完整 CSS 词法：`@keyframes` 里的 `from`/`to`/百分比会当成普通选择器记账
 //     （本仓无相关断言）。若将来要断言 keyframes，本助手需先区分 at-rule 类型。
 const {stripComments} = require("./source-scan.cjs");
@@ -78,7 +84,7 @@ function expandSelectors(parents, children) {
     return expanded;
 }
 
-// 解析出扁平的规则列表：{selectors, declarations, startLine, endLine}
+// 解析出扁平的规则列表：{selectors, declarations, atDepth, atRules, startLine, endLine}
 //
 // 行号说明（`scripts/css-assertion-injector.cjs` 用它定位注入点）：行号按**剥注释后**
 // 的文本计数。`//` 行注释会被替换成一个 `\n`，故行号与原文件一致；但 `/* */` 块注释
@@ -106,6 +112,12 @@ function parseRules(cssText) {
         if (frame.sameAsParent) return frame.inherited;
         return frame.selectors;
     };
+    // 外层 at-rule 的条件链。数组只在创建时整体赋予、之后只读（靠 concat 生成新数组），
+    // 所以同一分支下的多条规则可以安全共享同一份引用。
+    const currentAtRules = () => {
+        const frame = stack[stack.length - 1];
+        return frame ? frame.atRules : [];
+    };
     let quote = null;
     for (let index = 0; index < source.length; index += 1) {
         const char = source[index];
@@ -130,9 +142,16 @@ function parseRules(cssText) {
             buffer = "";
             const parents = currentSelectors();
             const parentDepth = stack.length > 0 ? stack[stack.length - 1].atDepth : 0;
+            const parentAtRules = currentAtRules();
             if (prelude.startsWith("@")) {
-                // at-rule：透明容器，子规则继承父选择器，但 atDepth +1
-                stack.push({sameAsParent: true, inherited: parents, atDepth: parentDepth + 1, declarationBuffer: []});
+                // at-rule：透明容器，子规则继承父选择器，但 atDepth +1、条件链追加自身
+                stack.push({
+                    sameAsParent: true,
+                    inherited: parents,
+                    atDepth: parentDepth + 1,
+                    atRules: parentAtRules.concat(normalizeSelector(prelude)),
+                    declarationBuffer: [],
+                });
                 continue;
             }
             const children = splitSelectorList(prelude);
@@ -140,6 +159,7 @@ function parseRules(cssText) {
                 sameAsParent: false,
                 selectors: expandSelectors(parents, children),
                 atDepth: parentDepth,
+                atRules: parentAtRules,
                 startLine: line,
                 declarationBuffer: [],
             });
@@ -152,6 +172,7 @@ function parseRules(cssText) {
                 rules.push({
                     selectors: frame.selectors,
                     atDepth: frame.atDepth,
+                    atRules: frame.atRules,
                     startLine: frame.startLine,
                     endLine: line,
                     declarations: frame.declarationBuffer.filter(Boolean).join("\n"),
@@ -168,14 +189,27 @@ function parseRules(cssText) {
     return rules;
 }
 
+// 规则是否落在断言要求的作用域里。
+//   options.topLevel === true  → 只认**没有被任何 at-rule 包着**的规则（基础规则）
+//   options.atRule = 字符串/正则 → 外层 at-rule 条件链里必须**至少有一条**与之相符
+//     （字符串按子串匹配，正则按 test）。用来把断言钉在具体分支上，例如
+//     `{atRule: /max-width:\s*560px/}`。两者可同时给出（既要在某个分支里，又要在该分支的顶层）。
+function inScope(rule, options) {
+    if (options.topLevel === true && rule.atDepth !== 0) return false;
+    if (options.atRule !== undefined && options.atRule !== null) {
+        const matcher = options.atRule;
+        return rule.atRules.some((item) => (
+            matcher instanceof RegExp ? matcher.test(item) : item.includes(String(matcher))
+        ));
+    }
+    return true;
+}
+
 // 返回所有"展开后选择器匹配 selector 的块"。selector 可以是字符串（需完全相等，
 // 空白归一）或正则（对每个展开后的选择器做 test）。
-// options.topLevel === true 时只保留**没有被任何 at-rule 包着**的规则（基础规则），
-// 用来排除"手机端/打印覆盖规则替基础规则满足断言"这类假绿。
 function findRules(cssText, selector, options = {}) {
-    const topLevelOnly = options.topLevel === true;
     return parseRules(cssText).filter((rule) => {
-        if (topLevelOnly && rule.atDepth !== 0) return false;
+        if (!inScope(rule, options)) return false;
         return rule.selectors.some((item) => (
             selector instanceof RegExp ? selector.test(item) : item === normalizeSelector(selector)
         ));
@@ -187,4 +221,4 @@ function declaresIn(cssText, selector, declaration, options) {
     return findRules(cssText, selector, options).some((rule) => declaration.test(rule.declarations));
 }
 
-module.exports = {parseRules, findRules, declaresIn, normalizeSelector};
+module.exports = {parseRules, findRules, declaresIn, normalizeSelector, inScope};

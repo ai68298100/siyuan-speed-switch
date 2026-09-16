@@ -1,6 +1,6 @@
 const test=require('node:test');const assert=require('node:assert/strict');
 const {readSourceFile}=require('./source-scan.cjs');
-const {declaresIn,parseRules,findRules}=require('./css-block-scan.cjs');
+const {declaresIn,parseRules}=require('./css-block-scan.cjs');
 
 // 2026-09-16（T-6280 / D-396）：作用域迁移 + 兑现名字。本文件原有 12 条窗口断言
 //
@@ -33,13 +33,13 @@ test('card keeps min width zero',()=>assert.ok(declaresIn(css,'.sw-home-store__c
 test('status keeps min width zero',()=>assert.ok(declaresIn(css,'.sw-home-store__status',/min-width: 0/,base)));
 test('group keeps min width zero',()=>assert.ok(declaresIn(css,'.sw-home-store__group',/min-width: 0/,base)));
 test('summary keeps min width zero',()=>assert.ok(declaresIn(css,'.sw-home-store__summary',/min-width: 0/,base)));
-// 这一条守的是窄屏分支（见文件头①）：命中必须发生在 at-rule 内部，否则"某处有 max-width: 100%"
-// 又会退化成与 card 无关的共现。
-test('card keeps max width full',()=>{
-    const covered=findRules(css,'.sw-home-store__card').filter((rule)=>rule.atDepth>0);
-    assert.ok(covered.length>0,'审计面塌缩：card 没有被 at-rule 包裹的覆盖规则');
-    assert.ok(covered.some((rule)=>/max-width: 100%/.test(rule.declarations)),'窄屏分支必须让卡片不超出容器宽度');
-});
+// 这一条守的是**窄屏分支**（见文件头①）：`max-width: 100%` 只声明在 `@media (max-width: 560px)`
+// 里，所以既不能带 {topLevel: true}（会假红），也不能只要求"任意 at-rule 内"——那种退让写法下
+// 把声明挪去 `@media print` 断言仍会通过（这正是 T-6283 的由来）。{atRule} 把它钉在具体分支上。
+test('card keeps max width full',()=>assert.ok(
+    declaresIn(css,'.sw-home-store__card',/max-width: 100%/,{atRule: /max-width:\s*560px/}),
+    '窄屏分支必须让卡片不超出容器宽度',
+));
 // 下面 13 条本来就是合法的"文件级存在"断言（没有窗口模式），保持原样。
 test('box sizing preserves wrapping',()=>assert.ok(css.includes('overflow-wrap: anywhere')));
 test('box sizing preserves word break',()=>assert.ok(css.includes('word-break: break-word')));

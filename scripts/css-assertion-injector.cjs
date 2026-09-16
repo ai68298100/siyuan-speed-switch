@@ -38,7 +38,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {execFileSync} = require("node:child_process");
 const {stripComments} = require("../tests/source-scan.cjs");
-const {parseRules, normalizeSelector} = require("../tests/css-block-scan.cjs");
+const {parseRules, normalizeSelector, inScope} = require("../tests/css-block-scan.cjs");
 
 const ROOT = path.join(__dirname, "..");
 const testFile = process.argv[2];
@@ -158,13 +158,18 @@ function readArguments(line, from) {
     return {text: line.slice(from, index), end: index};
 }
 
-// 从测试文件里提取 (测试名, 选择器, 声明正则, 是否负断言, 是否 topLevel)。
+// 从测试文件里提取 (测试名, 选择器, 声明正则, 是否负断言, 作用域)。
 // 形如：assert.ok(declaresIn(css, '<sel>', /<re>/, base))
 //       assert.equal(declaresIn(css, '<sel>', /<re>/, base), false, '…')
+//       assert.ok(declaresIn(css, '<sel>', /<re>/, {atRule: /560px/}))
 // 注意 `, false` 在**闭括号之后**——首版把它当作"要捕获的实参"，于是负断言被当成正断言，
 // 报"找不到注入位置"（负断言需要的是"插入一条被禁声明"，不是"删掉一条声明"）。
 function extractAssertions(source) {
-    const stripped = stripComments(source);
+    // 允许 `assert.ok(` 与 `declaresIn(` **跨行**。首版逐行要求两者同行，于是自己刚写的
+    // 换行版断言提取不到（覆盖账立刻报"9 处调用只提取到 8 条"——那道自检正是为此存在）。
+    // 折行只影响提取，不改变行数语义（提取不使用行号）；**不能反过来要求作者为迁就工具而
+    // 把断言压成一行**，那是让工具绑架代码风格。
+    const stripped = stripComments(source).replace(/assert\.(ok|equal)\(\s*\n\s*/g, (whole, kind) => `assert.${kind}(`);
     // 迁移后的文件常把作用域写成共享常量：`const base = {topLevel: true};` 然后传 `base`。
     // 不解析这层间接，工具就会以为"没带作用域"，于是挑到媒体查询里的同名覆盖规则去注入
     // （表现为"注入后断言未翻转"——与"断言不守护任何东西"是两回事，极易误判）。
@@ -186,12 +191,19 @@ function extractAssertions(source) {
         const regex = args[2] && args[2].match(/^\/([\s\S]*)\/([a-z]*)$/);
         if (!selector || !regex) continue;
         const scopeArg = trim(args[3] || "");
+        // `{atRule: /…/}` 也要认出来：否则工具会对"只在某个分支里"的断言按"任意深度"挑规则，
+        // 挑错分支时的症状（注入后断言未翻转）与"断言不守护任何东西"极像，会误导判断。
+        const atRule = scopeArg.match(/atRule:\s*\/((?:[^/\\]|\\.)+)\//);
         assertions.push({
             name: current,
             selector: selector[1],
             declSource: regex[1],
             negative: marker[1] === "equal" && /^\s*,\s*false\b/.test(rest),
             topLevel: /topLevel/.test(scopeArg) || scopeVars.has(scopeArg),
+            // 注意必须转成 RegExp：`inScope` 对**字符串**参数走的是子串匹配，直接传正则源码
+            // （`"max-width:\\s*560px"`）会永远匹配不上，症状是"跳过：找不到注入位置"——
+            // 不是假绿，但会让人以为断言写错了位置。
+            atRule: atRule ? new RegExp(atRule[1]) : null,
         });
     }
     return assertions;
@@ -320,7 +332,7 @@ function main() {
     for (const assertion of assertions) {
         const re = new RegExp(assertion.declSource);
         const rules = parseRules(raw).filter((rule) => {
-            if (assertion.topLevel && rule.atDepth !== 0) return false;
+            if (!inScope(rule, {topLevel: assertion.topLevel, atRule: assertion.atRule})) return false;
             return rule.selectors.some((item) => item === normalizeSelector(assertion.selector) || re.test(item));
         });
         const injections = [];
@@ -348,7 +360,7 @@ function main() {
             const label = assertion.name + (injection.sample ? ` [${injection.sample}]` : "");
             // 文本级先自检：正断言必须翻成"不成立"，负断言必须翻成"成立"（不跑测试，只解析）
             const after = parseRules(mutate(rawLines, injection).join("\n")).filter((rule) => {
-                if (assertion.topLevel && rule.atDepth !== 0) return false;
+                if (!inScope(rule, {topLevel: assertion.topLevel, atRule: assertion.atRule})) return false;
                 return rule.selectors.some((item) => item === normalizeSelector(assertion.selector));
             });
             const holds = after.some((rule) => re.test(rule.declarations));
