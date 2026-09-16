@@ -1,6 +1,6 @@
-const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const root=path.resolve(__dirname,'..');const source=fs.readFileSync(path.join(root,'src','index.ts'),'utf8');const css=fs.readFileSync(path.join(root,'src','index.scss'),'utf8');
-test('card status tone dataset wired',()=>assert.match(source,/card\.dataset\.statusTone = resolveHomeStoreStatusTone/));
-test('card integration tone dataset wired',()=>assert.match(source,/card\.dataset\.integrationTone = resolveHomeStoreIntegrationTone/));
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const root=path.resolve(__dirname,'..');const source=fs.readFileSync(path.join(root,'src','index.ts'),'utf8');const storeUiSource=fs.readFileSync(path.join(root,'src','home-store-ui.ts'),'utf8');const css=fs.readFileSync(path.join(root,'src','index.scss'),'utf8');
+test('card status tone dataset wired',()=>assert.match(storeUiSource,/card\.dataset\.statusTone = resolveHomeStoreStatusTone/));
+test('card integration tone dataset wired',()=>assert.match(storeUiSource,/card\.dataset\.integrationTone = resolveHomeStoreIntegrationTone/));
 test('status tone model imported',()=>assert.match(source,/resolveHomeStoreStatusTone/));
 test('integration tone model imported',()=>assert.match(source,/resolveHomeStoreIntegrationTone/));
 test('success tone style',()=>assert.match(css,/data-status-tone="success"/));
@@ -15,10 +15,10 @@ test('info uses top border',()=>assert.match(css,/status-tone="info"[^}]*border-
 test('network chip is bold',()=>assert.match(css,/is-online \{ font-weight: 600/));
 test('local chip is bold',()=>assert.match(css,/is-local \{ font-weight: 600/));
 test('offline chip is bold',()=>assert.match(css,/is-offline \{ font-weight: 600/));
-test('dataset status set after added',()=>assert.match(source,/card\.dataset\.added = added \? "true" : "false";\s*card\.dataset\.statusTone/));
-test('dataset integration set after status',()=>assert.match(source,/statusTone = resolveHomeStoreStatusTone\(card\.dataset\);\s*card\.dataset\.integrationTone/));
-test('status tone remains data attribute',()=>assert.match(source,/dataset\.statusTone/));
-test('integration tone remains data attribute',()=>assert.match(source,/dataset\.integrationTone/));
+test('dataset status set after added',()=>assert.match(storeUiSource,/card\.dataset\.added = added \? "true" : "false";\s*card\.dataset\.statusTone/));
+test('dataset integration set after status',()=>assert.match(storeUiSource,/statusTone = resolveHomeStoreStatusTone\(card\.dataset\);\s*card\.dataset\.integrationTone/));
+test('status tone remains data attribute',()=>assert.match(storeUiSource,/dataset\.statusTone/));
+test('integration tone remains data attribute',()=>assert.match(storeUiSource,/dataset\.integrationTone/));
 test('tone styling uses theme variables',()=>assert.match(css,/var\(--b3-border-color\)/));
 test('warning styling uses theme warning',()=>assert.match(css,/var\(--b3-theme-warning\)/));
 test('info styling uses theme primary',()=>assert.match(css,/var\(--b3-theme-primary\)/));

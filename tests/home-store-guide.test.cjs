@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
+const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
 
 test('component store guide is the single documented source for connectivity prerequisites', () => {
     const guide = fs.readFileSync(path.join(root, 'docs', 'component-store-guide.md'), 'utf8');
@@ -15,8 +16,8 @@ test('component store guide is the single documented source for connectivity pre
 test('store implementation exposes a guide entry point and jumpable guide dialog', () => {
     const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
     assert.match(source, /homeStoreGuide/);
-    assert.match(source, /openHomeWidgetGuide/);
-    assert.match(source, /sw-home-store__guide/);
+    assert.match(storeUiSource, /openHomeWidgetGuide/);
+    assert.match(storeUiSource,/sw-home-store__guide/);
     assert.match(source, /external-component-installation\.md/);
     assert.match(source, /summarizeHomeStoreDependencies/);
 });
@@ -46,7 +47,7 @@ test('mobile component panel is explicitly single-column', () => {
     const styles = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
     assert.match(source, /this\.isMobile \? resolveMobileHomeSize\(supported\)/);
     assert.match(source, /this\.isMobile \? "1 \/ -1"/);
-    assert.match(source, /device === "mobile" \? \[resolveMobileHomeSize\(declaredSizes\)\]/);
+    assert.match(storeUiSource,/device === "mobile" \? \[resolveMobileHomeSize\(declaredSizes\)\]/);
     assert.match(sections, /mobileHomePanelFixed/);
     assert.match(styles, /\.sw-home--mobile \.sw-home__grid[\s\S]*grid-template-columns: 1fr !important/);
     assert.match(styles, /\.sw-home--mobile \.sw-home__cell[\s\S]*grid-row: auto !important/);

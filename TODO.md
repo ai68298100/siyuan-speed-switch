@@ -1,6 +1,13 @@
 # TODO
 
 
+## T-6248~T-6250 重构批次 R1：商店 UI 外迁 home-store-ui.ts（2026-09-16，已完成）
+
+- [x] T-6248 R1 立项前提核实：store-* 契约群覆盖密度核实（store-mobile-layout 467 + store-preview-lifecycle 76 + home-store-contract 66 + store-mobile-external 10 条断言，全部为真实维护的源码正则契约），推翻 D-374"R1 需先补商店渲染快照类契约"的保守评估，R1 直接立项（D-379）
+- [x] T-6249 商店 UI 外迁：openStoreWidgetPreview（125 行）+ openHomeWidgetStore（995 行，含 4 行前置注释）自 index.ts 字节原样搬移至 home-store-ui.ts；HomeStoreUiHost 13 成员（i18n/isMobile/homeRuntime 内联类型/3 个集合字段 + 7 个行为方法）；store 内互调 this.openStoreWidgetPreview → openStoreWidgetPreview.call(this)（恰 1 处）；外部调用点 2 处改 openHomeWidgetStore.call(this,）；index.ts 11126→10007 行
+- [x] T-6250 契约同步与门禁：22 个测试文件约 1028 条断言按"真实正则 .test() 逐位置判定"分流改指新模块；2 条互调断言更新为新调用形态；BUILTIN_GROUPS 声明块断言改指 storeUiSource；生产图 WIRED_SANITY_MODULES 加 home-store-ui、闭包上限 38→39；负向验证 2 例（删 role=region 行、删互调回调行 → 精确 FAIL → 字节级还原）；发布矩阵同步（index.js 600911、package.zip 307699）；verify:release 独占全绿 5691/5691；记录 D-379/D-380
+
+
 ## T-6245~T-6247 重构批次 R6：util 字素工具收敛（2026-09-16，已完成）
 
 - [x] T-6245 util.js 新增导出 graphemeSlice（前 n 字素截断，含"码元 ≤ 上限原样返回"短路优化——自 search-model 搬入并证实对所有调用方语义等价）与 graphemeSliceByCodePoints（码点预算内完整字素截断，自 agent-capabilities asText 搬入）；graphemeLength 补导出

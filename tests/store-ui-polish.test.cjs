@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
 const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
 
 test('store search row has sort control class', () => assert.match(css, /\.sw-home-store__sort/));
 test('sort control has bounded minimum width', () => assert.match(css, /min-width: 106px/));
@@ -32,11 +33,11 @@ test('mobile sort control expands', () => assert.match(css, /\.sw-home-store__so
 test('mobile guide button expands', () => assert.match(css, /\.sw-home-store__guide \{ flex: 1 1 46%; min-height: 32px; \}/));
 test('mobile cards disable hover lift', () => assert.match(css, /\.sw-home-store__card:hover \{ transform: none; \}/));
 test('mobile tabs preserve horizontal overscroll', () => assert.match(css, /overscroll-behavior-x: contain/));
-test('sort state is stored in store dialog', () => assert.match(source, /let storeSort = "relevance"/));
-test('sort select uses localized label', () => assert.match(source, /homeStoreSortLabel/));
-test('sort select normalizes values', () => assert.match(source, /normalizeHomeStoreSort\(sortSelect\.value\)/));
-test('store render uses sort model', () => assert.match(source, /sortHomeStoreCards\(/));
-test('store search uses token model', () => assert.match(source, /matchesHomeStoreTokens\(/));
-test('store render computes tab counts', () => assert.match(source, /buildHomeStoreTabCounts\(/));
-test('store cards expose module id dataset', () => assert.match(source, /card\.dataset\.moduleId = moduleId/));
-test('store tabs preserve source labels', () => assert.match(source, /btn\.dataset\.tabLabel = tab\.label/));
+test('sort state is stored in store dialog', () => assert.match(storeUiSource, /let storeSort = "relevance"/));
+test('sort select uses localized label', () => assert.match(storeUiSource, /homeStoreSortLabel/));
+test('sort select normalizes values', () => assert.match(storeUiSource, /normalizeHomeStoreSort\(sortSelect\.value\)/));
+test('store render uses sort model', () => assert.match(storeUiSource, /sortHomeStoreCards\(/));
+test('store search uses token model', () => assert.match(storeUiSource, /matchesHomeStoreTokens\(/));
+test('store render computes tab counts', () => assert.match(storeUiSource, /buildHomeStoreTabCounts\(/));
+test('store cards expose module id dataset', () => assert.match(storeUiSource, /card\.dataset\.moduleId = moduleId/));
+test('store tabs preserve source labels', () => assert.match(storeUiSource,/btn\.dataset\.tabLabel = tab\.label/));

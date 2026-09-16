@@ -5,12 +5,13 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
 const model = fs.readFileSync(path.join(root, 'src', 'home-store-model.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
 
-test('store preview keeps semantic kind data', () => assert.match(source, /preview\.dataset\.kind = kind/));
-test('store preview records module identity', () => assert.match(source, /preview\.dataset\.moduleId = moduleId/));
-test('calendar preview uses a multi-week rail', () => assert.match(source, /Array\.from\(\{length: 28\}/));
+test('store preview keeps semantic kind data', () => assert.match(storeUiSource, /preview\.dataset\.kind = kind/));
+test('store preview records module identity', () => assert.match(storeUiSource, /preview\.dataset\.moduleId = moduleId/));
+test('calendar preview uses a multi-week rail', () => assert.match(storeUiSource,/Array\.from\(\{length: 28\}/));
 test('calendar preview keeps seven columns', () => assert.match(css, /\.p-calendar-grid \{ display: grid; grid-template-columns: repeat\(7/));
 test('monthly journal resolves to calendar preview', () => assert.match(model, /"journal-monthly": "calendar"/));
 test('journal calendar resolves to calendar preview', () => assert.match(model, /"journal-calendar": "calendar"/));
@@ -23,10 +24,10 @@ test('document sets resolve to document preview', () => assert.match(model, /"do
 test('fixed document resolves to document preview', () => assert.match(model, /"fixed-document": "documents"/));
 test('recent edits resolve to document preview', () => assert.match(model, /"recent-edits": "documents"/));
 test('relations summary resolves to outline preview', () => assert.match(model, /"document-relations-summary": "outline"/));
-test('document preview has hierarchy strokes', () => assert.match(source, /p-line w1.*p-line w2.*p-line w3.*p-line w2/));
+test('document preview has hierarchy strokes', () => assert.match(storeUiSource,/p-line w1.*p-line w2.*p-line w3.*p-line w2/));
 test('relations preview gets a dotted relation accent', () => assert.match(css, /document-relations-summary.*border-left: 2px dotted/));
 test('today tasks resolve to task preview', () => assert.match(model, /"today-tasks": "tasks"/));
-test('task preview has checklist rows', () => assert.match(source, /p-task-list.*<i><\/i><i><\/i><i><\/i>/));
+test('task preview has checklist rows', () => assert.match(storeUiSource,/p-task-list.*<i><\/i><i><\/i><i><\/i>/));
 test('completed task rows have a success tint', () => assert.match(css, /today-tasks.*nth-child\(-n \+ 2\).*background/));
 test('flashcards use circular review markers', () => assert.match(css, /flashcard-due.*border-radius: 50%/));
 test('random review uses shorter prompt rows', () => assert.match(css, /random-review.*width: 68%/));
@@ -35,15 +36,15 @@ test('quick capture resolves to task preview', () => assert.match(model, /"quick
 test('quick capture has an action accent', () => assert.match(css, /quick-capture.*border-left: 3px/));
 test('clipped unread resolves to feed preview', () => assert.match(model, /"clipped-unread": "feed"/));
 test('clipped unread uses an amber rank accent', () => assert.match(css, /clipped-unread.*#d38a42/));
-test('feed preview exposes ranked rows', () => assert.match(source, /p-feed-list.*<b>3<\/b>/));
+test('feed preview exposes ranked rows', () => assert.match(storeUiSource,/p-feed-list.*<b>3<\/b>/));
 test('writing streak resolves to progress preview', () => assert.match(model, /"writing-streak": "progress"/));
 test('writing streak uses a warm progress palette', () => assert.match(css, /writing-streak.*linear-gradient\(180deg, #e6a24b/));
 test('countdown has a compact hero marker', () => assert.match(css, /countdown.*p-hero.*border-radius: 999px/));
 test('note stats has a wider hero marker', () => assert.match(css, /note-stats.*p-hero.*width: 56%/));
 test('year progress uses a green progress palette', () => assert.match(css, /year-progress.*#5a9c8b/));
-test('activity preview has multiple usage bars', () => assert.match(source, /p-activity-bars.*--p:37%/));
+test('activity preview has multiple usage bars', () => assert.match(storeUiSource,/p-activity-bars.*--p:37%/));
 test('weather preview keeps a dedicated gradient', () => assert.match(css, /external-weather-open-meteo.*linear-gradient/));
-test('media preview contains multiple covers', () => assert.match(source, /p-media-grid.*<i><\/i><i><\/i><i><\/i><i><\/i>/));
+test('media preview contains multiple covers', () => assert.match(storeUiSource,/p-media-grid.*<i><\/i><i><\/i><i><\/i><i><\/i>/));
 test('Bangumi preview varies cover colors', () => assert.match(css, /external-anime-bangumi.*nth-child\(2n\)/));
 test('hot news preview uses red rank color', () => assert.match(css, /external-hot-news-dailyhot.*#e05b52/));
 test('NewsNow preview uses blue rank color', () => assert.match(css, /external-news-newsnow.*#5683bd/));

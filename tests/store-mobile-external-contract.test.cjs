@@ -6,6 +6,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const css = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const storeUiSource = fs.readFileSync(path.join(root, "src", "home-store-ui.ts"), "utf8");
 const store = require(path.join(root, "src", "home-store-model.js"));
 const life = require(path.join(root, "src", "life-widget-model.js"));
 const network = require(path.join(root, "src", "life-widget-network.js"));
@@ -61,14 +62,14 @@ test("action labels include a normalized title", () => assert.match(store.resolv
 test("unknown action labels have a safe fallback", () => assert.match(store.resolveHomeStoreButtonLabel("unknown", card({search: "天气"}), {}), /^操作 · 天气$/));
 test("action set reports disabled external add", () => assert.equal(store.buildHomeStoreActionSet(card({availability: "external"}), {add: "添加", preview: "预览"}).find((item) => item.action === "add").enabled, false));
 
-test("preview marks integration metadata in the DOM contract", () => assert.match(source, /container\.dataset\.integration = sourceInfo\?\.integration \|\| "direct"/));
-test("preview marks privacy metadata in the DOM contract", () => assert.match(source, /container\.dataset\.privacy = sourceInfo\?\.privacy \|\| "none"/));
-test("preview exposes a source chip", () => assert.match(source, /addMeta\(this\.i18n\.homeStoreSource\.replace\("\{source\}"/));
-test("preview exposes a network chip tone", () => assert.match(source, /sourceInfo\?\.integration === "http" \? "network"/));
-test("preview exposes a local bridge chip tone", () => assert.match(source, /sourceInfo\?\.integration === "local-bridge" \? "local"/));
-test("preview exposes privacy chip metadata", () => assert.match(source, /addMeta\(privacy, "privacy"\)/));
-test("preview body is keyboard focusable", () => assert.match(source, /body\.tabIndex = 0/));
-test("preview body points to metadata", () => assert.match(source, /body\.setAttribute\("aria-describedby", meta\.id\)/));
+test("preview marks integration metadata in the DOM contract", () => assert.match(storeUiSource, /container\.dataset\.integration = sourceInfo\?\.integration \|\| "direct"/));
+test("preview marks privacy metadata in the DOM contract", () => assert.match(storeUiSource, /container\.dataset\.privacy = sourceInfo\?\.privacy \|\| "none"/));
+test("preview exposes a source chip", () => assert.match(storeUiSource, /addMeta\(this\.i18n\.homeStoreSource\.replace\("\{source\}"/));
+test("preview exposes a network chip tone", () => assert.match(storeUiSource, /sourceInfo\?\.integration === "http" \? "network"/));
+test("preview exposes a local bridge chip tone", () => assert.match(storeUiSource, /sourceInfo\?\.integration === "local-bridge" \? "local"/));
+test("preview exposes privacy chip metadata", () => assert.match(storeUiSource, /addMeta\(privacy, "privacy"\)/));
+test("preview body is keyboard focusable", () => assert.match(storeUiSource, /body\.tabIndex = 0/));
+test("preview body points to metadata", () => assert.match(storeUiSource,/body\.setAttribute\("aria-describedby", meta\.id\)/));
 test("guide link opens safely in a new tab", () => assert.match(source, /link\.target = "_blank";[\s\S]*?link\.rel = "noopener noreferrer"/));
 test("mobile preview width stays viewport bounded", () => assert.match(source, /width: this\.isMobile \? "min\(420px, 92vw\)"/));
 

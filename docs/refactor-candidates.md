@@ -71,8 +71,8 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 
 1. ~~**先做 R2（外部组件注册外迁）**~~：✅ 已交付（2026-09-16，D-375）。风险最低、契约测试最完备（三批扩充的 11 个组件全部有 availability-contract 行锁定接线形态），且直接服务后续扩充节奏——新组件不再让 index.ts 增长。可独立成一个批次先行验证搬移流程。
 2. ~~**再做 R4（设置页拆分）**~~：✅ 已交付（2026-09-16，D-376，T-6236~T-6240）。各节独立、互不纠缠，作为搬移流程的第二次演练。**执行记录**：实际外迁 16 个构建函数共 984 行（超 ~800 预估，因区域 A 内夹带 buildFavGroupRowActions、区域 B 内夹带 buildQuickActionsTransferControls 两处依赖），index.ts 12442→11458 行；`src/settings-sections.ts` 1068 行（this 参数模式 + SettingsSectionsHost 38 成员）；类型经 `import type` 从 "./index" 引用（10 个类型加 export，编译期擦除零运行时循环）；4 个共享数据方法（getDocumentSets 等）按边界裁定留宿主。契约同步：home-store-guide 1 条改指、mobile-card-smoke 33 条断言按归属分流（18 留 index / 15 改指）、生产闭包 35→36。负向验证 3 轮（含 1 次注入无效自纠：子串包含使改名注入失效，改删行验证）。index.js 601102、package.zip 307961；verify:release 干净全绿。教训：两次 verify:release 并发运行会产生构建竞争假失败，须独占运行。
-3. **R1（商店拆分）单独立项**：预期削减最大但状态机交织最深，建议在 R2/R4 验证搬移方法后进行，且需要先补商店渲染快照类契约测试再动手。
-4. **R3 已交付（D-377）**；**R5** 递补为下一候选；**R6** 独立小批次（涉及生产依赖图与包体复核）。**R1** 仍需先补商店渲染契约再单独立项（待孙堃确认）。
+3. ~~**R1（商店拆分）**~~：✅ 已交付（2026-09-16，D-379，T-6248~T-6250）。**立项前提核实**：D-374"需先补商店渲染快照类契约"已过时——store-* 契约群（store-mobile-layout 467 + store-preview-lifecycle 76 + home-store-contract 66 + store-mobile-external 10 条）全是真实维护的源码正则契约，搬移只需同步改指。**执行记录**：openStoreWidgetPreview（125 行）+ openHomeWidgetStore（995 行，含前置注释）字节原样搬移至 `src/home-store-ui.ts`（this 参数模式，HomeStoreUiHost 13 成员，历批最干净）；store 内互调改模块内 .call(this)，外部调用点 2 处；index.ts 11126→10007 行。契约同步 22 个测试文件约 1028 条断言逐位置判定分流（v1 行号偏移事故与修复见 D-380）；storeSource 切片改读新模块；生产闭包 38→39；负向验证 2 例精确拦截；index.js 600911、package.zip 307699；verify:release 独占全绿 5691/5691。
+4. **R2/R4/R3/R6/R1 均已交付**；**R5** 为唯一剩余候选，前置二选一（拆状态宿主或补搜索渲染契约）待孙堃决策。
 
 ## 5. 不建议动的部分
 
