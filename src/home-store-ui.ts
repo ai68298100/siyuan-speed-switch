@@ -248,6 +248,8 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 }
             }
             root.innerHTML = "";
+            // 秒开（D-382）：全部区块在离屏 fragment 中装配，最后一次挂载，避免逐组重排
+            const storeFragment = document.createDocumentFragment();
             const state = this.getHomeState();
             const instanceByModule = new Map<string, any>();
             const instanceStateByModule = new Map<string, any>();
@@ -368,7 +370,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             guideButton.title = this.i18n.homeStoreGuideTitle;
             guideButton.addEventListener("click", () => this.openHomeWidgetGuide());
             searchBar.appendChild(guideButton);
-            root.appendChild(searchBar);
+            storeFragment.appendChild(searchBar);
             let filterEmptyState: HTMLElement | null = null;
             let resultSummary: HTMLElement | null = null;
 
@@ -559,7 +561,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 });
                 tabBar.appendChild(btn);
             });
-            root.appendChild(tabBar);
+            storeFragment.appendChild(tabBar);
             resultSummary = document.createElement("div");
             resultSummary.className = "sw-home-store__summary";
             resultSummary.id = "sw-home-store-result-summary";
@@ -567,7 +569,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             resultSummary.setAttribute("aria-live", "polite");
             resultSummary.setAttribute("aria-atomic", "true");
             resultSummary.dataset.state = "ready";
-            root.appendChild(resultSummary);
+            storeFragment.appendChild(resultSummary);
             root.dataset.query = normalizeHomeStoreQuery(searchInput.value);
 
             // —— 分区一：可用组件（内置 + 已就位插件提供），内部再按功能/来源分组 ——
@@ -578,7 +580,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             readyHeading.id = "sw-home-store-section-ready";
             readyHeading.dataset.section = "ready";
             readyHeading.textContent = this.i18n.homeStoreReady;
-            root.appendChild(readyHeading);
+            storeFragment.appendChild(readyHeading);
 
             // 功能分组只表达“这个组件解决什么问题”；联网、本机服务、条件可用等
             // 前置条件继续由上方筛选页签和卡片徽标表达，避免两套分类互相混淆。
@@ -1029,7 +1031,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 groupToggle.title = groupToggle.getAttribute("aria-label") || "";
                 groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
                 groupHeading.append(groupLabel, groupDescription, groupToggle);
-                root.appendChild(groupHeading);
+                storeFragment.appendChild(groupHeading);
                 const groupGrid = document.createElement("div");
                 groupGrid.className = "sw-home-store__grid";
                 groupGrid.dataset.viewMode = storeViewMode;
@@ -1040,7 +1042,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 groupGrid.setAttribute("aria-labelledby", groupHeading.id);
                 groupToggle.setAttribute("aria-controls", groupId);
                 cards.forEach((card) => groupGrid.appendChild(card));
-                root.appendChild(groupGrid);
+                storeFragment.appendChild(groupGrid);
             });
 
             // —— 分区二：需安装插件后可用（目录中登记、来源插件未就位） ——
@@ -1056,7 +1058,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 pendingHeading.dataset.section = "pending";
                 pendingHeading.textContent = this.i18n.homeStorePending;
                 pendingHeading.setAttribute("aria-label", this.i18n.homeStorePending);
-                root.appendChild(pendingHeading);
+                storeFragment.appendChild(pendingHeading);
                 const pendingGrid = document.createElement("div");
                 pendingGrid.className = "sw-home-store__grid";
                 pendingGrid.dataset.viewMode = storeViewMode;
@@ -1118,7 +1120,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     }
                     pendingGrid.appendChild(card);
                 });
-                root.appendChild(pendingGrid);
+                storeFragment.appendChild(pendingGrid);
             }
 
             if (ready.length === 0 && pending.length === 0) {
@@ -1163,7 +1165,8 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 searchInput.focus();
             });
             filterEmptyState.append(emptyText, clearFilters);
-            root.appendChild(filterEmptyState);
+            storeFragment.appendChild(filterEmptyState);
+            root.appendChild(storeFragment);
             applyFilter();
             restoreStoreView();
             root.setAttribute("aria-busy", "false");

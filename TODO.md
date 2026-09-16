@@ -1,6 +1,13 @@
 # TODO
 
 
+## T-6253~T-6255 组件审查与面板秒开（2026-09-16，已完成）
+
+- [x] T-6253 组件全面审查（41 个内置+外部）：控制器/视图/adapter 三层审查——骨架 loading、失败旧快照保留+缓存徽章、空态 emptyHint、错误重试、3s 快照缓存+800ms 超时+失败退避+in-flight 去重、IntersectionObserver 懒加载、图片 lazy、DateTimeFormat 复用均健全；27 个内置 adapter 全部本地 SQL+refreshOn 事件订阅，13 个外部组件独立 TTL/超时（来源审计覆盖）
+- [x] T-6254 秒开优化（D-382）三件套：① 组件面板快照直出——read 回调捕获最后好快照存实例级内存 Map，controller 支持 initialSnapshot 首帧直出"缓存"态内容（复用既有 retained+更新中指示器路径，零 loading 闪帧），配置变更时失效；② 商店面板 renderStore 全区块离屏 fragment 装配一次挂载（原 9 处逐组 append 活 DOM 多轮重排）；③ 组件面板 renderPanel 工具栏/问候/网格同样 fragment 一次挂载
+- [x] T-6255 门禁与发版：新增快照直出契约测试（jsdom：首帧 ready+缓存条目+无骨架+refresh 静默更新）；商店装配契约同步+新增一次性挂载断言；负向验证双注入（破坏 initialSnapshot 分支/删除 fragment 挂载 → 各自精确 FAIL → 字节级还原）；verify:release 独占全绿 5693/5693；发布矩阵 index.js 601563、package.zip 307859
+
+
 ## T-6251~T-6252 重构批次 R5a：搜索状态宿主收拢（2026-09-16，已完成）
 
 - [x] T-6251 R5 前置决策（D-381）：对比"拆状态宿主"与"补搜索渲染契约"两方案后由孙堃拍板方案 A——6 个 docSearch 状态字段收拢为 search-state 模块，避免 R5 制造 20+ 成员的过渡态 host；6 个字段中 docSearchFilters 有 4 处方法群外消费点（applySearch/unload/面板恢复/默认参数），收拢顺带收敛该耦合

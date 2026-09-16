@@ -670,7 +670,8 @@ test('store render captures focused tab identity', () => assert.match(storeSourc
 test('store render captures focused group identity', () => assert.match(storeSource,/else if \(group\?\.dataset\.group\) \{\s*focusKind = "group";\s*focusValue = group\.dataset\.group/));
 test('store render recognizes focused search input', () => assert.match(storeSource,/activeElement\.matches\("\.sw-home-store__search input"\)[\s\S]*?focusKind = "search"/));
 test('store render recognizes focused sort control', () => assert.match(storeSource,/activeElement\.matches\("\.sw-home-store__sort"\)[\s\S]*?focusKind = "sort"/));
-test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/root\.innerHTML = "";\s*const state = this\.getHomeState\(\)/));
+test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/root\.innerHTML = "";\s*(?:\/\/[^\n]*\n\s*)*const storeFragment = document\.createDocumentFragment\(\);\s*const state = this\.getHomeState\(\)/));
+test('store render mounts the assembled fragment once', () => assert.match(storeSource,/root\.appendChild\(storeFragment\);\s*applyFilter\(\)/));
 test('store render reads current home state', () => assert.match(source, /const state = this\.getHomeState\(\)/));
 test('store render scopes instances to device layout', () => assert.match(source, /\(state\.layouts\[device\] \|\| \[\]\) as Array<any>/));
 test('store render resolves layout instance safely', () => assert.match(storeSource,/state\.instances\.find\(\(candidate: any\) => candidate\.instanceId === entry\.instanceId\)/));

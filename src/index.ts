@@ -2965,6 +2965,9 @@ const version = beginSearch(session);
     // 第三方模块的"跳转本体"回调（仅内存，不持久化）；模块读取失败时面板显示跳转按钮
     private homeModuleOpens = new Map<string, () => void>();
     private homeThirdPartyIds = new Set<string>();
+    // 秒开快照（D-382）：面板会话内存级的"最后一次好数据"，按 instanceId 键控；
+    // 仅插件生命周期内有效（不落盘），配置变更时失效，重开面板时直出"缓存"态。
+    private homePanelSnapshots = new Map<string, {snapshot: any; at: number}>();
     private homeBuiltinAdapterIds = new Set<string>();
     private static HOME_ACCENTS = ["#7c6cf2", "#4f8ef7", "#35b8a8", "#f2a03d", "#e8637c", "#59b96f", "#e05fd0", "#8a93a6"];
 
@@ -3966,6 +3969,8 @@ const version = beginSearch(session);
                 if (inst) cells.push({inst, layout: entry});
             });
 
+            // 秒开（D-382）：工具栏/问候/网格在离屏 fragment 中装配，一次挂载避免多轮重排
+            const mountFragment = document.createDocumentFragment();
             const bar = document.createElement("div");
             bar.className = "sw-home__bar";
             const editToggle = document.createElement("button");
@@ -4037,7 +4042,7 @@ const version = beginSearch(session);
                 });
                 bar.appendChild(addButton);
             }
-            root.appendChild(bar);
+            mountFragment.appendChild(bar);
 
             // 时间感知问候头：让面板更有"个人主页"温度
             const now = new Date();
@@ -4050,7 +4055,7 @@ const version = beginSearch(session);
             const greetingEl = document.createElement("div");
             greetingEl.className = "sw-home__greeting";
             greetingEl.textContent = `${greeting}，${this.i18n.homeGreetingSuffix}`;
-            root.appendChild(greetingEl);
+            mountFragment.appendChild(greetingEl);
 
             const body = document.createElement("div");
             body.className = "sw-home__body";
@@ -4111,6 +4116,8 @@ const version = beginSearch(session);
                     container: body,
                     module: {...def},
                     collapsed: layout.collapsed === true,
+                    // 秒开（D-382）：上次会话的好快照直出"缓存"态，refresh 静默更新
+                    initialSnapshot: this.homePanelSnapshots.get(inst.instanceId)?.snapshot,
                     labels: {
                         loading: this.i18n.homeLoading,
                         refreshing: this.i18n.homeRefreshing,
@@ -4153,10 +4160,21 @@ const version = beginSearch(session);
                             this.saveHomeState(next);
                         }
                     },
-                    read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) =>
+                    read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) => {
                         // 附带当前型号（尺寸感知接口）：适配器可据此裁剪条目数
-                        this.homeRuntime.read(inst.moduleId, device, inst.config || {}, {...readOptions, size: sizeKey}),
+                        const result = this.homeRuntime.read(inst.moduleId, device, inst.config || {}, {...readOptions, size: sizeKey});
+                        // 秒开快照（D-382）：捕获最后一次好数据，面板重开时直出"缓存"态内容
+                        void Promise.resolve(result).then((r: any) => {
+                            const items = r?.snapshot?.items;
+                            if (Array.isArray(items) && items.length > 0) {
+                                this.homePanelSnapshots.set(inst.instanceId, {snapshot: r.snapshot, at: Date.now()});
+                            }
+                        }).catch((): undefined => undefined);
+                        return result;
+                    },
                     onConfig: editing ? undefined : () => {
+                        // 配置即将变更：旧配置下的快照不再代表新配置的输出
+                        this.homePanelSnapshots.delete(inst.instanceId);
                         openHomeConfigForm.call(this, inst, def.configSchema || [], () => renderPanel());
                     },
                     onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
@@ -4448,7 +4466,8 @@ const version = beginSearch(session);
             hintLink.textContent = this.i18n.homeHintLink;
             hint.append(hintText, hintLink);
             body.appendChild(hint);
-            root.appendChild(body);
+            mountFragment.appendChild(body);
+            root.appendChild(mountFragment);
 
             const quickHost = document.createElement("div");
             quickHost.className = "sw-home__quick-actions sw__quick-actions";

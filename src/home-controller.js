@@ -13,7 +13,14 @@ function createHomeModuleController(options = {}) {
     let activeController = null;
     let pendingFocusKey = null;
     let pendingScrollTop = null;
-    let currentView = buildHomeModuleView(module, {loading: true}, {collapsed: options.collapsed === true});
+    // 秒开（D-382）：宿主若提供了上一次的好快照，首帧直接以"缓存"态渲染内容，
+    // 随后的 refresh 走既有的 retained + 更新中指示器路径，不再闪 loading 骨架。
+    const initialSnapshot = options.initialSnapshot && typeof options.initialSnapshot === "object"
+        && Array.isArray(options.initialSnapshot.items) && options.initialSnapshot.items.length > 0
+        ? options.initialSnapshot : null;
+    let currentView = initialSnapshot
+        ? buildHomeModuleView(module, {ok: true, cached: true, snapshot: initialSnapshot}, {collapsed: options.collapsed === true})
+        : buildHomeModuleView(module, {loading: true}, {collapsed: options.collapsed === true});
 
     function toggle() {
         if (disposed) return currentView;

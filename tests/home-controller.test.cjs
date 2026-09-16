@@ -373,3 +373,29 @@ test("home refresh-all scheduler stops queued work after cancellation", async ()
     assert.equal(calls, 1);
     assert.equal(results.filter((result) => result?.reason === "aborted").length, 4);
 });
+
+test("home controller mounts a provided snapshot instantly and skips the loading flash", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let reads = 0;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "digest", title: "Digest"},
+        // 秒开（D-382）：宿主传入上一次的好快照，首帧直出"缓存"态内容
+        initialSnapshot: {items: [{label: "cached-item"}]},
+        read: async () => {
+            reads += 1;
+            return {ok: true, snapshot: {items: [{label: "fresh-item"}]}};
+        },
+    });
+    controller.mount();
+    assert.equal(container.querySelector("[data-status='ready']") !== null, true, "首帧即 ready 内容");
+    assert.equal(container.textContent.includes("cached-item"), true, "首帧展示快照条目");
+    assert.equal(container.querySelector(".sw__home-loading-skeleton"), null, "无 loading 骨架闪帧");
+    const result = await controller.refresh();
+    assert.equal(result.ok, true);
+    assert.equal(reads, 1, "refresh 恰好读取一次");
+    assert.equal(container.textContent.includes("fresh-item"), true, "静默更新为最新内容");
+    controller.dispose();
+});
