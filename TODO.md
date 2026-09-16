@@ -2382,9 +2382,14 @@
 - [ ] T-1221 v0.19 第三方组件端到端样例
   - 目标：以一个真实插件完成注册、配置、跨表面布局、失效/恢复和商店展示全链路
   - 状态：queued
-- [ ] T-1222 v0.20 数据连续性与性能硬门禁评估
+- [x] T-1222 v0.20 数据连续性与性能硬门禁评估
   - 目标：完成存储迁移/恢复演练并评估将搜索与首页 p95 从告警升级为发布硬门禁
-  - 状态：queued
+  - 结论（2026-09-16）：两半均已落地。**存储迁移/恢复演练**由 T-6259~T-6274 六批完成——`src/storage-migration.js` 演练管道（`runStorageMigration` 纯函数 + 有界恢复报告）、`sw_thumb_cache` 从 inspect 毕业为读取侧归一化、其余 6 个 key 的 per-key 迁移契约与宿主同源闭环、版本兼容矩阵文档化（`docs/storage-compatibility-matrix.md`）。**性能侧改以复杂度比值升级为发布硬门禁**（D-388/T-6262）：`tests/perf-complexity-gate.test.cjs` 锁 4 个核心纯算子的输入倍增耗时比 ≤3（`sortItems` 给 4.5），已随 `pnpm test` 进入 `verify:release`；**未**采用绝对 p95 阈值——ROADMAP 明确空查询 p95 存在 48ms 环境长尾，绝对耗时门禁会被偶发抖动阻断开发（本机实测该门禁即因未独占运行假失败 3.42x，见 D-393），机器速度差异由比值消去。**诚实边界**：绝对渲染耗时（DOM 计时）仍归 UI smoke 与真机验收，不在本门禁范围。
+  - 状态：done（2026-09-16）
+
+**v0.20 收官小结（2026-09-16）**：路线图 v0.20 三项的落点——① **文档集/工作区恢复健壮性**（迁移工具、损坏数据降级、恢复报告导出）：T-6259~T-6274 六批完成（`runStorageMigration` 演练管道、`sw_thumb_cache` 读取侧归一化、文档集恢复报告导出、存储兼容矩阵文档）；② **存储版本统一审计**：本批完成（`docs/storage-compatibility-matrix.md`，以代码为准 13 key，附跨版本迁移时间线）；③ **Agent session registry 从契约层转入真实用例**：**未做，判定暂缓**（D-391）——契约层本身早已实现（`createWorkspaceCapabilityRuntimeSessionRegistry` 等符号在 `src/agent-workspace-capability-definitions.js` 有实现、`tests/agent-outline.test.cjs` 有覆盖），但"转入真实用例"的前提不成立：生产路径**从未调用** `registry.create()`，真实运行中 `registry` 恒为空，只读快照没有消费者。剩余工作 = 先补出真实会话产生方（跨端会话采集通道），再谈暴露。
+
+> **关于下方 71 项 `in-progress` 的说明（勿误判为台账滞后）**：T-122~T-194 的 Agent 系列标 `in-progress` 是**准确**状态，而非"已实现未勾选"。`tests/production-graph-isolation.test.cjs` 的 `UNWIRED_CONTRACT_MODULES` 明确列出 14 个 agent 契约模块**不在生产依赖图内**（`agent-workspace-session`、`agent-workspace-registry`、`agent-workspace-plan` 等），生产接线受 D-111「写入动作待独立审批与宿主验证」约束；`WIRED_SANITY_MODULES` 一侧只有 `agent-capabilities` / `agent-document-context` / `agent-workspace-diagnostics` / `agent-workspace-runtime` 四个已接入。故这批条目**保持未勾选是正确的**。（与之相对的 D-351 才是台账滞后：那次是"标题标已完成、条目全未勾"但功能真实交付。判据是**生产图是否可达**，不是"代码是否存在"。）
 
 ### T-1253~T-1282 Agent 只读审计模型（本轮 30 项）
 
