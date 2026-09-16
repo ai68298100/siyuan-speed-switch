@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-17 性能门禁抗噪加固（第三十一批，T-6285）：**问题**：本会话性能门禁假失败 4 次（3.42x/3.07x/3.16x/3.06x，全部单独复跑即绿）——min-of-N 消除了 GC 对单轮的拉长，但 LARGE 侧单轮撞上调度毛刺仍使比值边际超顶。**修复**：抽出 `measureDoublingRatio`（含边际重测，attempts=2）——比值超顶时对两侧各重测一轮取最小比值；真回归（稳定 ≈4）重测后仍超顶、精确拦截。**自检门禁**：新增"边际重测吸收单次毛刺、稳定回归重测后仍拦截"的自检（用可控 fake minTime 验证两种场景）。**负向验证**：破坏折行展开/稳定回归注入均精确 FAIL。**成本**：测试 5844→**5845**（新增重测自检）；README 双语同步；连续 5 轮门禁运行全绿。
+
 2026-09-17 分支收拢执行完毕（第三十批，ROADMAP 执行顺序 #2）：本地分支 10 → 0（仅剩 main）；7 个 feature worktree 干净移除；2 个 codex worktree 含未提交 src 实验（history 下拉移除，未经验证）保留待维护者决断。测试 5827/5827 不变（本轮 perf 门禁再现负载假失败，单独复跑 5/5）。
 
 2026-09-17 T-6284 完成（第二十九批：iCal 订阅只读组件纯模型，v0.21 生活信息支线，见 ROADMAP「再评估 iCal」）。**① 契约/纯模型层** `src/ical-model.js`：`normalizeIcalSubscriptionConfig`（https/http+本机、.ics 路径、拒绝 URL 内嵌凭据——传输规则与 Miniflux/Configured Feed 对齐；窗口 1~60 天、条目 1~12 钳制）、RFC 5545 折行展开、VEVENT 有界解析（DTSTART/DTEND/SUMMARY/LOCATION，源 256 KiB 上限、解析 500 条上限，超限按 parse_failed 拒绝而非静默截断——避免把超大订阅源误报为"没有日程"）、`upcomingIcalEvents`（结束不早于 now、开始不越窗口、升序、钳制）。**② 门禁**：`tests/ical-model.test.cjs` 17 项全过；负向验证：破坏折行展开 → 精确 FAIL，md5 还原。**③ 接入后置**：adapter/catalog/i18n 待产品确认（同 T-123/T-124 契约先行先例）。**④ 成本**：新增 17 项测试（5827→**5844**）、文件 169→**170**；README 双语同步。

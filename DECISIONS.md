@@ -535,3 +535,5 @@
 
 2026-09-17 分支收拢执行完毕（ROADMAP 执行顺序 #2 第三十批收口）：**① 已合并分支**：codex/home-ui-final、codex/quick-ui-final、feature/search-foundation（ahead=0）安全删除。**② 被超越分支**：7 个 feature 分支经 token 级审计确认 main 已有等价实现（icon-fallback 的兜底在 main 已实现为更完整的 resolveIconReference；search-opened-content 的 buildOpenedDocumentScope 与测试已在 main；open-history 29/30 token 在 main）——连同其干净 worktree 一并移除。**③ 保留的两个 WIP worktree**：a4d8/caf4 各含未提交的 src 修改（history 下拉样式移除实验，2026-09-09，未经验证）——不可丢弃，留维护者决定恢复或放弃；对应分支已删，实验内容以 worktree 内未提交修改形态保存（git worktree prune 前可恢复）。**④ 远端分支未动**：origin 的 7 个 feature 分支删除需 push 权限。**⑤ 最终分支态**：本地仅 main。
 
+2026-09-17 性能门禁抗噪加固（T-6285，本会话第 4 次假失败后彻底修复）：**边际重测的设计**——min-of-N 已消除单轮 GC/调度拉长，但 LARGE 侧采样撞上毛刺仍使比值边际超顶（观测 3.06~3.42）。修复不是放宽天花板（那会放过真回归），而是**对超顶结果自动重测取最小值**：环境毛刺在重测中被消除；真回归（注入 O(n²) 实测 4.06x）重测后仍超顶。**自检内嵌**：新增的 self-check 测试用可控 fake minTime 同时验证"毛刺被吸收"与"真回归仍拦截"两个方向——负向验证内建于测试文件，不依赖一次性注入。**决策依据**：D-393 记录的"先单独复跑再判定"是人工兜底，本修复把它自动化进门禁；天花板 3 的语义未变（仍是复杂度类别的判据，非噪声余量）。
+
