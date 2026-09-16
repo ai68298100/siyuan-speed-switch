@@ -455,7 +455,7 @@ export function disposeDocSearchSession(this: DocSearchUiHost, scrollElement: HT
         this.docSearchState.notebookNames.delete(scrollElement);
     }
 
-    // 鍏ㄥ簱鏂囨。鎼滅储杩滅▼璇锋眰锛氭瘡涓晫闈細璇濈嫭绔嬪彇娑堝苟涓㈠純杩囨湡鍝嶅簲
+    // 全库文档搜索远程请求：带取消、防过期、AbortController 复用 searchSeq
 export async function runDocSearchFetch(this: DocSearchUiHost,
         scrollElement: HTMLElement,
         searchInput: HTMLInputElement,
@@ -466,7 +466,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
         cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters}),
     ) {
         const session = getDocSearchSession.call(this, scrollElement);
-        // 鏈熼棿鍏抽敭璇嶅凡鍙樺寲鎴栧鍣ㄥ凡閿€姣佸垯鏀惧純鏈缁撴灉
+        // 期间关键词已变化或容器已销毁则放弃本次结果
         if (version !== session.version || !scrollElement.isConnected) {
             if (!scrollElement.isConnected) {
                 disposeDocSearchSession.call(this, scrollElement);
@@ -555,7 +555,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             cacheSearchResult(session, cacheKey, docs);
             renderDocResults.call(this, scrollElement, docs, onClose);
         } catch (e) {
-            // 涓诲姩鍙栨秷鐨勮姹備笉绠楀紓甯?
+            // 主动取消的请求不算异常
 if ((e as DOMException)?.name !== "AbortError") {
                 logger.warn("search docs fail", e);
                 if (version === session.version && scrollElement.isConnected && searchInput.value.trim() === keyword) {
@@ -788,7 +788,7 @@ export function ensureDocResultsBox(this: DocSearchUiHost, scrollElement: HTMLEl
             box.className = "sw__doc-results sw__group";
             scrollElement.appendChild(box);
         }
-        // 鍏滃簳绉婚櫎鍙兘娈嬬暀鐨勯殣钘忕被锛堝巻鍙?bug 闃插尽锛夛紝纭繚鏂囨。鍖哄缁堝彲瑙?
+        // 兜底移除可能残留的隐藏类（历史 bug 防御），确保文档区始终可见
         box.classList.remove("fn__none");
 
         const label = document.createElement("div");
@@ -799,7 +799,7 @@ export function ensureDocResultsBox(this: DocSearchUiHost, scrollElement: HTMLEl
         return box;
     }
 
-    // 褰撳墠宸叉墦寮€椤电鐨?rootId 闆嗗悎锛堝幓閲嶏級锛涙墜鏈虹璧?MobileTabs锛屾闈㈢璧?getAllTabs
+    // 当前已打开页签的 rootId 集合（去重）；手机端走 MobileTabs，桌面端走 getAllTabs
 export function collectOpenRootIds(this: DocSearchUiHost): Set<string> {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         return new Set(
@@ -891,7 +891,7 @@ export async function openDocSearchResult(this: DocSearchUiHost, rootId: string,
         if (!opened) showMessage(this.i18n.openDocFailed);
     }
 
-    // 鍗曚釜鏂囨。鎼滅储缁撴灉鍗＄墖锛堝浘鏍?+ 鏍囬 + 璺緞锛夛紱鐐瑰嚮鐩村紑鏂囨。锛堟墜鏈虹璧?MobileTabs.open锛?
+    // 单个文档搜索结果按钮（图标 + 标题 + 路径）；点击直开文档（手机端走 MobileTabs.open）
 export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult, id: string, onClose: IOverlayClose): HTMLButtonElement {
         const item = document.createElement("button");
         item.type = "button";

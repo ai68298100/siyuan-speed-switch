@@ -77,7 +77,7 @@ export interface SettingsSectionsHost {
     probeDocumentSetEntries(entries: Array<{rootId: string; title: string}>, signal?: AbortSignal): Promise<{available: Array<{rootId: string; title: string}>; missing: Array<{rootId: string; title: string}>; unknown: Array<{rootId: string; title: string}>}>;
     saveDataDebounced(key: string): void;
 }
-    // ===== 璁剧疆椤?路 澶栬锛氬脊绐楀楂樸€佺缉鐣ュ浘鍒楁暟涓庨珮搴?=====
+    // ===== 设置页 · 外观：弹窗宽高、缩略图列数与高度 =====
 export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         const sizeModeOptions: Array<{value: PanelSizeMode, label: string}> = [
@@ -135,7 +135,7 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
         wrapper.append(
             this.settingItem(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip,
                 this.select(dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay}))),
-            // 渚ц竟鏍忕缉鐣ュ浘甯冨眬锛氭媺浼告斁澶у～婊℃爮瀹斤紝鎴栨寜瀹藉害鑷姩澧炲姞鍒楁暟
+            // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
             this.settingItem(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip,
                 this.select(sidebarOptions, s.sidebarLayout, (v) => {
                     this.updateSettings({sidebarLayout: v as SidebarLayout});
@@ -145,14 +145,14 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
         return wrapper;
     }
 
-    // dock 闈㈡澘寮€鍏冲垪琛細鍕鹃€夌殑闈㈡澘鍑虹幇鍦ㄥ垏鎹㈠櫒宸︿晶锛屽彇娑堢殑闅愯棌
+    // dock 面板开关列表：勾选的面板出现在切换器左侧，取消的隐藏
 export function buildSettingsDockToggles(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const box = document.createElement("div");
         box.className = "sw-setting__docks b3-label__text";
         const dockPanels = this.getDockPanels();
         const excluded = new Set(s.excludedDocks);
         dockPanels.forEach((panel) => {
-            // 琛屽鍣ㄧ敤 div锛氬紑鍏虫湰韬槸 label锛坆3-switch 鏍囧噯缁撴瀯 input+span锛夛紝label 涓嶅彲宓屽
+            // 行容器用 div：开关本身是 label（b3-switch 标准结构 input+span），label 不可嵌套
             const row = document.createElement("div");
             row.className = "sw-setting__dock-item";
             const toggle = document.createElement("label");
@@ -185,7 +185,7 @@ export function buildSettingsDockToggles(this: SettingsSectionsHost, s: ISwSetti
         return box;
     }
 
-    // ===== 璁剧疆椤?路 鎵嬫満绔細鎮诞鎸夐挳寮€鍏炽€佸崱鐗囧竷灞€ =====
+    // ===== 设置页 · 手机端：悬浮按钮开关、卡片布局 =====
 export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         const paletteOptions: Array<{value: HomePalette, label: string}> = [
@@ -237,7 +237,7 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
         return wrapper;
     }
 
-    // ===== 璁剧疆椤?路 鏃ヨ锛氶粯璁ゆ棩璁扮瑪璁版湰 =====
+    // ===== 设置页 · 日记：默认日记笔记本 =====
 export function buildSettingsJournal(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         wrapper.append(
@@ -248,7 +248,7 @@ export function buildSettingsJournal(this: SettingsSectionsHost, s: ISwSettings)
     }
 
     // ===== 璁剧疆椤?路 鏀惰棌锛氭柊寤哄垎缁勩€佸垎缁勯噸鍛藉悕/鍒犻櫎銆佽皟鏁存敹钘忛」鎵€灞炲垎缁?=====
-    // 鍐呭闅忓鍒犲疄鏃堕噸寤猴紝鏁?render 鍥炶皟鍦ㄥ唴閮ㄥ畾涔夊悗浼犵粰鍚勬覆鏌?helper
+    // 内容随增删实时重建，故 render 回调在内部定义后传给各渲染 helper
 export function buildSettingsFavorites(this: SettingsSectionsHost, ): HTMLElement {
         const box = document.createElement("div");
         box.className = "sw-setting__favs";

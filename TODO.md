@@ -1,6 +1,11 @@
 # TODO
 
 
+## T-6258 乱码修复批次：PUA 损坏注释全量恢复（2026-09-16，已完成）
+
+- [x] T-6258 v0.16.9（ac889f2）编码事故遗留的 351 行 PUA 损坏注释全量恢复（D-385）：scripts/restore_pua.py 四阶段匹配（唯一 ASCII 锚 → 有损逆向 3-gram 重叠 + 块邻近先验 → 等分重复注释取同内容 → 中文分段全包含）自动解析 322 行（原文源 ed3858d=v0.16.8 零 PUA）；29 行自动匹配器无法判定的行以 MANUAL 映射人工定源——26 行经 ed3858d grep 逐行核对（含 L2286 短变体/长变体、L5538/L5549 置顶 vs 收藏、L2177/L7412/L8035 三条孤儿条目变体的精确区分），2 行 born-corrupted（L2550/L2585，registerQuickActionAdapter 与 doc-search session 为 v0.16.9 新增、原文从未入库）按有损逆向 + 上下文语义重建，嵌入缩进空格数（8 空格 // 与 5 空格 *）证明原始换行被吞、恢复时拆回多行（2 行/3 行）；关键机制发现：PUA 字符经 gb18030 编码可还原为原始 2 字节（L462/L2077 无损严格双向转换验证成功），€ (U+20AC) 须覆写为单字节 0x80（cp936 映射与 gb18030 分歧）；全 src 目录 PUA 清零校验通过；tsc 0 错误、全量测试 5703/5703、verify:release 全绿（含 mobile-card-smoke 与 Chromium smoke，证明无测试依赖损坏注释文本）
+
+
 ## T-6257 搜索成熟化：增量展开与统一缓存 key 收口（2026-09-16，已完成）
 
 - [x] T-6257 分页与查看全部体验（D-384）：统一缓存 key 核查确认已达成（canonicalFilterValue 键排序 + UNORDERED_FILTER_KEYS + v:1，既有测试锁定）；取数上限常量化 DOC_SEARCH_FETCH_LIMIT=33（两处 UI 调用 + 回退天花板 + Agent 路径共用）；面板内「加载更多」增量展开——search-model.planDocResultsPage 纯函数（切片/去重/已打开排除/hasMore，49 单测）+ DOM 薄壳接线（renderDocResults 消费 plan、焦点恢复 preventScroll、尽头回落原生出口）；新增 doc-search-pagination-contract 契约 6 项；i18n 双语 docSearchLoadMore；负向验证 2 例（hasMore 破坏→精确 FAIL、缓存 key 依赖注入→精确 FAIL，均字节级还原）；README 测试矩阵计数同步（5702 项/160 文件）；verify:release 全绿
