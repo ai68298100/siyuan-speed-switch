@@ -23,6 +23,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const {stripComments} = require("./source-scan.cjs");
 
 const root = path.resolve(__dirname, "..");
 const RAW_READ = /fs\.readFileSync\(\s*path\.join\(([^()]*)\)[^)]*\)/g;
@@ -59,7 +60,6 @@ const DEBT_REASONS = {
 
 const SOURCE_SCAN_DEBT = [
     {file: "tests/external-widget-availability-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/kernel-endpoint-guard.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-a11y-navigation.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-actions-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-card-navigation.test.cjs", reason: "css-window-scope"},
@@ -98,6 +98,30 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/shipped-i18n-parity.test.cjs", reason: "json-data"},
     {file: "tests/mobile-card-smoke.cjs", reason: "smoke-harness"},
 ];
+
+// 每个理由标签的**内容判据**（T-6282，"白名单值必须被断言"的第三次自我适用）。
+// 背景：`DEBT_REASONS` 只校验"标签取自词汇表 + 说明 ≥20 字 + 不留死标签"，从不校验
+// **标签与文件内容是否相符**——实测 `kernel-endpoint-guard.test.cjs` 贴着
+// `css-window-scope`（描述写着"文件里的断言是无界窗口"），实际一条窗口断言都没有
+// （它那处 `[\s\S]*?` 是 `source.match(...)` 的区间截取，不在 assert 内），真债是读
+// 原始文本。判据是**必要条件**而非充分条件：它拦"标签与内容明显不符"，不证明理由
+// 完全成立。判据作用在**剥注释后**的文本上——否则任何文件头注释里引用一句
+// `[\s\S]*?` 就能让标签蒙混过关（第八类失效模式的又一次自我适用）。
+const DEBT_REASON_CHECKS = {
+    // "断言是无界窗口"：至少存在一行 assert 同时带 `[\s\S]*?` 或 `[^}]*` 窗口模式
+    "css-window-scope": (text) => text.split("\n").some((line) => (
+        /assert\./.test(line) && /\[\\s\\S\]\*\\?|\[\^}\]\*/.test(line)
+    )),
+    // "断言的对象就是注释本身"：持有同一源文件的原始/剥离双视图（Raw 孪生或显式
+    // stripComments），或断言needle里带转义的注释标记 `\/\/`
+    "doc-comment-contract": (text) => (
+        text.includes("stripComments(") || /[A-Za-z]Raw\b/.test(text) || text.includes("\\/\\/")
+    ),
+    // "读的是 JSON（无注释语义）"：文件确实在解析 JSON
+    "json-data": (text) => text.includes("JSON.parse("),
+    // "脚手架自带归一函数"：文件自建了带 CRLF 归一的读取，而不是走 readSourceText
+    "smoke-harness": (text) => text.includes("fs.readFileSync") && text.includes("replace(/\\r\\n/g"),
+};
 
 function discoverRawReaderFiles() {
     // 排除两个文件：助手本体（它只是读写函数），以及本门禁自身——它的自测夹具里
@@ -145,6 +169,44 @@ test("every debt entry carries a used, non-empty reason from the fixed vocabular
         assert.ok(SOURCE_SCAN_DEBT.some((entry) => entry.reason === tag), `unused reason tag: ${tag}`);
         assert.ok(description.length >= 20, `reason tag ${tag} needs a real explanation`);
     }
+});
+
+test("every debt entry's reason tag matches the content it describes (T-6282)", () => {
+    // 判据自身必须有非空审计面：词汇表里每个标签都要有判据、每条债都要被真正检查过，
+    // 否则"标签与内容不符"永远检测不到（判据沦为装饰 = 本门禁要防的形态本身）。
+    assert.deepEqual(
+        Object.keys(DEBT_REASON_CHECKS).sort(),
+        Object.keys(DEBT_REASONS).sort(),
+        "每个理由标签都必须配有内容判据，且不留无判据的死标签",
+    );
+    assert.ok(SOURCE_SCAN_DEBT.length >= 35, `audit surface collapsed: only ${SOURCE_SCAN_DEBT.length} debt entries`);
+    // 判据的**非平凡自检**：每个判据必须至少拒绝一个真实形态的反例，否则把判据改成
+    // 恒真（`() => true`）不会被发现——判据沦为装饰，正是本门禁要防的形态本身。
+    const DEBT_REASON_COUNTEREXAMPLES = {
+        // 有窗口模式但**不在 assert 内**（正是 kernel-endpoint-guard 当年的形态）
+        "css-window-scope": 'const x = source.match(/a[\\s\\S]*?b/);',
+        // 读原文断**代码**（无注释客体、无双视图）
+        "doc-comment-contract": 'assert.ok(source.includes("case x:"));',
+        // 读代码但不解析 JSON
+        "json-data": 'const t = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");',
+        // 走共享助手，没有自建归一
+        "smoke-harness": 'const t = readSourceText(path.join(root, "src", "index.ts"));',
+    };
+    for (const [tag, probe] of Object.entries(DEBT_REASON_COUNTEREXAMPLES)) {
+        assert.equal(
+            DEBT_REASON_CHECKS[tag](stripComments(probe)), false,
+            `reason tag ${tag} 的判据失去了判别力（对反例样本也放行，已是恒真）`,
+        );
+    }
+    const mismatched = [];
+    for (const entry of SOURCE_SCAN_DEBT) {
+        const text = stripComments(fs.readFileSync(path.join(root, entry.file), "utf8"));
+        if (!DEBT_REASON_CHECKS[entry.reason](text)) mismatched.push(`${entry.file} (${entry.reason})`);
+    }
+    assert.deepEqual(mismatched, [],
+        "理由标签与文件内容不符——标签描述的事实（见 DEBT_REASON_CHECKS）在该文件里不存在；"
+        + "应改走 readSourceText / 重新归类，而不是保留一个名不副实的标签",
+    );
 });
 
 test("the detector itself is not vacuous", () => {

@@ -1,14 +1,18 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
 const path = require("node:path");
+const {readSourceText} = require("./source-scan.cjs");
 
 // KERNEL_ENDPOINTS 是防 SSRF 的关键守卫：fetchKernelJson 只允许同源、硬编码的
 // 内核相对路径。此前全仓测试对它零覆盖，而白名单与 switch 分支分散在两处、
 // 必须成对修改——只改一处不会报错：漏加分支会让端点在 default 静默返回 null，
 // 漏加白名单会让分支永不可达。这与 D-354 揭示的"门禁看似存在实则失效"同类。
 const root = path.resolve(__dirname, "..");
-const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+// 走剥注释读取（T-6282）：这里的断言对象全是**代码**（白名单 Set、switch 分支、
+// fetch 字面量），注释里写一份同样的 `case "/api/…":` 不应该被数到。此前读原始
+// 文本才是它登记在 SOURCE_SCAN_DEBT 里的真债——而不是曾贴过的 `css-window-scope`
+// 标签（该文件一条窗口断言都没有，那处 `[\s\S]*?` 只是区间截取）。
+const source = readSourceText(path.join(root, "src", "index.ts"));
 
 // 只截取 fetchKernelJson 函数体，避免把其它 switch（例如生活组件代理分发）
 // 误当作内核端点分发来断言。
