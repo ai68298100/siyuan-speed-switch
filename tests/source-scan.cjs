@@ -17,11 +17,30 @@
 // 不要用它读 Markdown —— `docs/*.md` 里存在裸 URL（如 `| [X](https://github.com/…) |`），
 // 不在引号或反引号内，按 JS 词法会被当作行注释截断，造成扫描数据丢失。
 const fs = require("node:fs");
+const path = require("node:path");
 
 // 读取源码并做扫描前处理：CRLF 归一 + 剥注释。
 // 归一换行的原因：本仓 CRLF/LF 混用，按 `\n` 锚定的断言会因 CRLF 静默失配。
 function readSourceText(filePath) {
     return stripComments(fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n"));
+}
+
+// 相对仓库根的读取入口，供 tests/ 下的契约测试使用（`readSourceFile('src/index.scss')`）。
+// 与 readSourceText 的差别是**限定源码扩展名**：这不是洁癖，而是给
+// `tests/source-scan-coverage.test.cjs` 的"裸读登记"留一条不会烂的出口——
+// 该门禁把 `fs.readFileSync(path.join(..., 'src', ...))` 视作待登记项，迁移到本入口的
+// 文件才算真正还清债；若本函数对任意路径都放行，它就只是换了个写法的后门，
+// 读 JSON/Markdown 的理由（json-data / doc-comment-contract）也就无处登记了。
+const SOURCE_EXTENSIONS = new Set([".ts", ".js", ".cjs", ".mjs", ".scss", ".css"]);
+
+function readSourceFile(relativePath) {
+    const extension = path.extname(relativePath).toLowerCase();
+    if (!SOURCE_EXTENSIONS.has(extension)) {
+        throw new Error(
+            `readSourceFile() only reads source files (${[...SOURCE_EXTENSIONS].join(", ")}), got: ${relativePath}`,
+        );
+    }
+    return readSourceText(path.resolve(__dirname, "..", relativePath));
 }
 
 function stripComments(source) {
@@ -61,4 +80,4 @@ function stripComments(source) {
     return out;
 }
 
-module.exports = {stripComments, readSourceText};
+module.exports = {stripComments, readSourceText, readSourceFile};

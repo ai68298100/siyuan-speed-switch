@@ -92,7 +92,6 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/store-text-wrap-pretty.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-typography-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-ui-polish.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-width-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-will-change-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-word-break-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/sync-panel-stability.test.cjs", reason: "css-window-scope"},
