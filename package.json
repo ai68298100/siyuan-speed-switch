@@ -8,8 +8,9 @@
     "build": "webpack --config webpack.config.js --mode production",
     "test": "node tests/run-tests.cjs",
     "test:smoke": "node tests/mobile-card-smoke.cjs",
+    "test:smoke:layout": "node tests/mobile-toolbar-layout.cjs",
     "test:smoke:browser": "node tests/chromium-style-smoke.cjs",
-    "verify:release": "pnpm exec tsc --noEmit && pnpm build && pnpm test && pnpm test:smoke && pnpm test:smoke:browser"
+    "verify:release": "pnpm exec tsc --noEmit && pnpm build && pnpm test && pnpm test:smoke && pnpm test:smoke:layout && pnpm test:smoke:browser"
   },
   "keywords": [
     "siyuan",

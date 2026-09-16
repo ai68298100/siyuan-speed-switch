@@ -4368,8 +4368,18 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 // 手机端：单列堆叠（根节点带 sw-home--mobile 类，由渲染层按 isMobile 注入）
+//
+// 高度塌陷根因（本轮修复）：桌面画布靠 `.sw-home .sw-home__grid` 的
+// `grid-auto-rows: 40px` + 每卡 `grid-row: span N` 撑出面积。手机端单列后
+// 渲染层把 gridRow 写成 auto（CSS 侧同样 !important 置 auto），卡片行跨度归零，
+// 于是每张卡只剩一个 40px 行单元；再叠加 `overflow: hidden`，卡片内容被整片裁掉——
+// 表现就是"一行一个组件，但只显示一条细线、完全无法阅读"。
+// 手机端既然固定单列，列宽档位（2/4/8/12 列）已无意义，卡片也不该再继承 40px 行格。
+// 因此把行高交还内容：不同组件的条目多寡自然形成高低层次（这正是用户期待的"多尺寸"），
+// 同时用 min-height 托住骨架/空态的可读下限，用 max-height 防止超长列表淹没整屏。
 .sw-home--mobile .sw-home__grid {
     grid-template-columns: 1fr !important;
+    grid-auto-rows: auto !important;
     gap: 10px;
 }
 
@@ -4377,6 +4387,8 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     grid-column: 1 / -1 !important;
     grid-row: auto !important;
     width: 100%;
+    min-height: 112px;
+    max-height: 68vh;
 }
 
 // 手机端组件卡片触控优化：外层始终单列，内部操作至少 44px 触控高度，
@@ -4552,6 +4564,37 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
         border: 1px solid var(--b3-border-color);
         border-radius: 16px;
         background: var(--b3-theme-surface);
+    }
+}
+
+// ==================== 行2 芯片尺寸收口（手机顶栏文字被裁的根因修复） ====================
+// 收藏 / 设置 在行2 里是"图标 + 文字"芯片，但更早的纯图标规则
+// （.speed-switch.sw__mobile .sw__mobile-toolbar .sw__mobile-fav-btn）仍写着
+// width: 34px + padding: 0。该规则同为 4 类且源码更靠前，会压住上面 3 类的芯片规则：
+// 实测按钮被钳在 34px，其中标签只剩 18px 可用宽，而"收藏"两字需 24px →
+// 被 text-overflow: ellipsis 裁成单字"收"/"设"。
+// 修复方式：用同为 4 类、源码更后的选择器接管尺寸——宽度交还内容，纯图标形态
+// 由 min-width 保住原 34px 下限，因此 journal-btn 等无标签按钮视觉不变。
+.speed-switch.sw__mobile .sw__mobile-toolbar {
+    .sw__mobile-fav-btn,
+    .sw__settings-btn {
+        width: auto;
+        min-width: 34px;
+        height: 36px;
+        padding: 0 10px;
+        box-sizing: border-box;
+
+        // 图标不允许被 flex 压缩（否则 16px 星形被挤成 12px 变形）
+        > svg {
+            flex: none;
+            width: 16px;
+            height: 16px;
+        }
+    }
+
+    .sw__mobile-chip-label {
+        flex: 0 1 auto;
+        min-width: 0;
     }
 }
 

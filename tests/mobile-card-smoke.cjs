@@ -412,7 +412,9 @@ const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && pluginCss.includes('env(safe-area-inset-bottom, 0px)')
     && pluginCss.includes('prefers-reduced-motion: reduce')
     && /z-index:\s*2147483647/.test(pluginCss)
-    && source.includes("sortButton.innerHTML = '<svg><use xlink:href=\"#iconSort\"></use></svg>'");
+    // 排序按钮图标自带显式尺寸：裸 <svg> 在插件样式未就绪时会退回浏览器默认
+    // 300×150，顶栏错乱首帧（详见 tests/mobile-icon-fallback-contract.test.cjs）
+    && source.includes("sortButton.innerHTML = '<svg width=\"18\" height=\"18\"><use xlink:href=\"#iconSort\"></use></svg>'");
 console.log(`${responsiveRulesOk ? 'PASS' : 'FAIL'} responsive quick actions, mobile settings, and icon sort rules`);
 if (!responsiveRulesOk) allPassed = false;
 

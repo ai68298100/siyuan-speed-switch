@@ -75,6 +75,11 @@ function renderModuleIcon(doc, value) {
         const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("class", "sw__home-module-icon");
         svg.setAttribute("aria-hidden", "true");
+        // 显式尺寸兜底（同 index.ts 移动端顶栏的成因）：样式未就绪时裸 svg 会退回
+        // 浏览器默认 300×150，把组件卡片头撑爆。28px 与 header 内 accent chip 的实际
+        // 渲染尺寸一致，CSS 就绪后由其接管，属性只是不可能被撑大的下限保障。
+        svg.setAttribute("width", "28");
+        svg.setAttribute("height", "28");
         const use = doc.createElementNS("http://www.w3.org/2000/svg", "use");
         use.setAttribute("href", `#${icon}`);
         use.setAttribute("xlink:href", `#${icon}`);

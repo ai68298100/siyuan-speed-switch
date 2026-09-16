@@ -2,7 +2,7 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu, TEventBus} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
@@ -5687,7 +5687,7 @@ private rootIdOf(tab: Tab): string | null {
         const previous = this.historyDropdownClosers.get(container);
         previous?.dispose();
         container.innerHTML = `<button type="button" class="sw__history-trigger" aria-label="${this.i18n.openHistory}">
-    <svg><use xlink:href="#iconClock"></use></svg><span class="sw__history-trigger-text">${this.i18n.openHistory}</span><span class="sw__history-badge"></span>
+    <svg width="13" height="13"><use xlink:href="#iconClock"></use></svg><span class="sw__history-trigger-text">${this.i18n.openHistory}</span><span class="sw__history-badge"></span>
 </button><div class="sw__history-panel fn__none" role="menu"></div>`;
         const trigger = container.querySelector<HTMLElement>(".sw__history-trigger");
         const panel = container.querySelector<HTMLElement>(".sw__history-panel");
@@ -8014,12 +8014,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 && (!scroll || scroll.clientWidth > 0)
                 && toolbarRect.width <= bodyRect.width + 2;
             if (stableFrames >= 2 || (attempt >= 30 && hasFallbackGeometry)) {
-                // A late SVG sprite/style load can leave the search icon at
-                // its intrinsic size.  Clamp it before the first visible
-                // frame so the fallback cannot flash a giant icon.
-                if (!hasStableGeometry && icon) {
-                    icon.style.setProperty("width", "18px", "important");
-                    icon.style.setProperty("height", "18px", "important");
+                // 图标尺寸兜底：symbol 有了 CARD_ICON_SPRITE 兜底，**尺寸**此前仍完全依赖
+                // 插件 CSS。手机 WebView 首开（同步占用主线程时更慢）会让裸 <svg> 退回
+                // 浏览器默认 300×150，把顶栏撑成"巨型图标 + 控件竖排"——即"刚进去出现
+                // 大图标"。这里在可见前扫一遍容器，只修正实测已异常的图标，
+                // 正常路径一个节点都不碰，因此不带来任何视觉回归。
+                const clamped = clampOversizedIcons(mobileBody);
+                if (clamped > 0) {
+                    logger.warn("mobile switcher icon size fallback applied", {count: clamped});
                 }
                 mobileBody.classList.remove("sw__mobile--initializing");
                 mobileBody.style.removeProperty("visibility");
@@ -8131,14 +8133,22 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
     }
 
+    // 手机端弹窗骨架。
+    // 所有 <svg> 都显式写出 width/height 作为**固有尺寸兜底**：手机 WebView 首次打开时，
+    // 插件 index.css 可能尚未作用到这批新插入的节点，此时裸 <svg> 会退回浏览器默认尺寸
+    // （300×150），把顶栏撑成"巨大图标 + 控件竖排"的错乱首帧——即用户反馈的
+    // "刚进去出现大图标"。带 b3-button 类的图标有思源基础样式兜底所以看起来正常，
+    // 裸图标（放大镜/筛选/关闭/星标/齿轮/时钟）才会失控，故这里逐个补齐。
+    // 注意：HTML 属性优先级低于任何作者样式，CSS 就绪后仍由 .sw__search-icon 等
+    // 规则接管，正常路径视觉零变化。
     private buildMobileSwitcherHtml(): string {
         return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing" style="visibility:hidden;opacity:0;pointer-events:none">
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
-            <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
+            <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
             <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
             <button type="button" class="sw__search-filter-btn b3-tooltips b3-tooltips__s" aria-label="${this.i18n.searchFilters}">
-                <svg><use xlink:href="#iconFilter"></use></svg>
+                <svg width="15" height="15"><use xlink:href="#iconFilter"></use></svg>
             </button>
         </div>
         <button type="button" class="b3-button b3-button--text sw__sort-btn" aria-label="${this.i18n.setSortBy}"></button>
@@ -8151,15 +8161,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             <option value="titleDesc">${this.i18n.sortTitleDesc}</option>
         </select>
         <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn" aria-label="${this.i18n.close}">
-            <svg><use xlink:href="#iconClose"></use></svg>
+            <svg width="16" height="16"><use xlink:href="#iconClose"></use></svg>
         </button>
         <div class="sw__toolbar-row2">
             <button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn" aria-label="${this.i18n.favorites}">
-                <svg><use xlink:href="#iconStar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.favorites}</span>
+                <svg width="16" height="16"><use xlink:href="#iconStar"></use></svg><span class="sw__mobile-chip-label">${this.i18n.favorites}</span>
             </button>
             <div class="sw__history-dd"></div>
             <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}">
-                <svg><use xlink:href="#iconSettings"></use></svg><span class="sw__mobile-chip-label">${this.i18n.settingsShort}</span>
+                <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg><span class="sw__mobile-chip-label">${this.i18n.settingsShort}</span>
             </button>
         </div>
             </div>
@@ -8214,7 +8224,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const updateSortButton = () => {
             if (!sortButton) return;
             const label = sortLabels[sortSelect.value] || this.i18n.sortMru;
-            sortButton.innerHTML = '<svg><use xlink:href="#iconSort"></use></svg>';
+            // 显式尺寸兜底：与 buildMobileSwitcherHtml 同因（样式未就绪时裸 svg 会退回 300×150）
+            sortButton.innerHTML = '<svg width="18" height="18"><use xlink:href="#iconSort"></use></svg>';
             sortButton.title = label;
             sortButton.setAttribute("aria-label", `${this.i18n.setSortBy}: ${label}`);
         };

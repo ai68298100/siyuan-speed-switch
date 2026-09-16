@@ -1184,4 +1184,59 @@ function groupTabsByMode(tabs, mode, ctx) {
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
 }
 
-module.exports = {graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+// ==================== 移动端图标尺寸兜底 ====================
+// 与 index.ts 的 CARD_ICON_SPRITE 是同一类问题的两半：symbol 有了兜底，但**尺寸**
+// 仍完全依赖插件 CSS。手机 WebView 首次打开弹窗（同步占用主线程时更慢）时，
+// index.css 可能尚未作用到新插入的节点，裸 <svg> 会退回浏览器默认尺寸 300×150，
+// 把顶栏撑成"巨型图标 + 控件竖排"的错乱首帧——即用户反馈的"刚进去出现大图标"。
+// 同一帧里带 b3-button 类的图标有思源基础样式兜底，所以只有裸图标
+// （放大镜/筛选/关闭/星标/齿轮/时钟/排序）会失控。
+// 表中尺寸与 src/index.scss 中同名控件的声明值一一对应，由契约测试锁定两者一致，
+// 避免日后改样式却漏改兜底表。
+const MOBILE_ICON_SIZE_FALLBACKS = Object.freeze([
+    {selector: ".sw__search-icon", size: 14},
+    {selector: ".sw__search-filter-btn svg", size: 15},
+    {selector: ".sw__sort-btn svg", size: 18},
+    {selector: ".sw__mobile-close-btn svg", size: 16},
+    {selector: ".sw__mobile-fav-btn svg", size: 16},
+    {selector: ".sw__settings-btn svg", size: 16},
+    {selector: ".sw__history-trigger svg", size: 13},
+    {selector: ".sw__icon-btn svg", size: 16},
+]);
+// 32px 是移动端顶栏所有图标的上限（其中最大的排序图标为 18px）；
+// 实测超过它即说明样式未生效、图标退回了浏览器默认尺寸，可判定为异常。
+const OVERSIZED_ICON_THRESHOLD_PX = 32;
+const DEFAULT_ICON_FALLBACK_PX = 16;
+
+// 在弹窗可见前扫描容器，只修正**实测已异常**的图标，返回修正数量（0 表示一切正常）。
+// 判定依据是实测矩形而非 CSS 声明值，因此不受样式是否就绪影响；
+// jsdom 等无布局环境实测恒为 0，天然不会误触发，可安全用于任意容器。
+function clampOversizedIcons(root) {
+    if (!root || typeof root.querySelectorAll !== "function") return 0;
+    let fixed = 0;
+    Array.from(root.querySelectorAll("svg")).forEach((svg) => {
+        if (typeof svg.getBoundingClientRect !== "function") return;
+        const rect = svg.getBoundingClientRect();
+        if (!rect) return;
+        if (rect.width <= OVERSIZED_ICON_THRESHOLD_PX && rect.height <= OVERSIZED_ICON_THRESHOLD_PX) return;
+        let size = DEFAULT_ICON_FALLBACK_PX;
+        for (const entry of MOBILE_ICON_SIZE_FALLBACKS) {
+            try {
+                if (svg.matches(entry.selector)) {
+                    size = entry.size;
+                    break;
+                }
+            } catch (_) {
+                // 单条选择器不受支持时继续尝试下一条，不能因此放弃整轮兜底
+            }
+        }
+        svg.setAttribute("width", String(size));
+        svg.setAttribute("height", String(size));
+        svg.style.setProperty("width", `${size}px`, "important");
+        svg.style.setProperty("height", `${size}px`, "important");
+        fixed += 1;
+    });
+    return fixed;
+}
+
+module.exports = {MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};

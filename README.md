@@ -261,7 +261,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5729 项测试（162 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5740 项测试（163 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -278,6 +278,7 @@ const unregister = speedSwitch.registerHomeModule({
 | UI 测试 | 覆盖范围 |
 | --- | --- |
 | `tests/mobile-card-smoke.cjs` | 移动端卡片、操作按钮、单列布局、缩略图和设置开关 CSS 不变量 |
+| `tests/mobile-toolbar-layout.cjs` | 真实 Chromium 中的手机顶栏芯片可读性、组件面板卡片高度带与"样式未就绪时图标不失控"（含裸 svg 对照） |
 | `tests/chromium-style-smoke.cjs` | 实际 Chromium 中的移动卡片、开关和全库搜索卡片计算样式，可叠加宿主/主题 CSS |
 | `tests/live-siyuan-smoke.cjs` | 连接测试浏览器中的真实思源桌面前端，检查工具栏、快捷入口和响应式设置页 |
 | `tests/live-siyuan-mobile-smoke.cjs` | 连接思源移动前端，检查移动分支、单行工具栏、弹窗边界和设置页溢出 |
@@ -290,10 +291,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5729 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5740 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
+pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、5729 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、5740 项测试和三套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

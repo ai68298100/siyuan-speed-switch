@@ -239,7 +239,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 162 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5729 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 163 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5740 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -256,6 +256,7 @@ const unregister = speedSwitch.registerHomeModule({
 | UI test | Scope |
 | --- | --- |
 | `tests/mobile-card-smoke.cjs` | Mobile card, action buttons, single-column grid, thumbnail, and settings-switch CSS invariants |
+| `tests/mobile-toolbar-layout.cjs` | Real-Chromium gate for mobile toolbar chip legibility, widget-panel card height band, and icon bounding before the plugin stylesheet applies (with a bare-svg control) |
 | `tests/chromium-style-smoke.cjs` | Computed styles for mobile cards, switches, and workspace search cards in real Chromium, optionally layered with host/theme CSS |
 | `tests/live-siyuan-smoke.cjs` | Connects to a test browser running the real SiYuan desktop frontend and checks the toolbar, quick actions, and responsive settings |
 | `tests/live-siyuan-mobile-smoke.cjs` | Connects to SiYuan's mobile frontend and checks the mobile branch, single-line toolbar, dialog bounds, and settings overflow |
@@ -268,10 +269,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5729)
+pnpm test               # run every unit, contract, and host release test (currently 5740)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
+pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
-pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)
+pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and all three UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
