@@ -13,3 +13,6 @@ package.zip
 # 本地实测截图（烟测产物，不入库）
 live-siyuan-*.png
 ui-smoke.png
+
+# 手机端布局门禁的人工复核截图（本地验证产物，不入库）
+ui-fix-verify.png

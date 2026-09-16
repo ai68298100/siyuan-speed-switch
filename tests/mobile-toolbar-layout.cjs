@@ -126,6 +126,11 @@ const controlHtml = `<div class="speed-switch sw__body sw__mobile"><div class="s
 const html = `<!doctype html>
 <html><head><meta charset="utf-8">
 ${links}
+<style>
+/* 贴近真机逻辑宽度（iPhone 390pt）：避免测量页自身被内容撑宽后，
+   让 SMOKE_SCREENSHOT 产物与门禁都在一个"比手机更宽"的伪环境下评估。 */
+html, body { margin: 0; padding: 0; max-width: 390px; overflow-x: hidden; }
+</style>
 </head><body>
 ${sprite}
 ${toolbarHtml}
@@ -183,6 +188,9 @@ window.addEventListener('load', () => {
     bareHeight: Math.round(bare.height),
     toolbarHeight: Math.round(document.querySelector('.sw__toolbar').getBoundingClientRect().height),
   };
+  // 测量已采集，恢复样式表后再落结果：--screenshot 拍的是页面最终状态，
+  // 留着禁用态会让截图（和 SMOKE_SCREENSHOT 产物）呈现夸张的裸 svg，无法用于人工复核。
+  if (pluginSheet) pluginSheet.disabled = false;
   document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
 });
 </script>
