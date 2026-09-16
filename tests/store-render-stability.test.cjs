@@ -1,6 +1,16 @@
-const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const css=fs.readFileSync(path.join(__dirname,'..','src','index.scss'),'utf8');
-test('card backface hidden',()=>assert.match(css,/\.sw-home-store__card[\s\S]*?backface-visibility: hidden/));
-test('card establishes composite layer',()=>assert.match(css,/\.sw-home-store__card[\s\S]*?transform: translateZ\(0\)/));
+const test=require('node:test');const assert=require('node:assert/strict');
+const {readSourceFile}=require('./source-scan.cjs');
+const {declaresIn,parseRules}=require('./css-block-scan.cjs');
+
+// 2026-09-16（T-6280 / D-396 第二十二批）：5 条窗口断言迁移为块级；2 条否定式窗口
+// （backface…url( / translateZ…javascript）改逐规则检查——声明这两条属性的规则全文件各 1 条；
+// 1 条 `* rule closes` 删除（30 → 29 条测试）。读取改用 readSourceFile。
+const css=readSourceFile('src/index.scss');
+const base={topLevel: true};
+const backfaceRules=parseRules(css).filter((rule)=>/backface-visibility: hidden/.test(rule.declarations));
+const translateZRules=parseRules(css).filter((rule)=>/transform: translateZ\(0\)/.test(rule.declarations));
+test('card backface hidden',()=>assert.ok(declaresIn(css,'.sw-home-store__card',/backface-visibility: hidden/,base)));
+test('card establishes composite layer',()=>assert.ok(declaresIn(css,'.sw-home-store__card',/transform: translateZ\(0\)/,base)));
 test('card keeps hover transform',()=>assert.match(css,/transform: translateY\(-1px\)/));
 test('card keeps isolation',()=>assert.match(css,/isolation: isolate/));
 test('card keeps containment',()=>assert.match(css,/contain: layout paint/));
@@ -13,8 +23,8 @@ test('render stability preserves forced colors',()=>assert.match(css,/forced-col
 test('render stability preserves reduced motion',()=>assert.match(css,/prefers-reduced-motion: reduce/));
 test('backface property standard',()=>assert.match(css,/backface-visibility/));
 test('transform property standard',()=>assert.match(css,/transform/));
-test('render stability no url dependency',()=>assert.doesNotMatch(css,/backface-visibility: hidden[\s\S]*?url\(/));
-test('render stability no script dependency',()=>assert.doesNotMatch(css,/transform: translateZ\(0\)[\s\S]*?javascript/));
+test('render stability no url dependency',()=>{ assert.ok(backfaceRules.length>0,'审计面塌缩'); for(const rule of backfaceRules) assert.doesNotMatch(rule.declarations,/url\(/); });
+test('render stability no script dependency',()=>{ assert.ok(translateZRules.length>0,'审计面塌缩'); for(const rule of translateZRules) assert.doesNotMatch(rule.declarations,/javascript/); });
 test('card width remains bounded',()=>assert.match(css,/max-width: 100%/));
 test('card min width remains bounded',()=>assert.match(css,/min-width: 0/));
 test('card box model remains stable',()=>assert.match(css,/box-sizing: border-box/));
@@ -28,4 +38,3 @@ test('card touch remains stable',()=>assert.match(css,/touch-action: manipulatio
 test('card stacking remains stable',()=>assert.match(css,/isolation: isolate/));
 test('card scroll remains stable',()=>assert.match(css,/scroll-margin-block/));
 test('render stability contract deterministic',()=>assert.ok(css.includes('backface-visibility: hidden')&&css.includes('translateZ(0)')));
-test('render stability block closes',()=>assert.match(css,/backface-visibility: hidden[\s\S]*?\}/));

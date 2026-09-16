@@ -3,10 +3,16 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+// 2026-09-16（T-6280 / D-396 第二十一批）：CSS 侧 6 条窗口断言迁移为块级；TS 源码读取
+// 改走 readSourceText（源码字面契约，登记理由见债清单）。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const css = readSourceText('src/index.scss');
+const base={topLevel: true};
 
 test('store root has region semantics', () => assert.match(storeUiSource, /root\.setAttribute\("role", "region"\)/));
 test('store root exposes a label', () => assert.match(storeUiSource, /root\.setAttribute\("aria-label", this\.i18n\.homeStoreTitle\)/));
@@ -48,10 +54,10 @@ test('store group labels are scoped', () => assert.match(storeUiSource, /groupLa
 test('store group toggles retain a group key', () => assert.match(storeUiSource, /groupToggle\.dataset\.group = label/));
 test('store group toggles have tooltips', () => assert.match(storeUiSource, /groupToggle\.title = groupToggle\.getAttribute\("aria-label"\)/));
 test('store guide has a tooltip', () => assert.match(storeUiSource,/guideButton\.title = this\.i18n\.homeStoreGuideTitle/));
-test('store viewport contains overscroll', () => assert.match(css, /\.sw-home-store \{[\s\S]*?overscroll-behavior: contain/));
-test('store viewport reserves scrollbar space', () => assert.match(css, /\.sw-home-store \{[\s\S]*?scrollbar-gutter: stable/));
-test('empty tabs are visually de-emphasized', () => assert.match(css, /&\[data-count="0"\] \{ opacity: \.58/));
+test('store viewport contains overscroll', () => assert.ok(declaresIn(css, '.sw-home-store', /overscroll-behavior: contain/, base)));
+test('store viewport reserves scrollbar space', () => assert.ok(declaresIn(css, '.sw-home-store', /scrollbar-gutter: stable/, base)));
+test('empty tabs are visually de-emphasized', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__tab\[data-count="0"\]$/, /opacity: \.58/, base)));
 test('store group labels wrap', () => assert.match(css, /\.sw-home-store__group-label \{ min-width: 0; overflow-wrap: anywhere/));
-test('hidden cards are skipped by content visibility', () => assert.match(css, /\.sw-home-store__card\[aria-hidden="true"\][\s\S]*?content-visibility: hidden/));
-test('hidden empty state is visually de-emphasized', () => assert.match(css, /\.sw-home-store__filter-empty\[aria-hidden="true"\][\s\S]*?opacity: \.72/));
-test('summary remains selectable', () => assert.match(css, /\.sw-home-store__summary[\s\S]*?user-select: text/));
+test('hidden cards are skipped by content visibility', () => assert.ok(declaresIn(css, '.sw-home-store__card[aria-hidden="true"]', /content-visibility: hidden/, base)));
+test('hidden empty state is visually de-emphasized', () => assert.ok(declaresIn(css, '.sw-home-store__filter-empty[aria-hidden="true"]', /opacity: \.72/, base)));
+test('summary remains selectable', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /user-select: text/, base)));

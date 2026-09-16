@@ -1,5 +1,11 @@
 # 进度
 
+2026-09-16 T-6280 第十八批（5 个小文件一次性迁完，见 D-396 补充）：render-state 6、ui-polish 5、search-interaction 7、filter-state 6、render-stability 5，共 29 条 / 5 文件。**① render-state**：CSS 侧 aria-busy/focus-kind 嵌套按展开选择器（`.sw-home-store[aria-busy="true"]` 等）；TS 侧 1 条 `pendingCount="0"[\s\S]*?aria-busy` 改"锚点 + 有界窗口 + 顺序检查"（先 pendingCount 清零 → 提示 → restoreStoreView → 解除 busy），负向验证（删 restoreStoreView 行 → 精确 FAIL，md5 还原）。**② ui-polish**：移动端 search 换行/输入框占满用 `{atRule}` 钉 560px 分支。**③ search-interaction**：TS 侧 2 条改"锚定 click 处理器 + 顺序检查"（applyFilter 在 focus 之前）；CSS height 断言被 `min-height: 32px` 替身满足——收紧行首锚定（`/(^|
+)height:/`）后注入工具又暴露"声明正则含 
+ 锚时无法定位删除行"的盲区，md5 手工补验（删 height 保 min-height → 精确 FAIL）。**④ filter-state**：空 tab 的数据属性选择器尾部锚定。**⑤ render-stability**：backface/translateZ 各 1 条规则，逐规则否定。**教训再现**：heredoc 折叠反斜杠三次（含 `
+` 变真实换行把 JS 正则截断）——含反斜杠的脚本一律 Write 落盘。**成本**：测试 5773→**5772**（render-stability 删 1 条 `
+}` 冗余），README 双语与快照同步（zip 313077 不变）；`verify:release` 独占全链绿；债内余 **W1 49 / W2 78 / W3 17 = 144 条 / 15 文件**（已迁 22 个文件共 224 条）。
+
 2026-09-16 T-6280 第十七批：第十七个文件迁移（`store-preview-disclosure-contract`，见 D-396 补充）。**① 迁移**：CSS 侧 7 条窗口（`&__meta` ×2、`&__meta-chip` ×4、`&__meta` 复合锚 ×1）→ 9 条块级（多出的 2 条是 `&.is-network`/`&.is-privacy` 两个"仅查文本存在"的 tone 断言收紧到具名块 `.sw-store-preview__meta-chip.is-network`/`.is-privacy`，各自断言真实声明 border-color/opacity）。**② TS 侧**：`addMeta(…homeStoreSource[\s\S]*?"source")` 按 home-store-ui.ts:112 原文改精确调用断言，手工负向验证（改 tone 值 → 精确 FAIL，md5 还原）；TS 裸读改走 readSourceText。31 条测试一条未删。判别力 9/9 提取断言全过，md5 还原。**③ 成本**：测试数不变（5773）；zip 实测 313077 与快照一致；债内余 **W1 71 / W2 85 / W3 17 = 172 条 / 20 文件**（已迁 17 个文件共 196 条）。
 
 2026-09-16 T-6280 第十六批：第十六个文件迁移（`store-scroll-contract`，见 D-396 补充）。**① 迁移**：7 条窗口 → 5 条块级 + 1 条逐规则守卫（匹配 grid 的全部规则禁 `overflow: hidden`）+ **删除 1 条手写窗口**：`gridBlock` 按 `/\.sw-home-store__grid\s*\{([\s\S]*?)
