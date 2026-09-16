@@ -69,7 +69,6 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/store-font-metrics.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-forced-colors.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-group-semantics-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-hyphenation-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-mobile-external-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-mobile-layout-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-motion-accessibility.test.cjs", reason: "css-window-scope"},

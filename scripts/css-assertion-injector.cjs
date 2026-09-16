@@ -17,6 +17,7 @@
 //   node scripts/css-assertion-injector.cjs tests/store-xxx-contract.test.cjs [样式表] [--old=HEAD~1]
 //   [--probe='<选择器>@@<声明文本>@@expect=<必须失败项1>|<必须失败项2>']…   插入式探针
 //   [--probe='@<选择器>@@-<声明正则>@@expect=<测试名>']…                    删除式探针，作用域任意深度
+//   （插入文本以 `-` 开头时写 `\-`（如 `\-webkit-hyphens: auto`），否则会被当成删除式探针）
 //   （探针可重复；用于验证工具提取不到的断言：循环式、deepEqual 式、文件级）
 //
 // 前提与边界：
@@ -420,7 +421,12 @@ function main() {
         });
         let injection = null;
         let line = 0;
-        if (valueField.startsWith("-")) {
+        // 插入文本以 `-` 开头（如 `-webkit-hyphens: auto`）会被当成删除式哨兵——实测
+        // `standard property` 的探针就这样被静默跳过。约定 `\-` 前缀转义为插入。
+        if (valueField.startsWith("\\-")) {
+            injection = {mode: "insert", index: rules[0] ? rules[0].startLine - 1 : -1, text: valueField.slice(1)};
+            line = rules[0] ? rules[0].startLine : 0;
+        } else if (valueField.startsWith("-")) {
             const re = new RegExp(valueField.slice(1));
             // 在匹配到的规则里找**第一条真有该声明的**：不能用 `rules[0]`——同一个选择器常有
             // 多条规则（基础 + 若干 at-rule 覆盖），首条未必是承载该声明的那条（实测
