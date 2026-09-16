@@ -83,5 +83,5 @@ test("widget store functional groups cover every built-in exactly once", () => {
 test("new configurable widgets open setup after the explicit add action", () => {
     assert.match(source, /let createdInstance:/);
     assert.match(source, /if \(createdInstance && Array\.isArray\(def\.configSchema\)/);
-    assert.match(source, /this\.openHomeConfigForm\(createdInstance, def\.configSchema/);
+    assert.match(source, /openHomeConfigForm\.call\(this, createdInstance, def\.configSchema/);
 });

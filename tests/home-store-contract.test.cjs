@@ -5,6 +5,8 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+// R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
+const configFormSource = fs.readFileSync(path.join(root, "src", "home-config-form.ts"), "utf8");
 
 test("widget store previews refresh real data and separate size selection from commit", () => {
     assert.match(source, /controller\.mount\(\);\s*const markPreviewReady = \(\) =>/);
@@ -24,7 +26,7 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /homeStoreConditionalHint/);
     assert.match(source, /addedInstance && Array\.isArray\(def\.configSchema\)/);
     assert.match(source, /sw-home-store__configure/);
-    assert.match(source, /openHomeConfigForm\(addedInstance, def\.configSchema/);
+    assert.match(source, /openHomeConfigForm\.call\(this, addedInstance, def\.configSchema/);
     assert.match(source, /homeStoreSupportedSurfaces/);
     assert.match(source, /sw-home-store__support/);
     assert.match(source, /selectedTile = tile;\s*tile\.classList\.add\("is-selected"\)/);
@@ -55,14 +57,14 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /else if \(registration\.registered\) \{\s*this\.homeModuleOpens\.delete\(moduleId\)/);
     assert.match(source, /clearDeferredRefreshes\(\)/);
     assert.match(source, /panelEventCleanup\?\.\(\)/);
-    assert.match(source, /field\.type === "document"/);
-    assert.match(source, /this\.currentDocumentSetEntries\(\)\.slice\(0, 40\)/);
-    assert.match(source, /input\.type = "date"/);
-    assert.match(source, /input\.min = "1900-01-01"/);
-    assert.match(source, /input:invalid, select:invalid/);
-    assert.match(source, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/);
-    assert.match(source, /homeConfigUnavailableValue/);
-    assert.match(source, /homeConfigReset/);
+    assert.match(configFormSource, /field\.type === "document"/);
+    assert.match(configFormSource, /this\.currentDocumentSetEntries\(\)\.slice\(0, 40\)/);
+    assert.match(configFormSource, /input\.type = "date"/);
+    assert.match(configFormSource, /input\.min = "1900-01-01"/);
+    assert.match(configFormSource, /input:invalid, select:invalid/);
+    assert.match(configFormSource, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/);
+    assert.match(configFormSource, /homeConfigUnavailableValue/);
+    assert.match(configFormSource, /homeConfigReset/);
     assert.match(source, /sw-home__empty-store/);
     assert.match(source, /homeEmptyOpenStore/);
     assert.match(source, /tabBar\.setAttribute\("role", "tablist"\)/);

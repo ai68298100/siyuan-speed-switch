@@ -5,6 +5,8 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+// R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
+const configFormSource = fs.readFileSync(path.join(root, 'src', 'home-config-form.ts'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
 
 test('preview captures its opener', () => assert.match(source, /const opener = document\.activeElement instanceof HTMLElement/));
@@ -73,7 +75,7 @@ test('add action persists home state', () => assert.match(source, /this\.saveHom
 test('add action rerenders store', () => assert.match(source, /this\.saveHomeState\(next\);\s*if \(!added && def\.availability === "conditional"\)/));
 test('conditional add shows setup hint', () => assert.match(source, /homeStoreConditionalHint/));
 test('configure button exposes dialog semantics', () => assert.match(source, /configButton\.setAttribute\("aria-haspopup", "dialog"\)/));
-test('configure button opens config form', () => assert.match(source, /configButton\.onclick = \(\) => \{\s*this\.openHomeConfigForm/));
+test('configure button opens config form', () => assert.match(source, /configButton\.onclick = \(\) => \{\s*openHomeConfigForm\.call\(this/));
 test('remove button carries remove action', () => assert.match(source, /removeButton\.dataset\.action = "remove"/));
 test('remove button invokes instance removal', () => assert.match(source, /removeButton\.onclick = \(\) => \{ this\.removeHomeInstance\(added\.instanceId\)/));
 test('preview button exposes dialog semantics', () => assert.match(source, /previewButton\.setAttribute\("aria-haspopup", "dialog"\)/));

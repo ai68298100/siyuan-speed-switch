@@ -1,6 +1,14 @@
 # TODO
 
 
+## T-6241~T-6244 重构批次 R3：配置表单拆分（2026-09-16，已完成）
+
+- [x] T-6241 新建 `src/home-config-form.ts`（~380 行）：openHomeConfigForm（324 行方法体，含 renderField/placeholderText 闭包与 textarea 分支）自 index.ts 4024~4347 行按字节原样迁入；`this` 参数模式绑定宿主（HomeConfigFormHost 7 成员：i18n/isMobile/homeRuntime/getHomeState/saveHomeState/loadNotebooks/currentDocumentSetEntries）——R3 依赖面为三批中最小
+- [x] T-6242 新建 `src/store-labels.ts`：resolveStoreNetworkLabel/resolveStorePrivacyLabel 两个纯函数收纳（index.ts 顶部定义，商店卡片与配置表单两处消费），index.ts 11126 行（-316）；4 个调用点改 `.call(this)`
+- [x] T-6243 契约同步（本批改动量最大项）：4 个测试文件 100+ 条断言按"真实正则匹配判定"自动分流——store-mobile-layout 97 条、home-store-contract 8 条方法体断言改指 configFormSource，5 条调用点断言同步 `.call(this` 形态；生产图 WIRED + home-config-form/store-labels、闭包 36→38
+- [x] T-6244 负向验证（删 reportValidity 行 → store-mobile-layout 精确 1 项失败 → 字节级还原）；发布矩阵同步（index.js 601057、package.zip 308125）；verify:release 独占全绿（5691/5691 + smoke 77 PASS）；refactor-candidates 补 R3 执行记录；记录 D-377
+
+
 ## T-6236~T-6240 重构批次 R4：设置页 UI 构建外迁（2026-09-16，已完成）
 
 - [x] T-6236 新建 `src/settings-sections.ts`（1068 行）：16 个设置页 UI 构建函数（区域 A 13 个：外观/行为/面板/Dock/主页/移动端/日记/收藏 4 件套等；区域 B 3 个：快捷动作 + 传输控件 + 文档集）自 index.ts 三个区域按字节原样迁入；`this` 参数模式绑定宿主（SettingsSectionsHost 38 成员），分节互调 8 处改为同模块直接调用

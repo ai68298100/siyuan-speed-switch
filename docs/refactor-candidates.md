@@ -57,6 +57,8 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 | | | | | |
 | > **R2 执行记录（2026-09-16，D-375，T-6232）**：实际搬移为 13 个外部组件注册（11 个直接 `register` + 2 个 `registerExternalFeed`，原清单低估了 feed 助手拆分），共 243 行（含成对注释）按字节原样迁入 `src/home-external-adapters.ts`（273 行，`this` 参数模式绑定宿主 i18n 与内核代理 fetch，块内接线形态零漂移）。index.ts 12681 → 12442 行。`lifeModuleIds`/`clockModuleIds`/`BUILTIN_GROUPS` 属于运行时行为逻辑（心跳、移动端尺寸、商店分组），按语义保留在 index.ts。契约同步：component-availability-audit 双文件扫描、external-widget-availability-contract 28 条断言改指新文件、external-widget-model 6 处改指、生产闭包 34→35。负向验证 2 轮（删 register → audit/contract 精确失败 → 字节级还原）。`index.js` 601480 → 601526 bytes。R4 候选顺位递补。 | | | | |
 | **R3：配置表单拆分** | `openHomeConfigForm`(329) + renderField 相关 → `home-config-form.ts` | ~400 | 中（controls Map 类型与 placeholder token 耦合 i18n） | 配置渲染独立；字段类型可继续扩展 |
+| | | | | |
+| > **R3 执行记录（2026-09-16，D-377，T-6241~T-6244）**：实际搬移 openHomeConfigForm 方法体 324 行（候选清单 329 系误计入 openHomeWidgetStore 前置注释），字节原样迁入 `src/home-config-form.ts`（this 参数模式，HomeConfigFormHost 仅 7 成员——依赖面三批最小）；附带收纳 `src/store-labels.ts`（resolveStoreNetworkLabel/resolveStorePrivacyLabel，两处消费的纯函数）。index.ts 11458→11126 行。契约同步 100+ 条方法体断言经"真实正则匹配判定"脚本自动分流（store-mobile-layout 97 条、home-store-contract 8 条改指 configFormSource，保守保留 66 条两边命中者）+ 5 条调用点断言同步 `.call(this` 形态；生产闭包 36→38。负向验证：删 reportValidity 行 → 精确 1 项失败 → 字节级还原。index.js 601057、package.zip 308125；verify:release 独占全绿。R5 候选顺位递补。 | | | | |
 | **R4：设置页拆分** | `buildSettingsDocumentSets`(315) + `buildSettingsQuickActions`(221) + `buildSettings*` 系列 → `settings-sections.ts` | ~800 | 低-中（各节相对独立） | index.ts 减约 6% |
 | **R5：搜索链路拆分** | `bindDocSearchFilter`(317) + `runDocSearchFetch`(117) → `doc-search-ui.ts`（`path-filter-model` 已独立） | ~500 | 中（D-366/D-365 的门禁测试锁定接线形态，搬移须同步契约） | 搜索 UI 与模型解耦 |
 | **R6：util.js 去重** | graphemeLength/normalizeLabel 重复实现收敛（D-349 已知遗留） | n/a（跨文件） | 低（生产依赖图有边变化，包体需复核） | 消除 4 处 Segmenter 重复持有 |
@@ -66,7 +68,7 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 1. ~~**先做 R2（外部组件注册外迁）**~~：✅ 已交付（2026-09-16，D-375）。风险最低、契约测试最完备（三批扩充的 11 个组件全部有 availability-contract 行锁定接线形态），且直接服务后续扩充节奏——新组件不再让 index.ts 增长。可独立成一个批次先行验证搬移流程。
 2. ~~**再做 R4（设置页拆分）**~~：✅ 已交付（2026-09-16，D-376，T-6236~T-6240）。各节独立、互不纠缠，作为搬移流程的第二次演练。**执行记录**：实际外迁 16 个构建函数共 984 行（超 ~800 预估，因区域 A 内夹带 buildFavGroupRowActions、区域 B 内夹带 buildQuickActionsTransferControls 两处依赖），index.ts 12442→11458 行；`src/settings-sections.ts` 1068 行（this 参数模式 + SettingsSectionsHost 38 成员）；类型经 `import type` 从 "./index" 引用（10 个类型加 export，编译期擦除零运行时循环）；4 个共享数据方法（getDocumentSets 等）按边界裁定留宿主。契约同步：home-store-guide 1 条改指、mobile-card-smoke 33 条断言按归属分流（18 留 index / 15 改指）、生产闭包 35→36。负向验证 3 轮（含 1 次注入无效自纠：子串包含使改名注入失效，改删行验证）。index.js 601102、package.zip 307961；verify:release 干净全绿。教训：两次 verify:release 并发运行会产生构建竞争假失败，须独占运行。
 3. **R1（商店拆分）单独立项**：预期削减最大但状态机交织最深，建议在 R2/R4 验证搬移方法后进行，且需要先补商店渲染快照类契约测试再动手。
-4. **R3/R5 随后**；**R6** 独立小批次（涉及生产依赖图与包体复核）。
+4. **R3 已交付（D-377）**；**R5** 递补为下一候选；**R6** 独立小批次（涉及生产依赖图与包体复核）。**R1** 仍需先补商店渲染契约再单独立项（待孙堃确认）。
 
 ## 5. 不建议动的部分
 
