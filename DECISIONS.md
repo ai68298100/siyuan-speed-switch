@@ -527,3 +527,5 @@
 
 2026-09-17 D-396 更正（撤销 T-122~T-194 的批量完结标记）：**判据冲突的裁决**——第二十八批以"实现存在 + 测试覆盖"为据翻转 40 个复选框，但 TODO 既定判据是**生产图可达**（production-graph-isolation 门禁锁定 14 个契约模块不得进入生产 bundle，D-111 约束接线）。两者冲突时以台账判据为准：复选框恢复 in-progress，门禁补齐的成果保留并记录。**流程教训**：批量翻转长系列任务的复选框前，必须先检索 TODO 内是否有关于该系列状态的显式说明（本次说明就写在台账里，却被忽略）；审计脚本只回答"实现是否存在"，不回答"是否应该标记完成"。
 
+2026-09-17 分支收拢（ROADMAP 执行顺序 #2 完成）：**逐支差异审查结论**——10 个本地分支全部关闭。① 3 个已完全合并（codex/home-ui-final、codex/quick-ui-final、feature/search-foundation，ahead=0）用安全删除；② 7 个 feature 分支各领先 1 个提交（2026-09-07，pre-v0.17），经 token 级差异审计确认**全部被 main 超越**：icon-fallback 的兜底逻辑在 main 已实现为更完整的 `resolveIconReference`（util.js，16 处测试引用）；search-opened-content 的 `buildOpenedDocumentScope`/`buildOpenedDocumentSearchRequest` 与 7 处测试已在 main；open-history 29/30 token 在 main；mobile-stability/quick-action-platform 3/3 与 2/2 完全在 main；search-global 与 mobile-sort-audit 的残留差异仅为局部变量名与 smoke 变量名。**执行**：7 个 worktree（全部干净，无未提交工作）连同分支一并移除；feature/quick-actions（ahead=0）安全删除。**保留**：codex/home-ui-final 与 codex/quick-ui-final 两分支被 codex 工具的 worktree 占用且工作区各有 6 个未提交文件——非本会话产物，留给维护者处置；origin 上的 7 个远端分支未动，远端清理属 push 权限范围。
+
