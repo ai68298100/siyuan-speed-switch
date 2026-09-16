@@ -5135,6 +5135,10 @@ $sw-ease-sym: cubic-bezier(0.65, 0, 0.35, 1);
     color: var(--b3-theme-on-background);
     font-size: 12px;
     cursor: pointer;
+    // 同其余店内交互控件（add/configure/remove/group-toggle/…）一致：去掉移动端
+    // 双击缩放延迟。此前缺这条，旧门禁靠 `__size` 前缀匹配 `__sizes` 的文本假绿
+    // （T-6280 第十一批迁移时实证）。
+    touch-action: manipulation;
     // 不用 transition: all —— 它会监听包括布局属性在内的所有变化，浏览器无法
     // 针对具体属性优化，意外的属性变化还会触发多余重排。此处按真实交互态显式
     // 列出：hover/focus 改 border-color + color，is-selected 另改 background，
