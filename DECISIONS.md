@@ -519,3 +519,5 @@
 
 2026-09-17 D-396 补充（T-6281 完成：smoke 脚手架并入统一扫描口径）：**① 迁移即审计**：readSource 改 readSourceText（剥注释）后立即暴露 2 条只命中注释的死检查——与全仓裸读迁移的发现一致：**依赖注释文本的断言是"用注释喂门禁"的产物**。改绑真实代码（renderHomeModuleView 入口；home-runtime 的 moduleDefinitions 归一化基座）。**② 负向验证的注入强度**：首版注入用"子串前缀改名"（renderHomeModuleViewX）——includes 检查对子串依然命中、未翻转；改用大小写破坏后才翻转。**includes 类断言的注入必须破坏到"子串不再包含"**，这与正则断言的注入强度要求对齐。**③ 剩余债**：4 条（doc-comment-contract 3 + json-data 1）均为登记过的合法例外。**④ 成本**：测试数不变（5763）；smoke 70 PASS；verify:release 全链绿。
 
+2026-09-17 D-396 补充（第二十五批：workspace runtime 事件管线 9 任务收口）：**① "实现先行、验收滞后"的批次补账**：T-162~T-170 的 6 个函数已在 v0.17 阶段 1 机械搬移时落地，但专属门禁缺失——本批补齐 33 项测试后才发现 diff/events/enqueue 三环确实缺位（实现与门禁的缺口是双向的）。**② diff 的有界设计**：diff 只输出布尔与 ±32 钳制的 planDelta，不携带原始快照——消费方（事件管线）据此决定通知策略，避免把完整状态塞进事件流。**③ README 计数门禁再次自证**：新增测试文件后"文件数匹配"断言当场抓到 168→169 漂移（该计数无专守门禁、靠 release-quality 的 README 比对兜底）。**④ 剩余**：T-171~T-194（快照恢复/session registry 系列）留待后续批次。
+

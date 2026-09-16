@@ -85,6 +85,36 @@ function normalizeWorkspaceCapabilityRuntimeEvents(events) {
     return order.filter((type) => byType.has(type)).map((type) => byType.get(type));
 }
 
+// T-164：两次 runtime 快照间的状态转移 diff。输出有界布尔值与计划数量增量（±32 钳制），
+// 不携带原始快照——消费方据此决定是否通知 UI/诊断，而不是回放完整状态。
+function diffWorkspaceCapabilityRuntimeSnapshots(before, after) {
+    const beforeSnapshot = normalizeWorkspaceCapabilityRuntimeSnapshot(before);
+    const afterSnapshot = normalizeWorkspaceCapabilityRuntimeSnapshot(after);
+    const hostChanged = beforeSnapshot.lifecycle.host.available !== afterSnapshot.lifecycle.host.available
+        || beforeSnapshot.lifecycle.host.reason !== afterSnapshot.lifecycle.host.reason;
+    const registrationChanged = beforeSnapshot.lifecycle.registration.registered !== afterSnapshot.lifecycle.registration.registered
+        || beforeSnapshot.lifecycle.registration.failed !== afterSnapshot.lifecycle.registration.failed;
+    const unmanagedChanged = beforeSnapshot.lifecycle.registration.unmanaged !== afterSnapshot.lifecycle.registration.unmanaged;
+    const disposedChanged = beforeSnapshot.lifecycle.registration.disposed !== afterSnapshot.lifecycle.registration.disposed
+        || beforeSnapshot.bridge.disposed !== afterSnapshot.bridge.disposed;
+    const planDelta = Math.max(-32, Math.min(32, afterSnapshot.bridge.planCount - beforeSnapshot.bridge.planCount));
+    return Object.freeze({hostChanged, registrationChanged, unmanagedChanged, disposedChanged, planDelta});
+}
+
+// T-165：把 diff 转换为 UI/诊断可消费的固定事件——最多五类（host/registration/unmanaged/
+// plans/disposed），每类最多一条，plans 携带 ±32 钳制的增量；无变化输出空数组。
+function buildWorkspaceCapabilityRuntimeEvents(diff) {
+    const source = diff && typeof diff === "object" ? diff : {};
+    const events = [];
+    if (source.hostChanged === true) events.push({type: "host"});
+    if (source.registrationChanged === true) events.push({type: "registration"});
+    if (source.unmanagedChanged === true) events.push({type: "unmanaged"});
+    const delta = Math.max(-32, Math.min(32, Math.trunc(Number(source.planDelta) || 0)));
+    if (delta !== 0) events.push({type: "plans", delta});
+    if (source.disposedChanged === true) events.push({type: "disposed"});
+    return events;
+}
+
 function createWorkspaceCapabilityEventQueue(maxItems = 16) {
     const max = Math.min(16, Math.max(1, Math.trunc(Number(maxItems) || 16)));
     const queue = [];
@@ -131,6 +161,17 @@ function createWorkspaceCapabilityEventQueue(maxItems = 16) {
         status() { return Object.freeze({size: queue.length, maxItems: max, cursor: nextSequence - 1, disposed}); },
         dispose() { disposed = true; queue.length = 0; },
     });
+}
+
+// T-169：把 snapshot diff 直接写入有界事件队列——统一事件归一化与游标语义。
+// 无效队列（缺 push/status）或已 dispose 的队列返回 0；无变化（空事件）也返回 0。
+function enqueueWorkspaceCapabilityRuntimeDiff(queue, before, after) {
+    if (!queue || typeof queue.push !== "function" || typeof queue.status !== "function") return 0;
+    if (queue.status().disposed === true) return 0;
+    const diff = diffWorkspaceCapabilityRuntimeSnapshots(before, after);
+    const events = buildWorkspaceCapabilityRuntimeEvents(diff);
+    if (events.length === 0) return 0;
+    return queue.push(events);
 }
 
 function readWorkspaceCapabilityRuntimeEventsForReplay(queue, cursor = 0, limit = 16) {
@@ -572,6 +613,9 @@ module.exports = {
     validateWorkspaceCapabilityRuntimeSnapshot,
     normalizeWorkspaceCapabilityRuntimeEvents,
     createWorkspaceCapabilityEventQueue,
+    diffWorkspaceCapabilityRuntimeSnapshots,
+    buildWorkspaceCapabilityRuntimeEvents,
+    enqueueWorkspaceCapabilityRuntimeDiff,
     readWorkspaceCapabilityRuntimeEventsForReplay,
     recoverWorkspaceCapabilityRuntime,
     commitWorkspaceCapabilityRuntimeRecovery,

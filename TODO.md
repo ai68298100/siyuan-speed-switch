@@ -5049,42 +5049,42 @@
   - 目标：为组合快照提供稳定版本号与输入归一化，限制计数/状态范围并过滤未知字段
   - 实现：新增 `WORKSPACE_RUNTIME_SNAPSHOT_VERSION` 与 `normalizeWorkspaceCapabilityRuntimeSnapshot`
   - 状态：in-progress
-- [ ] T-162 Agent workspace runtime 版本兼容门禁
+- [x] T-162 Agent workspace runtime 版本兼容门禁
   - 目标：消费快照前显式识别当前/未知未来版本，避免新协议被旧宿主误读
   - 实现：新增 `isWorkspaceCapabilityRuntimeSnapshotCompatible`，仅接受缺省版本或 version=1
   - 状态：in-progress
-- [ ] T-163 Agent workspace runtime 一致性校验
+- [x] T-163 Agent workspace runtime 一致性校验
   - 目标：阻止注册/计划计数溢出或 lifecycle 与 bridge 销毁态不一致的快照进入诊断/UI
   - 实现：新增 `validateWorkspaceCapabilityRuntimeSnapshot`，输出稳定 `unsupported_version/registration_overflow/plan_overflow/dispose_mismatch`
   - 状态：in-progress
-- [ ] T-164 Agent workspace runtime 状态转移 diff
+- [x] T-164 Agent workspace runtime 状态转移 diff
   - 目标：以固定字段识别两次 runtime 快照间的宿主、注册、计划和销毁变化
   - 实现：新增 `diffWorkspaceCapabilityRuntimeSnapshots`，输出有界布尔值与计划数量增量，不携带原始快照
   - 状态：in-progress
-- [ ] T-165 Agent workspace runtime 状态事件
+- [x] T-165 Agent workspace runtime 状态事件
   - 目标：将 runtime 快照变化转换为 UI/诊断可消费的固定事件，限制事件数量与 delta 范围
   - 实现：新增 `buildWorkspaceCapabilityRuntimeEvents`，最多输出 host/registration/unmanaged/plans/disposed 五类事件
   - 状态：in-progress
-- [ ] T-166 Agent workspace runtime 事件归一化
+- [x] T-166 Agent workspace runtime 事件归一化
   - 目标：对状态事件固定排序、去重和 delta 上限，防止高频变化制造 UI 噪声
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeEvents`，仅保留五类事件，最多一类一条
   - 状态：in-progress
-- [ ] T-167 Agent workspace runtime 事件队列
+- [x] T-167 Agent workspace runtime 事件队列
   - 目标：为 UI/诊断提供有界事件缓存，支持批量读取与确认消费
   - 实现：新增 `createWorkspaceCapabilityEventQueue`，最多保留 16 条，dispose 后停止接收事件
   - 状态：in-progress
-- [ ] T-168 Agent workspace runtime 事件游标
+- [x] T-168 Agent workspace runtime 事件游标
   - 目标：支持 UI/诊断按序号增量读取、检测丢失事件并确认消费
   - 实现：事件队列增加 `readSince(cursor, limit)` 与 `acknowledge(cursor)`，游标单调递增且队列仍最多 16 条
   - 状态：in-progress
-- [ ] T-169 Agent workspace runtime diff 入队桥接
+- [x] T-169 Agent workspace runtime diff 入队桥接
   - 目标：将 snapshot diff 直接写入有界事件队列，统一事件归一化与游标语义
   - 实现：新增 `enqueueWorkspaceCapabilityRuntimeDiff`，无效队列或无变化返回 0
   - 状态：in-progress
-- [ ] T-170 Agent workspace runtime 事件安全回放
+- [x] T-170 Agent workspace runtime 事件安全回放
   - 目标：在游标过旧导致队列溢出时明确要求重新获取完整快照，避免不完整事件流污染 UI
   - 实现：新增 `readWorkspaceCapabilityRuntimeEventsForReplay`，正常返回 ready 批次，溢出返回 `snapshot_required`
-  - 状态：in-progress
+  - 状态：done（T-162~T-170 第二十五批一并落地，见 D-396 补充）
 - [ ] T-171 Agent workspace runtime 快照恢复流程
   - 目标：统一事件回放成功与队列溢出后的完整快照恢复，避免 UI 自行拼接游标和校验逻辑
   - 实现：新增 `recoverWorkspaceCapabilityRuntime`，返回 events/snapshot/unavailable 三种稳定模式
