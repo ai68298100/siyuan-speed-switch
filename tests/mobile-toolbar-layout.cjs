@@ -11,6 +11,8 @@
 // ③ 的验证用「同页对照」做因果证明：同一容器里放一个带 width/height 属性的 svg
 // 和一个裸 svg，禁用插件样式表后前者必须保持小尺寸、后者必须退回 300×150——
 // 若两者表现相同，说明测试环境没能真正复现"样式未就绪"，断言随即失败。
+// 第三个探针把"裸 svg 落在 b3-button 内仍有宿主兜底（真机 16×16）"也变成测量，
+// 这样"哪些容器可以不带显式尺寸"就不再依赖推断（详见 fixtures/siyuan-mobile-base.css 注）。
 //
 // 用法: npm run test:smoke:layout   （前提：已经 npm run build）
 
@@ -116,11 +118,16 @@ const homeHtml = `<div class="sw-home sw-home--mobile">
 // 因果对照：同一容器内，带属性 svg 与裸 svg 在样式失效时的表现必须不同。
 // 结构刻意与生产一致（.sw__search-wrap 是 .sw__search-icon 尺寸规则的前置祖先），
 // 否则对照组自身就先失控、无法证明"属性兜底"起作用。
+//
+// 第三个探针 #hosted-bare 用来测量审计判据①：**裸 svg 放在 b3-button 里是有兜底的**。
+// 它把"带 b3-button 的容器可以不带显式尺寸"这条前提变成可执行事实——若 fixture 丢了
+// 真机那条 .b3-button svg 尺寸规则（或思源改了它），本探针会退回 300×150 并失败。
 const controlHtml = `<div class="speed-switch sw__body sw__mobile"><div class="sw__toolbar sw__mobile-toolbar">
   <div class="sw__search-wrap">
     <svg id="with-attr" class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
     <svg id="bare" class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
   </div>
+  <button type="button" class="b3-button b3-button--text" id="hosted"><svg id="hosted-bare"><use xlink:href="#iconFilter"></use></svg></button>
 </div></div>`;
 
 const html = `<!doctype html>
@@ -181,11 +188,15 @@ window.addEventListener('load', () => {
   if (pluginSheet) pluginSheet.disabled = true;
   const withAttr = document.getElementById('with-attr').getBoundingClientRect();
   const bare = document.getElementById('bare').getBoundingClientRect();
+  const hostedBare = document.getElementById('hosted-bare').getBoundingClientRect();
   result.withoutPluginCss = {
     withAttrWidth: Math.round(withAttr.width),
     withAttrHeight: Math.round(withAttr.height),
     bareWidth: Math.round(bare.width),
     bareHeight: Math.round(bare.height),
+    // 探针：裸 svg 落在 b3-button 内时必须仍被真机基础样式兜底为 16×16
+    hostedBareWidth: Math.round(hostedBare.width),
+    hostedBareHeight: Math.round(hostedBare.height),
     toolbarHeight: Math.round(document.querySelector('.sw__toolbar').getBoundingClientRect().height),
   };
   // 测量已采集，恢复样式表后再落结果：--screenshot 拍的是页面最终状态，
@@ -249,13 +260,15 @@ try {
         && heights[0] > heights[1]
         && result.cellBodyClipped.every((clipped) => clipped === false);
 
-    // ③ 图标尺寸：正常路径无超标图标；断开插件样式后，带属性的 svg 保持显式尺寸，
-    //    而裸 svg 必须退回 300×150 —— 两者必须不同，否则说明对照失效（测试环境未真正复现）
+    // ③ 图标尺寸：正常路径无超标图标；断开插件样式后三个探针必须按各自预期分化——
+    //    带属性的 svg 保持 14×14、裸 svg 退回 300×150（证明对照环境真的复现了"样式未就绪"）、
+    //    而落在 b3-button 里的裸 svg 仍被真机基础样式兜底为 16×16（把审计判据①变成测量）。
     const fallback = result.withoutPluginCss || {};
     const iconOk = result.oversizedSvg.length === 0
         && result.row2IconSizes.every((size) => size <= 18)
         && fallback.withAttrWidth === 14 && fallback.withAttrHeight === 14
-        && fallback.bareWidth === 300 && fallback.bareHeight === 150;
+        && fallback.bareWidth === 300 && fallback.bareHeight === 150
+        && fallback.hostedBareWidth === 16 && fallback.hostedBareHeight === 16;
 
     console.log(JSON.stringify(result, null, 2));
     console.log(`${chipOk ? 'PASS' : 'FAIL'} mobile toolbar chip labels stay legible`);

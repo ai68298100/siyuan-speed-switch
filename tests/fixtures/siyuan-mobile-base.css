@@ -9,6 +9,27 @@
     padding: 4px 8px;
 }
 
+/* 真机来源（本机思源安装目录）：
+ *   <SiYuan>/resources/stage/build/mobile/base.9450c3c32a0f5d8ce01a.css
+ * 原文：.b3-button svg{height:16px;width:16px;margin-right:4px;flex-shrink:0}
+ * 这是"容器带 b3-button 时子 svg 有宿主兜底"的唯一来源，也是 mobile-toolbar-layout.cjs
+ * 宿主兜底对照依赖的前提。故意让它是**载荷**：删掉本块后，对照里的 #hosted-bare 会退回
+ * 300×150 并触发失败——这样该前提被测量，而不是被假设。
+ * margin-right 有意省略：它只影响间距、不影响"尺寸是否被兜底"这一命题，
+ * 保留会让 390px 宽的测量页发生换行、干扰既有断言。 */
+.b3-button svg {
+    height: 16px;
+    width: 16px;
+    flex-shrink: 0;
+}
+
+/* 真机同源：.b3-tooltips svg{margin-right:0}——**不含尺寸**。
+ * 保留它是为了让 fixture 能真实表达"哪些类名不兜底"：.sw__search-filter-btn 只带
+ * b3-tooltips，故在插件样式缺席时无兜底（真机截图中它正是 320×165）。 */
+.b3-tooltips svg {
+    margin-right: 0;
+}
+
 .b3-switch {
     display: inline-block;
     width: 36px;

@@ -343,7 +343,10 @@ function renderHomeModuleView(doc, view, options = {}) {
             const dot = doc.createElement("span");
             dot.className = "sw__home-weekday-dot";
             if (item.done === true) {
-                dot.innerHTML = '<svg><use xlink:href="#iconCheck"></use></svg>';
+                // 显式尺寸兜底：容器是纯插件类（无 b3-button 继承思源兜底样式），
+                // 尺寸只由 .sw__home-weekday-dot svg 的 11px 规则提供——
+                // 样式未就绪时裸 svg 会退回 300×150（同 D-389 的顶栏成因）。
+                dot.innerHTML = '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>';
             }
             const label = doc.createElement("span");
             label.className = "sw__home-weekday-label";
@@ -523,7 +526,8 @@ function renderHomeModuleView(doc, view, options = {}) {
                 check.className = "sw__home-module-item-check" + (item.done ? " is-done" : "");
                 check.setAttribute("aria-label", item.done ? "标记未完成" : "标记完成");
                 check.setAttribute("aria-pressed", String(item.done));
-                check.innerHTML = item.done ? '<svg><use xlink:href="#iconCheck"></use></svg>' : "";
+                // 显式尺寸兜底：同 .sw__home-weekday-dot——尺寸仅来自插件 CSS 的 11px 规则
+                check.innerHTML = item.done ? '<svg width="11" height="11"><use xlink:href="#iconCheck"></use></svg>' : "";
                 check.addEventListener("click", (event) => {
                     event.stopPropagation();
                     options.onToggleItem(item, view);

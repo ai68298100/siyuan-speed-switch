@@ -56,6 +56,45 @@ function bareSvgTags(source) {
     return tags.filter((tag) => !new RegExp(`\\s${WIDTH_ATTR}`).test(tag));
 }
 
+// 变量 → 类名集合。只认 `X.className = "..."` 这条赋值，绝不认注释或普通字符串：
+// 早期版本用"类名后 400 字符内出现 innerHTML 且其中 svg 无 width"的邻域窗口，
+// 结果注释里提到同类名就成了**伪锚点**——破坏 A 容器会报出 B 容器的名字（归因错误），
+// 且目标语句一旦漂出窗口，断言就静默变绿（假绿）。改为按变量绑定后两者同时消失。
+// 用 Set 而非单值：同一变量名在同一文件里可能被复用给不同容器（本文件 title/label/row/grid 均如此）。
+function containerClassNames(source) {
+    const byVariable = new Map();
+    const pattern = /(\w+)\.className\s*=\s*"([^"]+)"/g;
+    for (let match = pattern.exec(source); match; match = pattern.exec(source)) {
+        if (!byVariable.has(match[1])) byVariable.set(match[1], new Set());
+        byVariable.get(match[1]).add(match[2]);
+    }
+    return byVariable;
+}
+
+// 取出每一处 `X.innerHTML = <表达式>;`。表达式按引号状态扫描，跨过字符串里的分号
+// （三元式 `item.done ? '<svg ...>' : ""` 必须完整取出，不能在字符串内截断）。
+function innerHtmlAssignments(source) {
+    const assignments = [];
+    const pattern = /(\w+)\.innerHTML\s*=\s*/g;
+    for (let match = pattern.exec(source); match; match = pattern.exec(source)) {
+        const start = pattern.lastIndex;
+        let index = start;
+        let quote = null;
+        for (; index < source.length; index += 1) {
+            const char = source[index];
+            if (quote) {
+                if (char === '\\') index += 1;
+                else if (char === quote) quote = null;
+            } else if (char === '"' || char === "'" || char === '`') quote = char;
+            else if (char === ';') break;
+        }
+        assignments.push({variable: match[1], expression: source.slice(start, index)});
+    }
+    return assignments;
+}
+
+const hasClass = (className, wanted) => className.split(/\s+/).includes(wanted);
+
 test('mobile switcher template gives every svg an explicit size', () => {
     const body = functionBody(indexSource, 'private buildMobileSwitcherHtml(): string {');
     assert.deepEqual(bareSvgTags(body), [], 'mobile switcher template must not contain size-less svg tags');
@@ -159,4 +198,68 @@ test('mobile toolbar chip label can shrink without being clipped', () => {
     assert.notEqual(at, -1, 'the chip label override block must exist');
     const labelBlock = braceBlock(scssSource, at);
     assert.match(labelBlock, /min-width:\s*0/, 'the label needs min-width: 0 to coexist with the flex row');
+});
+
+// 全表面审计（D-389 收口）：判定"某个图标会不会在样式未就绪时失控"的判据只有两条——
+// ① 容器的尺寸兜底从哪来：容器的类名里有 b3-button 时，思源基础样式会兜底其子 svg；
+//    纯插件类的容器则完全依赖插件 CSS；
+// ② 该 svg 的尺寸是否只写在插件 CSS 里（`容器 svg { width: Npx }`）。
+// 两者同时成立才是真正的暴露面——这类 svg 必须自带固有尺寸。清单由
+// `dist/index.css` 的 svg 尺寸规则 × 模板容器类名交叉审计得出。
+//
+// 判据 ① 的证据已从"推断"升级为"真机基础样式实证"（本机思源安装目录）：
+//   resources/stage/build/mobile/base.9450c3c32a0f5d8ce01a.css
+//     .b3-button svg{height:16px;width:16px;margin-right:4px;flex-shrink:0}
+//     .b3-tooltips svg{margin-right:0}          ← 只有边距、无尺寸，故不带 b3-button 的
+//                                                 容器（如 .sw__search-filter-btn）会真失控，
+//                                                 与用户截图里筛选图标 320×165 的现象一致。
+const HOST_SIZED_CONTAINER_CLASS = 'b3-button';
+
+const PLUGIN_SIZED_ICON_CONTAINERS = [
+    {label: 'sw__home-weekday-dot', size: 11},
+    {label: 'sw__home-module-item-check', size: 11},
+];
+
+test('icons sized only by plugin css keep an intrinsic size in the template', () => {
+    const classes = containerClassNames(homeViewSource);
+    const assignments = innerHtmlAssignments(homeViewSource);
+    for (const entry of PLUGIN_SIZED_ICON_CONTAINERS) {
+        const owned = assignments.filter((item) => [...(classes.get(item.variable) || [])]
+            .some((className) => hasClass(className, entry.label)));
+        assert.ok(owned.length > 0, `${entry.label} must still render an icon (list entry is stale otherwise)`);
+        for (const item of owned) {
+            assert.deepEqual(bareSvgTags(item.expression), [],
+                `${entry.label} must not assign a size-less svg (it has no host style fallback)`);
+            assert.ok(new RegExp(`${WIDTH_ATTR}"${entry.size}"`).test(item.expression),
+                `${entry.label} must pin width="${entry.size}" to match its plugin css rule`);
+        }
+    }
+});
+
+test('every svg written by home view is explicitly sized or hosted by b3-button', () => {
+    // 整文件不变式：不依赖任何邻域窗口，因此不会被新增模板或注释带偏。
+    // 判定失败时直接报出变量名与其类名，避免"报错指向另一个容器"。
+    const classes = containerClassNames(homeViewSource);
+    const withSvg = innerHtmlAssignments(homeViewSource).filter((item) => item.expression.includes(SVG_OPEN));
+    // 集合为空时"全部合规"恒真（清单模式④），故先钉住审计面确实存在
+    assert.ok(withSvg.length >= 3, `home view must still write the audited svg surfaces (found ${withSvg.length})`);
+    for (const item of withSvg) {
+        if (bareSvgTags(item.expression).length === 0) continue;
+        const names = [...(classes.get(item.variable) || [])];
+        assert.ok(names.some((className) => hasClass(className, HOST_SIZED_CONTAINER_CLASS)),
+            `${item.variable} writes a size-less svg but none of its classes (${names.join(' | ') || 'unknown'}) is ${HOST_SIZED_CONTAINER_CLASS}`);
+    }
+});
+
+test('declared fallback sizes still match the shipped stylesheet', () => {
+    const distCssPath = path.join(repo, 'dist', 'index.css');
+    // 产物缺失即跳过（`verify:release` 链含 pnpm build，本地产物必然存在；
+    // 与仓库既有 8 处产物前置检查同一形态）
+    if (!fs.existsSync(distCssPath)) return;
+    const distCss = fs.readFileSync(distCssPath, 'utf8');
+    for (const entry of PLUGIN_SIZED_ICON_CONTAINERS) {
+        // 期望值取自真实产物而非测试自造常量：CSS 改了而模板没跟上时这条会失败
+        assert.match(distCss, new RegExp(`\\.${entry.label}[^{}]*svg\\s*\\{[^}]*width:\\s*${entry.size}px`),
+            `${entry.label} plugin css width must still be ${entry.size}px`);
+    }
 });
