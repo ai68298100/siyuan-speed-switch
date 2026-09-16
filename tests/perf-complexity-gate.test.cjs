@@ -1,0 +1,131 @@
+// 性能基准硬门禁（v0.20 数据连续性，D-388）。
+//
+// 口径：**倍增比例复杂度门禁**，不是绝对耗时断言。ROADMAP 明确本地空查询
+// p95 有 48ms 环境长尾波动，绝对耗时门禁会被一次偶发抖动阻断正常开发；
+// 因此本门禁只锁「算法复杂度类别」：输入规模 ×2，min-of-N 耗时比必须 ≤3。
+// 线性 ≈2.0、n log n ≈2.2，比例 3 留有 GC/调度余量；若某算子被重构为
+// O(n²)，1024/512 的比例 ≈4，门禁精确拦截。机器速度差异被比值自然消去。
+//
+// 诚实边界：本门禁覆盖搜索与首页数据路径的**核心纯算子**（排序、切片、
+// 缓存键、清洗）；DOM 渲染计时仍属 verify:release 的 UI smoke 与真机验收。
+// 夹具一律预构建，被测函数闭包内不得混入夹具构建成本。
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const {sortItems, sanitizeFavorites} = require('../src/util.js');
+const {buildSearchCacheKey, planDocResultsPage} = require('../src/search-model.js');
+
+const RATIO_CEILING = 3;
+const SAMPLES = 5;
+const FAVORITES_MAX = 512;
+
+// 一次 sample = 连续执行 rounds 轮被测函数的 wall time（ms）。
+// rounds 按规模校准，使单 sample 落在数十毫秒量级，远离计时精度与单次调度抖动。
+function measureSample(fn, rounds) {
+    const start = process.hrtime.bigint();
+    for (let i = 0; i < rounds; i += 1) fn();
+    const end = process.hrtime.bigint();
+    return Number(end - start) / 1e6;
+}
+
+// min-of-N：GC 暂停与后台调度只会拉长耗时，取最小值即最接近真实成本。
+function minTime(fn, rounds) {
+    let best = Infinity;
+    for (let s = 0; s < SAMPLES; s += 1) {
+        best = Math.min(best, measureSample(fn, rounds));
+    }
+    return best;
+}
+
+// 倍增门禁核心：n 与 2n 规模各取 min 耗时，比值必须 ≤ RATIO_CEILING。
+function assertDoubling(t, name, smallFn, largeFn, smallMs, largeMs, rounds, ceiling) {
+    const t1 = minTime(smallFn, rounds);
+    const t2 = minTime(largeFn, rounds);
+    const ratio = t2 / t1;
+    t.diagnostic(`${name}: ${smallMs} ${t1.toFixed(1)}ms, ${largeMs} ${t2.toFixed(1)}ms, ratio=${ratio.toFixed(2)}`);
+    assert.ok(ratio <= ceiling,
+        `${name} complexity regression: doubling grew time by ${ratio.toFixed(2)}x (ceiling ${ceiling}); a refactor likely introduced superlinear work`);
+}
+
+function makeFavorites(count, salt) {
+    const items = [];
+    for (let i = 0; i < count; i += 1) {
+        items.push({key: `${salt}${String(i).padStart(6, '0')}`, title: `文档 ${i}`, rootId: '20240101120000-abcdef', group: `组${i % 8}`});
+    }
+    return items;
+}
+
+function makeDocs(count) {
+    const docs = [];
+    for (let i = 0; i < count; i += 1) {
+        docs.push({id: `doc-${i}`, rootId: `2024010${String(i % 10).padStart(2, '0')}000000-abcdef`, title: `文档标题 ${i}`, path: `/笔记/合集${i % 12}/doc`, size: 1024 + i});
+    }
+    return docs;
+}
+
+// JIT 预热：让两个规模的代码路径都完成优化编译，避免首次运行的解释器噪音。
+(function warmup() {
+    const warm = makeFavorites(64, 'w');
+    sortItems(warm, 'titleAsc', [], {});
+    sanitizeFavorites(warm, FAVORITES_MAX);
+    buildSearchCacheKey({scope: 'global', query: '预热', filters: {notebooks: ['n1'], types: ['d'], subTypes: [], paths: [], sort: 'titleAsc'}});
+    planDocResultsPage(makeDocs(64), new Set(), 12);
+})();
+
+test('sortItems complexity stays linearithmic or better under doubling (perf gate)', (t) => {
+    const small = makeFavorites(256, 'a');
+    const large = makeFavorites(512, 'b');
+    // n log n 倍增理论比 ≈2.2；sortItems 额外维护分组稳定性，给 4.5 余量
+    assertDoubling(t, 'sortItems',
+        () => sortItems(small, 'titleAsc', [], {}),
+        () => sortItems(large, 'titleAsc', [], {}),
+        'n=256', 'n=512', 4, 4.5);
+});
+
+test('sanitizeFavorites complexity stays linear under doubling (perf gate)', (t) => {
+    const small = makeFavorites(256, 'a');
+    const large = makeFavorites(512, 'b');
+    assertDoubling(t, 'sanitizeFavorites',
+        () => sanitizeFavorites(small, FAVORITES_MAX),
+        () => sanitizeFavorites(large, FAVORITES_MAX),
+        'n=256', 'n=512', 3, RATIO_CEILING);
+});
+
+test('buildSearchCacheKey complexity stays linear under doubling (perf gate)', (t) => {
+    const makeInput = (count) => ({
+        scope: 'global',
+        query: '性能基准 搜索关键词',
+        filters: {
+            notebooks: Array.from({length: count}, (unused, i) => `notebook-${i}`),
+            types: ['document'],
+            subTypes: Array.from({length: count}, (unused, i) => `sub-${i}`),
+            paths: Array.from({length: count}, (unused, i) => `/路径/层级${i}`),
+            sort: 'titleAsc',
+        },
+    });
+    const smallInput = makeInput(16);
+    const largeInput = makeInput(32);
+    assertDoubling(t, 'buildSearchCacheKey',
+        () => buildSearchCacheKey(smallInput),
+        () => buildSearchCacheKey(largeInput),
+        'filters=16', 'filters=32', 8, RATIO_CEILING);
+});
+
+test('planDocResultsPage complexity stays linear under doubling (perf gate)', (t) => {
+    const smallDocs = makeDocs(165);
+    const largeDocs = makeDocs(330);
+    const opened = new Set(['20240101000000-abcdef']);
+    assertDoubling(t, 'planDocResultsPage',
+        () => planDocResultsPage(smallDocs, opened, 12),
+        () => planDocResultsPage(largeDocs, opened, 12),
+        'n=165', 'n=330', 5, RATIO_CEILING);
+});
+
+test('perf gate fixture sanity: the harness distinguishes workload sizes (self-check)', (t) => {
+    // 自检：若计时器或夹具失效导致比值恒为 1，门禁将形同虚设。
+    const heavy = minTime(() => { let acc = 0; for (let i = 0; i < 800000; i += 1) acc += i; }, 3);
+    const light = minTime(() => { let acc = 0; for (let i = 0; i < 400000; i += 1) acc += i; }, 3);
+    t.diagnostic(`self-check: light ${light.toFixed(1)}ms, heavy ${heavy.toFixed(1)}ms, ratio=${(heavy / light).toFixed(2)}`);
+    assert.ok(heavy > light, 'measurement harness must distinguish workload sizes');
+    assert.ok(light > 0.5, 'light workload must stay well above timer precision');
+});

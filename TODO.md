@@ -1,6 +1,10 @@
 # TODO
 
 
+## T-6262 v0.20 数据连续性第四批：性能基准纳入硬门禁（2026-09-16，已完成）
+
+- [x] T-6262 倍增比例复杂度门禁（D-388）：新增 tests/perf-complexity-gate.test.cjs——ROADMAP 明确空查询 p95 有 48ms 环境长尾，绝对耗时门禁会被偶发抖动阻断开发，故只锁复杂度类别：输入 ×2、min-of-N 耗时比 ≤3（sortItems 为 n log n 给 4.5），机器速度差异被比值消去。覆盖搜索与首页数据路径四个核心纯算子：sortItems（实测 2.21）/sanitizeFavorites（1.12）/buildSearchCacheKey（1.96）/planDocResultsPage（1.64）；JIT 预热 + min-of-5 消抖 + 夹具预构建（不混入构建成本）；含测量装置自检（light/heavy 工作量必须可区分）。负向验证：向 sanitizeFavorites 注入 O(n²) 扫描 → 比例 4.06 精确失败后字节级还原。诚实边界：锁纯算子复杂度，DOM 渲染计时仍属 UI smoke 与真机验收。README 双语计数修正至 5729/162（发现 T-6260/T-6261 两批漏改静态项数——文件数有门禁、项数无，教训记 D-388）；全量 5729/5729
+
 ## T-6261 v0.20 数据连续性第三批：存储健康挂入 workspace-context（2026-09-16，已完成）
 
 - [x] T-6261 恢复报告只读暴露（D-386/D-387）：agent-capabilities 新增 buildAgentStorageHealth 纯投影——available 门控（keys 数组缺失即 unavailable，杜绝半截数据冒充健康）、totals 六计数钳制 0..13、anomalies 仅保留 cleaned/reset/migrated（key ≤32 字符、maxItems 13、不回显 note/原始数据）；workspace-context outputSchema 增加 storageHealth（required、additionalProperties false），description 同步；宿主 handler 透传 this.storageMigrationReport；新增 8 项测试（含泄漏防护与钳制边界），workspace-context 既有完整 shape 断言更新；zip 单条目压缩预算 160→168 KiB（D-387，按 D-353/D-366 先例：index.js 压缩 164015 超限 175 字节，只读无写入）并重建 baseline；全量 5724/5724、tsc 0 错误；产物 index.js 609173 / zip 311363
