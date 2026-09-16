@@ -5151,6 +5151,8 @@ const version = beginSearch(session);
                             generatedAt: Date.now(),
                             syncing: this.syncing,
                             device,
+                            // 存储演练健康（v0.20，D-386）：onload 只读快照透传给纯模型归一
+                            storageHealth: this.storageMigrationReport,
                             activeDocument: {id: active ? (this.rootIdOf(active) || "") : "", title: active ? this.titleOf(active) : ""},
                             openTabs: opened.map((tab) => ({
                                 id: this.rootIdOf(tab) || tab.id,

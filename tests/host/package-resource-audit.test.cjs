@@ -11,9 +11,12 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // 演进：144 KiB → 148 KiB（v0.20 依赖目录与安装引导）→ 160 KiB
 // （D-366：接入 v0.18 桌面路径筛选后 index.js 压缩后达 152040 字节，
 // 超出 148 KiB 上限 488 字节；按 D-353 先例依真实功能增量上调，并为
-// 后续 v0.18 契约模块接入保留评审余量）。
-// 归档总上限独立为 512 KiB（D-353），仍余约 227 KiB。
-const MAX_COMPRESSED_ENTRY_BYTES = 160 * 1024;
+// 后续 v0.18 契约模块接入保留评审余量）→ 168 KiB（D-386：v0.20 数据
+// 连续性接入 storage-migration 演练模型与 storageHealth 只读投影后
+// index.js 压缩后达 164015 字节，超出 160 KiB 上限 175 字节；只读演练、
+// 无写入动作，按先例上调并保留后续接入余量）。
+// 归档总上限独立为 512 KiB（D-353），仍余约 213 KiB。
+const MAX_COMPRESSED_ENTRY_BYTES = 168 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 

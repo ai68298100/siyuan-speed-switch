@@ -423,6 +423,34 @@ function buildAgentNavigationResult(input = {}) {
     };
 }
 
+// 存储演练健康投影（v0.20 数据连续性，D-386）：把 storage-migration 演练
+// 报告收敛为有界只读快照——available 门控，totals 六计数钳制到 0..13（每 key
+// 一条），anomalies 仅保留 cleaned/reset/migrated 且不回显任何原始数据文本。
+const AGENT_STORAGE_TOTAL_KEYS = Object.freeze(["kept", "cleaned", "migrated", "reset", "inspect", "missing"]);
+const AGENT_STORAGE_ANOMALY_STATUSES = Object.freeze(["cleaned", "reset", "migrated"]);
+
+function buildAgentStorageHealth(report) {
+    // 有效性判定：报告必须携带 keys 数组（演练管道的固定输出），否则视为
+    // 演练未生成——空对象/残缺对象一律 unavailable，避免半截数据冒充健康状态。
+    if (!report || typeof report !== "object" || Array.isArray(report) || !Array.isArray(report.keys)) {
+        return {available: false};
+    }
+    const totalsSource = report.totals && typeof report.totals === "object" ? report.totals : {};
+    const totals = {};
+    for (const key of AGENT_STORAGE_TOTAL_KEYS) {
+        const value = Number.isFinite(totalsSource[key]) ? Math.trunc(totalsSource[key]) : 0;
+        totals[key] = Math.min(13, Math.max(0, value));
+    }
+    const keys = Array.isArray(report.keys) ? report.keys : [];
+    const anomalies = keys
+        .filter((entry) => entry && typeof entry === "object" && AGENT_STORAGE_ANOMALY_STATUSES.includes(entry.status))
+        .slice(0, 13)
+        .map((entry) => ({key: asText(entry.key, 32), status: asText(entry.status, 16)}))
+        .filter((entry) => entry.key);
+    const version = Number.isFinite(report.version) ? Math.min(9999, Math.max(0, Math.trunc(report.version))) : 0;
+    return {available: true, version, totals, anomalies};
+}
+
 // 工作区上下文（ROADMAP 第三层）：把设备端、活动文档、页签、文档集、
 // 快捷入口与今日日记状态收敛为有界的只读快照。未知字段一律降级为空值。
 function buildAgentWorkspaceContext(input = {}) {
@@ -455,6 +483,7 @@ function buildAgentWorkspaceContext(input = {}) {
             docId: asText(journal.docId, 64),
             status: normalizeAgentJournalStatus(journal.status, journal.configured === true, journal.docId),
         },
+        storageHealth: buildAgentStorageHealth(source.storageHealth),
     };
 }
 
@@ -881,7 +910,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     workspaceContext: Object.freeze({
         name: "workspace-context",
         title: "小驴速切工作区上下文",
-        description: "只读汇总当前工作区：设备端、活动文档、打开页签、文档集清单、快捷入口与今日日记状态。供 Agent 一次调用了解用户当前工作环境，不修改任何内容、不创建文档。",
+        description: "只读汇总当前工作区：设备端、活动文档、打开页签、文档集清单、快捷入口、今日日记状态与存储演练健康。供 Agent 一次调用了解用户当前工作环境，不修改任何内容、不创建文档。",
         inputSchema: Object.freeze({
             type: "object",
             properties: {limit: {type: "integer", minimum: 1, maximum: MAX_ITEMS}},
@@ -939,8 +968,43 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
                     required: ["configured", "docId", "status"],
                     additionalProperties: false,
                 }),
+                storageHealth: Object.freeze({
+                    type: "object",
+                    properties: {
+                        available: {type: "boolean"},
+                        version: {type: "integer", minimum: 0, maximum: 9999},
+                        totals: Object.freeze({
+                            type: "object",
+                            properties: {
+                                kept: {type: "integer", minimum: 0, maximum: 13},
+                                cleaned: {type: "integer", minimum: 0, maximum: 13},
+                                migrated: {type: "integer", minimum: 0, maximum: 13},
+                                reset: {type: "integer", minimum: 0, maximum: 13},
+                                inspect: {type: "integer", minimum: 0, maximum: 13},
+                                missing: {type: "integer", minimum: 0, maximum: 13},
+                            },
+                            required: AGENT_STORAGE_TOTAL_KEYS,
+                            additionalProperties: false,
+                        }),
+                        anomalies: Object.freeze({
+                            type: "array",
+                            maxItems: 13,
+                            items: Object.freeze({
+                                type: "object",
+                                properties: {
+                                    key: {type: "string", maxLength: 32},
+                                    status: {type: "string", maxLength: 16},
+                                },
+                                required: ["key", "status"],
+                                additionalProperties: false,
+                            }),
+                        }),
+                    },
+                    required: ["available"],
+                    additionalProperties: false,
+                }),
             },
-            required: ["device", "generatedAt", "syncing", "activeDocument", "openTabs", "closedTabs", "documentSets", "quickActions", "todayJournal"],
+            required: ["device", "generatedAt", "syncing", "activeDocument", "openTabs", "closedTabs", "documentSets", "quickActions", "todayJournal", "storageHealth"],
             additionalProperties: false,
         }),
     }),
@@ -1205,6 +1269,8 @@ module.exports = {
     limitAgentItems,
     buildAgentNavigationResult,
     buildAgentWorkspaceContext,
+    buildAgentStorageHealth,
+    AGENT_STORAGE_TOTAL_KEYS,
     buildAgentSearchResult,
     AGENT_CAPABILITY_SPECS,
     registerReadOnlyAgentCapabilities,

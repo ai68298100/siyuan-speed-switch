@@ -60,7 +60,7 @@ test('workspace schema timestamp has bounded maximum', () => assert.equal(AGENT_
 test('workspace schema keeps additional properties disabled', () => assert.equal(AGENT_CAPABILITY_SPECS.workspaceContext.outputSchema.additionalProperties, false));
 test('workspace input schema remains limit-only', () => assert.deepEqual(Object.keys(AGENT_CAPABILITY_SPECS.workspaceContext.inputSchema.properties), ['limit']));
 test('workspace context keeps a fixed top-level shape', () => assert.deepEqual(Object.keys(buildAgentWorkspaceContext()).sort(), [
-    'activeDocument', 'closedTabs', 'device', 'documentSets', 'generatedAt', 'openTabs', 'quickActions', 'syncing', 'todayJournal',
+    'activeDocument', 'closedTabs', 'device', 'documentSets', 'generatedAt', 'openTabs', 'quickActions', 'storageHealth', 'syncing', 'todayJournal',
 ].sort()));
 test('workspace context does not mutate source', () => {
     const source = {generatedAt: 1, syncing: true, openTabs: [{id: 'a', title: 'A'}]};
@@ -138,3 +138,84 @@ test('journal status unknown without config cannot become found', () => assert.e
 test('journal status explicit syncing remains valid without id', () => assert.equal(normalizeAgentJournalStatus('syncing', true, ''), 'syncing'));
 test('journal status explicit unavailable remains valid with id', () => assert.equal(normalizeAgentJournalStatus('unavailable', true, ROOT), 'unavailable'));
 test('journal status list is stable across repeated reads', () => assert.deepEqual([...AGENT_JOURNAL_STATUSES], [...AGENT_JOURNAL_STATUSES]));
+
+// ---- storageHealth 投影（v0.20 数据连续性，D-386）----
+
+test('storage health absent report reports unavailable', () => {
+    for (const bad of [undefined, null, 42, 'report', [], {}]) {
+        assert.deepEqual(buildAgentWorkspaceContext({storageHealth: bad}).storageHealth, {available: false});
+    }
+    assert.deepEqual(buildAgentWorkspaceContext().storageHealth, {available: false}, 'default context has no storage health');
+});
+
+test('storage health projects a healthy drill report as available with totals', () => {
+    const report = {
+        version: 1,
+        totals: {kept: 10, cleaned: 0, migrated: 0, reset: 0, inspect: 3, missing: 0},
+        keys: [{key: 'sw_mru', status: 'kept', kept: 1, removed: 0, note: ''}],
+    };
+    const health = buildAgentWorkspaceContext({storageHealth: report}).storageHealth;
+    assert.deepEqual(health, {available: true, version: 1, totals: report.totals, anomalies: []});
+});
+
+test('storage health anomalies keep only cleaned/reset/migrated entries', () => {
+    const report = {
+        version: 1,
+        totals: {kept: 8, cleaned: 1, migrated: 0, reset: 1, inspect: 0, missing: 3},
+        keys: [
+            {key: 'sw_pinned', status: 'reset', kept: 0, removed: 0, note: 'non-array pinned list reset to empty'},
+            {key: 'sw_favorites', status: 'cleaned', kept: 5, removed: 2, note: 'favorites sanitized'},
+            {key: 'sw_mru', status: 'kept', kept: 1, removed: 0, note: ''},
+            {key: 'sw_settings', status: 'inspect', kept: 0, removed: 0, note: 'shape=object'},
+            {key: 'sw_fav_groups', status: 'missing', kept: 0, removed: 0, note: 'absent'},
+            {key: 'sw_document_sets', status: 'migrated', kept: 2, removed: 1, note: 'migrated'},
+        ],
+    };
+    const health = buildAgentWorkspaceContext({storageHealth: report}).storageHealth;
+    assert.equal(health.available, true);
+    assert.deepEqual(health.anomalies.map((entry) => entry.key), ['sw_pinned', 'sw_favorites', 'sw_document_sets']);
+    assert.deepEqual(health.anomalies.map((entry) => entry.status), ['reset', 'cleaned', 'migrated']);
+});
+
+test('storage health clamps counts, version, and text lengths (bounded output)', () => {
+    const keys = Array.from({length: 20}, (unused, index) => ({key: `sw_key_${index}`, status: 'cleaned', note: 'x'}));
+    const report = {version: 99999, totals: {kept: 99, cleaned: -5, migrated: 1.9, reset: 'x', inspect: null, missing: undefined}, keys};
+    const health = buildAgentWorkspaceContext({storageHealth: report}).storageHealth;
+    assert.equal(health.version, 9999, 'version caps at 9999');
+    assert.equal(health.totals.kept, 13, 'kept clamps to key-count ceiling');
+    assert.equal(health.totals.cleaned, 0, 'negative counts clamp to zero');
+    assert.equal(health.totals.migrated, 1, 'fractional counts truncate');
+    assert.equal(health.totals.reset, 0, 'non-numeric counts degrade to zero');
+    assert.equal(health.totals.inspect, 0);
+    assert.equal(health.totals.missing, 0);
+    assert.equal(health.anomalies.length, 13, 'anomalies cap at 13 entries');
+    assert.ok(health.anomalies.every((entry) => entry.key.length <= 32), 'anomaly keys stay bounded');
+});
+
+test('storage health does not echo payload notes or unknown report fields', () => {
+    const report = {
+        version: 1,
+        totals: {kept: 13, cleaned: 0, migrated: 0, reset: 0, inspect: 0, missing: 0},
+        keys: [{key: 'sw_pinned', status: 'reset', kept: 0, removed: 0, note: 'secret payload text here'}],
+        rawData: 'should-not-leak',
+    };
+    const health = buildAgentWorkspaceContext({storageHealth: report}).storageHealth;
+    assert.equal(JSON.stringify(health).includes('secret'), false, 'notes must not leak');
+    assert.equal(JSON.stringify(health).includes('rawData'), false, 'unknown report fields must not leak');
+});
+
+test('storage health schema is bounded and required', () => {
+    const schema = AGENT_CAPABILITY_SPECS.workspaceContext.outputSchema;
+    assert.ok(schema.required.includes('storageHealth'), 'storageHealth is part of the fixed output shape');
+    const health = schema.properties.storageHealth;
+    assert.equal(health.additionalProperties, false);
+    assert.deepEqual(health.required, ['available']);
+    assert.equal(health.properties.anomalies.maxItems, 13);
+    assert.equal(health.properties.anomalies.items.additionalProperties, false);
+    assert.deepEqual([...health.properties.totals.required].sort(), ['cleaned', 'inspect', 'kept', 'migrated', 'missing', 'reset'].sort());
+});
+
+test('workspace context output shape includes storage health (fixed keys)', () => {
+    const context = buildAgentWorkspaceContext();
+    assert.ok(Object.keys(context).includes('storageHealth'));
+});

@@ -1,6 +1,10 @@
 # TODO
 
 
+## T-6261 v0.20 数据连续性第三批：存储健康挂入 workspace-context（2026-09-16，已完成）
+
+- [x] T-6261 恢复报告只读暴露（D-386/D-387）：agent-capabilities 新增 buildAgentStorageHealth 纯投影——available 门控（keys 数组缺失即 unavailable，杜绝半截数据冒充健康）、totals 六计数钳制 0..13、anomalies 仅保留 cleaned/reset/migrated（key ≤32 字符、maxItems 13、不回显 note/原始数据）；workspace-context outputSchema 增加 storageHealth（required、additionalProperties false），description 同步；宿主 handler 透传 this.storageMigrationReport；新增 8 项测试（含泄漏防护与钳制边界），workspace-context 既有完整 shape 断言更新；zip 单条目压缩预算 160→168 KiB（D-387，按 D-353/D-366 先例：index.js 压缩 164015 超限 175 字节，只读无写入）并重建 baseline；全量 5724/5724、tsc 0 错误；产物 index.js 609173 / zip 311363
+
 ## T-6260 v0.20 数据连续性第二批：onload 演练快照接线（2026-09-16，已完成）
 
 - [x] T-6260 D-386 第二步·保守桥接：initPersistentData 在 sanitizePersistentData 之后调用 captureStorageMigrationSnapshot——用同源演练管道对 this.data 只读演练，报告存实例内存（不落盘、不重写数据）；出现 cleaned/reset/migrated 时 logger.warn 暴露宿主清洗缺口（运行时同源验证）；生产闭包 41→42（storage-migration 入图，只读、无写入动作；index.js 607365 / zip 310902 已复核 D-353 门禁）；源码契约锁定（onload 必须调用 + 快照方法体禁回写 + 报告仅内存），负向验证（方法体注入 saveDataDebounced）精确失败；测试 5717 项

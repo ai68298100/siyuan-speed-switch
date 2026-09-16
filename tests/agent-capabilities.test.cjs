@@ -509,6 +509,7 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
         documentSets: [{name: "工作", count: 3}],
         quickActions: [{label: "搜索", kind: "builtin"}],
         todayJournal: {configured: true, docId: "20260911083000-abcdeg", status: "found"},
+        storageHealth: {available: false},
     });
     const empty = buildAgentWorkspaceContext(null);
     assert.equal(empty.device, "desktop");
