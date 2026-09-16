@@ -195,7 +195,7 @@ pnpm verify:release
 - **体验打磨**：动效语言统一为时长/缓动令牌、可点击元素按压反馈、`prefers-contrast` 无障碍适配。
 - **架构重构（无行为变化）**：六轮拆分使 `src/index.ts` 由 12681 行降至 10003 行（-21%），商店 UI、设置页、配置表单、外部组件注册、字素工具与搜索状态宿主各归独立模块；生产依赖图 31→40 且全程门禁复核。
 - **修复**：智能体能力 `home-adapter-diagnostics` 的标题/描述编码损坏（v0.17.0 起）已修复；发布宣称口径与实际注册数对齐（组件 41、能力 11）。
-- 发版门禁：5691 项自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 600923 bytes、package.zip 307525 bytes。
+- 发版门禁：5693 项自动测试、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 601563 bytes、package.zip 307859 bytes。
 
 ### v0.17.0（2026-09-14）
 
