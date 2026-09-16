@@ -1,5 +1,13 @@
 # TODO
 
+
+## T-6232~T-6235 重构批次 R2：外部组件注册外迁（2026-09-16，已完成）
+
+- [x] T-6232 新建 `src/home-external-adapters.ts`（273 行）：13 个外部组件注册定义（11 个直接 register + 2 个 registerExternalFeed，原清单按 11 计低估了 feed 助手拆分）自 index.ts 3816~4058 行按字节原样迁入；`this` 参数模式绑定宿主（i18n + 内核代理 fetch），块内 `this.i18n`/`this.fetchActivityWatchViaKernel` 接线形态零漂移
+- [x] T-6233 index.ts 接线替换：`registerExternalHomeAdapters.call(this, register)` 单次调用（12681 → 12442 行）；导入清理（仅保留区域外仍使用的 millisecondsToNextMinute/mergeHolidayPayloads/holidayPresentation/loadHolidayYear 与内核代理白名单符号）；lifeModuleIds/clockModuleIds/BUILTIN_GROUPS 属运行时行为逻辑，按语义保留 index.ts
+- [x] T-6234 契约同步：component-availability-audit 双文件合并扫描；external-widget-availability-contract 28 条断言改指新文件（life proxy 12 条仍锁 index.ts 内核代理方法）；external-widget-model 6 处读取改指（kernel proxy/heartbeat/timer dispose 3 处保留）；生产图 WIRED + home-external-adapters、闭包 34→35
+- [x] T-6235 负向验证 2 轮（D-361 协议，先确认注入发生再判零失败）：删 external-fx-frankfurter 注册 → audit 精确指名失败 + contract 2 项失败 → 均字节级还原；发布矩阵同步（index.js 601526、package.zip 307789）；verify:release 5691/5691；refactor-candidates 补 R2 执行记录；记录 D-375
+
 ## T-6229~T-6231 重构候选清单（2026-09-16，已完成）
 
 - [x] T-6229 按工作流要求产出 `docs/refactor-candidates.md`：src 全量文件行数排序、index.ts 巨型类方法 Top 15（openHomeWidgetStore 995 行、registerBuiltinHomeAdapters 769 行等）、六个重构批次候选（R1 商店拆分 ~1200 行 / R2 外部组件注册外迁 ~300 / R3 配置表单 ~400 / R4 设置页 ~800 / R5 搜索链路 ~500 / R6 util 去重）按预期削减行数与风险排序

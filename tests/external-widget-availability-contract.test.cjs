@@ -8,6 +8,7 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const network = fs.readFileSync(path.join(root, "src", "life-widget-network.js"), "utf8");
 const model = fs.readFileSync(path.join(root, "src", "life-widget-model.js"), "utf8");
 const guide = fs.readFileSync(path.join(root, "docs", "component-store-guide.md"), "utf8");
+const adapters = fs.readFileSync(path.join(root, "src", "home-external-adapters.ts"), "utf8");
 
 test("life proxy accepts the shared URL allowlist", () => assert.match(source, /allowedActivityWatchUrl\(url\) && !allowedLifeWidgetUrl\(url\)/));
 test("life proxy keeps blocked endpoints rejected", () => assert.match(source, /throw new Error\("blocked_endpoint"\)/));
@@ -22,27 +23,27 @@ test("life proxy parses kernel envelope", () => assert.match(source, /envelope\?
 test("life proxy validates upstream status", () => assert.match(source, /status >= 200 && status < 300/));
 test("life proxy returns bounded body text", () => assert.match(source, /const body = typeof data\?\.body === "string"/));
 
-test("weather adapter uses the proxy fetcher", () => assert.match(source, /loadWeatherLocation\(geocodingUrl, \{signal: context\?\.signal, fetchImpl:/));
-test("weather forecast uses the proxy fetcher", () => assert.match(source, /loadWeatherForecast\(forecastUrl, \{signal: context\?\.signal, fetchImpl:/));
-test("weather keeps configuration empty state", () => assert.match(source, /homeWeatherConfigHint, items: \[\]\}/));
-test("weather keeps city-not-found empty state", () => assert.match(source, /homeWeatherCityNotFound, items: \[\]\}/));
-test("weather catches unavailable errors", () => assert.match(source, /return \{emptyHint: `\$\{this\.i18n\.homeModuleError\} · \$\{this\.i18n\.homeRetry\}`, items: \[\]\};/));
-test("weather preserves abort semantics", () => assert.match(source, /if \(error\?\.message === "aborted"\) throw error;/));
+test("weather adapter uses the proxy fetcher", () => assert.match(adapters, /loadWeatherLocation\(geocodingUrl, \{signal: context\?\.signal, fetchImpl:/));
+test("weather forecast uses the proxy fetcher", () => assert.match(adapters, /loadWeatherForecast\(forecastUrl, \{signal: context\?\.signal, fetchImpl:/));
+test("weather keeps configuration empty state", () => assert.match(adapters, /homeWeatherConfigHint, items: \[\]\}/));
+test("weather keeps city-not-found empty state", () => assert.match(adapters, /homeWeatherCityNotFound, items: \[\]\}/));
+test("weather catches unavailable errors", () => assert.match(adapters, /return \{emptyHint: `\$\{this\.i18n\.homeModuleError\} · \$\{this\.i18n\.homeRetry\}`, items: \[\]\};/));
+test("weather preserves abort semantics", () => assert.match(adapters, /if \(error\?\.message === "aborted"\) throw error;/));
 
-test("Bangumi uses the proxy fetcher", () => assert.match(source, /loadBangumiCalendar\(\{signal: context\?\.signal, fetchImpl:/));
-test("Bangumi keeps empty schedule state", () => assert.match(source, /homeBangumiEmpty, items: \[\], updatedAt/));
-test("Bangumi catches unavailable errors", () => assert.match(source, /homeBangumiEmpty\} · \$\{this\.i18n\.homeRetry/));
-test("Bangumi preserves abort semantics", () => assert.match(source, /external-anime-bangumi[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Bangumi uses the proxy fetcher", () => assert.match(adapters, /loadBangumiCalendar\(\{signal: context\?\.signal, fetchImpl:/));
+test("Bangumi keeps empty schedule state", () => assert.match(adapters, /homeBangumiEmpty, items: \[\], updatedAt/));
+test("Bangumi catches unavailable errors", () => assert.match(adapters, /homeBangumiEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Bangumi preserves abort semantics", () => assert.match(adapters, /external-anime-bangumi[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
 test("Bangumi remains a schedule, not recommendation", () => assert.match(guide, /不是个性化推荐/));
 
-test("ActivityWatch uses the proxy fetcher", () => assert.match(source, /fetchImpl: \(url: string, init: \{body\?: string\}\) => this\.fetchActivityWatchViaKernel/));
-test("ActivityWatch preserves configuration empty state", () => assert.match(source, /homeActivityWatchConfigHint, items: \[\]\}/));
-test("ActivityWatch catches unavailable errors", () => assert.match(source, /homeActivityWatchConfigHint\} · \$\{this\.i18n\.homeRetry/));
-test("ActivityWatch keeps abort semantics", () => assert.match(source, /external-activitywatch-time[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("ActivityWatch uses the proxy fetcher", () => assert.match(adapters, /fetchImpl: \(url: string, init: \{body\?: string\}\) => this\.fetchActivityWatchViaKernel/));
+test("ActivityWatch preserves configuration empty state", () => assert.match(adapters, /homeActivityWatchConfigHint, items: \[\]\}/));
+test("ActivityWatch catches unavailable errors", () => assert.match(adapters, /homeActivityWatchConfigHint\} · \$\{this\.i18n\.homeRetry/));
+test("ActivityWatch keeps abort semantics", () => assert.match(adapters, /external-activitywatch-time[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
 test("ActivityWatch remains loopback constrained", () => assert.match(network, /allowedActivityWatchUrl/));
 test("ActivityWatch guide explains local startup", () => assert.match(guide, /127\.0\.0\.1:5600/));
 
-test("feed configuration remains opt-in", () => assert.match(source, /if \(!endpoint\) return \{emptyHint: this\.i18n\.homeFeedConfigHint/));
+test("feed configuration remains opt-in", () => assert.match(adapters, /if \(!endpoint\) return \{emptyHint: this\.i18n\.homeFeedConfigHint/));
 test("feed loader retains stale cache behavior", () => assert.match(network, /if \(cached\) return \{payload: cached\.value, status: "stale"/));
 test("feed guide documents endpoint setup", () => assert.match(guide, /需要填写你信任的自建/));
 test("network guide documents no notebook egress", () => assert.match(guide, /不发送笔记内容/));
@@ -59,24 +60,24 @@ test("network code keeps cancellation signal", () => assert.match(network, /exte
 test("network code cleans cancellation listener", () => assert.match(network, /externalSignal\?\.removeEventListener/));
 test("network code isolates malformed JSON", () => assert.match(network, /throw new Error\("invalid_json"\)/));
 
-test("Uptime Kuma uses the proxy fetcher", () => assert.match(source, /loadUptimeKumaPage\(statusUrl, normalized\.slug, false, \{signal: context\?\.signal, fetchImpl\}\)/));
-test("Uptime Kuma loads the heartbeat page through the same gate", () => assert.match(source, /loadUptimeKumaPage\(heartbeatUrl, normalized\.slug, true, \{signal: context\?\.signal, fetchImpl\}\)/));
-test("Uptime Kuma preserves configuration empty state", () => assert.match(source, /homeUptimeKumaConfigHint, items: \[\]\}/));
-test("Uptime Kuma catches unavailable errors", () => assert.match(source, /external-status-uptimekuma[\s\S]*?homeFeedEmpty\} · \$\{this\.i18n\.homeRetry/));
-test("Uptime Kuma keeps abort semantics", () => assert.match(source, /external-status-uptimekuma[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Uptime Kuma uses the proxy fetcher", () => assert.match(adapters, /loadUptimeKumaPage\(statusUrl, normalized\.slug, false, \{signal: context\?\.signal, fetchImpl\}\)/));
+test("Uptime Kuma loads the heartbeat page through the same gate", () => assert.match(adapters, /loadUptimeKumaPage\(heartbeatUrl, normalized\.slug, true, \{signal: context\?\.signal, fetchImpl\}\)/));
+test("Uptime Kuma preserves configuration empty state", () => assert.match(adapters, /homeUptimeKumaConfigHint, items: \[\]\}/));
+test("Uptime Kuma catches unavailable errors", () => assert.match(adapters, /external-status-uptimekuma[\s\S]*?homeFeedEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Uptime Kuma keeps abort semantics", () => assert.match(adapters, /external-status-uptimekuma[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
 test("Uptime Kuma stays known-route constrained", () => assert.match(network, /\/api\/status-page\/\$\{heartbeat \? "heartbeat\/" : ""\}\$\{slug\}/));
 
-test("Frankfurter uses the proxy fetcher", () => assert.match(source, /loadFrankfurterRates\(url, \{[\s\S]{0,120}fetchImpl: \(reqUrl: string, init: \{body\?: string\}\) => this\.fetchActivityWatchViaKernel/));
-test("Frankfurter preserves configuration empty state", () => assert.match(source, /if \(!url\) return \{emptyHint: this\.i18n\.homeFxEmpty, items: \[\]\}\;/));
-test("Frankfurter catches unavailable errors", () => assert.match(source, /external-fx-frankfurter[\s\S]*?homeFxEmpty\} · \$\{this\.i18n\.homeRetry/));
-test("Frankfurter keeps abort semantics", () => assert.match(source, /external-fx-frankfurter[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Frankfurter uses the proxy fetcher", () => assert.match(adapters, /loadFrankfurterRates\(url, \{[\s\S]{0,120}fetchImpl: \(reqUrl: string, init: \{body\?: string\}\) => this\.fetchActivityWatchViaKernel/));
+test("Frankfurter preserves configuration empty state", () => assert.match(adapters, /if \(!url\) return \{emptyHint: this\.i18n\.homeFxEmpty, items: \[\]\}\;/));
+test("Frankfurter catches unavailable errors", () => assert.match(adapters, /external-fx-frankfurter[\s\S]*?homeFxEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Frankfurter keeps abort semantics", () => assert.match(adapters, /external-fx-frankfurter[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
 test("Frankfurter stays host and parameter allowlisted", () => assert.match(network, /api\.frankfurter\.dev/));
 test("Frankfurter snapshot labels itself as reference", () => assert.match(model, /参考汇率/));
 
-test("Miniflux uses the proxy fetcher", () => assert.match(source, /loadMinifluxEntries\(url, normalized\.token, \{[\s\S]{0,120}fetchImpl: \(reqUrl: string, init: \{body\?: string; headers\?: Record<string, string>\}\) => this\.fetchActivityWatchViaKernel/));
-test("Miniflux preserves configuration empty state", () => assert.match(source, /if \(!url \|\| !normalized\.token\) return \{emptyHint: this\.i18n\.homeMinifluxConfigHint, items: \[\]\}\;/));
-test("Miniflux catches unavailable errors", () => assert.match(source, /external-rss-miniflux[\s\S]*?homeMinifluxEmpty\} · \$\{this\.i18n\.homeRetry/));
-test("Miniflux keeps abort semantics", () => assert.match(source, /external-rss-miniflux[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
+test("Miniflux uses the proxy fetcher", () => assert.match(adapters, /loadMinifluxEntries\(url, normalized\.token, \{[\s\S]{0,120}fetchImpl: \(reqUrl: string, init: \{body\?: string; headers\?: Record<string, string>\}\) => this\.fetchActivityWatchViaKernel/));
+test("Miniflux preserves configuration empty state", () => assert.match(adapters, /if \(!url \|\| !normalized\.token\) return \{emptyHint: this\.i18n\.homeMinifluxConfigHint, items: \[\]\}\;/));
+test("Miniflux catches unavailable errors", () => assert.match(adapters, /external-rss-miniflux[\s\S]*?homeMinifluxEmpty\} · \$\{this\.i18n\.homeRetry/));
+test("Miniflux keeps abort semantics", () => assert.match(adapters, /external-rss-miniflux[\s\S]*?if \(error\?\.message === "aborted"\) throw error;/));
 test("Miniflux stays known-route constrained", () => assert.match(network, /\/v1\/entries/));
 test("Miniflux token never enters the request URL", () => {
     assert.match(network, /X-Auth-Token/);

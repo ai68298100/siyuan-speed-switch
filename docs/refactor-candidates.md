@@ -54,6 +54,8 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 |---------|------|--------------------:|------|------|
 | **R1：商店拆分** | `openHomeWidgetStore`(995) + `openStoreWidgetPreview`(125) + 相邻辅助 → `home-store-ui.ts` | ~1200 | 中（商店状态机与事件绑定交织；契约测试 store-* 会锁定行为） | index.ts 减约 10%；商店独立可测 |
 | **R2：外部组件注册外迁** | 11 个 `external-*` register 块（242 行）→ 与 `home-adapters.js` 合并或新建 `home-external-adapters.ts`；`lifeModuleIds`/`clockModuleIds`/`BUILTIN_GROUPS` 常量随迁 | ~300 | 低（纯搬移，外部组件契约测试直接锁定） | 生活组件接线与业务代码解耦，后续扩充不再进 index.ts |
+| | | | | |
+| > **R2 执行记录（2026-09-16，D-375，T-6232）**：实际搬移为 13 个外部组件注册（11 个直接 `register` + 2 个 `registerExternalFeed`，原清单低估了 feed 助手拆分），共 243 行（含成对注释）按字节原样迁入 `src/home-external-adapters.ts`（273 行，`this` 参数模式绑定宿主 i18n 与内核代理 fetch，块内接线形态零漂移）。index.ts 12681 → 12442 行。`lifeModuleIds`/`clockModuleIds`/`BUILTIN_GROUPS` 属于运行时行为逻辑（心跳、移动端尺寸、商店分组），按语义保留在 index.ts。契约同步：component-availability-audit 双文件扫描、external-widget-availability-contract 28 条断言改指新文件、external-widget-model 6 处改指、生产闭包 34→35。负向验证 2 轮（删 register → audit/contract 精确失败 → 字节级还原）。`index.js` 601480 → 601526 bytes。R4 候选顺位递补。 | | | | |
 | **R3：配置表单拆分** | `openHomeConfigForm`(329) + renderField 相关 → `home-config-form.ts` | ~400 | 中（controls Map 类型与 placeholder token 耦合 i18n） | 配置渲染独立；字段类型可继续扩展 |
 | **R4：设置页拆分** | `buildSettingsDocumentSets`(315) + `buildSettingsQuickActions`(221) + `buildSettings*` 系列 → `settings-sections.ts` | ~800 | 低-中（各节相对独立） | index.ts 减约 6% |
 | **R5：搜索链路拆分** | `bindDocSearchFilter`(317) + `runDocSearchFetch`(117) → `doc-search-ui.ts`（`path-filter-model` 已独立） | ~500 | 中（D-366/D-365 的门禁测试锁定接线形态，搬移须同步契约） | 搜索 UI 与模型解耦 |
@@ -61,7 +63,7 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 
 ## 4. 建议批次顺序与理由
 
-1. **先做 R2（外部组件注册外迁）**：风险最低、契约测试最完备（三批扩充的 11 个组件全部有 availability-contract 行锁定接线形态），且直接服务后续扩充节奏——新组件不再让 index.ts 增长。可独立成一个批次先行验证搬移流程。
+1. ~~**先做 R2（外部组件注册外迁）**~~：✅ 已交付（2026-09-16，D-375）。风险最低、契约测试最完备（三批扩充的 11 个组件全部有 availability-contract 行锁定接线形态），且直接服务后续扩充节奏——新组件不再让 index.ts 增长。可独立成一个批次先行验证搬移流程。
 2. **再做 R4（设置页拆分）**：各节独立、互不纠缠，适合作为搬移流程的第二次演练。
 3. **R1（商店拆分）单独立项**：预期削减最大但状态机交织最深，建议在 R2/R4 验证搬移方法后进行，且需要先补商店渲染快照类契约测试再动手。
 4. **R3/R5 随后**；**R6** 独立小批次（涉及生产依赖图与包体复核）。
