@@ -21,8 +21,9 @@
 - 设置页 UI 构建在 `src/settings-sections.ts`（R4/D-376 外迁）；其源码契约写在 `tests/mobile-card-smoke.cjs` 的 `documentSetContractOk` 等一串 `includes` 断言里，改设置页行为要顺手扩那里。
 - 纯模型惯例：`src/document-sets.js` 一侧放 plan/summarize/run/**report**，UI 只装配；报告类函数的时间戳用 `options.now` 注入以便测试确定化。
 - `src/index.ts` 与 `src/settings-sections.ts` 各有一份 `declare module "./document-sets"` 类型增强块，新增导出要补声明（否则 tsc 报错）。
-- 存储 key 总数恒为 13（`src/storage-migration.js` 的 `KEY_ORDER` = `HANDLED_KEYS` ∪ `INSPECTED_KEYS`，12+1 端型无关）；`agent-capabilities.js` 把只读快照计数钳到 13，`tests/storage-key-audit.test.cjs` 用字面量 13 钉住（`report.keys.length === KEY_ORDER.length` 是自指恒真式，发现不了重复归类）。
-- 缩略图缓存：`src/util.js` 的 `normalizeThumbCache`（读取侧，`changed` 驱动回写）必须与 `index.ts` 的 `setThumbCache`（写入侧）规则镜像，上限按端型选（桌面 40/200 KiB、手机 30/80 KiB）且**写入侧/加载侧/演练侧三处都要选**——`tests/storage-migration.test.cjs` 断言该常量选择表达式恰出现 3 次。
+- 存储 key 总数恒为 13 = `HANDLED_KEYS`(**11**) ∪ `INSPECTED_KEYS`(**2**)，即 `src/storage-migration.js` 的 `KEY_ORDER`（端型无关）；`agent-capabilities.js` 把只读快照计数钳到 13，`tests/storage-key-audit.test.cjs` 用字面量 13 钉住（`report.keys.length === KEY_ORDER.length` 是自指恒真式，发现不了重复归类）。
+- **13 key 的迁移函数 / 容量边界 / 引入版本 / 跨版本迁移时间线**看 `docs/storage-compatibility-matrix.md`（v0.20 交付物，D-393）；它由 `tests/storage-compatibility-matrix.test.cjs` **双向**钉住（文档缺 key 或写废弃 key 都失败）。注意 ROADMAP v0.20 那句「8 个数据 key」是 **v0.16.9 时点**的旧数字，现为 13。
+- 缩略图缓存：`src/util.js` 的 `normalizeThumbCache`（读取侧，`changed` 驱动回写）必须与 `index.ts` 的 `setThumbCache`（写入侧）规则镜像，上限按端型选（桌面 40/200 KiB、手机 30/80 KiB）且**写入侧/加载侧/演练侧三处都要选**——`tests/storage-migration.test.cjs` 断言该常量选择表达式恰出现 3 次。**历史事实（已用 `git log -S` 核实，不要凭印象改）**：桌面 40/200 KiB 自 v0.2.0 起从未变过；手机端常量 v0.7.0 是 20/80 KiB 但 `setThumbCache` 当时**硬编码桌面常量**（该版本 `isMobile ? THUMB` 出现 0 次），v0.8.0 起才按端型选到 30/80 KiB。
 
 ## 门禁方法论（踩过的坑）
 1. **不要用"类名 + N 字符距离窗口"当锚点**（第七类失效模式，D-390）：注释里提到同类名即成伪锚点 → 归因错误；目标语句漂出窗口 → 假绿。改用 `X.className = "..."` 建变量→类名映射（多值 Set，因变量名会复用），再取 `X.innerHTML = ...` 完整语句断言（按引号状态扫描跨过字符串内分号）。
@@ -32,3 +33,6 @@
 5. **源码扫描前必须剥注释**（第八类失效模式，D-392）：否则"把调用注释掉"或"在注释里写下调用文本"就能满足 `includes(...)` 式接线性断言。统一用 `tests/source-scan.cjs` 的 `stripComments()`（按引号状态扫描，不误伤 `"https://…"`），别自己写朴素 `//` 正则。
 6. **数据驱动门禁的白名单值一定要被断言**（第八类，D-392）：`for (const k of Object.keys(X))` 只用了 key 就是装饰——`tests/storage-key-audit.test.cjs` 的 `sanitizeAllowlist` 曾如此，"每个 key 必须有清洗函数"从未真正生效。要求"函数在源码里被**调用**"，并用反向否定环视排除 `export function name(` 这类 ambient 声明。
 7. **可判别性检查**：构造用例后要问"注入违规时它真的会失败吗"。`normalizeThumbCache` 的"按 ts 淘汰"用例首版里插入序与 ts 同向，注入"忽略 ts"仍通过（假绿）；改成插入序/键名/ts 互相反相关才有效。
+8. **叙述性历史断言无防线**（第九类失效模式，D-393）：写进 JSDoc/文档的「旧版本上限更大」「自 vX 起从未变过」不进代码审查视野、无测试覆盖，却会被后续读者当作事实沿用（同一句错论曾复制进 JSDoc + TODO + PROGRESS + DECISIONS 四处）。处置：① 每条约史断言**必须附可复现的 git 命令**（`git log -S <符号> -- src/` 定位引入提交，再 `git show <sha>:plugin.json` 取版本号；数量类用逐 tag 统计）；② 数量/边界类事实**以代码为准**并配文档契约门禁；③ 不确定就写"当前实现如此"，不写"一向如此"。
+9. **文档契约门禁要双向**：只断言"文档提到了 X"会漏掉"文档写了已废弃的 X"。`tests/storage-compatibility-matrix.test.cjs` 同时断言两个方向，并配"被审计常量清单须恰好等于 `DEFAULT_LIMITS` 声明的来源常量集合"的自检（首版漏 `THUMB_HTML_MAX` 时它立刻报错）。清单必须**显式**——`constants.ts` 另有 `COLUMNS_MAX`/`PANEL_SCALE_MAX` 等与存储无关的上限，宽泛正则会误纳。
+10. **verify:release 必须独占运行**（D-376/D-393）：与其它进程争用时 `tests/perf-complexity-gate.test.cjs` 会假失败（实测 `buildSearchCacheKey … grew 3.42x (ceiling 3)`，单独复跑 5/5 绿）。此类失败一律先单独复跑再判定。
