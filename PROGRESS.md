@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-17 分支收拢执行完毕（第三十批，ROADMAP 执行顺序 #2）：本地分支 10 → 0（仅剩 main）；7 个 feature worktree 干净移除；2 个 codex worktree 含未提交 src 实验（history 下拉移除，未经验证）保留待维护者决断。测试 5827/5827 不变（本轮 perf 门禁再现负载假失败，单独复跑 5/5）。
+
 2026-09-17 T-6284 完成（第二十九批：iCal 订阅只读组件纯模型，v0.21 生活信息支线，见 ROADMAP「再评估 iCal」）。**① 契约/纯模型层** `src/ical-model.js`：`normalizeIcalSubscriptionConfig`（https/http+本机、.ics 路径、拒绝 URL 内嵌凭据——传输规则与 Miniflux/Configured Feed 对齐；窗口 1~60 天、条目 1~12 钳制）、RFC 5545 折行展开、VEVENT 有界解析（DTSTART/DTEND/SUMMARY/LOCATION，源 256 KiB 上限、解析 500 条上限，超限按 parse_failed 拒绝而非静默截断——避免把超大订阅源误报为"没有日程"）、`upcomingIcalEvents`（结束不早于 now、开始不越窗口、升序、钳制）。**② 门禁**：`tests/ical-model.test.cjs` 17 项全过；负向验证：破坏折行展开 → 精确 FAIL，md5 还原。**③ 接入后置**：adapter/catalog/i18n 待产品确认（同 T-123/T-124 契约先行先例）。**④ 成本**：新增 17 项测试（5827→**5844**）、文件 169→**170**；README 双语同步。
 
 2026-09-17 验收 Runbook（第三十批，ROADMAP 执行顺序 #4「集中记录人工待验项」）：新增 `docs/acceptance-runbook.md`，把 11 个分散的真机/真实宿主验收任务整合为按会话类型分组的批量执行清单——桌面会话 A（路径筛选证据链 4 项，通过后直接应用 `docs/path-filter-desktop-plan.md` 存档实现）、桌面会话 B（Agent 只读诊断与执行闭环前置 3 项）、手机/窄屏会话（5 项，含本会话两个产品修复的验证点）、生命周期、组件逐项矩阵、第三方端到端。每项标注验证点、来源任务、通过标准与证据边界（沿用 desktop-acceptance-template）。**测试 5827/5827 不变。**

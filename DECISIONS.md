@@ -533,3 +533,5 @@
 
 2026-09-17 D-396 补充（iCal 纯模型：新组件的"契约先行"边界）：**① 只做纯模型层的理由**：adapter/catalog/i18n 接线需要产品确认订阅源形态（公开日历 vs 用户私有 URL）与商店分区归属——按 T-123/T-124 先例，纯模型+门禁先交付，接入是独立小批次。**② 有界契约的两个决定**：源超限按 parse_failed 拒绝而非静默截断（防止超大订阅源被误报为"无日程"）；解析上限 500 条只影响极端日历，正常订阅源不受影响。**③ 日期语义**：DTSTART 无 Z 视为本地浮动时间（与思源本地渲染一致），带 Z 按 UTC。**④ 成本**：新增 17 项测试（5844）。
 
+2026-09-17 分支收拢执行完毕（ROADMAP 执行顺序 #2 第三十批收口）：**① 已合并分支**：codex/home-ui-final、codex/quick-ui-final、feature/search-foundation（ahead=0）安全删除。**② 被超越分支**：7 个 feature 分支经 token 级审计确认 main 已有等价实现（icon-fallback 的兜底在 main 已实现为更完整的 resolveIconReference；search-opened-content 的 buildOpenedDocumentScope 与测试已在 main；open-history 29/30 token 在 main）——连同其干净 worktree 一并移除。**③ 保留的两个 WIP worktree**：a4d8/caf4 各含未提交的 src 修改（history 下拉样式移除实验，2026-09-09，未经验证）——不可丢弃，留维护者决定恢复或放弃；对应分支已删，实验内容以 worktree 内未提交修改形态保存（git worktree prune 前可恢复）。**④ 远端分支未动**：origin 的 7 个 feature 分支删除需 push 权限。**⑤ 最终分支态**：本地仅 main。
+
