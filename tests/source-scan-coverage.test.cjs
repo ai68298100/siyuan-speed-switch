@@ -71,7 +71,6 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/store-mobile-external-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-mobile-layout-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-motion-accessibility.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-numeric-typography.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-pending-card-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-performance-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-preview-context-contract.test.cjs", reason: "css-window-scope"},
@@ -140,8 +139,10 @@ function discoverRawReaderFiles() {
 test("undetected-vs-registered: the debt list is exactly the measured set", () => {
     const found = discoverRawReaderFiles();
     // 非空自检：审计面塌缩（例如判据写坏、目录改名）时必须先失败，
-    // 否则下面两个集合都是空的、断言恒真。
-    assert.ok(found.length >= 35, `audit surface collapsed: only ${found.length} files matched`);
+    // 否则下面两个集合都是空的、断言恒真。下限按"防塌缩"校准（T-6280 第八批）：
+    // T-6278 时代的 `>= 35` 是按当时 43 条债钉的，随迁移推进必然误伤正常进展——
+    // 精确相等已由下面的集合比对保证，这里只拦"判据坏掉 → 归零"。
+    assert.ok(found.length >= 3, `audit surface collapsed: only ${found.length} files matched`);
     const expected = SOURCE_SCAN_DEBT.map((entry) => entry.file).sort();
     const unexpected = found.filter((file) => !expected.includes(file));
     const stale = expected.filter((file) => !found.includes(file));
@@ -153,7 +154,7 @@ test("undetected-vs-registered: the debt list is exactly the measured set", () =
 });
 
 test("every debt entry carries a used, non-empty reason from the fixed vocabulary", () => {
-    assert.ok(SOURCE_SCAN_DEBT.length >= 35, "debt list shrank unexpectedly without reason tags being pruned");
+    assert.ok(SOURCE_SCAN_DEBT.length >= 3, "debt list shrank unexpectedly without reason tags being pruned");
     const seen = new Set();
     for (const entry of SOURCE_SCAN_DEBT) {
         assert.ok(DEBT_REASONS[entry.reason], `unknown reason tag: ${entry.reason}`);
@@ -176,7 +177,9 @@ test("every debt entry's reason tag matches the content it describes (T-6282)", 
         Object.keys(DEBT_REASONS).sort(),
         "每个理由标签都必须配有内容判据，且不留无判据的死标签",
     );
-    assert.ok(SOURCE_SCAN_DEBT.length >= 35, `audit surface collapsed: only ${SOURCE_SCAN_DEBT.length} debt entries`);
+    // 下限按"防塌缩"校准（T-6280 第八批）：T-6282 时代的 `>= 35` 随迁移推进必然误伤，
+    // 只拦"债清单被清空/判据全失"的归零形态。
+    assert.ok(SOURCE_SCAN_DEBT.length >= 3, `audit surface collapsed: only ${SOURCE_SCAN_DEBT.length} debt entries`);
     // 判据的**非平凡自检**：每个判据必须至少拒绝一个真实形态的反例，否则把判据改成
     // 恒真（`() => true`）不会被发现——判据沦为装饰，正是本门禁要防的形态本身。
     const DEBT_REASON_COUNTEREXAMPLES = {

@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-16 T-6280 第八批：第八个文件迁移 + 覆盖率门禁阈值重校准（见 D-396 补充）。**① 迁移** `store-numeric-typography.test.cjs`：13 条窗口 → 8 条块级（`source-chip`/`availability` 分组规则同 `font-metrics` 口径）+ 2 条逐规则否定 + 删除 3 条纯冗余 `* rule closes`（含 1 条双窗口 `summary…optimizeLegibility…\}`）+ 兑现 1 条名不副实（`keeps flexible width` 旧断言只是"存在 tabular-nums"）。30→27 测试。判别力 8/8 + 探针 5 次（flexible width ×3 覆盖三块、no network/script ×2）。**② 门槛重校准（全量测试首次实抓的副产物）**：全量跑出 4 失败——3 个是 `source-scan-coverage` 的"审计面 ≥35"非空自检误伤（T-6278 按 43 条债钉的阈值，债清到 34 条时先于集合比对失败），1 个是性能基准高负载假失败（`buildSearchCacheKey` 3.07x vs 3，单独复跑 5/5 绿）。阈值改为防塌缩下限 `>=3`（精确相等由集合比对保证），负向验证照做：注入扫描失效 → `audit surface collapsed: only 0 files matched` 精确 FAIL，md5 字节级还原。**教训**：给"随进度递减的集合"钉绝对数量下限，等于把进度本身写死在门禁里——非空自检的职责是拦"归零塌缩"，不是拦"合法变少"。**③ 成本**：测试 5788→**5785**，README 双语与快照同步；债内余 **W1 154 / W2 85 / W3 17 = 256 条 / 29 文件**（已迁 8 个文件共 102 条）。
+
 2026-09-16 T-6280 第七批：第七个文件迁移（`store-typography-contract`，见 D-396 补充）。**① 迁移**：普查 11 条 + **1 条普查扫不到的手写窗口**——旧首行 `cardHeadBlock` 用 `/\.sw-home-store__card-head\s*\{([\s\S]*?)
 \}\s*
 \s*\.sw__home-source-health/` 截取"到下一个选择器为止"的块，再在其上做否定窗口；锚点是**下一个规则的类名**，中间插删规则即漂移，与 `A[\s\S]*?B` 同族病（普查只认 `assert.match` 单行，变量截取扫不到）。合计 12 条 → 9 条块级 + 2 条逐规则否定（声明 `text-wrap: balance` 的规则全文件恰 2 条：strong 与 group）+ 删除 1 条纯冗余（`CSS remains closed`）并删掉手写截块变量 + 收紧 1 条文件级断言到块级（`-webkit-line-clamp: 2` → span 块）。31→30 测试。**② 判别力**：9 条提取断言全过（旧写法对照 6 条全部仍绿=假绿，3 条无对照）+ 4 次探针（avoids fixed width ×2 覆盖两条 balance 规则、no network ×2），md5 字节级还原。**③ 成本**：测试 5789→**5788**，README 双语与快照同步；债内余 **W1 165 / W2 87 / W3 17 = 269 条 / 30 文件**（已迁 7 个文件共 89 条）。
