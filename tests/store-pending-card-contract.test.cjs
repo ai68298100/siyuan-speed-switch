@@ -3,14 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const {readSourceText}=require('./source-scan.cjs');
+
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+// 2026-09-16（T-6280 / D-396）：2 条窗口断言改"锚定创建块 + 有界窗口"（ready 卡与 pending 卡
+// 各自的 bind → moduleId 赋值序列）；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const css = readSourceText('src/index.scss');
+const readyCardBlock = storeUiSource.slice(storeUiSource.indexOf('bindStoreCardKeyboard(card);'), storeUiSource.indexOf('bindStoreCardKeyboard(card);') + 200);
+const pendingBlock = storeUiSource.slice(storeUiSource.indexOf('sw-home-store__card--pending'), storeUiSource.indexOf('sw-home-store__card--pending') + 300);
 
 test('store card keyboard helper is declared', () => assert.match(storeUiSource, /const bindStoreCardKeyboard = \(card: HTMLElement\)/));
-test('ready cards use shared keyboard helper', () => assert.match(storeUiSource, /bindStoreCardKeyboard\(card\);[\s\S]*?card\.dataset\.moduleId = moduleId/));
-test('pending cards use shared keyboard helper', () => assert.match(storeUiSource, /sw-home-store__card--pending[\s\S]*?bindStoreCardKeyboard\(card\)/));
+test('ready cards use shared keyboard helper', () => assert.ok(readyCardBlock.includes('card.dataset.moduleId = moduleId'), 'ready card binds keyboard helper and records moduleId'));
+test('pending cards use shared keyboard helper', () => assert.ok(pendingBlock.includes('bindStoreCardKeyboard(card);'), 'pending card binds keyboard helper'));
 test('shared card helper keeps negative tabindex', () => assert.match(storeUiSource, /card\.tabIndex = -1/));
 test('shared card helper keeps group role', () => assert.match(storeUiSource, /card\.setAttribute\("role", "group"\)/));
 test('pending cards participate in visible navigation', () => assert.match(storeUiSource,/root\.querySelectorAll<HTMLElement>\("\.sw-home-store__card:not\(\.fn__none\)"\)/));

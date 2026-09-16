@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-16 T-6280 第十九批（5 个 1-2 条小文件，见 D-396 补充）：card-navigation 1（`&:focus-visible` → `.sw-home-store__card:focus-visible` 具名块）、focus-recovery 1（clear-filters 归分组规则 user-select）、a11y-navigation 1（TS 侧 `activateStoreTab[\s\S]*?applyFilter` 改"锚定激活函数 + 有界窗口"，负向验证：删 applyFilter 行 → 精确 FAIL，md5 还原）、rerender-focus 2（handleModuleChange 与重扫 timer 各自"锚定入口 + 有界窗口"）、pending-card 2（ready/pending 创建块各自锚定 bind → moduleId 序列）。**经验**：有界窗口长度要按实际源码距离校准（activateStoreTab 到 applyFilter 实测 666 字符，400/600 都不够，最终 800）；债清单 5 条批量移除。**成本**：测试数不变（5772）；zip 313077 不变；`verify:release` 独占全链绿；债内余 **W1 45 / W2 75 / W3 17 = 137 条 / 10 文件**（已迁 27 个文件共 231 条）——剩余 10 个文件中 mobile-layout 占 86 条。
+
 2026-09-16 T-6280 第十八批（5 个小文件一次性迁完，见 D-396 补充）：render-state 6、ui-polish 5、search-interaction 7、filter-state 6、render-stability 5，共 29 条 / 5 文件。**① render-state**：CSS 侧 aria-busy/focus-kind 嵌套按展开选择器（`.sw-home-store[aria-busy="true"]` 等）；TS 侧 1 条 `pendingCount="0"[\s\S]*?aria-busy` 改"锚点 + 有界窗口 + 顺序检查"（先 pendingCount 清零 → 提示 → restoreStoreView → 解除 busy），负向验证（删 restoreStoreView 行 → 精确 FAIL，md5 还原）。**② ui-polish**：移动端 search 换行/输入框占满用 `{atRule}` 钉 560px 分支。**③ search-interaction**：TS 侧 2 条改"锚定 click 处理器 + 顺序检查"（applyFilter 在 focus 之前）；CSS height 断言被 `min-height: 32px` 替身满足——收紧行首锚定（`/(^|
 )height:/`）后注入工具又暴露"声明正则含 
  锚时无法定位删除行"的盲区，md5 手工补验（删 height 保 min-height → 精确 FAIL）。**④ filter-state**：空 tab 的数据属性选择器尾部锚定。**⑤ render-stability**：backface/translateZ 各 1 条规则，逐规则否定。**教训再现**：heredoc 折叠反斜杠三次（含 `

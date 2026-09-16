@@ -3,10 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+// 2026-09-16（T-6280 / D-396）：1 条窗口断言迁移为块级；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const css = readSourceText('src/index.scss');
+const base={topLevel: true};
 
 test('store captures the opener element', () => assert.match(storeUiSource, /const opener = document\.activeElement instanceof HTMLElement/));
 test('clear search has a tooltip', () => assert.match(storeUiSource, /clearSearchButton\.title = this\.i18n\.homeStoreClearSearch/));
@@ -35,6 +40,6 @@ test('clear filters restores roving tabindex', () => assert.match(storeUiSource,
 test('clear filters restores search focus', () => assert.match(storeUiSource, /applyFilter\(\);\s*searchInput\.focus\(\);/));
 test('store destroy restores opener focus', () => assert.match(storeUiSource, /if \(opener\?\.isConnected\) opener\.focus\(\)/));
 test('filter empty state remains a status region', () => assert.match(storeUiSource,/filterEmptyState\.setAttribute\("role", "status"\)/));
-test('clear filters cannot be accidentally selected', () => assert.match(css, /\.sw-home-store__clear-filters[\s\S]*?user-select: none/));
+test('clear filters cannot be accidentally selected', () => assert.ok(declaresIn(css, '.sw-home-store__clear-filters', /user-select: none/, base)));
 test('forced colors cover clear filters', () => assert.match(css, /\.sw-home-store__clear-filters/));
 test('clear filters remains scoped to the store', () => assert.match(css, /sw-home-store__clear-filters/));

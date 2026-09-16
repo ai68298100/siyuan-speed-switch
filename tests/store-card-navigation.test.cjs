@@ -3,10 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+// 2026-09-16（T-6280 / D-396）：1 条窗口断言迁移为块级；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const css = readSourceText('src/index.scss');
+const base={topLevel: true};
 
 test('store cards are programmatically focusable', () => assert.match(storeUiSource, /card\.tabIndex = -1/));
 test('store cards expose group semantics', () => assert.match(storeUiSource, /card\.setAttribute\("role", "group"\)/));
@@ -24,7 +29,7 @@ test('card navigation wraps forward', () => assert.match(storeUiSource, /\(index
 test('card navigation wraps backward', () => assert.match(storeUiSource, /\(index - 1 \+ cards\.length\) % cards\.length/));
 test('card navigation starts from current card', () => assert.match(storeUiSource,/const index = cards\.indexOf\(card\)/));
 test('card navigation ignores hidden cards', () => assert.match(source, /:not\(\.fn__none\)/));
-test('card focus style has outline', () => assert.match(css, /\.sw-home-store__card[\s\S]*?&:focus-visible[\s\S]*?outline: 2px solid/));
+test('card focus style has outline', () => assert.ok(declaresIn(css, '.sw-home-store__card:focus-visible', /outline: 2px solid/, base)));
 test('card focus style uses primary color', () => assert.match(css, /outline: 2px solid var\(--b3-theme-primary\)/));
 test('card focus style offsets outline', () => assert.match(css, /outline-offset: 2px/));
 test('card remains section element', () => assert.match(storeUiSource, /const card = document\.createElement\("section"\)/));

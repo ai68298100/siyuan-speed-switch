@@ -3,9 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const {readSourceText}=require('./source-scan.cjs');
+
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
+// 2026-09-16（T-6280 / D-396）：2 条窗口断言改"锚定入口 + 有界窗口"（handleModuleChange 与
+// 重扫 timer 各自的同步/异步 renderStore 调用）；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
 const restoreBlock = (source.match(/const restoreStoreView = \(\) => \{([\s\S]*?)\n\s*\};/) || [])[1] || '';
 
 test('store rerender captures active element', () => assert.match(storeUiSource, /const activeElement = document\.activeElement instanceof HTMLElement/));
@@ -32,8 +36,8 @@ test('store rerender focuses without jumping scroll', () => assert.match(storeUi
 test('empty store path restores view state', () => assert.match(storeUiSource, /root\.textContent = this\.i18n\.homeNoMoreModules;\s*restoreStoreView\(\);/));
 test('normal store path restores view state', () => assert.match(storeUiSource, /applyFilter\(\);\s*restoreStoreView\(\);/));
 test('sort changes rerender the store', () => assert.match(storeUiSource, /sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); renderStore\(\); \}\)/));
-test('module changes rerender the store', () => assert.match(storeUiSource, /const handleModuleChange = \(\) => \{[\s\S]*?renderStore\(\);/));
-test('provider rescan rerenders the store', () => assert.match(storeUiSource, /window\.setTimeout\(\(\) => \{[\s\S]*?renderStore\(\);/));
+test('module changes rerender the store', () => { const i = storeUiSource.indexOf('const handleModuleChange = () => {'); assert.ok(i >= 0, 'missing handleModuleChange'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender on module change'); });
+test('provider rescan rerenders the store', () => { const i = storeUiSource.indexOf('window.setTimeout(() => {'); assert.ok(i >= 0, 'missing rescan timer'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender after rescan'); });
 test('focus descriptor starts in a neutral state', () => assert.match(storeUiSource, /let focusKind = "none"/));
 test('focus descriptor stores a stable value', () => assert.match(storeUiSource, /let focusValue = ""/));
 test('card focus remains non-positive tabindex', () => assert.match(storeUiSource, /card\.tabIndex = -1/));

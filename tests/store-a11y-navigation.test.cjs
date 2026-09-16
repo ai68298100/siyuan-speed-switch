@@ -3,8 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'home-store-ui.ts'), 'utf8');
+const {readSourceText}=require('./source-scan.cjs');
+
+// 2026-09-16（T-6280 / D-396）：1 条窗口断言改"锚定激活函数 + 有界窗口"（applyFilter 是
+// activateStoreTab 的最后一步）；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const activateBody = storeUiSource.slice(storeUiSource.indexOf('const activateStoreTab = (button: HTMLElement) => {'), storeUiSource.indexOf('const activateStoreTab = (button: HTMLElement) => {') + 800);
 
 test('store tablist has activation helper', () => assert.match(storeUiSource, /const activateStoreTab =/));
 test('store tabs use roving tabindex', () => assert.match(storeUiSource, /setAttribute\("tabindex", active \? "0" : "-1"\)/));
@@ -26,7 +31,7 @@ test('group toggles reference controlled grids', () => assert.match(storeUiSourc
 test('add action has an accessible label', () => assert.match(storeUiSource, /addButton\.setAttribute\("aria-label"/));
 test('preview action has an accessible label', () => assert.match(storeUiSource, /previewButton\.setAttribute\("aria-label"/));
 test('tab activation stores selected key', () => assert.match(storeUiSource, /storeTab = button\.dataset\.tabKey/));
-test('tab activation reapplies filter', () => assert.match(storeUiSource, /activateStoreTab[\s\S]*?applyFilter\(\)/));
+test('tab activation reapplies filter', () => assert.ok(activateBody.includes('applyFilter();'), '激活 tab 须重新应用筛选'));
 test('tab focus order uses only visible tab controls', () => assert.match(storeUiSource, /querySelectorAll<HTMLElement>\("\.sw-home-store__tab"\)/));
 test('keyboard navigation wraps forward', () => assert.match(storeUiSource, /\(index \+ 1\) % buttons\.length/));
 test('keyboard navigation wraps backward', () => assert.match(storeUiSource, /\(index - 1 \+ buttons\.length\) % buttons\.length/));
