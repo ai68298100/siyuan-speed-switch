@@ -3,10 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+// 2026-09-16（T-6280 / D-396 第十七批）：CSS 侧 7 条窗口断言迁移为块级；TS 侧 1 条
+// （`addMeta(…homeStoreSource[\s\S]*?"source")`）按真实原文（home-store-ui.ts:112）改写为
+// 精确调用断言；TS 源码读取改走 readSourceText（源码字面契约，登记理由见债清单）。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const css = readSourceText('src/index.scss');
+const base={topLevel: true};
 
 test('preview disclosure resolves source metadata', () => assert.match(storeUiSource, /const sourceInfo = resolveHomeStoreSourceInfo\(moduleId\)/));
 test('preview disclosure has a scoped meta wrapper', () => assert.match(storeUiSource, /meta\.className = "sw-store-preview__meta"/));
@@ -23,19 +30,19 @@ test('preview disclosure explains endpoint privacy', () => assert.match(storeUiS
 test('preview disclosure explains no-content privacy', () => assert.match(storeUiSource, /this\.i18n\.homeStorePrivacyNone/));
 test('preview disclosure renders source text', () => assert.match(storeUiSource, /this\.i18n\.homeStoreSource\.replace\("\{source\}"/));
 test('preview disclosure has a provider fallback', () => assert.match(storeUiSource, /sourceInfo\?\.providerName \|\| "SiYuan"/));
-test('preview disclosure adds source tone', () => assert.match(storeUiSource, /addMeta\(this\.i18n\.homeStoreSource[\s\S]*?"source"\)/));
+test('preview disclosure adds source tone', () => assert.match(storeUiSource, /addMeta\(this\.i18n\.homeStoreSource\.replace\("\{source\}", sourceInfo\?\.providerName \|\| "SiYuan"\), "source"\)/));
 test('preview disclosure adds network tone', () => assert.match(storeUiSource, /sourceInfo\?\.integration === "http" \? "network"/));
 test('preview disclosure adds local tone', () => assert.match(storeUiSource, /sourceInfo\?\.integration === "local-bridge" \? "local"/));
 test('preview disclosure adds offline tone', () => assert.match(storeUiSource, /: "offline"\);/));
 test('preview disclosure adds privacy tone', () => assert.match(storeUiSource, /addMeta\(privacy, "privacy"\)/));
 test('preview disclosure is mounted before preview body', () => assert.match(storeUiSource,/container\.appendChild\(meta\);\s*const body = document\.createElement\("div"\)/));
-test('preview meta uses flex layout', () => assert.match(css, /\.sw-store-preview[\s\S]*?&__meta[\s\S]*?display: flex/));
-test('preview meta wraps on narrow surfaces', () => assert.match(css, /&__meta[\s\S]*?flex-wrap: wrap/));
-test('preview meta keeps bounded gaps', () => assert.match(css, /&__meta[\s\S]*?gap: 5px/));
-test('preview chips have visible borders', () => assert.match(css, /&__meta-chip[\s\S]*?border: 1px solid/));
-test('preview chips allow long source names', () => assert.match(css, /&__meta-chip[\s\S]*?overflow-wrap: anywhere/));
-test('preview chips keep legacy word-break fallback', () => assert.match(css, /&__meta-chip[\s\S]*?word-break: break-word/));
-test('preview chips remain selectable', () => assert.match(css, /&__meta-chip[\s\S]*?user-select: text/));
-test('preview network tone is scoped', () => assert.match(css, /&\.is-network/));
-test('preview privacy tone is scoped', () => assert.match(css, /&\.is-privacy/));
+test('preview meta uses flex layout', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /display: flex/, base)));
+test('preview meta wraps on narrow surfaces', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /flex-wrap: wrap/, base)));
+test('preview meta keeps bounded gaps', () => assert.ok(declaresIn(css, '.sw-store-preview__meta', /gap: 5px/, base)));
+test('preview chips have visible borders', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /border: 1px solid/, base)));
+test('preview chips allow long source names', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /overflow-wrap: anywhere/, base)));
+test('preview chips keep legacy word-break fallback', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /word-break: break-word/, base)));
+test('preview chips remain selectable', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip', /user-select: text/, base)));
+test('preview network tone is scoped', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip.is-network', /border-color/, base)));
+test('preview privacy tone is scoped', () => assert.ok(declaresIn(css, '.sw-store-preview__meta-chip.is-privacy', /opacity/, base)));
 test('preview disclosure styles remain store-preview scoped', () => assert.match(css, /\.sw-store-preview/));

@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-16 T-6280 第十七批：第十七个文件迁移（`store-preview-disclosure-contract`，见 D-396 补充）。**① 迁移**：CSS 侧 7 条窗口（`&__meta` ×2、`&__meta-chip` ×4、`&__meta` 复合锚 ×1）→ 9 条块级（多出的 2 条是 `&.is-network`/`&.is-privacy` 两个"仅查文本存在"的 tone 断言收紧到具名块 `.sw-store-preview__meta-chip.is-network`/`.is-privacy`，各自断言真实声明 border-color/opacity）。**② TS 侧**：`addMeta(…homeStoreSource[\s\S]*?"source")` 按 home-store-ui.ts:112 原文改精确调用断言，手工负向验证（改 tone 值 → 精确 FAIL，md5 还原）；TS 裸读改走 readSourceText。31 条测试一条未删。判别力 9/9 提取断言全过，md5 还原。**③ 成本**：测试数不变（5773）；zip 实测 313077 与快照一致；债内余 **W1 71 / W2 85 / W3 17 = 172 条 / 20 文件**（已迁 17 个文件共 196 条）。
+
 2026-09-16 T-6280 第十六批：第十六个文件迁移（`store-scroll-contract`，见 D-396 补充）。**① 迁移**：7 条窗口 → 5 条块级 + 1 条逐规则守卫（匹配 grid 的全部规则禁 `overflow: hidden`）+ **删除 1 条手写窗口**：`gridBlock` 按 `/\.sw-home-store__grid\s*\{([\s\S]*?)
 \}/` 截"到第一个块尾"再做否定检查——第二例普查扫不到的变量截块（锚点是"第一个块尾"，嵌套/空行即漂移）+ 删 1 条迁移后逐字重复（`keeps flexible tab sizing` 与 `allow horizontal scroll`）。31→29 测试。判别力 5/5 + 探针 1 次，md5 还原。**② 记账修正（本批自查发现）**：TODO 里 W2「债内 87 条」是 T-6278 时代写入后**从未随批次更新**的陈值（实际批次 8 起为 85），且第十四/十五批提交信息里的 W1/W2 拆分有误（总数正确）——本批起以普查工具分档输出为准，W1+W2+W3 必须等于合计。**③ 成本**：测试 5775→**5773**，README 双语与快照同步（zip 实测 **313077**，余量 211211）；`verify:release` 独占全链绿；债内余 **W1 78 / W2 85 / W3 17 = 180 条 / 21 文件**（已迁 16 个文件共 188 条）。
 
