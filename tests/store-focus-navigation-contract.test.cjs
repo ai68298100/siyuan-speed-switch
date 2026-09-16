@@ -6,6 +6,8 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
 const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
+// R5b 重构（D-383）：文档搜索方法群外迁至 doc-search-ui，commitFilters 的搜索框聚焦随之迁移。
+const docSearchUiSource = fs.readFileSync(path.join(root, 'src', 'doc-search-ui.ts'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
 
 test('filter records the active tab', () => assert.match(storeUiSource, /root\.dataset\.activeFilter = filter\.tab/));
@@ -28,7 +30,7 @@ test('store root records active filter in source', () => assert.match(storeUiSou
 test('store root records sort in source', () => assert.match(storeUiSource, /dataset\.sort = storeSort/));
 test('store cards keep filter match metadata', () => assert.match(storeUiSource, /card\.dataset\.filterMatch = String\(visible\)/));
 test('store cards preserve focus preventScroll', () => assert.match(storeUiSource,/nextCard\.focus\(\{preventScroll: true\}\)/));
-test('store search focus preserves preventScroll', () => assert.match(source, /searchInput\.focus\(\{preventScroll: true\}\)/));
+test('store search focus preserves preventScroll', () => assert.match(docSearchUiSource, /searchInput\.focus\(\{preventScroll: true\}\)/));
 test('store tabs expose page current state', () => assert.match(source, /aria-current/));
 test('store size controls keep touch semantics', () => assert.match(css, /\.sw-home-store__size[\s\S]*?touch-action: manipulation/));
 test('store add action keeps touch semantics', () => assert.match(css, /\.sw-home-store__add[\s\S]*?touch-action: manipulation/));

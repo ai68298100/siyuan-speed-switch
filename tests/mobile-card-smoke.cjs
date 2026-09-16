@@ -175,6 +175,8 @@ const agentSource = readSource('agent-capabilities.js');
 const documentSetSource = readSource('document-sets.js');
 // R4 重构（D-376）：设置页“文档集/快捷动作”分节的 UI 构建在 settings-sections.ts。
 const sectionsSource = readSource('settings-sections.ts');
+// R5b 重构（D-383）：文档搜索方法群（筛选菜单/取数/渲染）外迁至 doc-search-ui.ts。
+const docSearchUiSource = readSource('doc-search-ui.ts');
 const documentSetContractOk = source.includes('"documentSets"')
     && source.includes('buildSettingsDocumentSets')
     && source.includes('createDocumentSet')
@@ -277,27 +279,27 @@ const homePanelEmptyContractOk = homePanelSource.includes('sw__home-panel-empty'
     && pluginCss.includes('.sw__home-panel-empty');
 console.log(`${homePanelEmptyContractOk ? 'PASS' : 'FAIL'} home panel empty-state contract`);
 if (!homePanelEmptyContractOk) allPassed = false;
-const searchSubTypeContractOk = source.includes('const subTypeOptions')
-    && source.includes('label: this.i18n.searchSubType')
-    && source.includes('next.subTypes = Object.freeze({[value]: true})')
-    && source.includes('delete next.types');
+const searchSubTypeContractOk = docSearchUiSource.includes('const subTypeOptions')
+    && docSearchUiSource.includes('label: this.i18n.searchSubType')
+    && docSearchUiSource.includes('next.subTypes = Object.freeze({[value]: true})')
+    && docSearchUiSource.includes('delete next.types');
 console.log(`${searchSubTypeContractOk ? 'PASS' : 'FAIL'} search subtype filter contract`);
 if (!searchSubTypeContractOk) allPassed = false;
-const searchFilterSummaryContractOk = source.includes('getDocSearchFilterSummary(filters, scrollElement)')
-    && source.includes('button.setAttribute("aria-label", accessibleLabel)')
-    && source.includes('this.i18n.searchFilterNotebook')
-    && source.includes('this.i18n.searchSubType');
+const searchFilterSummaryContractOk = docSearchUiSource.includes('getDocSearchFilterSummary.call(this, filters, scrollElement)')
+    && docSearchUiSource.includes('button.setAttribute("aria-label", accessibleLabel)')
+    && docSearchUiSource.includes('this.i18n.searchFilterNotebook')
+    && docSearchUiSource.includes('this.i18n.searchSubType');
 console.log(`${searchFilterSummaryContractOk ? 'PASS' : 'FAIL'} search filter summary contract`);
 if (!searchFilterSummaryContractOk) allPassed = false;
-const searchFilterBadgeContractOk = source.includes('button.dataset.filterCount = count > 0 ? String(Math.min(9, count)) : "";')
+const searchFilterBadgeContractOk = docSearchUiSource.includes('button.dataset.filterCount = count > 0 ? String(Math.min(9, count)) : "";')
     && (pluginCss.includes('content: attr(data-filter-count)') || pluginCss.includes('content:attr(data-filter-count)'))
     && (pluginCss.includes('border: 2px solid var(--b3-theme-surface)') || pluginCss.includes('border:2px solid var(--b3-theme-surface)'));
 console.log(`${searchFilterBadgeContractOk ? 'PASS' : 'FAIL'} search filter count badge contract`);
 if (!searchFilterBadgeContractOk) allPassed = false;
-const searchFilterFocusContractOk = source.includes('const onMenuKeyDown = (event: KeyboardEvent)')
-    && source.includes('button.focus({preventScroll: true})')
-    && source.includes('document.addEventListener("keydown", onMenuKeyDown, true)')
-    && source.includes('document.removeEventListener("keydown", onMenuKeyDown, true)');
+const searchFilterFocusContractOk = docSearchUiSource.includes('const onMenuKeyDown = (event: KeyboardEvent)')
+    && docSearchUiSource.includes('button.focus({preventScroll: true})')
+    && docSearchUiSource.includes('document.addEventListener("keydown", onMenuKeyDown, true)')
+    && docSearchUiSource.includes('document.removeEventListener("keydown", onMenuKeyDown, true)');
 console.log(`${searchFilterFocusContractOk ? 'PASS' : 'FAIL'} search filter focus recovery contract`);
 if (!searchFilterFocusContractOk) allPassed = false;
 const settingsTabScrollContractOk = source.includes('const ensureTabVisible = (key: string, behavior: ScrollBehavior = "auto")')
@@ -418,11 +420,11 @@ const stateSemanticsOk = pluginCss.includes('.sw__empty-title')
     && pluginCss.includes('.sw__doc-status--error')
     && pluginCss.includes('color-mix(in srgb, var(--b3-theme-error)')
     && pluginCss.includes('.sw__mobile-sheet-empty')
-    && source.includes('empty.setAttribute("role", "status")')
-    && source.includes('empty.setAttribute("aria-live", "polite")')
-    && source.includes('status.setAttribute("role", state === "error" ? "alert" : "status")')
+    && docSearchUiSource.includes('empty.setAttribute("role", "status")')
+    && docSearchUiSource.includes('empty.setAttribute("aria-live", "polite")')
+    && docSearchUiSource.includes('status.setAttribute("role", state === "error" ? "alert" : "status")')
     && source.includes('loading.setAttribute("role", "status")')
-    && source.includes('box.setAttribute("aria-busy", state === "loading" ? "true" : "false")');
+    && docSearchUiSource.includes('box.setAttribute("aria-busy", state === "loading" ? "true" : "false")');
 console.log(`${stateSemanticsOk ? 'PASS' : 'FAIL'} shared empty/loading/error state semantics`);
 if (!stateSemanticsOk) allPassed = false;
 
@@ -447,10 +449,10 @@ const homeReadonlyBoundaryOk = homeRuntimeSource.includes('readOnly: true')
 console.log(`${homeReadonlyBoundaryOk ? 'PASS' : 'FAIL'} home module read-only registration boundary`);
 if (!homeReadonlyBoundaryOk) allPassed = false;
 
-const filterLifecycleOk = source.includes('let notebooks: Array<{id: string; name: string}> = [];')
-    && source.includes('logger.warn("load search filter notebooks fail", error)')
-    && source.includes('if (button.isConnected) {')
-    && source.includes('button.removeAttribute("aria-busy");');
+const filterLifecycleOk = docSearchUiSource.includes('let notebooks: Array<{id: string; name: string}> = [];')
+    && docSearchUiSource.includes('logger.warn("load search filter notebooks fail", error)')
+    && docSearchUiSource.includes('if (button.isConnected) {')
+    && docSearchUiSource.includes('button.removeAttribute("aria-busy");');
 console.log(`${filterLifecycleOk ? 'PASS' : 'FAIL'} search filter host-error lifecycle recovery`);
 if (!filterLifecycleOk) allPassed = false;
 
@@ -469,18 +471,18 @@ console.log(`${switcherRefreshFallbackOk ? 'PASS' : 'FAIL'} switcher refresh fra
 if (!switcherRefreshFallbackOk) allPassed = false;
 
 const searchSourceUiOk = pluginCss.includes('.sw__doc-source')
-    && source.includes('this.i18n.docSearchSourceOpened')
-    && source.includes('this.i18n.docSearchSourceGlobal')
+    && docSearchUiSource.includes('this.i18n.docSearchSourceOpened')
+    && docSearchUiSource.includes('this.i18n.docSearchSourceGlobal')
     && source.includes('docSearchHitId')
     && documentActionsSource.includes('cb-get-scroll')
     && source.includes('openDocumentOnDesktop');
 console.log(`${searchSourceUiOk ? 'PASS' : 'FAIL'} search result source labels`);
 if (!searchSourceUiOk) allPassed = false;
 
-const searchViewAllOk = source.includes('buildNativeSearchTabConfig')
-    && source.includes('this.i18n.docSearchViewAll')
-    && source.includes('className = "sw__doc-view-all')
-    && source.includes('search: search.config')
+const searchViewAllOk = docSearchUiSource.includes('buildNativeSearchTabConfig')
+    && docSearchUiSource.includes('this.i18n.docSearchViewAll')
+    && docSearchUiSource.includes('className = "sw__doc-view-all')
+    && docSearchUiSource.includes('search: search.config')
     && pluginCss.includes('.sw__doc-view-all');
 console.log(`${searchViewAllOk ? 'PASS' : 'FAIL'} native search view-all escape hatch`);
 if (!searchViewAllOk) allPassed = false;
@@ -513,14 +515,14 @@ console.log(`${mobileTabMetadataOk ? 'PASS' : 'FAIL'} SiYuan 3.8.3 MobileTabs se
 if (!mobileTabMetadataOk) allPassed = false;
 
 const searchFilterUiOk = (source.match(/class="sw__search-filter-btn/g) || []).length === 3
-    && source.includes('new Menu("swSearchFilter")')
-    && source.includes('label: this.i18n.searchContentType')
-    && source.includes('label: this.i18n.searchMethod')
-    && source.includes('label: this.i18n.searchResultOrder')
-    && source.includes('label: this.i18n.searchResetFilters')
-    && source.includes('this.docSearchState.filters.set(scrollElement, Object.freeze(next))')
-    && source.includes('if (!canUseTitleSearch(filters))')
-    && source.includes('this.runOpenedDocumentContentSearch(keyword, signal, filters)')
+    && docSearchUiSource.includes('new Menu("swSearchFilter")')
+    && docSearchUiSource.includes('label: this.i18n.searchContentType')
+    && docSearchUiSource.includes('label: this.i18n.searchMethod')
+    && docSearchUiSource.includes('label: this.i18n.searchResultOrder')
+    && docSearchUiSource.includes('label: this.i18n.searchResetFilters')
+    && docSearchUiSource.includes('this.docSearchState.filters.set(scrollElement, Object.freeze(next))')
+    && docSearchUiSource.includes('if (!canUseTitleSearch(filters))')
+    && docSearchUiSource.includes('runOpenedDocumentContentSearch.call(this, keyword, signal, filters)')
     && source.includes('card.dataset.notebookId = resolveSearchNotebookId(tab as unknown)')
     && pluginCss.includes('.sw__search-filter-btn')
     && pluginCss.includes('.sw__search-filter-btn.sw__active');
@@ -547,10 +549,10 @@ const agentSubtypeContractOk = agentSource.includes('normalizeAgentSearchSubType
     && source.includes('filters.subTypes = {[subType]: true};');
 console.log(`${agentSubtypeContractOk ? 'PASS' : 'FAIL'} Agent subtype filter contract`);
 if (!agentSubtypeContractOk) allPassed = false;
-const searchFilterMenuLifecycleOk = source.includes('let activeMenu: Menu | null = null;')
-    && source.includes('activeMenu?.close();')
-    && source.includes('activeMenu = menu;')
-    && source.includes('activeMenu = null;');
+const searchFilterMenuLifecycleOk = docSearchUiSource.includes('let activeMenu: Menu | null = null;')
+    && docSearchUiSource.includes('activeMenu?.close();')
+    && docSearchUiSource.includes('activeMenu = menu;')
+    && docSearchUiSource.includes('activeMenu = null;');
 console.log(`${searchFilterMenuLifecycleOk ? 'PASS' : 'FAIL'} search filter menu lifecycle cleanup`);
 if (!searchFilterMenuLifecycleOk) allPassed = false;
 const notebookAbortFallbackOk = source.includes('const controller = typeof AbortController === "function" ? new AbortController() : null;')
@@ -560,8 +562,8 @@ const notebookAbortFallbackOk = source.includes('const controller = typeof Abort
 console.log(`${notebookAbortFallbackOk ? 'PASS' : 'FAIL'} notebook request abort fallback`);
 if (!notebookAbortFallbackOk) allPassed = false;
 const searchAbortFallbackOk = source.includes('controller = typeof AbortController === "function" ? new AbortController() : null;')
-    && source.includes('private async runOpenedDocumentContentSearch(\n        keyword: string,\n        signal?: AbortSignal,')
-    && source.includes('private async runFullTextSearchFallback(\n        keyword: string,\n        signal?: AbortSignal,')
+    && docSearchUiSource.includes('export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,\n        keyword: string,\n        signal?: AbortSignal,')
+    && docSearchUiSource.includes('export async function runFullTextSearchFallback(this: DocSearchUiHost,\n        keyword: string,\n        signal?: AbortSignal,')
     && source.includes('...(signal ? {signal} : {})')
     && source.includes('const signal = controller?.signal;')
     && source.includes('if (controller) this.activeAgentSearchControllers.add(controller);')

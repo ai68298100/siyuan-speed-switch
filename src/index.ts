@@ -29,6 +29,29 @@ import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
 import {registerExternalHomeAdapters} from "./home-external-adapters";
 import {openHomeConfigForm} from "./home-config-form";
 import {createDocSearchState} from "./doc-search-state";
+import {
+    appendDocResultsEmpty,
+    appendDocResultsViewAll,
+    appendDocSearchStatus,
+    bindDocSearchFilter,
+    buildDocResultItem,
+    collectOpenRootIds,
+    disposeDocSearchSession,
+    docSearchHitId,
+    docSearchResultId,
+    ensureDocResultsBox,
+    filterDocSearchResults,
+    getDocSearchFilterCount,
+    getDocSearchFilterSummary,
+    getDocSearchSession,
+    hasDocSearchFilter,
+    loadDocSearchPathChildren,
+    openDocSearchResult,
+    renderDocResults,
+    runDocSearchFetch,
+    runFullTextSearchFallback,
+    runOpenedDocumentContentSearch,
+} from "./doc-search-ui";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets} from "./settings-sections";
@@ -417,7 +440,7 @@ declare module "./search-model" {
     }>;
 }
 
-type DocSearchRenderState = "results" | "loading" | "error";
+export type DocSearchRenderState = "results" | "loading" | "error";
 
 // IMobileTabEntry / IMobileTabsState 宸茶縼绉昏嚦 ./types.ts锛堟€濇簮鍏ㄥ眬瀵硅薄鐨勭浉鍏崇粨鏋勶級
 // 椤电鎺掑簭鏂瑰紡锛歮ru=鏈€杩戜娇鐢?layout=鎵撳紑椤哄簭 layoutDesc=鎵撳紑鍊掑簭 titleAsc/titleDesc=鏍囬鍗囬檷搴?updatedDesc=鏈€杩戠紪杈?
@@ -431,7 +454,7 @@ export type QuickActionDisplay = "full" | "icons" | "hidden";
 export type HomePalette = "auto" | "soft" | "mono";
 const SORT_BY_LIST: SortBy[] = ["mru", "layout", "layoutDesc", "titleAsc", "titleDesc", "updatedDesc"];
 // 椤电鍗＄墖鎿嶄綔瀹屾垚鍚庣殑鏀跺熬鍔ㄤ綔锛堝脊绐楁ā寮忛攢姣佸脊绐楋紝渚ц竟鏍忔ā寮忓埛鏂板垪琛級
-type IOverlayClose = () => void;
+export type IOverlayClose = () => void;
 
 // 瀛樺偍 key / dock type / 蹇嵎閿瓑娉ㄥ唽甯搁噺宸查泦涓埌 ./constants.ts锛圓DR-0002 閬楃暀闂幆锛寁0.16.5锛?
 
@@ -2172,7 +2195,7 @@ const updatedMap: {[rootId: string]: string} = {};
             }
             this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts,
                 (sortSelect?.value as SortBy) || settings.sortBy, updatedMap);
-            if (searchInput && (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement))) {
+            if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                 this.applySearch(scrollElement, searchInput, closeOverlay);
             }
         };
@@ -2193,7 +2216,7 @@ const updatedMap: {[rootId: string]: string} = {};
         };
         const unregisterRefresh = this.registerSwitcherRefresh(refreshSurface);
         const disposeSearchFilter: () => void = searchInput
-            ? this.bindDocSearchFilter(dialog.element, scrollElement, searchInput, closeOverlay)
+            ? bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay)
             : () => undefined;
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         const originalDestroy = dialog.destroy.bind(dialog);
@@ -2201,7 +2224,7 @@ const updatedMap: {[rootId: string]: string} = {};
             unregisterRefresh();
             disposeSearchFilter();
             disposeHistoryDropdown();
-            this.disposeDocSearchSession(scrollElement);
+            disposeDocSearchSession.call(this, scrollElement);
             originalDestroy();
         };
 
@@ -2519,7 +2542,7 @@ const updatedMap: {[rootId: string]: string} = {};
     private applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose) {
         const keyword = searchInput.value.trim();
         scrollElement.dataset.swDocSearchQuery = keyword;
-        const session = this.getDocSearchSession(scrollElement);
+        const session = getDocSearchSession.call(this, scrollElement);
         const filters = this.docSearchState.filters.get(scrollElement) || {};
         this.filterCards(scrollElement, searchInput.value, new Set(), filters);
 
@@ -2528,21 +2551,21 @@ const version = beginSearch(session);
 
         // 鍏抽敭璇嶄负绌猴細闅愯棌鏂囨。缁撴灉锛屾仮澶嶇函鍒楄〃
         if (keyword === "") {
-            this.renderDocResults(scrollElement, null, onClose);
+            renderDocResults.call(this, scrollElement, null, onClose);
             return;
         }
         // 鍛戒腑缂撳瓨鐩存帴娓叉煋锛堝凡鎵撳紑鏂囨。鍦ㄦ覆鏌撴椂鎺掗櫎锛岀紦瀛樼粨鏋滃彲瀹夊叏澶嶇敤锛?
         const cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters});
         const cached = session.cache.get(cacheKey);
         if (cached) {
-            this.renderDocResults(scrollElement, cached, onClose);
+            renderDocResults.call(this, scrollElement, cached, onClose);
             return;
         }
-        this.renderDocResults(scrollElement, [], onClose, "loading");
+        renderDocResults.call(this, scrollElement, [], onClose, "loading");
         // 寤惰繜 180ms 鍐嶈姹傚叏搴撴枃妗ｏ紙闃叉姈锛夛紝閬垮厤姣忎釜鎸夐敭閮芥墦鍐呮牳锛?        // 瀹氭椂鍣ㄤ繚瀛樺埌瀛楁锛屾柊涓€杞緭鍏?娓呯┖鏃舵竻鎺夋棫鍥炶皟
         session.timer = window.setTimeout(() => {
             session.timer = null;
-            this.runDocSearchFetch(scrollElement, searchInput, keyword, version, onClose, filters, cacheKey);
+            runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey);
         }, SEARCH_DEBOUNCE_MS);
     }
 
@@ -4769,895 +4792,6 @@ const version = beginSearch(session);
         };
     }
 
-    // 设置页“文档集”分节的 UI 构建已外迁至 settings-sections.ts（R4 重构 D-376），经 .call(this) 绑定宿主调用。
-    private async loadDocSearchPathChildren(notebook: string, path: string, generation: number) {
-        const input = {notebook, path, limit: MAX_PATH_ITEMS};
-        const request = buildPathFilterListRequest(input);
-        const cancelled = () => normalizePathFilterProbeOutcome({kind: "cancelled"}, input);
-        if (!request) return normalizePathFilterProbeOutcome({kind: "response", payload: null}, input);
-        if (generation !== this.docSearchState.pathGeneration) return cancelled();
-        let payload: unknown = null;
-        try {
-            payload = await this.fetchKernelJson("/api/filetree/listDocsByPath", request.body);
-        } catch (_) {
-            payload = null;
-        }
-        if (generation !== this.docSearchState.pathGeneration) return cancelled();
-        if (payload === null || payload === undefined) {
-            return normalizePathFilterProbeOutcome({kind: "unavailable"}, input);
-        }
-        return normalizePathFilterProbeOutcome({kind: "response", payload}, input);
-    }
-
-    private bindDocSearchFilter(
-        container: HTMLElement,
-        scrollElement: HTMLElement,
-        searchInput: HTMLInputElement,
-        onClose: IOverlayClose,
-    ): () => void {
-        const button = container.querySelector<HTMLButtonElement>(".sw__search-filter-btn");
-        if (!button) return () => undefined;
-        let activeMenu: Menu | null = null;
-        const onMenuKeyDown = (event: KeyboardEvent) => {
-            if (event.key !== "Escape" || !activeMenu) return;
-            window.setTimeout(() => {
-                if (button.isConnected && !button.disabled) {
-                    try {
-                        button.focus({preventScroll: true});
-                    } catch (_) {
-                        button.focus();
-                    }
-                }
-            }, 0);
-        };
-        document.addEventListener("keydown", onMenuKeyDown, true);
-
-        const updateButton = () => {
-            const filters = this.docSearchState.filters.get(scrollElement) || {};
-            const count = this.getDocSearchFilterCount(filters);
-            const label = count > 0
-                ? this.i18n.searchFiltersActive.replace("{x}", String(count))
-                : this.i18n.searchFilters;
-            const summary = this.getDocSearchFilterSummary(filters, scrollElement);
-            const accessibleLabel = summary ? `${label}: ${summary}` : label;
-            button.classList.toggle("sw__active", count > 0);
-            button.dataset.filterCount = count > 0 ? String(Math.min(9, count)) : "";
-            button.setAttribute("aria-pressed", String(count > 0));
-            button.setAttribute("aria-label", accessibleLabel);
-            button.title = accessibleLabel;
-        };
-        const commitFilters = (change: (next: IDocSearchFilters) => void) => {
-            const next: IDocSearchFilters = {...(this.docSearchState.filters.get(scrollElement) || {})};
-            change(next);
-            if (next.types && Object.keys(next.types).length === 0) delete next.types;
-            if (next.subTypes && Object.keys(next.subTypes).length === 0) delete next.subTypes;
-            this.docSearchState.filters.set(scrollElement, Object.freeze(next));
-            updateButton();
-            this.applySearch(scrollElement, searchInput, onClose);
-            searchInput.focus({preventScroll: true});
-        };
-        // v0.18 路径筛选（T-103）：逐级浏览目录并选择路径前缀。
-        // 每次打开自增代际标记，使在途请求作废（内核辅助函数不接受外部 signal）。
-        const openPathMenu = (notebook: string, path: string) => {
-            const generation = ++this.docSearchState.pathGeneration;
-            const rect = button.getBoundingClientRect();
-            const position = {x: rect.left, y: rect.bottom};
-            const openAsMenu = (items: IMenu[]) => {
-                const menu = new Menu("swSearchPath");
-                items.forEach((item) => menu.addItem(item));
-                activeMenu?.close();
-                activeMenu = menu;
-                menu.open(position);
-            };
-            openAsMenu([{label: this.i18n.searchPathLoading, disabled: true}]);
-            void this.loadDocSearchPathChildren(notebook, path, generation).then((result) => {
-                if (!button.isConnected || generation !== this.docSearchState.pathGeneration) return;
-                const items: IMenu[] = [];
-                if (!result.ok) {
-                    items.push({
-                        label: result.reason === "unavailable"
-                            ? this.i18n.searchPathUnavailable
-                            : this.i18n.searchPathFailed,
-                        disabled: true,
-                    });
-                    openAsMenu(items);
-                    return;
-                }
-                const titles = this.docSearchState.pathTitles.get(scrollElement) || new Map<string, string>();
-                result.items.forEach((item) => titles.set(item.path, item.title));
-                this.docSearchState.pathTitles.set(scrollElement, titles);
-                if (path !== "/") {
-                    const parent = path.slice(0, path.lastIndexOf("/")) || "/";
-                    items.push({
-                        label: this.i18n.searchPathUp,
-                        icon: "iconUp",
-                        click: () => openPathMenu(notebook, parent),
-                    });
-                }
-                items.push({
-                    label: this.i18n.searchPathHere,
-                    icon: "iconFilter",
-                    click: () => commitFilters((next) => {
-                        const list = next.paths || [];
-                        if (!list.includes(path)) next.paths = [...list, path];
-                    }),
-                });
-                items.push({type: "separator"});
-                if (result.items.length === 0) {
-                    items.push({label: this.i18n.searchNoPaths, disabled: true});
-                }
-                result.items.forEach((item) => {
-                    const pick = () => commitFilters((next) => {
-                        const list = next.paths || [];
-                        if (!list.includes(item.path)) next.paths = [...list, item.path];
-                    });
-                    if (item.hasChildren) {
-                        items.push({
-                            label: item.title,
-                            icon: "iconFolder",
-                            submenu: [
-                                {label: this.i18n.searchPathHere, icon: "iconFilter", click: pick},
-                                {type: "separator"},
-                                {label: this.i18n.searchPathBrowse, icon: "iconFolder", click: () => openPathMenu(notebook, item.path)},
-                            ],
-                        });
-                    } else {
-                        items.push({label: item.title, icon: "iconFiles", click: pick});
-                    }
-                });
-                if (result.truncated) items.push({label: this.i18n.searchPathTruncated, disabled: true});
-                openAsMenu(items);
-            });
-        };
-        const onClick = async (event: MouseEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            if (button.disabled) return;
-            activeMenu?.close();
-            activeMenu = null;
-            button.disabled = true;
-            button.setAttribute("aria-busy", "true");
-            let notebooks: Array<{id: string; name: string}> = [];
-            try {
-                notebooks = await this.loadNotebooks();
-            } catch (error) {
-                // Keep the filter menu usable even if a host adapter throws
-                // outside loadNotebooks' own guarded fetch path.
-                logger.warn("load search filter notebooks fail", error);
-            } finally {
-                if (button.isConnected) {
-                    button.disabled = false;
-                    button.removeAttribute("aria-busy");
-                }
-            }
-            if (!button.isConnected) return;
-
-            this.docSearchState.notebookNames.set(scrollElement, new Map(
-                notebooks
-                    .filter((notebook) => typeof notebook?.id === "string" && typeof notebook?.name === "string")
-                    .map((notebook) => [notebook.id, notebook.name.slice(0, 64)]),
-            ));
-            updateButton();
-
-            const current = this.docSearchState.filters.get(scrollElement) || {};
-            const notebookSub: IMenu[] = [{
-                label: this.i18n.searchAllNotebooks,
-                icon: "iconGlobalGraph",
-                checked: !current.notebook,
-                click: () => commitFilters((next) => delete next.notebook),
-            }];
-            if (notebooks.length > 0) {
-                notebookSub.push({type: "separator"});
-                notebooks.forEach((notebook) => notebookSub.push({
-                    label: this.escapeAttr(notebook.name),
-                    icon: "iconFiles",
-                    checked: current.notebook === notebook.id,
-                    click: () => commitFilters((next) => { next.notebook = notebook.id; delete next.paths; }),
-                }));
-            } else {
-                notebookSub.push({label: this.i18n.searchNoNotebooks, disabled: true});
-            }
-            const selectedType = Object.keys(current.types || {}).find((key) => current.types?.[key]) || "";
-            const selectedSubType = Object.keys(current.subTypes || {}).find((key) => current.subTypes?.[key]) || "";
-            const typeOptions: Array<{value: string; label: string}> = [
-                {value: "", label: this.i18n.searchTypeAll},
-                {value: "document", label: this.i18n.searchTypeDocument},
-                {value: "heading", label: this.i18n.searchTypeHeading},
-                {value: "paragraph", label: this.i18n.searchTypeParagraph},
-                {value: "codeBlock", label: this.i18n.searchTypeCodeBlock},
-            ];
-            const subTypeOptions: Array<{value: string; label: string}> = [
-                {value: "", label: this.i18n.searchSubTypeAll},
-                {value: "h1", label: this.i18n.searchSubTypeH1},
-                {value: "h2", label: this.i18n.searchSubTypeH2},
-                {value: "h3", label: this.i18n.searchSubTypeH3},
-                {value: "h4", label: this.i18n.searchSubTypeH4},
-                {value: "h5", label: this.i18n.searchSubTypeH5},
-                {value: "h6", label: this.i18n.searchSubTypeH6},
-                {value: "o", label: this.i18n.searchSubTypeOrdered},
-                {value: "u", label: this.i18n.searchSubTypeUnordered},
-                {value: "t", label: this.i18n.searchSubTypeTask},
-            ];
-            const methodOptions: Array<{value: IDocSearchFilters["method"]; label: string}> = [
-                {value: "keyword", label: this.i18n.searchMethodKeyword},
-                {value: "query", label: this.i18n.searchMethodQuery},
-                {value: "regexp", label: this.i18n.searchMethodRegexp},
-            ];
-            const orderOptions: Array<{value: IDocSearchFilters["orderBy"]; label: string}> = [
-                {value: "relevanceDesc", label: this.i18n.searchOrderRelevance},
-                {value: "updatedDesc", label: this.i18n.searchOrderUpdated},
-                {value: "createdDesc", label: this.i18n.searchOrderCreated},
-                {value: "content", label: this.i18n.searchOrderContent},
-            ];
-            const menu = new Menu("swSearchFilter");
-            activeMenu = menu;
-            menu.addItem({type: "submenu", label: this.i18n.searchFilterNotebook, icon: "iconFiles", submenu: notebookSub});
-            // v0.18 路径筛选（T-103）：路径前缀依赖笔记本，故紧随其后；
-            // 未选笔记本时给明确前置提示，而非隐藏入口。
-            const currentNotebook = typeof current.notebook === "string" ? current.notebook : "";
-            const currentPaths = current.paths || [];
-            const pathSub: IMenu[] = [];
-            if (!currentNotebook) {
-                pathSub.push({label: this.i18n.searchPathPickNotebook, disabled: true});
-            } else {
-                pathSub.push({
-                    label: this.i18n.searchAllPaths,
-                    icon: "iconGlobalGraph",
-                    checked: currentPaths.length === 0,
-                    click: () => commitFilters((next) => delete next.paths),
-                });
-                const pathTitles = this.docSearchState.pathTitles.get(scrollElement);
-                currentPaths.forEach((value) => {
-                    const fallback = value.split("/").pop()?.replace(/\.sy$/, "") || value;
-                    pathSub.push({
-                        label: (pathTitles?.get(value) || fallback).slice(0, 40),
-                        icon: "iconTrashcan",
-                        click: () => commitFilters((next) => {
-                            const rest = (next.paths || []).filter((entry) => entry !== value);
-                            if (rest.length > 0) next.paths = rest;
-                            else delete next.paths;
-                        }),
-                    });
-                });
-                pathSub.push({type: "separator"});
-                pathSub.push({
-                    label: this.i18n.searchPathBrowse,
-                    icon: "iconFolder",
-                    click: () => openPathMenu(currentNotebook, "/"),
-                });
-            }
-            menu.addItem({type: "submenu", label: this.i18n.searchFilterPath, icon: "iconFolder", submenu: pathSub});
-            menu.addItem({
-                type: "submenu",
-                label: this.i18n.searchContentType,
-                icon: "iconFilter",
-                submenu: typeOptions.map(({value, label}) => ({
-                    label,
-                    checked: selectedType === value,
-                    click: () => commitFilters((next) => {
-                        if (value) {
-                            next.types = Object.freeze({[value]: true});
-                            delete next.subTypes;
-                        } else delete next.types;
-                    }),
-                })),
-            });
-            menu.addItem({
-                type: "submenu",
-                label: this.i18n.searchSubType,
-                icon: "iconHeading",
-                submenu: subTypeOptions.map(({value, label}) => ({
-                    label,
-                    checked: selectedSubType === value,
-                    click: () => commitFilters((next) => {
-                        if (value) {
-                            next.subTypes = Object.freeze({[value]: true});
-                            delete next.types;
-                        } else delete next.subTypes;
-                    }),
-                })),
-            });
-            menu.addItem({
-                type: "submenu",
-                label: this.i18n.searchMethod,
-                icon: "iconSearch",
-                submenu: methodOptions.map(({value, label}) => ({
-                    label,
-                    checked: (current.method || "keyword") === value,
-                    click: () => commitFilters((next) => {
-                        if (value && value !== "keyword") next.method = value;
-                        else delete next.method;
-                    }),
-                })),
-            });
-            menu.addItem({
-                type: "submenu",
-                label: this.i18n.searchResultOrder,
-                icon: "iconSort",
-                submenu: orderOptions.map(({value, label}) => ({
-                    label,
-                    checked: (current.orderBy || "relevanceDesc") === value,
-                    click: () => commitFilters((next) => {
-                        if (value && value !== "relevanceDesc") next.orderBy = value;
-                        else delete next.orderBy;
-                    }),
-                })),
-            });
-            menu.addSeparator();
-            menu.addItem({
-                label: this.i18n.searchResetFilters,
-                icon: "iconRefresh",
-                disabled: this.getDocSearchFilterCount(current) === 0,
-                click: () => commitFilters((next) => {
-                    Object.keys(next).forEach((key) => delete next[key as keyof IDocSearchFilters]);
-                }),
-            });
-            const rect = button.getBoundingClientRect();
-            menu.open({x: rect.left, y: rect.bottom});
-        };
-
-        updateButton();
-        button.addEventListener("click", onClick);
-        return () => {
-            button.removeEventListener("click", onClick);
-            document.removeEventListener("keydown", onMenuKeyDown, true);
-            activeMenu?.close();
-            activeMenu = null;
-        };
-    }
-
-    private getDocSearchFilterCount(filters: IDocSearchFilters = {}): number {
-        return Number(Boolean(filters.notebook))
-            + Number(Boolean(filters.paths?.length))
-            + Number(Boolean(filters.types && Object.keys(filters.types).length))
-            + Number(Boolean(filters.subTypes && Object.keys(filters.subTypes).length))
-            + Number(Boolean(filters.method && filters.method !== "keyword"))
-            + Number(Boolean(filters.orderBy && filters.orderBy !== "relevanceDesc"));
-    }
-
-    private getDocSearchFilterSummary(filters: IDocSearchFilters = {}, scrollElement?: HTMLElement): string {
-        const parts: string[] = [];
-        const notebookId = typeof filters.notebook === "string" ? filters.notebook.trim() : "";
-        if (notebookId) {
-            const notebookName = scrollElement ? this.docSearchState.notebookNames.get(scrollElement)?.get(notebookId) : "";
-            parts.push(`${this.i18n.searchFilterNotebook}: ${(notebookName || notebookId).slice(0, 32)}`);
-        }
-        const pathCount = filters.paths?.length || 0;
-        if (pathCount > 0) parts.push(`${this.i18n.searchFilterPath}: ${pathCount}`);
-        const typeLabels: Record<string, string> = {
-            document: this.i18n.searchTypeDocument,
-            heading: this.i18n.searchTypeHeading,
-            paragraph: this.i18n.searchTypeParagraph,
-            codeBlock: this.i18n.searchTypeCodeBlock,
-        };
-        const type = Object.keys(filters.types || {}).find((key) => filters.types?.[key]);
-        if (type) parts.push(`${this.i18n.searchContentType}: ${typeLabels[type] || type}`);
-        const subTypeLabels: Record<string, string> = {
-            h1: this.i18n.searchSubTypeH1,
-            h2: this.i18n.searchSubTypeH2,
-            h3: this.i18n.searchSubTypeH3,
-            h4: this.i18n.searchSubTypeH4,
-            h5: this.i18n.searchSubTypeH5,
-            h6: this.i18n.searchSubTypeH6,
-            o: this.i18n.searchSubTypeOrdered,
-            u: this.i18n.searchSubTypeUnordered,
-            t: this.i18n.searchSubTypeTask,
-        };
-        const subType = Object.keys(filters.subTypes || {}).find((key) => filters.subTypes?.[key]);
-        if (subType) parts.push(`${this.i18n.searchSubType}: ${subTypeLabels[subType] || subType}`);
-        if (filters.method && filters.method !== "keyword") {
-            const methodLabels = {query: this.i18n.searchMethodQuery, regexp: this.i18n.searchMethodRegexp};
-            parts.push(`${this.i18n.searchMethod}: ${methodLabels[filters.method] || filters.method}`);
-        }
-        if (filters.orderBy && filters.orderBy !== "relevanceDesc") {
-            const orderLabels = {
-                updatedDesc: this.i18n.searchOrderUpdated,
-                createdDesc: this.i18n.searchOrderCreated,
-                content: this.i18n.searchOrderContent,
-            };
-            parts.push(`${this.i18n.searchResultOrder}: ${orderLabels[filters.orderBy] || filters.orderBy}`);
-        }
-        return parts.join(" · ");
-    }
-
-    private hasDocSearchFilter(scrollElement: HTMLElement): boolean {
-        return this.getDocSearchFilterCount(this.docSearchState.filters.get(scrollElement)) > 0;
-    }
-
-    private getDocSearchSession(scrollElement: HTMLElement): ISearchSession<IDocSearchResult[]> {
-        if (!this.docSearchState.filters.has(scrollElement)) {
-            this.docSearchState.filters.set(scrollElement, Object.freeze({}));
-        }
-        let session = this.docSearchState.sessions.get(scrollElement);
-        if (!session) {
-            session = createSearchSession<IDocSearchResult[]>(DOC_SEARCH_CACHE_LIMIT);
-            this.docSearchState.sessions.set(scrollElement, session);
-            this.docSearchState.activeSessions.add(session);
-        }
-        return session;
-    }
-
-    private disposeDocSearchSession(scrollElement: HTMLElement) {
-        const session = this.docSearchState.sessions.get(scrollElement);
-        if (!session) {
-            this.docSearchState.filters.delete(scrollElement);
-            this.docSearchState.notebookNames.delete(scrollElement);
-            return;
-        }
-        disposeSearchSession(session);
-        this.docSearchState.activeSessions.delete(session);
-        this.docSearchState.sessions.delete(scrollElement);
-        this.docSearchState.filters.delete(scrollElement);
-        this.docSearchState.notebookNames.delete(scrollElement);
-    }
-
-    // 鍏ㄥ簱鏂囨。鎼滅储杩滅▼璇锋眰锛氭瘡涓晫闈細璇濈嫭绔嬪彇娑堝苟涓㈠純杩囨湡鍝嶅簲
-    private async runDocSearchFetch(
-        scrollElement: HTMLElement,
-        searchInput: HTMLInputElement,
-        keyword: string,
-        version: number,
-        onClose: IOverlayClose,
-        filters: IDocSearchFilters = {},
-        cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters}),
-    ) {
-        const session = this.getDocSearchSession(scrollElement);
-        // 鏈熼棿鍏抽敭璇嶅凡鍙樺寲鎴栧鍣ㄥ凡閿€姣佸垯鏀惧純鏈缁撴灉
-        if (version !== session.version || !scrollElement.isConnected) {
-            if (!scrollElement.isConnected) {
-                this.disposeDocSearchSession(scrollElement);
-            }
-            return;
-        }
-        if (searchInput.value.trim() === "") {
-            this.renderDocResults(scrollElement, null, onClose);
-            return;
-        }
-        let controller: AbortController | null = null;
-        try {
-            // Older embedded WebViews may not expose AbortController. Keep
-            // the request/version guards active in that case and simply omit
-            // the optional fetch cancellation signal.
-            controller = typeof AbortController === "function" ? new AbortController() : null;
-            session.controller = controller;
-            const signal = controller?.signal;
-            if (!canUseTitleSearch(filters)) {
-                const openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, signal, filters);
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
-                }
-                this.filterCards(scrollElement, keyword, openedContentRoots, filters);
-                const docs = await this.runFullTextSearchFallback(keyword, signal, filters, DOC_RESULT_LIMIT + 1);
-                if (docs === null) {
-                    if (openedContentRoots.size === 0) {
-                        this.renderDocResults(scrollElement, [], onClose, "error");
-                    } else {
-                        this.renderDocResults(scrollElement, null, onClose);
-                    }
-                    return;
-                }
-                cacheSearchResult(session, cacheKey, docs);
-                this.renderDocResults(scrollElement, docs, onClose);
-                return;
-            }
-            let docs: IDocSearchResult[] = [];
-            let titleSearchUnavailable = false;
-            try {
-                const response = await fetch("/api/filetree/searchDocs", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({k: keyword}),
-                    ...(signal ? {signal} : {}),
-                });
-                if (!response.ok) {
-                    throw new Error(`searchDocs HTTP ${response.status}`);
-                }
-                const json = await response.json();
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
-                }
-                docs = Array.isArray(json?.data)
-                    ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
-                    : [];
-                docs = this.filterDocSearchResults(docs, filters);
-            } catch (error) {
-                if ((error as DOMException)?.name === "AbortError") throw error;
-                titleSearchUnavailable = true;
-                logger.warn("title search unavailable; trying compatible fallbacks", error);
-            }
-            let openedContentRoots = new Set<string>();
-            if (titleSearchUnavailable || docs.length === 0) {
-                openedContentRoots = await this.runOpenedDocumentContentSearch(keyword, signal, filters);
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
-                }
-                this.filterCards(scrollElement, keyword, openedContentRoots, filters);
-            }
-            // Keep title search as the fast path. Only ask the native block
-            // endpoint when it found no documents, preserving existing
-            // ordering and request cost for the common case.
-            if (docs.length === 0) {
-                const fallbackDocs = await this.runFullTextSearchFallback(keyword, signal, filters, DOC_RESULT_LIMIT + 1);
-                if (fallbackDocs === null) {
-                    if (openedContentRoots.size === 0) {
-                        this.renderDocResults(scrollElement, [], onClose, "error");
-                    } else {
-                        this.renderDocResults(scrollElement, null, onClose);
-                    }
-                    return;
-                }
-                docs = fallbackDocs;
-            }
-            cacheSearchResult(session, cacheKey, docs);
-            this.renderDocResults(scrollElement, docs, onClose);
-        } catch (e) {
-            // 涓诲姩鍙栨秷鐨勮姹備笉绠楀紓甯?
-if ((e as DOMException)?.name !== "AbortError") {
-                logger.warn("search docs fail", e);
-                if (version === session.version && scrollElement.isConnected && searchInput.value.trim() === keyword) {
-                    this.renderDocResults(scrollElement, [], onClose, "error");
-                }
-            }
-        } finally {
-            if (controller && session.controller === controller) {
-                session.controller = null;
-            }
-            if (!scrollElement.isConnected) {
-                this.disposeDocSearchSession(scrollElement);
-            }
-        }
-    }
-
-    // 娓叉煋鍏ㄥ簱鏂囨。鎼滅储缁撴灉鍒嗙粍锛坉ocs 涓?null 琛ㄧず闅愯棌锛夛紱宸叉墦寮€鐨勬枃妗ｄ笉鍐嶉噸澶嶅垪鍑?
-    private async runOpenedDocumentContentSearch(
-        keyword: string,
-        signal?: AbortSignal,
-        filters: IDocSearchFilters = {},
-    ): Promise<Set<string>> {
-        const tabs = (this.isMobile ? this.getMobileTabs() : getAllTabs()).filter((tab) =>
-            !filters.notebook || resolveSearchNotebookId(tab as unknown) === filters.notebook);
-        const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {
-            maxDocuments: 6,
-            pageSize: 8,
-            method: filters.method,
-            orderBy: filters.orderBy,
-            types: filters.types,
-            subTypes: filters.subTypes,
-            filters,
-        });
-        const roots = new Set<string>();
-        if (requests.length === 0) return roots;
-        const results = new Array<boolean>(requests.length).fill(false);
-        let nextIndex = 0;
-        const worker = async () => {
-            while (nextIndex < requests.length) {
-                const index = nextIndex++;
-                const request = requests[index];
-                try {
-                    // 端点为固定两个字面量之一（安全扫描要求 fetch 处无变量 URL）
-                    const init = {
-                        method: "POST",
-                        headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify(request.body),
-                        ...(signal ? {signal} : {}),
-                    };
-                    let response: Response;
-                    if (request.endpoint === "/api/search/semanticSearchBlock") {
-                        response = await fetch("/api/search/semanticSearchBlock", init);
-                    } else {
-                        response = await fetch("/api/search/fullTextSearchBlock", init);
-                    }
-                    if (!response.ok) continue;
-                    const payload = await response.json();
-                    results[index] = extractSearchRecords(payload)
-                        .some((record) => Boolean(normalizeSearchResult(record, "opened")));
-                } catch (error) {
-                    if ((error as DOMException)?.name === "AbortError") throw error;
-                }
-            }
-        };
-        await Promise.all(Array.from({length: Math.min(3, requests.length)}, () => worker()));
-        results.forEach((matched, index) => {
-            if (matched) roots.add(requests[index].scope.rootId);
-        });
-        return roots;
-    }
-
-    private filterDocSearchResults(docs: IDocSearchResult[], filters: IDocSearchFilters): IDocSearchResult[] {
-        return filterNativeSearchDocuments(docs, filters) as IDocSearchResult[];
-    }
-
-    private async runFullTextSearchFallback(
-        keyword: string,
-        signal?: AbortSignal,
-        filters: IDocSearchFilters = {},
-        documents = DOC_RESULT_LIMIT,
-    ): Promise<IDocSearchResult[] | null> {
-        // Keep one overflow card available for Agent callers to report a
-        // truthful `truncated` flag. UI callers still pass DOC_RESULT_LIMIT.
-        const documentLimit = Math.min(33, Math.max(1, Math.floor(Number(documents) || DOC_RESULT_LIMIT)));
-        const request = buildFullTextSearchRequest({
-            query: keyword,
-            method: filters.method || "keyword",
-            orderBy: filters.orderBy || "relevanceDesc",
-            groupBy: "document",
-            pageSize: Math.max(documentLimit * 2, 24),
-            filters,
-        });
-        if (!request) {
-            return null;
-        }
-        try {
-            // 端点为固定两个字面量之一（安全扫描要求 fetch 处无变量 URL）
-            const init = {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(request.body),
-                ...(signal ? {signal} : {}),
-            };
-            let response: Response;
-            if (request.endpoint === "/api/search/semanticSearchBlock") {
-                response = await fetch("/api/search/semanticSearchBlock", init);
-            } else {
-                response = await fetch("/api/search/fullTextSearchBlock", init);
-            }
-            if (!response.ok) {
-                throw new Error(`full text search HTTP ${response.status}`);
-            }
-            const payload = await response.json();
-            const aggregate = aggregateSearchResults(extractSearchRecords(payload), {
-                source: "global",
-                documents: documentLimit,
-                snippets: 2,
-                blockIds: 8,
-            });
-            const mapped = aggregate.cards.map((card) => ({
-                id: card.rootId,
-                rootId: card.rootId,
-                name: card.title,
-                title: card.title,
-                path: card.path,
-                hPath: card.path,
-                notebookId: card.notebookId,
-                blockIds: card.blockIds,
-                snippets: card.snippets,
-                source: "global",
-            }));
-            const scoped = this.filterDocSearchResults(mapped, filters);
-            return scoped.slice(0, documentLimit);
-        } catch (error) {
-            if ((error as DOMException)?.name === "AbortError") {
-                throw error;
-            }
-            // Full-text search is optional. Older SiYuan versions keep the
-            // title-search empty state when this endpoint is unavailable.
-            logger.warn("full text search fallback unavailable", error);
-            return null;
-        }
-    }
-
-    private renderDocResults(
-        scrollElement: HTMLElement,
-        docs: IDocSearchResult[] | null,
-        onClose: IOverlayClose,
-        state: DocSearchRenderState = "results",
-    ) {
-        const box = this.ensureDocResultsBox(scrollElement, docs);
-        if (!box) {
-            return;
-        }
-        box.setAttribute("aria-busy", state === "loading" ? "true" : "false");
-        if (state !== "results") {
-            this.appendDocSearchStatus(box, state);
-            return;
-        }
-        // 鎺掗櫎褰撳墠宸叉墦寮€鐨勬枃妗ｏ紙涓婂崐閮ㄥ垎宸叉湁瀵瑰簲鍗＄墖锛夛紱鎵嬫満绔?getAllTabs() 鎭掍负绌猴紝闇€鐢?MobileTabs 鏁版嵁婧?
-const openRootIds = this.collectOpenRootIds();
-
-        if (docs.length === 0) {
-            this.appendDocResultsEmpty(box);
-            return;
-        }
-
-        const grid = document.createElement("div");
-        grid.className = "sw__doc-grid";
-        const appendedIds = new Set<string>();
-        for (const doc of docs) {
-            const id = this.docSearchResultId(doc);
-            if (!id || openRootIds.has(id) || appendedIds.has(id)) {
-                continue;
-            }
-            appendedIds.add(id);
-            grid.appendChild(this.buildDocResultItem(doc, id, onClose));
-            if (appendedIds.size >= DOC_RESULT_LIMIT) {
-                break;
-            }
-        }
-        if (grid.childElementCount === 0) {
-            this.appendDocResultsEmpty(box);
-            return;
-        }
-        const label = box.querySelector<HTMLElement>(".sw__window-label");
-        if (label) {
-            label.textContent = `${this.i18n.docSearchResults} · ${grid.childElementCount}`;
-        }
-        box.appendChild(grid);
-        if (docs.length > DOC_RESULT_LIMIT) {
-            this.appendDocResultsViewAll(box, scrollElement, onClose);
-        }
-    }
-
-    // 澶嶇敤鐜版湁 .sw__doc-results 瀹瑰櫒锛沝ocs===null 鏃剁洿鎺ョЩ闄ゅ苟杩斿洖 null
-    private ensureDocResultsBox(scrollElement: HTMLElement, docs: IDocSearchResult[] | null): HTMLElement | null {
-        let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
-        if (docs === null) {
-            box?.remove();
-            return null;
-        }
-        if (!box) {
-            box = document.createElement("div");
-            box.className = "sw__doc-results sw__group";
-            scrollElement.appendChild(box);
-        }
-        // 鍏滃簳绉婚櫎鍙兘娈嬬暀鐨勯殣钘忕被锛堝巻鍙?bug 闃插尽锛夛紝纭繚鏂囨。鍖哄缁堝彲瑙?
-        box.classList.remove("fn__none");
-
-        const label = document.createElement("div");
-        label.className = "sw__window-label";
-        label.textContent = this.i18n.docSearchResults;
-        box.innerHTML = "";
-        box.appendChild(label);
-        return box;
-    }
-
-    // 褰撳墠宸叉墦寮€椤电鐨?rootId 闆嗗悎锛堝幓閲嶏級锛涙墜鏈虹璧?MobileTabs锛屾闈㈢璧?getAllTabs
-    private collectOpenRootIds(): Set<string> {
-        const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
-        return new Set(
-            opened.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
-        );
-    }
-
-    // 绌烘€侊細鏃犲彲鏄剧ず鐨勬悳绱㈢粨鏋?
-    private appendDocResultsEmpty(box: HTMLElement) {
-        const empty = document.createElement("div");
-        empty.className = "sw__doc-status sw__doc-status--empty";
-        empty.setAttribute("role", "status");
-        empty.setAttribute("aria-live", "polite");
-        empty.textContent = this.i18n.noDocResults;
-        box.appendChild(empty);
-    }
-
-    private appendDocResultsViewAll(box: HTMLElement, scrollElement: HTMLElement, onClose: IOverlayClose) {
-        const query = String(scrollElement.dataset.swDocSearchQuery || "").trim();
-        const filters = this.docSearchState.filters.get(scrollElement) || {};
-        const search = buildNativeSearchTabConfig({query, filters});
-        if (!search) return;
-        const action = document.createElement("button");
-        action.type = "button";
-        action.className = "sw__doc-view-all b3-button b3-button--text";
-        action.textContent = this.i18n.docSearchViewAll;
-        action.setAttribute("aria-label", this.i18n.docSearchViewAll);
-        action.addEventListener("click", () => {
-            onClose();
-            void openTab({app: this.app, search: search.config as any}).catch((error) => {
-                logger.warn("open native search tab fail", error);
-                showMessage(this.i18n.docSearchFailed);
-            });
-        });
-        box.appendChild(action);
-    }
-
-    private appendDocSearchStatus(box: HTMLElement, state: Exclude<DocSearchRenderState, "results">) {
-        const status = document.createElement("div");
-        status.className = `sw__doc-status sw__doc-status--${state}`;
-        status.setAttribute("role", state === "error" ? "alert" : "status");
-        status.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
-        if (state === "loading") {
-            status.innerHTML = '<svg class="sw__spin" aria-hidden="true"><use xlink:href="#iconRefresh"></use></svg>';
-            const text = document.createElement("span");
-            text.textContent = this.i18n.docSearchLoading;
-            status.appendChild(text);
-        } else {
-            status.textContent = this.i18n.docSearchFailed;
-        }
-        box.appendChild(status);
-    }
-
-    private docSearchResultId(doc: IDocSearchResult): string {
-        const rootId = String(doc.rootId || "");
-        if (BLOCK_ID_RE.test(rootId)) {
-            return rootId;
-        }
-        const directId = String(doc.id || "");
-        if (BLOCK_ID_RE.test(directId)) {
-            return directId;
-        }
-        // searchDocs 鐨勬枃妗ｈ矾寰勪互 rootID 鍛藉悕锛?notebook/rootID.sy
-        const pathId = String(doc.path || "").split("/").pop()?.replace(/\.sy$/, "") || "";
-        return BLOCK_ID_RE.test(pathId) ? pathId : "";
-    }
-
-    /**
-     * Return one safe block target from a card. The root document remains the
-     * fallback because older search responses may only contain document IDs.
-     */
-    private docSearchHitId(doc: IDocSearchResult, rootId: string): string | null {
-        const candidates = [
-            ...(Array.isArray(doc.blockIds) ? doc.blockIds : []),
-            ...(Array.isArray(doc.snippets) ? doc.snippets.map((snippet) => snippet?.blockId || "") : []),
-        ];
-        const hit = candidates.find((value) => {
-            const id = String(value || "");
-            return BLOCK_ID_RE.test(id) && id !== rootId;
-        });
-        return hit ? String(hit) : null;
-    }
-
-    private async openDocSearchResult(rootId: string, hitId: string | null): Promise<void> {
-        if (this.isMobile) {
-            // MobileTabs only accepts a root document ID. Keep block targeting
-            // desktop-only until SiYuan exposes a stable mobile equivalent.
-            await this.mobileOpenDoc(rootId);
-            return;
-        }
-        const opened = await openDocumentOnDesktop({
-            rootId,
-            hitId: hitId && BLOCK_ID_RE.test(hitId) ? hitId : null,
-            app: this.app,
-            openTab,
-            logger,
-        });
-        if (!opened) showMessage(this.i18n.openDocFailed);
-    }
-
-    // 鍗曚釜鏂囨。鎼滅储缁撴灉鍗＄墖锛堝浘鏍?+ 鏍囬 + 璺緞锛夛紱鐐瑰嚮鐩村紑鏂囨。锛堟墜鏈虹璧?MobileTabs.open锛?
-private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayClose): HTMLButtonElement {
-        const item = document.createElement("button");
-        item.type = "button";
-        item.className = "sw__doc-item";
-        const icon = document.createElement("span");
-        icon.className = "sw__doc-icon";
-        icon.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
-        const copy = document.createElement("span");
-        copy.className = "sw__doc-copy";
-        const title = document.createElement("span");
-        title.className = "sw__doc-title";
-        const hPath = String(doc.hPath || "");
-        const docTitle = hPath.split("/").filter(Boolean).pop() || String(doc.title || doc.name || "") || id;
-        title.textContent = docTitle;
-        const source = document.createElement("span");
-        source.className = "sw__doc-source";
-        source.textContent = doc.source === "opened"
-            ? this.i18n.docSearchSourceOpened
-            : this.i18n.docSearchSourceGlobal;
-        let snippetElement: HTMLSpanElement | null = null;
-        const snippets = Array.isArray(doc.snippets)
-            ? doc.snippets.map((snippet) => String(snippet?.text || "").trim()).filter(Boolean).join(" · ")
-            : "";
-        if (snippets) {
-            snippetElement = document.createElement("span");
-            snippetElement.className = "sw__doc-snippet";
-            snippetElement.textContent = snippets;
-        }
-        const path = document.createElement("span");
-        path.className = "sw__doc-path";
-        path.textContent = hPath || docTitle;
-        copy.appendChild(title);
-        copy.appendChild(source);
-        if (snippetElement) copy.appendChild(snippetElement);
-        copy.appendChild(path);
-        item.appendChild(icon);
-        item.appendChild(copy);
-        item.title = hPath || docTitle;
-        item.setAttribute("aria-label", hPath || docTitle);
-        item.addEventListener("click", () => {
-            onClose();
-            void this.openDocSearchResult(id, this.docSearchHitId(doc, id));
-        });
-        return item;
-    }
-
     // 銆屾渶杩戠紪杈戙€嶆帓搴忕殑 SQL 缁撴灉鐭紦瀛橈細鎺掑簭鏂瑰紡鏉ュ洖鍒囨崲 / 鍒楄〃閲嶆覆鏌撴椂涓嶉噸澶嶆墦鍐呮牳
     private updatedMapCache: {key: string, ts: number, map: {[rootId: string]: string}} | null = null;
 
@@ -6124,7 +5258,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                     || (tab as unknown as {hPath?: string}).hPath || "");
                 const notebookId = resolveSearchNotebookId(tab as unknown);
                 if (notebook && notebookId !== notebook) return null;
-                if (filters.paths && this.filterDocSearchResults([{path, hPath: path, notebookId}], filters).length === 0) return null;
+                if (filters.paths && filterDocSearchResults.call(this, [{path, hPath: path, notebookId}], filters).length === 0) return null;
                 if (!`${title} ${path}`.toLocaleLowerCase().includes(queryLower)) return null;
                 return {
                     id: rootId || tab.id,
@@ -6165,7 +5299,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
                 // before applying Agent bounds, otherwise valid title hits
                 // would be discarded as unidentifiable objects.
                 docs = normalizeTitleSearchDocuments(rawDocs) as IDocSearchResult[];
-                docs = this.filterDocSearchResults(docs, filters);
+                docs = filterDocSearchResults.call(this, docs, filters);
             } catch (error) {
                 const reason = normalizeAgentFailureReason(error, deadlineExpired);
                 if (reason === "cancelled" || reason === "timeout") throw error;
@@ -6176,7 +5310,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
             let source = localItems.length > 0 ? "tabs" : "title";
             if (docs.length === 0) {
                 const fallback = await Promise.race([
-                    this.runFullTextSearchFallback(query, signal, filters, Math.min(33, offset + limit + 1)),
+                    runFullTextSearchFallback.call(this, query, signal, filters, Math.min(33, offset + limit + 1)),
                     timeoutPromise,
                 ]);
                 if (fallback !== null) {
@@ -8918,7 +8052,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             disposeHistoryDropdown();
             unregisterRefresh();
             if (scrollElement) {
-                this.disposeDocSearchSession(scrollElement);
+                disposeDocSearchSession.call(this, scrollElement);
             }
             origDestroy();
         };
@@ -8936,7 +8070,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const {renderMobileList} = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
         const refreshMobileSurface = () => {
             renderMobileList();
-            if (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement)) {
+            if (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement)) {
                 this.applySearch(scrollElement, searchInput, closeOverlay);
             }
             this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
@@ -9011,7 +8145,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         closeOverlay: () => void,
         renderMobileList: () => void,
     ): () => void {
-        const disposeSearchFilter = this.bindDocSearchFilter(dialog.element, scrollElement, searchInput, closeOverlay);
+        const disposeSearchFilter = bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay);
         let activeSortOverlay: HTMLElement | null = null;
         const closeSortOverlay = () => {
             activeSortOverlay?.remove();
@@ -9189,7 +8323,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onTabsChanged: () => {
                 renderMobileList();
                 const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-                if (searchInput && (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement))) {
+                if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                     this.applySearch(scrollElement, searchInput, () => dialog.destroy());
                 }
             },
@@ -9207,7 +8341,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
                 renderMobileList();
                 const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-                if (searchInput && (searchInput.value.trim() !== "" || this.hasDocSearchFilter(scrollElement))) {
+                if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                     this.applySearch(scrollElement, searchInput, () => dialog.destroy());
                 }
             }
@@ -9730,7 +8864,7 @@ if (count > 0) {
             : undefined;
         const previousSearchQuery = element.querySelector<HTMLInputElement>(".sw__search")?.value || "";
         if (previousScrollElement) {
-            this.disposeDocSearchSession(previousScrollElement);
+            disposeDocSearchSession.call(this, previousScrollElement);
         }
         this.sidebarHistoryDropdownDispose?.();
         this.sidebarHistoryDropdownDispose = null;
@@ -9772,7 +8906,7 @@ if (count > 0) {
         // 椤舵爮浜や簰锛氭悳绱?/ 鏀惰棌涓嬫媺 / 鎺掑簭 / 璁剧疆 / 鍥炲埌椤堕儴
         this.sidebarHistoryDropdownDispose = this.bindSidebarToolbarEvents(element, scrollElement, refresh);
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
-        if (searchInput && (previousSearchQuery || this.hasDocSearchFilter(scrollElement))) {
+        if (searchInput && (previousSearchQuery || hasDocSearchFilter.call(this, scrollElement))) {
             searchInput.value = previousSearchQuery;
             this.applySearch(scrollElement, searchInput, refresh);
         }
@@ -9831,7 +8965,7 @@ if (count > 0) {
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(element.querySelector<HTMLElement>(".sw__history-dd"), refresh);
         this.sidebarSearchFilterDispose = searchInput
-            ? this.bindDocSearchFilter(element, scrollElement, searchInput, refresh)
+            ? bindDocSearchFilter.call(this, element, scrollElement, searchInput, refresh)
             : null;
         this.bindSearchInputComposition(searchInput, () => {
             this.applySearch(scrollElement, searchInput, refresh);

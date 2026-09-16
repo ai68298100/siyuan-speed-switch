@@ -40,11 +40,13 @@ const WIRED_SANITY_MODULES = [
     // R3 重构（D-377）：配置表单外迁至 home-config-form，共用来源标签收纳至 store-labels。
     // R1 重构（D-379）：商店 UI 外迁至 home-store-ui（复用 home-store-model 等既有闭包）。
     // R5a 重构（D-381）：搜索链路状态收拢至 doc-search-state（仅新增自身，import type 擦除）。
+    // R5b 重构（D-383）：搜索方法群外迁至 doc-search-ui。
     'settings-sections',
     'home-config-form',
     'store-labels',
     'home-store-ui',
     'doc-search-state',
+    'doc-search-ui',
     // T-103（D-365/D-366）：path-filter-model 随桌面路径筛选进入生产。
     // 它是首个接入的 v0.18 契约模块，且为只读——仅构造 listDocsByPath 请求
     // 并归一化响应，不含任何写入动作。
@@ -111,5 +113,5 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 2026-09-16 R5a 重构（D-381）：搜索状态收拢至 doc-search-state（仅新增自身）。
     // 当前闭包为 40；继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 40, `production graph grew to ${graph.size} modules; audited ceiling is 40`);
+    assert.ok(graph.size <= 41, `production graph grew to ${graph.size} modules; audited ceiling is 41`);
 });

@@ -1,6 +1,11 @@
 # TODO
 
 
+## T-6256 重构批次 R5b：搜索方法群外迁 doc-search-ui.ts（2026-09-16，已完成）
+
+- [x] T-6256 R5b 本体（D-383）：20 方法 + 1 模块级函数（loadDocSearchPathChildren → buildDocResultItem，887 行）字节原样搬移至 doc-search-ui.ts（919 行）；DocSearchUiHost 12 成员；群内互调 .call(this)，外部调用点 19 处改指；index.ts 10021→9156 行。契约同步：path-filter-ui-contract 3 项改指 + 代际自增断言补强（负向验证发现弱点）、production-graph sanity + 闭包 40→41、store-focus-navigation 1 项、mobile-card-smoke 9 契约 ~30 子句按归属分流；strictBindCallApply 关闭导致的 .call 返回 any 以最小显式注解修复；负向验证 2 例（含断言补强后再注入）；verify:release 独占全绿 5693/5693 + smoke 70/70；发布矩阵 index.js 600715、package.zip 307941
+
+
 ## T-6253~T-6255 组件审查与面板秒开（2026-09-16，已完成）
 
 - [x] T-6253 组件全面审查（41 个内置+外部）：控制器/视图/adapter 三层审查——骨架 loading、失败旧快照保留+缓存徽章、空态 emptyHint、错误重试、3s 快照缓存+800ms 超时+失败退避+in-flight 去重、IntersectionObserver 懒加载、图片 lazy、DateTimeFormat 复用均健全；27 个内置 adapter 全部本地 SQL+refreshOn 事件订阅，13 个外部组件独立 TTL/超时（来源审计覆盖）

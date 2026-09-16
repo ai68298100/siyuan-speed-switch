@@ -72,10 +72,20 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 1. ~~**先做 R2（外部组件注册外迁）**~~：✅ 已交付（2026-09-16，D-375）。风险最低、契约测试最完备（三批扩充的 11 个组件全部有 availability-contract 行锁定接线形态），且直接服务后续扩充节奏——新组件不再让 index.ts 增长。可独立成一个批次先行验证搬移流程。
 2. ~~**再做 R4（设置页拆分）**~~：✅ 已交付（2026-09-16，D-376，T-6236~T-6240）。各节独立、互不纠缠，作为搬移流程的第二次演练。**执行记录**：实际外迁 16 个构建函数共 984 行（超 ~800 预估，因区域 A 内夹带 buildFavGroupRowActions、区域 B 内夹带 buildQuickActionsTransferControls 两处依赖），index.ts 12442→11458 行；`src/settings-sections.ts` 1068 行（this 参数模式 + SettingsSectionsHost 38 成员）；类型经 `import type` 从 "./index" 引用（10 个类型加 export，编译期擦除零运行时循环）；4 个共享数据方法（getDocumentSets 等）按边界裁定留宿主。契约同步：home-store-guide 1 条改指、mobile-card-smoke 33 条断言按归属分流（18 留 index / 15 改指）、生产闭包 35→36。负向验证 3 轮（含 1 次注入无效自纠：子串包含使改名注入失效，改删行验证）。index.js 601102、package.zip 307961；verify:release 干净全绿。教训：两次 verify:release 并发运行会产生构建竞争假失败，须独占运行。
 3. ~~**R1（商店拆分）**~~：✅ 已交付（2026-09-16，D-379，T-6248~T-6250）。**立项前提核实**：D-374"需先补商店渲染快照类契约"已过时——store-* 契约群（store-mobile-layout 467 + store-preview-lifecycle 76 + home-store-contract 66 + store-mobile-external 10 条）全是真实维护的源码正则契约，搬移只需同步改指。**执行记录**：openStoreWidgetPreview（125 行）+ openHomeWidgetStore（995 行，含前置注释）字节原样搬移至 `src/home-store-ui.ts`（this 参数模式，HomeStoreUiHost 13 成员，历批最干净）；store 内互调改模块内 .call(this)，外部调用点 2 处；index.ts 11126→10007 行。契约同步 22 个测试文件约 1028 条断言逐位置判定分流（v1 行号偏移事故与修复见 D-380）；storeSource 切片改读新模块；生产闭包 38→39；负向验证 2 例精确拦截；index.js 600911、package.zip 307699；verify:release 独占全绿 5691/5691。
-4. **R2/R4/R3/R6/R1 均已交付**；**R5a 前置已交付（2026-09-16，D-381，T-6251~T-6252）**：6 个状态字段收拢至 `src/doc-search-state.ts`（33 处使用点纯引用改写，闭包 39→40），孙堃在二选一中拍板方案 A。**R5 本体现在可立项**：搜索方法群 ~840 行（loadDocSearchPathChildren → openDocSearchResult 等 15 方法）搬移至 doc-search-ui.ts，host 预期 ~14 成员（docSearchState + 少量字段方法），无过渡态透传。
+4. **R2/R4/R3/R6/R1/R5a/R5b 均已交付**（R5b 见第 6 节执行记录，2026-09-16，D-383）。R5 全链收口后搜索链路为「doc-search-state（状态）+ doc-search-ui（UI 方法群）+ search-model/path-filter-model（纯模型）+ 宿主 applySearch 主流程」四层结构。：6 个状态字段收拢至 `src/doc-search-state.ts`（33 处使用点纯引用改写，闭包 39→40），孙堃在二选一中拍板方案 A。**R5 本体现在可立项**：搜索方法群 ~840 行（loadDocSearchPathChildren → openDocSearchResult 等 15 方法）搬移至 doc-search-ui.ts，host 预期 ~14 成员（docSearchState + 少量字段方法），无过渡态透传。
 
 ## 5. 不建议动的部分
 
 - `agent-*.js` 系列（1221/929/901/618 行）：v0.18 契约模块，多数尚未接线生产（D-352），重构无收益且增加归档漂移面。
 - `external-widget-model.js`（935）：纯数据目录，行数增长是登记面扩大的自然结果，无重复逻辑。
 - `life-widget-model.js`（866）：函数级最大仅 75 行（buildActivityWatchSnapshot），结构健康；行数增长同样来自三批扩充。
+
+## 6. R5b 执行记录（2026-09-16，D-383，T-6256）
+
+搜索方法群 20 方法 + 1 模块级函数（loadDocSearchPathChildren → buildDocResultItem，区间 4773~5659 共 887 行）字节原样搬移至 `src/doc-search-ui.ts`（919 行；this 参数模式，DocSearchUiHost 12 成员：docSearchState/i18n/app/isMobile/fetchKernelJson/loadNotebooks/escapeAttr/applySearch/filterCards/getMobileTabs/rootIdOf/mobileOpenDoc，与 D-381 预估 ~14 吻合）。群内互调改模块内 .call(this)，host 成员保留 this.；index.ts 外部调用点 19 处改指。index.ts 10021→9156 行（六轮重构累计 -27.8%）。
+
+契约同步：path-filter-ui-contract 3 项断言改指 docSearchUiSource + 只读负向断言扩为双文件；代际契约负向验证发现断言弱点（删自增行后 uses≥3 仍通过）→ 补 `++this.docSearchState.pathGeneration` 自增锁定断言；production-graph-isolation sanity 加 doc-search-ui、闭包上限 40→41；store-focus-navigation-contract 1 项改指；mobile-card-smoke 9 个 search 契约约 30 子句按归属逐句分流（host 子句留 source）。
+
+新发现：strictBindCallApply 关闭时 `.call()` 返回 any，noImplicitAny 在依赖返回类型推断的位置爆错（.then 回调参数、泛型 DOM 查询）——以最小显式注解修复（DocSearchPathProbe = Awaited<ReturnType<...>> 别名 + box nullable 注解），不开 strictBindCallApply（影响全部既有 .call 调用点）。
+
+负向验证 2 例：删代际自增行 → 补强后精确 FAIL → cmp 字节级还原；删 doc-search-ui import 块 → sanity 精确 FAIL → 还原。发布矩阵：index.js 601563→600715、package.zip 307859→307941；tsc 0 错误、全量 5693/5693、test:smoke 70/70、verify:release 独占全绿。
