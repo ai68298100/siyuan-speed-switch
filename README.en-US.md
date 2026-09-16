@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.19.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,9 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.19.0 completes search maturation and mojibake recovery: workspace document results now support an in-panel "Load more" incremental expansion, seven refactoring rounds have shrunk the core file by about 28%, and all 351 comments corrupted by the v0.16.9 encoding accident have been restored.
+> v0.20.0 completes the life-info line and data continuity: two new read-only widgets — iCal schedule subscription and weekly GitHub contribution summary — the thumbnail cache now normalizes on read to close a data-integrity gap, all 365 window assertions migrated to block-scoped gates, and an iCal text-fetch defect was caught and fixed before release.
 
-> The current development head passes type checking, production build, 5703 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge; the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 5872 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, an ActivityWatch app-usage bridge, iCal schedule subscriptions, and weekly GitHub contribution summaries; the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -164,9 +164,19 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.19.0`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
+This release is published as `v0.20.0`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
 
 ## Changelog
+
+### v0.20.0 (2026-09-17)
+
+- **Life-info line (new widgets)**: **iCal schedule subscription** (user-provided `.ics` URL, bounded RFC 5545 parsing — 256 KiB source / 500-event caps, over-limit rejected instead of silently truncated, upcoming-window rendering, 30-minute cache) and **weekly GitHub contribution summary** (official public event feed without a key; the optional token travels only in a request header and never enters the URL, cache, or cache key; aggregates the latest 6 weeks with the caliber difference from GitHub's official heatmap honestly documented; 60-minute cache). Both fetch through the kernel proxy and are listed in the store catalog, dependency notes, and endpoint allowlist.
+- **Fix**: the iCal text-fetch defect (D-397) — the text-fetch variant's `responseKind` option was ignored by the underlying bounded fetcher, which always JSON-parsed, so the iCal card could never fetch successfully on a live host; the new GitHub network gates surfaced it naturally before release, and a regression gate now locks it.
+- **Storage data integrity**: `sw_thumb_cache` now normalizes on read — entries corrupted structurally or left behind by the mobile v0.7.0 upper-bound semantics (the write side hardcoded desktop constants) get cleaned up; a read-only storage migration drill with a bounded recovery report now runs on load, with drill health exposed via workspace-context; document-set restore exports a structured report.
+- **Mobile fixes**: icon size overruns, toolbar chip clipping, widget panel height, and bare-SVG fallback sizing; the layout gate now measures at real phone width.
+- **Workspace runtime**: session registry, recovery flow, cancellation boundary, and safe exit — 20+ contract capabilities completed (event pipeline wired into production).
+- **Engineering quality**: all 365 window assertions migrated to block-scoped gates (the migration surfaced and fixed a real product defect — the size tile lacked `touch-action`); the doubling-complexity perf gate gained marginal-rerun noise hardening (ceiling semantics unchanged); a storage compatibility matrix with bidirectional doc-contract gates and a protocol-compat-claim consistency gate were added.
+- Release gates pass: 5872 automated tests (171 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 631610 bytes, package.zip 318095 bytes.
 
 ### v0.19.0 (2026-09-16)
 

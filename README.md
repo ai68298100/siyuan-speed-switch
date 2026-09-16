@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.19.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.20.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,9 +8,9 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> v0.19.0 完成搜索成熟化与乱码修复：全库搜索结果支持面板内「加载更多」增量展开，七轮架构重构使核心文件缩减约 28%，并修复 v0.16.9 编码事故遗留的 351 行注释乱码。
+> v0.20.0 完成生活信息支线与数据连续性：新增 iCal 日程订阅与 GitHub 贡献周汇总两个只读组件，缩略图缓存读取侧归一化补上数据完整性缺口，全仓 365 条门禁断言迁移为块级有界断言并修复 iCal 文本抓取缺陷。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、5703 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、5872 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、ActivityWatch 使用时长、iCal 订阅日程与 GitHub 贡献周汇总，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -182,9 +182,19 @@ pnpm verify:release
 4. 主题：默认明暗主题、Neo 等第三方主题，以及窗口缩放和旋转后的布局。
 5. 生命周期：安装、升级、卸载、重启后数据迁移，以及 API 失败/取消/权限拒绝。
 
-本版本已正式发布为 `v0.19.0`；路径筛选侧栏入口（待窄侧栏真实宽度证据）和 Android 真机验收仍记录为后续兼容性补充。
+本版本已正式发布为 `v0.20.0`；路径筛选侧栏入口（待窄侧栏真实宽度证据）和 Android 真机验收仍记录为后续兼容性补充。
 
 ## 更新日志
+
+### v0.20.0（2026-09-17）
+
+- **生活信息支线（新组件）**：新增 **iCal 日程订阅**（用户提供 `.ics` 地址，RFC 5545 有界解析——源 256 KiB/事件 500 上限、超限拒绝而非静默截断，未来窗口日程、30 分钟缓存）与 **GitHub 贡献周汇总**（官方公开事件流免 Key 读取，可选 Token 仅经请求头传递且不进 URL/缓存/缓存键，按周聚合最近 6 周、口径诚实标注与官方热力图的差异，60 分钟缓存）；两者均经内核代理抓取，纳入组件商店目录、依赖说明与来源白名单。
+- **修复**：iCal 文本抓取缺陷（D-397）——文本抓取变体的 `responseKind` 选项被底层忽略、恒按 JSON 解析，导致 iCal 卡片线上抓取必然失败；由新增的 GitHub 网络门禁在发版前自然暴露并修复，附回归门禁。
+- **存储数据完整性**：`sw_thumb_cache` 读取侧归一化——结构损坏与旧版本上限语义残留（手机端 v0.7.0 写入侧硬编码桌面上限）的缓存条目现会被读取侧清理；新增存储迁移只读演练（有界恢复报告）接入启动流程，并经 workspace-context 暴露演练健康度；文档集恢复新增结构化报告导出。
+- **移动端修复**：图标尺寸越界、工具栏 chips 裁切、小组件面板高度与裸 svg 尺寸兜底补齐；布局门禁改按真实手机宽度量测。
+- **Workspace 运行时**：会话注册表、恢复流程、取消边界与安全退出等 20+ 契约能力补齐（事件管线接入生产）。
+- **工程质量**：全仓 365 条窗口断言迁移为块级有界断言（迁移中发现并修复 size tile 缺 `touch-action` 的真实缺陷）；复杂度性能门禁获得边际重测抗噪（天花板语义不变）；新增存储兼容矩阵文档与双向文档契约门禁、协议兼容声明一致性门禁。
+- 发版门禁：5872 项自动测试（171 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 631610 bytes、package.zip 318095 bytes。
 
 ### v0.19.0（2026-09-16）
 

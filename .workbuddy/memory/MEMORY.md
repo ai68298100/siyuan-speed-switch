@@ -26,8 +26,8 @@
 - 手写变量截块窗口是普查盲区，"债清单归零"≠"窗口断言归零"，逐文件通读是最后一道工序。
 - 工具普查：`node scripts/css-window-census.cjs`、`node scripts/css-assertion-injector.cjs`（探针 `\-` 转义 `-` 哨兵；工具须打印注入内容并点名未覆盖断言）。
 
-## 当前状态（2026-09-17 凌晨）
-- 全会话 39 个本地提交（`8700fe9`..`6773063`），未 push；测试 5863/5863（171 文件）；verify:release 全链绿（js 624620 / zip 315836）。
-- 已完结：T-6280~T-6288（窗口断言清零、iCal 纯模型＋生产接入、性能门禁边际重测加固、worktree 收口、GitHub 热力图纯模型）、分支/worktree 均只剩 main、验收 Runbook（`docs/acceptance-runbook.md`）。
-- 待接线（需产品确认后复用纯模型）：iCal（T-6286 已接完）、GitHub 贡献热力图（T-6288 模型就绪）。
-- 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.18+ 节奏）。a4d8 实验完整 diff 留档于 `.workbuddy/memory/a4d8-experiment-2026-09-09.patch`。
+## 当前状态（2026-09-17 晨）
+- 全会话 40 个本地提交（`8700fe9`..`dd963b7`），未 push；测试 5872/5872（171 文件）；verify:release 全链绿（js 631610 / zip 318095）。
+- 已完结：T-6280~T-6289（窗口断言清零、iCal 与 GitHub 贡献双组件全链、性能门禁加固、worktree 收口、D-397 iCal 文本抓取缺陷修复）、分支/worktree 只剩 main、验收 Runbook。
+- v0.21 生活信息支线 iCal + GitHub 均已上线（GitHub 为周汇总列表卡，格点热力图视觉留后续）。
+- 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.20 vs v0.21）。
