@@ -8165,3 +8165,11 @@
   - 实现：新增 `src/github-model.js`——`normalizeGithubContribConfig`（username 遵循 GitHub 规则：字母/数字/内部连字符 ≤39；windowDays 钳 28~366 默认 84；可选 PAT 有界 200 字符、只允许走请求头）；`githubEventsEndpoint`（官方 REST `users/{u}/events/public` 的分页权威形状：per_page ≤100、≤3 页）；`parseGithubEvents` 有界解析（源 256 KiB、事件 ≤600、日期桶 ≤400，超限按 parse_failed 拒绝而非静默截断；带偏移时间戳归一 UTC 日期桶）；计数口径诚实声明：PushEvent 按 payload.size 加权（单事件钳 100、非法回退 1）、其余事件计 1、WatchEvent（star）不计——与 GitHub 官方口径的已知差异写入模块头注释；`buildContributionGrid` 周×7 渲染格子（周日对齐、窗口外与补位格 level -1、量化阈值 1/3/5/8、now 注入确定化）
   - 测试：`tests/github-model.test.cjs` 18 项（username 边界、窗口钳制、token 有界、分页钳制、加权与 Watch 剔除、UTC 桶确定性、超限拒绝、非时间戳跳过、量化阈值、周对齐/窗口裁剪/now 注入）；负向验证：注入「WatchEvent 也计数」→ 仅目标项 8 精确 FAIL，md5 字节级还原
   - 状态：done（2026-09-17）；网络层/adapter/catalog 接入待产品确认后复用本模块
+- [x] T-6289 GitHub 贡献组件生产接入 + iCal 文本抓取缺陷修复（2026-09-17 第三十三批）
+  - 目标：把 T-6288 纯模型接入生产全链（同 T-6286 模式）
+  - 实现：`src/life-widget-network.js` 新增 `allowedGithubEventsUrl`（仅 https://api.github.com 官方 events 路由、仅 per_page/page 参数）/`loadGithubEvents`（≤3 页顺序抓取、短页提前停、token 走 Authorization 头、按用户名缓存且 token 不进缓存键、60 分钟 TTL、stale 回退）；`src/life-widget-model.js` 新增 `buildGithubContribSnapshot`（周汇总列表：最近至多 6 周、最新在前、口径与模型一致、末行附 profile 链接）；adapter 注册（iconGraph，60 分钟缓存）；home-model 默认注册表 + configSchema（username/windowDays/token）；catalog 第 18 条（category activity、auth none、sourceUrl 官方 REST 文档）；store 三映射（external-api 可选依赖）+ 生活分组 + i18n 双语 4 key
+  - **真实缺陷修复（D-397）**：T-6286 引入的 `fetchBoundedLifeText` 传 `responseKind:"text"` 但 `fetchBoundedLifeJson` 从未读取该选项、恒走 JSON.parse——**iCal 卡片线上抓取必然抛 invalid_json**（合法 ics 文本复现实锤）。修复为文本变体跳过解析；新增回归门禁「text 变体返回原始文本」。该缺陷由本轮新增的 GitHub 网络测试**自然暴露**（假绿防线再次证明"新门禁对着真实输入跑"的价值）
+  - 门禁级联：catalog 17→18（15 处）、home-model 42→43 与 40→41、builtins 41→42、依赖 13→14（optional 5→6、external-api 4→5）、生产图 43→44、生活分组契约正则
+  - 负向验证：注入「白名单放行任意 https 主机」→ 仅目标项精确 FAIL，md5 还原
+  - 测试 5863→5872（171 文件，+9 项）；verify:release 全链绿（js 631610 / zip 318095，快照同步）
+  - 状态：done（2026-09-17）；热力图视觉呈现（格点渲染）留待后续批次，当前为周汇总列表卡

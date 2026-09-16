@@ -48,6 +48,67 @@ async function loadIcalText(url, options = {}) {
         throw error;
     }
 }
+// GitHub 贡献：官方 REST 公开事件流（免 Key，未认证 60 次/时/IP）；可选 Token 走
+// Authorization 请求头提升限额，永不进入 URL。60 分钟缓存，失效回退 stale 缓存。
+// 分页契约与 github-model.js 一致：per_page=100、至多 3 页，提前停在短页。
+const GITHUB_TTL_MS = 60 * 60 * 1000;
+const GITHUB_PAGES_MAX = 3;
+
+function allowedGithubEventsUrl(value) {
+    if (typeof value !== "string" || value.length > 512) return false;
+    try {
+        const url = new URL(value);
+        if (url.protocol !== "https:" || url.hostname !== "api.github.com") return false;
+        if (!/^\/users\/[A-Za-z0-9-]+\/events\/public$/.test(url.pathname)) return false;
+        for (const key of url.searchParams.keys()) {
+            if (key !== "per_page" && key !== "page") return false;
+        }
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+async function loadGithubEvents(config, options = {}) {
+    const username = config && typeof config.username === "string" ? config.username : "";
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(username) || username.length > 39) {
+        throw new Error("blocked_endpoint");
+    }
+    const token = config && typeof config.token === "string" && config.token ? config.token : "";
+    if (token && (/[\r\n\u0000-\u001f\u007f]/.test(token) || token.length > 200)) {
+        throw new Error("invalid_token");
+    }
+    const pages = Math.min(GITHUB_PAGES_MAX, Math.max(1, Math.trunc(Number(config && config.pages)) || 2));
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const key = `github:${username.toLowerCase()}`;
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < GITHUB_TTL_MS) {
+        return {text: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const events = [];
+        for (let page = 1; page <= pages; page += 1) {
+            const url = `https://api.github.com/users/${encodeURIComponent(username)}/events/public?per_page=100&page=${page}`;
+            if (!allowedGithubEventsUrl(url)) throw new Error("blocked_endpoint");
+            const text = await fetchBoundedLifeText(url, {
+                ...options,
+                extraHeaders: token ? {Authorization: `Bearer ${token}`} : undefined,
+                isAllowed: (candidate) => allowedGithubEventsUrl(candidate),
+            });
+            const arr = JSON.parse(text);
+            if (!Array.isArray(arr)) throw new Error("invalid_github_payload");
+            events.push(...arr);
+            if (arr.length < 100) break;
+        }
+        const text = JSON.stringify(events);
+        cacheWrite(key, text, now);
+        return {text, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
+        throw error;
+    }
+}
+
 // Frankfurter：v1 域名（api.frankfurter.app/latest）已 301 迁移，fetch 的 redirect:"error"
 // 会直接失败，因此只放行 v2 固定主机与路径；货币代码走 ECB 支持的白名单，不接受任意字符串。
 const FRANKFURTER_CURRENCIES = Object.freeze(["AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR"]);
@@ -206,6 +267,9 @@ async function fetchBoundedLifeJson(url, options = {}) {
         if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) throw new Error("response_too_large");
         const text = await response.text();
         if (typeof text !== "string" || text.length > MAX_RESPONSE_BYTES) throw new Error("response_too_large");
+        // 文本抓取变体（responseKind:"text"）只做有界读取，不做 JSON 解析——
+        // iCal/GitHub 事件流的响应不是 JSON，此前该选项被忽略导致文本抓取恒失败（D-397）。
+        if (options.responseKind === "text") return text;
         try { return JSON.parse(text); } catch (_) { throw new Error("invalid_json"); }
     } catch (error) {
         if (timedOut) throw new Error("timeout");
@@ -444,6 +508,9 @@ module.exports = {
     loadIcalText,
     allowedIcalFeedUrl,
     ICAL_TTL_MS,
+    loadGithubEvents,
+    allowedGithubEventsUrl,
+    GITHUB_TTL_MS,
     loadBangumiCalendar,
     loadConfiguredFeed,
     fetchActivityWatchQuery,

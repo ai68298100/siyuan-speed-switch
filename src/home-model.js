@@ -78,6 +78,11 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "windowDays", label: "日程窗口（天）", type: "number", min: 1, max: 60, defaults: 14},
         {key: "maxEvents", label: "条目上限", type: "number", min: 1, max: 12, defaults: 6},
     ]},
+    {moduleId: "external-github-contrib", title: "GitHub 贡献", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "username", label: "GitHub 用户名", type: "text", defaults: ""},
+        {key: "windowDays", label: "统计窗口（天）", type: "number", min: 28, max: 366, defaults: 84},
+        {key: "token", label: "个人访问令牌（可选，仅经请求头传递）", type: "text", defaults: ""},
+    ]},
     {moduleId: "external-quote-daily", title: "每日引言", icon: "iconQuote", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "quotes", label: "自定义语录（每行一条，可选 —— 分隔出处）", type: "textarea", defaults: ""},
     ]},

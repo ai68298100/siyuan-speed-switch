@@ -25,6 +25,7 @@ const PREVIEW_KINDS = Object.freeze({
     "external-quote-daily": "stat", "external-device-battery": "stat",
     "external-rss-miniflux": "feed",
     "external-ical-events": "feed",
+    "external-github-contrib": "feed",
     "external-activitywatch-time": "activity",
 });
 const SOURCE_INFO = Object.freeze({
@@ -42,6 +43,7 @@ const SOURCE_INFO = Object.freeze({
     "external-device-battery": Object.freeze({providerName: "Battery Status API", integration: "direct", privacy: "local-only"}),
     "external-rss-miniflux": Object.freeze({providerName: "Miniflux", integration: "http", privacy: "endpoint-only"}),
     "external-ical-events": Object.freeze({providerName: "iCal 订阅", integration: "http", privacy: "endpoint-only"}),
+    "external-github-contrib": Object.freeze({providerName: "GitHub", integration: "http", privacy: "endpoint-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
@@ -54,6 +56,7 @@ const DEPENDENCY_INFO = Object.freeze({
     "external-fx-frankfurter": Object.freeze({kind: "external-api", required: false, name: "Frankfurter（ECB 参考汇率）", installUrl: "https://frankfurter.dev", projectUrl: "https://github.com/frankfurter-dev/frankfurter", setup: "添加后即读取免 Key 公开接口；端点白名单锁定 api.frankfurter.dev，展示为参考值而非实时行情", network: "公网 HTTPS（经思源内核代理）；仅发送货币代码", platforms: "desktop/sidebar/mobile"}),
     "external-rss-miniflux": Object.freeze({kind: "self-hosted-api", required: true, name: "Miniflux", installUrl: "https://miniflux.app", projectUrl: "https://github.com/miniflux/v2", setup: "自行部署 Miniflux 并在设置 → API 密钥中生成 Token 后填入；Token 经请求头传递，不进入 URL、缓存或错误消息", network: "公网或自建 HTTPS；仅读取未读文章标题、来源与链接", platforms: "desktop/sidebar/mobile"}),
     "external-ical-events": Object.freeze({kind: "user-feed", required: false, name: "iCal 订阅", installUrl: "", projectUrl: "", setup: "在组件配置中填写 .ics 订阅地址后联网读取日程；地址仅用于拉取订阅内容", network: "用户提供的 HTTPS/本机 .ics 地址；仅读取日程文本", platforms: "desktop/sidebar/mobile"}),
+    "external-github-contrib": Object.freeze({kind: "external-api", required: false, name: "GitHub", installUrl: "https://github.com", projectUrl: "https://docs.github.com/rest/activity/events", setup: "在组件配置中填写 GitHub 用户名后联网读取公开事件流；可选 Token 提升限额", network: "GitHub 官方 API；仅发送用户名", platforms: "desktop/sidebar/mobile"}),
     "journal-calendar": Object.freeze({kind: "optional-data", required: false, name: "holiday-cn", installUrl: "https://github.com/NateScarlet/holiday-cn", projectUrl: "https://github.com/NateScarlet/holiday-cn", setup: "开启中国节假日/调休覆盖层后按年度读取静态 JSON；不开启仍可使用日历", network: "公网 HTTPS CDN；仅节假日数据", platforms: "desktop/sidebar/mobile"}),
     "checkin-summary": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用提供方插件后重新打开商店；本插件不内置打卡数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行请求", platforms: "desktop/sidebar/mobile"}),
     "plugin-commands": Object.freeze({kind: "plugin", required: false, name: "其他插件命令提供方", installUrl: "https://github.com/siyuan-note/bazaar", projectUrl: "https://github.com/siyuan-note/bazaar", setup: "仅在其他插件公开兼容 commands 且已启用时显示；无提供方时为空", network: "由提供方插件决定", platforms: "desktop/sidebar/mobile"}),
@@ -729,6 +732,7 @@ const HOME_CONFIG_KINDS = Object.freeze({
     "external-quote-daily": "insight", "external-device-battery": "device",
     "external-rss-miniflux": "feed",
     "external-ical-events": "feed",
+    "external-github-contrib": "feed",
     "external-activitywatch-time": "activity",
 });
 const HOME_CONFIG_PLACEHOLDERS = Object.freeze({

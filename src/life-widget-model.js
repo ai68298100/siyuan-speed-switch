@@ -409,6 +409,7 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
 
 // iCal 订阅快照：解析 ics 文本 → 未来窗口内的日程条目（有界）。
 const {parseIcsEvents, upcomingIcalEvents, normalizeIcalSubscriptionConfig} = require("./ical-model.js");
+const {normalizeGithubContribConfig, parseGithubEvents, buildContributionGrid} = require("./github-model.js");
 
 function buildIcalSnapshot(icsText, config, labels = {}, now = Date.now(), status = "fresh") {
     const normalized = normalizeIcalSubscriptionConfig(config);
@@ -440,6 +441,40 @@ function normalizeHackerNewsConfig(value) {
     return {
         limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
         showMeta: source.showMeta !== "否" && source.showMeta !== false,
+    };
+}
+
+// GitHub 贡献快照：公开事件流 → UTC 日期桶 → 周汇总列表（最近至多 6 周，最新在前）。
+// 口径与 github-model.js 头注释一致（Push 按提交数加权、star 不计）；解析失败或
+// 空数据返回 null，由 adapter 归一为 emptyHint + 重试提示。
+function buildGithubContribSnapshot(eventsText, config, labels = {}, now = Date.now(), status = "fresh") {
+    const normalized = normalizeGithubContribConfig(config);
+    if (!normalized.ok) return null;
+    const parsed = parseGithubEvents(eventsText);
+    if (!parsed.ok) return null;
+    const grid = buildContributionGrid(parsed.daily, {windowDays: normalized.windowDays}, now);
+    const weeks = [];
+    for (let i = 0; i + 7 <= grid.cells.length; i += 7) {
+        const row = grid.cells.slice(i, i + 7).filter((cell) => cell.level !== -1);
+        if (!row.length) continue;
+        weeks.push({start: row[0].date, end: row[row.length - 1].date, count: row.reduce((sum, cell) => sum + cell.count, 0)});
+    }
+    const pad = (n) => String(n).padStart(2, "0");
+    const fmt = (key) => `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`;
+    const items = weeks.slice(-6).reverse().map((week) => ({
+        label: `${fmt(week.start)}–${fmt(week.end)}`,
+        value: String(week.count),
+        href: "",
+    }));
+    if (items.length) {
+        items.push({label: `github.com/${normalized.username}`, value: "", href: `https://github.com/${normalized.username}`});
+    }
+    return {
+        title: boundedText(labels.title, 96) || "GitHub 贡献",
+        items,
+        emptyHint: items.length === 0 ? (boundedText(labels.empty, 96) || "窗口内暂无贡献") : "",
+        updatedAt: now,
+        sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
     };
 }
 
@@ -885,6 +920,7 @@ module.exports = {
     parseIcsEvents,
     upcomingIcalEvents,
     buildIcalSnapshot,
+    buildGithubContribSnapshot,
     buildMinifluxRequestUrl,
     normalizeMinifluxEntries,
     buildMinifluxSnapshot,

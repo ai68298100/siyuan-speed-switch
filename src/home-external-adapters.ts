@@ -7,9 +7,10 @@
 import {buildLocalTimeSnapshot, buildWorldClockSnapshot} from "./local-time-model";
 import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot} from "./life-widget-model";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
 import {parseIcsEvents, upcomingIcalEvents} from "./ical-model";
-import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadActivityWatchSummary} from "./life-widget-network";
+import {normalizeGithubContribConfig} from "./github-model";
+import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadGithubEvents, loadActivityWatchSummary} from "./life-widget-network";
 
 export type HomeExternalAdapterRegister = (
     moduleId: string,
@@ -234,6 +235,24 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 return {emptyHint: `${this.i18n.homeIcalEmpty} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
+        // GitHub 贡献：官方公开事件流（免 Key，可选 Token 走请求头）。分页抓取经内核代理，
+        // 事件流按周汇总为列表；60 分钟缓存，失效回退 stale。
+        register("external-github-contrib", this.i18n.homeGithub, "iconGraph", this.i18n.homeDescGithub, [], async (config, _device, context) => {
+            const normalized = normalizeGithubContribConfig(config);
+            if (!normalized.ok) return {emptyHint: this.i18n.homeGithubConfigHint, items: []};
+            try {
+                const envelope = await loadGithubEvents(normalized, {
+                    signal: context?.signal,
+                    fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
+                });
+                const snapshot = buildGithubContribSnapshot(envelope.text, normalized, {empty: this.i18n.homeGithubEmpty}, undefined, envelope.status);
+                if (!snapshot) throw new Error("invalid_github_payload");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeGithubEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 60 * 60 * 1000});
         // 每日引言：完全离线的本地语录集，按本地日期稳定轮换；无网络请求。
         // 自定义语录（多行，整体替换内置集）走 textarea 配置；挂到分钟心跳以在跨天时轮换。
         register("external-quote-daily", this.i18n.homeQuote, "iconQuote", this.i18n.homeDescQuote, [], (config) => {

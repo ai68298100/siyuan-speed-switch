@@ -409,3 +409,25 @@ test("Miniflux snapshot trusts stale health and rejects empty lists", () => {
     assert.equal(model.buildMinifluxSnapshot({...minifluxEnvelope, status: "stale"}, {}, {}).sourceHealth, "stale");
     assert.equal(model.buildMinifluxSnapshot({status: "fresh", payload: {total: 0, entries: []}}, {}, {}), null);
 });
+
+// --- GitHub 贡献快照（T-6289）：周汇总口径与失败归一 ---
+test("GitHub contribution snapshot summarizes weeks and appends the profile link", () => {
+    const text = JSON.stringify([
+        {type: "PushEvent", created_at: "2026-09-15T08:00:00Z", payload: {size: 4}},
+        {type: "WatchEvent", created_at: "2026-09-15T09:00:00Z"},
+        {type: "CreateEvent", created_at: "2026-09-10T08:00:00Z"},
+    ]);
+    const snapshot = model.buildGithubContribSnapshot(text, {username: "torvalds"}, {title: "GitHub 贡献", empty: "无数据"}, Date.parse("2026-09-16T12:00:00Z"), "cached");
+    assert.equal(snapshot.title, "GitHub 贡献");
+    assert.equal(snapshot.sourceHealth, "cached");
+    assert.equal(snapshot.items[0].label, "9/13–9/16");
+    assert.equal(snapshot.items[0].value, "4", "star must not count toward the week");
+    assert.equal(snapshot.items[1].value, "1");
+    assert.equal(snapshot.items[snapshot.items.length - 1].href, "https://github.com/torvalds");
+});
+
+test("GitHub contribution snapshot rejects unusable payloads and configs", () => {
+    assert.equal(model.buildGithubContribSnapshot("not json", {username: "torvalds"}), null);
+    assert.equal(model.buildGithubContribSnapshot("[]", {username: "torvalds"}), null);
+    assert.equal(model.buildGithubContribSnapshot("[]", {username: "bad_name"}), null);
+});

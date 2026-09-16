@@ -344,3 +344,64 @@ test("Miniflux loader exposes stale cache after failure", async () => {
 });
 test("Miniflux loader blocks drifted endpoints", async () =>
     assert.rejects(network.loadMinifluxEntries("https://rss.example.com/v1/me", "t", {fetchImpl: async () => response("{}")}), /blocked_endpoint/));
+
+// --- GitHub 贡献（T-6289）：端点白名单、分页、token 头与缓存语义 ---
+test("GitHub endpoint allowlist accepts only the official events route", () => {
+    assert.equal(network.allowedGithubEventsUrl("https://api.github.com/users/torvalds/events/public?per_page=100&page=1"), true);
+    assert.equal(network.allowedGithubEventsUrl("http://api.github.com/users/torvalds/events/public"), false);
+    assert.equal(network.allowedGithubEventsUrl("https://evil.example/users/torvalds/events/public"), false);
+    assert.equal(network.allowedGithubEventsUrl("https://api.github.com/users/torvalds/events/public?per_page=100&x=1"), false);
+    assert.equal(network.allowedGithubEventsUrl("https://api.github.com/users/torvalds/followers"), false);
+});
+
+test("GitHub loader rejects malformed usernames and tokens before any request", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response("[]"); };
+    await assert.rejects(network.loadGithubEvents({username: "bad_name"}, {fetchImpl}), /blocked_endpoint/);
+    await assert.rejects(network.loadGithubEvents({username: "torvalds", token: "bad\ntoken"}, {fetchImpl}), /invalid_token/);
+    assert.equal(calls, 0, "no network request with malformed input");
+});
+
+test("GitHub loader fetches pages until a short page and stops", async () => {
+    const requested = [];
+    let calls = 0;
+    const fullPage = Array.from({length: 100}, () => ({type: "CreateEvent", created_at: "2026-09-10T00:00:00Z"}));
+    const fetchImpl = async (url) => { const first = calls++ === 0; requested.push(url); return response(JSON.stringify(first ? fullPage : [])); };
+    const result = await network.loadGithubEvents({username: "torvalds", pages: 3}, {fetchImpl, now: 1000});
+    assert.equal(result.status, "fresh");
+    assert.equal(requested.length, 2, "full page continues, short page stops");
+    assert.ok(requested[1].includes("page=2"));
+});
+
+test("GitHub loader caches by username so the token never enters the cache key", async () => {
+    let calls = 0;
+    const fetchImpl = async () => { calls += 1; return response(JSON.stringify([{type: "CreateEvent", created_at: "2026-09-10T00:00:00Z"}])); };
+    await network.loadGithubEvents({username: "torvalds", token: "token-a"}, {fetchImpl, now: 1000});
+    const second = await network.loadGithubEvents({username: "torvalds", token: "token-b"}, {fetchImpl, now: 2000});
+    assert.equal(second.status, "cached");
+    assert.equal(calls, 1);
+});
+
+test("GitHub loader sends the token via the Authorization header", async () => {
+    const seen = [];
+    const fetchImpl = async (url, init) => { seen.push(init && init.headers ? init.headers.Authorization : ""); return response("[]"); };
+    await network.loadGithubEvents({username: "torvalds", token: "ghp_ok"}, {fetchImpl, now: 5000});
+    assert.equal(seen[0], "Bearer ghp_ok");
+});
+
+test("GitHub loader falls back to stale cache on failure", async () => {
+    let ok = true;
+    const fetchImpl = async () => ok ? response(JSON.stringify([{type: "CreateEvent", created_at: "2026-09-10T00:00:00Z"}])) : Promise.reject(new Error("network down"));
+    await network.loadGithubEvents({username: "torvalds"}, {fetchImpl, now: 1000});
+    ok = false;
+    const second = await network.loadGithubEvents({username: "torvalds"}, {fetchImpl, now: 1000 + network.GITHUB_TTL_MS + 1});
+    assert.equal(second.status, "stale");
+});
+
+test("the text fetch variant returns raw text instead of parsing JSON (D-397 regression)", async () => {
+    // 回归门禁：iCal 文本抓取曾因 responseKind 被忽略而恒抛 invalid_json。
+    const fetchImpl = async () => response("BEGIN:VCALENDAR\r\nEND:VCALENDAR");
+    const result = await network.loadIcalText("https://calendar.example.com/feed.ics", {fetchImpl, now: 1000});
+    assert.equal(typeof result.text, "string");
+    assert.match(result.text, /BEGIN:VCALENDAR/);
+});
