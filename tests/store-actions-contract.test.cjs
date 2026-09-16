@@ -4,9 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+
+// 2026-09-16（T-6280 / D-396 第二十批）：7 条窗口断言迁移为块级；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const css = readSourceText('src/index.scss');
+const base={topLevel: true};
 
 test('store size controls use a labelled group', () => assert.match(storeUiSource, /tiles\.setAttribute\("role", "group"\)/));
 test('store size controls keep their module id', () => assert.match(storeUiSource, /tiles\.dataset\.moduleId = moduleId/));
@@ -45,10 +50,10 @@ test('store configure action records operation', () => assert.match(storeUiSourc
 test('store configure action announces dialog', () => assert.match(storeUiSource, /configButton\.setAttribute\("aria-haspopup", "dialog"\)/));
 test('store remove action records operation', () => assert.match(storeUiSource, /removeButton\.dataset\.action = "remove"/));
 test('store remove action keeps tooltip', () => assert.match(storeUiSource,/removeButton\.title = removeButton\.getAttribute\("aria-label"\)/));
-test('store size row cannot shrink below content', () => assert.match(css, /\.sw-home-store__sizes[\s\S]*?min-width: 0/));
-test('store add action has a minimum width', () => assert.match(css, /\.sw-home-store__add[\s\S]*?min-width: 88px/));
-test('store add action has stronger emphasis', () => assert.match(css, /\.sw-home-store__add[\s\S]*?font-weight: 600/));
-test('store selected size has a data-state ring', () => assert.match(css, /&\[data-selected="true"\][\s\S]*?box-shadow/));
-test('store add action focus keeps a visible ring', () => assert.match(css, /\.sw-home-store__add[\s\S]*?&:focus-visible \{ box-shadow: var\(--sw-focus-ring\)/));
-test('store configure action preserves labels', () => assert.match(css, /\.sw-home-store__configure[\s\S]*?white-space: nowrap/));
-test('store remove action preserves labels', () => assert.match(css, /\.sw-home-store__remove[\s\S]*?white-space: nowrap/));
+test('store size row cannot shrink below content', () => assert.ok(declaresIn(css, '.sw-home-store__sizes', /min-width: 0/, base)));
+test('store add action has a minimum width', () => assert.ok(declaresIn(css, '.sw-home-store__add', /min-width: 88px/, base)));
+test('store add action has stronger emphasis', () => assert.ok(declaresIn(css, '.sw-home-store__add', /font-weight: 600/, base)));
+test('store selected size has a data-state ring', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__size\[data-selected="true"]$/, /box-shadow/, base)));
+test('store add action focus keeps a visible ring', () => assert.ok(declaresIn(css, '.sw-home-store__add:focus-visible', /box-shadow: var\(--sw-focus-ring/, base)));
+test('store configure action preserves labels', () => assert.ok(declaresIn(css, '.sw-home-store__configure', /white-space: nowrap/, base)));
+test('store remove action preserves labels', () => assert.ok(declaresIn(css, '.sw-home-store__remove', /white-space: nowrap/, base)));

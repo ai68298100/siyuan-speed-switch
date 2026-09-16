@@ -4,9 +4,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const scss = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+const source = readSourceText('src/index.ts');
+
+// 2026-09-16（T-6280 / D-396 第二十批）：2 条 TS 窗口改「锚定 BUILTIN_GROUPS 数组 + 有界窗口」；
+// 2 条 CSS 窗口迁移为块级；TS 源码读取改走 readSourceText。
+const storeUiSource = readSourceText('src/home-store-ui.ts');
+const scss = readSourceText('src/index.scss');
+const base={topLevel: true};
+const groupsBlock = storeUiSource.slice(storeUiSource.indexOf('const BUILTIN_GROUPS'), storeUiSource.indexOf('const BUILTIN_GROUPS') + 1600);
 const guide = fs.readFileSync(path.join(root, 'docs', 'component-store-guide.md'), 'utf8');
 const zh = JSON.parse(fs.readFileSync(path.join(root, 'src', 'i18n', 'zh-CN.json'), 'utf8'));
 const en = JSON.parse(fs.readFileSync(path.join(root, 'src', 'i18n', 'en.json'), 'utf8'));
@@ -24,8 +31,8 @@ const expectedGroups = [
 test('group metadata type includes a description field', () => {
     assert.match(storeUiSource,/Array<\{label: string; description: string; moduleIds: string\[\]\}>/);
 });
-test('group metadata keeps module ids explicit', () => assert.match(storeUiSource, /moduleIds: \[/));
-test('group order starts with journal', () => assert.match(storeUiSource,/BUILTIN_GROUPS:[\s\S]*?homeStoreGroupJournal/));
+test('group metadata keeps module ids explicit', () => { assert.ok(groupsBlock.includes('moduleIds: ['), 'moduleIds 须显式声明'); assert.ok(storeUiSource.slice(storeUiSource.indexOf('homeStoreGroupSystem'), storeUiSource.indexOf('homeStoreGroupSystem') + 300).includes('"plugin-commands"'), 'system 组须含 plugin-commands'); });
+test('group order starts with journal', () => assert.ok(groupsBlock.includes('homeStoreGroupJournal'), '分组数组须以 journal 开头'));
 test('group order places tasks after journal', () => assert.ok(storeUiSource.indexOf('homeStoreGroupJournal') < storeUiSource.indexOf('homeStoreGroupTasks')));
 test('group order places documents after tasks', () => assert.ok(storeUiSource.indexOf('homeStoreGroupTasks') < storeUiSource.indexOf('homeStoreGroupDocuments')));
 test('group order places insights after documents', () => assert.ok(storeUiSource.indexOf('homeStoreGroupDocuments') < storeUiSource.indexOf('homeStoreGroupInsights')));
@@ -59,8 +66,8 @@ test('description is rendered as text', () => assert.match(storeUiSource, /group
 test('description is linked with aria-describedby', () => assert.match(storeUiSource, /groupHeading\.setAttribute\("aria-describedby", descriptionId\)/));
 test('description uses a dedicated class', () => assert.match(storeUiSource, /groupDescription\.className = "sw-home-store__group-description"/));
 test('description id is deterministic', () => assert.match(storeUiSource,/sw-home-store-group-description-\$\{orderedGroups\.indexOf\(label\)\}/));
-test('description can wrap on desktop', () => assert.match(scss, /\.sw-home-store__group-description[\s\S]*?overflow-wrap: anywhere/));
-test('description has reduced visual emphasis', () => assert.match(scss, /\.sw-home-store__group-description[\s\S]*?opacity: \.78/));
+test('description can wrap on desktop', () => assert.ok(declaresIn(scss, /(^| )\.sw-home-store__group-description$/, /overflow-wrap: anywhere/, base)));
+test('description has reduced visual emphasis', () => assert.ok(declaresIn(scss, /(^| )\.sw-home-store__group-description$/, /opacity: \.78/, base)));
 test('guide documents functional grouping', () => assert.match(guide, /## 功能分组含义/));
 test('guide states that grouping is not availability', () => assert.match(guide, /不表示联网方式或可用条件/));
 test('guide documents all seven functional groups', () => {

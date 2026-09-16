@@ -4,8 +4,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+const {readSourceText}=require('./source-scan.cjs');
+const {declaresIn}=require('./css-block-scan.cjs');
+
+// 2026-09-16（T-6280 / D-396 第二十批）：1 条 TS 窗口改「锚定 syncFinish + 有界窗口」；
+// 2 条 CSS 窗口迁移为块级；TS 源码读取改走 readSourceText。
+const source = readSourceText('src/index.ts');
+const css = readSourceText('src/index.scss');
+const base={topLevel: true};
+const syncFinishBody = source.slice(source.indexOf('const syncFinish = (failed = false) => {'), source.indexOf('const syncFinish = (failed = false) => {') + 700);
 
 test('sync start event is subscribed', () => assert.match(source, /eventBus\.on\("sync-start"/));
 test('sync end event is subscribed', () => assert.match(source, /eventBus\.on\("sync-end"/));

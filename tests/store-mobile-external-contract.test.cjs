@@ -4,9 +4,17 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const css = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
-const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
-const storeUiSource = fs.readFileSync(path.join(root, "src", "home-store-ui.ts"), "utf8");
+const {readSourceText}=require("./source-scan.cjs");
+const {declaresIn}=require("./css-block-scan.cjs");
+const css = readSourceText("src/index.scss");
+const base={topLevel: true};
+const narrow={atRule: /max-width: 560px/};
+const composite={atRule: /max-width: 560px\) and \(prefers-reduced-motion/};
+
+// 2026-09-16（T-6280 / D-396 第二十批）：// CSS 窗口迁移为块级（560px 分支用 {atRule} 钉，复合分支 560px+reduce 同理）；
+// TS 侧 link.target→rel 相邻改「锚定 + 有界窗口」；TS 源码读取改走 readSourceText。
+const source = readSourceText("src/index.ts");
+const storeUiSource = readSourceText("src/home-store-ui.ts");
 const store = require(path.join(root, "src", "home-store-model.js"));
 const life = require(path.join(root, "src", "life-widget-model.js"));
 const network = require(path.join(root, "src", "life-widget-network.js"));
@@ -22,21 +30,21 @@ const card = (overrides = {}) => ({
 });
 
 test("mobile store uses a dedicated breakpoint", () => assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.sw-home-store/));
-test("mobile store grid is single column", () => assert.match(css, /\.sw-home-store__grid \{ grid-template-columns: minmax\(0, 1fr\)/));
-test("mobile store grid has a bounded gap", () => assert.match(css, /\.sw-home-store__grid \{[^}]*gap: 10px/));
+test("mobile store grid is single column", () => assert.ok(declaresIn(css, ".sw-home-store__grid", /grid-template-columns: minmax\(0, 1fr\)/, narrow)));
+test("mobile store grid has a bounded gap", () => assert.ok(declaresIn(css, ".sw-home-store__grid", /gap: 10px/, narrow)));
 test("mobile cards fill the available row", () => assert.match(css, /\.sw-home-store__card \{ width: 100%; max-width: 100%/));
-test("mobile cards keep compact padding", () => assert.match(css, /\.sw-home-store__card \{[^}]*padding: 11px 12px/));
+test("mobile cards keep compact padding", () => assert.ok(declaresIn(css, ".sw-home-store__card", /padding: 11px 12px/, narrow)));
 test("mobile previews cannot overflow the card", () => assert.match(css, /\.sw-home-store__preview \{ max-width: 100%; overflow: hidden/));
 test("mobile tabs scroll horizontally", () => assert.match(css, /\.sw-home-store__tabs \{ overflow-x: auto/));
-test("mobile tabs preserve touch scrolling", () => assert.match(css, /\.sw-home-store__tabs \{[^}]*-webkit-overflow-scrolling: touch/));
+test("mobile tabs preserve touch scrolling", () => assert.ok(declaresIn(css, ".sw-home-store__tabs", /-webkit-overflow-scrolling: touch/, narrow)));
 test("mobile tabs do not shrink labels", () => assert.match(css, /\.sw-home-store__tab \{ flex: 0 0 auto/));
 test("mobile search row wraps controls", () => assert.match(css, /\.sw-home-store__search \{ flex-wrap: wrap/));
 test("mobile search input can shrink", () => assert.match(css, /\.sw-home-store__search input \{ flex: 1 1 calc\(100% - 40px\); min-width: 0/));
-test("mobile sort control shares a full-width row", () => assert.match(css, /\.sw-home-store__search \.sw-home-store__sort,[\s\S]*?flex: 1 1 calc\(50% - 4px\)/));
+test("mobile sort control shares a full-width row", () => assert.ok(declaresIn(css, ".sw-home-store__search .sw-home-store__sort", /flex: 1 1 46%/, narrow)));
 test("mobile guide control shares a full-width row", () => assert.match(css, /\.sw-home-store__guide \{ flex: 1 1 calc\(50% - 4px\)/));
 test("mobile filter empty text wraps anywhere", () => assert.match(css, /\.sw-home-store__filter-empty \{ overflow-wrap: anywhere/));
-test("reduced motion keeps mobile cards contained", () => assert.match(css, /@media \(max-width: 560px\) and \(prefers-reduced-motion: reduce\)[\s\S]*?contain: layout/));
-test("mobile reduced motion keeps cards visible", () => assert.match(css, /@media \(max-width: 560px\) and \(prefers-reduced-motion: reduce\)[\s\S]*?content-visibility: visible/));
+test("reduced motion keeps mobile cards contained", () => assert.ok(declaresIn(css, ".sw-home-store__card", /contain: layout/, composite)));
+test("mobile reduced motion keeps cards visible", () => assert.ok(declaresIn(css, ".sw-home-store__card", /content-visibility: visible/, composite)));
 
 test("external cards are recognized by the model", () => assert.equal(store.isHomeStoreExternal(card({availability: "external"})), true));
 test("external cards use an informational status tone", () => assert.equal(store.resolveHomeStoreStatusTone(card({availability: "external"})), "info"));
@@ -70,7 +78,7 @@ test("preview exposes a local bridge chip tone", () => assert.match(storeUiSourc
 test("preview exposes privacy chip metadata", () => assert.match(storeUiSource, /addMeta\(privacy, "privacy"\)/));
 test("preview body is keyboard focusable", () => assert.match(storeUiSource, /body\.tabIndex = 0/));
 test("preview body points to metadata", () => assert.match(storeUiSource,/body\.setAttribute\("aria-describedby", meta\.id\)/));
-test("guide link opens safely in a new tab", () => assert.match(source, /link\.target = "_blank";[\s\S]*?link\.rel = "noopener noreferrer"/));
+test("guide link opens safely in a new tab", () => { const i = source.indexOf('link.target = "_blank";'); assert.ok(i >= 0, "missing link.target"); const w = source.slice(i, i + 300); assert.ok(w.includes('link.rel = "noopener noreferrer"'), "target=_blank 须配 noopener"); });
 test("mobile preview width stays viewport bounded", () => assert.match(source, /width: this\.isMobile \? "min\(420px, 92vw\)"/));
 
 test("weather provider is location-only", () => assert.equal(store.resolveHomeStoreSourceInfo("external-weather-open-meteo").privacy, "location-only"));

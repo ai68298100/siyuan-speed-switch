@@ -59,16 +59,7 @@ const DEBT_REASONS = {
 };
 
 const SOURCE_SCAN_DEBT = [
-    {file: "tests/external-widget-availability-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-actions-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-forced-colors.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-group-semantics-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-mobile-external-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-mobile-layout-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-performance-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-print-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-will-change-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/sync-panel-stability.test.cjs", reason: "css-window-scope"},
     {file: "tests/doc-search-pagination-contract.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-key-audit.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-migration.test.cjs", reason: "doc-comment-contract"},
