@@ -4889,291 +4889,291 @@
   - 目标：修复实时预览永久 loading，并将尺寸选择与添加/应用操作拆开
   - 实现：预览打开后主动触发 controller refresh；尺寸按钮仅选择并显示选中态；新增独立“添加组件/应用尺寸”按钮；补充中英文文案与商店契约测试
   - 状态：done（2026-09-13，完整发布门禁已通过）
-- [x] T-122 Agent 文档上下文契约与模型
+- [ ] T-122 Agent 文档上下文契约与模型
   - 目标：为 v0.17 准备只读 `document-context` 能力，统一标题、笔记本、路径、活动状态和有界大纲输出；不返回正文
   - 实现：新增独立 `src/agent-document-context.js` 契约与纯模型，限制大纲 24 条、路径 256 字符；待真实桌面取消/权限审计后接入生产 Agent 注册
   - 状态：in-progress
-- [x] T-123 Agent 工作区计划 dry-run 模型
+- [ ] T-123 Agent 工作区计划 dry-run 模型
   - 目标：为 v0.17 建立固定动作白名单的计划层，只读生成步骤、写权限标记、确认要求和过期时间，不直接执行
   - 实现：新增独立 `src/agent-workspace-plan.js`，最多 8 步、单步最多 5 个文档、计划最长 10 分钟；过滤未知动作并提供稳定 planId/过期判断
   - 状态：in-progress
-- [x] T-124 Agent 工作区统一结果回执模型
+- [ ] T-124 Agent 工作区统一结果回执模型
   - 目标：为计划执行后的完成、跳过、失败、取消和过期建立统一有界回执，支持部分成功而不泄露宿主异常文本
   - 实现：`src/agent-workspace-plan.js` 新增回执 schema、稳定 receipt ID 和状态归一化；仍未接入生产执行器
   - 状态：in-progress
-- [x] T-125 Agent 工作区计划执行状态机
+- [ ] T-125 Agent 工作区计划执行状态机
   - 目标：在不绑定思源 API 的前提下固化确认、过期、取消、逐步执行和部分成功语义，为后续 `execute-workspace-plan` 接入复用
   - 实现：新增注入式 `runWorkspacePlan`，无批准不执行、过期拒绝、AbortSignal 取消未开始步骤、执行器异常归一化为稳定失败 token
   - 状态：in-progress
-- [x] T-126 Agent 工作区固定动作适配层
+- [ ] T-126 Agent 工作区固定动作适配层
   - 目标：把计划步骤映射到六类白名单动作，统一做目标二次校验、参数裁剪和 handler 缺失/异常降级
   - 实现：新增独立 `src/agent-workspace-actions.js`，仅允许 open/open-batch/restore/update/create/append；实际思源调用由宿主注入
   - 状态：in-progress
-- [x] T-127 Agent 工作区计划一次性执行门卫
+- [ ] T-127 Agent 工作区计划一次性执行门卫
   - 目标：阻止同一计划被 Agent 重放，统一审批、过期、运行中和已消费状态，保持会话内记录有界
   - 实现：新增独立 `src/agent-workspace-execution.js`，最多保留 32 条计划记录，提供 begin/finish/get/clear 生命周期
   - 状态：in-progress
-- [x] T-128 Agent 工作区审批摘要与执行编排
+- [ ] T-128 Agent 工作区审批摘要与执行编排
   - 目标：把用户确认绑定到计划 digest，并组合一次性消费门卫与执行状态机，阻止确认后计划被替换或重复重放
   - 实现：新增 `workspacePlanDigest`、`executeWorkspacePlan`；digest mismatch/denied/expired/replay 均在动作执行前返回，成功后写入有界消费记录
   - 状态：in-progress
-- [x] T-129 Agent 执行能力请求契约
+- [ ] T-129 Agent 执行能力请求契约
   - 目标：为未来 `execute-workspace-plan` 注册固定输入边界，要求 planId、digest 和一次性确认令牌，显式回显设备范围
   - 实现：新增独立 `src/agent-workspace-capability.js`，拒绝未知字段、非法摘要和短/危险确认令牌；当前仅契约模型，不执行动作
   - 状态：in-progress
-- [x] T-130 Agent 审批令牌生命周期
+- [ ] T-130 Agent 审批令牌生命周期
   - 目标：将用户确认绑定到 planId、digest、设备和过期时间，并保证令牌一次性消费、会话内有界保留
   - 实现：新增独立 `src/agent-approval-token.js`，最多保留 32 个令牌，支持 issue/validate/consume/clear；令牌不携带正文或权限信息
   - 状态：in-progress
-- [x] T-131 Agent 执行编排接入审批令牌
+- [ ] T-131 Agent 执行编排接入审批令牌
   - 目标：执行计划前校验 token 的 planId/digest/device/expiry，校验通过后一次性消费，阻止缺少授权或令牌重放进入动作 handler
   - 实现：`executeWorkspacePlan` 支持注入 `approvalStore`、`approvalToken` 和 `device`，令牌验证失败不产生步骤副作用
   - 状态：in-progress
-- [x] T-132 Agent 工作区审批挑战生成器
+- [ ] T-132 Agent 工作区审批挑战生成器
   - 目标：把计划转换为可展示、可确认的一次性挑战载荷，绑定 planId/digest/device/expiresAt/approvalToken，并校验计划未被替换
   - 实现：新增独立 `src/agent-workspace-approval.js`，提供 challenge 创建与校验；令牌仍只存在内存，不携带正文或权限数据
   - 状态：in-progress
-- [x] T-133 Agent 工作区动作清单与审批摘要
+- [ ] T-133 Agent 工作区动作清单与审批摘要
   - 目标：为六类固定动作提供 effect/确认/目标上限元数据，并生成不含正文的计划统计摘要
   - 实现：`src/agent-workspace-actions.js` 新增 `WORKSPACE_ACTION_SPECS` 与 `buildWorkspacePlanSummary`，输出步骤数、对象数、导航/写入计数和确认标记
   - 状态：in-progress
-- [x] T-134 Agent 固定动作结果归一化
+- [ ] T-134 Agent 固定动作结果归一化
   - 目标：将思源 handler 返回值收敛为稳定状态、合法 ID 和有界计数，阻止原始对象、正文和异常文本进入 Agent 回执
   - 实现：`src/agent-workspace-actions.js` 新增 `normalizeWorkspaceActionResult`，按六类动作白名单输出字段；失败原因清洗为稳定 token
   - 状态：in-progress
-- [x] T-135 Agent 动作 postcondition 校验
+- [ ] T-135 Agent 动作 postcondition 校验
   - 目标：拒绝“completed 但缺少关键结果”的假成功，让 Agent 回执反映真实动作结果
   - 实现：`validateWorkspaceActionPostcondition` 要求打开/更新/创建/追加动作返回合法目标或结果；恢复文档集保留无 ID 的完成语义
   - 状态：in-progress
-- [x] T-136 Agent 工作区计划结构完整性校验
+- [ ] T-136 Agent 工作区计划结构完整性校验
   - 目标：在审批和执行前验证步骤索引、动作白名单、写权限标记、目标数量与任务状态字段，阻止结构篡改进入 handler
   - 实现：`validateWorkspacePlan` 接入 `runWorkspacePlan`，非法计划统一失败且不调用步骤执行器
   - 状态：in-progress
-- [x] T-137 Agent 导航宿主动作适配器
+- [ ] T-137 Agent 导航宿主动作适配器
   - 目标：将现有桌面/移动文档打开 API 封装为计划执行 handler，支持单篇、批量、旧宿主回退和取消信号
   - 实现：新增独立 `src/agent-host-actions.js`，复用 `document-actions`；批量打开保持顺序并返回逐项 opened/failed
   - 状态：in-progress
-- [x] T-138 Agent 文档集恢复宿主适配器
+- [ ] T-138 Agent 文档集恢复宿主适配器
   - 目标：将现有文档集预检/恢复逻辑封装为计划 handler，复用顺序、已打开跳过、缺失探测和取消语义
   - 实现：新增独立 `src/agent-document-set-actions.js`，宿主注入集合查询、可用性探测和打开回调；无集合/全缺失/全失败返回稳定原因
   - 状态：in-progress
-- [x] T-139 Agent 写入动作宿主适配器
+- [ ] T-139 Agent 写入动作宿主适配器
   - 目标：把任务更新、新建文档、追加今日日记封装为可注入 handler，统一校验载荷、取消语义和 postcondition
   - 实现：新增独立 `src/agent-write-actions.js`；内核调用由宿主注入，任务仅改勾选标记，创建/追加必须回传合法文档 ID
   - 状态：in-progress
-- [x] T-140 Agent 工作区宿主 handler registry
+- [ ] T-140 Agent 工作区宿主 handler registry
   - 目标：将导航、文档集恢复和写入三组 adapter 组合为统一六动作 registry，直接供计划执行器消费
   - 实现：新增独立 `src/agent-workspace-registry.js`，各组回调分域注入并冻结输出键集合；不捕获 Plugin/DOM 状态
   - 状态：in-progress
-- [x] T-141 Agent 工作区执行会话 facade
+- [ ] T-141 Agent 工作区执行会话 facade
   - 目标：把审批 challenge、token store、replay guard、动作 registry 和执行器封装为单一会话 API
   - 实现：新增独立 `src/agent-workspace-session.js`，提供 issue/preview/execute/dispose；会话销毁同时清理授权与重放状态
   - 状态：in-progress
-- [x] T-142 Agent 工作区审批预览摘要
+- [ ] T-142 Agent 工作区审批预览摘要
   - 目标：在真正执行前输出不含正文的步骤/对象/导航/写入统计，并与 challenge 同步生成
   - 实现：session `preview()` 组合 `buildWorkspacePlanSummary` 与一次性 challenge，供后续审批 UI/Agent handler 复用
   - 状态：in-progress
-- [x] T-143 Agent 工作区 bridge facade
+- [ ] T-143 Agent 工作区 bridge facade
   - 目标：提供统一 `plan → issue → execute → dispose` API，封装计划存储、审批会话和动作执行，供未来 Agent handler 直接调用
   - 实现：新增独立 `src/agent-workspace-bridge.js`，计划内存最多 32 条，执行请求经现有契约归一化，销毁时清理全部状态
   - 状态：in-progress
-- [x] T-144 Agent workspace bridge handler 工厂
+- [ ] T-144 Agent workspace bridge handler 工厂
   - 目标：为 `workspace-plan` 与 `execute-workspace-plan` 提供可注册的稳定 handler 包装，统一返回 `structuredContent` 与序列化 `result`
   - 实现：新增 `createWorkspacePlanHandler` / `createWorkspaceExecuteHandler`，无效计划与缺失执行器分别降级为稳定错误；安全校验仍由 bridge/session 负责
   - 状态：in-progress
-- [x] T-145 Agent workspace capability data-driven definitions
+- [ ] T-145 Agent workspace capability data-driven definitions
   - 目标：把 workspace-plan 与 execute-workspace-plan 的 spec、effects、handler 组合为可直接交给注册器的定义数组
   - 实现：新增独立 `src/agent-workspace-capability-definitions.js`，区分只读计划与可写执行 effects，保持 bridge 安全逻辑单一来源
   - 状态：in-progress
-- [x] T-146 Agent workspace bridge 审批预览入口
+- [ ] T-146 Agent workspace bridge 审批预览入口
   - 目标：在 bridge 层直接提供不含正文的步骤摘要与审批 challenge，供 Agent/审批 UI 在执行前复用
   - 实现：新增 `preview(planId, device, now)`，复用 session 预览与既有 challenge 校验边界；未知计划安全返回 null
   - 状态：in-progress
-- [x] T-147 Agent workspace handler 异常隔离
+- [ ] T-147 Agent workspace handler 异常隔离
   - 目标：阻止注入式 bridge/宿主异常文本或异常对象冒泡到 Agent 通道
   - 实现：plan/execute handler 工厂捕获同步与异步异常，分别降级为 `invalid_plan` / `executor_unavailable`
   - 状态：in-progress
-- [x] T-148 Agent workspace capability 安全注册适配器
+- [ ] T-148 Agent workspace capability 安全注册适配器
   - 目标：将已知 workspace capability 定义交给宿主注册器，并按 capability 名称固定 effects，拒绝未知定义
   - 实现：新增 `registerWorkspaceCapabilityDefinitions`，兼容旧宿主、隔离单项注册异常，不信任调用方覆盖执行 effects
   - 状态：in-progress
-- [x] T-149 Agent workspace canonical spec 防伪校验
+- [ ] T-149 Agent workspace canonical spec 防伪校验
   - 目标：阻止外部构造同名但篡改 schema/effects 的 workspace capability 定义注册
   - 实现：注册适配器要求使用模块内冻结 canonical spec 对象，伪造同名定义直接跳过
   - 状态：in-progress
-- [x] T-150 Agent workspace 过期计划回收
+- [ ] T-150 Agent workspace 过期计划回收
   - 目标：为长期运行的 bridge 清理已过期计划元数据，避免有界计划槽位被陈旧审批占用
   - 实现：新增 `prune(now)`，按统一 expiry 语义删除过期计划并返回回收数量；不影响 session 内 token/replay 清理
   - 状态：in-progress
-- [x] T-151 Agent workspace capability 卸载回收
+- [ ] T-151 Agent workspace capability 卸载回收
   - 目标：宿主卸载时回收已注册 capability 句柄，避免旧 handler 残留或异常冒泡
   - 实现：新增 `disposeWorkspaceCapabilityRegistrations`，兼容 disposer、对象 disposer 与 `removeAgentCapability`，逐项隔离异常并返回计数
   - 状态：in-progress
-- [x] T-152 Agent workspace bridge 销毁态隔离
+- [ ] T-152 Agent workspace bridge 销毁态隔离
   - 目标：防止 bridge dispose 后重新创建计划或执行旧请求
   - 实现：增加幂等 disposed 标记；销毁后 plan/issue/preview 返回空值，execute 返回 `bridge_disposed`
   - 状态：in-progress
-- [x] T-153 Agent workspace capability lifecycle facade
+- [ ] T-153 Agent workspace capability lifecycle facade
   - 目标：统一 workspace capability 的注册、句柄保存与不可逆卸载，避免调用方重复注册或遗漏清理
   - 实现：新增 `createWorkspaceCapabilityLifecycle`，register 只执行一次，dispose 逐项回收并阻止再次注册
   - 状态：in-progress
-- [x] T-154 Agent workspace lifecycle 状态快照
+- [ ] T-154 Agent workspace lifecycle 状态快照
   - 目标：向宿主提供有界注册/失败/销毁状态，便于诊断部分注册失败而不泄露异常
   - 实现：新增 `status()` 返回 `registered/failed/disposed`，失败计数最多 2，继续保留句柄与异常隔离
   - 状态：in-progress
-- [x] T-155 Agent workspace bridge 状态快照
+- [ ] T-155 Agent workspace bridge 状态快照
   - 目标：提供有界 bridge 运行状态，便于宿主诊断计划容量与销毁态而不暴露敏感数据
   - 实现：新增 `status()` 返回 `planCount/maxPlans/disposed`，不返回计划、审批令牌或 handler 信息
   - 状态：in-progress
-- [x] T-156 Agent workspace capability 宿主探测
+- [ ] T-156 Agent workspace capability 宿主探测
   - 目标：在正式注册前判断宿主是否支持 addAgentCapability，并统一 unavailable/timeout/cancelled/failed 状态
   - 实现：新增独立 `src/agent-workspace-probe.js`，只做能力存在性检查与稳定快照，不调用注册副作用
   - 状态：in-progress
-- [x] T-157 Agent workspace 注册句柄归一化
+- [ ] T-157 Agent workspace 注册句柄归一化
   - 目标：识别 disposer、对象、ID 与空句柄，向生命周期状态暴露潜在不可回收注册
   - 实现：新增 `normalizeWorkspaceCapabilityHandle` 与 `unmanaged` 计数，不返回句柄内容
   - 状态：in-progress
-- [x] T-158 Agent workspace lifecycle 宿主探测入口
+- [ ] T-158 Agent workspace lifecycle 宿主探测入口
   - 目标：让 capability lifecycle 在注册前提供统一、无副作用的宿主可用性快照
   - 实现：新增 `lifecycle.probe()`，复用 `agent-workspace-probe`，不改变注册或 status 契约
   - 状态：in-progress
-- [x] T-159 Agent workspace lifecycle 统一状态快照
+- [ ] T-159 Agent workspace lifecycle 统一状态快照
   - 目标：统一输出宿主可用性、注册成功/失败、不可回收句柄与销毁态，便于诊断和 UI 展示
   - 实现：新增 `lifecycle.snapshot()`，组合既有 probe/status，保持所有字段有界且不携带敏感值
   - 状态：in-progress
-- [x] T-160 Agent workspace runtime 组合快照
+- [ ] T-160 Agent workspace runtime 组合快照
   - 目标：一次读取 capability lifecycle 与 bridge 状态，供诊断/UI 使用且不触发副作用
   - 实现：新增 `buildWorkspaceCapabilityRuntimeSnapshot`，对缺失对象返回稳定空状态，不携带敏感数据
   - 状态：in-progress
-- [x] T-161 Agent workspace runtime 快照版本化
-  - 状态：done（T-122~T-161 第二十八批审计核对：39 项实现/测试覆盖检查全部通过——实现文件 agent-document-context/plan/actions/execution/capability/approval-token/bridge/registry/probe/diagnostics/runtime 均在 src 且被 index.ts 或测试引用；T-122 与 T-147 两处审计假阴性系脚本按文件名自身文本计数所致，实际 index.ts 已接线并有专属测试）
+- [ ] T-161 Agent workspace runtime 快照版本化
+  - 状态：in-progress（第二十八批曾误判为完成并勾选——TODO 原有说明指出本系列须保持未勾选：14 个契约模块不在生产依赖图内，判据是生产图可达而非代码存在；复选框已恢复，审计发现作为门禁补强记录保留）
   - 目标：为组合快照提供稳定版本号与输入归一化，限制计数/状态范围并过滤未知字段
   - 实现：新增 `WORKSPACE_RUNTIME_SNAPSHOT_VERSION` 与 `normalizeWorkspaceCapabilityRuntimeSnapshot`
   - 状态：in-progress
-- [x] T-162 Agent workspace runtime 版本兼容门禁
+- [ ] T-162 Agent workspace runtime 版本兼容门禁
   - 目标：消费快照前显式识别当前/未知未来版本，避免新协议被旧宿主误读
   - 实现：新增 `isWorkspaceCapabilityRuntimeSnapshotCompatible`，仅接受缺省版本或 version=1
   - 状态：in-progress
-- [x] T-163 Agent workspace runtime 一致性校验
+- [ ] T-163 Agent workspace runtime 一致性校验
   - 目标：阻止注册/计划计数溢出或 lifecycle 与 bridge 销毁态不一致的快照进入诊断/UI
   - 实现：新增 `validateWorkspaceCapabilityRuntimeSnapshot`，输出稳定 `unsupported_version/registration_overflow/plan_overflow/dispose_mismatch`
   - 状态：in-progress
-- [x] T-164 Agent workspace runtime 状态转移 diff
+- [ ] T-164 Agent workspace runtime 状态转移 diff
   - 目标：以固定字段识别两次 runtime 快照间的宿主、注册、计划和销毁变化
   - 实现：新增 `diffWorkspaceCapabilityRuntimeSnapshots`，输出有界布尔值与计划数量增量，不携带原始快照
   - 状态：in-progress
-- [x] T-165 Agent workspace runtime 状态事件
+- [ ] T-165 Agent workspace runtime 状态事件
   - 目标：将 runtime 快照变化转换为 UI/诊断可消费的固定事件，限制事件数量与 delta 范围
   - 实现：新增 `buildWorkspaceCapabilityRuntimeEvents`，最多输出 host/registration/unmanaged/plans/disposed 五类事件
   - 状态：in-progress
-- [x] T-166 Agent workspace runtime 事件归一化
+- [ ] T-166 Agent workspace runtime 事件归一化
   - 目标：对状态事件固定排序、去重和 delta 上限，防止高频变化制造 UI 噪声
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeEvents`，仅保留五类事件，最多一类一条
   - 状态：in-progress
-- [x] T-167 Agent workspace runtime 事件队列
+- [ ] T-167 Agent workspace runtime 事件队列
   - 目标：为 UI/诊断提供有界事件缓存，支持批量读取与确认消费
   - 实现：新增 `createWorkspaceCapabilityEventQueue`，最多保留 16 条，dispose 后停止接收事件
   - 状态：in-progress
-- [x] T-168 Agent workspace runtime 事件游标
+- [ ] T-168 Agent workspace runtime 事件游标
   - 目标：支持 UI/诊断按序号增量读取、检测丢失事件并确认消费
   - 实现：事件队列增加 `readSince(cursor, limit)` 与 `acknowledge(cursor)`，游标单调递增且队列仍最多 16 条
   - 状态：in-progress
-- [x] T-169 Agent workspace runtime diff 入队桥接
+- [ ] T-169 Agent workspace runtime diff 入队桥接
   - 目标：将 snapshot diff 直接写入有界事件队列，统一事件归一化与游标语义
   - 实现：新增 `enqueueWorkspaceCapabilityRuntimeDiff`，无效队列或无变化返回 0
   - 状态：in-progress
-- [x] T-170 Agent workspace runtime 事件安全回放
+- [ ] T-170 Agent workspace runtime 事件安全回放
   - 目标：在游标过旧导致队列溢出时明确要求重新获取完整快照，避免不完整事件流污染 UI
   - 实现：新增 `readWorkspaceCapabilityRuntimeEventsForReplay`，正常返回 ready 批次，溢出返回 `snapshot_required`
-  - 状态：done（T-162~T-170 第二十五批一并落地，见 D-396 补充）
-- [x] T-171 Agent workspace runtime 快照恢复流程
+  - 状态：in-progress（第二十五批已补齐 diff/events/enqueue 实现与 33 项门禁——见 D-396 补充；但生产接线仍受 D-111 约束，保持未勾选）
+- [ ] T-171 Agent workspace runtime 快照恢复流程
   - 目标：统一事件回放成功与队列溢出后的完整快照恢复，避免 UI 自行拼接游标和校验逻辑
   - 实现：新增 `recoverWorkspaceCapabilityRuntime`，返回 events/snapshot/unavailable 三种稳定模式
   - 状态：in-progress
-- [x] T-172 Agent workspace runtime 恢复确认
+- [ ] T-172 Agent workspace runtime 恢复确认
   - 目标：仅在成功回放或完整快照恢复后原子推进事件确认游标，失败时保留队列
   - 实现：新增 `commitWorkspaceCapabilityRuntimeRecovery`，限定 events/snapshot 模式并忽略失败结果
   - 状态：in-progress
-- [x] T-173 Agent workspace runtime 恢复提交门面
+- [ ] T-173 Agent workspace runtime 恢复提交门面
   - 目标：将恢复与游标确认组合为单一原子调用，成功才消费，失败保留队列
   - 实现：新增 `recoverAndCommitWorkspaceCapabilityRuntime`，返回恢复结果与 acknowledged 计数
   - 状态：in-progress
-- [x] T-174 Agent workspace runtime 恢复并发协调器
+- [ ] T-174 Agent workspace runtime 恢复并发协调器
   - 目标：防止多个消费者重复或倒退确认同一批事件
   - 实现：新增 `createWorkspaceCapabilityRecoveryCoordinator`，记录 lastCursor/commits 并拒绝重复确认
   - 状态：in-progress
-- [x] T-175 Agent workspace runtime 恢复协调器销毁态
+- [ ] T-175 Agent workspace runtime 恢复协调器销毁态
   - 目标：插件卸载后阻断异步恢复、确认和事件消费，避免销毁后的尾部任务污染队列
   - 实现：coordinator 增加不可逆 `dispose()` 与 disposed 状态，后续调用返回 `coordinator_disposed`
   - 状态：in-progress
-- [x] T-176 Agent workspace 恢复协调器队列绑定销毁
+- [ ] T-176 Agent workspace 恢复协调器队列绑定销毁
   - 目标：在插件彻底卸载时可选择同时清理事件队列，普通共享消费者仍保留队列
   - 实现：`coordinator.dispose(true)` 同步调用 queue.dispose；默认 dispose() 不清理共享队列并保持幂等
   - 状态：in-progress
-- [x] T-177 Agent workspace runtime 恢复取消边界
+- [ ] T-177 Agent workspace runtime 恢复取消边界
   - 目标：面板卸载或请求切换时安全取消恢复，不读取、不确认事件队列
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithSignal`，AbortSignal 已取消时返回稳定 cancelled
   - 状态：in-progress
-- [x] T-180 Agent workspace runtime 恢复安全出口
+- [ ] T-180 Agent workspace runtime 恢复安全出口
   - 目标：为带取消信号的恢复提供统一归一化结果
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeSafe`
-  - 状态：done（T-171~T-180 第二十六批一并落地，见 D-396 补充）
-- [x] T-181 Agent workspace recovery coordinator 运行快照
+  - 状态：in-progress（第二十六批已补齐恢复取消边界/安全出口/原子门面与 14 项门禁——见 D-396 补充；生产接线仍受 D-111 约束，保持未勾选）
+- [ ] T-181 Agent workspace recovery coordinator 运行快照
   - 目标：一次读取 coordinator 与队列的有界状态
   - 实现：新增 `coordinator.snapshot()` 与 queue status
   - 状态：in-progress
-- [x] T-182 Agent workspace runtime session facade
+- [ ] T-182 Agent workspace runtime session facade
   - 目标：统一 queue/coordinator 的会话级创建、快照与销毁，隔离不同宿主会话的恢复状态
   - 实现：新增 `createWorkspaceCapabilityRuntimeSession`，生成有界 sessionId，dispose 同步清理 queue/coordinator
   - 状态：in-progress
-- [x] T-183 Agent workspace session 快照版本化
+- [ ] T-183 Agent workspace session 快照版本化
   - 目标：为 runtime session 提供稳定版本号与归一化快照
   - 实现：新增 `build/normalizeWorkspaceCapabilityRuntimeSessionSnapshot`
   - 状态：in-progress
-- [x] T-184 Agent workspace session registry
+- [ ] T-184 Agent workspace session registry
   - 目标：有界管理多个 runtime session，支持创建、查找、移除和统一销毁
   - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistry`，最多 8 个会话
   - 状态：in-progress
-- [x] T-185 Agent workspace session registry 快照
+- [ ] T-185 Agent workspace session registry 快照
   - 目标：聚合所有 session 的有界运行状态，供诊断/UI 一次读取
   - 实现：新增 registry `snapshot()`，仅输出 sessionId、disposed 和 runtime 状态
   - 状态：in-progress
-- [x] T-186 Agent workspace session registry 回收
+- [ ] T-186 Agent workspace session registry 回收
   - 目标：主动清理已销毁 session，避免 registry 长期持有失效引用
   - 实现：新增 registry `prune()`，返回回收数量并保持有界
   - 状态：in-progress
-- [x] T-187 Agent workspace session registry 快照归一化
+- [ ] T-187 Agent workspace session registry 快照归一化
   - 目标：跨宿主消费 registry 快照时限制会话数量、ID 格式和销毁状态
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot`，最多保留 8 个合法 session 摘要
   - 状态：in-progress
-- [x] T-188 Agent workspace session registry 事件通知
+- [ ] T-188 Agent workspace session registry 事件通知
   - 目标：记录会话创建、淘汰、移除和回收事件，供诊断/UI 观察生命周期变化
   - 实现：registry 增加有界 `events()` 与可选 `onEvent`，最多保留 8 条且隔离观察器异常
   - 状态：in-progress
-- [x] T-189 Agent workspace session registry 空闲回收
+- [ ] T-189 Agent workspace session registry 空闲回收
   - 目标：清理长期未访问且未销毁的 session，降低长期驻留内存
   - 实现：新增 `pruneIdle(now, maxIdleMs)`，访问 session 自动刷新 lastSeen，非法阈值不回收
   - 状态：in-progress
-- [x] T-190 Agent workspace registry 事件游标
+- [ ] T-190 Agent workspace registry 事件游标
   - 目标：支持 registry 生命周期事件的增量读取与确认消费
   - 实现：新增 `eventCursor/eventsSince/acknowledgeEvents`，保留最多 8 条事件
   - 状态：in-progress
-- [x] T-191 Agent workspace registry 事件归一化
+- [ ] T-191 Agent workspace registry 事件归一化
   - 目标：过滤未知事件、非法 sessionId 和越界序号
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRegistryEvents`
   - 状态：in-progress
-- [x] T-192 Agent workspace registry 事件安全回放
+- [ ] T-192 Agent workspace registry 事件安全回放
   - 目标：按游标读取 registry 生命周期事件，溢出时要求完整快照
   - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplay`
   - 状态：in-progress
-- [x] T-193 Agent workspace registry 回放确认
+- [ ] T-193 Agent workspace registry 回放确认
   - 目标：仅确认 ready 回放结果，失败或 snapshot_required 保留事件
   - 实现：新增 `commitWorkspaceCapabilityRuntimeRegistryReplay`
   - 状态：in-progress
-- [x] T-194 Agent workspace registry 快照恢复
+- [ ] T-194 Agent workspace registry 快照恢复
   - 目标：统一 registry 事件回放与溢出后的完整 snapshot 恢复
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeRegistry`
-  - 状态：done（T-181~T-194 第二十七批一并落地，见 D-396 补充）
+  - 状态：in-progress（第二十七批已补齐 session/registry 快照归一化/事件归一化/回放/恢复 6 项实现与 31 项门禁——见 D-396 补充；生产接线仍受 D-111 约束，保持未勾选）
 - [x] T-195 Agent workspace registry 回放取消边界
   - 目标：registry 事件回放在会话取消后不读取、不确认事件
   - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal`
@@ -5446,11 +5446,11 @@
   - 目标：将联合恢复包装为输入有界、异常隔离的只读 handler
   - 实现：新增 `createWorkspaceCapabilityDiagnosticsJointRecoveryHandler`
   - 状态：done
-- [x] T-178 Agent workspace runtime 恢复超时边界
+- [ ] T-178 Agent workspace runtime 恢复超时边界
   - 目标：在截止时间到达时停止恢复并返回稳定 timeout，不读取或确认事件
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithDeadline`，超时与 cancelled 分开归类
   - 状态：done
-- [x] T-179 Agent workspace runtime 恢复结果归一化
+- [ ] T-179 Agent workspace runtime 恢复结果归一化
   - 目标：统一 events/snapshot/cancelled/timeout/invalid_snapshot 终态字段，过滤未知扩展
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRecoveryResult`，限制 cursor、事件数和快照内容
   - 状态：done
