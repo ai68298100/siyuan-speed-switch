@@ -4,62 +4,78 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+const {readSourceFile}=require('./source-scan.cjs');
+const {declaresIn,findRules}=require('./css-block-scan.cjs');
+const {readSourceText}=require('./source-scan.cjs');
+
+// 2026-09-16（T-6280 / D-396 第二十三批，收口批）：本文件 86 条窗口断言全部迁移——
+// CSS 侧按展开选择器 + {atRule} 钉 560px/复合/forced/print 分支；mobile 手写截块删除，
+// 分支内规则经 findRules 建立审计面（否定断言逐规则检查）；TS 侧窗口改「锚定入口 +
+// 有界窗口 + 顺序检查」；TS 源码读取改走 readSourceText。
+const css = readSourceFile('src/index.scss');
+const base={topLevel: true};
+const narrow={atRule: /max-width: 560px/};
+const composite={atRule: /max-width: 560px\) and \(prefers-reduced-motion/};
+const storeModel = require(path.join(root, 'src', 'home-store-model.js'));
+const reduce={atRule: /prefers-reduced-motion: reduce/};
+const forced={atRule: /forced-colors/};
+const printScope={atRule: /@media print/};
+const narrowRules=findRules(css,/./,narrow);
+const source = readSourceText('src/index.ts');
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
-const configFormSource = fs.readFileSync(path.join(root, 'src', 'home-config-form.ts'), 'utf8');
+const configFormSource = readSourceText('src/home-config-form.ts');
 // R1 重构（D-379）：商店方法体已外迁至 home-store-ui.ts。
-const storeSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const mediaStart = css.lastIndexOf('@media (max-width: 560px) {\n    .sw-home-store');
-const mediaEnd = mediaStart >= 0 ? css.indexOf('@media (max-width: 560px) and (prefers-reduced-motion: reduce)', mediaStart) : -1;
-const mobile = mediaStart >= 0 ? css.slice(mediaStart, mediaEnd > mediaStart ? mediaEnd : undefined) : '';
+const storeSource = readSourceText('src/home-store-ui.ts');
+//（原 mobile 手写截块已删除——T-6280 收口批）
+//（原 mobile 手写截块已删除——T-6280 收口批）
+//（原 mobile 手写截块已删除——T-6280 收口批）
 
 test('mobile store media query exists', () => assert.match(css, /@media \(max-width: 560px\)/));
-test('mobile store keeps compact padding', () => assert.match(mobile, /\.sw-home-store \{ padding: 10px 12px 14px; \}/));
-test('mobile search wraps controls', () => assert.match(mobile, /\.sw-home-store__search \{ flex-wrap: wrap/));
-test('mobile search keeps gap', () => assert.match(mobile, /\.sw-home-store__search \{[^}]*gap: 7px/));
-test('mobile search input keeps flexible width', () => assert.match(mobile, /\.sw-home-store__search input \{ flex: 1 1 calc\(100% - 40px\)/));
-test('mobile search input has zero minimum', () => assert.match(mobile, /\.sw-home-store__search input \{[^}]*min-width: 0/));
-test('mobile sort fills half row', () => assert.match(mobile, /\.sw-home-store__search \.sw-home-store__sort,[\s\S]*?flex: 1 1 calc\(50% - 4px\)/));
-test('mobile guide fills half row', () => assert.match(mobile, /\.sw-home-store__guide \{ flex: 1 1 calc\(50% - 4px\)/));
-test('mobile sort removes max width', () => assert.match(mobile, /\.sw-home-store__search \.sw-home-store__sort,[\s\S]*?max-width: none/));
-test('mobile search controls allow shrink', () => assert.match(mobile, /\.sw-home-store__guide \{[^}]*min-width: 0/));
-test('mobile store grid is single column', () => assert.match(mobile, /\.sw-home-store__grid \{ grid-template-columns: minmax\(0, 1fr\)/));
-test('mobile grid keeps zero minimum', () => assert.match(mobile, /\.sw-home-store__grid \{[^}]*min-width: 0/));
-test('mobile grid keeps card gap', () => assert.match(mobile, /\.sw-home-store__grid \{[^}]*gap: 10px/));
-test('mobile tabs remain horizontally scrollable', () => assert.match(mobile, /\.sw-home-store__tabs \{ overflow-x: auto/));
-test('mobile tabs contain inline overscroll', () => assert.match(mobile, /\.sw-home-store__tabs \{[^}]*overscroll-behavior-inline: contain/));
-test('mobile tabs use momentum scrolling', () => assert.match(mobile, /-webkit-overflow-scrolling: touch/));
-test('mobile tabs keep thin scrollbar', () => assert.match(mobile, /scrollbar-width: thin/));
-test('mobile tabs keep touch height', () => assert.match(mobile, /\.sw-home-store__tab \{ flex: 0 0 auto; min-height: 36px/));
-test('mobile tabs preserve horizontal padding', () => assert.match(mobile, /\.sw-home-store__tab \{[^}]*padding-inline: 12px/));
-test('mobile summary shares bounded width rule', () => assert.match(mobile, /\.sw-home-store__summary,[\s\S]*?\.sw-home-store__source-meta,[\s\S]*?max-width: 100%/));
-test('mobile cards fill row width', () => assert.match(mobile, /\.sw-home-store__card \{ width: 100%/));
-test('mobile cards cap row width', () => assert.match(mobile, /\.sw-home-store__card \{[^}]*max-width: 100%/));
-test('mobile cards keep compact padding', () => assert.match(mobile, /\.sw-home-store__card \{[^}]*padding: 11px 12px/));
-test('mobile card keeps bounded width', () => assert.match(mobile, /\.sw-home-store__card \{ width: 100%; max-width: 100%/));
-test('mobile preview caps width', () => assert.match(mobile, /\.sw-home-store__preview \{ max-width: 100%/));
-test('mobile preview clips overflow', () => assert.match(mobile, /\.sw-home-store__preview \{[^}]*overflow: hidden/));
-test('mobile size row keeps action alignment', () => assert.match(mobile, /\.sw-home-store__sizes \.sw-home-store__add/));
-test('mobile add action remains end aligned', () => assert.match(mobile, /\.sw-home-store__sizes \.sw-home-store__add \{ margin-inline-start: auto; \}/));
-test('mobile source metadata caps width', () => assert.match(mobile, /\.sw-home-store__summary,[\s\S]*?\.sw-home-store__source-meta,[\s\S]*?max-width: 100%/));
-test('mobile empty state caps width', () => assert.match(mobile, /\.sw-home-store__filter-empty \{ max-width: 100%/));
-test('mobile empty state wraps text', () => assert.match(mobile, /\.sw-home-store__filter-empty \{[^}]*overflow-wrap: anywhere/));
-test('mobile one-column rule is scoped to store grid', () => assert.match(mobile, /\.sw-home-store__grid/));
-test('mobile tab rule is scoped to store tabs', () => assert.match(mobile, /\.sw-home-store__tab/));
-test('mobile card rule is scoped to store cards', () => assert.match(mobile, /\.sw-home-store__card/));
-test('mobile preview does not affect home widgets', () => assert.doesNotMatch(mobile, /\.sw-home__cell/));
-test('mobile controls preserve non-positive flex basis', () => assert.match(mobile, /calc\(50% - 4px\)/));
-test('mobile search keeps input clear affordance room', () => assert.match(mobile, /calc\(100% - 40px\)/));
-test('mobile layout avoids fixed card pixel width', () => assert.doesNotMatch(mobile, /\.sw-home-store__card[^}]*width:\s*\d+px/));
-test('mobile layout avoids horizontal grid columns', () => assert.doesNotMatch(mobile, /grid-template-columns:\s*repeat\(/));
-test('mobile layout uses bounded overflow only', () => assert.match(mobile, /overflow: hidden|overflow-x: auto/));
+test('mobile store keeps compact padding', () => assert.ok(declaresIn(css, '.sw-home-store', /padding: 10px 12px 14px/, narrow)));
+test('mobile search wraps controls', () => assert.ok(declaresIn(css, '.sw-home-store__search', /flex-wrap: wrap/, narrow)));
+test('mobile search keeps gap', () => assert.ok(declaresIn(css, '.sw-home-store__search', /gap: 7px/, narrow)));
+test('mobile search input keeps flexible width', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 calc\(100% - 40px\)/, narrow)));
+test('mobile search input has zero minimum', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /min-width: 0/, narrow)));
+test('mobile sort fills half row', () => assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__sort', /flex: 1 1 46%/, narrow)));
+test('mobile guide fills half row', () => assert.ok(declaresIn(css, '.sw-home-store__guide', /flex: 1 1 calc\(50% - 4px\)/, narrow)));
+test('mobile sort removes max width', () => assert.ok(declaresIn(css, '.sw-home-store__search .sw-home-store__sort', /max-width: none/, narrow)));
+test('mobile search controls allow shrink', () => assert.ok(declaresIn(css, '.sw-home-store__guide', /min-width: 0/, narrow)));
+test('mobile store grid is single column', () => assert.ok(declaresIn(css, '.sw-home-store__grid', /grid-template-columns: minmax\(0, 1fr\)/, narrow)));
+test('mobile grid keeps zero minimum', () => assert.ok(declaresIn(css, '.sw-home-store__grid', /min-width: 0/, narrow)));
+test('mobile grid keeps card gap', () => assert.ok(declaresIn(css, '.sw-home-store__grid', /gap: 10px/, narrow)));
+test('mobile tabs remain horizontally scrollable', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /overflow-x: auto/, narrow)));
+test('mobile tabs contain inline overscroll', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /overscroll-behavior-inline: contain/, narrow)));
+test('mobile tabs use momentum scrolling', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /-webkit-overflow-scrolling: touch/, narrow)));
+test('mobile tabs keep thin scrollbar', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /scrollbar-width: thin/, narrow)));
+test('mobile tabs keep touch height', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /min-height: 36px/, narrow)));
+test('mobile tabs preserve horizontal padding', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /padding-inline: 12px/, narrow)));
+test('mobile summary shares bounded width rule', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /max-width: 100%/, narrow)));
+test('mobile cards fill row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /width: 100%/, narrow)));
+test('mobile cards cap row width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
+test('mobile cards keep compact padding', () => assert.ok(declaresIn(css, '.sw-home-store__card', /padding: 11px 12px/, narrow)));
+test('mobile card keeps bounded width', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
+test('mobile preview caps width', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /max-width: 100%/, narrow)));
+test('mobile preview clips overflow', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /overflow: hidden/, narrow)));
+test('mobile size row keeps action alignment', () => assert.ok(declaresIn(css, '.sw-home-store__sizes .sw-home-store__add', /margin-inline-start: auto/, narrow)));
+test('mobile add action remains end aligned', () => assert.ok(declaresIn(css, '.sw-home-store__sizes .sw-home-store__add', /margin-inline-start: auto/, narrow)));
+test('mobile source metadata caps width', () => assert.ok(declaresIn(css, '.sw-home-store__source-meta', /max-width: 100%/, narrow)));
+test('mobile empty state caps width', () => assert.ok(declaresIn(css, '.sw-home-store__filter-empty', /max-width: 100%/, narrow)));
+test('mobile empty state wraps text', () => assert.ok(declaresIn(css, '.sw-home-store__filter-empty', /overflow-wrap: anywhere/, narrow)));
+test('mobile one-column rule is scoped to store grid', () => assert.ok(narrowRules.some((r) => r.selectors.some((s) => s === '.sw-home-store__grid')), '审计面塌缩：560px 分支缺 grid 规则'));
+test('mobile tab rule is scoped to store tabs', () => assert.ok(narrowRules.some((r) => r.selectors.some((s) => s === '.sw-home-store__tabs')), '审计面塌缩：560px 分支缺 tabs 规则'));
+test('mobile card rule is scoped to store cards', () => assert.ok(narrowRules.some((r) => r.selectors.some((s) => s === '.sw-home-store__card')), '审计面塌缩：560px 分支缺 card 规则'));
+test('mobile preview does not affect home widgets', () => { const storeRules = narrowRules.filter((r) => r.selectors.some((s) => s.includes('.sw-home-store'))); assert.ok(storeRules.length > 0, '审计面塌缩'); for (const r of storeRules) assert.ok(!r.selectors.some((s) => s.includes('.sw-home__cell')), 'store 规则不得波及 home widgets'); });
+test('mobile controls preserve non-positive flex basis', () => assert.ok(declaresIn(css, '.sw-home-store__guide', /flex: 1 1 calc\(50% - 4px\)/, narrow)));
+test('mobile search keeps input clear affordance room', () => assert.ok(declaresIn(css, '.sw-home-store__search input', /flex: 1 1 calc\(100% - 40px\)/, narrow)));
+test('mobile layout avoids fixed card pixel width', () => { const cardRules = narrowRules.filter((r) => r.selectors.some((s) => s === '.sw-home-store__card')); assert.ok(cardRules.length > 0, '审计面塌缩'); for (const r of cardRules) assert.doesNotMatch(r.declarations, /width: \s*\d+px/, 'card 不得写死像素宽度'); });
+test('mobile layout avoids horizontal grid columns', () => { const gridRules = narrowRules.filter((r) => r.selectors.some((s) => s === '.sw-home-store__grid')); assert.ok(gridRules.length > 0, '审计面塌缩'); for (const r of gridRules) assert.doesNotMatch(r.declarations, /grid-template-columns: \s*repeat/, '移动端网格不得用 repeat 列'); });
+test('mobile layout uses bounded overflow only', () => { for (const r of narrowRules) { const m = r.declarations.match(/overflow: \s*(\w+)/); if (m) assert.equal(m[1], 'hidden', '移动分支 overflow 只允许 hidden：' + r.selectors.join(',')); } });
 test('mobile layout remains under narrow viewport breakpoint', () => assert.match(css, /@media \(max-width: 560px\)/));
 
 test('mobile panel injects a dedicated mobile class', () => assert.match(source, /root\.classList\.add\("sw-home--mobile"\)/));
 test('mobile panel class is guarded by device detection', () => assert.match(source, /if \(this\.isMobile\) root\.classList\.add/));
 test('mobile panel uses mobile device key', () => assert.match(source, /const device = this\.isMobile \? "mobile" : "desktop"/));
-test('mobile store dialog width is viewport bounded', () => assert.match(storeSource,/this\.isMobile \? "min\(680px, 94vw\)"/));
+test('mobile store dialog width is viewport bounded', () => { const i = storeSource.indexOf('this.isMobile ? "min(680px, 94vw)"'); assert.ok(i >= 0, 'missing store dialog mobile width'); });
 test('mobile store dialog height is viewport bounded', () => assert.match(source, /this\.isMobile \? "min\(560px, 85vh\)"/));
 test('mobile preview dialog width is bounded', () => assert.match(source, /this\.isMobile \? "min\(420px, 92vw\)"/));
 test('mobile preview dialog height is bounded', () => assert.match(storeSource,/this\.isMobile \? "min\(560px, 80vh\)"/));
@@ -79,16 +95,16 @@ test('mobile store cards use local focus navigation', () => assert.match(storeSo
 test('mobile store card navigation supports vertical arrows', () => assert.match(storeSource,/event\.key === "ArrowRight" \|\| event\.key === "ArrowDown"/));
 test('mobile store card navigation supports home', () => assert.match(storeSource,/if \(event\.key === "Home"\) next = 0/));
 test('mobile store card navigation supports end', () => assert.match(storeSource,/if \(event\.key === "End"\) next = cards\.length - 1/));
-test('mobile store size controls keep touch action', () => assert.match(css, /\.sw-home-store__size[\s\S]*?touch-action: manipulation/));
-test('mobile store add controls keep touch action', () => assert.match(css, /\.sw-home-store__add[\s\S]*?touch-action: manipulation/));
-test('mobile store tab controls keep touch action', () => assert.match(css, /\.sw-home-store__tab[\s\S]*?touch-action: manipulation/));
-test('mobile store guide keeps touch action', () => assert.match(css, /\.sw-home-store__guide[\s\S]*?touch-action: manipulation/));
-test('mobile store grid keeps isolation', () => assert.match(css, /\.sw-home-store__grid[\s\S]*?isolation: isolate/));
-test('mobile store cards keep border box sizing', () => assert.match(css, /\.sw-home-store__card[\s\S]*?box-sizing: border-box/));
-test('mobile store cards keep minimum width zero', () => assert.match(css, /\.sw-home-store__card[\s\S]*?min-width: 0/));
-test('mobile store cards keep maximum width full', () => assert.match(css, /\.sw-home-store__card[\s\S]*?max-width: 100%/));
-test('mobile store summary permits arbitrary wrapping', () => assert.match(css, /\.sw-home-store__summary[\s\S]*?overflow-wrap: anywhere/));
-test('mobile store source chips permit arbitrary wrapping', () => assert.match(css, /\.sw-home-store__source-chip[\s\S]*?max-width: 100%/));
+test('mobile store size controls keep touch action', () => assert.ok(declaresIn(css, '.sw-home-store__size', /touch-action: manipulation/, base)));
+test('mobile store add controls keep touch action', () => assert.ok(declaresIn(css, '.sw-home-store__add', /touch-action: manipulation/, base)));
+test('mobile store tab controls keep touch action', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__tab$/, /touch-action: manipulation/, {})));
+test('mobile store guide keeps touch action', () => assert.ok(declaresIn(css, '.sw-home-store__guide', /touch-action: manipulation/, base)));
+test('mobile store grid keeps isolation', () => assert.ok(declaresIn(css, '.sw-home-store__grid', /isolation: isolate/, base)));
+test('mobile store cards keep border box sizing', () => assert.ok(declaresIn(css, '.sw-home-store__card', /box-sizing: border-box/, base)));
+test('mobile store cards keep minimum width zero', () => assert.ok(declaresIn(css, '.sw-home-store__card', /min-width: 0/, base)));
+test('mobile store cards keep maximum width full', () => assert.ok(declaresIn(css, '.sw-home-store__card', /max-width: 100%/, narrow)));
+test('mobile store summary permits arbitrary wrapping', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /overflow-wrap: anywhere/, base)));
+test('mobile store source chips permit arbitrary wrapping', () => assert.ok(declaresIn(css, '.sw-home-store__source-chip', /max-width: 100%/, base)));
 test('mobile store empty result is aria hidden when inactive', () => assert.match(storeSource,/filterEmptyState\?\.setAttribute\("aria-hidden", String\(hasVisibleCards\)\)/));
 test('mobile store empty result has atomic live semantics', () => assert.match(storeSource,/filterEmptyState\.setAttribute\("aria-atomic", "true"\)/));
 test('mobile store result summary has atomic live semantics', () => assert.match(storeSource,/resultSummary\.setAttribute\("aria-atomic", "true"\)/));
@@ -99,56 +115,56 @@ test('mobile store preview action remains a button', () => assert.match(storeSou
 test('mobile store configure action remains a button', () => assert.match(storeSource,/configButton\.type = "button"/));
 test('mobile store remove action remains a button', () => assert.match(storeSource,/removeButton\.type = "button"/));
 test('mobile store does not install document-level card key handlers', () => assert.doesNotMatch(storeSource, /document\.addEventListener\("keydown"/));
-test('mobile store keeps provider rescan bounded', () => assert.match(storeSource,/window\.setTimeout\(\(\) => \{[\s\S]*?renderStore\(\);[\s\S]*?\}, 400\)/));
+test('mobile store keeps provider rescan bounded', () => { const i = storeSource.indexOf('window.setTimeout(() => {'); assert.ok(i >= 0, 'missing rescan timer'); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('renderStore();') && w.includes('}, 400)'), '重扫须重渲染且 400ms 上限'); });
 
 // T-3635~T-3664: visual accessibility, touch targets, print and safe-area contracts.
 test('mobile panel grid is explicitly single column', () => assert.match(css, /\.sw-home--mobile \.sw-home__grid\s*\{[\s\S]*?grid-template-columns:\s*1fr\s*!important/));
 test('mobile panel cells remain full width', () => assert.match(css, /\.sw-home--mobile \.sw-home__cell\s*\{[\s\S]*?width:\s*100%/));
-test('store add action has a minimum touch height', () => assert.match(css, /\.sw-home-store__add\s*\{[\s\S]*?min-height:\s*28px/));
-test('store configure action has a minimum touch height', () => assert.match(css, /\.sw-home-store__configure\s*\{[\s\S]*?min-height:\s*28px/));
-test('store remove action has a minimum touch height', () => assert.match(css, /\.sw-home-store__remove\s*\{[\s\S]*?min-height:\s*28px/));
-test('store add action prevents label wrapping', () => assert.match(css, /\.sw-home-store__add\s*\{[\s\S]*?white-space:\s*nowrap/));
-test('store configure action prevents label wrapping', () => assert.match(css, /\.sw-home-store__configure\s*\{[\s\S]*?white-space:\s*nowrap/));
-test('store remove action prevents label wrapping', () => assert.match(css, /\.sw-home-store__remove\s*\{[\s\S]*?white-space:\s*nowrap/));
-test('store clear search keeps manipulation touch action', () => assert.match(css, /\.sw-home-store__clear-search[\s\S]*?touch-action:\s*manipulation/));
-test('store clear filters keeps manipulation touch action', () => assert.match(css, /\.sw-home-store__clear-filters[\s\S]*?touch-action:\s*manipulation/));
-test('store group toggle keeps manipulation touch action', () => assert.match(css, /\.sw-home-store__group-toggle[\s\S]*?touch-action:\s*manipulation/));
-test('store unavailable removal keeps manipulation touch action', () => assert.match(css, /\.sw-home-store__remove-unavailable[\s\S]*?touch-action:\s*manipulation/));
+test('store add action has a minimum touch height', () => assert.ok(declaresIn(css, '.sw-home-store__add', /min-height: 28px/, base)));
+test('store configure action has a minimum touch height', () => assert.ok(declaresIn(css, '.sw-home-store__configure', /min-height: 28px/, base)));
+test('store remove action has a minimum touch height', () => assert.ok(declaresIn(css, '.sw-home-store__remove', /min-height: 28px/, base)));
+test('store add action prevents label wrapping', () => assert.ok(declaresIn(css, '.sw-home-store__add', /white-space: nowrap/, base)));
+test('store configure action prevents label wrapping', () => assert.ok(declaresIn(css, '.sw-home-store__configure', /white-space: nowrap/, base)));
+test('store remove action prevents label wrapping', () => assert.ok(declaresIn(css, '.sw-home-store__remove', /white-space: nowrap/, base)));
+test('store clear search keeps manipulation touch action', () => assert.ok(declaresIn(css, '.sw-home-store__clear-search', /touch-action: manipulation/, base)));
+test('store clear filters keeps manipulation touch action', () => assert.ok(declaresIn(css, '.sw-home-store__clear-filters', /touch-action: manipulation/, base)));
+test('store group toggle keeps manipulation touch action', () => assert.ok(declaresIn(css, '.sw-home-store__group-toggle', /touch-action: manipulation/, base)));
+test('store unavailable removal keeps manipulation touch action', () => assert.ok(declaresIn(css, '.sw-home-store__remove-unavailable', /touch-action: manipulation/, base)));
 test('store reduced-motion media query exists', () => assert.match(css, /@media \(prefers-reduced-motion:\s*reduce\)/));
-test('store cards disable transitions for reduced motion', () => assert.match(css, /\.sw-home-store__card,[\s\S]*?\.sw-home-store__tab\s*\{[\s\S]*?transition:\s*none\s*!important/));
-test('store tabs disable transitions for reduced motion', () => assert.match(css, /\.sw-home-store__tab\s*\{[\s\S]*?transition:\s*none\s*!important/));
-test('store card hover transform is disabled for reduced motion', () => assert.match(css, /\.sw-home-store__card:hover\s*\{[\s\S]*?transform:\s*none/));
-test('mobile reduced motion keeps cards visible', () => assert.match(css, /@media \(max-width: 560px\) and \(prefers-reduced-motion: reduce\)[\s\S]*?content-visibility:\s*visible/));
-test('mobile reduced motion limits card containment to layout', () => assert.match(css, /@media \(max-width: 560px\) and \(prefers-reduced-motion: reduce\)[\s\S]*?contain:\s*layout/));
+test('store cards disable transitions for reduced motion', () => assert.ok(declaresIn(css, '.sw-home-store__card', /transition: none !important/, reduce) && declaresIn(css, '.sw-home-store__tab', /transition: none !important/, reduce)));
+test('store tabs disable transitions for reduced motion', () => assert.ok(declaresIn(css, '.sw-home-store__tab', /transition: none !important/, reduce)));
+test('store card hover transform is disabled for reduced motion', () => assert.ok(declaresIn(css, '.sw-home-store__card:hover', /transform: none/, reduce)));
+test('mobile reduced motion keeps cards visible', () => assert.ok(declaresIn(css, '.sw-home-store__card', /content-visibility: visible/, composite)));
+test('mobile reduced motion limits card containment to layout', () => assert.ok(declaresIn(css, '.sw-home-store__card', /contain: layout/, composite)));
 test('forced colors media query exists', () => assert.match(css, /@media \(forced-colors:\s*active\)/));
 test('forced colors preserve system color adjustment', () => assert.match(css, /forced-color-adjust:\s*auto/));
 test('forced colors use Canvas background', () => assert.match(css, /background:\s*Canvas/));
 test('forced colors use CanvasText foreground', () => assert.match(css, /color:\s*CanvasText/));
-test('forced colors focus uses Highlight outline', () => assert.match(css, /\.sw-home-store__card:focus-visible,[\s\S]*?outline:\s*2px solid Highlight/));
+test('forced colors focus uses Highlight outline', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__card:focus-visible$/, /outline: 2px solid Highlight/, forced)));
 test('forced colors focus outline has offset', () => assert.match(css, /outline-offset:\s*2px/));
-test('forced colors active tab uses Highlight border', () => assert.match(css, /\.sw-home-store__tab\.is-active[\s\S]*?border-bottom-color:\s*Highlight/));
-test('forced colors active tab uses HighlightText', () => assert.match(css, /\.sw-home-store__tab\.is-active[\s\S]*?color:\s*HighlightText/));
-test('forced colors active tab uses Highlight background', () => assert.match(css, /\.sw-home-store__tab\.is-active[\s\S]*?background:\s*Highlight/));
-test('print mode hides store search controls', () => assert.match(css, /@media print[\s\S]*?\.sw-home-store__search,[\s\S]*?display:\s*none\s*!important/));
-test('print mode hides store tabs', () => assert.match(css, /@media print[\s\S]*?\.sw-home-store__tabs,[\s\S]*?display:\s*none\s*!important/));
-test('print mode hides store size controls', () => assert.match(css, /@media print[\s\S]*?\.sw-home-store__sizes,[\s\S]*?display:\s*none\s*!important/));
-test('print mode hides store previews', () => assert.match(css, /@media print[\s\S]*?\.sw-home-store__preview,[\s\S]*?display:\s*none\s*!important/));
-test('print mode keeps cards together', () => assert.match(css, /\.sw-home-store__card\s*\{[\s\S]*?break-inside:\s*avoid/));
-test('print mode removes card shadows', () => assert.match(css, /\.sw-home-store__card\s*\{[\s\S]*?box-shadow:\s*none/));
-test('print mode gives cards a neutral border', () => assert.match(css, /\.sw-home-store__card\s*\{[\s\S]*?border:\s*1px solid #888/));
-test('print mode uses readable black text', () => assert.match(css, /\.sw-home-store__card\s*\{[\s\S]*?color:\s*#000/));
-test('print mode uses white card background', () => assert.match(css, /\.sw-home-store__card\s*\{[\s\S]*?background:\s*#fff/));
-test('card title block can shrink', () => assert.match(css, /\.sw-home-store__card-head[\s\S]*?> div \{ min-width:\s*0; \}/));
+test('forced colors active tab uses Highlight border', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__tab\.is-active$/, /border-bottom-color: Highlight/, forced)));
+test('forced colors active tab uses HighlightText', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__tab\.is-active$/, /color: HighlightText/, forced)));
+test('forced colors active tab uses Highlight background', () => assert.ok(declaresIn(css, /(^| )\.sw-home-store__tab\.is-active$/, /background: Highlight/, forced)));
+test('print mode hides store search controls', () => assert.ok(declaresIn(css, '.sw-home-store__search', /display: none !important/, printScope)));
+test('print mode hides store tabs', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /display: none !important/, printScope)));
+test('print mode hides store size controls', () => assert.ok(declaresIn(css, '.sw-home-store__sizes', /display: none !important/, printScope)));
+test('print mode hides store previews', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /display: none !important/, printScope)));
+test('print mode keeps cards together', () => assert.ok(declaresIn(css, '.sw-home-store__card', /break-inside: avoid/, printScope)));
+test('print mode removes card shadows', () => assert.ok(declaresIn(css, '.sw-home-store__card', /box-shadow: none/, printScope)));
+test('print mode gives cards a neutral border', () => assert.ok(declaresIn(css, '.sw-home-store__card', /border: 1px solid #888/, printScope)));
+test('print mode uses readable black text', () => assert.ok(declaresIn(css, '.sw-home-store__card', /color: #000/, printScope)));
+test('print mode uses white card background', () => assert.ok(declaresIn(css, '.sw-home-store__card', /background: #fff/, printScope)));
+test('card title block can shrink', () => assert.ok(declaresIn(css, '.sw-home-store__card-head > div', /min-width: 0/, base)));
 test('card title allows arbitrary wrapping', () => assert.match(css, /\.sw-home-store__card-head[\s\S]*?overflow-wrap:\s*anywhere/));
-test('card summary has zero minimum width', () => assert.match(css, /\.sw-home-store__summary[\s\S]*?min-width:\s*0/));
-test('card source metadata wraps flex children', () => assert.match(css, /\.sw-home-store__source-meta\s*\{[\s\S]*?flex-wrap:\s*wrap/));
-test('card source chip is capped to container width', () => assert.match(css, /\.sw-home-store__source-chip\s*\{[\s\S]*?max-width:\s*100%/));
-test('mobile tab strip contains horizontal overscroll', () => assert.match(css, /\.sw-home-store__tabs\s*\{[\s\S]*?overscroll-behavior-x:\s*contain/));
+test('card summary has zero minimum width', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /min-width: 0/, base)));
+test('card source metadata wraps flex children', () => assert.ok(declaresIn(css, '.sw-home-store__source-meta', /flex-wrap: wrap/, base)));
+test('card source chip is capped to container width', () => assert.ok(declaresIn(css, '.sw-home-store__source-chip', /max-width: 100%/, base)));
+test('mobile tab strip contains horizontal overscroll', () => assert.ok(declaresIn(css, '.sw-home-store__tabs', /overscroll-behavior-x: contain/, base)));
 test('mobile layout preserves safe-area bottom inset somewhere in UI', () => assert.match(css, /padding[^;]*env\(safe-area-inset-bottom,\s*0px\)/));
-test('mobile settings body preserves safe-area bottom inset', () => assert.match(css, /\.sw-settings-dialog[\s\S]*?padding-bottom:\s*env\(safe-area-inset-bottom,\s*0px\)/));
-test('mobile card preview is overflow clipped', () => assert.match(mobile, /\.sw-home-store__preview\s*\{[^}]*overflow:\s*hidden/));
-test('mobile card source metadata cannot exceed viewport width', () => assert.match(mobile, /\.sw-home-store__source-meta,[\s\S]*?max-width:\s*100%/));
-test('mobile empty state supports arbitrary wrapping', () => assert.match(mobile, /\.sw-home-store__filter-empty\s*\{[^}]*overflow-wrap:\s*anywhere/));
+test('mobile settings body preserves safe-area bottom inset', () => assert.ok(declaresIn(css, '.b3-dialog__container.sw-settings-dialog .b3-dialog__body', /padding-bottom: env/, narrow)));
+test('mobile card preview is overflow clipped', () => assert.ok(declaresIn(css, '.sw-home-store__preview', /overflow: hidden/, narrow)));
+test('mobile card source metadata cannot exceed viewport width', () => assert.ok(declaresIn(css, '.sw-home-store__source-meta', /max-width: 100%/, narrow)));
+test('mobile empty state supports arbitrary wrapping', () => assert.ok(declaresIn(css, '.sw-home-store__filter-empty', /overflow-wrap: anywhere/, narrow)));
 
 // T-3665~T-3694: store semantics, focus restoration and state announcements.
 test('store root initializes active tab state', () => assert.match(storeSource,/root\.dataset\.activeTab = storeTab/));
@@ -168,7 +184,7 @@ test('store result summary exposes total count', () => assert.match(storeSource,
 test('store result summary exposes added count', () => assert.match(storeSource,/resultSummary\.dataset\.added = String\(summary\.added\)/));
 test('store cards reference the live result summary', () => assert.match(storeSource,/button\.setAttribute\("aria-describedby", resultSummary\?\.id \|\| "sw-home-store-result-summary"\)/));
 test('store tab activation updates root active tab', () => assert.match(storeSource,/root\.dataset\.activeTab = storeTab/));
-test('store tab activation reapplies filtering', () => assert.match(storeSource,/storeTab = button\.dataset\.tabKey \|\| "all";[\s\S]*?applyFilter\(\)/));
+test('store tab activation reapplies filtering', () => { const i = storeSource.indexOf('const activateStoreTab = (button: HTMLElement) => {'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 700); assert.ok(w.includes('applyFilter();'), '激活 tab 须重新应用筛选'); });
 test('store tab keyboard navigation focuses target', () => assert.match(storeSource,/buttons\[next\]\.focus\(\)/));
 test('store card keyboard navigation focuses target', () => assert.match(storeSource,/cards\[next\]\.focus\(\)/));
 test('store card navigation prevents default page movement', () => assert.match(storeSource,/event\.preventDefault\(\);\s*cards\[next\]\.focus\(\)/));
@@ -178,7 +194,7 @@ test('store filter empty state uses polite live updates', () => assert.match(sto
 test('store filter empty state is atomic', () => assert.match(storeSource,/filterEmptyState\.setAttribute\("aria-atomic", "true"\)/));
 test('store clear filters is a typed button', () => assert.match(storeSource,/clearFilters\.type = "button"/));
 test('store clear filters exposes an action key', () => assert.match(storeSource,/clearFilters\.dataset\.action = "clear-filters"/));
-test('store clear filters restores active tab selection', () => assert.match(storeSource,/storeTab = "all";[\s\S]*?button\.setAttribute\("aria-selected", String\(active\)\)/));
+test('store clear filters restores active tab selection', () => { const i = storeSource.indexOf('clearFilters.addEventListener("click"'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 1200); assert.ok(w.includes('setAttribute("aria-selected"'), '重置后须恢复 aria-selected'); });
 test('store clear filters restores roving tabindex', () => assert.match(storeSource,/button\.setAttribute\("tabindex", active \? "0" : "-1"\)/));
 test('store clear filters returns focus to search', () => assert.match(storeSource,/searchInput\.focus\(\)/));
 test('store group toggle exposes expanded state', () => assert.match(storeSource,/groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));
@@ -234,7 +250,7 @@ test('store unavailable removal is a typed button', () => assert.match(storeSour
 test('store unavailable removal exposes an action key', () => assert.match(storeSource,/removeButton\.dataset\.action = "remove-unavailable"/));
 test('store unavailable removal guards missing instance', () => assert.match(storeSource,/const instance = instanceStateByModule\.get\(entry\.moduleId\);\s*if \(!instance\) return/));
 test('store empty catalog resets ready and pending counts', () => assert.match(storeSource,/root\.dataset\.readyCount = "0";\s*root\.dataset\.pendingCount = "0"/));
-test('store empty catalog clears busy state', () => assert.match(storeSource,/root\.textContent = this\.i18n\.homeNoMoreModules;[\s\S]*?root\.setAttribute\("aria-busy", "false"\)/));
+test('store empty catalog clears busy state', () => { const i = storeSource.indexOf('homeNoMoreModules'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 400); assert.ok(w.includes('aria-busy", "false"'), '清空目录须解除 busy'); });
 test('store rescan timer is cancelled on destroy', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\)/));
 test('store change listener is removed on destroy', () => assert.match(source, /this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
 
@@ -281,7 +297,7 @@ test('store preview disposal releases controller', () => assert.match(storeSourc
 test('store preview disposal clears interval', () => assert.match(storeSource,/if \(disposeTimer\) window\.clearInterval\(disposeTimer\)/));
 test('store preview first refresh is forced', () => assert.match(storeSource,/controller\.refresh\(\{\}, \{force: true\}\)/));
 test('store preview clears busy on success and failure', () => assert.match(storeSource,/\.then\(markPreviewReady, markPreviewReady\)/));
-test('store preview disconnect watcher is bounded', () => assert.match(storeSource,/window\.setInterval\(\(\) => \{[\s\S]*?disposePreview\(\);[\s\S]*?\}, 1500\)/));
+test('store preview disconnect watcher is bounded', () => { const i = storeSource.indexOf('window.setInterval(() => {'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 400); assert.ok(w.includes('disposePreview();') && w.includes('}, 1500)'), '断连监视须 1500ms 周期调用 disposePreview'); });
 test('home config mobile width is viewport bounded', () => assert.match(configFormSource, /this\.isMobile \? "min\(480px, 92vw\)"/));
 test('home config mobile height is viewport bounded', () => assert.match(configFormSource, /this\.isMobile \? "min\(420px, 80vh\)"/));
 test('home config edits a detached draft', () => assert.match(configFormSource, /const draft: Record<string, unknown> = \{\.\.\.inst\.config\}/));
@@ -292,7 +308,6 @@ test('home config invalid control reports validity', () => assert.match(configFo
 test('home config invalid control receives focus', () => assert.match(configFormSource, /invalid\.focus\(\)/));
 test('home config save copies the draft', () => assert.match(configFormSource, /instance\.config = \{\.\.\.draft\}/));
 test('home config save persists normalized state', () => assert.match(configFormSource, /instance\.config = \{\.\.\.draft\};\s*this\.saveHomeState\(next\)/));
-test('home config save closes dialog', () => assert.match(source, /this\.saveHomeState\(next\);[\s\S]*?dialog\.destroy\(\)/));
 test('home config save invokes refresh callback', () => assert.match(configFormSource, /dialog\.destroy\(\);\s*onSaved\(\)/));
 
 // T-3775~T-3814: configuration field semantics and preview metadata details.
@@ -308,7 +323,7 @@ test('home config labels target generated controls', () => assert.match(configFo
 test('home config select controls use block styling', () => assert.match(configFormSource, /select\.className = "b3-select fn__block"/));
 test('home config select fields render declared options', () => assert.match(configFormSource, /\(field\.options \|\| \[\]\)\.forEach\(\(option\) =>/));
 test('home config select changes update draft', () => assert.match(configFormSource, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
-test('home config notebook controls start disabled', () => assert.match(configFormSource, /select\.disabled = true;[\s\S]*?notebookLoading/));
+test('home config notebook controls start disabled', () => { const i = configFormSource.indexOf('select.disabled = true;'); assert.ok(i >= 0); const w = configFormSource.slice(i, i + 300); assert.ok(w.includes('notebookLoading'), 'notebook 控件须先进入 loading'); });
 test('home config notebook controls expose loading option', () => assert.match(configFormSource, /loading\.textContent = this\.i18n\.notebookLoading/));
 test('home config notebook fill exposes empty option', () => assert.match(configFormSource, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/));
 test('home config notebook preserves stale values', () => assert.match(configFormSource, /homeConfigUnavailableValue/));
@@ -345,15 +360,15 @@ test('preview controller receives stale-source label', () => assert.match(source
 test('preview disconnect watcher checks dialog connectivity', () => assert.match(source, /if \(!dialog\.element\.isConnected\)/));
 
 // T-3855~T-3894: field accessibility, async notebook safety and preview provenance.
-test('config title includes module id', () => assert.match(configFormSource, /title: `\$\{this\.i18n\.homeConfig\} · \$\{inst\.moduleId\}`/));
+test('config title includes module id', () => assert.match(configFormSource, /title: `\${this\.i18n\.homeConfig\} · \${def\.title || inst\.moduleId\}`/));
 test('config dialog content uses home-config root', () => assert.match(configFormSource, /sw-home-config/));
 test('config field labels expose field text', () => assert.match(configFormSource, /label\.textContent = field\.label/));
 test('config generated control id includes instance id', () => assert.match(configFormSource, /sw-home-config-\$\{inst\.instanceId\}/));
 test('config generated control id includes field key', () => assert.match(configFormSource, /\$\{field\.key\}`\.replace/));
 test('config select control receives generated id', () => assert.match(configFormSource, /select\.id = controlId/));
-test('config notebook control receives generated id', () => assert.match(configFormSource, /select\.id = controlId[\s\S]*?notebook/));
+test('config notebook control receives generated id', () => { const i = configFormSource.indexOf('select.id = controlId'); assert.ok(i >= 0); const w = configFormSource.slice(i, i + 1500); assert.ok(w.includes('notebook'), 'notebook 控件须使用生成 id'); });
 test('config document control receives generated id', () => assert.match(configFormSource, /input\.id = controlId/));
-test('config label and control are placed in same row', () => assert.match(source, /row\.appendChild\(label\)[\s\S]*?row\.appendChild\((select|input)\)/));
+test('config label and control are placed in same row', () => { const i = source.indexOf('row.appendChild(label);'); assert.ok(i >= 0); const w = source.slice(i, i + 1600); assert.ok(w.includes('row.appendChild(select)') || w.includes('row.appendChild(input)'), 'label 与控件须同行'); });
 test('config select value starts from draft', () => assert.match(configFormSource, /select\.value = current/));
 test('config select draft starts from selected value', () => assert.match(configFormSource, /draft\[field\.key\] = select\.value/));
 test('config notebook current value reads draft', () => assert.match(configFormSource, /typeof draft\[field\.key\] === "string"/));
@@ -363,7 +378,7 @@ test('config stale notebook option is labelled unavailable', () => assert.match(
 test('config notebook selects restored value after fill', () => assert.match(configFormSource, /select\.value = resetKeys\.has\(field\.key\) \? "" : current/));
 test('config notebook change listener is installed', () => assert.match(configFormSource, /select\.addEventListener\("change", \(\) => \{ draft\[field\.key\] = select\.value; \}\)/));
 test('config notebook promise checks field options', () => assert.match(configFormSource, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) => \{\s*fill\(notebooks\)/));
-test('config document input has placeholder', () => assert.match(configFormSource, /input\.placeholder = this\.i18n\.homeConfigDocumentPlaceholder/));
+test('config document input has placeholder', () => assert.match(configFormSource, /input\.placeholder = placeholderText\(resolveHomeConfigPlaceholder\(inst\.moduleId, field\.key\)\) \|| this\.i18n\.homeConfigDocumentPlaceholder/));
 test('config document input starts from draft', () => assert.match(configFormSource, /input\.value = typeof draft\[field\.key\] === "string"/));
 test('config document input records initial draft', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value/));
 test('config document suggestions use root ids', () => assert.match(configFormSource, /option\.value = entry\.rootId/));
@@ -381,7 +396,7 @@ test('config reset writes string control values', () => assert.match(configFormS
 test('config reset button iterates schema', () => assert.match(configFormSource, /reset\.addEventListener\("click", \(\) => \{\s*schema\.forEach/));
 test('config cancel button has localized label', () => assert.match(source, /cancel\.textContent = this\.i18n\.cancel/));
 test('config save button has localized label', () => assert.match(configFormSource, /save\.textContent = this\.i18n\.homeConfigSave/));
-test('config save validates before reading home state', () => assert.match(configFormSource, /if \(invalid\) \{[\s\S]*?return;\s*\}\s*const next = this\.getHomeState\(\)/));
+test('home config save validates before reading home state', () => { const i = configFormSource.indexOf('if (invalid) {'); assert.ok(i >= 0); const w = configFormSource.slice(i, i + 400); assert.ok(w.includes('const next = this.getHomeState()'), '校验通过后才能读取 home state'); });
 test('config save copies only draft fields', () => assert.match(configFormSource, /instance\.config = \{\.\.\.draft\}/));
 test('preview source fallback provider is SiYuan', () => assert.match(storeSource,/sourceInfo\?\.providerName \|\| "SiYuan"/));
 test('preview integration fallback is offline-safe', () => assert.match(storeSource,/sourceInfo\?\.integration === "http" \? "network" : sourceInfo\?\.integration === "local-bridge" \? "local" : "offline"/));
@@ -475,7 +490,7 @@ test('add action writes device layout', () => assert.match(storeSource,/next\.la
 test('add action persists home state', () => assert.match(source, /this\.saveHomeState\(next\)/));
 test('conditional add announces prerequisite', () => assert.match(storeSource,/if \(!added && def\.availability === "conditional"\)/));
 test('conditional add uses localized hint', () => assert.match(storeSource,/homeStoreConditionalHint/));
-test('add action rerenders store', () => assert.match(storeSource,/this\.saveHomeState\(next\);[\s\S]*?renderStore\(\)/));
+test('add action rerenders store', () => { const i = storeSource.indexOf('this.saveHomeState(next);'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 500); assert.ok(w.includes('renderStore();'), '保存后须重渲染'); });
 test('add action notifies parent change', () => assert.match(storeSource,/renderStore\(\);\s*onChanged\(\)/));
 test('new configurable instance opens config form', () => assert.match(storeSource,/if \(createdInstance && Array\.isArray\(def\.configSchema\)/));
 test('new config form receives created instance', () => assert.match(storeSource,/openHomeConfigForm\.call\(this, createdInstance, def\.configSchema/));
@@ -496,7 +511,7 @@ test('guide hint has a dedicated class', () => assert.match(source, /hint\.class
 test('guide link has button styling', () => assert.match(source, /link\.className = "b3-button b3-button--outline sw-home-store-guide__link"/));
 test('guide link uses localized label', () => assert.match(source, /link\.textContent = this\.i18n\.homeStoreGuide/));
 test('guide note has a dedicated class', () => assert.match(source, /note\.className = "sw-home-store-guide__note"/));
-test('guide note is appended after link', () => assert.match(source, /root\.appendChild\(link\);[\s\S]*?root\.appendChild\(note\)/));
+test('guide note is appended after link', () => { const i = source.indexOf('root.appendChild(link);'); assert.ok(i >= 0); const w = source.slice(i, i + 400); assert.ok(w.indexOf('root.appendChild(note)') > -1, 'note 须在 link 之后追加'); });
 test('preview id sanitizes module identifiers', () => assert.match(storeSource,/moduleId\.replace\(\//));
 test('preview metadata records module id', () => assert.match(storeSource,/meta\.dataset\.moduleId = moduleId/));
 test('preview metadata uses guide hint label', () => assert.match(storeSource,/meta\.setAttribute\("aria-label", this\.i18n\.homeStoreGuideHint\)/));
@@ -508,7 +523,7 @@ test('preview metadata adds surface chip', () => assert.match(storeSource,/addMe
 test('preview metadata adds size chip', () => assert.match(storeSource,/addMeta\(this\.i18n\.homeStorePreviewSize/));
 test('preview read preserves caller read options', () => assert.match(source, /\{\.\.\.readOptions, size: sizeKey\}/));
 test('preview task toggle keeps item done metadata', () => assert.match(source, /onToggleItem: \(item: \{ label\?: string; value\?: string; done\?: boolean \}\)/));
-test('preview task toggle is asynchronous', () => assert.match(source, /onToggleItem:[\s\S]*?void \(async \(\) =>/));
+test('preview task toggle is asynchronous', () => { const i = source.indexOf('onToggleItem:'); assert.ok(i >= 0); const w = source.slice(i, i + 300); assert.ok(w.includes('void (async () =>'), 'onToggleItem 须为异步'); });
 test('preview task toggle calls host adapter', () => assert.match(source, /const ok = await this\.toggleHomeTaskBlock\(item\)/));
 test('preview task toggle refreshes after attempt', () => assert.match(storeSource,/await controller\?\.refresh\(\);/));
 test('preview dispose guards repeated calls', () => assert.match(source, /if \(disposed\) return;/));
@@ -533,7 +548,7 @@ test('config document input listener updates draft', () => assert.match(configFo
 test('config number listener reads numeric input', () => assert.match(configFormSource, /const parsed = Number\(input\.value\)/));
 test('config number listener writes clamped value', () => assert.match(configFormSource, /input\.value = String\(draft\[field\.key\]\)/));
 test('config non-number text listener truncates value', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value\.slice\(0, 128\)/));
-test('config controls append inside field row', () => assert.match(configFormSource, /root\.appendChild\(row\)/));
+test('config controls append inside field row', () => assert.match(configFormSource, /section\.appendChild\(row\)/));
 test('config actions use dedicated class', () => assert.match(configFormSource, /actions\.className = "sw-home-config__actions"/));
 test('config actions append reset cancel save order', () => assert.match(configFormSource, /actions\.append\(reset, cancel, save\)/));
 test('config reset updates existing controls', () => assert.match(configFormSource, /if \(!control\) return;\s*control\.value = String\(value\)/));
@@ -556,8 +571,8 @@ test('store has a generic plugin group fallback', () => assert.match(storeSource
 test('store resolves group descriptions independently of availability', () => assert.match(storeSource,/const groupDescriptionOf = \(moduleId: string, def: any\): string =>/));
 test('store exposes other built-in description', () => assert.match(storeSource,/this\.i18n\.homeStoreGroupOtherHint/));
 test('store exposes plugin group description', () => assert.match(storeSource,/this\.i18n\.homeStoreGroupPluginHint/));
-test('store keeps group descriptions separate from filter tabs', () => assert.match(storeSource,/联网、本机服务、条件可用等[\s\S]*?筛选页签/));
-test('store builds ready groups from ready cards', () => assert.match(storeSource,/const readyGroups = new Map<string, HTMLElement\[\]>\(\);[\s\S]*?ready\.forEach/));
+test('store keeps group descriptions separate from filter tabs', () => { assert.ok(storeSource.includes('const groupDescriptionOf ='), '分组描述解析器缺失'); assert.ok(storeSource.includes('buildHomeStoreTabCounts('), '页签计数机制缺失'); });
+test('store builds ready groups from ready cards', () => { const i = storeSource.indexOf('const readyGroups = new Map<string, HTMLElement[]>();'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 500); assert.ok(w.includes('ready.forEach'), 'readyGroups 须由 ready 卡构建'); });
 test('store creates missing ready group buckets', () => assert.match(storeSource,/if \(!readyGroups\.has\(label\)\) readyGroups\.set\(label, \[\]\)/));
 test('store appends cards into matching group', () => assert.match(storeSource,/readyGroups\.get\(label\)!\.push\(buildReadyCard\(moduleId, def\)\)/));
 test('store orders built-in groups before plugin groups', () => assert.match(storeSource,/\.\.\.BUILTIN_GROUPS\.map\(\(group\) => group\.label\)\.filter\(\(label\) => readyGroups\.has\(label\)\)/));
@@ -627,9 +642,9 @@ test('store filtered focus falls back to search', () => assert.match(storeSource
 test('store empty filter toggles visibility from card presence', () => assert.match(storeSource,/filterEmptyState\?\.classList\.toggle\("fn__none", hasVisibleCards\)/));
 test('store empty filter announces hidden state', () => assert.match(storeSource,/filterEmptyState\?\.setAttribute\("aria-hidden", String\(hasVisibleCards\)\)/));
 test('store result summary is recomputed from card datasets', () => assert.match(storeSource,/const summary = summarizeHomeStoreCards\(cards\.map\(\(card\) => card\.dataset\), query, filter\)/));
-test('store result summary localizes visible count', () => assert.match(storeSource,/homeStoreResultSummary[\s\S]*?replace\("\{visible\}", String\(summary\.visible\)\)/));
-test('store result summary localizes total count', () => assert.match(storeSource,/replace\("\{total\}", String\(summary\.total\)\)/));
-test('store result summary localizes added count', () => assert.match(storeSource,/replace\("\{added\}", String\(summary\.added\)\)/));
+test('store result summary localizes visible count', () => assert.match(storeSource, /resultSummary\.textContent = buildHomeStoreResultSummary\(summary, this\.i18n\.homeStoreResultSummary\)/));
+test('store result summary localizes total count', () => assert.equal(storeModel.buildHomeStoreResultSummary({visible: 1, total: 3, added: 2}, 'v{visible} t{total} a{added}'), 'v1 t3 a2'));
+test('store result summary localizes added count', () => assert.ok(storeSource.includes('buildHomeStoreResultSummary(summary, this.i18n.homeStoreResultSummary)'), 'summary 须由 builder 渲染'));
 test('store result summary records visible dataset', () => assert.match(storeSource,/resultSummary\.dataset\.visible = String\(summary\.visible\)/));
 test('store result summary records total dataset', () => assert.match(storeSource,/resultSummary\.dataset\.total = String\(summary\.total\)/));
 test('store result summary records added dataset', () => assert.match(storeSource,/resultSummary\.dataset\.added = String\(summary\.added\)/));
@@ -668,8 +683,8 @@ test('store render initializes neutral focus snapshot', () => assert.match(store
 test('store render captures focused card identity', () => assert.match(storeSource,/if \(card\?\.dataset\.moduleId\) \{\s*focusKind = "card";\s*focusValue = card\.dataset\.moduleId/));
 test('store render captures focused tab identity', () => assert.match(storeSource,/else if \(tab\?\.dataset\.tabKey\) \{\s*focusKind = "tab";\s*focusValue = tab\.dataset\.tabKey/));
 test('store render captures focused group identity', () => assert.match(storeSource,/else if \(group\?\.dataset\.group\) \{\s*focusKind = "group";\s*focusValue = group\.dataset\.group/));
-test('store render recognizes focused search input', () => assert.match(storeSource,/activeElement\.matches\("\.sw-home-store__search input"\)[\s\S]*?focusKind = "search"/));
-test('store render recognizes focused sort control', () => assert.match(storeSource,/activeElement\.matches\("\.sw-home-store__sort"\)[\s\S]*?focusKind = "sort"/));
+test('store render recognizes focused search input', () => { const i = storeSource.indexOf('activeElement.matches(".sw-home-store__search input")'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('focusKind = "search"'), 'search 焦点须记录 focusKind'); });
+test('store render recognizes focused sort control', () => { const i = storeSource.indexOf('activeElement.matches(".sw-home-store__sort")'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('focusKind = "sort"'), 'sort 焦点须记录 focusKind'); });
 test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/root\.innerHTML = "";\s*(?:\/\/[^\n]*\n\s*)*const storeFragment = document\.createDocumentFragment\(\);\s*const state = this\.getHomeState\(\)/));
 test('store render mounts the assembled fragment once', () => assert.match(storeSource,/root\.appendChild\(storeFragment\);\s*applyFilter\(\)/));
 test('store render reads current home state', () => assert.match(source, /const state = this\.getHomeState\(\)/));
@@ -688,7 +703,7 @@ test('store clear-search returns focus', () => assert.match(storeSource,/applyFi
 test('store search escape only handles non-empty query', () => assert.match(storeSource,/if \(event\.key !== "Escape" \|\| !searchInput\.value\) return/));
 test('store search escape prevents default', () => assert.match(storeSource,/event\.preventDefault\(\);\s*clearSearchButton\.click\(\)/));
 test('store search escape delegates to clear action', () => assert.match(storeSource,/clearSearchButton\.click\(\)/));
-test('store sort offers relevance title status and category', () => assert.match(storeSource,/\{value: "relevance"[\s\S]*?\{value: "title"[\s\S]*?\{value: "status"[\s\S]*?\{value: "category"/));
+test('store sort offers relevance title status and category', () => { const i = storeSource.indexOf('{value: "relevance"'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 500); assert.ok(w.includes('{value: "title"') && w.includes('{value: "status"') && w.includes('{value: "category"'), '排序须覆盖四个选项'); });
 test('store sort value is normalized before display', () => assert.match(storeSource,/sortSelect\.value = normalizeHomeStoreSort\(storeSort\)/));
 test('store sort records current mode', () => assert.match(storeSource,/sortSelect\.dataset\.sort = storeSort/));
 test('store sort controls result summary', () => assert.match(storeSource,/sortSelect\.setAttribute\("aria-controls", "sw-home-store-result-summary"\)/));

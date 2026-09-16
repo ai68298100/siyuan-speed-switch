@@ -45,10 +45,6 @@ function rawSourceReads(text) {
 
 // 理由词汇表：每个标签都要被用到，且说明不得为空（避免"字段是装饰"）。
 const DEBT_REASONS = {
-    "css-window-scope":
-        "文件里的断言是无界窗口（A[\\s\\S]*?B），弱点是作用域而非注释：剥注释后依然"
-        + "会被同文件他处的 B 满足（实测从目标规则删掉声明后断言仍通过）。修法是 CSS "
-        + "块级作用域断言助手（T-6277），不是剥注释。",
     "doc-comment-contract":
         "断言的对象就是注释本身（JSDoc 声明的不变量 / 声明行尾的 key 说明），必须读原始文本。",
     "json-data":
@@ -59,7 +55,6 @@ const DEBT_REASONS = {
 };
 
 const SOURCE_SCAN_DEBT = [
-    {file: "tests/store-mobile-layout-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/doc-search-pagination-contract.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-key-audit.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-migration.test.cjs", reason: "doc-comment-contract"},
@@ -76,10 +71,6 @@ const SOURCE_SCAN_DEBT = [
 // 完全成立。判据作用在**剥注释后**的文本上——否则任何文件头注释里引用一句
 // `[\s\S]*?` 就能让标签蒙混过关（第八类失效模式的又一次自我适用）。
 const DEBT_REASON_CHECKS = {
-    // "断言是无界窗口"：至少存在一行 assert 同时带 `[\s\S]*?` 或 `[^}]*` 窗口模式
-    "css-window-scope": (text) => text.split("\n").some((line) => (
-        /assert\./.test(line) && /\[\\s\\S\]\*\\?|\[\^}\]\*/.test(line)
-    )),
     // "断言的对象就是注释本身"：持有同一源文件的原始/剥离双视图（Raw 孪生或显式
     // stripComments），或断言needle里带转义的注释标记 `\/\/`
     "doc-comment-contract": (text) => (
@@ -155,8 +146,6 @@ test("every debt entry's reason tag matches the content it describes (T-6282)", 
     // 判据的**非平凡自检**：每个判据必须至少拒绝一个真实形态的反例，否则把判据改成
     // 恒真（`() => true`）不会被发现——判据沦为装饰，正是本门禁要防的形态本身。
     const DEBT_REASON_COUNTEREXAMPLES = {
-        // 有窗口模式但**不在 assert 内**（正是 kernel-endpoint-guard 当年的形态）
-        "css-window-scope": 'const x = source.match(/a[\\s\\S]*?b/);',
         // 读原文断**代码**（无注释客体、无双视图）
         "doc-comment-contract": 'assert.ok(source.includes("case x:"));',
         // 读代码但不解析 JSON
