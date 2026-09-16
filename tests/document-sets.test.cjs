@@ -102,3 +102,78 @@ test("document set restore execution isolates failures and honors cancellation",
     assert.equal(result.cancelled, true);
     assert.deepEqual(result.results.map((item) => item.rootId), ["a", "b", "c"]);
 });
+
+test("document set restore report classifies every entry status in plan order", () => {
+    const value = {setId: "project", name: "Project", entries: [
+        {rootId: "doc-a", title: "A"},
+        {rootId: "doc-b", title: "B"},
+        {rootId: "doc-c", title: "C"},
+        {rootId: "doc-d", title: "D"},
+        {rootId: "doc-e", title: "E"},
+    ]};
+    const plan = sets.planDocumentSetRestore(value, new Set(["doc-a"]), null);
+    const probe = {available: [{rootId: "doc-b"}, {rootId: "doc-c"}], unknown: [], missing: [{rootId: "doc-d"}]};
+    const execution = {succeeded: 1, failed: 1, results: [
+        {rootId: "doc-b", ok: true},
+        {rootId: "doc-c", ok: false, error: "open failed"},
+    ]};
+    const report = sets.buildDocumentSetRestoreReport(plan, probe, execution, {now: 1000});
+    assert.equal(report.schemaVersion, sets.DOCUMENT_SET_RESTORE_REPORT_VERSION);
+    assert.equal(report.generatedAt, 1000);
+    assert.equal(report.setId, "project");
+    assert.equal(report.setName, "Project");
+    // 计数必须复用 summarizeDocumentSetRestore 的口径，不能与界面提示分叉
+    assert.deepEqual(report.counts, {
+        succeeded: 1, failed: 1, skipped: 1, missing: 1, unknown: 0, available: 2, cancelled: false, attempted: 2,
+    });
+    assert.deepEqual(report.entries.map((item) => [item.rootId, item.status]), [
+        ["doc-a", "opened"], ["doc-b", "restored"], ["doc-c", "failed"], ["doc-d", "missing"], ["doc-e", "pending"],
+    ]);
+    assert.equal(report.entries[2].error, "open failed");
+    assert.equal("error" in report.entries[1], false, "non-failed entries must not carry an error field");
+});
+
+test("document set restore report stays bounded and scrubs failure text", () => {
+    // 刻意传入超限的 set（生产路径已被 normalizeSet 截断）：报告不能信任调用方
+    const entries = Array.from({length: 45}, (_, index) => ({rootId: `doc-${index}`, title: `T${index}`, index}));
+    const plan = {set: {setId: "big", name: "Big", entries}, opened: [], pending: []};
+    const execution = {succeeded: 0, failed: 1, results: [
+        {rootId: "doc-0", ok: false, error: "x".repeat(400) + "\u0000\u001f"},
+    ]};
+    const report = sets.buildDocumentSetRestoreReport(plan, {missing: []}, execution, {now: 1});
+    assert.equal(report.entries.length, sets.DOCUMENT_SET_ENTRY_MAX, "entries must stay within the entry ceiling");
+    assert.ok(report.entries[0].error.length <= 160, "failure text must be truncated before export");
+    assert.equal(/[\u0000-\u001f\u007f]/.test(JSON.stringify(report)), false,
+        "the exported report must not carry control characters");
+});
+
+test("document set restore report is deterministic and tolerates garbage input", () => {
+    const plan = {set: {setId: "p", name: "P", entries: [{rootId: "doc-a", title: "A", index: 0}]}, opened: [], pending: []};
+    const first = sets.buildDocumentSetRestoreReport(plan, {missing: []}, {results: []}, {now: 42});
+    const second = sets.buildDocumentSetRestoreReport(plan, {missing: []}, {results: []}, {now: 42});
+    assert.deepEqual(first, second, "same inputs and same injected clock must produce the same report");
+    assert.equal(JSON.parse(JSON.stringify(first)).generatedAt, 42, "the report must survive a JSON round-trip");
+    const empty = sets.buildDocumentSetRestoreReport(null, null, null, {now: 7});
+    assert.equal(empty.setId, "");
+    assert.equal(empty.setName, "");
+    assert.deepEqual(empty.entries, []);
+    assert.deepEqual(empty.counts, {
+        succeeded: 0, failed: 0, skipped: 0, missing: 0, unknown: 0, available: 0, cancelled: false, attempted: 0,
+    });
+});
+
+test("document set restore report keeps the first result per id and leaves untried entries pending", () => {
+    const plan = {set: {setId: "p", name: "P", entries: [
+        {rootId: "doc-a", title: "A", index: 0},
+        {rootId: "doc-b", title: "B", index: 1},
+    ]}, opened: [], pending: []};
+    const execution = {succeeded: 1, failed: 0, cancelled: true, results: [
+        {rootId: "doc-a", ok: true},
+        {rootId: "doc-a", ok: false, error: "late retry"},
+    ]};
+    const report = sets.buildDocumentSetRestoreReport(plan, {}, execution, {now: 5});
+    assert.equal(report.counts.cancelled, true);
+    assert.equal(report.entries[0].status, "restored", "a duplicated id must be judged by its first result only");
+    assert.equal("error" in report.entries[0], false);
+    assert.equal(report.entries[1].status, "pending", "an entry never attempted must not be reported as failed");
+});

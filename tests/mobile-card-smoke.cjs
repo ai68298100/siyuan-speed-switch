@@ -211,7 +211,17 @@ const documentSetContractOk = source.includes('"documentSets"')
     && sectionsSource.includes('data-document-set-rename')
     && sectionsSource.includes('focusRenameAction')
     && source.includes('mergeDocumentSets')
-    && documentSetSource.includes('DOCUMENT_SET_SCHEMA_VERSION');
+    && documentSetSource.includes('DOCUMENT_SET_SCHEMA_VERSION')
+    // v0.20 文档集增强：恢复报告必须由纯函数产出、由恢复完成处接线，且默认禁用
+    && documentSetSource.includes('DOCUMENT_SET_RESTORE_REPORT_VERSION')
+    && documentSetSource.includes('buildDocumentSetRestoreReport')
+    && documentSetSource.includes('DOCUMENT_SET_RESTORE_STATUS')
+    && sectionsSource.includes('buildDocumentSetRestoreReport(plan, probe, {...execution, cancelled}')
+    && sectionsSource.includes('exportReport.disabled = false')
+    && sectionsSource.includes('exportReport.disabled = true')
+    && sectionsSource.includes('siyuan-speed-switch-restore-report-')
+    && sectionsSource.includes('documentSetRestoreReportNone')
+    && sectionsSource.includes('documentSetRestoreReportExported');
 console.log(`${documentSetContractOk ? 'PASS' : 'FAIL'} document-set settings and restore preview contract`);
 if (!documentSetContractOk) allPassed = false;
 const homePanelBusyOk = homePanelSource.includes('panel.setAttribute("aria-busy", "true")')

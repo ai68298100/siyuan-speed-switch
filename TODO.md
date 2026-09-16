@@ -1,6 +1,13 @@
 # TODO
 
 
+## T-6267~T-6268 v0.20 数据连续性第五批：文档集恢复报告导出（2026-09-16，已完成）
+
+**本组终态**：`dist/index.js` 612356 bytes、`dist/index.css` 145639 bytes、`package.zip` 312656 bytes；测试 5747 项（163 文件）；`pnpm verify:release` 全链绿（5747/5747）。
+
+- [x] T-6267 恢复报告纯函数（D-391）：`src/document-sets.js` 新增 `buildDocumentSetRestoreReport(plan, probe, execution, {now})` + `DOCUMENT_SET_RESTORE_REPORT_VERSION` + `DOCUMENT_SET_RESTORE_STATUS`。补齐的真实缺口——恢复结果此前只经 `showMessage` 一闪即逝，用户无法复核"哪几篇失败、为什么失败"。报告含 schemaVersion / generatedAt / setId / setName / counts（复用 `summarizeDocumentSetRestore` 口径，与界面提示同源不分叉）/ entries（逐项 `{rootId,title,status,error?}`，status ∈ opened|restored|failed|missing|pending）。逐项顺序沿用 `planDocumentSetRestore` 的排序（按持久化 index 再按数组位置），故报告读起来与真实尝试顺序一致且不随取消漂移；同一 rootId 只认首条结果（执行器重试会产生重复项）；失败文本经 `cleanText` 截断至 160 字符并清洗控制字符；entries 上限 40 且**不信任调用方**（生产路径已被 `normalizeSet` 截断，纯函数仍自行兜底）。时间戳 `now` 可注入以便构造确定性快照——与 `storage-migration` 的"无时间戳报告"刻意不同：那是 Agent 只读投影必须确定，本报告是用户主动导出的本地文件，时间戳正是其价值。
+- [x] T-6268 设置页接线与门禁（D-391）：`settings-sections.ts` 每个文档集操作行新增"导出恢复报告"按钮，**默认禁用**，恢复完成（含取消/中断）后启用——取消场景恰恰最需要复核"哪些没走完"；报告只活在本次渲染的闭包内，不落盘、不进插件数据，避免扩大持久化数据面。导出文件名 `siyuan-speed-switch-restore-report-<setId>.json`。i18n 补 zh-CN/en 三键（`documentSetRestoreReport` / `documentSetRestoreReportNone` / `documentSetRestoreReportExported`），避开"死 key"门禁。门禁：`tests/document-sets.test.cjs` 新增 4 项（状态分类全枚举 + 计数与界面同源、有界与文本清洗、确定性与垃圾输入容错、取消时未尝试项保持 pending 且重复结果取首条），`tests/mobile-card-smoke.cjs` 文档集契约扩 9 条断言锁定"纯函数存在 + 恢复完成处接线 + 默认禁用 + 文件名前缀 + 两个提示键"。**负向验证 4 轮**（均先确认注入发生、均 md5 字节级还原）：F 删 `exportReport.disabled = false` → 契约 FAIL；G 报告改由空 `{}` 执行结果构建（锚点漂移）→ 契约 FAIL；H 移除 entries 上限截断 → 单元测试精确 1 项失败；I 失败文本不做清洗截断 → 单元测试报 `failure text must be truncated before export`。**诚实边界**：报告不含正文与路径，仅 rootId/标题/状态/错误摘要；真实宿主下的导出下载行为仍需人工点一次确认。
+
 ## T-6265~T-6266 手机端图标兜底全表面审计与门禁缺陷修复（2026-09-16，已完成）
 
 **本组终态（覆盖 T-6264 的临时计数）**：`dist/index.js` 610310 bytes、`dist/index.css` 145639 bytes、`package.zip` 312085 bytes；测试 5743 项（163 文件）；`pnpm verify:release` 全链绿（5743/5743、mobile-card-smoke 70 PASS、mobile-toolbar-layout 3 PASS、chromium-style-smoke 7 PASS）。

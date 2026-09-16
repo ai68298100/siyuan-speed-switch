@@ -15,7 +15,11 @@
 - `pnpm test` = `node tests/run-tests.cjs`（自定义 runner，非 node --test 直跑）；单跑某文件用 `node --test <file>` 不会计入总数。
 - `pnpm verify:release` = tsc --noEmit → build → test → 三套 UI smoke（mobile-card-smoke / mobile-toolbar-layout / chromium-style-smoke）。
 - **README 的"测试项数"没有门禁断言**（只有"测试文件数"有），改测试后必须手工同步 README 双语 + `docs/release-readiness.md` 快照，否则 `release readiness matrix matches generated artifact sizes` 会失败。
+- **i18n 有"死 key"门禁**（`tests/i18n.test.cjs`）：新增 key 必须在 src 里被引用，且 zh-CN 与 en 的 key 集合必须完全一致 → 加 key 必须成对加。
 - 门禁新增/修改必须按 `docs/gate-audit-checklist.md` 自查 + 负向验证（注入违规→按**失败项名称**确认→md5 字节级还原）。
+- 设置页 UI 构建在 `src/settings-sections.ts`（R4/D-376 外迁）；其源码契约写在 `tests/mobile-card-smoke.cjs` 的 `documentSetContractOk` 等一串 `includes` 断言里，改设置页行为要顺手扩那里。
+- 纯模型惯例：`src/document-sets.js` 一侧放 plan/summarize/run/**report**，UI 只装配；报告类函数的时间戳用 `options.now` 注入以便测试确定化。
+- `src/index.ts` 与 `src/settings-sections.ts` 各有一份 `declare module "./document-sets"` 类型增强块，新增导出要补声明（否则 tsc 报错）。
 
 ## 门禁方法论（踩过的坑）
 1. **不要用"类名 + N 字符距离窗口"当锚点**（第七类失效模式，D-390）：注释里提到同类名即成伪锚点 → 归因错误；目标语句漂出窗口 → 假绿。改用 `X.className = "..."` 建变量→类名映射（多值 Set，因变量名会复用），再取 `X.innerHTML = ...` 完整语句断言（按引号状态扫描跨过字符串内分号）。

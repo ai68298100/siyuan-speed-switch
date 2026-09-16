@@ -173,10 +173,88 @@ async function runDocumentSetRestore(entries, openRoot, options = {}) {
     };
 }
 
+const DOCUMENT_SET_RESTORE_REPORT_VERSION = 1;
+const DOCUMENT_SET_REPORT_ERROR_MAX = 160;
+
+// 逐项状态的稳定枚举。UI 文案由 i18n 决定，这里只做可序列化的语义分类，
+// 因此导出文件不依赖任何界面语言。
+const DOCUMENT_SET_RESTORE_STATUS = Object.freeze({
+    opened: "opened",       // 恢复前已打开，按计划跳过
+    restored: "restored",   // 本次成功打开
+    failed: "failed",       // 尝试过但失败
+    missing: "missing",     // 预检明确不存在
+    pending: "pending",     // 未尝试（取消、中断或不在候选集内）
+});
+
+function collectRootIds(value) {
+    const ids = new Set();
+    (Array.isArray(value) ? value : []).forEach((item) => {
+        const rootId = item && typeof item === "object" ? normalizeRootId(item.rootId) : "";
+        if (rootId) ids.add(rootId);
+    });
+    return ids;
+}
+
+/**
+ * 构建一次恢复的结构化报告（纯函数，不触碰 DOM 与存储）。
+ *
+ * 为什么需要它：恢复结果目前只经过 `showMessage` 一闪即逝，用户既无法复核
+ * "哪几篇失败了、失败原因是什么"，也无法把现场留给后续排查。本函数产出可
+ * 直接序列化导出的有界快照；逐项明细沿用 `planDocumentSetRestore` 的排序
+ * （按持久化 index，再按数组位置），因此报告读起来与真实尝试顺序一致，
+ * 且同一份计划无论是否被取消，条目集合与顺序都稳定。
+ *
+ * 与 storage-migration 的恢复报告刻意不同：那份是 Agent 只读投影，必须确定、
+ * 因此不含时间戳；本报告是用户主动导出的本地文件，时间戳正是其价值所在。
+ * `now` 仍由调用方注入，便于测试构造确定性快照。
+ */
+function buildDocumentSetRestoreReport(plan, probe, execution = {}, options = {}) {
+    const safePlan = plan && typeof plan === "object" ? plan : {};
+    const set = safePlan.set && typeof safePlan.set === "object" ? safePlan.set : null;
+    const safeExecution = execution && typeof execution === "object" ? execution : {};
+    const now = Number.isFinite(options.now) && options.now > 0 ? Math.floor(options.now) : Date.now();
+    const openedIds = collectRootIds(safePlan.opened);
+    const missingIds = collectRootIds(probe && typeof probe === "object" ? probe.missing : null);
+    // 同一 rootId 只认首条结果：执行器可能因重试产出重复项，报告不应因此膨胀或自相矛盾
+    const resultByRootId = new Map();
+    (Array.isArray(safeExecution.results) ? safeExecution.results : []).forEach((item) => {
+        if (!item || typeof item !== "object") return;
+        const rootId = normalizeRootId(item.rootId);
+        if (rootId && !resultByRootId.has(rootId)) resultByRootId.set(rootId, item);
+    });
+    const entries = (set && Array.isArray(set.entries) ? set.entries : [])
+        .slice(0, DOCUMENT_SET_ENTRY_MAX)
+        .map((entry, position) => ({entry, position}))
+        .sort((left, right) => left.entry.index - right.entry.index || left.position - right.position)
+        .map(({entry}) => {
+            const result = resultByRootId.get(entry.rootId);
+            let status = DOCUMENT_SET_RESTORE_STATUS.pending;
+            if (openedIds.has(entry.rootId)) status = DOCUMENT_SET_RESTORE_STATUS.opened;
+            else if (result) status = result.ok ? DOCUMENT_SET_RESTORE_STATUS.restored : DOCUMENT_SET_RESTORE_STATUS.failed;
+            else if (missingIds.has(entry.rootId)) status = DOCUMENT_SET_RESTORE_STATUS.missing;
+            const record = {rootId: entry.rootId, title: entry.title, status};
+            if (status === DOCUMENT_SET_RESTORE_STATUS.failed) {
+                // 异常文本可能很长且带控制字符，导出前统一裁剪清洗
+                record.error = typeof result.error === "string" ? cleanText(result.error, DOCUMENT_SET_REPORT_ERROR_MAX) : "";
+            }
+            return record;
+        });
+    return {
+        schemaVersion: DOCUMENT_SET_RESTORE_REPORT_VERSION,
+        generatedAt: now,
+        setId: set ? set.setId : "",
+        setName: set ? set.name : "",
+        counts: summarizeDocumentSetRestore(safePlan, probe, safeExecution),
+        entries,
+    };
+}
+
 module.exports = {
     DOCUMENT_SET_SCHEMA_VERSION,
     DOCUMENT_SET_MAX,
     DOCUMENT_SET_ENTRY_MAX,
+    DOCUMENT_SET_RESTORE_REPORT_VERSION,
+    DOCUMENT_SET_RESTORE_STATUS,
     normalizeDocumentSets,
     createDocumentSet,
     upsertDocumentSet,
@@ -185,4 +263,5 @@ module.exports = {
     planDocumentSetRestore,
     summarizeDocumentSetRestore,
     runDocumentSetRestore,
+    buildDocumentSetRestoreReport,
 };

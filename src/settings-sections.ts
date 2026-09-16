@@ -7,7 +7,7 @@
 import {getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX} from "./constants";
-import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
+import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
@@ -21,6 +21,21 @@ declare module "./document-sets" {
     export function planDocumentSetRestore(value: unknown, openedRootIds?: unknown, availableRootIds?: unknown, max?: number): any;
     export function summarizeDocumentSetRestore(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean}): {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
     export function runDocumentSetRestore(entries: Array<{rootId: string}>, openRoot: (rootId: string, entry: unknown) => Promise<unknown> | unknown, options?: {signal?: AbortSignal; shouldContinue?: () => boolean}): Promise<{succeeded: number; failed: number; attempted: number; cancelled: boolean; results: Array<{rootId: string; ok: boolean; error?: string}>}>;
+    export interface DocumentSetRestoreReportEntry {
+        rootId: string;
+        title: string;
+        status: "opened" | "restored" | "failed" | "missing" | "pending";
+        error?: string;
+    }
+    export interface DocumentSetRestoreReport {
+        schemaVersion: number;
+        generatedAt: number;
+        setId: string;
+        setName: string;
+        counts: {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
+        entries: DocumentSetRestoreReportEntry[];
+    }
+    export function buildDocumentSetRestoreReport(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean; results?: Array<{rootId: string; ok: boolean; error?: string}>}, options?: {now?: number}): DocumentSetRestoreReport;
 }
 
 declare module "./quick-actions-ui" {
@@ -932,6 +947,31 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                 rename.dataset.documentSetRename = item.setId;
                 rename.setAttribute("aria-label", `${this.i18n.documentSetRename}: ${item.name}`);
                 rename.addEventListener("click", () => { editingSetId = item.setId; render(); });
+                // 恢复报告只在"确实执行过一次恢复"之后才可导出：按钮默认禁用，
+                // 免得用户对着空报告点导出。报告只活在本次设置页渲染的闭包里，
+                // 关闭设置页即丢弃——不落盘、不进插件数据，避免扩大持久化数据面。
+                let lastRestoreReport: ReturnType<typeof buildDocumentSetRestoreReport> | null = null;
+                const exportReport = document.createElement("button");
+                exportReport.type = "button";
+                exportReport.className = "b3-button b3-button--text";
+                exportReport.textContent = this.i18n.documentSetRestoreReport;
+                exportReport.disabled = true;
+                exportReport.addEventListener("click", () => {
+                    if (!lastRestoreReport) {
+                        showMessage(this.i18n.documentSetRestoreReportNone);
+                        return;
+                    }
+                    const blob = new Blob([JSON.stringify(lastRestoreReport, null, 2)], {type: "application/json"});
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `siyuan-speed-switch-restore-report-${lastRestoreReport.setId || "set"}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                    showMessage(this.i18n.documentSetRestoreReportExported);
+                });
                 const restore = document.createElement("button");
                 restore.type = "button";
                 restore.className = "b3-button b3-button--text";
@@ -1005,6 +1045,10 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     restore.disabled = false;
                     restore.removeAttribute("aria-busy");
                     const counts = summarizeDocumentSetRestore(plan, probe, {succeeded: execution.succeeded, failed: execution.failed, cancelled});
+                    // 与 showMessage 同源：计数与逐项明细取自同一次执行结果，不会互相矛盾。
+                    // 取消/中断同样产出报告——那正是最需要复核"哪些没走完"的场景。
+                    lastRestoreReport = buildDocumentSetRestoreReport(plan, probe, {...execution, cancelled}, {now: Date.now()});
+                    exportReport.disabled = false;
                     const summary = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}, ${this.i18n.documentSetRestoreFailed}: ${counts.failed}, `
                         + `${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}, ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`;
                     showMessage(counts.cancelled ? `${this.i18n.documentSetRestoreCancelled}: ${summary}` : summary);
@@ -1029,7 +1073,7 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     if (result.changed) this.saveDataDebounced(DOCUMENT_SETS_KEY);
                     render();
                 });
-                actions.append(rename, restore, preview, remove);
+                actions.append(rename, restore, exportReport, preview, remove);
                 row.append(copy, actions);
                 list.appendChild(row);
             });
