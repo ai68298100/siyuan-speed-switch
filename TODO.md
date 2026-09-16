@@ -8136,3 +8136,8 @@
 - [x] T-5795 Agent 日记状态生产构建
 - [x] T-5796 Agent 日记状态本地集市同步
 - [x] T-5797 Agent 日记状态批次收尾
+- [x] T-6284 iCal 订阅只读组件纯模型（v0.21 生活信息支线，2026-09-17 第二十九批）
+  - 目标：按 ROADMAP v0.21「iCal 与 GitHub 贡献热力图再评估」落地 iCal 订阅的契约/纯模型层；宿主接入（adapter/catalog/i18n）待产品确认后另行接线（同 T-123/T-124 先例）
+  - 实现：新增 `src/ical-model.js`——`normalizeIcalSubscriptionConfig`（https/http+本机、.ics 路径、拒绝 URL 内嵌凭据、窗口 1~60 天、条目 1~12 钳制）、RFC 5545 折行展开与 VEVENT 有界解析（源 256 KiB 上限、解析 500 条上限、超限按 parse_failed 拒绝而非静默截断）、`upcomingIcalEvents`（结束不早于 now、开始不越 windowDays 窗口、按开始时间升序）、稳定失败 token（invalid_url/parse_failed/empty）
+  - 测试：`tests/ical-model.test.cjs` 17 项（配置归一化、三态日期解析、折行展开、字段提取、恶意值拒绝、超限拒绝、窗口过滤/排序/钳制）；负向验证：破坏折行展开 → 精确 FAIL，md5 还原
+  - 状态：done（2026-09-17）；接入 adapter/catalog 时复用本模块，无需改动解析层
