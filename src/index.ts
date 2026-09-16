@@ -964,8 +964,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.data[DOCUMENT_SETS_KEY] = documentSets;
             this.saveDataDebounced(DOCUMENT_SETS_KEY);
         }
-        // 缩略图缓存（v0.20 数据连续性，D-392）：此前只有写入侧上限，磁盘上超限/损坏的
-        // 缓存永远不会被清理——旧版本更大上限留下的残留、写入中断产生的半条记录都会一直占用存储。
+        // 缩略图缓存（v0.20 数据连续性，D-392）：此前只有写入侧上限，而写入侧只拦新增、
+        // 不清理存量——磁盘上的超限/损坏条目无处回收（结构损坏，或手机端 v0.7.0 写入侧
+        // 误用桌面上限、v0.8.0 起收紧到 30 条 / 80 KiB 后留下的 31~40 条残留）。
+        // 桌面 40 条 / 200 KiB 自 v0.2.0 引入起从未变过。
         // 这里按当前端型（手机上限更保守）做读取侧归一化，规则与 setThumbCache 完全镜像。
         const thumbCache = normalizeThumbCache(this.data[THUMB_CACHE_KEY], {
             max: this.isMobile ? THUMB_CACHE_MAX_MOBILE : THUMB_CACHE_MAX,
