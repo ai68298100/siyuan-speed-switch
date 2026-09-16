@@ -13,12 +13,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const {stripComments} = require('./source-scan.cjs');
+const {readSourceText} = require('./source-scan.cjs');
+// constants.ts 刻意读原始文本：下面的 key 断言要求声明行带 `// 说明` 尾注释，
+// 注释本身就是被断言的客体（doc-comment-contract，见 tests/source-scan-coverage.test.cjs）。
 const constants = fs.readFileSync(path.join(root, 'src', 'constants.ts'), 'utf8').replace(/\r\n/g, '\n');
-const indexTs = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8').replace(/\r\n/g, '\n');
 // 源码扫描只看代码，不看注释：否则把调用注释掉、或在注释里写下调用文本，
 // 就能满足"每个 key 都有降级路径"的存在性断言（假绿）。
-const indexCode = stripComments(indexTs);
+const indexCode = readSourceText(path.join(root, 'src', 'index.ts'));
 
 test('storage: every key is registered in constants.ts with a usage comment', () => {
     const keys = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "([a-z0-9_]+)";\s*\/\/\s*(.+)/g)];

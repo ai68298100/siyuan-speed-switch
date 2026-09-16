@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -7,9 +8,9 @@ const catalog = require("../src/widget-catalog.js");
 
 // R2 重构（D-375）：外部组件的注册定义在 src/home-external-adapters.ts，
 // 思源原生组件的注册定义仍在 index.ts——两处合并扫描保证"恰好一个适配器"。
-const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
-const storeUiSource = fs.readFileSync(path.join(__dirname, "..", "src", "home-store-ui.ts"), "utf8");
-const externalAdapters = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+const storeUiSource = readSourceText(path.join(__dirname, "..", "src", "home-store-ui.ts"));
+const externalAdapters = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
 const registeredIds = [source, externalAdapters].flatMap((text) => [
     ...[...text.matchAll(/register\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),
     ...[...text.matchAll(/registerExternalFeed\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),

@@ -12,6 +12,18 @@
 // 已知边界：不做完整的 JS 词法分析——正则字面量（如 `/a\/\/b/`）与模板字符串
 // `${}` 内部若出现 `//` 可能被误判为注释。本仓源码未使用这两种形态；如果将来
 // 引入，本函数需要同步升级为真正的 tokenizer，否则门禁可能出现假阴（过度剥离）。
+//
+// 用法边界（重要）：本助手只用于 **源码**（`src/**.ts` / `.js` / `.scss`）。
+// 不要用它读 Markdown —— `docs/*.md` 里存在裸 URL（如 `| [X](https://github.com/…) |`），
+// 不在引号或反引号内，按 JS 词法会被当作行注释截断，造成扫描数据丢失。
+const fs = require("node:fs");
+
+// 读取源码并做扫描前处理：CRLF 归一 + 剥注释。
+// 归一换行的原因：本仓 CRLF/LF 混用，按 `\n` 锚定的断言会因 CRLF 静默失配。
+function readSourceText(filePath) {
+    return stripComments(fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n"));
+}
+
 function stripComments(source) {
     let out = "";
     let quote = null;
@@ -49,4 +61,4 @@ function stripComments(source) {
     return out;
 }
 
-module.exports = {stripComments};
+module.exports = {stripComments, readSourceText};

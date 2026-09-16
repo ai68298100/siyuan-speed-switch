@@ -1,13 +1,14 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
-const model = fs.readFileSync(path.join(root, 'src', 'home-store-model.js'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+const source = readSourceText(path.join(root, 'src', 'index.ts'));
+const storeUiSource = readSourceText(path.join(root, 'src', 'home-store-ui.ts'));
+const model = readSourceText(path.join(root, 'src', 'home-store-model.js'));
+const css = readSourceText(path.join(root, 'src', 'index.scss'));
 
 test('store preview keeps semantic kind data', () => assert.match(storeUiSource, /preview\.dataset\.kind = kind/));
 test('store preview records module identity', () => assert.match(storeUiSource, /preview\.dataset\.moduleId = moduleId/));

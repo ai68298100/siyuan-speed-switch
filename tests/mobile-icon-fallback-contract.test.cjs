@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 // 契约测试：手机端三处首帧/窄屏 UI 修复的**源码级**防线。
 //
 // 为什么需要它（而不只靠 Chromium 布局门禁）：布局门禁的 HTML 是为了测量而手写的，
@@ -12,9 +13,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const repo = path.resolve(__dirname, '..');
-const indexSource = fs.readFileSync(path.join(repo, 'src', 'index.ts'), 'utf8');
-const homeViewSource = fs.readFileSync(path.join(repo, 'src', 'home-view.js'), 'utf8');
-const scssSource = fs.readFileSync(path.join(repo, 'src', 'index.scss'), 'utf8');
+const indexSource = readSourceText(path.join(repo, 'src', 'index.ts'));
+const homeViewSource = readSourceText(path.join(repo, 'src', 'home-view.js'));
+const scssSource = readSourceText(path.join(repo, 'src', 'index.scss'));
 const { clampOversizedIcons, MOBILE_ICON_SIZE_FALLBACKS } = require('../src/util.js');
 
 // 字面量一律拼接构造：避免断言目标字符串出现在本文件里后被"自指"满足（清单模式⑥）

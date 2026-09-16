@@ -1,13 +1,14 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
-const storeUiSource = fs.readFileSync(path.join(root, "src", "home-store-ui.ts"), "utf8");
+const source = readSourceText(path.join(root, "src", "index.ts"));
+const storeUiSource = readSourceText(path.join(root, "src", "home-store-ui.ts"));
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
-const configFormSource = fs.readFileSync(path.join(root, "src", "home-config-form.ts"), "utf8");
+const configFormSource = readSourceText(path.join(root, "src", "home-config-form.ts"));
 
 test("widget store previews refresh real data and separate size selection from commit", () => {
     assert.match(storeUiSource, /controller\.mount\(\);\s*const markPreviewReady = \(\) =>/);
@@ -19,7 +20,13 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /sw-home-store__availability/);
     assert.match(storeUiSource, /homeStoreAvailabilityConditional/);
     assert.match(storeUiSource, /homeStoreTabConditional/);
-    assert.match(storeUiSource, /card\.dataset\.availability === availabilityFilter/);
+    // 2026-09-16（D-395）修正：此处原为 /card\.dataset\.availability === availabilityFilter/
+    // 与 /card\.dataset\.added === "true"/，两句文本只存在于 home-store-ui.ts 的行尾注释
+    // 里（并由两个 `void x;` 空转局部变量"培育"），扫描前剥离注释后立刻失败——即本门禁
+    // 此前断言的是注释。改为断言真实的委托调用；availability / addedOnly 两轴的过滤
+    // 行为由 tests/home-store-model.test.cjs 覆盖（含阴性用例）。
+    assert.match(storeUiSource, /matchesHomeStoreTokens\(card\.dataset, query, filter\)/);
+    assert.match(storeUiSource, /resolveHomeStoreFilter\(activeTab\?\.dataset\.tabKey \|\| storeTab\)/);
     assert.match(storeUiSource, /listModules\(device\)\.forEach/);
     assert.match(storeUiSource, /sw-home-store__group/);
     assert.match(storeUiSource, /grid\.classList\.toggle\("fn__none", !visible\)/);
@@ -37,8 +44,6 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(source, /homeModuleChangeListeners\.add\(handleModuleChange\)/);
     assert.match(storeUiSource, /homeModuleChangeListeners\.delete\(handleModuleChange\)/);
     assert.match(storeUiSource, /btn\.dataset\.tabFilter = tab\.category \|\| "all"/);
-    assert.match(storeUiSource, /addedOnly = activeTab\?\.dataset\.tabAdded === "true"/);
-    assert.match(storeUiSource, /card\.dataset\.added === "true"/);
     assert.match(storeUiSource, /homeStoreTabAdded/);
     assert.match(storeUiSource, /homeStoreNoResults/);
     assert.match(storeUiSource, /let storeQuery = ""/);
@@ -82,6 +87,10 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /homeStoreCollapseGroup/);
     assert.match(storeUiSource, /homeStoreExpandGroup/);
     assert.match(storeUiSource, /sw-home-store__remove/);
-    assert.match(storeUiSource, /PREVIEW_KINDS/);
+    // 同上：/PREVIEW_KINDS/ 在 home-store-ui.ts 里只出现在一句指针注释中
+    // （"PREVIEW_KINDS is centralized in home-store-model.js."），剥注释即失败。
+    // 改为断言真实的模型调用（PREVIEW_KINDS 本体在 home-store-model.js）。
+    assert.match(storeUiSource, /const kind = resolveHomeStorePreviewKind\(moduleId, /);
+    assert.match(storeUiSource, /resolveHomeStorePreviewKind,/);
     assert.match(storeUiSource,/p-calendar-grid/);
 });

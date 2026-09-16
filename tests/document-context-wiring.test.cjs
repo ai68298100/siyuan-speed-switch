@@ -1,9 +1,10 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
 
 test("document-context module is imported by the plugin entry", () => {
     assert.match(source, /from "\.\/agent-document-context"/);

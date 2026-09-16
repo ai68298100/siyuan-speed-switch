@@ -1,10 +1,11 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'home-store-ui.ts'), 'utf8');
+const source = readSourceText(path.join(__dirname, '..', 'src', 'index.ts'));
+const storeUiSource = readSourceText(path.join(__dirname, '..', 'src', 'home-store-ui.ts'));
 const zh = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'), 'utf8'));
 const en = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'en.json'), 'utf8'));
 

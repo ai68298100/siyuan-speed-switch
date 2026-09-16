@@ -381,13 +381,11 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 root.dataset.activeFilter = filter.tab;
                 root.dataset.sort = storeSort;
                 const focusedBeforeFilter = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-                // Compatibility note: the model now owns this predicate; keep
-                // the legacy field shape documented for downstream audits.
-                const availabilityFilter = activeTab?.dataset.tabAvailability || "";
-                void availabilityFilter; // card.dataset.availability === availabilityFilter
-                const addedOnly = activeTab?.dataset.tabAdded === "true";
-                void addedOnly;
-                // Legacy audit expression: card.dataset.added === "true"
+                // 过滤谓词由模型持有（home-store-model.js 的 matchesHomeStoreCard）：
+                // availability 与 addedOnly 都在 filter 里判定，UI 侧不再保留镜像变量。
+                // 此前这里有两个 `void x;` 空转局部变量（值算完即丢），存在的唯一理由
+                // 是让"源码扫描类"门禁读到旧表达式文本——而那些文本其实躺在行尾注释
+                // 里，门禁一直在读注释（2026-09-16 扫描前剥离注释后暴露，见 D-395）。
                 root.querySelectorAll<HTMLElement>(".sw-home-store__card").forEach((card) => {
                     const visible = matchesHomeStoreTokens(card.dataset, query, filter);
                     card.classList.toggle("fn__none", !visible);

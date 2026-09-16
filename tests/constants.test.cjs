@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 // 常量自洽性测试。确保 MIN < MAX、范围合理、与 settings 默认值兼容。
 // 用法: node tests/constants.test.cjs
 const test = require('node:test');
@@ -6,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 
-const constantsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'constants.ts'), 'utf8');
+const constantsSource = readSourceText(path.join(__dirname, '..', 'src', 'constants.ts'));
 const compiled = ts.transpileModule(constantsSource, {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017},
 }).outputText;

@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const model = require("../src/external-widget-model.js");
@@ -216,7 +217,7 @@ test("production feed widgets can be added before endpoint setup", () => {
 test("production registers the ActivityWatch aggregate adapter", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
     assert.match(source, /register\("external-activitywatch-time"/);
     assert.match(source, /loadActivityWatchSummary/);
     assert.match(source, /fetchActivityWatchViaKernel/);
@@ -224,7 +225,7 @@ test("production registers the ActivityWatch aggregate adapter", () => {
 test("ActivityWatch kernel proxy keeps a literal SiYuan endpoint", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     assert.match(source, /fetch\("\/api\/network\/forwardProxy"/);
     assert.match(source, /allowedActivityWatchUrl\(url\)/);
 });
@@ -233,14 +234,14 @@ test("NewsNow catalog points to the maintained source repository", () => assert.
 test("production registers the offline local clock adapter", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
     assert.match(source, /register\("external-local-time"/);
     assert.match(source, /buildLocalTimeSnapshot/);
 });
 test("production clock refreshes on a single minute heartbeat", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     // 本地时钟、世界时钟与每日引言共用同一条分钟边界心跳：clockModuleIds 覆盖三者。
     assert.match(source, /clockModuleIds = new Set\(\["external-local-time", "external-world-clock", "external-quote-daily"\]\)/);
     assert.match(source, /clockModuleIds\.has\(entry\.moduleId\)/);
@@ -250,14 +251,14 @@ test("production clock refreshes on a single minute heartbeat", () => {
 test("production registers the offline world clock adapter", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
     assert.match(source, /register\("external-world-clock"/);
     assert.match(source, /buildWorldClockSnapshot/);
 });
 test("production registers the Hacker News adapter with kernel proxy", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
     assert.match(source, /register\("external-news-hackernews"/);
     assert.match(source, /loadHackerNewsFrontPage/);
     assert.match(source, /buildHackerNewsSnapshot/);
@@ -265,14 +266,14 @@ test("production registers the Hacker News adapter with kernel proxy", () => {
 test("production clock heartbeat is disposed with the panel", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     assert.match(source, /window\.clearTimeout\(homeClockTimer\)/);
     assert.match(source, /removeEventListener\("visibilitychange"/);
 });
 test("production registers and caches the Bangumi schedule adapter", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
     assert.match(source, /register\("external-anime-bangumi"/);
     assert.match(source, /loadBangumiCalendar/);
     assert.match(source, /cacheTtlMs: 30 \* 60 \* 1000/);
@@ -280,7 +281,7 @@ test("production registers and caches the Bangumi schedule adapter", () => {
 test("production registers user-endpoint feed adapters without default URLs", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "home-external-adapters.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
     assert.match(source, /registerExternalFeed\("external-hot-news-dailyhot"/);
     assert.match(source, /registerExternalFeed\("external-news-newsnow"/);
     assert.match(source, /normalizeConfiguredFeedUrl/);

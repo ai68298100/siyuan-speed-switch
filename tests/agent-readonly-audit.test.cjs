@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -84,9 +85,9 @@ test('history preserves stable reason only', () => { const h = a.createAgentRead
 test('history summary does not leak item details', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({audit: {valid: true, items: [{handler: 'secret'}]}}); assert.equal('items' in h.latest().snapshot.audit, false); });
 test('duplicate snapshots still receive distinct sequences', () => { const h = a.createAgentReadOnlyAuditHistory(); const a1 = h.record({status: 'ready'}); const a2 = h.record({status: 'ready'}); assert.notEqual(a1.sequence, a2.sequence); });
 test('history status latest sequence survives eviction', () => { const h = a.createAgentReadOnlyAuditHistory(1); h.record({}); h.record({}); assert.equal(h.status().latestSequence, 2); });
-test('production registration records initial audit snapshot', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /agentReadOnlyAuditHistory\.record\(buildAgentReadOnlyAuditSnapshot/); });
-test('production unload records disposed audit snapshot', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /disposed:\s*true/); assert.match(source, /agentReadOnlyAuditHistory\.dispose\(\)/); });
-test('production reload resets disposed audit history', () => { const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.ts'), 'utf8'); assert.match(source, /agentReadOnlyAuditHistory\.status\(\)\.disposed/); assert.match(source, /agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory\(8\)/); });
+test('production registration records initial audit snapshot', () => { const source = readSourceText(path.join(__dirname, '..', 'src', 'index.ts')); assert.match(source, /agentReadOnlyAuditHistory\.record\(buildAgentReadOnlyAuditSnapshot/); });
+test('production unload records disposed audit snapshot', () => { const source = readSourceText(path.join(__dirname, '..', 'src', 'index.ts')); assert.match(source, /disposed:\s*true/); assert.match(source, /agentReadOnlyAuditHistory\.dispose\(\)/); });
+test('production reload resets disposed audit history', () => { const source = readSourceText(path.join(__dirname, '..', 'src', 'index.ts')); assert.match(source, /agentReadOnlyAuditHistory\.status\(\)\.disposed/); assert.match(source, /agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory\(8\)/); });
 
 // v0.17 audit history summary/replay contract (T-1313~T-1342)
 test('history events expose bounded constant', () => assert.equal(a.MAX_HISTORY_EVENTS, 8));

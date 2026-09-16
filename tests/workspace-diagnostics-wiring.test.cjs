@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 /**
  * v0.17 阶段 1（D-220）：workspace 运行时只读诊断能力生产接入契约测试。
  *
@@ -87,7 +88,7 @@ test('workspace diagnostics: handler never leaks host exceptions', () => {
 });
 
 test('workspace diagnostics: production entry wires import, registration and unload disposal', () => {
-    const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8').replace(/\r\n/g, '\n');
+    const source = readSourceText(path.join(root, 'src', 'index.ts')).replace(/\r\n/g, '\n');
     assert.match(source, /import \{createWorkspaceRuntimeDiagnostics\} from "\.\/agent-workspace-diagnostics";/);
     assert.match(source, /this\.workspaceRuntimeDiagnostics = createWorkspaceRuntimeDiagnostics\(\);/);
     assert.match(source, /spec: this\.workspaceRuntimeDiagnostics\.spec as unknown as Record<string, unknown>/);

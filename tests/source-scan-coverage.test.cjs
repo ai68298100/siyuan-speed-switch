@@ -1,0 +1,159 @@
+// 门禁：源码扫描的"剥注释"覆盖率（D-395，第八类失效模式的机制级防线）。
+//
+// 背景：本仓大量契约门禁用"源码里必须出现某段文本"来证明接线。若扫描的是原始
+// 文本，则把调用注释掉、或在注释里写下同样的调用，断言照样通过——门禁变成假绿。
+// 2026-09-16 实测到 3 处此类断言（`tests/home-store-contract.test.cjs` 的
+// availabilityFilter / card.dataset.added / PREVIEW_KINDS），三句文本都只存在于
+// `src/home-store-ui.ts` 的行尾注释里，其中两句还被两个 `void x;` 空转局部变量
+// "培育"着——即门禁读的是注释，而那些注释是为了过门禁而留的。
+//
+// 本门禁不修存量，只把两件必须自动化的事钉住：
+//   1. 登记：仍以原始方式读 src 源码的文件必须在 SOURCE_SCAN_DEBT 里显式列出并
+//      给出理由标签；
+//   2. 冻结：登记清单必须与实测集合**恰好相等**——新增裸读立即失败（逼你改走
+//      `readSourceText` 或显式登记并说明理由），债还清后忘记删条目同样立即失败
+//      （清单不能腐烂）。
+//
+// 判据（刻意保守）：`fs.readFileSync(path.join(..., 'src', ...), 'utf8')` 且最后一个
+// 字面量不是 `.json`。走 `readSourceText(...)` 的读取不会被计入。已知盲区：路径来自
+// 变量（如 `fs.readFileSync(srcPath, ...)`）时无法判定，故本门禁的目标是"防止悄悄
+// 新增裸读"，不是"证明全仓已剥注释"。
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = path.resolve(__dirname, "..");
+const RAW_READ = /fs\.readFileSync\(\s*path\.join\(([^()]*)\)[^)]*\)/g;
+const LITERAL = /["']([^"']*)["']/g;
+
+// 统计"以原始方式读 src 源码"的读取点。
+function rawSourceReads(text) {
+    const hits = [];
+    for (const match of text.matchAll(new RegExp(RAW_READ.source, "g"))) {
+        const args = match[1];
+        if (!/["']src["']/.test(args)) continue;
+        const literals = [...args.matchAll(new RegExp(LITERAL.source, "g"))].map((m) => m[1]);
+        const last = literals[literals.length - 1] || "";
+        if (last.endsWith(".json")) continue;
+        hits.push(match[0]);
+    }
+    return hits;
+}
+
+// 理由词汇表：每个标签都要被用到，且说明不得为空（避免"字段是装饰"）。
+const DEBT_REASONS = {
+    "css-window-scope":
+        "文件里的断言是无界窗口（A[\\s\\S]*?B），弱点是作用域而非注释：剥注释后依然"
+        + "会被同文件他处的 B 满足（实测从目标规则删掉声明后断言仍通过）。修法是 CSS "
+        + "块级作用域断言助手（T-6277），不是剥注释。",
+    "doc-comment-contract":
+        "断言的对象就是注释本身（JSDoc 声明的不变量 / 声明行尾的 key 说明），必须读原始文本。",
+    "json-data":
+        "读的是 src/i18n/*.json：JSON 无注释语义，剥注释无收益。",
+    "smoke-harness":
+        "smoke 脚手架自带归一函数（tests/mobile-card-smoke.cjs 的 readSource），迁移需连同 "
+        + "`pnpm test:smoke` 一起复跑（T-6278）。",
+};
+
+const SOURCE_SCAN_DEBT = [
+    {file: "tests/external-widget-availability-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/kernel-endpoint-guard.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-a11y-navigation.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-actions-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-box-sizing-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-card-navigation.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-filter-state-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-focus-navigation-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-focus-recovery-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-font-metrics.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-font-weight-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-forced-colors.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-group-semantics-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-hyphenation-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-line-height-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-mobile-external-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-mobile-layout-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-motion-accessibility.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-numeric-typography.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-pending-card-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-performance-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-preview-context-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-preview-disclosure-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-print-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-render-stability.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-render-state-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-rerender-focus-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-scroll-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-search-interaction.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-selection-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-stacking-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-text-wrap-pretty.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-typography-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-ui-polish.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-width-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-will-change-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/store-word-break-contract.test.cjs", reason: "css-window-scope"},
+    {file: "tests/sync-panel-stability.test.cjs", reason: "css-window-scope"},
+    {file: "tests/doc-search-pagination-contract.test.cjs", reason: "doc-comment-contract"},
+    {file: "tests/storage-key-audit.test.cjs", reason: "doc-comment-contract"},
+    {file: "tests/storage-migration.test.cjs", reason: "doc-comment-contract"},
+    {file: "tests/shipped-i18n-parity.test.cjs", reason: "json-data"},
+    {file: "tests/mobile-card-smoke.cjs", reason: "smoke-harness"},
+];
+
+function discoverRawReaderFiles() {
+    // 排除两个文件：助手本体（它只是读写函数），以及本门禁自身——它的自测夹具里
+    // 就写着 `fs.readFileSync(path.join(r, 'src', 'a.ts'), 'utf8')` 这句模式串，
+    // 不排除就会把自己判成裸读（⑥ 自指）。
+    const SELF = new Set(["source-scan.cjs", "source-scan-coverage.test.cjs"]);
+    const found = [];
+    for (const dir of ["tests", "tests/host"]) {
+        for (const name of fs.readdirSync(path.join(root, dir))) {
+            if (!name.endsWith(".cjs") || SELF.has(name)) continue;
+            const rel = dir + "/" + name;
+            const text = fs.readFileSync(path.join(root, dir, name), "utf8");
+            if (rawSourceReads(text).length > 0) found.push(rel);
+        }
+    }
+    return found.sort();
+}
+
+test("undetected-vs-registered: the debt list is exactly the measured set", () => {
+    const found = discoverRawReaderFiles();
+    // 非空自检：审计面塌缩（例如判据写坏、目录改名）时必须先失败，
+    // 否则下面两个集合都是空的、断言恒真。
+    assert.ok(found.length >= 35, `audit surface collapsed: only ${found.length} files matched`);
+    const expected = SOURCE_SCAN_DEBT.map((entry) => entry.file).sort();
+    const unexpected = found.filter((file) => !expected.includes(file));
+    const stale = expected.filter((file) => !found.includes(file));
+    assert.deepEqual(
+        {unexpected, stale},
+        {unexpected: [], stale: []},
+        "新增裸读要改走 readSourceText 或显式登记；迁移完成后要删掉对应债条目",
+    );
+});
+
+test("every debt entry carries a used, non-empty reason from the fixed vocabulary", () => {
+    assert.ok(SOURCE_SCAN_DEBT.length >= 35, "debt list shrank unexpectedly without reason tags being pruned");
+    const seen = new Set();
+    for (const entry of SOURCE_SCAN_DEBT) {
+        assert.ok(DEBT_REASONS[entry.reason], `unknown reason tag: ${entry.reason}`);
+        assert.ok(!seen.has(entry.file), `duplicate debt entry: ${entry.file}`);
+        seen.add(entry.file);
+        assert.ok(fs.existsSync(path.join(root, entry.file)), `debt entry points at a missing file: ${entry.file}`);
+    }
+    // 反向断言：词汇表里不留死标签（登记了就得用，用完就得删）
+    for (const [tag, description] of Object.entries(DEBT_REASONS)) {
+        assert.ok(SOURCE_SCAN_DEBT.some((entry) => entry.reason === tag), `unused reason tag: ${tag}`);
+        assert.ok(description.length >= 20, `reason tag ${tag} needs a real explanation`);
+    }
+});
+
+test("the detector itself is not vacuous", () => {
+    assert.equal(rawSourceReads("fs.readFileSync(path.join(r, 'src', 'a.ts'), 'utf8')").length, 1);
+    assert.equal(rawSourceReads("readSourceText(path.join(r, 'src', 'a.ts'))").length, 0);
+    assert.equal(rawSourceReads("fs.readFileSync(path.join(r, 'src', 'i18n', 'zh-CN.json'), 'utf8')").length, 0);
+    assert.equal(rawSourceReads("fs.readFileSync(path.join(r, 'docs', 'x.md'), 'utf8')").length, 0);
+});

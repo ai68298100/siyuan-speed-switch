@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const Ajv = require("ajv");
@@ -229,7 +230,7 @@ test("agent widget snapshot preserves bounded stats, item state, and cache metad
 test("agent widget refresh explicitly bypasses the short runtime cache", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     assert.match(source, /cacheTtlMs: 1500, force: args\?\.refresh === true/);
     assert.match(source, /offset: args\?\.offset, config/);
     assert.doesNotMatch(source, /return \{error: "unknown module"\}/);
@@ -523,7 +524,7 @@ test("workspace-context spec and builder keep bounded read-only snapshot", () =>
 test("every agent capability spec is registered in the plugin entry", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const missing = Object.keys(AGENT_CAPABILITY_SPECS)
         .filter((key) => !source.includes(`AGENT_CAPABILITY_SPECS.${key}`));
     assert.deepEqual(missing, [], "unregistered capability specs: " + missing.join(", "));

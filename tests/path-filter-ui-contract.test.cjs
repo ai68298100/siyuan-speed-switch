@@ -1,13 +1,14 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
 // R5a 重构（D-381）：搜索链路状态宿主收拢至 doc-search-state.ts。
-const searchState = fs.readFileSync(path.join(__dirname, "..", "src", "doc-search-state.ts"), "utf8");
+const searchState = readSourceText(path.join(__dirname, "..", "src", "doc-search-state.ts"));
 // R5b 重构（D-383）：搜索方法群（含路径筛选菜单/取数）外迁至 doc-search-ui.ts。
-const docSearchUi = fs.readFileSync(path.join(__dirname, "..", "src", "doc-search-ui.ts"), "utf8");
+const docSearchUi = readSourceText(path.join(__dirname, "..", "src", "doc-search-ui.ts"));
 
 // 2026-09-16：宿主端点获批，本门禁从"禁止接入生产"转为"约束接入方式"。
 // 放宽依据 = docs/path-filter-host-evidence.md（D-365）：在真实宿主

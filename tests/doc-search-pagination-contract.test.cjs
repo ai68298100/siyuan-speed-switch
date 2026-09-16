@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 // T-6257（D-384）文档搜索分页契约：面板内「加载更多」增量展开 + 尽头回落原生出口。
 // 渲染切片决策在 search-model.planDocResultsPage（单元测试见 search-model.test.cjs），
 // 本文件锁定 DOM 层接线形态与取数上限，防止分页语义在后续重构中漂移。
@@ -7,10 +8,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const docSearchUi = fs.readFileSync(path.join(root, "src", "doc-search-ui.ts"), "utf8");
-const searchModel = fs.readFileSync(path.join(root, "src", "search-model.js"), "utf8");
-const constants = fs.readFileSync(path.join(root, "src", "constants.ts"), "utf8");
-const index = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const docSearchUi = readSourceText(path.join(root, "src", "doc-search-ui.ts"));
+const searchModel = readSourceText(path.join(root, "src", "search-model.js"));
+// 下面 "pagination cursors never enter search cache keys" 刻意断言 JSDoc 里声明的不
+// 变量（"The expansion * cursor never enters search cache keys"）——那是一条文档契约，
+// 注释就是被断言的客体，因此该条断言必须读**原始文本**，不能被剥注释（D-395）。
+const searchModelRaw = fs.readFileSync(path.join(root, "src", "search-model.js"), "utf8");
+const constants = readSourceText(path.join(root, "src", "constants.ts"));
+const index = readSourceText(path.join(root, "src", "index.ts"));
 const zh = JSON.parse(fs.readFileSync(path.join(root, "src", "i18n", "zh-CN.json"), "utf8"));
 const en = JSON.parse(fs.readFileSync(path.join(root, "src", "i18n", "en.json"), "utf8"));
 
@@ -55,7 +60,7 @@ test("UI fetch requests the audited fetch limit", () => {
 });
 
 test("pagination cursors never enter search cache keys", () => {
-    assert.match(searchModel, /The expansion\s*\* cursor never enters search cache keys/,
+    assert.match(searchModelRaw, /The expansion\s*\* cursor never enters search cache keys/,
         "纯模型必须声明游标不进缓存 key");
     assert.doesNotMatch(searchModel, /planDocResultsPage[\s\S]{0,800}buildSearchCacheKey/,
         "分页规划不得读写缓存 key");

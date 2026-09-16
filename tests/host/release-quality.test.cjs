@@ -1,3 +1,4 @@
+const {readSourceText} = require("../source-scan.cjs");
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -181,7 +182,7 @@ test('production bundle remains within the mobile performance budget when built'
 });
 
 test('home panel defers tail reads and cancels idle work on destroy', () => {
-    const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
     assert.match(source, /IntersectionObserver/);
     assert.match(source, /requestIdleCallback/);
     assert.match(source, /cancelIdleCallback/);
@@ -189,7 +190,7 @@ test('home panel defers tail reads and cancels idle work on destroy', () => {
 });
 
 test('home card palette stays on the fixed preset allowlist', () => {
-    const source = fs.readFileSync(path.join(root, 'src', 'settings-model.js'), 'utf8');
+    const source = readSourceText(path.join(root, 'src', 'settings-model.js'));
     assert.match(source, /homePalette === "auto"/);
     assert.match(source, /homePalette === "soft"/);
     assert.match(source, /homePalette === "mono"/);
@@ -210,7 +211,7 @@ test('production sources contain no debug output or machine-local paths', () => 
         .filter((name) => /\.(?:ts|js)$/.test(name));
     const violations = [];
     for (const name of sourceFiles) {
-        const source = fs.readFileSync(path.join(root, 'src', name), 'utf8');
+        const source = readSourceText(path.join(root, 'src', name));
         if (/console\.log\s*\(|\bdebugger\b|\bwindow\.alert\s*\(/.test(source)) {
             violations.push(name);
         }
@@ -257,7 +258,7 @@ test('production sources hoist Intl.Segmenter instead of building one per call',
     let total = 0, holder = null;
     for (const name of fs.readdirSync(path.join(root, 'src'))) {
         if (!/\.(?:ts|js)$/.test(name)) continue;
-        const source = fs.readFileSync(path.join(root, 'src', name), 'utf8');
+        const source = readSourceText(path.join(root, 'src', name));
         const built = source.match(/new\s+Intl\.Segmenter\s*\(/g) || [];
         if (built.length > 1) offenders.push(`${name}:${built.length}`);
         if (built.length === 1) { total += 1; holder = name; }

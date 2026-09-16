@@ -1,14 +1,15 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
+const source = readSourceText(path.join(root, 'src', 'index.ts'));
+const storeUiSource = readSourceText(path.join(root, 'src', 'home-store-ui.ts'));
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
-const configFormSource = fs.readFileSync(path.join(root, 'src', 'home-config-form.ts'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+const configFormSource = readSourceText(path.join(root, 'src', 'home-config-form.ts'));
+const css = readSourceText(path.join(root, 'src', 'index.scss'));
 
 test('preview captures its opener', () => assert.match(storeUiSource, /const opener = document\.activeElement instanceof HTMLElement/));
 test('preview exposes module id', () => assert.match(storeUiSource, /container\.dataset\.moduleId = moduleId/));

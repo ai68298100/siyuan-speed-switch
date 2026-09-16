@@ -1,3 +1,4 @@
+const {readSourceText} = require("./source-scan.cjs");
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const home = require('../src/home-model.js');
@@ -78,7 +79,7 @@ test("year progress percentage stays within bounds for leap and non-leap years",
 test("current document outline adapter reuses bounded outline data", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     assert.match(source, /register\("current-document-outline"/);
     assert.match(source, /fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: false\}\)/);
     assert.match(source, /flattenOutline\(Array\.isArray\(json\?\.data\) \? json\.data : \[\], limit\)/);
@@ -87,7 +88,7 @@ test("current document outline adapter reuses bounded outline data", () => {
 test("writing activity and daily-note adapters validate optional notebook SQL scope", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const writing = source.slice(
         source.indexOf('register("recent-writing-activity"'),
         source.indexOf('register("recent-daily-notes"'),
@@ -106,7 +107,7 @@ test("writing activity and daily-note adapters validate optional notebook SQL sc
 test("date-based widget labels format YYYYMMDD values for users", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const writing = source.slice(
         source.indexOf('register("recent-writing-activity"'),
         source.indexOf('register("recent-daily-notes"'),
@@ -124,7 +125,7 @@ test("date-based widget labels format YYYYMMDD values for users", () => {
 test("journal calendar supports notebook scope and bidirectional month navigation", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const calendar = source.slice(
         source.indexOf('register("journal-calendar"'),
         source.indexOf('register("recent-writing-activity"'),
@@ -142,7 +143,7 @@ test("journal calendar supports notebook scope and bidirectional month navigatio
 test("today tasks default to today's journal and expose an explicit empty hint", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const tasks = source.slice(
         source.indexOf('register("today-tasks"'),
         source.indexOf('register("tags"'),
@@ -158,7 +159,7 @@ test("today tasks default to today's journal and expose an explicit empty hint",
 test("today tasks accepts common checkbox markdown variants", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const tasks = source.slice(source.indexOf('register("today-tasks"'), source.indexOf('register("tags"'));
     assert.match(tasks, /markdown LIKE '%\[ \]%'/);
     assert.ok(tasks.includes('const taskPattern = /\\[[ xX]\\](?:\\s|$)/;'));
@@ -167,7 +168,7 @@ test("today tasks accepts common checkbox markdown variants", () => {
 test("calendar rendering declares a seven-column grid", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.scss"));
     const calendar = source.slice(source.indexOf(".sw__home-calendar {"), source.indexOf(".sw__home-calendar-head {"));
     assert.match(calendar, /display: grid/);
     assert.match(calendar, /repeat\(7, minmax\(0, 1fr\)\)/);
@@ -176,7 +177,7 @@ test("calendar rendering declares a seven-column grid", () => {
 test("insight adapters share validated notebook scope without changing default queries", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const slice = (start, end) => source.slice(source.indexOf(`register("${start}"`), source.indexOf(`register("${end}"`));
     const adapters = [
         slice("note-stats", "year-progress"),
@@ -194,7 +195,7 @@ test("insight adapters share validated notebook scope without changing default q
 test("journal and dated-content adapters use bounded notebook-aware actions", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const slice = (start, end) => source.slice(source.indexOf(`register("${start}"`), source.indexOf(`register("${end}"`));
     const monthly = slice("journal-monthly", "note-stats");
     const clipped = slice("clipped-unread", "on-this-day");
@@ -212,7 +213,7 @@ test("journal and dated-content adapters use bounded notebook-aware actions", ()
 test("plugin command adapter provides an explicit empty-state hint", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     const commands = source.slice(source.indexOf('register("plugin-commands"'), source.indexOf("private getHomeState"));
     assert.match(commands, /emptyHint: commands\.length > 0 \? \"\" : this\.i18n\.homePluginCommandsEmpty/);
 });

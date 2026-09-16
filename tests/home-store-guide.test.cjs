@@ -1,10 +1,11 @@
+const {readSourceText} = require("./source-scan.cjs");
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const storeUiSource = fs.readFileSync(path.join(root, 'src', 'home-store-ui.ts'), 'utf8');
+const storeUiSource = readSourceText(path.join(root, 'src', 'home-store-ui.ts'));
 
 test('component store guide is the single documented source for connectivity prerequisites', () => {
     const guide = fs.readFileSync(path.join(root, 'docs', 'component-store-guide.md'), 'utf8');
@@ -14,7 +15,7 @@ test('component store guide is the single documented source for connectivity pre
 });
 
 test('store implementation exposes a guide entry point and jumpable guide dialog', () => {
-    const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
     assert.match(source, /homeStoreGuide/);
     assert.match(storeUiSource, /openHomeWidgetGuide/);
     assert.match(storeUiSource,/sw-home-store__guide/);
@@ -41,10 +42,10 @@ test('brand widget audit keeps at least ten scoped candidates without claiming f
 });
 
 test('mobile component panel is explicitly single-column', () => {
-    const source = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+    const source = readSourceText(path.join(root, 'src', 'index.ts'));
     // R4 重构（D-376）：设置页“主页”分节的构建在 settings-sections.ts。
-    const sections = fs.readFileSync(path.join(root, 'src', 'settings-sections.ts'), 'utf8');
-    const styles = fs.readFileSync(path.join(root, 'src', 'index.scss'), 'utf8');
+    const sections = readSourceText(path.join(root, 'src', 'settings-sections.ts'));
+    const styles = readSourceText(path.join(root, 'src', 'index.scss'));
     assert.match(source, /this\.isMobile \? resolveMobileHomeSize\(supported\)/);
     assert.match(source, /this\.isMobile \? "1 \/ -1"/);
     assert.match(storeUiSource,/device === "mobile" \? \[resolveMobileHomeSize\(declaredSizes\)\]/);
