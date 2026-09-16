@@ -5,6 +5,7 @@ import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
+import {runStorageMigration, KEY_ORDER} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {
@@ -637,6 +638,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     private workspaceRuntimeDiagnostics: ReturnType<typeof createWorkspaceRuntimeDiagnostics> | null = null;
     // v0.17：保留有界的 Agent 只读注册生命周期快照，仅供插件内部诊断使用。
     private agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory(8);
+    // 存储迁移演练快照（v0.20 数据连续性，D-386）：onload 只读恢复报告，仅内存、不落盘。
+    private storageMigrationReport: ReturnType<typeof runStorageMigration>["report"] | null = null;
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
     private switcherRefreshers = new Set<() => void>();
@@ -913,6 +916,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         ]).catch((e) => logger.warn("load data fail", e));
         // 加载期 sanitize：清理历史脏数据（0.16.5），仅在确实变化时回写，避免每次启动重写文件
         this.sanitizePersistentData();
+        // 存储迁移演练快照（v0.20 数据连续性，D-386）：在宿主静默修复链之后运行
+        // 同源演练管道，生成只读恢复报告存实例内存——不落盘、不重写数据。
+        // 报告出现 cleaned/reset 即暴露宿主清洗缺口，是演练同源性的运行时验证。
+        this.captureStorageMigrationSnapshot();
         this.runQuickActionDefaultsMigration();
         // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
         this.initFavCollapsed();
@@ -954,6 +961,25 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (documentSets.changed || this.data[DOCUMENT_SETS_KEY]?.schemaVersion !== documentSets.schemaVersion) {
             this.data[DOCUMENT_SETS_KEY] = documentSets;
             this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        }
+    }
+
+    // 存储迁移演练快照（D-386 第二步·保守桥接）：宿主静默修复链已执行完毕，
+    // 此处用同源演练管道对 this.data 再做一次只读演练。理想情况下全部 kept；
+    // 出现 cleaned/reset 即宿主清洗与演练管道存在缺口，报告即为发现机制。
+    // 报告仅存实例内存（有界、无原始数据回显），不落盘、不重写 this.data。
+    private captureStorageMigrationSnapshot() {
+        const payloads: Record<string, unknown> = {};
+        for (const key of KEY_ORDER) {
+            payloads[key] = this.data[key];
+        }
+        const result = runStorageMigration(payloads);
+        this.storageMigrationReport = result.report;
+        const anomalies = result.report.keys.filter((entry) => entry.status === "cleaned" || entry.status === "reset" || entry.status === "migrated");
+        if (anomalies.length > 0) {
+            logger.warn("storage migration drill found gaps after host sanitize", {
+                keys: anomalies.map((entry) => `${entry.key}:${entry.status}`).join(","),
+            });
         }
     }
 

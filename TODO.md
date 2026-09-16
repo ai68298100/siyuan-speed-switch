@@ -1,9 +1,13 @@
 # TODO
 
 
+## T-6260 v0.20 数据连续性第二批：onload 演练快照接线（2026-09-16，已完成）
+
+- [x] T-6260 D-386 第二步·保守桥接：initPersistentData 在 sanitizePersistentData 之后调用 captureStorageMigrationSnapshot——用同源演练管道对 this.data 只读演练，报告存实例内存（不落盘、不重写数据）；出现 cleaned/reset/migrated 时 logger.warn 暴露宿主清洗缺口（运行时同源验证）；生产闭包 41→42（storage-migration 入图，只读、无写入动作；index.js 607365 / zip 310902 已复核 D-353 门禁）；源码契约锁定（onload 必须调用 + 快照方法体禁回写 + 报告仅内存），负向验证（方法体注入 saveDataDebounced）精确失败；测试 5717 项
+
 ## T-6259 v0.20 数据连续性第一批：存储版本迁移演练与恢复报告（2026-09-16，已完成）
 
-- [x] T-6259 存储迁移演练纯模型（D-386）：新建 src/storage-migration.js——runStorageMigration 以 loadData 全量 payload 为输入输出迁移数据 + 有界恢复报告（每 key 一条固定记录、note ≤80 字符、无时间戳无原始回显）；per-key 处理器全部委托既有 sanitize 家族（capMru/sanitizeStringList/sanitizeFavorites/sanitizeOpenHistory/normalizeClosedEntries/sanitizeQuickActions/migrateQuickActionDefaults/normalizeDocumentSets）确保演练与宿主 sanitizePersistentData 同源；对象类 key（settings/home_state/thumb_cache）本批仅形状分类（inspect），深度迁移随接线批次注册；**演练优先两步走**——本批不接 onload、不进生产闭包（dist/index.js 601607 不变），宿主接线单独批次执行。新增 tests/storage-migration.test.cjs 13 项：演练纯度、健康直通、脏数据清洗与 kept/removed 记账、上限覆盖、垃圾重置、defaults 版本标记语义、文档集旧形态/schemaVersion 迁移、inspect 泄漏防护、双契约（宿主委托清单 + constants 上限一致性）——双契约负向验证均精确失败后字节级还原；README 双语计数同步（5716 项/161 文件）；全量 5716/5716、tsc 0 错误、构建通过
+- [x] T-6259 存储迁移演练纯模型（D-386）：新建 src/storage-migration.js——runStorageMigration 以 loadData 全量 payload 为输入输出迁移数据 + 有界恢复报告（每 key 一条固定记录、note ≤80 字符、无时间戳无原始回显）；per-key 处理器全部委托既有 sanitize 家族（capMru/sanitizeStringList/sanitizeFavorites/sanitizeOpenHistory/normalizeClosedEntries/sanitizeQuickActions/migrateQuickActionDefaults/normalizeDocumentSets）确保演练与宿主 sanitizePersistentData 同源；对象类 key（settings/home_state/thumb_cache）本批仅形状分类（inspect），深度迁移随接线批次注册；**演练优先两步走**——本批不接 onload、不进生产闭包（dist/index.js 601607 不变），宿主接线于 T-6260 单独批次执行。新增 tests/storage-migration.test.cjs 13 项：演练纯度、健康直通、脏数据清洗与 kept/removed 记账、上限覆盖、垃圾重置、defaults 版本标记语义、文档集旧形态/schemaVersion 迁移、inspect 泄漏防护、双契约（宿主委托清单 + constants 上限一致性）——双契约负向验证均精确失败后字节级还原；README 双语计数同步（5716 项/161 文件）；全量 5716/5716、tsc 0 错误、构建通过
 
 
 ## T-6258 乱码修复批次：PUA 损坏注释全量恢复（2026-09-16，已完成）

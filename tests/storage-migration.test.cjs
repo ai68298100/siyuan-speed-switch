@@ -191,6 +191,28 @@ test('defaults mirror constants.ts and host wiring stays homogenous (contract)',
     }
 });
 
+test('host wiring keeps the drill read-only: snapshot captured after sanitize, never persisted (contract)', () => {
+    const index = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8');
+    // onload 必须在静默修复链之后运行演练快照（同源性的运行时验证）
+    const initStart = index.indexOf('private async initPersistentData');
+    const sanitizeStart = index.indexOf('private sanitizePersistentData');
+    assert.ok(initStart > 0 && sanitizeStart > initStart, 'initPersistentData precedes sanitizePersistentData');
+    const initSection = index.slice(initStart, sanitizeStart);
+    const sanitizeCall = initSection.indexOf('this.sanitizePersistentData()');
+    const drillCall = initSection.indexOf('this.captureStorageMigrationSnapshot()');
+    assert.ok(drillCall > -1, 'initPersistentData must call the storage migration snapshot');
+    assert.ok(sanitizeCall > -1 && drillCall > sanitizeCall,
+        'the drill must run after the host sanitize chain at runtime');
+    // 快照方法体必须只读：报告存实例内存，禁止任何回写
+    const methodStart = index.indexOf('private captureStorageMigrationSnapshot');
+    assert.ok(methodStart > 0, 'captureStorageMigrationSnapshot must exist');
+    const methodEnd = index.indexOf('\n    }', methodStart);
+    const methodBody = index.slice(methodStart, methodEnd);
+    assert.doesNotMatch(methodBody, /saveDataDebounced|saveData\(/, 'the snapshot must never persist anything');
+    assert.match(methodBody, /this\.storageMigrationReport = /, 'the report is held in instance memory');
+    assert.match(methodBody, /runStorageMigration\(payloads\)/, 'the snapshot must run the shared drill');
+});
+
 test('describeShape classifies payload kinds without throwing on exotic values', () => {
     assert.equal(describeShape(undefined), 'missing');
     assert.equal(describeShape(null), 'missing');

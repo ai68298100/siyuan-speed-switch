@@ -52,6 +52,10 @@ const WIRED_SANITY_MODULES = [
     // 并归一化响应，不含任何写入动作。
     'path-filter-model',
     'search-model',
+    // T-6260（D-386 第二步）：storage-migration 随 onload 演练快照进入生产。
+    // 只读演练：报告仅存实例内存、无任何写入动作；闭包 41→42 已复核
+    // 512 KiB 包体门禁（D-353，index.js 607365 / zip 310902）。
+    'storage-migration',
 ];
 
 function resolveModule(fromFile, spec) {
@@ -110,8 +114,8 @@ test('production graph traversal reaches every wired runtime module', () => {
 
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
-    // 2026-09-16 R5a 重构（D-381）：搜索状态收拢至 doc-search-state（仅新增自身）。
-    // 当前闭包为 40；继续增长须复核 512 KiB 包体门禁（D-353）。
+    // 2026-09-16 T-6260（D-386 第二步）：storage-migration 演练快照入图，闭包 41→42。
+    // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 41, `production graph grew to ${graph.size} modules; audited ceiling is 41`);
+    assert.ok(graph.size <= 42, `production graph grew to ${graph.size} modules; audited ceiling is 42`);
 });
