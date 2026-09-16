@@ -2291,6 +2291,7 @@
 ## P3（持续开发）
 
 - [ ] T-366 内置组件逐项真实宿主验收（组件面板专项）
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：为 29 个内置组件记录首读、刷新、空态、点击、配置和失败重试证据；优先验证今日日记任务、月历与联网天气。
   - 状态：进行中；静态链路与自动测试已补，真实思源会话待执行
 
@@ -2311,6 +2312,7 @@
   - 证据：`tests/component-availability-audit.test.cjs`；当前 667/667 测试通过
   - 状态：done（2026-09-13）
 - [ ] T-266 组件真实宿主验收矩阵
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 范围：在合法已认证桌面会话逐项验证首读、刷新、配置、点击、空态和错误重试；优先 SQL/API/插件协议组件
   - 依赖：B-005；Android 仍按 D-042 后置
   - 优先级：P1
@@ -2388,6 +2390,7 @@
 ## 下一阶段路线（与 ROADMAP 8.0.2 对齐）
 
 - [ ] T-1216 v0.16.42 商店真实宿主验收
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：验证折叠分组、语义预览、尺寸/配置/移除和窄屏触控；记录长文案与真实空态证据
   - 状态：queued（等待合法已认证桌面会话）
 - [x] T-1217 v0.16.42 空查询性能长尾拆分
@@ -2395,15 +2398,19 @@
   - 实现：`search-model.js` 使用 WeakMap 缓存活跃页签的规范化展示元数据，关键字段变化自动失效；空查询 300 页签基准由约 48ms p95 降至约 0.6ms，关键词路径保持一致
   - 状态：done（2026-09-14）
 - [ ] T-1218 v0.17 只读 Agent 宿主证据收口
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：补 `document-context`/diagnostics 的权限拒绝、取消、卸载和旧宿主行为证据，不新增写动作
   - 状态：queued（契约已完成，真实宿主待验收）
 - [ ] T-1219 v0.18 最小受控 Agent 执行闭环
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：仅在真实确认弹窗通过后接入 open/open-batch，验证审批摘要、一次性令牌、超时和回执
   - 状态：queued（依赖 T-1218 与 open-documents 真机点击）
 - [ ] T-1220 v0.18 桌面路径筛选生产入口
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：将已完成的路径模型接入桌面筛选 chip，具备取消、API 缺失回退和缓存隔离；侧栏后置
   - 状态：queued（依赖 T-107 真实端点证据）
 - [ ] T-1221 v0.19 第三方组件端到端样例
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：以一个真实插件完成注册、配置、跨表面布局、失效/恢复和商店展示全链路
   - 状态：queued
 - [x] T-1222 v0.20 数据连续性与性能硬门禁评估
@@ -4726,6 +4733,7 @@
   - 实现：error/empty 统一 54px 最小高度与两行截断；支持 `prefers-reduced-data` 时停用骨架动画，保留 reduced-motion 兼容
   - 状态：done（2026-09-13）
 - [ ] T-080 首页状态文案布局回归
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：仅针对真实宿主反馈的长文案或窄屏溢出补充快照/视觉回归，确保状态区不遮挡重试和折叠控件
   - 状态：queued（等待真实溢出证据，不提前扩大 CSS 规则）
 - [x] T-081 首页手动刷新非阻塞反馈
@@ -4777,6 +4785,7 @@
   - 实现：smoke 固化 error/empty 状态共用 54px 最小高度、两行截断和状态区选择器契约；不新增生产代码
   - 状态：done（2026-09-13）
 - [ ] T-093 首页刷新摘要真实窄屏验收
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：在桌面大版本节点或获得真实长文案反馈后，补充窄面板视觉截图验收
   - 状态：queued（按 D-042 后置，不以浏览器模拟替代宿主证据）
 - [x] T-094 发布包体失败诊断
@@ -4816,6 +4825,7 @@
   - 实现：上游源码确认 `/api/filetree/listDocsByPath`；新增纯模型严格验证 notebook/path/file id，最多返回 100 项并区分 invalid/failed/mismatch
   - 状态：done（2026-09-13）
 - [ ] T-103 路径筛选桌面原型
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：在桌面筛选弹层提供单笔记本路径前缀选择、chip 移除、请求取消和 API 缺失降级
   - 状态：queued（模型与端点契约已就位。**预算前置已于 2026-09-15 解除**（D-353 上限上调至 512/768 KiB，D-355 实测全量接入仅增 59.7 KiB）；但实现另受**宿主证据门禁**约束：`tests/path-filter-ui-contract.test.cjs` 要求 `listDocsByPath` 在宿主端点获批前不得进入生产，T-107 明确以桌面大版本验收为判定前提，其前置为 B-005。实现方案已完成并实测通过（tsc 0 错误、i18n 11/11、生产图 32 模块 3/3），因门禁约束回滚，存档于 `docs/path-filter-desktop-plan.md`，待 T-107 通过后直接应用。见 D-357）
 - [x] T-104 下一轮生产包体瘦身
@@ -4831,6 +4841,7 @@
   - 实现：纯模型新增 `normalizePathFilterProbeOutcome`，显式区分 ready/unavailable/timeout/cancelled/failed/mismatch/invalid；不读取异常文本且未接入生产入口
   - 状态：done（2026-09-13）
 - [ ] T-107 路径筛选真实宿主能力证据
+  - 验收执行：见 `docs/acceptance-runbook.md` 对应分组
   - 目标：在下一次桌面大版本验收中记录端点可用性、响应结构和最窄侧栏宽度，再决定是否拆分 T-103a/T-105a 生产入口
   - 状态：**进行中（2026-09-16 完成 2/3）**。已在真实宿主（内核 3.8.4-beta.2，本机已认证会话）取得**端点可用性**（`/api/filetree/listDocsByPath` 200/22ms/code 0）与**响应结构**（`box`/`path` 回显一致、`files[]` 含 `id`/`name`/`path`/`subFileCount`，与 `path-filter-model.js` 假设逐项吻合），并额外汇总边界行为（不存在路径→空列表而非错误、`maxListCount` 被遵守、缺参/不存在 notebook→`code:-1`）；详见 `docs/path-filter-host-evidence.md`（脱敏，只读采集）。**仅剩"最窄可用侧栏宽度"未取**（属 UI 度量），故本项保持未完成。待该项完成后即可依据本证据放宽 `tests/path-filter-ui-contract.test.cjs` 并拆分 T-103a/T-105a 生产入口。
 - [x] T-108 路径筛选大列表性能边界

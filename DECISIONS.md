@@ -529,3 +529,5 @@
 
 2026-09-17 分支收拢（ROADMAP 执行顺序 #2 完成）：**逐支差异审查结论**——10 个本地分支全部关闭。① 3 个已完全合并（codex/home-ui-final、codex/quick-ui-final、feature/search-foundation，ahead=0）用安全删除；② 7 个 feature 分支各领先 1 个提交（2026-09-07，pre-v0.17），经 token 级差异审计确认**全部被 main 超越**：icon-fallback 的兜底逻辑在 main 已实现为更完整的 `resolveIconReference`（util.js，16 处测试引用）；search-opened-content 的 `buildOpenedDocumentScope`/`buildOpenedDocumentSearchRequest` 与 7 处测试已在 main；open-history 29/30 token 在 main；mobile-stability/quick-action-platform 3/3 与 2/2 完全在 main；search-global 与 mobile-sort-audit 的残留差异仅为局部变量名与 smoke 变量名。**执行**：7 个 worktree（全部干净，无未提交工作）连同分支一并移除；feature/quick-actions（ahead=0）安全删除。**保留**：codex/home-ui-final 与 codex/quick-ui-final 两分支被 codex 工具的 worktree 占用且工作区各有 6 个未提交文件——非本会话产物，留给维护者处置；origin 上的 7 个远端分支未动，远端清理属 push 权限范围。
 
+2026-09-17 D-396 补充（验收 Runbook）：**分散验收任务的集中化**是 ROADMAP 执行顺序 #4 的落地——11 个验收任务散落在 TODO 各处且互相依赖（T-107 解锁 T-103/T-1220，T-1218 解锁 T-1219），维护者逐条翻找的成本高。Runbook 按"一次认证能覆盖哪些项"重组为会话分组，并把本会话两个产品修复的验证点显式写入手机会话分组。**证据边界不变**：沿用 desktop-acceptance-template 的令牌/正文禁令。
+
