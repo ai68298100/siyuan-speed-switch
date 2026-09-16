@@ -8152,3 +8152,11 @@
   - 门禁级联修复：catalog 硬编码计数 16→17 共 17 处、home-model 41→42 与 39→40、依赖目录 12→13（optional 4→5）、production graph 天花板 42→43、生活分组源码契约正则
   - 负向验证（天然级联实证）：接线中途 10 项门禁精确失败并逐一指向漂移点（adapter 计数 41≠40、availability 分区、依赖清单缺 ical、i18n 死 key ×4、生产图 43>42、生活分组契约正则）——各门禁判别力以真实漂移验证，非一次性注入
   - 状态：done（2026-09-17）；真机联网渲染待 acceptance-runbook 验收
+- [x] T-6287 codex worktree 残留实验审计与收口（2026-09-17 第三十一批）
+  - 目标：分支收拢时保留的 a4d8/caf4 两个 worktree 含未提交实验（当时判"不可丢弃"），本轮逐项验证后收口
+  - 审计结论（a4d8，2026-09-09 的两处未提交修改）：
+    - `src/index.ts`（42 行）："多动作 provider 只自动注册首个默认快捷入口"（hasProviderDefault）——**已被 main 架构演进取代**：现行 `registerQuickAction` 改为注册表 + `actionValue=adapterId/value` + 只更新不自动新增条目的语义，实验针对的自动注册泛滥问题已不存在，应用反而会回归新设计
+    - `src/index.scss`（166 行）：history 下拉样式重写（.sw__history-trigger 28px 触发器等）——**main 已有更完整实现**（index.scss 2267~2299 含 3220/3461/4544 三处响应式变体，DOM 已用 trigger 结构）
+  - 审计结论（caf4）：仅 6 张未跟踪截图，与 main 已提交版本逐字节相同（md5 全 yes）
+  - 处置：a4d8 完整 diff 留档 `.workbuddy/memory/a4d8-experiment-2026-09-09.patch`（237 行）后移除两个 worktree；`git worktree list` 只剩 main，本地分支只剩 main；origin 远端 7 条 feature 分支未动（push 权限范围）
+  - 状态：done（2026-09-17）；分支/worktree 收口全部完成

@@ -1,0 +1,237 @@
+diff --git a/src/index.scss b/src/index.scss
+index 78e56c0..70f77e8 100644
+--- a/src/index.scss
++++ b/src/index.scss
+@@ -1695,88 +1695,6 @@
+                 box-shadow: var(--b3-dialog-shadow);
+             }
+ 
+-            .sw__history-dd {
+-                position: relative;
+-                flex: 0 1 auto;
+-                min-width: 0;
+-            }
+-
+-            .sw__history-trigger {
+-                display: flex;
+-                align-items: center;
+-                gap: 4px;
+-                height: 28px;
+-                padding: 0 8px;
+-                min-width: 96px;
+-                border: 1px solid var(--b3-border-color);
+-                background: transparent;
+-                color: var(--b3-theme-on-background);
+-                border-radius: 6px;
+-                cursor: pointer;
+-                font-size: 12px;
+-
+-                svg { width: 13px; height: 13px; flex: none; color: var(--b3-theme-on-surface-light); }
+-                .sw__history-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+-                .sw__history-badge {
+-                    flex: none;
+-                    min-width: 15px;
+-                    padding: 0 4px;
+-                    border-radius: 8px;
+-                    background: var(--b3-theme-primary);
+-                    color: var(--b3-theme-on-primary);
+-                    font-size: 10px;
+-                    line-height: 15px;
+-                    text-align: center;
+-                }
+-                &:hover { border-color: var(--b3-theme-primary-light); color: var(--b3-theme-primary); }
+-            }
+-
+-            .sw__history-panel {
+-                position: fixed;
+-                z-index: 999;
+-                max-height: 320px;
+-                overflow: auto;
+-                padding: 4px;
+-                background: var(--b3-theme-surface);
+-                border: 1px solid var(--b3-border-color);
+-                border-radius: 8px;
+-                box-shadow: var(--b3-dialog-shadow);
+-            }
+-
+-            .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
+-            .sw__history-clear {
+-                display: block;
+-                width: 100%;
+-                padding: 6px 8px;
+-                border: 0;
+-                border-bottom: 1px solid var(--b3-border-color);
+-                background: transparent;
+-                color: var(--b3-theme-on-surface-light);
+-                font-size: 11px;
+-                text-align: right;
+-                cursor: pointer;
+-                &:hover { color: var(--b3-theme-primary); }
+-            }
+-            .sw__history-item {
+-                display: flex;
+-                align-items: center;
+-                gap: 8px;
+-                width: 100%;
+-                min-width: 0;
+-                padding: 7px 8px;
+-                border: 0;
+-                border-radius: 5px;
+-                background: transparent;
+-                color: var(--b3-theme-on-background);
+-                text-align: left;
+-                cursor: pointer;
+-                &:hover { background: var(--b3-theme-surface-light); }
+-                > svg { width: 14px; height: 14px; flex: none; color: var(--b3-theme-on-surface-light); }
+-                .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+-                .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+-                .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: 10px; }
+-            }
+-
+             &:focus-visible {
+                 outline: 2px solid var(--b3-theme-primary);
+                 outline-offset: 1px;
+@@ -1881,6 +1799,90 @@
+         }
+     }
+ 
++    // 最近打开下拉框位于工具栏，不属于文档卡片；保持为同级选择器，
++    // 否则 SVG 会回落到浏览器默认尺寸并撑开整个弹窗。
++    .sw__history-dd {
++        position: relative;
++        flex: 0 1 auto;
++        min-width: 0;
++    }
++
++    .sw__history-trigger {
++        display: flex;
++        align-items: center;
++        gap: 4px;
++        height: 28px;
++        padding: 0 8px;
++        min-width: 96px;
++        border: 1px solid var(--b3-border-color);
++        background: transparent;
++        color: var(--b3-theme-on-background);
++        border-radius: 6px;
++        cursor: pointer;
++        font-size: 12px;
++
++        svg { width: 13px; height: 13px; flex: none; color: var(--b3-theme-on-surface-light); }
++        .sw__history-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++        .sw__history-badge {
++            flex: none;
++            min-width: 15px;
++            padding: 0 4px;
++            border-radius: 8px;
++            background: var(--b3-theme-primary);
++            color: var(--b3-theme-on-primary);
++            font-size: 10px;
++            line-height: 15px;
++            text-align: center;
++        }
++        &:hover { border-color: var(--b3-theme-primary-light); color: var(--b3-theme-primary); }
++    }
++
++    .sw__history-panel {
++        position: fixed;
++        z-index: 999;
++        max-height: 320px;
++        overflow: auto;
++        padding: 4px;
++        background: var(--b3-theme-surface);
++        border: 1px solid var(--b3-border-color);
++        border-radius: 8px;
++        box-shadow: var(--b3-dialog-shadow);
++    }
++
++    .sw__history-empty { padding: 14px 10px; color: var(--b3-theme-on-surface-light); font-size: 12px; text-align: center; }
++    .sw__history-clear {
++        display: block;
++        width: 100%;
++        padding: 6px 8px;
++        border: 0;
++        border-bottom: 1px solid var(--b3-border-color);
++        background: transparent;
++        color: var(--b3-theme-on-surface-light);
++        font-size: 11px;
++        text-align: right;
++        cursor: pointer;
++        &:hover { color: var(--b3-theme-primary); }
++    }
++    .sw__history-item {
++        display: flex;
++        align-items: center;
++        gap: 8px;
++        width: 100%;
++        min-width: 0;
++        padding: 7px 8px;
++        border: 0;
++        border-radius: 5px;
++        background: transparent;
++        color: var(--b3-theme-on-background);
++        text-align: left;
++        cursor: pointer;
++        &:hover { background: var(--b3-theme-surface-light); }
++        > svg { width: 14px; height: 14px; flex: none; color: var(--b3-theme-on-surface-light); }
++        .sw__history-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
++        .sw__history-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
++        .sw__history-meta { color: var(--b3-theme-on-surface-light); font-size: 10px; }
++    }
++
+     // 桌面端快捷入口：固定在内容区底部，不压缩中央卡片的横向宽度
+     .sw__quick-actions,
+     .sw__quick-rail {
+diff --git a/src/index.ts b/src/index.ts
+index cb8ea64..b87660b 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -2093,22 +2093,32 @@ const version = beginSearch(session);
+             existing.icon = options.icon || existing.icon;
+             existing.targets = declaredTargets ? [...declaredTargets] : existing.targets;
+             this.saveQuickActions(actions);
+-        } else if (actions.length < QUICK_ACTIONS_MAX) {
+-            const baseId = `adapter-${safeActionId}`;
+-            let actionId = baseId;
+-            let suffix = 2;
+-            while (actions.some((item) => item.id === actionId)) actionId = `${baseId}-${suffix++}`;
+-            actions.push({
+-                id: actionId,
+-                label: normalizeQuickActionText(options.label, 80) || adapterId,
+-                icon: options.icon || "iconPlugin",
+-                kind: "adapter",
+-                value: actionValue,
+-                targets: declaredTargets ? [...declaredTargets] : getDefaultQuickActionTargets("adapter", actionValue) as QuickActionTarget[],
+-                order: (actions.length + 1) * 10,
+-                enabled: true,
+-            });
+-            this.saveQuickActions(actions);
++        } else {
++            // A provider may expose several actions (for example, the
++            // check-in plugin exposes 打卡/今日/新建/总结). Only its first
++            // registration is a default quick entry; the remaining actions
++            // stay discoverable in the picker and can be added explicitly.
++            // Existing user configuration is left untouched.
++            const providerPrefix = `${adapterId}/`;
++            const hasProviderDefault = actions.some((item) => item.kind === "adapter"
++                && (item.value === adapterId || item.value.startsWith(providerPrefix)));
++            if (!hasProviderDefault && actions.length < QUICK_ACTIONS_MAX) {
++                const baseId = `adapter-${safeActionId}`;
++                let actionId = baseId;
++                let suffix = 2;
++                while (actions.some((item) => item.id === actionId)) actionId = `${baseId}-${suffix++}`;
++                actions.push({
++                    id: actionId,
++                    label: normalizeQuickActionText(options.label, 80) || adapterId,
++                    icon: options.icon || "iconPlugin",
++                    kind: "adapter",
++                    value: actionValue,
++                    targets: declaredTargets ? [...declaredTargets] : getDefaultQuickActionTargets("adapter", actionValue) as QuickActionTarget[],
++                    order: (actions.length + 1) * 10,
++                    enabled: true,
++                });
++                this.saveQuickActions(actions);
++            }
+         }
+         return () => {
+             if (this.quickActionProviderTokens.get(actionValue) !== registrationToken) return;
