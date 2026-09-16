@@ -344,3 +344,148 @@ test('safe recovery exposes snapshot mode through the same exit', () => {
     assert.equal(recovery.ok, true);
     assert.equal(recovery.mode, "snapshot");
 });
+
+// ---------- T-181~T-194：session facade、registry 与生命周期事件回放 ----------
+const {
+    createWorkspaceCapabilityRuntimeSession,
+    createWorkspaceCapabilityRuntimeSessionRegistry,
+    buildWorkspaceCapabilityRuntimeSessionSnapshot,
+    normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
+    normalizeWorkspaceCapabilityRuntimeRegistryEvents,
+    readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
+    commitWorkspaceCapabilityRuntimeRegistryReplay,
+    recoverWorkspaceCapabilityRuntimeRegistry,
+} = rt;
+test('coordinator snapshot exposes bounded coordinator and queue state', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
+    const snap = coordinator.snapshot();
+    assert.deepEqual(snap, {coordinator: {lastCursor: 0, commits: 0, disposed: false}, queue: {size: 0, maxItems: 16, cursor: 0, disposed: false}});
+});
+test('runtime session facade shares queue and coordinator lifecycle', () => {
+    const session = createWorkspaceCapabilityRuntimeSession(16);
+    assert.match(session.sessionId, /^ws-[a-z0-9]{8}$/);
+    session.queue.push([{type: "host"}]);
+    session.dispose();
+    assert.equal(session.snapshot().disposed, true);
+    assert.equal(session.queue.size(), 0);
+});
+test('session snapshot is versioned and normalized', () => {
+    const session = createWorkspaceCapabilityRuntimeSession(16);
+    const snap = buildWorkspaceCapabilityRuntimeSessionSnapshot(session);
+    assert.equal(snap.version, 1);
+    assert.equal(snap.disposed, false);
+    assert.equal(normalizeWorkspaceCapabilityRuntimeSessionSnapshot(snap).sessionId, snap.sessionId);
+    session.dispose();
+    assert.equal(buildWorkspaceCapabilityRuntimeSessionSnapshot(session).disposed, true);
+});
+test('session snapshot normalization rejects hostile ids', () => {
+    assert.equal(normalizeWorkspaceCapabilityRuntimeSessionSnapshot({sessionId: "not-ws"}), null);
+    assert.equal(normalizeWorkspaceCapabilityRuntimeSessionSnapshot({sessionId: "ws-UPPER"}), null);
+    assert.equal(normalizeWorkspaceCapabilityRuntimeSessionSnapshot(null), null);
+});
+test('registry is bounded and evicts the oldest session', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(2);
+    const first = registry.create(16);
+    registry.create(16);
+    registry.create(16);
+    assert.equal(registry.size(), 2);
+    assert.equal(registry.get(first.sessionId), null, "最老会话应被淘汰");
+});
+test('registry remove disposes and drops the session', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    const session = registry.create(16);
+    assert.equal(registry.remove(session.sessionId), true);
+    assert.equal(registry.get(session.sessionId), null);
+    assert.equal(registry.remove(session.sessionId), false);
+});
+test('registry snapshot aggregates bounded session state', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    registry.create(16);
+    const snap = registry.snapshot();
+    assert.equal(snap.size, 1);
+    assert.equal(snap.sessions.length, 1);
+    assert.equal(snap.sessions[0].disposed, false);
+});
+test('registry prune recycles disposed sessions', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    const session = registry.create(16);
+    session.dispose();
+    assert.equal(registry.prune(), 1);
+    assert.equal(registry.size(), 0);
+});
+test('registry pruneIdle recycles only long-idle sessions', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    const idle = registry.create(16);
+    registry.create(16);
+    const now = Date.now();
+    assert.equal(registry.pruneIdle(now, 0), 0, "非法阈值不回收");
+    assert.equal(registry.pruneIdle(now + 1800000, 1800000), 2, '两个会话同批超期，均应回收');
+    assert.ok(idle.snapshot().disposed, '被回收会话应标记 disposed');
+});
+test('registry events are bounded and observed', () => {
+    let observed = 0;
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8, {onEvent: () => { observed += 1; }});
+    registry.create(16);
+    registry.create(16);
+    registry.create(16);
+    assert.ok(observed >= 3, 'onEvent 观察器须收到生命周期事件');
+    assert.ok(registry.events().length <= 8, '事件缓存最多 8 条');
+});
+test('registry event cursor supports incremental reads and acknowledgement', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    registry.create(16);
+    registry.create(16);
+    const batch = registry.eventsSince(0, 8);
+    assert.equal(batch.events.length, 2);
+    assert.equal(registry.acknowledgeEvents(batch.cursor), batch.events.length);
+    assert.equal(registry.events().length, 0);
+});
+test('registry event normalization filters unknown types and ids', () => {
+    const normalized = normalizeWorkspaceCapabilityRuntimeRegistryEvents([
+        {sequence: 1, type: "created", sessionId: "ws-abcd1234"},
+        {sequence: 2, type: "mystery", sessionId: "ws-abcd1234"},
+        {sequence: 3, type: "removed", sessionId: "evil"},
+        {sequence: 0, type: "pruned", sessionId: "ws-abcd1234"},
+    ]);
+    assert.deepEqual(normalized, [{sequence: 1, type: "created", sessionId: "ws-abcd1234"}]);
+});
+test('registry replay returns ready for a fresh cursor', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    registry.create(16);
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, 0, 8);
+    assert.equal(replay.ok, true);
+    assert.equal(replay.reason, "ready");
+    assert.ok(replay.events.length >= 1);
+});
+test('registry replay demands a snapshot when events overflowed', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    for (let i = 0; i < 12; i += 1) registry.create(16);
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, 1, 8);
+    assert.equal(replay.ok, false);
+    assert.equal(replay.reason, "snapshot_required");
+});
+test('registry replay commit only consumes ready results', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    registry.create(16);
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, 0, 8);
+    assert.equal(commitWorkspaceCapabilityRuntimeRegistryReplay(registry, replay), replay.events.length);
+    assert.equal(commitWorkspaceCapabilityRuntimeRegistryReplay(registry, {ok: false, reason: "snapshot_required"}), 0);
+});
+test('registry recovery falls back to the full snapshot on overflow', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    registry.create(16);
+    const full = registry.snapshot();
+    for (let i = 0; i < 12; i += 1) registry.create(16);
+    const recovery = recoverWorkspaceCapabilityRuntimeRegistry(registry, 1, full, 8);
+    assert.equal(recovery.ok, true);
+    assert.equal(recovery.mode, "snapshot");
+    assert.equal(recovery.snapshot.size, 1);
+});
+test('registry recovery stays unavailable without a snapshot', () => {
+    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(8);
+    for (let i = 0; i < 12; i += 1) registry.create(16);
+    const recovery = recoverWorkspaceCapabilityRuntimeRegistry(registry, 1, null, 8);
+    assert.equal(recovery.ok, false);
+    assert.equal(recovery.mode, "unavailable");
+});

@@ -394,6 +394,74 @@ function createWorkspaceCapabilityRuntimeSessionRegistry(maxSessions = MAX_RUNTI
     });
 }
 
+// T-183：runtime session 的版本化快照与归一化（跨宿主消费时只保留有界、合法的摘要）。
+function buildWorkspaceCapabilityRuntimeSessionSnapshot(session) {
+    if (!session || typeof session !== "object" || typeof session.snapshot !== "function") return null;
+    const snap = session.snapshot();
+    if (!snap || typeof snap.sessionId !== "string" || !snap.sessionId) return null;
+    return Object.freeze({
+        version: WORKSPACE_RUNTIME_SNAPSHOT_VERSION,
+        sessionId: snap.sessionId,
+        disposed: snap.disposed === true,
+        runtime: snap.runtime && typeof snap.runtime === "object" ? snap.runtime : null,
+    });
+}
+
+function normalizeWorkspaceCapabilityRuntimeSessionSnapshot(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const sessionId = typeof source.sessionId === "string" && /^ws-[a-z0-9]{1,16}$/.test(source.sessionId) ? source.sessionId : "";
+    if (!sessionId) return null;
+    return Object.freeze({
+        version: WORKSPACE_RUNTIME_SNAPSHOT_VERSION,
+        sessionId,
+        disposed: source.disposed === true,
+        runtime: source.runtime && typeof source.runtime === "object" ? source.runtime : null,
+    });
+}
+
+// T-191：registry 生命周期事件归一化——过滤未知类型、非法 sessionId 与越界序号。
+function normalizeWorkspaceCapabilityRuntimeRegistryEvents(events) {
+    const types = ["created", "evicted", "removed", "pruned", "idle"];
+    const source = Array.isArray(events) ? events : [];
+    return source
+        .map((event) => {
+            const item = event && typeof event === "object" ? event : {};
+            const sequence = Math.trunc(Number(item.sequence) || 0);
+            const type = types.includes(item.type) ? item.type : "";
+            const sessionId = typeof item.sessionId === "string" && /^ws-[a-z0-9]{1,16}$/.test(item.sessionId) ? item.sessionId : "";
+            return {sequence, type, sessionId};
+        })
+        .filter((event) => event.sequence > 0 && event.type && event.sessionId);
+}
+
+// T-192：按游标增量读取 registry 生命周期事件；游标过旧（截断）时要求完整快照。
+function readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, cursor = 0, limit = 8) {
+    if (!registry || typeof registry.eventsSince !== "function") return {ok: false, reason: "registry_unavailable", cursor: 0, events: []};
+    const batch = registry.eventsSince(cursor, limit);
+    if (!batch || batch.truncated === true) return {ok: false, reason: "snapshot_required", cursor: Number(batch?.cursor) || 0, events: []};
+    return {ok: true, reason: "ready", cursor: Number(batch.cursor) || 0, events: normalizeWorkspaceCapabilityRuntimeRegistryEvents(batch.events)};
+}
+
+// T-193：仅确认 ready 回放结果——失败或 snapshot_required 保留 registry 事件。
+function commitWorkspaceCapabilityRuntimeRegistryReplay(registry, replay) {
+    if (!registry || typeof registry.acknowledgeEvents !== "function" || !replay || replay.ok !== true) return 0;
+    return registry.acknowledgeEvents(replay.cursor);
+}
+
+// T-194：统一 registry 事件回放与溢出后的完整快照恢复（events/snapshot/unavailable 三态）。
+function recoverWorkspaceCapabilityRuntimeRegistry(registry, cursor = 0, snapshot = null, limit = 8) {
+    const replay = readWorkspaceCapabilityRuntimeRegistryEventsForReplay(registry, cursor, limit);
+    if (replay.ok) return {ok: true, mode: "events", cursor: replay.cursor, events: replay.events, snapshot: null};
+    if (replay.reason !== "snapshot_required" || !snapshot || typeof snapshot !== "object") {
+        return {ok: false, mode: "unavailable", reason: replay.reason, cursor: replay.cursor, events: [], snapshot: null};
+    }
+    const normalized = normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(snapshot);
+    if (!normalized.sessions.length && normalized.size !== 0) {
+        return {ok: false, mode: "invalid_snapshot", reason: "invalid_snapshot", cursor: replay.cursor, events: [], snapshot: null};
+    }
+    return {ok: true, mode: "snapshot", cursor: replay.cursor, events: [], snapshot: normalized};
+}
+
 function normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot(value) {
     const source = value && typeof value === "object" ? value : {};
     const sessions = Array.isArray(source.sessions) ? source.sessions.slice(0, MAX_RUNTIME_SESSIONS).map((item) => {
@@ -652,6 +720,12 @@ module.exports = {
     recoverAndCommitWorkspaceCapabilityRuntime,
     createWorkspaceCapabilityRuntimeSession,
     createWorkspaceCapabilityRuntimeSessionRegistry,
+    buildWorkspaceCapabilityRuntimeSessionSnapshot,
+    normalizeWorkspaceCapabilityRuntimeSessionSnapshot,
+    normalizeWorkspaceCapabilityRuntimeRegistryEvents,
+    readWorkspaceCapabilityRuntimeRegistryEventsForReplay,
+    commitWorkspaceCapabilityRuntimeRegistryReplay,
+    recoverWorkspaceCapabilityRuntimeRegistry,
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
     buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot,
     isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible,

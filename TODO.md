@@ -5117,62 +5117,62 @@
   - 目标：为带取消信号的恢复提供统一归一化结果
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeSafe`
   - 状态：done（T-171~T-180 第二十六批一并落地，见 D-396 补充）
-- [ ] T-181 Agent workspace recovery coordinator 运行快照
+- [x] T-181 Agent workspace recovery coordinator 运行快照
   - 目标：一次读取 coordinator 与队列的有界状态
   - 实现：新增 `coordinator.snapshot()` 与 queue status
   - 状态：in-progress
-- [ ] T-182 Agent workspace runtime session facade
+- [x] T-182 Agent workspace runtime session facade
   - 目标：统一 queue/coordinator 的会话级创建、快照与销毁，隔离不同宿主会话的恢复状态
   - 实现：新增 `createWorkspaceCapabilityRuntimeSession`，生成有界 sessionId，dispose 同步清理 queue/coordinator
   - 状态：in-progress
-- [ ] T-183 Agent workspace session 快照版本化
+- [x] T-183 Agent workspace session 快照版本化
   - 目标：为 runtime session 提供稳定版本号与归一化快照
   - 实现：新增 `build/normalizeWorkspaceCapabilityRuntimeSessionSnapshot`
   - 状态：in-progress
-- [ ] T-184 Agent workspace session registry
+- [x] T-184 Agent workspace session registry
   - 目标：有界管理多个 runtime session，支持创建、查找、移除和统一销毁
   - 实现：新增 `createWorkspaceCapabilityRuntimeSessionRegistry`，最多 8 个会话
   - 状态：in-progress
-- [ ] T-185 Agent workspace session registry 快照
+- [x] T-185 Agent workspace session registry 快照
   - 目标：聚合所有 session 的有界运行状态，供诊断/UI 一次读取
   - 实现：新增 registry `snapshot()`，仅输出 sessionId、disposed 和 runtime 状态
   - 状态：in-progress
-- [ ] T-186 Agent workspace session registry 回收
+- [x] T-186 Agent workspace session registry 回收
   - 目标：主动清理已销毁 session，避免 registry 长期持有失效引用
   - 实现：新增 registry `prune()`，返回回收数量并保持有界
   - 状态：in-progress
-- [ ] T-187 Agent workspace session registry 快照归一化
+- [x] T-187 Agent workspace session registry 快照归一化
   - 目标：跨宿主消费 registry 快照时限制会话数量、ID 格式和销毁状态
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot`，最多保留 8 个合法 session 摘要
   - 状态：in-progress
-- [ ] T-188 Agent workspace session registry 事件通知
+- [x] T-188 Agent workspace session registry 事件通知
   - 目标：记录会话创建、淘汰、移除和回收事件，供诊断/UI 观察生命周期变化
   - 实现：registry 增加有界 `events()` 与可选 `onEvent`，最多保留 8 条且隔离观察器异常
   - 状态：in-progress
-- [ ] T-189 Agent workspace session registry 空闲回收
+- [x] T-189 Agent workspace session registry 空闲回收
   - 目标：清理长期未访问且未销毁的 session，降低长期驻留内存
   - 实现：新增 `pruneIdle(now, maxIdleMs)`，访问 session 自动刷新 lastSeen，非法阈值不回收
   - 状态：in-progress
-- [ ] T-190 Agent workspace registry 事件游标
+- [x] T-190 Agent workspace registry 事件游标
   - 目标：支持 registry 生命周期事件的增量读取与确认消费
   - 实现：新增 `eventCursor/eventsSince/acknowledgeEvents`，保留最多 8 条事件
   - 状态：in-progress
-- [ ] T-191 Agent workspace registry 事件归一化
+- [x] T-191 Agent workspace registry 事件归一化
   - 目标：过滤未知事件、非法 sessionId 和越界序号
   - 实现：新增 `normalizeWorkspaceCapabilityRuntimeRegistryEvents`
   - 状态：in-progress
-- [ ] T-192 Agent workspace registry 事件安全回放
+- [x] T-192 Agent workspace registry 事件安全回放
   - 目标：按游标读取 registry 生命周期事件，溢出时要求完整快照
   - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplay`
   - 状态：in-progress
-- [ ] T-193 Agent workspace registry 回放确认
+- [x] T-193 Agent workspace registry 回放确认
   - 目标：仅确认 ready 回放结果，失败或 snapshot_required 保留事件
   - 实现：新增 `commitWorkspaceCapabilityRuntimeRegistryReplay`
   - 状态：in-progress
-- [ ] T-194 Agent workspace registry 快照恢复
+- [x] T-194 Agent workspace registry 快照恢复
   - 目标：统一 registry 事件回放与溢出后的完整 snapshot 恢复
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeRegistry`
-  - 状态：in-progress
+  - 状态：done（T-181~T-194 第二十七批一并落地，见 D-396 补充）
 - [x] T-195 Agent workspace registry 回放取消边界
   - 目标：registry 事件回放在会话取消后不读取、不确认事件
   - 实现：新增 `readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal`
