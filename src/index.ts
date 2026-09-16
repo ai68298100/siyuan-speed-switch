@@ -28,6 +28,7 @@ import {createHomePanelController} from "./home-panel";
 import {normalizeHomeState, resolveMobileHomeSize} from "./home-model";
 import {registerExternalHomeAdapters} from "./home-external-adapters";
 import {openHomeConfigForm} from "./home-config-form";
+import {createDocSearchState} from "./doc-search-state";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets} from "./settings-sections";
@@ -337,7 +338,7 @@ interface ITabGroupRenderCtx {
 // siyuan 鍖呮湭灏?Tab 浣滀负椤跺眰鍛藉悕瀵煎嚭锛岃繖閲屼粠 getAllTabs 杩斿洖绫诲瀷鎺ㄥ
 type Tab = ReturnType<typeof getAllTabs>[number];
 
-interface IDocSearchResult {
+export interface IDocSearchResult {
     id?: string;
     rootId?: string;
     name?: string;
@@ -352,7 +353,7 @@ interface IDocSearchResult {
     source?: string;
 }
 
-interface IDocSearchFilters {
+export interface IDocSearchFilters {
     notebook?: string;
     paths?: string[];
     types?: Record<string, boolean>;
@@ -361,7 +362,7 @@ interface IDocSearchFilters {
     orderBy?: "relevanceDesc" | "updatedDesc" | "createdDesc" | "content";
 }
 
-interface ISearchSession<T> {
+export interface ISearchSession<T> {
     version: number;
     cache: Map<string, T>;
     controller: AbortController | null;
@@ -605,20 +606,15 @@ interface IOpenHistoryEntry {
 
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
-    private docSearchSessions = new WeakMap<HTMLElement, ISearchSession<IDocSearchResult[]>>();
+    // 文档搜索链路状态宿主（R5a，D-381）：6 个实例级状态收拢为单一状态对象，
+    // WeakMap/Set 语义与代际竞态保护不变；生命周期（含卸载清理）由原消费点继续驱动。
+    private docSearchState = createDocSearchState();
     // v0.17 阶段 1（D-220）：workspace 运行时只读诊断能力的生命周期持有者
     private workspaceRuntimeDiagnostics: ReturnType<typeof createWorkspaceRuntimeDiagnostics> | null = null;
     // v0.17：保留有界的 Agent 只读注册生命周期快照，仅供插件内部诊断使用。
     private agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory(8);
-    private activeDocSearchSessions = new Set<ISearchSession<IDocSearchResult[]>>();
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
-    private docSearchFilters = new WeakMap<HTMLElement, IDocSearchFilters>();
-    private docSearchNotebookNames = new WeakMap<HTMLElement, Map<string, string>>();
-    // v0.18 路径筛选（T-103）：内核请求辅助函数自带 5s 超时且不接受外部 signal，
-    // 因此用代际标记实现取消——每次打开路径菜单自增，过期响应直接丢弃。
-    private docSearchPathGeneration = 0;
-    private docSearchPathTitles = new WeakMap<HTMLElement, Map<string, string>>();
     private switcherRefreshers = new Set<() => void>();
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, QuickActionTarget[]>();
@@ -1135,8 +1131,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.syncRefreshPending = false;
         this.syncing = false;
         this.clearSyncWatchdog();
-        this.activeDocSearchSessions.forEach((session) => disposeSearchSession(session));
-        this.activeDocSearchSessions.clear();
+        this.docSearchState.activeSessions.forEach((session) => disposeSearchSession(session));
+        this.docSearchState.activeSessions.clear();
         this.activeAgentSearchControllers.forEach((controller) => controller.abort());
         this.activeAgentSearchControllers.clear();
         this.activeDocumentSetRestoreControllers.forEach((controller) => controller.abort());
@@ -2524,7 +2520,7 @@ const updatedMap: {[rootId: string]: string} = {};
         const keyword = searchInput.value.trim();
         scrollElement.dataset.swDocSearchQuery = keyword;
         const session = this.getDocSearchSession(scrollElement);
-        const filters = this.docSearchFilters.get(scrollElement) || {};
+        const filters = this.docSearchState.filters.get(scrollElement) || {};
         this.filterCards(scrollElement, searchInput.value, new Set(), filters);
 
         // 姣忔杈撳叆閮借涓婁竴杞姹傚け鏁堛€傜┖鍏抽敭璇嶆垨缂撳瓨鍛戒腑涔熷繀椤婚€掑搴忓彿锛?        // 鍚﹀垯杈冩參鐨勬棫璇锋眰杩斿洖鍚庝細瑕嗙洊褰撳墠鐣岄潰銆?
@@ -4760,14 +4756,14 @@ const version = beginSearch(session);
         const request = buildPathFilterListRequest(input);
         const cancelled = () => normalizePathFilterProbeOutcome({kind: "cancelled"}, input);
         if (!request) return normalizePathFilterProbeOutcome({kind: "response", payload: null}, input);
-        if (generation !== this.docSearchPathGeneration) return cancelled();
+        if (generation !== this.docSearchState.pathGeneration) return cancelled();
         let payload: unknown = null;
         try {
             payload = await this.fetchKernelJson("/api/filetree/listDocsByPath", request.body);
         } catch (_) {
             payload = null;
         }
-        if (generation !== this.docSearchPathGeneration) return cancelled();
+        if (generation !== this.docSearchState.pathGeneration) return cancelled();
         if (payload === null || payload === undefined) {
             return normalizePathFilterProbeOutcome({kind: "unavailable"}, input);
         }
@@ -4798,7 +4794,7 @@ const version = beginSearch(session);
         document.addEventListener("keydown", onMenuKeyDown, true);
 
         const updateButton = () => {
-            const filters = this.docSearchFilters.get(scrollElement) || {};
+            const filters = this.docSearchState.filters.get(scrollElement) || {};
             const count = this.getDocSearchFilterCount(filters);
             const label = count > 0
                 ? this.i18n.searchFiltersActive.replace("{x}", String(count))
@@ -4812,11 +4808,11 @@ const version = beginSearch(session);
             button.title = accessibleLabel;
         };
         const commitFilters = (change: (next: IDocSearchFilters) => void) => {
-            const next: IDocSearchFilters = {...(this.docSearchFilters.get(scrollElement) || {})};
+            const next: IDocSearchFilters = {...(this.docSearchState.filters.get(scrollElement) || {})};
             change(next);
             if (next.types && Object.keys(next.types).length === 0) delete next.types;
             if (next.subTypes && Object.keys(next.subTypes).length === 0) delete next.subTypes;
-            this.docSearchFilters.set(scrollElement, Object.freeze(next));
+            this.docSearchState.filters.set(scrollElement, Object.freeze(next));
             updateButton();
             this.applySearch(scrollElement, searchInput, onClose);
             searchInput.focus({preventScroll: true});
@@ -4824,7 +4820,7 @@ const version = beginSearch(session);
         // v0.18 路径筛选（T-103）：逐级浏览目录并选择路径前缀。
         // 每次打开自增代际标记，使在途请求作废（内核辅助函数不接受外部 signal）。
         const openPathMenu = (notebook: string, path: string) => {
-            const generation = ++this.docSearchPathGeneration;
+            const generation = ++this.docSearchState.pathGeneration;
             const rect = button.getBoundingClientRect();
             const position = {x: rect.left, y: rect.bottom};
             const openAsMenu = (items: IMenu[]) => {
@@ -4836,7 +4832,7 @@ const version = beginSearch(session);
             };
             openAsMenu([{label: this.i18n.searchPathLoading, disabled: true}]);
             void this.loadDocSearchPathChildren(notebook, path, generation).then((result) => {
-                if (!button.isConnected || generation !== this.docSearchPathGeneration) return;
+                if (!button.isConnected || generation !== this.docSearchState.pathGeneration) return;
                 const items: IMenu[] = [];
                 if (!result.ok) {
                     items.push({
@@ -4848,9 +4844,9 @@ const version = beginSearch(session);
                     openAsMenu(items);
                     return;
                 }
-                const titles = this.docSearchPathTitles.get(scrollElement) || new Map<string, string>();
+                const titles = this.docSearchState.pathTitles.get(scrollElement) || new Map<string, string>();
                 result.items.forEach((item) => titles.set(item.path, item.title));
-                this.docSearchPathTitles.set(scrollElement, titles);
+                this.docSearchState.pathTitles.set(scrollElement, titles);
                 if (path !== "/") {
                     const parent = path.slice(0, path.lastIndexOf("/")) || "/";
                     items.push({
@@ -4917,14 +4913,14 @@ const version = beginSearch(session);
             }
             if (!button.isConnected) return;
 
-            this.docSearchNotebookNames.set(scrollElement, new Map(
+            this.docSearchState.notebookNames.set(scrollElement, new Map(
                 notebooks
                     .filter((notebook) => typeof notebook?.id === "string" && typeof notebook?.name === "string")
                     .map((notebook) => [notebook.id, notebook.name.slice(0, 64)]),
             ));
             updateButton();
 
-            const current = this.docSearchFilters.get(scrollElement) || {};
+            const current = this.docSearchState.filters.get(scrollElement) || {};
             const notebookSub: IMenu[] = [{
                 label: this.i18n.searchAllNotebooks,
                 icon: "iconGlobalGraph",
@@ -4991,7 +4987,7 @@ const version = beginSearch(session);
                     checked: currentPaths.length === 0,
                     click: () => commitFilters((next) => delete next.paths),
                 });
-                const pathTitles = this.docSearchPathTitles.get(scrollElement);
+                const pathTitles = this.docSearchState.pathTitles.get(scrollElement);
                 currentPaths.forEach((value) => {
                     const fallback = value.split("/").pop()?.replace(/\.sy$/, "") || value;
                     pathSub.push({
@@ -5104,7 +5100,7 @@ const version = beginSearch(session);
         const parts: string[] = [];
         const notebookId = typeof filters.notebook === "string" ? filters.notebook.trim() : "";
         if (notebookId) {
-            const notebookName = scrollElement ? this.docSearchNotebookNames.get(scrollElement)?.get(notebookId) : "";
+            const notebookName = scrollElement ? this.docSearchState.notebookNames.get(scrollElement)?.get(notebookId) : "";
             parts.push(`${this.i18n.searchFilterNotebook}: ${(notebookName || notebookId).slice(0, 32)}`);
         }
         const pathCount = filters.paths?.length || 0;
@@ -5146,34 +5142,34 @@ const version = beginSearch(session);
     }
 
     private hasDocSearchFilter(scrollElement: HTMLElement): boolean {
-        return this.getDocSearchFilterCount(this.docSearchFilters.get(scrollElement)) > 0;
+        return this.getDocSearchFilterCount(this.docSearchState.filters.get(scrollElement)) > 0;
     }
 
     private getDocSearchSession(scrollElement: HTMLElement): ISearchSession<IDocSearchResult[]> {
-        if (!this.docSearchFilters.has(scrollElement)) {
-            this.docSearchFilters.set(scrollElement, Object.freeze({}));
+        if (!this.docSearchState.filters.has(scrollElement)) {
+            this.docSearchState.filters.set(scrollElement, Object.freeze({}));
         }
-        let session = this.docSearchSessions.get(scrollElement);
+        let session = this.docSearchState.sessions.get(scrollElement);
         if (!session) {
             session = createSearchSession<IDocSearchResult[]>(DOC_SEARCH_CACHE_LIMIT);
-            this.docSearchSessions.set(scrollElement, session);
-            this.activeDocSearchSessions.add(session);
+            this.docSearchState.sessions.set(scrollElement, session);
+            this.docSearchState.activeSessions.add(session);
         }
         return session;
     }
 
     private disposeDocSearchSession(scrollElement: HTMLElement) {
-        const session = this.docSearchSessions.get(scrollElement);
+        const session = this.docSearchState.sessions.get(scrollElement);
         if (!session) {
-            this.docSearchFilters.delete(scrollElement);
-            this.docSearchNotebookNames.delete(scrollElement);
+            this.docSearchState.filters.delete(scrollElement);
+            this.docSearchState.notebookNames.delete(scrollElement);
             return;
         }
         disposeSearchSession(session);
-        this.activeDocSearchSessions.delete(session);
-        this.docSearchSessions.delete(scrollElement);
-        this.docSearchFilters.delete(scrollElement);
-        this.docSearchNotebookNames.delete(scrollElement);
+        this.docSearchState.activeSessions.delete(session);
+        this.docSearchState.sessions.delete(scrollElement);
+        this.docSearchState.filters.delete(scrollElement);
+        this.docSearchState.notebookNames.delete(scrollElement);
     }
 
     // 鍏ㄥ簱鏂囨。鎼滅储杩滅▼璇锋眰锛氭瘡涓晫闈細璇濈嫭绔嬪彇娑堝苟涓㈠純杩囨湡鍝嶅簲
@@ -5515,7 +5511,7 @@ const openRootIds = this.collectOpenRootIds();
 
     private appendDocResultsViewAll(box: HTMLElement, scrollElement: HTMLElement, onClose: IOverlayClose) {
         const query = String(scrollElement.dataset.swDocSearchQuery || "").trim();
-        const filters = this.docSearchFilters.get(scrollElement) || {};
+        const filters = this.docSearchState.filters.get(scrollElement) || {};
         const search = buildNativeSearchTabConfig({query, filters});
         if (!search) return;
         const action = document.createElement("button");
@@ -6209,7 +6205,7 @@ private buildDocResultItem(doc: IDocSearchResult, id: string, onClose: IOverlayC
         scrollElement: HTMLElement,
         keyword: string,
         contentRoots: Set<string> = new Set(),
-        filters: IDocSearchFilters = this.docSearchFilters.get(scrollElement) || {},
+        filters: IDocSearchFilters = this.docSearchState.filters.get(scrollElement) || {},
     ): number {
         const kw = keyword.trim().toLowerCase();
         const allowLocalTitleMatch = (!filters.method || filters.method === "keyword")
@@ -9711,7 +9707,7 @@ if (count > 0) {
         }
         const previousScrollElement = element.querySelector<HTMLElement>(".sw__scroll");
         const previousSearchFilters = previousScrollElement
-            ? this.docSearchFilters.get(previousScrollElement)
+            ? this.docSearchState.filters.get(previousScrollElement)
             : undefined;
         const previousSearchQuery = element.querySelector<HTMLInputElement>(".sw__search")?.value || "";
         if (previousScrollElement) {
@@ -9739,7 +9735,7 @@ if (count > 0) {
             return;
         }
         if (previousSearchFilters) {
-            this.docSearchFilters.set(scrollElement, Object.freeze({...previousSearchFilters}));
+            this.docSearchState.filters.set(scrollElement, Object.freeze({...previousSearchFilters}));
         }
         this.renderList(scrollElement, tabs, activeTab, listOpts, this.getSettings().sortBy, updatedMap);
 

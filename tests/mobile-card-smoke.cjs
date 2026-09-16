@@ -518,7 +518,7 @@ const searchFilterUiOk = (source.match(/class="sw__search-filter-btn/g) || []).l
     && source.includes('label: this.i18n.searchMethod')
     && source.includes('label: this.i18n.searchResultOrder')
     && source.includes('label: this.i18n.searchResetFilters')
-    && source.includes('this.docSearchFilters.set(scrollElement, Object.freeze(next))')
+    && source.includes('this.docSearchState.filters.set(scrollElement, Object.freeze(next))')
     && source.includes('if (!canUseTitleSearch(filters))')
     && source.includes('this.runOpenedDocumentContentSearch(keyword, signal, filters)')
     && source.includes('card.dataset.notebookId = resolveSearchNotebookId(tab as unknown)')

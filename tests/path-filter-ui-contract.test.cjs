@@ -4,6 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+// R5a 重构（D-381）：搜索链路状态宿主收拢至 doc-search-state.ts。
+const searchState = fs.readFileSync(path.join(__dirname, "..", "src", "doc-search-state.ts"), "utf8");
 
 // 2026-09-16：宿主端点获批，本门禁从"禁止接入生产"转为"约束接入方式"。
 // 放宽依据 = docs/path-filter-host-evidence.md（D-365）：在真实宿主
@@ -26,8 +28,10 @@ test("path filter endpoint is allowlisted and called with a literal URL", () => 
 
 test("path filter keeps generation-token cancellation", () => {
     // fetchKernelJson 不接受外部 signal，取消只能靠代际标记；此约束不得退化。
-    assert.match(source, /private docSearchPathGeneration = 0/);
-    const uses = [...source.matchAll(/this\.docSearchPathGeneration/g)].length;
+    // R5a（D-381）后代际标记声明在 doc-search-state.ts，宿主经 docSearchState 透传使用。
+    assert.match(searchState, /pathGeneration: 0/, "代际标记声明必须存在于状态宿主模块");
+    assert.match(source, /docSearchState = createDocSearchState\(\)/, "宿主必须持有状态宿主实例");
+    const uses = [...source.matchAll(/this\.docSearchState\.pathGeneration/g)].length;
     assert.ok(uses >= 3, `代际标记应至少在自增与两处比对中使用，实测 ${uses} 处`);
 });
 

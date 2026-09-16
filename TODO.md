@@ -1,6 +1,12 @@
 # TODO
 
 
+## T-6251~T-6252 重构批次 R5a：搜索状态宿主收拢（2026-09-16，已完成）
+
+- [x] T-6251 R5 前置决策（D-381）：对比"拆状态宿主"与"补搜索渲染契约"两方案后由孙堃拍板方案 A——6 个 docSearch 状态字段收拢为 search-state 模块，避免 R5 制造 20+ 成员的过渡态 host；6 个字段中 docSearchFilters 有 4 处方法群外消费点（applySearch/unload/面板恢复/默认参数），收拢顺带收敛该耦合
+- [x] T-6252 状态收拢：新建 `src/doc-search-state.ts`（createDocSearchState，6 字段 + JSDoc，pathGeneration 竞态语义不变）；index.ts 33 处使用点纯引用改写 this.docSearchState.*（机械替换逐项计数校验 4/4/14/4/4/3）；6 个声明行删除、IDocSearchResult/IDocSearchFilters/ISearchSession 加 export 供 import type；契约同步（smoke filters.set 断言、path-filter generation 契约改指状态宿主模块并加宿主持有断言）；生产图加 doc-search-state、闭包 39→40；负向验证（删 pathGeneration 声明 → 精确 1 项 FAIL → 字节还原）；发布矩阵 index.js 601085、package.zip 307743；verify:release 独占全绿 5691/5691
+
+
 ## T-6248~T-6250 重构批次 R1：商店 UI 外迁 home-store-ui.ts（2026-09-16，已完成）
 
 - [x] T-6248 R1 立项前提核实：store-* 契约群覆盖密度核实（store-mobile-layout 467 + store-preview-lifecycle 76 + home-store-contract 66 + store-mobile-external 10 条断言，全部为真实维护的源码正则契约），推翻 D-374"R1 需先补商店渲染快照类契约"的保守评估，R1 直接立项（D-379）
