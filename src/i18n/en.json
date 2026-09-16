@@ -441,6 +441,7 @@
   "docSearchSourceOpened": "Opened content",
   "docSearchLoading": "Searching workspace documents…",
   "docSearchFailed": "Search failed. Please try again.",
+  "docSearchLoadMore": "Load more results",
   "docSearchViewAll": "View all in SiYuan Search",
   "noDocResults": "No matching documents found",
   "backTop": "Back to top",

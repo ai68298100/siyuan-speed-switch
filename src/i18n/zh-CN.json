@@ -441,6 +441,7 @@
   "docSearchSourceOpened": "已打开内容",
   "docSearchLoading": "正在搜索全库文档…",
   "docSearchFailed": "搜索失败，请稍后重试",
+  "docSearchLoadMore": "加载更多结果",
   "docSearchViewAll": "在思源搜索中查看全部",
   "noDocResults": "未找到匹配的文档",
   "backTop": "回到顶部",

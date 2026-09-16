@@ -21,6 +21,7 @@ const {
     buildOpenedDocumentScope,
     buildOpenedDocumentSearchRequest,
     buildOpenedDocumentSearchRequests,
+    planDocResultsPage,
 } = require("../src/search-model.js");
 
 const ROOT_A = "20260906120000-aaaaaaa";
@@ -609,4 +610,49 @@ test("normalizeText still truncates by grapheme when input exceeds the limit", (
     const [document] = normalizeTitleSearchDocuments([{id: ROOT_A, rootId: ROOT_A, title: long, path: "box-a/a.sy"}]);
     const graphemes = [...new Intl.Segmenter().segment(document.title)].length;
     assert.equal(graphemes, 256, "over-long titles are cut at the grapheme boundary");
+});
+
+test("search model: planDocResultsPage slices the first page and reports more", () => {
+    const docs = Array.from({length: 20}, (_, i) => ({rootId: `20260101120000-aaa${String(i).padStart(4, "0")}`, title: `doc ${i}`}));
+    const first = planDocResultsPage(docs, new Set(), 12);
+    assert.equal(first.items.length, 12);
+    assert.equal(first.totalVisible, 20);
+    assert.equal(first.hasMore, true);
+    assert.equal(first.items[0].id, docs[0].rootId);
+    const expanded = planDocResultsPage(docs, new Set(), 24);
+    assert.equal(expanded.items.length, 20);
+    assert.equal(expanded.totalVisible, 20);
+    assert.equal(expanded.hasMore, false);
+});
+
+test("search model: planDocResultsPage excludes opened roots and dedupes ids", () => {
+    const idA = "20260101120000-bbb0001";
+    const idB = "20260101120000-bbb0002";
+    const docs = [
+        {rootId: idA, title: "opened"},
+        {rootId: idB, title: "keep"},
+        {rootId: idB, title: "duplicate rootId"},
+        {id: idB, path: `box-x/${idB}.sy`, title: "duplicate via path basename"},
+        {path: "notebook/no-valid-id.sy", title: "no id"},
+        {rootId: idA, title: "opened again"},
+    ];
+    const plan = planDocResultsPage(docs, new Set([idA]), 12);
+    assert.equal(plan.totalVisible, 1);
+    assert.equal(plan.items.length, 1);
+    assert.equal(plan.items[0].id, idB);
+    assert.equal(plan.hasMore, false);
+});
+
+test("search model: planDocResultsPage derives the id from path basename", () => {
+    const id = "20260101120000-ccc0009";
+    const plan = planDocResultsPage([{path: `box-y/${id}.sy`}], new Set(), 12);
+    assert.equal(plan.items[0].id, id);
+});
+
+test("search model: planDocResultsPage treats non-finite expandedCount as render-all", () => {
+    const docs = Array.from({length: 5}, (_, i) => ({rootId: `20260101120000-ddd${String(i).padStart(4, "0")}`}));
+    const plan = planDocResultsPage(docs, new Set(), Number.NaN);
+    assert.equal(plan.items.length, 5);
+    assert.equal(plan.hasMore, false);
+    assert.deepEqual(Object.keys(plan).sort(), ["hasMore", "items", "totalVisible"]);
 });

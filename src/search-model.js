@@ -884,6 +884,47 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
     return requests;
 }
 
+/**
+ * Derive the stable block/document id used for de-duplication and opening
+ * (T-6257, D-384). Mirrors the doc-search card id rules: rootId first, then
+ * the direct id, then the searchDocs path basename (notebook/rootID.sy).
+ */
+function resolveDocSearchResultId(doc) {
+    const rootId = String(doc?.rootId || "");
+    if (BLOCK_ID_RE.test(rootId)) return rootId;
+    const directId = String(doc?.id || "");
+    if (BLOCK_ID_RE.test(directId)) return directId;
+    const pathId = String(doc?.path || "").split("/").pop()?.replace(/\.sy$/, "") || "";
+    return BLOCK_ID_RE.test(pathId) ? pathId : "";
+}
+
+/**
+ * Incremental pagination planner for the doc-search results grid
+ * (T-6257, D-384). Pure decision logic: dedupe by stable id, exclude
+ * already-open roots, slice the first `expandedCount` visible cards for
+ * rendering and report whether more visible results remain. The expansion
+ * cursor never enters search cache keys - the same cache entry serves every
+ * expansion step.
+ */
+function planDocResultsPage(docs, openRootIds, expandedCount) {
+    const source = Array.isArray(docs) ? docs : [];
+    const opened = openRootIds instanceof Set ? openRootIds : new Set();
+    const safeExpanded = Number.isFinite(expandedCount) && expandedCount > 0
+        ? Math.max(1, Math.floor(expandedCount))
+        : Infinity;
+    const seen = new Set();
+    const items = [];
+    let totalVisible = 0;
+    for (const doc of source) {
+        const id = resolveDocSearchResultId(doc);
+        if (!id || opened.has(id) || seen.has(id)) continue;
+        seen.add(id);
+        totalVisible += 1;
+        if (items.length < safeExpanded) items.push({doc, id});
+    }
+    return {items, totalVisible, hasMore: totalVisible > items.length};
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -908,4 +949,6 @@ module.exports = {
     resolveSearchNotebookId,
     buildOpenedDocumentSearchRequest,
     buildOpenedDocumentSearchRequests,
+    resolveDocSearchResultId,
+    planDocResultsPage,
 };

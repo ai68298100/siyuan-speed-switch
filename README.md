@@ -10,7 +10,7 @@
 
 > v0.18.0 开放第三方组件生态与桌面路径筛选：内置组件扩至 41 个（含 13 个外部数据来源组件）、组件商店按用途七组重组并新增依赖页签，六轮架构重构使核心文件缩减约 21%；智能体能力达 11 项并修复能力文案编码损坏。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、5669 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、5702 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -253,7 +253,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5669 项测试（159 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5702 项测试（160 个测试文件）；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 | 用例 |
 | --- | --- | --- |
@@ -262,7 +262,7 @@ const unregister = speedSwitch.registerHomeModule({
 | `tests/search-session.test.cjs` | 会话隔离、取消、版本与缓存上限 | 8 |
 | `tests/quick-actions.test.cjs` | 默认值、可选内置项、清理、命令/适配器与字素边界 | 21 |
 | `tests/quick-actions-ui.test.cjs` | 快捷入口选择器和图标符号边界 | 4 |
-| `tests/search-model.test.cjs` | 搜索聚合、请求归一化、范围、高级筛选和缓存 key | 35 |
+| `tests/search-model.test.cjs` | 搜索聚合、请求归一化、范围、高级筛选、缓存 key 与结果分页规划 | 39 |
 | `tests/agent-capabilities.test.cjs` | Agent 能力 schema、输入归一化、输出边界、注册降级和 JSON Schema 验证 | 10 |
 | `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 | 10 |
 | 其余顶层与 `tests/host/*.test.cjs` | 最近记录、首页运行时、展示契约、第三方 provider、兼容矩阵和发版契约 | 281 |
@@ -282,7 +282,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5669 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5702 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
 pnpm verify:release     # 发布候选本地总门禁（类型、构建、5669 项测试和两套 UI 冒烟）

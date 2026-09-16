@@ -1,6 +1,11 @@
 # TODO
 
 
+## T-6257 搜索成熟化：增量展开与统一缓存 key 收口（2026-09-16，已完成）
+
+- [x] T-6257 分页与查看全部体验（D-384）：统一缓存 key 核查确认已达成（canonicalFilterValue 键排序 + UNORDERED_FILTER_KEYS + v:1，既有测试锁定）；取数上限常量化 DOC_SEARCH_FETCH_LIMIT=33（两处 UI 调用 + 回退天花板 + Agent 路径共用）；面板内「加载更多」增量展开——search-model.planDocResultsPage 纯函数（切片/去重/已打开排除/hasMore，49 单测）+ DOM 薄壳接线（renderDocResults 消费 plan、焦点恢复 preventScroll、尽头回落原生出口）；新增 doc-search-pagination-contract 契约 6 项；i18n 双语 docSearchLoadMore；负向验证 2 例（hasMore 破坏→精确 FAIL、缓存 key 依赖注入→精确 FAIL，均字节级还原）；README 测试矩阵计数同步（5702 项/160 文件）；verify:release 全绿
+
+
 ## T-6256 重构批次 R5b：搜索方法群外迁 doc-search-ui.ts（2026-09-16，已完成）
 
 - [x] T-6256 R5b 本体（D-383）：20 方法 + 1 模块级函数（loadDocSearchPathChildren → buildDocResultItem，887 行）字节原样搬移至 doc-search-ui.ts（919 行）；DocSearchUiHost 12 成员；群内互调 .call(this)，外部调用点 19 处改指；index.ts 10021→9156 行。契约同步：path-filter-ui-contract 3 项改指 + 代际自增断言补强（负向验证发现弱点）、production-graph sanity + 闭包 40→41、store-focus-navigation 1 项、mobile-card-smoke 9 契约 ~30 子句按归属分流；strictBindCallApply 关闭导致的 .call 返回 any 以最小显式注解修复；负向验证 2 例（含断言补强后再注入）；verify:release 独占全绿 5693/5693 + smoke 70/70；发布矩阵 index.js 600715、package.zip 307941

@@ -17,6 +17,11 @@ export const SEARCH_DEBOUNCE_MS = 180;
 // 全库文档搜索结果最多展示条数（缓存可能更多，只渲染前 N 条避免一次性渲染上千节点）
 export const DOC_RESULT_LIMIT = 12;
 
+// 全库文档搜索单次取数上限（T-6257，D-384）：全文回退一次最多取 33 条，
+// 首屏仍只渲染 DOC_RESULT_LIMIT 条，超出的部分经「加载更多」增量展开；
+// 取尽后回落到思源原生搜索出口。分页游标不进缓存 key（同 key 覆盖）。
+export const DOC_SEARCH_FETCH_LIMIT = 33;
+
 // 文档搜索结果内存缓存条目上限。超过则整体清空（关键词极少复现，无需严格 LRU 淘汰）
 export const DOC_SEARCH_CACHE_LIMIT = 50;
 

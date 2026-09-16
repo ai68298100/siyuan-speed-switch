@@ -107,6 +107,7 @@ import {DOCUMENT_CONTEXT_SPEC, buildDocumentContext, normalizeDocumentContextReq
 import {
     SEARCH_DEBOUNCE_MS,
     DOC_RESULT_LIMIT,
+    DOC_SEARCH_FETCH_LIMIT,
     DOC_SEARCH_CACHE_LIMIT,
     SAVE_DEBOUNCE_MS,
     FAB_HIDE_DELAY_MS,
@@ -5310,7 +5311,7 @@ const version = beginSearch(session);
             let source = localItems.length > 0 ? "tabs" : "title";
             if (docs.length === 0) {
                 const fallback = await Promise.race([
-                    runFullTextSearchFallback.call(this, query, signal, filters, Math.min(33, offset + limit + 1)),
+                    runFullTextSearchFallback.call(this, query, signal, filters, Math.min(DOC_SEARCH_FETCH_LIMIT, offset + limit + 1)),
                     timeoutPromise,
                 ]);
                 if (fallback !== null) {

@@ -4,9 +4,9 @@
 // 状态对象（sessions/filters/...）由 host.docSearchState 持有（R5a，D-381）。
 import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
-import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT} from "./constants";
+import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, planDocResultsPage, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
@@ -491,7 +491,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                     return;
                 }
                 this.filterCards(scrollElement, keyword, openedContentRoots, filters);
-                const docs = await runFullTextSearchFallback.call(this, keyword, signal, filters, DOC_RESULT_LIMIT + 1);
+                const docs = await runFullTextSearchFallback.call(this, keyword, signal, filters, DOC_SEARCH_FETCH_LIMIT);
                 if (docs === null) {
                     if (openedContentRoots.size === 0) {
                         renderDocResults.call(this, scrollElement, [], onClose, "error");
@@ -541,7 +541,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             // endpoint when it found no documents, preserving existing
             // ordering and request cost for the common case.
             if (docs.length === 0) {
-                const fallbackDocs = await runFullTextSearchFallback.call(this, keyword, signal, filters, DOC_RESULT_LIMIT + 1);
+                const fallbackDocs = await runFullTextSearchFallback.call(this, keyword, signal, filters, DOC_SEARCH_FETCH_LIMIT);
                 if (fallbackDocs === null) {
                     if (openedContentRoots.size === 0) {
                         renderDocResults.call(this, scrollElement, [], onClose, "error");
@@ -639,7 +639,7 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
     ): Promise<IDocSearchResult[] | null> {
         // Keep one overflow card available for Agent callers to report a
         // truthful `truncated` flag. UI callers still pass DOC_RESULT_LIMIT.
-        const documentLimit = Math.min(33, Math.max(1, Math.floor(Number(documents) || DOC_RESULT_LIMIT)));
+        const documentLimit = Math.min(DOC_SEARCH_FETCH_LIMIT, Math.max(1, Math.floor(Number(documents) || DOC_RESULT_LIMIT)));
         const request = buildFullTextSearchRequest({
             query: keyword,
             method: filters.method || "keyword",
@@ -705,6 +705,7 @@ export function renderDocResults(this: DocSearchUiHost,
         docs: IDocSearchResult[] | null,
         onClose: IOverlayClose,
         state: DocSearchRenderState = "results",
+        expandedCount = DOC_RESULT_LIMIT,
     ) {
         const box: HTMLElement | null = ensureDocResultsBox.call(this, scrollElement, docs);
         if (!box) {
@@ -716,27 +717,22 @@ export function renderDocResults(this: DocSearchUiHost,
             return;
         }
         // 鎺掗櫎褰撳墠宸叉墦寮€鐨勬枃妗ｏ紙涓婂崐閮ㄥ垎宸叉湁瀵瑰簲鍗＄墖锛夛紱鎵嬫満绔?getAllTabs() 鎭掍负绌猴紝闇€鐢?MobileTabs 鏁版嵁婧?
-const openRootIds = collectOpenRootIds.call(this, );
+const openRootIds = collectOpenRootIds.call(this);
 
         if (docs.length === 0) {
             appendDocResultsEmpty.call(this, box);
             return;
         }
 
+        // T-6257（D-384）增量展开：切片/去重/已打开排除/是否还有余量
+        // 全部由纯模型 planDocResultsPage 决策（可单元测试），
+        // 本层只负责 DOM 装配与按钮接线。
+        const plan = planDocResultsPage(docs, openRootIds, expandedCount);
         const grid = document.createElement("div");
         grid.className = "sw__doc-grid";
-        const appendedIds = new Set<string>();
-        for (const doc of docs) {
-            const id = docSearchResultId.call(this, doc);
-            if (!id || openRootIds.has(id) || appendedIds.has(id)) {
-                continue;
-            }
-            appendedIds.add(id);
+        plan.items.forEach(({doc, id}) => {
             grid.appendChild(buildDocResultItem.call(this, doc, id, onClose));
-            if (appendedIds.size >= DOC_RESULT_LIMIT) {
-                break;
-            }
-        }
+        });
         if (grid.childElementCount === 0) {
             appendDocResultsEmpty.call(this, box);
             return;
@@ -746,9 +742,38 @@ const openRootIds = collectOpenRootIds.call(this, );
             label.textContent = `${this.i18n.docSearchResults} · ${grid.childElementCount}`;
         }
         box.appendChild(grid);
-        if (docs.length > DOC_RESULT_LIMIT) {
+        if (plan.hasMore) {
+            appendDocResultsLoadMore.call(this, box, scrollElement, docs, onClose, expandedCount);
+        } else if (docs.length > DOC_RESULT_LIMIT) {
             appendDocResultsViewAll.call(this, box, scrollElement, onClose);
         }
+    }
+
+    // 「加载更多」：增量展开已取回结果（纯客户端，不换缓存 key、不发新请求），
+    // 重渲染后恢复焦点到新按钮（或尽头时的原生出口），保持键盘连续性。
+export function appendDocResultsLoadMore(this: DocSearchUiHost,
+        box: HTMLElement,
+        scrollElement: HTMLElement,
+        docs: IDocSearchResult[],
+        onClose: IOverlayClose,
+        expandedCount: number,
+    ) {
+        const action = document.createElement("button");
+        action.type = "button";
+        action.className = "sw__doc-load-more sw__doc-view-all b3-button b3-button--text";
+        action.textContent = this.i18n.docSearchLoadMore;
+        action.setAttribute("aria-label", this.i18n.docSearchLoadMore);
+        action.addEventListener("click", () => {
+            renderDocResults.call(this, scrollElement, docs, onClose, "results", expandedCount + DOC_RESULT_LIMIT);
+            const next = scrollElement.querySelector<HTMLElement>(".sw__doc-load-more")
+                || scrollElement.querySelector<HTMLElement>(".sw__doc-view-all");
+            try {
+                next?.focus({preventScroll: true});
+            } catch (_) {
+                next?.focus();
+            }
+        });
+        box.appendChild(action);
     }
 
     // 澶嶇敤鐜版湁 .sw__doc-results 瀹瑰櫒锛沝ocs===null 鏃剁洿鎺ョЩ闄ゅ苟杩斿洖 null
@@ -829,17 +854,8 @@ export function appendDocSearchStatus(this: DocSearchUiHost, box: HTMLElement, s
     }
 
 export function docSearchResultId(this: DocSearchUiHost, doc: IDocSearchResult): string {
-        const rootId = String(doc.rootId || "");
-        if (BLOCK_ID_RE.test(rootId)) {
-            return rootId;
-        }
-        const directId = String(doc.id || "");
-        if (BLOCK_ID_RE.test(directId)) {
-            return directId;
-        }
-        // searchDocs 鐨勬枃妗ｈ矾寰勪互 rootID 鍛藉悕锛?notebook/rootID.sy
-        const pathId = String(doc.path || "").split("/").pop()?.replace(/\.sy$/, "") || "";
-        return BLOCK_ID_RE.test(pathId) ? pathId : "";
+        // T-6257（D-384）：id 推导规则收敛到 search-model.resolveDocSearchResultId（单一事实来源）。
+        return resolveDocSearchResultId(doc);
     }
 
     /**
