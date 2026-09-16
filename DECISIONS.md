@@ -517,3 +517,5 @@
 
 2026-09-17 D-396 收口（T-6280 完成，365 条 / 38 文件 → 0）：**① 手写截块的最终清点**：mobile-layout 的 `mobile` 变量按"上一个复合媒体查询"为尾锚截取 560px 分支，承载了 40 条断言——比 gridBlock（"第一个块尾"锚）更稳但仍非解析；迁移后 40 条全部改为块级 declaresIn，截块删除。**② 侦察校准的三个层次**：分支归属（narrow/composite/forced/print 各用 {atRule} 原文精确匹配）、规则存在性（findRules 审计面非空自检）、声明真实性（逐条核对 560px 分支 15 条 store 规则的声明原文——实测发现 sort 的 calc 属于分组规则、tab 的 touch-action 在嵌套规则、card 的 max-width 只在移动分支）。**③ 标签退役**：css-window-scope 按「登记了就得用，用完就得删」规则从词汇表/判据表/反例样本三处退役——普查工具保留，若未来再现窗口断言可重新登记。**④ 总账**：23 批迁移 37 文件；删除 31 条无信息测试，兑现 15+ 名不副实断言，2 个真实产品修复；全量 5763/5763。
 
+2026-09-17 D-396 补充（T-6281 完成：smoke 脚手架并入统一扫描口径）：**① 迁移即审计**：readSource 改 readSourceText（剥注释）后立即暴露 2 条只命中注释的死检查——与全仓裸读迁移的发现一致：**依赖注释文本的断言是"用注释喂门禁"的产物**。改绑真实代码（renderHomeModuleView 入口；home-runtime 的 moduleDefinitions 归一化基座）。**② 负向验证的注入强度**：首版注入用"子串前缀改名"（renderHomeModuleViewX）——includes 检查对子串依然命中、未翻转；改用大小写破坏后才翻转。**includes 类断言的注入必须破坏到"子串不再包含"**，这与正则断言的注入强度要求对齐。**③ 剩余债**：4 条（doc-comment-contract 3 + json-data 1）均为登记过的合法例外。**④ 成本**：测试数不变（5763）；smoke 70 PASS；verify:release 全链绿。
+

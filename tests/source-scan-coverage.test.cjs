@@ -49,9 +49,6 @@ const DEBT_REASONS = {
         "断言的对象就是注释本身（JSDoc 声明的不变量 / 声明行尾的 key 说明），必须读原始文本。",
     "json-data":
         "读的是 src/i18n/*.json：JSON 无注释语义，剥注释无收益。",
-    "smoke-harness":
-        "smoke 脚手架自带归一函数（tests/mobile-card-smoke.cjs 的 readSource），迁移需连同 "
-        + "`pnpm test:smoke` 一起复跑（T-6278）。",
 };
 
 const SOURCE_SCAN_DEBT = [
@@ -59,7 +56,6 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/storage-key-audit.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/storage-migration.test.cjs", reason: "doc-comment-contract"},
     {file: "tests/shipped-i18n-parity.test.cjs", reason: "json-data"},
-    {file: "tests/mobile-card-smoke.cjs", reason: "smoke-harness"},
 ];
 
 // 每个理由标签的**内容判据**（T-6282，"白名单值必须被断言"的第三次自我适用）。
@@ -78,8 +74,6 @@ const DEBT_REASON_CHECKS = {
     ),
     // "读的是 JSON（无注释语义）"：文件确实在解析 JSON
     "json-data": (text) => text.includes("JSON.parse("),
-    // "脚手架自带归一函数"：文件自建了带 CRLF 归一的读取，而不是走 readSourceText
-    "smoke-harness": (text) => text.includes("fs.readFileSync") && text.includes("replace(/\\r\\n/g"),
 };
 
 function discoverRawReaderFiles() {
@@ -150,8 +144,6 @@ test("every debt entry's reason tag matches the content it describes (T-6282)", 
         "doc-comment-contract": 'assert.ok(source.includes("case x:"));',
         // 读代码但不解析 JSON
         "json-data": 'const t = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");',
-        // 走共享助手，没有自建归一
-        "smoke-harness": 'const t = readSourceText(path.join(root, "src", "index.ts"));',
     };
     for (const [tag, probe] of Object.entries(DEBT_REASON_COUNTEREXAMPLES)) {
         assert.equal(

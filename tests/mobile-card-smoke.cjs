@@ -159,7 +159,9 @@ console.log(`${visualTokensOk ? 'PASS' : 'FAIL'} shared lavender/blue-grey visua
 if (!visualTokensOk) allPassed = false;
 // Source-contract checks should be independent of the checkout's line-ending
 // policy (Windows commonly materializes CRLF while CI uses LF).
-const readSource = (file) => fs.readFileSync(path.join(REPO, 'src', file), 'utf8').replace(/\r\n/g, '\n');
+const {readSourceText}=require('./source-scan.cjs');
+// T-6281：读取迁移到 readSourceText（剥注释 + CRLF 归一），与全仓源码扫描口径一致。
+const readSource = (file) => readSourceText('src/' + file);
 const source = readSource('index.ts');
 const mobileToolbarSemanticsOk = source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn"')
     && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn"')
@@ -246,7 +248,7 @@ const homePanelFailureBoundaryOk = homePanelSource.includes('try {\n            
     && homePanelSource.includes('results.some((result) => result?.reason === "disposed") ? "disposed"');
 console.log(`${homePanelFailureBoundaryOk ? 'PASS' : 'FAIL'} home panel per-module failure boundary`);
 if (!homePanelFailureBoundaryOk) allPassed = false;
-const homeControllerSource = fs.readFileSync(path.join(REPO, 'src', 'home-controller.js'), 'utf8');
+const homeControllerSource = readSource('home-controller.js');
 const homeControllerSignalOk = homeControllerSource.includes('const externalSignal = readOptions && typeof readOptions.signal === "object" ? readOptions.signal : null')
     && homeControllerSource.includes('externalSignal.addEventListener("abort", externalAbortHandler, {once: true})')
     && homeControllerSource.includes('externalSignal.removeEventListener("abort", externalAbortHandler)')
@@ -444,7 +446,7 @@ const homeMountContractOk = source.includes('public registerHomeModule')
     && source.includes('public createHomeModuleController')
     && source.includes('public createHomePanelController')
     && source.includes('registration.unregister()')
-    && source.includes('no default panel is created here')
+    && source.includes('public renderHomeModuleView')
     && source.includes('if (!module || !container')
     && source.includes('this.homeRuntime.listModules(device)');
 console.log(`${homeMountContractOk ? 'PASS' : 'FAIL'} explicit home-module mount contract`);
@@ -457,7 +459,7 @@ const homeControllerTypeContractOk = source.includes('showError: (reason?: strin
 console.log(`${homeControllerTypeContractOk ? 'PASS' : 'FAIL'} home controller error-state type contract`);
 if (!homeControllerTypeContractOk) allPassed = false;
 const homeReadonlyBoundaryOk = homeRuntimeSource.includes('readOnly: true')
-    && homeRuntimeSource.includes('public home-module boundary is intentionally read-only');
+    && homeRuntimeSource.includes('const base = moduleDefinitions.find((item) => item && item.moduleId === moduleId)');
 console.log(`${homeReadonlyBoundaryOk ? 'PASS' : 'FAIL'} home module read-only registration boundary`);
 if (!homeReadonlyBoundaryOk) allPassed = false;
 
