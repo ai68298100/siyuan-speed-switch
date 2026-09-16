@@ -78,12 +78,18 @@ function expandSelectors(parents, children) {
     return expanded;
 }
 
-// 解析出扁平的规则列表：{selectors: [...展开后的选择器], declarations: "块内自身声明"}
+// 解析出扁平的规则列表：{selectors, declarations, startLine, endLine}
+//
+// 行号说明（`scripts/css-assertion-injector.cjs` 用它定位注入点）：行号按**剥注释后**
+// 的文本计数。`//` 行注释会被替换成一个 `\n`，故行号与原文件一致；但 `/* */` 块注释
+// 是整段跳过、不补换行，一旦文件里存在块注释，行号就会漂移——所以注入工具在使用前
+// 会先检查原文件不含 `/*`，否则直接报错而不是给出可能错位的行号。
 function parseRules(cssText) {
     const source = stripComments(cssText);
     const rules = [];
     const stack = [];
     let buffer = "";
+    let line = 1;
     const flushDeclaration = () => {
         // 声明归属最近的"真规则"祖先：嵌在规则内的 at-rule（@media 等）是透明容器，
         // 它里面的声明属于外层规则，不能丢。
@@ -103,6 +109,7 @@ function parseRules(cssText) {
     let quote = null;
     for (let index = 0; index < source.length; index += 1) {
         const char = source[index];
+        if (char === "\n") line += 1;
         if (quote) {
             buffer += char;
             if (char === "\\") {
@@ -133,6 +140,7 @@ function parseRules(cssText) {
                 sameAsParent: false,
                 selectors: expandSelectors(parents, children),
                 atDepth: parentDepth,
+                startLine: line,
                 declarationBuffer: [],
             });
             continue;
@@ -144,6 +152,8 @@ function parseRules(cssText) {
                 rules.push({
                     selectors: frame.selectors,
                     atDepth: frame.atDepth,
+                    startLine: frame.startLine,
+                    endLine: line,
                     declarations: frame.declarationBuffer.filter(Boolean).join("\n"),
                 });
             }

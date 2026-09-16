@@ -21,6 +21,17 @@
 // 注意：扫描前**必须剥注释**（复用 `tests/source-scan.cjs` 的 stripComments，第八类
 // 失效模式）。否则本工具会把"迁移说明注释里引用的旧写法"再数一遍——实测样板迁移后
 // 仍报 1 条，就是文件头注释里那句 `assert.match(css, /strong[\s\S]*?min-width: 0/)`。
+//
+// 口径（T-6280 第三批修正）：**以债清单为准，不以"扫到什么"为准**。
+// 工具扫的是全部 `tests/*.test.cjs`，而 `tests/source-scan-coverage.test.cjs` 里的
+// `css-window-scope` 条目才是"还剩多少要迁"的权威口径——两者不是一回事：
+//   - 债外的命中不计入待迁（例如 `tests/css-block-scan.test.cjs` 里那条**故意的**
+//     "病态对照"，以及 W3 里几个用 `[^}]*` 的旧门禁：`[^}]*` 越不过 `}`，退化程度
+//     远小于 `[\s\S]*?`，它们不是同一类缺陷）；
+//   - 债**内**却扫不到命中的文件必须**点名**——普查只认单行 `assert.match(css, /…/)`，
+//     跨行拼接、`new RegExp(...)`、走变量的写法扫不到。不点名的话，这类文件会以
+//     "本文件 0 条"的样子静默漂在待办之外（"审计面塌缩"的同一族失效模式）。
+// 因此每组都按 债内/债外 分开计数，末尾列出"登记了债但零命中"的文件。
 const fs = require("node:fs");
 const path = require("node:path");
 const {stripComments} = require("../tests/source-scan.cjs");
@@ -31,12 +42,20 @@ const files = fs.readdirSync(path.join(root, "tests"))
     .filter((name) => name.endsWith(".test.cjs") && name.includes(filter))
     .sort();
 
+function debtFiles() {
+    const source = fs.readFileSync(path.join(root, "tests", "source-scan-coverage.test.cjs"), "utf8");
+    return new Set([...source.matchAll(/\{file:\s*"([^"]+)",\s*reason:\s*"css-window-scope"\}/g)]
+        .map((item) => item[1]));
+}
+const debt = debtFiles();
+
 const buckets = {
     "W1 选择器→声明（块级可修）": [],
     "W2 选择器→非声明（需人工看）": [],
     "W3 窄窗口 [^}]*（近似块内）": [],
 };
 let total = 0;
+const hitFiles = new Set();
 
 for (const name of files) {
     const rel = "tests/" + name;
@@ -47,16 +66,18 @@ for (const name of files) {
         if (!match) continue;
         const expression = match[2];
         total += 1;
+        hitFiles.add(rel);
         if (filter) {
             console.log(`${rel} :: ${expression}`);
             continue;
         }
+        const item = {rel, expression, inDebt: debt.has(rel)};
         if (/\[\^}\]\*/.test(expression)) {
-            buckets["W3 窄窗口 [^}]*（近似块内）"].push(`${rel} :: ${expression}`);
+            buckets["W3 窄窗口 [^}]*（近似块内）"].push(item);
         } else if (/\\s\\S\]\*\?/.test(expression) && /:\s|;$/.test(expression)) {
-            buckets["W1 选择器→声明（块级可修）"].push(`${rel} :: ${expression}`);
+            buckets["W1 选择器→声明（块级可修）"].push(item);
         } else {
-            buckets["W2 选择器→非声明（需人工看）"].push(`${rel} :: ${expression}`);
+            buckets["W2 选择器→非声明（需人工看）"].push(item);
         }
     }
 }
@@ -64,17 +85,29 @@ for (const name of files) {
 if (filter) {
     console.log(`\n${files.length} 个文件，共 ${total} 条窗口断言`);
 } else {
+    let debtTotal = 0;
+    const debtHitFiles = new Set();
     for (const [key, list] of Object.entries(buckets)) {
-        console.log(`\n## ${key} —— ${list.length} 条`);
+        const inside = list.filter((item) => item.inDebt);
+        const outside = list.filter((item) => !item.inDebt);
+        debtTotal += inside.length;
+        console.log(`\n## ${key} —— 债内 ${inside.length} 条 / 债外 ${outside.length} 条`);
         const byFile = {};
         for (const item of list) {
-            const file = item.split(" :: ")[0];
-            byFile[file] = (byFile[file] || 0) + 1;
+            byFile[item.rel] = byFile[item.rel] || {count: 0, inDebt: item.inDebt};
+            byFile[item.rel].count += 1;
         }
-        for (const [file, count] of Object.entries(byFile).sort((left, right) => right[1] - left[1])) {
-            console.log(`   ${count}\t${file}`);
+        for (const [file, info] of Object.entries(byFile).sort((left, right) => right[1].count - left[1].count)) {
+            if (info.inDebt) debtHitFiles.add(file);
+            console.log(`   ${info.count}\t${file}${info.inDebt ? "" : "  ← 债外，不计入待迁"}`);
         }
     }
-    console.log("\n合计提取到", total, "条（判据只认 assert.match/doesNotMatch 的单个正则，"
-        + "跨行拼接或走变量的断言不在统计内，迁移时要再看一遍文件）");
+    console.log(`\n合计提取到 ${total} 条；其中**债内待迁 ${debtTotal} 条 / ${debtHitFiles.size} 个文件**`
+        + `（债清单共 ${debt.size} 个文件）`);
+    const silent = [...debt].filter((file) => !hitFiles.has(file)).sort();
+    if (silent.length) {
+        console.log(`\n！！登记了债但本工具**零命中**的 ${silent.length} 个文件（跨行拼接 / new RegExp / 走变量？必须人工打开看）：`);
+        for (const file of silent) console.log(`   ${file}`);
+    }
+    console.log("\n判据只认 assert.match/doesNotMatch 的**单个单行**正则，跨行拼接或走变量的断言不在统计内。");
 }

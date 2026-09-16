@@ -141,4 +141,25 @@ test("parses the real stylesheet and pins the D-395 injection target", () => {
     assert.equal(findRules(css, ".sw-home-store__summary").length, 2);
     assert.equal(findRules(css, ".sw-home-store__summary", {topLevel: true}).length, 1);
     assert.equal(declaresIn(css, ".sw-home-store__summary", /max-width: 100%/, {topLevel: true}), true);
+    // 行号是注入工具（scripts/css-assertion-injector.cjs）定位注入点的唯一依据，故按
+    // **关系不变式**（而非绝对行号，避免 SCSS 一改就脆断）钉住它：每条规则的 startLine
+    // 必须是含 `{` 的那一行、endLine 必须是含 `}` 的那一行，且声明必须落在区间内。
+    // 声明按"空白归一后的子串"比对而不是整行相等——`from { transform: rotate(0deg); }`
+    // 这类单行块（keyframes 步进）与跨行声明都会让整行比对失效（首版即被它拦下）。
+    const rawLines = require("node:fs").readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8").split("\n");
+    assert.ok(rules.length > 500, "审计面塌缩");
+    let checked = 0;
+    for (const rule of rules) {
+        assert.ok(rawLines[rule.startLine - 1].includes("{"), `startLine ${rule.startLine} 不是块首行`);
+        assert.ok(rawLines[rule.endLine - 1].includes("}"), `endLine ${rule.endLine} 不是块尾行`);
+        assert.ok(rule.startLine <= rule.endLine, "startLine 必须不大于 endLine");
+        const haystack = rawLines.slice(rule.startLine - 1, rule.endLine).join("\n").replace(/\s+/g, " ");
+        for (const declaration of rule.declarations.split("\n")) {
+            const needle = declaration.replace(/\s+/g, " ").trim();
+            if (!needle) continue;
+            assert.ok(haystack.includes(needle), `声明 ${needle} 不在 ${rule.startLine}-${rule.endLine} 区间内`);
+            checked += 1;
+        }
+    }
+    assert.ok(checked > 500, `行号关系不变式覆盖面过小：只校验了 ${checked} 条声明`);
 });
