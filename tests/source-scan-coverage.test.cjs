@@ -72,7 +72,6 @@ const SOURCE_SCAN_DEBT = [
     {file: "tests/store-motion-accessibility.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-pending-card-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-performance-contract.test.cjs", reason: "css-window-scope"},
-    {file: "tests/store-preview-context-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-preview-disclosure-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-print-contract.test.cjs", reason: "css-window-scope"},
     {file: "tests/store-render-stability.test.cjs", reason: "css-window-scope"},
