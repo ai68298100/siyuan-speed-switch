@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.17.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.19.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,9 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.17.0 deepens read-only SiYuan Agent collaboration with lifecycle audits, transport queues, joint recovery, checkpoint windows, and diagnostics projections, while retaining the widget-store, configuration, and multi-surface navigation experience.
+> v0.19.0 completes search maturation and mojibake recovery: workspace document results now support an in-panel "Load more" incremental expansion, seven refactoring rounds have shrunk the core file by about 28%, and all 351 comments corrupted by the v0.16.9 encoding accident have been restored.
 
-> The current development head passes type checking, production build, 5669 automated tests, and mobile/Chromium UI smoke tests. It adds time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge. The store now filters Offline, Local service, and External API sources. Agent safety boundaries remain unchanged; sync-time panel stability, real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 5703 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, and an ActivityWatch app-usage bridge; the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -29,11 +29,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 ## Native SiYuan Agent capabilities
 
-On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers twelve capabilities after a runtime check. Read-only capabilities declare `localRead` only, with no writes, data egress, or external cost; controlled navigation declares no writes. Input, output, and text sizes are bounded. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; further cross-document or destructive actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
+On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers eleven capabilities after a runtime check: `navigation-state`, `search-documents`, `get-document-outline`, `home-widget-snapshot`, `workspace-context`, and `home-adapter-diagnostics` (read-only), `open-document` and `open-documents` (controlled navigation — up to 5 documents per call, behind a confirmation dialog listing every title), and `update-task-status`, `create-document`, `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering. Read-only capabilities declare `localRead` only, with no writes, data egress, or external cost; controlled navigation declares no writes. Input, output, and text sizes are bounded. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; further cross-document or destructive actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
 
 [中文说明](./README.md)
-
-**Agent capabilities** (via `addAgentCapability`): `navigation-state` (bounded tabs, recent-open, recent-closed and favorites snapshot), `search-documents`, `home-widget-snapshot`, `get-document-outline`, `document-context` and `workspace-context` (read-only), `open-document` and `open-documents` — up to 5 documents per call, behind a confirmation dialog listing every title (controlled navigation), `update-task-status`, `create-document` and `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering.
 
 ## Core Capabilities
 
@@ -62,7 +60,7 @@ Search always uses this priority:
 2. **Opened-document content**: queried inside at most six opened root documents; hits recover existing tab cards without creating duplicates.
 3. **Workspace documents**: queried by title first; an empty title result or advanced filters use a bounded native full-text fallback, aggregated into document cards with a small snippet limit.
 
-Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports bounded notebook, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while advanced filters use native block search. Path-tree selection is still not exposed in the UI, and this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
+Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports bounded notebook, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while advanced filters use native block search. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. Path-tree selection is still not exposed in the UI, and this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
 
 ### Panels, Journal, And Quick Actions
 
@@ -166,21 +164,28 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.17.0`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
+This release is published as `v0.19.0`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
 
 ## Changelog
 
-### Current development head (unreleased)
+### v0.19.0 (2026-09-16)
 
-- The widget store adds a Life Information group and a fully offline Local Date & Time widget for desktop, sidebar, and mobile. It refreshes on real minute boundaries and releases its heartbeat while hidden or disposed.
-- A pure catalog records nine researched external-widget candidates with source, licensing/terms, credentials, privacy, platform, and honest availability metadata. Sources without a production adapter are not presented as ready-to-add widgets.
-- Open-Meteo weather now loads only after a city is configured, with an iPad-like gradient, current conditions, feels-like temperature, 2–5 day forecast, endpoint allowlisting, timeouts, response bounds, 15-minute caching, and attribution.
-- Bangumi Anime Schedule now selects today, tomorrow, or the week using the device's local weekday and presents real 3:4 official cover cards with lazy loading, exact endpoint/cover allowlists, and a 30-minute cache. It does not claim personalized recommendations.
-- The journal calendar can optionally show holiday-cn public holidays and adjusted workdays alongside lunar labels. Store cards now disclose source, connectivity, and privacy. The current head contains 33 built-in widgets across 10 functional store groups, including a Device & focus group; source filters distinguish offline, local-service, and external-API components.
-- DailyHotApi **Trending now** and NewsNow **Live news** accept only complete self-hosted endpoints and make no request until configured. Remote endpoints require HTTPS; 128 KiB/8.5-second request bounds, a 30-minute cache, and a visible stale-cache state isolate source failures. Ranked gradient cards retain a compact mobile layout.
-- ActivityWatch **App usage** only allows loopback endpoints, uses SiYuan's local proxy for a fixed aggregate query, exposes app-level durations without window titles, and is available on desktop/sidebar only.
-- The mobile widget panel uses one vertical column and one unified size per widget; tab-list column settings do not affect the widget panel.
-- The development head passes 5669 automated tests, TypeScript, production build, mobile smoke, and Chromium UI smoke; artifact details are tracked in the release-readiness matrix.
+- **Search maturation**: workspace document results gain an in-panel "Load more" incremental expansion — the first 12 render immediately, clicking expands more results purely client-side (no cache-key changes, no new requests, focus preserved after re-render), and the native SiYuan search becomes the fallback once everything is expanded. The fetch cap is now a named constant (33) shared with the Agent path; the unified cache key (sorted object keys + unordered-key set + v:1 versioning) was audited and is locked by existing tests.
+- **Architecture refactor (no behavior change)**: the search method group — 20 methods plus 1 module-level function, about 887 lines — moved to `doc-search-ui.ts`, bringing `src/index.ts` down to 9156 lines (about -28% across seven rounds). Document-search instance state now lives in `doc-search-state.ts`; the production dependency graph covers 41 modules with full gate review.
+- **Fix**: all 351 comments corrupted by the v0.16.9 encoding accident are restored — 322 matched automatically against the v0.16.8 revision, 29 sourced manually (two born-corrupted lines were reconstructed semantically and split back into their original multi-line form). Comment text only; no behavior change.
+- **Docs**: the widget protocol adds a "Cross-surface layout" section covering three independent layouts (desktop/sidebar/mobile) over globally shared configuration, `supportedDevices` pruning, full-width single-column mobile widgets, and layout cleanup semantics.
+- Release gates pass: 5703 automated tests (160 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 601607 bytes, package.zip 309233 bytes.
+
+### v0.18.0 (2026-09-16)
+
+- **Third-party widget ecosystem**: added external-source widgets including World Clock, Hacker News, Uptime Kuma status, Frankfurter rates, Miniflux unread, daily quote, device battery, NewsNow live news, and ActivityWatch app usage, backed by a pure-model candidate catalog and source audit docs; sources without configured credentials stay offline by default.
+- **Path filtering on desktop**: endpoint gating lifted based on real-host evidence (kernel 3.8.4, `/api/filetree/listDocsByPath`); the desktop dialog now offers notebook/path filters with generation-based cancellation locked by contract tests.
+- **Store regrouping**: built-in widgets reorganized into seven purpose groups with bilingual descriptions; a new dependencies tab, dependency state parsing, and structured summaries; single-column mobile widget panel.
+- **Resilience**: SiYuan sync lifecycle integration freezes panel interaction during sync; a 120-second sync watchdog covers lost end events.
+- **Polish**: unified motion tokens, pressed-state feedback, and `prefers-contrast` accessibility.
+- **Refactor (no behavior change)**: six rounds shrank `src/index.ts` from 12681 to 10003 lines (-21%), splitting store UI, settings, config forms, external widget registration, grapheme utils, and search state into modules; production graph 31→40.
+- **Fixes**: repaired the corrupted `home-adapter-diagnostics` capability text (since v0.17.0); aligned release claims with actual registration (41 widgets, 11 capabilities).
+- Release gates pass: 5693 automated tests, TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 601563 bytes, package.zip 307859 bytes.
 
 ### v0.17.0 (2026-09-14)
 
@@ -234,19 +239,19 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 160 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5702 tests in total. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 160 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5703 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
-| File | Scope | Cases |
-| --- | --- | --- |
-| `tests/util.test.cjs` | `util.js` pure functions and data sanitization boundaries | 58 |
-| `tests/constants.test.cjs` | Source constant range and format checks | 6 |
-| `tests/search-session.test.cjs` | Session isolation, cancellation, versions, and cache limits | 8 |
-| `tests/quick-actions.test.cjs` | Defaults, optional built-ins, sanitization, command/adapter, and grapheme boundaries | 21 |
-| `tests/quick-actions-ui.test.cjs` | Quick-action picker and icon-symbol boundaries | 4 |
-| `tests/search-model.test.cjs` | Search aggregation, request normalization, scopes, advanced filters, and cache keys | 35 |
-| `tests/agent-capabilities.test.cjs` | Agent schemas, input normalization, output bounds, registration fallback, and JSON Schema validation | 10 |
-| `tests/i18n.test.cjs` | Locale parity, static references, and value validation | 10 |
-| Remaining top-level and `tests/host/*.test.cjs` | Recent records, home runtime, view contracts, third-party providers, compatibility, and release contracts | 281 |
+| File | Scope |
+| --- | --- |
+| `tests/util.test.cjs` | `util.js` pure functions and data sanitization boundaries |
+| `tests/constants.test.cjs` | Source constant range and format checks |
+| `tests/search-session.test.cjs` | Session isolation, cancellation, versions, and cache limits |
+| `tests/quick-actions.test.cjs` | Defaults, optional built-ins, sanitization, command/adapter, and grapheme boundaries |
+| `tests/quick-actions-ui.test.cjs` | Quick-action picker and icon-symbol boundaries |
+| `tests/search-model.test.cjs` | Search aggregation, request normalization, scopes, advanced filters, cache keys, and result pagination planning |
+| `tests/agent-capabilities.test.cjs` | Agent schemas, input normalization, output bounds, registration fallback, and JSON Schema validation |
+| `tests/i18n.test.cjs` | Locale parity, static references, and value validation |
+| Remaining top-level and `tests/host/*.test.cjs` | Recent records, home runtime, view contracts, third-party providers, compatibility, and release contracts |
 
 | UI test | Scope |
 | --- | --- |
@@ -263,7 +268,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5669)
+pnpm test               # run every unit, contract, and host release test (currently 5703)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
 pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and both UI smokes)

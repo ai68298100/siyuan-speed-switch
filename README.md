@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.18.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.19.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,9 +8,9 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> v0.18.0 开放第三方组件生态与桌面路径筛选：内置组件扩至 41 个（含 13 个外部数据来源组件）、组件商店按用途七组重组并新增依赖页签，六轮架构重构使核心文件缩减约 21%；智能体能力达 11 项并修复能力文案编码损坏。
+> v0.19.0 完成搜索成熟化与乱码修复：全库搜索结果支持面板内「加载更多」增量展开，七轮架构重构使核心文件缩减约 28%，并修复 v0.16.9 编码事故遗留的 351 行注释乱码。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、5702 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、5703 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯和 ActivityWatch 使用时长，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -76,7 +76,7 @@
 2. **已打开文档内容**：在最多 6 个已打开根文档内调用思源搜索，命中时仍只恢复已有页签，不新增重复卡片。
 3. **全库文档**：先按标题查询；标题无结果或启用高级筛选时，回退到受限原生全文搜索，按根文档聚合为卡片和少量片段。
 
-搜索请求使用 180ms 防抖、容量受限的内存缓存、请求版本校验和取消机制。桌面弹窗、右侧栏和手机端各自持有独立搜索会话，互不取消或覆盖。当前工作树支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；仅笔记本/路径筛选保留标题快路径，其他筛选会直接使用受限的原生块级全文请求。路径树选择仍未开放 UI，且本功能不替代思源原生搜索页。后续计划见 [ROADMAP.md](./ROADMAP.md)。
+搜索请求使用 180ms 防抖、容量受限的内存缓存、请求版本校验和取消机制。桌面弹窗、右侧栏和手机端各自持有独立搜索会话，互不取消或覆盖。当前工作树支持笔记本、内容类型、子类型、搜索方式和结果排序筛选；仅笔记本/路径筛选保留标题快路径，其他筛选会直接使用受限的原生块级全文请求。全库结果一次最多拉取 33 条，首屏渲染 12 条，超出时通过面板内「加载更多」按钮纯客户端增量展开（不换缓存 key、不发新请求），全部展开后才回落到思源原生搜索出口。路径树选择仍未开放 UI，且本功能不替代思源原生搜索页。后续计划见 [ROADMAP.md](./ROADMAP.md)。
 
 ### 面板、日记与快捷入口
 
@@ -182,9 +182,17 @@ pnpm verify:release
 4. 主题：默认明暗主题、Neo 等第三方主题，以及窗口缩放和旋转后的布局。
 5. 生命周期：安装、升级、卸载、重启后数据迁移，以及 API 失败/取消/权限拒绝。
 
-本版本已正式发布为 `v0.18.0`；路径筛选侧栏入口（待窄侧栏真实宽度证据）和 Android 真机验收仍记录为后续兼容性补充。
+本版本已正式发布为 `v0.19.0`；路径筛选侧栏入口（待窄侧栏真实宽度证据）和 Android 真机验收仍记录为后续兼容性补充。
 
 ## 更新日志
+
+### v0.19.0（2026-09-16）
+
+- **搜索成熟化**：全库文档结果新增面板内「加载更多」增量展开——首屏仍渲染 12 条，点击后纯客户端展开更多结果（不换缓存 key、不发新请求，重渲染后焦点保持），全部展开后回落思源原生搜索出口；取数上限常量化（33 条）并与智能体路径共用；统一缓存 key（对象键排序 + 无序键集合 + v:1 版本化）经核查确认并由既有测试锁定。
+- **架构重构（无行为变化）**：搜索方法群 20 个方法 + 1 个模块级函数（约 887 行）外迁至 `doc-search-ui.ts`，`src/index.ts` 降至 9156 行（七轮重构累计约 -28%）；文档搜索实例状态收拢至 `doc-search-state.ts`；生产依赖图 41 个模块且全程门禁复核。
+- **修复**：v0.16.9 编码事故遗留的 351 行注释乱码全量恢复——322 行以 v0.16.8 原文自动匹配，29 行人工定源（其中 2 行为新时期新增注释、按上下文语义重建并拆回原始多行）；仅注释文本，无行为变化。
+- **文档**：组件协议新增「跨表面布局」章节，说明桌面/侧栏/手机端三份独立布局与全局共享配置的语义（`supportedDevices` 裁剪、移动端单列全宽、布局清理语义）。
+- 发版门禁：5703 项自动测试（160 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 601607 bytes、package.zip 309233 bytes。
 
 ### v0.18.0（2026-09-16）
 
@@ -253,19 +261,19 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5702 项测试（160 个测试文件）；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5703 项测试（160 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
-| 文件 | 覆盖范围 | 用例 |
-| --- | --- | --- |
-| `tests/util.test.cjs` | `util.js` 纯函数与数据净化边界 | 58 |
-| `tests/constants.test.cjs` | 真实源码常量的范围与格式自洽 | 6 |
-| `tests/search-session.test.cjs` | 会话隔离、取消、版本与缓存上限 | 8 |
-| `tests/quick-actions.test.cjs` | 默认值、可选内置项、清理、命令/适配器与字素边界 | 21 |
-| `tests/quick-actions-ui.test.cjs` | 快捷入口选择器和图标符号边界 | 4 |
-| `tests/search-model.test.cjs` | 搜索聚合、请求归一化、范围、高级筛选、缓存 key 与结果分页规划 | 39 |
-| `tests/agent-capabilities.test.cjs` | Agent 能力 schema、输入归一化、输出边界、注册降级和 JSON Schema 验证 | 10 |
-| `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 | 10 |
-| 其余顶层与 `tests/host/*.test.cjs` | 最近记录、首页运行时、展示契约、第三方 provider、兼容矩阵和发版契约 | 281 |
+| 文件 | 覆盖范围 |
+| --- | --- |
+| `tests/util.test.cjs` | `util.js` 纯函数与数据净化边界 |
+| `tests/constants.test.cjs` | 真实源码常量的范围与格式自洽 |
+| `tests/search-session.test.cjs` | 会话隔离、取消、版本与缓存上限 |
+| `tests/quick-actions.test.cjs` | 默认值、可选内置项、清理、命令/适配器与字素边界 |
+| `tests/quick-actions-ui.test.cjs` | 快捷入口选择器和图标符号边界 |
+| `tests/search-model.test.cjs` | 搜索聚合、请求归一化、范围、高级筛选、缓存 key 与结果分页规划 |
+| `tests/agent-capabilities.test.cjs` | Agent 能力 schema、输入归一化、输出边界、注册降级和 JSON Schema 验证 |
+| `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 |
+| 其余顶层与 `tests/host/*.test.cjs` | 最近记录、首页运行时、展示契约、第三方 provider、兼容矩阵和发版契约 |
 
 | UI 测试 | 覆盖范围 |
 | --- | --- |
@@ -282,10 +290,10 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5702 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5703 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、5669 项测试和两套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、5703 项测试和两套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
