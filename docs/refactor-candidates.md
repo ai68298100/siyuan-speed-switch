@@ -61,7 +61,11 @@ index.ts 12681 行中，主类方法约 12006 行、286 个方法。**按方法�
 | > **R3 执行记录（2026-09-16，D-377，T-6241~T-6244）**：实际搬移 openHomeConfigForm 方法体 324 行（候选清单 329 系误计入 openHomeWidgetStore 前置注释），字节原样迁入 `src/home-config-form.ts`（this 参数模式，HomeConfigFormHost 仅 7 成员——依赖面三批最小）；附带收纳 `src/store-labels.ts`（resolveStoreNetworkLabel/resolveStorePrivacyLabel，两处消费的纯函数）。index.ts 11458→11126 行。契约同步 100+ 条方法体断言经"真实正则匹配判定"脚本自动分流（store-mobile-layout 97 条、home-store-contract 8 条改指 configFormSource，保守保留 66 条两边命中者）+ 5 条调用点断言同步 `.call(this` 形态；生产闭包 36→38。负向验证：删 reportValidity 行 → 精确 1 项失败 → 字节级还原。index.js 601057、package.zip 308125；verify:release 独占全绿。R5 候选顺位递补。 | | | | |
 | **R4：设置页拆分** | `buildSettingsDocumentSets`(315) + `buildSettingsQuickActions`(221) + `buildSettings*` 系列 → `settings-sections.ts` | ~800 | 低-中（各节相对独立） | index.ts 减约 6% |
 | **R5：搜索链路拆分** | `bindDocSearchFilter`(317) + `runDocSearchFetch`(117) → `doc-search-ui.ts`（`path-filter-model` 已独立） | ~500 | 中（D-366/D-365 的门禁测试锁定接线形态，搬移须同步契约） | 搜索 UI 与模型解耦 |
+| | | | | |
+| > **R5 勘察修订（2026-09-16，D-378）**：实际风险高于本表预估——搜索方法群实为 15 个方法约 730 行（bindDocSearchFilter/runDocSearchFetch/runFullTextSearchFallback/renderDocResults/ensureDocResultsBox 等），深度共享 6 个实例级状态字段（docSearchSessions/docSearchFilters/docSearchNotebookNames/docSearchPathGeneration/docSearchPathTitles/activeDocSearchSessions，WeakMap/Set 形态、与面板生命周期绑定），且 applySearch 主流程横跨其上。按"共享机制留宿主"裁定，状态必须留宿主而仅方法体可搬，host 接口将膨胀至 20+ 状态透传成员——收益不抵割裂风险。**正确前置**：先拆状态宿主（6 个字段收进 search-state 模块并接管生命周期）或先补搜索渲染契约测试，二者择一后再立项。 | | | | |
 | **R6：util.js 去重** | graphemeLength/normalizeLabel 重复实现收敛（D-349 已知遗留） | n/a（跨文件） | 低（生产依赖图有边变化，包体需复核） | 消除 4 处 Segmenter 重复持有 |
+| | | | | |
+| > **R6 执行记录（2026-09-16，D-378，T-6245~T-6247）**：全仓 `new Intl.Segmenter` 私有持有 4→1（仅 util.js）——util 新增导出 graphemeSlice（前 n 字素截断，含短路优化）与 graphemeSliceByCodePoints（码点预算截断）、graphemeLength 补导出；quick-actions 删本地实现改 re-export（测试导入零变化）、normalizeLabel 改调 graphemeSlice；search-model 的 normalizeText 截断段、agent-capabilities 的 asText 循环分别改调 util。生产依赖图边 +2（search-model/agent-capabilities → util，util 本在图中，闭包 38 不变）。门禁升级：Segmenter 测试由"每文件 ≤1 处"收紧为"全仓恰 1 处且必须在 util.js"，负向验证（注入第二持有点 → 精确失败 → 字节级还原）。index.js 601057→600923（-134）、package.zip 308190；verify:release 独占全绿。 | | | | |
 
 ## 4. 建议批次顺序与理由
 

@@ -250,12 +250,20 @@ test('production sources hoist Intl.Segmenter instead of building one per call',
     // Constructing a segmenter costs far more than segmenting short text, so
     // each module must hoist a single instance rather than rebuild it inside
     // label/icon/normalization helpers.
+    // R6（D-378）起进一步收紧：全仓恰 1 处持有且必须在 util.js——
+    // 字素工具（graphemeLength/graphemeSlice/graphemeSliceByCodePoints）已
+    // 收敛到 util，其他模块经 util 导入，不再各自持有实例。
     const offenders = [];
+    let total = 0, holder = null;
     for (const name of fs.readdirSync(path.join(root, 'src'))) {
         if (!/\.(?:ts|js)$/.test(name)) continue;
         const source = fs.readFileSync(path.join(root, 'src', name), 'utf8');
         const built = source.match(/new\s+Intl\.Segmenter\s*\(/g) || [];
         if (built.length > 1) offenders.push(`${name}:${built.length}`);
+        if (built.length === 1) { total += 1; holder = name; }
+        total += Math.max(0, built.length - 1);
     }
     assert.deepEqual(offenders, [], `per-call Intl.Segmenter construction: ${offenders.join(', ')}`);
+    assert.equal(total, 1, `Intl.Segmenter must be held exactly once across src (found ${total})`);
+    assert.equal(holder, 'util.js', `the single Intl.Segmenter holder must be util.js (found ${holder})`);
 });

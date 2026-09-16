@@ -1,10 +1,5 @@
 // 快捷入口配置的纯函数层：持久化数据不可信，所有字段在进入 UI 前统一清理。
-const {normalizeQuickActionText} = require("./util.js");
-// One segmenter for the module: constructing Intl.Segmenter per call is
-// expensive and both label/icon helpers run over untrusted plugin metadata.
-const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
-    ? new Intl.Segmenter()
-    : null;
+const {normalizeQuickActionText, graphemeLength, graphemeSlice} = require("./util.js");
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings"]);
@@ -155,20 +150,8 @@ function appendQuickAction(actions, candidate, max = 12) {
     return {items: [...current, next], added: true, reason: "added"};
 }
 
-function graphemeLength(value) {
-    const text = String(value ?? "");
-    if (GRAPHEME_SEGMENTER) {
-        return [...GRAPHEME_SEGMENTER.segment(text)].length;
-    }
-    return Array.from(text).length;
-}
-
 function normalizeLabel(value) {
-    const text = normalizeQuickActionText(value, 80);
-    if (GRAPHEME_SEGMENTER) {
-        return [...GRAPHEME_SEGMENTER.segment(text)].slice(0, 4).map((part) => part.segment).join("");
-    }
-    return Array.from(text).slice(0, 4).join("");
+    return graphemeSlice(normalizeQuickActionText(value, 80), 4);
 }
 
 function normalizeIcon(value, fallback) {

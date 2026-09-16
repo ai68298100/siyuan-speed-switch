@@ -1,5 +1,7 @@
 "use strict";
 
+const {graphemeSlice} = require("./util.js");
+
 // Pure search-domain helpers. This module intentionally has no DOM or SiYuan
 // API dependency so the eventual desktop/sidebar/mobile adapters can share
 // the same ordering and de-duplication contract.
@@ -17,9 +19,6 @@ const MAX_TITLE_LENGTH = 256;
 const MAX_PATH_LENGTH = 1024;
 const MAX_SNIPPET_LENGTH = 600;
 const MAX_RAW_RESULTS = 5000;
-const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
-    ? new Intl.Segmenter()
-    : null;
 // Local tab objects live for the lifetime of a switcher surface. Cache only
 // their normalized display metadata so empty-query refreshes do not repeatedly
 // pay the grapheme-segmentation cost; WeakMap avoids retaining closed tabs.
@@ -48,13 +47,7 @@ function normalizeText(value, maxLength) {
     if (text.length <= maxLength) return text;
     // Search cards are short, so the small allocation is preferable to
     // rendering a broken trailing emoji or combining sequence.
-    if (GRAPHEME_SEGMENTER) {
-        return [...GRAPHEME_SEGMENTER.segment(text)]
-            .slice(0, maxLength)
-            .map((part) => part.segment)
-            .join("");
-    }
-    return Array.from(text).slice(0, maxLength).join("");
+    return graphemeSlice(text, maxLength);
 }
 
 function normalizeSearchQuery(value) {

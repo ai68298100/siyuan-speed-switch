@@ -1,5 +1,7 @@
 "use strict";
 
+const {graphemeSliceByCodePoints} = require("./util.js");
+
 // Agent-facing helpers stay independent from the SiYuan DOM.  The host owns
 // capability policy and lifecycle; this module only bounds input/output and
 // describes the read-only contract shared by desktop and mobile.
@@ -28,9 +30,6 @@ const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "note
 const AGENT_BLOCK_ID_PATTERN = "^[0-9]{14}-[0-9a-z]+$";
 const AGENT_BLOCK_ID_RE = new RegExp(AGENT_BLOCK_ID_PATTERN, "i");
 
-const GRAPHEME_SEGMENTER = typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
-    ? new Intl.Segmenter()
-    : null;
 
 function asText(value, maxLength = MAX_TEXT_LENGTH) {
     if (typeof value !== "string" && typeof value !== "number") return "";
@@ -38,16 +37,7 @@ function asText(value, maxLength = MAX_TEXT_LENGTH) {
         .replace(/[\u0000-\u001f\u007f]/g, " ")
         .replace(/\s+/g, " ")
         .trim();
-    if (!GRAPHEME_SEGMENTER) return Array.from(text).slice(0, maxLength).join("");
-    let result = "";
-    let codePoints = 0;
-    for (const part of GRAPHEME_SEGMENTER.segment(text)) {
-        const size = Array.from(part.segment).length;
-        if (codePoints + size > maxLength) break;
-        result += part.segment;
-        codePoints += size;
-    }
-    return result;
+    return graphemeSliceByCodePoints(text, maxLength);
 }
 
 function normalizeAgentQuery(value) {

@@ -1,6 +1,13 @@
 # TODO
 
 
+## T-6245~T-6247 重构批次 R6：util 字素工具收敛（2026-09-16，已完成）
+
+- [x] T-6245 util.js 新增导出 graphemeSlice（前 n 字素截断，含"码元 ≤ 上限原样返回"短路优化——自 search-model 搬入并证实对所有调用方语义等价）与 graphemeSliceByCodePoints（码点预算内完整字素截断，自 agent-capabilities asText 搬入）；graphemeLength 补导出
+- [x] T-6246 三处私有 Segmenter 持有收敛：quick-actions（本地 graphemeLength 删除、re-export 保持测试兼容、normalizeLabel 改调 graphemeSlice）、search-model（normalizeText 截断段改调 util.graphemeSlice）、agent-capabilities（asText 码点预算循环改调 util.graphemeSliceByCodePoints）——全仓 `new Intl.Segmenter` 4→1（仅 util.js）
+- [x] T-6247 门禁升级：release-quality 的 Segmenter 测试由"每文件 ≤1 处"收紧为"全仓恰 1 处且必须在 util.js"；负向验证（注入第二个持有点 → 精确失败 → 字节级还原）；发布矩阵同步（index.js 600923、package.zip 308190）；verify:release 独占全绿（5691/5691 + smoke 77 PASS）；记录 D-378；R5 勘察发现（状态字段深度交织）记入候选清单
+
+
 ## T-6241~T-6244 重构批次 R3：配置表单拆分（2026-09-16，已完成）
 
 - [x] T-6241 新建 `src/home-config-form.ts`（~380 行）：openHomeConfigForm（324 行方法体，含 renderField/placeholderText 闭包与 textarea 分支）自 index.ts 4024~4347 行按字节原样迁入；`this` 参数模式绑定宿主（HomeConfigFormHost 7 成员：i18n/isMobile/homeRuntime/getHomeState/saveHomeState/loadNotebooks/currentDocumentSetEntries）——R3 依赖面为三批中最小
