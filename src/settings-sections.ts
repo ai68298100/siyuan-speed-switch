@@ -1,0 +1,1068 @@
+// 设置页各分节的 UI 构建函数（R4 重构 D-376：自 index.ts 外迁）。
+// 16 个 buildSettings*/buildFavGroupRowActions/buildQuickActionsTransferControls
+// 构建函数按字节原样搬移（缩进保持类内原样）：宿主通过 this 绑定提供 i18n、
+// DOM 构建器（settingItem/select/num 等）与数据访问方法，签名见 SettingsSectionsHost。
+// 分节内的相互调用改为同模块直接调用（.call(this)），不再绕道宿主。
+// ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
+import {getAllTabs, openTab, showMessage} from "siyuan";
+import {logger} from "./logger";
+import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX} from "./constants";
+import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
+import {mountQuickActionPicker} from "./quick-actions-ui";
+import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
+import type {PanelSizeMode, HomeSizeMode} from "./constants";
+import type {ISwSettings, IFavoriteItem, IQuickAction, IQuickActionPickerCandidate, QuickActionSupport, QuickActionTarget, SortBy, QuickActionDisplay, HomePalette, DockDisplay, SidebarLayout} from "./index";
+declare module "./document-sets" {
+    export function normalizeDocumentSets(value: unknown, max?: number): {schemaVersion: number; sets: unknown[]; changed: boolean};
+    export function createDocumentSet(name: string, entries: unknown[], options?: Record<string, unknown>): any;
+    export function upsertDocumentSet(value: unknown, candidate: unknown, options?: Record<string, unknown>): any;
+    export function removeDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): any;
+    export function mergeDocumentSets(value: unknown, incoming: unknown, options?: Record<string, unknown>): any;
+    export function planDocumentSetRestore(value: unknown, openedRootIds?: unknown, availableRootIds?: unknown, max?: number): any;
+    export function summarizeDocumentSetRestore(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean}): {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
+    export function runDocumentSetRestore(entries: Array<{rootId: string}>, openRoot: (rootId: string, entry: unknown) => Promise<unknown> | unknown, options?: {signal?: AbortSignal; shouldContinue?: () => boolean}): Promise<{succeeded: number; failed: number; attempted: number; cancelled: boolean; results: Array<{rootId: string; ok: boolean; error?: string}>}>;
+}
+
+declare module "./quick-actions-ui" {
+    export function mountQuickActionPicker(options: {
+        trigger: HTMLElement;
+        host: HTMLElement;
+        candidates: Array<{id: string, label: string, icon: string, group?: string, secondary?: string, searchText?: string, fallbackIcon?: string | string[]}>;
+        searchPlaceholder?: string;
+        emptyText?: string;
+        onSelect: (candidate: any) => void;
+    }): HTMLElement | null;
+}
+
+export interface SettingsSectionsHost {
+    // 宿主字段
+    i18n: Record<string, string>;
+    isMobile: boolean;
+    isUnloading: boolean;
+    favCollapsed: Set<string>;
+    activeDocumentSetRestoreControllers: Set<AbortController>;
+    app: any;            // 思源 Plugin 基类成员，仅透传给 openTab
+    data: any;
+    // DOM 构建器（宿主方法，设置页与其他面板共用）
+    settingItem(title: string, description: string | undefined, action: HTMLElement, column?: boolean): HTMLElement;
+    select(options: Array<{value: string, label: string}>, value: string, onChange: (v: string) => void): HTMLElement;
+    num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement;
+    notebookSelect(current: string, onPick: (id: string) => void): HTMLElement;
+    switcher(checked: boolean, onChange: (v: boolean) => void): HTMLElement;
+    // 行为与数据访问（宿主方法）
+    clampNum(value: any, min: number, max: number, fallback: number): number;
+    updateSettings(patch: Partial<ISwSettings>): void;
+    getSettings(): ISwSettings;
+    getDockPanels(): Array<{type: string; title: string; icon: string}>;
+    getFavoriteGroupNames(): string[];
+    getFavorites(): IFavoriteItem[];
+    createFavoriteGroup(name: string): boolean;
+    deleteFavoriteGroup(name: string): void;
+    renameFavoriteGroup(from: string, to: string): void;
+    reorderFavoriteGroups(source: string, target: string): void;
+    reorderFavoritesInGroup(group: string, sourceKey: string, targetKey: string): void;
+    saveFavCollapsed(): void;
+    setFavoriteGroup(key: string, group: string): void;
+    updateFABVisibility(): void;
+    getQuickActions(): IQuickAction[];
+    saveQuickActions(actions: IQuickAction[]): void;
+    getQuickActionSupport(action: IQuickAction, target: QuickActionTarget): QuickActionSupport;
+    getQuickActionPickerCandidates(actions: IQuickAction[]): IQuickActionPickerCandidate[];
+    openQuickActionIconPicker(action: IQuickAction, onPick: (icon: string) => void): void;
+    renderQuickActionIconButton(button: HTMLButtonElement, icon: string): void;
+    mobileOpenDoc(rootId: string): Promise<boolean>;
+    getDocumentSets(): any[];
+    currentDocumentSetEntries(): Array<{rootId: string; title: string}>;
+    saveDocumentSet(candidate: unknown): boolean;
+    probeDocumentSetEntries(entries: Array<{rootId: string; title: string}>, signal?: AbortSignal): Promise<{available: Array<{rootId: string; title: string}>; missing: Array<{rootId: string; title: string}>; unknown: Array<{rootId: string; title: string}>}>;
+    saveDataDebounced(key: string): void;
+}
+    // ===== 璁剧疆椤?路 澶栬锛氬脊绐楀楂樸€佺缉鐣ュ浘鍒楁暟涓庨珮搴?=====
+export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const sizeModeOptions: Array<{value: PanelSizeMode, label: string}> = [
+            {value: "adaptive", label: this.i18n.panelSizeModeAdaptive},
+            {value: "custom", label: this.i18n.panelSizeModeCustom},
+            {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
+        ];
+        wrapper.append(
+            this.settingItem(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip,
+                this.select(sizeModeOptions, s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode}))),
+            this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,
+                this.num(s.panelScale, PANEL_SCALE_MIN, PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({panelScale: v}), this.i18n.panelScale)),
+            this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
+                this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
+            this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
+                this.num(s.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
+            this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
+                this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
+                    [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
+                ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
+            this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
+                this.num(s.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
+        );
+        return wrapper;
+    }
+
+    // ===== 璁剧疆椤?路 琛屼负锛氶粯璁ゆ帓搴忋€佸叏灞忔ā寮?=====
+export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const sortOptions: Array<{value: SortBy, label: string}> = [
+            {value: "mru", label: this.i18n.sortMru},
+            {value: "layout", label: this.i18n.sortLayout},
+            {value: "layoutDesc", label: this.i18n.sortLayoutDesc},
+            {value: "updatedDesc", label: this.i18n.sortUpdatedDesc},
+            {value: "titleAsc", label: this.i18n.sortTitleAsc},
+            {value: "titleDesc", label: this.i18n.sortTitleDesc},
+        ];
+        wrapper.append(this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
+            this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))));
+        return wrapper;
+    }
+
+    // ===== 璁剧疆椤?路 闈㈡澘锛氭樉绀烘柟寮忋€佷晶杈规爮甯冨眬銆佸悇 dock 闈㈡澘寮€鍏?=====
+export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const dockOptions: Array<{value: DockDisplay, label: string}> = [
+            {value: "hidden", label: this.i18n.dockDisplayHidden},
+            {value: "collapsed", label: this.i18n.dockDisplayCollapsed},
+            {value: "full", label: this.i18n.dockDisplayFull},
+        ];
+        const sidebarOptions: Array<{value: SidebarLayout, label: string}> = [
+            {value: "enlarge", label: this.i18n.sidebarEnlarge},
+            {value: "columns", label: this.i18n.sidebarColumnsAuto},
+        ];
+        wrapper.append(
+            this.settingItem(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip,
+                this.select(dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay}))),
+            // 渚ц竟鏍忕缉鐣ュ浘甯冨眬锛氭媺浼告斁澶у～婊℃爮瀹斤紝鎴栨寜瀹藉害鑷姩澧炲姞鍒楁暟
+            this.settingItem(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip,
+                this.select(sidebarOptions, s.sidebarLayout, (v) => {
+                    this.updateSettings({sidebarLayout: v as SidebarLayout});
+                })),
+            this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, buildSettingsDockToggles.call(this, s), true),
+        );
+        return wrapper;
+    }
+
+    // dock 闈㈡澘寮€鍏冲垪琛細鍕鹃€夌殑闈㈡澘鍑虹幇鍦ㄥ垏鎹㈠櫒宸︿晶锛屽彇娑堢殑闅愯棌
+export function buildSettingsDockToggles(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const box = document.createElement("div");
+        box.className = "sw-setting__docks b3-label__text";
+        const dockPanels = this.getDockPanels();
+        const excluded = new Set(s.excludedDocks);
+        dockPanels.forEach((panel) => {
+            // 琛屽鍣ㄧ敤 div锛氬紑鍏虫湰韬槸 label锛坆3-switch 鏍囧噯缁撴瀯 input+span锛夛紝label 涓嶅彲宓屽
+            const row = document.createElement("div");
+            row.className = "sw-setting__dock-item";
+            const toggle = document.createElement("label");
+            toggle.className = "b3-switch sw-switch";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = !excluded.has(panel.type);
+            checkbox.dataset.dockType = panel.type;
+            checkbox.addEventListener("change", () => {
+                const next = new Set(this.getSettings().excludedDocks);
+                if (checkbox.checked) {
+                    next.delete(panel.type);
+                } else {
+                    next.add(panel.type);
+                }
+                this.updateSettings({excludedDocks: Array.from(next)});
+            });
+            const knob = document.createElement("span");
+            toggle.appendChild(checkbox);
+            toggle.appendChild(knob);
+            const title = document.createElement("span");
+            title.textContent = panel.title;
+            row.appendChild(toggle);
+            row.appendChild(title);
+            box.appendChild(row);
+        });
+        if (dockPanels.length === 0) {
+            box.textContent = this.i18n.noDockPanels;
+        }
+        return box;
+    }
+
+    // ===== 璁剧疆椤?路 鎵嬫満绔細鎮诞鎸夐挳寮€鍏炽€佸崱鐗囧竷灞€ =====
+export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const paletteOptions: Array<{value: HomePalette, label: string}> = [
+            {value: "auto", label: this.i18n.setHomePaletteAuto},
+            {value: "soft", label: this.i18n.setHomePaletteSoft},
+            {value: "mono", label: this.i18n.setHomePaletteMono},
+        ];
+        const paletteRow = this.settingItem(this.i18n.setHomePalette, this.i18n.setHomePaletteTip,
+            this.select(paletteOptions, s.homePalette, (v) => this.updateSettings({homePalette: v as HomePalette})));
+        const modeOptions: Array<{value: HomeSizeMode, label: string}> = [
+            {value: "follow", label: this.i18n.setHomeSizeModeFollow},
+            {value: "adaptive", label: this.i18n.setHomeSizeModeAdaptive},
+            {value: "custom", label: this.i18n.setHomeSizeModeCustom},
+            {value: "fullscreen", label: this.i18n.setHomeSizeModeFullscreen},
+        ];
+        const modeRow = this.settingItem(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip,
+            this.select(modeOptions, s.homeSizeMode, (v) => this.updateSettings({homeSizeMode: v as HomeSizeMode})));
+        const widthRow = this.settingItem(this.i18n.setHomeWidth, this.i18n.setHomeWidthTip,
+            this.num(s.homeWidth, 480, 1920, 20, this.i18n.unitPx, (v) => this.updateSettings({homeWidth: v}), this.i18n.setHomeWidth));
+        const heightRow = this.settingItem(this.i18n.setHomeHeight, this.i18n.setHomeHeightTip,
+            this.num(s.homeHeight, 360, 1280, 20, this.i18n.unitPx, (v) => this.updateSettings({homeHeight: v}), this.i18n.setHomeHeight));
+        wrapper.append(paletteRow, modeRow);
+        if (s.homeSizeMode === "custom") {
+            wrapper.append(widthRow, heightRow);
+        }
+        return wrapper;
+    }
+
+export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        const panelNote = document.createElement("p");
+        panelNote.className = "sw-settings__tip sw-settings__mobile-home-note";
+        panelNote.textContent = this.i18n.mobileHomePanelFixed;
+        panelNote.setAttribute("role", "note");
+        wrapper.append(
+            panelNote,
+            this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
+                this.switcher(s.fabEnabled, (v) => {
+                    this.updateSettings({fabEnabled: v});
+                    this.updateFABVisibility();
+                })),
+            this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,
+                this.select([
+                    {value: String(MOBILE_COLUMNS_SINGLE), label: this.i18n.mobileSingle},
+                    {value: String(MOBILE_COLUMNS_DOUBLE), label: this.i18n.mobileDouble},
+                    {value: String(MOBILE_COLUMNS_AUTO), label: this.i18n.mobileAuto},
+                ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)}))),
+        );
+        return wrapper;
+    }
+
+    // ===== 璁剧疆椤?路 鏃ヨ锛氶粯璁ゆ棩璁扮瑪璁版湰 =====
+export function buildSettingsJournal(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+        const wrapper = document.createElement("div");
+        wrapper.append(
+            this.settingItem(this.i18n.journalNotebook, this.i18n.journalNotebookTip,
+                this.notebookSelect(s.journalNotebook, (id) => this.updateSettings({journalNotebook: id}))),
+        );
+        return wrapper;
+    }
+
+    // ===== 璁剧疆椤?路 鏀惰棌锛氭柊寤哄垎缁勩€佸垎缁勯噸鍛藉悕/鍒犻櫎銆佽皟鏁存敹钘忛」鎵€灞炲垎缁?=====
+    // 鍐呭闅忓鍒犲疄鏃堕噸寤猴紝鏁?render 鍥炶皟鍦ㄥ唴閮ㄥ畾涔夊悗浼犵粰鍚勬覆鏌?helper
+export function buildSettingsFavorites(this: SettingsSectionsHost, ): HTMLElement {
+        const box = document.createElement("div");
+        box.className = "sw-setting__favs";
+        const render = () => {
+            const favorites = this.getFavorites();
+            const groupNames = this.getFavoriteGroupNames();
+            box.innerHTML = "";
+            box.appendChild(buildSettingsFavCreateRow.call(this, render));
+            if (groupNames.length > 0) {
+                box.appendChild(buildSettingsFavGroupList.call(this, groupNames, favorites, render));
+            }
+            const ungrouped = favorites.filter((favorite) => !favorite.group);
+            if (ungrouped.length > 0) {
+                box.appendChild(buildSettingsFavSection.call(this, this.i18n.ungrouped, ungrouped, groupNames, render, false));
+            }
+        };
+        render();
+        return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
+    }
+
+    // 鏂板缓鍒嗙粍琛岋細杈撳叆鍚嶇О鍗冲垱寤猴紙绌哄垎缁勪繚鐣欙紝鏀惰棌鏃跺彲閫夌敤锛?
+export function buildSettingsFavCreateRow(this: SettingsSectionsHost, render: () => void): HTMLElement {
+        const createRow = document.createElement("div");
+        createRow.className = "sw-setting__fav-create";
+        const nameInput = document.createElement("input");
+        nameInput.className = "b3-text-field";
+        nameInput.placeholder = this.i18n.groupName;
+        const createBtn = document.createElement("button");
+        createBtn.className = "b3-button b3-button--outline";
+        createBtn.textContent = this.i18n.createGroup;
+        const doCreate = () => {
+            if (this.createFavoriteGroup(nameInput.value)) {
+                nameInput.value = "";
+                render();
+            }
+        };
+        createBtn.addEventListener("click", doCreate);
+        nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                doCreate();
+            }
+        });
+        createRow.appendChild(nameInput);
+        createRow.appendChild(createBtn);
+        return createRow;
+    }
+
+    // 鍒嗙粍鍒楄〃锛氭瘡琛?鍚嶇О + 鏀惰棌鏁?+ 琛屽唴閲嶅懡鍚?+ 鍒犻櫎锛堢粍鍐呮敹钘忛」绉诲嚭鍒版湭鍒嗙粍锛?
+export function buildSettingsFavGroupList(this: SettingsSectionsHost, groupNames: string[], favorites: IFavoriteItem[], render: () => void): HTMLElement {
+        const groupList = document.createElement("div");
+        groupList.className = "sw-setting__group-list";
+        groupNames.forEach((name, index) => {
+            groupList.appendChild(buildSettingsFavSection.call(this, name, favorites.filter((fav) => fav.group === name), groupNames, render, true, index));
+        });
+        return groupList;
+    }
+
+export function buildSettingsFavSection(this: SettingsSectionsHost, name: string, items: IFavoriteItem[], groupNames: string[], render: () => void, canManage: boolean, groupIndex = -1): HTMLElement {
+        const section = document.createElement("section");
+        section.className = "sw-setting__fav-section";
+        const collapseKey = name || this.i18n.ungrouped;
+        const collapsed = this.favCollapsed.has(collapseKey);
+        const header = document.createElement("div");
+        header.className = "sw-setting__fav-section-head";
+        if (canManage) {
+            header.draggable = !this.isMobile;
+            if (!this.isMobile) {
+                header.addEventListener("dragstart", (event) => event.dataTransfer?.setData("text/plain", name));
+                header.addEventListener("dragover", (event) => event.preventDefault());
+                header.addEventListener("drop", (event) => {
+                    event.preventDefault();
+                    const source = event.dataTransfer?.getData("text/plain");
+                    if (source && source !== name) {
+                        this.reorderFavoriteGroups(source, name);
+                        render();
+                    }
+                });
+            }
+        }
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "b3-button b3-button--text sw-setting__fav-collapse";
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        toggle.title = this.i18n.favCollapseTip;
+        toggle.innerHTML = `<svg><use xlink:href="#iconRight"></use></svg>`;
+        toggle.addEventListener("click", () => {
+            if (this.favCollapsed.has(collapseKey)) this.favCollapsed.delete(collapseKey);
+            else this.favCollapsed.add(collapseKey);
+            this.saveFavCollapsed();
+            render();
+        });
+        const number = document.createElement("span");
+        number.className = "sw-setting__fav-order";
+        number.textContent = canManage ? String(groupIndex + 1) : "-";
+        const title = document.createElement("span");
+        title.className = "sw-setting__group-name";
+        title.textContent = name;
+        title.title = name;
+        const count = document.createElement("span");
+        count.className = "sw-setting__group-count";
+        count.textContent = String(items.length);
+        header.append(toggle, number, title, count);
+        if (canManage) {
+            header.append(buildFavGroupRowActions.call(this, name, render, groupNames, groupIndex));
+        }
+        section.appendChild(header);
+        if (!collapsed) {
+            const list = document.createElement("div");
+            list.className = "sw-setting__fav-section-items";
+            items.forEach((favorite, index) => list.appendChild(buildSettingsFavItemRow.call(this, favorite, index, items.length, groupNames, render)));
+            if (items.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "sw-setting__fav-empty";
+                empty.setAttribute("role", "status");
+                empty.textContent = this.i18n.noFavorites;
+                list.appendChild(empty);
+            }
+            section.appendChild(list);
+        }
+        return section;
+    }
+
+export function buildFavGroupRowActions(this: SettingsSectionsHost, name: string, render: () => void, groupNames: string[] = [], groupIndex = -1): HTMLElement {
+        const actions = document.createElement("span");
+        actions.className = "sw-setting__group-actions";
+        const button = (label: string, callback: () => void, danger = false) => {
+            const el = document.createElement("button");
+            el.type = "button";
+            el.className = `b3-button b3-button--small sw-setting__group-btn${danger ? " sw-setting__group-del" : ""}`;
+            el.textContent = label;
+            el.addEventListener("click", callback);
+            return el;
+        };
+        if (groupIndex > 0) {
+            actions.append(iconButton("iconUp", this.i18n.favMoveUp, () => {
+                this.reorderFavoriteGroups(name, groupNames[groupIndex - 1]);
+                render();
+            }));
+        }
+        if (groupIndex >= 0 && groupIndex < groupNames.length - 1) {
+            actions.append(iconButton("iconDown", this.i18n.favMoveDown, () => {
+                this.reorderFavoriteGroups(name, groupNames[groupIndex + 1]);
+                render();
+            }));
+        }
+        actions.append(
+            button(this.i18n.rename, () => {
+                const next = window.prompt(this.i18n.rename, name);
+                if (next !== null && next.trim() && next.trim() !== name) {
+                    this.renameFavoriteGroup(name, next.trim());
+                    render();
+                }
+            }),
+            button(this.i18n.deleteGroup, () => {
+                if (confirm(this.i18n.deleteGroupConfirm)) {
+                    this.deleteFavoriteGroup(name);
+                    render();
+                }
+            }, true),
+        );
+        return actions;
+
+        function iconButton(icon: string, label: string, callback: () => void): HTMLButtonElement {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--text sw-setting__group-icon";
+            button.title = label;
+            button.setAttribute("aria-label", label);
+            button.innerHTML = `<svg><use xlink:href="#${icon}"></use></svg>`;
+            button.addEventListener("click", callback);
+            return button;
+        }
+    }
+
+export function buildSettingsFavItemRow(this: SettingsSectionsHost, favorite: IFavoriteItem, index: number, count: number, groupNames: string[], render: () => void): HTMLElement {
+        const row = document.createElement("div");
+        row.className = "sw-setting__fav-row";
+        row.draggable = !this.isMobile;
+        row.dataset.favoriteKey = favorite.key;
+        if (!this.isMobile) {
+            row.addEventListener("dragstart", (event) => event.dataTransfer?.setData("text/plain", favorite.key));
+            row.addEventListener("dragover", (event) => event.preventDefault());
+            row.addEventListener("drop", (event) => {
+                event.preventDefault();
+                const source = event.dataTransfer?.getData("text/plain");
+                if (source && source !== favorite.key) {
+                    this.reorderFavoritesInGroup(favorite.group || "", source, favorite.key);
+                    render();
+                }
+            });
+        }
+        const order = document.createElement("span");
+        order.className = "sw-setting__fav-item-order";
+        order.textContent = String(index + 1);
+        const title = document.createElement("span");
+        title.className = "sw-setting__fav-name";
+        title.textContent = favorite.title;
+        title.title = favorite.title;
+        const select = document.createElement("select");
+        select.className = "b3-select";
+        select.appendChild(new Option(this.i18n.ungrouped, ""));
+        groupNames.forEach((group) => select.appendChild(new Option(group, group)));
+        select.value = favorite.group || "";
+        select.addEventListener("change", () => { this.setFavoriteGroup(favorite.key, select.value); render(); });
+        const controls = document.createElement("span");
+        controls.className = "sw-setting__fav-controls";
+        const move = (delta: number) => {
+            if (index + delta < 0 || index + delta >= count) return;
+            const target = this.getFavorites().filter((item) => (item.group || "") === (favorite.group || ""))[index + delta];
+            if (target) { this.reorderFavoritesInGroup(favorite.group || "", favorite.key, target.key); render(); }
+        };
+        const iconButton = (icon: string, label: string, callback: () => void) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--text sw-setting__fav-control";
+            button.title = label;
+            button.setAttribute("aria-label", label);
+            button.innerHTML = `<svg><use xlink:href="#${icon}"></use></svg>`;
+            button.addEventListener("click", callback);
+            return button;
+        };
+        controls.append(iconButton("iconUp", this.i18n.favMoveUp, () => move(-1)), iconButton("iconDown", this.i18n.favMoveDown, () => move(1)));
+        row.append(order, title, select, controls);
+        return row;
+    }
+
+export function buildSettingsQuickActions(this: SettingsSectionsHost, ): HTMLElement {
+        const box = document.createElement("div");
+        box.className = "sw-setting__quick-actions";
+        const render = () => {
+            box.innerHTML = "";
+            const actions = this.getQuickActions();
+            if (actions.length > 0) {
+                const header = document.createElement("div");
+                header.className = "sw-setting__quick-header";
+                [this.i18n.quickColumnLabel, this.i18n.quickColumnIcon, this.i18n.quickColumnTargets,
+                    this.i18n.quickColumnActions, this.i18n.quickColumnEnabled].forEach((label) => {
+                    const cell = document.createElement("span");
+                    cell.textContent = label;
+                    header.appendChild(cell);
+                });
+                box.appendChild(header);
+            }
+            actions.forEach((action) => {
+                const row = document.createElement("div");
+                row.className = "sw-setting__quick-action";
+                row.draggable = !this.isMobile;
+                row.dataset.quickActionId = action.id;
+                // 手机端禁用整行拖拽，避免手势排序与页面上下滑动争抢；保留行内上下移动按钮。
+                if (!this.isMobile) {
+                    row.addEventListener("dragstart", (event) => {
+                        event.dataTransfer?.setData("text/plain", action.id);
+                        row.classList.add("is-dragging");
+                    });
+                    row.addEventListener("dragend", () => row.classList.remove("is-dragging"));
+                    row.addEventListener("dragover", (event) => {
+                        event.preventDefault();
+                        row.classList.add("is-drag-over");
+                    });
+                    row.addEventListener("dragleave", () => row.classList.remove("is-drag-over"));
+                    row.addEventListener("drop", (event) => {
+                        event.preventDefault();
+                        row.classList.remove("is-drag-over");
+                        const sourceId = event.dataTransfer?.getData("text/plain");
+                        if (!sourceId || sourceId === action.id) return;
+                        const next = this.getQuickActions();
+                        const from = next.findIndex((item) => item.id === sourceId);
+                        const to = next.findIndex((item) => item.id === action.id);
+                        if (from < 0 || to < 0) return;
+                        const [moved] = next.splice(from, 1);
+                        next.splice(to, 0, moved);
+                        next.forEach((item, itemIndex) => item.order = (itemIndex + 1) * 10);
+                        this.saveQuickActions(next);
+                        render();
+                    });
+                }
+                const text = document.createElement("input");
+                text.className = "b3-text-field";
+                text.value = action.label || action.value;
+                text.setAttribute("aria-label", action.label || action.value);
+                text.addEventListener("change", () => {
+                    const label = text.value.trim();
+                    if (!label) {
+                        text.value = action.label || action.value;
+                        return;
+                    }
+                    const next = this.getQuickActions().map((item) => item.id === action.id
+                        ? {...item, label} : item);
+                    this.saveQuickActions(next);
+                    text.value = this.getQuickActions().find((item) => item.id === action.id)?.label || action.label || action.value;
+                });
+                const iconButton = document.createElement("button");
+                iconButton.type = "button";
+                iconButton.className = "b3-button b3-button--text sw-setting__quick-icon";
+                iconButton.setAttribute("aria-label", this.i18n.quickChooseIcon);
+                iconButton.title = this.i18n.quickChooseIcon;
+                this.renderQuickActionIconButton(iconButton, action.icon);
+                iconButton.addEventListener("click", () => {
+                    this.openQuickActionIconPicker(action, (icon) => {
+                        const next = this.getQuickActions().map((item) => item.id === action.id ? {...item, icon} : item);
+                        this.saveQuickActions(next);
+                        render();
+                    });
+                });
+                const toggle = document.createElement("label");
+                toggle.className = "sw-switch";
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.checked = action.enabled;
+                input.addEventListener("change", () => {
+                    const next = this.getQuickActions().map((item) => item.id === action.id
+                        ? {...item, enabled: input.checked} : item);
+                    this.saveQuickActions(next);
+                    render();
+                });
+                toggle.append(input, document.createElement("span"));
+                const targets = document.createElement("div");
+                targets.className = "sw-setting__quick-targets";
+                [
+                    ["desktop", this.i18n.quickDesktop],
+                    ["sidebar", this.i18n.quickSidebar],
+                    ["mobile", this.i18n.quickMobile],
+                ].forEach(([target, label]) => {
+                    const typedTarget = target as QuickActionTarget;
+                    const support = this.getQuickActionSupport(action, typedTarget);
+                    const targetLabel = document.createElement("label");
+                    targetLabel.className = "sw-setting__quick-target";
+                    targetLabel.classList.toggle("is-unsupported", support === "unsupported");
+                    targetLabel.classList.toggle("is-unknown", support === "unknown");
+                    if (support === "unsupported") targetLabel.title = this.i18n.quickSupportUnsupported;
+                    else if (support === "unknown") targetLabel.title = this.i18n.quickSupportUnknown;
+                    const targetInput = document.createElement("input");
+                    targetInput.type = "checkbox";
+                    targetInput.checked = support !== "unsupported" && action.targets.includes(typedTarget);
+                    targetInput.disabled = support === "unsupported";
+                    targetInput.addEventListener("change", () => {
+                        const next = this.getQuickActions().map((item) => {
+                            if (item.id !== action.id) return item;
+                            const nextTargets = targetInput.checked
+                                ? Array.from(new Set([...item.targets, typedTarget]))
+                                : item.targets.filter((itemTarget) => itemTarget !== target);
+                            return {...item, targets: nextTargets as QuickActionTarget[]};
+                        });
+                        this.saveQuickActions(next);
+                    });
+                    targetLabel.append(targetInput, document.createTextNode(String(label)));
+                    if (support === "unknown") {
+                        const marker = document.createElement("span");
+                        marker.className = "sw-setting__quick-support-marker";
+                        marker.textContent = "?";
+                        marker.setAttribute("aria-label", this.i18n.quickSupportUnknown);
+                        targetLabel.appendChild(marker);
+                    }
+                    targets.appendChild(targetLabel);
+                });
+                const controls = document.createElement("div");
+                controls.className = "sw-setting__quick-controls";
+                const move = (delta: number) => {
+                    const next = this.getQuickActions();
+                    const index = next.findIndex((item) => item.id === action.id);
+                    const targetIndex = index + delta;
+                    if (index < 0 || targetIndex < 0 || targetIndex >= next.length) return;
+                    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+                    next.forEach((item, itemIndex) => item.order = (itemIndex + 1) * 10);
+                    this.saveQuickActions(next);
+                    render();
+                };
+                const button = (iconName: string, label: string, onClick: () => void) => {
+                    const actionButton = document.createElement("button");
+                    actionButton.type = "button";
+                    actionButton.className = "b3-button b3-button--text sw-setting__quick-control";
+                    actionButton.setAttribute("aria-label", label);
+                    actionButton.title = label;
+                    actionButton.innerHTML = `<svg><use xlink:href="#${iconName}"></use></svg>`;
+                    actionButton.addEventListener("click", onClick);
+                    return actionButton;
+                };
+                controls.append(
+                    button("iconUp", this.i18n.quickMoveUp, () => move(-1)),
+                    button("iconDown", this.i18n.quickMoveDown, () => move(1)),
+                    button("iconClose", this.i18n.quickRemove, () => {
+                        this.saveQuickActions(this.getQuickActions().filter((item) => item.id !== action.id));
+                        render();
+                    }),
+                );
+                row.append(text, iconButton, targets, controls, toggle);
+                box.appendChild(row);
+            });
+            const candidates = this.getQuickActionPickerCandidates(actions);
+            if (candidates.length > 0 && actions.length < QUICK_ACTIONS_MAX) {
+                const addRow = document.createElement("div");
+                addRow.className = "sw-setting__quick-action sw-setting__quick-action--add";
+                const tip = document.createElement("span");
+                tip.className = "sw-setting__quick-add-tip";
+                tip.textContent = this.i18n.quickAddTip;
+                const add = document.createElement("button");
+                add.type = "button";
+                add.className = "b3-button b3-button--text";
+                add.setAttribute("aria-expanded", "false");
+                add.innerHTML = `<svg><use xlink:href="#iconAdd"></use></svg><span>${this.i18n.addQuickAction}</span>`;
+                add.addEventListener("click", () => {
+                    mountQuickActionPicker({
+                        trigger: add,
+                        host: addRow,
+                        candidates,
+                        searchPlaceholder: this.i18n.quickPickerSearch,
+                        emptyText: this.i18n.quickPickerEmpty,
+                        onSelect: (candidate: IQuickActionPickerCandidate) => {
+                            const result = appendQuickAction(this.getQuickActions(), candidate.action, QUICK_ACTIONS_MAX);
+                            if (!result.added) {
+                                showMessage(result.reason === "full" ? this.i18n.quickActionLimit : this.i18n.quickActionDuplicate);
+                                return;
+                            }
+                            this.saveQuickActions(result.items);
+                            render();
+                        },
+                    });
+                });
+                addRow.append(add, tip);
+                box.appendChild(addRow);
+            }
+            if (actions.length === 0 && candidates.length === 0) box.textContent = this.i18n.noQuickActions;
+        };
+        render();
+        const wrapper = document.createElement("div");
+        const displayOptions = [
+            {value: "full", label: this.i18n.quickDisplayFull},
+            {value: "icons", label: this.i18n.quickDisplayIcons},
+            {value: "hidden", label: this.i18n.quickDisplayHidden},
+        ];
+        const settings = this.getSettings();
+        wrapper.append(
+            this.settingItem(this.i18n.quickActions, this.i18n.quickActionsTip, box, true),
+            this.settingItem(this.i18n.quickPosition, this.i18n.quickPositionTip,
+                this.select([{value: "bottom", label: this.i18n.quickPositionBottom}, {value: "right", label: this.i18n.quickPositionRight}],
+                    settings.quickActionsRightRail ? "right" : "bottom", (value) => this.updateSettings({quickActionsRightRail: value === "right"}))),
+            this.settingItem(this.i18n.quickDisplayDesktop, this.i18n.quickDisplayTip,
+                this.select(displayOptions, settings.quickActionsDisplayDesktop, (value) => this.updateSettings({quickActionsDisplayDesktop: value as QuickActionDisplay}))),
+            this.settingItem(this.i18n.quickDisplaySidebar, this.i18n.quickDisplayTip,
+                this.select(displayOptions, settings.quickActionsDisplaySidebar, (value) => this.updateSettings({quickActionsDisplaySidebar: value as QuickActionDisplay}))),
+            this.settingItem(this.i18n.quickDisplayMobile, this.i18n.quickDisplayTip,
+                this.select(displayOptions, settings.quickActionsDisplayMobile, (value) => this.updateSettings({quickActionsDisplayMobile: value as QuickActionDisplay}))),
+            this.settingItem(this.i18n.quickTransfer, this.i18n.quickTransferTip, buildQuickActionsTransferControls.call(this, render), true),
+        );
+        return wrapper;
+    }
+
+export function buildQuickActionsTransferControls(this: SettingsSectionsHost, onImported: () => void): HTMLElement {
+        const box = document.createElement("div");
+        box.className = "sw-setting__quick-transfer";
+        const exportButton = document.createElement("button");
+        exportButton.type = "button";
+        exportButton.className = "b3-button b3-button--text";
+        exportButton.textContent = this.i18n.quickExport;
+        exportButton.addEventListener("click", () => {
+            const blob = new Blob([JSON.stringify(this.getQuickActions(), null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "siyuan-speed-switch-quick-actions.json";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        });
+        const importButton = document.createElement("button");
+        importButton.type = "button";
+        importButton.className = "b3-button b3-button--text";
+        importButton.textContent = this.i18n.quickImport;
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = "application/json,.json";
+        fileInput.className = "fn__none";
+        importButton.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", async () => {
+            const file = fileInput.files?.[0];
+            if (!file) return;
+            try {
+                const parsed = JSON.parse(await file.text());
+                const result = sanitizeQuickActions(parsed, QUICK_ACTIONS_MAX);
+                // An empty array is a valid intentional configuration: it
+                // lets users clear all custom quick actions and start over.
+                if (!Array.isArray(parsed)) {
+                    showMessage(this.i18n.quickImportFailed);
+                    return;
+                }
+                this.saveQuickActions(result.items);
+                onImported();
+                showMessage(this.i18n.quickImportDone);
+            } catch (error) {
+                logger.warn("import quick actions fail", error);
+                showMessage(this.i18n.quickImportFailed);
+            } finally {
+                fileInput.value = "";
+            }
+        });
+        box.append(exportButton, importButton, fileInput);
+        return box;
+    }
+
+
+export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLElement {
+        const wrapper = document.createElement("div");
+        const guide = document.createElement("section");
+        guide.className = "sw-document-set-guide";
+        const guideTitle = document.createElement("strong");
+        guideTitle.textContent = this.i18n.documentSetsGuideTitle;
+        const guidePurpose = document.createElement("p");
+        guidePurpose.textContent = this.i18n.documentSetsGuidePurpose;
+        const guideSteps = document.createElement("ol");
+        [
+            this.i18n.documentSetsGuideStep1,
+            this.i18n.documentSetsGuideStep2,
+            this.i18n.documentSetsGuideStep3,
+        ].forEach((text) => {
+            const item = document.createElement("li");
+            item.textContent = text;
+            guideSteps.appendChild(item);
+        });
+        const guideNote = document.createElement("p");
+        guideNote.className = "sw-document-set-guide__note";
+        guideNote.textContent = this.i18n.documentSetsGuideNote;
+        guide.append(guideTitle, guidePurpose, guideSteps, guideNote);
+        const hint = document.createElement("p");
+        hint.className = "sw-settings__hint";
+        hint.textContent = this.i18n.documentSetsTip;
+        const form = document.createElement("div");
+        form.className = "sw-setting__document-set-form";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "b3-text-field fn__block";
+        input.placeholder = this.i18n.documentSetNamePlaceholder;
+        input.maxLength = 80;
+        const save = document.createElement("button");
+        save.type = "button";
+        save.className = "b3-button b3-button--text";
+        save.textContent = this.i18n.documentSetSave;
+        const exportButton = document.createElement("button");
+        exportButton.type = "button";
+        exportButton.className = "b3-button b3-button--text";
+        exportButton.textContent = this.i18n.documentSetExport;
+        exportButton.addEventListener("click", () => {
+            const blob = new Blob([JSON.stringify({schemaVersion: 1, sets: this.getDocumentSets()}, null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "siyuan-speed-switch-document-sets.json";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        });
+        const importButton = document.createElement("button");
+        importButton.type = "button";
+        importButton.className = "b3-button b3-button--text";
+        importButton.textContent = this.i18n.documentSetImport;
+        const importInput = document.createElement("input");
+        importInput.type = "file";
+        importInput.accept = "application/json,.json";
+        importInput.className = "fn__none";
+        importButton.addEventListener("click", () => importInput.click());
+        importInput.addEventListener("change", async () => {
+            const file = importInput.files?.[0];
+            if (!file) return;
+            importButton.disabled = true;
+            importButton.setAttribute("aria-busy", "true");
+            try {
+                if (Number.isFinite(file.size) && file.size > DOCUMENT_SET_IMPORT_MAX_BYTES) {
+                    showMessage(this.i18n.documentSetImportFailed);
+                    return;
+                }
+                const parsed = JSON.parse(await file.text());
+                const normalized = normalizeDocumentSets(parsed);
+                if (!normalized.sets.length) {
+                    showMessage(this.i18n.documentSetImportFailed);
+                    return;
+                }
+                const importConfirm = this.i18n.documentSetImportConfirm.replace("{x}", String(normalized.sets.length));
+                if (!confirm(importConfirm)) return;
+                const merged = mergeDocumentSets(this.data[DOCUMENT_SETS_KEY], normalized, {now: Date.now()});
+                this.data[DOCUMENT_SETS_KEY] = merged.state;
+                if (merged.changed) this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                render();
+                showMessage(this.i18n.documentSetImportDone);
+            } catch (error) {
+                logger.warn("import document sets fail", error);
+                showMessage(this.i18n.documentSetImportFailed);
+            } finally {
+                importInput.value = "";
+                importButton.disabled = false;
+                importButton.removeAttribute("aria-busy");
+            }
+        });
+        const list = document.createElement("div");
+        list.className = "sw-setting__document-sets";
+        let editingSetId: string | null = null;
+        const focusRenameAction = (setId: string) => {
+            window.setTimeout(() => {
+                const button = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-document-set-rename]"))
+                    .find((candidate) => candidate.dataset.documentSetRename === setId);
+                if (!button || button.disabled) return;
+                try {
+                    button.focus({preventScroll: true});
+                } catch (_) {
+                    button.focus();
+                }
+            }, 0);
+        };
+        const render = () => {
+            list.innerHTML = "";
+            const items = this.getDocumentSets();
+            if (items.length === 0) {
+                list.textContent = this.i18n.documentSetEmpty;
+                return;
+            }
+            items.forEach((item: any) => {
+                const row = document.createElement("div");
+                row.className = "sw-setting__document-set";
+                const copy = document.createElement("div");
+                copy.className = "sw-setting__document-set-copy";
+                const title = document.createElement("strong");
+                title.textContent = item.name;
+                const meta = document.createElement("span");
+                meta.textContent = `${item.entries.length} ${this.i18n.documentSetItems}`;
+                if (editingSetId === item.setId) {
+                    const edit = document.createElement("input");
+                    edit.type = "text";
+                    edit.className = "b3-text-field fn__block";
+                    edit.value = item.name;
+                    edit.maxLength = 80;
+                    edit.setAttribute("aria-label", this.i18n.documentSetRename);
+                    copy.append(edit, meta);
+                    window.setTimeout(() => edit.focus(), 0);
+                    const editActions = document.createElement("div");
+                    editActions.className = "sw-setting__document-set-actions";
+                    const finishRename = (saveChanges: boolean) => {
+                        if (saveChanges) {
+                            const name = edit.value.trim();
+                            if (!name) {
+                                edit.focus();
+                                return;
+                            }
+                            this.saveDocumentSet({...item, name});
+                        }
+                        editingSetId = null;
+                        render();
+                        focusRenameAction(item.setId);
+                    };
+                    const apply = document.createElement("button");
+                    apply.type = "button";
+                    apply.className = "b3-button b3-button--text";
+                    apply.textContent = this.i18n.confirm;
+                    apply.addEventListener("click", () => finishRename(true));
+                    const cancel = document.createElement("button");
+                    cancel.type = "button";
+                    cancel.className = "b3-button b3-button--text";
+                    cancel.textContent = this.i18n.cancel;
+                    cancel.addEventListener("click", () => finishRename(false));
+                    edit.addEventListener("keydown", (event) => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            finishRename(true);
+                        } else if (event.key === "Escape") {
+                            event.preventDefault();
+                            finishRename(false);
+                        }
+                    });
+                    editActions.append(apply, cancel);
+                    row.append(copy, editActions);
+                    list.appendChild(row);
+                    return;
+                }
+                copy.append(title, meta);
+                const actions = document.createElement("div");
+                actions.className = "sw-setting__document-set-actions";
+                const rename = document.createElement("button");
+                rename.type = "button";
+                rename.className = "b3-button b3-button--text";
+                rename.textContent = this.i18n.documentSetRename;
+                rename.dataset.documentSetRename = item.setId;
+                rename.setAttribute("aria-label", `${this.i18n.documentSetRename}: ${item.name}`);
+                rename.addEventListener("click", () => { editingSetId = item.setId; render(); });
+                const restore = document.createElement("button");
+                restore.type = "button";
+                restore.className = "b3-button b3-button--text";
+                restore.textContent = this.i18n.documentSetRestore;
+                let restoreController: AbortController | null = null;
+                restore.addEventListener("click", async () => {
+                    if (restoreController) {
+                        restoreController.abort();
+                        return;
+                    }
+                    const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                    const plan = planDocumentSetRestore(item, opened, null);
+                    if (!plan.pending.length) {
+                        showMessage(this.i18n.documentSetRestoreNone);
+                        return;
+                    }
+                    restore.setAttribute("aria-busy", "true");
+                    restoreController = typeof AbortController === "function" ? new AbortController() : null;
+                    if (restoreController) this.activeDocumentSetRestoreControllers.add(restoreController);
+                    if (restoreController) restore.textContent = this.i18n.documentSetCancel;
+                    else restore.disabled = true;
+                    const signal = restoreController?.signal;
+                    const probe = await this.probeDocumentSetEntries(plan.pending, signal);
+                    if (this.isUnloading || !restore.isConnected) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        return;
+                    }
+                    const candidates = [...probe.available, ...probe.unknown];
+                    if (!candidates.length) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        restore.textContent = this.i18n.documentSetRestore;
+                        restore.disabled = false;
+                        restore.removeAttribute("aria-busy");
+                        showMessage(signal?.aborted ? this.i18n.documentSetRestoreCancelled : this.i18n.documentSetNoAvailable);
+                        return;
+                    }
+                    const confirmations: string[] = [];
+                    if (probe.missing.length > 0) {
+                        confirmations.push(`${this.i18n.documentSetMissingConfirm} (${probe.missing.length})`);
+                    }
+                    if (probe.unknown.length > 0) {
+                        confirmations.push(`${this.i18n.documentSetUnknownConfirm} (${probe.unknown.length})`);
+                    }
+                    const confirmation = confirmations.length > 0 ? confirmations.join("\n") : this.i18n.documentSetRestoreConfirm;
+                    if (!confirm(confirmation)) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        restore.textContent = this.i18n.documentSetRestore;
+                        restore.disabled = false;
+                        restore.removeAttribute("aria-busy");
+                        return;
+                    }
+                    const execution = await runDocumentSetRestore(candidates, async (rootId) => {
+                        if (this.isUnloading || !restore.isConnected) return false;
+                        return this.isMobile
+                            ? await this.mobileOpenDoc(rootId)
+                            : (await openTab({app: this.app, doc: {id: rootId}}), true);
+                    }, {signal, shouldContinue: () => !this.isUnloading && restore.isConnected});
+                    execution.results.filter((item) => !item.ok && item.error).forEach((item) => logger.warn("restore document set entry fail", item.error));
+                    const cancelled = execution.cancelled || this.isUnloading || !restore.isConnected;
+                    if (this.isUnloading || !restore.isConnected) {
+                        if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                        restoreController = null;
+                        return;
+                    }
+                    if (restoreController) this.activeDocumentSetRestoreControllers.delete(restoreController);
+                    restoreController = null;
+                    restore.textContent = this.i18n.documentSetRestore;
+                    restore.disabled = false;
+                    restore.removeAttribute("aria-busy");
+                    const counts = summarizeDocumentSetRestore(plan, probe, {succeeded: execution.succeeded, failed: execution.failed, cancelled});
+                    const summary = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}, ${this.i18n.documentSetRestoreFailed}: ${counts.failed}, `
+                        + `${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}, ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`;
+                    showMessage(counts.cancelled ? `${this.i18n.documentSetRestoreCancelled}: ${summary}` : summary);
+                });
+                const preview = document.createElement("button");
+                preview.type = "button";
+                preview.className = "b3-button b3-button--text";
+                preview.textContent = this.i18n.documentSetPreview;
+                preview.addEventListener("click", () => {
+                    const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                    const plan = planDocumentSetRestore(item, opened, null);
+                    showMessage(`${this.i18n.documentSetPreview}: ${plan.pending.length} ${this.i18n.documentSetPending}, ${plan.opened.length} ${this.i18n.documentSetOpened}`);
+                });
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "b3-button b3-button--text";
+                remove.textContent = this.i18n.documentSetDelete;
+                remove.addEventListener("click", () => {
+                    if (!confirm(this.i18n.documentSetDeleteConfirm)) return;
+                    const result = removeDocumentSet(this.data[DOCUMENT_SETS_KEY], item.setId);
+                    this.data[DOCUMENT_SETS_KEY] = result.state;
+                    if (result.changed) this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                    render();
+                });
+                actions.append(rename, restore, preview, remove);
+                row.append(copy, actions);
+                list.appendChild(row);
+            });
+        };
+        save.addEventListener("click", () => {
+            const name = input.value.trim();
+            const entries = this.currentDocumentSetEntries();
+            if (!entries.length) {
+                showMessage(this.i18n.documentSetNoTabs);
+                return;
+            }
+            if (!name) {
+                input.focus();
+                return;
+            }
+            const existing = this.getDocumentSets().find((item: any) => item.name === name);
+            const candidate = createDocumentSet(name, entries, {setId: existing?.setId});
+            if (this.saveDocumentSet(candidate)) {
+                input.value = "";
+                render();
+                showMessage(this.i18n.documentSetSaved);
+            }
+        });
+        form.append(input, save, exportButton, importButton, importInput);
+        // 说明放操作按钮下方：先操作与列表，长说明作为随选随读的辅助内容收尾
+        wrapper.append(hint, form, list, guide);
+        render();
+        return wrapper;
+    }
+
+    // v0.18 路径筛选（T-103）：只读列目录，供搜索筛选选择路径前缀。
+    // 内核辅助函数在守卫失败、超时、非 2xx 时统一返回 null，无法区分"端点不存在"
+    // 与"网络失败"，故一律按 unavailable 降级提示，且不阻塞其他筛选维度。
+    // 取消通过代际标记实现：请求发出前后各比对一次，过期结果直接丢弃。
+    // 真实宿主行为见 docs/path-filter-host-evidence.md（D-365）——包括"不存在的
+    // 路径返回空列表而非错误"，因此无需为已删除的路径前缀设计专门分支。

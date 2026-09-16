@@ -1,6 +1,15 @@
 # TODO
 
 
+## T-6236~T-6240 重构批次 R4：设置页 UI 构建外迁（2026-09-16，已完成）
+
+- [x] T-6236 新建 `src/settings-sections.ts`（1068 行）：16 个设置页 UI 构建函数（区域 A 13 个：外观/行为/面板/Dock/主页/移动端/日记/收藏 4 件套等；区域 B 3 个：快捷动作 + 传输控件 + 文档集）自 index.ts 三个区域按字节原样迁入；`this` 参数模式绑定宿主（SettingsSectionsHost 38 成员），分节互调 8 处改为同模块直接调用
+- [x] T-6237 index.ts 接线：三区域（2034~2431 / 6537~6810 / 6877~7191）替换为注释，lazy map 9 处改 `.call(this)`（12442 → 11458 行）；10 个共享类型加 export（ISwSettings/IFavoriteItem/IQuickAction 等），新模块 `import type` 引用（编译期擦除零运行时循环）；数据方法（getDocumentSets/currentDocumentSetEntries/saveDocumentSet/probeDocumentSetEntries）按"注册/构建定义外迁、共享机制留宿主"裁定保留
+- [x] T-6238 契约同步：home-store-guide 的 mobileHomePanelFixed 断言改指 settings-sections；mobile-card-smoke 的 documentSetContractOk 33 条断言按搬移归属分流（18 条留 index.ts 数据/恢复执行、15 条改指 sections UI 构建）；生产图 WIRED + settings-sections、闭包 35→36
+- [x] T-6239 负向验证 3 轮（D-361 协议）：smoke 注入 editingSetId→editingSetIdXX 零失败系注入无效（子串包含），改删 aria-busy 行 → smoke 精确 FAIL；删 mobileHomePanelFixed 行 → home-store-guide 精确 FAIL；均字节级还原
+- [x] T-6240 发布矩阵同步（index.js 601526→601102、package.zip 307961）；verify:release 干净全绿（5691/5691 + smoke 77 项 PASS）；refactor-candidates 补 R4 执行记录；记录 D-376
+
+
 ## T-6232~T-6235 重构批次 R2：外部组件注册外迁（2026-09-16，已完成）
 
 - [x] T-6232 新建 `src/home-external-adapters.ts`（273 行）：13 个外部组件注册定义（11 个直接 register + 2 个 registerExternalFeed，原清单按 11 计低估了 feed 助手拆分）自 index.ts 3816~4058 行按字节原样迁入；`this` 参数模式绑定宿主（i18n + 内核代理 fetch），块内 `this.i18n`/`this.fetchActivityWatchViaKernel` 接线形态零漂移

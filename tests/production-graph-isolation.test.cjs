@@ -36,6 +36,8 @@ const WIRED_SANITY_MODULES = [
     'home-adapters',
     'home-controller',
     'home-external-adapters',
+    // R4 重构（D-376）：设置页 UI 构建外迁至 settings-sections。
+    'settings-sections',
     // T-103（D-365/D-366）：path-filter-model 随桌面路径筛选进入生产。
     // 它是首个接入的 v0.18 契约模块，且为只读——仅构造 listDocsByPath 请求
     // 并归一化响应，不含任何写入动作。
@@ -99,9 +101,9 @@ test('production graph traversal reaches every wired runtime module', () => {
 
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
-    // 2026-09-16 R2 重构（D-375）：外部组件注册定义外迁至新模块 home-external-adapters
-    // （纯注册定义，无新网络/数据依赖，复用既有 life-widget-* 闭包）。当前闭包为 35；
-    // 继续增长须复核 512 KiB 包体门禁（D-353）。
+    // 2026-09-16 R4 重构（D-376）：设置页 UI 构建外迁至新模块 settings-sections
+    // （纯 DOM 构建，复用既有 document-sets/quick-actions 闭包，无新依赖模块）。
+    // 当前闭包为 36；继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 35, `production graph grew to ${graph.size} modules; audited ceiling is 35`);
+    assert.ok(graph.size <= 36, `production graph grew to ${graph.size} modules; audited ceiling is 36`);
 });
