@@ -1093,6 +1093,66 @@ function sanitizeOpenHistory(values, max = 50) {
 }
 
 /**
+ * 缩略图缓存的读取侧归一化（v0.20 数据连续性，D-392）。
+ *
+ * 为什么需要：sw_thumb_cache 此前只有**写入侧**上限（宿主 setThumbCache 会在写入时
+ * 拒绝超长 html 并按最旧 ts 淘汰），读取侧 getThumbCache() 只做"是不是对象"的粗判。
+ * 于是磁盘上超限或损坏的缓存永远不会被清理——旧版本上限更大留下的残留、写入中断
+ * 产生的半条记录，都会一直占着持久化存储。
+ *
+ * 规则刻意与 setThumbCache 镜像，避免出现第二套语义：
+ * - 非对象（数组、字符串、primitive）→ 整体重置为空对象；
+ * - 条目不是对象、html 不是字符串、或 html 超过上限 → 丢弃该条目；
+ * - 条目数超过上限 → 按 ts 淘汰最旧，ts 相同时按原有键顺序（`Object.keys` 顺序）；
+ * - title 非字符串 → 归一为空串；ts 非正有限数 → 归一为 0。
+ *
+ * 默认值仅作兜底保护：宿主与迁移演练都会显式传入 constants.ts 的上限
+ * （桌面 40 / 200 KiB，手机 30 / 80 KiB），由契约测试锁定。
+ *
+ * @returns {{cache: Object, kept: number, removed: number, changed: boolean}}
+ */
+function normalizeThumbCache(values, options = {}) {
+    const max = Number.isFinite(options.max) && options.max > 0 ? Math.floor(options.max) : 40;
+    const htmlMax = Number.isFinite(options.htmlMax) && options.htmlMax > 0 ? Math.floor(options.htmlMax) : 200 * 1024;
+    if (!values || typeof values !== "object" || Array.isArray(values)) {
+        return {cache: {}, kept: 0, removed: 0, changed: false};
+    }
+    let removed = 0;
+    let repaired = false;
+    const kept = [];
+    Object.keys(values).forEach((key) => {
+        const raw = values[key];
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+            removed += 1;
+            return;
+        }
+        const html = typeof raw.html === "string" ? raw.html : null;
+        if (html === null || html.length > htmlMax) {
+            removed += 1;
+            return;
+        }
+        const title = typeof raw.title === "string" ? raw.title : "";
+        const ts = typeof raw.ts === "number" && Number.isFinite(raw.ts) && raw.ts > 0 ? raw.ts : 0;
+        if (title !== raw.title || ts !== raw.ts) repaired = true;
+        kept.push({key, entry: {title, html, ts}});
+    });
+    // 容量控制与 setThumbCache 同规则：按 ts 淘汰最旧，ts 相同按原有键顺序，行为可预测
+    let survivors = kept;
+    if (kept.length > max) {
+        const ordered = kept.map((item, index) => ({...item, index}))
+            .sort((left, right) => left.entry.ts - right.entry.ts || left.index - right.index);
+        const evicted = new Set(ordered.slice(0, ordered.length - max).map((item) => item.key));
+        survivors = kept.filter((item) => !evicted.has(item.key));
+        removed += evicted.size;
+    }
+    const cache = {};
+    survivors.forEach((item) => {
+        cache[item.key] = item.entry;
+    });
+    return {cache, kept: survivors.length, removed, changed: removed > 0 || repaired};
+}
+
+/**
  * 列表分组纯函数：按模式把打开页签聚成有序组。纯数据进纯数据出，
  * 标签/图标/排序上下文由宿主注入（DOM 与 i18n 留在 index.ts）。
  * ctx: {
@@ -1239,4 +1299,4 @@ function clampOversizedIcons(root) {
     return fixed;
 }
 
-module.exports = {MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText};
+module.exports = {MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache};

@@ -2,7 +2,7 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu, TEventBus} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
@@ -249,6 +249,8 @@ declare module "./util" {
     export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
     export function getDefaultQuickActions(): IQuickAction[];
     export function getBuiltinQuickActions(): IQuickAction[];
+    export function normalizeThumbCache(values: unknown, options?: {max?: number, htmlMax?: number}):
+        {cache: IThumbCache, kept: number, removed: number, changed: boolean};
 }
 
 declare module "./quick-actions" {
@@ -962,6 +964,17 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.data[DOCUMENT_SETS_KEY] = documentSets;
             this.saveDataDebounced(DOCUMENT_SETS_KEY);
         }
+        // 缩略图缓存（v0.20 数据连续性，D-392）：此前只有写入侧上限，磁盘上超限/损坏的
+        // 缓存永远不会被清理——旧版本更大上限留下的残留、写入中断产生的半条记录都会一直占用存储。
+        // 这里按当前端型（手机上限更保守）做读取侧归一化，规则与 setThumbCache 完全镜像。
+        const thumbCache = normalizeThumbCache(this.data[THUMB_CACHE_KEY], {
+            max: this.isMobile ? THUMB_CACHE_MAX_MOBILE : THUMB_CACHE_MAX,
+            htmlMax: this.isMobile ? THUMB_HTML_MAX_MOBILE : THUMB_HTML_MAX,
+        });
+        if (thumbCache.changed) {
+            this.data[THUMB_CACHE_KEY] = thumbCache.cache;
+            this.saveDataDebounced(THUMB_CACHE_KEY);
+        }
     }
 
     // 存储迁移演练快照（D-386 第二步·保守桥接）：宿主静默修复链已执行完毕，
@@ -973,7 +986,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         for (const key of KEY_ORDER) {
             payloads[key] = this.data[key];
         }
-        const result = runStorageMigration(payloads);
+        const result = runStorageMigration(payloads, {
+            // 端型上限必须与 sanitizePersistentData / setThumbCache 一致，否则演练会
+            // 与宿主判级分叉：手机端缓存上限 30/80 KiB 比桌面 40/200 KiB 更紧，
+            // 若演练恒用桌面上限，手机端宿主已清洗的 key 会在报告里显示为 kept，
+            // 而 35 条缓存在手机端会显示 kept、实际宿主会 cleaned——报告就不再同源。
+            limits: {
+                thumbCache: this.isMobile ? THUMB_CACHE_MAX_MOBILE : THUMB_CACHE_MAX,
+                thumbHtml: this.isMobile ? THUMB_HTML_MAX_MOBILE : THUMB_HTML_MAX,
+            },
+        });
         this.storageMigrationReport = result.report;
         const anomalies = result.report.keys.filter((entry) => entry.status === "cleaned" || entry.status === "reset" || entry.status === "migrated");
         if (anomalies.length > 0) {
@@ -7415,7 +7437,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     private getThumbCache(): IThumbCache {
         const data = this.data[THUMB_CACHE_KEY];
-        return data && typeof data === "object" ? data as IThumbCache : {};
+        // 与 normalizeThumbCache 的容器判据一致：数组同样是 object，旧判据会把
+        // 数组当缓存返回，后续 cache[rootId] = {...} 会往数组上挂具名属性。
+        // 加载期归一化已把这类值重置为空对象，这里是运行期的第二道防线。
+        return data && typeof data === "object" && !Array.isArray(data) ? data as IThumbCache : {};
     }
 
     private saveThumbCache(cache: IThumbCache) {

@@ -1,6 +1,18 @@
 # TODO
 
 
+## T-6269~T-6270 v0.20 数据连续性第六批：`sw_thumb_cache` 读取侧归一化 + 源码扫描门禁缺陷修复（2026-09-16，已完成）
+
+**本组终态**：`dist/index.js` 614133 bytes、`dist/index.css` 145639 bytes、`package.zip` 313129 bytes；测试 5768 项（164 文件）；`pnpm verify:release` 全链绿（5768/5768、mobile-card-smoke 70 PASS、mobile-toolbar-layout 3 PASS、chromium-style-smoke 7 PASS）。
+
+**为什么做这一批（选型依据）**：v0.20「存储迁移演练」的尾巴是「对象类 key 只做了形状分类（inspect）」——`sw_settings` / `sw_home_state` / `sw_thumb_cache` 三个 key 从不进 `data`、只报形状。逐个探查后只有第三个存在**真实数据完整性缺口**：它此前只有**写入侧**上限（`setThumbCache` 会拒绝超长 html、按最旧 `ts` 淘汰），读取侧 `getThumbCache()` 只做「是不是对象」的粗判——于是磁盘上超限或损坏的缓存**永远不会被清理**：旧版本上限更大时留下的残留、写入中断产生的半条记录，会一直占着持久化存储。`sw_settings` / `sw_home_state` 的读取路径本来就有 `normalizeSettings` / `normalizeHomeState` 兜底，没有缺口，因此**刻意不动**（不做无缺口的动作是本批的克制点）。
+
+- [x] T-6269 `sw_thumb_cache` 读取侧归一化（D-392）：`src/util.js` 新增纯函数 `normalizeThumbCache(values, {max, htmlMax})` → `{cache, kept, removed, changed}`，规则**刻意与 `setThumbCache` 镜像**以免出现第二套语义（非对象整体重置为空对象；条目非对象 / html 非字符串 / html 超上限 → 丢弃并计入 `removed`；条目数超上限 → 按 `ts` 淘汰最旧、`ts` 相同按原有键顺序，与 `setThumbCache` 的 `stableSortBy` 同规则；`title` 非字符串归一空串、`ts` 非正有限数归一 0 并计入 `changed`）。**边界可取**：`html.length === htmlMax` 保留、`htmlMax + 1` 丢弃，与写入侧 `> htmlMax` 拒绝一致。**非对象输入返回 `changed: false`**，与 `sanitizeStringList` / `sanitizeFavorites` 的既有约定一致——启动期不因「缺失/损坏分不清」而无谓回写。接线点在 `index.ts` 的 `sanitizePersistentData()`，按 `this.isMobile` 选上限（桌面 40 / 200 KiB、手机 30 / 80 KiB），仅在 `changed` 时 `saveDataDebounced`。**同源的运行时闭环**：`captureStorageMigrationSnapshot()` 也按同一端型传 `limits`——此前演练恒用桌面上限，手机端 35 条缓存会被宿主判 `cleaned`、被演练判 `kept`，「演练与宿主同源」在手机端并不成立；这是本批顺带修掉的真缺口。顺带加固 `getThumbCache()`：旧判据 `typeof data === "object"` 对**数组**同样为真，会把数组当缓存返回并在其上挂具名属性，现与归一化用同一容器判据（数组 → `{}`）。
+- [x] T-6270 源码扫描门禁缺陷修复（D-392，`tests/storage-key-audit.test.cjs` + 新增 `tests/source-scan.cjs`）：修掉两个**真会假绿**的门禁缺陷。① `storage-key-audit` 的 `sanitizeAllowlist` 值从未被断言——它只遍历 `Object.keys()`，那些函数名纯属装饰，「每个持久化 key 的读取路径必须有对应清洗函数」这句文件头承诺其实从未被强制执行。现要求每个 key 至少有一个白名单函数在 `index.ts` 里**被调用**（用反向否定环视 `(?<!export function )\bname\(` 排除 ambient 声明——声明存在不等于调用存在），并断言 `checkedKeys === registered.length` 防止只查子集。② 源码扫描类断言读的是**原始文本**，于是「把调用注释掉」或「在注释里写下同样的调用文本」都能让断言通过。新增 `tests/source-scan.cjs` 的 `stripComments()`（按引号状态逐字符扫描，跨过字符串内部的 `//` 与 `/*`，避免误伤 `"https://…"`），两处门禁改为扫描去注释后的文本。**门禁**：`tests/storage-migration.test.cjs` +7 项（超限/损坏条目的 kept-removed 记账、字段类型修复而非丢弃、按 ts 淘汰且同 ts 稳定、非对象重置与空对象 kept、端型上限改变判级、key 分类不可漂移且总数恒 13、宿主先清洗后演练必须全 kept 的不动点），`tests/util.test.cjs` +9 项纯函数契约，`tests/source-scan.test.cjs` +5 项辅助自测。**负向验证 7 轮**（J~Q，均先确认注入发生、均 md5 字节级还原）：J 宿主不再调用归一化（`normalizeThumbCache` → `injected_noop`）→ key-audit 与同源契约双 FAIL；K 演练恒用桌面上限 → 同源契约 FAIL（常量选择点 3→2）；L 撤掉数组防线 → 契约报 `runtime cache reads must reject arrays exactly like normalizeThumbCache`；M 淘汰排序忽略 `ts` → 2 项单元测试 FAIL；N 同一 key 同时归入两个分类集 → 含 `key classification cannot drift` 在内 7 项 FAIL；P 把调用降级为**行尾注释**（调用文本仍在文件里）→ 两处门禁仍双 FAIL（这正是修复前会假绿的形态）；Q 白名单指向未调用函数 → key-audit FAIL。**M 轮顺带暴露并修掉一个自查出的假绿**：`eviction follows ts, not key name or insertion position` 首版构造里插入序与 `ts` 恰好同向，注入「忽略 ts」后**仍然通过**——改造成插入序/键名/`ts` 三者互相反相关后才具备判别力（该轮由 1 项失败变为 2 项失败即为证据）。
+- [x] T-6271 文档与快照同步：README 双语测试项数 5747→5768、测试文件数 163→164；`docs/release-readiness.md` 产物快照 612356→614133 / 312656→313129（768 KiB 余量 172299、512 KiB 余量 211159）与测试数同步。
+
+**工具链教训（写入 `docs/gate-audit-checklist.md` 第八类）**：在 Git Bash 上用 `sed -i` 编辑 **CRLF** 文件会把整个文件静默转成 LF——本次 `src/util.js` 被如此改写（67638 bytes 应为 68940），若只比对「内容看起来一样」根本发现不了。负向验证的还原步骤因此改为**逐字节 python 替换 + md5 校验**，并在还原后确认换行符计数；`sed -i` 仅用于 LF 文件（如 `src/index.ts`）。
+
 ## T-6267~T-6268 v0.20 数据连续性第五批：文档集恢复报告导出（2026-09-16，已完成）
 
 **本组终态**：`dist/index.js` 612356 bytes、`dist/index.css` 145639 bytes、`package.zip` 312656 bytes；测试 5747 项（163 文件）；`pnpm verify:release` 全链绿（5747/5747）。

@@ -4,7 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const {readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline} = require('../src/util.js');
 const {normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus} = require('../src/util.js');
-const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult } = require('../src/util.js');
+const { clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeThumbCache } = require('../src/util.js');
 
 test('normalizeCapacityLimit accepts finite positive values and floors them', () => {
     assert.equal(normalizeCapacityLimit(4.9), 4);
@@ -1016,4 +1016,119 @@ test('isSuccessfulMobileTabsResult: rejects explicit MobileTabs failures', () =>
     for (const result of ['cancelled', 'invalid', 'failed', null, 'unexpected']) {
         assert.equal(isSuccessfulMobileTabsResult(result), false);
     }
+});
+
+// ── normalizeThumbCache（v0.20 数据连续性 D-392：缩略图缓存读取侧归一化）──
+// 语义必须与宿主 setThumbCache 的**写入侧**上限镜像，否则会出现第二套规则。
+test('normalizeThumbCache: healthy cache is returned byte-identical and reports changed=false', () => {
+    const input = {'20240101120000-abcdefg': {title: 't', html: '<div></div>', ts: 1234}};
+    const out = normalizeThumbCache(input, {max: 40, htmlMax: 1024});
+    assert.deepEqual(out.cache, input);
+    assert.equal(out.kept, 1);
+    assert.equal(out.removed, 0);
+    assert.equal(out.changed, false, 'no write-back should be triggered for a healthy cache');
+});
+
+test('normalizeThumbCache: non-object payloads degrade to an empty cache without claiming a change', () => {
+    for (const bad of [undefined, null, [], 'cache', 7, true]) {
+        const out = normalizeThumbCache(bad, {max: 40, htmlMax: 1024});
+        assert.deepEqual(out.cache, {}, `${String(bad)} must degrade to an empty cache`);
+        assert.equal(out.kept, 0);
+        assert.equal(out.removed, 0);
+        assert.equal(out.changed, false, 'absence/corruption must not trigger a startup write-back');
+    }
+});
+
+test('normalizeThumbCache: malformed entries are dropped and counted as removed', () => {
+    const out = normalizeThumbCache({
+        'keep': {title: 'ok', html: '<div></div>', ts: 5},
+        'no-html': {title: 't', ts: 5},
+        'html-not-string': {title: 't', html: 42, ts: 5},
+        'too-big': {title: 't', html: 'x'.repeat(1025), ts: 5},
+        'array-entry': [],
+        'null-entry': null,
+        'string-entry': 'oops',
+        'number-entry': 9,
+    }, {max: 40, htmlMax: 1024});
+    assert.deepEqual(Object.keys(out.cache), ['keep']);
+    assert.equal(out.kept, 1);
+    assert.equal(out.removed, 7);
+    assert.equal(out.changed, true);
+});
+
+test('normalizeThumbCache: html exactly at the cap is kept, one byte over is dropped', () => {
+    const atCap = normalizeThumbCache({'r': {title: 't', html: 'x'.repeat(1024), ts: 1}}, {max: 40, htmlMax: 1024});
+    assert.equal(atCap.kept, 1, 'boundary must be inclusive, mirroring setThumbCache (> htmlMax rejected)');
+    const overCap = normalizeThumbCache({'r': {title: 't', html: 'x'.repeat(1025), ts: 1}}, {max: 40, htmlMax: 1024});
+    assert.equal(overCap.kept, 0);
+});
+
+test('normalizeThumbCache: field types are repaired in place rather than discarding the entry', () => {
+    const out = normalizeThumbCache({'r': {html: '<div></div>', title: 7, ts: 'later'}}, {max: 40, htmlMax: 1024});
+    assert.deepEqual(out.cache, {'r': {title: '', html: '<div></div>', ts: 0}});
+    assert.equal(out.kept, 1, 'a repairable entry survives');
+    assert.equal(out.removed, 0, 'repair is not removal');
+    assert.equal(out.changed, true, 'a repair must still be persisted');
+    for (const badTs of [0, -1, Infinity, NaN, null]) {
+        const repaired = normalizeThumbCache({'r': {title: 't', html: '<div></div>', ts: badTs}}, {max: 40, htmlMax: 1024});
+        assert.equal(repaired.cache['r'].ts, 0, `ts=${String(badTs)} must normalize to 0`);
+    }
+});
+
+test('normalizeThumbCache: over-cap caches evict the oldest ts and keep survivor key order', () => {
+    const input = {};
+    for (let index = 0; index < 5; index += 1) {
+        input[`r${index}`] = {title: `t${index}`, html: '<div></div>', ts: index === 0 ? 0 : 100 - index};
+    }
+    const out = normalizeThumbCache(input, {max: 3, htmlMax: 1024});
+    assert.deepEqual(Object.keys(out.cache), ['r1', 'r2', 'r3'], 'survivors keep insertion order, not ts order');
+    assert.equal(out.kept, 3);
+    assert.equal(out.removed, 2);
+    assert.equal(out.changed, true);
+});
+
+test('normalizeThumbCache: identical ts ties break by insertion order, deterministically', () => {
+    const input = {
+        'a': {title: 'a', html: 'x', ts: 9},
+        'b': {title: 'b', html: 'x', ts: 9},
+        'c': {title: 'c', html: 'x', ts: 9},
+    };
+    const first = normalizeThumbCache(input, {max: 2, htmlMax: 1024});
+    const second = normalizeThumbCache(input, {max: 2, htmlMax: 1024});
+    assert.deepEqual(first, second, 'same input must give the same output (no random tie-break)');
+    assert.deepEqual(Object.keys(first.cache), ['b', 'c'], 'the first inserted entry is the one evicted');
+});
+
+test('normalizeThumbCache: defaults are conservative fallbacks that cannot be disabled', () => {
+    // 超过默认 40 条即触发淘汰——证明省略 options 时确有兜底上限（而不是不限量）
+    const input = {};
+    for (let index = 0; index < 41; index += 1) {
+        input[`r${index}`] = {title: 't', html: 'x', ts: index + 1};
+    }
+    const out = normalizeThumbCache(input);
+    assert.equal(out.kept, 40);
+    assert.equal(out.removed, 1);
+    // 非法 options 不能关闭上限（0 / 负数 / NaN / Infinity / 字符串一律退回默认）
+    for (const badMax of [0, -5, NaN, Infinity, 'many']) {
+        const guarded = normalizeThumbCache(input, {max: badMax});
+        assert.equal(guarded.kept, 40, `max=${String(badMax)} must fall back to the 40-entry default`);
+        assert.ok(Object.values(guarded.cache).every((entry) => entry.html.length <= 200 * 1024));
+    }
+});
+
+test('normalizeThumbCache: eviction follows ts, not key name or insertion position', () => {
+    const input = {};
+    // 三个判据互相反相关，才可能区分「按 ts 淘汰」与「按插入序/键名淘汰」：
+    // 插入顺序 = 键名字典序 = r00..r41，而 ts = 42..1 逐条递减。
+    // 于是 ts 最小的两条是最**后**插入的 r40/r41；按插入序或按键名淘汰都会
+    // 先丢 r00/r01 —— 两者结论不同，断言才有判别力（首版写法里插入序与 ts
+    // 恰好同向，注入「忽略 ts」后仍然通过，是个假绿）。
+    for (let index = 0; index < 42; index += 1) {
+        input[`r${String(index).padStart(2, '0')}`] = {title: 't', html: 'x', ts: 42 - index};
+    }
+    const out = normalizeThumbCache(input, {max: 40, htmlMax: 1024});
+    assert.equal(out.kept, 40);
+    const dropped = Object.keys(input).filter((key) => !(key in out.cache));
+    assert.deepEqual(dropped, ['r40', 'r41'], 'eviction must follow ts, not insertion order or key name');
+    assert.deepEqual(Object.keys(out.cache).slice(0, 2), ['r00', 'r01'], 'the highest-ts entries survive in key order');
 });

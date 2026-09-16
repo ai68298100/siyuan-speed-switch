@@ -12,9 +12,11 @@
 //    天然同源，由契约测试锁定这一关系。
 // 2) 报告有界：每个 key 一条固定记录，note 文本有界、无时间戳、无原始数据
 //    回显，可安全进入日志或未来的 Agent 只读快照。
-// 3) 对象类 key（settings/home_state/thumb_cache）本批只做形状分类
-//    （inspect），深度迁移随宿主接线批次逐个注册。
-const {capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory} = require("./util.js");
+// 3) 对象类 key 逐个毕业：settings/home_state 仍是形状分类（inspect），深度
+//    迁移随宿主接线批次注册；thumb_cache 已在 D-392 批次毕业为实处理
+//    （读取侧归一化与宿主 setThumbCache 镜像），因为它是三者中唯一存在真实
+//    数据完整性缺口的 key——超限/损坏条目原本永远不会被清理。
+const {capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, normalizeThumbCache} = require("./util.js");
 const {normalizeClosedEntries} = require("./recent-closed.js");
 const {sanitizeQuickActions, migrateQuickActionDefaults, QUICK_ACTION_DEFAULTS_VERSION} = require("./quick-actions.js");
 const {normalizeDocumentSets} = require("./document-sets.js");
@@ -29,6 +31,8 @@ const DEFAULT_LIMITS = Object.freeze({
     favGroups: 64,        // FAVORITE_GROUPS_MAX
     favCollapsed: 64,     // 与分组注册表同界
     quickActions: 12,     // QUICK_ACTIONS_MAX
+    thumbCache: 40,       // THUMB_CACHE_MAX（手机端由调用方以 limits 覆盖为 30）
+    thumbHtml: 200 * 1024, // THUMB_HTML_MAX（手机端 80 KiB）
 });
 
 const STORAGE_SCHEMA_VERSION = 1;
@@ -44,14 +48,19 @@ const HANDLED_KEYS = Object.freeze([
     "sw_quick_actions",
     "sw_quick_actions_defaults",
     "sw_document_sets",
+    "sw_thumb_cache",
 ]);
 
 const INSPECTED_KEYS = Object.freeze([
     "sw_settings",
     "sw_home_state",
-    "sw_thumb_cache",
 ]);
 
+// KEY_ORDER 由两个分类集拼接而来（总数恒为 13，与 agent-capabilities 的
+// 计数上限同源）。拼接保证了「分类集与报告 key 集合不可能漂移」——这是有意
+// 的：sw_thumb_cache 从 inspect 毕业到 handled 时，报告里它的位置随之从第 13
+// 位移到第 11 位（遵循 handled 分组），但 key 集合与总数完全不变，totals
+// 结构也不变，所以下游只读快照无需改动。
 const KEY_ORDER = Object.freeze([...HANDLED_KEYS, ...INSPECTED_KEYS]);
 
 const NOTE_MAX = 80;
@@ -155,6 +164,25 @@ const HANDLERS = {
             kept,
             removed: Math.max(0, removed),
             note: boundNote(status === "migrated" ? "document sets migrated to current schema version" : ""),
+        };
+    },
+    "sw_thumb_cache": (value, limits) => {
+        // 读取侧归一化（D-392）：清洗规则全部由 normalizeThumbCache 提供，与宿主
+        // setThumbCache 的写入侧上限镜像，本模块不复制规则。非对象输入（数组/
+        // 字符串/primitive/null）在迁移语义里是 reset，与 listHandler 一致。
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return {value: {}, status: "reset", kept: 0, removed: 0, note: boundNote("non-object thumb cache reset to empty")};
+        }
+        const result = normalizeThumbCache(value, {max: limits.thumbCache, htmlMax: limits.thumbHtml});
+        if (!result.changed) {
+            return {value: result.cache, status: "kept", kept: result.kept, removed: 0, note: ""};
+        }
+        return {
+            value: result.cache,
+            status: "cleaned",
+            kept: result.kept,
+            removed: result.removed,
+            note: boundNote("thumb cache entries evicted or repaired"),
         };
     },
 };

@@ -13,8 +13,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
+const {stripComments} = require('./source-scan.cjs');
 const constants = fs.readFileSync(path.join(root, 'src', 'constants.ts'), 'utf8').replace(/\r\n/g, '\n');
 const indexTs = fs.readFileSync(path.join(root, 'src', 'index.ts'), 'utf8').replace(/\r\n/g, '\n');
+// 源码扫描只看代码，不看注释：否则把调用注释掉、或在注释里写下调用文本，
+// 就能满足"每个 key 都有降级路径"的存在性断言（假绿）。
+const indexCode = stripComments(indexTs);
 
 test('storage: every key is registered in constants.ts with a usage comment', () => {
     const keys = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "([a-z0-9_]+)";\s*\/\/\s*(.+)/g)];
@@ -32,7 +36,7 @@ test('storage: plugin reads/writes only registered key constants, never bare str
     // queueSave(key, value) 防抖封装层是唯一的字符串间接点：其内部
     // `this.saveData(key, value)` 的 key 一律来自上层的 *_KEY 常量调用方。
     const queueSaveInternal = 'this.saveData(key, value)';
-    for (const match of indexTs.matchAll(/this\.(?:loadData|saveData)\(([^)]*)\)/g)) {
+    for (const match of indexCode.matchAll(/this\.(?:loadData|saveData)\(([^)]*)\)/g)) {
         const call = match[0];
         if (call.includes(queueSaveInternal)) continue;
         const args = match[1].trim();
@@ -41,11 +45,11 @@ test('storage: plugin reads/writes only registered key constants, never bare str
             `loadData/saveData must reference a *_KEY constant: ${call.slice(0, 70)}`);
     }
     // 裸字符串 key 禁令（当前应为零）
-    const bare = [...indexTs.matchAll(/(?:loadData|saveData)\(\s*"sw_[a-z0-9_]+"/g)];
+    const bare = [...indexCode.matchAll(/(?:loadData|saveData)\(\s*"sw_[a-z0-9_]+"/g)];
     assert.deepEqual(bare.map((m) => m[0]), [], 'bare string storage keys found');
     // 封装层的所有外部调用方必须传常量；仅豁免防抖链内部的精确传递调用
     // （scheduleSave → queueSave → saveData，key 始终来自最初的 *_KEY 调用方）。
-    for (const match of indexTs.matchAll(/this\.queueSave\(([^)]*)\)/g)) {
+    for (const match of indexCode.matchAll(/this\.queueSave\(([^)]*)\)/g)) {
         const args = match[1].trim();
         if (args === 'key, this.data[key]') continue;
         const firstArg = args.split(',')[0].trim();
@@ -64,12 +68,12 @@ test('storage: every persisted key has a sanitize path before use', () => {
         FAV_KEY: ['sanitizeFavorites'],
         FAV_GROUPS_KEY: ['sanitizeStringList', 'sanitizeFavorites'],
         FAV_COLLAPSED_KEY: ['sanitizeStringList'],
-        QUICK_ACTIONS_KEY: ['normalizeQuickActionText', 'sanitize'],
-        QUICK_ACTIONS_DEFAULTS_KEY: ['sanitize'],
+        QUICK_ACTIONS_KEY: ['sanitizeQuickActions', 'normalizeQuickActionText'],
+        QUICK_ACTIONS_DEFAULTS_KEY: ['migrateQuickActionDefaults'],
         DOCUMENT_SETS_KEY: ['normalizeDocumentSets'],
         HOME_STATE_KEY: ['normalizeHomeState'],
         SETTINGS_KEY: ['normalizeSettings'],
-        THUMB_CACHE_KEY: ['thumbCache', 'sanitize'],
+        THUMB_CACHE_KEY: ['normalizeThumbCache'],
     };
     const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY)/g)].map((m) => m[1]);
     const unknown = Object.keys(sanitizeAllowlist).filter((key) => !registered.includes(key));
@@ -77,4 +81,27 @@ test('storage: every persisted key has a sanitize path before use', () => {
     const unaccounted = registered.filter((key) => !(key in sanitizeAllowlist));
     assert.deepEqual(unaccounted, [],
         `new storage keys must join the sanitize allowlist with their degradation path: ${unaccounted.join(', ')}`);
+
+    // 白名单的**值**必须被真正断言，否则它只是装饰（本门禁 2026-09-16 修正前的
+    // 原状：只遍历 Object.keys，值从未读过——一个恒真断言）。这里要求每个 key
+    // 至少有一个降级函数在 index.ts 里被**调用**（而不是仅被 import 或仅在
+    // 类型声明里出现），即"读取路径确实走过了清洗函数"。
+    let checkedKeys = 0;
+    let checkedCalls = 0;
+    for (const [key, markers] of Object.entries(sanitizeAllowlist)) {
+        assert.ok(Array.isArray(markers) && markers.length > 0, `${key} must declare at least one degradation path`);
+        const called = markers.filter((name) => {
+            // 反向否定环视排除 `export function name(` 这类 ambient 声明：
+            // 声明存在不等于调用存在。扫描对象是去注释后的 indexCode，
+            // 所以「把调用注释掉」或「在注释里写下调用文本」都不能满足这条断言。
+            const call = new RegExp(`(?<!export function )\\b${name}\\(`);
+            return call.test(indexCode);
+        });
+        assert.ok(called.length > 0,
+            `${key}: none of [${markers.join(', ')}] is actually invoked in index.ts — the read path has no sanitize`);
+        checkedKeys += 1;
+        checkedCalls += called.length;
+    }
+    assert.equal(checkedKeys, registered.length, 'every registered key must be checked, not a subset');
+    assert.ok(checkedCalls >= registered.length, 'each key needs at least one live call site');
 });

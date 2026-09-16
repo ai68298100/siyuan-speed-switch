@@ -1,15 +1,15 @@
 # Release readiness
 
-<!-- Current artifact snapshot: dist/index.js 612356 bytes; dist/index.css 145639 bytes; package.zip 312656 bytes; icon.png 160x160 18376 bytes; mobile self-regulation line 768 KiB; archive ceiling 512 KiB. -->
+<!-- Current artifact snapshot: dist/index.js 614133 bytes; dist/index.css 145639 bytes; package.zip 313129 bytes; icon.png 160x160 18376 bytes; mobile self-regulation line 768 KiB; archive ceiling 512 KiB. -->
 
-Current build: `dist/index.js` 612356 bytes; `dist/index.css` 145639 bytes; `package.zip` 312656 bytes; `icon.png` 160x160 18376 bytes.
+Current build: `dist/index.js` 614133 bytes; `dist/index.css` 145639 bytes; `package.zip` 313129 bytes; `icon.png` 160x160 18376 bytes.
 
 评估日期：2026-09-15（v0.17.0 发布后开发头）；真实宿主补充验收仍按兼容性任务持续跟进。
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
-| TypeScript、自动测试、UI smoke | 已通过 | 完整测试 5747/5747（含 14 项手机端图标兜底与布局契约、4 项文档集恢复报告契约）；TypeScript、移动端 smoke 70 项、Chromium smoke、手机布局门禁（3 断言，含宿主兜底探针）与生产图隔离测试通过 |
-| 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 612356 bytes（768 KiB 自律线内，余量 174076 bytes）；`dist/index.css` 145639 bytes；`package.zip` 312656 bytes（512 KiB 硬上限余量 211632 bytes） |
+| TypeScript、自动测试、UI smoke | 已通过 | 完整测试 5768/5768（含 14 项手机端图标兜底与布局契约、4 项文档集恢复报告契约、16 项缩略图缓存读取侧归一化契约：9 项纯函数 + 7 项演练管道/分类）；TypeScript、移动端 smoke 70 项、Chromium smoke、手机布局门禁（3 断言，含宿主兜底探针）、生产图隔离测试与 5 项注释剥离辅助自测通过 |
+| 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 614133 bytes（768 KiB 自律线内，余量 172299 bytes）；`dist/index.css` 145639 bytes；`package.zip` 313129 bytes（512 KiB 硬上限余量 211159 bytes） |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | 连续构建 SHA-256 一致；ZIP 条目固定为 1980-01-01 00:00 |
 | 版本元数据 | 已通过 | `0.17.0` 已同步 `package.json`、`plugin.json`、中英文 README |
