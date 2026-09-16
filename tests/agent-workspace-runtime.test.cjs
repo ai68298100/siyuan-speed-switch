@@ -249,3 +249,98 @@ test('replay demands a full snapshot when the cursor overflowed the queue', () =
 test('replay rejects an unavailable queue', () => {
     assert.deepEqual(readWorkspaceCapabilityRuntimeEventsForReplay(null, 0, 16), {ok: false, reason: "queue_unavailable", cursor: 0, events: []});
 });
+
+// ---------- T-171/T-172/T-173：恢复流程、确认与原子门面 ----------
+const {
+    recoverWorkspaceCapabilityRuntime,
+    commitWorkspaceCapabilityRuntimeRecovery,
+    recoverAndCommitWorkspaceCapabilityRuntime,
+    recoverWorkspaceCapabilityRuntimeWithSignal,
+    recoverWorkspaceCapabilityRuntimeSafe,
+    createWorkspaceCapabilityRecoveryCoordinator,
+} = rt;
+test('recovery returns events mode for a fresh cursor', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const recovery = recoverWorkspaceCapabilityRuntime(queue, 0, null, 16);
+    assert.equal(recovery.ok, true);
+    assert.equal(recovery.mode, "events");
+    assert.equal(recovery.cursor, 1);
+});
+test('recovery returns snapshot mode with a compatible snapshot', () => { const queue = createWorkspaceCapabilityEventQueue(16); for (let i = 0; i < 20; i += 1) queue.push([{type: 'plans', delta: 1}]); const recovery = recoverWorkspaceCapabilityRuntime(queue, 1, snapshot(), 16); assert.equal(recovery.ok, true); assert.equal(recovery.mode, 'snapshot'); });
+test('recovery returns unavailable without a compatible snapshot', () => { const queue = createWorkspaceCapabilityEventQueue(16); for (let i = 0; i < 20; i += 1) queue.push([{type: 'plans', delta: 1}]); const recovery = recoverWorkspaceCapabilityRuntime(queue, 1, null, 16); assert.equal(recovery.ok, false); assert.equal(recovery.mode, 'unavailable'); });
+test('commit only acknowledges successful recovery modes', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const okRecovery = recoverWorkspaceCapabilityRuntime(queue, 0, null, 16);
+    assert.equal(commitWorkspaceCapabilityRuntimeRecovery(queue, okRecovery), 1);
+    const failedRecovery = {ok: false, mode: "unavailable", cursor: 99};
+    assert.equal(commitWorkspaceCapabilityRuntimeRecovery(queue, failedRecovery), 0);
+});
+test('recoverAndCommit combines recovery and acknowledgement atomically', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const result = recoverAndCommitWorkspaceCapabilityRuntime(queue, 0, null, 16);
+    assert.equal(result.ok, true);
+    assert.equal(result.acknowledged, 1);
+    assert.equal(queue.size(), 0);
+});
+test('recoverAndCommit keeps the queue on failed recovery', () => { const queue = createWorkspaceCapabilityEventQueue(16); for (let i = 0; i < 20; i += 1) queue.push([{type: 'plans', delta: 1}]); const result = recoverAndCommitWorkspaceCapabilityRuntime(queue, 1, null, 16); assert.equal(result.ok, false); assert.equal(result.acknowledged, 0); assert.equal(queue.size(), 16); });
+
+// ---------- T-174/T-175/T-176：并发协调器与销毁态 ----------
+test('coordinator rejects regressed acknowledgements', () => { const queue = createWorkspaceCapabilityEventQueue(16); queue.push([{type: 'host'}]); queue.push([{type: 'registration'}]); const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue); const first = coordinator.recoverAndCommit(0, null, 16); assert.equal(first.acknowledged, 2); assert.equal(coordinator.recoverAndCommit(0, null, 16).acknowledged, 0); assert.equal(coordinator.status().commits, 1); });
+test('coordinator disposed state blocks recovery and commit', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
+    coordinator.dispose();
+    const recovery = coordinator.recover(0, null, 16);
+    assert.equal(recovery.reason, "coordinator_disposed");
+    assert.equal(coordinator.commit({ok: true, mode: "events", cursor: 1}), 0);
+    assert.equal(coordinator.status().disposed, true);
+});
+test('coordinator dispose is idempotent and keeps the shared queue by default', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
+    assert.equal(coordinator.dispose(), 0);
+    assert.equal(coordinator.dispose(), 0);
+    assert.equal(queue.size(), 1);
+});
+test('coordinator dispose(true) clears the bound queue for full unmounts', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const coordinator = createWorkspaceCapabilityRecoveryCoordinator(queue);
+    assert.equal(coordinator.dispose(true), 1);
+    assert.equal(queue.size(), 0);
+});
+
+// ---------- T-177/T-180：取消边界与安全出口 ----------
+test('cancelled signal returns a stable cancelled shape without touching the queue', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const signal = {aborted: true};
+    const recovery = recoverWorkspaceCapabilityRuntimeWithSignal(queue, 0, null, 16, signal);
+    assert.equal(recovery.ok, false);
+    assert.equal(recovery.mode, "cancelled");
+    assert.equal(recovery.reason, "cancelled");
+    assert.equal(queue.size(), 1);
+});
+test('non-cancelled signal delegates to the normal recovery flow', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    queue.push([{type: "host"}]);
+    const recovery = recoverWorkspaceCapabilityRuntimeWithSignal(queue, 0, null, 16, {aborted: false});
+    assert.equal(recovery.ok, true);
+});
+test('safe recovery normalizes a cancelled signal into the same shape', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    const recovery = recoverWorkspaceCapabilityRuntimeSafe(queue, 0, null, 16, {aborted: true});
+    assert.equal(recovery.ok, false);
+    assert.equal(recovery.mode, "cancelled");
+});
+test('safe recovery exposes snapshot mode through the same exit', () => {
+    const queue = createWorkspaceCapabilityEventQueue(16);
+    for (let i = 0; i < 20; i += 1) queue.push([{type: 'plans', delta: 1}]);
+    const recovery = recoverWorkspaceCapabilityRuntimeSafe(queue, 1, snapshot(), 16, null);
+    assert.equal(recovery.ok, true);
+    assert.equal(recovery.mode, "snapshot");
+});

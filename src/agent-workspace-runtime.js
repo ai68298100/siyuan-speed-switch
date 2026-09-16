@@ -193,6 +193,33 @@ function recoverWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot = null, l
     return {ok: true, mode: "snapshot", cursor: replay.cursor, events: [], snapshot: normalized};
 }
 
+// T-177：面板卸载或请求切换时的取消边界——AbortSignal 已取消时不读取、不确认事件队列，
+// 返回稳定的 cancelled 形态（与 recovery 结果同构，消费方无需特判）。
+function recoverWorkspaceCapabilityRuntimeWithSignal(queue, cursor = 0, snapshot = null, limit = 16, signal = null) {
+    const safeCursor = Math.max(0, Math.trunc(Number(cursor) || 0));
+    if (signal && typeof signal === "object" && signal.aborted === true) {
+        return {ok: false, mode: "cancelled", reason: "cancelled", cursor: safeCursor, events: [], snapshot: null};
+    }
+    return recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+}
+
+// T-180：带取消信号的恢复的统一归一化安全出口——实现抛错时归一为 unavailable，
+// 保证消费方永远拿到同构结果而不是异常。
+function recoverWorkspaceCapabilityRuntimeSafe(queue, cursor = 0, snapshot = null, limit = 16, signal = null) {
+    try {
+        return recoverWorkspaceCapabilityRuntimeWithSignal(queue, cursor, snapshot, limit, signal);
+    } catch (error) {
+        return {ok: false, mode: "unavailable", reason: "recovery_failed", cursor: Math.max(0, Math.trunc(Number(cursor) || 0)), events: [], snapshot: null};
+    }
+}
+
+// T-173：恢复与游标确认的独立原子门面——成功才消费，失败保留队列。
+function recoverAndCommitWorkspaceCapabilityRuntime(queue, cursor = 0, snapshot = null, limit = 16) {
+    const recovery = recoverWorkspaceCapabilityRuntime(queue, cursor, snapshot, limit);
+    const acknowledged = commitWorkspaceCapabilityRuntimeRecovery(queue, recovery);
+    return Object.freeze({...recovery, acknowledged});
+}
+
 function commitWorkspaceCapabilityRuntimeRecovery(queue, recovery) {
     if (!queue || typeof queue.acknowledge !== "function" || !recovery || recovery.ok !== true) return 0;
     if (recovery.mode !== "events" && recovery.mode !== "snapshot") return 0;
@@ -620,6 +647,9 @@ module.exports = {
     recoverWorkspaceCapabilityRuntime,
     commitWorkspaceCapabilityRuntimeRecovery,
     createWorkspaceCapabilityRecoveryCoordinator,
+    recoverWorkspaceCapabilityRuntimeWithSignal,
+    recoverWorkspaceCapabilityRuntimeSafe,
+    recoverAndCommitWorkspaceCapabilityRuntime,
     createWorkspaceCapabilityRuntimeSession,
     createWorkspaceCapabilityRuntimeSessionRegistry,
     normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot,

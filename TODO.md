@@ -5085,38 +5085,38 @@
   - 目标：在游标过旧导致队列溢出时明确要求重新获取完整快照，避免不完整事件流污染 UI
   - 实现：新增 `readWorkspaceCapabilityRuntimeEventsForReplay`，正常返回 ready 批次，溢出返回 `snapshot_required`
   - 状态：done（T-162~T-170 第二十五批一并落地，见 D-396 补充）
-- [ ] T-171 Agent workspace runtime 快照恢复流程
+- [x] T-171 Agent workspace runtime 快照恢复流程
   - 目标：统一事件回放成功与队列溢出后的完整快照恢复，避免 UI 自行拼接游标和校验逻辑
   - 实现：新增 `recoverWorkspaceCapabilityRuntime`，返回 events/snapshot/unavailable 三种稳定模式
   - 状态：in-progress
-- [ ] T-172 Agent workspace runtime 恢复确认
+- [x] T-172 Agent workspace runtime 恢复确认
   - 目标：仅在成功回放或完整快照恢复后原子推进事件确认游标，失败时保留队列
   - 实现：新增 `commitWorkspaceCapabilityRuntimeRecovery`，限定 events/snapshot 模式并忽略失败结果
   - 状态：in-progress
-- [ ] T-173 Agent workspace runtime 恢复提交门面
+- [x] T-173 Agent workspace runtime 恢复提交门面
   - 目标：将恢复与游标确认组合为单一原子调用，成功才消费，失败保留队列
   - 实现：新增 `recoverAndCommitWorkspaceCapabilityRuntime`，返回恢复结果与 acknowledged 计数
   - 状态：in-progress
-- [ ] T-174 Agent workspace runtime 恢复并发协调器
+- [x] T-174 Agent workspace runtime 恢复并发协调器
   - 目标：防止多个消费者重复或倒退确认同一批事件
   - 实现：新增 `createWorkspaceCapabilityRecoveryCoordinator`，记录 lastCursor/commits 并拒绝重复确认
   - 状态：in-progress
-- [ ] T-175 Agent workspace runtime 恢复协调器销毁态
+- [x] T-175 Agent workspace runtime 恢复协调器销毁态
   - 目标：插件卸载后阻断异步恢复、确认和事件消费，避免销毁后的尾部任务污染队列
   - 实现：coordinator 增加不可逆 `dispose()` 与 disposed 状态，后续调用返回 `coordinator_disposed`
   - 状态：in-progress
-- [ ] T-176 Agent workspace 恢复协调器队列绑定销毁
+- [x] T-176 Agent workspace 恢复协调器队列绑定销毁
   - 目标：在插件彻底卸载时可选择同时清理事件队列，普通共享消费者仍保留队列
   - 实现：`coordinator.dispose(true)` 同步调用 queue.dispose；默认 dispose() 不清理共享队列并保持幂等
   - 状态：in-progress
-- [ ] T-177 Agent workspace runtime 恢复取消边界
+- [x] T-177 Agent workspace runtime 恢复取消边界
   - 目标：面板卸载或请求切换时安全取消恢复，不读取、不确认事件队列
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeWithSignal`，AbortSignal 已取消时返回稳定 cancelled
   - 状态：in-progress
-- [ ] T-180 Agent workspace runtime 恢复安全出口
+- [x] T-180 Agent workspace runtime 恢复安全出口
   - 目标：为带取消信号的恢复提供统一归一化结果
   - 实现：新增 `recoverWorkspaceCapabilityRuntimeSafe`
-  - 状态：in-progress
+  - 状态：done（T-171~T-180 第二十六批一并落地，见 D-396 补充）
 - [ ] T-181 Agent workspace recovery coordinator 运行快照
   - 目标：一次读取 coordinator 与队列的有界状态
   - 实现：新增 `coordinator.snapshot()` 与 queue status
