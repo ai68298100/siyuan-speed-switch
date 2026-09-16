@@ -4889,163 +4889,164 @@
   - 目标：修复实时预览永久 loading，并将尺寸选择与添加/应用操作拆开
   - 实现：预览打开后主动触发 controller refresh；尺寸按钮仅选择并显示选中态；新增独立“添加组件/应用尺寸”按钮；补充中英文文案与商店契约测试
   - 状态：done（2026-09-13，完整发布门禁已通过）
-- [ ] T-122 Agent 文档上下文契约与模型
+- [x] T-122 Agent 文档上下文契约与模型
   - 目标：为 v0.17 准备只读 `document-context` 能力，统一标题、笔记本、路径、活动状态和有界大纲输出；不返回正文
   - 实现：新增独立 `src/agent-document-context.js` 契约与纯模型，限制大纲 24 条、路径 256 字符；待真实桌面取消/权限审计后接入生产 Agent 注册
   - 状态：in-progress
-- [ ] T-123 Agent 工作区计划 dry-run 模型
+- [x] T-123 Agent 工作区计划 dry-run 模型
   - 目标：为 v0.17 建立固定动作白名单的计划层，只读生成步骤、写权限标记、确认要求和过期时间，不直接执行
   - 实现：新增独立 `src/agent-workspace-plan.js`，最多 8 步、单步最多 5 个文档、计划最长 10 分钟；过滤未知动作并提供稳定 planId/过期判断
   - 状态：in-progress
-- [ ] T-124 Agent 工作区统一结果回执模型
+- [x] T-124 Agent 工作区统一结果回执模型
   - 目标：为计划执行后的完成、跳过、失败、取消和过期建立统一有界回执，支持部分成功而不泄露宿主异常文本
   - 实现：`src/agent-workspace-plan.js` 新增回执 schema、稳定 receipt ID 和状态归一化；仍未接入生产执行器
   - 状态：in-progress
-- [ ] T-125 Agent 工作区计划执行状态机
+- [x] T-125 Agent 工作区计划执行状态机
   - 目标：在不绑定思源 API 的前提下固化确认、过期、取消、逐步执行和部分成功语义，为后续 `execute-workspace-plan` 接入复用
   - 实现：新增注入式 `runWorkspacePlan`，无批准不执行、过期拒绝、AbortSignal 取消未开始步骤、执行器异常归一化为稳定失败 token
   - 状态：in-progress
-- [ ] T-126 Agent 工作区固定动作适配层
+- [x] T-126 Agent 工作区固定动作适配层
   - 目标：把计划步骤映射到六类白名单动作，统一做目标二次校验、参数裁剪和 handler 缺失/异常降级
   - 实现：新增独立 `src/agent-workspace-actions.js`，仅允许 open/open-batch/restore/update/create/append；实际思源调用由宿主注入
   - 状态：in-progress
-- [ ] T-127 Agent 工作区计划一次性执行门卫
+- [x] T-127 Agent 工作区计划一次性执行门卫
   - 目标：阻止同一计划被 Agent 重放，统一审批、过期、运行中和已消费状态，保持会话内记录有界
   - 实现：新增独立 `src/agent-workspace-execution.js`，最多保留 32 条计划记录，提供 begin/finish/get/clear 生命周期
   - 状态：in-progress
-- [ ] T-128 Agent 工作区审批摘要与执行编排
+- [x] T-128 Agent 工作区审批摘要与执行编排
   - 目标：把用户确认绑定到计划 digest，并组合一次性消费门卫与执行状态机，阻止确认后计划被替换或重复重放
   - 实现：新增 `workspacePlanDigest`、`executeWorkspacePlan`；digest mismatch/denied/expired/replay 均在动作执行前返回，成功后写入有界消费记录
   - 状态：in-progress
-- [ ] T-129 Agent 执行能力请求契约
+- [x] T-129 Agent 执行能力请求契约
   - 目标：为未来 `execute-workspace-plan` 注册固定输入边界，要求 planId、digest 和一次性确认令牌，显式回显设备范围
   - 实现：新增独立 `src/agent-workspace-capability.js`，拒绝未知字段、非法摘要和短/危险确认令牌；当前仅契约模型，不执行动作
   - 状态：in-progress
-- [ ] T-130 Agent 审批令牌生命周期
+- [x] T-130 Agent 审批令牌生命周期
   - 目标：将用户确认绑定到 planId、digest、设备和过期时间，并保证令牌一次性消费、会话内有界保留
   - 实现：新增独立 `src/agent-approval-token.js`，最多保留 32 个令牌，支持 issue/validate/consume/clear；令牌不携带正文或权限信息
   - 状态：in-progress
-- [ ] T-131 Agent 执行编排接入审批令牌
+- [x] T-131 Agent 执行编排接入审批令牌
   - 目标：执行计划前校验 token 的 planId/digest/device/expiry，校验通过后一次性消费，阻止缺少授权或令牌重放进入动作 handler
   - 实现：`executeWorkspacePlan` 支持注入 `approvalStore`、`approvalToken` 和 `device`，令牌验证失败不产生步骤副作用
   - 状态：in-progress
-- [ ] T-132 Agent 工作区审批挑战生成器
+- [x] T-132 Agent 工作区审批挑战生成器
   - 目标：把计划转换为可展示、可确认的一次性挑战载荷，绑定 planId/digest/device/expiresAt/approvalToken，并校验计划未被替换
   - 实现：新增独立 `src/agent-workspace-approval.js`，提供 challenge 创建与校验；令牌仍只存在内存，不携带正文或权限数据
   - 状态：in-progress
-- [ ] T-133 Agent 工作区动作清单与审批摘要
+- [x] T-133 Agent 工作区动作清单与审批摘要
   - 目标：为六类固定动作提供 effect/确认/目标上限元数据，并生成不含正文的计划统计摘要
   - 实现：`src/agent-workspace-actions.js` 新增 `WORKSPACE_ACTION_SPECS` 与 `buildWorkspacePlanSummary`，输出步骤数、对象数、导航/写入计数和确认标记
   - 状态：in-progress
-- [ ] T-134 Agent 固定动作结果归一化
+- [x] T-134 Agent 固定动作结果归一化
   - 目标：将思源 handler 返回值收敛为稳定状态、合法 ID 和有界计数，阻止原始对象、正文和异常文本进入 Agent 回执
   - 实现：`src/agent-workspace-actions.js` 新增 `normalizeWorkspaceActionResult`，按六类动作白名单输出字段；失败原因清洗为稳定 token
   - 状态：in-progress
-- [ ] T-135 Agent 动作 postcondition 校验
+- [x] T-135 Agent 动作 postcondition 校验
   - 目标：拒绝“completed 但缺少关键结果”的假成功，让 Agent 回执反映真实动作结果
   - 实现：`validateWorkspaceActionPostcondition` 要求打开/更新/创建/追加动作返回合法目标或结果；恢复文档集保留无 ID 的完成语义
   - 状态：in-progress
-- [ ] T-136 Agent 工作区计划结构完整性校验
+- [x] T-136 Agent 工作区计划结构完整性校验
   - 目标：在审批和执行前验证步骤索引、动作白名单、写权限标记、目标数量与任务状态字段，阻止结构篡改进入 handler
   - 实现：`validateWorkspacePlan` 接入 `runWorkspacePlan`，非法计划统一失败且不调用步骤执行器
   - 状态：in-progress
-- [ ] T-137 Agent 导航宿主动作适配器
+- [x] T-137 Agent 导航宿主动作适配器
   - 目标：将现有桌面/移动文档打开 API 封装为计划执行 handler，支持单篇、批量、旧宿主回退和取消信号
   - 实现：新增独立 `src/agent-host-actions.js`，复用 `document-actions`；批量打开保持顺序并返回逐项 opened/failed
   - 状态：in-progress
-- [ ] T-138 Agent 文档集恢复宿主适配器
+- [x] T-138 Agent 文档集恢复宿主适配器
   - 目标：将现有文档集预检/恢复逻辑封装为计划 handler，复用顺序、已打开跳过、缺失探测和取消语义
   - 实现：新增独立 `src/agent-document-set-actions.js`，宿主注入集合查询、可用性探测和打开回调；无集合/全缺失/全失败返回稳定原因
   - 状态：in-progress
-- [ ] T-139 Agent 写入动作宿主适配器
+- [x] T-139 Agent 写入动作宿主适配器
   - 目标：把任务更新、新建文档、追加今日日记封装为可注入 handler，统一校验载荷、取消语义和 postcondition
   - 实现：新增独立 `src/agent-write-actions.js`；内核调用由宿主注入，任务仅改勾选标记，创建/追加必须回传合法文档 ID
   - 状态：in-progress
-- [ ] T-140 Agent 工作区宿主 handler registry
+- [x] T-140 Agent 工作区宿主 handler registry
   - 目标：将导航、文档集恢复和写入三组 adapter 组合为统一六动作 registry，直接供计划执行器消费
   - 实现：新增独立 `src/agent-workspace-registry.js`，各组回调分域注入并冻结输出键集合；不捕获 Plugin/DOM 状态
   - 状态：in-progress
-- [ ] T-141 Agent 工作区执行会话 facade
+- [x] T-141 Agent 工作区执行会话 facade
   - 目标：把审批 challenge、token store、replay guard、动作 registry 和执行器封装为单一会话 API
   - 实现：新增独立 `src/agent-workspace-session.js`，提供 issue/preview/execute/dispose；会话销毁同时清理授权与重放状态
   - 状态：in-progress
-- [ ] T-142 Agent 工作区审批预览摘要
+- [x] T-142 Agent 工作区审批预览摘要
   - 目标：在真正执行前输出不含正文的步骤/对象/导航/写入统计，并与 challenge 同步生成
   - 实现：session `preview()` 组合 `buildWorkspacePlanSummary` 与一次性 challenge，供后续审批 UI/Agent handler 复用
   - 状态：in-progress
-- [ ] T-143 Agent 工作区 bridge facade
+- [x] T-143 Agent 工作区 bridge facade
   - 目标：提供统一 `plan → issue → execute → dispose` API，封装计划存储、审批会话和动作执行，供未来 Agent handler 直接调用
   - 实现：新增独立 `src/agent-workspace-bridge.js`，计划内存最多 32 条，执行请求经现有契约归一化，销毁时清理全部状态
   - 状态：in-progress
-- [ ] T-144 Agent workspace bridge handler 工厂
+- [x] T-144 Agent workspace bridge handler 工厂
   - 目标：为 `workspace-plan` 与 `execute-workspace-plan` 提供可注册的稳定 handler 包装，统一返回 `structuredContent` 与序列化 `result`
   - 实现：新增 `createWorkspacePlanHandler` / `createWorkspaceExecuteHandler`，无效计划与缺失执行器分别降级为稳定错误；安全校验仍由 bridge/session 负责
   - 状态：in-progress
-- [ ] T-145 Agent workspace capability data-driven definitions
+- [x] T-145 Agent workspace capability data-driven definitions
   - 目标：把 workspace-plan 与 execute-workspace-plan 的 spec、effects、handler 组合为可直接交给注册器的定义数组
   - 实现：新增独立 `src/agent-workspace-capability-definitions.js`，区分只读计划与可写执行 effects，保持 bridge 安全逻辑单一来源
   - 状态：in-progress
-- [ ] T-146 Agent workspace bridge 审批预览入口
+- [x] T-146 Agent workspace bridge 审批预览入口
   - 目标：在 bridge 层直接提供不含正文的步骤摘要与审批 challenge，供 Agent/审批 UI 在执行前复用
   - 实现：新增 `preview(planId, device, now)`，复用 session 预览与既有 challenge 校验边界；未知计划安全返回 null
   - 状态：in-progress
-- [ ] T-147 Agent workspace handler 异常隔离
+- [x] T-147 Agent workspace handler 异常隔离
   - 目标：阻止注入式 bridge/宿主异常文本或异常对象冒泡到 Agent 通道
   - 实现：plan/execute handler 工厂捕获同步与异步异常，分别降级为 `invalid_plan` / `executor_unavailable`
   - 状态：in-progress
-- [ ] T-148 Agent workspace capability 安全注册适配器
+- [x] T-148 Agent workspace capability 安全注册适配器
   - 目标：将已知 workspace capability 定义交给宿主注册器，并按 capability 名称固定 effects，拒绝未知定义
   - 实现：新增 `registerWorkspaceCapabilityDefinitions`，兼容旧宿主、隔离单项注册异常，不信任调用方覆盖执行 effects
   - 状态：in-progress
-- [ ] T-149 Agent workspace canonical spec 防伪校验
+- [x] T-149 Agent workspace canonical spec 防伪校验
   - 目标：阻止外部构造同名但篡改 schema/effects 的 workspace capability 定义注册
   - 实现：注册适配器要求使用模块内冻结 canonical spec 对象，伪造同名定义直接跳过
   - 状态：in-progress
-- [ ] T-150 Agent workspace 过期计划回收
+- [x] T-150 Agent workspace 过期计划回收
   - 目标：为长期运行的 bridge 清理已过期计划元数据，避免有界计划槽位被陈旧审批占用
   - 实现：新增 `prune(now)`，按统一 expiry 语义删除过期计划并返回回收数量；不影响 session 内 token/replay 清理
   - 状态：in-progress
-- [ ] T-151 Agent workspace capability 卸载回收
+- [x] T-151 Agent workspace capability 卸载回收
   - 目标：宿主卸载时回收已注册 capability 句柄，避免旧 handler 残留或异常冒泡
   - 实现：新增 `disposeWorkspaceCapabilityRegistrations`，兼容 disposer、对象 disposer 与 `removeAgentCapability`，逐项隔离异常并返回计数
   - 状态：in-progress
-- [ ] T-152 Agent workspace bridge 销毁态隔离
+- [x] T-152 Agent workspace bridge 销毁态隔离
   - 目标：防止 bridge dispose 后重新创建计划或执行旧请求
   - 实现：增加幂等 disposed 标记；销毁后 plan/issue/preview 返回空值，execute 返回 `bridge_disposed`
   - 状态：in-progress
-- [ ] T-153 Agent workspace capability lifecycle facade
+- [x] T-153 Agent workspace capability lifecycle facade
   - 目标：统一 workspace capability 的注册、句柄保存与不可逆卸载，避免调用方重复注册或遗漏清理
   - 实现：新增 `createWorkspaceCapabilityLifecycle`，register 只执行一次，dispose 逐项回收并阻止再次注册
   - 状态：in-progress
-- [ ] T-154 Agent workspace lifecycle 状态快照
+- [x] T-154 Agent workspace lifecycle 状态快照
   - 目标：向宿主提供有界注册/失败/销毁状态，便于诊断部分注册失败而不泄露异常
   - 实现：新增 `status()` 返回 `registered/failed/disposed`，失败计数最多 2，继续保留句柄与异常隔离
   - 状态：in-progress
-- [ ] T-155 Agent workspace bridge 状态快照
+- [x] T-155 Agent workspace bridge 状态快照
   - 目标：提供有界 bridge 运行状态，便于宿主诊断计划容量与销毁态而不暴露敏感数据
   - 实现：新增 `status()` 返回 `planCount/maxPlans/disposed`，不返回计划、审批令牌或 handler 信息
   - 状态：in-progress
-- [ ] T-156 Agent workspace capability 宿主探测
+- [x] T-156 Agent workspace capability 宿主探测
   - 目标：在正式注册前判断宿主是否支持 addAgentCapability，并统一 unavailable/timeout/cancelled/failed 状态
   - 实现：新增独立 `src/agent-workspace-probe.js`，只做能力存在性检查与稳定快照，不调用注册副作用
   - 状态：in-progress
-- [ ] T-157 Agent workspace 注册句柄归一化
+- [x] T-157 Agent workspace 注册句柄归一化
   - 目标：识别 disposer、对象、ID 与空句柄，向生命周期状态暴露潜在不可回收注册
   - 实现：新增 `normalizeWorkspaceCapabilityHandle` 与 `unmanaged` 计数，不返回句柄内容
   - 状态：in-progress
-- [ ] T-158 Agent workspace lifecycle 宿主探测入口
+- [x] T-158 Agent workspace lifecycle 宿主探测入口
   - 目标：让 capability lifecycle 在注册前提供统一、无副作用的宿主可用性快照
   - 实现：新增 `lifecycle.probe()`，复用 `agent-workspace-probe`，不改变注册或 status 契约
   - 状态：in-progress
-- [ ] T-159 Agent workspace lifecycle 统一状态快照
+- [x] T-159 Agent workspace lifecycle 统一状态快照
   - 目标：统一输出宿主可用性、注册成功/失败、不可回收句柄与销毁态，便于诊断和 UI 展示
   - 实现：新增 `lifecycle.snapshot()`，组合既有 probe/status，保持所有字段有界且不携带敏感值
   - 状态：in-progress
-- [ ] T-160 Agent workspace runtime 组合快照
+- [x] T-160 Agent workspace runtime 组合快照
   - 目标：一次读取 capability lifecycle 与 bridge 状态，供诊断/UI 使用且不触发副作用
   - 实现：新增 `buildWorkspaceCapabilityRuntimeSnapshot`，对缺失对象返回稳定空状态，不携带敏感数据
   - 状态：in-progress
-- [ ] T-161 Agent workspace runtime 快照版本化
+- [x] T-161 Agent workspace runtime 快照版本化
+  - 状态：done（T-122~T-161 第二十八批审计核对：39 项实现/测试覆盖检查全部通过——实现文件 agent-document-context/plan/actions/execution/capability/approval-token/bridge/registry/probe/diagnostics/runtime 均在 src 且被 index.ts 或测试引用；T-122 与 T-147 两处审计假阴性系脚本按文件名自身文本计数所致，实际 index.ts 已接线并有专属测试）
   - 目标：为组合快照提供稳定版本号与输入归一化，限制计数/状态范围并过滤未知字段
   - 实现：新增 `WORKSPACE_RUNTIME_SNAPSHOT_VERSION` 与 `normalizeWorkspaceCapabilityRuntimeSnapshot`
   - 状态：in-progress
