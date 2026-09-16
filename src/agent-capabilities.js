@@ -946,8 +946,8 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     homeDiagnostics: Object.freeze({
         name: "home-adapter-diagnostics",
-        title: "灏忛┐閫熺粍浠惰瘖鏂憳瑕?",
-        description: "鍙杩斿洖缁勪欢閫傞厤鍣ㄧ殑鏈€杩戞垚鍔熴€佺紦瀛樸€佽秴鏃跺拰澶辫触鐘舵€侊紝涓嶅寘鍚紓甯稿璞°€佹晱鎰熸枃鏈垨璇锋眰鍐呭銆?",
+        title: "小驴速切组件诊断摘要",
+        description: "只读返回组件适配器的最近成功、缓存、超时和失败状态，不包含异常对象、敏感文本或请求内容。",
         inputSchema: Object.freeze({
             type: "object",
             properties: {
