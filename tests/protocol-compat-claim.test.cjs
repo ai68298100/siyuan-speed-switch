@@ -16,20 +16,36 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 
-function collectMarkdownFiles(dir) {
+const DOCS_DIR = path.join(root, 'docs');
+
+// 归档区是**冻结的历史快照**（见 docs/archive/README.md：只读、不追加、不代表当前
+// 承诺）。2026-09-17 把 TODO / DECISIONS / PROGRESS 移入 docs/archive/ 之后，它们
+// 进入了本门禁的扫描面，并带来 v0.16.17 x2 与 v0.7.0 x1 的历史叙述（当时口径）。
+// 计入它们只会强制二选一：改写历史（本仓明令禁止，见 docs/gate-audit-checklist.md）
+// 或永久假红。故按前缀排除，只把"现行文档"当作对外承诺。
+const ARCHIVE_PREFIX = 'docs/archive/';
+
+function walkMarkdown(dir) {
     const out = [];
     for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
         const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) out.push(...collectMarkdownFiles(full));
+        if (entry.isDirectory()) out.push(...walkMarkdown(full));
         else if (entry.name.endsWith('.md')) out.push(full);
     }
     return out;
 }
 
-// 收集 docs 下所有"只读契约 … 向后兼容"且写明版本号的声明。
-function collectCompatibilityClaims() {
+function collectMarkdownFiles(dir) {
+    return walkMarkdown(dir).filter((full) => {
+        const relative = path.relative(root, full).replace(/\\/g, '/');
+        return !relative.startsWith(ARCHIVE_PREFIX);
+    });
+}
+
+// 从给定文件集合里收集"只读契约 … 向后兼容"且写明版本号的声明。
+function claimsIn(files) {
     const claims = [];
-    for (const file of collectMarkdownFiles(path.join(root, 'docs'))) {
+    for (const file of files) {
         for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
             if (!line.includes('只读契约') || !line.includes('向后兼容')) continue;
             const version = line.match(/v(\d+\.\d+\.\d+)/);
@@ -37,6 +53,18 @@ function collectCompatibilityClaims() {
         }
     }
     return claims;
+}
+
+function collectCompatibilityClaims() {
+    return claimsIn(collectMarkdownFiles(DOCS_DIR));
+}
+
+// 只扫归档区：证明上面的排除是"承重"的（真的排掉了东西），而不是一个永远不成立、
+// 将来可被无声删除的空条件。
+function collectArchiveCompatibilityClaims() {
+    const archiveDir = path.join(DOCS_DIR, 'archive');
+    if (!fs.existsSync(archiveDir)) return [];
+    return claimsIn(walkMarkdown(archiveDir));
 }
 
 function compareVersions(left, right) {
@@ -52,6 +80,11 @@ test('read-only contract compatibility start is stated once and consistently', (
     const claims = collectCompatibilityClaims();
     // 审计面非空自检：找不到带版本号的声明时，下面的"唯一"断言会恒真
     assert.ok(claims.length >= 3, `expected at least 3 versioned compatibility claims, found ${claims.length}`);
+    // 排除承重自检：归档区必须确实含同类声明，否则上面的排除条件已退化为空操作，
+    // 将来被人删掉会把这个门禁无声地变回假红。
+    const archived = collectArchiveCompatibilityClaims();
+    assert.ok(archived.length >= 1,
+        `docs/archive exclusion must be load-bearing, found ${archived.length} archived claims`);
     const versions = new Set(claims.map((claim) => claim.version));
     assert.equal(versions.size, 1,
         `compatibility start must be stated exactly once, found ${[...versions].join(' / ')} across ${claims.map((claim) => claim.file).join(', ')}`);

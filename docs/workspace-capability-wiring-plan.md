@@ -46,6 +46,6 @@
 
 ## 通用门槛（每阶段）
 
-1. `production-graph-isolation` UNWIRED/WIRED 清单更新 + 对应 DECISIONS 条目；
+1. `production-graph-isolation` UNWIRED/WIRED 清单更新 + 对应 ADR 条目；
 2. 包体三查：raw 自律线、zip 硬上限余量、resource-audit 基线漂移诊断；
 3. `pnpm verify:release` 全绿；真实宿主行为验证项集中记入 BLOCKERS/验收清单，不以 mock 替代。

@@ -165,7 +165,7 @@ if (pathCount > 0) parts.push(`${this.i18n.searchFilterPath}: ${pathCount}`);
 
 1. **B-005 解决**：取得已认证的思源桌面会话；
 2. **T-107 完成**：记录 `/api/filetree/listDocsByPath` 的端点可用性、响应结构与最窄侧栏宽度；
-3. 依据验收结果更新 `tests/path-filter-ui-contract.test.cjs`——**该门禁的放宽本身就是"端点获批"的正式记录**，须在提交信息与 DECISIONS 中引用验收证据。
+3. 依据验收结果更新 `tests/path-filter-ui-contract.test.cjs`——**该门禁的放宽本身就是"端点获批"的正式记录**，须在提交信息与对应 ADR 中引用验收证据。
 
 ## 已知未验证项
 
