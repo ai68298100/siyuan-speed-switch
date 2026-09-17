@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.20.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.21.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,9 +8,9 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> v0.20.0 完成生活信息支线与数据连续性：新增 iCal 日程订阅与 GitHub 贡献周汇总两个只读组件，缩略图缓存读取侧归一化补上数据完整性缺口，全仓 365 条门禁断言迁移为块级有界断言并修复 iCal 文本抓取缺陷。
+> v0.21.0 把「组件是谁提供的」提升为一等维度：组件商店改为按来源插件成组（组头含来源图标、已添加 x/y 与全选本组，组内按提供方建议顺序排列），并桥接小驴打卡公开 API 带来 5 个新组件；语义搜索在宿主能力确认后才出现，GitHub 贡献由周汇总升级为格点热力图。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、5959 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、ActivityWatch 使用时长、iCal 订阅日程与 GitHub 贡献热力图，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、5959 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、ActivityWatch 使用时长、iCal 订阅日程、GitHub 贡献热力图与小驴打卡组件（需安装小驴打卡），组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -182,9 +182,36 @@ pnpm verify:release
 4. 主题：默认明暗主题、Neo 等第三方主题，以及窗口缩放和旋转后的布局。
 5. 生命周期：安装、升级、卸载、重启后数据迁移，以及 API 失败/取消/权限拒绝。
 
-本版本已正式发布为 `v0.20.0`；路径筛选侧栏入口（待窄侧栏真实宽度证据）和 Android 真机验收仍记录为后续兼容性补充。
+本版本已正式发布为 `v0.21.0`
 
 ## 更新日志
+
+### v0.21.0（2026-09-17）
+
+- **组件来源成为一等公民（ADR 0057）**：组件协议 v2.4 新增结构化 `source` 字段
+  （`pluginId/name/icon/version/homepage/collection/order`），取代按作者自由文本分组；
+  商店改为**来源分组优先于功能分组**——同一插件的多个组件收敛进一个来源组，组头显示来源
+  图标、**已添加 x/y** 与**全选本组 / 取消本组**，组内卡片按 `source.order` 升序排列，
+  待安装区按来源插件聚合而不再平铺，来源名与子系列名一并进入搜索文本。
+- **小驴打卡桥接组件（新增 5 个）**：`checkin-today / checkin-streak /
+  checkin-year-heatmap / checkin-weekly / checkin-occasions`，直接消费小驴打卡已公开的
+  生态 API v4（`window.siyuanCheckin`，只读、纯本地、零网络）；打卡未安装或能力缺失时
+  返回确定空态而不是故障态；日后打卡自行注册相同 `moduleId` 时由 token 覆盖自动接管，
+  用户配置不漂移。
+- **语义搜索（第三种搜索方法）**：查询语法与正则之后补上语义；仅在宿主 AI embedding
+  已配置时方法菜单才出现该选项，未配置时残留选中静默降级为关键词搜索。
+- **GitHub 贡献升级为格点热力图**：新增第四种 `viewType: heatmap`，条目硬顶由 42 提到
+  371，保留周日对齐占位格，阈值由提供方透传、视图不重写。
+- **第三方插件接入示例跑通端到端**：提供方注册模板
+  `docs/widget-example/siyuan-checkin-home-modules.js` 与 6 项运行时契约，把模板当真实
+  第三方插件走完 register → listModules → read → buildHomeModuleView → unregister。
+- **工程质量**：`src/index.ts` 由 9226 行降至 8104 行（移动端切换器群、二级面板 UI 拆为
+  独立模块）；`src/index.scss` 6517 行按**顺序切片**拆为 tokens + 9 个切片（CSS 顺序即
+  层叠顺序，只能顺序切片、不能按域名聚类），并配独占锚点覆盖门禁；根目录三份账本归档并
+  加体积预算门禁；性能自检改为自适应标定 + 比值断言。
+- 发版门禁：5959 项自动测试（178 个测试文件）、TypeScript、生产构建、移动端 smoke、
+  Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 653949 bytes、
+  package.zip 330184 bytes。
 
 ### v0.20.0（2026-09-17）
 
@@ -194,7 +221,7 @@ pnpm verify:release
 - **移动端修复**：图标尺寸越界、工具栏 chips 裁切、小组件面板高度与裸 svg 尺寸兜底补齐；布局门禁改按真实手机宽度量测。
 - **Workspace 运行时**：会话注册表、恢复流程、取消边界与安全退出等 20+ 契约能力补齐（事件管线接入生产）。
 - **工程质量**：全仓 365 条窗口断言迁移为块级有界断言（迁移中发现并修复 size tile 缺 `touch-action` 的真实缺陷）；复杂度性能门禁获得边际重测抗噪（天花板语义不变）；新增存储兼容矩阵文档与双向文档契约门禁、协议兼容声明一致性门禁。
-- 发版门禁：5959 项自动测试（178 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 653949 bytes、package.zip 328118 bytes。
+- 发版门禁：5872 项自动测试（171 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 631610 bytes、package.zip 318095 bytes。
 
 ### v0.19.0（2026-09-16）
 

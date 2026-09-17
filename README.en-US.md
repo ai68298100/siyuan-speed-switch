@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.20.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.21.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,9 +8,9 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.20.0 completes the life-info line and data continuity: two new read-only widgets — iCal schedule subscription and weekly GitHub contribution summary — the thumbnail cache now normalizes on read to close a data-integrity gap, all 365 window assertions migrated to block-scoped gates, and an iCal text-fetch defect was caught and fixed before release.
+> v0.21.0 makes "who provides this widget" a first-class dimension: the store groups widgets by source plugin (headers show the provider icon, an added x/y counter and select/clear whole group, cards follow the provider's suggested order) and bridges the SiYuan-Checkin public API for five new widgets; semantic search only appears once host capability is confirmed, and GitHub contributions move from a weekly summary to a grid heatmap.
 
-> The current development head passes type checking, production build, 5959 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, an ActivityWatch app-usage bridge, iCal schedule subscriptions, and GitHub contribution heatmap; the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 5959 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, an ActivityWatch app-usage bridge, iCal schedule subscriptions, GitHub contribution heatmap, and SiYuan-Checkin widgets (requires the checkin plugin); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -164,9 +164,43 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.20.0`; real-host path-filter capability, narrow-sidebar, and Android-device checks remain tracked as follow-up compatibility work.
+This release is published as `v0.21.0`
 
 ## Changelog
+
+### v0.21.0 (2026-09-17)
+
+- **Widget provenance becomes first-class (ADR 0057)**: widget protocol v2.4 adds a
+  structured `source` field (`pluginId/name/icon/version/homepage/collection/order`),
+  replacing grouping by free-text author. The store now prefers **source grouping over
+  functional grouping** — one plugin's widgets collapse into a single source group whose
+  header shows the provider icon, an **added x/y** counter and **select/clear whole group**;
+  cards inside a group follow `source.order`; the "needs plugin" area aggregates per
+  provider; provider and collection names join the card search text.
+- **Five SiYuan-Checkin bridge widgets**: `checkin-today / checkin-streak /
+  checkin-year-heatmap / checkin-weekly / checkin-occasions`, built on the checkin plugin's
+  public ecosystem API v4 (`window.siyuanCheckin`, read-only, local-only, zero network).
+  A missing plugin or capability yields a deterministic empty state instead of an error
+  state; if the plugin later registers the same `moduleId`, its native implementation takes
+  over without migrating user configuration.
+- **Semantic search (third search method)**: joins query-syntax and regexp; the method menu
+  only offers it when host AI embedding is configured, and a stale selection silently falls
+  back to keyword search.
+- **GitHub contributions become a grid heatmap**: a fourth `viewType: heatmap` with the item
+  ceiling raised from 42 to 371, Sunday-aligned placeholder cells preserved, and levels
+  passed through from the provider rather than recomputed by the view.
+- **Third-party integration example now runs end to end**: the provider template
+  `docs/widget-example/siyuan-checkin-home-modules.js` plus six runtime contracts exercise
+  register → listModules → read → buildHomeModuleView → unregister as a real plugin.
+- **Engineering**: `src/index.ts` shrank from 9226 to 8104 lines (mobile switcher and second
+  panel UI extracted); `src/index.scss` (6517 lines) split into tokens plus nine **ordered**
+  slices — CSS order is cascade order, so slicing must stay sequential rather than clustered
+  by domain — with an exclusive-anchor coverage gate; three root ledgers archived under a
+  root-doc budget gate; the perf self-check moved to adaptive calibration plus a ratio
+  assertion.
+- Release gates: 5959 automated tests (178 test files), TypeScript, production build, mobile
+  smoke, Chromium smoke and `verify:release`; artifacts dist/index.js 653949 bytes,
+  package.zip 330184 bytes.
 
 ### v0.20.0 (2026-09-17)
 
@@ -176,7 +210,7 @@ This release is published as `v0.20.0`; real-host path-filter capability, narrow
 - **Mobile fixes**: icon size overruns, toolbar chip clipping, widget panel height, and bare-SVG fallback sizing; the layout gate now measures at real phone width.
 - **Workspace runtime**: session registry, recovery flow, cancellation boundary, and safe exit — 20+ contract capabilities completed (event pipeline wired into production).
 - **Engineering quality**: all 365 window assertions migrated to block-scoped gates (the migration surfaced and fixed a real product defect — the size tile lacked `touch-action`); the doubling-complexity perf gate gained marginal-rerun noise hardening (ceiling semantics unchanged); a storage compatibility matrix with bidirectional doc-contract gates and a protocol-compat-claim consistency gate were added.
-- Release gates pass: 5959 automated tests (178 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 653949 bytes, package.zip 328118 bytes.
+- Release gates pass: 5872 automated tests (171 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 631610 bytes, package.zip 318095 bytes.
 
 ### v0.19.0 (2026-09-16)
 
