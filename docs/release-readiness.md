@@ -16,7 +16,7 @@ Current build: `dist/index.js` 653949 bytes; `dist/index.css` 147573 bytes; `pac
 | 版本元数据 | 已通过 | `0.21.0` 已同步 `package.json`、`plugin.json`、中英文 README |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
-| GitHub 发布动作 | 待维护者确认 | 当前工作树为本地开发提交，未执行新的 GitHub push；上一正式版 `v0.17.0` 记录保持不变 |
+| GitHub 发布动作 | 已通过 | `v0.21.0` 已于 2026-09-17 发布：16 个提交经 REST Git Data API 完整保留推送（main `7f7bb4a6`，tag 指向 release 提交 `942fe12e`），Actions Release 工作流 completed/success，附件 `package.zip` 330169 bytes |
 
 ## 建议发布顺序
 
