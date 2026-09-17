@@ -16,3 +16,7 @@ ui-smoke.png
 
 # 手机端布局门禁的人工复核截图（本地验证产物，不入库）
 ui-fix-verify.png
+
+# 本机环境修复脚本与临时分析脚手架（不入库）
+.dev-env.sh
+.tmp/

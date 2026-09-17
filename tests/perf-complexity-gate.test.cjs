@@ -173,11 +173,41 @@ test('marginal rerun absorbs one-shot noise but keeps genuine regressions (self-
     assert.equal(regression.ratio, 4);
 });
 
+// 自检夹具的计时地板（ms）。旧版用固定迭代数（400k/800k）配绝对下限 0.5ms，
+// 在快机上 400k 次累加实测仅 ≈0.152ms，低于地板 → 自检确定性失败（本机 3/3 复现）。
+// 那是夹具与机器速度耦合，不是计时器失效：此时比值（≈2.01）语义依然完好。
+// 现沿用本文件既有的"按机器校准"口径：加倍迭代数直至越过地板，再以 2× 作为 heavy 侧。
+const SELF_CHECK_FLOOR_MS = 2;
+const SELF_CHECK_MIN_ITERATIONS = 100000;
+const SELF_CHECK_CALIBRATION_STEPS = 12;
+// 判别力地板：2x 规模应带来约 2.0 倍耗时。只断言 heavy > light 时，等规模夹具
+// 也会因计时噪声偶然通过（负向验证实测到这种假绿），故改为比值断言。
+const SELF_CHECK_MIN_RATIO = 1.5;
+
+function sumTo(n) {
+    let acc = 0;
+    for (let i = 0; i < n; i += 1) acc += i;
+    return acc;
+}
+
+// 返回使单次耗时 ≥ floorMs 的最小迭代数（2 的幂次递增，封顶后诚实返回最后一次）。
+function calibrateSelfCheckIterations(floorMs) {
+    let iterations = SELF_CHECK_MIN_ITERATIONS;
+    for (let step = 0; step < SELF_CHECK_CALIBRATION_STEPS; step += 1) {
+        if (minTime(() => sumTo(iterations), 1) >= floorMs) return iterations;
+        iterations *= 2;
+    }
+    return iterations;
+}
+
 test('perf gate fixture sanity: the harness distinguishes workload sizes (self-check)', (t) => {
-    // 自检：若计时器或夹具失效导致比值恒为 1，门禁将形同虚设。
-    const heavy = minTime(() => { let acc = 0; for (let i = 0; i < 800000; i += 1) acc += i; }, 3);
-    const light = minTime(() => { let acc = 0; for (let i = 0; i < 400000; i += 1) acc += i; }, 3);
-    t.diagnostic(`self-check: light ${light.toFixed(1)}ms, heavy ${heavy.toFixed(1)}ms, ratio=${(heavy / light).toFixed(2)}`);
-    assert.ok(heavy > light, 'measurement harness must distinguish workload sizes');
-    assert.ok(light > 0.5, 'light workload must stay well above timer precision');
+    // 自适应标定：先找到本机上足以远离计时精度的迭代数，再比较 1× 与 2× 的耗时。
+    const iterations = calibrateSelfCheckIterations(SELF_CHECK_FLOOR_MS);
+    const light = minTime(() => sumTo(iterations), 3);
+    const heavy = minTime(() => sumTo(iterations * 2), 3);
+    t.diagnostic(`self-check: ${iterations} iters, light ${light.toFixed(2)}ms, heavy ${heavy.toFixed(2)}ms, ratio=${(heavy / light).toFixed(2)}`);
+    assert.ok(heavy / light >= SELF_CHECK_MIN_RATIO,
+        `measurement harness must distinguish workload sizes (ratio ${(heavy / light).toFixed(2)} < ${SELF_CHECK_MIN_RATIO})`);
+    assert.ok(light >= SELF_CHECK_FLOOR_MS,
+        `light workload must stay well above timer precision (got ${light.toFixed(3)}ms, floor ${SELF_CHECK_FLOOR_MS}ms)`);
 });
