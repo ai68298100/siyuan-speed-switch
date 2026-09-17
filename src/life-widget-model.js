@@ -474,12 +474,54 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
     };
 }
 
+// 空气质量快照（T-6308）：地理编码复用天气链路，分档词由 adapter 经 i18n 传入
+// （labels.bands = 六档词数组），视图不重写阈值；缺测的 PM 条目直接省略。
+const {normalizeAirQualityConfig, buildAirQualityUrl, normalizeAirQualityPayload, europeanAqiBand, AQI_BANDS_COUNT} = require("./air-quality-model.js");
+
+function buildAirQualitySnapshot(location, payload, config, labels = {}, now = Date.now(), status = "fresh") {
+    const normalized = normalizeAirQualityConfig(config);
+    const current = normalizeAirQualityPayload(payload);
+    if (!current) return null;
+    const bands = Array.isArray(labels.bands) ? labels.bands : [];
+    const bandWord = (index) => boundedText(bands[index], 24) || "";
+    const band = europeanAqiBand(current.aqi);
+    const city = boundedText(location?.name, 48) || normalized.city;
+    const items = [{
+        label: boundedText(labels.aqi, 24) || "欧洲 AQI",
+        value: `${current.aqi}${bandWord(band) ? ` · ${bandWord(band)}` : ""}`,
+        rank: 1,
+    }];
+    if (current.pm25 !== null) items.push({label: "PM2.5", value: `${current.pm25} µg/m³`, rank: items.length + 1});
+    if (current.pm10 !== null) items.push({label: "PM10", value: `${current.pm10} µg/m³`, rank: items.length + 1});
+    items.push({label: `${boundedText(labels.source, 32) || "数据来源"}：Open-Meteo Air Quality`, value: ""});
+    return {
+        title: city,
+        items,
+        emptyHint: "",
+        updatedAt: now,
+        sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
+        aqi: current.aqi,
+        band,
+        bandsCount: AQI_BANDS_COUNT,
+    };
+}
+
+// T-6307：榜单选择——目录层用中文标签，模型层归一为白名单 token；未知值回退首页，
+// 既有实例（无 board 配置）行为不变。
+const HACKER_NEWS_BOARD_LABELS = Object.freeze({"首页": "front_page", "最佳": "best", "问答": "ask_hn", "展示": "show_hn"});
+const HACKER_NEWS_BOARD_TOKENS = Object.freeze(["front_page", "best", "ask_hn", "show_hn"]);
+
 function normalizeHackerNewsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const requestedLimit = Math.trunc(Number(source.limit));
+    const rawBoard = typeof source.board === "string" ? source.board.trim() : "";
+    const board = HACKER_NEWS_BOARD_TOKENS.includes(rawBoard)
+        ? rawBoard
+        : (HACKER_NEWS_BOARD_LABELS[rawBoard] || "front_page");
     return {
         limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
         showMeta: source.showMeta !== "否" && source.showMeta !== false,
+        board,
     };
 }
 
@@ -569,8 +611,9 @@ function buildHackerNewsSnapshot(envelope, config, labels = {}) {
     });
     const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
     const newest = items.reduce((latest, item) => Math.max(latest, Number(item.publishedAt) || 0), 0);
+    const baseTitle = boundedText(labels.title, 64) || "Hacker News";
     return {
-        title: boundedText(labels.title, 64) || "Hacker News",
+        title: normalizedConfig.board && normalizedConfig.board !== "front_page" ? `${baseTitle} · ${normalizedConfig.board}` : baseTitle,
         items,
         emptyHint: items.length === 1 ? (boundedText(labels.empty, 96) || "当前来源暂无内容") : "",
         updatedAt: newest || normalizeFeedTimestamp(envelope?.fetchedAt, Date.now()),
@@ -963,6 +1006,8 @@ module.exports = {
     normalizeExternalFeedPayload,
     buildExternalFeedSnapshot,
     normalizeHackerNewsConfig,
+    HACKER_NEWS_BOARD_LABELS,
+    HACKER_NEWS_BOARD_TOKENS,
     buildHackerNewsSnapshot,
     normalizeUptimeKumaConfig,
     normalizeUptimeKumaStatus,
@@ -982,6 +1027,12 @@ module.exports = {
     parseRssFeed,
     latestRssItems,
     buildRssSnapshot,
+    normalizeAirQualityConfig,
+    buildAirQualityUrl,
+    normalizeAirQualityPayload,
+    europeanAqiBand,
+    AQI_BANDS_COUNT,
+    buildAirQualitySnapshot,
     buildGithubContribSnapshot,
     buildMinifluxRequestUrl,
     normalizeMinifluxEntries,

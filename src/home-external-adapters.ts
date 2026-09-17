@@ -7,12 +7,12 @@
 import {buildLocalTimeSnapshot, buildWorldClockSnapshot} from "./local-time-model";
 import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildRssSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildAirQualitySnapshot, normalizeAirQualityConfig, buildAirQualityUrl, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildRssSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
 import {parseIcsEvents, upcomingIcalEvents} from "./ical-model";
 import {readCheckinBridge} from "./checkin-bridge-model";
 import {normalizeGithubContribConfig} from "./github-model";
 import {normalizeRssSubscriptionConfig} from "./rss-model";
-import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadRssFeed, loadGithubEvents, loadActivityWatchSummary} from "./life-widget-network";
+import {loadWeatherLocation, loadWeatherForecast, loadAirQuality, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadHackerNewsBoard, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadRssFeed, loadGithubEvents, loadActivityWatchSummary} from "./life-widget-network";
 
 export type HomeExternalAdapterRegister = (
     moduleId: string,
@@ -79,6 +79,32 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 return {emptyHint: `${this.i18n.homeModuleError} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 7500, cacheTtlMs: 15 * 60 * 1000});
+        // 空气质量（T-6308）：与天气共用地理编码链路（location-only），固定字段集的
+        // Open-Meteo Air Quality 端点；欧洲 AQI 六档词经 i18n 传入，30 分钟缓存。
+        register("external-air-quality", this.i18n.homeAir, "iconCloud", this.i18n.homeDescAir, [], async (config, _device, context) => {
+            const normalized = normalizeAirQualityConfig(config);
+            if (normalized.city.length < 2) return {emptyHint: this.i18n.homeAirConfigHint, items: []};
+            try {
+                const locale = document.documentElement.lang || navigator.language || "zh-CN";
+                const geocodingUrl = buildWeatherGeocodingUrl(normalized, locale);
+                const locationPayload = await loadWeatherLocation(geocodingUrl, {signal: context?.signal, fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init)});
+                const location = normalizeWeatherLocation(locationPayload);
+                if (!location) return {emptyHint: this.i18n.homeWeatherCityNotFound, items: []};
+                const airUrl = buildAirQualityUrl(location, normalized);
+                if (!airUrl) throw new Error("invalid_air_quality_request");
+                const envelope = await loadAirQuality(airUrl, {signal: context?.signal, fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init)});
+                const snapshot = buildAirQualitySnapshot(location, envelope.payload, normalized, {
+                    aqi: this.i18n.homeAirAqi,
+                    bands: [this.i18n.homeAirBandGood, this.i18n.homeAirBandFair, this.i18n.homeAirBandModerate, this.i18n.homeAirBandPoor, this.i18n.homeAirBandVeryPoor, this.i18n.homeAirBandExtreme],
+                    source: this.i18n.homeFeedSource,
+                }, undefined, envelope.status);
+                if (!snapshot) throw new Error("invalid_air_quality");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeAirEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 7500, cacheTtlMs: 30 * 60 * 1000});
         // Bangumi 每日放送：仅在用户添加组件后请求整周兼容日历数据，再按本地星期选择。
         // 浏览器 WebView 使用自身 User-Agent；接口返回、封面地址和跳转地址都经过独立白名单归一化。
         register("external-anime-bangumi", this.i18n.homeBangumi, "iconVideo", this.i18n.homeDescBangumi, [], async (config, _device, context) => {
@@ -128,11 +154,12 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
         // 进 allowedLifeWidgetUrl 白名单并经思源内核代理；30 分钟缓存，失败显示陈旧缓存。
         register("external-news-hackernews", this.i18n.homeHackerNews, "iconGraph", this.i18n.homeDescHackerNews, [], async (config, _device, context) => {
             try {
-                const envelope = await loadHackerNewsFrontPage({
+                const normalized = normalizeHackerNewsConfig(config);
+                const envelope = await loadHackerNewsBoard(normalized.board, {
                     signal: context?.signal,
                     fetchImpl: (url: string, init: {body?: string}) => this.fetchActivityWatchViaKernel(url, init),
                 });
-                const snapshot = buildHackerNewsSnapshot(envelope, normalizeHackerNewsConfig(config), {
+                const snapshot = buildHackerNewsSnapshot(envelope, normalized, {
                     title: this.i18n.homeHackerNews,
                     points: this.i18n.homeHackerNewsPoints,
                     comments: this.i18n.homeHackerNewsComments,
@@ -354,6 +381,9 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
             occasionsEmpty: this.i18n.homeCheckinOccasionsEmpty,
             missing: this.i18n.homeCheckinMissing,
             capabilityMissing: this.i18n.homeCheckinCapabilityMissing,
+            monthlyStat: this.i18n.homeCheckinMonthlyStat,
+            monthlyTotal: this.i18n.homeCheckinMonthlyTotal,
+            monthlyEmpty: this.i18n.homeCheckinMonthlyEmpty,
         });
         const checkinSource = {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck"};
         const registerCheckinBridge = (moduleId: string, title: string, icon: string, description: string) => {
@@ -365,4 +395,5 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
         registerCheckinBridge("checkin-year-heatmap", this.i18n.homeCheckinHeatmap, "iconGraph", this.i18n.homeDescCheckinHeatmap);
         registerCheckinBridge("checkin-weekly", this.i18n.homeCheckinWeekly, "iconCalendar", this.i18n.homeDescCheckinWeekly);
         registerCheckinBridge("checkin-occasions", this.i18n.homeCheckinOccasions, "iconCheck", this.i18n.homeDescCheckinOccasions);
+        registerCheckinBridge("checkin-monthly", this.i18n.homeCheckinMonthly, "iconCalendar", this.i18n.homeDescCheckinMonthly);
 }

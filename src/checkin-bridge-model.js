@@ -26,6 +26,7 @@ const CHECKIN_MODULE_IDS = Object.freeze([
     "checkin-year-heatmap",
     "checkin-weekly",
     "checkin-occasions",
+    "checkin-monthly",
 ]);
 
 const CHECKIN_CAPABILITIES = Object.freeze({
@@ -34,6 +35,7 @@ const CHECKIN_CAPABILITIES = Object.freeze({
     "checkin-year-heatmap": "items.read",
     "checkin-weekly": "analytics.read",
     "checkin-occasions": "occasions.read",
+    "checkin-monthly": "items.read",
 });
 
 function boundedText(value, max) {
@@ -346,6 +348,74 @@ function buildCheckinOccasionsSnapshot(occasions, config, labels, now) {
     };
 }
 
+// W6 · 本月统计（T-6309）。与周报不同，events 原始数据就够——不发明新的 analytics 依赖。
+// 口径：本月去重打卡天数 / 本月总天数；项目排行只统计 kind 为 once/count 的未归档项目
+//（amount/duration 的"量"语义由打卡内部定义，桥接层不复制）。
+function buildCheckinMonthlySnapshot(items, events, config, labels, now) {
+    const nowDate = new Date(Number.isFinite(now) ? now : Date.now());
+    const monthPrefix = localDateKey(nowDate).slice(0, 7);
+    const daysInMonth = new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0).getDate();
+    const dayTotals = new Map();
+    const itemTotals = new Map();
+    let totalValue = 0;
+    safeList(() => events).forEach((event) => {
+        if (!event || typeof event !== "object") return;
+        const key = String(event.localDate || "");
+        if (!key.startsWith(`${monthPrefix}-`)) return;
+        const value = Number(event.value);
+        if (!Number.isFinite(value)) return;
+        const itemId = String(event.itemId || "");
+        dayTotals.set(key, (dayTotals.get(key) || 0) + value);
+        itemTotals.set(itemId, (itemTotals.get(itemId) || 0) + value);
+        totalValue += value;
+    });
+    const daysChecked = dayTotals.size;
+    let bestDay = "";
+    let bestValue = 0;
+    dayTotals.forEach((value, key) => {
+        if (value > bestValue) {
+            bestValue = value;
+            bestDay = key;
+        }
+    });
+    const limit = boundedNumber(config?.limit, 6, 1, 12);
+    const rows = activeItems(items)
+        .filter((item) => ["once", "count"].includes(String(item.kind || "once")))
+        .map((item) => ({item, value: itemTotals.get(String(item.id || "")) || 0}))
+        .filter((row) => row.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, limit)
+        .map((row, index) => {
+            const target = Number(row.item.target);
+            const unit = boundedText(row.item.unit, 16);
+            const done = isTargetReached(row.item, row.value);
+            const valueText = Number.isFinite(target) && target > 0
+                ? `${formatNumber(row.value)}/${formatNumber(target)}${unit ? ` ${unit}` : ""}`
+                : `${formatNumber(row.value)}${unit ? ` ${unit}` : ""}`;
+            return {
+                label: itemName(row.item, labels.unnamed || "未命名"),
+                value: valueText,
+                rank: index + 1,
+                done,
+            };
+        });
+    return {
+        items: rows,
+        stat: {
+            value: `${daysChecked}/${daysInMonth}`,
+            label: boundedText(labels.monthlyStat, 32) || "本月打卡天数",
+        },
+        secondaryStat: {
+            value: formatNumber(totalValue),
+            label: boundedText(labels.monthlyTotal, 32) || "本月记录总量",
+        },
+        bestDay: bestDay,
+        emptyHint: daysChecked > 0 ? "" : (boundedText(labels.monthlyEmpty, 96) || "本月还没有打卡记录"),
+        updatedAt: Number.isFinite(now) ? now : Date.now(),
+        caliber: CHECKIN_CALIBER,
+    };
+}
+
 // 统一的桥接读取入口：moduleId → 对应快照。打卡缺席/能力缺失时返回确定空态，不抛错。
 function readCheckinBridge(moduleId, options = {}) {
     const api = resolveCheckinApi(options.scope);
@@ -389,6 +459,9 @@ function readCheckinBridge(moduleId, options = {}) {
     if (moduleId === "checkin-occasions") {
         return buildCheckinOccasionsSnapshot(safeList(() => api.getTodayOccasions()), config, labels, now);
     }
+    if (moduleId === "checkin-monthly") {
+        return buildCheckinMonthlySnapshot(safeList(() => api.getItems()), safeList(() => api.getEvents()), config, labels, now);
+    }
     return missing;
 }
 
@@ -411,5 +484,6 @@ module.exports = {
     buildCheckinHeatmapSnapshot,
     buildCheckinWeeklySnapshot,
     buildCheckinOccasionsSnapshot,
+    buildCheckinMonthlySnapshot,
     readCheckinBridge,
 };

@@ -19,6 +19,7 @@ const PREVIEW_KINDS = Object.freeze({
     "recent-documents": "documents", "favorites": "documents", "document-sets": "documents", "fixed-document": "documents", "recent-edits": "documents",
     "current-document-outline": "outline", "document-relations-summary": "outline",
     "external-local-time": "stat", "external-weather-open-meteo": "weather", "external-anime-bangumi": "media",
+    "external-air-quality": "stat",
     "external-hot-news-dailyhot": "feed", "external-news-newsnow": "feed",
     "external-world-clock": "stat", "external-news-hackernews": "feed",
     "external-status-uptimekuma": "stat", "external-fx-frankfurter": "stat",
@@ -33,6 +34,7 @@ const SOURCE_INFO = Object.freeze({
     "external-local-time": Object.freeze({providerName: "SiYuan runtime", integration: "direct", privacy: "local-only"}),
     "external-world-clock": Object.freeze({providerName: "SiYuan runtime", integration: "direct", privacy: "local-only"}),
     "external-weather-open-meteo": Object.freeze({providerName: "Open-Meteo", integration: "http", privacy: "location-only"}),
+    "external-air-quality": Object.freeze({providerName: "Open-Meteo Air Quality", integration: "http", privacy: "location-only"}),
     "external-anime-bangumi": Object.freeze({providerName: "Bangumi", integration: "http", privacy: "none"}),
     "external-hot-news-dailyhot": Object.freeze({providerName: "DailyHotApi", integration: "http", privacy: "endpoint-only"}),
     "external-news-newsnow": Object.freeze({providerName: "NewsNow", integration: "http", privacy: "endpoint-only"}),
@@ -51,9 +53,11 @@ const SOURCE_INFO = Object.freeze({
     "checkin-year-heatmap": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
     "checkin-weekly": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
     "checkin-occasions": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "checkin-monthly": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
+    "external-air-quality": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo Air Quality", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
     "external-anime-bangumi": Object.freeze({kind: "external-api", required: true, name: "Bangumi API", installUrl: "https://github.com/bangumi/api", projectUrl: "https://github.com/bangumi/api", setup: "添加组件后读取公开节目表；无需 API Key", network: "公网 HTTPS；读取节目表与官方封面", platforms: "desktop/sidebar/mobile"}),
     "external-hot-news-dailyhot": Object.freeze({kind: "self-hosted-api", required: true, name: "DailyHotApi", installUrl: "https://github.com/imsyy/DailyHotApi", projectUrl: "https://github.com/imsyy/DailyHotApi", setup: "先部署服务，再填写完整 HTTPS 端点；不提供内置公共演示地址", network: "公网或自建 HTTPS；仅读取公开榜单", platforms: "desktop/sidebar/mobile"}),
     "external-news-newsnow": Object.freeze({kind: "self-hosted-api", required: true, name: "NewsNow", installUrl: "https://github.com/ourongxing/newsnow", projectUrl: "https://github.com/ourongxing/newsnow", setup: "先部署服务，再填写 /api/s?id=... 完整端点；不提供内置公共演示地址", network: "公网或自建 HTTPS；仅读取标题、来源和时间", platforms: "desktop/sidebar/mobile"}),
@@ -71,6 +75,7 @@ const DEPENDENCY_INFO = Object.freeze({
     "checkin-streak": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；速切不自行请求网络，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
     "checkin-year-heatmap": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；速切不自行请求网络，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
     "checkin-weekly": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；需插件支持 analytics.read 能力，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
+    "checkin-monthly": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；速切不自行请求网络，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
     "checkin-occasions": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；需插件支持 occasions.read 能力，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
     "plugin-commands": Object.freeze({kind: "plugin", required: false, name: "其他插件命令提供方", installUrl: "https://github.com/siyuan-note/bazaar", projectUrl: "https://github.com/siyuan-note/bazaar", setup: "仅在其他插件公开兼容 commands 且已启用时显示；无提供方时为空", network: "由提供方插件决定", platforms: "desktop/sidebar/mobile"}),
 });
@@ -739,6 +744,7 @@ const HOME_CONFIG_KINDS = Object.freeze({
     "recent-edits": "document", "document-relations-summary": "document", "current-document-outline": "document",
     "random-review": "review", "on-this-day": "review", "clipped-unread": "reading",
     "plugin-commands": "plugin", "external-weather-open-meteo": "weather",
+    "external-air-quality": "stat",
     "external-anime-bangumi": "media", "external-hot-news-dailyhot": "feed",
     "external-news-newsnow": "feed", "external-news-hackernews": "feed", "external-world-clock": "clock",
     "external-status-uptimekuma": "status", "external-fx-frankfurter": "finance",

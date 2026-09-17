@@ -76,9 +76,9 @@ test('pending section aggregates by provider plugin', () => {
     assert.match(storeUiSource, /homeStoreProviderGroup/);
 });
 
-test('all five checkin bridge widgets declare the same source', () => {
+test('all six checkin bridge widgets declare the same source', () => {
     const defs = home.registerModules([]).filter((item) => item.moduleId.startsWith('checkin-') && item.moduleId !== 'checkin-summary');
-    assert.equal(defs.length, 5);
+    assert.equal(defs.length, 6);
     defs.forEach((def) => {
         assert.equal(def.source.pluginId, 'siyuan-checkin', `${def.moduleId} 来源插件须一致`);
         assert.equal(def.source.name, '小驴打卡');
@@ -88,7 +88,7 @@ test('all five checkin bridge widgets declare the same source', () => {
 
 test('checkin bridge widgets keep a stable in-suite order', () => {
     const defs = home.registerModules([]).filter((item) => item.moduleId.startsWith('checkin-') && item.moduleId !== 'checkin-summary');
-    assert.deepEqual(defs.map((def) => def.source.order), [1, 2, 3, 4, 5]);
+    assert.deepEqual(defs.map((def) => def.source.order), [1, 2, 3, 4, 5, 6]);
 });
 
 test('checkin bridge widgets are dependency-tagged in the store', () => {

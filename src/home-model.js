@@ -46,6 +46,9 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "temperatureUnit", label: "温度单位", type: "select", options: ["°C", "°F"], defaults: "°C"},
         {key: "forecastDays", label: "预报天数", type: "number", min: 2, max: 5, defaults: 4},
     ]},
+    {moduleId: "external-air-quality", title: "空气质量", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "city", label: "城市或邮编（与天气相互独立）", type: "text", defaults: ""},
+    ]},
     {moduleId: "external-anime-bangumi", title: "每日放送", icon: "iconVideo", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, viewType: "media", configSchema: [
         {key: "dayRange", label: "放送范围", type: "select", options: ["今天", "明天", "本周"], defaults: "今天"},
         {key: "limit", label: "条目上限", type: "number", min: 2, max: 12, defaults: 6},
@@ -57,6 +60,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "external-news-hackernews", title: "Hacker News 热门", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "board", label: "榜单（非首页榜单会在标题追加标注）", type: "select", options: ["首页", "最佳", "问答", "展示"], defaults: "首页"},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showMeta", label: "显示得分与评论", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
@@ -180,6 +184,9 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "显示周数", type: "number", min: 1, max: 12, defaults: 6},
     ]},
     {moduleId: "checkin-occasions", title: "近期事项", icon: "iconCheck", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 5}, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
+    ]},
+    {moduleId: "checkin-monthly", title: "本月打卡", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 6}, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
     ]},
 ]);

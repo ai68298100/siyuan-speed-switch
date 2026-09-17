@@ -8,11 +8,58 @@ const BANGUMI_TTL_MS = 30 * 60 * 1000;
 const FEED_TTL_MS = 30 * 60 * 1000;
 const ACTIVITYWATCH_TTL_MS = 5 * 60 * 1000;
 const HACKER_NEWS_TTL_MS = 30 * 60 * 1000;
+// Hacker News 榜单族（T-6307）：沿用"字面量端点"策略——协议、主机、路径、查询全部
+// 固定，四个榜单各一条字面量，任何参数变化都视为外部端点拒绝；榜单键经白名单校验。
+const HACKER_NEWS_BOARDS = Object.freeze({
+    front_page: "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12",
+    best: "https://hn.algolia.com/api/v1/search?tags=best&hitsPerPage=12",
+    ask_hn: "https://hn.algolia.com/api/v1/search?tags=ask_hn&hitsPerPage=12",
+    show_hn: "https://hn.algolia.com/api/v1/search?tags=show_hn&hitsPerPage=12",
+});
 // 固定端点：一次请求拿首页 12 条，条数上限在渲染层按配置截断，避免动态参数进白名单。
-const HACKER_NEWS_FRONT_PAGE_URL = "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=12";
+const HACKER_NEWS_FRONT_PAGE_URL = HACKER_NEWS_BOARDS.front_page;
 const UPTIME_KUMA_TTL_MS = 5 * 60 * 1000;
 const FRANKFURTER_TTL_MS = 12 * 60 * 60 * 1000;
 const MINIFLUX_TTL_MS = 15 * 60 * 1000;
+// 空气质量（T-6308）：固定主机与路径，current 参数只允许模型层的字面字段集；
+// 经纬度钳到 4 位小数（与天气同一口径），timezone 固定 auto。30 分钟缓存。
+const AIR_QUALITY_TTL_MS = 30 * 60 * 1000;
+
+function allowedAirQualityUrl(value) {
+    if (typeof value !== "string" || value.length > 320) return false;
+    try {
+        const url = new URL(value);
+        if (url.protocol !== "https:" || url.hostname !== "air-quality-api.open-meteo.com"
+            || url.pathname !== "/v1/air-quality" || url.username || url.password || url.hash) return false;
+        const entries = [...url.searchParams.entries()];
+        if (entries.length !== 4) return false;
+        const params = Object.fromEntries(entries);
+        if (params.timezone !== "auto") return false;
+        // current 字段集由模型层字面量生成，白名单直接做字面等值判定。
+        if (params.current !== "european_aqi,pm2_5,pm10") return false;
+        return /^-?\d{1,3}\.\d{1,4}$/.test(params.latitude || "") && /^-?\d{1,3}\.\d{1,4}$/.test(params.longitude || "");
+    } catch (_) {
+        return false;
+    }
+}
+
+async function loadAirQuality(url, options = {}) {
+    if (!allowedAirQualityUrl(url)) throw new Error("blocked_endpoint");
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const key = `airquality:${url}`;
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < AIR_QUALITY_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const payload = await fetchBoundedLifeJson(url, {...options, isAllowed: (candidate) => allowedAirQualityUrl(candidate)});
+        cacheWrite(key, payload, now);
+        return {payload, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
+        throw error;
+    }
+}
 
 // iCal 订阅：用户提供的 .ics 地址（https 或 http+本机、无 URL 凭据）；30 分钟缓存，
 // 失效回退 stale 缓存。响应是文本（RFC 5545），不走 JSON 解析。
@@ -160,6 +207,8 @@ function allowedLifeWidgetUrl(url) {
     // Hacker News 首页采用与 Bangumi 同级的"字面量端点"策略：协议、主机、路径、
     // 查询全部固定，任何参数变化（含 hitsPerPage 注入）都视为外部端点拒绝。
     if (url === HACKER_NEWS_FRONT_PAGE_URL) return true;
+    // T-6307：其余榜单走同族字面量集合，集合外任何形态（含参数变化）一律拒绝。
+    if (Object.values(HACKER_NEWS_BOARDS).includes(url)) return true;
     try {
         const parsed = new URL(url);
         return parsed.protocol === "https:"
@@ -351,21 +400,30 @@ async function loadBangumiCalendar(options = {}) {
     return cacheWrite("bangumi:calendar", await fetchBoundedLifeJson(url, options), options.now);
 }
 
-// Hacker News 首页：固定端点 + 30 分钟缓存 + 失败回退陈旧缓存（与用户端点 feed 同一健康语义）。
-async function loadHackerNewsFrontPage(options = {}) {
+// Hacker News 榜单：固定端点 + 30 分钟缓存 + 失败回退陈旧缓存（与用户端点 feed 同一健康
+// 语义）；缓存键按榜单隔离，非白名单榜单在构 URL 前即拒绝。
+async function loadHackerNewsBoard(board, options = {}) {
+    const endpoint = HACKER_NEWS_BOARDS[board];
+    if (typeof board !== "string" || !endpoint) throw new Error("blocked_endpoint");
     const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
-    const cached = responseCache.get("hackernews:front_page");
+    const key = `hackernews:${board}`;
+    const cached = responseCache.get(key);
     if (options.force !== true && cached && now - cached.at < HACKER_NEWS_TTL_MS) {
         return {payload: cached.value, status: "cached", fetchedAt: cached.at};
     }
     try {
-        const payload = await fetchBoundedLifeJson(HACKER_NEWS_FRONT_PAGE_URL, options);
-        cacheWrite("hackernews:front_page", payload, now);
+        const payload = await fetchBoundedLifeJson(endpoint, options);
+        cacheWrite(key, payload, now);
         return {payload, status: "fresh", fetchedAt: now};
     } catch (error) {
         if (cached) return {payload: cached.value, status: "stale", fetchedAt: cached.at};
         throw error;
     }
+}
+
+// 兼容保留：front_page 榜单即此前的"首页"加载器。
+async function loadHackerNewsFrontPage(options = {}) {
+    return loadHackerNewsBoard("front_page", options);
 }
 
 async function loadConfiguredFeed(url, options = {}) {    if (!allowedConfiguredFeedUrl(url)) throw new Error("blocked_endpoint");
@@ -524,6 +582,7 @@ module.exports = {
     FEED_TTL_MS,
     ACTIVITYWATCH_TTL_MS,
     HACKER_NEWS_TTL_MS,
+    HACKER_NEWS_BOARDS,
     HACKER_NEWS_FRONT_PAGE_URL,
     UPTIME_KUMA_TTL_MS,
     FRANKFURTER_TTL_MS,
@@ -540,9 +599,13 @@ module.exports = {
     loadWeatherForecast,
     loadHolidayYear,
     loadHackerNewsFrontPage,
+    loadHackerNewsBoard,
     loadUptimeKumaPage,
     loadFrankfurterRates,
     loadMinifluxEntries,
+    loadAirQuality,
+    allowedAirQualityUrl,
+    AIR_QUALITY_TTL_MS,
     loadIcalText,
     allowedIcalFeedUrl,
     ICAL_TTL_MS,

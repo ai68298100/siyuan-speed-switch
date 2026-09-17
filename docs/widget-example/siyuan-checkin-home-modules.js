@@ -29,6 +29,7 @@ const CHECKIN_MODULE_IDS = [
     "checkin-year-heatmap",
     "checkin-weekly",
     "checkin-occasions",
+    "checkin-monthly",
 ];
 
 const CHECKIN_SOURCE = {
@@ -328,6 +329,48 @@ function occasionsModule() {
     });
 }
 
+function monthlyModule() {
+    return withSource({
+        moduleId: "checkin-monthly",
+        title: "本月打卡",
+        icon: "iconCalendar",
+        category: "plugin",
+        description: "本月打卡天数、记录总量与项目排行的只读汇总",
+        protocolVersion: 2,
+        supportedDevices: ["desktop", "sidebar", "mobile"],
+        sizes: ["small", "medium", "wide"],
+        configSchema: [{key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 6}],
+        read: (config) => withCheckinApi("items.read", (checkin) => {
+            const limit = Math.max(1, Math.min(12, Number(config?.limit) || 6));
+            const now = new Date();
+            const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const dayTotals = new Map();
+            const itemTotals = new Map();
+            (checkin.getEvents() || []).forEach((event) => {
+                if (!event || typeof event.localDate !== "string" || !event.localDate.startsWith(`${monthPrefix}-`)) return;
+                const value = Number(event.value);
+                if (!Number.isFinite(value)) return;
+                dayTotals.set(event.localDate, (dayTotals.get(event.localDate) || 0) + value);
+                itemTotals.set(String(event.itemId || ""), (itemTotals.get(String(event.itemId || "")) || 0) + value);
+            });
+            const items = (checkin.getItems() || [])
+                .filter((item) => item && item.archived !== true && ["once", "count"].includes(String(item.kind || "once")))
+                .map((item) => ({label: (item.name || "").slice(0, 64), value: itemTotals.get(String(item.id || "")) || 0}))
+                .filter((row) => row.value > 0)
+                .sort((a, b) => b.value - a.value)
+                .slice(0, limit)
+                .map((row, index) => ({...row, rank: index + 1}));
+            return {
+                title: "本月打卡",
+                stat: {value: `${dayTotals.size}/${daysInMonth}`, label: "本月打卡天数"},
+                items,
+                emptyHint: dayTotals.size > 0 ? "" : "本月还没有打卡记录",
+            };
+        }),
+    });
+}
+
 /**
  * 注册入口：onload 调用，返回停止等待的函数（onunload 调用）。
  * options.onRegistered(unregisterFns) 拿到每个组件的注销函数。
@@ -335,7 +378,7 @@ function occasionsModule() {
 function registerCheckinHomeModules(app, options = {}) {
     return whenSwitcherReady(app, (switcher) => {
         const unregisterFns = [];
-        const candidates = [todayModule, streakModule, heatmapModule, weeklyModule, occasionsModule];
+        const candidates = [todayModule, streakModule, heatmapModule, weeklyModule, occasionsModule, monthlyModule];
         for (const factory of candidates) {
             const definition = factory();
             const unregister = switcher.registerHomeModule(definition);
@@ -358,6 +401,7 @@ module.exports = {
     heatmapModule,
     weeklyModule,
     occasionsModule,
+    monthlyModule,
 };
 
 /**

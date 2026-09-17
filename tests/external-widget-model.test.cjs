@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const model = require("../src/external-widget-model.js");
 
-test("external catalog registers nineteen researched candidates", () => assert.equal(model.EXTERNAL_WIDGET_CATALOG.length, 19));
+test("external catalog registers twenty researched candidates", () => assert.equal(model.EXTERNAL_WIDGET_CATALOG.length, 20));
 test("external catalog module ids are unique", () => {
     const ids = model.EXTERNAL_WIDGET_CATALOG.map((entry) => entry.moduleId);
     assert.equal(new Set(ids).size, ids.length);
@@ -91,10 +91,10 @@ test("local clock catalog remains direct integration", () => assert.equal(model.
 test("weather catalog remains location-only", () => assert.equal(model.findExternalWidget("external-weather-open-meteo").privacy, "location-only"));
 test("holiday catalog remains HTTP integration", () => assert.equal(model.findExternalWidget("external-holiday-cn").integration, "http"));
 test("Bangumi catalog remains HTTP integration", () => assert.equal(model.findExternalWidget("external-anime-bangumi").integration, "http"));
-test("catalog summary has exact availability partition", () => assert.deepEqual(model.summarizeExternalWidgets(), {total: 19, builtin: 4, external: 13, conditional: 1, bridge: 0, reference: 1, needsConfiguration: 9}));
+test("catalog summary has exact availability partition", () => assert.deepEqual(model.summarizeExternalWidgets(), {total: 20, builtin: 4, external: 14, conditional: 1, bridge: 0, reference: 1, needsConfiguration: 9}));
 test("catalog group map covers nine categories", () => assert.equal(model.groupExternalWidgets().size, 9));
 test("catalog group map keeps three time entries", () => assert.equal(model.groupExternalWidgets().get("time").length, 3));
-test("catalog group map keeps one weather entry", () => assert.equal(model.groupExternalWidgets().get("weather").length, 1));
+test("catalog group map keeps two weather entries", () => assert.equal(model.groupExternalWidgets().get("weather").length, 2));
 test("catalog group map keeps five trending entries", () => assert.equal(model.groupExternalWidgets().get("trending").length, 5));
 test("catalog group map keeps one holiday entry", () => assert.equal(model.groupExternalWidgets().get("holiday").length, 1));
 test("catalog group map keeps two media entries", () => assert.equal(model.groupExternalWidgets().get("media").length, 2));
@@ -103,40 +103,40 @@ test("catalog title sorting is deterministic across full catalog", () => { const
 test("catalog availability sorting starts with builtin", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog(), "availability")[0].availability, "builtin"));
 test("catalog availability sorting ends with reference", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog(), "availability").at(-1).availability, "reference"));
 test("catalog guide links are unique", () => { const links = model.listExternalWidgetCatalog().map((entry) => model.buildExternalWidgetGuideLink(entry.moduleId)); assert.equal(new Set(links).size, links.length); });
-test("catalog state list preserves catalog count", () => assert.equal(model.normalizeExternalWidgetStateList(model.listExternalWidgetCatalog()).length, 19));
+test("catalog state list preserves catalog count", () => assert.equal(model.normalizeExternalWidgetStateList(model.listExternalWidgetCatalog()).length, 20));
 test("catalog state list module ids are unique", () => { const ids = model.normalizeExternalWidgetStateList(model.listExternalWidgetCatalog()).map((entry) => entry.moduleId); assert.equal(new Set(ids).size, ids.length); });
-test("catalog snapshots preserve catalog module ids", () => { const snapshots = model.listExternalWidgetCatalog().map((entry) => model.buildExternalWidgetSnapshot(entry)); assert.equal(new Set(snapshots.map((snapshot) => snapshot.moduleId)).size, 19); });
+test("catalog snapshots preserve catalog module ids", () => { const snapshots = model.listExternalWidgetCatalog().map((entry) => model.buildExternalWidgetSnapshot(entry)); assert.equal(new Set(snapshots.map((snapshot) => snapshot.moduleId)).size, 20); });
 test("catalog snapshots carry supported health defaults", () => assert.ok(model.listExternalWidgetCatalog().map((entry) => model.buildExternalWidgetSnapshot(entry)).every((snapshot) => snapshot.health === "unknown")));
 
 // T-4632~T-4681: external component store filtering, sorting, grouping and setup presentation contracts.
 test("full catalog query for weather returns one item", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "weather"}).length, 1));
 test("full catalog query for ActivityWatch returns one item", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "activitywatch"}).length, 1));
-test("full catalog query for API returns nine providers", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "api"}).length, 9));
+test("full catalog query for API returns ten providers", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "api"}).length, 10));
 test("full catalog time category returns three items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "time"}).length, 3));
-test("full catalog weather category returns one item", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "weather"}).length, 1));
+test("full catalog weather category returns two items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "weather"}).length, 2));
 test("full catalog trending category returns five items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "trending"}).length, 5));
 test("full catalog holiday category returns one item", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "holiday"}).length, 1));
 test("full catalog media category returns two items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "media"}).length, 2));
 test("full catalog activity category returns four items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "activity"}).length, 4));
-test("full catalog desktop platform returns all items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {platform: "desktop"}).length, 19));
-test("full catalog sidebar platform excludes active window reference", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {platform: "sidebar"}).length, 18));
-test("full catalog mobile platform excludes desktop-only items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {platform: "mobile"}).length, 16));
-test("full catalog external availability returns thirteen items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "external"}).length, 13));
+test("full catalog desktop platform returns all items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {platform: "desktop"}).length, 20));
+test("full catalog sidebar platform excludes active window reference", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {platform: "sidebar"}).length, 19));
+test("full catalog mobile platform excludes desktop-only items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {platform: "mobile"}).length, 17));
+test("full catalog external availability returns fourteen items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "external"}).length, 14));
 test("full catalog conditional availability returns one item", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "conditional"}).length, 1));
 test("full catalog builtin availability returns four items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "builtin"}).length, 4));
 test("full catalog reference availability returns one item", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "reference"}).length, 1));
 test("combined media mobile filter returns two items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "media", platform: "mobile"}).length, 2));
 test("combined trending external filter returns five items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {category: "trending", availability: "external"}).length, 5));
-test("combined external mobile filter returns twelve items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "external", platform: "mobile"}).length, 12));
+test("combined external mobile filter returns thirteen items", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {availability: "external", platform: "mobile"}).length, 13));
 test("combined API query conditional filter returns TMDB", () => assert.deepEqual(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "api", availability: "conditional"}).map((entry) => entry.moduleId), ["external-movie-tmdb"]));
-test("empty query returns all catalog entries", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: ""}).length, 19));
-test("whitespace query returns all catalog entries", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "   "}).length, 19));
+test("empty query returns all catalog entries", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: ""}).length, 20));
+test("whitespace query returns all catalog entries", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "   "}).length, 20));
 test("query matches module id", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "external-local-time"}).length, 1));
 test("query matches localized title", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "电影"}).length, 1));
 test("query matches provider with mixed case", () => assert.equal(model.filterExternalWidgets(model.listExternalWidgetCatalog(), {query: "TMDB"}).length, 1));
-test("sort title keeps nineteen entries", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog()).length, 19));
+test("sort title keeps twenty entries", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog()).length, 20));
 test("sort title retains current app status entry", () => assert.ok(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog()).some((entry) => entry.moduleId === "external-active-window")));
-test("sort availability keeps nineteen entries", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog(), "availability").length, 19));
+test("sort availability keeps twenty entries", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog(), "availability").length, 20));
 test("sort unknown order falls back to title", () => assert.deepEqual(model.sortExternalWidgetCatalog([{moduleId: "b", title: "B"}, {moduleId: "a", title: "A"}], "wat").map((entry) => entry.moduleId), ["a", "b"]));
 test("sort availability preserves source order within equal rank", () => assert.deepEqual(model.sortExternalWidgetCatalog([{moduleId: "b", title: "B", availability: "external"}, {moduleId: "a", title: "A", availability: "external"}], "availability").map((entry) => entry.moduleId), ["b", "a"]));
 test("summary custom list counts builtin", () => assert.equal(model.summarizeExternalWidgets([{moduleId: "x", availability: "builtin"}]).builtin, 1));
@@ -187,7 +187,7 @@ test("catalog listing returns defensive objects", () => {
 });
 test("catalog lookup returns null for unknown ids", () => assert.equal(model.findExternalWidget("missing"), null));
 test("catalog lookup rejects malformed ids", () => assert.equal(model.findExternalWidget({}), null));
-test("query filter matches provider names", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {query: "Open-Meteo"}).length, 1));
+test("query filter matches provider names", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {query: "Open-Meteo"}).length, 2, "天气与空气质量同为 Open-Meteo 提供方"));
 test("query filter is case insensitive", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {query: "TMDB"}).length, 1));
 test("category filter selects media candidates", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {category: "media"}).length, 2));
 test("availability filter selects conditional candidates", () => assert.equal(model.filterExternalWidgets(model.EXTERNAL_WIDGET_CATALOG, {availability: "conditional"}).length, 1));
@@ -195,7 +195,7 @@ test("platform filter excludes desktop-only candidates on mobile", () => assert.
 test("malformed filter input returns empty", () => assert.deepEqual(model.filterExternalWidgets(null, {query: "time"}), []));
 
 test("catalog summary reports all availability classes", () => assert.deepEqual(model.summarizeExternalWidgets(), {
-    total: 19, builtin: 4, external: 13, conditional: 1, bridge: 0, reference: 1, needsConfiguration: 9,
+    total: 20, builtin: 4, external: 14, conditional: 1, bridge: 0, reference: 1, needsConfiguration: 9,
 }));
 test("catalog summary handles malformed input", () => assert.deepEqual(model.summarizeExternalWidgets(null), {
     total: 0, builtin: 0, external: 0, conditional: 0, bridge: 0, reference: 0, needsConfiguration: 0,
