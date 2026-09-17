@@ -400,6 +400,7 @@
   "searchMethodKeyword": "关键词",
   "searchMethodQuery": "查询语法",
   "searchMethodRegexp": "正则表达式",
+  "searchMethodSemantic": "语义搜索",
   "searchResultOrder": "结果排序",
   "searchOrderRelevance": "相关度",
   "searchOrderUpdated": "最近更新",

@@ -6,7 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {
     sanitizeQuickActions,
@@ -387,7 +387,7 @@ export interface IDocSearchFilters {
     paths?: string[];
     types?: Record<string, boolean>;
     subTypes?: Record<string, boolean>;
-    method?: "keyword" | "query" | "regexp";
+    method?: "keyword" | "query" | "regexp" | "semantic";
     orderBy?: "relevanceDesc" | "updatedDesc" | "createdDesc" | "content";
 }
 
@@ -444,6 +444,7 @@ declare module "./search-model" {
         body: Record<string, unknown>;
         scope: {rootId: string; notebook: string; path: string};
     }>;
+    export function isSemanticEmbeddingConfigured(config: unknown): boolean;
 }
 
 export type DocSearchRenderState = "results" | "loading" | "error";
@@ -3069,6 +3070,19 @@ const version = beginSearch(session);
         // 真实宿主证据见 docs/path-filter-host-evidence.md（D-365）。
         "/api/filetree/listDocsByPath",
     ]);
+
+    /**
+     * 语义搜索能力判定（P3-3）：读取宿主 AI embedding 配置，与内核
+     * isEmbeddingEnabled 镜像一致。实时读取不缓存——用户中途启用 AI 配置
+     * 后无需重载插件即可生效；未配置时语义选项不出现且请求静默走 keyword。
+     */
+    private isSemanticSearchAvailable(): boolean {
+        try {
+            return isSemanticEmbeddingConfigured(getSiyuan()?.config);
+        } catch (_) {
+            return false;
+        }
+    }
 
     private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
         // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。

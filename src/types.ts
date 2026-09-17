@@ -57,13 +57,25 @@ export interface ISiyuanLayout {
     bottom?: { children?: Array<ISiyuanLayoutDockEntry> };
 }
 
-// ── 思源配置（keymap/uiLayout） ──
+// ── 思源配置（keymap/uiLayout/ai） ──
 export interface ISiyuanKeymapEntry {
     custom?: string;
 }
 
 export interface ISiyuanKeymap {
     plugin?: Record<string, Record<string, ISiyuanKeymapEntry>>;
+}
+
+// AI 配置仅声明语义搜索能力判定需要的最小字段（思源 3.7+ 内核
+// isEmbeddingEnabled 的前端镜像：enabled 且 apiKey 非空才可用）。
+// 宽进宽出：其余 AI 字段（providers/agent/...）一律不声明。
+export interface ISiyuanAIEmbeddingConfig {
+    enabled?: boolean;
+    apiKey?: string;
+}
+
+export interface ISiyuanAIConfig {
+    embedding?: ISiyuanAIEmbeddingConfig;
 }
 
 export interface ISiyuanUiLayoutSides {
@@ -80,6 +92,7 @@ export interface ISiyuanUiLayout {
 export interface ISiyuanConfig {
     keymap?: ISiyuanKeymap;
     uiLayout?: ISiyuanUiLayout;
+    ai?: ISiyuanAIConfig;
 }
 
 export interface ISiyuanMobile {

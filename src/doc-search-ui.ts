@@ -29,6 +29,7 @@ export interface DocSearchUiHost {
     escapeAttr(text: string): string;
     applySearch(scrollElement: HTMLElement, searchInput: HTMLInputElement, onClose: IOverlayClose): void;
     filterCards(scrollElement: HTMLElement, keyword: string, contentRoots: Set<string>, filters: IDocSearchFilters): number;
+    isSemanticSearchAvailable(): boolean;
     getMobileTabs(): Tab[];
     rootIdOf(tab: Tab): string | null;
     mobileOpenDoc(rootId: string): Promise<boolean>;
@@ -247,6 +248,12 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                 {value: "query", label: this.i18n.searchMethodQuery},
                 {value: "regexp", label: this.i18n.searchMethodRegexp},
             ];
+            // 语义搜索（P3-3）：仅当宿主能力明确支持（AI embedding 已配置）时提供；
+            // 未配置时内核静默返回空，宁缺毋滥不展示。已选中的残留 method 由
+            // buildFullTextSearchRequest 静默降级为 keyword。
+            if (this.isSemanticSearchAvailable()) {
+                methodOptions.push({value: "semantic", label: this.i18n.searchMethodSemantic});
+            }
             const orderOptions: Array<{value: IDocSearchFilters["orderBy"]; label: string}> = [
                 {value: "relevanceDesc", label: this.i18n.searchOrderRelevance},
                 {value: "updatedDesc", label: this.i18n.searchOrderUpdated},
@@ -410,7 +417,7 @@ export function getDocSearchFilterSummary(this: DocSearchUiHost, filters: IDocSe
         const subType = Object.keys(filters.subTypes || {}).find((key) => filters.subTypes?.[key]);
         if (subType) parts.push(`${this.i18n.searchSubType}: ${subTypeLabels[subType] || subType}`);
         if (filters.method && filters.method !== "keyword") {
-            const methodLabels = {query: this.i18n.searchMethodQuery, regexp: this.i18n.searchMethodRegexp};
+            const methodLabels = {query: this.i18n.searchMethodQuery, regexp: this.i18n.searchMethodRegexp, semantic: this.i18n.searchMethodSemantic};
             parts.push(`${this.i18n.searchMethod}: ${methodLabels[filters.method] || filters.method}`);
         }
         if (filters.orderBy && filters.orderBy !== "relevanceDesc") {
@@ -581,6 +588,7 @@ export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
         const tabs = (this.isMobile ? this.getMobileTabs() : getAllTabs()).filter((tab) =>
             !filters.notebook || resolveSearchNotebookId(tab as unknown) === filters.notebook);
         const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {
+            capabilities: {semanticSearch: this.isSemanticSearchAvailable()},
             maxDocuments: 6,
             pageSize: 8,
             method: filters.method,
@@ -643,6 +651,7 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
         const request = buildFullTextSearchRequest({
             query: keyword,
             method: filters.method || "keyword",
+            capabilities: {semanticSearch: this.isSemanticSearchAvailable()},
             orderBy: filters.orderBy || "relevanceDesc",
             groupBy: "document",
             pageSize: Math.max(documentLimit * 2, 24),
@@ -820,7 +829,7 @@ export function appendDocResultsEmpty(this: DocSearchUiHost, box: HTMLElement) {
 export function appendDocResultsViewAll(this: DocSearchUiHost, box: HTMLElement, scrollElement: HTMLElement, onClose: IOverlayClose) {
         const query = String(scrollElement.dataset.swDocSearchQuery || "").trim();
         const filters = this.docSearchState.filters.get(scrollElement) || {};
-        const search = buildNativeSearchTabConfig({query, filters});
+        const search = buildNativeSearchTabConfig({query, filters, capabilities: {semanticSearch: this.isSemanticSearchAvailable()}});
         if (!search) return;
         const action = document.createElement("button");
         action.type = "button";

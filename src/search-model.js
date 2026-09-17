@@ -619,6 +619,18 @@ function normalizeSearchBooleanMap(value, maxItems = 128) {
 }
 
 /**
+ * 语义搜索能力判定的纯逻辑（宿主负责读取 window.siyuan.config 后传入）。
+ * 与内核 isEmbeddingEnabled 的判定镜像一致：embedding 已启用且 apiKey 非空。
+ * 端点与该配置项同版本落地（思源 3.7.x，2026-06-30 内核提交），因此配置存在
+ * 即代表 /api/search/semanticSearchBlock 存在，无需额外探针；未配置时内核
+ * 静默返回空结果，故宁缺毋滥——能力不明确就不提供语义选项。
+ */
+function isSemanticEmbeddingConfigured(config) {
+    const embedding = config && typeof config === "object" ? config.ai?.embedding : null;
+    if (!embedding || typeof embedding !== "object") return false;
+    return embedding.enabled === true && typeof embedding.apiKey === "string" && embedding.apiKey.length > 0;
+}
+/**
  * Build the request accepted by SiYuan's native block-search endpoints.
  * SQL mode is never emitted by this plugin. Semantic search is only selected
  * after the caller explicitly confirms endpoint availability.
@@ -767,6 +779,7 @@ function buildOpenedDocumentSearchRequest(input = {}) {
         orderBy,
         types: source.types || source.filters?.types,
         subTypes: source.subTypes || source.filters?.subTypes,
+        capabilities: source.capabilities,
         groupBy: "none",
         page: source.page,
         pageSize: source.pageSize,
@@ -875,6 +888,7 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
             types: options.types,
             subTypes: options.subTypes,
             filters: options.filters,
+            capabilities: options.capabilities,
             pageSize: options.pageSize,
         });
         if (!request) continue;
@@ -940,6 +954,7 @@ module.exports = {
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,
+    isSemanticEmbeddingConfigured,
     mergeSearchLayers,
     shouldSearchRemote,
     buildFullTextSearchRequest,

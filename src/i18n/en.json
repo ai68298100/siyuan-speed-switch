@@ -400,6 +400,7 @@
   "searchMethodKeyword": "Keyword",
   "searchMethodQuery": "Query syntax",
   "searchMethodRegexp": "Regular expression",
+  "searchMethodSemantic": "Semantic",
   "searchResultOrder": "Result order",
   "searchOrderRelevance": "Relevance",
   "searchOrderUpdated": "Recently updated",

@@ -13,6 +13,7 @@ const {
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,
+    isSemanticEmbeddingConfigured,
     mergeSearchLayers,
     shouldSearchRemote,
     buildFullTextSearchRequest,
@@ -482,6 +483,53 @@ test("search model: opened-document probing downgrades unsupported content order
     });
     assert.equal(request.body.groupBy, 0);
     assert.equal(request.body.orderBy, 7);
+});
+
+test("search model: semantic capability mirrors the kernel embedding gate", () => {
+    assert.equal(isSemanticEmbeddingConfigured(null), false);
+    assert.equal(isSemanticEmbeddingConfigured({}), false);
+    assert.equal(isSemanticEmbeddingConfigured({ai: {}}), false);
+    assert.equal(isSemanticEmbeddingConfigured({ai: {embedding: {enabled: true}}}), false);
+    assert.equal(isSemanticEmbeddingConfigured({ai: {embedding: {enabled: true, apiKey: ""}}}), false);
+    assert.equal(isSemanticEmbeddingConfigured({ai: {embedding: {enabled: false, apiKey: "sk-test"}}}), false);
+    assert.equal(isSemanticEmbeddingConfigured({ai: {embedding: {enabled: true, apiKey: "sk-test"}}}), true);
+});
+
+test("search model: semantic method routes to the semantic endpoint only with capability", () => {
+    const capable = buildOpenedDocumentSearchRequest({
+        query: "相关内容",
+        method: "semantic",
+        capabilities: {semanticSearch: true},
+        tab: {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"},
+    });
+    assert.equal(capable.endpoint, "/api/search/semanticSearchBlock");
+    assert.equal(capable.body.method, 4);
+    const degraded = buildOpenedDocumentSearchRequest({
+        query: "相关内容",
+        method: "semantic",
+        tab: {rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"},
+    });
+    assert.equal(degraded.endpoint, "/api/search/fullTextSearchBlock");
+    assert.equal(degraded.body.method, 0);
+});
+
+test("search model: opened-document fan-out threads the semantic capability", () => {
+    const tabs = [{rootId: ROOT_A, notebookId: "box-a", path: "box-a/docs/root.sy"}];
+    const capable = buildOpenedDocumentSearchRequests(tabs, "相关内容", {method: "semantic", capabilities: {semanticSearch: true}});
+    assert.equal(capable.length, 1);
+    assert.equal(capable[0].endpoint, "/api/search/semanticSearchBlock");
+    assert.equal(capable[0].body.method, 4);
+    const degraded = buildOpenedDocumentSearchRequests(tabs, "相关内容", {method: "semantic"});
+    assert.equal(degraded.length, 1);
+    assert.equal(degraded[0].endpoint, "/api/search/fullTextSearchBlock");
+    assert.equal(degraded[0].body.method, 0);
+});
+
+test("search model: native search tab config follows the semantic capability", () => {
+    const capable = buildNativeSearchTabConfig({query: "相关内容", method: "semantic", capabilities: {semanticSearch: true}});
+    assert.equal(capable.config.method, 4);
+    const degraded = buildNativeSearchTabConfig({query: "相关内容", method: "semantic"});
+    assert.equal(degraded.config.method, 0);
 });
 
 test("search model: advanced filter values isolate cache entries", () => {

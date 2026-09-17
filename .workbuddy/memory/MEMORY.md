@@ -32,6 +32,7 @@
 
 ## 当前状态（2026-09-17 下午·本会话实测）
 - **P3-1 已交付（T-6297，ADR 0054）**：GitHub 贡献格点热力图。新增第四个 `viewType: "heatmap"`，沿用 calendar/weekdays/media 分派机制。三个硬约束：条目硬顶 42→热力图 371（硬顶 400，列表/日历不变）、字段白名单补 `level` 透传（视图不重写阈值）、`keepEmptyItems` 保留周日对齐占位格。模型层 `layout:"grid"` 为加法式开关，周汇总路径保留。
+- **P3-3 已交付（T-6299，ADR 0056）**：语义搜索第三方法——查询语法/正则此前已在 method 菜单；语义用 `window.siyuan.config.ai.embedding`（enabled+apiKey 非空，内核 isEmbeddingEnabled 镜像，配置与端点同版本落地无需探针）做能力门，真时 UI 才出选项，三条请求路径透传 capabilities，缺失静默降级 keyword；未配置时内核静默返回空，宁缺毋滥。Agent `SEARCH_METHODS` 未扩。教训：网络探针须区分"请求失败"与"确认不存在"（curl 空体曾误判 0 命中）；zip 等长内容仍有 ±数字节时间戳噪声。
 - **P3-2 已交付（T-6298，ADR 0055）**：第三方插件端到端接入示例——不改产品代码，新增 `tests/widget-example-e2e.test.cjs`（6 项）：宿主 harness 镜像 `index.ts registerHomeModule` 簿记（注销句柄返回 void），把模板当真实第三方插件跑通 register→listModules→read→buildHomeModuleView→unregister，钉住 token 失效/幂等注销/缓存清除/open 绑定/无宿主安静降级。教训：断言层级必须对齐生产真实契约（宿主句柄 void，布尔断言只能落 runtime 层）；`normalizeHomeViewResult` 入参是完整 read 结果（从 source.snapshot.items 取数），传 snapshot 会静默得 0 条目。
 - **视图类型接入清单（下一个 viewType 直接照做）**：`home-model.js` 目录定义 viewType → `home-model.js` 与 `home-view.js` **两处白名单同步** → `home-view.js` 渲染分支 → 必要时调 `normalizeHomeViewResult`（条目上限/字段透传/空条目）→ 样式切片加类 → 契约测试 + 负向验证。
 - **P1-4 已交付（T-6296，ADR 0053）**：样式切片语义重命名 `_01-base-controls` … `_09-store-preview-polish`（序号前缀保留）。**切片是时间累积片段、单切片横跨多域**，只能"序号+主体内容"命名，不能按五个单域映射；跨域明细记在清单注释。`readStyleSource()` 数据驱动对改名透明，`dist/index.css` md5 不变即零漂移。
@@ -42,7 +43,7 @@
 - **样式类重构的通用解法**：拆物理文件 + 在 `tests/source-scan.cjs` 用 `readStyleSource()` 合成逻辑视图（对 `src/index.scss` 返回按清单重组的内容）。既有 35 处样式断言一行未改。零漂移证据：重组后逐字节等于原文件 + `dist/index.css` md5 不变。
 - **该缺口已闭合（P1-3，T-6293，ADR 0050）**：新增 `tests/style-slice-coverage.test.cjs`，按切片动态求「独占锚点」（顶层选择器 + SCSS 变量声明）并要求其出现在组合视图中。复测：**逐个删除切片触发失败数 10/10 从 0 变为 1**。
 - **门禁设计套路（可复用）**：数据驱动（不硬编码清单）+ 非空自检（防正则失效恒绿）+ 下限用 `>=3` 这类不钉死进度的值 + 附「删除模拟」用例证明确实上膛。
-- 测试计数现为 **5890 项 / 174 文件**（改门禁后必须同步双语 README 与 release-readiness，无门禁保护必漂移）。
+- 测试计数现为 **5894 项 / 174 文件**（改门禁后必须同步双语 README 与 release-readiness，无门禁保护必漂移）。
 - **P0-2 已交付（T-6294，ADR 0051）**：`TODO.md`/`DECISIONS.md`/`PROGRESS.md` 归档到 `docs/archive/`（md5 逐一一致、零漂移），根目录 Markdown **8 份 1031001 B → 5 份 110076 B（-89.3%）**。
 - **归档的关键风险在引用面不在搬运**：`AGENTS.md` 的自主开发协议明文依赖这三份文件，只挪目录会打断协议链。共 **7 处指令性引用**改写；**规则：指令性引用（写入/读取目标）必改，叙述性引用保持原样**（改=篡改历史）。另新增 `docs/archive/README.md`（归档政策＋**归档清单唯一事实源**，门禁解析它）与 `docs/acceptance-log.md`（承接验收摘要追加职责）。
 - 新增 `tests/root-doc-budget.test.cjs`（4 项）：数量 ≤8 / 单文件 ≤150 KiB / 合计 ≤300 KiB + 与归档清单**双向契约**（清单项须在 archive、根目录不得同名）+ 替代事实源存在性。上限依据见 ADR 0051。
@@ -50,7 +51,7 @@
 - 新工作区自 GitHub 浅克隆，基线 `1d74efd release: v0.20.0`。tsc 0 错误、build 通过、测试 5872 项中 **5871 通过 1 失败**。
 - **该项已修复（T-6290，ADR 0047）**：自检改为自适应标定（`calibrateSelfCheckIterations` 放大至 ≥2ms）+ 比值断言 `heavy/light >= 1.5`。**全量已恢复 5872/5872 全绿**。
 - **负向验证挖出的通用教训**：`heavy > light` 这类"大于"断言在计时噪声下**零判别力**（等规模注入仍通过），必须用比值断言。同类计时门禁自查一遍。
-- 产物（2026-09-17 P3-2 收尾实测）：`dist/index.js` **632957 B**、`index.css` **146536 B**、`package.zip` **321021 B**；双语 README 与 release-readiness 已对齐。**注意"记录即失效"耦合**：README 被打进 `package.zip`，改 README 会改 zip，故快照必须在最后一次构建之后记。
+- 产物（2026-09-17 P3-3 收尾实测）：`dist/index.js` **633648 B**、`index.css` **146536 B**、`package.zip` **321219 B**；双语 README 与 release-readiness 已对齐。**注意"记录即失效"耦合**：README 被打进 `package.zip`，改 README 会改 zip，故快照必须在最后一次构建之后记。
 - 结构基线：`src/` 40 文件；`index.ts` 由最初 **9226 行**经 P1-1a/P1-1b 降至 **8104 行**；`index.scss` 已拆分完毕（P1-2）。
 - 交付 `docs/dev-plan-2026-09-17.md`（实测基线＋架构评价＋已完功能清单＋P0~P3 优先级）。本会话未改任何产品代码。
 - 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.20 vs v0.21）。
