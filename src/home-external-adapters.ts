@@ -7,11 +7,12 @@
 import {buildLocalTimeSnapshot, buildWorldClockSnapshot} from "./local-time-model";
 import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildRssSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
 import {parseIcsEvents, upcomingIcalEvents} from "./ical-model";
 import {readCheckinBridge} from "./checkin-bridge-model";
 import {normalizeGithubContribConfig} from "./github-model";
-import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadGithubEvents, loadActivityWatchSummary} from "./life-widget-network";
+import {normalizeRssSubscriptionConfig} from "./rss-model";
+import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadRssFeed, loadGithubEvents, loadActivityWatchSummary} from "./life-widget-network";
 
 export type HomeExternalAdapterRegister = (
     moduleId: string,
@@ -235,6 +236,25 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
             } catch (error) {
                 if (error?.message === "aborted") throw error;
                 return {emptyHint: `${this.i18n.homeIcalEmpty} · ${this.i18n.homeRetry}`, items: []};
+            }
+        }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
+        // RSS/Atom 订阅：用户提供的任意 feed 地址（https/本机，零凭据零实例），与
+        // Miniflux（自建实例+Token）互补。文本经内核代理抓取，XML 有界解析（rss-model）；
+        // 30 分钟缓存，失效回退 stale。
+        register("external-rss-subscription", this.i18n.homeRss, "iconRss", this.i18n.homeDescRss, [], async (config, _device, context) => {
+            const normalized = normalizeRssSubscriptionConfig(config);
+            if (!normalized.url) return {emptyHint: this.i18n.homeRssConfigHint, items: []};
+            try {
+                const feed = await loadRssFeed(normalized.url, {
+                    signal: context?.signal,
+                    fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
+                });
+                const snapshot = buildRssSnapshot(feed.text, normalized, {source: this.i18n.homeQuoteSource}, undefined, feed.status);
+                if (!snapshot) throw new Error("invalid_rss_payload");
+                return snapshot;
+            } catch (error) {
+                if (error?.message === "aborted") throw error;
+                return {emptyHint: `${this.i18n.homeRssEmpty} · ${this.i18n.homeRetry}`, items: []};
             }
         }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         // GitHub 贡献：官方公开事件流（免 Key，可选 Token 走请求头）。分页抓取经内核代理，

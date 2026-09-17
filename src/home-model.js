@@ -73,6 +73,11 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "token", label: "API Token（设置 → API 密钥）", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 1, max: 50, defaults: 20},
     ]},
+    {moduleId: "external-rss-subscription", title: "RSS 订阅", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "url", label: "RSS / Atom 订阅地址", type: "text", defaults: ""},
+        {key: "title", label: "显示标题（可选，留空读 feed 自带标题）", type: "text", defaults: ""},
+        {key: "maxItems", label: "条目上限", type: "number", min: 1, max: 30, defaults: 10},
+    ]},
     {moduleId: "external-ical-events", title: "iCal 日程", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "url", label: "iCal 订阅地址（.ics）", type: "text", defaults: ""},
         {key: "windowDays", label: "日程窗口（天）", type: "number", min: 1, max: 60, defaults: 14},

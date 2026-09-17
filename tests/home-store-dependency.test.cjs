@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const model = require('../src/home-store-model.js');
 
-test('dependency catalog includes all non-core providers', () => assert.deepEqual(Object.keys(model.DEPENDENCY_INFO).sort(), ['checkin-occasions','checkin-streak','checkin-summary','checkin-today','checkin-weekly','checkin-year-heatmap','external-activitywatch-time','external-anime-bangumi','external-fx-frankfurter','external-github-contrib','external-hot-news-dailyhot','external-ical-events','external-news-hackernews','external-news-newsnow','external-rss-miniflux','external-status-uptimekuma','external-weather-open-meteo','journal-calendar','plugin-commands']));
+test('dependency catalog includes all non-core providers', () => assert.deepEqual(Object.keys(model.DEPENDENCY_INFO).sort(), ['checkin-occasions','checkin-streak','checkin-summary','checkin-today','checkin-weekly','checkin-year-heatmap','external-activitywatch-time','external-anime-bangumi','external-fx-frankfurter','external-github-contrib','external-hot-news-dailyhot','external-ical-events','external-news-hackernews','external-news-newsnow','external-rss-miniflux','external-rss-subscription','external-status-uptimekuma','external-weather-open-meteo','journal-calendar','plugin-commands']));
 test('hacker news dependency needs no key and no setup', () => {
     const info = model.resolveHomeStoreDependencyInfo('external-news-hackernews');
     assert.equal(info.kind, 'external-api');
@@ -30,7 +30,7 @@ test('dependency platforms expose mobile restriction', () => assert.equal(model.
 test('dependency network boundary is explicit', () => assert.match(model.resolveHomeStoreDependencyInfo('external-weather-open-meteo').network, /HTTPS/));
 test('plugin command dependency is optional', () => assert.equal(model.resolveHomeStoreDependencyInfo('plugin-commands').required, false));
 test('bangumi dependency is required', () => assert.equal(model.resolveHomeStoreDependencyInfo('external-anime-bangumi').required, true));
-test('dependency list defaults to catalog', () => assert.equal(model.listHomeStoreDependencies().length, 19));
+test('dependency list defaults to catalog', () => assert.equal(model.listHomeStoreDependencies().length, 20));
 test('notice is bounded', () => assert.ok(model.buildHomeStoreDependencyNotice('external-weather-open-meteo').notice.length < 300));
 test('install url is nonempty for activitywatch', () => assert.match(model.resolveHomeStoreDependencyInfo('external-activitywatch-time').installUrl, /^https:/));
 test('project url is nonempty for holiday data', () => assert.match(model.resolveHomeStoreDependencyInfo('journal-calendar').projectUrl, /^https:/));
@@ -40,7 +40,7 @@ test('dependency info includes setup field', () => assert.ok(model.resolveHomeSt
 test('dependency info includes privacy network boundary', () => assert.ok(model.resolveHomeStoreDependencyInfo('external-activitywatch-time').network));
 test('optional dependency notice remains visible', () => assert.ok(model.buildHomeStoreDependencyNotice('journal-calendar')));
 test('dependency list preserves requested order', () => assert.deepEqual(model.listHomeStoreDependencies(['journal-calendar','external-weather-open-meteo']).map((x) => x.moduleId), ['journal-calendar','external-weather-open-meteo']));
-test('dependency summary counts required and optional entries', () => { const summary = model.summarizeHomeStoreDependencies(); assert.equal(summary.total, 19); assert.equal(summary.required, 13); assert.equal(summary.optional, 6); });
+test('dependency summary counts required and optional entries', () => { const summary = model.summarizeHomeStoreDependencies(); assert.equal(summary.total, 20); assert.equal(summary.required, 13); assert.equal(summary.optional, 7); });
 test('dependency summary exposes kind histogram', () => { const summary = model.summarizeHomeStoreDependencies(); assert.equal(summary.kinds['external-api'], 5); assert.equal(summary.kinds['self-hosted-api'], 4); });
 test('uptime kuma dependency is self-hosted and required', () => { const info = model.resolveHomeStoreDependencyInfo('external-status-uptimekuma'); assert.equal(info.kind, 'self-hosted-api'); assert.equal(info.required, true); });
 test('frankfurter dependency needs no key and no setup', () => { const info = model.resolveHomeStoreDependencyInfo('external-fx-frankfurter'); assert.equal(info.kind, 'external-api'); assert.equal(info.required, false); assert.match(info.network, /内核代理/); });

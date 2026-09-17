@@ -438,6 +438,42 @@ function buildIcalSnapshot(icsText, config, labels = {}, now = Date.now(), statu
     };
 }
 
+// RSS/Atom 订阅快照：解析 feed 文本 → 最新文章列表（有界）。
+// 解析失败/空 feed 返回 null，由 adapter 归一为 emptyHint + 重试提示；
+// 标题回退链：用户配置标题 → feed 自带标题 → 通用名。
+const {normalizeRssSubscriptionConfig, parseRssFeed, latestRssItems} = require("./rss-model.js");
+
+function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), status = "fresh") {
+    const normalized = normalizeRssSubscriptionConfig(config);
+    const parsed = parseRssFeed(feedText);
+    if (!parsed.ok) return null;
+    const latest = latestRssItems(parsed.items, {maxItems: normalized.maxItems});
+    const pad = (n) => String(n).padStart(2, "0");
+    const feedLabel = parsed.feedTitle && parsed.feedTitle !== normalized.title ? parsed.feedTitle : "";
+    const items = latest.map((item, index) => {
+        const stamp = item.timestamp > 0
+            ? (() => {
+                const d = new Date(item.timestamp);
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            })()
+            : "";
+        return {
+            label: item.title,
+            value: [feedLabel, stamp].filter(Boolean).join(" · "),
+            href: /^https?:\/\//i.test(item.link) ? item.link : undefined,
+            rank: index + 1,
+        };
+    });
+    items.push({label: `${boundedText(labels.source, 32) || "数据来源"}：RSS/Atom`, value: ""});
+    return {
+        title: normalized.title || parsed.feedTitle || boundedText(labels.title, 96) || "RSS 订阅",
+        items,
+        emptyHint: "",
+        updatedAt: now,
+        sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
+    };
+}
+
 function normalizeHackerNewsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const requestedLimit = Math.trunc(Number(source.limit));
@@ -942,6 +978,10 @@ module.exports = {
     parseIcsEvents,
     upcomingIcalEvents,
     buildIcalSnapshot,
+    normalizeRssSubscriptionConfig,
+    parseRssFeed,
+    latestRssItems,
+    buildRssSnapshot,
     buildGithubContribSnapshot,
     buildMinifluxRequestUrl,
     normalizeMinifluxEntries,

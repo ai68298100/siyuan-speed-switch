@@ -18,6 +18,44 @@ const MINIFLUX_TTL_MS = 15 * 60 * 1000;
 // 失效回退 stale 缓存。响应是文本（RFC 5545），不走 JSON 解析。
 const ICAL_TTL_MS = 30 * 60 * 1000;
 
+// RSS/Atom 订阅：用户提供的任意 feed 地址。与 .ics 不同，RSS 没有规范路径形态
+// （/feed、/rss、/atom.xml、/index.xml 等并存），因此路径不限、查询串不限，但仅放行
+// https 公网与 http+本机，拒绝 userinfo 与 fragment，总长 ≤512；响应文本有界，
+// 解析层（rss-model.js）再独立设界。30 分钟缓存，失效回退 stale 缓存。
+const RSS_TTL_MS = 30 * 60 * 1000;
+
+function allowedRssFeedUrl(value) {
+    if (typeof value !== "string" || value.length > 512) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && local))
+            || url.username || url.password || url.hash) return false;
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+async function loadRssFeed(url, options = {}) {
+    if (!allowedRssFeedUrl(url)) throw new Error("blocked_endpoint");
+    const key = `rss:${url}`;
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < RSS_TTL_MS) {
+        return {text: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    try {
+        const text = await fetchBoundedLifeText(url, {...options, isAllowed: (candidate) => allowedRssFeedUrl(candidate)});
+        if (typeof text !== "string" || !text) throw new Error("empty_response");
+        cacheWrite(key, text, now);
+        return {text, status: "fresh", fetchedAt: now};
+    } catch (error) {
+        if (cached) return {text: cached.value, status: "stale", fetchedAt: now};
+        throw error;
+    }
+}
+
 function allowedIcalFeedUrl(value) {
     if (typeof value !== "string" || value.length > 512) return false;
     try {
@@ -508,6 +546,9 @@ module.exports = {
     loadIcalText,
     allowedIcalFeedUrl,
     ICAL_TTL_MS,
+    loadRssFeed,
+    allowedRssFeedUrl,
+    RSS_TTL_MS,
     loadGithubEvents,
     allowedGithubEventsUrl,
     GITHUB_TTL_MS,
