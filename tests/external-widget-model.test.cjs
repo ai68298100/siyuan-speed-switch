@@ -241,7 +241,7 @@ test("production registers the offline local clock adapter", () => {
 test("production clock refreshes on a single minute heartbeat", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    const source = readSourceText(path.join(__dirname, "..", "src", "second-panel-ui.ts"));
     // 本地时钟、世界时钟与每日引言共用同一条分钟边界心跳：clockModuleIds 覆盖三者。
     assert.match(source, /clockModuleIds = new Set\(\["external-local-time", "external-world-clock", "external-quote-daily"\]\)/);
     assert.match(source, /clockModuleIds\.has\(entry\.moduleId\)/);
@@ -266,7 +266,7 @@ test("production registers the Hacker News adapter with kernel proxy", () => {
 test("production clock heartbeat is disposed with the panel", () => {
     const fs = require("node:fs");
     const path = require("node:path");
-    const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    const source = readSourceText(path.join(__dirname, "..", "src", "second-panel-ui.ts"));
     assert.match(source, /window\.clearTimeout\(homeClockTimer\)/);
     assert.match(source, /removeEventListener\("visibilitychange"/);
 });

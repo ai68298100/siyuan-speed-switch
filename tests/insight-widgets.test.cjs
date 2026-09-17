@@ -126,6 +126,7 @@ test("journal calendar supports notebook scope and bidirectional month navigatio
     const fs = require("node:fs");
     const path = require("node:path");
     const source = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    const panelSource = readSourceText(path.join(__dirname, "..", "src", "second-panel-ui.ts"));
     const calendar = source.slice(
         source.indexOf('register("journal-calendar"'),
         source.indexOf('register("recent-writing-activity"'),
@@ -137,7 +138,7 @@ test("journal calendar supports notebook scope and bidirectional month navigatio
     assert.match(calendar, /index < 42/);
     assert.match(calendar, /outside: true/);
     assert.match(calendar, /homeCalendarMonthFormat/);
-    assert.match(source, /Math\.min\(24, Math\.max\(-24, current \+ \(direction < 0 \? -1 : 1\)\)\)/);
+    assert.match(panelSource, /Math\.min\(24, Math\.max\(-24, current \+ \(direction < 0 \? -1 : 1\)\)\)/);
 });
 
 test("today tasks default to today's journal and expose an explicit empty hint", () => {

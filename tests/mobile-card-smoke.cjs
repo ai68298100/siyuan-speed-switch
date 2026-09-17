@@ -163,6 +163,9 @@ const {readSourceText}=require('./source-scan.cjs');
 // T-6281：读取迁移到 readSourceText（剥注释 + CRLF 归一），与全仓源码扫描口径一致。
 const readSource = (file) => readSourceText('src/' + file);
 const source = readSource('index.ts');
+// P1-1a：移动端切换器方法群已迁入 mobile-switcher-ui.ts，相关模式按归属分流。
+const mobileSwitcherSource = readSource('mobile-switcher-ui.ts');
+const secondPanelSource = readSource('second-panel-ui.ts');
 const mobileToolbarSemanticsOk = source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-fav-btn"')
     && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn"')
     && source.includes('<button type="button" class="b3-button b3-button--text sw__icon-btn sw__mobile-close-btn"');
@@ -372,39 +375,39 @@ console.log(`${homeRefreshOk ? 'PASS' : 'FAIL'} home refresh keeps ready content
 if (!homeRefreshOk) allPassed = false;
 const homeRefreshAllOk = homeControllerSource.includes('async function refreshHomeModules')
     && homeControllerSource.includes('Math.min(4, Math.max(1')
-    && source.includes('refreshHomeModules(targets, {concurrency: 2, signal: batchController?.signal})')
-    && source.includes('refreshAllButton.disabled = true');
+    && secondPanelSource.includes('refreshHomeModules(targets, {concurrency: 2, signal: batchController?.signal})')
+    && secondPanelSource.includes('refreshAllButton.disabled = true');
 console.log(`${homeRefreshAllOk ? 'PASS' : 'FAIL'} home refresh-all bounded concurrency`);
 if (!homeRefreshAllOk) allPassed = false;
 const homeRefreshSummaryOk = homeControllerSource.includes('function countHomeRefreshFailures')
     && homeControllerSource.includes('function summarizeHomeRefreshFailures')
-    && source.includes('this.i18n.homeRefreshFailed')
+    && secondPanelSource.includes('this.i18n.homeRefreshFailed')
     && source.includes('.replace("{count}"')
-    && source.includes('summary.timeout')
+    && secondPanelSource.includes('summary.timeout')
     && source.includes('selectHomeRefreshRetryEntries')
-    && source.includes('label.textContent = this.i18n.homeRetry')
-    && source.includes('if (failureCount > 0)');
+    && secondPanelSource.includes('label.textContent = this.i18n.homeRetry')
+    && secondPanelSource.includes('if (failureCount > 0)');
 console.log(`${homeRefreshSummaryOk ? 'PASS' : 'FAIL'} home refresh failure-only summary`);
 if (!homeRefreshSummaryOk) allPassed = false;
 const homeRefreshCancelOk = homeControllerSource.includes('if (signal?.aborted)')
-    && source.includes('homeRefreshBatchController?.abort()')
-    && source.includes('signal: batchController?.signal');
+    && secondPanelSource.includes('homeRefreshBatchController?.abort()')
+    && secondPanelSource.includes('signal: batchController?.signal');
 console.log(`${homeRefreshCancelOk ? 'PASS' : 'FAIL'} home refresh-all cancellation lifecycle`);
 if (!homeRefreshCancelOk) allPassed = false;
-const homeRefreshFocusOk = source.includes('const preserveRefreshFocus = document.activeElement === refreshAllButton')
-    && source.includes('refreshAllButton.focus({preventScroll: true})');
+const homeRefreshFocusOk = secondPanelSource.includes('const preserveRefreshFocus = document.activeElement === refreshAllButton')
+    && secondPanelSource.includes('refreshAllButton.focus({preventScroll: true})');
 console.log(`${homeRefreshFocusOk ? 'PASS' : 'FAIL'} home refresh focus continuity`);
 if (!homeRefreshFocusOk) allPassed = false;
-const homeRefreshBusyVisualOk = source.includes('refreshAllButton.setAttribute("aria-busy", "true")')
-    && source.includes('refreshAllButton.disabled = true')
-    && source.includes('refreshAllButton.setAttribute("aria-busy", "false")')
+const homeRefreshBusyVisualOk = secondPanelSource.includes('refreshAllButton.setAttribute("aria-busy", "true")')
+    && secondPanelSource.includes('refreshAllButton.disabled = true')
+    && secondPanelSource.includes('refreshAllButton.setAttribute("aria-busy", "false")')
     && pluginCss.includes('.sw-home__refresh');
 console.log(`${homeRefreshBusyVisualOk ? 'PASS' : 'FAIL'} home refresh busy visual contract`);
 if (!homeRefreshBusyVisualOk) allPassed = false;
-const homeRefreshSnapshotOk = source.includes('label.textContent = this.i18n.homeRetry')
-    && source.includes('label.textContent = this.i18n.homeRefreshAll')
-    && source.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRetry)')
-    && source.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll)');
+const homeRefreshSnapshotOk = secondPanelSource.includes('label.textContent = this.i18n.homeRetry')
+    && secondPanelSource.includes('label.textContent = this.i18n.homeRefreshAll')
+    && secondPanelSource.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRetry)')
+    && secondPanelSource.includes('refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll)');
 console.log(`${homeRefreshSnapshotOk ? 'PASS' : 'FAIL'} home refresh status snapshot contract`);
 if (!homeRefreshSnapshotOk) allPassed = false;
 const homeStatusDensityOk = pluginCss.includes('.sw__home-module-status--empty')
@@ -426,7 +429,7 @@ const responsiveRulesOk = pluginCss.includes('.sw__quick-actions--icons')
     && /z-index:\s*2147483647/.test(pluginCss)
     // 排序按钮图标自带显式尺寸：裸 <svg> 在插件样式未就绪时会退回浏览器默认
     // 300×150，顶栏错乱首帧（详见 tests/mobile-icon-fallback-contract.test.cjs）
-    && source.includes("sortButton.innerHTML = '<svg width=\"18\" height=\"18\"><use xlink:href=\"#iconSort\"></use></svg>'");
+    && mobileSwitcherSource.includes("sortButton.innerHTML = '<svg width=\"18\" height=\"18\"><use xlink:href=\"#iconSort\"></use></svg>'");
 console.log(`${responsiveRulesOk ? 'PASS' : 'FAIL'} responsive quick actions, mobile settings, and icon sort rules`);
 if (!responsiveRulesOk) allPassed = false;
 
@@ -512,12 +515,12 @@ const sortLifecycleOk = [
     'titleAsc: this.i18n.sortTitleAsc',
     'titleDesc: this.i18n.sortTitleDesc',
 ].every((line) => source.includes(line))
-    && source.includes('document.addEventListener("keydown", onDocumentKeyDown, true)')
-    && source.includes('document.removeEventListener("keydown", onDocumentKeyDown, true)')
-    && source.includes('list.setAttribute("role", "menu")')
+    && mobileSwitcherSource.includes('document.addEventListener("keydown", onDocumentKeyDown, true)')
+    && mobileSwitcherSource.includes('document.removeEventListener("keydown", onDocumentKeyDown, true)')
+    && mobileSwitcherSource.includes('list.setAttribute("role", "menu")')
     && source.includes('item.setAttribute("role", "menuitemradio")')
-    && source.includes('item.tabIndex = value === sortSelect.value ? 0 : -1')
-    && source.includes('event.key !== "ArrowDown" && event.key !== "ArrowUp"')
+    && mobileSwitcherSource.includes('item.tabIndex = value === sortSelect.value ? 0 : -1')
+    && mobileSwitcherSource.includes('event.key !== "ArrowDown" && event.key !== "ArrowUp"')
     && source.includes('overlay.addEventListener("click", (event) =>')
     && source.includes('return () => {');
 console.log(`${sortLifecycleOk ? 'PASS' : 'FAIL'} mobile sort options and lifecycle cleanup`);
@@ -553,7 +556,9 @@ if (!ariaLabelsOk) allPassed = false;
 const imeGuardOk = source.includes('private bindSearchInputComposition(input: HTMLInputElement, onTrigger: () => void)')
     && source.includes('addEventListener("compositionstart"')
     && source.includes('addEventListener("compositionend"')
-    && (source.match(/this\.bindSearchInputComposition\(searchInput/g) || []).length === 3;
+    // P1-1a：调用点已按端到端归属分流（宿主 + mobile-switcher-ui），合计仍需为 3。
+    && ((source.match(/this\.bindSearchInputComposition\(searchInput/g) || []).length
+        + (mobileSwitcherSource.match(/this\.bindSearchInputComposition\(searchInput/g) || []).length) === 3;
 console.log(`${imeGuardOk ? 'PASS' : 'FAIL'} search triggers are gated by IME composition guard on all three surfaces`);
 if (!imeGuardOk) allPassed = false;
 
@@ -649,16 +654,16 @@ const mutationObserverFallbackOk = source.includes('const observer = typeof Muta
     && source.includes('observer?.observe(document.body');
 console.log(`${mutationObserverFallbackOk ? 'PASS' : 'FAIL'} favorite MutationObserver fallback`);
 if (!mutationObserverFallbackOk) allPassed = false;
-const mobileFirstFrameFallbackOk = source.includes('let readyFrameCancel: (() => void) | null = null;')
-    && source.includes('if (typeof requestAnimationFrame === "function") {')
-    && source.includes('readyFrameCancel = () => window.clearTimeout(timer);')
-    && source.includes('readyFrameCancel?.();');
+const mobileFirstFrameFallbackOk = mobileSwitcherSource.includes('let readyFrameCancel: (() => void) | null = null;')
+    && mobileSwitcherSource.includes('if (typeof requestAnimationFrame === "function") {')
+    && mobileSwitcherSource.includes('readyFrameCancel = () => window.clearTimeout(timer);')
+    && mobileSwitcherSource.includes('readyFrameCancel?.();');
 console.log(`${mobileFirstFrameFallbackOk ? 'PASS' : 'FAIL'} mobile first-frame scheduler fallback`);
 if (!mobileFirstFrameFallbackOk) allPassed = false;
 const animationFrameHelperOk = source.includes('private scheduleAnimationFrame(callback: FrameRequestCallback): number')
     && source.includes('return window.setTimeout(() => callback(Date.now()), 16);')
-    && source.includes('if (overlay.isConnected) overlay.focus({preventScroll: true})')
-    && source.includes('if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open")');
+    && mobileSwitcherSource.includes('if (overlay.isConnected) overlay.focus({preventScroll: true})')
+    && mobileSwitcherSource.includes('if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open")');
 console.log(`${animationFrameHelperOk ? 'PASS' : 'FAIL'} mobile transient animation fallback`);
 if (!animationFrameHelperOk) allPassed = false;
 const documentActionsContractOk = source.includes('openDocumentOnMobile({')

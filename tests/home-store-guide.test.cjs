@@ -43,11 +43,12 @@ test('brand widget audit keeps at least ten scoped candidates without claiming f
 
 test('mobile component panel is explicitly single-column', () => {
     const source = readSourceText(path.join(root, 'src', 'index.ts'));
+    const panelSource = readSourceText(path.join(root, 'src', 'second-panel-ui.ts'));
     // R4 重构（D-376）：设置页“主页”分节的构建在 settings-sections.ts。
     const sections = readSourceText(path.join(root, 'src', 'settings-sections.ts'));
     const styles = readSourceText(path.join(root, 'src', 'index.scss'));
-    assert.match(source, /this\.isMobile \? resolveMobileHomeSize\(supported\)/);
-    assert.match(source, /this\.isMobile \? "1 \/ -1"/);
+    assert.match(panelSource, /this\.isMobile \? resolveMobileHomeSize\(supported\)/);
+    assert.match(panelSource, /this\.isMobile \? "1 \/ -1"/);
     assert.match(storeUiSource,/device === "mobile" \? \[resolveMobileHomeSize\(declaredSizes\)\]/);
     assert.match(sections, /mobileHomePanelFixed/);
     assert.match(styles, /\.sw-home--mobile \.sw-home__grid[\s\S]*grid-template-columns: 1fr !important/);

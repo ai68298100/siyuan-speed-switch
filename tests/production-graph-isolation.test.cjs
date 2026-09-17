@@ -56,6 +56,9 @@ const WIRED_SANITY_MODULES = [
     // 只读演练：报告仅存实例内存、无任何写入动作；闭包 41→42 已复核
     // 512 KiB 包体门禁（D-353，index.js 607365 / zip 310902）。
     'storage-migration',
+    // T-6294（P1-1b）：第二面板装配链路外迁至 second-panel-ui（openSecondPanel，
+    // 601 行原样搬移，仅 4 处调用点改 .call(this)）。闭包 45→46 已复核。
+    'second-panel-ui',
 ];
 
 function resolveModule(fromFile, spec) {
@@ -115,7 +118,9 @@ test('production graph traversal reaches every wired runtime module', () => {
 test('production graph size stays within the audited budget envelope', (t) => {
     const graph = collectProductionGraph();
     // 2026-09-16 T-6260（D-386 第二步）：storage-migration 演练快照入图，闭包 41→42。
+    // 2026-09-17 T-6291（P1-1a）：mobile-switcher-ui 入图，闭包 44→45。
+    // 2026-09-17 T-6294（P1-1b）：second-panel-ui 入图，闭包 45→46。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 44, `production graph grew to ${graph.size} modules; audited ceiling is 44`);
+    assert.ok(graph.size <= 46, `production graph grew to ${graph.size} modules; audited ceiling is 46`);
 });

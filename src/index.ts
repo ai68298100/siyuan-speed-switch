@@ -53,6 +53,8 @@ import {
     runFullTextSearchFallback,
     runOpenedDocumentContentSearch,
 } from "./doc-search-ui";
+import {openMobileSwitcherDialog, bindMobileSwitcherToolbarActions, renderMobileList, openMobileGroupActions} from "./mobile-switcher-ui";
+import {openSecondPanel} from "./second-panel-ui";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets} from "./settings-sections";
@@ -352,7 +354,7 @@ const CARD_ICON_SPRITE =
     '<symbol id="iconLayoutHome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="10" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="6" rx="1.2"/><rect x="13.5" y="12" width="7.5" height="9" rx="1.2"/><rect x="3" y="16" width="7.5" height="5" rx="1.2"/></symbol>';
 
 // 单分组渲染上下文：避免 renderTabGroup 形参列表爆炸，所有共享字段打包到一个对象
-interface ITabGroupRenderCtx {
+export interface ITabGroupRenderCtx {
     reusable: Map<string, HTMLElement>;
     activeTabId: string | undefined;
     pinned: Set<string>;
@@ -537,7 +539,7 @@ export interface ISwSettings {
     quickActionsCollapsedMobile: boolean;
 }
 
-interface IGroupedTab {
+export interface IGroupedTab {
     tab: Tab;
     card?: HTMLElement;
 }
@@ -719,7 +721,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             title: this.i18n.secondPanel,
             position: "right",
             callback: () => {
-                this.openSecondPanel();
+                openSecondPanel.call(this);
             },
         });
 
@@ -746,10 +748,10 @@ export default class SpeedSwitchPlugin extends Plugin {
             langKey: "secondPanel",
             hotkey: SECOND_PANEL_HOTKEY,
             callback: () => {
-                this.openSecondPanel();
+                openSecondPanel.call(this);
             },
             globalCallback: () => {
-                this.openSecondPanel();
+                openSecondPanel.call(this);
             },
         });
         this.registerAgentCapabilities();
@@ -2934,7 +2936,7 @@ const version = beginSearch(session);
             homeButton.innerHTML = `<span class="sw__quick-action-icon"><svg><use xlink:href="#iconLayoutHome"></use></svg></span><span class="sw__quick-action-label">${this.i18n.secondPanel}</span>`;
             homeButton.addEventListener("click", () => {
                 close();
-                this.openSecondPanel();
+                openSecondPanel.call(this);
             });
             host.appendChild(homeButton);
         }
@@ -3047,6 +3049,8 @@ const version = beginSearch(session);
     private homePanelSnapshots = new Map<string, {snapshot: any; at: number}>();
     private homeBuiltinAdapterIds = new Set<string>();
     private static HOME_ACCENTS = ["#7c6cf2", "#4f8ef7", "#35b8a8", "#f2a03d", "#e8637c", "#59b96f", "#e05fd0", "#8a93a6"];
+    // 供 second-panel-ui 的宿主契约读取（this 参数模式拿不到类静态成员）
+    private readonly homeAccents = SpeedSwitchPlugin.HOME_ACCENTS;
 
     // 全库扫描时间窗起点：days 天前的 "YYYYMMDDHHmmss"（思源 updated 同格式，可直接字符串比较）
     private taskWindowStart(days: number): string {
@@ -3970,607 +3974,6 @@ const version = beginSearch(session);
 
     // 小组件商店（openHomeWidgetStore 与 openStoreWidgetPreview）已外迁至 home-store-ui.ts（R1，D-379）
 
-    private openSecondPanel() {
-        const settings = this.getSettings();
-        const viewport = {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX};
-        // 组件面板独立尺寸模式：follow=跟随第一面板；adaptive=独立 90% 自适应；custom=固定尺寸；fullscreen=全屏
-        const mode: HomeSizeMode = settings.homeSizeMode || "follow";
-        const size = mode === "fullscreen"
-            ? {width: viewport.width, height: viewport.height}
-            : mode === "adaptive"
-                ? resolvePanelSize({...settings, panelSizeMode: "adaptive", panelScale: PANEL_SCALE_DEFAULT}, viewport)
-                : mode === "custom"
-                    ? resolvePanelSize({...settings, panelSizeMode: "custom", dialogWidth: settings.homeWidth, dialogHeight: settings.homeHeight}, viewport)
-                    : this.resolvePanelDialogSize(settings, settings.fullscreen);
-        const fullscreenMode = mode === "fullscreen" || (mode === "follow" && settings.panelSizeMode === "fullscreen");
-        const dialog = new Dialog({
-            title: this.i18n.secondPanel,
-            content: '<div class="speed-switch sw-home"></div>',
-            width: `${size.width}px`,
-            height: `${size.height}px`,
-        });
-        if (fullscreenMode) {
-            dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
-        }
-        const root = dialog.element.querySelector<HTMLElement>(".sw-home");
-        if (!root) return;
-        const homePalette = settings.homePalette || "auto";
-        root.classList.add(`sw-home--palette-${homePalette}`);
-        // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
-        if (this.isMobile) root.classList.add("sw-home--mobile");
-        const device = this.isMobile ? "mobile" : "desktop";
-        let editing = false;
-        // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
-        const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
-        const homeRefreshTimers: number[] = [];
-        let homeClockTimer = 0;
-        let homeLifeTimer = 0;
-        const homeRefreshObservers: IntersectionObserver[] = [];
-        let homeRefreshBatchController: AbortController | null = null;
-        let panelEventCleanup: (() => void) | null = null;
-        const clearDeferredRefreshes = () => {
-            homeRefreshTimers.splice(0).forEach((handle) => {
-                const cancelIdle = (window as any).cancelIdleCallback;
-                if (typeof cancelIdle === "function") cancelIdle(handle);
-                window.clearTimeout(handle);
-            });
-            homeRefreshObservers.splice(0).forEach((observer) => observer.disconnect());
-            if (homeClockTimer) window.clearTimeout(homeClockTimer);
-            homeClockTimer = 0;
-            if (homeLifeTimer) window.clearTimeout(homeLifeTimer);
-            homeLifeTimer = 0;
-        };
-
-        const renderPanel = () => {
-            homeRefreshBatchController?.abort();
-            homeRefreshBatchController = null;
-            homeControllers.splice(0).forEach((entry) => entry.dispose());
-            panelEventCleanup?.();
-            panelEventCleanup = null;
-            clearDeferredRefreshes();
-            root.innerHTML = "";
-            const defs = new Map<string, any>();
-            this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
-                .concat(this.homeRuntime.listModules("sidebar"))
-                .forEach((def: any) => defs.set(def.moduleId, def));
-            const catalogIds = new Set<string>();
-            defs.forEach((_def, moduleId) => {
-                if (this.homeBuiltinAdapterIds.has(moduleId) || this.homeThirdPartyIds.has(moduleId)) catalogIds.add(moduleId);
-            });
-            const state = this.getHomeState();
-            const layoutList = (state.layouts[device] || []) as Array<any>;
-            const byId = new Map(state.instances.map((inst: any) => [inst.instanceId, inst]));
-            const cells: Array<{ inst: any; layout: any }> = [];
-            layoutList.forEach((entry) => {
-                const inst = byId.get(entry.instanceId);
-                if (inst) cells.push({inst, layout: entry});
-            });
-
-            // 秒开（D-382）：工具栏/问候/网格在离屏 fragment 中装配，一次挂载避免多轮重排
-            const mountFragment = document.createDocumentFragment();
-            const bar = document.createElement("div");
-            bar.className = "sw-home__bar";
-            const editToggle = document.createElement("button");
-            editToggle.type = "button";
-            editToggle.className = "b3-button b3-button--text";
-            editToggle.textContent = editing ? this.i18n.homeDone : this.i18n.homeEditLayout;
-            editToggle.addEventListener("click", () => {
-                editing = !editing;
-                renderPanel();
-            });
-            bar.appendChild(editToggle);
-            // 一键强制刷新全部组件（绕过 3s 缓存与失败退避）；空面板时无意义，隐藏
-            if (cells.length > 0) {
-                const refreshAllButton = document.createElement("button");
-                refreshAllButton.type = "button";
-                refreshAllButton.className = "b3-button b3-button--text sw-home__refresh";
-                refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
-                refreshAllButton.innerHTML = '<svg><use xlink:href="#iconRefresh"></use></svg><span>' + this.i18n.homeRefreshAll + '</span>';
-                let retryEntries: typeof homeControllers | null = null;
-                refreshAllButton.addEventListener("click", async () => {
-                    if (refreshAllButton.disabled) return;
-                    const preserveRefreshFocus = document.activeElement === refreshAllButton;
-                    refreshAllButton.disabled = true;
-                    refreshAllButton.setAttribute("aria-busy", "true");
-                    const batchController = typeof AbortController === "function" ? new AbortController() : null;
-                    homeRefreshBatchController = batchController;
-                    try {
-                        const targets = retryEntries || homeControllers;
-                        const results = await refreshHomeModules(targets, {concurrency: 2, signal: batchController?.signal});
-                        const failureCount = countHomeRefreshFailures(results);
-                        if (failureCount > 0) {
-                            const summary = summarizeHomeRefreshFailures(results);
-                            retryEntries = selectHomeRefreshRetryEntries(targets, results) as typeof homeControllers;
-                            const label = refreshAllButton.querySelector("span");
-                            if (label) label.textContent = this.i18n.homeRetry;
-                            refreshAllButton.setAttribute("aria-label", this.i18n.homeRetry);
-                            showMessage(this.i18n.homeRefreshFailed
-                                .replace("{count}", String(failureCount))
-                                .replace("{timeout}", String(summary.timeout))
-                                .replace("{failed}", String(summary.failed))
-                                .replace("{other}", String(summary.other)));
-                        } else {
-                            retryEntries = null;
-                            const label = refreshAllButton.querySelector("span");
-                            if (label) label.textContent = this.i18n.homeRefreshAll;
-                            refreshAllButton.setAttribute("aria-label", this.i18n.homeRefreshAll);
-                        }
-                    } finally {
-                        if (homeRefreshBatchController === batchController) homeRefreshBatchController = null;
-                        if (refreshAllButton.isConnected) {
-                            refreshAllButton.disabled = false;
-                            refreshAllButton.setAttribute("aria-busy", "false");
-                            if (preserveRefreshFocus && document.activeElement !== refreshAllButton) {
-                                refreshAllButton.focus({preventScroll: true});
-                            }
-                        }
-                    }
-                });
-                bar.appendChild(refreshAllButton);
-            }
-            // 组件商店常驻右上角（与编辑布局并列），不再要求先进编辑态
-            {
-                const addButton = document.createElement("button");
-                addButton.type = "button";
-                addButton.className = "b3-button b3-button--text sw-home__add";
-                addButton.innerHTML = '<svg><use xlink:href="#iconAdd"></use></svg><span>' + this.i18n.homeStoreTitle + '</span>';
-                addButton.addEventListener("click", () => {
-                    openHomeWidgetStore.call(this, device, renderPanel);
-                });
-                bar.appendChild(addButton);
-            }
-            mountFragment.appendChild(bar);
-
-            // 时间感知问候头：让面板更有"个人主页"温度
-            const now = new Date();
-            const hour = now.getHours();
-            const greeting = hour < 5 ? this.i18n.homeGreetingNight
-                : hour < 12 ? this.i18n.homeGreetingMorning
-                : hour < 14 ? this.i18n.homeGreetingNoon
-                : hour < 18 ? this.i18n.homeGreetingAfternoon
-                : this.i18n.homeGreetingEvening;
-            const greetingEl = document.createElement("div");
-            greetingEl.className = "sw-home__greeting";
-            greetingEl.textContent = `${greeting}，${this.i18n.homeGreetingSuffix}`;
-            mountFragment.appendChild(greetingEl);
-
-            const body = document.createElement("div");
-            body.className = "sw-home__body";
-            const grid = document.createElement("div");
-            grid.className = "sw-home__grid";
-            if (cells.length === 0) {
-                const empty = document.createElement("div");
-                empty.className = "sw-home__empty";
-                empty.setAttribute("role", "status");
-                const emptyText = document.createElement("p");
-                emptyText.textContent = this.i18n.homeEmpty;
-                const openStore = document.createElement("button");
-                openStore.type = "button";
-                openStore.className = "b3-button b3-button--outline sw-home__empty-store";
-                openStore.textContent = this.i18n.homeEmptyOpenStore;
-                openStore.addEventListener("click", () => openHomeWidgetStore.call(this, device, renderPanel));
-                empty.append(emptyText, openStore);
-                grid.appendChild(empty);
-            }
-            const controllers = homeControllers;
-            controllers.length = 0;
-
-            cells.forEach(({inst, layout}) => {
-                const def = defs.get(inst.moduleId);
-                if (!def) return;
-                // 型号迁移与解析：旧宽度档就近映射，再限定到该模块声明的型号集合
-                const supported: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
-                const sizeKey = this.isMobile ? resolveMobileHomeSize(supported) : this.migrateHomeLayoutSize(layout, supported);
-                const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                if (layout.size !== sizeKey || layout.w !== preset.w || layout.h !== preset.h) {
-                    layout.size = sizeKey;
-                    layout.w = preset.w;
-                    layout.h = preset.h;
-                    const persist = this.getHomeState();
-                    const target = ((persist.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
-                    if (target) {
-                        Object.assign(target, {size: sizeKey, w: preset.w, h: preset.h});
-                        this.saveHomeState(persist);
-                    }
-                }
-
-                const cell = document.createElement("section");
-                cell.className = "sw-home__cell";
-                cell.dataset.size = sizeKey;
-                cell.dataset.moduleId = inst.moduleId;
-                cell.style.gridColumn = this.isMobile ? "1 / -1" : `span ${Math.min(12, preset.w)}`;
-                cell.style.gridRow = this.isMobile ? "auto" : `span ${Math.max(1, preset.h)}`;
-                // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
-                if (homePalette === "auto") {
-                    cell.style.setProperty("--sw-home-accent", SpeedSwitchPlugin.HOME_ACCENTS[[...inst.moduleId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % SpeedSwitchPlugin.HOME_ACCENTS.length]);
-                }
-                const body = document.createElement("div");
-                body.className = "sw-home__cell-body";
-                cell.appendChild(body);
-
-                const controller = createHomeModuleController({
-                    document: window.document,
-                    container: body,
-                    module: {...def},
-                    collapsed: layout.collapsed === true,
-                    // 秒开（D-382）：上次会话的好快照直出"缓存"态，refresh 静默更新
-                    initialSnapshot: this.homePanelSnapshots.get(inst.instanceId)?.snapshot,
-                    labels: {
-                        loading: this.i18n.homeLoading,
-                        refreshing: this.i18n.homeRefreshing,
-                        empty: this.i18n.homeEmptyModule,
-                        error: this.i18n.homeModuleError,
-                        retry: this.i18n.homeRetry,
-                        collapse: this.i18n.homeCollapse,
-                        expand: this.i18n.homeExpand,
-                        cached: this.i18n.homeCached,
-                        updated: this.i18n.homeUpdated,
-                        sourceFresh: this.i18n.homeSourceFresh,
-                        sourceCached: this.i18n.homeSourceCached,
-                        sourceStale: this.i18n.homeSourceStale,
-                        previousMonth: this.i18n.homeCalendarPreviousMonth,
-                        nextMonth: this.i18n.homeCalendarNextMonth,
-                        today: this.i18n.homeCalendarToday,
-                        hasJournal: this.i18n.homeCalendarHasJournal,
-                    },
-                    calendarWeekdays: this.i18n.homeCalendarWeekdays,
-                    onItem: (item: { label?: string; value?: string; href?: string }) => this.handleHomeItemAction(item, () => dialog.destroy()),
-                    onCalendarNavigate: (direction: number) => {
-                        const current = Math.trunc(Number(inst.config?.monthOffset) || 0);
-                        const next = direction === 0 ? 0 : Math.min(24, Math.max(-24, current + (direction < 0 ? -1 : 1)));
-                        if (next === current) return;
-                        inst.config = {...(inst.config || {}), monthOffset: next};
-                        const persisted = this.getHomeState();
-                        const target = (persisted.instances as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
-                        if (target) {
-                            target.config = {...(target.config || {}), monthOffset: next};
-                            this.saveHomeState(persisted);
-                        }
-                        void controller?.refresh(inst.config, {force: true});
-                    },
-                    onToggle: () => {
-                        const next = this.getHomeState();
-                        const entry = ((next.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
-                        if (entry) {
-                            entry.collapsed = !(layout.collapsed === true);
-                            layout.collapsed = entry.collapsed;
-                            this.saveHomeState(next);
-                        }
-                    },
-                    read: (config: Record<string, unknown>, readOptions: Record<string, unknown>) => {
-                        // 附带当前型号（尺寸感知接口）：适配器可据此裁剪条目数
-                        const result = this.homeRuntime.read(inst.moduleId, device, inst.config || {}, {...readOptions, size: sizeKey});
-                        // 秒开快照（D-382）：捕获最后一次好数据，面板重开时直出"缓存"态内容
-                        void Promise.resolve(result).then((r: any) => {
-                            const items = r?.snapshot?.items;
-                            if (Array.isArray(items) && items.length > 0) {
-                                this.homePanelSnapshots.set(inst.instanceId, {snapshot: r.snapshot, at: Date.now()});
-                            }
-                        }).catch((): undefined => undefined);
-                        return result;
-                    },
-                    onConfig: editing ? undefined : () => {
-                        // 配置即将变更：旧配置下的快照不再代表新配置的输出
-                        this.homePanelSnapshots.delete(inst.instanceId);
-                        openHomeConfigForm.call(this, inst, def.configSchema || [], () => renderPanel());
-                    },
-                    onToggleItem: (item: { label?: string; value?: string; done?: boolean }) => {
-                        void (async () => {
-                            const ok = await this.toggleHomeTaskBlock(item);
-                            if (!ok) showMessage(this.i18n.homeTaskToggleFailed);
-                            await controller.refresh(inst.config || {}, {force: true});
-                        })();
-                    },
-                });
-                if (!controller) return;
-                controllers.push({moduleId: inst.moduleId, refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => controller.refresh(config, readOptions), dispose: () => controller.dispose(), cell});
-                grid.appendChild(cell);
-
-                if (editing) {
-                    // 桌面端拖拽排序（dense 布局自动归位）；手机端用上移/下移按钮
-                    if (!this.isMobile) {
-                        cell.draggable = true;
-                        cell.addEventListener("dragstart", (event) => {
-                            event.dataTransfer?.setData("text/sw-home-instance", inst.instanceId);
-                            event.dataTransfer!.effectAllowed = "move";
-                            cell.classList.add("sw-home__cell--dragging");
-                        });
-                        cell.addEventListener("dragend", () => cell.classList.remove("sw-home__cell--dragging"));
-                        cell.addEventListener("dragover", (event) => {
-                            event.preventDefault();
-                            event.dataTransfer!.dropEffect = "move";
-                            cell.classList.add("sw-home__cell--dragover");
-                        });
-                        cell.addEventListener("dragleave", () => cell.classList.remove("sw-home__cell--dragover"));
-                        cell.addEventListener("drop", (event) => {
-                            event.preventDefault();
-                            cell.classList.remove("sw-home__cell--dragover");
-                            const draggedId = event.dataTransfer?.getData("text/sw-home-instance");
-                            if (!draggedId || draggedId === inst.instanceId) return;
-                            const next = this.getHomeState();
-                            const list = (next.layouts[device] || []) as Array<any>;
-                            const from = list.findIndex((candidate) => candidate.instanceId === draggedId);
-                            const to = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (from < 0 || to < 0) return;
-                            const [moved] = list.splice(from, 1);
-                            list.splice(to, 0, moved);
-                            next.layouts[device] = list;
-                            this.saveHomeState(next);
-                            renderPanel();
-                        });
-                    }
-                    const persistLayout = (patch: Record<string, unknown>) => {
-                        const next = this.getHomeState();
-                        const entry = ((next.layouts[device] || []) as Array<any>).find((candidate) => candidate.instanceId === inst.instanceId);
-                        if (entry) {
-                            Object.assign(entry, patch);
-                            next.layouts[device] = (next.layouts[device] || []) as Array<any>;
-                            this.saveHomeState(next);
-                        }
-                    };
-                    const tools = document.createElement("div");
-                    tools.className = "sw-home__cell-tools";
-                    const tool = (label: string, onClick: () => void) => {
-                        const button = document.createElement("button");
-                        button.type = "button";
-                        button.className = "b3-button b3-button--text sw-home__tool";
-                        button.textContent = label;
-                        button.setAttribute("aria-label", label);
-                        button.addEventListener("click", onClick);
-                        return button;
-                    };
-                    const configSchema = Array.isArray(def.configSchema) ? def.configSchema : [];
-                    const toolsChildren: HTMLElement[] = [];
-                    if (configSchema.length > 0) {
-                        const configButton = tool(this.i18n.homeConfig, () => undefined);
-                        configButton.addEventListener("click", () => {
-                            openHomeConfigForm.call(this, inst, configSchema, () => {
-                                renderPanel();
-                            });
-                        });
-                        toolsChildren.push(configButton);
-                    }
-                    const sizeButton = tool(this.i18n.homeSize, () => undefined);
-                    sizeButton.addEventListener("click", () => {
-                        this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
-                            const preset2 = HOME_WIDGET_SIZES[picked as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
-                            persistLayout({size: picked, w: preset2.w, h: preset2.h});
-                            renderPanel();
-                        });
-                    });
-                    tools.append(
-                        ...toolsChildren,
-                        sizeButton,
-                        tool(this.i18n.homeMoveUp, () => {
-                            const next = this.getHomeState();
-                            const list = (next.layouts[device] || []) as Array<any>;
-                            const index = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (index > 0) {
-                                const [moved] = list.splice(index, 1);
-                                list.splice(index - 1, 0, moved);
-                                next.layouts[device] = list;
-                                this.saveHomeState(next);
-                                renderPanel();
-                            }
-                        }),
-                        tool(this.i18n.homeMoveDown, () => {
-                            const next = this.getHomeState();
-                            const list = (next.layouts[device] || []) as Array<any>;
-                            const index = list.findIndex((candidate) => candidate.instanceId === inst.instanceId);
-                            if (index >= 0 && index < list.length - 1) {
-                                const [moved] = list.splice(index, 1);
-                                list.splice(index + 1, 0, moved);
-                                next.layouts[device] = list;
-                                this.saveHomeState(next);
-                                renderPanel();
-                            }
-                        }),
-                        tool(this.i18n.homeRemove, () => {
-                            this.removeHomeInstance(inst.instanceId);
-                            renderPanel();
-                        }),
-                    );
-                    cell.appendChild(tools);
-                }
-            });
-
-            body.appendChild(grid);
-
-            // 首次打开播种默认实例（最近打开 + 收藏，中号），之后删除即保留删除
-            if (state.instances.length === 0 && !editing) {
-                const seeded = this.getHomeState();
-                ["recent-documents", "favorites"].forEach((moduleId) => {
-                    if (!catalogIds.has(moduleId)) return;
-                    (seeded.instances as Array<any>).push({instanceId: moduleId, moduleId, enabled: true, config: {}});
-                    ((seeded.layouts[device] || []) as Array<any>).push({instanceId: moduleId, x: 0, y: 0, w: 4, h: 4, collapsed: false, size: "medium"});
-                });
-                if ((seeded.instances as Array<any>).length > 0) {
-                    this.saveHomeState(seeded);
-                    renderPanel();
-                    return;
-                }
-            }
-
-            // 协议 v2 refreshOn：事件触发时只刷新订阅了该事件的组件（500ms 防抖；仅面板存活期）
-            const eventModuleIds = new Map<TEventBus, Set<string>>();
-            controllers.forEach((entry) => {
-                const def = defs.get(entry.moduleId);
-                (Array.isArray(def?.refreshOn) ? def.refreshOn : []).forEach((event: TEventBus) => {
-                    if (!eventModuleIds.has(event)) eventModuleIds.set(event, new Set());
-                    eventModuleIds.get(event)!.add(entry.moduleId);
-                });
-            });
-            let homeRefreshTimer = 0;
-            const pendingModules = new Set<string>();
-            const homeFlushRefresh = () => {
-                homeRefreshTimer = 0;
-                if (!root.isConnected || pendingModules.size === 0) { pendingModules.clear(); return; }
-                const ids = [...pendingModules];
-                pendingModules.clear();
-                controllers.forEach((entry) => {
-                    if (ids.includes(entry.moduleId)) void entry.refresh();
-                });
-            };
-            const homeRefreshCleanupFns: Array<() => void> = [];
-            eventModuleIds.forEach((moduleIds, event) => {
-                const handler = () => {
-                    moduleIds.forEach((id) => pendingModules.add(id));
-                    if (homeRefreshTimer) return;
-                    homeRefreshTimer = window.setTimeout(homeFlushRefresh, 500);
-                };
-                this.eventBus.on(event as TEventBus, handler);
-                homeRefreshCleanupFns.push(() => this.eventBus.off(event as TEventBus, handler));
-            });
-            if (homeRefreshCleanupFns.length > 0) {
-                panelEventCleanup = () => homeRefreshCleanupFns.forEach((fn) => fn());
-            }
-
-            // 首开延迟首读：前两个可见候选立即读取，其余交给空闲时段；旧 WebView
-            // 没有 requestIdleCallback 时回退到 80ms 阶梯，且销毁弹窗时统一清理。
-            const scheduleRefresh = (entry: typeof controllers[number], index: number) => {
-                const run = async () => {
-                    if (!dialog.element.isConnected) return;
-                    const result = await entry.refresh() as { ok?: boolean } | undefined;
-                    // 协议 v2：无 open 回调时可用声明式 clickCommand（"插件名::命令key"）
-                    const clickCommand = defs.get(entry.moduleId)?.clickCommand || "";
-                    const open = this.homeModuleOpens.get(entry.moduleId)
-                        || (clickCommand ? () => this.executeHomeCommand(clickCommand, () => undefined) : null);
-                    const existing = entry.cell.querySelector(".sw-home__open");
-                    if (result && result.ok === false && open) {
-                        if (!existing) {
-                            const button = document.createElement("button");
-                            button.type = "button";
-                            button.className = "b3-button b3-button--text sw-home__open";
-                            button.textContent = this.i18n.homeOpenPlugin;
-                            button.addEventListener("click", () => {
-                                dialog.destroy();
-                                open();
-                            });
-                            entry.cell.appendChild(button);
-                        }
-                    } else {
-                        existing?.remove();
-                    }
-                };
-                if (index < 2) {
-                    void run();
-                    return;
-                }
-                if (typeof IntersectionObserver === "function") {
-                    const observer = new IntersectionObserver((entries, currentObserver) => {
-                        if (!entries.some((candidate) => candidate.isIntersecting)) return;
-                        currentObserver.disconnect();
-                        const position = homeRefreshObservers.indexOf(currentObserver);
-                        if (position >= 0) homeRefreshObservers.splice(position, 1);
-                        void run();
-                    }, {root: body, rootMargin: "120px"});
-                    observer.observe(entry.cell);
-                    homeRefreshObservers.push(observer);
-                    return;
-                }
-                const idle = (window as any).requestIdleCallback;
-                if (typeof idle === "function") {
-                    const handle = idle((): void => { void run(); }, {timeout: 500});
-                    homeRefreshTimers.push(handle);
-                } else {
-                    const handle = window.setTimeout((): void => { void run(); }, index * 80);
-                    homeRefreshTimers.push(handle);
-                }
-            };
-            controllers.forEach(scheduleRefresh);
-
-            // 同一面板只建立一个对齐分钟边界的心跳；只刷新本地时钟与世界时钟，不触发网络组件。
-            const clockModuleIds = new Set(["external-local-time", "external-world-clock", "external-quote-daily"]);
-            if (controllers.some((entry) => clockModuleIds.has(entry.moduleId))) {
-                const refreshClock = () => controllers.filter((entry) => clockModuleIds.has(entry.moduleId))
-                    .forEach((entry) => { void entry.refresh(undefined, {force: true}); });
-                const scheduleClock = () => {
-                    if (!root.isConnected || homeClockTimer) return;
-                    homeClockTimer = window.setTimeout(() => {
-                        homeClockTimer = 0;
-                        if (document.visibilityState !== "hidden") refreshClock();
-                        scheduleClock();
-                    }, millisecondsToNextMinute());
-                };
-                const handleVisibility = () => {
-                    if (document.visibilityState !== "hidden") refreshClock();
-                };
-                document.addEventListener("visibilitychange", handleVisibility);
-                const previousCleanup = panelEventCleanup;
-                panelEventCleanup = () => {
-                    previousCleanup?.();
-                    document.removeEventListener("visibilitychange", handleVisibility);
-                };
-                scheduleClock();
-            }
-
-            // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
-            // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter", "external-rss-miniflux"]);
-            if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
-                const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
-                    .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });
-                const scheduleLife = () => {
-                    if (!root.isConnected || homeLifeTimer) return;
-                    homeLifeTimer = window.setTimeout(() => {
-                        homeLifeTimer = 0;
-                        if (document.visibilityState !== "hidden") refreshLife(true);
-                        scheduleLife();
-                    }, 15 * 60 * 1000);
-                };
-                const handleLifeVisibility = () => {
-                    if (document.visibilityState !== "hidden") refreshLife(false);
-                };
-                document.addEventListener("visibilitychange", handleLifeVisibility);
-                const previousCleanup = panelEventCleanup;
-                panelEventCleanup = () => {
-                    previousCleanup?.();
-                    document.removeEventListener("visibilitychange", handleLifeVisibility);
-                };
-                scheduleLife();
-            }
-
-            // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
-            const hint = document.createElement("div");
-            hint.className = "sw-home__hint";
-            const hintText = document.createElement("span");
-            hintText.textContent = this.i18n.homeHintText;
-            const hintLink = document.createElement("a");
-            hintLink.className = "sw-home__hint-link";
-            hintLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/widget-protocol.md";
-            hintLink.target = "_blank";
-            hintLink.rel = "noopener";
-            hintLink.textContent = this.i18n.homeHintLink;
-            hint.append(hintText, hintLink);
-            body.appendChild(hint);
-            mountFragment.appendChild(body);
-            root.appendChild(mountFragment);
-
-            const quickHost = document.createElement("div");
-            quickHost.className = "sw-home__quick-actions sw__quick-actions";
-            root.appendChild(quickHost);
-            this.renderQuickActions(dialog.element, this.isMobile ? "mobile" : "desktop", null, () => dialog.destroy(), ".sw-home__quick-actions");
-            quickHost.classList.add("sw__quick-actions--icons");
-        };
-
-        const handleModuleChange = () => {
-            if (root.isConnected) renderPanel();
-        };
-        this.homeModuleChangeListeners.add(handleModuleChange);
-
-        const originalDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
-            clearDeferredRefreshes();
-            homeRefreshBatchController?.abort();
-            homeRefreshBatchController = null;
-            homeControllers.splice(0).forEach((entry) => entry.dispose());
-            panelEventCleanup?.();
-            panelEventCleanup = null;
-            this.homeModuleChangeListeners.delete(handleModuleChange);
-            originalDestroy();
-        };
-        renderPanel();
-    }
 
     private getQuickActionPickerCandidates(actions: IQuickAction[]): IQuickActionPickerCandidate[] {
         const existing = new Set(actions.map((action) => `${action.kind}:${action.value}`));
@@ -7985,171 +7388,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             showMessage(this.i18n.mobileNeedsNewer);
             return;
         }
-        this.openMobileSwitcherDialog(tabs);
+        openMobileSwitcherDialog.call(this, tabs);
     }
 
     // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
-    private openMobileSwitcherDialog(tabs: Tab[]) {
-        const settings = this.getSettings();
-        // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
-        const activeTab: Tab | undefined = this.isMobile
-            ? ({id: this.getMobileActiveTabId()} as Tab)
-            : this.getActiveTab();
-
-        const dialog = this.createMobileSwitcherDialog();
-        this.suspendFABForDialog(dialog);
-        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-mobile-switcher-dialog");
-        const mobileBody = dialog.element.querySelector<HTMLElement>(".sw__mobile");
-        let readyFrame: number | null = null;
-        let readyFrameCancel: (() => void) | null = null;
-        let revealCancelled = false;
-        let rendered = false;
-        let stableFrames = 0;
-        let previousWidth = 0;
-        let previousHeight = 0;
-        const revealWhenReady = (attempt = 0) => {
-            if (revealCancelled || !mobileBody?.isConnected) return;
-            const bodyRect = mobileBody.getBoundingClientRect();
-            const toolbar = mobileBody.querySelector<HTMLElement>(".sw__mobile-toolbar");
-            const scroll = mobileBody.querySelector<HTMLElement>(".sw__scroll");
-            const toolbarRect = toolbar?.getBoundingClientRect();
-            const icon = mobileBody.querySelector<SVGElement>(".sw__search-icon");
-            const iconRect = icon?.getBoundingClientRect();
-            const toolbarStyle = toolbar ? getComputedStyle(toolbar) : null;
-            const hasStableGeometry = rendered
-                && bodyRect.width > 0 && bodyRect.height > 0
-                && !!toolbarRect && toolbarRect.width > 0
-                && toolbarStyle?.display === "flex"
-                && !!iconRect && iconRect.width > 0 && iconRect.width <= 32
-                && iconRect.height > 0 && iconRect.height <= 32
-                && (!scroll || scroll.clientWidth > 0)
-                && toolbarRect.width <= bodyRect.width + 2;
-            if (hasStableGeometry && Math.abs(bodyRect.width - previousWidth) < 1 && Math.abs(bodyRect.height - previousHeight) < 1) {
-                stableFrames += 1;
-            } else {
-                stableFrames = 0;
-            }
-            previousWidth = bodyRect.width;
-            previousHeight = bodyRect.height;
-            // Never reveal a zero-sized or structurally collapsed dialog.  The
-            // bounded retry is only a last-resort guard for WebViews that do
-            // not deliver a second animation frame; it still requires the
-            // body/toolbar geometry to be usable.
-            const hasFallbackGeometry = bodyRect.width > 0 && bodyRect.height > 0
-                && !!toolbarRect && toolbarRect.width > 0
-                && toolbarStyle?.display === "flex"
-                && (!scroll || scroll.clientWidth > 0)
-                && toolbarRect.width <= bodyRect.width + 2;
-            if (stableFrames >= 2 || (attempt >= 30 && hasFallbackGeometry)) {
-                // 图标尺寸兜底：symbol 有了 CARD_ICON_SPRITE 兜底，**尺寸**此前仍完全依赖
-                // 插件 CSS。手机 WebView 首开（同步占用主线程时更慢）会让裸 <svg> 退回
-                // 浏览器默认 300×150，把顶栏撑成"巨型图标 + 控件竖排"——即"刚进去出现
-                // 大图标"。这里在可见前扫一遍容器，只修正实测已异常的图标，
-                // 正常路径一个节点都不碰，因此不带来任何视觉回归。
-                const clamped = clampOversizedIcons(mobileBody);
-                if (clamped > 0) {
-                    logger.warn("mobile switcher icon size fallback applied", {count: clamped});
-                }
-                mobileBody.classList.remove("sw__mobile--initializing");
-                mobileBody.style.removeProperty("visibility");
-                mobileBody.style.removeProperty("opacity");
-                mobileBody.style.removeProperty("pointer-events");
-                if (!hasStableGeometry && attempt >= 30) {
-                    logger.warn("mobile switcher revealed after layout timeout", {width: bodyRect.width, height: bodyRect.height});
-                }
-                readyFrame = null;
-                readyFrameCancel = null;
-                return;
-            }
-            if (typeof requestAnimationFrame === "function") {
-                const frame = requestAnimationFrame(() => revealWhenReady(attempt + 1));
-                readyFrame = frame;
-                readyFrameCancel = () => cancelAnimationFrame(frame);
-            } else {
-                const timer = window.setTimeout(() => revealWhenReady(attempt + 1), 16);
-                readyFrame = timer;
-                readyFrameCancel = () => window.clearTimeout(timer);
-            }
-        };
-        if (typeof requestAnimationFrame === "function") {
-            const frame = requestAnimationFrame(() => revealWhenReady());
-            readyFrame = frame;
-            readyFrameCancel = () => cancelAnimationFrame(frame);
-        } else {
-            const timer = window.setTimeout(() => revealWhenReady(), 16);
-            readyFrame = timer;
-            readyFrameCancel = () => window.clearTimeout(timer);
-        }
-        const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-        const sortSelect = dialog.element.querySelector<HTMLSelectElement>(".sw__sort");
-        const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-        // 关键修复：Dialog 先把元素挂到 DOM，b3-dialog--open 类要等 50ms 超时才补上，
-        // 期间容器处于 transform: scale(.8) 过渡态；手机 WebView 中带 backdrop-filter 的
-        // 瀛愬厓绱犲湪璇ュ姩鐢荤獥鍙ｅ唴浼氭覆鏌撻敊涔憋紙鍥炬爣宸ㄥぇ/浣嶇疆閿欎綅锛夛紝鍔ㄧ敾缁撴潫鍙堣嚜鎰堚€斺€?
-        // 即"刚打开闪一下错乱"的根因。禁用动画让容器同步进入最终态，彻底消除该窗口
-        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
-        if (dialogBody) {
-            dialogBody.classList.add("sw-scroll-locked");
-        }
-
-        // 清理缩略图缓存中已无对应打开页签的孤儿条目
-        this.pruneThumbCache(tabs);
-
-        let unregisterRefresh: () => void = () => undefined;
-        let disposeMobileToolbar: () => void = () => undefined;
-        let disposeHistoryDropdown: () => void = () => undefined;
-        // 钩住 Dialog.destroy（Escape/点击外部/程序调用）所有关闭路径都恢复 FAB
-        const origDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
-            revealCancelled = true;
-            readyFrameCancel?.();
-            readyFrame = null;
-            readyFrameCancel = null;
-            // Sorting is rendered in a body-level portal so it can escape the
-            // host Dialog's clipping/stacking context.  Always tear that
-            // portal down with its owner, including Escape and route changes.
-            document.querySelectorAll<HTMLElement>(".sw__mobile-sort-overlay").forEach((overlay) => overlay.remove());
-            disposeMobileToolbar();
-            disposeHistoryDropdown();
-            unregisterRefresh();
-            if (scrollElement) {
-                disposeDocSearchSession.call(this, scrollElement);
-            }
-            origDestroy();
-        };
-        const closeOverlay = () => dialog.destroy();
-
-        // 瑁呴厤宸ュ叿鏍忎笌鍒楄〃娓叉煋
-        if (!searchInput || !sortSelect || !scrollElement) {
-            showMessage(this.i18n.mobileLayoutFailed, MESSAGE_DEFAULT_MS, "error");
-            dialog.destroy();
-            return;
-        }
-        // 先装配列表拿到 renderMobileList，再绑定工具栏（排序切换复用装配期 renderMobileList）；
-        // 列表首渲染只依赖 sortSelect 值，不依赖工具栏绑定，对调安全
-        sortSelect.value = settings.sortBy;
-        const {renderMobileList} = this.renderMobileSwitcherList(dialog, scrollElement, sortSelect, settings);
-        const refreshMobileSurface = () => {
-            renderMobileList();
-            if (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement)) {
-                this.applySearch(scrollElement, searchInput, closeOverlay);
-            }
-            this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
-        };
-        unregisterRefresh = this.registerSwitcherRefresh(refreshMobileSurface);
-        disposeMobileToolbar = this.bindMobileSwitcherToolbarActions(dialog, searchInput, sortSelect, scrollElement, closeOverlay, renderMobileList);
-        disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
-        this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
-        rendered = true;
-
-        // 把 FAB 关闭时的 FAB 恢复优先级插在 destroy 之后；保证打开收藏弹窗关闭后会回到列表
-        dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {
-            this.showMobileFavSheet(dialog, closeOverlay, () => renderMobileList());
-        });
-        // 手机端不自动聚焦搜索框：避免一打开就弹出输入法，需要搜索时点击输入框
-    }
-
-    // 构造手机端切换器 Dialog（极简：搜索 + 排序 + 收藏 + 日记 + 设置 + 滚动区）
     private createMobileSwitcherDialog(): Dialog {
         return new Dialog({
             title: "",
@@ -8206,182 +7448,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 手机端顶栏按钮：设置 / 日记 + 排序切换（排序切换复用装配期 renderMobileList 与 updatedMap）
-    private bindMobileSwitcherToolbarActions(
-        dialog: Dialog,
-        searchInput: HTMLInputElement,
-        sortSelect: HTMLSelectElement,
-        scrollElement: HTMLDivElement,
-        closeOverlay: () => void,
-        renderMobileList: () => void,
-    ): () => void {
-        const disposeSearchFilter = bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay);
-        let activeSortOverlay: HTMLElement | null = null;
-        const closeSortOverlay = () => {
-            activeSortOverlay?.remove();
-            activeSortOverlay = null;
-        };
-        const onDocumentKeyDown = (event: KeyboardEvent) => {
-            if (event.key !== "Escape" || !activeSortOverlay) return;
-            event.preventDefault();
-            event.stopPropagation();
-            closeSortOverlay();
-        };
-        document.addEventListener("keydown", onDocumentKeyDown, true);
-        // 隐藏 FAB 推迟到按钮 click 处是因为 openSetting 可能也关闭原 dialog
-        dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
-            dialog.destroy();
-            this.openSetting();
-        });
-        dialog.element.querySelector(".sw__mobile-close-btn")?.addEventListener("click", () => dialog.destroy());
-        // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）
-        dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
-            dialog.destroy();
-            this.fabElement?.classList.remove("sw__fab--hidden");
-            this.openJournal();
-        });
-        const sortButton = dialog.element.querySelector<HTMLButtonElement>(".sw__sort-btn");
-        const sortLabels: Record<string, string> = {
-            mru: this.i18n.sortMru,
-            layout: this.i18n.sortLayout,
-            layoutDesc: this.i18n.sortLayoutDesc,
-            updatedDesc: this.i18n.sortUpdatedDesc,
-            titleAsc: this.i18n.sortTitleAsc,
-            titleDesc: this.i18n.sortTitleDesc,
-        };
-        const updateSortButton = () => {
-            if (!sortButton) return;
-            const label = sortLabels[sortSelect.value] || this.i18n.sortMru;
-            // 显式尺寸兜底：与 buildMobileSwitcherHtml 同因（样式未就绪时裸 svg 会退回 300×150）
-            sortButton.innerHTML = '<svg width="18" height="18"><use xlink:href="#iconSort"></use></svg>';
-            sortButton.title = label;
-            sortButton.setAttribute("aria-label", `${this.i18n.setSortBy}: ${label}`);
-        };
-        updateSortButton();
-        sortButton?.addEventListener("click", () => {
-            closeSortOverlay();
-            const overlay = document.createElement("div");
-            overlay.className = "sw__mobile-sort-overlay";
-            // WebView 里的思源 Dialog 可能建立新的 stacking context，内联层级作为最后一道兜底。
-            overlay.style.position = "fixed";
-            overlay.style.inset = "0";
-            overlay.style.zIndex = "2147483647";
-            const sheet = document.createElement("div");
-            sheet.className = "sw__mobile-sort-sheet";
-            sheet.setAttribute("role", "dialog");
-            sheet.setAttribute("aria-modal", "true");
-            sheet.innerHTML = `<div class="sw__mobile-sheet-handle"></div><div class="sw__mobile-sheet-title">${this.i18n.setSortBy}</div>`;
-            const list = document.createElement("div");
-            list.className = "sw__mobile-sort-list";
-            list.setAttribute("role", "menu");
-            list.setAttribute("aria-label", this.i18n.setSortBy);
-            // 分组方式区：与桌面一体化菜单同语义（分组在前，组内排序在后）
-            const groupTitle = document.createElement("div");
-            groupTitle.className = "sw__mobile-sheet-section";
-            groupTitle.textContent = this.i18n.groupModeTitle;
-            sheet.appendChild(groupTitle);
-            const groupList = document.createElement("div");
-            groupList.className = "sw__mobile-sort-list";
-            groupList.setAttribute("role", "menu");
-            groupList.setAttribute("aria-label", this.i18n.groupModeTitle);
-            const groupOptions: Array<{value: TabGroupMode, label: string}> = [
-                {value: "notebook", label: this.i18n.groupNotebook},
-                {value: "favorites", label: this.i18n.groupFavorites},
-                {value: "createdMonth", label: this.i18n.groupCreatedMonth},
-                {value: "none", label: this.i18n.groupNone},
-            ];
-            const currentGroup = this.getSettings().groupBy;
-            groupOptions.forEach(({value, label}) => {
-                const item = document.createElement("button");
-                item.type = "button";
-                item.className = "sw__mobile-sort-option";
-                item.setAttribute("role", "menuitemradio");
-                item.setAttribute("aria-checked", String(value === currentGroup));
-                item.innerHTML = '<span>' + label + '</span>' + (value === currentGroup ? '<svg><use xlink:href="#iconCheck"></use></svg>' : '');
-                item.addEventListener("click", () => {
-                    this.updateSettings({groupBy: value});
-                    closeSortOverlay();
-                    renderMobileList();
-                    const searchEl = dialog.element.querySelector<HTMLInputElement>(".sw__search");
-                    if (searchEl) {
-                        searchEl.value = "";
-                        this.applySearch(scrollElement, searchEl, closeOverlay);
-                    }
-                });
-                groupList.appendChild(item);
-            });
-            sheet.appendChild(groupList);
-            const sortTitle = document.createElement("div");
-            sortTitle.className = "sw__mobile-sheet-section";
-            sortTitle.textContent = this.i18n.groupSortTitle;
-            sheet.appendChild(sortTitle);
-            Object.entries(sortLabels).forEach(([value, label]) => {
-                const item = document.createElement("button");
-                item.type = "button";
-                item.className = "sw__mobile-sort-option";
-                item.setAttribute("role", "menuitemradio");
-                item.tabIndex = value === sortSelect.value ? 0 : -1;
-                item.setAttribute("aria-checked", String(value === sortSelect.value));
-                item.innerHTML = `<span>${label}</span>${value === sortSelect.value ? '<svg><use xlink:href="#iconCheck"></use></svg>' : ""}`;
-                item.addEventListener("click", () => {
-                    sortSelect.value = value;
-                    closeSortOverlay();
-                    sortSelect.dispatchEvent(new Event("change"));
-                });
-                item.addEventListener("keydown", (event) => {
-                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-                    event.preventDefault();
-                    const options = Array.from(list.querySelectorAll<HTMLButtonElement>(".sw__mobile-sort-option"));
-                    const index = options.indexOf(item);
-                    const next = options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length];
-                    options.forEach((option) => option.tabIndex = option === next ? 0 : -1);
-                    next.focus();
-                });
-                list.appendChild(item);
-            });
-            sheet.appendChild(list);
-            overlay.appendChild(sheet);
-            document.body.appendChild(overlay);
-            activeSortOverlay = overlay;
-            overlay.addEventListener("click", (event) => {
-                if (event.target === overlay) closeSortOverlay();
-            });
-            // Android back/Escape should close only the transient sort sheet;
-            // do not leave a body-level portal intercepting later taps.
-            overlay.addEventListener("keydown", (event) => {
-                if (event.key !== "Escape") return;
-                event.preventDefault();
-                event.stopPropagation();
-                closeSortOverlay();
-            });
-            overlay.tabIndex = -1;
-            this.scheduleAnimationFrame(() => { if (overlay.isConnected) overlay.focus({preventScroll: true}); });
-            this.scheduleAnimationFrame(() => { if (sheet.isConnected) sheet.classList.add("sw__mobile-sort-sheet--open"); });
-        });
-        sortSelect.addEventListener("change", () => {
-            sortSelect.size = 0;
-            sortSelect.classList.add("fn__none");
-            sortSelect.style.removeProperty("position");
-            sortSelect.style.removeProperty("left");
-            sortSelect.style.removeProperty("top");
-            sortSelect.style.removeProperty("z-index");
-            updateSortButton();
-            this.updateSettings({sortBy: sortSelect.value as SortBy});
-            // 排序切换：复用装配期 renderMobileList（重读最新列表 + 共享 updatedMap），再清搜索词重过滤
-            renderMobileList();
-            searchInput.value = "";
-            this.applySearch(scrollElement, searchInput, closeOverlay);
-        });
-        this.bindSearchInputComposition(searchInput, () => {
-            this.applySearch(scrollElement, searchInput, closeOverlay);
-        });
-        return () => {
-            disposeSearchFilter();
-            document.removeEventListener("keydown", onDocumentKeyDown, true);
-            closeSortOverlay();
-        };
-    }
-
-    // 装配手机端列表渲染：返回 renderMobileList 函数以便收藏弹窗的 onTabsChanged 回调触发刷新
     private renderMobileSwitcherList(
         dialog: Dialog,
         scrollElement: HTMLDivElement,
@@ -8391,7 +7457,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const listOpts = {
             onOverlayClose: () => dialog.destroy(),
             onTabsChanged: () => {
-                renderMobileList();
+                refreshMobileList();
                 const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
                 if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                     this.applySearch(scrollElement, searchInput, () => dialog.destroy());
@@ -8399,136 +7465,27 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             },
         };
         let updatedMap: {[rootId: string]: string} = {};
-        const renderMobileList = () => {
-            this.renderMobileList(scrollElement, this.getMobileTabs(),
+        const refreshMobileList = () => {
+            renderMobileList.call(this, scrollElement, this.getMobileTabs(),
                 {id: this.getMobileActiveTabId()} as Tab, listOpts, sortSelect.value as SortBy, updatedMap);
         };
-        renderMobileList();
+        refreshMobileList();
         // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
         const mergedMap = updatedMap;
         this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
             Object.assign(mergedMap, map);
             if (dialog.element.isConnected && sortSelect.value === "updatedDesc") {
-                renderMobileList();
+                refreshMobileList();
                 const searchInput = dialog.element.querySelector<HTMLInputElement>(".sw__search");
                 if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                     this.applySearch(scrollElement, searchInput, () => dialog.destroy());
                 }
             }
         });
-        return {renderMobileList};
+        return {renderMobileList: refreshMobileList};
     }
 
     // 手机端渲染页签卡片列表
-    private renderMobileList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined,
-                             opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
-                             sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
-        // 复用旧卡片（同 renderList）：关闭页签/排序切换后重排不重建缩略图
-        const reusable = new Map<string, HTMLElement>();
-        scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
-            if (card.dataset.tabId) {
-                reusable.set(card.dataset.tabId, card);
-            }
-        });
-        scrollElement.innerHTML = "";
-        const settings = this.getSettings();
-        scrollElement.style.setProperty("--sw-thumb-height", `${settings.mobileThumbHeight}px`);
-
-        const activeTabId = activeTab?.id;
-        const mru = this.getMru();
-        const pinned = new Set(this.getPinned());
-        const favorites = new Set(this.getFavorites().map((item) => item.key));
-
-        // 手机端不分窗口分组，全部扁平化
-        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
-        const all: IGroupedTab[] = [];
-        const groupMode = settings.groupBy;
-
-        const renderMobileNamedGroup = (label: string, icon: string, key: string, count: number, ordered: IGroupedTab[]) => {
-            const collapsed = this.groupCollapseState.has(key);
-            const groupEl = document.createElement("div");
-            groupEl.className = "sw__group sw__group--named" + (collapsed ? " sw__group--collapsed" : "");
-            const header = document.createElement("button");
-            header.type = "button";
-            header.className = "sw__group-header";
-            header.setAttribute("aria-expanded", collapsed ? "false" : "true");
-            header.innerHTML = '<svg class="sw__group-chevron"><use xlink:href="#' + (collapsed ? "iconRight" : "iconDown") + '"></use></svg>'
-                + '<svg class="sw__group-icon"><use xlink:href="#' + (icon || "iconFile") + '"></use></svg>'
-                + '<span class="sw__group-title"></span>'
-                + '<span class="sw__group-count">' + count + '</span>';
-            header.querySelector<HTMLElement>(".sw__group-title")!.textContent = label;
-            header.addEventListener("click", () => {
-                const nextCollapsed = !this.groupCollapseState.has(key);
-                if (nextCollapsed) this.groupCollapseState.add(key); else this.groupCollapseState.delete(key);
-                groupEl.classList.toggle("sw__group--collapsed", nextCollapsed);
-                header.setAttribute("aria-expanded", nextCollapsed ? "false" : "true");
-                header.querySelector<SVGUseElement>(".sw__group-chevron use")?.setAttribute("xlink:href", "#" + (nextCollapsed ? "iconRight" : "iconDown"));
-            });
-            groupEl.appendChild(header);
-            const groupGrid = this.buildMobileGroupGrid(settings);
-            this.renderMobileCardsInGroup(groupGrid, ordered, ctx).forEach((item) => all.push(item));
-            groupEl.appendChild(groupGrid);
-            scrollElement.appendChild(groupEl);
-        };
-
-        if (groupMode === "none") {
-            const items: IGroupedTab[] = tabs.map((tab) => ({tab}));
-            const ordered = this.sortGroupItems(items, sortBy, mru, pinned, updatedMap);
-            renderMobileNamedGroup("", "", "all", ordered.length, ordered);
-        } else {
-            const favoriteGroupByKey = new Map<string, string>();
-            this.getFavorites().forEach((fav) => favoriteGroupByKey.set(fav.key, fav.group || ""));
-            const notebookMap = new Map((this.notebookListCache || []).map((nb) => [nb.id, nb.name]));
-            const defs = groupTabsByMode(tabs, groupMode, {
-                pinKeyOf: (tab: Tab) => this.pinKeyOf(tab),
-                isFavorite: (key: string) => favorites.has(key),
-                favoriteGroupOf: (key: string) => favoriteGroupByKey.get(key) || "",
-                favoriteGroupOrder: this.getFavGroupRegistry(),
-                notebookIdOf: (tab: Tab) => resolveSearchNotebookId(tab as unknown) || "",
-                notebookNameOf: (id: string) => notebookMap.get(id) || "",
-                notebookOrder: (this.notebookListCache || []).map((nb) => nb.id),
-                createdOf: (key: string) => this.createdByIdCache[key] || "",
-                labels: {
-                    unknownNotebook: this.i18n.groupUnknownNotebook,
-                    ungroupedFavorite: this.i18n.groupUngroupedFavorite,
-                    unfavorited: this.i18n.groupUnfavorited,
-                    unknownMonth: this.i18n.groupUnknownMonth,
-                },
-            });
-            defs.forEach((def) => {
-                const ordered = this.sortGroupItems(def.items.map((tab: Tab) => ({tab})), sortBy, mru, pinned, updatedMap);
-                renderMobileNamedGroup(def.label, def.icon, def.key, ordered.length, ordered);
-            });
-            if (groupMode === "createdMonth" && tabs.some((tab) => {
-                const rootId = this.rootIdOf(tab);
-                return !!rootId && !(rootId in this.createdByIdCache);
-            })) {
-                void this.loadUpdatedMap(tabs).then(() => {
-                    tabs.forEach((tab) => {
-                        const rootId = this.rootIdOf(tab);
-                        if (rootId && !(rootId in this.createdByIdCache)) this.createdByIdCache[rootId] = "";
-                    });
-                    if (scrollElement.isConnected) this.renderMobileList(scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
-                });
-            } else if (groupMode === "notebook" && this.notebookListCache === null) {
-                void this.loadNotebooks().then((notebooks) => {
-                    this.notebookListCache = notebooks;
-                    if (!scrollElement.isConnected || notebooks.length === 0) return;
-                    this.renderMobileList(scrollElement, tabs, activeTab, opts, sortBy, updatedMap);
-                });
-            }
-        }
-
-        if (all.length === 0) {
-            scrollElement.appendChild(this.buildEmptyState());
-            return;
-        }
-
-        // 手机端缩略图：视口懒渲染 + 更保守的回源并发
-        this.renderThumbnails(all, scrollElement, THUMB_BATCH_MOBILE);
-    }
-
-    // 构造手机端分组卡片网格：根据 settings.mobileColumns 决定单列/双列/自适应
     private buildMobileGroupGrid(settings: ISwSettings): HTMLElement {
         const grid = document.createElement("div");
         grid.className = "sw__grid sw__mobile-grid";
@@ -8665,7 +7622,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 overlay.remove();
                 onTabsChanged?.();
             };
-            this.openMobileGroupActions(name, items, onNestedClosed);
+            openMobileGroupActions.call(this, name, items, onNestedClosed);
         });
         section.appendChild(header);
         section.appendChild(this.buildMobileFavSheetList(items, overlay, closeOverlay));
@@ -8706,85 +7663,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 手机端分组批量操作单（嵌套于收藏弹窗之上、层级更高）：一键开启/关闭组内页签
-    private openMobileGroupActions(groupName: string, items: IFavoriteItem[], onChanged: () => void) {
-        const overlay = document.createElement("div");
-        overlay.className = "sw__mobile-sheet-overlay sw__mobile-sheet-overlay--nested";
-        overlay.innerHTML = `<div class="sw__mobile-sheet" role="dialog" aria-modal="true" aria-label="${this.escapeAttr(groupName)}">
-    <div class="sw__mobile-sheet-handle"></div>
-    <div class="sw__mobile-sheet-title">${this.escapeAttr(groupName)}</div>
-    <div class="sw__mobile-sheet-body"></div>
-</div>`;
-        document.body.appendChild(overlay);
-
-        const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
-        const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
-        if (!sheet || !body) {
-            overlay.remove();
-            return;
-        }
-
-        // 涓庢敹钘忓脊绐椾竴鑷寸殑涓嬫粦鏀惰捣鍔ㄧ敾
-        const closeSelf = () => {
-            sheet.classList.remove("sw__mobile-sheet--open");
-            overlay.style.opacity = "0";
-            setTimeout(() => overlay.remove(), FAB_HIDE_DELAY_MS);
-        };
-
-        const appendAction = (label: string, action: () => Promise<number>) => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "sw__mobile-sheet-item";
-            item.textContent = label;
-            item.addEventListener("click", async () => {
-                if (overlay.dataset.busy === "true") {
-                    return;
-                }
-                overlay.dataset.busy = "true";
-                body.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
-                    button.disabled = true;
-                });
-                try {
-                    const count = await action();
-                    closeSelf();
-                    // 仅在确实发生变更时刷新背后的切换器列表
-if (count > 0) {
-                        onChanged();
-                    }
-                } finally {
-                    delete overlay.dataset.busy;
-                    if (overlay.isConnected) {
-                        body.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
-                            button.disabled = false;
-                        });
-                    }
-                }
-            });
-            body.appendChild(item);
-        };
-
-        appendAction(this.i18n.openGroupTabs, () => this.openGroupTabs(items));
-        appendAction(this.i18n.closeGroupTabs, () => this.closeGroupTabs(items));
-
-        const cancel = document.createElement("button");
-        cancel.type = "button";
-        cancel.className = "sw__mobile-sheet-item sw__mobile-sheet-item--cancel";
-        cancel.textContent = this.i18n.cancel;
-        cancel.addEventListener("click", closeSelf);
-        body.appendChild(cancel);
-
-        // 鍔ㄧ敾锛氫笅涓€甯ф粦鍏?
-        this.scheduleAnimationFrame(() => {
-            if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open");
-        });
-        overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) {
-                closeSelf();
-            }
-        });
-    }
-
-    // ==================== 手机端悬浮按钮（FAB）与顶栏入口 ====================
-
     private createFAB() {
         // 已在文档中则跳过；仅存在引用但已脱挂（被外部移除）时重建
         if (this.fabElement?.isConnected) {

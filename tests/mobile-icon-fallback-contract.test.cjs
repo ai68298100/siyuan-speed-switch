@@ -16,6 +16,8 @@ const repo = path.resolve(__dirname, '..');
 const indexSource = readSourceText(path.join(repo, 'src', 'index.ts'));
 const homeViewSource = readSourceText(path.join(repo, 'src', 'home-view.js'));
 const scssSource = readSourceText(path.join(repo, 'src', 'index.scss'));
+// P1-1a：移动端切换器方法群已迁入 mobile-switcher-ui.ts，下列签名改指新模块。
+const mobileSwitcherSource = readSourceText(path.join(repo, 'src', 'mobile-switcher-ui.ts'));
 const { clampOversizedIcons, MOBILE_ICON_SIZE_FALLBACKS } = require('../src/util.js');
 
 // 字面量一律拼接构造：避免断言目标字符串出现在本文件里后被"自指"满足（清单模式⑥）
@@ -107,7 +109,7 @@ test('mobile switcher template gives every svg an explicit size', () => {
 });
 
 test('mobile sort button icon gets an explicit size when injected', () => {
-    const body = functionBody(indexSource, 'const updateSortButton = () => {');
+    const body = functionBody(mobileSwitcherSource, 'const updateSortButton = () => {');
     assert.deepEqual(bareSvgTags(body), [], 'sort button icon must not rely on CSS for its size');
     assert.ok(body.includes(`${WIDTH_ATTR}"18"`), 'sort icon keeps its 18px intrinsic size');
 });

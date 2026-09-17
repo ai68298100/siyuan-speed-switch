@@ -7,6 +7,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const source = readSourceText(path.join(root, 'src', 'index.ts'));
 const storeUiSource = readSourceText(path.join(root, 'src', 'home-store-ui.ts'));
+const secondPanelSource = readSourceText(path.join(root, 'src', 'second-panel-ui.ts'));
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText(path.join(root, 'src', 'home-config-form.ts'));
 const css = readSourceText(path.join(root, 'src', 'index.scss'));
@@ -21,7 +22,7 @@ test('preview starts busy', () => assert.match(storeUiSource, /container\.setAtt
 test('preview body keeps its scoped class', () => assert.match(storeUiSource, /body\.className = "sw-store-preview__body"/));
 test('preview body is a status region', () => assert.match(storeUiSource, /body\.setAttribute\("role", "status"\)/));
 test('preview body is live', () => assert.match(storeUiSource,/body\.setAttribute\("aria-live", "polite"\)/));
-test('preview creates a home controller', () => assert.match(source, /controller = createHomeModuleController\(\{/));
+test('preview creates a home controller', () => assert.match(secondPanelSource, /controller = createHomeModuleController\(\{/));
 test('preview read stays on the selected module', () => assert.match(source, /this\.homeRuntime\.read\(moduleId, device/));
 test('preview read carries the selected size', () => assert.match(storeUiSource, /\{\.\.\.readOptions, size: sizeKey\}/));
 test('preview forces a fresh read', () => assert.match(storeUiSource,/controller\.refresh\(\{\}, \{force: true\}\)/));

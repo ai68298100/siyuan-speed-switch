@@ -182,7 +182,7 @@ test('production bundle remains within the mobile performance budget when built'
 });
 
 test('home panel defers tail reads and cancels idle work on destroy', () => {
-    const source = readSourceText(path.join(root, 'src', 'index.ts'));
+    const source = readSourceText(path.join(root, 'src', 'second-panel-ui.ts'));
     assert.match(source, /IntersectionObserver/);
     assert.match(source, /requestIdleCallback/);
     assert.match(source, /cancelIdleCallback/);

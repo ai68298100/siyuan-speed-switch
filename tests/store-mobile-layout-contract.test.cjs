@@ -22,10 +22,13 @@ const forced={atRule: /forced-colors/};
 const printScope={atRule: /@media print/};
 const narrowRules=findRules(css,/./,narrow);
 const source = readSourceText('src/index.ts');
+const secondPanelSource = readSourceText('src/second-panel-ui.ts');
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText('src/home-config-form.ts');
 // R1 重构（D-379）：商店方法体已外迁至 home-store-ui.ts。
 const storeSource = readSourceText('src/home-store-ui.ts');
+// P1-1a：移动端切换器方法群已迁入 mobile-switcher-ui.ts。
+const mobileSwitcherSource = readSourceText('src/mobile-switcher-ui.ts');
 //（原 mobile 手写截块已删除——T-6280 收口批）
 //（原 mobile 手写截块已删除——T-6280 收口批）
 //（原 mobile 手写截块已删除——T-6280 收口批）
@@ -72,8 +75,8 @@ test('mobile layout avoids horizontal grid columns', () => { const gridRules = n
 test('mobile layout uses bounded overflow only', () => { for (const r of narrowRules) { const m = r.declarations.match(/overflow: \s*(\w+)/); if (m) assert.equal(m[1], 'hidden', '移动分支 overflow 只允许 hidden：' + r.selectors.join(',')); } });
 test('mobile layout remains under narrow viewport breakpoint', () => assert.match(css, /@media \(max-width: 560px\)/));
 
-test('mobile panel injects a dedicated mobile class', () => assert.match(source, /root\.classList\.add\("sw-home--mobile"\)/));
-test('mobile panel class is guarded by device detection', () => assert.match(source, /if \(this\.isMobile\) root\.classList\.add/));
+test('mobile panel injects a dedicated mobile class', () => assert.match(secondPanelSource, /root\.classList\.add\("sw-home--mobile"\)/));
+test('mobile panel class is guarded by device detection', () => assert.match(secondPanelSource, /if \(this\.isMobile\) root\.classList\.add/));
 test('mobile panel uses mobile device key', () => assert.match(source, /const device = this\.isMobile \? "mobile" : "desktop"/));
 test('mobile store dialog width is viewport bounded', () => { const i = storeSource.indexOf('this.isMobile ? "min(680px, 94vw)"'); assert.ok(i >= 0, 'missing store dialog mobile width'); });
 test('mobile store dialog height is viewport bounded', () => assert.match(source, /this\.isMobile \? "min\(560px, 85vh\)"/));
@@ -252,7 +255,7 @@ test('store unavailable removal guards missing instance', () => assert.match(sto
 test('store empty catalog resets ready and pending counts', () => assert.match(storeSource,/root\.dataset\.readyCount = "0";\s*root\.dataset\.pendingCount = "0"/));
 test('store empty catalog clears busy state', () => { const i = storeSource.indexOf('homeNoMoreModules'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 400); assert.ok(w.includes('aria-busy", "false"'), '清空目录须解除 busy'); });
 test('store rescan timer is cancelled on destroy', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\)/));
-test('store change listener is removed on destroy', () => assert.match(source, /this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
+test('store change listener is removed on destroy', () => assert.match(secondPanelSource, /this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
 
 // T-3735~T-3774: guide, live preview and configuration-dialog contracts.
 test('store guide dialog uses localized title', () => assert.match(source, /title: this\.i18n\.homeStoreGuideTitle/));
@@ -264,7 +267,7 @@ test('store guide opens documentation in a new tab', () => assert.match(source, 
 test('store guide external link prevents opener access', () => assert.match(source, /link\.rel = "noopener noreferrer"/));
 test('store guide exposes the local document path', () => assert.match(source, /note\.textContent = "docs\/component-store-guide\.md"/));
 test('store preview captures its opener', () => assert.match(storeSource,/const opener = document\.activeElement instanceof HTMLElement \? document\.activeElement : null/));
-test('store preview falls back to medium size list', () => assert.match(source, /def\.sizes\.length > 0 \? def\.sizes : \["medium"\]/));
+test('store preview falls back to medium size list', () => assert.match(secondPanelSource, /def\.sizes\.length > 0 \? def\.sizes : \["medium"\]/));
 test('store preview prefers a declared medium size', () => assert.match(storeSource,/const sizeKey = sizes\.includes\("medium"\) \? "medium" : sizes\[0\]/));
 test('store preview dialog includes component title', () => assert.match(storeSource,/title: `\$\{this\.i18n\.homeStorePreview\} · \$\{def\.title \|\| moduleId\}`/));
 test('store preview mobile width is viewport bounded', () => assert.match(source, /this\.isMobile \? "min\(420px, 92vw\)"/));
@@ -287,10 +290,10 @@ test('store preview body starts busy', () => assert.match(storeSource,/body\.set
 test('store preview body is keyboard focusable', () => assert.match(storeSource,/body\.tabIndex = 0/));
 test('store preview body references metadata', () => assert.match(storeSource,/body\.setAttribute\("aria-describedby", meta\.id\)/));
 test('store preview read passes resolved size', () => assert.match(storeSource,/this\.homeRuntime\.read\(moduleId, device, config \|\| \{\}, \{\.\.\.readOptions, size: sizeKey\}\)/));
-test('store preview controller provides error label', () => assert.match(source, /error: this\.i18n\.homeModuleError/));
-test('store preview controller provides retry label', () => assert.match(source, /retry: this\.i18n\.homeRetry/));
-test('store preview item activation closes dialog', () => assert.match(source, /this\.handleHomeItemAction\(item, \(\) => dialog\.destroy\(\)\)/));
-test('store preview task failure is surfaced', () => assert.match(source, /if \(!ok\) showMessage\(this\.i18n\.homeTaskToggleFailed\)/));
+test('store preview controller provides error label', () => assert.match(secondPanelSource, /error: this\.i18n\.homeModuleError/));
+test('store preview controller provides retry label', () => assert.match(secondPanelSource, /retry: this\.i18n\.homeRetry/));
+test('store preview item activation closes dialog', () => assert.match(secondPanelSource, /this\.handleHomeItemAction\(item, \(\) => dialog\.destroy\(\)\)/));
+test('store preview task failure is surfaced', () => assert.match(secondPanelSource, /if \(!ok\) showMessage\(this\.i18n\.homeTaskToggleFailed\)/));
 test('store preview task toggle refreshes content', () => assert.match(storeSource,/await controller\?\.refresh\(\)/));
 test('store preview disposal is idempotent', () => assert.match(source, /if \(disposed\) return;\s*disposed = true/));
 test('store preview disposal releases controller', () => assert.match(storeSource,/controller\?\.dispose\(\)/));
@@ -312,7 +315,7 @@ test('home config save invokes refresh callback', () => assert.match(configFormS
 
 // T-3775~T-3814: configuration field semantics and preview metadata details.
 test('home config mounts a dedicated root', () => assert.match(configFormSource, /content: '<div class="speed-switch sw-home-config"><\/div>'/));
-test('home config clears stale root content', () => assert.match(source, /root\.innerHTML = ""/));
+test('home config clears stale root content', () => assert.match(secondPanelSource, /root\.innerHTML = ""/));
 test('home config tracks controls by field key', () => assert.match(configFormSource, /const controls = new Map<string, HTMLInputElement \| HTMLSelectElement \| HTMLTextAreaElement>\(\)/));
 test('home config tracks reset keys', () => assert.match(configFormSource, /const resetKeys = new Set<string>\(\)/));
 test('home config number defaults use finite values', () => assert.match(configFormSource, /Number\.isFinite\(field\.defaults\)/));
@@ -344,7 +347,7 @@ test('home config text fields are bounded', () => assert.match(configFormSource,
 test('home config reset action applies every schema default', () => assert.match(configFormSource, /schema\.forEach\(\(field\) => applyDefault\(field\)\)/));
 test('home config cancel action destroys dialog', () => assert.match(source, /cancel\.addEventListener\("click", \(\) => dialog\.destroy\(\)\)/));
 test('home config save searches invalid controls', () => assert.match(configFormSource, /root\.querySelector<HTMLInputElement \| HTMLSelectElement>\("input:invalid, select:invalid"\)/));
-test('home config save finds the persisted instance', () => assert.match(source, /find\(\(candidate\) => candidate\.instanceId === inst\.instanceId\)/));
+test('home config save finds the persisted instance', () => assert.match(secondPanelSource, /find\(\(candidate\) => candidate\.instanceId === inst\.instanceId\)/));
 test('home config save preserves unrelated instances', () => assert.match(source, /const next = this\.getHomeState\(\)/));
 test('home config save closes only after persistence', () => assert.match(configFormSource, /this\.saveHomeState\(next\);\s*\}\s*dialog\.destroy\(\)/));
 test('preview ready clears container busy state', () => assert.match(storeSource,/container\.setAttribute\("aria-busy", "false"\)/));
@@ -355,8 +358,8 @@ test('preview body receives stable id', () => assert.match(storeSource,/body\.id
 test('preview body records component and device metadata', () => assert.match(storeSource,/body\.dataset\.moduleId = moduleId;\s*body\.dataset\.device = device/));
 test('preview surface metadata is rendered', () => assert.match(storeSource,/homeStorePreviewSurface\.replace\("\{surface\}", surfaceLabels\[device\] \|\| device\)/));
 test('preview size metadata is rendered', () => assert.match(storeSource,/homeStorePreviewSize\.replace\("\{size\}", sizeKey\)/));
-test('preview controller receives cached-source label', () => assert.match(source, /sourceCached: this\.i18n\.homeSourceCached/));
-test('preview controller receives stale-source label', () => assert.match(source, /sourceStale: this\.i18n\.homeSourceStale/));
+test('preview controller receives cached-secondPanelSource label', () => assert.match(secondPanelSource, /sourceCached: this\.i18n\.homeSourceCached/));
+test('preview controller receives stale-secondPanelSource label', () => assert.match(secondPanelSource, /sourceStale: this\.i18n\.homeSourceStale/));
 test('preview disconnect watcher checks dialog connectivity', () => assert.match(source, /if \(!dialog\.element\.isConnected\)/));
 
 // T-3855~T-3894: field accessibility, async notebook safety and preview provenance.
@@ -394,7 +397,7 @@ test('config default helper truncates number defaults', () => assert.match(confi
 test('config reset updates control only when present', () => assert.match(configFormSource, /const control = controls\.get\(field\.key\);\s*if \(!control\) return/));
 test('config reset writes string control values', () => assert.match(configFormSource, /control\.value = String\(value\)/));
 test('config reset button iterates schema', () => assert.match(configFormSource, /reset\.addEventListener\("click", \(\) => \{\s*schema\.forEach/));
-test('config cancel button has localized label', () => assert.match(source, /cancel\.textContent = this\.i18n\.cancel/));
+test('config cancel button has localized label', () => assert.match(mobileSwitcherSource, /cancel\.textContent = this\.i18n\.cancel/));
 test('config save button has localized label', () => assert.match(configFormSource, /save\.textContent = this\.i18n\.homeConfigSave/));
 test('home config save validates before reading home state', () => { const i = configFormSource.indexOf('if (invalid) {'); assert.ok(i >= 0); const w = configFormSource.slice(i, i + 400); assert.ok(w.includes('const next = this.getHomeState()'), '校验通过后才能读取 home state'); });
 test('config save copies only draft fields', () => assert.match(configFormSource, /instance\.config = \{\.\.\.draft\}/));
@@ -404,8 +407,8 @@ test('preview privacy metadata is always emitted', () => assert.match(storeSourc
 test('preview surface map covers desktop', () => assert.match(storeSource,/desktop: this\.i18n\.homeStoreDeviceDesktop/));
 test('preview surface map covers sidebar', () => assert.match(storeSource,/sidebar: this\.i18n\.homeStoreDeviceSidebar/));
 test('preview surface map covers mobile', () => assert.match(storeSource,/mobile: this\.i18n\.homeStoreDeviceMobile/));
-test('preview body labels source freshness', () => assert.match(source, /sourceFresh: this\.i18n\.homeSourceFresh/));
-test('preview body labels updated time', () => assert.match(source, /updated: this\.i18n\.homeUpdated/));
+test('preview body labels secondPanelSource freshness', () => assert.match(secondPanelSource, /sourceFresh: this\.i18n\.homeSourceFresh/));
+test('preview body labels updated time', () => assert.match(secondPanelSource, /updated: this\.i18n\.homeUpdated/));
 
 // T-3895~T-3934: ready-card metadata, size controls and action-state contracts.
 test('ready card uses section semantics', () => assert.match(storeSource,/card\.className = "sw-home-store__card"/));
@@ -415,7 +418,7 @@ test('ready card search text includes provider', () => assert.match(storeSource,
 test('ready card records normalized category', () => assert.match(storeSource,/card\.dataset\.category = def\.category === "siyuan" \? "builtin" : "plugin"/));
 test('ready card records availability', () => assert.match(storeSource,/card\.dataset\.availability = def\.availability \|\| "ready"/));
 test('ready card maps direct widgets offline', () => assert.match(storeSource,/externalInfo\?\.integration === "direct" \|\| def\.category === "siyuan" \? "offline"/));
-test('ready card falls back to medium size', () => assert.match(source, /Array\.isArray\(def\.sizes\) && def\.sizes\.length > 0 \? def\.sizes : \["medium"\]/));
+test('ready card falls back to medium size', () => assert.match(secondPanelSource, /Array\.isArray\(def\.sizes\) && def\.sizes\.length > 0 \? def\.sizes : \["medium"\]/));
 test('ready card records supported sizes', () => assert.match(storeSource,/card\.dataset\.supportedSizes = supported\.join\(","\)/));
 test('ready card records current size', () => assert.match(storeSource,/card\.dataset\.currentSize = added\?\.size \|\| ""/));
 test('ready card records added state', () => assert.match(storeSource,/card\.dataset\.added = added \? "true" : "false"/));
@@ -521,10 +524,10 @@ test('preview metadata adds integration chip', () => assert.match(storeSource,/a
 test('preview metadata adds privacy chip', () => assert.match(storeSource,/addMeta\(privacy, "privacy"\)/));
 test('preview metadata adds surface chip', () => assert.match(storeSource,/addMeta\(this\.i18n\.homeStorePreviewSurface/));
 test('preview metadata adds size chip', () => assert.match(storeSource,/addMeta\(this\.i18n\.homeStorePreviewSize/));
-test('preview read preserves caller read options', () => assert.match(source, /\{\.\.\.readOptions, size: sizeKey\}/));
-test('preview task toggle keeps item done metadata', () => assert.match(source, /onToggleItem: \(item: \{ label\?: string; value\?: string; done\?: boolean \}\)/));
-test('preview task toggle is asynchronous', () => { const i = source.indexOf('onToggleItem:'); assert.ok(i >= 0); const w = source.slice(i, i + 300); assert.ok(w.includes('void (async () =>'), 'onToggleItem 须为异步'); });
-test('preview task toggle calls host adapter', () => assert.match(source, /const ok = await this\.toggleHomeTaskBlock\(item\)/));
+test('preview read preserves caller read options', () => assert.match(secondPanelSource, /\{\.\.\.readOptions, size: sizeKey\}/));
+test('preview task toggle keeps item done metadata', () => assert.match(secondPanelSource, /onToggleItem: \(item: \{ label\?: string; value\?: string; done\?: boolean \}\)/));
+test('preview task toggle is asynchronous', () => { const i = secondPanelSource.indexOf('onToggleItem:'); assert.ok(i >= 0); const w = secondPanelSource.slice(i, i + 300); assert.ok(w.includes('void (async () =>'), 'onToggleItem 须为异步'); });
+test('preview task toggle calls host adapter', () => assert.match(secondPanelSource, /const ok = await this\.toggleHomeTaskBlock\(item\)/));
 test('preview task toggle refreshes after attempt', () => assert.match(storeSource,/await controller\?\.refresh\(\);/));
 test('preview dispose guards repeated calls', () => assert.match(source, /if \(disposed\) return;/));
 test('preview destroy wraps original dialog destroy', () => assert.match(source, /const originalDestroy = dialog\.destroy\.bind\(dialog\)/));
@@ -687,12 +690,12 @@ test('store render recognizes focused search input', () => { const i = storeSour
 test('store render recognizes focused sort control', () => { const i = storeSource.indexOf('activeElement.matches(".sw-home-store__sort")'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 300); assert.ok(w.includes('focusKind = "sort"'), 'sort 焦点须记录 focusKind'); });
 test('store render clears stale DOM before rebuild', () => assert.match(storeSource,/root\.innerHTML = "";\s*(?:\/\/[^\n]*\n\s*)*const storeFragment = document\.createDocumentFragment\(\);\s*const state = this\.getHomeState\(\)/));
 test('store render mounts the assembled fragment once', () => assert.match(storeSource,/root\.appendChild\(storeFragment\);\s*applyFilter\(\)/));
-test('store render reads current home state', () => assert.match(source, /const state = this\.getHomeState\(\)/));
-test('store render scopes instances to device layout', () => assert.match(source, /\(state\.layouts\[device\] \|\| \[\]\) as Array<any>/));
+test('store render reads current home state', () => assert.match(secondPanelSource, /const state = this\.getHomeState\(\)/));
+test('store render scopes instances to device layout', () => assert.match(secondPanelSource, /\(state\.layouts\[device\] \|\| \[\]\) as Array<any>/));
 test('store render resolves layout instance safely', () => assert.match(storeSource,/state\.instances\.find\(\(candidate: any\) => candidate\.instanceId === entry\.instanceId\)/));
 test('store render builds layout and instance maps together', () => assert.match(storeSource,/instanceByModule\.set\(inst\.moduleId, entry\);\s*instanceStateByModule\.set\(inst\.moduleId, inst\)/));
 test('store render lists modules for target device', () => assert.match(storeSource,/this\.homeRuntime\.listModules\(device\)\.forEach\(\(def: any\) => defs\.set\(def\.moduleId, def\)\)/));
-test('store render admits built-in or registered third-party ids', () => assert.match(source, /this\.homeBuiltinAdapterIds\.has\(moduleId\) \|\| this\.homeThirdPartyIds\.has\(moduleId\)/));
+test('store render admits built-in or registered third-party ids', () => assert.match(secondPanelSource, /this\.homeBuiltinAdapterIds\.has\(moduleId\) \|\| this\.homeThirdPartyIds\.has\(moduleId\)/));
 test('store render records active ready count', () => assert.match(storeSource,/root\.dataset\.readyCount = String\(activeIds\.size\)/));
 test('store search restores in-memory query', () => assert.match(storeSource,/searchInput\.value = storeQuery/));
 test('store clear-search visibility follows query state', () => assert.match(storeSource,/clearSearchButton\.hidden = !storeQuery/));
@@ -714,7 +717,7 @@ test('store restore focuses target without scrolling', () => assert.match(storeS
 test('store performs initial render immediately', () => assert.match(storeSource,/\r?\n        renderStore\(\);\r?\n        const handleModuleChange/));
 test('store module refresh ignores detached roots', () => assert.match(storeSource,/const handleModuleChange = \(\) => \{\s*if \(!root\.isConnected\) return/));
 test('store module refresh rerenders and notifies', () => assert.match(storeSource,/if \(!root\.isConnected\) return;\s*renderStore\(\);\s*onChanged\(\)/));
-test('store registers module change listener', () => assert.match(source, /this\.homeModuleChangeListeners\.add\(handleModuleChange\)/));
+test('store registers module change listener', () => assert.match(secondPanelSource, /this\.homeModuleChangeListeners\.add\(handleModuleChange\)/));
 test('store provider rescan is delayed and connection guarded', () => assert.match(storeSource,/window\.setTimeout\(\(\) => \{\s*if \(root\.isConnected\) renderStore\(\);\s*\}, 400\)/));
 test('store destroy clears timer and module listener', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\);\s*this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
 test('store destroy delegates then restores opener focus', () => assert.match(storeSource,/originalDestroy\(\);\s*if \(opener\?\.isConnected\) opener\.focus\(\)/));

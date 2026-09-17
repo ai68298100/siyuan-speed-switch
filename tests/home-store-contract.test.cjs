@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const source = readSourceText(path.join(root, "src", "index.ts"));
 const storeUiSource = readSourceText(path.join(root, "src", "home-store-ui.ts"));
+const secondPanelSource = readSourceText(path.join(root, "src", "second-panel-ui.ts"));
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText(path.join(root, "src", "home-config-form.ts"));
 
@@ -41,7 +42,7 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /resolveWidgetCatalogState\(\[\.\.\.activeIds\], \[\.\.\.instanceByModule\.keys\(\)\]\)/);
     assert.match(storeUiSource, /homeStoreProviderUnavailable/);
     assert.match(storeUiSource,/sw-home-store__remove-unavailable/);
-    assert.match(source, /homeModuleChangeListeners\.add\(handleModuleChange\)/);
+    assert.match(secondPanelSource, /homeModuleChangeListeners\.add\(handleModuleChange\)/);
     assert.match(storeUiSource, /homeModuleChangeListeners\.delete\(handleModuleChange\)/);
     assert.match(storeUiSource, /btn\.dataset\.tabFilter = tab\.category \|\| "all"/);
     assert.match(storeUiSource, /homeStoreTabAdded/);
@@ -61,8 +62,8 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /heading\.dataset\.section === "ready"/);
     assert.match(storeUiSource,/homeStoreGroupPluginAuthor/);
     assert.match(source, /else if \(registration\.registered\) \{\s*this\.homeModuleOpens\.delete\(moduleId\)/);
-    assert.match(source, /clearDeferredRefreshes\(\)/);
-    assert.match(source, /panelEventCleanup\?\.\(\)/);
+    assert.match(secondPanelSource, /clearDeferredRefreshes\(\)/);
+    assert.match(secondPanelSource, /panelEventCleanup\?\.\(\)/);
     assert.match(configFormSource, /field\.type === "document"/);
     assert.match(configFormSource, /this\.currentDocumentSetEntries\(\)\.slice\(0, 40\)/);
     assert.match(configFormSource, /input\.type = "date"/);
@@ -71,8 +72,8 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(configFormSource, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/);
     assert.match(configFormSource, /homeConfigUnavailableValue/);
     assert.match(configFormSource, /homeConfigReset/);
-    assert.match(source, /sw-home__empty-store/);
-    assert.match(source, /homeEmptyOpenStore/);
+    assert.match(secondPanelSource, /sw-home__empty-store/);
+    assert.match(secondPanelSource, /homeEmptyOpenStore/);
     assert.match(storeUiSource, /tabBar\.setAttribute\("role", "tablist"\)/);
     assert.match(storeUiSource, /btn\.setAttribute\("role", "tab"\)/);
     assert.match(storeUiSource, /tile\.setAttribute\("aria-pressed"/);
