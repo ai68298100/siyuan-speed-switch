@@ -17,7 +17,7 @@
 - 门禁新增/修改按 `docs/gate-audit-checklist.md` + 负向验证三件套（精确 FAIL＋兄弟不波及＋旧写法仍绿；注入须外科式、同源）。
 - 读源码走 `tests/source-scan.cjs` 的 `readSourceText`/`readSourceFile`（CRLF 归一＋剥注释；docs/JSON 不迁）；裸读须登记 `SOURCE_SCAN_DEBT`（覆盖度由 source-scan-coverage 冻结，当前仅 4 条合法例外）。`.cjs` 助手 require 必须写全扩展名。
 - 存储 key 恒 13（`KEY_ORDER`，字面量钉住）；细节与迁移时间线看 `docs/storage-compatibility-matrix.md`（双向文档契约）。
-- 含反斜杠/`$'…'` 的检查一律写脚本落盘执行；"命中 0"当可疑信号。Git Bash heredoc 还会吃正则 `\)`——注入/对比脚本的正则退化为字符串 `find` 或落盘执行；**多行切片验证必须行数/md5 双断言**（CRLF `newline=""` 口径下反向找闭合行会报伪失败，P1-1b 自证脚本实例）。**CRLF 改写姿势：检测行尾 → 只改目标 → 写回前断言行尾纯净（无 `\r\r\n`、无裸 `\n`）**——对已 CRLF 文本再 `replace('\n','\r\n')` 会双重损坏且工具不可见（P1-4 清单脚本实例）。
+- 含反斜杠/`$'…'` 的检查一律写脚本落盘执行；"命中 0"当可疑信号。Git Bash heredoc 还会吃正则 `\)`——注入/对比脚本的正则退化为字符串 `find` 或落盘执行；**多行切片验证必须行数/md5 双断言**（CRLF `newline=""` 口径下反向找闭合行会报伪失败，P1-1b 自证脚本实例）。**CRLF 改写姿势：检测行尾 → 只改目标 → 写回前断言行尾纯净（无 `\r\r\n`、无裸 `\n`）**——对已 CRLF 文本再 `replace('\n','\r\n')` 会双重损坏且工具不可见（P1-4 清单脚本实例）。**且 CRLF 纪律要逐文件判定：改前先查 `git show HEAD:<file>` 的行尾——docs/dev-plan-*.md 是纯 LF 文件，往 LF 文件插 CRLF 同样是损坏（P3-2 实例）**
 - **文档治理（2026-09-17 起）**：事实源 = `ROADMAP.md`（方向）+ `BLOCKERS.md`（阻塞）+ `docs/adr/`（决策）+ `docs/dev-plan-*.md`（当期任务账本）+ `docs/acceptance-log.md`（验收流水）；`docs/archive/` 是**冻结快照、只读不追加**。任务号 T-xxxx 继续递增但**不回写**归档账本。根目录 Markdown 受 `tests/root-doc-budget.test.cjs` 约束。
 
 ## 门禁方法论精华（33 条全录见 2026-09 日志）
@@ -32,6 +32,7 @@
 
 ## 当前状态（2026-09-17 下午·本会话实测）
 - **P3-1 已交付（T-6297，ADR 0054）**：GitHub 贡献格点热力图。新增第四个 `viewType: "heatmap"`，沿用 calendar/weekdays/media 分派机制。三个硬约束：条目硬顶 42→热力图 371（硬顶 400，列表/日历不变）、字段白名单补 `level` 透传（视图不重写阈值）、`keepEmptyItems` 保留周日对齐占位格。模型层 `layout:"grid"` 为加法式开关，周汇总路径保留。
+- **P3-2 已交付（T-6298，ADR 0055）**：第三方插件端到端接入示例——不改产品代码，新增 `tests/widget-example-e2e.test.cjs`（6 项）：宿主 harness 镜像 `index.ts registerHomeModule` 簿记（注销句柄返回 void），把模板当真实第三方插件跑通 register→listModules→read→buildHomeModuleView→unregister，钉住 token 失效/幂等注销/缓存清除/open 绑定/无宿主安静降级。教训：断言层级必须对齐生产真实契约（宿主句柄 void，布尔断言只能落 runtime 层）；`normalizeHomeViewResult` 入参是完整 read 结果（从 source.snapshot.items 取数），传 snapshot 会静默得 0 条目。
 - **视图类型接入清单（下一个 viewType 直接照做）**：`home-model.js` 目录定义 viewType → `home-model.js` 与 `home-view.js` **两处白名单同步** → `home-view.js` 渲染分支 → 必要时调 `normalizeHomeViewResult`（条目上限/字段透传/空条目）→ 样式切片加类 → 契约测试 + 负向验证。
 - **P1-4 已交付（T-6296，ADR 0053）**：样式切片语义重命名 `_01-base-controls` … `_09-store-preview-polish`（序号前缀保留）。**切片是时间累积片段、单切片横跨多域**，只能"序号+主体内容"命名，不能按五个单域映射；跨域明细记在清单注释。`readStyleSource()` 数据驱动对改名透明，`dist/index.css` md5 不变即零漂移。
 - **P1-1b 已交付（T-6295，ADR 0052）**：`openSecondPanel`（601 行体）搬入新模块 `src/second-panel-ui.ts`（宽宿主接口 `SecondPanelUiHost`：9 状态字段 + 11 方法签名，纯读单入口故**改判**不先拆状态宿主）；`index.ts` **8702 → 8104 行**。类静态成员 `HOME_ACCENTS` 用转发字段 `homeAccents` 解决。599 行体换行归一逐字节相等（仅 2 处授权替换）；契约改指 9 个测试文件（每条实证，零人工裁定）；负向抽样 23/2 精确 FAIL 全 PASS；verify:release EXIT=0。生产图天花板 45→46。
@@ -41,7 +42,7 @@
 - **样式类重构的通用解法**：拆物理文件 + 在 `tests/source-scan.cjs` 用 `readStyleSource()` 合成逻辑视图（对 `src/index.scss` 返回按清单重组的内容）。既有 35 处样式断言一行未改。零漂移证据：重组后逐字节等于原文件 + `dist/index.css` md5 不变。
 - **该缺口已闭合（P1-3，T-6293，ADR 0050）**：新增 `tests/style-slice-coverage.test.cjs`，按切片动态求「独占锚点」（顶层选择器 + SCSS 变量声明）并要求其出现在组合视图中。复测：**逐个删除切片触发失败数 10/10 从 0 变为 1**。
 - **门禁设计套路（可复用）**：数据驱动（不硬编码清单）+ 非空自检（防正则失效恒绿）+ 下限用 `>=3` 这类不钉死进度的值 + 附「删除模拟」用例证明确实上膛。
-- 测试计数现为 **5884 项 / 173 文件**（改门禁后必须同步双语 README 与 release-readiness，无门禁保护必漂移）。
+- 测试计数现为 **5890 项 / 174 文件**（改门禁后必须同步双语 README 与 release-readiness，无门禁保护必漂移）。
 - **P0-2 已交付（T-6294，ADR 0051）**：`TODO.md`/`DECISIONS.md`/`PROGRESS.md` 归档到 `docs/archive/`（md5 逐一一致、零漂移），根目录 Markdown **8 份 1031001 B → 5 份 110076 B（-89.3%）**。
 - **归档的关键风险在引用面不在搬运**：`AGENTS.md` 的自主开发协议明文依赖这三份文件，只挪目录会打断协议链。共 **7 处指令性引用**改写；**规则：指令性引用（写入/读取目标）必改，叙述性引用保持原样**（改=篡改历史）。另新增 `docs/archive/README.md`（归档政策＋**归档清单唯一事实源**，门禁解析它）与 `docs/acceptance-log.md`（承接验收摘要追加职责）。
 - 新增 `tests/root-doc-budget.test.cjs`（4 项）：数量 ≤8 / 单文件 ≤150 KiB / 合计 ≤300 KiB + 与归档清单**双向契约**（清单项须在 archive、根目录不得同名）+ 替代事实源存在性。上限依据见 ADR 0051。
@@ -49,10 +50,10 @@
 - 新工作区自 GitHub 浅克隆，基线 `1d74efd release: v0.20.0`。tsc 0 错误、build 通过、测试 5872 项中 **5871 通过 1 失败**。
 - **该项已修复（T-6290，ADR 0047）**：自检改为自适应标定（`calibrateSelfCheckIterations` 放大至 ≥2ms）+ 比值断言 `heavy/light >= 1.5`。**全量已恢复 5872/5872 全绿**。
 - **负向验证挖出的通用教训**：`heavy > light` 这类"大于"断言在计时噪声下**零判别力**（等规模注入仍通过），必须用比值断言。同类计时门禁自查一遍。
-- 产物（2026-09-17 P3-1 收尾实测）：`dist/index.js` **632957 B**、`index.css` **146536 B**、`package.zip` **321023 B**；双语 README 与 release-readiness 已对齐。**注意"记录即失效"耦合**：README 被打进 `package.zip`，改 README 会改 zip，故快照必须在最后一次构建之后记。
+- 产物（2026-09-17 P3-2 收尾实测）：`dist/index.js` **632957 B**、`index.css` **146536 B**、`package.zip` **321021 B**；双语 README 与 release-readiness 已对齐。**注意"记录即失效"耦合**：README 被打进 `package.zip`，改 README 会改 zip，故快照必须在最后一次构建之后记。
 - 结构基线：`src/` 40 文件；`index.ts` 由最初 **9226 行**经 P1-1a/P1-1b 降至 **8104 行**；`index.scss` 已拆分完毕（P1-2）。
 - 交付 `docs/dev-plan-2026-09-17.md`（实测基线＋架构评价＋已完功能清单＋P0~P3 优先级）。本会话未改任何产品代码。
 - 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.20 vs v0.21）。
 - 已完结：T-6280~T-6289（窗口断言清零、iCal 与 GitHub 贡献双组件全链、性能门禁加固、worktree 收口、D-397 iCal 文本抓取缺陷修复）、分支/worktree 只剩 main、验收 Runbook。
-- v0.21 生活信息支线 iCal + GitHub 均已上线（GitHub 为周汇总列表卡，格点热力图视觉留后续）。
+- v0.21 生活信息支线 iCal + GitHub 均已上线（GitHub 已由周汇总升级为格点热力图，P3-1/ADR 0054）。
 - 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.20 vs v0.21）。
