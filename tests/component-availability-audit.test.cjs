@@ -14,12 +14,14 @@ const externalAdapters = readSourceText(path.join(__dirname, "..", "src", "home-
 const registeredIds = [source, externalAdapters].flatMap((text) => [
     ...[...text.matchAll(/register\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),
     ...[...text.matchAll(/registerExternalFeed\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),
+    // ADR 0057：小驴打卡桥接组件经 registerCheckinBridge 助手登记，内部仍是一次 register。
+    ...[...text.matchAll(/registerCheckinBridge\("([A-Za-z0-9._:-]+)"/g)].map((match) => match[1]),
 ]);
 
 test("every built-in widget has exactly one runtime adapter", () => {
     const definitions = home.registerModules([]);
     const builtins = definitions.filter((item) => item.category === "siyuan").map((item) => item.moduleId);
-    assert.equal(builtins.length, 42);
+    assert.equal(builtins.length, 47);
     assert.equal(new Set(builtins).size, builtins.length);
     for (const moduleId of builtins) {
         assert.equal(registeredIds.filter((id) => id === moduleId).length, 1, `${moduleId} adapter registration`);

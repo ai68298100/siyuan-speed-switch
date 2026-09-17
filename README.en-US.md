@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.20.0 completes the life-info line and data continuity: two new read-only widgets — iCal schedule subscription and weekly GitHub contribution summary — the thumbnail cache now normalizes on read to close a data-integrity gap, all 365 window assertions migrated to block-scoped gates, and an iCal text-fetch defect was caught and fixed before release.
 
-> The current development head passes type checking, production build, 5894 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, an ActivityWatch app-usage bridge, iCal schedule subscriptions, and GitHub contribution heatmap; the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 5953 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, an ActivityWatch app-usage bridge, iCal schedule subscriptions, and GitHub contribution heatmap; the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -176,7 +176,7 @@ This release is published as `v0.20.0`; real-host path-filter capability, narrow
 - **Mobile fixes**: icon size overruns, toolbar chip clipping, widget panel height, and bare-SVG fallback sizing; the layout gate now measures at real phone width.
 - **Workspace runtime**: session registry, recovery flow, cancellation boundary, and safe exit — 20+ contract capabilities completed (event pipeline wired into production).
 - **Engineering quality**: all 365 window assertions migrated to block-scoped gates (the migration surfaced and fixed a real product defect — the size tile lacked `touch-action`); the doubling-complexity perf gate gained marginal-rerun noise hardening (ceiling semantics unchanged); a storage compatibility matrix with bidirectional doc-contract gates and a protocol-compat-claim consistency gate were added.
-- Release gates pass: 5894 automated tests (174 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 633648 bytes, package.zip 321219 bytes.
+- Release gates pass: 5953 automated tests (178 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 633648 bytes, package.zip 321219 bytes.
 
 ### v0.19.0 (2026-09-16)
 
@@ -249,7 +249,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 174 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5894 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 178 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5953 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -261,6 +261,9 @@ const unregister = speedSwitch.registerHomeModule({
 | `tests/search-model.test.cjs` | Search aggregation, request normalization, scopes, advanced filters, cache keys, and result pagination planning |
 | `tests/agent-capabilities.test.cjs` | Agent schemas, input normalization, output bounds, registration fallback, and JSON Schema validation |
 | `tests/i18n.test.cjs` | Locale parity, static references, and value validation |
+| `tests/checkin-bridge-model.test.cjs` | Check-in bridge model: API handshake, capability probing, streaks, and heatmap caliber |
+| `tests/checkin-bridge-protocol.test.cjs` | Widget protocol v2.4 source whitelist and source/dependency consistency for the five check-in widgets |
+| `tests/home-source-model.test.cjs` | Source resolution, source-group aggregation, and deterministic ordering |
 | Remaining top-level and `tests/host/*.test.cjs` | Recent records, home runtime, view contracts, third-party providers, compatibility, and release contracts |
 
 | UI test | Scope |

@@ -44,6 +44,11 @@ const SOURCE_INFO = Object.freeze({
     "external-rss-miniflux": Object.freeze({providerName: "Miniflux", integration: "http", privacy: "endpoint-only"}),
     "external-ical-events": Object.freeze({providerName: "iCal 订阅", integration: "http", privacy: "endpoint-only"}),
     "external-github-contrib": Object.freeze({providerName: "GitHub", integration: "http", privacy: "endpoint-only"}),
+    "checkin-today": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "checkin-streak": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "checkin-year-heatmap": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "checkin-weekly": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
+    "checkin-occasions": Object.freeze({providerName: "小驴打卡", integration: "local-bridge", privacy: "local-only"}),
 });
 const DEPENDENCY_INFO = Object.freeze({
     "external-weather-open-meteo": Object.freeze({kind: "external-api", required: true, name: "Open-Meteo", installUrl: "https://open-meteo.com/", projectUrl: "https://github.com/open-meteo/open-meteo", setup: "配置城市后联网；无需安装桌面软件或 API Key", network: "公网 HTTPS；仅发送城市/坐标", platforms: "desktop/sidebar/mobile"}),
@@ -59,6 +64,11 @@ const DEPENDENCY_INFO = Object.freeze({
     "external-github-contrib": Object.freeze({kind: "external-api", required: false, name: "GitHub", installUrl: "https://github.com", projectUrl: "https://docs.github.com/rest/activity/events", setup: "在组件配置中填写 GitHub 用户名后联网读取公开事件流；可选 Token 提升限额", network: "GitHub 官方 API；仅发送用户名", platforms: "desktop/sidebar/mobile"}),
     "journal-calendar": Object.freeze({kind: "optional-data", required: false, name: "holiday-cn", installUrl: "https://github.com/NateScarlet/holiday-cn", projectUrl: "https://github.com/NateScarlet/holiday-cn", setup: "开启中国节假日/调休覆盖层后按年度读取静态 JSON；不开启仍可使用日历", network: "公网 HTTPS CDN；仅节假日数据", platforms: "desktop/sidebar/mobile"}),
     "checkin-summary": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用提供方插件后重新打开商店；本插件不内置打卡数据，协议说明见组件协议文档", network: "由提供方插件决定；本组件不自行请求", platforms: "desktop/sidebar/mobile"}),
+    "checkin-today": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；速切不自行请求网络，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
+    "checkin-streak": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；速切不自行请求网络，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
+    "checkin-year-heatmap": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；速切不自行请求网络，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
+    "checkin-weekly": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；需插件支持 analytics.read 能力，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
+    "checkin-occasions": Object.freeze({kind: "plugin", required: true, name: "小驴打卡（siyuan-checkin）", installUrl: "", projectUrl: "", setup: "安装并启用小驴打卡插件后本组件自动读取其公开生态 API；需插件支持 occasions.read 能力，协议说明见组件协议文档", network: "无网络；只读本机插件数据", platforms: "desktop/sidebar/mobile"}),
     "plugin-commands": Object.freeze({kind: "plugin", required: false, name: "其他插件命令提供方", installUrl: "https://github.com/siyuan-note/bazaar", projectUrl: "https://github.com/siyuan-note/bazaar", setup: "仅在其他插件公开兼容 commands 且已启用时显示；无提供方时为空", network: "由提供方插件决定", platforms: "desktop/sidebar/mobile"}),
 });
 

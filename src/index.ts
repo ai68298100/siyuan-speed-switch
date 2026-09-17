@@ -2722,6 +2722,7 @@ const version = beginSearch(session);
         protocolVersion?: number;
         author?: string;
         homepage?: string;
+        source?: {pluginId?: string; name?: string; icon?: string; version?: string; homepage?: string; collection?: string; order?: number};
         clickCommand?: string;
         configSchema?: Array<Record<string, unknown>>;
         refreshOn?: Array<"switch-protyle" | "loaded-protyle" | "destroy-protyle">;
@@ -3204,6 +3205,7 @@ const version = beginSearch(session);
             refreshOn: string[],
             read: (config: Record<string, unknown>, device?: string, context?: {size?: string; signal?: AbortSignal | null}) => any | Promise<any>,
             policies: {timeoutMs?: number; cacheTtlMs?: number} = {},
+            source?: {pluginId?: string; name?: string; icon?: string; version?: string; homepage?: string; collection?: string; order?: number},
         ) => {
             const result = this.homeRuntime.registerAdapter({
                 moduleId, title, icon, description, category: "siyuan",
@@ -3211,6 +3213,7 @@ const version = beginSearch(session);
                 refreshOn,
                 read,
                 ...policies,
+                ...(source ? {source} : {}),
             });
             if (result.registered) this.homeBuiltinAdapterIds.add(moduleId);
         };

@@ -69,13 +69,15 @@ test('description id is deterministic', () => assert.match(storeUiSource,/sw-hom
 test('description can wrap on desktop', () => assert.ok(declaresIn(scss, /(^| )\.sw-home-store__group-description$/, /overflow-wrap: anywhere/, base)));
 test('description has reduced visual emphasis', () => assert.ok(declaresIn(scss, /(^| )\.sw-home-store__group-description$/, /opacity: \.78/, base)));
 test('guide documents functional grouping', () => assert.match(guide, /## 功能分组含义/));
+test('guide documents source grouping', () => assert.match(guide, /### 来源插件分组/));
+test('guide states source grouping wins over functional grouping', () => assert.match(guide, /来源分组优先/));
 test('guide states that grouping is not availability', () => assert.match(guide, /不表示联网方式或可用条件/));
 test('guide documents all seven functional groups', () => {
     for (const label of ['日记与日历', '任务与执行', '文档与导航', '统计与进展', '学习与记忆', '生活与资讯', '系统与服务']) {
         assert.match(guide, new RegExp(label));
     }
 });
-test('guide retains plugin grouping semantics', () => assert.match(guide, /插件组件.*按作者显示/));
+test('guide retains plugin grouping semantics', () => assert.match(guide, /插件组件.*按来源插件/));
 test('all functional group labels have Chinese hints', () => {
     for (const [, hint] of expectedGroups) assert.equal(typeof zh[hint], 'string');
 });

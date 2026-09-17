@@ -14,9 +14,13 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // 后续 v0.18 契约模块接入保留评审余量）→ 168 KiB（D-386：v0.20 数据
 // 连续性接入 storage-migration 演练模型与 storageHealth 只读投影后
 // index.js 压缩后达 164015 字节，超出 160 KiB 上限 175 字节；只读演练、
-// 无写入动作，按先例上调并保留后续接入余量）。
-// 归档总上限独立为 512 KiB（D-353），仍余约 213 KiB。
-const MAX_COMPRESSED_ENTRY_BYTES = 168 * 1024;
+// 无写入动作，按先例上调并保留后续接入余量）→ 180 KiB（T-6298 / ADR 0057：
+// 接入 5 个小驴打卡桥接组件（checkin-bridge-model 415 行、home-source-model
+// 144 行、商店来源分组 UI 与 30 组双语 i18n）后 index.js 压缩后达 175727 字节，
+// 超出 168 KiB 上限 3695 字节；增量均为纯本地只读桥接与分组展示、无网络外传面，
+// 按先例上调并为后续来源插件组件接入保留评审余量）。
+// 归档总上限独立为 512 KiB（D-353），仍余约 197 KiB。
+const MAX_COMPRESSED_ENTRY_BYTES = 180 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 

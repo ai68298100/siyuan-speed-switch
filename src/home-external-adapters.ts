@@ -9,6 +9,7 @@ import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
 import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
 import {parseIcsEvents, upcomingIcalEvents} from "./ical-model";
+import {readCheckinBridge} from "./checkin-bridge-model";
 import {normalizeGithubContribConfig} from "./github-model";
 import {loadWeatherLocation, loadWeatherForecast, loadBangumiCalendar, loadConfiguredFeed, loadHackerNewsFrontPage, loadUptimeKumaPage, loadFrankfurterRates, loadMinifluxEntries, loadIcalText, loadGithubEvents, loadActivityWatchSummary} from "./life-widget-network";
 
@@ -20,6 +21,7 @@ export type HomeExternalAdapterRegister = (
     refreshOn: string[],
     read: (config: Record<string, unknown>, device?: string, context?: {size?: string; signal?: AbortSignal | null}) => any | Promise<any>,
     policies?: {timeoutMs?: number; cacheTtlMs?: number},
+    source?: {pluginId?: string; name?: string; icon?: string; version?: string; homepage?: string; collection?: string; order?: number},
 ) => void;
 
 export interface HomeExternalAdapterHost {
@@ -308,4 +310,39 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     return {emptyHint: `${this.i18n.homeActivityWatchConfigHint} · ${this.i18n.homeRetry}`, items: []};
                 }
         }, {timeoutMs: 7000, cacheTtlMs: 5 * 60 * 1000});
+        // —— 小驴打卡桥接组件（ADR 0057）——
+        // 由本插件内建 adapter 读取打卡插件公开的生态 API v4（window.siyuanCheckin）：
+        // 只读、纯本地、无网络请求。组件由速切注册，但 source 把来源标注为
+        // siyuan-checkin，商店因此按「来源插件」把它们归到小驴打卡一组。
+        // 打卡缺席或能力缺失时 read 返回确定空态而不是抛错——抛错会触发失败退避，
+        // 把组件显示成故障态。若将来打卡插件自行注册同 moduleId，token 覆盖会让它接管。
+        const checkinLabels = () => ({
+            unnamed: this.i18n.homeCheckinUnnamed,
+            todayStat: this.i18n.homeCheckinTodayStat,
+            todayEmpty: this.i18n.homeCheckinTodayEmpty,
+            dayUnit: this.i18n.homeCheckinDayUnit,
+            pendingToday: this.i18n.homeCheckinPendingToday,
+            streakStat: this.i18n.homeCheckinStreakStat,
+            streakEmpty: this.i18n.homeCheckinStreakEmpty,
+            heatmapTitle: this.i18n.homeCheckinHeatmapTitle,
+            heatmapStat: this.i18n.homeCheckinHeatmapStat,
+            heatmapEmpty: this.i18n.homeCheckinHeatmapEmpty,
+            weeklyStat: this.i18n.homeCheckinWeeklyStat,
+            weeklyEmpty: this.i18n.homeCheckinWeeklyEmpty,
+            today: this.i18n.homeCheckinOccasionToday,
+            daysLater: this.i18n.homeCheckinOccasionLater,
+            occasionsEmpty: this.i18n.homeCheckinOccasionsEmpty,
+            missing: this.i18n.homeCheckinMissing,
+            capabilityMissing: this.i18n.homeCheckinCapabilityMissing,
+        });
+        const checkinSource = {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck"};
+        const registerCheckinBridge = (moduleId: string, title: string, icon: string, description: string) => {
+            register(moduleId, title, icon, description, [], (config) =>
+                readCheckinBridge(moduleId, {scope: window, config, labels: checkinLabels()}), {}, checkinSource);
+        };
+        registerCheckinBridge("checkin-today", this.i18n.homeCheckinToday, "iconCheck", this.i18n.homeDescCheckinToday);
+        registerCheckinBridge("checkin-streak", this.i18n.homeCheckinStreak, "iconRefresh", this.i18n.homeDescCheckinStreak);
+        registerCheckinBridge("checkin-year-heatmap", this.i18n.homeCheckinHeatmap, "iconGraph", this.i18n.homeDescCheckinHeatmap);
+        registerCheckinBridge("checkin-weekly", this.i18n.homeCheckinWeekly, "iconCalendar", this.i18n.homeDescCheckinWeekly);
+        registerCheckinBridge("checkin-occasions", this.i18n.homeCheckinOccasions, "iconCheck", this.i18n.homeDescCheckinOccasions);
 }

@@ -120,7 +120,8 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 2026-09-16 T-6260（D-386 第二步）：storage-migration 演练快照入图，闭包 41→42。
     // 2026-09-17 T-6291（P1-1a）：mobile-switcher-ui 入图，闭包 44→45。
     // 2026-09-17 T-6294（P1-1b）：second-panel-ui 入图，闭包 45→46。
+    // 2026-09-17 T-6298（ADR 0057）：checkin-bridge-model 入图，闭包 46→48。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 46, `production graph grew to ${graph.size} modules; audited ceiling is 46`);
+    assert.ok(graph.size <= 48, `production graph grew to ${graph.size} modules; audited ceiling is 48`);
 });

@@ -11,6 +11,7 @@
 | 使用时长 | 本机软件与服务 | 是：安装并启动 ActivityWatch | [官方下载](https://activitywatch.net/downloads/) · [源码](https://github.com/ActivityWatch/activitywatch) | 默认地址 `127.0.0.1:5600`；只支持桌面/侧栏；不读取窗口标题 |
 | 日历月视图：中国节假日 | 可选远程数据 | 否：只有开启“显示中国节假日”才联网 | [holiday-cn](https://github.com/NateScarlet/holiday-cn) | 日历本身可离线使用；覆盖层按年度读取静态 JSON |
 | 打卡摘要 | 其他思源插件 | 是：安装并启用提供 `checkin-summary` 的 `siyuan-checkin` 插件 | 优先在思源集市搜索“小驴打卡”；协议说明见 [组件协议](./widget-protocol.md) | 当前仓库没有可核实的独立发布地址，因此不伪造 GitHub 仓库链接 |
+| 今日打卡 / 连续记录 / 打卡热力图 / 本周打卡 / 近期事项 | 其他思源插件（本插件桥接） | 是：安装并启用“小驴打卡”即可；由本插件读取其公开的生态 API v4 | 思源集市搜索“小驴打卡”；协议说明见 [组件协议](./widget-protocol.md) | 组件由速切注册但来源标注为 `siyuan-checkin`，商店归入“小驴打卡”来源组（ADR 0057）；未安装插件时显示确定空态而非故障态 |
 | 插件命令 | 其他思源插件 | 否：至少一个已启用插件公开兼容命令时才有内容 | [思源社区集市](https://github.com/siyuan-note/bazaar) | 命令行为、联网和权限由对应插件决定 |
 
 ## 特别提醒

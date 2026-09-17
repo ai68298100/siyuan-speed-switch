@@ -42,6 +42,7 @@ import type {HomeWidgetSize} from "./constants";
 import {openHomeConfigForm} from "./home-config-form";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {resolveWidgetCatalogState} from "./widget-catalog";
+import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStoreSourceSearchText, resolveHomeModuleSource} from "./home-source-model";
 
 export interface HomeStoreUiHost {
     i18n: Record<string, string>;
@@ -588,7 +589,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 {label: this.i18n.homeStoreGroupDocuments, description: this.i18n.homeStoreGroupDocumentsHint, moduleIds: ["recent-documents", "favorites", "document-sets", "fixed-document", "recent-edits", "current-document-outline", "document-relations-summary"]},
                 {label: this.i18n.homeStoreGroupInsights, description: this.i18n.homeStoreGroupInsightsHint, moduleIds: ["note-stats", "year-progress", "today-writing", "recent-writing-activity", "external-quote-daily"]},
                 {label: this.i18n.homeStoreGroupLearning, description: this.i18n.homeStoreGroupLearningHint, moduleIds: ["flashcard-due", "random-review"]},
-                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter", "external-rss-miniflux", "external-ical-events", "external-github-contrib"]},
+                {label: this.i18n.homeStoreGroupLife, description: this.i18n.homeStoreGroupLifeHint, moduleIds: ["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter", "external-rss-miniflux", "external-ical-events", "external-github-contrib", "checkin-today", "checkin-streak", "checkin-year-heatmap", "checkin-weekly", "checkin-occasions"]},
                 {label: this.i18n.homeStoreGroupSystem, description: this.i18n.homeStoreGroupSystemHint, moduleIds: ["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma", "external-device-battery"]},
             ];
             const groupDescriptionOf = (moduleId: string, def: any): string => {
@@ -598,7 +599,12 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 }
                 return this.i18n.homeStoreGroupPluginHint;
             };
+            // 来源分组优先于功能分组：同一插件提供的多个组件收敛进一个来源组，
+            // 组头再补来源图标、已添加计数与「全选本组」，让用户按插件整组取舍。
+            const sourceOf = (def: any) => resolveHomeModuleSource(def);
             const groupOf = (moduleId: string, def: any): string => {
+                const source = sourceOf(def);
+                if (source.kind === "plugin") return source.label;
                 if (def.category === "siyuan") {
                     const hit = BUILTIN_GROUPS.find((group) => group.moduleIds.includes(moduleId));
                     return hit ? hit.label : this.i18n.homeStoreGroupOther;
@@ -655,7 +661,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     renderStore();
                 });
                 card.appendChild(selectButton);
-                card.dataset.search = `${buildHomeStoreSearchText(def, moduleId)} ${externalInfo?.providerName || ""}`.toLowerCase();
+                card.dataset.search = `${buildHomeStoreSearchText(def, moduleId)} ${externalInfo?.providerName || ""} ${buildHomeStoreSourceSearchText(def)}`.toLowerCase();
                 card.dataset.category = def.category === "siyuan" ? "builtin" : "plugin";
                 card.dataset.availability = def.availability || "ready";
                 card.dataset.integration = externalInfo?.integration === "http" ? "network"
@@ -996,9 +1002,20 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 if (!readyGroupDescriptions.has(label)) readyGroupDescriptions.set(label, groupDescriptionOf(moduleId, def));
                 readyGroups.get(label)!.push(buildReadyCard(moduleId, def));
             });
+            // 来源组的附加信息（图标/已添加计数/成员）来自纯模型，渲染层只负责呈现。
+            const readyGroupSources = new Map<string, any>();
+            buildHomeStoreSourceGroups(ready.map(({moduleId, def, added}) => ({moduleId, def, added}))).forEach((group: any) => {
+                readyGroupSources.set(group.label, group);
+            });
+            const extraGroupLabels = [...readyGroups.keys()].filter((label) => !BUILTIN_GROUPS.some((group) => group.label === label));
+            extraGroupLabels.sort((a, b) => {
+                const left = readyGroups.get(a)?.length || 0;
+                const right = readyGroups.get(b)?.length || 0;
+                return left === right ? a.localeCompare(b) : right - left;
+            });
             const orderedGroups = [
                 ...BUILTIN_GROUPS.map((group) => group.label).filter((label) => readyGroups.has(label)),
-                ...[...readyGroups.keys()].filter((label) => !BUILTIN_GROUPS.some((group) => group.label === label)),
+                ...extraGroupLabels,
             ];
             orderedGroups.forEach((label) => {
                 const cards = readyGroups.get(label)!;
@@ -1028,7 +1045,45 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 groupToggle.dataset.group = label;
                 groupToggle.title = groupToggle.getAttribute("aria-label") || "";
                 groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
-                groupHeading.append(groupLabel, groupDescription, groupToggle);
+                const sourceMeta = readyGroupSources.get(label);
+                if (sourceMeta?.icon) {
+                    const groupIcon = document.createElement("svg");
+                    groupIcon.className = "sw-home-store__group-icon";
+                    groupIcon.innerHTML = `<use xlink:href="#${sourceMeta.icon}"></use>`;
+                    groupIcon.setAttribute("viewBox", "0 0 24 24");
+                    groupIcon.setAttribute("aria-hidden", "true");
+                    groupHeading.appendChild(groupIcon);
+                }
+                groupHeading.appendChild(groupLabel);
+                if (sourceMeta) {
+                    const groupProgress = document.createElement("span");
+                    groupProgress.className = "sw-home-store__group-progress";
+                    groupProgress.textContent = this.i18n.homeStoreGroupAdded
+                        .replace("{added}", String(sourceMeta.addedCount))
+                        .replace("{total}", String(sourceMeta.count));
+                    groupHeading.appendChild(groupProgress);
+                }
+                groupHeading.appendChild(groupDescription);
+                if (sourceMeta && sourceMeta.moduleIds.length > 1) {
+                    const groupSelected = sourceMeta.moduleIds.every((id: string) => selectedStoreModules.includes(id));
+                    const groupSelect = document.createElement("button");
+                    groupSelect.type = "button";
+                    groupSelect.className = "sw-home-store__group-select";
+                    groupSelect.dataset.action = "toggle-group-selection";
+                    groupSelect.dataset.group = label;
+                    groupSelect.textContent = groupSelected ? this.i18n.homeStoreClearGroup : this.i18n.homeStoreSelectGroup;
+                    groupSelect.setAttribute("aria-pressed", String(groupSelected));
+                    groupSelect.setAttribute("aria-label", `${groupSelect.textContent} · ${label}`);
+                    groupSelect.title = groupSelect.getAttribute("aria-label") || "";
+                    groupSelect.onclick = () => {
+                        selectedStoreModules = groupSelected
+                            ? selectedStoreModules.filter((id: string) => !sourceMeta.moduleIds.includes(id))
+                            : [...new Set([...selectedStoreModules, ...sourceMeta.moduleIds])];
+                        renderStore();
+                    };
+                    groupHeading.appendChild(groupSelect);
+                }
+                groupHeading.appendChild(groupToggle);
                 storeFragment.appendChild(groupHeading);
                 const groupGrid = document.createElement("div");
                 groupGrid.className = "sw-home-store__grid";
@@ -1063,7 +1118,21 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 pendingGrid.id = "sw-home-store-pending-grid";
                 pendingGrid.setAttribute("role", "group");
                 pendingGrid.setAttribute("aria-labelledby", pendingHeading.id);
+                const pendingProviders = buildHomeStoreProviderGroups(pending);
+                const needsProviderHeading = pendingProviders.length > 1 || (pendingProviders[0]?.count || 0) > 1;
+                const renderedProviders = new Set<string>();
                 pending.forEach(({entry, status}: any) => {
+                    const providerId = String(entry?.providerPlugin || entry?.providerName || "");
+                    if (needsProviderHeading && providerId && !renderedProviders.has(providerId)) {
+                        renderedProviders.add(providerId);
+                        const providerLabel = document.createElement("h4");
+                        providerLabel.className = "sw-home-store__provider";
+                        providerLabel.setAttribute("role", "heading");
+                        providerLabel.setAttribute("aria-level", "3");
+                        providerLabel.dataset.provider = providerId;
+                        providerLabel.textContent = this.i18n.homeStoreProviderGroup.replace("{name}", String(entry?.providerName || providerId));
+                        pendingGrid.appendChild(providerLabel);
+                    }
                     const unavailable = status === "unavailable";
                     const card = document.createElement("section");
                     card.className = "sw-home-store__card sw-home-store__card--pending"

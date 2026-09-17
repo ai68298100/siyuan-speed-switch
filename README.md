@@ -10,7 +10,7 @@
 
 > v0.20.0 完成生活信息支线与数据连续性：新增 iCal 日程订阅与 GitHub 贡献周汇总两个只读组件，缩略图缓存读取侧归一化补上数据完整性缺口，全仓 365 条门禁断言迁移为块级有界断言并修复 iCal 文本抓取缺陷。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、5894 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、ActivityWatch 使用时长、iCal 订阅日程与 GitHub 贡献热力图，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、5953 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、ActivityWatch 使用时长、iCal 订阅日程与 GitHub 贡献热力图，组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -194,7 +194,7 @@ pnpm verify:release
 - **移动端修复**：图标尺寸越界、工具栏 chips 裁切、小组件面板高度与裸 svg 尺寸兜底补齐；布局门禁改按真实手机宽度量测。
 - **Workspace 运行时**：会话注册表、恢复流程、取消边界与安全退出等 20+ 契约能力补齐（事件管线接入生产）。
 - **工程质量**：全仓 365 条窗口断言迁移为块级有界断言（迁移中发现并修复 size tile 缺 `touch-action` 的真实缺陷）；复杂度性能门禁获得边际重测抗噪（天花板语义不变）；新增存储兼容矩阵文档与双向文档契约门禁、协议兼容声明一致性门禁。
-- 发版门禁：5894 项自动测试（174 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 633648 bytes、package.zip 321219 bytes。
+- 发版门禁：5953 项自动测试（178 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 633648 bytes、package.zip 321219 bytes。
 
 ### v0.19.0（2026-09-16）
 
@@ -271,7 +271,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5894 项测试（174 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5953 项测试（178 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -283,6 +283,9 @@ const unregister = speedSwitch.registerHomeModule({
 | `tests/search-model.test.cjs` | 搜索聚合、请求归一化、范围、高级筛选、缓存 key 与结果分页规划 |
 | `tests/agent-capabilities.test.cjs` | Agent 能力 schema、输入归一化、输出边界、注册降级和 JSON Schema 验证 |
 | `tests/i18n.test.cjs` | 中英文键完整性、静态引用与格式 |
+| `tests/checkin-bridge-model.test.cjs` | 小驴打卡桥接模型的 API 握手、能力协商、连续天数与热力图口径 |
+| `tests/checkin-bridge-protocol.test.cjs` | 组件协议 v2.4 的 source 白名单与 5 个打卡组件的来源/依赖一致性 |
+| `tests/home-source-model.test.cjs` | 组件来源解析、来源分组聚合与排序的确定性 |
 | 其余顶层与 `tests/host/*.test.cjs` | 最近记录、首页运行时、展示契约、第三方 provider、兼容矩阵和发版契约 |
 
 | UI 测试 | 覆盖范围 |

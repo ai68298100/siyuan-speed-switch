@@ -58,6 +58,7 @@ export default class MyPlugin extends Plugin {
 | `description` | 推荐 | ≤96 字，商店卡片说明 |
 | `read` | ✅ | `(config, device) => 快照`，见下 |
 | `open` | 可选 | `() => void`，组件读取失败时面板显示"打开插件"按钮 |
+| `source` | 可选 | 结构化来源身份（v2.4）：`{pluginId, name, icon, version, homepage, collection, order}`，见「来源与商店分组」 |
 
 ## 尺寸型号
 
@@ -160,6 +161,32 @@ refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
 
 组件注册时声明的 `description`、`sizes`、`protocolVersion`、`configSchema` 和 `refreshOn` 会经过宿主归一化后用于商店和 Agent 发现，非法或超限字段会被安全丢弃。
 
+### 7. 来源与商店分组（协议 v2.4）
+
+`source` 回答“这个组件是谁提供的”，与 `category` 回答的“这是什么类型的组件”互为补充：
+
+```ts
+source: {
+    pluginId: "your-plugin-id",   // 稳定分组键，走与 moduleId 相同的字符白名单
+    name: "你的插件名",            // 展示名；与 pluginId 至少填一个，否则整个字段被丢弃
+    icon: "iconPlugin",           // 可选：来源图标，显示在商店来源组头
+    version: "1.2.3",             // 可选
+    homepage: "https://...",      // 可选：仅 http/https
+    collection: "打卡",            // 可选：同一插件内的子系列
+    order: 1,                      // 可选：套件内的建议顺序，钳到 0~999
+}
+```
+
+声明后，商店会发生三件事：
+
+1. 你的多个组件**收敛进同一个来源组**（组名取 `name`），而不是散落在功能分组里；
+2. 组头显示来源图标、**已添加 x/y** 计数与**全选本组 / 取消本组**；
+3. 来源名与 `pluginId` 进入卡片搜索文本——用户搜插件名即可命中你的整套组件。
+
+没有 `source` 的插件组件仍按 `author` 兜底成组，旧注册行为完全不变。
+若你的插件与宿主使用**相同的 moduleId**，后注册者会完整覆盖先注册者（token 校验），
+因此宿主侧可以先做桥接实现、由插件原生实现后续接管，用户配置不漂移。
+
 自 v0.17 起，小驴速切额外注册只读能力 `workspace-runtime-registry-diagnostics`：返回有界的组件运行时计数快照（注册数/会话数/队列游标），无输入、无正文内容、无宿主异常透出；Agent 可用它在诊断对话中确认组件面板的基础设施状态。组件本身的生命周期事件（失效/恢复）不影响该计数以外的任何输出。
 
 同时提供 `document-context` 只读能力：省略 `id` 时读取当前活动文档，指定 `id` 时优先复用已打开页签，关闭文档则回退到单行 SQL 元数据查询；结果仅包含标题、笔记本 ID、路径、活动状态和最多 24 条大纲标题，永不返回正文。该能力的取消/权限真实宿主验收仍属于 v0.17 后续兼容性工作。
@@ -197,7 +224,13 @@ refreshOn: ["switch-protyle", "loaded-protyle", "destroy-protyle"],
 
 ## 已知适配示例
 
-- **小驴打卡 (siyuan-checkin)**：注册了 `checkin-summary`（打卡摘要）组件。
+- **小驴打卡 (siyuan-checkin)**：
+  - 提供方注册路径：`checkin-summary`（打卡摘要），由打卡插件自己调用本协议注册；
+  - 速切桥接路径：`checkin-today` / `checkin-streak` / `checkin-year-heatmap` /
+    `checkin-weekly` / `checkin-occasions`，由速切内建 adapter 直接读取打卡公开的
+    生态 API v4（`window.siyuanCheckin`）后注册，`source.pluginId` 仍标注为
+    `siyuan-checkin`，因此商店把它们归到“小驴打卡”来源组（见 ADR 0057）。
+    若打卡插件将来自行注册相同 moduleId，原生实现会自动接管。
 - 欢迎提交 PR 把你的插件加进这个列表。
 
 ## 稳定性说明

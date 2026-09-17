@@ -159,6 +159,24 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "filter", label: "关键词过滤", type: "text", defaults: ""},
     ]},
     {moduleId: "checkin-summary", title: "打卡摘要", icon: "iconCalendar", category: "plugin", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
+    // —— 小驴打卡桥接组件（ADR 0057）：由本插件内建 adapter 消费打卡公开生态 API v4，
+    // 但 source 把来源标注为 siyuan-checkin，商店据此把它们归到「小驴打卡」一组。 ——
+    {moduleId: "checkin-today", title: "今日打卡", icon: "iconCheck", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall", "wide", "large"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 1}, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
+        {key: "group", label: "只看分组（留空为全部）", type: "text", defaults: ""},
+    ]},
+    {moduleId: "checkin-streak", title: "连续记录", icon: "iconRefresh", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 2}, configSchema: [
+        {key: "limit", label: "排行条数", type: "number", min: 1, max: 12, defaults: 6},
+    ]},
+    {moduleId: "checkin-year-heatmap", title: "打卡热力图", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, viewType: "heatmap", source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 3}, configSchema: [
+        {key: "yearOffset", label: "回溯年数", type: "number", min: 0, max: 5, defaults: 0},
+    ]},
+    {moduleId: "checkin-weekly", title: "本周打卡", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 4}, configSchema: [
+        {key: "limit", label: "显示周数", type: "number", min: 1, max: 12, defaults: 6},
+    ]},
+    {moduleId: "checkin-occasions", title: "近期事项", icon: "iconCheck", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 5}, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
+    ]},
 ]);
 
 function text(value, max = 128) {
@@ -242,6 +260,30 @@ function normalizeRefreshOn(value) {
         : [];
 }
 
+// 协议 v2.4：来源（source）是结构化插件身份，取代过去用 author 自由文本
+// 猜来源的做法。pluginId 是稳定分组键，name 是展示名，collection 用于同
+// 一个插件内再分系列（如「打卡」「番茄」），order 是组件在套件内的建议顺序。
+function normalizeSourceOrder(value) {
+    const raw = Number(value);
+    return Number.isFinite(raw) ? Math.min(999, Math.max(0, Math.trunc(raw))) : 0;
+}
+
+function normalizeSource(value) {
+    if (!value || typeof value !== "object") return null;
+    const pluginId = text(value.pluginId, 64).replace(/[^A-Za-z0-9._:-]/g, "");
+    const name = text(value.name, 64);
+    if (!pluginId && !name) return null;
+    return {
+        pluginId: pluginId || name,
+        name: name || pluginId,
+        icon: text(value.icon, 64),
+        version: text(value.version, 32),
+        homepage: normalizeHomepage(value.homepage),
+        collection: text(value.collection, 48),
+        order: normalizeSourceOrder(value.order),
+    };
+}
+
 function normalizeConfigSchema(value) {
     if (!Array.isArray(value)) return [];
     return value.slice(0, 8).reduce((fields, raw) => {
@@ -306,6 +348,7 @@ function normalizeModuleDefinition(value) {
         viewType: ["calendar", "weekdays", "media", "heatmap"].includes(value.viewType) ? value.viewType : "",
         author: text(value.author, 64),
         homepage: normalizeHomepage(value.homepage),
+        source: normalizeSource(value.source),
         clickCommand: normalizeClickCommand(value.clickCommand),
         configSchema: normalizeConfigSchema(value.configSchema),
         refreshOn: normalizeRefreshOn(value.refreshOn),

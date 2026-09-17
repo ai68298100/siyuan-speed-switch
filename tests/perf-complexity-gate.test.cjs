@@ -183,6 +183,13 @@ const SELF_CHECK_CALIBRATION_STEPS = 12;
 // 判别力地板：2x 规模应带来约 2.0 倍耗时。只断言 heavy > light 时，等规模夹具
 // 也会因计时噪声偶然通过（负向验证实测到这种假绿），故改为比值断言。
 const SELF_CHECK_MIN_RATIO = 1.5;
+// 满载重测次数：node --test 并发跑全量时 CPU 争用会抬高“轻负载”一侧的实测值
+// （本机实证：独立跑 light 7.27ms / heavy 14.88ms / ratio 2.05；verify 满载下
+// light 被抬到 10.51ms 而 heavy 不变 → ratio 1.42 假红）。这是测量环境噪声而非
+// 计时器失效，故取自至多 SELF_CHECK_MAX_ATTEMPTS 次测量中的最优比值（best-of-N）。
+// 判别力不受损：夹具真失效（两侧等规模）时比值恒 ≈1.0，任何一次重测都救不回来，
+// 且由兄弟用例 marginal rerun 钉住。
+const SELF_CHECK_MAX_ATTEMPTS = 3;
 
 function sumTo(n) {
     let acc = 0;
@@ -203,11 +210,18 @@ function calibrateSelfCheckIterations(floorMs) {
 test('perf gate fixture sanity: the harness distinguishes workload sizes (self-check)', (t) => {
     // 自适应标定：先找到本机上足以远离计时精度的迭代数，再比较 1× 与 2× 的耗时。
     const iterations = calibrateSelfCheckIterations(SELF_CHECK_FLOOR_MS);
-    const light = minTime(() => sumTo(iterations), 3);
-    const heavy = minTime(() => sumTo(iterations * 2), 3);
-    t.diagnostic(`self-check: ${iterations} iters, light ${light.toFixed(2)}ms, heavy ${heavy.toFixed(2)}ms, ratio=${(heavy / light).toFixed(2)}`);
-    assert.ok(heavy / light >= SELF_CHECK_MIN_RATIO,
-        `measurement harness must distinguish workload sizes (ratio ${(heavy / light).toFixed(2)} < ${SELF_CHECK_MIN_RATIO})`);
-    assert.ok(light >= SELF_CHECK_FLOOR_MS,
-        `light workload must stay well above timer precision (got ${light.toFixed(3)}ms, floor ${SELF_CHECK_FLOOR_MS}ms)`);
+    let best = null;
+    for (let attempt = 1; attempt <= SELF_CHECK_MAX_ATTEMPTS; attempt += 1) {
+        const light = minTime(() => sumTo(iterations), 3);
+        const heavy = minTime(() => sumTo(iterations * 2), 3);
+        const ratio = heavy / light;
+        t.diagnostic(`self-check attempt ${attempt}/${SELF_CHECK_MAX_ATTEMPTS}: ${iterations} iters, light ${light.toFixed(2)}ms, heavy ${heavy.toFixed(2)}ms, ratio=${ratio.toFixed(2)}`);
+        if (!best || ratio > best.ratio) best = {attempt, light, heavy, ratio};
+        if (best.ratio >= SELF_CHECK_MIN_RATIO) break;
+    }
+    t.diagnostic(`self-check best: ratio=${best.ratio.toFixed(2)} (attempt ${best.attempt})`);
+    assert.ok(best.ratio >= SELF_CHECK_MIN_RATIO,
+        `measurement harness must distinguish workload sizes (ratio ${best.ratio.toFixed(2)} < ${SELF_CHECK_MIN_RATIO} after ${SELF_CHECK_MAX_ATTEMPTS} attempts)`);
+    assert.ok(best.light >= SELF_CHECK_FLOOR_MS,
+        `light workload must stay well above timer precision (got ${best.light.toFixed(3)}ms, floor ${SELF_CHECK_FLOOR_MS}ms)`);
 });

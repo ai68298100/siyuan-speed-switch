@@ -189,6 +189,68 @@
     }
 }
 
+// 来源插件小标题：待安装区同一插件的多个组件共用一个来源标题，避免孤立方卡平铺。
+// 它是网格里的整行元素，靠 grid-column 占满一行，不与卡片抢列。
+.sw-home-store__provider {
+    grid-column: 1 / -1;
+    margin: 8px 0 2px;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+// 来源组头：图标 + 名称 + 已添加计数 + 全选本组。
+.sw-home-store__group-icon {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    fill: currentColor;
+    box-sizing: border-box;
+}
+
+.sw-home-store__group-progress {
+    flex: 0 0 auto;
+    margin: 0 8px;
+    box-sizing: border-box;
+    min-width: 0;
+    font-size: 10px;
+    font-weight: 450;
+    line-height: 1.35;
+    opacity: .78;
+    font-variant-numeric: tabular-nums;
+}
+
+.sw-home-store__group-select {
+    flex: 0 0 auto;
+    margin-right: 4px;
+    padding: 0 6px;
+    min-height: 22px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    box-sizing: border-box;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+
+    &:hover,
+    &:focus-visible {
+        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+        color: var(--b3-theme-primary);
+        outline: none;
+    }
+}
+
 .sw-home-store__summary {
     margin: 8px 0 2px;
     box-sizing: border-box;
