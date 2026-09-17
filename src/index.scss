@@ -1,12 +1,18 @@
 // 小驴速切样式清单：按原文件顺序切片，勿调整顺序（顺序即层叠顺序）。
 // 各切片内容由 tests/source-scan.cjs 组合为单一视图供契约断言使用。
+// 切片为原文件的时间累积片段（跨域），文件名取主体内容；逐域明细：
+//   01 基础动画与控件、快速选择器  02 设置页收藏与标签布局
+//   03 切换器弹窗内部（桌面+手机）与手机全局  04 悬浮球、全屏模式、现代柔和视觉层
+//   05 设置页视觉、减动效、分组排序、第二面板起步  06 手机顶栏芯片、排序浮层、小组件画布、商店画廊
+//   07 侧栏工具栏、组件面板、商店分区  08 首页问候、快速记录、商店卡片
+//   09 商店实时预览、面板交互打磨、周打卡、高对比
 @use "styles/00-tokens" as *;
-@use "styles/01-chunk" as *;
-@use "styles/02-chunk" as *;
-@use "styles/03-chunk" as *;
-@use "styles/04-chunk" as *;
-@use "styles/05-chunk" as *;
-@use "styles/06-chunk" as *;
-@use "styles/07-chunk" as *;
-@use "styles/08-chunk" as *;
-@use "styles/09-chunk" as *;
+@use "styles/01-base-controls" as *;
+@use "styles/02-settings" as *;
+@use "styles/03-switcher-mobile" as *;
+@use "styles/04-fab-fullscreen-soft" as *;
+@use "styles/05-settings-widgets" as *;
+@use "styles/06-widgets-store" as *;
+@use "styles/07-sidebar-panel-store" as *;
+@use "styles/08-home-store-cards" as *;
+@use "styles/09-store-preview-polish" as *;

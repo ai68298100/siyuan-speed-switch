@@ -17,7 +17,7 @@
 - 门禁新增/修改按 `docs/gate-audit-checklist.md` + 负向验证三件套（精确 FAIL＋兄弟不波及＋旧写法仍绿；注入须外科式、同源）。
 - 读源码走 `tests/source-scan.cjs` 的 `readSourceText`/`readSourceFile`（CRLF 归一＋剥注释；docs/JSON 不迁）；裸读须登记 `SOURCE_SCAN_DEBT`（覆盖度由 source-scan-coverage 冻结，当前仅 4 条合法例外）。`.cjs` 助手 require 必须写全扩展名。
 - 存储 key 恒 13（`KEY_ORDER`，字面量钉住）；细节与迁移时间线看 `docs/storage-compatibility-matrix.md`（双向文档契约）。
-- 含反斜杠/`$'…'` 的检查一律写脚本落盘执行；"命中 0"当可疑信号。Git Bash heredoc 还会吃正则 `\)`——注入/对比脚本的正则退化为字符串 `find` 或落盘执行；**多行切片验证必须行数/md5 双断言**（CRLF `newline=""` 口径下反向找闭合行会报伪失败，P1-1b 自证脚本实例）。
+- 含反斜杠/`$'…'` 的检查一律写脚本落盘执行；"命中 0"当可疑信号。Git Bash heredoc 还会吃正则 `\)`——注入/对比脚本的正则退化为字符串 `find` 或落盘执行；**多行切片验证必须行数/md5 双断言**（CRLF `newline=""` 口径下反向找闭合行会报伪失败，P1-1b 自证脚本实例）。**CRLF 改写姿势：检测行尾 → 只改目标 → 写回前断言行尾纯净（无 `\r\r\n`、无裸 `\n`）**——对已 CRLF 文本再 `replace('\n','\r\n')` 会双重损坏且工具不可见（P1-4 清单脚本实例）。
 - **文档治理（2026-09-17 起）**：事实源 = `ROADMAP.md`（方向）+ `BLOCKERS.md`（阻塞）+ `docs/adr/`（决策）+ `docs/dev-plan-*.md`（当期任务账本）+ `docs/acceptance-log.md`（验收流水）；`docs/archive/` 是**冻结快照、只读不追加**。任务号 T-xxxx 继续递增但**不回写**归档账本。根目录 Markdown 受 `tests/root-doc-budget.test.cjs` 约束。
 
 ## 门禁方法论精华（33 条全录见 2026-09 日志）
@@ -31,6 +31,7 @@
 - **验证工具自身也会出缺陷，且缺陷型与产品代码同构**：负向验证脚本里 `for ... fails in results` 重新绑定了外层 `fails`，使"还原后全绿"误报 False——与 P1-1a 的 `renderMobileList` 影子绑定同类。**注入设计也必须能隔离目标分支**：200 KiB 会同时踩单文件与合计两条上限，须选只踩一条的量级（160 KiB）。
 
 ## 当前状态（2026-09-17 下午·本会话实测）
+- **P1-4 已交付（T-6296，ADR 0053）**：样式切片语义重命名 `_01-base-controls` … `_09-store-preview-polish`（序号前缀保留）。**切片是时间累积片段、单切片横跨多域**，只能"序号+主体内容"命名，不能按五个单域映射；跨域明细记在清单注释。`readStyleSource()` 数据驱动对改名透明，`dist/index.css` md5 不变即零漂移。
 - **P1-1b 已交付（T-6295，ADR 0052）**：`openSecondPanel`（601 行体）搬入新模块 `src/second-panel-ui.ts`（宽宿主接口 `SecondPanelUiHost`：9 状态字段 + 11 方法签名，纯读单入口故**改判**不先拆状态宿主）；`index.ts` **8702 → 8104 行**。类静态成员 `HOME_ACCENTS` 用转发字段 `homeAccents` 解决。599 行体换行归一逐字节相等（仅 2 处授权替换）；契约改指 9 个测试文件（每条实证，零人工裁定）；负向抽样 23/2 精确 FAIL 全 PASS；verify:release EXIT=0。生产图天花板 45→46。
 - **P1-1a 已交付（T-6291，ADR 0048）**：移动端切换器群 525 行搬入新模块 `src/mobile-switcher-ui.ts`，`index.ts` **9226 → 8701 行**。tsc 0 错误 / 5872 全绿 / smoke 70 / **verify:release 全链绿**。
 - **两条可直接复用的硬教训**：① `this.X(` → `X.call(this, ` 的机械替换，遇同作用域同名局部闭包会指向自身→运行时爆栈且 **tsc 零报错**，迁移脚本必须先做「影子绑定」扫描；② 契约同步不能只扫 `includes('...')`，还有**双引号字符串**与 **`match` 计数式**两种形式，务必分形式扫。
