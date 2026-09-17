@@ -298,6 +298,7 @@
   "homeDescGithub": "Reads GitHub's public event feed and summarizes contributions per week; the optional token travels in a request header and never enters the URL, cache, or error messages, 1-hour cache",
   "homeGithubConfigHint": "Enter your GitHub username first",
   "homeGithubEmpty": "No contribution data available",
+  "homeGithubStat": "Contributions in window",
   "homeIcal": "iCal schedule",
   "homeDescIcal": "Reads the schedule from a user-provided .ics subscription URL for the upcoming window; the URL is only used to fetch schedule text, 30-minute cache",
   "homeIcalConfigHint": "Enter an iCal (.ics) subscription URL first; HTTPS public or local addresses are supported, no API key required",

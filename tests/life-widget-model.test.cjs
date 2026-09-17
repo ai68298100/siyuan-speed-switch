@@ -431,3 +431,31 @@ test("GitHub contribution snapshot rejects unusable payloads and configs", () =>
     assert.equal(model.buildGithubContribSnapshot("[]", {username: "torvalds"}), null);
     assert.equal(model.buildGithubContribSnapshot("[]", {username: "bad_name"}), null);
 });
+
+
+// --- GitHub 贡献热力图格点（P3-1）：layout=grid 布局 ---
+test("GitHub heatmap layout emits week-aligned bounded cells", () => {
+    const text = JSON.stringify([
+        {type: "PushEvent", created_at: "2026-09-15T08:00:00Z", payload: {size: 4}},
+        {type: "WatchEvent", created_at: "2026-09-15T09:00:00Z"},
+        {type: "CreateEvent", created_at: "2026-09-10T08:00:00Z"},
+    ]);
+    const snapshot = model.buildGithubContribSnapshot(text, {username: "torvalds", layout: "grid"}, {title: "GitHub 贡献", stat: "窗口内贡献总数"}, Date.parse("2026-09-16T12:00:00Z"), "cached");
+    assert.equal(snapshot.items.length % 7, 0, "cells must be week-aligned");
+    assert.ok(snapshot.items.length >= 84 && snapshot.items.length <= 371, `bounded cell count: ${snapshot.items.length}`);
+    const active = snapshot.items.filter((cell) => cell.count > 0);
+    assert.equal(active.length, 2, "star must not count as a contribution");
+    assert.equal(active.find((cell) => cell.label === "2026-09-15").count, 4);
+    assert.equal(active.find((cell) => cell.label === "2026-09-10").level, 1);
+    assert.equal(snapshot.stat.value, "5");
+    assert.equal(snapshot.stat.label, "窗口内贡献总数");
+    assert.ok(snapshot.title.includes("torvalds"), "title carries the username for the module header");
+    assert.equal(snapshot.sourceHealth, "cached");
+});
+
+test("GitHub heatmap grid stays bounded at the longest window", () => {
+    const events = [{type: "PushEvent", created_at: "2026-09-15T08:00:00Z", payload: {size: 3}}];
+    const snapshot = model.buildGithubContribSnapshot(JSON.stringify(events), {username: "torvalds", windowDays: 366, layout: "grid"}, {}, Date.parse("2026-09-16T12:00:00Z"));
+    assert.ok(snapshot.items.length <= 371, `371-cell cap: ${snapshot.items.length}`);
+    assert.ok(snapshot.items.some((cell) => cell.outside === true), "padding cells are flagged outside the window");
+});

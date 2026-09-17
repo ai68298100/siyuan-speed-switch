@@ -78,7 +78,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "windowDays", label: "日程窗口（天）", type: "number", min: 1, max: 60, defaults: 14},
         {key: "maxEvents", label: "条目上限", type: "number", min: 1, max: 12, defaults: 6},
     ]},
-    {moduleId: "external-github-contrib", title: "GitHub 贡献", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-github-contrib", title: "GitHub 贡献", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, viewType: "heatmap", configSchema: [
         {key: "username", label: "GitHub 用户名", type: "text", defaults: ""},
         {key: "windowDays", label: "统计窗口（天）", type: "number", min: 28, max: 366, defaults: 84},
         {key: "token", label: "个人访问令牌（可选，仅经请求头传递）", type: "text", defaults: ""},
@@ -303,7 +303,7 @@ function normalizeModuleDefinition(value) {
         description: text(value.description, 96),
         availability,
         protocolVersion: normalizeProtocolVersion(value.protocolVersion),
-        viewType: ["calendar", "weekdays", "media"].includes(value.viewType) ? value.viewType : "",
+        viewType: ["calendar", "weekdays", "media", "heatmap"].includes(value.viewType) ? value.viewType : "",
         author: text(value.author, 64),
         homepage: normalizeHomepage(value.homepage),
         clickCommand: normalizeClickCommand(value.clickCommand),

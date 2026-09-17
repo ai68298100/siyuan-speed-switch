@@ -411,6 +411,9 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
 const {parseIcsEvents, upcomingIcalEvents, normalizeIcalSubscriptionConfig} = require("./ical-model.js");
 const {normalizeGithubContribConfig, parseGithubEvents, buildContributionGrid} = require("./github-model.js");
 
+// 热力图格点上限：窗口最长 366 天 → 至多 53 周 × 7 = 371 格（有界，防止条目无限增长）。
+const GITHUB_GRID_MAX_CELLS = 371;
+
 function buildIcalSnapshot(icsText, config, labels = {}, now = Date.now(), status = "fresh") {
     const normalized = normalizeIcalSubscriptionConfig(config);
     const parsed = parseIcsEvents(icsText);
@@ -453,6 +456,25 @@ function buildGithubContribSnapshot(eventsText, config, labels = {}, now = Date.
     const parsed = parseGithubEvents(eventsText);
     if (!parsed.ok) return null;
     const grid = buildContributionGrid(parsed.daily, {windowDays: normalized.windowDays}, now);
+    // 布局：config.layout === "grid" → 格点热力图（视图层按 viewType=heatmap 渲染）；
+    // 其余（含缺省）保持周汇总列表，既有契约不受影响。
+    if (config && config.layout === "grid") {
+        const cells = grid.cells.slice(0, GITHUB_GRID_MAX_CELLS).map((cell) => ({
+            label: cell.date,
+            count: cell.count,
+            level: cell.level,
+            ...(cell.level === -1 ? {outside: true} : {}),
+        }));
+        const baseTitle = boundedText(labels.title, 96) || "GitHub 贡献";
+        return {
+            title: normalized.username ? `${baseTitle} · ${normalized.username}` : baseTitle,
+            items: cells,
+            emptyHint: "",
+            stat: {value: String(grid.total), label: boundedText(labels.stat, 96) || "窗口内贡献"},
+            updatedAt: now,
+            sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
+        };
+    }
     const weeks = [];
     for (let i = 0; i + 7 <= grid.cells.length; i += 7) {
         const row = grid.cells.slice(i, i + 7).filter((cell) => cell.level !== -1);

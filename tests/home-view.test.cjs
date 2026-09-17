@@ -409,3 +409,36 @@ test("home view reuses the cached updated-at formatter across cards", () => {
     assert.equal(formatUpdatedAt(-1), "");
     assert.equal(formatUpdatedAt(Number.NaN), "");
 });
+
+
+test("home view renders a contribution heatmap for viewType heatmap", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const items = [
+        {label: "2026-09-14", count: 0, level: 0},
+        {label: "2026-09-15", count: 4, level: 2},
+        {label: "2026-09-16", count: 12, level: 4},
+        {label: "", count: 0, level: -1, outside: true},
+    ];
+    const view = buildHomeModuleView({moduleId: "external-github-contrib", title: "GitHub 贡献", viewType: "heatmap"}, {ok: true, snapshot: {items}});
+    assert.equal(view.viewType, "heatmap", "view whitelist must retain the catalog viewType");
+    const root = renderHomeModuleView(dom.window.document, view);
+    const grid = root.querySelector(".sw__home-heatmap");
+    assert.ok(grid, "heatmap grid present");
+    const cells = grid.querySelectorAll(".sw__home-heatmap-cell");
+    assert.equal(cells.length, 4, "week-alignment placeholders survive normalization");
+    assert.equal(grid.querySelectorAll(".is-level-2").length, 1);
+    assert.equal(grid.querySelectorAll(".is-level-4").length, 1);
+    assert.equal(grid.querySelectorAll(".is-outside").length, 1);
+    assert.equal(cells[1].getAttribute("aria-label"), "2026-09-15 4 次贡献");
+    assert.equal(cells[0].getAttribute("aria-label"), "2026-09-14 无贡献");
+});
+
+test("heatmap lifts the item ceiling without loosening other view types", () => {
+    const make = (count) => Array.from({length: count}, (_, index) => ({label: `2026-01-${String((index % 28) + 1).padStart(2, "0")}`, count: 1, level: 1}));
+    const heatmap = buildHomeModuleView({moduleId: "external-github-contrib", title: "GitHub", viewType: "heatmap"}, {ok: true, snapshot: {items: make(200)}});
+    assert.equal(heatmap.items.length, 200, "heatmap may exceed the 24/42 list ceilings");
+    const capped = buildHomeModuleView({moduleId: "external-github-contrib", title: "GitHub", viewType: "heatmap"}, {ok: true, snapshot: {items: make(600)}});
+    assert.equal(capped.items.length, 371, "hard cap still applies");
+    const list = buildHomeModuleView({moduleId: "tasks", title: "Tasks"}, {ok: true, snapshot: {items: Array.from({length: 60}, (_, index) => ({label: `Task ${index}`}))}});
+    assert.equal(list.items.length, 24, "list ceiling unchanged");
+});

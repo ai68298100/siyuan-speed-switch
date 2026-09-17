@@ -2,6 +2,9 @@
 
 const MAX_ITEMS = 24;
 const CALENDAR_MAX_ITEMS = 42;
+// 热力图格点上限：窗口最长 366 天 → 至多 53 周 × 7 = 371；HARD 为全局硬顶，防条目无限增长。
+const HEATMAP_MAX_ITEMS = 371;
+const HARD_ITEM_CEILING = 400;
 const MAX_TEXT = 256;
 const STATUSES = new Set(["loading", "ready", "empty", "error"]);
 let renderSequence = 0;
@@ -101,7 +104,7 @@ function normalizeHomeViewResult(value, options = {}) {
     const rawSnapshot = source.snapshot && typeof source.snapshot === "object" ? source.snapshot : {};
     const rawItems = Array.isArray(rawSnapshot.items) ? rawSnapshot.items : [];
     const requestedMax = Number.isFinite(options.maxItems) ? Math.trunc(options.maxItems) : MAX_ITEMS;
-    const maxItems = Math.min(CALENDAR_MAX_ITEMS, Math.max(1, requestedMax));
+    const maxItems = Math.min(HARD_ITEM_CEILING, Math.max(1, requestedMax));
     const items = rawItems.slice(0, maxItems).map((item) => {
         const entry = {
             label: text(item?.label),
@@ -117,6 +120,8 @@ function normalizeHomeViewResult(value, options = {}) {
         if (item?.outside === true) entry.outside = true;
         if (["off", "work"].includes(item?.holiday)) entry.holiday = item.holiday;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
+        // level 由模型层量化（如 GitHub 贡献的 0~4 档），视图只透传不重写阈值，避免第二事实源；-1 = 窗口外。
+        if (Number.isFinite(item?.level)) entry.level = Math.min(4, Math.max(-1, Math.trunc(item.level)));
         if (Number.isFinite(item?.rank) && item.rank > 0) entry.rank = Math.min(9999, Math.trunc(item.rank));
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
@@ -153,9 +158,10 @@ function buildHomeModuleView(module, result, options = {}) {
     const moduleId = text(definition.moduleId, 64);
     if (!moduleId) return null;
     const isCalendar = definition.viewType === "calendar";
+    const isHeatmap = definition.viewType === "heatmap";
     const normalized = normalizeHomeViewResult(result, {
-        keepEmptyItems: isCalendar,
-        maxItems: isCalendar ? CALENDAR_MAX_ITEMS : MAX_ITEMS,
+        keepEmptyItems: isCalendar || isHeatmap,
+        maxItems: isHeatmap ? HEATMAP_MAX_ITEMS : isCalendar ? CALENDAR_MAX_ITEMS : MAX_ITEMS,
     });
     return {
         moduleId,
@@ -163,7 +169,7 @@ function buildHomeModuleView(module, result, options = {}) {
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
-        viewType: ["calendar", "weekdays", "media"].includes(definition.viewType) ? definition.viewType : "",
+        viewType: ["calendar", "weekdays", "media", "heatmap"].includes(definition.viewType) ? definition.viewType : "",
         status: normalized.status,
         stat: normalized.stat,
         cached: normalized.cached,
@@ -197,6 +203,8 @@ function renderHomeModuleView(doc, view, options = {}) {
         nextMonth: "下月",
         today: "今天",
         hasJournal: "有日记",
+        heatmapEmpty: "无贡献",
+        heatmapUnit: "次贡献",
         ...(options.labels && typeof options.labels === "object" ? options.labels : {}),
     };
     const root = doc.createElement("section");
@@ -424,6 +432,27 @@ function renderHomeModuleView(doc, view, options = {}) {
                 cell.dataset.focusKey = `calendar-day-${index}`;
                 cell.addEventListener("click", () => options.onItem(item, view));
             }
+            grid.appendChild(cell);
+        });
+        body.appendChild(grid);
+        root.appendChild(body);
+        return root;
+    }
+    if (view.status === "ready" && view.viewType === "heatmap") {
+        // 贡献热力图：列=周、行=周日~周六；格点强弱取自模型层量化的 level（视图不重写阈值）。
+        const grid = doc.createElement("div");
+        grid.className = "sw__home-heatmap";
+        grid.setAttribute("role", "grid");
+        (Array.isArray(view.items) ? view.items : []).forEach((item) => {
+            const rawLevel = Number.isFinite(item.level) ? Math.trunc(item.level) : 0;
+            const level = Math.min(4, Math.max(0, rawLevel));
+            const cell = doc.createElement("span");
+            cell.className = "sw__home-heatmap-cell is-level-" + level + (item.outside === true ? " is-outside" : "");
+            cell.setAttribute("role", "gridcell");
+            if (item.outside === true) cell.setAttribute("aria-hidden", "true");
+            const count = Number.isFinite(item.count) ? Math.trunc(item.count) : 0;
+            const detail = count > 0 ? `${count} ${labels.heatmapUnit}` : labels.heatmapEmpty;
+            cell.setAttribute("aria-label", [item.label, detail].filter(Boolean).join(" "));
             grid.appendChild(cell);
         });
         body.appendChild(grid);

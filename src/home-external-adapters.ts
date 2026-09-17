@@ -236,7 +236,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
             }
         }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         // GitHub 贡献：官方公开事件流（免 Key，可选 Token 走请求头）。分页抓取经内核代理，
-        // 事件流按周汇总为列表；60 分钟缓存，失效回退 stale。
+        // 事件流按 UTC 日期桶聚合为格点热力图；60 分钟缓存，失效回退 stale。
         register("external-github-contrib", this.i18n.homeGithub, "iconGraph", this.i18n.homeDescGithub, [], async (config, _device, context) => {
             const normalized = normalizeGithubContribConfig(config);
             if (!normalized.ok) return {emptyHint: this.i18n.homeGithubConfigHint, items: []};
@@ -245,7 +245,8 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     signal: context?.signal,
                     fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
                 });
-                const snapshot = buildGithubContribSnapshot(envelope.text, normalized, {empty: this.i18n.homeGithubEmpty}, undefined, envelope.status);
+                // P3-1：格点热力图布局（viewType=heatmap 渲染）；周汇总保留为模型层默认路径。
+                const snapshot = buildGithubContribSnapshot(envelope.text, {...normalized, layout: "grid"}, {title: this.i18n.homeGithub, empty: this.i18n.homeGithubEmpty, stat: this.i18n.homeGithubStat}, undefined, envelope.status);
                 if (!snapshot) throw new Error("invalid_github_payload");
                 return snapshot;
             } catch (error) {

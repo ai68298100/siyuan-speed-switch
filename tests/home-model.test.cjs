@@ -243,3 +243,10 @@ test("default modules include an offline three-surface local clock", () => {
     assert.deepEqual(clock.sizes, ["xs", "small", "medium"]);
     assert.equal(home.normalizeModuleDefinition(clock).availability, "ready");
 });
+
+
+test("GitHub contribution module is declared as a heatmap view", () => {
+    const github = home.registerModules([]).find((item) => item.moduleId === "external-github-contrib");
+    assert.ok(github, "external-github-contrib registered");
+    assert.equal(github.viewType, "heatmap", "rendered by the heatmap renderer");
+});

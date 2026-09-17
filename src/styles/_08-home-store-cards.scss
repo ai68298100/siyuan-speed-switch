@@ -403,3 +403,44 @@
 
 // Bangumi 每日放送：真实封面媒体网格，接近平板系统小组件的信息密度；
 // 图片只允许 life-widget 模型与 view 双重校验后的 lain.bgm.tv HTTPS 封面。
+
+// ==================== 贡献热力图（GitHub 公开事件流） ====================
+// 方向：列=周、行=周日~周六（grid-auto-flow: column + 7 行），与 GitHub 网页一致。
+// level 由模型层量化（0~4 档），这里只做视觉映射、不重写阈值；
+// 窗口外格 is-outside 仅占位（对齐周日），不参与层级配色。
+// 周数多时横向滚动而非压缩格点，避免窄屏下格子变形失真。
+.sw__home-heatmap {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 1fr);
+    gap: 2px;
+    padding: 2px 0;
+    overflow-x: auto;
+
+    .sw__home-heatmap-cell {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--b3-border-color) 55%, transparent);
+
+        &.is-level-1 {
+            background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 22%, var(--b3-theme-surface, #fff));
+        }
+
+        &.is-level-2 {
+            background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 45%, var(--b3-theme-surface, #fff));
+        }
+
+        &.is-level-3 {
+            background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 68%, var(--b3-theme-surface, #fff));
+        }
+
+        &.is-level-4 {
+            background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 92%, var(--b3-theme-surface, #fff));
+        }
+
+        &.is-outside {
+            background: transparent;
+        }
+    }
+}
