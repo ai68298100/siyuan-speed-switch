@@ -575,23 +575,31 @@ test('store resolves group descriptions independently of availability', () => as
 test('store exposes other built-in description', () => assert.match(storeSource,/this\.i18n\.homeStoreGroupOtherHint/));
 test('store exposes plugin group description', () => assert.match(storeSource,/this\.i18n\.homeStoreGroupPluginHint/));
 test('store keeps group descriptions separate from filter tabs', () => { assert.ok(storeSource.includes('const groupDescriptionOf ='), '分组描述解析器缺失'); assert.ok(storeSource.includes('buildHomeStoreTabCounts('), '页签计数机制缺失'); });
-test('store builds ready groups from ready cards', () => { const i = storeSource.indexOf('const readyGroups = new Map<string, HTMLElement[]>();'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 500); assert.ok(w.includes('ready.forEach'), 'readyGroups 须由 ready 卡构建'); });
+test('store builds ready groups from ready cards', () => {
+    const start = storeSource.indexOf('const readyGroups = new Map');
+    const end = storeSource.indexOf('const readyGroupSources = new Map');
+    assert.ok(start >= 0 && end > start, '须能定位到 ready 分桶块');
+    const block = storeSource.slice(start, end);
+    assert.ok(block.includes('ready.forEach'), 'readyGroups 须由 ready 卡构建');
+    assert.ok(block.includes('push({moduleId, card: buildReadyCard(moduleId, def)})'),
+        '组内须同时保留 moduleId，才能按来源模型给出的顺序重排');
+});
 test('store creates missing ready group buckets', () => assert.match(storeSource,/if \(!readyGroups\.has\(label\)\) readyGroups\.set\(label, \[\]\)/));
-test('store appends cards into matching group', () => assert.match(storeSource,/readyGroups\.get\(label\)!\.push\(buildReadyCard\(moduleId, def\)\)/));
+test('store appends cards into matching group', () => assert.match(storeSource,/readyGroups\.get\(label\)!\.push\(\{moduleId, card: buildReadyCard\(moduleId, def\)\}\)/));
 test('store orders built-in groups before plugin groups', () => assert.match(storeSource,/\.\.\.BUILTIN_GROUPS\.map\(\(group\) => group\.label\)\.filter\(\(label\) => readyGroups\.has\(label\)\)/));
 test('store retains unknown groups after built-in groups', () => assert.match(storeSource,/const extraGroupLabels = \[\.\.\.readyGroups\.keys\(\)\]\.filter\(\(label\) => !BUILTIN_GROUPS\.some/));
 test('unknown groups keep deterministic order', () => assert.match(storeSource,/extraGroupLabels\.sort\(\(a, b\) => \{/));
 test('ordered groups append unknown groups last', () => assert.match(storeSource,/\.\.\.extraGroupLabels,/));
-test('store renders one heading per group', () => assert.match(storeSource,/orderedGroups\.forEach\(\(label\) => \{\s*const cards = readyGroups\.get\(label\)!/));
+test('store renders one heading per group', () => assert.match(storeSource,/orderedGroups\.forEach\(\(label\) => \{\s*const groupEntries = readyGroups\.get\(label\)!/));
 test('store group heading uses level three', () => assert.match(storeSource,/groupHeading\.setAttribute\("aria-level", "3"\)/));
 test('store group heading has stable positional id', () => assert.match(storeSource,/groupHeading\.id = `sw-home-store-group-heading-\$\{orderedGroups\.indexOf\(label\)\}`/));
 test('store group heading records group key', () => assert.match(storeSource,/groupHeading\.dataset\.group = label/));
-test('store group heading exposes item count', () => assert.match(storeSource,/groupHeading\.setAttribute\("aria-label", `\$\{label\} · \$\{cards\.length\}`\)/));
+test('store group heading exposes item count', () => assert.match(storeSource,/groupHeading\.setAttribute\("aria-label", `\$\{label\} · \$\{groupCount\}`\)/));
 test('store group heading references description for assistive tech', () => assert.match(storeSource,/groupHeading\.setAttribute\("aria-describedby", descriptionId\)/));
 test('store group description has dedicated class', () => assert.match(storeSource,/groupDescription\.className = "sw-home-store__group-description"/));
 test('store group description uses textContent', () => assert.match(storeSource,/groupDescription\.textContent = readyGroupDescriptions\.get\(label\)/));
 test('store group description has stable id', () => assert.match(storeSource,/const descriptionId = `sw-home-store-group-description-\$\{orderedGroups\.indexOf\(label\)\}`/));
-test('store group label exposes item count', () => assert.match(storeSource,/groupLabel\.textContent = `\$\{label\} · \$\{cards\.length\}`/));
+test('store group label exposes item count', () => assert.match(storeSource,/groupLabel\.textContent = `\$\{label\} · \$\{groupCount\}`/));
 test('store group toggle tracks collapsed state', () => assert.match(storeSource,/groupHeading\.dataset\.collapsed = String\(collapsedGroups\.has\(label\)\)/));
 test('store group toggle tracks expanded state', () => assert.match(storeSource,/groupToggle\.setAttribute\("aria-expanded", String\(!collapsedGroups\.has\(label\)\)\)/));
 test('store group toggle has stable group key', () => assert.match(storeSource,/groupToggle\.dataset\.group = label/));

@@ -57,36 +57,51 @@ function resolveHomeModuleSource(def) {
     return {key: BUILTIN_SOURCE_KEY, label: "", pluginId: "", icon: "", homepage: "", version: "", collection: "", order: 0, kind: "builtin"};
 }
 
+// 组内顺序（ADR 0057）：同一来源的多个组件按提供方建议的 source.order 升序排列，
+// order 相同时按 moduleId 字典序兜底——组内顺序因此与枚举顺序无关、可复现。
+// 旧注册没有 order（恒为 0）时退化为按 moduleId 字典序，行为依旧确定。
+function orderHomeStoreSourceEntries(entries) {
+    return (Array.isArray(entries) ? [...entries] : []).sort((left, right) => {
+        const leftSource = resolveHomeModuleSource(left && left.def);
+        const rightSource = resolveHomeModuleSource(right && right.def);
+        if (leftSource.order !== rightSource.order) return leftSource.order - rightSource.order;
+        const leftId = String((left && left.moduleId) || "");
+        const rightId = String((right && right.moduleId) || "");
+        return leftId < rightId ? -1 : leftId > rightId ? 1 : 0;
+    });
+}
+
 // 按来源聚合组件。entries: [{moduleId, def, added}]；返回数组（非 Map），顺序确定。
+// 组内成员顺序由 orderHomeStoreSourceEntries 决定（source.order 升序）。
+// 组对象只保留渲染层真正读取的字段——未消费的聚合字段一律不挂，避免名不副实的死字段。
 function buildHomeStoreSourceGroups(entries) {
-    const groups = new Map();
+    const buckets = new Map();
     (Array.isArray(entries) ? entries : []).forEach((entry) => {
         if (!entry || typeof entry !== "object") return;
         const source = resolveHomeModuleSource(entry.def);
         if (source.kind !== "plugin") return;
-        if (!groups.has(source.key)) {
-            groups.set(source.key, {
-                key: source.key,
-                label: source.label,
-                icon: source.icon,
-                pluginId: source.pluginId,
-                homepage: source.homepage,
-                version: source.version,
-                collection: source.collection,
-                kind: source.kind,
-                order: source.order,
-                moduleIds: [],
-                count: 0,
-                addedCount: 0,
-            });
-        }
-        const group = groups.get(source.key);
-        group.moduleIds.push(String(entry.moduleId || ""));
-        group.count += 1;
-        if (entry.added) group.addedCount += 1;
-        if (source.order > 0 && (group.order === 0 || source.order < group.order)) group.order = source.order;
+        if (!buckets.has(source.key)) buckets.set(source.key, {source, members: []});
+        buckets.get(source.key).members.push(entry);
     });
-    return orderHomeStoreSourceGroups([...groups.values()]);
+    const groups = [...buckets.values()].map(({source, members}) => {
+        const group = {
+            key: source.key,
+            label: source.label,
+            icon: source.icon,
+            pluginId: source.pluginId,
+            kind: source.kind,
+            moduleIds: [],
+            count: 0,
+            addedCount: 0,
+        };
+        orderHomeStoreSourceEntries(members).forEach((entry) => {
+            group.moduleIds.push(String(entry.moduleId || ""));
+            group.count += 1;
+            if (entry.added) group.addedCount += 1;
+        });
+        return group;
+    });
+    return orderHomeStoreSourceGroups(groups);
 }
 
 // 稳定排序：来源组之间不依赖插入顺序——组件多的来源在前，其次按来源名字典序。
@@ -99,10 +114,10 @@ function orderHomeStoreSourceGroups(groups) {
     });
 }
 
-// 来源名纳入搜索文本：搜「小驴打卡」能命中该来源下的全部组件。
+// 来源名与子系列名纳入搜索文本：搜「小驴打卡」或某个 collection 名都能命中该来源下的组件。
 function buildHomeStoreSourceSearchText(def) {
     const source = resolveHomeModuleSource(def);
-    return `${source.label} ${source.pluginId}`.trim().toLowerCase();
+    return [source.label, source.pluginId, source.collection].filter(Boolean).join(" ").toLowerCase();
 }
 
 // 「需安装插件后可用」分区按来源插件聚合，避免同一插件的多个组件平铺成一堆孤立方卡。
@@ -138,6 +153,7 @@ module.exports = {
     BUILTIN_SOURCE_KEY,
     resolveHomeModuleSource,
     buildHomeStoreSourceGroups,
+    orderHomeStoreSourceEntries,
     orderHomeStoreSourceGroups,
     buildHomeStoreSourceSearchText,
     buildHomeStoreProviderGroups,

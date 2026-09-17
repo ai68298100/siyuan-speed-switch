@@ -99,3 +99,16 @@ test('other hint is localized in both languages', () => {
 test('legacy capture label is no longer a functional group', () => assert.equal(zh.homeStoreGroupCapture, undefined));
 test('legacy news label is no longer a functional group', () => assert.equal(zh.homeStoreGroupNews, undefined));
 test('legacy focus label is no longer a functional group', () => assert.equal(zh.homeStoreGroupFocus, undefined));
+
+test('source group cards are rendered in the model order', () => {
+    assert.match(storeUiSource, /const orderedCards = sourceMeta && sourceMeta\.moduleIds\.length/,
+        '来源组卡片顺序须来自纯模型的 moduleIds（source.order 升序）');
+    assert.match(storeUiSource, /groupEntries\.find\(\(item: any\) => item\.moduleId === id\)/,
+        '组内卡片须按 moduleId 与模型顺序对齐');
+});
+
+test('source group ordering falls back instead of dropping cards', () => {
+    assert.match(storeUiSource, /orderedCards\.length === groupEntries\.length/,
+        '映射数量与组内数量不一致时须回退原顺序，不能让卡片消失');
+    assert.match(storeUiSource, /groupEntries\.map\(\(item: any\) => item\.card\)/);
+});

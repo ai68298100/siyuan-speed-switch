@@ -994,13 +994,13 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             };
 
             // 按组渲染：组头（含数量）+ 组内网格；搜索过滤沿用卡片隐藏逻辑
-            const readyGroups = new Map<string, HTMLElement[]>();
+            const readyGroups = new Map<string, Array<{moduleId: string; card: HTMLElement}>>();
             const readyGroupDescriptions = new Map<string, string>();
             ready.forEach(({moduleId, def}) => {
                 const label = groupOf(moduleId, def);
                 if (!readyGroups.has(label)) readyGroups.set(label, []);
                 if (!readyGroupDescriptions.has(label)) readyGroupDescriptions.set(label, groupDescriptionOf(moduleId, def));
-                readyGroups.get(label)!.push(buildReadyCard(moduleId, def));
+                readyGroups.get(label)!.push({moduleId, card: buildReadyCard(moduleId, def)});
             });
             // 来源组的附加信息（图标/已添加计数/成员）来自纯模型，渲染层只负责呈现。
             const readyGroupSources = new Map<string, any>();
@@ -1018,7 +1018,8 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 ...extraGroupLabels,
             ];
             orderedGroups.forEach((label) => {
-                const cards = readyGroups.get(label)!;
+                const groupEntries = readyGroups.get(label)!;
+                const groupCount = groupEntries.length;
                 const groupHeading = document.createElement("h3");
                 groupHeading.className = "sw-home-store__group";
                 groupHeading.setAttribute("role", "heading");
@@ -1026,12 +1027,12 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 groupHeading.id = `sw-home-store-group-heading-${orderedGroups.indexOf(label)}`;
                 groupHeading.dataset.group = label;
                 groupHeading.dataset.collapsed = String(collapsedGroups.has(label));
-                groupHeading.setAttribute("aria-label", `${label} · ${cards.length}`);
+                groupHeading.setAttribute("aria-label", `${label} · ${groupCount}`);
                 const descriptionId = `sw-home-store-group-description-${orderedGroups.indexOf(label)}`;
                 groupHeading.setAttribute("aria-describedby", descriptionId);
                 const groupLabel = document.createElement("span");
                 groupLabel.className = "sw-home-store__group-label";
-                groupLabel.textContent = `${label} · ${cards.length}`;
+                groupLabel.textContent = `${label} · ${groupCount}`;
                 const groupDescription = document.createElement("span");
                 groupDescription.className = "sw-home-store__group-description";
                 groupDescription.id = descriptionId;
@@ -1046,6 +1047,18 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 groupToggle.title = groupToggle.getAttribute("aria-label") || "";
                 groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
                 const sourceMeta = readyGroupSources.get(label);
+                // 来源组的组内顺序由纯模型决定（source.order 升序）。映射结果与组内
+                // 数量不一致时回退原顺序：不同来源可能撞同一个展示名（label 键相同），
+                // 宁可不排序，也不能让卡片在渲染中消失。
+                const orderedCards = sourceMeta && sourceMeta.moduleIds.length
+                    ? sourceMeta.moduleIds
+                        .map((id: string) => groupEntries.find((item: any) => item.moduleId === id))
+                        .filter(Boolean)
+                        .map((item: any) => item.card)
+                    : [];
+                const cards: HTMLElement[] = orderedCards.length === groupEntries.length
+                    ? orderedCards
+                    : groupEntries.map((item: any) => item.card);
                 if (sourceMeta?.icon) {
                     const groupIcon = document.createElement("svg");
                     groupIcon.className = "sw-home-store__group-icon";

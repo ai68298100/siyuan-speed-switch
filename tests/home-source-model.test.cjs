@@ -124,3 +124,50 @@ test('ordering helper keeps built-in groups first', () => {
     ]);
     assert.equal(ordered[0].key, 'builtin');
 });
+
+test('intra-group order follows the provider suggested order', () => {
+    const groups = source.buildHomeStoreSourceGroups([
+        {moduleId: 'checkin-weekly', def: checkinDef('checkin-weekly', 30), added: false},
+        {moduleId: 'checkin-today', def: checkinDef('checkin-today', 10), added: true},
+        {moduleId: 'checkin-streak', def: checkinDef('checkin-streak', 20), added: false},
+    ]);
+    assert.equal(groups.length, 1);
+    assert.deepEqual(groups[0].moduleIds, ['checkin-today', 'checkin-streak', 'checkin-weekly']);
+});
+
+test('intra-group ordering is deterministic when orders tie', () => {
+    const tied = (moduleId) => home.normalizeModuleDefinition({
+        moduleId, title: moduleId, category: 'siyuan',
+        source: {pluginId: 'siyuan-checkin', name: '小驴打卡', order: 5},
+    });
+    const entries = [
+        {moduleId: 'checkin-z', def: tied('checkin-z'), added: false},
+        {moduleId: 'checkin-a', def: tied('checkin-a'), added: false},
+        {moduleId: 'checkin-m', def: tied('checkin-m'), added: false},
+    ];
+    const forward = source.buildHomeStoreSourceGroups(entries)[0].moduleIds;
+    const backward = source.buildHomeStoreSourceGroups([...entries].reverse())[0].moduleIds;
+    assert.deepEqual(forward, ['checkin-a', 'checkin-m', 'checkin-z']);
+    assert.deepEqual(backward, forward);
+});
+
+test('search text carries the collection name without padding gaps', () => {
+    const def = home.normalizeModuleDefinition({
+        moduleId: 'checkin-today', title: '今日打卡', category: 'siyuan',
+        source: {pluginId: 'siyuan-checkin', name: '小驴打卡', collection: '打卡系列'},
+    });
+    const text = source.buildHomeStoreSourceSearchText(def);
+    assert.match(text, /打卡系列/);
+    assert.match(text, /siyuan-checkin/);
+    assert.equal(text, text.toLowerCase());
+    assert.equal(text.includes('  '), false, '搜索文本不应出现连续空格');
+});
+
+test('source group exposes only the fields the renderer reads', () => {
+    const groups = source.buildHomeStoreSourceGroups([
+        {moduleId: 'checkin-today', def: checkinDef('checkin-today', 1), added: false},
+    ]);
+    assert.deepEqual(Object.keys(groups[0]).sort(), [
+        'addedCount', 'count', 'icon', 'key', 'kind', 'label', 'moduleIds', 'pluginId',
+    ]);
+});
