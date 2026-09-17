@@ -2,7 +2,7 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu, TEventBus} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
@@ -736,25 +736,33 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         this.captureRecentOpenSnapshot();
         this.bindGlobalEvents();
-        this.addCommand({
+        // 命令注册经 safeRegisterPluginCommand 隔离：内核 addCommand 抛错（如
+        // globalCallback 触发的 sendGlobalShortcut 读 window.siyuan.languages["_trayMenu"]
+        // 而 languages 未就绪，issue #1）不得中断 onload——否则后面整个
+        // registerAgentCapabilities 与受控动作注册都会被跳过。
+        safeRegisterPluginCommand(this, {
             langKey: "switchTabs",
             hotkey: DEFAULT_HOTKEY,
             callback: () => {
                 this.showSwitcher();
             },
-        });
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
         // globalCallback: 焦点不在思源时也执行。思源为这类命令提供系统级
         // 全局热键位（设置→快捷键 里绑定"全局"），触发时会同时把思源带到前台。
-        this.addCommand({
+        // languages 未就绪的宿主时序下降级为仅应用内热键（见上方 issue #1 注释）。
+        const secondPanelCommand: {langKey: string; hotkey: string; callback: () => void; globalCallback?: () => void} = {
             langKey: "secondPanel",
             hotkey: SECOND_PANEL_HOTKEY,
             callback: () => {
                 openSecondPanel.call(this);
             },
-            globalCallback: () => {
+        };
+        if (isGlobalShortcutHostReady((window as {siyuan?: {languages?: unknown}}).siyuan)) {
+            secondPanelCommand.globalCallback = () => {
                 openSecondPanel.call(this);
-            },
-        });
+            };
+        }
+        safeRegisterPluginCommand(this, secondPanelCommand, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
         this.registerAgentCapabilities();
         // 受控导航动作：Agent 可把查询结果直接打开为页面（不修改任何笔记数据）
         const pluginWithAgentAction = this as unknown as {

@@ -1306,4 +1306,59 @@ function clampOversizedIcons(root) {
     return fixed;
 }
 
-module.exports = {MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache};
+/**
+ * 全局快捷键宿主就绪判定：内核 sendGlobalShortcut 固定读取
+ * window.siyuan.languages["_trayMenu"]，languages 未就绪的宿主时序下
+ * 注册带 globalCallback 的命令会抛 TypeError（issue #1）。
+ * @param {{languages?: unknown} | undefined | null} siyuanLike
+ * @returns {boolean}
+ */
+function isGlobalShortcutHostReady(siyuanLike) {
+    return Boolean(siyuanLike && siyuanLike.languages);
+}
+
+/**
+ * 安全注册插件命令：宿主 addCommand 抛错（如全局快捷键 IPC 读取未就绪）
+ * 不得中断插件 onload，否则后续全部能力注册都会被跳过（issue #1 实测损害面）。
+ * 语义：① 首次注册成功即返回 true；② 抛错但命令已进入 host.commands（内核先
+ * push 后发全局快捷键 IPC）时不再重试，避免重复注册，仅降级丢失全局热键；
+ * ③ 未进入且命令带 globalCallback 时，去掉 globalCallback 重试一次保住应用内热键。
+ * @param {{addCommand: Function, commands?: Array<Object>}} host
+ * @param {Object} command - 至少含 langKey: string；通常含 hotkey 与 callback，可选 globalCallback
+ * @param {string} command.langKey
+ * @param {string} [command.hotkey]
+ * @param {Function} [command.callback]
+ * @param {Function} [command.globalCallback]
+ * @param {(langKey: string, error: unknown) => void} [onError]
+ * @returns {boolean}
+ */
+function safeRegisterPluginCommand(host, command, onError) {
+    if (!host || typeof host.addCommand !== "function" || !command || typeof command.langKey !== "string") {
+        return false;
+    }
+    try {
+        host.addCommand(command);
+        return true;
+    } catch (error) {
+        if (typeof onError === "function") {
+            onError(command.langKey, error);
+        }
+    }
+    const alreadyPushed = Array.isArray(host.commands) && host.commands.indexOf(command) !== -1;
+    if (alreadyPushed || !command.globalCallback) {
+        return false;
+    }
+    const fallback = Object.assign({}, command);
+    delete fallback.globalCallback;
+    try {
+        host.addCommand(fallback);
+        return true;
+    } catch (error) {
+        if (typeof onError === "function") {
+            onError(command.langKey, error);
+        }
+    }
+    return false;
+}
+
+module.exports = {isGlobalShortcutHostReady, safeRegisterPluginCommand, MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache};
