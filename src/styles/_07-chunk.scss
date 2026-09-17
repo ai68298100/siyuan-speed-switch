@@ -1,0 +1,382 @@
+@use "00-tokens" as *;
+.speed-switch.sw--sidebar .sw__toolbar {
+    gap: 6px;
+
+    .sw__select-wrap {
+        flex: 1 1 0;
+        min-width: 0;
+
+        .sw__sort-trigger {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .sw__sort-trigger-label {
+        max-width: 96px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+// ==================== 组件面板底部提示：持续完善 + 开发者邀请 ====================
+.sw-home .sw-home__hint {
+    flex: none;
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.6;
+
+    .sw-home__hint-link {
+        color: var(--b3-theme-primary);
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+            text-decoration: underline;
+            outline: none;
+        }
+    }
+}
+
+// ==================== 智能体受控写确认对话框 ====================
+.sw-ai-confirm {
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding: 16px 18px;
+
+    .sw-ai-confirm__detail {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .sw-ai-confirm__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}
+
+// ==================== 组件面板：任务条目勾选交互 ====================
+.sw__home-module-list .sw__home-module-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+
+    .sw__home-module-item-check {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        padding: 0;
+        border: 1.5px solid var(--b3-border-color);
+        border-radius: 5px;
+        background: transparent;
+        color: var(--b3-theme-background);
+        cursor: pointer;
+        // 同上：按真实交互态显式列属性（hover/focus 改 border-color，
+        // is-done 另改 background + color），不用全属性过渡。
+        transition: border-color $sw-dur-fast $sw-ease,
+            background-color $sw-dur-fast $sw-ease,
+            color $sw-dur-fast $sw-ease;
+
+        svg { width: 11px; height: 11px; }
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--b3-theme-primary);
+            outline: none;
+        }
+
+        &.is-done {
+            border-color: var(--b3-theme-primary);
+            background: var(--b3-theme-primary);
+            color: var(--b3-theme-background);
+        }
+    }
+
+    .sw__home-module-item-action.is-done {
+        color: var(--b3-theme-on-surface-light);
+        text-decoration: line-through;
+    }
+}
+
+// ==================== 组件商店：需安装插件分区 ====================
+.sw-home-store__card--pending {
+    opacity: 0.85;
+}
+
+.sw-home-store__card--unavailable {
+    opacity: 1;
+    border-color: color-mix(in srgb, var(--b3-theme-primary) 34%, var(--b3-border-color));
+}
+
+.sw-home-store__require {
+    margin: 10px 0 0;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
+
+.sw-home-store__remove-unavailable {
+    margin-top: 8px;
+    padding-inline: 0;
+}
+
+.sw-home-store__filter-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0;
+    padding: 18px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: 12px;
+    color: var(--b3-theme-on-surface-light);
+    text-align: center;
+
+    .b3-button {
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+}
+
+// ==================== 组件面板视觉升级：iPad 小组件质感 ====================
+
+// 卡片：强调色 icon chip + 柔和阴影 + 悬停浮起
+.sw-home .sw-home__cell {
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: box-shadow $sw-dur-slow $sw-ease, transform $sw-dur-slow $sw-ease, border-color $sw-dur-slow $sw-ease;
+
+    &:hover {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--b3-border-color) 45%, var(--sw-home-accent, transparent) 20%);
+    }
+}
+
+// 模块头：accent 圆角芯片图标 + 粗体标题 + 计数
+.sw__home-module-header {
+    .sw__home-module-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 14%, transparent);
+        color: var(--sw-home-accent, var(--b3-theme-primary));
+
+        svg { width: 16px; height: 16px; }
+    }
+
+    .sw__home-module-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+    .sw__home-module-context {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sw__home-module-toggle, .sw__home-module-meta { font-size: 11px; }
+}
+
+// 列表条目：圆点标记 + 间距
+.sw__home-module-list .sw__home-module-item-action {
+    position: relative;
+    padding: 5px 8px 5px 16px;
+    border-radius: 8px;
+    line-height: 1.45;
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 50%;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 45%, transparent);
+        transform: translateY(-50%);
+    }
+
+    &:hover::before { background: var(--sw-home-accent, var(--b3-theme-primary)); }
+}
+
+// 概览数字（stat hero）
+.sw__home-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 0 8px;
+
+    &-copy {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    &-arc {
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        margin-inline-start: auto;
+        transform: rotate(-90deg);
+        overflow: visible;
+    }
+
+    &-arc-track,
+    &-arc-fill {
+        fill: none;
+        stroke-width: 4;
+    }
+
+    &-arc-track {
+        stroke: color-mix(in srgb, var(--b3-theme-on-surface) 10%, transparent);
+    }
+
+    &-arc-fill {
+        stroke: var(--sw-home-accent, var(--b3-theme-primary));
+        stroke-linecap: round;
+        transition: stroke-dasharray $sw-dur-panel $sw-ease;
+    }
+
+    .sw__home-stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--sw-home-accent, var(--b3-theme-primary));
+        line-height: 1;
+    }
+
+    .sw__home-stat-label {
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+    }
+}
+
+// 紧凑密度：小号组件
+.sw-home .sw-home__cell[data-size="xs"] .sw__home-module-list .sw__home-module-item-action {
+    padding: 3px 6px 3px 14px;
+    font-size: 12px;
+}
+
+// ==================== 概览进度条与条目比例条 ====================
+.sw__home-progress {
+    height: 6px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
+    overflow: hidden;
+    margin: 4px 0 8px;
+
+    .sw__home-progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: var(--sw-home-accent, var(--b3-theme-primary));
+        // 这里刻意保留 width 过渡（会触发重排），而非改写成 transform: scaleX：
+        // 宽度只在渲染时一次性设置（home-view.js 设置 style.width），不是逐帧动画，
+        // 且只有单个元素，重排成本可忽略；而 scaleX 会把 3px 圆角一起拉伸变形，
+        // 视觉收益为负。若将来进度条进入长列表并频繁更新，再评估 offscreen 方案。
+        transition: width $sw-dur-panel $sw-ease;
+    }
+}
+
+.sw__home-item-bar {
+    flex: 1;
+    min-width: 20px;
+    height: 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent);
+    overflow: hidden;
+    margin-inline-start: auto;
+
+    .sw__home-item-bar-fill {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 55%, transparent);
+    }
+}
+
+// 卡片强调色微底色
+.sw-home .sw-home__cell {
+    background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 3%, var(--b3-theme-surface));
+}
+
+// 组件面板配色预设：只使用主题变量和固定混合比例，不接受任意用户颜色。
+.sw-home--palette-soft .sw-home__cell {
+    --sw-home-accent: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 72%, var(--b3-theme-on-surface) 28%);
+}
+
+.sw-home--palette-mono .sw-home__cell {
+    --sw-home-accent: var(--b3-theme-primary, var(--sw-accent-fallback));
+}
+
+// ==================== 商店分类 Tab ====================
+.sw-home-store__tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--b3-border-color);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-gutter: stable;
+
+    .sw-home-store__tab {
+        padding: 6px 16px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 13px;
+        cursor: pointer;
+        transition: color $sw-dur-base, border-color $sw-dur-base;
+        min-height: 40px;
+        white-space: nowrap;
+        touch-action: manipulation;
+
+        &[data-count="0"] { opacity: .58; }
+        &[aria-selected="true"] { scroll-margin-inline: 12px; }
+        &[aria-current="page"] { font-variant-numeric: tabular-nums; }
+
+        &:hover { color: var(--b3-theme-on-background); background: color-mix(in srgb, var(--b3-theme-primary) 6%, transparent); }
+
+        // 按下反馈：比 hover 更实一档，点击瞬间给出可见响应。
+        &:active { color: var(--b3-theme-on-background); background: color-mix(in srgb, var(--b3-theme-primary) 13%, transparent); }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: -2px;
+            border-radius: 6px 6px 0 0;
+        }
+
+        &.is-active {
+            color: var(--b3-theme-primary);
+            border-bottom-color: var(--b3-theme-primary);
+            font-weight: 500;
+        }
+    }
+}
+
+// 问候头

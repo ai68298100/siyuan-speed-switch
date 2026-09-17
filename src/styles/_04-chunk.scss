@@ -1,0 +1,551 @@
+@use "00-tokens" as *;
+.sw__fab {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+    right: 14px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--b3-theme-primary);
+    color: var(--b3-theme-on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.88;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2), 0 1px 4px rgba(0, 0, 0, 0.1);
+    z-index: 999;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform $sw-dur-panel $sw-ease, opacity $sw-dur-panel $sw-ease, box-shadow $sw-dur-slow $sw-ease;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: var(--b3-theme-on-primary);
+    }
+
+    &:active {
+        transform: scale(0.92);
+        opacity: 1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    // 打开切换器时隐藏（缩放淡出）
+    &.sw__fab--hidden {
+        opacity: 0;
+        transform: scale(0.7) translateY(10px);
+        pointer-events: none;
+    }
+
+    // 滚动手势隐藏（上滑隐藏，下滑出现）：下滑移出屏幕 + 淡出，与思源底部工具条动效一致
+    &.sw__fab--scroll-hidden {
+        opacity: 0;
+        transform: translateY(140%);
+        pointer-events: none;
+    }
+}
+
+// 手机端顶栏入口按钮：思源 3.8.x 手机端不向插件开放顶栏（addTopBar 只进右侧菜单"扩展"分组），
+// 由 JS 直接插入 #mobileTopBar，这里只负责尺寸与按压反馈
+#swMobileTopBarBtn {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    margin-left: 2px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    svg {
+        width: 19px;
+        height: 19px;
+    }
+
+    &:active {
+        color: var(--b3-theme-primary);
+    }
+}
+
+// ==================== 电脑端全屏模式（设置 → 行为 → 全屏模式） ====================
+
+// 全屏模式下切换按钮改显"退出全屏"角标内收图标
+// （sw--fullscreen 与 .speed-switch 在同一元素上，必须写复合类选择器而非后代选择器）
+.speed-switch.sw--fullscreen {
+    .sw__toolbar .sw__fullscreen-btn {
+        .sw__fs-enter {
+            display: none;
+        }
+
+        .sw__fs-exit {
+            display: block;
+        }
+    }
+}
+
+// Final desktop overrides: the modern visual layer above must not undo the
+// compact rail dimensions selected by the runtime.
+.speed-switch .sw__dock.sw__dock--collapsed {
+    width: 52px;
+    min-width: 52px;
+    padding: 12px 6px;
+    overflow: visible;
+
+    .sw__dock-toggle { margin-inline: auto; }
+    .sw__dock-item { padding-inline: 0; }
+}
+
+.speed-switch .sw__history-trigger {
+    justify-content: center;
+    line-height: 1;
+
+    .sw__history-trigger-text {
+        display: inline-flex;
+        align-items: center;
+        height: 100%;
+        line-height: 1;
+    }
+}
+
+.speed-switch:not(.sw__mobile) .sw__meta {
+    min-height: 34px;
+    padding-block: 4px;
+}
+
+.sw-second-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    height: 100%;
+    padding: 16px;
+    overflow: auto;
+    background: var(--sw-page-bg, var(--b3-theme-background));
+    box-sizing: border-box;
+}
+
+.sw-second-panel__section {
+    align-self: start;
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow);
+
+    h3 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 8px;
+        font-size: 14px;
+
+        svg { width: 16px; height: 16px; }
+    }
+}
+
+.sw-second-panel__item {
+    display: block;
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 8px;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--sw-radius-control, 10px);
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible { background: var(--sw-accent-soft, var(--b3-list-hover)); outline: none; }
+
+    // 按下反馈：此前只有 hover，点击瞬间没有可见变化。
+    &:active { background: var(--sw-accent-pressed, var(--sw-accent-soft, var(--b3-list-hover))); }
+}
+
+.sw-second-panel__empty {
+    margin: 0;
+    padding: 18px 8px;
+    color: var(--b3-theme-on-surface-light);
+    text-align: center;
+}
+
+.sw-document-set-guide {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 20%, var(--b3-border-color));
+    border-radius: 12px;
+    background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    line-height: 1.55;
+
+    > p { margin: 5px 0; }
+    ol { margin: 6px 0; padding-left: 20px; }
+    li + li { margin-top: 3px; }
+    .sw-document-set-guide__note { color: var(--b3-theme-on-surface-light); }
+}
+
+@media (max-width: 560px) {
+    // The switcher owns an explicit close button. Hide SiYuan's floating
+    // dialog close control, which otherwise overlaps the settings button.
+    .b3-dialog__container.sw-mobile-switcher-dialog > .b3-dialog__header,
+    .b3-dialog__container.sw-mobile-switcher-dialog .b3-dialog__close {
+        display: none !important;
+    }
+
+    .b3-dialog__container.sw-mobile-switcher-dialog .b3-dialog__body {
+        padding-top: 0 !important;
+    }
+
+    .speed-switch.sw__mobile .sw__mobile-toolbar {
+        padding-right: 8px;
+
+        .sw__search-wrap { flex-basis: 84px; }
+        .sw__mobile-close-btn {
+            display: inline-flex;
+            flex: none;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 32px;
+            padding: 0;
+            border: 0;
+            border-radius: var(--sw-radius-control);
+            background: transparent;
+            color: var(--b3-theme-on-surface);
+            touch-action: manipulation;
+
+            svg { width: 16px; height: 16px; }
+        }
+    }
+
+    .b3-dialog__container.sw-settings-dialog {
+        // The native title stays visible, while the plugin tab strip remains
+        // one compact, full-width horizontal row below it.
+        .b3-dialog__header { flex: none; min-height: 48px; }
+    }
+
+    .sw-settings .sw-settings__tabs {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-height: 48px;
+        height: auto;
+        padding: 5px 8px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-sizing: border-box;
+    }
+
+    .sw-settings .sw-settings__tab {
+        min-height: 36px;
+        padding: 7px 11px;
+        white-space: nowrap;
+    }
+
+    .sw-second-panel { grid-template-columns: 1fr; padding: 12px; }
+}
+
+.sw__home-module-meta {
+    flex: none;
+    max-width: 42%;
+    overflow: hidden;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw__home-module-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--b3-theme-primary);
+    fill: currentColor;
+    stroke: currentColor;
+
+    &--text {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        line-height: 1;
+    }
+}
+
+// Keep the sync freeze rule before the reduced-motion blocks. This prevents
+// the accessibility contract from mistaking sync stabilization for a global
+// input policy while preserving the computed pointer freeze on the panel.
+.sw-home {
+    &.sw--syncing {
+        pointer-events: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .speed-switch,
+    .speed-switch * {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+
+    // 按下反馈里的缩放属于位移类动效，即便过渡被压到 0.01ms 仍会瞬间跳变。
+    // 减弱动效时改用纯颜色反馈（背景仍会加深，功能提示不丢失）。
+    .speed-switch .sw__icon-btn:active {
+        transform: none;
+    }
+}
+
+// ==================== 现代柔和视觉层（第一面板 / 第二面板 / 移动端共享） ====================
+// 这些是结构样式之上的轻量覆盖，集中维护便于主题适配和后续微调。
+.speed-switch {
+    color: var(--b3-theme-on-background);
+    background: var(--sw-page-bg);
+
+    .sw__main,
+    .sw__content {
+        background: var(--sw-page-bg);
+    }
+
+    .sw__toolbar {
+        min-height: 58px;
+        padding: 10px 14px;
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent);
+        background: var(--b3-theme-surface);
+        box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-theme-surface) 70%, transparent), 0 5px 16px rgba(70, 78, 110, .05);
+
+        .sw__search {
+            height: 38px;
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 18%, var(--b3-border-color));
+            border-radius: 12px;
+            background: var(--sw-surface-muted);
+            box-shadow: inset 0 1px 1px rgba(50, 60, 90, .03);
+
+            &:focus {
+                border-color: var(--b3-theme-primary, var(--sw-accent-fallback));
+                background: var(--b3-theme-surface);
+                box-shadow: var(--sw-focus-ring), 0 4px 14px rgba(91, 82, 174, .08);
+            }
+        }
+
+        .sw__select-wrap .sw__sort,
+        .sw__fav-trigger,
+        .sw__history-trigger {
+            height: 36px;
+            border-radius: 10px;
+            border-color: color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+            background: var(--sw-surface-muted);
+            transition: border-color $sw-dur-base $sw-ease, background-color $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease;
+
+            &:hover,
+            &:focus-visible {
+                border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 56%, var(--b3-border-color));
+                background: var(--b3-theme-surface);
+                box-shadow: 0 2px 8px rgba(85, 78, 160, .08);
+                outline: none;
+            }
+        }
+
+        .sw__icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            transition: transform $sw-dur-fast $sw-ease, background-color $sw-dur-fast $sw-ease;
+
+            &:hover,
+            &:focus-visible {
+                background: var(--sw-accent-soft);
+            }
+
+            // 按下反馈：此前只有 hover，点击瞬间没有任何可见变化——按下去"没反应"，
+            // 手感偏钝。Apple 流体设计的首要原则是响应必须立刻开始，故补上即时缩放。
+            // 120ms 令牌保证按下与释放都跟手。
+            &:active {
+                background: var(--sw-accent-soft);
+                transform: scale(0.94);
+            }
+        }
+    }
+
+    .sw__dock {
+        width: 168px;
+        padding: 14px 10px 14px 14px;
+        border-right: 1px solid color-mix(in srgb, var(--b3-border-color) 52%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 58%, var(--sw-page-bg));
+    }
+
+    .sw__dock-label {
+        margin: 2px 8px 8px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .sw__dock-item {
+        min-height: 36px;
+        margin: 2px 0;
+        padding: 7px 10px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        color: var(--b3-theme-on-surface);
+        transition: background-color $sw-dur-base $sw-ease, color $sw-dur-base $sw-ease, border-color $sw-dur-base $sw-ease;
+
+        &:hover,
+        &:focus {
+            background: var(--sw-accent-soft);
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 15%, transparent);
+            color: var(--b3-theme-primary, var(--sw-accent-fallback));
+        }
+
+        &.sw__active {
+            background: var(--sw-accent-soft);
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 22%, transparent);
+            color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            font-weight: 600;
+        }
+    }
+
+    .sw__scroll {
+        padding: 16px 16px 20px;
+        background: var(--sw-page-bg);
+    }
+
+    .sw__window-label {
+        margin: 6px 4px 10px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .06em;
+    }
+
+    .sw__card,
+    .sw__doc-item,
+    .sw__home-module {
+        border-radius: var(--sw-radius-card);
+        border-color: color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+        box-shadow: var(--sw-card-shadow);
+    }
+
+    .sw__card {
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 62%, var(--b3-border-color));
+            box-shadow: var(--sw-float-shadow);
+        }
+
+        &.sw__active,
+        &.sw__focused {
+            border-color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 38%, transparent), var(--sw-card-shadow);
+        }
+    }
+
+    .sw__meta {
+        min-height: 42px;
+        padding: 8px 12px;
+        background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--sw-accent-soft));
+    }
+
+    .sw__doc-results {
+        margin-top: 18px;
+
+        .sw__doc-grid { gap: 12px; }
+
+        .sw__doc-item {
+            min-height: 84px;
+            padding: 12px;
+            background: var(--b3-theme-surface);
+
+            &:hover {
+                background: color-mix(in srgb, var(--b3-theme-surface) 90%, var(--sw-accent-soft));
+                box-shadow: var(--sw-float-shadow);
+            }
+
+            .sw__doc-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 11px;
+                background: var(--sw-accent-soft);
+                color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            }
+        }
+
+        .sw__doc-status {
+            border-radius: var(--sw-radius-card);
+            background: var(--sw-surface-muted);
+        }
+    }
+
+    .sw__home-panel {
+        gap: 14px;
+    }
+
+    .sw__home-module {
+        border-radius: var(--sw-radius-panel);
+        background: var(--b3-theme-surface);
+
+        &[data-status="error"] {
+            border-color: color-mix(in srgb, var(--b3-theme-error) 38%, var(--b3-border-color));
+        }
+    }
+
+    .sw__home-module-header {
+        min-height: 44px;
+        padding: 9px 12px;
+        border-bottom-color: color-mix(in srgb, var(--b3-border-color) 58%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 84%, var(--sw-accent-soft));
+    }
+
+    .sw__home-module-item-action {
+        min-height: 36px;
+        padding: 8px 10px;
+        border-radius: 10px;
+
+        &:hover,
+        &:focus-visible {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 18%, transparent);
+            background: var(--sw-accent-soft);
+        }
+    }
+
+    .sw__quick-actions,
+    .sw__quick-rail {
+        min-height: 52px;
+        padding: 8px 14px;
+        border-top-color: color-mix(in srgb, var(--b3-border-color) 60%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 78%, var(--sw-page-bg));
+    }
+
+    .sw__quick-action {
+        min-height: 36px;
+        height: 36px;
+        padding-inline: 10px;
+        border-radius: 11px;
+
+        &:hover,
+        &:focus-visible {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, var(--sw-accent-fallback)) 20%, transparent);
+            background: var(--sw-accent-soft);
+        }
+
+        &--add {
+            color: var(--sw-warm-accent);
+            background: var(--sw-warm-soft);
+        }
+    }
+}
+
+// 设置页与主面板共享同一套卡片感，但保留思源设置弹窗的紧凑密度。

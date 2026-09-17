@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const {parseRules, findRules, declaresIn, normalizeSelector} = require("./css-block-scan.cjs");
-const {readSourceText} = require("./source-scan.cjs");
+const {readSourceText, readStyleSource} = require("./source-scan.cjs");
 
 const SAMPLE = `
 .alpha {
@@ -185,7 +185,8 @@ test("parses the real stylesheet and pins the D-395 injection target", () => {
     // 必须是含 `{` 的那一行、endLine 必须是含 `}` 的那一行，且声明必须落在区间内。
     // 声明按"空白归一后的子串"比对而不是整行相等——`from { transform: rotate(0deg); }`
     // 这类单行块（keyframes 步进）与跨行声明都会让整行比对失效（首版即被它拦下）。
-    const rawLines = require("node:fs").readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8").split("\n");
+    // P1-2：样式已拆为顺序切片，本体退化为 @use 清单；此处须读组合视图。
+    const rawLines = readStyleSource().split("\n");
     assert.ok(rules.length > 500, "审计面塌缩");
     let checked = 0;
     for (const rule of rules) {

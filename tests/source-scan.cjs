@@ -19,9 +19,46 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+// ---- 样式组合视图（P1-2，ADR 0049）-------------------------------------
+// src/index.scss 已拆为顺序切片（顺序即层叠顺序），本体退化为 @use 清单。
+// 但既有 35 处契约断言是按"单文件样式"写的，若直接读清单会集体失效。
+// 这里按清单顺序把切片重组为单一视图（剔除 @use 行），使组合结果
+// **逐字节等于拆分前的原文件**——断言锚点一个都不需要改，强度也不降低。
+const STYLE_MANIFEST = "src/index.scss";
+const STYLE_MANIFEST_ABS = path.resolve(__dirname, "..", STYLE_MANIFEST);
+
+function readStyleSource() {
+    const root = path.resolve(__dirname, "..");
+    const manifest = fs.readFileSync(path.join(root, STYLE_MANIFEST), "utf8");
+    const refs = [];
+    const refRe = /@use\s+"([^"]+)"/g;
+    let match = refRe.exec(manifest);
+    while (match) {
+        refs.push(match[1]);
+        match = refRe.exec(manifest);
+    }
+    if (!refs.length) {
+        throw new Error("style manifest has no @use entries; refusing to return an empty view");
+    }
+    let out = "";
+    for (const ref of refs) {
+        const segments = ref.split("/");
+        const base = segments[segments.length - 1];
+        const dir = segments.slice(0, -1).join("/");
+        const file = path.join(root, "src", dir, "_" + base + ".scss");
+        const content = fs.readFileSync(file, "utf8");
+        const kept = content.split(/\r?\n/).filter((line) => !/^\s*@use\s/.test(line));
+        out += kept.join("\n") + "\n";
+    }
+    return out;
+}
+
 // 读取源码并做扫描前处理：CRLF 归一 + 剥注释。
 // 归一换行的原因：本仓 CRLF/LF 混用，按 `\n` 锚定的断言会因 CRLF 静默失配。
 function readSourceText(filePath) {
+    if (path.resolve(filePath) === STYLE_MANIFEST_ABS) {
+        return stripComments(readStyleSource().replace(/\r\n/g, "\n"));
+    }
     return stripComments(fs.readFileSync(filePath, "utf8").replace(/\r\n/g, "\n"));
 }
 
@@ -80,4 +117,4 @@ function stripComments(source) {
     return out;
 }
 
-module.exports = {stripComments, readSourceText, readSourceFile};
+module.exports = {stripComments, readSourceText, readSourceFile, readStyleSource};

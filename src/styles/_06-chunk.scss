@@ -1,0 +1,688 @@
+@use "00-tokens" as *;
+.speed-switch .sw__mobile-toolbar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+
+    .sw__toolbar-row2 {
+        flex: 0 0 100%;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar { display: none; }
+    }
+
+    .sw__mobile-chip-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 12px;
+    }
+
+    // 行2 条目恢复文字标签（覆盖旧版"手机端隐藏历史文字"规则）
+    .sw__history-trigger-text {
+        display: inline-flex !important;
+        max-width: 72px;
+    }
+
+    .sw__history-trigger {
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 16px;
+        background: var(--b3-theme-surface);
+    }
+
+    .sw__mobile-fav-btn,
+    .sw__settings-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 16px;
+        background: var(--b3-theme-surface);
+    }
+}
+
+// ==================== 行2 芯片尺寸收口（手机顶栏文字被裁的根因修复） ====================
+// 收藏 / 设置 在行2 里是"图标 + 文字"芯片，但更早的纯图标规则
+// （.speed-switch.sw__mobile .sw__mobile-toolbar .sw__mobile-fav-btn）仍写着
+// width: 34px + padding: 0。该规则同为 4 类且源码更靠前，会压住上面 3 类的芯片规则：
+// 实测按钮被钳在 34px，其中标签只剩 18px 可用宽，而"收藏"两字需 24px →
+// 被 text-overflow: ellipsis 裁成单字"收"/"设"。
+// 修复方式：用同为 4 类、源码更后的选择器接管尺寸——宽度交还内容，纯图标形态
+// 由 min-width 保住原 34px 下限，因此 journal-btn 等无标签按钮视觉不变。
+.speed-switch.sw__mobile .sw__mobile-toolbar {
+    .sw__mobile-fav-btn,
+    .sw__settings-btn {
+        width: auto;
+        min-width: 34px;
+        height: 36px;
+        padding: 0 10px;
+        box-sizing: border-box;
+
+        // 图标不允许被 flex 压缩（否则 16px 星形被挤成 12px 变形）
+        > svg {
+            flex: none;
+            width: 16px;
+            height: 16px;
+        }
+    }
+
+    .sw__mobile-chip-label {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+}
+
+// 手机设置页头部修复：桌面窄栏规则（width:148px + surface 底色）源码顺序靠后会回灌窄屏，
+// 造成标签条只剩半宽深色块；这里以更高优先级在窄屏强制通栏 + 压缩标题行。
+@media (max-width: 560px) {
+    .sw-home-store__search {
+        flex-wrap: wrap;
+
+        input { flex: 1 1 100%; }
+        .sw-home-store__sort { flex: 1 1 46%; max-width: none; }
+        .sw-home-store__guide { flex: 1 1 46%; min-height: 32px; }
+        .sw-home-store__clear-search { margin-left: -40px; z-index: 1; }
+    }
+
+    .sw-home-store__card:hover { transform: none; }
+
+    .sw-home-store__tabs {
+        gap: 2px;
+        padding-bottom: 2px;
+        overscroll-behavior-x: contain;
+    }
+
+    .sw-settings .sw-settings__tabs,
+    .speed-switch .sw-settings .sw-settings__tabs {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-height: 44px;
+        height: auto;
+        padding: 6px 8px;
+        background: transparent;
+        border-right: none;
+        border-bottom: 1px solid var(--b3-border-color);
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .sw-settings .b3-dialog__header {
+        flex: none;
+        min-height: 44px;
+        padding-block: 4px;
+    }
+
+    .sw-settings .b3-dialog__header .b3-dialog__title {
+        font-size: 14px;
+    }
+}
+
+// ==================== 分组·排序 一体化浮层（与最近下拉同模式：fixed + 弹窗内层级） ====================
+.sw__sort-menu {
+    position: fixed;
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    max-height: 60vh;
+    overflow: auto;
+    padding: 6px;
+    background: var(--b3-theme-surface);
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card);
+    box-shadow: var(--b3-dialog-shadow);
+
+    .sw__sort-menu-section {
+        margin: 6px 6px 2px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        letter-spacing: 0.05em;
+    }
+
+    
+.sw__size-tile {
+    display: inline-block;
+    flex: none;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 55%, transparent);
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+}
+
+    .sw__sort-menu-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
+            outline: none;
+        }
+
+        svg { width: 12px; height: 12px; flex: none; }
+    }
+}
+
+// ==================== 分组流式布局：小分组并排、大分组占满整行 ====================
+// 块宽由渲染层按标准网格 1fr 像素精确写入（内联），容器仅负责横向流动换行
+.speed-switch .sw--grouped-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px 12px;
+
+    .sw__group--named {
+        flex: none;
+        min-width: 0;
+    }
+}
+
+// ==================== 第二面板：iPad 式小组件画布 ====================
+// 12 列固定网格 + 40px 行单元 + dense 自动归位；模块占整数格（型号 S4×3/M4×4/W8×3/L8×5）
+.sw-home .sw-home__grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 40px;
+    grid-auto-flow: dense;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.sw-home .sw-home__cell {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow, none);
+}
+
+.sw-home .sw-home__cell-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px 12px;
+}
+
+// 型号密度：小号压缩内边距与行高，内容自然截断（可滚动）
+.sw-home .sw-home__cell[data-size="small"] .sw-home__cell-body {
+    padding: 8px 10px;
+
+    .sw__home-module-list .sw__home-module-item-action {
+        padding: 3px 6px;
+        font-size: 12px;
+    }
+}
+
+.sw-home .sw-home__cell--dragging {
+    opacity: 0.45;
+}
+
+.sw-home .sw-home__cell--dragover {
+    outline: 2px dashed var(--b3-theme-primary);
+    outline-offset: -3px;
+}
+
+.sw-home .sw-home__cell-tools {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 6px 8px;
+    border-top: 1px dashed var(--b3-border-color);
+
+    .sw-home__tool {
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+}
+
+// 组件配置面板：语义分组、短提示和移动端单列由 DOM class 驱动。
+.sw-home-config { height: 100%; padding: 12px 14px 0; box-sizing: border-box; overflow: auto; background: var(--sw-page-bg, var(--b3-theme-background)); }
+.sw-home-config__intro { display: flex; gap: 10px; padding: 10px; border: 1px solid var(--b3-border-color); border-radius: 10px; background: var(--b3-theme-surface); }
+.sw-home-config__icon { display: grid; flex: none; width: 32px; height: 32px; place-items: center; border-radius: 9px; color: var(--b3-theme-primary); background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); }
+.sw-home-config__icon svg { width: 18px; height: 18px; }
+.sw-home-config__intro-copy, .sw-home-config__field { min-width: 0; }
+.sw-home-config__title { margin: 0; font-size: 14px; }
+.sw-home-config__description, .sw-home-config__hint { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.4; }
+.sw-home-config__description { margin: 3px 0; }
+.sw-home-config__id { color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config__meta { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 0 2px; }
+.sw-home-config__chip { padding: 2px 6px; border-radius: 999px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config__fields { display: grid; gap: 8px; padding: 10px 0 14px; }
+.sw-home-config__section { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid var(--b3-border-color); border-radius: 9px; background: var(--b3-theme-surface); }
+.sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: 11px; }
+.sw-home-config__field { display: flex; flex-direction: column; gap: 3px; }
+.sw-home-config__label { font-size: 12px; }
+.sw-home-config__hint { min-height: 1.2em; margin: 0; }
+.sw-home-config__actions { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin-inline: -14px; padding: 8px 14px 10px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background); }
+.sw-home-config__summary { min-width: 0; margin-right: auto; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.sw-home-config[data-changed="true"] .sw-home-config__summary { color: var(--b3-theme-primary); }
+@media (max-width: 520px) { .sw-home-config__actions { flex-wrap: wrap; } .sw-home-config__summary { flex-basis: 100%; } .sw-home-config__actions .b3-button { min-height: 40px; } }
+
+// ==================== 小组件商店画廊 ====================
+.sw-home-store {
+    height: 100%;
+    padding: 14px 18px 18px;
+    box-sizing: border-box;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    background: var(--sw-page-bg, var(--b3-theme-background));
+
+    &[aria-busy="true"] {
+        cursor: progress;
+    }
+
+    &[aria-busy="true"] .sw-home-store__summary {
+        opacity: .72;
+    }
+
+    &[data-focus-kind="card"] .sw-home-store__card:focus-visible {
+        scroll-margin-block: 18px;
+    }
+
+    .sw-home-store__group[role="heading"] {
+        scroll-margin-block: 12px;
+    }
+
+    .sw-home-store__sizes[aria-orientation="horizontal"] {
+        overscroll-behavior-inline: contain;
+    }
+}
+
+.sw-home-store[data-density="compact"] .sw-home-store__card {
+    padding-block: 8px;
+    gap: 7px;
+}
+.sw-home-store[data-density="compact"] .sw-home-store__preview { min-height: 72px; }
+.sw-home-store[data-density="compact"] .sw-home-store__group-description { display: none; }
+.sw-home-store[data-density="compact"] .sw-home-store__source-chip { padding-inline: 5px; font-size: 10px; }
+.sw-home-store__source-chip.is-recommended { color: var(--b3-theme-primary); background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
+.sw-home-store__source-chip.is-added { color: var(--b3-theme-success); background: color-mix(in srgb, var(--b3-theme-success) 12%, transparent); }
+.sw-home-store__source-chip.is-dependency { color: var(--b3-theme-warning); background: color-mix(in srgb, var(--b3-theme-warning) 14%, transparent); font-weight: 600; }
+.sw-home-store__dependency-link { color: var(--b3-theme-primary); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
+.sw-home-store__search { position: sticky; top: 0; z-index: 3; background: var(--b3-theme-background); padding-block: 4px; }
+// （T-6280 第十五批去重）card 的减弱动效覆盖原先在此与下方 4944 分支的分组规则各写一份，
+// 完全被后者包含，已删；现仅保留 card+tab 的分组覆盖。
+
+.sw-home-store__section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 6%, transparent);
+    font-size: 13px;
+    font-weight: 650;
+    color: var(--b3-theme-on-surface);
+
+    &:first-child { margin-top: 0; }
+}
+
+.sw-home-store__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    overscroll-behavior: contain;
+    isolation: isolate;
+}
+
+.sw-home-store[data-view-mode="list"] .sw-home-store__grid,
+.sw-home-store__grid[data-view-mode="list"] {
+    grid-template-columns: 1fr;
+}
+.sw-home-store[data-view-mode="compact"] .sw-home-store__grid,
+.sw-home-store__grid[data-view-mode="compact"] {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 8px;
+}
+.sw-home-store__select {
+    align-self: flex-end;
+    min-height: 32px;
+    padding-inline: 8px;
+    opacity: .78;
+}
+.sw-home-store__select[aria-pressed="true"] {
+    color: var(--b3-theme-primary);
+    font-weight: 650;
+    opacity: 1;
+}
+.sw-home-store__clear-selection:disabled { opacity: .52; cursor: default; }
+
+.sw-home-store__card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow, none);
+    box-sizing: border-box;
+    isolation: isolate;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    user-select: text;
+    contain: layout paint;
+    content-visibility: auto;
+    contain-intrinsic-size: 240px 320px;
+    scroll-margin-block: 12px;
+    transition: border-color $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease, transform $sw-dur-base $sw-ease;
+
+    &:hover {
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 42%, var(--b3-border-color));
+        box-shadow: 0 6px 18px color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+        transform: translateY(-1px);
+        will-change: transform;
+    }
+
+    &:focus-within {
+        border-color: var(--b3-theme-primary);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--b3-theme-primary) 18%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+        will-change: outline;
+    }
+
+    &[data-status-tone="success"] { border-top-color: color-mix(in srgb, #3b9861 65%, var(--b3-border-color)); }
+    &[data-status-tone="warning"] { border-top-color: color-mix(in srgb, var(--b3-theme-warning) 65%, var(--b3-border-color)); }
+    &[data-status-tone="info"] { border-top-color: color-mix(in srgb, var(--b3-theme-primary) 65%, var(--b3-border-color)); }
+    &[data-integration-tone="network"] .sw-home-store__source-chip.is-online { font-weight: 600; }
+    &[data-integration-tone="local"] .sw-home-store__source-chip.is-local { font-weight: 600; }
+    &[data-integration-tone="offline"] .sw-home-store__source-chip.is-offline { font-weight: 600; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw-home-store__card,
+.sw-home-store__tab {
+        transition: none !important;
+    }
+
+    .sw-home-store__card:hover {
+        transform: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .sw-home-store__card,
+    .sw-home-store__tab,
+    .sw-home-store__group-toggle,
+    .sw-home-store__clear-search,
+    .sw-home-store__clear-filters {
+        forced-color-adjust: auto;
+        border-color: CanvasText;
+        color: CanvasText;
+        background: Canvas;
+    }
+
+    .sw-home-store__card:focus-visible,
+    .sw-home-store__tab:focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+
+    .sw-home-store__tab.is-active {
+        border-bottom-color: Highlight;
+        color: HighlightText;
+        background: Highlight;
+    }
+}
+
+@media print {
+    .sw-home-store__search,
+    .sw-home-store__tabs,
+    .sw-home-store__sizes,
+    .sw-home-store__preview,
+    .sw-home-store__group-toggle {
+        display: none !important;
+    }
+
+    .sw-home-store__card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #888;
+        color: #000;
+        background: #fff;
+    }
+
+    .sw-home-store__card-head span,
+    .sw-home-store__support,
+    .sw-home-store__status {
+        color: #333;
+    }
+}
+
+.sw-home-store__card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    svg {
+        flex: none;
+        width: 28px;
+        height: 28px;
+        color: var(--b3-theme-primary);
+    }
+
+    strong {
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        font-size: 13px;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
+        text-wrap: pretty;
+        hyphens: auto;
+        font-size-adjust: from-font;
+        letter-spacing: -0.01em;
+        line-height: 1.35;
+        font-weight: 650;
+    }
+
+    > div { min-width: 0; }
+
+    .sw-home-store__availability {
+        display: inline-block;
+        margin-left: 4px;
+        padding: 1px 5px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent);
+        color: var(--b3-theme-primary);
+        font-size: 10px;
+        font-style: normal;
+        font-weight: 500;
+        vertical-align: 1px;
+    }
+
+    .sw-home-store__availability--external {
+        background: color-mix(in srgb, var(--b3-theme-warning) 18%, transparent);
+        color: var(--b3-theme-warning);
+    }
+
+    span {
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        margin-top: 2px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        hyphens: auto;
+        font-size-adjust: from-font;
+        line-height: 1.45;
+    }
+
+    .sw-home-store__support {
+        display: block;
+        margin-top: 3px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        opacity: .86;
+    }
+}
+
+.sw__home-source-health {
+    flex: none;
+    padding: 2px 6px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
+    border-radius: 999px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+
+    &.is-fresh { border-color: color-mix(in srgb, #3b9861 52%, transparent); color: #2f8150; }
+    &.is-cached { border-color: color-mix(in srgb, #4f79bd 52%, transparent); color: #3f68a9; }
+    &.is-stale { border-color: color-mix(in srgb, #d58932 58%, transparent); color: #aa6418; }
+}
+
+.sw-home-store__status {
+    display: block;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 3px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    // 同块内更早还有一条 font-weight: 500，但会被下面的 550（可变字体的细粒度
+    // 权重）完全覆盖，从未生效。只保留实际生效的值（D-364）。
+    font-variant-numeric: tabular-nums;
+    text-rendering: optimizeLegibility;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    text-wrap: pretty;
+    font-weight: 550;
+
+    &.is-added { color: var(--b3-theme-primary); }
+}
+
+.sw-home-store__sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-top: auto;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.sw-home-store__choose-size {
+    flex: 1 0 100%;
+    margin-bottom: 1px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+}
+
+.sw-home-store__size {
+    padding: 3px 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    cursor: pointer;
+    // 同其余店内交互控件（add/configure/remove/group-toggle/…）一致：去掉移动端
+    // 双击缩放延迟。此前缺这条，旧门禁靠 `__size` 前缀匹配 `__sizes` 的文本假绿
+    // （T-6280 第十一批迁移时实证）。
+    touch-action: manipulation;
+    // 不用 transition: all —— 它会监听包括布局属性在内的所有变化，浏览器无法
+    // 针对具体属性优化，意外的属性变化还会触发多余重排。此处按真实交互态显式
+    // 列出：hover/focus 改 border-color + color，is-selected 另改 background，
+    // [data-selected] 改 box-shadow。
+    transition: border-color $sw-dur-fast $sw-ease,
+        color $sw-dur-fast $sw-ease,
+        background-color $sw-dur-fast $sw-ease,
+        box-shadow $sw-dur-fast $sw-ease;
+
+    &:hover,
+    &:focus-visible {
+        border-color: var(--b3-theme-primary);
+        color: var(--b3-theme-primary);
+        outline: none;
+    }
+
+    &.sw-home-store__size--added {
+        border-style: dashed;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    &.is-selected {
+        border-color: var(--b3-theme-primary);
+        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+        color: var(--b3-theme-primary);
+    }
+
+    &[data-selected="true"] { box-shadow: 0 0 0 1px color-mix(in srgb, var(--b3-theme-primary) 20%, transparent); }
+}
+
+.sw-home-store__add {
+    min-height: 28px;
+    margin-left: auto;
+    min-width: 88px;
+    font-weight: 600;
+    white-space: nowrap;
+    touch-action: manipulation;
+
+    &:focus-visible { box-shadow: var(--sw-focus-ring); }
+}
+
+.sw-home-store__configure {
+    min-height: 28px;
+    padding-inline: 8px;
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.sw-home-store__remove {
+    min-height: 28px;
+    padding-inline: 8px;
+    color: var(--b3-theme-error, var(--b3-theme-warning));
+    white-space: nowrap;
+    touch-action: manipulation;
+}
+
+.sw-home-store__group-toggle,
+.sw-home-store__clear-search,
+.sw-home-store__clear-filters,
+.sw-home-store__guide,
+.sw-home-store__remove-unavailable {
+    touch-action: manipulation;
+}
+
+// ==================== 侧边栏顶栏收口（去裸标签后的对齐） ====================

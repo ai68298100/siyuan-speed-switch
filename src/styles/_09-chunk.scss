@@ -1,0 +1,526 @@
+@use "00-tokens" as *;
+.sw-home__cell[data-module-id="external-anime-bangumi"] {
+    overflow: hidden;
+    border-color: color-mix(in srgb, #d86682 52%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 8%, rgba(255, 255, 255, 0.46), transparent 25%),
+        linear-gradient(145deg, color-mix(in srgb, #f6d6de 64%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #d8d5f5 56%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #a83f61;
+}
+
+.sw__home-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    gap: 9px;
+    margin: 0;
+    padding: 3px 0 0;
+    list-style: none;
+}
+
+.sw__home-media-item {
+    min-width: 0;
+
+    &.is-source { grid-column: 1 / -1; }
+}
+
+.sw__home-media-action {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    text-align: start;
+    cursor: pointer;
+    touch-action: manipulation;
+
+    &:focus-visible {
+        outline: 2px solid var(--sw-home-accent, var(--b3-theme-primary));
+        outline-offset: 2px;
+    }
+}
+
+.sw__home-media-cover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--b3-border-color) 48%, transparent);
+    box-shadow: 0 5px 14px rgba(57, 31, 47, 0.13);
+    object-fit: cover;
+    transition: transform $sw-dur-base $sw-ease, box-shadow $sw-dur-base $sw-ease;
+}
+
+.sw__home-media-action:hover .sw__home-media-cover {
+    box-shadow: 0 8px 20px rgba(57, 31, 47, 0.2);
+    transform: translateY(-2px);
+}
+
+.sw__home-media-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sw__home-media-title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+.sw__home-media-secondary { color: var(--b3-theme-on-surface-light); font-size: 9px; }
+.sw__home-media-item.is-source .sw__home-media-action { display: block; padding: 2px 0; color: var(--b3-theme-on-surface-light); font-size: 9px; }
+.sw__home-media-item.is-source .sw__home-media-title { font-size: 9px; font-weight: 500; }
+
+@media (max-width: 560px) {
+    .sw__home-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+// ==================== 商店实时预览弹窗 ====================
+.sw-store-preview {
+    height: 100%;
+    overflow: auto;
+
+    &__meta {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 5px;
+        margin: 0 0 7px;
+        padding: 5px 2px 7px;
+        min-width: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 60%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 92%, transparent);
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        line-height: 1.35;
+        backdrop-filter: blur(8px);
+    }
+
+    &__meta-chip {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        min-width: 0;
+        padding: 3px 7px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 999px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        user-select: text;
+
+        &.is-source { color: var(--b3-theme-on-background); }
+        &.is-network { border-color: color-mix(in srgb, #d58b32 48%, var(--b3-border-color)); color: #a76618; }
+        &.is-local { border-color: color-mix(in srgb, #6655c8 48%, var(--b3-border-color)); color: #5c49b6; }
+        &.is-offline { border-color: color-mix(in srgb, #4f9f68 48%, var(--b3-border-color)); color: #3b8252; }
+        &.is-context { border-style: dashed; color: var(--b3-theme-on-surface-light); }
+        &.is-privacy { opacity: .84; }
+    }
+
+    &__body {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
+        min-height: 0;
+        overflow-wrap: anywhere;
+        padding: 4px 2px 8px;
+
+        .sw__home-module {
+            border: 1px solid var(--b3-border-color);
+            border-radius: var(--sw-radius-card, 14px);
+            background: var(--b3-theme-surface);
+        }
+    }
+}
+
+.sw-home-store__preview-btn {
+    color: var(--b3-theme-primary);
+
+    &:hover {
+        border-color: var(--b3-theme-primary);
+    }
+}
+
+// ==================== 面板交互与显示优化 ====================
+// 折叠按钮紧凑化：箭头图标替代文字，减少头部常驻视觉噪音
+.sw-home .sw-home__cell .sw__home-module-fold {
+    min-height: 22px;
+    min-width: 22px;
+    padding: 0 3px;
+    font-size: 0;
+
+    svg { width: 12px; height: 12px; }
+}
+
+// 空状态淡色前缀
+.sw-home__cell .sw__home-module-status--empty::before {
+    content: "◦ ";
+    opacity: 0.5;
+}
+
+// 日历采用固定 6 周月视图，视觉结构接近系统日历小组件。
+.sw__home-module[data-module-id="journal-calendar"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+
+    .sw__home-module-body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-height: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .sw-store-preview__meta { font-size: 10px; gap: 4px; }
+    .sw-store-preview__meta-chip { padding: 3px 6px; }
+}
+
+@media (forced-colors: active) {
+    .sw-store-preview__meta { border-bottom-color: CanvasText; background: Canvas; }
+    .sw-store-preview__meta-chip { border-color: CanvasText; color: CanvasText !important; }
+}
+
+.sw__home-calendar-nav {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto 28px;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 6px;
+
+    button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 26px;
+        min-height: 26px;
+        padding: 2px 7px;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--sw-home-accent, var(--b3-theme-primary));
+        font-size: 12px;
+        line-height: 1;
+
+        &:hover { background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 11%, transparent); }
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--sw-focus-ring);
+        }
+    }
+}
+
+.sw__home-calendar-period {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--b3-theme-on-background);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// 日历必须显式声明 7 列网格；否则 span/button 会退化为连续文本，
+// 在窄面板和默认主题下尤其明显。
+.sw__home-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: 18px repeat(6, minmax(20px, 1fr));
+    flex: 1;
+    gap: 2px 3px;
+    align-items: stretch;
+    width: 100%;
+    min-height: 140px;
+}
+
+.sw__home-calendar-head,
+.sw__home-calendar-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.sw__home-calendar-head {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: 0.03em;
+
+    &:nth-child(6),
+    &:nth-child(7) { color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 68%, var(--b3-theme-on-surface-light)); }
+}
+
+.sw__home-calendar-cell {
+    position: relative;
+    flex-direction: column;
+    min-height: 20px;
+    padding: 1px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+
+    .sw__home-calendar-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 21px;
+        height: 21px;
+        border-radius: 50%;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    .sw__home-calendar-secondary {
+        display: block;
+        max-width: 100%;
+        margin-top: -1px;
+        overflow: hidden;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 7px;
+        line-height: 1;
+        opacity: 0.72;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &.is-weekend:not(.is-outside) .sw__home-calendar-primary {
+        color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 72%, var(--b3-theme-on-background));
+    }
+
+    &.is-outside {
+        opacity: 0.32;
+    }
+
+    &.is-today .sw__home-calendar-primary {
+        background: var(--sw-home-accent, var(--b3-theme-primary));
+        color: var(--b3-theme-on-primary, #fff);
+        font-weight: 750;
+    }
+
+    &.is-holiday:not(.is-today) .sw__home-calendar-primary {
+        color: var(--b3-theme-error, #d23f31);
+        font-weight: 720;
+    }
+
+    &.is-workday:not(.is-today) .sw__home-calendar-primary {
+        color: color-mix(in srgb, var(--b3-theme-on-background) 68%, var(--b3-theme-primary));
+    }
+
+    &.is-holiday .sw__home-calendar-secondary { color: var(--b3-theme-error, #d23f31); opacity: 0.88; }
+    &.is-workday .sw__home-calendar-secondary { color: var(--b3-theme-primary); opacity: 0.88; }
+
+    &.has-journal {
+        color: inherit;
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--sw-focus-ring);
+        }
+    }
+}
+
+.sw__home-calendar-marker {
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--sw-home-accent, var(--b3-theme-primary));
+    transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw__home-calendar-cell.has-journal {
+        transition: none;
+    }
+}
+
+.sw__home-calendar-cell.has-journal {
+    cursor: pointer;
+    transition: background-color $sw-dur-base, color $sw-dur-base;
+
+    &:hover {
+        background: color-mix(in srgb, var(--sw-home-accent, var(--b3-theme-primary)) 12%, transparent);
+    }
+}
+
+// 天气组件：借鉴 iPad 卡片的单块渐变、超大温度与横向预报，但使用主题变量、
+// 不引入远程背景图片，确保深浅主题和窄侧栏仍可读。
+.sw-home__cell[data-module-id="external-weather-open-meteo"] {
+    overflow: hidden;
+    border-color: #6f9ed9;
+    background:
+        radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.32), transparent 24%),
+        linear-gradient(145deg, #468ed8 0%, #7164c8 100%);
+    --sw-home-accent: #ffffff;
+
+    .sw__home-module-header,
+    .sw__home-module-context,
+    .sw__home-module-title,
+    .sw__home-module-meta,
+    .sw__home-stat-label,
+    .sw__home-stat-value { color: #fff; }
+
+    .sw__home-module-icon { background: rgba(255, 255, 255, 0.18); color: #fff; }
+    .sw__home-module-context { opacity: 0.82; }
+    .sw__home-stat { padding-block: 7px 12px; }
+    .sw__home-stat-value { font-size: clamp(34px, 5vw, 52px); font-weight: 520; letter-spacing: -0.055em; }
+    .sw__home-stat-label { opacity: 0.88; }
+    .sw__home-module-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+    .sw__home-module-item {
+        min-width: 0;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.12);
+
+        &.has-link { grid-column: 1 / -1; background: transparent; }
+    }
+    .sw__home-module-item-action {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        width: 100%;
+        padding: 7px 4px;
+        border-left: 0;
+        color: #fff;
+        text-align: center;
+
+        &::before { display: none; }
+    }
+    .sw__home-module-item-label { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .sw__home-module-item-secondary { color: rgba(255, 255, 255, 0.72); font-size: 9px; white-space: nowrap; }
+    .sw__home-module-item.has-link .sw__home-module-item-action { align-items: flex-start; padding-block: 3px 0; opacity: 0.72; font-size: 9px; }
+    .sw__home-module-toggle { color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+}
+
+@media (max-width: 560px) {
+    .sw-home__cell[data-module-id="external-weather-open-meteo"] .sw__home-module-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+// 条目悬停：左侧强调色条
+.sw-home__cell .sw__home-module-item-action {
+    border-left: 2px solid transparent;
+    transition: border-color $sw-dur-base, background-color $sw-dur-base;
+
+    &:hover {
+        border-left-color: var(--sw-home-accent, var(--b3-theme-primary));
+        background: color-mix(in srgb, var(--b3-theme-primary) 4%, transparent);
+    }
+}
+
+// stat hero 数字在面板格子里更醒目
+.sw-home__cell .sw__home-stat-value {
+    font-size: 1.4em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.sw-home__cell .sw__home-stat-label {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+// ==================== 面板交互体验优化 ====================
+// 折叠体平滑过渡（max-height + opacity 渐变，不干扰内部滚动）
+.sw-home__cell .sw__home-module-body {
+    max-height: 600px;
+    overflow: hidden;
+    transition: max-height $sw-dur-panel $sw-ease, opacity $sw-dur-slow $sw-ease;
+
+    &[aria-hidden="true"] {
+        max-height: 0;
+        opacity: 0;
+    }
+}
+
+// 进度条圆角端点
+.sw-home__cell .sw__home-progress,
+.sw-home__cell .sw__home-progress-fill {
+    border-radius: 99px;
+}
+
+// 条目过渡：悬停与选中反馈更流畅
+.sw-home__cell .sw__home-module-item {
+    transition: background-color $sw-dur-fast $sw-ease;
+}
+
+// ==================== 面板平滑滚动 ====================
+.sw-home .sw-home__panel-scroll {
+    scroll-behavior: smooth;
+}
+
+// ==================== 周打卡行（Duolingo 式） ====================
+.sw__home-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    align-items: center;
+}
+
+.sw__home-weekday {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    &-dot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 80%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-background) 60%, transparent);
+        color: transparent;
+        transition: background-color $sw-dur-base, border-color $sw-dur-base;
+
+        svg { width: 11px; height: 11px; }
+    }
+
+    &.is-done &-dot {
+        border-color: var(--sw-home-accent, var(--b3-theme-primary));
+        background: var(--sw-home-accent, var(--b3-theme-primary));
+        color: var(--b3-theme-background);
+    }
+
+    &-label {
+        font-size: 10px;
+        opacity: 0.65;
+    }
+}
+
+// ==================== 高对比度偏好（prefers-contrast: more）====================
+// Apple 无障碍指南要求适配"增强对比度"偏好。与上方 forced-colors 分工明确：
+// forced-colors 是系统强制覆盖（改用 CanvasText / Canvas 等系统色）；
+// prefers-contrast 仍属用户偏好——继续沿用主题色，只把低透明度的软层收紧为
+// 更实的表面色，使层次边界不再依赖细微的透明度差。
+// 这里仅覆盖令牌，不改布局、尺寸或阴影，因此默认外观完全不受影响。
+// 置于文件末尾，以便同时命中 .speed-switch 与 .sw-settings 两个令牌作用域。
+@media (prefers-contrast: more) {
+    .speed-switch,
+    .sw-settings {
+        --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 20%, transparent);
+        // 按下态须始终比悬停更实，故一并抬高一档，避免高对比度下反馈反转。
+        --sw-accent-pressed: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 30%, transparent);
+        --sw-surface-muted: var(--b3-theme-surface);
+        --sw-control-bg: var(--b3-theme-surface);
+    }
+}

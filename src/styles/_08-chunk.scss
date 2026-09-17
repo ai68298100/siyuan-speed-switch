@@ -1,0 +1,405 @@
+.sw-home__greeting {
+    padding: 6px 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--b3-theme-on-background);
+    letter-spacing: -0.01em;
+}
+
+// ==================== 快速记录（Flomo 式随手记） ====================
+.sw-quick-capture {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    &__input {
+        resize: vertical;
+        min-height: 64px;
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}
+
+// ==================== 组件面板：去除内层模块外壳 ====================
+// 内层 .sw__home-module 的边框/底色/圆角/阴影只在侧栏等独立场景有意义；
+// 面板格子里保留会形成双重卡片并浪费空间。滚动不受影响（仅去装饰）。
+.sw-home .sw-home__cell .sw__home-module {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+
+    &[data-status="error"] { border: none; }
+
+    .sw__home-module-header {
+        min-height: 30px;
+        padding: 2px 2px 4px;
+        border-bottom: none;
+        background: transparent;
+    }
+
+    .sw__home-module-body { padding: 0 2px 4px; }
+}
+
+// ==================== 商店卡片预览与分组头 ====================
+.sw-home-store__preview {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    min-height: 52px;
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--b3-theme-background) 55%, transparent);
+
+    i {
+        display: block;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--b3-border-color) 75%, transparent);
+
+        &.p-hero {
+            width: 44%;
+            height: 16px;
+            margin-bottom: 2px;
+            background: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent);
+        }
+
+        &.p-line {
+            height: 6px;
+
+            &.w1 { width: 92%; }
+            &.w2 { width: 72%; }
+            &.w3 { width: 82%; }
+        }
+
+        &.p-size {
+            height: 12px;
+            border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
+            background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+
+            &.is-current {
+                border-color: var(--b3-theme-primary);
+                background: color-mix(in srgb, var(--b3-theme-primary) 26%, transparent);
+            }
+        }
+    }
+
+    .p-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .p-calendar-grid i { width: 100%; height: 6px; border-radius: 2px; background: color-mix(in srgb, var(--b3-border-color) 72%, transparent); }
+    .p-weather-temp { font-size: 20px; font-weight: 720; color: color-mix(in srgb, var(--b3-theme-primary) 72%, white); }
+    .p-weather-icon { align-self: flex-end; margin-top: -25px; font-size: 22px; }
+    .p-media-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; height: 34px; }
+    .p-media-grid i { width: 100%; height: 100%; border-radius: 5px; background: linear-gradient(160deg, color-mix(in srgb, var(--b3-theme-primary) 42%, transparent), color-mix(in srgb, #df6f8a 34%, transparent)); }
+    .p-feed-list { display: grid; gap: 5px; }
+    .p-feed-list i { display: grid; grid-template-columns: 13px 1fr; align-items: center; gap: 5px; background: transparent; }
+    .p-feed-list b { display: grid; place-items: center; width: 13px; height: 13px; border-radius: 4px; background: color-mix(in srgb, #ef5a50 74%, transparent); color: #fff; font-size: 7px; }
+    .p-feed-list em { display: block; width: 86%; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--b3-border-color) 75%, transparent); }
+    .p-activity-total { font-size: 17px; font-weight: 740; color: color-mix(in srgb, #6453c7 76%, var(--b3-theme-on-background)); }
+    .p-activity-bars { display: grid; gap: 5px; }
+    .p-activity-bars i { width: var(--p); height: 6px; border-radius: 999px; background: linear-gradient(90deg, #6252c6, #8e7ce8); }
+    .p-task-list { display: grid; gap: 5px; }
+    .p-task-list i { position: relative; width: 80%; height: 7px; margin-left: 14px; }
+    .p-task-list i::before { content: ""; position: absolute; left: -12px; top: 0; width: 7px; height: 7px; border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 60%, transparent); border-radius: 2px; }
+    .p-bars { display: flex; align-items: flex-end; gap: 5px; height: 32px; }
+    .p-bars i { flex: 1; height: 40%; background: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent); }
+    .p-bars i:nth-child(2) { height: 70%; } .p-bars i:nth-child(3) { height: 52%; } .p-bars i:nth-child(4) { height: 84%; } .p-bars i:nth-child(5) { height: 62%; }
+
+    // 组件类型之外，再用 moduleId 调整重点，避免所有卡片看起来像同一份占位图。
+    &[data-module-id="journal-calendar"],
+    &[data-module-id="journal-monthly"] { background: color-mix(in srgb, #5f82d8 9%, var(--b3-theme-background)); }
+    &[data-module-id="journal-calendar"] .p-calendar-grid i:nth-child(7n),
+    &[data-module-id="journal-calendar"] .p-calendar-grid i:nth-child(7n + 1) { background: color-mix(in srgb, #d66b75 35%, var(--b3-border-color)); }
+    &[data-module-id="today-tasks"] .p-task-list i:nth-child(-n + 2)::before { border-color: #57966b; background: color-mix(in srgb, #57966b 28%, transparent); }
+    &[data-module-id="flashcard-due"] .p-task-list i::before { border-radius: 50%; border-color: #bd8c43; }
+    &[data-module-id="random-review"] .p-task-list i { width: 68%; }
+    &[data-module-id="quick-capture"] { border-left: 3px solid color-mix(in srgb, var(--b3-theme-primary) 62%, transparent); }
+    &[data-module-id="clipped-unread"] .p-feed-list b { background: color-mix(in srgb, #d38a42 80%, transparent); }
+    &[data-module-id="writing-streak"] .p-bars i { background: linear-gradient(180deg, #e6a24b, #d66e5d); }
+    &[data-module-id="countdown"] .p-hero { width: 30%; border-radius: 999px; background: color-mix(in srgb, #db6c62 55%, transparent); }
+    &[data-module-id="note-stats"] .p-hero { width: 56%; background: color-mix(in srgb, #5b8fc8 45%, transparent); }
+    &[data-module-id="year-progress"] .p-bars i { background: color-mix(in srgb, #5a9c8b 48%, transparent); }
+    &[data-module-id="document-relations-summary"] .p-line { border-left: 2px dotted color-mix(in srgb, var(--b3-theme-primary) 58%, transparent); padding-left: 5px; }
+    &[data-module-id="external-weather-open-meteo"] { background: linear-gradient(145deg, color-mix(in srgb, #4d9ddd 14%, var(--b3-theme-background)), color-mix(in srgb, #7765c8 10%, var(--b3-theme-background))); }
+    &[data-module-id="external-anime-bangumi"] .p-media-grid i:nth-child(2n) { background: linear-gradient(160deg, color-mix(in srgb, #e27698 52%, transparent), color-mix(in srgb, #756bd1 34%, transparent)); }
+    &[data-module-id="external-hot-news-dailyhot"] .p-feed-list b { background: #e05b52; }
+    &[data-module-id="external-news-newsnow"] .p-feed-list b { background: #5683bd; }
+    &[data-module-id="external-activitywatch-time"] { background: color-mix(in srgb, #6958ca 10%, var(--b3-theme-background)); }
+}
+
+.sw-home-store__preview-sizes {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.sw-home-store__group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 16px 0 7px;
+    padding: 0 2px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    // 同块内更早的 font-weight: 600 会被下面的 650 完全覆盖，从未生效（D-364）。
+    letter-spacing: 0.04em;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-wrap: balance;
+    text-wrap: pretty;
+    hyphens: auto;
+    line-height: 1.35;
+    font-weight: 650;
+
+    min-height: 32px;
+    min-width: 0;
+    max-width: 100%;
+
+    .sw-home-store__group-toggle {
+        width: 24px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        cursor: pointer;
+        touch-action: manipulation;
+        &:hover, &:focus-visible { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); outline: none; }
+    }
+
+    .sw-home-store__group-label { min-width: 0; overflow-wrap: anywhere; }
+    .sw-home-store__group-description {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0 10px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 10px;
+        font-weight: 450;
+        letter-spacing: 0;
+        line-height: 1.35;
+        opacity: .78;
+        overflow-wrap: anywhere;
+    }
+}
+
+.sw-home-store__summary {
+    margin: 8px 0 2px;
+    box-sizing: border-box;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    min-height: 18px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+    font-variant-numeric: tabular-nums;
+    text-rendering: optimizeLegibility;
+    line-height: 1.45;
+    font-weight: 450;
+    user-select: text;
+}
+
+.sw-home-store__filter-empty[aria-hidden="true"] { opacity: .72; }
+
+.sw-home-store__card[aria-hidden="true"] { content-visibility: hidden; }
+
+.sw-home-store__source-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+    position: relative;
+    z-index: 1;
+}
+
+.sw-home-store__source-chip,
+.sw-home-store__availability {
+    text-rendering: optimizeLegibility;
+    font-size-adjust: from-font;
+    font-weight: 550;
+    user-select: none;
+}
+
+.sw-home-store__sizes,
+.sw-home-store__group-toggle,
+.sw-home-store__clear-search,
+.sw-home-store__clear-filters {
+    user-select: none;
+}
+
+.sw-home-store__source-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    border-radius: 999px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 9px;
+    line-height: 1.3;
+
+    &.is-online { border-color: color-mix(in srgb, #d58b32 45%, transparent); color: #a76618; }
+    &.is-offline { border-color: color-mix(in srgb, #4f9f68 45%, transparent); color: #3b8252; }
+    &.is-local { border-color: color-mix(in srgb, #6655c8 48%, transparent); color: #5c49b6; }
+    &.is-privacy { opacity: 0.82; }
+    &.is-plugin { border-color: color-mix(in srgb, #7b61bd 48%, transparent); color: #6b50aa; }
+    &.is-config { border-color: color-mix(in srgb, var(--b3-theme-primary) 38%, transparent); color: var(--b3-theme-primary); }
+}
+
+// ActivityWatch：本机聚合用时以系统“屏幕使用时间”风格呈现。
+// 条目只含应用名与累计时长；进度条宽度由有界分钟数相对计算。
+.sw-home__cell[data-module-id="external-activitywatch-time"] {
+    overflow: hidden;
+    border-color: color-mix(in srgb, #6958ca 55%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 6%, rgba(255, 255, 255, 0.52), transparent 28%),
+        linear-gradient(145deg, color-mix(in srgb, #e9e5ff 78%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #d8e5ff 62%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #6552c5;
+
+    .sw__home-stat { padding: 7px 7px 10px; }
+    .sw__home-stat-value { color: #5745b2; font-size: clamp(26px, 4vw, 40px); }
+    .sw__home-module-list { gap: 5px; }
+    .sw__home-module-item { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .sw__home-module-item-action {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        gap: 7px;
+        align-items: center;
+        min-height: 30px;
+        padding: 3px 6px 7px;
+        border-left: 0;
+    }
+    .sw__home-module-item-rank {
+        grid-row: 1 / span 2;
+        display: grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--sw-home-accent) 15%, transparent);
+        color: var(--sw-home-accent);
+        font-size: 9px;
+        font-weight: 750;
+    }
+    .sw__home-module-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 620; }
+    .sw__home-module-item-secondary { grid-column: 3; color: #5745b2; font-variant-numeric: tabular-nums; }
+    .sw__home-item-bar { grid-row: 2; height: 5px; margin: 0 7px 2px 35px; border-radius: 999px; background: rgba(101, 82, 197, 0.11); }
+    .sw__home-item-bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6552c5, #9182ea); }
+}
+
+@media (max-width: 560px) {
+    .sw-home-store { padding: 10px 12px 14px; }
+    .sw-home-store__search { flex-wrap: wrap; gap: 7px; }
+    .sw-home-store__search input { flex: 1 1 calc(100% - 40px); min-width: 0; }
+    .sw-home-store__search .sw-home-store__sort,
+    .sw-home-store__guide { flex: 1 1 calc(50% - 4px); max-width: none; min-width: 0; }
+    .sw-home-store__grid { grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+    .sw-home-store__tabs { overflow-x: auto; scrollbar-width: thin; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+    .sw-home-store__tab { flex: 0 0 auto; min-height: 36px; padding-inline: 12px !important; }
+    .sw-home-store__card { width: 100%; max-width: 100%; padding: 11px 12px; }
+    .sw-home-store__preview { max-width: 100%; overflow: hidden; }
+    .sw-home-store__sizes .sw-home-store__add { margin-inline-start: auto; }
+    .sw-home-store__summary,
+    .sw-home-store__source-meta,
+    .sw-home-store__filter-empty { max-width: 100%; }
+    .sw-home-store__filter-empty { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 560px) and (prefers-reduced-motion: reduce) {
+    .sw-home-store__card {
+        content-visibility: visible;
+        contain: layout;
+    }
+}
+
+// 用户配置资讯源：以排行榜式卡片呈现，更接近平板系统的新闻小组件；
+// 来源健康状态始终可见，失败时明确提示正在展示过期缓存。
+.sw-home__cell[data-module-id="external-hot-news-dailyhot"],
+.sw-home__cell[data-module-id="external-news-newsnow"] {
+    overflow: hidden;
+    border-color: color-mix(in srgb, #e06259 48%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 4%, rgba(255, 255, 255, 0.54), transparent 28%),
+        linear-gradient(145deg, color-mix(in srgb, #fff0e8 76%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #f2d6df 58%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #c64742;
+
+    .sw__home-module-list { gap: 3px; }
+    .sw__home-module-item { border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 52%, transparent); }
+    .sw__home-module-item:last-child { border-bottom: 0; }
+    .sw__home-module-item-action {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        align-items: center;
+        gap: 7px;
+        min-height: 34px;
+        padding: 5px 7px;
+        border-left: 0;
+        white-space: normal;
+
+        &::before { display: none; }
+    }
+    .sw__home-module-item-rank {
+        grid-row: 1 / span 2;
+        display: grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: color-mix(in srgb, var(--sw-home-accent) 15%, transparent);
+        color: var(--sw-home-accent);
+        font-size: 10px;
+        font-weight: 750;
+    }
+    .sw__home-module-item:nth-child(-n + 3) .sw__home-module-item-rank {
+        background: var(--sw-home-accent);
+        color: #fff;
+    }
+    .sw__home-module-item-label {
+        min-width: 0;
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sw__home-module-item-secondary {
+        grid-column: 2;
+        color: color-mix(in srgb, var(--sw-home-accent) 72%, var(--b3-theme-on-surface-light));
+        font-size: 9px;
+    }
+    .sw__home-module-item.has-link:last-child .sw__home-module-item-action {
+        display: block;
+        min-height: 24px;
+        padding-block: 4px 1px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 9px;
+        opacity: 0.76;
+    }
+}
+
+.sw-home__cell[data-module-id="external-news-newsnow"] {
+    border-color: color-mix(in srgb, #4d76c7 48%, var(--b3-border-color));
+    background:
+        radial-gradient(circle at 92% 4%, rgba(255, 255, 255, 0.54), transparent 28%),
+        linear-gradient(145deg, color-mix(in srgb, #e8f2ff 76%, var(--b3-theme-surface, #fff)), color-mix(in srgb, #dcdafa 58%, var(--b3-theme-surface, #fff)));
+    --sw-home-accent: #426ab3;
+}
+
+@media (max-width: 560px) {
+    .sw-home__cell[data-module-id="external-hot-news-dailyhot"],
+    .sw-home__cell[data-module-id="external-news-newsnow"] {
+        .sw__home-module-item-action { min-height: 31px; }
+        .sw__home-module-item-label { font-size: 11px; }
+    }
+}
+
+// Bangumi 每日放送：真实封面媒体网格，接近平板系统小组件的信息密度；
+// 图片只允许 life-widget 模型与 view 双重校验后的 lain.bgm.tv HTTPS 封面。

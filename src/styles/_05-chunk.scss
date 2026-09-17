@@ -1,0 +1,852 @@
+@use "00-tokens" as *;
+.sw-settings {
+    --sw-page-bg: var(--b3-theme-background);
+    --sw-page-bg: color-mix(in srgb, var(--b3-theme-background) 88%, #dfe5f2 12%);
+    --sw-accent-soft: var(--b3-theme-primary-lightest, var(--b3-theme-surface-lighter));
+    --sw-accent-soft: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent);
+    --sw-settings-hover-bg: var(--sw-accent-soft);
+    background: var(--sw-page-bg, var(--b3-theme-background));
+
+    .sw-settings__tabs {
+        width: 148px;
+        padding: 14px 9px;
+        border-right-color: color-mix(in srgb, var(--b3-border-color) 55%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-surface) 54%, var(--sw-page-bg));
+    }
+
+    .sw-settings__tab {
+        min-height: 36px;
+        padding: 8px 11px;
+        border-radius: 10px;
+
+        &:hover { background: var(--sw-accent-soft); }
+
+        // 按下反馈：与 hover 同色系但更实一档（此前点击无可见变化）。
+        &:active { background: var(--sw-accent-pressed, var(--sw-accent-soft)); }
+
+        &.is-active {
+            background: var(--sw-accent-soft);
+            color: var(--b3-theme-primary, var(--sw-accent-fallback));
+            box-shadow: inset 3px 0 0 var(--b3-theme-primary, var(--sw-accent-fallback));
+        }
+    }
+
+    .sw-settings__panels { padding: 18px 22px 22px; }
+
+    .sw-settings__item {
+        margin-inline: -10px;
+        padding: 14px 10px;
+        border-bottom-color: color-mix(in srgb, var(--b3-border-color) 48%, transparent);
+        border-radius: 12px;
+    }
+
+    .sw-settings__item-action .b3-select,
+    .sw-settings__num .b3-text-field,
+    .sw-setting__document-set-form .b3-text-field {
+        border-radius: 10px;
+    }
+}
+
+@media (max-width: 560px) {
+    .speed-switch {
+        .sw__toolbar {
+            min-height: 54px;
+            padding: 8px 10px;
+        }
+
+        .sw__scroll {
+            padding: 12px 10px calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .sw__mobile-card {
+            border-radius: 14px;
+            box-shadow: 0 3px 14px rgba(65, 74, 108, .08);
+
+            .sw__meta {
+                min-height: 36px;
+                padding: 4px 114px 4px 10px;
+            }
+        }
+
+        .sw__mobile-grid { gap: 12px; }
+    }
+
+    .sw-settings {
+        .sw-settings__tabs { padding: 8px 6px; }
+        .sw-settings__panels { padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px)); }
+        .sw-settings__item { margin-inline: -6px; padding-inline: 8px; }
+    }
+}
+
+// 弹窗容器铺满视口：去掉圆角/边框/阴影，解除思源默认 max-width / max-height 限制
+.b3-dialog__container.sw-dialog--fullscreen {
+    max-width: none;
+    max-height: none;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+}
+
+// 收藏底部弹窗遮罩：半透明背板给出模态状态感知（黑色遮罩为标准做法，明暗主题均适用）
+.sw__mobile-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1001;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.32);
+    transition: opacity $sw-dur-panel $sw-ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sw__mobile-sort-overlay {
+    position: fixed;
+    inset: 0;
+    // 思源移动端 Dialog 可能建立独立 stacking context；使用高层级保证排序面板位于 Dialog 之上。
+    // 2147483647 是 CSS 32-bit z-index 的最大常用值。排序层挂在 body
+    // 下，必须高于宿主 Dialog 的 stacking context，避免弹层落到卡片后面。
+    z-index: 2147483647;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, .32);
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sw__mobile-sort-sheet {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 520px;
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 8px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    border-radius: 16px 16px 0 0;
+    background: var(--b3-theme-surface);
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, .18);
+    transform: translateY(100%);
+    transition: transform $sw-dur-slow $sw-ease;
+}
+
+.sw__mobile-sort-sheet--open {
+    transform: translateY(0);
+}
+
+.sw__mobile-sort-sheet .sw__mobile-sheet-handle {
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 6px;
+    border-radius: 2px;
+    background: var(--b3-theme-on-surface-light);
+    opacity: .3;
+}
+
+.sw__mobile-sort-sheet .sw__mobile-sheet-title {
+    padding: 8px 16px 10px;
+    color: var(--b3-theme-on-background);
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.sw__mobile-sort-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.sw__mobile-sort-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 46px;
+    padding: 0 20px;
+    border: 0;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font-size: 15px;
+    text-align: left;
+
+    &:active {
+        background: var(--b3-list-hover);
+    }
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: var(--b3-theme-primary);
+    }
+}
+
+// 收藏底部弹窗
+.sw__mobile-sheet {
+    width: 100%;
+    max-width: 100%;
+    max-height: 65vh;
+    background: var(--b3-theme-surface);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform $sw-dur-panel $sw-ease;
+    overflow: hidden;
+
+    &.sw__mobile-sheet--open {
+        transform: translateY(0);
+    }
+
+    .sw__mobile-sheet-handle {
+        flex: none;
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--b3-theme-on-surface-light);
+        opacity: 0.3;
+        margin: 8px auto 4px;
+    }
+
+    .sw__mobile-sheet-title {
+        flex: none;
+        padding: 8px 16px 6px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--b3-theme-on-background);
+        text-align: center;
+    }
+
+    .sw__mobile-sheet-body {
+        flex: 1;
+        overflow: auto;
+        // 底部内边距叠加安全区，避免最后一项被 iPhone 手势条 / 安卓导航栏遮挡
+        padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .sw__mobile-sheet-section + .sw__mobile-sheet-section {
+        border-top: 1px solid var(--b3-border-color);
+        margin-top: 4px;
+        padding-top: 4px;
+    }
+
+    .sw__mobile-sheet-section-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--b3-theme-on-surface-light);
+
+        > span:first-child {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    // 分组右侧 ⋯ 按钮：触发「一键开启/关闭组内页签」嵌套底部弹窗
+    .sw__mobile-sheet-more {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        margin-right: -8px; // 抵消内边距，确保视觉对齐右侧边缘
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        color: var(--b3-theme-on-surface-light);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        &:active {
+            color: var(--b3-theme-primary);
+            background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
+        }
+    }
+
+    .sw__mobile-sheet-count {
+        flex: none;
+        min-width: 16px;
+        padding: 0 4px;
+        border-radius: 8px;
+        background: var(--b3-theme-surface-lighter, var(--b3-theme-background));
+        font-size: 10px;
+        line-height: 16px;
+        text-align: center;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .sw__mobile-sheet-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sw__mobile-sheet-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 16px;
+        border: none;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        font-size: 14px;
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        min-height: 44px;
+
+        svg {
+            width: 16px;
+            height: 16px;
+            flex: none;
+            color: var(--b3-theme-on-surface-light);
+        }
+
+        span {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        &:active {
+            background: var(--b3-list-hover);
+        }
+    }
+
+    // 操作单中的「取消」：居中 + 顶部细分隔线
+    .sw__mobile-sheet-item--cancel {
+        justify-content: center;
+        text-align: center;
+        color: var(--b3-theme-on-surface);
+        border-top: 1px solid var(--b3-border-color);
+        margin-top: 4px;
+    }
+
+    .sw__mobile-sheet-empty {
+        min-height: 96px;
+        padding: 28px 16px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: var(--sw-radius-card);
+        background: color-mix(in srgb, var(--b3-theme-surface) 76%, var(--b3-theme-background));
+        text-align: center;
+        font-size: 13px;
+        color: var(--b3-theme-on-surface-light);
+    }
+}
+
+// ==================== 减少动态效果（系统"减弱动态效果"开启时） ====================
+// 尊重用户系统设置：关闭插件自身的过渡与动画（不波及思源宿主元素）
+@media (prefers-reduced-motion: reduce) {
+    .speed-switch,
+    .speed-switch *,
+    .sw__fab,
+    .sw__fab *,
+    .sw__mobile-sheet-overlay,
+    .sw__mobile-sheet-overlay *,
+    #swMobileTopBarBtn {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
+// Mobile bottom sheets/FAB are portals mounted on body, so they receive a
+// small standalone pass instead of relying on .speed-switch inheritance.
+.sw__mobile-sheet,
+.sw__mobile-sort-sheet {
+    border-radius: 22px 22px 0 0;
+    background: var(--b3-theme-surface);
+    box-shadow: 0 -14px 36px rgba(55, 65, 100, .16), 0 -3px 10px rgba(55, 65, 100, .08);
+
+    .sw__mobile-sheet-handle { background: var(--b3-theme-primary, #8576e8); opacity: .38; }
+    .sw__mobile-sheet-title { padding-top: 10px; font-size: 16px; }
+    .sw__mobile-sheet-item {
+        border-radius: 10px;
+        margin-inline: 8px;
+        padding-inline: 12px;
+
+        &:active { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 12%, transparent); }
+    }
+}
+
+.sw__mobile-sheet-overlay,
+.sw__mobile-sort-overlay {
+    background: rgba(43, 48, 70, .28);
+    backdrop-filter: blur(2px);
+}
+
+.sw__fab {
+    box-shadow: 0 8px 22px rgba(76, 68, 150, .22), 0 2px 6px rgba(55, 65, 100, .12);
+}
+
+.sw-setting__dock-item,
+.sw-setting__document-set {
+    border-radius: 10px;
+    border-color: color-mix(in srgb, var(--b3-border-color) 68%, transparent);
+    box-shadow: 0 2px 8px rgba(70, 78, 110, .05);
+}
+
+// ==================== 分类分组：排序触发按钮与移动端 sheet 分区 ====================
+.speed-switch .sw__sort-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 200px;
+    padding: 4px 10px;
+    font-size: 13px;
+
+    svg { flex: none; width: 14px; height: 14px; }
+    .sw__sort-trigger-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.sw__mobile-sheet-section {
+    margin: 10px 16px 4px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+}
+
+// ==================== 第二面板（小组件主页） ====================
+.sw-home {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+    padding: 12px 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--sw-page-bg, var(--b3-theme-background));
+
+    &.sw--syncing {
+        contain: layout paint;
+    }
+
+    &.sw--syncing::after {
+        content: "正在同步，组件面板暂时保持稳定";
+        position: absolute;
+        inset: 8px 16px auto auto;
+        z-index: 5;
+        padding: 4px 8px;
+        border-radius: 6px;
+        color: var(--b3-theme-on-surface-light);
+        background: color-mix(in srgb, var(--b3-theme-surface) 92%, transparent);
+        font-size: 11px;
+        opacity: .82;
+        pointer-events: var(--sw-sync-overlay-pointer-events, none);
+    }
+}
+
+// 中部滚动区：网格与提示条在此滚动，顶栏与底部入口栏常驻
+.sw-home__body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.sw-home__quick-actions {
+    flex: none;
+    margin-top: 10px;
+}
+
+// 全屏模式：网格限宽居中，避免超宽屏下拉列表过宽
+.b3-dialog__container.sw-dialog--fullscreen .sw-home__grid {
+    max-width: 1600px;
+    margin-inline: auto;
+    width: 100%;
+}
+
+.sw-home__bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex: none;
+
+    .sw-home__add,
+    .sw-home__refresh {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+
+        svg { width: 14px; height: 14px; }
+    }
+}
+
+.sw-home__grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.sw-home__cell {
+    grid-column: span min(var(--sw-home-span, 6), 12);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    background: var(--b3-theme-surface);
+    box-shadow: var(--sw-card-shadow, none);
+}
+
+.sw-home__cell-body {
+    min-width: 0;
+}
+
+.sw-home__cell-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--b3-border-color);
+
+    .sw-home__tool {
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+}
+
+.sw-home__open {
+    margin-top: 8px;
+    padding: 2px 10px;
+    font-size: 12px;
+}
+
+.sw-home__empty {
+    grid-column: 1 / -1;
+    padding: 48px 16px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: var(--sw-radius-card, 14px);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 13px;
+    text-align: center;
+
+    p {
+        margin: 0 0 12px;
+    }
+
+    .sw-home__empty-store {
+        font-size: 12px;
+    }
+}
+
+// 模块卡片（渲染层来自 home-view）
+.sw__home-module {
+    min-width: 0;
+}
+
+.sw__home-module-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+
+    .sw__home-module-icon {
+        flex: none;
+        display: flex;
+        width: 14px;
+        height: 14px;
+        color: var(--b3-theme-primary);
+
+        svg { width: 14px; height: 14px; }
+    }
+
+    .sw__home-module-title {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .sw__home-module-meta {
+        flex: none;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+    }
+
+    .sw__home-module-toggle {
+        flex: none;
+        padding: 1px 8px;
+        font-size: 12px;
+    }
+}
+
+.sw__home-module-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    .sw__home-module-item {
+        min-width: 0;
+    }
+
+    .sw__home-module-item-action {
+        display: block;
+        width: 100%;
+        padding: 5px 6px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        line-height: 1.5;
+        text-align: left;
+        cursor: pointer;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        transition: background-color $sw-dur-fast, color $sw-dur-fast;
+
+        &:hover,
+        &:focus-visible {
+            background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
+            outline: none;
+        }
+    }
+}
+
+.sw__home-module-status {
+    margin: 4px 0;
+    min-height: 18px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.sw__home-module-status--empty,
+.sw__home-module-status--error {
+    min-height: 54px;
+    padding: 6px 2px;
+}
+
+.sw__home-module-refreshing {
+    margin-left: auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.sw__home-loading-skeleton {
+    display: grid;
+    gap: 7px;
+    min-height: 54px;
+    padding: 6px 2px;
+}
+
+.sw__home-loading-skeleton-line {
+    display: block;
+    height: 10px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface-light) 16%, transparent);
+    animation: sw-home-skeleton-pulse 1$sw-dur-slow $sw-ease-sym infinite;
+
+    &.is-wide { width: 88%; }
+    &.is-medium { width: 68%; }
+    &.is-short { width: 46%; }
+}
+
+@keyframes sw-home-skeleton-pulse {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw__home-loading-skeleton-line {
+        animation: none;
+    }
+}
+
+@media (prefers-reduced-data: reduce) {
+    .sw__home-loading-skeleton-line {
+        animation: none;
+    }
+}
+
+.sw__home-module-retry {
+    padding: 2px 10px;
+    font-size: 12px;
+}
+
+// 手机端：单列堆叠（根节点带 sw-home--mobile 类，由渲染层按 isMobile 注入）
+//
+// 高度塌陷根因（本轮修复）：桌面画布靠 `.sw-home .sw-home__grid` 的
+// `grid-auto-rows: 40px` + 每卡 `grid-row: span N` 撑出面积。手机端单列后
+// 渲染层把 gridRow 写成 auto（CSS 侧同样 !important 置 auto），卡片行跨度归零，
+// 于是每张卡只剩一个 40px 行单元；再叠加 `overflow: hidden`，卡片内容被整片裁掉——
+// 表现就是"一行一个组件，但只显示一条细线、完全无法阅读"。
+// 手机端既然固定单列，列宽档位（2/4/8/12 列）已无意义，卡片也不该再继承 40px 行格。
+// 因此把行高交还内容：不同组件的条目多寡自然形成高低层次（这正是用户期待的"多尺寸"），
+// 同时用 min-height 托住骨架/空态的可读下限，用 max-height 防止超长列表淹没整屏。
+.sw-home--mobile .sw-home__grid {
+    grid-template-columns: 1fr !important;
+    grid-auto-rows: auto !important;
+    gap: 10px;
+}
+
+.sw-home--mobile .sw-home__cell {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100%;
+    min-height: 112px;
+    max-height: 68vh;
+}
+
+// 手机端组件卡片触控优化：外层始终单列，内部操作至少 44px 触控高度，
+// 标题/状态允许收缩并换行，避免窄屏把刷新、折叠按钮挤出可视区域。
+.sw-home--mobile .sw-home__cell {
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
+
+    .sw__home-module-header {
+        min-width: 0;
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+
+    .sw__home-module-title,
+    .sw__home-module-context,
+    .sw__home-module-meta {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .sw__home-module-toggle,
+    .sw__home-module-retry,
+    .sw__home-module-item-action,
+    .sw-home__tool,
+    .sw-home__open {
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    .sw__home-module-item-action {
+        white-space: normal;
+        text-overflow: clip;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .sw__home-module-item-label {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+}
+
+.sw-home-store__search {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input { min-width: 0; flex: 1 1 auto; }
+
+    .sw-home-store__clear-search {
+        flex: 0 0 auto;
+        width: 32px;
+        height: 32px;
+        min-height: 32px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .sw-home-store__sort {
+        flex: 0 0 auto;
+        min-width: 106px;
+        max-width: 132px;
+        height: 32px;
+        border-radius: 8px;
+    }
+}
+
+.sw-home-store__guide {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.sw-home-store-guide {
+    padding: 18px 20px;
+    overflow: auto;
+    line-height: 1.65;
+    background: var(--b3-theme-background);
+
+    &__hint { margin: 0 0 16px; color: var(--b3-theme-on-surface); }
+    &__link { display: inline-flex; margin-bottom: 12px; }
+    &__note { margin: 0; color: var(--b3-theme-on-surface-light); font-size: 12px; }
+
+    &__dependency-title { margin: 18px 0 6px; font-size: 15px; }
+    &__dependency-summary { margin: 0 0 8px; color: var(--b3-theme-on-surface-light); font-size: 12px; }
+    &__dependency-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+    &__dependency-item {
+        display: grid;
+        grid-template-columns: minmax(110px, auto) auto 1fr auto;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 9px;
+        border-radius: 8px;
+        background: var(--b3-theme-surface-lighter);
+        font-size: 12px;
+    }
+    &__dependency-badge { border-radius: 999px; padding: 2px 6px; color: var(--b3-theme-on-primary); background: var(--b3-theme-primary); white-space: nowrap; }
+    &__dependency-item.is-optional &__dependency-badge { color: var(--b3-theme-on-surface); background: var(--b3-theme-surface); }
+    &__dependency-setup { min-width: 0; color: var(--b3-theme-on-surface-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    &__dependency-item a { color: var(--b3-theme-primary); white-space: nowrap; }
+    &__dependency-link { margin-top: 4px; }
+}
+
+@media (max-width: 600px) {
+    .sw-home-store-guide__dependency-item { grid-template-columns: minmax(100px, auto) auto; }
+    .sw-home-store-guide__dependency-setup { grid-column: 1 / -1; white-space: normal; }
+}
+
+.sw-settings__mobile-home-note {
+    margin: 0 0 12px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+
+// ==================== 手机切换器顶栏两行化 ====================
+// 行1 = 搜索 + 排序 + 关闭；行2 = 收藏 / 最近打开 / 设置（带文字，横向可滚动）。
+// 修复此前七个控件挤同一行导致的重叠拥挤问题。

@@ -1,0 +1,488 @@
+@use "00-tokens" as *;
+.sw-setting__favs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+
+    .sw-setting__fav-empty {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+        border-radius: var(--sw-radius-card, 10px);
+        background: color-mix(in srgb, var(--b3-theme-surface-lighter) 55%, transparent);
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+        text-align: center;
+    }
+
+    // 新建分组行：输入框弹性伸缩 + 按钮
+    .sw-setting__fav-create {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .b3-text-field {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .b3-button {
+            flex: none;
+        }
+    }
+
+    // 分组列表：每行 名称 + 数量徽标 + 重命名 + 删除
+    .sw-setting__group-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .sw-setting__fav-section {
+        min-width: 0;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .sw-setting__fav-section-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 4px 8px;
+        background: var(--b3-theme-surface-lighter);
+        cursor: grab;
+
+        .sw-setting__fav-collapse {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+
+            svg {
+                width: 14px;
+                height: 14px;
+                transition: transform $sw-dur-base $sw-ease;
+            }
+
+            &[aria-expanded="true"] svg {
+                transform: rotate(90deg);
+            }
+        }
+
+        .sw-setting__fav-order,
+        .sw-setting__fav-item-order {
+            flex: none;
+            min-width: 22px;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .sw-setting__group-name {
+            flex: 1;
+        }
+    }
+
+    .sw-setting__group-actions {
+        display: inline-flex;
+        flex: none;
+        gap: 4px;
+    }
+
+    .sw-setting__fav-section-items {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sw-setting__group-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+
+        .sw-setting__group-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--b3-theme-on-background);
+        }
+
+        .sw-setting__group-count {
+            flex: none;
+            min-width: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: var(--b3-theme-primary-lightest);
+            color: var(--b3-theme-primary);
+            font-size: 11px;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        .sw-setting__group-btn {
+            flex: none;
+            font-size: 12px;
+        }
+
+        // 删除按钮弱化为错误色文字， hover 加重
+        .sw-setting__group-del {
+            color: var(--b3-card-error-color);
+
+            &:hover {
+                background: var(--b3-card-error-background);
+            }
+        }
+
+        // 行内重命名编辑态：输入框占满剩余空间
+        .b3-text-field {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    .sw-setting__fav-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .sw-setting__fav-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        min-height: 36px;
+        padding: 4px 8px;
+        border-top: 1px solid var(--b3-border-color);
+        cursor: grab;
+
+        &:hover {
+            background: var(--b3-list-hover);
+        }
+
+        .sw-setting__fav-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--b3-theme-on-background);
+        }
+
+        .b3-select {
+            flex: none;
+            width: 150px;
+        }
+
+        .sw-setting__fav-controls {
+            display: inline-flex;
+            flex: none;
+            gap: 2px;
+        }
+
+        .sw-setting__fav-control {
+            width: 26px;
+            height: 26px;
+            padding: 0;
+
+            svg {
+                width: 14px;
+                height: 14px;
+            }
+        }
+    }
+}
+
+@media (max-width: 560px) {
+    .sw-setting__fav-section-head {
+        gap: 5px;
+        padding: 4px 6px;
+
+        .sw-setting__group-actions .sw-setting__group-btn {
+            padding: 0 5px;
+        }
+    }
+
+    .sw-setting__fav-row {
+        flex-wrap: wrap;
+
+        .sw-setting__fav-name {
+            flex: 1 1 calc(100% - 34px);
+        }
+
+        .b3-select {
+            flex: 1 1 120px;
+            width: auto;
+            min-width: 0;
+        }
+
+        .sw-setting__fav-controls {
+            margin-left: auto;
+        }
+    }
+}
+
+// ==================== 设置页标签页布局（左侧标签栏 + 右侧分组面板） ====================
+.sw-settings {
+    --sw-settings-focus-ring: 0 0 0 2px color-mix(in srgb, var(--b3-theme-primary) 24%, transparent);
+    --sw-settings-hover-bg: var(--b3-list-hover, var(--b3-theme-surface-lighter));
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+
+    // 左侧标签栏：固定宽度、竖排按钮，右侧细分隔线
+    .sw-settings__tabs {
+        flex: none;
+        width: 132px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 7px;
+        border-right: 1px solid var(--b3-theme-surface-lighter);
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--b3-border-color) transparent;
+    }
+
+    .sw-settings__tab {
+        flex: none;
+        padding: 8px 10px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--b3-theme-on-surface);
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        transition: background-color $sw-dur-fast, color $sw-dur-fast;
+
+        &:hover {
+            color: var(--b3-theme-primary);
+            background: var(--b3-theme-surface-lighter);
+        }
+
+        // 激活标签：主色浅底 + 主色文字
+        &.is-active {
+            background: var(--b3-theme-primary-lightest);
+            color: var(--b3-theme-primary);
+            font-weight: 600;
+        }
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: var(--sw-settings-focus-ring);
+        }
+    }
+
+    // 右侧分组面板区：面板内滚动
+    .sw-settings__panels {
+        flex: 1;
+        min-width: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 14px 18px 18px;
+        overscroll-behavior: contain;
+    }
+
+    // 面板默认隐藏，仅激活显示
+    .sw-settings__panel {
+        display: none;
+        min-width: 0;
+        overflow-x: hidden;
+
+        &.is-active {
+            display: block;
+        }
+    }
+
+    // 设置条目：默认横排（左侧标题+描述，右侧控件），条目间用 surface-lighter 分隔
+    .sw-settings__item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 13px 8px;
+        margin-inline: -8px;
+        border-radius: 8px;
+        transition: background-color $sw-dur-fast $sw-ease;
+        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &:hover {
+            background: var(--sw-settings-hover-bg);
+        }
+
+        .sw-settings__item-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sw-settings__item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--b3-theme-on-background);
+        }
+
+        .sw-settings__item-desc {
+            margin-top: 3px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--b3-theme-on-surface-light);
+        }
+
+        .sw-settings__item-action {
+            flex: none;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 42px;
+        }
+    }
+
+    // 列布局条目：标题在上，控件占满整行（面板勾选、收藏管理）
+    .sw-settings__item--column {
+        flex-direction: column;
+        align-items: stretch;
+
+        .sw-settings__item-action {
+            flex: 1;
+            width: 100%;
+        }
+    }
+
+    // 数字输入 + 右侧单位标签
+    .sw-settings__num {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .b3-text-field {
+            width: 96px;
+        }
+
+        .sw-settings__num-unit {
+            flex: none;
+            font-size: 12px;
+            color: var(--b3-theme-on-surface-light);
+        }
+    }
+
+    // 默认日记笔记本下拉：设置内占满可用宽
+    .sw-settings__journal-sel {
+        width: 100%;
+        min-width: 220px;
+    }
+
+    // 窄屏（手机端打开设置）：标签栏收窄、条目改上下排，给控件留足宽度
+    @media (max-width: 560px) {
+        flex-direction: column;
+
+        .sw-settings__tabs {
+            width: 100%;
+            box-sizing: border-box;
+            flex-direction: row;
+            gap: 4px;
+            padding: 6px;
+            border-right: none;
+            border-bottom: 1px solid var(--b3-theme-surface-lighter);
+            overflow-x: auto;
+            overflow-y: hidden;
+            overscroll-behavior-x: contain;
+            touch-action: pan-x;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
+        }
+
+        .sw-settings__tab {
+            min-width: max-content;
+            padding: 7px 10px;
+            text-align: center;
+            scroll-snap-align: center;
+        }
+
+        .sw-settings__panels {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            // Keep the final setting row above Android gesture bars and any
+            // host bottom overlay.  The desktop rule remains compact.
+            padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+            box-sizing: border-box;
+        }
+
+        .sw-settings__item {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+
+            .sw-settings__item-action {
+                width: 100%;
+                justify-content: stretch;
+
+                > * {
+                    max-width: 100%;
+                }
+
+                > .b3-select {
+                    width: 100%;
+                    min-width: 0;
+                }
+            }
+        }
+
+        .sw-settings__journal-sel {
+            min-width: 0;
+        }
+
+        .sw-settings__num {
+            width: 100%;
+
+            .b3-text-field {
+                flex: 1;
+                width: auto;
+                min-width: 0;
+            }
+        }
+    }
+}
+
+@media (max-width: 560px) {
+    .b3-dialog__container.sw-settings-dialog {
+        width: calc(100vw - 20px) !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 20px) !important;
+        height: min(88dvh, 720px) !important;
+        max-height: calc(100dvh - 20px) !important;
+        margin: 0 auto;
+
+        .b3-dialog__body {
+            min-width: 0;
+            overflow: hidden;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+    }
+}
+
+// 首次点击日记按钮选择默认笔记本的弹窗
