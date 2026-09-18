@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.21.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.22.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.21.0 makes "who provides this widget" a first-class dimension: the store groups widgets by source plugin (headers show the provider icon, an added x/y counter and select/clear whole group, cards follow the provider's suggested order) and bridges the SiYuan-Checkin public API for five new widgets; semantic search only appears once host capability is confirmed, and GitHub contributions move from a weekly summary to a grid heatmap.
+> v0.22.0 fixes the load-time error from issue #1 and lets the widget panel consume SiYuan's own data directly: database table, pinned docs, inbox, recent updates, data health, recent docs, database navigator and saved searches; plus RSS/Atom feeds, air quality and Hacker News board switching, a monthly checkin widget for SiYuan-Checkin, right-click menus on the top-bar icons, and two command-palette commands.
 
 > The current development head passes type checking, production build, 6123 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, air quality, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, Hacker News boards, an ActivityWatch app-usage bridge, iCal schedule subscriptions, RSS/Atom feed subscriptions, GitHub contribution heatmap, SiYuan-Checkin widgets (requires the checkin plugin), kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, databases, saved searches), and a database table widget bound to one database block and rendered from its current view (see ADR 0058); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
@@ -164,9 +164,39 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.21.0`
+This release is published as `v0.22.0`
 
 ## Changelog
+
+### v0.22.0 (2026-09-18)
+
+- **Fixes the load error (issue #1)**: under certain host timing `window.siyuan.languages`
+  is not yet populated, and registering a global-hotkey command made the kernel read
+  `_trayMenu` off it, throwing a TypeError that aborted plugin loading (every agent
+  capability registered afterwards was skipped). Command registration is now fully
+  isolated: a single failed command no longer affects loading, and the global hotkey
+  degrades to the in-app hotkey until the host is ready.
+- **Eleven new widget-panel widgets (45 → 58)**:
+  - **Kernel-data widgets (read-only SiYuan v3.8.x endpoints)**: database table (bind one
+    SiYuan database block and render its current view read-only, following the filters
+    and sorts you set in SiYuan; clicking a row opens its document; see ADR 0058), pinned
+    docs, inbox (cloud shorthands with a determined empty state when signed out), recent
+    updates, data health (missing-asset survey), recent docs (SiYuan's own recent list),
+    database navigator, saved searches (the native search's saved criteria).
+  - **External-data widgets**: RSS/Atom subscription (any feed URL, zero credentials, zero
+    server), air quality (Open-Meteo European AQI with PM2.5/PM10, six-tier bands), and
+    Hacker News board switching (front page / best / Ask HN / Show HN).
+  - **Ecosystem bridge**: SiYuan-Checkin monthly summary (checkin days, record total and a
+    per-item ranking).
+- **Top bar and command palette**: both top-bar icons gained right-click menus (quick
+  access to settings / switcher / widget panel); the command palette gains "open
+  settings" and "open today's journal" commands.
+- **Compatibility**: a compatibility survey against the SiYuan v3.8.4 kernel source found
+  no breaking changes; all new widgets are read-only endpoints with no new writes or
+  implicit data egress.
+- **Engineering quality**: automated tests 5872 → 6123 (198 test files); boundary
+  hardening across eleven existing modules; performance gates and the package budget hold
+  (package.zip 339861 bytes, within the 512 KiB ceiling).
 
 ### v0.21.0 (2026-09-17)
 
