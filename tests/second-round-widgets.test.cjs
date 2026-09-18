@@ -300,3 +300,21 @@ test("ical rrule engine is wired with bounded expansion", () => {
     assert.match(source, /ICAL_RRULE_MAX_OCCURRENCES = 120/);
     assert.match(source, /fields\.rrule\s*\?\s*expandIcalRrule\(fields, fields\.rrule, horizon\)/);
 });
+
+// ---------- T-6461 切换器动作面板键（Shift+F10 / ContextMenu） ----------
+test("switcher keyboard action panel key opens the focused card menu", () => {
+    const indexTs = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    // 键盘分支存在且使用标准上下文菜单键
+    const branch = indexTs.indexOf('key === "ContextMenu" || (key === "F10" && event.shiftKey)');
+    assert.ok(branch > 0, "action panel key branch must exist");
+    assert.ok(indexTs.indexOf("private bindKeydown") > -1 && indexTs.indexOf("private bindKeydown") < branch, "branch lives inside the keydown handler");
+    // handlers 在卡片构建时缓存，按键分支取用并复用同一菜单打开函数
+    assert.match(indexTs, /cardMenuHandlers\.set\(card, handlers\)/);
+    assert.match(indexTs, /const menuHandlers = this\.cardMenuHandlers\.get\(target\);/);
+    assert.match(indexTs, /this\.openCardMenu\(tab, target, menuHandlers, rect\.left \+ 16, rect\.top \+ 16\)/);
+    // 双语文档提示该按键
+    for (const name of ["README.md", "README.en-US.md"]) {
+        const readme = fs.readFileSync(path.join(__dirname, "..", name), "utf8");
+        assert.match(readme, /Shift\+F10/, `${name} documents the action panel key`);
+    }
+});

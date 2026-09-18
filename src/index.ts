@@ -704,6 +704,13 @@ export default class SpeedSwitchPlugin extends Plugin {
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
     private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
     private cardTabs = new WeakMap<HTMLElement, Tab>(); // 澶嶇敤鍗＄墖濮嬬粓鎸囧悜鏈€鏂扮殑 Tab 瀵硅薄
+    // T-6461 动作面板键：卡片构建时缓存 handlers，供 Shift+F10 / ContextMenu 键盘呼出动作菜单
+    private cardMenuHandlers = new WeakMap<HTMLElement, {
+        onActivate: (tab: Tab) => void,
+        onTogglePin: (tab: Tab, card: HTMLElement) => void,
+        onToggleFav: (tab: Tab, card: HTMLElement) => void,
+        onCloseTab: (tab: Tab, card: HTMLElement) => void,
+    }>();
 
     private activeHistoryMenu: Menu | null = null;
     private historyDropdownClosers = new WeakMap<HTMLElement, {close: () => void; dispose: () => void}>();
@@ -7022,6 +7029,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             event.stopPropagation();
             this.openCardMenu(this.cardTabs.get(card) || tab, card, handlers, event.clientX, event.clientY);
         });
+        this.cardMenuHandlers.set(card, handlers);
         if (this.isMobile) {
             this.bindCardLongPress(card, tab, handlers);
         }
@@ -7625,6 +7633,19 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     : getAllTabs().find((item) => item.id === tabId));
                 if (tab) {
                     this.activateTab(tab, closeOverlay);
+                }
+                return;
+            } else if (key === "ContextMenu" || (key === "F10" && event.shiftKey)) {
+                // T-6461 动作面板键：键盘呼出聚焦卡片的动作菜单（Shift+F10 / ContextMenu
+                // 为标准上下文菜单键，不与输入框快捷键冲突；Raycast Action Panel 心智）
+                event.preventDefault();
+                const target = cards[focusIndex];
+                if (!target) return;
+                const tab = this.cardTabs.get(target);
+                const menuHandlers = this.cardMenuHandlers.get(target);
+                if (tab && menuHandlers) {
+                    const rect = target.getBoundingClientRect();
+                    this.openCardMenu(tab, target, menuHandlers, rect.left + 16, rect.top + 16);
                 }
                 return;
             } else if (key === "Escape") {
