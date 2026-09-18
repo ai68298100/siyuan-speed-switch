@@ -64,7 +64,7 @@ test("user-endpoint feeds expose bounded opt-in configuration", () => {
         assert.equal(feed.availability, "external");
         assert.equal(feed.readOnly, true);
         assert.deepEqual(feed.supportedDevices, ["desktop", "sidebar", "mobile"]);
-        assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot"]);
+        assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
         assert.deepEqual(feed.sizes, ["medium", "wide", "large", "full"]);
     }
 });

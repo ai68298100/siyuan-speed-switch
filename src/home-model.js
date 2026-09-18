@@ -116,11 +116,14 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "endpoint", label: "DailyHotApi 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showTime", label: "显示时间", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "external-news-hackernews", title: "Hacker News 热门", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "board", label: "榜单（非首页榜单会在标题追加标注）", type: "select", options: ["首页", "最佳", "问答", "展示"], defaults: "首页"},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showMeta", label: "显示得分与评论", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showTime", label: "显示时间", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-status-uptimekuma", title: "服务状态", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "Uptime Kuma 完整地址", type: "text", defaults: ""},
@@ -139,6 +142,9 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "url", label: "RSS / Atom 订阅地址", type: "text", defaults: ""},
         {key: "title", label: "显示标题（可选，留空读 feed 自带标题）", type: "text", defaults: ""},
         {key: "maxItems", label: "条目上限", type: "number", min: 1, max: 30, defaults: 10},
+        {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showFeedTitle", label: "显示来源名", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-ical-events", title: "iCal 日程", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "url", label: "iCal 订阅地址（.ics）", type: "text", defaults: ""},
@@ -158,6 +164,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showTime", label: "显示时间", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "external-activitywatch-time", title: "使用时长", icon: "iconClock", category: "siyuan", availability: "external", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "ActivityWatch 本机地址", type: "text", defaults: "http://127.0.0.1:5600"},

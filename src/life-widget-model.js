@@ -335,7 +335,20 @@ function normalizeFeedConfig(value) {
         endpoint: boundedText(source.endpoint, 512),
         limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
         showHot: source.showHot !== "否" && source.showHot !== false,
+        // T-6442：时间与排名均为可关闭的显示项；默认输出与旧版一致（时间在有数据时出现，排名保留）
+        showTime: source.showTime !== "否" && source.showTime !== false,
+        showRank: source.showRank !== "否" && source.showRank !== false,
     };
+}
+
+// 条目时间统一本地时区短戳；无可靠发布时间（<=0 或不可解析）整条省略，不伪造时间
+function formatFeedStamp(timestamp) {
+    const value = Number(timestamp);
+    if (!Number.isFinite(value) || value <= 0) return "";
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function isLocalFeedHost(hostname) {
@@ -414,15 +427,19 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
     if (!feed) return null;
     const sourceName = provider === "newsnow" ? "NewsNow" : "DailyHotApi";
     const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
-    const items = feed.items.map((item) => ({
-        label: item.title,
-        value: "",
-        href: item.href,
-        rank: item.rank,
-        secondary: normalizedConfig.showHot && item.hot
-            ? `${boundedText(labels.hot, 16) || "热度"} ${item.hot}`
-            : "",
-    }));
+    const items = feed.items.map((item) => {
+        const details = [];
+        const stamp = normalizedConfig.showTime ? formatFeedStamp(item.publishedAt) : "";
+        if (stamp) details.push(stamp);
+        if (normalizedConfig.showHot && item.hot) details.push(`${boundedText(labels.hot, 16) || "热度"} ${item.hot}`);
+        return {
+            label: item.title,
+            value: "",
+            href: item.href,
+            rank: normalizedConfig.showRank ? item.rank : undefined,
+            secondary: details.join(" · "),
+        };
+    });
     items.push({
         label: `${boundedText(labels.source, 32) || "数据来源"}：${sourceName}`,
         value: "",
@@ -479,9 +496,9 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
     if (!parsed.ok) return null;
     const latest = latestRssItems(parsed.items, {maxItems: normalized.maxItems});
     const pad = (n) => String(n).padStart(2, "0");
-    const feedLabel = parsed.feedTitle && parsed.feedTitle !== normalized.title ? parsed.feedTitle : "";
+    const feedLabel = normalized.showFeedTitle && parsed.feedTitle && parsed.feedTitle !== normalized.title ? parsed.feedTitle : "";
     const items = latest.map((item, index) => {
-        const stamp = item.timestamp > 0
+        const stamp = normalized.showDate && item.timestamp > 0
             ? (() => {
                 const d = new Date(item.timestamp);
                 return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -491,7 +508,7 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
             label: item.title,
             value: [feedLabel, stamp].filter(Boolean).join(" · "),
             href: /^https?:\/\//i.test(item.link) ? item.link : undefined,
-            rank: index + 1,
+            rank: normalized.showRank ? index + 1 : undefined,
         };
     });
     items.push({label: `${boundedText(labels.source, 32) || "数据来源"}：RSS/Atom`, value: ""});
@@ -558,6 +575,8 @@ function normalizeHackerNewsConfig(value) {
     return {
         limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
         showMeta: source.showMeta !== "否" && source.showMeta !== false,
+        // T-6443：HN 榜单默认不显示时间（得分/评论已足够），需要时按本地短戳追加
+        showTime: source.showTime === "是" || source.showTime === true,
         board,
     };
 }
@@ -635,10 +654,11 @@ function buildHackerNewsSnapshot(envelope, config, labels = {}) {
         seen.add(title);
         const points = Math.max(0, Math.trunc(Number(hit.points)) || 0);
         const comments = Math.max(0, Math.trunc(Number(hit.num_comments)) || 0);
-        const secondary = normalizedConfig.showMeta
-            ? `${boundedText(labels.points, 16) || "分"} ${points} · ${boundedText(labels.comments, 16) || "评"} ${comments}`
-            : "";
-        result.push({label: title, value: "", href, rank: result.length + 1, secondary, publishedAt: normalizeFeedTimestamp(hit.created_at_i, 0)});
+        const parts = [];
+        if (normalizedConfig.showMeta) parts.push(`${boundedText(labels.points, 16) || "分"} ${points} · ${boundedText(labels.comments, 16) || "评"} ${comments}`);
+        const stamp = normalizedConfig.showTime ? formatFeedStamp(normalizeFeedTimestamp(hit.created_at_i, 0)) : "";
+        if (stamp) parts.push(stamp);
+        result.push({label: title, value: "", href, rank: result.length + 1, secondary: parts.join(" · "), publishedAt: normalizeFeedTimestamp(hit.created_at_i, 0)});
         return result;
     }, []);
     items.push({
@@ -1036,6 +1056,7 @@ module.exports = {
     normalizeBangumiCalendar,
     buildBangumiSnapshot,
     normalizeFeedConfig,
+    formatFeedStamp,
     isLocalFeedHost,
     normalizeConfiguredFeedUrl,
     normalizeExternalItemHref,

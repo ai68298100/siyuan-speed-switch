@@ -21,7 +21,15 @@ function normalizeRssSubscriptionConfig(value) {
     const requested = Math.trunc(Number(source.maxItems));
     const maxItems = Number.isFinite(requested) ? Math.min(30, Math.max(1, requested)) : 10;
     const title = typeof source.title === "string" ? source.title.trim().slice(0, MAX_TITLE_CHARS) : "";
-    return {url, maxItems, title};
+    // T-6444：来源名/日期默认显示（与旧版一致）；序号默认关——按时间排序的订阅里纯序号无含义
+    return {
+        url,
+        maxItems,
+        title,
+        showFeedTitle: source.showFeedTitle !== "否" && source.showFeedTitle !== false,
+        showDate: source.showDate !== "否" && source.showDate !== false,
+        showRank: source.showRank === "是" || source.showRank === true,
+    };
 }
 
 function xmlCodePoint(code) {

@@ -1,6 +1,6 @@
 # 组件商店深度优化项目
 
-状态：进行中（2026-09-19 起，39/58 已完成）
+状态：进行中（2026-09-19 起，43/58 已完成）
 
 目标不是继续增加组件数量，而是逐个提升现有组件的配置、显示、交互、空态、错误恢复和移动端体验。
 每个组件验收都覆盖：配置可发现性、数据范围、卡片密度、点击行为、刷新/失败、桌面/侧栏/手机。
@@ -65,10 +65,10 @@
 | 37 | 近期天气 `external-weather-open-meteo` | ✅ | 体感默认显示、风速按需显示（默认关）；预报天数/来源/缓存既有能力复核通过 |
 | 38 | 空气质量 `external-air-quality` | ✅ | 请求补 O₃/NO₂/SO₂ 浓度（默认不展示），双登记门禁加同步契约；只展示官方档位词，不做医疗建议 |
 | 39 | 每日放送 `external-anime-bangumi` | ✅ | 周几+日期标注、评分可关闭；封面白名单、失败降级与 bgm.tv 外链既有能力复核通过 |
-| 40 | 热搜事件 `external-hot-news-dailyhot` | ⬜ | 数据源选择、排名和不可用端点 |
-| 41 | 实时资讯 `external-news-newsnow` | ⬜ | 来源筛选、去重、时间和外链 |
-| 42 | Hacker News 热门 `external-news-hackernews` | ⬜ | 榜单、分数/评论和英文长标题 |
-| 43 | RSS 订阅 `external-rss-subscription` | ⬜ | 地址验证、已读、时间和图片策略 |
+| 40 | 热搜事件 `external-hot-news-dailyhot` | ✅ | 发布时间短戳（无数据不伪造）、排名可关；路由白名单与陈旧回退既有能力复核通过；数据源路由选择器随基址+路由改造单独立项 |
+| 41 | 实时资讯 `external-news-newsnow` | ✅ | 时间短戳、排名可关；去重/外链白名单/来源 id 契约既有能力复核通过 |
+| 42 | Hacker News 热门 `external-news-hackernews` | ✅ | 时间短戳默认关（可选）；四榜单、得分/评论开关既有能力复核通过 |
+| 43 | RSS 订阅 `external-rss-subscription` | ✅ | 来源名/日期/序号三开关（序号默认关）；地址验证与图片策略复核通过；已读需新增持久化数据 key，单独立项 |
 | 44 | 未读文章 `external-rss-miniflux` | ⬜ | 凭据、分类、已读状态和服务失败 |
 | 45 | iCal 日程 `external-ical-events` | ⬜ | 时区、全天事件、重复规则和过期状态 |
 | 46 | GitHub 贡献 `external-github-contrib` | ⬜ | Token、时间窗、热力图提示和限流 |
