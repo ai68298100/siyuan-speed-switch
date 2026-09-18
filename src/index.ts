@@ -8,7 +8,7 @@ import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, re
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
-import {buildPinnedDocsSnapshot, buildInboxSnapshot, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, buildSavedSearchesSnapshot} from "./kernel-widget-model";
+import {buildPinnedDocsSnapshot, buildInboxSnapshot, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig} from "./kernel-widget-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -3133,6 +3133,8 @@ const version = beginSearch(session);
         "/api/asset/getMissingAssets",
         "/api/storage/getRecentDocs",
         "/api/storage/getCriteria",
+        // v3.8.x 数据库只读渲染（T-6330 / ADR 0058）。
+        "/api/av/renderAttributeView",
     ]);
 
     /**
@@ -3218,6 +3220,9 @@ const version = beginSearch(session);
                     break;
                 case "/api/storage/getCriteria":
                     response = await fetch("/api/storage/getCriteria", init);
+                    break;
+                case "/api/av/renderAttributeView":
+                    response = await fetch("/api/av/renderAttributeView", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -3867,6 +3872,18 @@ const version = beginSearch(session);
                 methods: [this.i18n.homeCriteriaMethod0, this.i18n.homeCriteriaMethod1, this.i18n.homeCriteriaMethod2, this.i18n.homeCriteriaMethod3, this.i18n.homeCriteriaMethod4],
             });
             if (!snapshot) throw new Error("invalid_saved_searches");
+            return snapshot;
+        });
+        // 数据库表格（T-6330 / ADR 0058）：用户绑定一个数据库块，投影其当前视图
+        // （筛选/排序/分页交还内核）；只读，行点击按块 ID 打开。
+        register("database-table", this.i18n.homeAvTable, "iconDatabase", this.i18n.homeDescAvTable, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const normalized = normalizeAvTableConfig(config);
+            if (!normalized.blockId) return {emptyHint: this.i18n.homeAvTableConfigHint, items: []};
+            const json = await this.fetchKernelJson("/api/av/renderAttributeView", {id: normalized.blockId});
+            const snapshot = buildAvTableSnapshot(json, normalized, {
+                title: this.i18n.homeAvTable, empty: this.i18n.homeAvTableEmpty,
+            });
+            if (!snapshot) return {emptyHint: this.i18n.homeAvTableUnavailable, items: []};
             return snapshot;
         });
     }

@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.21.0 makes "who provides this widget" a first-class dimension: the store groups widgets by source plugin (headers show the provider icon, an added x/y counter and select/clear whole group, cards follow the provider's suggested order) and bridges the SiYuan-Checkin public API for five new widgets; semantic search only appears once host capability is confirmed, and GitHub contributions move from a weekly summary to a grid heatmap.
 
-> The current development head passes type checking, production build, 6117 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, air quality, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, Hacker News boards, an ActivityWatch app-usage bridge, iCal schedule subscriptions, RSS/Atom feed subscriptions, GitHub contribution heatmap, SiYuan-Checkin widgets (requires the checkin plugin), and kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, databases, saved searches); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 6123 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, air quality, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, Hacker News boards, an ActivityWatch app-usage bridge, iCal schedule subscriptions, RSS/Atom feed subscriptions, GitHub contribution heatmap, SiYuan-Checkin widgets (requires the checkin plugin), kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, databases, saved searches), and a database table widget bound to one database block and rendered from its current view (see ADR 0058); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -283,7 +283,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 197 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6117 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 198 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6123 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |

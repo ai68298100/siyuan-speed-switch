@@ -15,6 +15,7 @@ const NEW_ENDPOINTS = [
     "/api/asset/getMissingAssets",
     "/api/storage/getRecentDocs",
     "/api/storage/getCriteria",
+    "/api/av/renderAttributeView",
 ];
 
 test('every new kernel endpoint is registered in the whitelist set', () => {
@@ -39,6 +40,7 @@ test('each kernel widget adapter calls its own endpoint and guards invalid paylo
         ["host-recent-docs", "/api/storage/getRecentDocs", "invalid_host_recent_docs"],
         ["database-list", "/api/query/sql", "invalid_database_list"],
         ["saved-searches", "/api/storage/getCriteria", "invalid_saved_searches"],
+        ["database-table", "/api/av/renderAttributeView", null],
     ];
     for (const [moduleId, endpoint, guard] of widgets) {
         const registration = indexSource.indexOf(`register("${moduleId}"`);
@@ -103,6 +105,7 @@ test('new command and widget i18n keys exist in both languages', () => {
         "homeDatabaseList", "homeDescDatabaseList", "homeDatabaseListEmpty",
         "homeSavedSearches", "homeDescSavedSearches", "homeSavedSearchesEmpty", "homeSavedSearchesStat",
         "homeCriteriaMethod0", "homeCriteriaMethod1", "homeCriteriaMethod2", "homeCriteriaMethod3", "homeCriteriaMethod4",
+        "homeAvTable", "homeDescAvTable", "homeAvTableConfigHint", "homeAvTableEmpty", "homeAvTableUnavailable",
     ];
     for (const key of keys) {
         assert.ok(zh[key] && zh[key].length > 0, `zh-CN 缺少 ${key}`);

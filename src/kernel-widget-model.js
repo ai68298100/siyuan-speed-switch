@@ -228,6 +228,80 @@ function normalizeSavedSearchesConfig(value) {
 
 const CRITERIA_METHODS_COUNT = 5;
 
+// ---------- T-6330 数据库当前视图投影（/api/av/renderAttributeView，ADR 0058） ----------
+// 语义：视图筛选/排序/分页交还内核；本层只做"当前视图 → 列表项"的有界投影。
+// av 契约（v3.8.4 kernel/api/av_contract_mapping.go）：
+//   data.view = 视图实例（table 型含 columns/rows）；行 cells[i] 对齐 columns[i]；
+//   cell.valueType ∈ block/text/number/select/mSelect/date/...；cell.value 为 av.Value。
+function normalizeAvTableConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const blockId = boundedText(source.blockId, 64);
+    return {
+        blockId: /^\d{14}-[0-9a-z]+$/i.test(blockId) ? blockId : "",
+        limit: clampLimit(source.limit, 8),
+    };
+}
+
+// 宽容抽取：av.Value 的形态随字段类型不同（text.content / number / mSelect / block），
+// 逐族尝试取展示文本；全不命中返回空串（调用方跳过）。绝不透传原始 JSON。
+function extractAvCellText(value) {
+    if (!value || typeof value !== "object") return "";
+    if (value.text && typeof value.text.content === "string") return value.text.content;
+    if (value.block && typeof value.block.content === "string") return value.block.content;
+    if (value.number && Number.isFinite(Number(value.number.content))) return String(value.number.content);
+    if (Array.isArray(value.mSelect)) {
+        return value.mSelect
+            .map((option) => (option && typeof option.content === "string" ? option.content : ""))
+            .filter(Boolean)
+            .join("、");
+    }
+    if (value.date && typeof value.date.content === "string") return value.date.content;
+    if (typeof value.template === "string") return value.template;
+    if (value.template && typeof value.template.content === "string") return value.template.content;
+    return "";
+}
+
+function buildAvTableSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
+    const data = payload && typeof payload === "object" && payload.data && typeof payload.data === "object"
+        ? payload.data
+        : null;
+    if (!data) return null;
+    const view = data.view && typeof data.view === "object" ? data.view : null;
+    const table = view && view.table && typeof view.table === "object" ? view.table : null;
+    if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) return null;
+    const normalized = normalizeAvTableConfig(config);
+    if (!normalized.blockId) return null;
+
+    const columns = table.columns.filter((column) => column && typeof column === "object" && column.hidden !== true);
+    const primaryColumn = columns[0] || null;
+    const secondaryColumns = columns.slice(1, 3);
+    const textOf = (row, column) => {
+        if (!column) return "";
+        const cell = (Array.isArray(row.cells) ? row.cells : []).find((cell) => cell && cell.id === column.id);
+        return extractAvCellText(cell ? cell.value : null);
+    };
+
+    const items = [];
+    for (const row of table.rows) {
+        if (!row || typeof row !== "object" || !Array.isArray(row.cells)) continue;
+        if (items.length >= normalized.limit) break;
+        const label = boundedText(textOf(row, primaryColumn), 120);
+        if (!label) continue;
+        const valueParts = secondaryColumns
+            .map((column) => boundedText(textOf(row, column), 60))
+            .filter(Boolean);
+        items.push({
+            label,
+            value: boundedText(row.id, 64),
+            secondary: valueParts.join(" · "),
+            rank: items.length + 1,
+        });
+    }
+    const viewName = boundedText(view.name, 48) || boundedText(data.name, 48);
+    const title = [boundedText(labels.title, 32) || "数据库", viewName].filter(Boolean).join(" · ");
+    return snapshotOf(title, items, labels, now, status, "数据库当前视图暂无数据行");
+}
+
 function buildSavedSearchesSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
     const criteria = responseItems(payload);
     if (!criteria) return null;
@@ -275,4 +349,7 @@ module.exports = {
     normalizeSavedSearchesConfig,
     buildSavedSearchesSnapshot,
     CRITERIA_METHODS_COUNT,
+    normalizeAvTableConfig,
+    extractAvCellText,
+    buildAvTableSnapshot,
 };

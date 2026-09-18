@@ -210,6 +210,10 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "saved-searches", title: "已存筛选", icon: "iconSearch", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
     ]},
+    {moduleId: "database-table", title: "数据库表格", icon: "iconDatabase", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "blockId", label: "数据库块 ID（在数据库块菜单复制）", type: "text", defaults: ""},
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
 ]);
 
 function text(value, max = 128) {
