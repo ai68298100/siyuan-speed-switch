@@ -60,7 +60,7 @@ import {openMobileSwitcherDialog, bindMobileSwitcherToolbarActions, renderMobile
 import {openSecondPanel} from "./second-panel-ui";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
-import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets} from "./settings-sections";
+import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets, buildSettingsStorage} from "./settings-sections";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation} from "./life-widget-model";
@@ -1362,6 +1362,38 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 去抖写盘：高频数据（MRU/置顶/收藏）每次操作只更新内存，合并后延迟落盘，
     // 避免连续收藏/置顶/切换页签时每个动作都触发一次内核文件写入（交互卡顿的根因）
+    // T-6463 存储用量透明化：逐常量显式 loadData（存储 key 审计门禁要求首参为 *_KEY
+    // 常量），测量近似 UTF-8 字节数；单 key 读取失败按 0 计，不拖垮整个报表。
+    async measureStorageUsage(): Promise<Array<{key: string, bytes: number}>> {
+        const encoder = new TextEncoder();
+        const measure = async (key: string, value: Promise<unknown>): Promise<{key: string, bytes: number}> => {
+            let bytes = 0;
+            try {
+                const data = await value;
+                const json = data === undefined || data === null ? "" : JSON.stringify(data);
+                bytes = encoder.encode(json).length;
+            } catch {
+                bytes = 0;
+            }
+            return {key, bytes};
+        };
+        return Promise.all([
+            measure(MRU_KEY, this.loadData(MRU_KEY)),
+            measure(HISTORY_KEY, this.loadData(HISTORY_KEY)),
+            measure(CLOSED_HISTORY_KEY, this.loadData(CLOSED_HISTORY_KEY)),
+            measure(PINNED_KEY, this.loadData(PINNED_KEY)),
+            measure(FAV_KEY, this.loadData(FAV_KEY)),
+            measure(FAV_GROUPS_KEY, this.loadData(FAV_GROUPS_KEY)),
+            measure(SETTINGS_KEY, this.loadData(SETTINGS_KEY)),
+            measure(QUICK_ACTIONS_KEY, this.loadData(QUICK_ACTIONS_KEY)),
+            measure(QUICK_ACTIONS_DEFAULTS_KEY, this.loadData(QUICK_ACTIONS_DEFAULTS_KEY)),
+            measure(DOCUMENT_SETS_KEY, this.loadData(DOCUMENT_SETS_KEY)),
+            measure(HOME_STATE_KEY, this.loadData(HOME_STATE_KEY)),
+            measure(THUMB_CACHE_KEY, this.loadData(THUMB_CACHE_KEY)),
+            measure(FAV_COLLAPSED_KEY, this.loadData(FAV_COLLAPSED_KEY)),
+        ]);
+    }
+
     private saveDataDebounced(key: string) {
         if (this.isUnloading) return;
         const timer = this.saveTimers.get(key);
@@ -1909,7 +1941,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
     openSetting(initialPanel?: string) {
         const s = this.getSettings();
-        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "documentSets", "journal", "mobile"] as const;
+        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "documentSets", "journal", "mobile", "storage"] as const;
         const panelLabels: Record<string, string> = {
             appearance: this.i18n.secAppearance,
             behavior: this.i18n.secBehavior,
@@ -1919,6 +1951,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             documentSets: this.i18n.secDocumentSets,
             journal: this.i18n.secJournal,
             mobile: this.i18n.secMobile,
+            storage: this.i18n.secStorage,
         };
 
         const dialog = new Dialog({
@@ -2027,6 +2060,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             documentSets: () => buildSettingsDocumentSets.call(this, ),
             journal: () => buildSettingsJournal.call(this, s),
             mobile: () => buildSettingsMobile.call(this, s),
+            storage: () => buildSettingsStorage.call(this),
             homePanel: () => buildSettingsHomePanel.call(this, s),
         };
 

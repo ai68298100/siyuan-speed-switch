@@ -352,3 +352,38 @@ test("ical rdate appends extra occurrences and exdate still applies", () => {
     assert.equal(parsed.events[1].start, Date.parse("2026-09-23T10:00:00Z"));
     assert.equal(parsed.events[1].end, Date.parse("2026-09-23T11:00:00Z"), "补场时长与主事件一致");
 });
+
+// ---------- T-6463 存储用量透明化 ----------
+test("storage usage formatting and summary stay pure and bounded", () => {
+    const settings = require("../src/settings-model.js");
+    assert.equal(settings.formatStorageBytes(0), "0 B");
+    assert.equal(settings.formatStorageBytes(512), "512 B");
+    assert.equal(settings.formatStorageBytes(2048), "2 KB");
+    assert.equal(settings.formatStorageBytes(15872), "15.5 KB");
+    assert.equal(settings.formatStorageBytes(-5), "0 B");
+    assert.equal(settings.formatStorageBytes(Number.NaN), "0 B");
+    const summary = settings.buildStorageUsageSummary([
+        {key: "sw_mru", bytes: 120},
+        {key: "sw_thumb_cache", bytes: 40000},
+        {key: "sw_settings", bytes: 300},
+        {key: "", bytes: 10},
+        {key: "bad", bytes: -1},
+        null,
+    ]);
+    assert.deepEqual(summary.rows.map((row) => row.key), ["sw_thumb_cache", "sw_settings", "sw_mru"], "非法条目丢弃并按占用降序");
+    assert.equal(summary.total, 40420);
+});
+
+test("storage usage section is wired to host measurement and registry", () => {
+    const indexSource = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    assert.match(indexSource, /async measureStorageUsage\(\): Promise<Array<\{key: string, bytes: number\}>>/);
+    assert.match(indexSource, /new TextEncoder\(\)/);
+    assert.match(indexSource, /encoder\.encode\(json\)\.length/);
+    const sections = readSourceText(path.join(__dirname, "..", "src", "settings-sections.ts"));
+    assert.match(sections, /export function buildSettingsStorage\(this: SettingsSectionsHost\)/);
+    assert.match(sections, /buildStorageUsageSummary\(entries\)/);
+    assert.match(sections, /THUMB_CACHE_KEY, label: "缩略图缓存"/);
+    const indexSource2 = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    assert.match(indexSource2, /storage: \(\) => buildSettingsStorage\.call\(this\)/);
+    assert.match(indexSource2, /storage: this\.i18n\.secStorage/);
+});

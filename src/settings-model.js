@@ -106,4 +106,25 @@ function resolvePanelSize(settings, viewport) {
     };
 }
 
-module.exports = {normalizeSettings, resolvePanelSize};
+// T-6463 存储用量透明化：字节数的人读格式（B/KB/MB，1 位小数去尾零）。
+function formatStorageBytes(bytes) {
+    const value = Math.max(0, Math.round(Number(bytes)));
+    if (!Number.isFinite(value)) return "0 B";
+    if (value < 1024) return `${value} B`;
+    const kb = value / 1024;
+    if (kb < 1024) return `${Math.round(kb * 10) / 10} KB`;
+    return `${Math.round(kb / 1024 * 10) / 10} MB`;
+}
+
+// 条目净化（丢弃非法/负值）、按占用降序、合计。entries = [{key, bytes}]。
+function buildStorageUsageSummary(entries) {
+    const rows = (Array.isArray(entries) ? entries : [])
+        .filter((entry) => entry && typeof entry.key === "string" && entry.key.trim() !== ""
+            && Number.isFinite(Number(entry.bytes)) && Number(entry.bytes) >= 0)
+        .map((entry) => ({key: entry.key.trim().slice(0, 96), bytes: Math.round(Number(entry.bytes))}))
+        .sort((a, b) => b.bytes - a.bytes);
+    const total = rows.reduce((sum, row) => sum + row.bytes, 0);
+    return {rows, total};
+}
+
+module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary};

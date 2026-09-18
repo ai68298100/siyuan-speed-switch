@@ -6,7 +6,8 @@
 // ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
 import {getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
-import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX} from "./constants";
+import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
+import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
@@ -91,6 +92,8 @@ export interface SettingsSectionsHost {
     saveDocumentSet(candidate: unknown): boolean;
     probeDocumentSetEntries(entries: Array<{rootId: string; title: string}>, signal?: AbortSignal): Promise<{available: Array<{rootId: string; title: string}>; missing: Array<{rootId: string; title: string}>; unknown: Array<{rootId: string; title: string}>}>;
     saveDataDebounced(key: string): void;
+    // T-6463 存储用量透明化
+    measureStorageUsage(): Promise<Array<{key: string, bytes: number}>>;
 }
     // ===== 设置页 · 外观：弹窗宽高、缩略图列数与高度 =====
 export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
@@ -1110,3 +1113,52 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
     // 取消通过代际标记实现：请求发出前后各比对一次，过期结果直接丢弃。
     // 真实宿主行为见 docs/path-filter-host-evidence.md（D-365）——包括"不存在的
     // 路径返回空列表而非错误"，因此无需为已删除的路径前缀设计专门分支。
+
+// ===== T-6463 设置页 · 存储用量：各持久化 key 的近似占用（Tabliss 显式化思路） =====
+const STORAGE_USAGE_KEYS: ReadonlyArray<{key: string, label: string}> = Object.freeze([
+    {key: MRU_KEY, label: "最近使用页签"},
+    {key: HISTORY_KEY, label: "最近打开文档"},
+    {key: CLOSED_HISTORY_KEY, label: "最近关闭文档"},
+    {key: PINNED_KEY, label: "置顶页签"},
+    {key: FAV_KEY, label: "收藏"},
+    {key: FAV_GROUPS_KEY, label: "收藏分组"},
+    {key: SETTINGS_KEY, label: "插件设置"},
+    {key: QUICK_ACTIONS_KEY, label: "快捷入口"},
+    {key: QUICK_ACTIONS_DEFAULTS_KEY, label: "快捷入口默认值标记"},
+    {key: DOCUMENT_SETS_KEY, label: "文档集"},
+    {key: HOME_STATE_KEY, label: "第二面板布局"},
+    {key: THUMB_CACHE_KEY, label: "缩略图缓存"},
+    {key: FAV_COLLAPSED_KEY, label: "收藏分组折叠状态"},
+]);
+
+export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
+    const root = document.createElement("div");
+    root.className = "sw-settings__storage";
+    const rows = document.createElement("div");
+    rows.className = "sw-settings__storage-rows";
+    const note = document.createElement("p");
+    note.className = "sw-settings__storage-note";
+    note.textContent = this.i18n.setStorageMeasuring || "统计中…";
+    root.append(rows, note);
+    void this.measureStorageUsage().then((entries) => {
+        const summary = buildStorageUsageSummary(entries);
+        rows.textContent = "";
+        const totalValue = document.createElement("strong");
+        totalValue.textContent = formatStorageBytes(summary.total);
+        rows.appendChild(this.settingItem(
+            this.i18n.setStorageTotal || "合计",
+            this.i18n.setStorageApprox || "近似 UTF-8 字节数",
+            totalValue,
+        ));
+        for (const row of summary.rows) {
+            const known = STORAGE_USAGE_KEYS.find((item) => item.key === row.key);
+            const value = document.createElement("span");
+            value.textContent = formatStorageBytes(row.bytes);
+            rows.appendChild(this.settingItem(known ? known.label : row.key, row.key, value));
+        }
+        note.textContent = "";
+    }).catch(() => {
+        note.textContent = this.i18n.homeModuleError || "统计失败";
+    });
+    return root;
+}
