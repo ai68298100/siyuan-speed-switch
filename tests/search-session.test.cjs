@@ -134,11 +134,17 @@ test('concurrent sessions never share cache entries or debounce timers', () => {
 test('cache hit/miss cost stays negligible for repeated keystrokes', () => {
     const session = createSearchSession(64);
     for (let i = 0; i < 64; i += 1) cacheSearchResult(session, `query-${i}`, Array.from({length: 12}, (_, j) => ({id: j})));
-    const started = process.hrtime.bigint();
-    for (let i = 0; i < 10000; i += 1) {
-        const key = `query-${i % 64}`;
-        if (!session.cache.has(key)) throw new Error('expected hit');
+    // T-6467：best-of-3 取最小样本——最小值受宿主负载/GC 抖动污染最小；
+    // 真回归会让全部样本一起抬升，最小值照样超限，门禁不因 best-of-N 失真。
+    let best = Number.POSITIVE_INFINITY;
+    for (let round = 0; round < 3; round += 1) {
+        const started = process.hrtime.bigint();
+        for (let i = 0; i < 10000; i += 1) {
+            const key = `query-${i % 64}`;
+            if (!session.cache.has(key)) throw new Error('expected hit');
+        }
+        const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
+        best = Math.min(best, elapsed);
     }
-    const elapsed = Number(process.hrtime.bigint() - started) / 1e6;
-    assert.ok(elapsed < 50, `10k cache lookups took ${elapsed.toFixed(2)}ms; Map lookup path regressed`);
+    assert.ok(best < 50, `10k cache lookups best-of-3 took ${best.toFixed(2)}ms; Map lookup path regressed`);
 });

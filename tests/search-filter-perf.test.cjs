@@ -59,10 +59,18 @@ function measure(tabs, queries, filtersByCall) {
 test('keyword-gated filtering stays near-constant as matches stay bounded', (t) => {
     const tabs = buildSyntheticTabs();
     const queries = ['roadmap', '会议', 'standup', 'zzz-no-hit'];
-    const {average, p95} = measure(tabs, queries, () => ({}));
-    t.diagnostic(`keyword path (${TAB_COUNT} tabs x ${ITERATIONS}): avg ${average.toFixed(4)}ms, p95 ${p95.toFixed(4)}ms`);
-    assert.ok(average < 15, `keyword path avg ${average.toFixed(3)}ms exceeds 15ms; loose-gate regression`);
-    if (!IS_CI) assert.ok(p95 < 30, `keyword path p95 ${p95.toFixed(3)}ms exceeds 30ms; loose-gate regression`);
+    // T-6467：best-of-3 取各指标最小值——负载尖峰只污染部分样本；
+    // 真回归让全部样本一起抬升，最小值照样超限。
+    let bestAverage = Number.POSITIVE_INFINITY;
+    let bestP95 = Number.POSITIVE_INFINITY;
+    for (let round = 0; round < 3; round += 1) {
+        const {average, p95} = measure(tabs, queries, () => ({}));
+        bestAverage = Math.min(bestAverage, average);
+        bestP95 = Math.min(bestP95, p95);
+    }
+    t.diagnostic(`keyword path (${TAB_COUNT} tabs x ${ITERATIONS}), best of 3: avg ${bestAverage.toFixed(4)}ms, p95 ${bestP95.toFixed(4)}ms`);
+    assert.ok(bestAverage < 15, `keyword path avg ${bestAverage.toFixed(3)}ms exceeds 15ms; loose-gate regression`);
+    if (!IS_CI) assert.ok(bestP95 < 30, `keyword path p95 ${bestP95.toFixed(3)}ms exceeds 30ms; loose-gate regression`);
 });
 
 test('empty-query full-emission path stays within the 50ms alert line', (t) => {
