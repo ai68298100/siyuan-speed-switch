@@ -92,19 +92,25 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "cities", label: "城市时区（IANA，逗号分隔，如 Asia/Shanghai）", type: "text", defaults: ""},
+        {key: "hourFormat", label: "小时制", type: "select", options: ["24 小时制", "12 小时制"], defaults: "24 小时制"},
     ]},
     {moduleId: "external-weather-open-meteo", title: "近期天气", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "city", label: "城市或邮编", type: "text", defaults: ""},
         {key: "temperatureUnit", label: "温度单位", type: "select", options: ["°C", "°F"], defaults: "°C"},
         {key: "forecastDays", label: "预报天数", type: "number", min: 2, max: 5, defaults: 4},
+        {key: "showApparent", label: "显示体感温度", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showWind", label: "显示风速", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-air-quality", title: "空气质量", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "city", label: "城市或邮编（与天气相互独立）", type: "text", defaults: ""},
+        {key: "showPollutants", label: "显示更多污染物", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-anime-bangumi", title: "每日放送", icon: "iconVideo", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, viewType: "media", configSchema: [
         {key: "dayRange", label: "放送范围", type: "select", options: ["今天", "明天", "本周"], defaults: "今天"},
         {key: "limit", label: "条目上限", type: "number", min: 2, max: 12, defaults: 6},
         {key: "showCovers", label: "显示封面", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showDates", label: "显示日期", type: "select", options: ["否", "是"], defaults: "否"},
+        {key: "showScore", label: "显示评分", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "external-hot-news-dailyhot", title: "热搜事件", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "DailyHotApi 完整接口", type: "text", defaults: ""},

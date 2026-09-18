@@ -301,6 +301,14 @@
   "homeWorldClock": "世界时钟",
   "homeDescWorldClock": "完全离线的多城市时间；配置 IANA 时区列表后每分钟自动更新，不读取定位",
   "homeWorldClockLocal": "本地",
+  "homeWorldClockTwoDaysAgo": "前天",
+  "homeWorldClockYesterday": "昨天",
+
+  "homeWorldClockToday": "今天",
+
+  "homeWorldClockTomorrow": "明天",
+
+  "homeWorldClockInTwoDays": "后天",
   "homeConfigWorldClockCitiesPlaceholder": "Asia/Shanghai, America/New_York",
   "homeConfigDailyQuotesPlaceholder": "学而时习之，不亦说乎 —— 《论语·学而》\n千里之行，始于足下",
   "homeStoreGroupLife": "生活与资讯",
@@ -317,6 +325,7 @@
   "homeWeatherStorm": "雷暴",
   "homeWeatherFeelsLike": "体感",
   "homeWeatherRainChance": "降水",
+  "homeWeatherWind": "风速",
   "homeWeatherToday": "今天",
   "homeBangumi": "每日放送",
   "homeDescBangumi": "连接 Bangumi 日历兼容接口，按本地星期展示番剧封面；30 分钟缓存，不读取笔记内容",

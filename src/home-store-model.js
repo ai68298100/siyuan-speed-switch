@@ -775,7 +775,7 @@ function resolveHomeConfigSection(moduleId, fieldKey) {
     const id = homeConfigText(moduleId, 64); const key = homeConfigText(fieldKey, 64);
     if (key === "title" || key === "initialText" || (id === "countdown" && key === "targetDate") || (id === "fixed-document" && key === "docId")) return "content";
     if (["notebook", "endpoint", "city", "tag", "query", "method", "relation", "plugin"].includes(key)) return "source";
-    if (["days", "overdueDays", "hours", "dayRange", "monthOffset", "maxDepth", "yearRange", "page", "windowDays", "goal", "dailyGoal", "repeat"].includes(key)) return "range";
+    if (["days", "overdueDays", "hours", "dayRange", "monthOffset", "maxDepth", "yearRange", "page", "windowDays", "goal", "dailyGoal", "repeat", "forecastDays"].includes(key)) return "range";
     if (key === "filter") return id === "plugin-commands" ? "source" : "options";
     if (key === "limit" || key === "temperatureUnit" || key === "sortBy" || key === "groupByDocument" || key === "primaryMetric" || key === "metric" || key === "density" || key === "weekStart" || key === "hourFormat" || key.startsWith("show")) return "display";
     return "options";

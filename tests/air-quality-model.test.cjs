@@ -23,18 +23,19 @@ test('air config bounds the city text', () => {
 
 test('air url is built with clamped coordinates and a literal field set', () => {
     const url = buildAirQualityUrl(LOCATION, {city: "上海"});
-    assert.equal(url, "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=31.2304&longitude=121.4737&current=european_aqi,pm2_5,pm10&timezone=auto");
+    assert.equal(url, "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=31.2304&longitude=121.4737&current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide&timezone=auto");
     assert.equal(buildAirQualityUrl({latitude: 999, longitude: 0}, {city: "x"}), "", "越界坐标必须拒绝");
     assert.equal(buildAirQualityUrl(LOCATION, {}), "", "空配置必须拒绝");
 });
 
 test('air url gate allows only the exact endpoint shape', () => {
     assert.equal(allowedAirQualityUrl(buildAirQualityUrl(LOCATION, {city: "x"})), true);
-    assert.equal(allowedAirQualityUrl("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0000&longitude=2.0000&current=us_aqi,pm2_5,pm10&timezone=auto"), false, "字段集必须字面等值");
-    assert.equal(allowedAirQualityUrl("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0000&longitude=2.0000&current=european_aqi,pm2_5,pm10"), false, "缺 timezone 必须拒绝");
-    assert.equal(allowedAirQualityUrl("https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1&longitude=2&current=european_aqi,pm2_5,pm10&timezone=auto"), false, "整数坐标必须拒绝");
-    assert.equal(allowedAirQualityUrl("https://api.open-meteo.com/v1/air-quality?latitude=1.0&longitude=2.0&current=european_aqi,pm2_5,pm10&timezone=auto"), false, "换主机必须拒绝");
-    assert.equal(allowedAirQualityUrl("http://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0&longitude=2.0&current=european_aqi,pm2_5,pm10&timezone=auto"), false);
+    const FIELDS = "current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide";
+    assert.equal(allowedAirQualityUrl(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0000&longitude=2.0000&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide&timezone=auto`), false, "字段集必须字面等值");
+    assert.equal(allowedAirQualityUrl(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0000&longitude=2.0000&${FIELDS}`), false, "缺 timezone 必须拒绝");
+    assert.equal(allowedAirQualityUrl(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1&longitude=2&${FIELDS}&timezone=auto`), false, "整数坐标必须拒绝");
+    assert.equal(allowedAirQualityUrl(`https://api.open-meteo.com/v1/air-quality?latitude=1.0&longitude=2.0&${FIELDS}&timezone=auto`), false, "换主机必须拒绝");
+    assert.equal(allowedAirQualityUrl(`http://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0&longitude=2.0&${FIELDS}&timezone=auto`), false);
 });
 
 // ---------- 加载器 ----------
@@ -59,8 +60,13 @@ test('air loader caches and falls back to stale', async () => {
 
 // ---------- 响应归一与分档 ----------
 test('air payload normalization drops missing measurements', () => {
-    assert.deepEqual(normalizeAirQualityPayload({current: {european_aqi: 42.4, pm2_5: 12.34, pm10: 20.56}}), {aqi: 42, pm25: 12.3, pm10: 20.6});
-    assert.deepEqual(normalizeAirQualityPayload({current: {european_aqi: 42, pm2_5: null, pm10: 20}}), {aqi: 42, pm25: null, pm10: 20}, "缺测逐字段丢弃");
+    assert.deepEqual(normalizeAirQualityPayload({current: {european_aqi: 42.4, pm2_5: 12.34, pm10: 20.56}}), {aqi: 42, pm25: 12.3, pm10: 20.6, ozone: null, no2: null, so2: null});
+    assert.deepEqual(normalizeAirQualityPayload({current: {european_aqi: 42, pm2_5: null, pm10: 20}}), {aqi: 42, pm25: null, pm10: 20, ozone: null, no2: null, so2: null}, "缺测逐字段丢弃");
+    assert.deepEqual(
+        normalizeAirQualityPayload({current: {european_aqi: 42, ozone: 88.56, nitrogen_dioxide: 7.84, sulphur_dioxide: null}}),
+        {aqi: 42, pm25: null, pm10: null, ozone: 88.6, no2: 7.8, so2: null},
+        "T-6439 新增污染物走同一缺测语义",
+    );
     assert.equal(normalizeAirQualityPayload({current: {pm2_5: 12}}), null, "AQI 缺失整体无效");
     assert.equal(normalizeAirQualityPayload({current: {european_aqi: 9999}}), null, "越界 AQI 整体无效");
     assert.equal(normalizeAirQualityPayload(null), null);
@@ -110,10 +116,10 @@ test('air snapshot falls back to config city and default band words', () => {
 });
 
 // ---------- 目录与接线 ----------
-test('air widget is registered in the catalog with a city-only schema', () => {
+test('air widget is registered in the catalog with a bounded schema', () => {
     const def = home.registerModules([]).find((item) => item.moduleId === "external-air-quality");
     assert.ok(def, "空气质量目录条目存在");
     assert.equal(def.readOnly, true);
-    assert.deepEqual(def.configSchema.map((field) => field.key), ["city"]);
+    assert.deepEqual(def.configSchema.map((field) => field.key), ["city", "showPollutants"]);
     assert.deepEqual(def.sizes, ["small", "medium", "wide"]);
 });

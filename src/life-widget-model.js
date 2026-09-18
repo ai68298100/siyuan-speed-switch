@@ -22,7 +22,13 @@ function normalizeWeatherConfig(value) {
     const temperatureUnit = TEMPERATURE_UNITS.includes(source.temperatureUnit) ? source.temperatureUnit : "°C";
     const requestedDays = Math.trunc(Number(source.forecastDays));
     const forecastDays = Number.isFinite(requestedDays) ? Math.min(5, Math.max(2, requestedDays)) : 4;
-    return {city, temperatureUnit, forecastDays};
+    return {
+        city,
+        temperatureUnit,
+        forecastDays,
+        showApparent: source.showApparent !== "否" && source.showApparent !== false,
+        showWind: source.showWind === "是" || source.showWind === true,
+    };
 }
 
 function normalizeWeatherLocale(value) {
@@ -143,6 +149,14 @@ function buildWeatherSnapshot(location, payload, config, labels = {}, now = Date
     };
     const currentCondition = weatherCondition(weather.code);
     const degree = normalizedConfig.temperatureUnit;
+    // T-6438：体感/风速为可关闭的辅助指标；默认输出与旧版逐字节一致（体感开、风关）
+    const statDetails = [];
+    if (normalizedConfig.showApparent) {
+        statDetails.push(`${(boundedText(labels.feelsLike, 16) || "体感")} ${Math.round(weather.apparent)}°`);
+    }
+    if (normalizedConfig.showWind) {
+        statDetails.push(`${(boundedText(labels.wind, 16) || "风")} ${Math.round(weather.wind)} km/h`);
+    }
     const items = weather.days.map((day) => {
         const condition = weatherCondition(day.code);
         const weekday = formatWeekday(day.date, labels.locale, boundedText(labels.today, 16) || "今天", now);
@@ -157,7 +171,7 @@ function buildWeatherSnapshot(location, payload, config, labels = {}, now = Date
         title: boundedText(location.label, 96),
         stat: {
             value: `${Math.round(weather.temperature)}°`,
-            label: `${weatherIcon(currentCondition, weather.isDay)} ${names[currentCondition]} · ${(boundedText(labels.feelsLike, 16) || "体感")} ${Math.round(weather.apparent)}°`,
+            label: `${weatherIcon(currentCondition, weather.isDay)} ${names[currentCondition]}${statDetails.length ? ` · ${statDetails.join(" · ")}` : ""}`,
         },
         items,
         updatedAt: Number.isFinite(now) ? now : Date.now(),
@@ -203,7 +217,20 @@ function normalizeBangumiConfig(value) {
     const dayRange = BANGUMI_DAY_RANGES.includes(source.dayRange) ? source.dayRange : "今天";
     const requestedLimit = Math.trunc(Number(source.limit));
     const limit = Number.isFinite(requestedLimit) ? Math.min(12, Math.max(2, requestedLimit)) : 6;
-    return {dayRange, limit, showCovers: source.showCovers !== "否" && source.showCovers !== false};
+    return {
+        dayRange,
+        limit,
+        showCovers: source.showCovers !== "否" && source.showCovers !== false,
+        showDates: source.showDates === "是" || source.showDates === true,
+        showScore: source.showScore !== "否" && source.showScore !== false,
+    };
+}
+
+function bangumiDateLabel(refDate, weekday, today, index, dayRange, dayNames) {
+    const delta = dayRange === "本周" ? index : (weekday - today + 7) % 7;
+    const stamp = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() + delta);
+    const date = `${String(stamp.getMonth() + 1).padStart(2, "0")}/${String(stamp.getDate()).padStart(2, "0")}`;
+    return `${dayNames[weekday - 1]} ${date}`;
 }
 
 function bangumiWeekdayId(value = Date.now()) {
@@ -269,13 +296,16 @@ function buildBangumiSnapshot(payload, config, labels = {}, now = Date.now()) {
     const dayNames = Array.isArray(labels.weekdays) && labels.weekdays.length >= 7
         ? labels.weekdays.map((item) => boundedText(item, 16))
         : ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+    const refTime = now instanceof Date && Number.isFinite(now.getTime()) ? now : new Date(Number.isFinite(now) ? now : Date.now());
     const selected = [];
-    requestedDays.forEach((weekday) => {
+    requestedDays.forEach((weekday, index) => {
         const day = byDay.get(weekday);
         day?.items.forEach((subject) => {
             if (selected.length >= normalized.limit) return;
-            const score = Number.isFinite(subject.score) && subject.score > 0 ? `★ ${subject.score.toFixed(1)}` : "";
-            const dayLabel = normalized.dayRange === "本周" ? dayNames[weekday - 1] : "";
+            const score = normalized.showScore && Number.isFinite(subject.score) && subject.score > 0 ? `★ ${subject.score.toFixed(1)}` : "";
+            const dayLabel = normalized.showDates
+                ? bangumiDateLabel(refTime, weekday, today, index, normalized.dayRange, dayNames)
+                : normalized.dayRange === "本周" ? dayNames[weekday - 1] : "";
             selected.push({
                 label: subject.title,
                 value: "",
@@ -493,6 +523,13 @@ function buildAirQualitySnapshot(location, payload, config, labels = {}, now = D
     }];
     if (current.pm25 !== null) items.push({label: "PM2.5", value: `${current.pm25} µg/m³`, rank: items.length + 1});
     if (current.pm10 !== null) items.push({label: "PM10", value: `${current.pm10} µg/m³`, rank: items.length + 1});
+    // T-6439：更多污染物默认关闭（保持卡片最小密度）；缺测照旧整条省略
+    if (normalized.showPollutants) {
+        const extras = [["O₃", current.ozone], ["NO₂", current.no2], ["SO₂", current.so2]];
+        extras.forEach(([label, concentration]) => {
+            if (concentration !== null) items.push({label, value: `${concentration} µg/m³`, rank: items.length + 1});
+        });
+    }
     items.push({label: `${boundedText(labels.source, 32) || "数据来源"}：Open-Meteo Air Quality`, value: ""});
     return {
         title: city,

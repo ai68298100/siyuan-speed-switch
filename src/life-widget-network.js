@@ -35,8 +35,9 @@ function allowedAirQualityUrl(value) {
         if (entries.length !== 4) return false;
         const params = Object.fromEntries(entries);
         if (params.timezone !== "auto") return false;
-        // current 字段集由模型层字面量生成，白名单直接做字面等值判定。
-        if (params.current !== "european_aqi,pm2_5,pm10") return false;
+        // current 字段集由模型层字面量生成（T-6439 增加臭氧/二氧化氮/二氧化硫），
+        // 白名单直接做字面等值判定；模型层 CURRENT_FIELDS 与此处必须同步。
+        if (params.current !== "european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide") return false;
         return /^-?\d{1,3}\.\d{1,4}$/.test(params.latitude || "") && /^-?\d{1,3}\.\d{1,4}$/.test(params.longitude || "");
     } catch (_) {
         return false;

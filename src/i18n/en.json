@@ -301,6 +301,14 @@
   "homeWorldClock": "World clock",
   "homeDescWorldClock": "Fully offline multi-city time; configure an IANA time zone list and it refreshes every minute without reading your location",
   "homeWorldClockLocal": "Local",
+  "homeWorldClockTwoDaysAgo": "2 days ago",
+  "homeWorldClockYesterday": "yesterday",
+
+  "homeWorldClockToday": "today",
+
+  "homeWorldClockTomorrow": "tomorrow",
+
+  "homeWorldClockInTwoDays": "in 2 days",
   "homeConfigWorldClockCitiesPlaceholder": "Asia/Shanghai, America/New_York",
   "homeConfigDailyQuotesPlaceholder": "Learning without thought is labour lost\nA journey of a thousand miles begins with a single step",
   "homeStoreGroupLife": "Life & information",
@@ -317,6 +325,7 @@
   "homeWeatherStorm": "Storm",
   "homeWeatherFeelsLike": "Feels",
   "homeWeatherRainChance": "Rain",
+  "homeWeatherWind": "Wind",
   "homeWeatherToday": "Today",
   "homeBangumi": "Anime schedule",
   "homeDescBangumi": "Uses Bangumi's compatible calendar endpoint and your local weekday to show cover cards; cached for 30 minutes and never reads note content",

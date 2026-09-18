@@ -40,12 +40,20 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
         });
         // 世界时钟：完全离线。用户配置 IANA 时区列表后用 Intl 按时区渲染；
         // 空配置回退本地 + UTC，开箱可用；与本地时钟共用分钟边界心跳。
+        // T-6437：跨日城市在标签上标注相对日本地日（前天~后天，±2 只在时区极值出现）。
         register("external-world-clock", this.i18n.homeWorldClock, "iconClock", this.i18n.homeDescWorldClock, [], (config) => {
             const locale = document.documentElement.lang || navigator.language || "zh-CN";
             return buildWorldClockSnapshot(new Date(), config, {
                 locale,
                 worldClock: this.i18n.homeWorldClock,
                 local: this.i18n.homeWorldClockLocal,
+                dayOffsets: [
+                    this.i18n.homeWorldClockTwoDaysAgo,
+                    this.i18n.homeWorldClockYesterday,
+                    this.i18n.homeWorldClockToday,
+                    this.i18n.homeWorldClockTomorrow,
+                    this.i18n.homeWorldClockInTwoDays,
+                ],
             });
         });
         // Open-Meteo 天气：用户添加后仍需显式配置城市；不请求浏览器定位，也不发送笔记数据。
@@ -72,6 +80,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     storm: this.i18n.homeWeatherStorm,
                     feelsLike: this.i18n.homeWeatherFeelsLike,
                     rainChance: this.i18n.homeWeatherRainChance,
+                    wind: this.i18n.homeWeatherWind,
                 });
                 if (!snapshot) throw new Error("invalid_weather");
                 return snapshot;

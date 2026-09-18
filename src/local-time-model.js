@@ -176,7 +176,24 @@ function normalizeWorldClockConfig(value) {
         .map((item) => item.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 64))
         .filter((item) => isValidTimeZone(item)))]
         .slice(0, WORLD_CLOCK_MAX_CITIES);
-    return {cities: zones};
+    return {cities: zones, hour12: source.hourFormat === "12 小时制"};
+}
+
+function zoneDateParts(timeZone, date, locale) {
+    try {
+        const parts = new Intl.DateTimeFormat(locale, {timeZone, year: "numeric", month: "numeric", day: "numeric"}).formatToParts(date);
+        const pick = (type) => Number(parts.find((part) => part.type === type)?.value);
+        const result = {year: pick("year"), month: pick("month"), day: pick("day")};
+        return [result.year, result.month, result.day].every((n) => Number.isFinite(n)) ? result : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function zoneDayDelta(localParts, zoneParts) {
+    if (!localParts || !zoneParts) return 0;
+    const utc = (p) => Date.UTC(p.year, p.month - 1, p.day);
+    return Math.round((utc(zoneParts) - utc(localParts)) / 86400000);
 }
 
 function zoneShortName(timeZone, date, locale) {
@@ -201,10 +218,14 @@ function buildWorldClockSnapshot(date = new Date(), config = {}, labels = {}) {
         ? [...new Set([...normalized.cities, "UTC"])]
         : ["local", "UTC"];
     const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    // 相对日标记：与世界时钟本地日期比较，仅标注 ±1/±2 天（±2 只在时区极值的小时出现）
+    const localParts = {year: value.getFullYear(), month: value.getMonth() + 1, day: value.getDate()};
+    const dayOffsets = Array.isArray(labels.dayOffsets) ? labels.dayOffsets : [];
+    const dayWord = (delta) => (delta >= -2 && delta <= 2 && delta !== 0 ? boundedZoneLabel(dayOffsets[delta + 2]) : "");
     const formatCache = new Map();
     const timeIn = (timeZone) => {
         if (!formatCache.has(timeZone)) {
-            formatCache.set(timeZone, new Intl.DateTimeFormat(locale, {hour: "2-digit", minute: "2-digit", hour12: false, timeZone}));
+            formatCache.set(timeZone, new Intl.DateTimeFormat(locale, {hour: "2-digit", minute: "2-digit", hour12: normalized.hour12, timeZone}));
         }
         return formatCache.get(timeZone).format(value);
     };
@@ -214,8 +235,9 @@ function buildWorldClockSnapshot(date = new Date(), config = {}, labels = {}) {
             ? (boundedZoneLabel(labels.local) || boundedZoneLabel(localZone.split("/").pop()) || "Local")
             : boundedZoneLabel(zone.split("/").pop().replace(/_/g, " "));
         const offset = zone === "local" ? "" : zoneShortName(resolved, value, locale);
+        const marker = zone === "local" ? "" : dayWord(zoneDayDelta(localParts, zoneDateParts(resolved, value, locale)));
         return {
-            label: city,
+            label: marker ? `${city} · ${marker}` : city,
             value: offset ? `${timeIn(resolved)} ${offset}` : timeIn(resolved),
         };
     });

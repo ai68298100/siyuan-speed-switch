@@ -44,7 +44,7 @@ test("weather module exposes opt-in location config and iPad-friendly sizes", ()
     assert.equal(weather.availability, "external");
     assert.deepEqual(weather.supportedDevices, ["desktop", "sidebar", "mobile"]);
     assert.deepEqual(weather.sizes, ["small", "medium", "wide", "large"]);
-    assert.deepEqual(weather.configSchema.map((field) => field.key), ["city", "temperatureUnit", "forecastDays"]);
+    assert.deepEqual(weather.configSchema.map((field) => field.key), ["city", "temperatureUnit", "forecastDays", "showApparent", "showWind"]);
 });
 
 test("Bangumi schedule module exposes media presentation and bounded config", () => {
@@ -54,7 +54,7 @@ test("Bangumi schedule module exposes media presentation and bounded config", ()
     assert.equal(bangumi.viewType, "media");
     assert.deepEqual(bangumi.supportedDevices, ["desktop", "sidebar", "mobile"]);
     assert.deepEqual(bangumi.sizes, ["medium", "wide", "large", "full"]);
-    assert.deepEqual(bangumi.configSchema.map((field) => field.key), ["dayRange", "limit", "showCovers"]);
+    assert.deepEqual(bangumi.configSchema.map((field) => field.key), ["dayRange", "limit", "showCovers", "showDates", "showScore"]);
 });
 test("user-endpoint feeds expose bounded opt-in configuration", () => {
     const modules = home.registerModules([]);

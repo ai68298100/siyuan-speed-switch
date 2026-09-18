@@ -44,7 +44,7 @@ test('force fetch bypasses a warm cache and refreshes it', async () => {
 
 test('air quality stale fallback keeps the stale payload readable', async () => {
     network.clearLifeWidgetCaches();
-    const url = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0000&longitude=2.0000&current=european_aqi,pm2_5,pm10&timezone=auto";
+    const url = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=1.0000&longitude=2.0000&current=european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide&timezone=auto";
     const good = () => Promise.resolve(textResponse(JSON.stringify({current: {european_aqi: 30}})));
     await network.loadAirQuality(url, {fetchImpl: good, now: 1000});
     const stale = await network.loadAirQuality(url, {fetchImpl: () => Promise.reject(new Error("http_error")), now: 99999999});

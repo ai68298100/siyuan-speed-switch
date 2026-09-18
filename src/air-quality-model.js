@@ -6,14 +6,17 @@
 // 分档阈值取 Open-Meteo 官方 European AQI 定义（0-20 优 … >100 严重），视图不重写阈值。
 
 const AQI_BANDS_COUNT = 6;
-const CURRENT_FIELDS = "european_aqi,pm2_5,pm10";
+// T-6439：字段集在原有 AQI+PM 基础上补臭氧/二氧化氮/二氧化硫三项浓度；
+// 仍是固定字面量集合（经 URL 白名单与缓存 key 一致性测试钉住），showPollutants
+// 只控制展示，不改变请求形状。
+const CURRENT_FIELDS = "european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide";
 
 function normalizeAirQualityConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const city = typeof source.city === "string"
         ? source.city.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 64)
         : "";
-    return {city};
+    return {city, showPollutants: source.showPollutants === "是" || source.showPollutants === true};
 }
 
 function buildAirQualityUrl(location, config) {
@@ -46,6 +49,9 @@ function normalizeAirQualityPayload(payload) {
         aqi,
         pm25: toConcentration(current.pm2_5),
         pm10: toConcentration(current.pm10),
+        ozone: toConcentration(current.ozone),
+        no2: toConcentration(current.nitrogen_dioxide),
+        so2: toConcentration(current.sulphur_dioxide),
     };
 }
 
