@@ -2,8 +2,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const home = require("../src/home-model.js");
 const store = require("../src/home-store-model.js");
-const model = require("../src/life-widget-model.js");
 const network = require("../src/life-widget-network.js");
+const model = require("../src/life-widget-model.js");
+const {readSourceText} = require("./source-scan.cjs");
+const path = require("node:path");
 
 // ---------- T-6446 Miniflux ----------
 test("miniflux exposes server-side ordering and meta toggles", () => {
@@ -123,7 +125,7 @@ test("uptime kuma distinguishes maintenance from downtime and gates metrics", ()
 test("service widget schemas stay semantic and bounded", () => {
     const modules = home.registerModules([]);
     const byId = new Map(modules.map((m) => [m.moduleId, m]));
-    assert.deepEqual(byId.get("external-rss-miniflux").configSchema.map((f) => f.key), ["endpoint", "token", "limit", "sortBy", "showDate", "showFeed", "showRank"]);
+    assert.deepEqual(byId.get("external-rss-miniflux").configSchema.map((f) => f.key), ["endpoint", "token", "categoryId", "limit", "sortBy", "showDate", "showFeed", "showRank"]);
     assert.deepEqual(byId.get("external-status-uptimekuma").configSchema.map((f) => f.key), ["endpoint", "slug", "showPing", "showUptime"]);
     assert.deepEqual(byId.get("external-ical-events").configSchema.map((f) => f.key), ["url", "windowDays", "maxEvents"]);
     assert.deepEqual(byId.get("external-github-contrib").configSchema.map((f) => f.key), ["username", "windowDays", "token"]);
@@ -133,4 +135,27 @@ test("service widget schemas stay semantic and bounded", () => {
     assert.equal(store.resolveHomeConfigSection("external-rss-miniflux", "sortBy"), "display");
     assert.equal(store.resolveHomeConfigSection("external-rss-miniflux", "showFeed"), "display");
     assert.equal(store.resolveHomeConfigSection("external-status-uptimekuma", "showPing"), "display");
+});
+
+test("miniflux category filter flows into the request url and allowlist", () => {
+    // T-6466：分类发现——URL 携带 category_id（纯数字），白名单放行 5 参数形态
+    const config = {endpoint: "https://rss.example.com", token: "t", limit: 12, categoryId: "7"};
+    const url = model.buildMinifluxRequestUrl(config);
+    assert.match(url, /&category_id=7$/);
+    assert.equal(network.allowedMinifluxUrl(url), true, "带分类的 URL 必须过白名单");
+    const noCategory = model.buildMinifluxRequestUrl({endpoint: "https://rss.example.com", token: "t", limit: 12});
+    assert.doesNotMatch(noCategory, /category_id/);
+    assert.equal(network.allowedMinifluxUrl(noCategory), true, "无分类时保持既有 4 参数形态");
+    const normal = model.normalizeMinifluxConfig({endpoint: "https://rss.example.com", token: "t", categoryId: "abc"});
+    assert.equal(normal.categoryId, "", "非数字分类 id 必须拒绝");
+});
+
+test("miniflux category discovery is wired through the config form host", () => {
+    const indexTs = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    assert.match(indexTs, /async loadMinifluxCategoryOptions\(endpoint: string, token: string\)/);
+    assert.match(indexTs, /\/v1\/categories/, "分类接口必须显式出现");
+    assert.match(indexTs, /allowedMinifluxCategoriesUrl\(url\)/, "代理门禁必须放行分类路由");
+    const form = readSourceText(path.join(__dirname, "..", "src", "home-config-form.ts"));
+    assert.match(form, /field\.type === "miniflux-category"/);
+    assert.match(form, /loadMinifluxCategoryOptions\(String\(draft\.endpoint \|\| ""\), String\(draft\.token \|\| ""\)\)/);
 });

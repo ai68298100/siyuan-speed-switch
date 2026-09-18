@@ -241,11 +241,27 @@ function allowedUptimeKumaUrl(value, slug, heartbeat = false) {
 
 // Frankfurter：固定主机与路径，base/quotes 两个参数均来自 ECB 货币白名单；
 // quotes 1-6 个且不得包含基准货币；其余任何参数、userinfo、fragment 一律拒绝。
-// Miniflux：用户自建实例 + "已知路由"白名单（origin + /v1/entries + 恰四个受控参数：
+// Miniflux：用户自建实例 + "已知路由"白名单（origin + /v1/entries + 受控参数：
 // status=unread 固定、limit 为 1-50 的纯数字、order=published_at 固定、direction ∈
-// {asc,desc}——T-6446 服务端排序）；https 或本机 http，拒绝 userinfo/fragment/额外参数。
+// {asc,desc}——T-6446 服务端排序；可选 category_id 为 1-12 位纯数字——T-6466 分类筛选）；
+// https 或本机 http，拒绝 userinfo/fragment/额外参数。
 // API Token 走 X-Auth-Token 请求头而非 URL——缓存 key 基于 URL，天然不含凭据。
 // 模型层 buildMinifluxRequestUrl 与此处必须保持一致（有结构化一致性门禁）。
+// T-6466：分类发现通道——/v1/categories（与 entries 同源、同传输规则、同凭据头）。
+// 仅用于设置表单的分类选择器与后续分类筛选；路径字面量、无查询串。
+function allowedMinifluxCategoriesUrl(value) {
+    if (typeof value !== "string" || value.length > 320) return false;
+    try {
+        const url = new URL(value);
+        const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !(url.protocol === "http:" && local))
+            || url.username || url.password || url.hash || url.pathname !== "/v1/categories") return false;
+        return url.search === "";
+    } catch (_) {
+        return false;
+    }
+}
+
 function allowedMinifluxUrl(value) {
     if (typeof value !== "string" || value.length > 320) return false;
     try {
@@ -254,12 +270,13 @@ function allowedMinifluxUrl(value) {
         if ((url.protocol !== "https:" && !(url.protocol === "http:" && local))
             || url.username || url.password || url.hash || url.pathname !== "/v1/entries") return false;
         const entries = [...url.searchParams.entries()];
-        if (entries.length !== 4) return false;
+        if (entries.length !== 4 && entries.length !== 5) return false;
         const params = Object.fromEntries(entries);
         if (params.status !== "unread") return false;
         if (!/^(?:[1-9]|[1-4][0-9]|50)$/.test(params.limit || "")) return false;
         if (params.order !== "published_at") return false;
         if (params.direction !== "asc" && params.direction !== "desc") return false;
+        if (entries.length === 5 && !/^\d{1,12}$/.test(params.category_id || "")) return false;
         return true;
     } catch (_) {
         return false;
@@ -599,6 +616,7 @@ module.exports = {
     allowedUptimeKumaUrl,
     allowedFrankfurterUrl,
     allowedMinifluxUrl,
+    allowedMinifluxCategoriesUrl,
     fetchBoundedLifeJson,
     loadWeatherLocation,
     loadWeatherForecast,

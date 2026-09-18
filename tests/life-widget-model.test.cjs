@@ -356,8 +356,8 @@ test("Frankfurter snapshot always appends the source row after rates", () => {
 
 // Miniflux：配置规范化 → 请求 URL → 条目解析 → 快照组装。
 test("Miniflux config normalizes origin, token and limit", () => {
-    assert.deepEqual(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com/", token: " abc123 ", limit: "35"}), {origin: "https://rss.example.com", token: "abc123", limit: 35, sortBy: "newest", showFeed: true, showDate: true, showRank: false});
-    assert.deepEqual(model.normalizeMinifluxConfig(null), {origin: "", token: "", limit: 20, sortBy: "newest", showFeed: true, showDate: true, showRank: false});
+    assert.deepEqual(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com/", token: " abc123 ", limit: "35"}), {origin: "https://rss.example.com", token: "abc123", limit: 35, categoryId: "", sortBy: "newest", showFeed: true, showDate: true, showRank: false});
+    assert.deepEqual(model.normalizeMinifluxConfig(null), {origin: "", token: "", limit: 20, categoryId: "", sortBy: "newest", showFeed: true, showDate: true, showRank: false});
 });
 test("Miniflux config rejects remote http, userinfo and drift", () => {
     assert.equal(model.normalizeMinifluxConfig({endpoint: "http://rss.example.com", token: "t"}).origin, "");

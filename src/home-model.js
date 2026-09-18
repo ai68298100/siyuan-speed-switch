@@ -142,6 +142,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "external-rss-miniflux", title: "未读文章", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "Miniflux 实例地址", type: "text", defaults: ""},
         {key: "token", label: "API Token（设置 → API 密钥）", type: "secret", defaults: ""},
+        {key: "categoryId", label: "分类筛选", type: "miniflux-category", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 1, max: 50, defaults: 20},
         {key: "sortBy", label: "排序", type: "select", options: ["最新优先", "最旧优先"], defaults: "最新优先"},
         {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},

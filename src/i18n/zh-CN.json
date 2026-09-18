@@ -363,6 +363,7 @@
   "homeDescMiniflux": "读取自建 Miniflux 实例的未读列表；API Token 经请求头传递且不进入 URL、缓存或错误消息，15 分钟缓存",
   "homeMinifluxConfigHint": "请先填写 Miniflux 实例地址，并在实例 设置 → API 密钥 中生成 Token 后填入",
   "homeMinifluxStat": "未读",
+  "homeMinifluxAllCategories": "全部分类",
   "homeMinifluxEmpty": "未取到未读文章",
   "homeGithub": "GitHub 贡献",
   "homeDescGithub": "读取 GitHub 公开事件流并按周汇总贡献次数；可选 Token 经请求头传递且不进入 URL、缓存或错误消息，1 小时缓存",

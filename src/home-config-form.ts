@@ -17,6 +17,8 @@ export interface HomeConfigFormHost {
     loadHomeDocumentOptions(query?: string): Promise<Array<{id: string; title: string}>>;
     loadHomeDatabaseOptions(): Promise<Array<{id: string; title: string}>>;
     loadHomeDatabaseColumns(blockId: string): Promise<Array<{id: string; title: string}>>;
+    // T-6466 Miniflux 分类发现：凭据仅经请求头，选项由实例分类接口动态加载
+    loadMinifluxCategoryOptions(endpoint: string, token: string): Promise<Array<{id: string; name: string}>>;
 }
 
 export function openHomeConfigForm(this: HomeConfigFormHost,
@@ -473,6 +475,47 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 draft[field.key] = [...selected].join(",");
                 load();
                 row.appendChild(list);
+            } else if (field.type === "miniflux-category") {
+                // T-6466 Miniflux 分类发现：选项来自实例 /v1/categories（凭据走请求头）。
+                // 载入失败/未配置时不阻塞表单，回退“全部分类”（不过滤）。
+                const select = document.createElement("select");
+                select.id = controlId;
+                select.className = "b3-select fn__block";
+                const draftValue = String(draft[field.key] ?? "");
+                draft[field.key] = /^\d{1,12}$/.test(draftValue) ? draftValue : "";
+                const loading = document.createElement("option");
+                loading.value = "";
+                loading.textContent = this.i18n.setStorageMeasuring || "加载中…";
+                select.append(loading);
+                void this.loadMinifluxCategoryOptions(String(draft.endpoint || ""), String(draft.token || "")).then((categories) => {
+                    select.innerHTML = "";
+                    const all = document.createElement("option");
+                    all.value = "";
+                    all.textContent = this.i18n.homeMinifluxAllCategories || "全部分类";
+                    select.append(all);
+                    for (const category of categories) {
+                        const option = document.createElement("option");
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        select.append(option);
+                    }
+                    const saved = String(draft[field.key] || "");
+                    if (!saved || ![...select.options].some((option) => option.value === saved)) {
+                        select.value = "";
+                        draft[field.key] = "";
+                    }
+                    select.value = saved;
+                }).catch(() => {
+                    select.innerHTML = "";
+                    const fallback = document.createElement("option");
+                    fallback.value = "";
+                    fallback.textContent = this.i18n.homeMinifluxAllCategories || "全部分类";
+                    select.append(fallback);
+                    draft[field.key] = "";
+                });
+                controls.set(field.key, select);
+                select.addEventListener("change", () => { draft[field.key] = select.value; });
+                row.appendChild(select);
             } else if (field.type === "textarea") {
                 // 多行文本配置（如自定义语录）：行数有界（≤10 行渲染高度），提交值上限 4000 字符。
                 const area = document.createElement("textarea");

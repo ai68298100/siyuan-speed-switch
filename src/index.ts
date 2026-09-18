@@ -63,8 +63,8 @@ import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels
 import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets, buildSettingsStorage} from "./settings-sections";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
-import {mergeHolidayPayloads, holidayPresentation} from "./life-widget-model";
-import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText} from "./life-widget-network";
+import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
+import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -1362,6 +1362,33 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 去抖写盘：高频数据（MRU/置顶/收藏）每次操作只更新内存，合并后延迟落盘，
     // 避免连续收藏/置顶/切换页签时每个动作都触发一次内核文件写入（交互卡顿的根因）
+    // T-6466 存储用量透明化配套之前：Miniflux 分类发现——设置表单的分类选择器
+    // 据此渲染选项；凭据仅经 X-Auth-Token 请求头，绝不写入日志或缓存。
+    async loadMinifluxCategoryOptions(endpoint: string, token: string): Promise<Array<{id: string; name: string}>> {
+        const normalized = normalizeMinifluxConfig({endpoint, token});
+        if (!normalized.origin || !normalized.token) return [];
+        try {
+            const response = await this.fetchActivityWatchViaKernel(`${normalized.origin}/v1/categories`, {headers: {"X-Auth-Token": token}});
+            if (!response || response.ok !== true) return [];
+            const body = await response.text();
+            const rows = JSON.parse(body);
+            if (!Array.isArray(rows)) return [];
+            const seen = new Set<string>();
+            const items: Array<{id: string; name: string}> = [];
+            for (const row of rows.slice(0, 64)) {
+                const id = String(row && row.id !== undefined && row.id !== null ? row.id : "");
+                const name = String(row && row.title !== undefined && row.title !== null ? row.title : "")
+                    .replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 64);
+                if (!/^\d{1,12}$/.test(id) || !name || seen.has(id)) continue;
+                seen.add(id);
+                items.push({id, name});
+            }
+            return items;
+        } catch {
+            return [];
+        }
+    }
+
     // T-6463 存储用量透明化：逐常量显式 loadData（存储 key 审计门禁要求首参为 *_KEY
     // 常量），测量近似 UTF-8 字节数；单 key 读取失败按 0 计，不拖垮整个报表。
     async measureStorageUsage(): Promise<Array<{key: string, bytes: number}>> {
@@ -3357,7 +3384,10 @@ const version = beginSearch(session);
     // JSON 正向代理；目标在发出前仍必须命中生活组件 HTTPS 白名单或 ActivityWatch
     // 回环地址 + 固定 query 路由，避免形成任意 SSRF 通道。
     private async fetchActivityWatchViaKernel(url: string, init: {body?: string; headers?: Record<string, string>}): Promise<any> {
-        if (!allowedActivityWatchUrl(url) && !allowedLifeWidgetUrl(url)) throw new Error("blocked_endpoint");
+        // T-6466：补上 Miniflux 两条路由（entries/categories）——此前代理门禁不含
+        // Miniflux，真实请求会被 blocked_endpoint 拦截（单测 mock fetchImpl 掩盖）。
+        if (!allowedActivityWatchUrl(url) && !allowedLifeWidgetUrl(url)
+            && !allowedMinifluxUrl(url) && !allowedMinifluxCategoriesUrl(url)) throw new Error("blocked_endpoint");
         const isPost = typeof init?.body === "string";
         const proxyBody: Record<string, unknown> = {
             url,

@@ -905,9 +905,12 @@ function normalizeMinifluxConfig(value) {
             origin = `${url.protocol}//${url.host}`;
         }
     } catch (_) { /* 留空触发配置提示 */ }
+    const rawCategoryId = typeof source.categoryId === "string" ? source.categoryId.trim() : "";
+    const categoryId = /^\d{1,12}$/.test(rawCategoryId) ? rawCategoryId : "";
     return {
         origin,
         token: normalizeMinifluxToken(source.token),
+        categoryId,
         limit: Number.isFinite(Math.trunc(Number(source.limit)))
             ? Math.min(MINIFLUX_MAX_ENTRIES, Math.max(1, Math.trunc(Number(source.limit))))
             : MINIFLUX_DEFAULT_LIMIT,
@@ -924,7 +927,9 @@ function buildMinifluxRequestUrl(config) {
     const normalized = normalizeMinifluxConfig(config);
     if (!normalized.origin) return "";
     const direction = normalized.sortBy === "oldest" ? "asc" : "desc";
-    return `${normalized.origin}/v1/entries?status=unread&limit=${normalized.limit}&order=published_at&direction=${direction}`;
+    // T-6466：可选分类筛选（category_id 为 1-12 位纯数字，来自用户实例的分类列表）
+    const categoryScope = normalized.categoryId ? `&category_id=${normalized.categoryId}` : "";
+    return `${normalized.origin}/v1/entries?status=unread&limit=${normalized.limit}&order=published_at&direction=${direction}${categoryScope}`;
 }
 
 // 条目 URL 信任边界：Miniflux 是用户自己的阅读器实例、条目来自用户订阅的源，
