@@ -44,12 +44,13 @@ function buildLocalTimeSnapshot(date = new Date(), locale = "zh-CN", labels = {}
     };
 }
 
-// ---------- T-6433 年度进度：日历日语义（跨时区/DST 稳定，闰年精确 366 天） ----------
+// ---------- T-6433/T-6456 年度进度：日历日语义 + 年/季/月周期 ----------
 function normalizeYearProgressConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
         showElapsed: source.showElapsed !== "否" && source.showElapsed !== false,
         showRemaining: source.showRemaining !== "否" && source.showRemaining !== false,
+        period: source.period === "季度" || source.period === "月份" ? source.period : "年度",
     };
 }
 
@@ -57,12 +58,40 @@ function buildYearProgressSnapshot(now = new Date(), config = {}, labels = {}) {
     const value = now instanceof Date && Number.isFinite(now.getTime()) ? now : new Date(0);
     const normalized = normalizeYearProgressConfig(config);
     const year = value.getFullYear();
-    // 用本地年月日的 UTC 毫秒差计算日历天数：DST 造成的一小时偏移被整除吸收，
-    // 平年/闰年边界由日历本身给出（365/366），不依赖运行环境的时区偏移量。
     const dayMs = 86400000;
+    // 用本地年月日的 UTC 毫秒差计算日历天数：DST 造成的一小时偏移被整除吸收，
+    // 平年/闰年与季/月边界由日历本身给出，不依赖运行环境的时区偏移量。
     const startUtc = Date.UTC(year, 0, 1);
-    const total = Math.round((Date.UTC(year + 1, 0, 1) - startUtc) / dayMs);
-    const elapsed = Math.min(total, Math.max(1, Math.round((Date.UTC(year, value.getMonth(), value.getDate()) - startUtc) / dayMs) + 1));
+    const endUtc = Date.UTC(year + 1, 0, 1);
+    const label = `${year}`;
+    if (normalized.period === "季度") {
+        const quarter = Math.floor(value.getMonth() / 3);
+        return projectProgress(
+            value,
+            Date.UTC(year, quarter * 3, 1),
+            Date.UTC(year, quarter * 3 + 3, 1),
+            `${year} Q${quarter + 1}`,
+            normalized,
+            labels,
+        );
+    }
+    if (normalized.period === "月份") {
+        return projectProgress(
+            value,
+            Date.UTC(year, value.getMonth(), 1),
+            Date.UTC(year, value.getMonth() + 1, 1),
+            `${year}-${String(value.getMonth() + 1).padStart(2, "0")}`,
+            normalized,
+            labels,
+        );
+    }
+    return projectProgress(value, startUtc, endUtc, label, normalized, labels);
+}
+
+function projectProgress(value, startUtc, endUtc, label, normalized, labels) {
+    const dayMs = 86400000;
+    const total = Math.round((endUtc - startUtc) / dayMs);
+    const elapsed = Math.min(total, Math.max(1, Math.round((Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()) - startUtc) / dayMs) + 1));
     const remaining = total - elapsed;
     const percent = Math.round((elapsed / total) * 100);
     const items = [];
@@ -71,7 +100,7 @@ function buildYearProgressSnapshot(now = new Date(), config = {}, labels = {}) {
     if (normalized.showElapsed && elapsedLabel) items.push({label: elapsedLabel.replace("{x}", String(elapsed)), value: ""});
     if (normalized.showRemaining && remainingLabel) items.push({label: remainingLabel.replace("{x}", String(remaining)), value: ""});
     return {
-        stat: {value: `${percent}%`, label: `${year}`, progress: percent, arc: {value: elapsed, max: total}},
+        stat: {value: `${percent}%`, label, progress: percent, arc: {value: elapsed, max: total}},
         items,
     };
 }
@@ -87,6 +116,8 @@ function normalizeCountdownConfig(value) {
         targetDate: COUNTDOWN_DATE_PATTERN.test(target) ? target : "",
         repeat: source.repeat === "每年" ? "yearly" : "none",
         showTargetDate: source.showTargetDate !== "否" && source.showTargetDate !== false,
+        // T-6455：倒数（默认，剩余天数）与累计（“已经 N 天”，从最近一次发生日起算）双模式
+        mode: source.mode === "累计" ? "elapsed" : "countdown",
     };
 }
 
@@ -140,6 +171,24 @@ function buildCountdownSnapshot(now = new Date(), config = {}, labels = {}) {
         displayDate = normalized.targetDate;
     }
     if (!Number.isFinite(targetTime)) return {items: [{label: hint, value: ""}]};
+    const elapsedLabel = typeof labels.elapsedDays === "string" && labels.elapsedDays ? labels.elapsedDays : "已经 {n} 天";
+    if (normalized.mode === "elapsed") {
+        // 累计口径：N = 距最近一次发生日（每年重复取最近周年）的整天数，当天记 0；
+        // 目标在未来（一次性日期尚未到来）时没有已流逝的天数，同样记 0，不伪造倒计回退。
+        const thisYearOccurrence = yearlyOccurrence(value.getFullYear(), parts.month, parts.day);
+        const anchor = normalized.repeat === "yearly"
+            ? (thisYearOccurrence.time <= todayStart ? thisYearOccurrence.time : yearlyOccurrence(value.getFullYear() - 1, parts.month, parts.day).time)
+            : targetTime;
+        const elapsedDays = Math.max(0, countdownDayDiff(todayStart, anchor));
+        const title2 = normalized.title || (typeof labels.untitled === "string" ? labels.untitled : "");
+        const yearlyMark2 = normalized.repeat === "yearly" && typeof labels.yearly === "string" ? labels.yearly : "";
+        const parts2 = [title2, yearlyMark2];
+        if (normalized.showTargetDate) parts2.push(displayDate);
+        return {
+            stat: {value: String(elapsedDays), label: elapsedLabel.replace("{n}", String(elapsedDays))},
+            items: [{label: parts2.filter(Boolean).join(" · "), value: ""}],
+        };
+    }
     const days = countdownDayDiff(targetTime, todayStart);
     const remaining = typeof labels.remaining === "string" ? labels.remaining : "";
     const todayLabel = typeof labels.today === "string" ? labels.today : "";

@@ -163,6 +163,7 @@
   "homeDescCountdown": "设定目标日期，显示剩余或已过天数（纪念日、截止日都适用）",
   "homeCountdownRemaining": "剩余 {n} 天",
   "homeCountdownPassed": "已过 {n} 天",
+  "homeCountdownElapsed": "已经 {n} 天",
   "homeCountdownToday": "就是今天",
   "homeCountdownHint": "请在配置中填写目标日期（YYYY-MM-DD）",
   "homeCountdownYearly": "每年",

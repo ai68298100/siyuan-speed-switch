@@ -82,6 +82,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showTrend", label: "显示环比趋势", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"], protocolVersion: 2, configSchema: [
+        {key: "period", label: "统计周期", type: "select", options: ["年度", "季度", "月份"], defaults: "年度"},
         {key: "showElapsed", label: "显示已过天数", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRemaining", label: "显示剩余天数", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
@@ -302,6 +303,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
         {key: "targetDate", label: "目标日期", type: "date", defaults: ""},
+        {key: "mode", label: "统计方式", type: "select", options: ["倒数", "累计"], defaults: "倒数"},
         {key: "repeat", label: "重复", type: "select", options: ["不重复", "每年"], defaults: "不重复"},
         {key: "showTargetDate", label: "显示目标日期", type: "select", options: ["是", "否"], defaults: "是"},
     ]},

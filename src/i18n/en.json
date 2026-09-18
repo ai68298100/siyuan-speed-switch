@@ -163,6 +163,7 @@
   "homeDescCountdown": "Set a target date to track days remaining or elapsed - anniversaries, deadlines and more",
   "homeCountdownRemaining": "{n} days left",
   "homeCountdownPassed": "{n} days ago",
+  "homeCountdownElapsed": "{n} days since",
   "homeCountdownToday": "Today",
   "homeCountdownHint": "Set a target date in the config (YYYY-MM-DD)",
   "homeCountdownYearly": "Yearly",

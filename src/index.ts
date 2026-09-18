@@ -3719,12 +3719,13 @@ const version = beginSearch(session);
             if (!snapshot) throw new Error("invalid_writing_streak");
             return snapshot;
         }, {timeoutMs: 1200, cacheTtlMs: 1000});
-        // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数；支持每年重复
+        // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数；支持每年重复与倒数/累计双模式
         register("countdown", this.i18n.homeCountdown, "iconClock", this.i18n.homeDescCountdown, ["loaded-protyle"], (config) => {
             return buildCountdownSnapshot(new Date(), config, {
                 hint: this.i18n.homeCountdownHint, untitled: this.i18n.homeCountdown,
                 remaining: this.i18n.homeCountdownRemaining, today: this.i18n.homeCountdownToday,
                 passed: this.i18n.homeCountdownPassed, yearly: this.i18n.homeCountdownYearly,
+                elapsedDays: this.i18n.homeCountdownElapsed,
             });
         });
         // 日历月视图：本月日历网格（周一开头），有日记的日期可点击直达

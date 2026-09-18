@@ -166,9 +166,9 @@ test("data health scan stays bounded and rejects malformed payloads", () => {
 test("deep config fields for the four basic widgets stay semantic and bounded", () => {
     const modules = home.registerModules([]);
     const byId = new Map(modules.map((m) => [m.moduleId, m]));
-    assert.deepEqual(byId.get("year-progress").configSchema.map((f) => f.key), ["showElapsed", "showRemaining"]);
+    assert.deepEqual(byId.get("year-progress").configSchema.map((f) => f.key), ["period", "showElapsed", "showRemaining"]);
     assert.deepEqual(byId.get("external-local-time").configSchema.map((f) => f.key), ["hourFormat", "showSeconds", "showDate"]);
-    assert.deepEqual(byId.get("countdown").configSchema.map((f) => f.key), ["title", "targetDate", "repeat", "showTargetDate"]);
+    assert.deepEqual(byId.get("countdown").configSchema.map((f) => f.key), ["title", "targetDate", "mode", "repeat", "showTargetDate"]);
     assert.deepEqual(byId.get("data-health").configSchema.map((f) => f.key), ["limit", "query", "sortBy", "showPath", "showRank"]);
     for (const id of ["year-progress", "external-local-time", "countdown", "data-health"]) {
         assert.equal(byId.get(id).protocolVersion, 2, `${id} declares protocol v2`);

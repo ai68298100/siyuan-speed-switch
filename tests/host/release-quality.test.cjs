@@ -177,7 +177,13 @@ test('production bundle remains within the mobile performance budget when built'
     // controlled-execution chain without forcing a structural split of index.ts
     // purely to defend a legacy number. Recalibration continues to require a
     // dated note recording the real increment.
-    const budget = 768 * 1024;
+    // 2026-09-19 (ADR 0062): recalibrated to 832 KiB after the component
+    // deep-optimization cycle (T-6348~T-6454, 58/58) closed with only 2416
+    // bytes of headroom at 784016 bytes. The margin had again become an
+    // artifact of the ratchet rather than a real constraint. The zip archive
+    // hard ceiling (512 KiB), the 224 KiB single-entry review line (ADR 0059)
+    // and the drift diagnostics are unchanged. See docs/adr/0062.
+    const budget = 832 * 1024;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
