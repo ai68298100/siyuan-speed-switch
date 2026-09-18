@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.22.0 fixes the load-time error from issue #1 and lets the widget panel consume SiYuan's own data directly: database table, pinned docs, inbox, recent updates, data health, recent docs, database navigator and saved searches; plus RSS/Atom feeds, air quality and Hacker News board switching, a monthly checkin widget for SiYuan-Checkin, right-click menus on the top-bar icons, and two command-palette commands.
 
-> The current development head passes type checking, production build, 6123 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, air quality, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, Hacker News boards, an ActivityWatch app-usage bridge, iCal schedule subscriptions, RSS/Atom feed subscriptions, GitHub contribution heatmap, SiYuan-Checkin widgets (requires the checkin plugin), kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, databases, saved searches), and a database table widget bound to one database block and rendered from its current view (see ADR 0058); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> v0.22.0 passes type checking, production build, 6123 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, air quality, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, Hacker News boards, an ActivityWatch app-usage bridge, iCal schedule subscriptions, RSS/Atom feed subscriptions, GitHub contribution heatmap, SiYuan-Checkin widgets (requires the checkin plugin), kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, databases, saved searches), and a database table widget bound to one database block and rendered from its current view (see ADR 0058); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -139,6 +139,7 @@ Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.
 - SiYuan v3.1.20+ (uses the `getAllTabs` API).
 - Desktop client / browser-desktop frontend (tabs and split panes).
 - Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
+- Kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, database navigator, saved searches, database table) recommend SiYuan **v3.8.0+**; on older kernels they show empty states without affecting anything else. The inbox requires a signed-in SiYuan account with inbox data synced.
 - Agent capabilities are registered only when the host exposes `addAgentCapability`; older hosts skip them safely.
 - Path-tree filtering is not exposed in the UI yet; only the model/request boundary exists until a stable host API is available.
 - Browser emulation is for structural/style checks only and is not Android SiYuan acceptance evidence.
@@ -176,7 +177,7 @@ This release is published as `v0.22.0`
   capability registered afterwards was skipped). Command registration is now fully
   isolated: a single failed command no longer affects loading, and the global hotkey
   degrades to the in-app hotkey until the host is ready.
-- **Eleven new widget-panel widgets (45 → 58)**:
+- **Eleven new widget-panel widgets (48 → 59)**:
   - **Kernel-data widgets (read-only SiYuan v3.8.x endpoints)**: database table (bind one
     SiYuan database block and render its current view read-only, following the filters
     and sorts you set in SiYuan; clicking a row opens its document; see ADR 0058), pinned
@@ -294,12 +295,12 @@ The plugin uses six layers. Its three surfaces share navigation services and per
 | Orchestration | `registerSwitcherRefresh` / SearchSession / action executor | View refresh broadcasting, isolated async state, shared command routing |
 | Navigation services | Tabs / favorites / search / quick actions / journal / panels | Sorting, deduplication, batch behavior, and progressive feature composition |
 | SiYuan integration | `getAllTabs` / MobileTabs / kernel API / Dock / plugin commands | Encapsulates host capabilities and third-party plugin boundaries |
-| Persistence | `loadData` / `saveDataDebounced` | Eight validated storage keys, debounced writes, unload flush, and configuration transfer |
+| Persistence | `loadData` / `saveDataDebounced` / `storage-migration.js` | Thirteen validated storage keys (11 migration-handled + 2 inspected), debounced writes, unload flush, read-only migration rehearsal, and configuration transfer |
 | Infrastructure | `util.js` / `search-session.js` / `quick-actions.js` / types and constants | Host-independent pure functions, types, boundaries, logging, and tests |
 
 **Performance isolation**: open-tab switching uses local state only. Workspace requests, thumbnail backfill, and third-party actions are optional layers that may fail independently. Every search surface owns its request version, abort controller, timer, and cache, all released on destruction.
 
-**Data boundaries**: `sw_mru`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_closed_history`, `sw_quick_actions`, `sw_settings`, and `sw_thumb_cache` persist independently. Favorites are capped at 512 entries, pins at 64, and favorite groups at 64; loading and runtime writes both deduplicate, clamp, and safely write back. Re-queryable search results and temporary UI state are never written to plugin data.
+**Data boundaries**: thirteen storage keys persist independently — `sw_mru`, `sw_open_history`, `sw_closed_history`, `sw_pinned`, `sw_favorites`, `sw_fav_groups`, `sw_fav_collapsed`, `sw_quick_actions`, `sw_quick_actions_defaults`, `sw_document_sets`, `sw_thumb_cache`, `sw_settings`, `sw_home_state`. Favorites are capped at 512 entries, pins at 64, and favorite groups at 64; loading and runtime writes both deduplicate, clamp, and safely write back. Re-queryable search results and temporary UI state are never written to plugin data.
 
 **Home-module bridge (experimental, explicit mount)**: third-party plugins may register read-only, device-scoped modules with `registerHomeModule`, then explicitly mount them through `createHomeModuleController` or `createHomePanelController`. Reads are normalized to shared empty/loading/cached/error states and bounded by item, text, concurrency, and lifecycle limits. Registration never changes the default switcher home automatically and never persists external function references; callers should run the returned unregister function and `dispose()` the controller during unload.
 
@@ -420,10 +421,13 @@ See [ROADMAP.md](./ROADMAP.md) for planned phases, design constraints, and relea
 
 ## 📜 Architecture Decision Records
 
-- [ADR-0001 Method splitting](docs/adr/0001-method-splitting.md) — why we split `onload` / `applySearch` etc. into orchestrator + helpers
-- [ADR-0002 Constants in `src/constants.ts`](docs/adr/0002-constants-module.md) — why we centralised magic numbers into a single module in v0.16.0
-- [ADR-0003 Pure functions + jsdom test matrix](docs/adr/0003-testing-strategy.md) — why `util.js` must stay zero-dep + Node built-in `node:test`
-- [ADR-0004 Persistent data sanitization](docs/adr/0004-data-sanitization.md) — why historical configuration is validated, deduplicated, and capped before entering UI code
+All architecture decisions live in [`docs/adr/`](docs/adr/) (ADR-0001 ~ ADR-0058). Recent highlights:
+
+- [ADR-0048/0052 UI module extraction](docs/adr/0048-mobile-switcher-ui-extraction.md) — how the mobile switcher and second panel moved out of `index.ts`
+- [ADR-0049/0050 stylesheet order-preserving split](docs/adr/0049-stylesheet-order-preserving-split.md) — why `index.scss` can only be sliced in source order, never by domain
+- [ADR-0051 governance doc archive](docs/adr/0051-governance-doc-archive-and-root-budget.md) — ledger archiving and the root-directory size budget
+- [ADR-0057 widget sources as first-class citizens](docs/adr/0057-widget-source-and-store-grouping.md) — widget protocol v2.4 and store source grouping
+- [ADR-0058 database table projection](docs/adr/0058-av-widget-bounded-list-projection.md) — why the database widget is a read-only bounded list projection
 
 ## License
 

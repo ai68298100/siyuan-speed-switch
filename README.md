@@ -10,7 +10,7 @@
 
 > v0.22.0 修复了特定宿主时序下的加载报错（issue #1），并让组件面板直接消费思源内核的自带数据：数据库表格、置顶文档、收集箱、最近更新、数据健康、最近文档、数据库导航、已存筛选；另新增 RSS/Atom 订阅、空气质量与 Hacker News 榜单切换，小驴打卡迎来月度统计组件，顶栏图标支持右键菜单，命令面板新增两个命令。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、6123 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、空气质量、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、Hacker News 榜单、ActivityWatch 使用时长、iCal 订阅日程、RSS/Atom 订阅、GitHub 贡献热力图、小驴打卡组件（需安装小驴打卡）、内核数据组件（置顶文档、收集箱、最近更新、数据健康、最近文档、数据库、已存筛选）与数据库表格（绑定数据库块按当前视图只读渲染，见 ADR 0058），组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：v0.22.0 已通过类型检查、生产构建、6123 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、空气质量、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、Hacker News 榜单、ActivityWatch 使用时长、iCal 订阅日程、RSS/Atom 订阅、GitHub 贡献热力图、小驴打卡组件（需安装小驴打卡）、内核数据组件（置顶文档、收集箱、最近更新、数据健康、最近文档、数据库、已存筛选）与数据库表格（绑定数据库块按当前视图只读渲染，见 ADR 0058），组件商店新增“离线可用 / 本机服务 / 外部 API”来源筛选。同步期间组件面板保持稳定，结束或失败后合并刷新；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -157,6 +157,7 @@
 - 思源笔记 v3.1.20+（使用 `getAllTabs` API）。
 - 桌面客户端 / 浏览器桌面端前端（支持页签与分栏）。
 - 手机端功能（悬浮按钮、页签切换、收藏）需思源 **v3.8.0+**（依赖移动端 MobileTabs 多页签系统）。
+- 内核数据组件（置顶文档、收集箱、最近更新、数据健康、最近文档、数据库导航、已存筛选、数据库表格）建议思源 **v3.8.0+**；旧版内核上这些组件显示空态，不影响其余功能。收集箱需登录思源账号并同步收集箱数据。
 - Agent 能力仅在宿主提供 `addAgentCapability` 时注册；旧版会安全跳过，不影响基础切换。
 - 路径树筛选暂不开放 UI：当前只保留模型和请求层，避免依赖不稳定的宿主路径树接口。
 - 浏览器模拟仅用于结构和样式检查，不能替代 Android 思源真机验收。
@@ -192,7 +193,7 @@ pnpm verify:release
   注册全局热键命令时内核读取 `_trayMenu` 抛出 TypeError 并中断插件加载（其后注册的
   智能体能力全部被跳过）。现命令注册全程隔离：单条命令失败不影响插件加载，全局热键
   在宿主就绪前自动降级为应用内热键。
-- **组件面板新增 11 个组件（总数 45 → 58）**：
+- **组件面板新增 11 个组件（总数 48 → 59）**：
   - **内核数据组件（基于思源 v3.8.x 只读端点）**：数据库表格（绑定一个思源数据库块，
     按其当前视图只读渲染数据行，跟随你在思源里设置的筛选与排序，行点击打开所在文档；
     见 ADR 0058）、置顶文档、收集箱（云端速记，未登录时显示确定空态）、最近更新、
@@ -302,12 +303,12 @@ pnpm verify:release
 | 编排层 | `registerSwitcherRefresh` / SearchSession / 动作执行器 | 视图刷新广播、独立异步状态、共享命令路由 |
 | 导航服务层 | 页签 / 收藏 / 搜索 / 快捷入口 / 日记 / 面板 | 排序、去重、批量操作和渐进式功能组合 |
 | 思源集成层 | `getAllTabs` / MobileTabs / 内核 API / Dock / 插件命令 | 统一封装宿主能力和第三方插件边界 |
-| 持久化层 | `loadData` / `saveDataDebounced` | 8 个校验后的 storage key、防抖写入、卸载前 flush、配置导入导出 |
+| 持久化层 | `loadData` / `saveDataDebounced` / `storage-migration.js` | 13 个校验后的 storage key（11 个托管迁移 + 2 个检视型）、防抖写入、卸载前 flush、只读迁移演练、配置导入导出 |
 | 基础设施层 | `util.js` / `search-session.js` / `quick-actions.js` / 类型与常量 | 零宿主依赖纯函数、类型、边界值、日志和自动化测试 |
 
 **性能隔离**：已开页签切换只依赖本地状态；全库请求、缩略图补全和第三方动作都是可失败的附加层。每个搜索界面拥有独立请求序号、取消控制器、定时器和缓存，销毁时集中释放。
 
-**数据边界**：`sw_mru`、`sw_pinned`、`sw_favorites`、`sw_fav_groups`、`sw_fav_collapsed`、`sw_closed_history`、`sw_quick_actions`、`sw_settings` 和 `sw_thumb_cache` 分项保存。收藏最多 512 条、置顶最多 64 条、收藏分组最多 64 个；加载和写入都会去重、裁剪并安全回写。可重新查询的搜索结果和临时界面状态不写入插件数据。
+**数据边界**：13 个 storage key 分项保存——`sw_mru`、`sw_open_history`、`sw_closed_history`、`sw_pinned`、`sw_favorites`、`sw_fav_groups`、`sw_fav_collapsed`、`sw_quick_actions`、`sw_quick_actions_defaults`、`sw_document_sets`、`sw_thumb_cache`、`sw_settings`、`sw_home_state`。收藏最多 512 条、置顶最多 64 条、收藏分组最多 64 个；加载和写入都会去重、裁剪并安全回写。可重新查询的搜索结果和临时界面状态不写入插件数据。
 
 **组件面板开放协议**：第三方插件可以通过 `registerHomeModule` 注册只读、按端隔离的组件，出现在组件面板的组件商店里（支持尺寸型号声明、描述、失败跳转回调）。完整接入指南见 [`docs/widget-protocol.md`](docs/widget-protocol.md)。基础桥接（实验性、显式挂载）：可注册数据模块，再由宿主明确调用 `createHomeModuleController` 或 `createHomePanelController` 挂载。模块读取结果会统一归一化为空、载入、缓存或失败状态，并受条目数、文本长度、并发和生命周期上限约束。插件不会自动改变默认切换器首页，也不会保存外部函数引用；调用方卸载时应执行注册返回的清理函数和控制器 `dispose()`。
 
@@ -428,10 +429,13 @@ this.unregisterSpeedSwitchAction?.();
 
 ## 📜 决策记录
 
-- [ADR-0001 大方法拆分](docs/adr/0001-method-splitting.md) — 为什么把 `onload` / `applySearch` 等 50+ 行的方法按职责拆成 orchestrator + helpers
-- [ADR-0002 集中常量到 `src/constants.ts`](docs/adr/0002-constants-module.md) — 为什么 v0.16.0 把 magic numbers 抽到独立模块
-- [ADR-0003 纯函数 + jsdom 测试矩阵](docs/adr/0003-testing-strategy.md) — 为什么 `util.js` 必须是零依赖纯函数 + Node 内置 `node:test`
-- [ADR-0004 持久化数据清理](docs/adr/0004-data-sanitization.md) — 为什么所有历史配置在进入 UI 前必须校验、去重和裁剪
+全部架构决策见 [`docs/adr/`](docs/adr/)（ADR-0001 ~ ADR-0058）。近期关键决策：
+
+- [ADR-0048/0052 UI 模块外迁](docs/adr/0048-mobile-switcher-ui-extraction.md) — 移动端切换器与第二面板从 `index.ts` 拆出的边界裁定
+- [ADR-0049/0050 样式顺序切片](docs/adr/0049-stylesheet-order-preserving-split.md) — `index.scss` 为什么只能顺序切片、不能按域名聚类
+- [ADR-0051 治理文档归档](docs/adr/0051-governance-doc-archive-and-root-budget.md) — 台账归档与根目录体积预算
+- [ADR-0057 组件来源一等公民](docs/adr/0057-widget-source-and-store-grouping.md) — 组件协议 v2.4 与商店来源分组
+- [ADR-0058 数据库表格投影](docs/adr/0058-av-widget-bounded-list-projection.md) — 数据库组件为什么是只读的有界列表投影
 
 ## 许可证
 
