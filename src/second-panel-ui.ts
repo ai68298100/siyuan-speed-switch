@@ -15,6 +15,7 @@ import {openHomeConfigForm} from "./home-config-form";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {millisecondsToNextMinute} from "./local-time-model";
 import {resolvePanelSize} from "./settings-model";
+import {clampOversizedIcons} from "./util";
 import type {ISwSettings} from "./index";
 
 export interface SecondPanelUiHost {
@@ -67,6 +68,16 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         }
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
+        let iconClampFrame = 0;
+        const scheduleIconClamp = () => {
+            if (iconClampFrame || !root.isConnected) return;
+            iconClampFrame = requestAnimationFrame(() => {
+                iconClampFrame = 0;
+                if (root.isConnected) clampOversizedIcons(root);
+            });
+        };
+        const iconObserver = typeof MutationObserver === "function" ? new MutationObserver(scheduleIconClamp) : null;
+        iconObserver?.observe(root, {childList: true, subtree: true});
         const homePalette = settings.homePalette || "auto";
         root.classList.add(`sw-home--palette-${homePalette}`);
         // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
@@ -634,6 +645,8 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         const originalDestroy = dialog.destroy.bind(dialog);
         dialog.destroy = () => {
             clearDeferredRefreshes();
+            iconObserver?.disconnect();
+            if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
             homeRefreshBatchController?.abort();
             homeRefreshBatchController = null;
             homeControllers.splice(0).forEach((entry) => entry.dispose());
@@ -643,4 +656,5 @@ export function openSecondPanel(this: SecondPanelUiHost) {
             originalDestroy();
         };
         renderPanel();
-}
+        scheduleIconClamp();
+}

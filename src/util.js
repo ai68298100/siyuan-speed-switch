@@ -1177,6 +1177,20 @@ function normalizeThumbCache(values, options = {}) {
  */
 function groupTabsByMode(tabs, mode, ctx) {
     const labels = ctx.labels || {};
+    if (mode === "path") {
+        const groups = new Map();
+        tabs.forEach((tab) => {
+            const parts = String(ctx.pathOf?.(tab) || "").replace(/\\/g, "/").split("/").filter(Boolean);
+            const notebook = String(ctx.notebookIdOf(tab) || "");
+            if (parts[0] === notebook) parts.shift();
+            const name = parts.length > 1 ? parts[0] : (labels.rootPath || "根目录");
+            if (!groups.has(name)) groups.set(name, []);
+            groups.get(name).push(tab);
+        });
+        const rootLabel = labels.rootPath || "根目录";
+        return [...groups.entries()].map(([name, items]) => ({key: `path:${name}`, label: name, icon: "iconFolder", items}))
+            .sort((a, b) => a.label === rootLabel ? 1 : b.label === rootLabel ? -1 : a.label.localeCompare(b.label));
+    }
     if (mode === "notebook") {
         const groups = new Map();
         tabs.forEach((tab) => {

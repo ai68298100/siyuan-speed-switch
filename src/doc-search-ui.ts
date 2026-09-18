@@ -511,6 +511,21 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                 renderDocResults.call(this, scrollElement, docs, onClose);
                 return;
             }
+            // Probe opened-document content in parallel with the title fast path.
+            // A title hit must not hide a content hit inside an already-open tab:
+            // reveal matching tab cards as soon as the bounded probe completes,
+            // while keeping the title result latency unchanged.
+            const openedContentPromise: Promise<Set<string>> = runOpenedDocumentContentSearch.call(this, keyword, signal, filters);
+            void openedContentPromise.then((roots: Set<string>) => {
+                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
+                    return;
+                }
+                this.filterCards(scrollElement, keyword, roots, filters);
+            }, (error: unknown) => {
+                if ((error as DOMException)?.name !== "AbortError") {
+                    logger.warn("opened document search unavailable", error);
+                }
+            });
             let docs: IDocSearchResult[] = [];
             let titleSearchUnavailable = false;
             try {
@@ -538,7 +553,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             }
             let openedContentRoots = new Set<string>();
             if (titleSearchUnavailable || docs.length === 0) {
-                openedContentRoots = await runOpenedDocumentContentSearch.call(this, keyword, signal, filters);
+                openedContentRoots = await openedContentPromise;
                 if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
                     return;
                 }

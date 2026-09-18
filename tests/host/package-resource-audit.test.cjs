@@ -18,9 +18,14 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // 接入 5 个小驴打卡桥接组件（checkin-bridge-model 415 行、home-source-model
 // 144 行、商店来源分组 UI 与 30 组双语 i18n）后 index.js 压缩后达 175727 字节，
 // 超出 168 KiB 上限 3695 字节；增量均为纯本地只读桥接与分组展示、无网络外传面，
-// 按先例上调并为后续来源插件组件接入保留评审余量）。
-// 归档总上限独立为 512 KiB（D-353），仍余约 197 KiB。
-const MAX_COMPRESSED_ENTRY_BYTES = 180 * 1024;
+// 按先例上调并为后续来源插件组件接入保留评审余量）→ 192 KiB（T-6357：
+// 数据库搜索/列配置、官方最近文档、动态图标兜底与路径分组集中接入后达到
+// 185498 字节；用户明确以功能、性能和交互为优先，保留约 11 KiB 评审余量）
+// → 224 KiB（T-6400 / ADR 0059：完成前 15 个组件深度优化后达到 195019
+// 字节，旧线仅余 1589 字节；继续遵循功能、性能、UI 与交互优先，并用独立的
+// 512 KiB 整包上限防止失控增长）。
+// 归档总上限独立为 512 KiB（D-353），当前仍余约 176 KiB。
+const MAX_COMPRESSED_ENTRY_BYTES = 224 * 1024;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 

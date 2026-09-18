@@ -19,17 +19,39 @@ test('config kind maps plugin category', () => assert.equal(model.resolveHomeCon
 test('config kind safely falls back', () => assert.equal(model.resolveHomeConfigKind('', 'siyuan'), 'general'));
 test('content section keeps countdown title', () => assert.equal(model.resolveHomeConfigSection('countdown', 'title'), 'content'));
 test('content section keeps fixed document id', () => assert.equal(model.resolveHomeConfigSection('fixed-document', 'docId'), 'content'));
-test('source section keeps notebook', () => assert.equal(model.resolveHomeConfigSection('recent-edits', 'notebook'), 'source'));
+test('source section keeps notebook plus list query and method filters together', () => {
+    assert.equal(model.resolveHomeConfigSection('recent-edits', 'notebook'), 'source');
+    assert.equal(model.resolveHomeConfigSection('database-list', 'query'), 'source');
+    assert.equal(model.resolveHomeConfigSection('saved-searches', 'method'), 'source');
+    assert.equal(model.resolveHomeConfigSection('document-relations-summary', 'relation'), 'source');
+});
 test('source section keeps endpoint', () => assert.equal(model.resolveHomeConfigSection('external-news-newsnow', 'endpoint'), 'source'));
 test('source section keeps city', () => assert.equal(model.resolveHomeConfigSection('external-weather-open-meteo', 'city'), 'source'));
 test('source section keeps tag', () => assert.equal(model.resolveHomeConfigSection('clipped-unread', 'tag'), 'source'));
 test('range section keeps days', () => assert.equal(model.resolveHomeConfigSection('recent-daily-notes', 'days'), 'range'));
 test('range section keeps hours', () => assert.equal(model.resolveHomeConfigSection('external-activitywatch-time', 'hours'), 'range'));
 test('range section keeps month offset', () => assert.equal(model.resolveHomeConfigSection('journal-calendar', 'monthOffset'), 'range'));
+test('range section keeps outline depth', () => assert.equal(model.resolveHomeConfigSection('current-document-outline', 'maxDepth'), 'range'));
 test('range section keeps target date', () => assert.equal(model.resolveHomeConfigSection('countdown', 'targetDate'), 'content'));
 test('display section keeps limit', () => assert.equal(model.resolveHomeConfigSection('today-tasks', 'limit'), 'display'));
-test('display section keeps show flags', () => assert.equal(model.resolveHomeConfigSection('external-news-newsnow', 'showHot'), 'display'));
+test('display section keeps show flags plus list sorting and aggregation controls', () => {
+    assert.equal(model.resolveHomeConfigSection('external-news-newsnow', 'showHot'), 'display');
+    assert.equal(model.resolveHomeConfigSection('database-list', 'sortBy'), 'display');
+    assert.equal(model.resolveHomeConfigSection('recent-updates', 'groupByDocument'), 'display');
+});
 test('options section catches unknown fields', () => assert.equal(model.resolveHomeConfigSection('plugin', 'custom'), 'options'));
+test('deep widget fields stay in semantic sections', () => {
+    assert.equal(model.resolveHomeConfigSection('quick-capture', 'initialText'), 'content');
+    assert.equal(model.resolveHomeConfigSection('today-reservations', 'overdueDays'), 'range');
+    assert.equal(model.resolveHomeConfigSection('plugin-commands', 'plugin'), 'source');
+    assert.equal(model.resolveHomeConfigSection('inbox-shorthands', 'page'), 'range');
+    assert.equal(model.resolveHomeConfigSection('writing-streak', 'windowDays'), 'range');
+    assert.equal(model.resolveHomeConfigSection('note-stats', 'primaryMetric'), 'display');
+    assert.equal(model.resolveHomeConfigSection('recent-writing-activity', 'density'), 'display');
+    assert.equal(model.resolveHomeConfigSection('today-writing', 'goal'), 'range');
+    assert.equal(model.resolveHomeConfigSection('writing-streak', 'dailyGoal'), 'range');
+    assert.equal(model.resolveHomeConfigSection('writing-streak', 'metric'), 'display');
+});
 test('sections omit empty groups', () => assert.deepEqual(model.buildHomeConfigSections([{key: 'limit', type: 'number'}], 'today-tasks').map((x) => x.key), ['display']));
 test('sections preserve semantic order', () => assert.deepEqual(model.buildHomeConfigSections(fields, 'recent-edits').map((x) => x.key), ['content', 'source', 'range', 'display']));
 test('sections retain field objects', () => assert.equal(model.buildHomeConfigSections(fields, 'recent-edits').find((x) => x.key === 'source').fields[0].key, 'notebook'));

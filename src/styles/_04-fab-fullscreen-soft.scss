@@ -320,6 +320,7 @@
     }
 
     .sw__toolbar {
+        overflow: visible;
         min-height: 58px;
         padding: 10px 14px;
         border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent);
@@ -375,6 +376,14 @@
             &:active {
                 background: var(--sw-accent-soft);
                 transform: scale(0.94);
+            }
+
+            > svg {
+                width: 16px !important;
+                height: 16px !important;
+                max-width: 16px;
+                max-height: 16px;
+                flex: 0 0 16px;
             }
         }
     }

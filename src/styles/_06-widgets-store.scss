@@ -1,4 +1,15 @@
 @use "00-tokens" as *;
+
+.speed-switch .sw__home-module-icon,
+.speed-switch .sw__home-module-icon svg,
+.speed-switch .sw-home svg,
+.speed-switch .sw-home-store__card svg,
+.speed-switch .sw-home-config svg {
+    max-width: 24px;
+    max-height: 24px;
+    flex: 0 0 auto;
+}
+
 .speed-switch .sw__mobile-toolbar {
     flex-wrap: wrap;
     row-gap: 6px;
@@ -278,6 +289,18 @@
 .sw-home-config__section { display: grid; gap: 8px; padding: 9px 10px; border: 1px solid var(--b3-border-color); border-radius: 9px; background: var(--b3-theme-surface); }
 .sw-home-config__section-title { margin: 0; color: var(--b3-theme-primary); font-size: 11px; }
 .sw-home-config__field { display: flex; flex-direction: column; gap: 3px; }
+.sw-home-config__database-results { display: grid; gap: 4px; max-height: 180px; overflow: auto; }
+.sw-home-config__database-selection { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 4px 8px; border-radius: 7px; background: var(--b3-theme-surface-lighter, var(--b3-theme-surface)); color: var(--b3-theme-on-surface-light); font-size: 11px; overflow-wrap: anywhere; }
+.sw-home-config__database-selection > span { min-width: 0; }
+.sw-home-config__database-clear { flex: none; }
+.sw-home-config__database-option { justify-content: flex-start; text-align: left; min-height: 34px; }
+.sw-home-config__database-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 190px; overflow: auto; padding: 8px; border: 1px solid var(--b3-border-color); border-radius: 8px; }
+.sw-home-config__database-column { display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.sw__home-module[data-module-id="database-table"] .sw__home-module-item-action { white-space: normal; }
+.sw__home-module[data-module-id="database-table"] .sw__home-module-item-secondary { display: block; margin-top: 2px; line-height: 1.35; overflow-wrap: anywhere; }
+.sw-home-config__secret { display: flex; align-items: stretch; gap: 6px; }
+.sw-home-config__secret .b3-text-field { min-width: 0; }
+.sw-home-config__secret-toggle { flex: none; min-width: 56px; }
 .sw-home-config__label { font-size: 12px; }
 .sw-home-config__hint { min-height: 1.2em; margin: 0; }
 .sw-home-config__actions { position: sticky; bottom: 0; z-index: 1; display: flex; align-items: center; gap: 6px; margin-inline: -14px; padding: 8px 14px 10px; border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background); }

@@ -191,8 +191,8 @@ export const GROUP_FLOW_MIN_CARD_PX = 220;
 export const GROUP_FLOW_GAP_PX = 12;
 
 // 列表分组方式：none=按窗口平铺（旧行为）/ notebook=按笔记本（默认）/ favorites=按收藏 / createdMonth=按创建月份
-export type TabGroupMode = "none" | "notebook" | "favorites" | "createdMonth";
-export const TAB_GROUP_MODES: TabGroupMode[] = ["none", "notebook", "favorites", "createdMonth"];
+export type TabGroupMode = "none" | "notebook" | "path" | "favorites" | "createdMonth";
+export const TAB_GROUP_MODES: TabGroupMode[] = ["none", "notebook", "path", "favorites", "createdMonth"];
 export const TAB_GROUP_MODE_DEFAULT: TabGroupMode = "notebook";
 
 // 第二面板小组件固定尺寸型号：宽×高（12 列网格，行高 40px）
@@ -215,4 +215,3 @@ export const HOME_WIDGET_SIZE_LABELS: Record<HomeWidgetSize, string> = {
     large: "大 8×5",
     full: "全幅 12×6",
 };
-

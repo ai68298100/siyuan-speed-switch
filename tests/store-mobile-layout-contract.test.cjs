@@ -25,6 +25,7 @@ const source = readSourceText('src/index.ts');
 const secondPanelSource = readSourceText('src/second-panel-ui.ts');
 // R3 重构（D-377）：配置表单方法体在 home-config-form.ts。
 const configFormSource = readSourceText('src/home-config-form.ts');
+const documentFieldSource = configFormSource.slice(configFormSource.indexOf('field.type === "document"'), configFormSource.indexOf('field.type === "database"'));
 // R1 重构（D-379）：商店方法体已外迁至 home-store-ui.ts。
 const storeSource = readSourceText('src/home-store-ui.ts');
 // P1-1a：移动端切换器方法群已迁入 mobile-switcher-ui.ts。
@@ -331,11 +332,11 @@ test('home config notebook controls expose loading option', () => assert.match(c
 test('home config notebook fill exposes empty option', () => assert.match(configFormSource, /emptyOption\.textContent = this\.i18n\.notebookPlaceholder/));
 test('home config notebook preserves stale values', () => assert.match(configFormSource, /homeConfigUnavailableValue/));
 test('home config notebook controls enable after fill', () => assert.match(configFormSource, /select\.disabled = false/));
-test('home config document input uses bounded length', () => assert.match(configFormSource, /input\.maxLength = 64/));
-test('home config document input validates block id shape', () => assert.match(configFormSource, /input\.pattern = "\[0-9\]\{14\}-\[0-9a-zA-Z\]\+"/));
+test('home config document search uses bounded length', () => assert.match(documentFieldSource, /input\.maxLength = 48/));
+test('home config document selection validates persisted block id shape', () => assert.match(documentFieldSource, /\^\[0-9\]\{14\}-\[0-9a-z\]\+\$\/i\.test\(configuredId\)/));
 test('home config document input has suggestions list', () => assert.match(configFormSource, /input\.setAttribute\("list", suggestions\.id\)/));
 test('home config document suggestions are capped', () => assert.match(configFormSource, /currentDocumentSetEntries\(\)\.slice\(0, 40\)/));
-test('home config document changes are bounded', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value\.slice\(0, 64\)/));
+test('home config document search text does not overwrite persisted selection', () => assert.doesNotMatch(documentFieldSource, /draft\[field\.key\] = input\.value/));
 test('home config numeric fields use number input', () => assert.match(source, /input\.type = "number"/));
 test('home config numeric fields expose minimum', () => assert.match(configFormSource, /input\.min = String\(field\.min \?\? 0\)/));
 test('home config numeric fields expose maximum', () => assert.match(configFormSource, /input\.max = String\(field\.max \?\? 100\)/));
@@ -344,6 +345,14 @@ test('home config date fields use date input', () => assert.match(configFormSour
 test('home config date fields have lower bound', () => assert.match(configFormSource, /input\.min = "1900-01-01"/));
 test('home config date fields have upper bound', () => assert.match(configFormSource, /input\.max = "2100-12-31"/));
 test('home config text fields are bounded', () => assert.match(configFormSource, /input\.maxLength = 128/));
+test('home config secrets use password fields with bounded reveal controls', () => {
+    assert.match(configFormSource, /field\.type === "secret"/);
+    assert.match(configFormSource, /input\.type = "password"/);
+    assert.match(configFormSource, /input\.maxLength = 512/);
+    assert.match(configFormSource, /input\.autocomplete = "new-password"/);
+    assert.match(configFormSource, /homeConfigShowSecret/);
+    assert.match(configFormSource, /homeConfigHideSecret/);
+});
 test('home config reset action applies every schema default', () => assert.match(configFormSource, /schema\.forEach\(\(field\) => applyDefault\(field\)\)/));
 test('home config cancel action destroys dialog', () => assert.match(source, /cancel\.addEventListener\("click", \(\) => dialog\.destroy\(\)\)/));
 test('home config save searches invalid controls', () => assert.match(configFormSource, /root\.querySelector<HTMLInputElement \| HTMLSelectElement>\("input:invalid, select:invalid"\)/));
@@ -547,7 +556,7 @@ test('config notebook reset key is consumed', () => assert.match(configFormSourc
 test('config notebook loading is asynchronous', () => assert.match(source, /void this\.loadNotebooks\(\)\.then\(\(notebooks\) =>/));
 test('config document datalist has stable id', () => assert.match(configFormSource, /suggestions\.id = `\$\{controlId\}-options`/));
 test('config document datalist appends options', () => assert.match(configFormSource, /suggestions\.appendChild\(option\)/));
-test('config document input listener updates draft', () => assert.match(configFormSource, /input\.addEventListener\("input", \(\) => \{ draft\[field\.key\]/));
+test('config document input listener searches without mutating draft', () => assert.match(documentFieldSource, /input\.addEventListener\("input", queueLoad\)/));
 test('config number listener reads numeric input', () => assert.match(configFormSource, /const parsed = Number\(input\.value\)/));
 test('config number listener writes clamped value', () => assert.match(configFormSource, /input\.value = String\(draft\[field\.key\]\)/));
 test('config non-number text listener truncates value', () => assert.match(configFormSource, /draft\[field\.key\] = input\.value\.slice\(0, 128\)/));
@@ -564,7 +573,8 @@ test('store groups journal modules explicitly', () => assert.match(storeSource,/
 test('store groups task and execution modules explicitly', () => assert.match(storeSource,/homeStoreGroupTasks, description: this\.i18n\.homeStoreGroupTasksHint, moduleIds: \["today-tasks", "countdown", "quick-capture", "clipped-unread"\]/));
 test('store groups document modules explicitly', () => assert.match(storeSource,/homeStoreGroupDocuments, description: this\.i18n\.homeStoreGroupDocumentsHint, moduleIds: \["recent-documents", "favorites"/));
 test('store groups insight modules explicitly', () => assert.match(storeSource,/homeStoreGroupInsights, description: this\.i18n\.homeStoreGroupInsightsHint, moduleIds: \["note-stats", "year-progress", "today-writing", "recent-writing-activity", "external-quote-daily"\]/));
-test('store groups life and information modules explicitly', () => assert.match(storeSource,/homeStoreGroupLife, description: this\.i18n\.homeStoreGroupLifeHint, moduleIds: \["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-air-quality", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter", "external-rss-miniflux", "external-rss-subscription", "external-ical-events", "external-github-contrib", "checkin-today", "checkin-streak", "checkin-year-heatmap", "checkin-weekly", "checkin-occasions", "checkin-monthly", "pinned-docs", "inbox-shorthands", "recent-updates", "data-health", "host-recent-docs", "database-list", "saved-searches", "database-table"\]/));
+test('store groups life and information modules explicitly', () => assert.match(storeSource,/homeStoreGroupLife, description: this\.i18n\.homeStoreGroupLifeHint, moduleIds: \["external-local-time", "external-world-clock", "external-weather-open-meteo", "external-air-quality", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-fx-frankfurter", "external-rss-miniflux", "external-rss-subscription", "external-ical-events", "external-github-contrib", "checkin-today", "checkin-streak", "checkin-year-heatmap", "checkin-weekly", "checkin-occasions", "checkin-monthly", "pinned-docs", "inbox-shorthands", "recent-updates", "data-health", "database-list", "saved-searches", "database-table"\]/));
+test('store does not expose the retired duplicate recent-documents module', () => assert.doesNotMatch(storeSource, /host-recent-docs/));
 test('store groups learning modules explicitly', () => assert.match(storeSource,/homeStoreGroupLearning, description: this\.i18n\.homeStoreGroupLearningHint, moduleIds: \["flashcard-due", "random-review"\]/));
 test('store groups system modules explicitly', () => assert.match(storeSource,/homeStoreGroupSystem, description: this\.i18n\.homeStoreGroupSystemHint, moduleIds: \["tags", "bookmarks", "plugin-commands", "external-status-uptimekuma", "external-device-battery"\]/));
 test('store resolves built-in group by module id', () => assert.match(storeSource,/const hit = BUILTIN_GROUPS\.find\(\(group\) => group\.moduleIds\.includes\(moduleId\)\)/));

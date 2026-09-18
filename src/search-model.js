@@ -445,6 +445,7 @@ function buildTabMeta(tab, index) {
 function filterOpenTabs(tabs, query, filters = {}) {
     const keyword = normalizeSearchQuery(query).toLowerCase();
     const notebook = normalizeText(filters?.notebook, 64);
+    const paths = normalizeSearchPaths(filters?.paths);
     if (!Array.isArray(tabs)) return [];
     const items = [];
     tabs.forEach((tab, index) => {
@@ -460,6 +461,13 @@ function filterOpenTabs(tabs, query, filters = {}) {
         }
         const meta = buildTabMeta(tab, index);
         if (notebook && meta.notebookId !== notebook) return;
+        if (paths.length > 0) {
+            const rawPath = normalizeText(meta.path, MAX_PATH_LENGTH).replace(/\\/g, "/").replace(/^\/+/, "");
+            if (!rawPath) return;
+            const scopedPath = meta.notebookId && rawPath !== meta.notebookId && !rawPath.startsWith(`${meta.notebookId}/`)
+                ? `${meta.notebookId}/${rawPath}` : rawPath;
+            if (!paths.some((path) => scopedPath === path || scopedPath.startsWith(`${path}/`))) return;
+        }
         items.push({
             kind: "tab",
             rootId: meta.rootId,
@@ -805,12 +813,17 @@ function resolveSearchNotebookId(tab, currentOverride, modelOverride, initDataOv
             initData = null;
         }
     }
-    return firstText(
+    const explicit = firstText(
         source.notebookId, source.notebookID, source.notebook_id, source.box,
         current.notebookID, current.notebookId, current.notebook_id, current.box,
         model.notebookID, model.notebookId, model.notebook_id, model.box,
         initData?.notebookId, initData?.notebookID, initData?.notebook_id, initData?.box,
     );
+    if (explicit) return explicit;
+    const rawPath = firstText(source.path, source.hPath, current.path, current.hPath, model.path, model.hPath, initData?.path, initData?.hPath)
+        .replace(/\\/g, "/").replace(/^\/+/, "");
+    const pathNotebook = rawPath.split("/", 1)[0] || "";
+    return isSafeSearchBoxId(pathNotebook) ? pathNotebook : "";
 }
 
 function searchResultNotebookId(raw) {
@@ -843,14 +856,29 @@ function normalizeTitleSearchDocuments(documents) {
  * an explicit notebook signal are rejected instead of broadening the search.
  */
 function filterSearchDocuments(documents, filters = {}) {
-    const source = filters && typeof filters === "object" ? filters : {};
-    const notebook = normalizeText(source.notebook, 64);
-    const paths = normalizeSearchPaths(source.paths);
+    const normalized = normalizeSearchDocumentFilters(filters);
+    const notebook = normalized.notebook;
+    const paths = normalized.paths;
     if (!notebook && paths.length === 0) return Array.isArray(documents) ? documents : [];
-    return (Array.isArray(documents) ? documents : []).filter((document) => {
+    return (Array.isArray(documents) ? documents : []).filter((document) => matchesSearchDocumentFilters(document, {notebook, paths}));
+}
+
+function normalizeSearchDocumentFilters(filters = {}) {
+    const source = filters && typeof filters === "object" ? filters : {};
+    return {
+        notebook: normalizeText(source.notebook, 64),
+        paths: normalizeSearchPaths(source.paths),
+    };
+}
+
+// Hot-path predicate shared by UI card filtering and batch result filtering.
+// Keeping normalization outside the predicate avoids allocating one-element
+// arrays for every visible tab during interactive typing.
+function matchesSearchDocumentFilters(document, normalized = {}) {
         if (!document || typeof document !== "object") return false;
         const documentNotebook = searchResultNotebookId(document);
-        if (notebook && documentNotebook !== notebook) return false;
+        if (normalized.notebook && documentNotebook !== normalized.notebook) return false;
+        const paths = normalized.paths || [];
         if (paths.length === 0) return true;
         const rawPath = normalizeText(
             document.path || document.rootPath || document.root_path || document.idPath || document.hPath || "",
@@ -862,7 +890,6 @@ function filterSearchDocuments(documents, filters = {}) {
             ? `${notebookPrefix}${rawPath}`
             : rawPath;
         return paths.some((path) => scopedPath === path || scopedPath.startsWith(`${path}/`));
-    });
 }
 
 /**
@@ -875,10 +902,23 @@ function buildOpenedDocumentSearchRequests(tabs, query, options = {}) {
     const seen = new Set();
     const requests = [];
     const candidates = Array.isArray(tabs) ? tabs : [];
+    const scopeFilters = normalizeSearchDocumentFilters(options.filters);
     for (const tab of candidates) {
         if (requests.length >= maxDocuments) break;
         const scope = buildOpenedDocumentScope(tab);
         if (!scope || seen.has(scope.rootId)) continue;
+        // Keep the bounded opened-document probe aligned with the same
+        // notebook/path semantics used by title and local-card filtering.
+        // Without this early gate, a narrow path search would still issue
+        // requests for every open tab and only hide those cards afterwards.
+        if ((scopeFilters.notebook || scopeFilters.paths.length > 0)
+            && !matchesSearchDocumentFilters({
+                path: scope.path,
+                hPath: scope.path,
+                notebookId: scope.notebook,
+            }, scopeFilters)) {
+            continue;
+        }
         const request = buildOpenedDocumentSearchRequest({
             query,
             tab,
@@ -951,6 +991,8 @@ module.exports = {
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
+    normalizeSearchDocumentFilters,
+    matchesSearchDocumentFilters,
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,

@@ -7,6 +7,7 @@ const {readSourceText} = require('./source-scan.cjs');
 const home = require('../src/home-model.js');
 
 const indexSource = readSourceText(path.join(__dirname, '..', 'src', 'index.ts'));
+const configFormSource = readSourceText(path.join(__dirname, '..', 'src', 'home-config-form.ts'));
 
 const NEW_ENDPOINTS = [
     "/api/filetree/getPinnedDocs",
@@ -37,7 +38,7 @@ test('each kernel widget adapter calls its own endpoint and guards invalid paylo
         ["inbox-shorthands", "/api/inbox/getShorthands", null],
         ["recent-updates", "/api/block/getRecentUpdatedBlocks", "invalid_recent_updates"],
         ["data-health", "/api/asset/getMissingAssets", "invalid_data_health"],
-        ["host-recent-docs", "/api/storage/getRecentDocs", "invalid_host_recent_docs"],
+        ["recent-documents", "/api/storage/getRecentDocs", null],
         ["database-list", "/api/query/sql", "invalid_database_list"],
         ["saved-searches", "/api/storage/getCriteria", "invalid_saved_searches"],
         ["database-table", "/api/av/renderAttributeView", null],
@@ -45,7 +46,7 @@ test('each kernel widget adapter calls its own endpoint and guards invalid paylo
     for (const [moduleId, endpoint, guard] of widgets) {
         const registration = indexSource.indexOf(`register("${moduleId}"`);
         assert.ok(registration > 0, `${moduleId} 适配器必须注册`);
-        const window = indexSource.slice(registration, registration + 900);
+        const window = indexSource.slice(registration, registration + 1800);
         assert.ok(window.includes(endpoint), `${moduleId} 必须调用 ${endpoint}`);
         if (guard) assert.ok(window.includes(guard), `${moduleId} 必须有无效载荷守卫 ${guard}`);
     }
@@ -55,21 +56,194 @@ test('inbox adapter degrades to a configured empty hint instead of a failure sta
     const registration = indexSource.indexOf('register("inbox-shorthands"');
     const window = indexSource.slice(registration, registration + 900);
     assert.match(window, /homeInboxUnavailable/, "云端失败必须归一为确定空态（不进失败退避）");
+    assert.match(window, /normalizeInboxConfig\(config\)/);
+    assert.match(window, /\{page: normalized\.page\}/, "必须把组件页码传给官方分页参数");
+    assert.match(window, /cacheTtlMs: 30000/, "云端收集箱应合并短时间内的重复读取");
 });
 
-test('database list query only scans av blocks with a bounded limit', () => {
+test('capture, reservations, and plugin commands use bounded models and interaction guards', () => {
+    const capture = indexSource.slice(indexSource.indexOf('private openQuickCapture'), indexSource.indexOf('private async openJournal'));
+    const reservations = indexSource.slice(indexSource.indexOf('register("today-reservations"'), indexSource.indexOf('register("quick-capture"'));
+    const commands = indexSource.slice(indexSource.indexOf('register("plugin-commands"'), indexSource.indexOf('register("pinned-docs"'));
+    assert.match(capture, /if \(saving\) return/);
+    assert.match(capture, /event\.ctrlKey \|\| event\.metaKey/);
+    assert.match(capture, /normalizeAgentNotebookId\(preferredNotebook\)/);
+    assert.match(indexSource, /parseQuickCaptureAction\(value\)/);
+    assert.match(reservations, /buildTodayReservationsSnapshot\(/);
+    assert.match(reservations, /LIMIT 48/);
+    assert.match(reservations, /cacheTtlMs: 1000/);
+    assert.match(commands, /buildPluginCommandsSnapshot\(/);
+});
+
+test('database list query applies bounded filters, sorting, total count, and a short cache', () => {
     const registration = indexSource.indexOf('register("database-list"');
-    const window = indexSource.slice(registration, registration + 900);
+    const window = indexSource.slice(registration, registration + 1800);
     assert.match(window, /type = 'av'/);
-    assert.match(window, /Math\.min\(64, Math\.max\(1,/);
-    assert.match(window, /ORDER BY updated DESC LIMIT/);
+    assert.match(window, /normalizeDatabaseListConfig\(config\)/);
+    assert.match(window, /buildNotebookBoxScope\(normalized\.notebook\)/);
+    assert.match(window, /content LIKE/);
+    assert.match(window, /COUNT\(\*\) OVER\(\) AS total_count/);
+    assert.match(window, /ORDER BY \$\{orderBy\} LIMIT \$\{normalized\.limit\}/);
+    assert.match(window, /timeoutMs: 1200, cacheTtlMs: 1000/);
+});
+
+test('four list widgets expose deep projection controls and bounded refresh policies', () => {
+    const modules = new Map(home.registerModules([]).map((item) => [item.moduleId, item]));
+    assert.deepEqual(modules.get('recent-updates').configSchema.map((field) => field.key),
+        ['limit', 'groupByDocument', 'showPath', 'showUpdated', 'showRank']);
+    assert.deepEqual(modules.get('database-list').configSchema.map((field) => field.key),
+        ['limit', 'notebook', 'query', 'sortBy', 'showPath', 'showUpdated', 'showRank']);
+    assert.deepEqual(modules.get('saved-searches').configSchema.map((field) => field.key),
+        ['limit', 'query', 'method', 'sortBy', 'showKeyword', 'showMethod', 'showScope', 'showRank']);
+    assert.deepEqual(modules.get('recent-edits').configSchema.map((field) => field.key),
+        ['limit', 'notebook', 'days', 'query', 'showPath', 'showUpdated', 'showRank']);
+    for (const [moduleId, cache] of [['recent-updates', 1000], ['database-list', 1000], ['saved-searches', 2000], ['recent-edits', 1000]]) {
+        const registration = indexSource.indexOf(`register("${moduleId}"`);
+        const window = indexSource.slice(registration, registration + 2200);
+        assert.match(window, new RegExp(`cacheTtlMs: ${cache}`), `${moduleId} 使用预期短缓存`);
+    }
+});
+
+test('recent edits applies a validated time and notebook window with accurate totals', () => {
+    const registration = indexSource.indexOf('register("recent-edits"');
+    const window = indexSource.slice(registration, registration + 1800);
+    assert.match(window, /normalizeRecentEditsConfig\(config\)/);
+    assert.match(window, /taskWindowStart\(normalized\.days\)/);
+    assert.match(window, /buildNotebookBoxScope\(normalized\.notebook\)/);
+    assert.match(window, /COUNT\(\*\) OVER\(\) AS total_count/);
+    assert.match(window, /buildRecentEditsSnapshot/);
+    assert.match(window, /invalid_recent_edits/);
+});
+
+test('recent documents use the official host history endpoint', () => {
+    const registration = indexSource.indexOf('register("recent-documents"');
+    assert.ok(registration > 0);
+    const window = indexSource.slice(registration, registration + 900);
+    assert.match(window, /\/api\/storage\/getRecentDocs/);
+    assert.match(window, /stat: this\.i18n\.homeUnitDocs/);
+    assert.match(window, /timeoutMs: 1200, cacheTtlMs: 1000/);
+    assert.equal(indexSource.includes('register("host-recent-docs"'), false, "重复的最近文档 adapter 必须退役");
+});
+
+test('database table config exposes database, columns, labels, and row controls', () => {
+    const database = home.registerModules([]).find((item) => item.moduleId === 'database-table');
+    assert.equal(database.configSchema[0].type, 'database');
+    assert.equal(database.configSchema[1].type, 'database-columns');
+    assert.equal(database.configSchema.find((field) => field.key === 'showColumnNames').defaults, '是');
+    assert.equal(database.configSchema.find((field) => field.key === 'showRank').defaults, '否');
+    assert.match(indexSource, /loadHomeDatabaseOptions/);
+    assert.match(indexSource, /loadHomeDatabaseColumns/);
+});
+
+test('database search terms cannot overwrite the selected database id', () => {
+    const databaseField = configFormSource.slice(configFormSource.indexOf('field.type === "database"'), configFormSource.indexOf('field.type === "database-columns"'));
+    assert.match(databaseField, /draft\[field\.key\] = item\.id/);
+    assert.doesNotMatch(databaseField, /input\.addEventListener\("input", \(\) => \{\s*draft\[field\.key\] = input\.value/,
+        '搜索词不能在未选择时覆盖已绑定的数据库 ID');
+    assert.match(databaseField, /homeAvTableClear/);
+    assert.match(configFormSource, /selected\.size >= 3/);
+});
+
+test('database table refresh uses the bounded one-second cache policy', () => {
+    const registration = indexSource.indexOf('register("database-table"');
+    assert.ok(registration > 0);
+    const window = indexSource.slice(registration, registration + 1100);
+    assert.match(window, /homeAvTableRows/);
+    assert.match(window, /timeoutMs: 1500, cacheTtlMs: 1000/);
+});
+
+test('switcher exposes manual refresh and clamps newly rendered oversized icons', () => {
+    assert.match(indexSource, /sw__refresh-btn/);
+    assert.match(indexSource, /new MutationObserver\(clampIcons\)/);
+    assert.match(indexSource, /clampOversizedIcons\(dialog\.element\)/);
+});
+
+test('all switcher toolbars use native titles instead of clipping pseudo tooltips', () => {
+    const filterButtons = indexSource.match(/class="sw__search-filter-btn"[^>]+title=/g) || [];
+    assert.equal(filterButtons.length, 3, "桌面、移动和侧栏筛选按钮都应使用原生 title");
+    assert.doesNotMatch(indexSource, /sw__search-filter-btn[^"\n]*b3-tooltips/);
+    assert.doesNotMatch(indexSource, /sw__settings-btn[^"\n]*b3-tooltips/);
+});
+
+test('persistent sidebar clamps icons after host DOM mutations and releases observers', () => {
+    assert.match(indexSource, /this\.observeSidebarIcons\(element\)/);
+    assert.match(indexSource, /this\.sidebarIconObserver = typeof MutationObserver === "function"/);
+    assert.match(indexSource, /clampOversizedIcons\(element\)/);
+    assert.match(indexSource, /this\.sidebarIconObserver\?\.disconnect\(\)/);
+    assert.match(indexSource, /this\.sidebarIconFrameCancel\?\.\(\)/);
+});
+
+test('component panel clamps dynamically rendered oversized icons', () => {
+    const panel = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    assert.match(panel, /import \{clampOversizedIcons\} from "\.\/util"/);
+    assert.match(panel, /new MutationObserver\(scheduleIconClamp\)/);
+    assert.match(panel, /clampOversizedIcons\(root\)/);
+    assert.match(panel, /iconObserver\?\.disconnect\(\)/);
+});
+
+test('random review scopes SQL to descendants and reports the bounded candidate set', () => {
+    const registration = indexSource.indexOf('register("random-review"');
+    const window = indexSource.slice(registration, registration + 1800);
+    assert.match(window, /parentDocument/);
+    assert.match(window, /path LIKE/);
+    assert.match(window, /COUNT\(\*\) OVER\(\) AS total_count/);
+    assert.match(window, /LIMIT \$\{normalized\.limit\}/);
+});
+
+test('random review refresh keeps a short stable batch cache', () => {
+    const registration = indexSource.indexOf('register("random-review"');
+    const window = indexSource.slice(registration, registration + 1800);
+    assert.match(window, /timeoutMs: 1500, cacheTtlMs: 15000/);
+});
+
+test('document config searches the workspace without persisting raw search text', () => {
+    const documentField = configFormSource.slice(configFormSource.indexOf('field.type === "document"'), configFormSource.indexOf('field.type === "database"'));
+    assert.match(indexSource, /loadHomeDocumentOptions\(query = ""\)/);
+    assert.match(indexSource, /content LIKE/);
+    assert.match(indexSource, /hpath LIKE/);
+    assert.match(documentField, /this\.loadHomeDocumentOptions\(query\)/);
+    assert.match(documentField, /draft\[field\.key\] = item\.id/);
+    assert.doesNotMatch(documentField, /input\.addEventListener\("input", \(\) => \{\s*draft\[field\.key\] = input\.value/);
+});
+
+test('document-entry widgets expose group, projection, validation, and recent-use wiring', () => {
+    const modules = home.registerModules([]);
+    const favorites = modules.find((item) => item.moduleId === 'favorites');
+    const documentSets = modules.find((item) => item.moduleId === 'document-sets');
+    const fixed = modules.find((item) => item.moduleId === 'fixed-document');
+    const pinned = modules.find((item) => item.moduleId === 'pinned-docs');
+    assert.equal(favorites.configSchema.find((field) => field.key === 'group').type, 'favorite-group');
+    assert.deepEqual(documentSets.configSchema.map((field) => field.key), ['limit', 'sortBy', 'showCount', 'showUpdated']);
+    assert.equal(fixed.configSchema.find((field) => field.key === 'showPath').defaults, '是');
+    assert.deepEqual(pinned.configSchema.map((field) => field.key), ['limit', 'showPath', 'showChildCount', 'showRank', 'showUnavailable']);
+    assert.match(indexSource, /favoriteDocumentIdsForProbe/);
+    assert.match(indexSource, /buildFavoritesWidgetSnapshot/);
+    assert.match(indexSource, /buildDocumentSetsWidgetSnapshot/);
+    assert.match(indexSource, /buildFixedDocumentSnapshot/);
+    assert.match(indexSource, /if \(summary\.attempted > 0\) this\.saveDocumentSet\(item\)/);
+});
+
+test('favorite group config uses the registered groups and never falls back to free text', () => {
+    const field = configFormSource.slice(configFormSource.indexOf('field.type === "favorite-group"'), configFormSource.indexOf('field.type === "document"'));
+    assert.match(field, /loadHomeFavoriteGroups\(\)/);
+    assert.match(field, /__ungrouped__/);
+    assert.match(field, /draft\[field\.key\] = select\.value/);
+});
+
+test('fixed and pinned document adapters validate current metadata with short caches', () => {
+    const fixed = indexSource.slice(indexSource.indexOf('register("fixed-document"'), indexSource.indexOf('register("today-tasks"'));
+    const pinned = indexSource.slice(indexSource.indexOf('register("pinned-docs"'), indexSource.indexOf('register("inbox-shorthands"'));
+    assert.match(fixed, /WHERE type='d' AND id=/);
+    assert.match(fixed, /timeoutMs: 1200, cacheTtlMs: 1000/);
+    assert.match(pinned, /SELECT id, hpath FROM blocks/);
+    assert.match(pinned, /timeoutMs: 1200, cacheTtlMs: 1000/);
 });
 
 test('catalog registers all six kernel widgets as read-only builtins', () => {
     const defs = home.registerModules([]);
     for (const [moduleId, minSizes] of [
         ["pinned-docs", 3], ["inbox-shorthands", 3], ["recent-updates", 3],
-        ["data-health", 3], ["host-recent-docs", 3], ["database-list", 3],
+        ["data-health", 3], ["recent-documents", 3], ["database-list", 3],
     ]) {
         const def = defs.find((item) => item.moduleId === moduleId);
         assert.ok(def, `${moduleId} 目录条目存在`);
@@ -99,13 +273,29 @@ test('new command and widget i18n keys exist in both languages', () => {
         "openSettings", "openJournal",
         "homePinnedDocs", "homeDescPinnedDocs", "homePinnedDocsEmpty",
         "homeInbox", "homeDescInbox", "homeInboxEmpty", "homeInboxUnavailable",
-        "homeRecentUpdates", "homeDescRecentUpdates", "homeRecentUpdatesEmpty",
+        "homeInboxFilteredEmpty", "homeInboxPage",
+        "homeRecentUpdates", "homeDescRecentUpdates", "homeRecentUpdatesEmpty", "homeRecentUpdatesStat", "homeRecentUpdatesBlocks",
         "homeDataHealth", "homeDescDataHealth", "homeDataHealthEmpty", "homeDataHealthStat",
-        "homeHostRecent", "homeDescHostRecent", "homeHostRecentEmpty",
-        "homeDatabaseList", "homeDescDatabaseList", "homeDatabaseListEmpty",
-        "homeSavedSearches", "homeDescSavedSearches", "homeSavedSearchesEmpty", "homeSavedSearchesStat",
+        "homeHostRecentEmpty",
+        "homeConfigShowSecret", "homeConfigHideSecret",
+        "homeDatabaseList", "homeDescDatabaseList", "homeDatabaseListEmpty", "homeDatabaseListFilteredEmpty", "homeDatabaseListStat",
+        "homeSavedSearches", "homeDescSavedSearches", "homeSavedSearchesEmpty", "homeSavedSearchesFilteredEmpty", "homeSavedSearchesStat",
+        "homeRecentEditsEmpty", "homeRecentEditsFilteredEmpty",
         "homeCriteriaMethod0", "homeCriteriaMethod1", "homeCriteriaMethod2", "homeCriteriaMethod3", "homeCriteriaMethod4",
-        "homeAvTable", "homeDescAvTable", "homeAvTableConfigHint", "homeAvTableEmpty", "homeAvTableUnavailable",
+        "homeAvTable", "homeDescAvTable", "homeAvTableConfigHint", "homeAvTableEmpty", "homeAvTableUnavailable", "homeAvTableRows",
+        "homeAvTableSelected", "homeAvTableUnselected", "homeAvTableClear", "homeAvTableNoMatch",
+        "homeRandomReviewCandidates", "homeRandomReviewEmpty", "homeRandomReviewScopedEmpty",
+        "homeDocumentSelected", "homeDocumentUnselected", "homeDocumentClear", "homeDocumentNoMatch",
+        "homeFavoritesAllGroups", "homeFavoritesUngrouped", "homeFavoritesEmpty", "homeFavoritesGroupEmpty",
+        "homeFavoritesAvailableEmpty", "homeFavoritesUnavailable", "homeFavoritesSessionOnly",
+        "homeDocumentSetsEmpty", "homeFixedDocumentConfigHint", "homeFixedDocumentUnavailable",
+        "homePinnedDocsStat", "homePinnedDocsChildren", "homePinnedDocsUnavailable", "homePinnedDocsUnavailableShort",
+        "homeTagsEmpty", "homeTagsFilteredEmpty", "homeBookmarksEmpty", "homeBookmarksFilteredEmpty", "homeBookmarkEmptyEntry",
+        "homeRelationChild", "homeRelationReference", "homeRelationReferenceCount", "homeRelationsEmpty", "homeRelationsFilteredEmpty",
+        "homeOutlineLevel", "homeOutlineEmpty", "homeOutlineFilteredEmpty", "homeCurrentDocumentMissing", "homeUnitBlocks",
+        "homeClippedEmpty", "homeStatOnThisDay", "homeOnThisDayEmpty", "homeStatRecentDaily", "homeRecentDailyEmpty",
+        "homeReservationToday", "homeReservationOverdue", "homeReservationsEmpty", "homeReservationsFilteredEmpty",
+        "homePluginCommandsFilteredEmpty", "homePluginCommandsStat",
     ];
     for (const key of keys) {
         assert.ok(zh[key] && zh[key].length > 0, `zh-CN 缺少 ${key}`);

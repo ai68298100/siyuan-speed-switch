@@ -12,7 +12,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const {filterOpenTabs} = require('../src/search-model.js');
+const {filterOpenTabs, filterSearchDocuments} = require('../src/search-model.js');
 
 const TAB_COUNT = 300;
 const ITERATIONS = 400;
@@ -71,4 +71,26 @@ test('empty-query full-emission path stays within the 50ms alert line', (t) => {
     t.diagnostic(`empty-query path (${TAB_COUNT} tabs x ${ITERATIONS}): avg ${average.toFixed(4)}ms, p95 ${p95.toFixed(4)}ms`);
     assert.ok(average < 48, `empty-query avg ${average.toFixed(3)}ms exceeds 48ms (50ms alert line headroom)`);
     if (!IS_CI) assert.ok(p95 < 48, `empty-query p95 ${p95.toFixed(3)}ms exceeds 48ms (50ms alert line headroom)`);
+});
+
+test('document scope predicate stays bounded for 300 remote cards', (t) => {
+    const docs = buildSyntheticTabs().map((tab) => ({
+        path: tab.hPath,
+        hPath: tab.hPath,
+        notebookId: tab.notebookId,
+        rootId: tab.rootId,
+    }));
+    const filters = {notebook: docs[0].notebookId, paths: [`${docs[0].notebookId}/项目` ]};
+    for (let i = 0; i < 20; i += 1) filterSearchDocuments(docs, filters);
+    const samples = [];
+    for (let i = 0; i < 100; i += 1) {
+        const started = process.hrtime.bigint();
+        const result = filterSearchDocuments(docs, filters);
+        samples.push(Number(process.hrtime.bigint() - started) / 1e6);
+        assert.ok(Array.isArray(result));
+    }
+    samples.sort((a, b) => a - b);
+    const p95 = samples[Math.floor(samples.length * 0.95)];
+    t.diagnostic(`document path filtering (300 cards x 100): p95 ${p95.toFixed(4)}ms`);
+    if (!IS_CI) assert.ok(p95 < 20, `document path p95 ${p95.toFixed(3)}ms exceeds 20ms`);
 });

@@ -10,6 +10,8 @@ const {
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
+    matchesSearchDocumentFilters,
+    normalizeSearchDocumentFilters,
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,
@@ -20,6 +22,7 @@ const {
     buildNativeSearchTabConfig,
     extractSearchRecords,
     buildOpenedDocumentScope,
+    resolveSearchNotebookId,
     buildOpenedDocumentSearchRequest,
     buildOpenedDocumentSearchRequests,
     planDocResultsPage,
@@ -169,6 +172,53 @@ test("search model: notebook filters apply to local tabs before remote layers", 
         global: [{rootId: ROOT_C, title: "项目全库"}],
     });
     assert.deepEqual(merged.tabs.map((item) => item.rootId), [ROOT_B]);
+});
+
+test("search model: path filters apply to local tabs with notebook-qualified prefixes", () => {
+    const tabs = [
+        {id: "tab-a", rootId: ROOT_A, title: "项目 A", notebookId: "box-a", path: "box-a/work/project.sy"},
+        {id: "tab-b", rootId: ROOT_B, title: "项目 B", notebookId: "box-a", path: "box-a/archive/project.sy"},
+        {id: "tab-c", rootId: ROOT_C, title: "项目 C", notebookId: "box-b", path: "box-b/work/project.sy"},
+    ];
+    const filtered = filterOpenTabs(tabs, "项目", {paths: ["box-a/work"]});
+    assert.deepEqual(filtered.map((item) => item.rootId), [ROOT_A]);
+    const merged = mergeSearchLayers({
+        query: "项目",
+        tabs,
+        filters: {paths: ["box-a/work"]},
+        global: [{rootId: "20260906120003-ddddddd", title: "项目全库", path: "box-a/work/other.sy", notebookId: "box-a"}],
+    });
+    assert.deepEqual(merged.tabs.map((item) => item.rootId), [ROOT_A]);
+});
+
+test("search model: shared document filter predicate matches batch filtering semantics", () => {
+    const inScope = {path: "box-a/work/project.sy", notebookId: "box-a"};
+    const outPath = {path: "box-a/archive/project.sy", notebookId: "box-a"};
+    const outNotebook = {path: "box-b/work/project.sy", notebookId: "box-b"};
+    const normalized = {notebook: "box-a", paths: ["box-a/work"]};
+    assert.equal(matchesSearchDocumentFilters(inScope, normalized), true);
+    assert.equal(matchesSearchDocumentFilters(outPath, normalized), false);
+    assert.equal(matchesSearchDocumentFilters(outNotebook, normalized), false);
+    assert.equal(matchesSearchDocumentFilters({path: "box-a/work/project.sy"}, {paths: ["box-a/work"]}), true);
+    assert.equal(matchesSearchDocumentFilters({path: "", notebookId: "box-a"}, normalized), false);
+    assert.equal(matchesSearchDocumentFilters(null, {}), false);
+});
+
+test("search model: document filter scope normalization is bounded and reusable", () => {
+    const scope = normalizeSearchDocumentFilters({
+        notebook: " box-a ",
+        paths: ["box-a/work", "box-a/work", "../unsafe", "box-a/notes"],
+    });
+    assert.deepEqual(scope, {notebook: "box-a", paths: ["box-a/work", "box-a/notes"]});
+    assert.deepEqual(normalizeSearchDocumentFilters(null), {notebook: "", paths: []});
+});
+
+test("search model: local and remote path scopes agree on relative paths", () => {
+    const tab = {id: "tab-relative", rootId: ROOT_A, title: "项目", notebookId: "box-a", path: "work/project.sy"};
+    const remote = {rootId: ROOT_A, title: "项目", notebookId: "box-a", path: "work/project.sy"};
+    const filters = {paths: ["box-a/work"]};
+    assert.equal(filterOpenTabs([tab], "项目", filters).length, 1);
+    assert.deepEqual(filterSearchDocuments([remote], filters), [remote]);
 });
 
 test("search model: three layers prioritize tabs, then opened hits, then global cards", () => {
@@ -607,6 +657,7 @@ test("search model: duplicate snippets are removed before snippet limit", () => 
 });
 
 test("search model: accepts desktop and MobileTabs metadata aliases", () => {
+    assert.equal(resolveSearchNotebookId({path: "box-path/docs/a.sy"}), "box-path");
     const mobile = buildOpenedDocumentScope({
         current: {rootID: ROOT_B, notebookID: "box-a", path: "box-a/docs/b.sy"},
     });

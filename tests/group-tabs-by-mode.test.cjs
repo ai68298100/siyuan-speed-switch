@@ -10,10 +10,20 @@ const baseCtx = () => ({
     favoriteGroupOf: (key) => (key === 'r-1' ? '工作流' : ''),
     favoriteGroupOrder: ['工作流'],
     notebookIdOf: (t) => t.notebookId || '',
+    pathOf: (t) => t.path || '',
     notebookNameOf: (id) => ({nbA: '笔记本A', nbB: '笔记本B'}[id] || ''),
     notebookOrder: ['nbA', 'nbB'],
     createdOf: (key) => ({'r-1': '20260905120000', 'r-2': '20260910103000', 'r-3': '20260831120000'}[key] || ''),
-    labels: {unknownNotebook: '未知笔记本', ungroupedFavorite: '未分组', unfavorited: '未收藏', unknownMonth: '更早'},
+    labels: {unknownNotebook: '未知笔记本', ungroupedFavorite: '未分组', unfavorited: '未收藏', unknownMonth: '更早', rootPath: '根目录'},
+});
+
+test('groupTabsByMode groups by top-level document path', () => {
+    const tabs = [
+        {...tab('t1', 'nbA', 'r-1'), path: 'nbA/projects/a.sy'},
+        {...tab('t2', 'nbA', 'r-2'), path: 'nbA/notes/b.sy'},
+        {...tab('t3', 'nbA', 'r-3'), path: 'nbA/root.sy'},
+    ];
+    assert.deepEqual(groupTabsByMode(tabs, 'path', baseCtx()).map((group) => group.label), ['notes', 'projects', '根目录']);
 });
 
 test('groupTabsByMode groups by notebook in notebook order with fallback label', () => {

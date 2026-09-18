@@ -42,11 +42,27 @@ test('limit clamp, stat and payload guards', () => {
     const criteria = Array.from({length: 14}, (_, index) => criterion(`条件${index}`, `k${index}`));
     const snapshot = buildSavedSearchesSnapshot({code: 0, data: criteria}, {limit: 6}, {title: "T", methods: METHODS}, NOW);
     assert.equal(snapshot.items.length, 6);
-    assert.equal(snapshot.stat.value, "6");
+    assert.equal(snapshot.stat.value, "6/14", "统计同时反馈已显示和筛选后总数");
     assert.equal(model_normalizeSavedSearchesConfig({limit: 0}).limit, 1);
     assert.equal(model_normalizeSavedSearchesConfig({}).limit, 8);
     assert.equal(buildSavedSearchesSnapshot({data: "bad"}, {}, {title: "T"}), null);
     assert.equal(buildSavedSearchesSnapshot(null, {}, {title: "T"}), null);
+});
+
+test('saved searches filter method and text, sort by name, and control secondary metadata', () => {
+    const criteria = [
+        criterion("Zulu", "alpha", 0, "/A"),
+        criterion("Beta", "alpha sql", 2, "/B"),
+        criterion("Alpha", "alpha query", 2, "/C"),
+    ];
+    const snapshot = buildSavedSearchesSnapshot({code: 0, data: criteria}, {
+        query: "alpha", method: "SQL", sortBy: "名称", showKeyword: "否", showScope: "否", showRank: "是",
+    }, {methods: METHODS}, NOW);
+    assert.deepEqual(snapshot.items.map((item) => item.label), ["Alpha", "Beta"]);
+    assert.equal(snapshot.items[0].secondary, "SQL");
+    assert.equal(snapshot.items[0].rank, 1);
+    assert.equal(snapshot.stat.value, "2");
+    assert.equal(buildSavedSearchesSnapshot({code: 0, data: criteria}, {query: "missing"}, {emptyFiltered: "无匹配"}, NOW).emptyHint, "无匹配");
 });
 
 function model_normalizeSavedSearchesConfig(value) {

@@ -120,6 +120,17 @@ test("home view renders calendar grid for viewType calendar", () => {
     assert.equal(grid.querySelectorAll(".sw__home-calendar-secondary").length, 1);
 });
 
+test("home view prefers adapter-projected calendar weekday order", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const view = buildHomeModuleView(
+        {moduleId: "journal-calendar", title: "日历月视图", viewType: "calendar"},
+        {ok: true, snapshot: {calendarWeekdays: "日一二三四五六", items: Array.from({length: 7}, (_, index) => ({label: String(index + 1), weekend: index === 0 || index === 6}))}},
+    );
+    const root = renderHomeModuleView(dom.window.document, view, {calendarWeekdays: "一二三四五六日"});
+    assert.equal([...root.querySelectorAll(".sw__home-calendar-head")].map((node) => node.textContent).join(""), "日一二三四五六");
+    assert.deepEqual([...root.querySelectorAll(".sw__home-calendar-cell")].map((node) => node.classList.contains("is-weekend")), [true, false, false, false, false, false, true]);
+});
+
 test("home view retains a complete calendar and renders iPad-style date states", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     const items = Array.from({length: 42}, (_, index) => ({

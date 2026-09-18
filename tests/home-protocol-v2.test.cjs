@@ -47,6 +47,15 @@ test('protocol v2 config fields clamp invalid ranges and defaults', () => {
     assert.deepEqual(def.configSchema[1], {key: 'mode', label: 'Mode', type: 'select', options: ['a', 'b'], defaults: 'a'});
 });
 
+test('protocol v2 exposes at most twelve configuration fields', () => {
+    const def = home.normalizeModuleDefinition({
+        moduleId: 'twelve-fields', title: 'Twelve',
+        configSchema: Array.from({length: 13}, (_, index) => ({key: `field${index}`, label: `Field ${index}`, type: 'text'})),
+    });
+    assert.equal(def.configSchema.length, 12);
+    assert.equal(def.configSchema.at(-1).key, 'field11');
+});
+
 test('protocol config supports validated date and document fields', () => {
     const def = home.normalizeModuleDefinition({
         moduleId: 'richer-fields', title: 'Richer', configSchema: [
@@ -72,9 +81,12 @@ test('built-in modules declare size subsets and config schemas', () => {
     assert.deepEqual(recent.sizes, ['small', 'medium', 'wide', 'large', 'full']);
     const fixed = modules.find((item) => item.moduleId === 'fixed-document');
     assert.equal(fixed.protocolVersion, 2);
-    assert.deepEqual(fixed.configSchema.map((field) => field.key), ['docId', 'title']);
+    assert.deepEqual(fixed.configSchema.map((field) => field.key), ['docId', 'title', 'showPath']);
     assert.equal(fixed.configSchema[0].type, 'document');
     assert.equal(modules.find((item) => item.moduleId === 'countdown').configSchema[1].type, 'date');
     const tasks = modules.find((item) => item.moduleId === 'today-tasks');
-    assert.deepEqual(tasks.configSchema.map((field) => field.key), ['limit', 'allDocuments', 'notebook', 'showCompleted', 'days']);
+    assert.deepEqual(tasks.configSchema.map((field) => field.key), [
+        'limit', 'allDocuments', 'notebook', 'showCompleted', 'days',
+        'query', 'sortBy', 'showDocument', 'showPath', 'showRank',
+    ]);
 });

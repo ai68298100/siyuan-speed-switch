@@ -762,7 +762,7 @@ const HOME_CONFIG_PLACEHOLDERS = Object.freeze({
     "external-quote-daily:quotes": "daily-quotes",
     "external-rss-miniflux:endpoint": "miniflux-endpoint",
     "fixed-document:docId": "document", "fixed-document:title": "document-title", "countdown:title": "countdown-title",
-    "plugin-commands:filter": "command-filter", "clipped-unread:tag": "tag",
+    "plugin-commands:filter": "command-filter", "plugin-commands:query": "command-filter", "clipped-unread:tag": "tag",
 });
 function homeConfigText(value, max = 96) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
@@ -773,11 +773,11 @@ function resolveHomeConfigKind(moduleId, category) {
 }
 function resolveHomeConfigSection(moduleId, fieldKey) {
     const id = homeConfigText(moduleId, 64); const key = homeConfigText(fieldKey, 64);
-    if (key === "title" || (id === "countdown" && key === "targetDate") || (id === "fixed-document" && key === "docId")) return "content";
-    if (["notebook", "endpoint", "city", "tag"].includes(key)) return "source";
-    if (["days", "hours", "dayRange", "monthOffset"].includes(key)) return "range";
+    if (key === "title" || key === "initialText" || (id === "countdown" && key === "targetDate") || (id === "fixed-document" && key === "docId")) return "content";
+    if (["notebook", "endpoint", "city", "tag", "query", "method", "relation", "plugin"].includes(key)) return "source";
+    if (["days", "overdueDays", "hours", "dayRange", "monthOffset", "maxDepth", "yearRange", "page", "windowDays", "goal", "dailyGoal"].includes(key)) return "range";
     if (key === "filter") return id === "plugin-commands" ? "source" : "options";
-    if (key === "limit" || key === "temperatureUnit" || key.startsWith("show")) return "display";
+    if (key === "limit" || key === "temperatureUnit" || key === "sortBy" || key === "groupByDocument" || key === "primaryMetric" || key === "metric" || key === "density" || key === "weekStart" || key.startsWith("show")) return "display";
     return "options";
 }
 function buildHomeConfigSections(schema, moduleId) {

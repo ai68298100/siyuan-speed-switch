@@ -117,7 +117,7 @@ function normalizeSnapshot(value, options = {}) {
         const entry = {label: safeText(item.label), value: safeText(item.value), href: safeHref(item.href), command: safeText(item.command, 128)};
         const image = safeImageHref(item.image);
         if (image) entry.image = image;
-        const secondary = safeText(item.secondary, 32);
+        const secondary = safeText(item.secondary, 96);
         if (secondary) entry.secondary = secondary;
         // 协议 v2.2：count 为非负整数（如标签出现次数），渲染为行内比例条
         if (Number.isFinite(item.count) && item.count >= 0) entry.count = Math.min(9999, Math.trunc(item.count));

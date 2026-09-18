@@ -185,6 +185,32 @@ test("agent widget config metadata and values stay schema-bound", () => {
         document: "20260914083000-hijklmn",
     });
     assert.deepEqual(normalizeAgentWidgetConfig({mode: "bad", notebook: "bad", when: "2023-02-29", document: "bad"}, schema), {});
+
+    const advancedSchema = [
+        {key: "notes", label: "Notes", type: "textarea", defaults: "line one"},
+        {key: "database", label: "Database", type: "database", defaults: "20260915083000-abcdefg"},
+        {key: "columns", label: "Columns", type: "database-columns", defaults: "title,status,title"},
+        {key: "group", label: "Group", type: "favorite-group", defaults: "工作"},
+        {key: "token", label: "Token", type: "secret", defaults: "must-not-leak"},
+    ];
+    assert.deepEqual(normalizeAgentWidgetConfigFields(advancedSchema), [
+        {key: "notes", label: "Notes", type: "textarea", defaultValue: "line one"},
+        {key: "database", label: "Database", type: "database", defaultValue: "20260915083000-abcdefg"},
+        {key: "columns", label: "Columns", type: "database-columns", defaultValue: "title,status"},
+        {key: "group", label: "Group", type: "favorite-group", defaultValue: "工作"},
+    ]);
+    assert.deepEqual(normalizeAgentWidgetConfig({
+        notes: "  first\nsecond  ",
+        database: "20260916083000-hijklmn",
+        columns: "title, status, title, bad value",
+        group: "  项目组  ",
+        token: "must-not-leak",
+    }, advancedSchema), {
+        notes: "first second",
+        database: "20260916083000-hijklmn",
+        columns: "title,status,badvalue",
+        group: "项目组",
+    });
 });
 
 test("agent widget snapshot preserves bounded stats, item state, and cache metadata", () => {

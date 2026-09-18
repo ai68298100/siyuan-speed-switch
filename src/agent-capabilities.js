@@ -24,7 +24,9 @@ const SEARCH_TYPES = Object.freeze(["document", "heading", "paragraph", "codeBlo
 const SEARCH_SUBTYPES = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6", "o", "u", "t"]);
 const HOME_DIAGNOSTIC_TYPES = Object.freeze(["backoff", "cache", "empty", "timeout", "aborted", "failed"]);
 const HOME_DIAGNOSTIC_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
-const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "notebook", "date", "document"]);
+// secret deliberately stays out of this Agent-facing allowlist: tokens may be
+// configured in the UI but must never be reflected through Agent metadata/state.
+const HOME_CONFIG_FIELD_TYPES = Object.freeze(["text", "number", "select", "notebook", "date", "document", "favorite-group", "textarea", "database", "database-columns"]);
 // 块 ID（14 位时间戳-后缀）的单一事实来源：正则用于运行时校验，
 // pattern 字符串用于 JSON Schema 输出声明，两者必须保持同形。
 const AGENT_BLOCK_ID_PATTERN = "^[0-9]{14}-[0-9a-z]+$";
@@ -115,13 +117,31 @@ function normalizeAgentWidgetConfigFields(value) {
             const date = asText(raw.defaults, 10);
             const time = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
             field.defaultValue = Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === date ? date : "";
-        } else if (type === "document") {
+        } else if (type === "document" || type === "database") {
             field.defaultValue = normalizeAgentRootId(raw.defaults);
-        } else if (type === "text") {
+        } else if (type === "database-columns") {
+            field.defaultValue = normalizeAgentDatabaseColumns(raw.defaults, 128);
+        } else if (type === "text" || type === "textarea" || type === "favorite-group") {
             field.defaultValue = asText(raw.defaults, 128);
         }
         return field;
     }).filter(Boolean);
+}
+
+function normalizeAgentDatabaseColumns(value, maxLength = 512) {
+    const result = [];
+    const seen = new Set();
+    String(typeof value === "string" ? value : "").split(",").some((raw) => {
+        const id = asText(raw, 64).replace(/[^A-Za-z0-9_.:-]/g, "");
+        if (id && !seen.has(id)) {
+            const next = [...result, id].join(",");
+            if (next.length > maxLength) return true;
+            seen.add(id);
+            result.push(id);
+        }
+        return result.length >= 12;
+    });
+    return result.join(",");
 }
 
 function normalizeAgentWidgetConfig(value, schema) {
@@ -135,9 +155,12 @@ function normalizeAgentWidgetConfig(value, schema) {
         } else if (field.type === "notebook") {
             const notebook = normalizeAgentNotebookId(source[field.key]);
             if (notebook) result[field.key] = notebook;
-        } else if (field.type === "document") {
+        } else if (field.type === "document" || field.type === "database") {
             const document = normalizeAgentRootId(source[field.key]);
             if (document) result[field.key] = document;
+        } else if (field.type === "database-columns") {
+            const columns = normalizeAgentDatabaseColumns(source[field.key]);
+            if (columns) result[field.key] = columns;
         } else if (field.type === "date") {
             const date = asText(source[field.key], 10);
             const time = /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;

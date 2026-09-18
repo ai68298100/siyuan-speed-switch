@@ -53,3 +53,10 @@ test("path filter stays read-only", () => {
     assert.doesNotMatch(docSearchUi, /listDocsByPath[\s\S]{0,120}(updateBlock|insertBlock|appendBlock|createDocWithMd|removeDoc)/,
         "路径筛选不得与写入端点组合使用（R5b 后取数在 doc-search-ui）");
 });
+
+test("path filter applies to local tab cards and refreshes path metadata", () => {
+    assert.match(source, /dataset\.searchPath = buildOpenedDocumentScope\(tab as unknown\)\?\.path \|\| ""/,
+        "页签卡片必须记录可筛选的 notebook/path 元数据");
+    assert.match(source, /matchesSearchDocumentFilters\(\{[\s\S]*?searchPath/,
+        "本地卡片筛选必须复用远程结果的路径语义");
+});

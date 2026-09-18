@@ -12,7 +12,11 @@ export interface HomeConfigFormHost {
     getHomeState(): {schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]>};
     saveHomeState(state: {schemaVersion: number; instances: unknown[]; layouts: Record<string, unknown[]>}): void;
     loadNotebooks(): Promise<Array<{id: string, name: string}>>;
+    loadHomeFavoriteGroups(): Array<{id: string; title: string}>;
     currentDocumentSetEntries(): Array<{rootId: string; title: string}>;
+    loadHomeDocumentOptions(query?: string): Promise<Array<{id: string; title: string}>>;
+    loadHomeDatabaseOptions(): Promise<Array<{id: string; title: string}>>;
+    loadHomeDatabaseColumns(blockId: string): Promise<Array<{id: string; title: string}>>;
 }
 
 export function openHomeConfigForm(this: HomeConfigFormHost,
@@ -103,6 +107,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
             const control = controls.get(field.key);
             if (!control) return;
             control.value = String(value);
+            control.dispatchEvent(new Event("sw-config-reset"));
             updateSummary();
         };
         const placeholderText = (token: string) => token === "document" ? this.i18n.homeConfigDocumentPlaceholder
@@ -183,29 +188,291 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 void this.loadNotebooks().then((notebooks) => {
                     fill(notebooks);
                 });
+            } else if (field.type === "favorite-group") {
+                const select = document.createElement("select");
+                select.id = controlId;
+                select.className = "b3-select fn__block";
+                const current = typeof draft[field.key] === "string" ? draft[field.key] as string : "";
+                const options = [
+                    {id: "", title: this.i18n.homeFavoritesAllGroups || "全部分组"},
+                    {id: "__ungrouped__", title: this.i18n.homeFavoritesUngrouped || "未分组"},
+                    ...this.loadHomeFavoriteGroups(),
+                ];
+                if (current && !options.some((item) => item.id === current)) {
+                    options.push({id: current, title: `${current} · ${this.i18n.homeConfigUnavailableValue || "当前不可用"}`});
+                }
+                options.forEach((item) => {
+                    const option = document.createElement("option");
+                    option.value = item.id;
+                    option.textContent = item.title;
+                    select.appendChild(option);
+                });
+                select.value = current;
+                draft[field.key] = select.value;
+                controls.set(field.key, select);
+                select.addEventListener("change", () => { draft[field.key] = select.value; updateSummary(); });
+                row.appendChild(select);
             } else if (field.type === "document") {
                 const input = document.createElement("input");
                 input.id = controlId;
                 input.className = "b3-text-field fn__block";
-                input.type = "text";
-                input.maxLength = 64;
-                input.pattern = "[0-9]{14}-[0-9a-zA-Z]+";
-                // Legacy document placeholder contract: input.placeholder = this.i18n.homeConfigDocumentPlaceholder
+                input.type = "search";
+                input.maxLength = 48;
                 input.placeholder = placeholderText(resolveHomeConfigPlaceholder(inst.moduleId, field.key)) || this.i18n.homeConfigDocumentPlaceholder;
-                input.value = typeof draft[field.key] === "string" ? (draft[field.key] as string) : String(field.defaults || "");
-                draft[field.key] = input.value;
-                controls.set(field.key, input);
+                input.value = "";
+                const configuredId = typeof draft[field.key] === "string" ? draft[field.key] as string : String(field.defaults || "");
+                draft[field.key] = /^[0-9]{14}-[0-9a-z]+$/i.test(configuredId) ? configuredId : "";
                 const suggestions = document.createElement("datalist");
                 suggestions.id = `${controlId}-options`;
-                this.currentDocumentSetEntries().slice(0, 40).forEach((entry) => {
+                const openedDocuments = this.currentDocumentSetEntries().slice(0, 40);
+                openedDocuments.forEach((entry) => {
                     const option = document.createElement("option");
                     option.value = entry.rootId;
                     option.label = entry.title;
                     suggestions.appendChild(option);
                 });
                 input.setAttribute("list", suggestions.id);
-                input.addEventListener("input", () => { draft[field.key] = input.value.slice(0, 64); updateSummary(); });
-                row.append(input, suggestions);
+                const selection = document.createElement("div");
+                selection.className = "sw-home-config__database-selection sw-home-config__document-selection";
+                selection.setAttribute("role", "status");
+                selection.setAttribute("aria-live", "polite");
+                const list = document.createElement("div");
+                list.className = "sw-home-config__database-results sw-home-config__document-results";
+                let knownDocuments: Array<{id: string; title: string}> = openedDocuments.map((entry) => ({id: entry.rootId, title: entry.title}));
+                let requestGeneration = 0;
+                let queryTimer: number | null = null;
+                const renderSelection = (preferredTitle = "") => {
+                    selection.innerHTML = "";
+                    const id = String(draft[field.key] || "");
+                    if (!id) {
+                        selection.textContent = this.i18n.homeDocumentUnselected || "未限定父文档";
+                        return;
+                    }
+                    const known = knownDocuments.find((item) => item.id === id);
+                    const text = document.createElement("span");
+                    text.textContent = `${this.i18n.homeDocumentSelected || "已选择"}：${preferredTitle || known?.title || id}`;
+                    const clear = document.createElement("button");
+                    clear.type = "button";
+                    clear.className = "b3-button b3-button--text sw-home-config__database-clear";
+                    clear.textContent = this.i18n.homeDocumentClear || "清除";
+                    clear.addEventListener("click", () => {
+                        draft[field.key] = "";
+                        input.value = "";
+                        list.innerHTML = "";
+                        renderSelection();
+                        input.dispatchEvent(new Event("change"));
+                        updateSummary();
+                        input.focus();
+                    });
+                    selection.append(text, clear);
+                };
+                const choose = (item: {id: string; title: string}) => {
+                    draft[field.key] = item.id;
+                    input.value = "";
+                    list.innerHTML = "";
+                    renderSelection(item.title || item.id);
+                    input.dispatchEvent(new Event("change"));
+                    updateSummary();
+                };
+                const render = (items: Array<{id: string; title: string}>) => {
+                    list.innerHTML = "";
+                    if (items.length === 0) {
+                        list.textContent = this.i18n.homeDocumentNoMatch || "没有匹配的文档";
+                        return;
+                    }
+                    items.slice(0, 10).forEach((item) => {
+                        const option = document.createElement("button");
+                        option.type = "button";
+                        option.className = "b3-button b3-button--text sw-home-config__database-option sw-home-config__document-option";
+                        option.textContent = item.title || item.id;
+                        option.dataset.blockId = item.id;
+                        option.addEventListener("click", () => choose(item));
+                        list.appendChild(option);
+                    });
+                };
+                const load = (query: string) => {
+                    const generation = ++requestGeneration;
+                    void this.loadHomeDocumentOptions(query).then((items) => {
+                        if (generation !== requestGeneration) return;
+                        const merged = [...openedDocuments.map((entry) => ({id: entry.rootId, title: entry.title})), ...items];
+                        const seen = new Set<string>();
+                        knownDocuments = merged.filter((item) => {
+                            if (!item.id || seen.has(item.id)) return false;
+                            seen.add(item.id);
+                            return true;
+                        });
+                        render(knownDocuments);
+                        renderSelection();
+                    }).catch(() => { if (generation === requestGeneration) render([]); });
+                };
+                const queueLoad = () => {
+                    if (queryTimer !== null) window.clearTimeout(queryTimer);
+                    const unsafeQueryChars = new Set(["'", '"', "`", ";", "\\"]);
+                    const query = Array.from(input.value.trim(), (char) => unsafeQueryChars.has(char) ? " " : char).join("").slice(0, 48);
+                    const direct = openedDocuments.find((entry) => entry.rootId === query);
+                    if (direct) { choose({id: direct.rootId, title: direct.title}); return; }
+                    queryTimer = window.setTimeout(() => load(query), query ? 180 : 0);
+                };
+                input.addEventListener("input", queueLoad);
+                input.addEventListener("sw-config-reset", () => {
+                    requestGeneration += 1;
+                    input.value = "";
+                    list.innerHTML = "";
+                    renderSelection();
+                    input.dispatchEvent(new Event("change"));
+                });
+                controls.set(field.key, input);
+                renderSelection();
+                queueLoad();
+                row.append(input, suggestions, selection, list);
+            } else if (field.type === "database") {
+                const input = document.createElement("input");
+                input.id = controlId;
+                input.className = "b3-text-field fn__block";
+                input.type = "search";
+                input.maxLength = 48;
+                input.placeholder = this.i18n.homeAvTableConfigHint || "搜索数据库";
+                input.value = "";
+                const configuredId = typeof draft[field.key] === "string" ? draft[field.key] as string : "";
+                draft[field.key] = /^[0-9]{14}-[0-9a-z]+$/i.test(configuredId) ? configuredId : "";
+                const selection = document.createElement("div");
+                selection.className = "sw-home-config__database-selection";
+                selection.setAttribute("role", "status");
+                selection.setAttribute("aria-live", "polite");
+                const list = document.createElement("div");
+                list.className = "sw-home-config__database-results";
+                const renderSelection = (preferredTitle = "") => {
+                    selection.innerHTML = "";
+                    const id = String(draft[field.key] || "");
+                    if (!id) {
+                        selection.textContent = this.i18n.homeAvTableUnselected || "尚未选择数据库";
+                        return;
+                    }
+                    const known = allItems.find((item) => item.id === id);
+                    const label = preferredTitle || known?.title || id;
+                    const text = document.createElement("span");
+                    text.textContent = `${this.i18n.homeAvTableSelected || "已选择"}：${label}`;
+                    const clear = document.createElement("button");
+                    clear.type = "button";
+                    clear.className = "b3-button b3-button--text sw-home-config__database-clear";
+                    clear.textContent = this.i18n.homeAvTableClear || "清除";
+                    clear.addEventListener("click", () => {
+                        draft[field.key] = "";
+                        input.value = "";
+                        list.innerHTML = "";
+                        renderSelection();
+                        input.dispatchEvent(new Event("change"));
+                        updateSummary();
+                        input.focus();
+                    });
+                    selection.append(text, clear);
+                };
+                const render = (items: Array<{id: string; title: string}>) => {
+                    list.innerHTML = "";
+                    if (items.length === 0) {
+                        list.textContent = this.i18n.homeAvTableNoMatch || "没有匹配的数据库";
+                        return;
+                    }
+                    items.slice(0, 8).forEach((item) => {
+                        const option = document.createElement("button");
+                        option.type = "button";
+                        option.className = "b3-button b3-button--text sw-home-config__database-option";
+                        option.textContent = item.title || item.id;
+                        option.dataset.blockId = item.id;
+                        option.addEventListener("click", () => {
+                            draft[field.key] = item.id;
+                            input.value = "";
+                            list.innerHTML = "";
+                            renderSelection(item.title || item.id);
+                            input.dispatchEvent(new Event("change"));
+                            updateSummary();
+                        });
+                        list.appendChild(option);
+                    });
+                };
+                let queryTimer: number | null = null;
+                let allItems: Array<{id: string; title: string}> = [];
+                const queueRender = () => {
+                    if (queryTimer !== null) window.clearTimeout(queryTimer);
+                    const query = input.value.trim().replace(/["'`;\\]/g, " ").slice(0, 48);
+                    if (!query) { list.innerHTML = ""; updateSummary(); return; }
+                    queryTimer = window.setTimeout(() => {
+                        const lower = query.toLocaleLowerCase();
+                        render(allItems.filter((item) => `${item.title} ${item.id}`.toLocaleLowerCase().includes(lower)));
+                    }, 180);
+                };
+                void this.loadHomeDatabaseOptions().then((items) => {
+                    allItems = items;
+                    renderSelection();
+                    queueRender();
+                }).catch(() => { allItems = []; list.innerHTML = ""; renderSelection(); });
+                input.addEventListener("input", () => {
+                    queueRender();
+                });
+                input.addEventListener("sw-config-reset", () => {
+                    list.innerHTML = "";
+                    input.value = "";
+                    renderSelection();
+                    input.dispatchEvent(new Event("change"));
+                });
+                controls.set(field.key, input);
+                renderSelection();
+                row.append(input, selection, list);
+            } else if (field.type === "database-columns") {
+                const value = typeof draft[field.key] === "string" ? draft[field.key] as string : "";
+                const selected = new Set(value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 3));
+                const list = document.createElement("div");
+                list.className = "sw-home-config__database-columns";
+                const render = (items: Array<{id: string; title: string}>) => {
+                    list.innerHTML = "";
+                    if (items.length === 0) {
+                        list.textContent = this.i18n.homeAvTableColumnsHint || "选择数据库后可选择展示列";
+                        return;
+                    }
+                    items.forEach((item, index) => {
+                        const option = document.createElement("label");
+                        option.className = "sw-home-config__database-column";
+                        const check = document.createElement("input");
+                        check.type = "checkbox";
+                        check.checked = selected.size === 0 ? index < 3 : selected.has(item.id);
+                        check.disabled = !check.checked && selected.size >= 3;
+                        check.addEventListener("change", () => {
+                            if (selected.size === 0) items.slice(0, 3).forEach((entry) => selected.add(entry.id));
+                            if (!check.checked && selected.size <= 1) {
+                                check.checked = true;
+                                return;
+                            }
+                            if (check.checked) selected.add(item.id); else selected.delete(item.id);
+                            draft[field.key] = [...selected].join(",");
+                            render(items);
+                            updateSummary();
+                        });
+                        option.append(check, document.createTextNode(item.title || item.id));
+                        list.appendChild(option);
+                    });
+                };
+                let loadedBlockId = String(draft.blockId || "");
+                let loadGeneration = 0;
+                const load = () => {
+                    const blockId = String(draft.blockId || "");
+                    if (blockId !== loadedBlockId) {
+                        loadedBlockId = blockId;
+                        selected.clear();
+                        draft[field.key] = "";
+                    }
+                    if (!/^[0-9]{14}-[0-9a-z]+$/i.test(blockId)) { render([]); return; }
+                    const generation = ++loadGeneration;
+                    void this.loadHomeDatabaseColumns(blockId).then((items) => {
+                        if (generation === loadGeneration && blockId === String(draft.blockId || "")) render(items);
+                    }).catch(() => { if (generation === loadGeneration) render([]); });
+                };
+                const databaseControl = controls.get("blockId");
+                databaseControl?.addEventListener("input", load);
+                databaseControl?.addEventListener("change", load);
+                databaseControl?.addEventListener("sw-config-reset", load);
+                draft[field.key] = [...selected].join(",");
+                load();
+                row.appendChild(list);
             } else if (field.type === "textarea") {
                 // 多行文本配置（如自定义语录）：行数有界（≤10 行渲染高度），提交值上限 4000 字符。
                 const area = document.createElement("textarea");
@@ -220,6 +487,42 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 area.addEventListener("input", () => { draft[field.key] = area.value.slice(0, 4000); });
                 area.addEventListener("change", updateSummary);
                 row.appendChild(area);
+            } else if (field.type === "secret") {
+                const secret = document.createElement("div");
+                secret.className = "sw-home-config__secret";
+                const input = document.createElement("input");
+                input.id = controlId;
+                input.className = "b3-text-field fn__block";
+                input.type = "password";
+                input.maxLength = 512;
+                input.autocomplete = "new-password";
+                input.spellcheck = false;
+                input.value = typeof draft[field.key] === "string" ? draft[field.key] as string : "";
+                draft[field.key] = input.value;
+                controls.set(field.key, input);
+                const toggle = document.createElement("button");
+                toggle.type = "button";
+                toggle.className = "b3-button b3-button--text sw-home-config__secret-toggle";
+                const updateToggle = () => {
+                    const hidden = input.type === "password";
+                    const text = hidden ? this.i18n.homeConfigShowSecret : this.i18n.homeConfigHideSecret;
+                    toggle.textContent = text;
+                    toggle.title = text;
+                    toggle.setAttribute("aria-label", text);
+                    toggle.setAttribute("aria-pressed", String(!hidden));
+                };
+                toggle.addEventListener("click", () => {
+                    input.type = input.type === "password" ? "text" : "password";
+                    updateToggle();
+                    input.focus();
+                });
+                input.addEventListener("input", () => {
+                    draft[field.key] = input.value.slice(0, 512);
+                    updateSummary();
+                });
+                updateToggle();
+                secret.append(input, toggle);
+                row.appendChild(secret);
             } else {
                 const input = document.createElement("input");
                 input.id = controlId;

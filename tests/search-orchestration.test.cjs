@@ -44,6 +44,17 @@ async function runOrchestration({title = [], opened = [], global = [], rejectAt 
             // sequence used for an empty title result.
         }
         if (titleRecords.length > 0) {
+            // The UI probes bounded opened-document content in parallel even
+            // when the title fast path has results, so matching tabs whose
+            // body contains the query are restored immediately.
+            const openedRequests = buildOpenedDocumentSearchRequests(
+                [tab(ROOT_A, "box-a/project.sy"), tab(ROOT_B, "box-a/meeting.sy")],
+                "项目",
+                {maxDocuments: 2},
+            );
+            for (const _request of openedRequests) {
+                await fetchMock("opened");
+            }
             return {calls, titleRecords};
         }
         const openedRequests = buildOpenedDocumentSearchRequests(
@@ -68,9 +79,9 @@ async function runOrchestration({title = [], opened = [], global = [], rejectAt 
     }
 }
 
-test("search orchestration: title hit short-circuits opened and global requests", async () => {
+test("search orchestration: title hit still probes opened content before global fallback", async () => {
     const output = await runOrchestration({title: [{id: ROOT_A, root_id: ROOT_A, name: "项目文档", hPath: "work/project"}]});
-    assert.deepEqual(output.calls, ["title"]);
+    assert.deepEqual(output.calls, ["title", "opened", "opened"]);
     assert.equal(output.titleRecords.length, 1);
     assert.equal(output.titleRecords[0].rootId, ROOT_A);
 });
@@ -104,4 +115,29 @@ test("search orchestration: duplicate roots are removed before the document cap"
     const merged = mergeSearchLayers({query: "项目", tabs: [], opened: aggregate.cards, limits: {documents: 2}});
     assert.deepEqual(merged.cards.map((card) => card.rootId), [ROOT_A, ROOT_B]);
     assert.equal(new Set(merged.cards.map((card) => card.rootId)).size, merged.cards.length);
+});
+
+test("search orchestration: opened-content probes honor notebook and path scope before requests", () => {
+    const requests = buildOpenedDocumentSearchRequests([
+        tab(ROOT_A, "box-a/project.sy"),
+        tab(ROOT_B, "box-a/notes/other.sy"),
+        tab(ROOT_C, "box-a/notes/target.sy"),
+    ], "项目", {
+        maxDocuments: 6,
+        filters: {notebook: "box-a", paths: ["box-a/notes"]},
+    });
+    assert.deepEqual(requests.map((request) => request.scope.rootId), [ROOT_B, ROOT_C]);
+    assert.ok(requests.every((request) => request.scope.path.startsWith("box-a/notes/")));
+});
+
+test("search orchestration: scope filters are normalized once before bounded fan-out", () => {
+    const requests = buildOpenedDocumentSearchRequests([
+        tab(ROOT_A, "box-a/work/a.sy"),
+        tab(ROOT_B, "box-a/work/b.sy"),
+        tab(ROOT_C, "box-a/other/c.sy"),
+    ], "项目", {
+        maxDocuments: 2,
+        filters: {notebook: " box-a ", paths: ["box-a/work", "box-a/work", "../ignored"]},
+    });
+    assert.deepEqual(requests.map((request) => request.scope.rootId), [ROOT_A, ROOT_B]);
 });

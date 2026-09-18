@@ -114,9 +114,10 @@ function normalizeHomeViewResult(value, options = {}) {
         };
         const image = safeImageHref(item?.image);
         if (image) entry.image = image;
-        const secondary = text(item?.secondary, 32);
+        const secondary = text(item?.secondary, 96);
         if (secondary) entry.secondary = secondary;
         if (typeof item?.done === "boolean") entry.done = item.done;
+        if (typeof item?.weekend === "boolean") entry.weekend = item.weekend;
         if (item?.outside === true) entry.outside = true;
         if (["off", "work"].includes(item?.holiday)) entry.holiday = item.holiday;
         if (Number.isFinite(item?.count) && item.count >= 0) entry.count = Math.trunc(item.count);
@@ -132,6 +133,7 @@ function normalizeHomeViewResult(value, options = {}) {
         cached: source.cached === true,
         reason: text(source.reason, 32),
         title: text(rawSnapshot.title, 64),
+        calendarWeekdays: text(rawSnapshot.calendarWeekdays, 7),
         ...(text(rawSnapshot.emptyHint, 96) ? {emptyHint: text(rawSnapshot.emptyHint, 96)} : {}),
         updatedAt: Number.isFinite(rawSnapshot.updatedAt) ? rawSnapshot.updatedAt : 0,
         sourceHealth: ["fresh", "cached", "stale"].includes(rawSnapshot.sourceHealth) ? rawSnapshot.sourceHealth : "",
@@ -177,6 +179,7 @@ function buildHomeModuleView(module, result, options = {}) {
         updatedAt: normalized.updatedAt,
         sourceHealth: normalized.sourceHealth,
         items: normalized.items,
+        ...(normalized.calendarWeekdays.length === 7 ? {calendarWeekdays: normalized.calendarWeekdays} : {}),
         ...(normalized.title ? {contextTitle: normalized.title} : {}),
         ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
         collapsed: options.collapsed === true,
@@ -390,8 +393,10 @@ function renderHomeModuleView(doc, view, options = {}) {
         const grid = doc.createElement("div");
         grid.className = "sw__home-calendar";
         grid.setAttribute("role", "grid");
-        const weekdayLabels = typeof options.calendarWeekdays === "string" && options.calendarWeekdays.length >= 7
-            ? options.calendarWeekdays
+        const weekdayLabels = typeof view.calendarWeekdays === "string" && view.calendarWeekdays.length >= 7
+            ? view.calendarWeekdays
+            : typeof options.calendarWeekdays === "string" && options.calendarWeekdays.length >= 7
+                ? options.calendarWeekdays
             : "一二三四五六日";
         weekdayLabels.slice(0, 7).split("").forEach((label) => {
             const head = doc.createElement("span");
@@ -407,7 +412,7 @@ function renderHomeModuleView(doc, view, options = {}) {
                 + (item.done === true ? " is-today" : "")
                 + (item.outside === true ? " is-outside" : "")
                 + (item.holiday === "off" ? " is-holiday" : item.holiday === "work" ? " is-workday" : "")
-                + (index % 7 >= 5 ? " is-weekend" : "");
+                + (item.weekend === true ? " is-weekend" : item.weekend === false ? "" : index % 7 >= 5 ? " is-weekend" : "");
             cell.setAttribute("role", "gridcell");
             if (clickable) cell.type = "button";
             const primary = doc.createElement("span");
@@ -547,6 +552,12 @@ function renderHomeModuleView(doc, view, options = {}) {
                 secondary.className = "sw__home-module-item-secondary";
                 secondary.textContent = item.secondary;
                 button.appendChild(secondary);
+            }
+            const itemDescription = [itemLabel.textContent, item.secondary].filter(Boolean).join(" · ");
+            if (itemDescription) {
+                button.setAttribute("aria-label", itemDescription);
+                // Desktop hover and supported touch long-press surfaces expose the exact bucket value.
+                if (Number.isFinite(item.count)) button.title = itemDescription;
             }
             if (item.href) row.classList.add("has-link");
             if (canToggle && typeof item.done === "boolean") {

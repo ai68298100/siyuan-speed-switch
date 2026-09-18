@@ -17,13 +17,13 @@ test("mobile persisted layouts canonicalize to full-width rows", () => {
 
 test("home model registers bounded default modules", () => {
     const modules = home.registerModules([{moduleId: "recent-documents", title: "override", supportedDevices: ["mobile"]}]);
-    assert.equal(modules.length, 59);
+    assert.equal(modules.length, 58);
     assert.equal(modules.find((item) => item.moduleId === "recent-documents").title, "override");
 });
 
 test("home model filters modules by device", () => {
     assert.equal(home.modulesForDevice([{moduleId: "desktop-only", title: "D", supportedDevices: ["desktop"]}], "mobile").some((item) => item.moduleId === "desktop-only"), false);
-    assert.equal(home.modulesForDevice([], "mobile").length, 57);
+    assert.equal(home.modulesForDevice([], "mobile").length, 56);
 });
 
 test("journal-calendar viewType and monthOffset config", () => {
@@ -34,9 +34,9 @@ test("journal-calendar viewType and monthOffset config", () => {
     assert.deepEqual(cal.sizes, ["large", "full"]);
     assert.ok(Array.isArray(cal.configSchema) && cal.configSchema.length > 0, "has config");
     assert.deepEqual(cal.configSchema[0], {key: "monthOffset", label: "月份偏移", type: "number", min: -24, max: 24, defaults: 0});
-    assert.deepEqual(cal.configSchema[1], {key: "showLunar", label: "显示农历", type: "select", options: ["否", "是"], defaults: "否"});
-    assert.deepEqual(cal.configSchema[2], {key: "showHolidays", label: "显示中国节假日", type: "select", options: ["否", "是"], defaults: "否"});
-    assert.deepEqual(cal.configSchema[3], {key: "notebook", label: "限定笔记本", type: "notebook"});
+    assert.deepEqual(cal.configSchema.map((field) => field.key), ["monthOffset", "weekStart", "showAdjacent", "showLunar", "showHolidays", "notebook"]);
+    assert.deepEqual(cal.configSchema[1], {key: "weekStart", label: "每周起始日", type: "select", options: ["周一", "周日"], defaults: "周一"});
+    assert.deepEqual(cal.configSchema[2], {key: "showAdjacent", label: "显示相邻月份日期", type: "select", options: ["是", "否"], defaults: "是"});
 });
 test("weather module exposes opt-in location config and iPad-friendly sizes", () => {
     const weather = home.registerModules([]).find((item) => item.moduleId === "external-weather-open-meteo");
@@ -82,12 +82,13 @@ test("home modules expose bounded availability levels", () => {
     assert.equal(modules.find((item) => item.moduleId === "checkin-summary").availability, "external");
     assert.deepEqual(home.AVAILABILITY_LEVELS, ["ready", "conditional", "external"]);
 });
-test("flashcard-due module keeps bounded notebook config schema", () => {
+test("flashcard-due module exposes bounded notebook and projection controls", () => {
     const modules = home.registerModules([]);
     const flashcard = modules.find((item) => item.moduleId === "flashcard-due");
     assert.ok(flashcard, "flashcard-due module registered");
     assert.equal(flashcard.readOnly, true);
-    assert.deepEqual(flashcard.configSchema, [{key: "notebook", label: "限定笔记本", type: "notebook"}]);
+    assert.deepEqual(flashcard.configSchema.map((field) => field.key), ["notebook", "limit", "sortBy", "showNotebook", "showPath", "showRank"]);
+    assert.deepEqual(flashcard.configSchema[1], {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8});
     assert.ok(flashcard.sizes.includes("small") && flashcard.sizes.includes("tall"));
 });
 
@@ -99,6 +100,9 @@ test("random-review module clamps stale-days window", () => {
     assert.deepEqual(random.configSchema, [
         {key: "days", label: "多久未看（天）", type: "number", min: 7, max: 3650, defaults: 90},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
+        {key: "parentDocument", label: "限定父文档（随机选择其子文档）", type: "document", defaults: ""},
+        {key: "limit", label: "每批篇数", type: "number", min: 1, max: 6, defaults: 3},
+        {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
     ]);
 });
 
@@ -107,6 +111,27 @@ test("home model normalizes layout and rejects invalid instances", () => {
     assert.equal(home.normalizeLayout({w: 4, h: 4, size: "medium"}).size, "medium");
     assert.equal(home.normalizeLayout({w: 4, h: 4, size: "bogus"}).size, "");
     assert.deepEqual(home.normalizeInstances([{moduleId: "recent-documents"}, {moduleId: "bad"}, {moduleId: "recent-documents"}]), [{instanceId: "recent-documents", moduleId: "recent-documents", enabled: true, config: {}}]);
+});
+
+test("home model migrates the duplicate host recent widget to recent documents", () => {
+    assert.deepEqual(home.normalizeInstances([
+        {moduleId: "host-recent-docs", instanceId: "legacy-recent", config: {limit: 6}},
+    ]), [{instanceId: "legacy-recent", moduleId: "recent-documents", enabled: true, config: {limit: 6}}]);
+    assert.equal(home.registerModules([]).some((item) => item.moduleId === "host-recent-docs"), false);
+    assert.deepEqual(home.registerModules([]).find((item) => item.moduleId === "recent-documents").configSchema,
+        [
+            {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+            {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
+            {key: "showRank", label: "显示最近序号", type: "select", options: ["否", "是"], defaults: "否"},
+        ]);
+});
+
+test("home model keeps credential fields secret in UI schemas", () => {
+    const modules = home.registerModules([]);
+    for (const moduleId of ["external-rss-miniflux", "external-github-contrib"]) {
+        const token = modules.find((item) => item.moduleId === moduleId).configSchema.find((field) => field.key === "token");
+        assert.equal(token.type, "secret", `${moduleId} token must not use a plain text input`);
+    }
 });
 
 test("home model bounds third-party config and instance ids", () => {
