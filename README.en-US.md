@@ -451,13 +451,14 @@ See [ROADMAP.md](./ROADMAP.md) for planned phases, design constraints, and relea
 
 ## 📜 Architecture Decision Records
 
-All architecture decisions live in [`docs/adr/`](docs/adr/) (ADR-0001 ~ ADR-0058). Recent highlights:
+All architecture decisions live in [`docs/adr/`](docs/adr/) (ADR-0001 ~ ADR-0062). Recent highlights:
 
 - [ADR-0048/0052 UI module extraction](docs/adr/0048-mobile-switcher-ui-extraction.md) — how the mobile switcher and second panel moved out of `index.ts`
 - [ADR-0049/0050 stylesheet order-preserving split](docs/adr/0049-stylesheet-order-preserving-split.md) — why `index.scss` can only be sliced in source order, never by domain
 - [ADR-0051 governance doc archive](docs/adr/0051-governance-doc-archive-and-root-budget.md) — ledger archiving and the root-directory size budget
 - [ADR-0057 widget sources as first-class citizens](docs/adr/0057-widget-source-and-store-grouping.md) — widget protocol v2.4 and store source grouping
 - [ADR-0058 database table projection](docs/adr/0058-av-widget-bounded-list-projection.md) — why the database widget is a read-only bounded list projection
+- [ADR-0059/0062 resource line calibration](docs/adr/0062-raw-bundle-line-recalibration.md) — size gates guard against runaway growth only: 224 KiB per-entry zip, 832 KiB raw, 512 KiB archive ceiling unchanged
 
 ## License
 

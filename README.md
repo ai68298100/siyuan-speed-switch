@@ -14,8 +14,8 @@
 
 ## 目录
 
-- [核心能力](#核心能力)
 - [思源原生 Agent 能力](#思源原生-agent-能力)
+- [核心能力](#核心能力)
 - [快速上手](#快速上手)
 - [快捷键](#快捷键)
 - [设置](#设置)
@@ -449,13 +449,14 @@ this.unregisterSpeedSwitchAction?.();
 
 ## 📜 决策记录
 
-全部架构决策见 [`docs/adr/`](docs/adr/)（ADR-0001 ~ ADR-0058）。近期关键决策：
+全部架构决策见 [`docs/adr/`](docs/adr/)（ADR-0001 ~ ADR-0062）。近期关键决策：
 
 - [ADR-0048/0052 UI 模块外迁](docs/adr/0048-mobile-switcher-ui-extraction.md) — 移动端切换器与第二面板从 `index.ts` 拆出的边界裁定
 - [ADR-0049/0050 样式顺序切片](docs/adr/0049-stylesheet-order-preserving-split.md) — `index.scss` 为什么只能顺序切片、不能按域名聚类
 - [ADR-0051 治理文档归档](docs/adr/0051-governance-doc-archive-and-root-budget.md) — 台账归档与根目录体积预算
 - [ADR-0057 组件来源一等公民](docs/adr/0057-widget-source-and-store-grouping.md) — 组件协议 v2.4 与商店来源分组
 - [ADR-0058 数据库表格投影](docs/adr/0058-av-widget-bounded-list-projection.md) — 数据库组件为什么是只读的有界列表投影
+- [ADR-0059/0062 资源自律线校准](docs/adr/0062-raw-bundle-line-recalibration.md) — 体积只防失控增长：zip 单条目 224 KiB、raw 832 KiB、512 KiB 归档硬上限不变
 
 ## 许可证
 
