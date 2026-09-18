@@ -1,5 +1,9 @@
 "use strict";
 
+// T-6465：用户内容（名称/标题/标签/路径）排序显式钉定 zh 拼音 Collator，
+// 消除 localeCompare 缺省 locale 的宿主漂移（CI 镜像升级实证）。
+const {compareText} = require("./util.js");
+
 // 内核数据组件的有界投影模型（T-6321~T-6325、T-6328）。
 // 数据源全部是思源内核自带的只读端点（v3.8.x 起）：置顶文档、收集箱、最近更新块、
 // 缺失资源、原生最近文档、数据库块清单。与外部组件不同，这些不需要白名单 URL——
@@ -330,7 +334,7 @@ function buildDataHealthSnapshot(payload, config, labels = {}, now = Date.now(),
             || entry.path.toLowerCase().includes(normalized.query));
     }
     if (normalized.sortBy === "name") {
-        entries.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: "base"}));
+        entries.sort((a, b) => compareText(a.name, b.name));
     }
     const items = entries.slice(0, normalized.limit).map((entry, index) => ({
         label: entry.name,
@@ -428,8 +432,8 @@ function buildDatabaseListSnapshot(rows, config, labels = {}, now = Date.now(), 
         entries.push({id, label, path, updated: boundedText(row.updated, 32), order: entries.length});
     }
     entries.sort((left, right) => {
-        if (normalized.sortBy === "名称") return left.label.localeCompare(right.label) || left.order - right.order;
-        if (normalized.sortBy === "路径") return left.path.localeCompare(right.path) || left.label.localeCompare(right.label) || left.order - right.order;
+        if (normalized.sortBy === "名称") return compareText(left.label, right.label) || left.order - right.order;
+        if (normalized.sortBy === "路径") return compareText(left.path, right.path) || compareText(left.label, right.label) || left.order - right.order;
         return right.updated.localeCompare(left.updated) || left.order - right.order;
     });
     const items = entries.slice(0, normalized.limit).map((entry, index) => {
@@ -848,8 +852,8 @@ function buildTagListSnapshot(tags, config, labels = {}, now = Date.now(), statu
         return true;
     });
     entries.sort((left, right) => normalized.sortBy === "名称"
-        ? left.path.localeCompare(right.path) || left.order - right.order
-        : right.count - left.count || left.path.localeCompare(right.path) || left.order - right.order);
+        ? compareText(left.path, right.path) || left.order - right.order
+        : right.count - left.count || compareText(left.path, right.path) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => ({
         label: normalized.showHierarchy ? entry.path : entry.name,
         value: `tag:${entry.path}`,
@@ -892,8 +896,8 @@ function buildBookmarkListSnapshot(bookmarks, config, labels = {}, now = Date.no
     }
     const entries = [...byName.values()];
     entries.sort((left, right) => normalized.sortBy === "名称"
-        ? left.name.localeCompare(right.name) || left.order - right.order
-        : right.count - left.count || left.name.localeCompare(right.name) || left.order - right.order);
+        ? compareText(left.name, right.name) || left.order - right.order
+        : right.count - left.count || compareText(left.name, right.name) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => ({
         label: entry.name,
         value: `bookmark:${entry.name}`,
@@ -934,7 +938,7 @@ function buildClippedUnreadSnapshot(rows, config, labels = {}, now = Date.now(),
         entries.push({id, title, path: boundedText(row.hpath || row.hPath, 128), updated: boundedText(row.latest || row.updated, 32), order});
     }
     entries.sort((left, right) => normalized.sortBy === "名称"
-        ? left.title.localeCompare(right.title) || left.order - right.order
+        ? compareText(left.title, right.title) || left.order - right.order
         : right.updated.localeCompare(left.updated) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => {
         const details = [];
@@ -983,8 +987,8 @@ function buildOnThisDaySnapshot(rows, config, labels = {}, now = Date.now(), sta
         entries.push({id, title, year, path: boundedText(row.hpath || row.hPath, 128), order});
     }
     entries.sort((left, right) => normalized.sortBy === "最早年份"
-        ? left.year - right.year || left.title.localeCompare(right.title) || left.order - right.order
-        : right.year - left.year || left.title.localeCompare(right.title) || left.order - right.order);
+        ? left.year - right.year || compareText(left.title, right.title) || left.order - right.order
+        : right.year - left.year || compareText(left.title, right.title) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => {
         const details = [];
         if (normalized.showYear) details.push(`${entry.year}`);
@@ -1162,7 +1166,7 @@ function buildTodayTasksSnapshot(payload, config, labels = {}, now = Date.now(),
         entries.push({id, label, document, path, updated, done, order});
     }
     entries.sort((left, right) => normalized.sortBy === "文档名称"
-        ? left.document.localeCompare(right.document) || left.order - right.order
+        ? compareText(left.document, right.document) || left.order - right.order
         : right.updated.localeCompare(left.updated) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => {
         const details = [];
@@ -1221,7 +1225,7 @@ function buildFlashcardDueSnapshot(payload, config, labels = {}, now = Date.now(
         }
     }
     if (!detailMode && normalized.sortBy === "待复习数量") {
-        entries.sort((left, right) => right.count - left.count || left.label.localeCompare(right.label) || left.order - right.order);
+        entries.sort((left, right) => right.count - left.count || compareText(left.label, right.label) || left.order - right.order);
     }
     const items = entries.slice(0, normalized.limit).map((entry, index) => detailMode ? {
         label: entry.label,
@@ -1516,7 +1520,7 @@ function buildSavedSearchesSnapshot(payload, config, labels = {}, now = Date.now
         entries.push({name, keyword, methodIndex, scope, order});
     }
     if (normalized.sortBy === "名称") {
-        entries.sort((left, right) => (left.name || left.keyword).localeCompare(right.name || right.keyword) || left.order - right.order);
+        entries.sort((left, right) => compareText(left.name || left.keyword, right.name || right.keyword) || left.order - right.order);
     }
     const items = entries.slice(0, normalized.limit).map((entry, index) => {
         const method = methods[entry.methodIndex] || "";

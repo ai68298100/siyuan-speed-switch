@@ -387,3 +387,17 @@ test("storage usage section is wired to host measurement and registry", () => {
     assert.match(indexSource2, /storage: \(\) => buildSettingsStorage\.call\(this\)/);
     assert.match(indexSource2, /storage: this\.i18n\.secStorage/);
 });
+
+// ---------- T-6465 用户内容排序确定性（localeCompare 漂移治理） ----------
+test("user-content sorting pins the zh collator across kernel models", () => {
+    const kernelSource = readSourceText(path.join(__dirname, "..", "src", "kernel-widget-model.js"));
+    // 仅 updated/date 等纯数字时间戳允许保留 localeCompare（各 locale 下事实一致）；
+    // 用户内容（名称/标题/标签/路径/文档名）一律 compareText（zh 拼音钉定）
+    const bare = [...kernelSource.matchAll(/localeCompare\((?!right\.updated|left\.date|right\.date|left\.updated)[^\n]*/g)]
+        .map((m) => m[0]);
+    assert.deepEqual(bare, [], "kernel model must not sort user content with bare localeCompare");
+    assert.match(kernelSource, /const \{compareText\} = require\("\.\/util\.js"\);/);
+    const utilSource = readSourceText(path.join(__dirname, "..", "src", "util.js"));
+    assert.match(utilSource, /new Intl\.Collator\("zh-Hans-CN", \{numeric: true\}\)/);
+    assert.match(utilSource, /new Intl\.Collator\("zh-Hans-CN"\)/);
+});

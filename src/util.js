@@ -1,6 +1,23 @@
 // 纯函数工具：与类实例状态解耦，便于单元测试与多模块复用
 //（plain JS 而非 TS：测试用 node 直接 require，无需编译步骤；类型由 jsdoc 注解保留）
 
+// T-6465：跨宿主确定性文本比较。localeCompare 缺省 locale 随宿主 ICU 环境漂移
+//（CI 镜像升级实证：同一 CJK 排序断言在新旧 Runner 上一绿一红），因此用户内容
+// 的排序一律显式钉定 zh 拼音 Collator；纯 ASCII 串（日期时间戳/ID/数字路径）的
+// localeCompare 在各 locale 下事实一致，可保留。
+const zhSortCollator = new Intl.Collator("zh-Hans-CN");
+const zhNumericCollator = new Intl.Collator("zh-Hans-CN", {numeric: true});
+
+/**
+ * 用户可见文本（标题/名称/标签）的确定性比较：zh 拼音 Collator 单例。
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function compareText(a, b) {
+    return zhSortCollator.compare(String(a), String(b));
+}
+
 /**
  * 数字夹紧：NaN / 非数字退回 fallback；否则限制在 [min, max] 区间
  * @param {unknown} value
@@ -56,7 +73,7 @@ function sortItems(items, sortBy, mru = [], options = {}) {
     const updatedMap = options.updatedMap && typeof options.updatedMap === "object" ? options.updatedMap : {};
     if (sortBy === "titleAsc" || sortBy === "titleDesc") {
         ordered.sort((a, b) => {
-            const result = String(titleOf(a) || "").localeCompare(String(titleOf(b) || ""), undefined, {numeric: true});
+            const result = zhNumericCollator.compare(String(titleOf(a) || ""), String(titleOf(b) || ""));
             return sortBy === "titleAsc" ? result : -result;
         });
     } else if (sortBy === "layoutDesc") {
@@ -1189,7 +1206,7 @@ function groupTabsByMode(tabs, mode, ctx) {
         });
         const rootLabel = labels.rootPath || "根目录";
         return [...groups.entries()].map(([name, items]) => ({key: `path:${name}`, label: name, icon: "iconFolder", items}))
-            .sort((a, b) => a.label === rootLabel ? 1 : b.label === rootLabel ? -1 : a.label.localeCompare(b.label));
+            .sort((a, b) => a.label === rootLabel ? 1 : b.label === rootLabel ? -1 : compareText(a.label, b.label));
     }
     if (mode === "notebook") {
         const groups = new Map();
@@ -1209,7 +1226,7 @@ function groupTabsByMode(tabs, mode, ctx) {
             .sort((a, b) => {
                 const ia = order.has(ctx.notebookIdOf(a.items[0])) ? order.get(ctx.notebookIdOf(a.items[0])) : Number.MAX_SAFE_INTEGER;
                 const ib = order.has(ctx.notebookIdOf(b.items[0])) ? order.get(ctx.notebookIdOf(b.items[0])) : Number.MAX_SAFE_INTEGER;
-                return ia !== ib ? ia - ib : a.label.localeCompare(b.label);
+                return ia !== ib ? ia - ib : compareText(a.label, b.label);
             });
     }
     if (mode === "favorites") {
@@ -1237,7 +1254,7 @@ function groupTabsByMode(tabs, mode, ctx) {
                 if (b.key === "__unfavorited__") return -1;
                 const oa = order.has(a.label) ? order.get(a.label) : Number.MAX_SAFE_INTEGER;
                 const ob = order.has(b.label) ? order.get(b.label) : Number.MAX_SAFE_INTEGER;
-                return oa !== ob ? oa - ob : a.label.localeCompare(b.label);
+                return oa !== ob ? oa - ob : compareText(a.label, b.label);
             });
     }
     if (mode === "createdMonth") {
@@ -1259,7 +1276,7 @@ function groupTabsByMode(tabs, mode, ctx) {
             .sort((a, b) => {
                 if (a.key === "cm:__unknown__") return 1;
                 if (b.key === "cm:__unknown__") return -1;
-                return b.key.localeCompare(a.key);
+                return compareText(b.key, a.key);
             });
     }
     return [{key: "all", label: "", icon: "", items: [...tabs]}];
@@ -1375,4 +1392,4 @@ function safeRegisterPluginCommand(host, command, onError) {
     return false;
 }
 
-module.exports = {isGlobalShortcutHostReady, safeRegisterPluginCommand, MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache};
+module.exports = {isGlobalShortcutHostReady, safeRegisterPluginCommand, MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, summarizeStorageCapacityReportEventQueue, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache, compareText};
