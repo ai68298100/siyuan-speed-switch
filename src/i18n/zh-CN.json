@@ -114,6 +114,8 @@
   "homeStatWritingBlocks": "内容块",
   "homeWritingDailyAverage": "日均 {value}",
   "homeWritingActivityEmpty": "统计范围内没有写作活动",
+  "homeWritingStrength": "写作强度",
+  "homeWritingStrengthHalfLife": "半衰期",
   "homeRecentDailyNotes": "近期日记",
   "homeDescRecentDailyNotes": "只列出范围内已有日记；排除未来日期并支持路径、更新时间和排序",
   "homeStatRecentDaily": "篇日记",

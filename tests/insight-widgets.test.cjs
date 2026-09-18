@@ -39,8 +39,8 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.deepEqual(clipped.configSchema.map((field) => field.key), ["tag", "limit", "notebook", "sortBy", "showPath", "showUpdated", "showRank"]);
     const writing = byId.get("recent-writing-activity");
     assert.ok(writing, "recent writing activity registered");
-    assert.deepEqual(writing.configSchema.map((field) => field.key), ["days", "notebook", "metric", "density", "showZero", "showAverage"]);
-    assert.equal(writing.configSchema[0].max, 90);
+    assert.deepEqual(writing.configSchema.map((field) => field.key), ["days", "notebook", "metric", "density", "showZero", "showAverage", "showStrength"]);
+    assert.equal(writing.configSchema[0].max, 366);
     assert.deepEqual(byId.get("writing-streak").configSchema.map((field) => field.key), [
         "notebook", "windowDays", "metric", "dailyGoal", "weekStart", "todayGrace",
     ]);

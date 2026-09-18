@@ -244,12 +244,13 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showEditedDocs", label: "显示修订文档", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "recent-writing-activity", title: "近期写作活跃度", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
-        {key: "days", label: "统计天数", type: "number", min: 7, max: 90, defaults: 14},
+        {key: "days", label: "统计天数", type: "number", min: 7, max: 366, defaults: 14},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "metric", label: "统计指标", type: "select", options: ["内容块", "新增字符"], defaults: "内容块"},
         {key: "density", label: "图形密度", type: "select", options: ["每日", "紧凑"], defaults: "每日"},
         {key: "showZero", label: "显示零值日期", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showAverage", label: "显示日均值", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showStrength", label: "显示写作强度", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "recent-daily-notes", title: "近期日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "回看天数", type: "number", min: 7, max: 60, defaults: 14},

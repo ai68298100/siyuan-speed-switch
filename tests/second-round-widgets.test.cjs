@@ -160,3 +160,56 @@ test("display override has a whitelisted view path and real css rules", () => {
     }
     assert.equal(store.resolveHomeConfigSection("external-local-time", "emphasis"), "display");
 });
+
+// ---------- T-6458/T-6459 写作强度分与 12 个月回看（recent-writing-activity） ----------
+const kernel = require("../src/kernel-widget-model.js");
+
+test("writing strength is a bounded exponential smoothing of daily activity", () => {
+    const now = new Date(2026, 8, 18, 12).getTime();
+    const dayAt = (offsetFromEnd) => {
+        const d = new Date(now - offsetFromEnd * 86400000);
+        return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const labels = {blocks: "块", strength: "写作强度", strengthHalfLife: "半衰期"};
+    // 7 天全活跃：解析解 (1 - k^7) = 1 - 0.5^(7/14) ≈ 29%
+    const rows = [];
+    for (let i = 0; i < 7; i += 1) rows.push({day: dayAt(i), blocks: 2});
+    const all = kernel.buildRecentWritingActivitySnapshot(rows, {days: 7, showStrength: "是"}, labels, now);
+    const head = all.items[0];
+    assert.equal(head.label, "写作强度");
+    assert.equal(head.value, `${Math.round((1 - Math.pow(0.5, 0.5)) * 100)}%`, "全活跃 7 天的解析解");
+    assert.match(head.secondary, /14 天$/);
+    // 只有最早一天活跃：解析解 (1-k)·k^6
+    const sparse = kernel.buildRecentWritingActivitySnapshot(
+        [{day: dayAt(6), blocks: 2}],
+        {days: 7, showStrength: "是"},
+        labels,
+        now,
+    );
+    const k = Math.pow(0.5, 1 / 14);
+    assert.equal(sparse.items[0].value, `${Math.round((1 - k) * Math.pow(k, 6) * 100)}%`, "首日活跃后衰减 6 天");
+    // 关闭开关：不产生强度行（默认）
+    const off = kernel.buildRecentWritingActivitySnapshot(rows, {}, labels, now);
+    assert.equal(off.items.find((item) => item.label === "写作强度"), undefined);
+    // 全零窗口：强度 0%，不是缺测
+    const zero = kernel.buildRecentWritingActivitySnapshot([], {days: 7, showStrength: "是", showZero: "是"}, labels, now);
+    assert.equal(zero.items[0].value, "0%");
+});
+
+test("writing activity window extends to 366 days without truncating recent days", () => {
+    assert.equal(kernel.normalizeRecentWritingActivityConfig({days: 999}).days, 366);
+    const now = new Date(2026, 8, 18, 12).getTime();
+    const keyOf = (offsetFromEnd) => {
+        const d = new Date(now - offsetFromEnd * 86400000);
+        return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    };
+    // 365 行（模拟 SQL 按 day ASC 返回整年）：旧行数帽 100 会截掉最近日期
+    const rows = [];
+    for (let offset = 364; offset >= 0; offset -= 1) rows.push({day: keyOf(offset), blocks: 1});
+    const snapshot = kernel.buildRecentWritingActivitySnapshot(rows, {days: 366, density: "紧凑", showZero: "是"}, {}, now);
+    assert.equal(snapshot.stat.value, "365", "长窗口下最近日期必须计入总量");
+    const strength = kernel.buildRecentWritingActivitySnapshot(rows, {days: 366, density: "紧凑", showZero: "是", showStrength: "是"}, {
+        strength: "写作强度", strengthHalfLife: "半衰期",
+    }, now);
+    assert.equal(strength.items.find((item) => item.label === "写作强度").value, `${Math.round((1 - Math.pow(0.5, 365 / 14)) * 100)}%`, "连续 365 天活跃趋近满强度（解析解 1-k^365）");
+});

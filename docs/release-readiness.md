@@ -1,16 +1,16 @@
 # Release readiness
 
-<!-- Current artifact snapshot: dist/index.js 786485 bytes; dist/index.css 149362 bytes; package.zip 369024 bytes; icon.png 160x160 18376 bytes; mobile self-regulation line 832 KiB (ADR 0062); archive ceiling 512 KiB. -->
+<!-- Current artifact snapshot: dist/index.js 787076 bytes; dist/index.css 149362 bytes; package.zip 369251 bytes; icon.png 160x160 18376 bytes; mobile self-regulation line 832 KiB (ADR 0062); archive ceiling 512 KiB. -->
 
-Current build: `dist/index.js` 786485 bytes; `dist/index.css` 149362 bytes; `package.zip` 369024 bytes; `icon.png` 160x160 18376 bytes.
+Current build: `dist/index.js` 787076 bytes; `dist/index.css` 149362 bytes; `package.zip` 369251 bytes; `icon.png` 160x160 18376 bytes.
 
-评估日期：2026-09-19（v0.22.0 发布后开发头，T-6307~T-6457 增量）；真实宿主补充验收仍按兼容性任务持续跟进。
+评估日期：2026-09-19（v0.22.0 发布后开发头，T-6307~T-6459 增量）；真实宿主补充验收仍按兼容性任务持续跟进。
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
-| TypeScript、自动测试、UI smoke | 已通过 | 完整测试 **6245/6245**（2026-09-19 复核；T-6364~T-6457 建立 58 组件优化队列，并完成前 43 个组件的配置、投影健壮性、统计和刷新时效优化；打卡桥接组件按用户口径只做桥接渲染增强；二轮增量建议按竞品调研 §11.2 开始消化）；TypeScript、移动端 smoke、布局 smoke、Chromium smoke、生产图隔离测试通过 |
+| TypeScript、自动测试、UI smoke | 已通过 | 完整测试 **6247/6247**（2026-09-19 复核；T-6364~T-6459 建立 58 组件优化队列，并完成前 43 个组件的配置、投影健壮性、统计和刷新时效优化；打卡桥接组件按用户口径只做桥接渲染增强；二轮增量建议按竞品调研 §11.2 开始消化）；TypeScript、移动端 smoke、布局 smoke、Chromium smoke、生产图隔离测试通过 |
 | 组件来源体系（ADR 0057） | 已通过 | 协议 v2.4 的 `source` 白名单、6 个小驴打卡桥接组件、商店按来源插件成组与待安装区按 provider 聚合、**组内卡片按 `source.order` 升序**（同序按组件 id，映射不完整时回退原序）；负向验证 5/5（精确 FAIL + 兄弟不波及 + md5 还原）；perf 自检改 best-of-N 重测后另补 2/2 负向验证（等规模夹具重测 3 次仍 FAIL、预算回退仍 FAIL） |
-| 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 786485 bytes（832 KiB 自律线内，余量 65483 bytes，ADR 0062）；`dist/index.css` 149362 bytes；`package.zip` 369024 bytes（512 KiB 硬上限余量 155264 bytes）；zip 单条目压缩预算 180→192→224 KiB（T-6357/T-6400 / ADR 0059，当前 `index.js` 压缩后 207400 bytes，余量 21976 bytes）；负向验证临时回退 190 KiB 时目标门禁精确 FAIL，恢复 224 KiB 后通过且 SHA-256 一致。后续以功能、性能和交互为优先，体积仅防失控增长 |
+| 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 787076 bytes（832 KiB 自律线内，余量 64892 bytes，ADR 0062）；`dist/index.css` 149362 bytes；`package.zip` 369251 bytes（512 KiB 硬上限余量 155037 bytes）；zip 单条目压缩预算 180→192→224 KiB（T-6357/T-6400 / ADR 0059，当前 `index.js` 压缩后 207583 bytes，余量 21793 bytes）；负向验证临时回退 190 KiB 时目标门禁精确 FAIL，恢复 224 KiB 后通过且 SHA-256 一致。后续以功能、性能和交互为优先，体积仅防失控增长 |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | 连续构建 SHA-256 一致；ZIP 条目固定为 1980-01-01 00:00 |
 | 版本元数据 | 已通过 | `0.22.0` 已同步 `package.json`、`plugin.json`、中英文 README |

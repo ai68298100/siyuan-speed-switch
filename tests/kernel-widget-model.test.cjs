@@ -534,7 +534,7 @@ test('every builder clamps limits into 1..12 and tolerates non-object configs', 
     assert.equal(model.normalizeTodayTasksConfig({limit: 99}).limit, 12);
     assert.equal(model.normalizeFlashcardDueConfig({limit: 99}).limit, 12);
     assert.equal(model.normalizeNoteStatsConfig({days: 0}).days, 7);
-    assert.equal(model.normalizeRecentWritingActivityConfig({days: 999}).days, 90);
+    assert.equal(model.normalizeRecentWritingActivityConfig({days: 999}).days, 366);
     assert.equal(model.normalizeWritingStreakConfig({dailyGoal: 0}).dailyGoal, 1);
 });
 

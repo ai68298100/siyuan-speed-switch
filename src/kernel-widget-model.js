@@ -1365,12 +1365,16 @@ function buildTodayWritingSnapshot(payload, config, labels = {}, now = Date.now(
 function normalizeRecentWritingActivityConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
-        days: clampInteger(source.days, 7, 90, 14),
+        // T-6459：回看上限 90 → 366 天（12 个月）；SQL LIMIT 随天数缩放，
+        // 模型扫描帽同步放到 400，保证长窗口下最近日期不被截断。
+        days: clampInteger(source.days, 7, 366, 14),
         notebook: boundedText(source.notebook, 64),
         metric: source.metric === "新增字符" ? "新增字符" : "内容块",
         density: source.density === "紧凑" ? "紧凑" : "每日",
         showZero: source.showZero !== "否" && source.showZero !== false,
         showAverage: source.showAverage !== "否" && source.showAverage !== false,
+        // T-6458：写作强度分（指数平滑半衰期口径，opt-in）
+        showStrength: source.showStrength === "是" || source.showStrength === true,
     };
 }
 
@@ -1381,7 +1385,7 @@ function buildRecentWritingActivitySnapshot(payload, config, labels = {}, now = 
     const keys = localDayKeys(normalized.days, now);
     const allowed = new Set(keys);
     const byDay = new Map(keys.map((key) => [key, {blocks: 0, chars: 0}]));
-    for (const row of rows.slice(0, 100)) {
+    for (const row of rows.slice(0, 400)) {
         const day = boundedText(row && row.day, 8);
         if (!allowed.has(day)) continue;
         const current = byDay.get(day);
@@ -1408,6 +1412,21 @@ function buildRecentWritingActivitySnapshot(payload, config, labels = {}, now = 
     }
     const total = daily.reduce((sum, entry) => sum + entry[metricKey], 0);
     const average = Math.round(total / normalized.days);
+    // T-6458 写作强度：教科书指数平滑——对“当日有无写作”二值信号按半衰期 14 天
+    // 递推（k = 0.5^(1/14)），得 [0,1] 强度后取百分数。口径为本仓自建；uhabits
+    // 仅作概念参考（GPL，见竞品调研 §7.6 许可分档），未移植其代码。
+    if (normalized.showStrength) {
+        const k = Math.pow(0.5, 1 / 14);
+        let strength = 0;
+        for (const entry of daily) {
+            strength = strength * k + (entry[metricKey] > 0 ? 1 : 0) * (1 - k);
+        }
+        buckets.unshift({
+            label: boundedText(labels.strength, 24) || "写作强度",
+            value: `${Math.round(strength * 100)}%`,
+            secondary: `${boundedText(labels.strengthHalfLife, 24) || "半衰期"} 14 ${boundedText(labels.dayUnit, 8) || "天"}`,
+        });
+    }
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "近期写作活跃度", buckets, labels, now, status,
         boundedText(labels.empty, 96) || "统计范围内没有写作活动");
     snapshot.stat = {

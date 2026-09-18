@@ -3833,6 +3833,7 @@ const version = beginSearch(session);
                 title: this.i18n.homeRecentWritingActivity, blocks: this.i18n.homeStatWritingBlocks,
                 characters: this.i18n.homeUnitChars, average: this.i18n.homeWritingDailyAverage,
                 empty: this.i18n.homeWritingActivityEmpty,
+                strength: this.i18n.homeWritingStrength, strengthHalfLife: this.i18n.homeWritingStrengthHalfLife,
             });
             if (!snapshot) throw new Error("invalid_writing_activity");
             return snapshot;

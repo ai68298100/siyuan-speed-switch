@@ -114,6 +114,8 @@
   "homeStatWritingBlocks": "blocks",
   "homeWritingDailyAverage": "daily avg {value}",
   "homeWritingActivityEmpty": "No writing activity in this range",
+  "homeWritingStrength": "Writing strength",
+  "homeWritingStrengthHalfLife": "half-life",
   "homeRecentDailyNotes": "Recent daily notes",
   "homeDescRecentDailyNotes": "Show existing daily notes in a bounded range, excluding future dates; paths, time, and sort are configurable",
   "homeStatRecentDaily": "daily notes",
