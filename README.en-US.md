@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.22.0 fixes the load-time error from issue #1 and lets the widget panel consume SiYuan's own data directly: database table, pinned docs, inbox, recent updates, data health, recent docs, database navigator and saved searches; plus RSS/Atom feeds, air quality and Hacker News board switching, a monthly checkin widget for SiYuan-Checkin, right-click menus on the top-bar icons, and two command-palette commands.
 
-> v0.22.0 passes type checking, production build, 6123 automated tests, and mobile/Chromium UI smoke tests. It ships time, weather, air quality, holiday overlays, Bangumi schedule, DailyHotApi trends, NewsNow feeds, Hacker News boards, an ActivityWatch app-usage bridge, iCal schedule subscriptions, RSS/Atom feed subscriptions, GitHub contribution heatmap, SiYuan-Checkin widgets (requires the checkin plugin), kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, databases, saved searches), and a database table widget bound to one database block and rendered from its current view (see ADR 0058); the store filters Offline, Local service, and External API sources. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 6199 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -195,7 +195,7 @@ This release is published as `v0.22.0`
 - **Compatibility**: a compatibility survey against the SiYuan v3.8.4 kernel source found
   no breaking changes; all new widgets are read-only endpoints with no new writes or
   implicit data egress.
-- **Engineering quality**: automated tests 5872 → 6123 (198 test files); boundary
+- **Engineering quality**: automated tests 5872 → 6138 (198 test files); boundary
   hardening across eleven existing modules; performance gates and the package budget hold
   (package.zip 339861 bytes, within the 512 KiB ceiling).
 
@@ -314,7 +314,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 198 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6123 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 200 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6199 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -347,7 +347,7 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5779)
+pnpm test               # run every unit, contract, and host release test (currently 6138)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)

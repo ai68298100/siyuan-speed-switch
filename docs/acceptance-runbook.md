@@ -6,7 +6,7 @@
 
 ## 0. 准备（一次）
 
-- 记录环境：SiYuan 版本、插件版本（当前 main 头 = 6123 项测试 / 198 文件）、操作系统与缩放、主题、端口与认证状态（只记"已认证/未认证"）。
+- 记录环境：SiYuan 版本、插件版本（当前 main 头 = 6138 项测试 / 198 文件）、操作系统与缩放、主题、端口与认证状态（只记"已认证/未认证"）。
 - 从 `main` 构建一次 `pnpm build`，确认 `package.zip` 尺寸与 `docs/release-readiness.md` 快照一致（当前以 docs/release-readiness.md 最新快照为准）。
 - 每完成一组就在本清单对应条目标注结论，并在 `docs/acceptance-log.md` 追加不含敏感内容的摘要。
 
