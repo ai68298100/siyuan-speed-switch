@@ -8,6 +8,7 @@ import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, re
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
+import {buildPinnedDocsSnapshot, buildInboxSnapshot, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot} from "./kernel-widget-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -707,24 +708,56 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.fixLegacyHotkey();
         await this.initPersistentData();
 
-        this.addTopBar({
+        // contextMenu 是 v3.8.4 运行时新增参数，随包的类型定义尚未收录——
+        // 用结构化局部类型承接（菜单对象运行时只需 addItem），变量传参绕开
+        // 字面量多余属性检查。
+        type TopBarContextMenu = (menu: {addItem: (item: {icon: string; label: string; click: () => void}) => void}) => void;
+        const switcherTopBar: {icon: string; title: string; position: "right"; contextMenu: TopBarContextMenu; callback: () => void} = {
             icon: "iconLayout",
             title: this.i18n.switchTabs,
             position: "right",
+            contextMenu: (menu) => {
+                menu.addItem({
+                    icon: "iconSettings",
+                    label: this.i18n.settings,
+                    click: () => void this.openSetting(),
+                });
+                menu.addItem({
+                    icon: "iconLayoutHome",
+                    label: this.i18n.secondPanel,
+                    click: () => openSecondPanel.call(this),
+                });
+            },
             callback: () => {
                 this.showSwitcher();
             },
-        });
+        };
+        this.addTopBar(switcherTopBar);
 
         // 第二面板顶栏入口：与切换器并列，一键直达聚合面板（dashboard 变体图标，与 iconLayout 同族）
-        this.addTopBar({
+        const secondPanelTopBar: {icon: string; title: string; position: "right"; contextMenu: TopBarContextMenu; callback: () => void} = {
             icon: "iconLayoutHome",
             title: this.i18n.secondPanel,
             position: "right",
+            contextMenu: (menu) => {
+                menu.addItem({
+                    icon: "iconSettings",
+                    label: this.i18n.settings,
+                    click: () => void this.openSetting(),
+                });
+                menu.addItem({
+                    icon: "iconLayout",
+                    label: this.i18n.switchTabs,
+                    click: () => {
+                        this.showSwitcher();
+                    },
+                });
+            },
             callback: () => {
                 openSecondPanel.call(this);
             },
-        });
+        };
+        this.addTopBar(secondPanelTopBar);
 
         // 注册侧边栏 dock 面板（桌面）与手机端入口（顶栏 + FAB），互斥
         if (!this.isMobile) {
@@ -763,6 +796,21 @@ export default class SpeedSwitchPlugin extends Plugin {
             };
         }
         safeRegisterPluginCommand(this, secondPanelCommand, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
+        // T-6327：思源 v3.8.3 起自带命令面板，多注册命令零 UI 成本地提升可发现性。
+        safeRegisterPluginCommand(this, {
+            langKey: "openSettings",
+            hotkey: "",
+            callback: () => {
+                void this.openSetting();
+            },
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
+        safeRegisterPluginCommand(this, {
+            langKey: "openJournal",
+            hotkey: "",
+            callback: () => {
+                void this.openJournal();
+            },
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
         this.registerAgentCapabilities();
         // 受控导航动作：Agent 可把查询结果直接打开为页面（不修改任何笔记数据）
         const pluginWithAgentAction = this as unknown as {
@@ -3078,6 +3126,12 @@ const version = beginSearch(session);
         // v0.18 路径筛选（T-103）：只读列目录，用于搜索筛选选择路径前缀。
         // 真实宿主证据见 docs/path-filter-host-evidence.md（D-365）。
         "/api/filetree/listDocsByPath",
+        // v3.8.x 内核数据组件群（T-6321~T-6325）：全部只读端点。
+        "/api/filetree/getPinnedDocs",
+        "/api/inbox/getShorthands",
+        "/api/block/getRecentUpdatedBlocks",
+        "/api/asset/getMissingAssets",
+        "/api/storage/getRecentDocs",
     ]);
 
     /**
@@ -3145,6 +3199,21 @@ const version = beginSearch(session);
                     break;
                 case "/api/filetree/listDocsByPath":
                     response = await fetch("/api/filetree/listDocsByPath", init);
+                    break;
+                case "/api/filetree/getPinnedDocs":
+                    response = await fetch("/api/filetree/getPinnedDocs", init);
+                    break;
+                case "/api/inbox/getShorthands":
+                    response = await fetch("/api/inbox/getShorthands", init);
+                    break;
+                case "/api/block/getRecentUpdatedBlocks":
+                    response = await fetch("/api/block/getRecentUpdatedBlocks", init);
+                    break;
+                case "/api/asset/getMissingAssets":
+                    response = await fetch("/api/asset/getMissingAssets", init);
+                    break;
+                case "/api/storage/getRecentDocs":
+                    response = await fetch("/api/storage/getRecentDocs", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -3733,6 +3802,59 @@ const version = beginSearch(session);
                 label: command.pluginTitle ? `${command.label} · ${command.pluginTitle}` : command.label,
                 value: "cmd:" + command.value,
             }))};
+        });
+        // 内核数据组件群（T-6321~T-6325、T-6328，v3.8.x 只读端点）：投影逻辑在
+        // kernel-widget-model.js，这里只做端点调用与空态归一。
+        register("pinned-docs", this.i18n.homePinnedDocs, "iconBookmark", this.i18n.homeDescPinnedDocs, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/filetree/getPinnedDocs", {});
+            const snapshot = buildPinnedDocsSnapshot(json, config, {
+                title: this.i18n.homePinnedDocs, empty: this.i18n.homePinnedDocsEmpty,
+            });
+            if (!snapshot) throw new Error("invalid_pinned_docs");
+            return snapshot;
+        });
+        register("inbox-shorthands", this.i18n.homeInbox, "iconInbox", this.i18n.homeDescInbox, [], async (config) => {
+            const json = await this.fetchKernelJson("/api/inbox/getShorthands", {page: 1});
+            const snapshot = buildInboxSnapshot(json, config, {
+                title: this.i18n.homeInbox, empty: this.i18n.homeInboxEmpty,
+            });
+            if (!snapshot) return {emptyHint: this.i18n.homeInboxUnavailable, items: []};
+            return snapshot;
+        });
+        register("recent-updates", this.i18n.homeRecentUpdates, "iconRefresh", this.i18n.homeDescRecentUpdates, ["switch-protyle", "loaded-protyle", "destroy-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/block/getRecentUpdatedBlocks", {});
+            const snapshot = buildRecentUpdatesSnapshot(json, config, {
+                title: this.i18n.homeRecentUpdates, empty: this.i18n.homeRecentUpdatesEmpty,
+            });
+            if (!snapshot) throw new Error("invalid_recent_updates");
+            return snapshot;
+        });
+        register("data-health", this.i18n.homeDataHealth, "iconCloud", this.i18n.homeDescDataHealth, ["loaded-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/asset/getMissingAssets", {});
+            const snapshot = buildDataHealthSnapshot(json, config, {
+                title: this.i18n.homeDataHealth, empty: this.i18n.homeDataHealthEmpty, stat: this.i18n.homeDataHealthStat,
+            });
+            if (!snapshot) throw new Error("invalid_data_health");
+            return snapshot;
+        });
+        register("host-recent-docs", this.i18n.homeHostRecent, "iconHistory", this.i18n.homeDescHostRecent, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/storage/getRecentDocs", {});
+            const snapshot = buildHostRecentDocsSnapshot(json, config, {
+                title: this.i18n.homeHostRecent, empty: this.i18n.homeHostRecentEmpty,
+            });
+            if (!snapshot) throw new Error("invalid_host_recent_docs");
+            return snapshot;
+        });
+        register("database-list", this.i18n.homeDatabaseList, "iconDatabase", this.i18n.homeDescDatabaseList, ["loaded-protyle", "destroy-protyle"], async (config) => {
+            const limit = Math.min(64, Math.max(1, Math.trunc(Number(config.limit) || 24)));
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, content, hpath FROM blocks WHERE type = 'av' ORDER BY updated DESC LIMIT ${limit}`,
+            });
+            const snapshot = buildDatabaseListSnapshot(json?.data, config, {
+                title: this.i18n.homeDatabaseList, empty: this.i18n.homeDatabaseListEmpty,
+            });
+            if (!snapshot) throw new Error("invalid_database_list");
+            return snapshot;
         });
     }
 

@@ -116,7 +116,7 @@ const indexSource = readSourceText(path.join(__dirname, '..', 'src', 'index.ts')
 
 test('both plugin commands register through the safe guard', () => {
     const guarded = indexSource.match(/safeRegisterPluginCommand\(this,/g) || [];
-    assert.equal(guarded.length, 2, "switchTabs 与 secondPanel 两处都必须走 safeRegisterPluginCommand");
+    assert.equal(guarded.length, 4, "switchTabs/secondPanel/openSettings/openJournal 四处都必须走 safeRegisterPluginCommand");
 });
 
 test('no bare this.addCommand call remains in index.ts', () => {

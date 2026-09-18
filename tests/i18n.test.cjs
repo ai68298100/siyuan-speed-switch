@@ -120,7 +120,12 @@ test("i18n: zh-CN 与 en 的 key 集合完全一致", () => {
 // 静态扫描已禁止动态 key 访问，因此"源码未引用"即等价于"死 key"。
 // 若确需保留预留 key，请登记到 ALLOWED_UNUSED 并注明理由，避免
 // 双语文案在无消费的情况下持续膨胀归档体积。
-const ALLOWED_UNUSED = [];
+const ALLOWED_UNUSED = [
+  // 命令面板命令名（T-6327）：思源运行时按 addCommand 的 langKey 动态查
+  // i18n[langKey]，源码中不存在 .i18n.openSettings 字面引用。
+  "openSettings",
+  "openJournal",
+];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {
   const {keys} = collectReferencedKeys();

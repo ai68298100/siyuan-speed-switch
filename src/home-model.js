@@ -189,6 +189,24 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "checkin-monthly", title: "本月打卡", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 6}, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
     ]},
+    {moduleId: "pinned-docs", title: "置顶文档", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
+    {moduleId: "inbox-shorthands", title: "收集箱", icon: "iconInbox", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
+    {moduleId: "recent-updates", title: "最近更新", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
+    {moduleId: "data-health", title: "数据健康", icon: "iconCloud", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "清单上限", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
+    {moduleId: "host-recent-docs", title: "最近文档", icon: "iconHistory", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
+    ]},
+    {moduleId: "database-list", title: "数据库", icon: "iconDatabase", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "扫描上限", type: "number", min: 1, max: 64, defaults: 24},
+    ]},
 ]);
 
 function text(value, max = 128) {
