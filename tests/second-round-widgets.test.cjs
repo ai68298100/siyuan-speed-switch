@@ -213,3 +213,90 @@ test("writing activity window extends to 366 days without truncating recent days
     }, now);
     assert.equal(strength.items.find((item) => item.label === "写作强度").value, `${Math.round((1 - Math.pow(0.5, 365 / 14)) * 100)}%`, "连续 365 天活跃趋近满强度（解析解 1-k^365）");
 });
+
+// ---------- T-6460 iCal TZID 解析与有界 RRULE 展开 ----------
+const ical = require("../src/ical-model.js");
+const icsCalendarOf = (...vevents) => ["BEGIN:VCALENDAR", "VERSION:2.0", ...vevents, "END:VCALENDAR"].join("\r\n");
+const icsEvent = (lines) => ["BEGIN:VEVENT", ...lines, "END:VEVENT"].join("\r\n");
+
+test("ical TZID wall-clock times resolve through the named zone", () => {
+    const text = icsCalendarOf(icsEvent([
+        "DTSTART;TZID=America/New_York:20260920T080000",
+        "DTEND;TZID=America/New_York:20260920T090000",
+        "SUMMARY:上海晨会",
+    ]));
+    const parsed = ical.parseIcsEvents(text, {now: Date.parse("2026-09-19T00:00:00Z")});
+    assert.equal(parsed.events.length, 1);
+    // 纽约 9 月为 UTC-4（夏令时）：当地 08:00 = UTC 12:00，与本机时区无关
+    assert.equal(parsed.events[0].start, Date.parse("2026-09-20T12:00:00Z"));
+    assert.equal(parsed.events[0].end, Date.parse("2026-09-20T13:00:00Z"));
+    // 无效时区回退浮动本地解析，不抛错也不丢事件
+    const bad = ical.parseIcsEvents(icsCalendarOf(icsEvent([
+        "DTSTART;TZID=Not/AZone:20260920T080000",
+        "SUMMARY:坏时区",
+    ])), {now: Date.parse("2026-09-19T00:00:00Z")});
+    assert.equal(bad.events.length, 1);
+});
+
+test("ical rrule daily expansion respects count and stops at the horizon", () => {
+    const now = Date.parse("2026-09-20T10:00:00Z");
+    const text = icsCalendarOf(icsEvent([
+        "DTSTART:20260910T080000Z",
+        "DTEND:20260910T083000Z",
+        "RRULE:FREQ=DAILY;COUNT=5",
+        "SUMMARY:打卡提醒",
+    ]));
+    const parsed = ical.parseIcsEvents(text, {now});
+    assert.equal(parsed.events.length, 5, "COUNT=5 → 恰 5 次发生");
+    assert.equal(parsed.events[0].start, Date.parse("2026-09-10T08:00:00Z"));
+    const infinite = ical.parseIcsEvents(icsCalendarOf(icsEvent([
+        "DTSTART:20260910T080000Z",
+        "RRULE:FREQ=DAILY",
+        "SUMMARY:无限日程",
+    ])), {now});
+    const horizon = now + 60 * 86400000;
+    assert.ok(infinite.events.every((event) => event.start <= horizon), "无 COUNT/UNTIL 的重复按 60 天地平线截断");
+    assert.equal(infinite.events.length, 71, `锚点 2026-09-10 至地平线（now+60 天）逐日发生 ${infinite.events.length}`);
+});
+
+test("ical past-dated recurring events become visible inside the window", () => {
+    const now = Date.parse("2026-09-20T10:00:00Z");
+    const text = icsCalendarOf(icsEvent([
+        "DTSTART:20250105T100000Z",
+        "DTEND:20250105T110000Z",
+        "RRULE:FREQ=WEEKLY;BYDAY=MO",
+        "SUMMARY:周一例会",
+    ]));
+    const parsed = ical.parseIcsEvents(text, {now});
+    const inWindow = parsed.events.filter((event) => event.start >= now && event.start <= now + 14 * 86400000);
+    assert.ok(inWindow.length >= 2, "过去起点的每周例会必须在未来窗口出现");
+    assert.ok(inWindow.every((event) => (new Date(event.start)).getUTCDay() === 1), "全部落在周一");
+});
+
+test("ical rrule until, unsupported rules and non-recurring stay single", () => {
+    const now = Date.parse("2026-09-20T10:00:00Z");
+    const until = ical.parseIcsEvents(icsCalendarOf(icsEvent([
+        "DTSTART:20260915T080000Z",
+        "RRULE:FREQ=DAILY;UNTIL=20260917T080000Z",
+        "SUMMARY:有终点",
+    ])), {now});
+    assert.equal(until.events.length, 3, "UNTIL 含当日，三次后停止");
+    const unsupported = ical.parseIcsEvents(icsCalendarOf(icsEvent([
+        "DTSTART:20260101T080000Z",
+        "RRULE:FREQ=YEARLY;BYMONTHDAY=1",
+        "SUMMARY:年度事件",
+    ])), {now});
+    assert.equal(unsupported.events.length, 1, "不支持的规则按单次呈现，不猜测语义");
+    const plain = ical.parseIcsEvents(icsCalendarOf(icsEvent([
+        "DTSTART:20260921T080000Z",
+        "SUMMARY:单次",
+    ])), {now});
+    assert.equal(plain.events.length, 1);
+});
+
+test("ical rrule engine is wired with bounded expansion", () => {
+    const source = readSourceText(path.join(__dirname, "..", "src", "ical-model.js"));
+    assert.match(source, /function expandIcalRrule\(fields, rrule, horizonMs\)/);
+    assert.match(source, /ICAL_RRULE_MAX_OCCURRENCES = 120/);
+    assert.match(source, /fields\.rrule\s*\?\s*expandIcalRrule\(fields, fields\.rrule, horizon\)/);
+});

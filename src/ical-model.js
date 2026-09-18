@@ -19,6 +19,11 @@ const ICAL_DEFAULT_WINDOW_DAYS = 14;
 const ICAL_MAX_WINDOW_DAYS = 60;
 const ICAL_DEFAULT_MAX_ITEMS = 6;
 const ICAL_MAX_ITEMS = 12;
+// T-6460：RRULE 展开边界——单事件最多展开 120 次发生（≥60 天窗口的每日重复），
+// 迭代步进上限 800 天（防 BYDAY/INTERVAL 组合下死循环）；UNTIL/COUNT 任先到者停。
+const ICAL_RRULE_MAX_OCCURRENCES = 120;
+const ICAL_RRULE_MAX_ITERATIONS = 800;
+const ICAL_RRULE_WEEKDAYS = Object.freeze({MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 0});
 
 const ICAL_FAILURE_REASONS = Object.freeze([
     "invalid_url",
@@ -109,10 +114,149 @@ function unescapeIcalText(value) {
         .replace(/\\\\/g, "\\");
 }
 
+// ---------- T-6460：TZID 时区解析与有界 RRULE 展开（RFC 5545 子集，本仓自写） ----------
+
+// 解析日期/日期时间值为「分量」，不做任何时区解释：
+// {y, mo, d, h, mi, s, utc, dateOnly}；无法解析返回 null。
+function parseIcalNaiveParts(value) {
+    const raw = String(value || "").trim();
+    const dateOnly = raw.match(/^(\d{4})(\d{2})(\d{2})Z?$/);
+    if (dateOnly) {
+        return {y: Number(dateOnly[1]), mo: Number(dateOnly[2]) - 1, d: Number(dateOnly[3]), h: 0, mi: 0, s: 0, utc: /Z$/i.test(raw), dateOnly: true};
+    }
+    const dateTime = raw.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z)?$/i);
+    if (dateTime) {
+        return {y: Number(dateTime[1]), mo: Number(dateTime[2]) - 1, d: Number(dateTime[3]), h: Number(dateTime[4]), mi: Number(dateTime[5]), s: Number(dateTime[6]), utc: !!dateTime[7], dateOnly: false};
+    }
+    return null;
+}
+
+// 时区在某 UTC 时刻的偏移量（毫秒）；无效时区返回 null。
+function icalZoneOffsetMs(timeZone, utcMs) {
+    try {
+        const parts = new Intl.DateTimeFormat("en-US", {timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"}).formatToParts(new Date(utcMs));
+        const pick = (type) => Number(parts.find((part) => part.type === type)?.value);
+        const y = pick("year"), mo = pick("month"), d = pick("day"), h = pick("hour"), mi = pick("minute"), s = pick("second");
+        if (![y, mo, d, h, mi, s].every(Number.isFinite)) return null;
+        return Date.UTC(y, mo - 1, d, h, mi, s) - utcMs;
+    } catch (_) {
+        return null;
+    }
+}
+
+// 把某时区的墙上时间解析为 UTC 毫秒：两遍逼近处理 DST 边界；无效时区返回 null。
+function icalZonedToMs(parts, timeZone) {
+    const naiveUtc = Date.UTC(parts.y, parts.mo, parts.d, parts.h, parts.mi, parts.s);
+    const offset1 = icalZoneOffsetMs(timeZone, naiveUtc);
+    if (offset1 === null) return null;
+    const guess = naiveUtc - offset1;
+    const offset2 = icalZoneOffsetMs(timeZone, guess);
+    if (offset2 === null) return null;
+    return naiveUtc - offset2;
+}
+
+// DTSTART/DTEND 统一入口：Z=UTC；VALUE=DATE=UTC 零点（全天）；TZID=按 IANA 时区解析
+// （无效时区回退浮动本地时间）；无标记=浮动本地时间（与既有行为一致）。
+function resolveIcalDateTime(left, value) {
+    const parts = parseIcalNaiveParts(value);
+    if (!parts) return null;
+    if (parts.utc || parts.dateOnly) return Date.UTC(parts.y, parts.mo, parts.d, parts.h, parts.mi, parts.s);
+    const tzMatch = left.match(/TZID=([^;:\r\n]+)/i);
+    if (tzMatch) {
+        const timeZone = tzMatch[1].trim().replace(/"/g, "");
+        const ms = icalZonedToMs(parts, timeZone);
+        if (ms !== null) return ms;
+    }
+    return new Date(parts.y, parts.mo, parts.d, parts.h, parts.mi, parts.s).getTime();
+}
+
+// RRULE 子集：FREQ=DAILY/WEEKLY/MONTHLY、INTERVAL、COUNT、UNTIL、WEEKLY 的 BYDAY。
+// 其余（BYMONTHDAY/BYSETPOS/yearly 类）返回 null → 按单次事件呈现，不猜测语义。
+function parseIcalRrule(value) {
+    const parts = String(value || "").split(";").reduce((acc, item) => {
+        const eq = item.indexOf("=");
+        if (eq > 0) acc[item.slice(0, eq).toUpperCase()] = item.slice(eq + 1).trim().toUpperCase();
+        return acc;
+    }, {});
+    const freq = parts.FREQ;
+    if (!["DAILY", "WEEKLY", "MONTHLY"].includes(freq)) return null;
+    return {
+        freq,
+        interval: Math.min(366, Math.max(1, Math.trunc(Number(parts.INTERVAL)) || 1)),
+        count: parts.COUNT !== undefined ? Math.min(ICAL_RRULE_MAX_OCCURRENCES, Math.max(1, Math.trunc(Number(parts.COUNT)) || 1)) : null,
+        until: parts.UNTIL !== undefined && parseIcalDateValue(parts.UNTIL) !== null ? parseIcalDateValue(parts.UNTIL) : null,
+        byday: freq === "WEEKLY" && parts.BYDAY
+            ? parts.BYDAY.split(",").map((token) => ICAL_RRULE_WEEKDAYS[token.trim()]).filter((n) => Number.isInteger(n))
+            : [],
+    };
+}
+
+// 按事件自身的帧（UTC 或浮动本地）做日历步进，避免 DST 造成的小时漂移。
+function icalFrameStepper(startMs, utcFrame) {
+    const date = new Date(startMs);
+    const get = utcFrame
+        ? {y: date.getUTCFullYear(), mo: date.getUTCMonth(), d: date.getUTCDate(), h: date.getUTCHours(), mi: date.getUTCMinutes(), s: date.getUTCSeconds(), dow: date.getUTCDay()}
+        : {y: date.getFullYear(), mo: date.getMonth(), d: date.getDate(), h: date.getHours(), mi: date.getMinutes(), s: date.getSeconds(), dow: date.getDay()};
+    const mk = (y, mo, d) => (utcFrame ? Date.UTC(y, mo, d, get.h, get.mi, get.s) : new Date(y, mo, d, get.h, get.mi, get.s).getTime());
+    return {get, mk};
+}
+
+function expandIcalRrule(fields, rrule, horizonMs) {
+    const duration = (fields.end !== null ? fields.end : fields.start) - fields.start;
+    const occurrences = [];
+    const limit = Math.min(rrule.count !== null ? rrule.count : ICAL_RRULE_MAX_OCCURRENCES, ICAL_RRULE_MAX_OCCURRENCES);
+    const {get, mk} = icalFrameStepper(fields.start, fields.utcFrame);
+    const pushOccurrence = (start) => {
+        if (start > horizonMs) return false;
+        if (rrule.until !== null && start > rrule.until) return false;
+        occurrences.push({start, end: start + duration, allDay: fields.allDay === true});
+        return occurrences.length < limit;
+    };
+    if (rrule.freq === "DAILY") {
+        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
+            if (!pushOccurrence(mk(get.y, get.mo, get.d + i * rrule.interval))) break;
+        }
+        return occurrences;
+    }
+    if (rrule.freq === "WEEKLY" && rrule.byday.length === 0) {
+        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
+            if (!pushOccurrence(mk(get.y, get.mo, get.d + i * rrule.interval * 7))) break;
+        }
+        return occurrences;
+    }
+    if (rrule.freq === "WEEKLY") {
+        // BYDAY：自锚点日逐日历日步进；命中候选星期且落在第 n 个 interval 周内则产出
+        for (let step = 0; step < ICAL_RRULE_MAX_ITERATIONS; step += 1) {
+            const start = mk(get.y, get.mo, get.d + step);
+            const dow = (get.dow + step) % 7;
+            if (!rrule.byday.includes(dow)) continue;
+            const weekIndex = Math.floor(step / 7);
+            if (weekIndex % rrule.interval !== 0) continue;
+            if (!pushOccurrence(start)) break;
+        }
+        return occurrences;
+    }
+    if (rrule.freq === "MONTHLY") {
+        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
+            const monthShift = get.mo + i * rrule.interval;
+            // 目标月不存在锚点日（如 31 日遇 30 天月）时按当月最后一天钳制
+            const lastDay = new Date(Date.UTC(get.y, monthShift + 1, 0)).getUTCDate();
+            const day = Math.min(get.d, lastDay);
+            const start = fields.utcFrame === true
+                ? Date.UTC(get.y, monthShift, day, get.h, get.mi, get.s)
+                : new Date(get.y, monthShift, day, get.h, get.mi, get.s).getTime();
+            if (!pushOccurrence(start)) break;
+        }
+        return occurrences;
+    }
+    return occurrences;
+}
+
 // 从 unfolded 行中提取某 VEVENT 块的字段。
 // T-6447：DTSTART 带 VALUE=DATE 参数（或值为 8 位日期）记为全天事件，视图不再显示 00:00。
+// T-6460：TZID 参数按 IANA 时区解析（无效回退浮动本地）；RRULE 解析为有界展开规则。
 function extractIcalEventFields(blockLines) {
-    const fields = {summary: "", location: "", start: null, end: null, allDay: false};
+    const fields = {summary: "", location: "", start: null, end: null, allDay: false, utcFrame: false, rrule: null};
     for (const line of blockLines) {
         const colon = line.indexOf(":");
         if (colon < 0) continue;
@@ -120,18 +264,29 @@ function extractIcalEventFields(blockLines) {
         const value = line.slice(colon + 1);
         const name = left.split(";")[0].toUpperCase();
         if (name === "DTSTART") {
-            fields.start = parseIcalDateValue(value);
+            fields.start = resolveIcalDateTime(left, value);
             fields.allDay = /VALUE=DATE/i.test(left) || /^\d{8}Z?$/.test(value.trim());
+            // 帧判定：Z 结尾/纯日期/带 TZID 的事件展开时按 UTC 日历步进，浮动按本地
+            fields.utcFrame = /TZID=/i.test(left) || /Z$/i.test(value.trim()) || /^\d{8}$/i.test(value.trim());
         }
-        else if (name === "DTEND") fields.end = parseIcalDateValue(value);
+        else if (name === "DTEND") fields.end = resolveIcalDateTime(left, value);
         else if (name === "SUMMARY") fields.summary = boundedText(unescapeIcalText(value), ICAL_MAX_SUMMARY_LENGTH);
         else if (name === "LOCATION") fields.location = boundedText(unescapeIcalText(value), ICAL_MAX_LOCATION_LENGTH);
+        else if (name === "RRULE") {
+            if (!fields.rrule) {
+                const rule = parseIcalRrule(value);
+                if (rule) fields.rrule = rule;
+            }
+        }
     }
     return fields;
 }
 
 // T-630-2：有界 VEVENT 解析。输入超过上限按 parse_failed 拒绝（不静默截断，
 // 避免把超大订阅源误报为"没有日程"）；块内缺 DTSTART 的条目跳过。
+// T-6460：RRULE 事件在解析期展开为窗口内的发生（horizon = now + 60 天，
+// 单事件 ≤120 次），COUNT/UNTIL 生效；EXDATE/RDATE/BYMONTHDAY 等不支持，
+// 含不支持子句的 RRULE 按单次事件呈现（不猜测语义）。
 function parseIcsEvents(icsText, options = {}) {
     const maxBytes = Math.max(1024, Math.trunc(Number(options.maxBytes) || ICAL_MAX_SOURCE_BYTES));
     const maxEvents = Math.max(1, Math.trunc(Number(options.maxParsedEvents) || ICAL_MAX_EVENTS));
@@ -139,6 +294,8 @@ function parseIcsEvents(icsText, options = {}) {
     if (text.length > maxBytes) return {ok: false, reason: "parse_failed", events: []};
     if (!/BEGIN:VCALENDAR/i.test(text)) return {ok: false, reason: "parse_failed", events: []};
     const unfolded = unfoldIcalLines(text);
+    const current = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const horizon = current + ICAL_MAX_WINDOW_DAYS * 24 * 60 * 60 * 1000;
     const events = [];
     let block = null;
     for (const line of unfolded) {
@@ -150,13 +307,19 @@ function parseIcsEvents(icsText, options = {}) {
         if (upper.startsWith("END:VEVENT") && block) {
             const fields = extractIcalEventFields(block);
             if (fields.start !== null && fields.summary) {
-                events.push({
-                    start: fields.start,
-                    end: fields.end !== null ? fields.end : fields.start,
-                    summary: fields.summary,
-                    location: fields.location,
-                    allDay: fields.allDay === true,
-                });
+                const occurrences = fields.rrule
+                    ? expandIcalRrule(fields, fields.rrule, horizon)
+                    : [{start: fields.start, end: fields.end !== null ? fields.end : fields.start, allDay: fields.allDay === true}];
+                for (const occurrence of occurrences) {
+                    if (events.length >= maxEvents) break;
+                    events.push({
+                        start: occurrence.start,
+                        end: occurrence.end,
+                        summary: fields.summary,
+                        location: fields.location,
+                        allDay: occurrence.allDay === true,
+                    });
+                }
             }
             block = null;
             if (events.length >= maxEvents) break;
