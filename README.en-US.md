@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.23.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.23.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.23.0 completes the per-widget deep optimization of all 58 widgets: unified search filter semantics across local tabs, remote results and full-text probing; full iCal subscription support with time zones and recurring events; countdown with countdown/elapsed dual modes; year/quarter/month progress periods; a writing strength score with a 12-month lookback; three display sizes for local time, countdown and daily quote; cross-day markers on the world clock; a storage usage section in the settings page; and a Shift+F10 action panel key in the switcher.
+> v0.23.1 fixes a proxy-gate gap that prevented the Miniflux widget from fetching for real, and adds category filtering (categories load dynamically from your Miniflux instance). The same cycle brings countdown/elapsed dual modes, year/quarter/month periods, a writing strength score, full iCal time-zone and recurrence support, a storage usage section in the settings page, and a Shift+F10 action panel key in the switcher.
 
 > The current development head passes type checking, production build, 6261 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
@@ -166,10 +166,24 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.23.0`
+This release is published as `v0.23.1`
 
 ## Changelog
 
+### v0.23.1 (2026-09-19)
+
+- **Fixes the Miniflux widget never fetching for real**: the kernel proxy gateway URL
+  gate lacked Miniflux routes, so production unread-list requests were always blocked
+  (unit tests mocked the network layer and never caught it). Entries and categories
+  routes are now allowlisted following the established pattern.
+- **Category filter for the Miniflux widget**: categories load dynamically from your
+  Miniflux instance (inside the config form); credentials travel only via request headers,
+  and filtering runs server-side.
+- **Also**: a storage usage settings section; a switcher action panel key
+  (Shift+F10 / ContextMenu); user-content sorting pinned to a Chinese pinyin collator
+  (stable across devices); full iCal time zone, recurrence, cancellation and extra-date
+  support; a writing strength score and a 12-month lookback; countdown/elapsed dual modes;
+  year/quarter/month progress.
 ### v0.23.0 (2026-09-19)
 
 - **Per-widget deep optimization completed for all 58 widgets**: reviewed and enhanced with an

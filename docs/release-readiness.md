@@ -13,7 +13,7 @@ Current build: `dist/index.js` 796565 bytes; `dist/index.css` 149362 bytes; `pac
 | 生产产物与包体 | 已通过 | 当前构建 `dist/index.js` 796565 bytes（832 KiB 自律线内，余量 55403 bytes，ADR 0062）；`dist/index.css` 149362 bytes；`package.zip` 374880 bytes（512 KiB 硬上限余量 149408 bytes）；zip 单条目压缩预算 180→192→224 KiB（T-6357/T-6400 / ADR 0059，当前 `index.js` 压缩后 210856 bytes，余量 18520 bytes）；负向验证临时回退 190 KiB 时目标门禁精确 FAIL，恢复 224 KiB 后通过且 SHA-256 一致。后续以功能、性能和交互为优先，体积仅防失控增长 |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | 连续构建 SHA-256 一致；ZIP 条目固定为 1980-01-01 00:00 |
-| 版本元数据 | 已通过 | `0.23.0` 已同步 `package.json`、`plugin.json`、中英文 README |
+| 版本元数据 | 已通过 | `0.23.1` 已同步 `package.json`、`plugin.json`、中英文 README |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
 | GitHub 发布动作 | 已通过 | `v0.22.0` 已于 2026-09-18 发布，当前 `main` 与 `origin/main` 已同步；后续 v0.23 发布仍需完成真实宿主验收 |
