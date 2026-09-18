@@ -8,7 +8,7 @@ import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, re
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
-import {buildPinnedDocsSnapshot, buildInboxSnapshot, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot} from "./kernel-widget-model";
+import {buildPinnedDocsSnapshot, buildInboxSnapshot, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, buildSavedSearchesSnapshot} from "./kernel-widget-model";
 import {
     sanitizeQuickActions,
     getDefaultQuickActions,
@@ -3132,6 +3132,7 @@ const version = beginSearch(session);
         "/api/block/getRecentUpdatedBlocks",
         "/api/asset/getMissingAssets",
         "/api/storage/getRecentDocs",
+        "/api/storage/getCriteria",
     ]);
 
     /**
@@ -3214,6 +3215,9 @@ const version = beginSearch(session);
                     break;
                 case "/api/storage/getRecentDocs":
                     response = await fetch("/api/storage/getRecentDocs", init);
+                    break;
+                case "/api/storage/getCriteria":
+                    response = await fetch("/api/storage/getCriteria", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -3854,6 +3858,15 @@ const version = beginSearch(session);
                 title: this.i18n.homeDatabaseList, empty: this.i18n.homeDatabaseListEmpty,
             });
             if (!snapshot) throw new Error("invalid_database_list");
+            return snapshot;
+        });
+        register("saved-searches", this.i18n.homeSavedSearches, "iconSearch", this.i18n.homeDescSavedSearches, ["loaded-protyle"], async (config) => {
+            const json = await this.fetchKernelJson("/api/storage/getCriteria", {});
+            const snapshot = buildSavedSearchesSnapshot(json, config, {
+                title: this.i18n.homeSavedSearches, empty: this.i18n.homeSavedSearchesEmpty, stat: this.i18n.homeSavedSearchesStat,
+                methods: [this.i18n.homeCriteriaMethod0, this.i18n.homeCriteriaMethod1, this.i18n.homeCriteriaMethod2, this.i18n.homeCriteriaMethod3, this.i18n.homeCriteriaMethod4],
+            });
+            if (!snapshot) throw new Error("invalid_saved_searches");
             return snapshot;
         });
     }

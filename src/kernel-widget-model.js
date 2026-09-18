@@ -220,6 +220,45 @@ function buildDatabaseListSnapshot(rows, config, labels = {}, now = Date.now(), 
     return snapshotOf(boundedText(labels.title, 64) || "数据库", items, labels, now, status, "工作区里还没有思源数据库");
 }
 
+// ---------- T-6329 已存筛选（/api/storage/getCriteria，思源原生搜索的已存条件） ----------
+function normalizeSavedSearchesConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {limit: clampLimit(source.limit, 8)};
+}
+
+const CRITERIA_METHODS_COUNT = 5;
+
+function buildSavedSearchesSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
+    const criteria = responseItems(payload);
+    if (!criteria) return null;
+    const normalized = normalizeSavedSearchesConfig(config);
+    const methods = Array.isArray(labels.methods) ? labels.methods : [];
+    const items = [];
+    const seen = new Set();
+    for (const criterion of criteria) {
+        if (!criterion || typeof criterion !== "object") continue;
+        const name = boundedText(criterion.name, 96);
+        const keyword = boundedText(criterion.k, 64);
+        if (!name && !keyword) continue;
+        const key = `${name}\u0000${keyword}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (items.length >= normalized.limit) break;
+        const method = methods[Number(criterion.method)] || "";
+        const scope = boundedText(criterion.hPath, 96);
+        const secondary = [keyword, method, scope ? `@${scope}` : ""].filter(Boolean).join(" · ");
+        items.push({
+            label: name || keyword,
+            value: "",
+            secondary,
+            rank: items.length + 1,
+        });
+    }
+    const snapshot = snapshotOf(boundedText(labels.title, 64) || "已存筛选", items, labels, now, status, "还没有已存的搜索条件");
+    snapshot.stat = {value: String(items.length), label: boundedText(labels.stat, 32) || "已存条件"};
+    return snapshot;
+}
+
 module.exports = {
     normalizePinnedDocsConfig,
     buildPinnedDocsSnapshot,
@@ -233,4 +272,7 @@ module.exports = {
     buildHostRecentDocsSnapshot,
     normalizeDatabaseListConfig,
     buildDatabaseListSnapshot,
+    normalizeSavedSearchesConfig,
+    buildSavedSearchesSnapshot,
+    CRITERIA_METHODS_COUNT,
 };
