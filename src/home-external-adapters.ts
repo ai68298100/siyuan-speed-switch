@@ -343,7 +343,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     hours: this.i18n.homeBatteryHours,
                     minutes: this.i18n.homeBatteryMinutes,
                     source: this.i18n.homeQuoteSource,
-                });
+                }, config);
                 if (!snapshot) return {emptyHint: this.i18n.homeBatteryUnsupported, items: []};
                 return snapshot;
             } catch (error) {

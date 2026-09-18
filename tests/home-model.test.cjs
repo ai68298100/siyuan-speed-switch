@@ -72,7 +72,7 @@ test("ActivityWatch module is desktop local-service only", () => {
     const item = home.registerModules([]).find((entry) => entry.moduleId === "external-activitywatch-time");
     assert.ok(item);
     assert.deepEqual(item.supportedDevices, ["desktop", "sidebar"]);
-    assert.deepEqual(item.configSchema.map((field) => field.key), ["endpoint", "hours", "limit"]);
+    assert.deepEqual(item.configSchema.map((field) => field.key), ["endpoint", "hours", "limit", "showPercent", "showRank"]);
     assert.equal(item.configSchema[0].defaults, "http://127.0.0.1:5600");
 });
 test("home modules expose bounded availability levels", () => {

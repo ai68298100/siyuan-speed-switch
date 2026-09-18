@@ -1,6 +1,6 @@
 # 组件商店深度优化项目
 
-状态：进行中（2026-09-19 起，47/58 已完成）
+状态：进行中（2026-09-19 起，51/58 已完成）
 
 目标不是继续增加组件数量，而是逐个提升现有组件的配置、显示、交互、空态、错误恢复和移动端体验。
 每个组件验收都覆盖：配置可发现性、数据范围、卡片密度、点击行为、刷新/失败、桌面/侧栏/手机。
@@ -73,10 +73,10 @@
 | 45 | iCal 日程 `external-ical-events` | ✅ | VALUE=DATE 全天识别（不再显示 00:00）、进行中标注；TZID 时区与 RRULE 重复规则解析复杂，单独立项 |
 | 46 | GitHub 贡献 `external-github-contrib` | ✅ | 主指标补今日计数（与格点同 UTC 桶口径）；Token/时间窗/分页与陈旧回退既有能力复核通过 |
 | 47 | 服务状态 `external-status-uptimekuma` | ✅ | status 3 计划维护独立于异常呈现、延迟/在线率开关；抓出并修复 Number(null)===0 使缺测 ping 显示 0ms 的潜伏缺陷 |
-| 48 | 汇率参考 `external-fx-frankfurter` | ⬜ | 货币选择器、日期和精度说明 |
-| 49 | 使用时长 `external-activitywatch-time` | ⬜ | bucket 选择、隐私、应用聚合和离线态 |
-| 50 | 设备电量 `external-device-battery` | ⬜ | 权限、充电状态和不支持设备 |
-| 51 | 每日引言 `external-quote-daily` | ⬜ | 多行编辑、出处和长文本排版 |
+| 48 | 汇率参考 `external-fx-frankfurter` | ✅ | 反向汇率（1/牌价，opt-in）、牌价日期可关；货币白名单过滤既有能力复核通过 |
+| 49 | 使用时长 `external-activitywatch-time` | ✅ | 时长占比（对总时长，opt-in）、排名可关；仅聚合应用名不含窗口标题的隐私边界复核通过；bucket 选择需列桶请求，单独立项 |
+| 50 | 设备电量 `external-device-battery` | ✅ | 预计时间/来源行开关（首个配置 schema，接入协议 v2）；无权限模型与诚实降级复核通过 |
+| 51 | 每日引言 `external-quote-daily` | ✅ | 出处显示可关；多行自定义语法与日期轮换稳定性既有能力复核通过 |
 | 52 | 今日打卡 `checkin-today` | ⬜ | 分组选择、完成反馈和来源状态 |
 | 53 | 连续记录 `checkin-streak` | ⬜ | 排名、并列和空数据 |
 | 54 | 打卡热力图 `checkin-year-heatmap` | ⬜ | 年份、颜色说明和触摸提示 |

@@ -51,19 +51,29 @@ function boundedLabel(value, fallback) {
     return cleaned || fallback;
 }
 
-function buildBatterySnapshot(reading, labels = {}) {
+// T-6452：显示开关（预计时间/来源行默认开，与旧版一致）
+function normalizeBatteryConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {
+        showEstimate: source.showEstimate !== "否" && source.showEstimate !== false,
+        showSource: source.showSource !== "否" && source.showSource !== false,
+    };
+}
+
+function buildBatterySnapshot(reading, labels = {}, config = {}) {
     const normalized = normalizeBatteryReading(reading);
     if (normalized.levelPercent === null) return null;
+    const flags = normalizeBatteryConfig(config);
     const state = normalized.charging
         ? boundedLabel(labels.charging, "充电中")
         : boundedLabel(labels.discharging, "使用电池");
     const timeEstimate = normalized.charging ? normalized.chargingTime : normalized.dischargingTime;
-    const timeText = timeEstimate !== null ? ` · ${formatDuration(timeEstimate, labels)}` : "";
+    const timeText = flags.showEstimate && timeEstimate !== null ? ` · ${formatDuration(timeEstimate, labels)}` : "";
     const items = [
         {label: state, value: `${normalized.levelPercent}%${timeText}`},
     ];
     const sourceLabel = boundedLabel(labels.source, "数据来源");
-    if (sourceLabel) items.push({label: `${sourceLabel}：Battery Status API`, value: ""});
+    if (flags.showSource && sourceLabel) items.push({label: `${sourceLabel}：Battery Status API`, value: ""});
     return {
         title: boundedLabel(labels.title, "设备电量"),
         stat: {value: `${normalized.levelPercent}%`, label: state},
@@ -75,6 +85,7 @@ function buildBatterySnapshot(reading, labels = {}) {
 module.exports = {
     TIME_ESTIMATE_MAX_SECONDS,
     normalizeBatteryReading,
+    normalizeBatteryConfig,
     normalizeTimeEstimate,
     formatDuration,
     buildBatterySnapshot,

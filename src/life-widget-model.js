@@ -824,7 +824,8 @@ function normalizeFrankfurterConfig(value) {
         .filter((code) => /^[A-Z]{3}$/.test(code) && FRANKFURTER_CURRENCIES.includes(code)))]
         .filter((code) => code !== base)
         .slice(0, 6);
-    return {base, quotes};
+    // T-6450：反向汇率默认关；牌价日期默认随来源行显示
+    return {base, quotes, showInverse: source.showInverse === "是" || source.showInverse === true, showDate: source.showDate !== "否" && source.showDate !== false};
 }
 
 function buildFrankfurterRequestUrl(config) {
@@ -851,10 +852,20 @@ function buildFrankfurterSnapshot(envelope, config, labels = {}) {
         if (hit) result.push({label: `${normalized.base} → ${quote}`, value: String(hit.rate), rank: result.length + 1});
         return result;
     }, []);
+    // T-6450：反向汇率 = 1/牌价（最多 4 位小数，去尾零）；纯换算，不引入额外数据源
+    if (normalized.showInverse) {
+        normalized.quotes.forEach((quote) => {
+            const hit = byQuote.get(quote);
+            if (!hit || hit.rate <= 0) return;
+            const inverse = String(Number((1 / hit.rate).toFixed(4)));
+            if (!/^\d+(\.\d+)?$/.test(inverse) || inverse === "0") return;
+            items.push({label: `${quote} → ${normalized.base}`, value: inverse, rank: items.length + 1});
+        });
+    }
     if (!items.length) return null;
     const dates = [...new Set([...byQuote.values()].map((hit) => hit.date).filter(Boolean))];
     items.push({
-        label: `${boundedText(labels.source, 32) || "数据来源"}：Frankfurter（ECB）${dates[0] ? ` · ${dates[0]}` : ""}`,
+        label: `${boundedText(labels.source, 32) || "数据来源"}：Frankfurter（ECB）${normalized.showDate && dates[0] ? ` · ${dates[0]}` : ""}`,
         value: "",
     });
     const health = ["fresh", "cached", "stale"].includes(envelope?.status) ? envelope.status : "fresh";
@@ -995,6 +1006,9 @@ function normalizeActivityWatchConfig(value) {
         endpoint: normalizeActivityWatchEndpoint(source.endpoint),
         hours: Number.isFinite(requestedHours) ? Math.min(168, Math.max(1, requestedHours)) : 24,
         limit: Number.isFinite(requestedLimit) ? Math.min(10, Math.max(3, requestedLimit)) : 6,
+        // T-6451：时长占比默认关；排名（按时长序）默认开、与旧版一致
+        showPercent: source.showPercent === "是" || source.showPercent === true,
+        showRank: source.showRank !== "否" && source.showRank !== false,
     };
 }
 
@@ -1052,13 +1066,20 @@ function buildActivityWatchSnapshot(envelope, config, labels = {}) {
     return {
         title: (boundedText(labels.range, 48) || "近 {hours} 小时").replace("{hours}", String(normalized.hours)),
         stat: {value: formatActivityDuration(activity.duration), label: boundedText(labels.total, 32) || "前台使用"},
-        items: activity.apps.map((item, index) => ({
-            label: item.app,
-            value: "",
-            secondary: formatActivityDuration(item.seconds),
-            count: Math.max(1, Math.round(item.seconds / 60)),
-            rank: index + 1,
-        })),
+        items: activity.apps.map((item, index) => {
+            const parts = [formatActivityDuration(item.seconds)];
+            // 占比分母是本范围总时长（含未入榜应用），为 0 时不显示占比
+            if (normalized.showPercent && activity.duration > 0) {
+                parts.push(`${Math.min(100, Math.round((item.seconds / activity.duration) * 100))}%`);
+            }
+            return {
+                label: item.app,
+                value: "",
+                secondary: parts.join(" · "),
+                count: Math.max(1, Math.round(item.seconds / 60)),
+                rank: normalized.showRank ? index + 1 : undefined,
+            };
+        }),
         emptyHint: activity.apps.length ? "" : (boundedText(labels.empty, 96) || "当前范围暂无使用记录"),
         updatedAt: Number(envelope?.fetchedAt) || Date.now(),
         sourceHealth: health,

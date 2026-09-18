@@ -134,6 +134,8 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "external-fx-frankfurter", title: "汇率参考", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "base", label: "基准货币（3 位代码）", type: "text", defaults: "CNY"},
         {key: "quotes", label: "目标货币（逗号分隔，1-6 个）", type: "text", defaults: "USD,EUR,JPY,GBP,HKD"},
+        {key: "showDate", label: "显示牌价日期", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showInverse", label: "显示反向汇率", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-rss-miniflux", title: "未读文章", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "Miniflux 实例地址", type: "text", defaults: ""},
@@ -164,8 +166,12 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "external-quote-daily", title: "每日引言", icon: "iconQuote", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "quotes", label: "自定义语录（每行一条，可选 —— 分隔出处）", type: "textarea", defaults: ""},
+        {key: "showSource", label: "显示出处", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "external-device-battery", title: "设备电量", icon: "iconDashboard", category: "siyuan", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["xs", "small", "medium"]},
+    {moduleId: "external-device-battery", title: "设备电量", icon: "iconDashboard", category: "siyuan", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "showEstimate", label: "显示预计时间", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showSource", label: "显示数据来源行", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
     {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
@@ -177,6 +183,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "endpoint", label: "ActivityWatch 本机地址", type: "text", defaults: "http://127.0.0.1:5600"},
         {key: "hours", label: "统计范围（小时）", type: "number", min: 1, max: 168, defaults: 24},
         {key: "limit", label: "应用上限", type: "number", min: 3, max: 10, defaults: 6},
+        {key: "showPercent", label: "显示时长占比", type: "select", options: ["否", "是"], defaults: "否"},
+        {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},

@@ -88,7 +88,8 @@ function normalizeDailyQuoteConfig(value) {
         seen.add(key);
         custom.push({text: quoteText, source: quoteSource});
     }
-    return {custom};
+    // T-6453：出处显示可关闭（默认开，与旧版一致）
+    return {custom, showSource: source.showSource !== "否" && source.showSource !== false};
 }
 
 function dailyQuoteDateKey(date) {
@@ -121,7 +122,7 @@ function buildDailyQuoteSnapshot(now = new Date(), config = {}, labels = {}) {
     const quote = pickDailyQuote(library, dateKey);
     if (!quote) return null;
     const items = [
-        {label: quote.text, value: quote.source ? quote.source : ""},
+        {label: quote.text, value: normalized.showSource ? quote.source : ""},
     ];
     if (normalized.custom.length > 0) {
         items.push({label: `${boundedQuoteText(labels.source, 32) || "来源"}：${boundedQuoteText(labels.customSource, 24) || "自定义语录"}`, value: ""});

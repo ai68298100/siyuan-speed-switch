@@ -317,10 +317,10 @@ test("Uptime Kuma snapshot requires at least one monitor", () =>
 
 // Frankfurter：货币白名单规范化 → 请求 URL → 快照组装。
 test("Frankfurter config defaults to CNY base and filters quotes", () => {
-    assert.deepEqual(model.normalizeFrankfurterConfig({base: "usd", quotes: " eur, jpy；EUR，XXX, usd, CNY, a, GBP"}), {base: "USD", quotes: ["EUR", "JPY", "CNY", "GBP"]});
-    assert.deepEqual(model.normalizeFrankfurterConfig({base: "XXX", quotes: "USD"}), {base: "CNY", quotes: ["USD"]});
-    assert.deepEqual(model.normalizeFrankfurterConfig(null), {base: "CNY", quotes: []});
-    assert.deepEqual(model.normalizeFrankfurterConfig({quotes: "USD,EUR,JPY,GBP,HKD,SGD,AUD"}), {base: "CNY", quotes: ["USD", "EUR", "JPY", "GBP", "HKD", "SGD"]});
+    assert.deepEqual(model.normalizeFrankfurterConfig({base: "usd", quotes: " eur, jpy；EUR，XXX, usd, CNY, a, GBP"}), {base: "USD", quotes: ["EUR", "JPY", "CNY", "GBP"], showInverse: false, showDate: true});
+    assert.deepEqual(model.normalizeFrankfurterConfig({base: "XXX", quotes: "USD"}), {base: "CNY", quotes: ["USD"], showInverse: false, showDate: true});
+    assert.deepEqual(model.normalizeFrankfurterConfig(null), {base: "CNY", quotes: [], showInverse: false, showDate: true});
+    assert.deepEqual(model.normalizeFrankfurterConfig({quotes: "USD,EUR,JPY,GBP,HKD,SGD,AUD"}), {base: "CNY", quotes: ["USD", "EUR", "JPY", "GBP", "HKD", "SGD"], showInverse: false, showDate: true});
 });
 test("Frankfurter request URL is exact and allowlist-compatible", () => {
     assert.equal(model.buildFrankfurterRequestUrl({base: "CNY", quotes: ["USD", "EUR"]}), "https://api.frankfurter.dev/v2/rates?base=CNY&quotes=USD,EUR");
