@@ -101,6 +101,12 @@ function itemName(item, fallback) {
     return boundedText(item && typeof item === "object" ? item.name : "", 64) || fallback;
 }
 
+// T-6454：桥接渲染开关的统一取值——只认 "否"/false（关）与 "是"/true（开），其余按默认。
+function flagOn(config, key) {
+    const value = config ? config[key] : undefined;
+    return value !== "否" && value !== false;
+}
+
 function activeItems(items) {
     return safeList(() => items).filter((item) => item && typeof item === "object" && item.archived !== true);
 }
@@ -130,6 +136,7 @@ function buildCheckinTodaySnapshot(items, events, config, labels, now) {
     const todayKey = localDateKey(Number.isFinite(now) ? now : Date.now());
     const limit = boundedNumber(config?.limit, 6, 1, 12);
     const groupFilter = boundedText(config?.group, 32);
+    const showGroup = flagOn(config, "showGroup");
     const totals = sumByItemForDate(events, todayKey);
     const candidates = activeItems(items)
         .filter((item) => !groupFilter || boundedText(item.group, 32) === groupFilter)
@@ -145,7 +152,7 @@ function buildCheckinTodaySnapshot(items, events, config, labels, now) {
         return {
             label: itemName(item, labels.unnamed || "未命名"),
             value: valueText,
-            secondary: boundedText(item.group, 32),
+            secondary: showGroup ? boundedText(item.group, 32) : "",
             done,
         };
     });
@@ -211,6 +218,7 @@ function streakOf(daySet, todayKey) {
 function buildCheckinStreakSnapshot(items, events, config, labels, now) {
     const todayKey = localDateKey(Number.isFinite(now) ? now : Date.now());
     const limit = boundedNumber(config?.limit, 6, 1, CHECKIN_STREAK_MAX_ITEMS);
+    const showRank = flagOn(config, "showRank");
     const daysByItem = eventsByItem(events);
     const rows = activeItems(items)
         .filter((item) => ["once", "count"].includes(String(item.kind || "once")))
@@ -225,7 +233,7 @@ function buildCheckinStreakSnapshot(items, events, config, labels, now) {
             label: itemName(row.item, labels.unnamed || "未命名"),
             value: `${row.days} ${boundedText(labels.dayUnit, 8) || "天"}`,
             secondary: row.current ? "" : (boundedText(labels.pendingToday, 32) || "今天待续"),
-            rank: index + 1,
+            rank: showRank ? index + 1 : undefined,
             done: row.current,
         }));
     const longest = rows.length ? Number(String(rows[0].value).split(" ")[0]) || 0 : 0;
@@ -318,6 +326,7 @@ function buildCheckinWeeklySnapshot(analytics, config, labels, now) {
 function buildCheckinOccasionsSnapshot(occasions, config, labels, now) {
     const todayKey = localDateKey(Number.isFinite(now) ? now : Date.now());
     const limit = boundedNumber(config?.limit, 6, 1, 12);
+    const showKind = flagOn(config, "showKind");
     const rows = safeList(() => occasions)
         .filter((item) => item && typeof item === "object")
         .map((item) => ({
@@ -337,7 +346,7 @@ function buildCheckinOccasionsSnapshot(occasions, config, labels, now) {
                 : Number.isFinite(row.daysUntil) && row.daysUntil > 0
                     ? `${row.daysUntil} ${boundedText(labels.daysLater, 16) || "天后"}`
                     : row.date,
-            secondary: row.kind,
+            secondary: showKind ? row.kind : "",
             done: row.done,
         }));
     return {
@@ -379,6 +388,7 @@ function buildCheckinMonthlySnapshot(items, events, config, labels, now) {
         }
     });
     const limit = boundedNumber(config?.limit, 6, 1, 12);
+    const showRank = flagOn(config, "showRank");
     const rows = activeItems(items)
         .filter((item) => ["once", "count"].includes(String(item.kind || "once")))
         .map((item) => ({item, value: itemTotals.get(String(item.id || "")) || 0}))
@@ -395,7 +405,7 @@ function buildCheckinMonthlySnapshot(items, events, config, labels, now) {
             return {
                 label: itemName(row.item, labels.unnamed || "未命名"),
                 value: valueText,
-                rank: index + 1,
+                rank: showRank ? index + 1 : undefined,
                 done,
             };
         });

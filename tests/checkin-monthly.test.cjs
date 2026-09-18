@@ -100,5 +100,5 @@ test('checkin-monthly is registered as the sixth siyuan-checkin widget', () => {
     assert.equal(def.source.pluginId, "siyuan-checkin");
     assert.equal(def.source.order, 6);
     assert.equal(def.readOnly, true);
-    assert.deepEqual(def.configSchema.map((field) => field.key), ["limit"]);
+    assert.deepEqual(def.configSchema.map((field) => field.key), ["limit", "showRank"]);
 });

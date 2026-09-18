@@ -319,9 +319,11 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "checkin-today", title: "今日打卡", icon: "iconCheck", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall", "wide", "large"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 1}, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
         {key: "group", label: "只看分组（留空为全部）", type: "text", defaults: ""},
+        {key: "showGroup", label: "显示分组", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "checkin-streak", title: "连续记录", icon: "iconRefresh", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 2}, configSchema: [
         {key: "limit", label: "排行条数", type: "number", min: 1, max: 12, defaults: 6},
+        {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "checkin-year-heatmap", title: "打卡热力图", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, viewType: "heatmap", source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 3}, configSchema: [
         {key: "yearOffset", label: "回溯年数", type: "number", min: 0, max: 5, defaults: 0},
@@ -331,9 +333,11 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "checkin-occasions", title: "近期事项", icon: "iconCheck", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 5}, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
+        {key: "showKind", label: "显示类型", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "checkin-monthly", title: "本月打卡", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, source: {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck", order: 6}, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 6},
+        {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "pinned-docs", title: "置顶文档", icon: "iconBookmark", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
