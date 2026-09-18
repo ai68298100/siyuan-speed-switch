@@ -252,14 +252,14 @@ test("Hacker News snapshot rejects an empty hit list", () =>
 
 // Uptime Kuma：配置规范化 → 状态页/心跳解析 → 快照组装。
 test("Uptime Kuma config normalizes origin and slug", () => {
-    assert.deepEqual(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com/", slug: "Main"}), {origin: "https://status.example.com", slug: "main"});
+    assert.deepEqual(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com/", slug: "Main"}), {origin: "https://status.example.com", slug: "main", showPing: true, showUptime: true});
 });
 test("Uptime Kuma config rejects remote http and malformed input", () => {
     assert.equal(model.normalizeUptimeKumaConfig({endpoint: "http://status.example.com", slug: "main"}).origin, "");
     assert.equal(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com/admin", slug: "main"}).origin, "");
     assert.equal(model.normalizeUptimeKumaConfig({endpoint: "https://user:pass@status.example.com", slug: "main"}).origin, "");
     assert.equal(model.normalizeUptimeKumaConfig({endpoint: "https://status.example.com", slug: "Bad_Slug"}).slug, "");
-    assert.deepEqual(model.normalizeUptimeKumaConfig(null), {origin: "", slug: ""});
+    assert.deepEqual(model.normalizeUptimeKumaConfig(null), {origin: "", slug: "", showPing: true, showUptime: true});
 });
 test("Uptime Kuma page URL builds status and heartbeat routes", () => {
     const config = {endpoint: "https://status.example.com", slug: "main"};
@@ -283,7 +283,7 @@ test("Uptime Kuma heartbeat parse keeps latest beat and 24h uptime", () => {
         heartbeatList: {"1": [{status: 0, ping: 10}, {status: 1, ping: 42}]},
         uptimeList: {"1_24": 0.995, "2_24": 2},
     });
-    assert.deepEqual(heartbeat.latest["1"], {up: true, ping: 42});
+    assert.deepEqual(heartbeat.latest["1"], {up: true, maintenance: false, ping: 42});
     assert.equal(heartbeat.uptime["1_24"], 0.995);
     assert.equal(heartbeat.uptime["2_24"], undefined);
 });
@@ -356,8 +356,8 @@ test("Frankfurter snapshot always appends the source row after rates", () => {
 
 // Miniflux：配置规范化 → 请求 URL → 条目解析 → 快照组装。
 test("Miniflux config normalizes origin, token and limit", () => {
-    assert.deepEqual(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com/", token: " abc123 ", limit: "35"}), {origin: "https://rss.example.com", token: "abc123", limit: 35});
-    assert.deepEqual(model.normalizeMinifluxConfig(null), {origin: "", token: "", limit: 20});
+    assert.deepEqual(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com/", token: " abc123 ", limit: "35"}), {origin: "https://rss.example.com", token: "abc123", limit: 35, sortBy: "newest", showFeed: true, showDate: true, showRank: false});
+    assert.deepEqual(model.normalizeMinifluxConfig(null), {origin: "", token: "", limit: 20, sortBy: "newest", showFeed: true, showDate: true, showRank: false});
 });
 test("Miniflux config rejects remote http, userinfo and drift", () => {
     assert.equal(model.normalizeMinifluxConfig({endpoint: "http://rss.example.com", token: "t"}).origin, "");
@@ -367,7 +367,9 @@ test("Miniflux config rejects remote http, userinfo and drift", () => {
     assert.equal(model.normalizeMinifluxConfig({endpoint: "https://rss.example.com", token: "x".repeat(129)}).token, "");
 });
 test("Miniflux request URL builds the exact unread route", () => {
-    assert.equal(model.buildMinifluxRequestUrl({endpoint: "https://rss.example.com", token: "t", limit: 20}), "https://rss.example.com/v1/entries?status=unread&limit=20");
+    // T-6446 起显式服务端排序（order/direction），与网络层白名单有结构化一致性门禁
+    assert.equal(model.buildMinifluxRequestUrl({endpoint: "https://rss.example.com", token: "t", limit: 20}), "https://rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=desc");
+    assert.equal(model.buildMinifluxRequestUrl({endpoint: "https://rss.example.com", token: "t", limit: 20, sortBy: "最旧优先"}), "https://rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=asc");
     assert.equal(model.buildMinifluxRequestUrl({token: "t"}), "");
 });
 test("Miniflux entries parse keeps bounded fields and drops unsafe rows", () => {
@@ -448,7 +450,8 @@ test("GitHub heatmap layout emits week-aligned bounded cells", () => {
     assert.equal(active.find((cell) => cell.label === "2026-09-15").count, 4);
     assert.equal(active.find((cell) => cell.label === "2026-09-10").level, 1);
     assert.equal(snapshot.stat.value, "5");
-    assert.equal(snapshot.stat.label, "窗口内贡献总数");
+    // T-6448：今日计数用与格点一致的 UTC 日期口径（2026-09-16 当日无事件 → 0）
+    assert.equal(snapshot.stat.label, "窗口内贡献总数 · 今日 0");
     assert.ok(snapshot.title.includes("torvalds"), "title carries the username for the module header");
     assert.equal(snapshot.sourceHealth, "cached");
 });

@@ -201,6 +201,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     up: this.i18n.homeUptimeKumaUp,
                     down: this.i18n.homeUptimeKumaDown,
                     incident: this.i18n.homeUptimeKumaIncident,
+                    maintenance: this.i18n.homeUptimeKumaMaintenance,
                     source: this.i18n.homeFeedSource,
                 });
                 if (!snapshot) throw new Error("invalid_uptimekuma_status_page");
@@ -267,7 +268,11 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     signal: context?.signal,
                     fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
                 });
-                const snapshot = buildIcalSnapshot(feed.text, normalized, {empty: this.i18n.homeIcalEmpty}, undefined, feed.status);
+                const snapshot = buildIcalSnapshot(feed.text, normalized, {
+                    empty: this.i18n.homeIcalEmpty,
+                    allDay: this.i18n.homeIcalAllDay,
+                    ongoing: this.i18n.homeIcalOngoing,
+                }, undefined, feed.status);
                 if (!snapshot) throw new Error("invalid_ical_payload");
                 return snapshot;
             } catch (error) {
@@ -305,7 +310,7 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
                 });
                 // P3-1：格点热力图布局（viewType=heatmap 渲染）；周汇总保留为模型层默认路径。
-                const snapshot = buildGithubContribSnapshot(envelope.text, {...normalized, layout: "grid"}, {title: this.i18n.homeGithub, empty: this.i18n.homeGithubEmpty, stat: this.i18n.homeGithubStat}, undefined, envelope.status);
+                const snapshot = buildGithubContribSnapshot(envelope.text, {...normalized, layout: "grid"}, {title: this.i18n.homeGithub, empty: this.i18n.homeGithubEmpty, stat: this.i18n.homeGithubStat, today: this.i18n.homeGithubToday}, undefined, envelope.status);
                 if (!snapshot) throw new Error("invalid_github_payload");
                 return snapshot;
             } catch (error) {

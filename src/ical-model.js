@@ -110,15 +110,19 @@ function unescapeIcalText(value) {
 }
 
 // 从 unfolded 行中提取某 VEVENT 块的字段。
+// T-6447：DTSTART 带 VALUE=DATE 参数（或值为 8 位日期）记为全天事件，视图不再显示 00:00。
 function extractIcalEventFields(blockLines) {
-    const fields = {summary: "", location: "", start: null, end: null};
+    const fields = {summary: "", location: "", start: null, end: null, allDay: false};
     for (const line of blockLines) {
         const colon = line.indexOf(":");
         if (colon < 0) continue;
         const left = line.slice(0, colon);
         const value = line.slice(colon + 1);
         const name = left.split(";")[0].toUpperCase();
-        if (name === "DTSTART") fields.start = parseIcalDateValue(value);
+        if (name === "DTSTART") {
+            fields.start = parseIcalDateValue(value);
+            fields.allDay = /VALUE=DATE/i.test(left) || /^\d{8}Z?$/.test(value.trim());
+        }
         else if (name === "DTEND") fields.end = parseIcalDateValue(value);
         else if (name === "SUMMARY") fields.summary = boundedText(unescapeIcalText(value), ICAL_MAX_SUMMARY_LENGTH);
         else if (name === "LOCATION") fields.location = boundedText(unescapeIcalText(value), ICAL_MAX_LOCATION_LENGTH);
@@ -151,6 +155,7 @@ function parseIcsEvents(icsText, options = {}) {
                     end: fields.end !== null ? fields.end : fields.start,
                     summary: fields.summary,
                     location: fields.location,
+                    allDay: fields.allDay === true,
                 });
             }
             block = null;

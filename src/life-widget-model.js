@@ -456,7 +456,7 @@ function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
 
 // iCal 订阅快照：解析 ics 文本 → 未来窗口内的日程条目（有界）。
 const {parseIcsEvents, upcomingIcalEvents, normalizeIcalSubscriptionConfig} = require("./ical-model.js");
-const {normalizeGithubContribConfig, parseGithubEvents, buildContributionGrid} = require("./github-model.js");
+const {normalizeGithubContribConfig, parseGithubEvents, buildContributionGrid, githubUtcDateKeyFromMs} = require("./github-model.js");
 
 // 热力图格点上限：窗口最长 366 天 → 至多 53 周 × 7 = 371 格（有界，防止条目无限增长）。
 const GITHUB_GRID_MAX_CELLS = 371;
@@ -467,11 +467,18 @@ function buildIcalSnapshot(icsText, config, labels = {}, now = Date.now(), statu
     if (!parsed.ok) return null;
     const upcoming = upcomingIcalEvents(parsed.events, now, {windowDays: normalized.windowDays, maxEvents: normalized.maxEvents});
     const pad = (n) => String(n).padStart(2, "0");
+    const allDayText = boundedText(labels.allDay, 16) || "全天";
+    const ongoingText = boundedText(labels.ongoing, 16) || "进行中";
+    const current = Number.isFinite(Number(now)) ? Number(now) : Date.now();
     const items = upcoming.map((event) => {
         const d = new Date(event.start);
-        const stamp = `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        // T-6447：全天事件不显示 00:00 时间；已开始且未结束的日程标注“进行中”
+        const stamp = event.allDay
+            ? `${d.getMonth() + 1}-${pad(d.getDate())} ${allDayText}`
+            : `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const ongoing = event.start <= current && Number.isFinite(event.end) && event.end > current;
         return {
-            label: `${stamp} ${event.summary}`,
+            label: `${stamp}${ongoing ? ` · ${ongoingText}` : ""} ${event.summary}`,
             value: event.location || "",
             href: "",
         };
@@ -600,11 +607,16 @@ function buildGithubContribSnapshot(eventsText, config, labels = {}, now = Date.
             ...(cell.level === -1 ? {outside: true} : {}),
         }));
         const baseTitle = boundedText(labels.title, 96) || "GitHub 贡献";
+        // T-6448：格点日期桶是 UTC 日期键，今日计数须用同一 UTC 口径，不混用本地日期
+        const todayKey = githubUtcDateKeyFromMs(Number.isFinite(Number(now)) ? Number(now) : Date.now());
+        const todayCell = grid.cells.find((cell) => cell.date === todayKey);
+        const statLabel = boundedText(labels.stat, 96) || "窗口内贡献";
+        const todayLabel = boundedText(labels.today, 16) || "今日";
         return {
             title: normalized.username ? `${baseTitle} · ${normalized.username}` : baseTitle,
             items: cells,
             emptyHint: "",
-            stat: {value: String(grid.total), label: boundedText(labels.stat, 96) || "窗口内贡献"},
+            stat: {value: String(grid.total), label: `${statLabel} · ${todayLabel} ${todayCell ? todayCell.count : 0}`},
             updatedAt: now,
             sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
         };
@@ -695,7 +707,8 @@ function normalizeUptimeKumaConfig(value) {
         }
     } catch (_) { /* 留空触发配置提示 */ }
     const slug = /^[a-z0-9][a-z0-9-]{1,63}$/.test(rawSlug) ? rawSlug : "";
-    return {origin, slug};
+    // T-6449：延迟/在线率显示开关（默认与旧版一致）
+    return {origin, slug, showPing: source.showPing !== "否" && source.showPing !== false, showUptime: source.showUptime !== "否" && source.showUptime !== false};
 }
 
 function normalizeUptimeKumaStatus(payload) {
@@ -727,9 +740,15 @@ function normalizeUptimeKumaHeartbeat(payload) {
         const list = Array.isArray(beats[key]) ? beats[key] : [];
         const last = list.length > 0 ? list[list.length - 1] : null;
         if (!last || typeof last !== "object") return;
-        const ping = Number(last.ping);
+        const rawPing = last.ping;
+        // Number(null)===0：缺测 ping 必须显式判空（T-6308 同型缺陷，2026-09-19 由新契约抓出）
+        const ping = rawPing === null || rawPing === undefined || rawPing === ""
+            ? null
+            : Number(rawPing);
         latest[key] = {
             up: Number(last.status) === 1,
+            // T-6449：status 3 = 计划维护，不是故障——单独标记，不再与异常混同
+            maintenance: Number(last.status) === 3,
             ping: Number.isFinite(ping) && ping >= 0 ? Math.min(600000, Math.trunc(ping)) : null,
         };
     });
@@ -745,8 +764,10 @@ function buildUptimeKumaSnapshot(statusEnvelope, heartbeatEnvelope, config, labe
     const status = normalizeUptimeKumaStatus(statusEnvelope?.payload);
     const heartbeat = normalizeUptimeKumaHeartbeat(heartbeatEnvelope?.payload);
     if (!status || !status.monitors.length) return null;
+    const normalized = normalizeUptimeKumaConfig(config);
     const upText = boundedText(labels.up, 16) || "正常";
     const downText = boundedText(labels.down, 16) || "异常";
+    const maintenanceText = boundedText(labels.maintenance, 16) || "维护中";
     const items = [];
     if (status.incident) {
         items.push({label: `${boundedText(labels.incident, 16) || "事件"}：${status.incident}`, value: "", rank: 1});
@@ -754,14 +775,16 @@ function buildUptimeKumaSnapshot(statusEnvelope, heartbeatEnvelope, config, labe
     let upCount = 0;
     status.monitors.forEach((monitor) => {
         const beat = heartbeat?.latest[String(monitor.id)];
-        const isUp = beat ? beat.up : false;
-        if (isUp) upCount += 1;
+        // T-6449：status 3（计划维护）不再计为异常；缺失心跳仍按异常呈现
+        const state = beat ? (beat.maintenance ? maintenanceText : beat.up ? upText : downText) : downText;
+        if (beat && beat.up && !beat.maintenance) upCount += 1;
+        const details = [];
+        if (normalized.showPing && beat && beat.ping !== null) details.push(`${beat.ping}ms`);
         const uptime24 = heartbeat?.uptime[`${monitor.id}_24`];
-        const uptimeText = Number.isFinite(uptime24) ? ` · ${(uptime24 * 100).toFixed(2)}%` : "";
-        const pingText = beat && beat.ping !== null ? ` · ${beat.ping}ms` : "";
+        if (normalized.showUptime && Number.isFinite(uptime24)) details.push(`${(uptime24 * 100).toFixed(2)}%`);
         items.push({
             label: monitor.name,
-            value: `${isUp ? upText : downText}${pingText}${uptimeText}`,
+            value: details.length ? `${state} · ${details.join(" · ")}` : state,
             rank: items.length + 1,
         });
     });
@@ -877,13 +900,20 @@ function normalizeMinifluxConfig(value) {
         limit: Number.isFinite(Math.trunc(Number(source.limit)))
             ? Math.min(MINIFLUX_MAX_ENTRIES, Math.max(1, Math.trunc(Number(source.limit))))
             : MINIFLUX_DEFAULT_LIMIT,
+        // T-6446：服务端排序（在 limit 截断前生效，客户端排序截断窗口会失真）；
+        // 旧实例（无 sortBy）采用“最新优先”的显式口径。显示开关默认与旧版一致。
+        sortBy: source.sortBy === "最旧优先" ? "oldest" : "newest",
+        showFeed: source.showFeed !== "否" && source.showFeed !== false,
+        showDate: source.showDate !== "否" && source.showDate !== false,
+        showRank: source.showRank === "是" || source.showRank === true,
     };
 }
 
 function buildMinifluxRequestUrl(config) {
     const normalized = normalizeMinifluxConfig(config);
     if (!normalized.origin) return "";
-    return `${normalized.origin}/v1/entries?status=unread&limit=${normalized.limit}`;
+    const direction = normalized.sortBy === "oldest" ? "asc" : "desc";
+    return `${normalized.origin}/v1/entries?status=unread&limit=${normalized.limit}&order=published_at&direction=${direction}`;
 }
 
 // 条目 URL 信任边界：Miniflux 是用户自己的阅读器实例、条目来自用户订阅的源，
@@ -919,9 +949,13 @@ function normalizeMinifluxEntries(payload) {
 function buildMinifluxSnapshot(envelope, config, labels = {}) {
     const parsed = normalizeMinifluxEntries(envelope?.payload);
     if (!parsed || !parsed.entries.length) return null;
+    const normalized = normalizeMinifluxConfig(config);
     const items = parsed.entries.map((entry, index) => {
-        const meta = [entry.feed, entry.published].filter(Boolean).join(" · ");
-        return {label: entry.title, value: meta, href: entry.url || undefined, rank: index + 1};
+        const meta = [
+            normalized.showFeed ? entry.feed : "",
+            normalized.showDate ? entry.published : "",
+        ].filter(Boolean).join(" · ");
+        return {label: entry.title, value: meta, href: entry.url || undefined, rank: normalized.showRank ? index + 1 : undefined};
     });
     items.push({
         label: `${boundedText(labels.source, 32) || "数据来源"}：Miniflux`,

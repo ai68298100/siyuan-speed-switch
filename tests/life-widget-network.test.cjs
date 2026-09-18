@@ -292,20 +292,23 @@ test("Frankfurter loader blocks drifted endpoints", async () =>
     assert.rejects(network.loadFrankfurterRates("https://api.frankfurter.dev/v2/latest?base=CNY", {fetchImpl: async () => response("[]")}), /blocked_endpoint/));
 
 // Miniflux：用户实例 + 已知路由白名单 + X-Auth-Token 请求头（凭据不进 URL/缓存 key）。
-const minifluxUrl = "https://rss.example.com/v1/entries?status=unread&limit=20";
+const minifluxUrl = "https://rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=desc";
 test("network allowlist accepts the exact Miniflux unread route", () =>
     assert.equal(network.allowedMinifluxUrl(minifluxUrl), true));
 test("network allowlist rejects Miniflux route drift and injection", () => {
-    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=read&limit=20"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=read&limit=20&order=published_at&direction=desc"), false);
     assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread"), false);
-    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=51"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=51&order=published_at&direction=desc"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20&order=id&direction=desc"), false, "order 漂移必须拒绝");
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=both"), false, "direction 漂移必须拒绝");
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20&order=published_at"), false);
     assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20&x=1"), false);
     assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries"), false);
-    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/me?status=unread&limit=20"), false);
-    assert.equal(network.allowedMinifluxUrl("http://rss.example.com/v1/entries?status=unread&limit=20"), false);
-    assert.equal(network.allowedMinifluxUrl("https://user:pass@rss.example.com/v1/entries?status=unread&limit=20"), false);
-    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20#f"), false);
-    assert.equal(network.allowedMinifluxUrl("http://127.0.0.1:8080/v1/entries?status=unread&limit=5"), true);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/me?status=unread&limit=20&order=published_at&direction=desc"), false);
+    assert.equal(network.allowedMinifluxUrl("http://rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=desc"), false);
+    assert.equal(network.allowedMinifluxUrl("https://user:pass@rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=desc"), false);
+    assert.equal(network.allowedMinifluxUrl("https://rss.example.com/v1/entries?status=unread&limit=20&order=published_at&direction=desc#f"), false);
+    assert.equal(network.allowedMinifluxUrl("http://127.0.0.1:8080/v1/entries?status=unread&limit=5&order=published_at&direction=desc"), true);
 });
 test("Miniflux loader sends the token via the X-Auth-Token header", async () => {
     let seen = null;

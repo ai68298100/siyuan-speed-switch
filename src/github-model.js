@@ -178,6 +178,7 @@ module.exports = {
     normalizeGithubContribConfig,
     githubEventsEndpoint,
     githubUtcDateKey,
+    githubUtcDateKeyFromMs,
     githubEventWeight,
     parseGithubEvents,
     githubLevel,

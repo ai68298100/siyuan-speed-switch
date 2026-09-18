@@ -128,6 +128,8 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "external-status-uptimekuma", title: "服务状态", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "Uptime Kuma 完整地址", type: "text", defaults: ""},
         {key: "slug", label: "状态页 slug", type: "text", defaults: ""},
+        {key: "showPing", label: "显示延迟", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showUptime", label: "显示在线率", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "external-fx-frankfurter", title: "汇率参考", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "base", label: "基准货币（3 位代码）", type: "text", defaults: "CNY"},
@@ -137,6 +139,10 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "endpoint", label: "Miniflux 实例地址", type: "text", defaults: ""},
         {key: "token", label: "API Token（设置 → API 密钥）", type: "secret", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 1, max: 50, defaults: 20},
+        {key: "sortBy", label: "排序", type: "select", options: ["最新优先", "最旧优先"], defaults: "最新优先"},
+        {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showFeed", label: "显示来源", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-rss-subscription", title: "RSS 订阅", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "url", label: "RSS / Atom 订阅地址", type: "text", defaults: ""},
