@@ -255,8 +255,9 @@ function expandIcalRrule(fields, rrule, horizonMs) {
 // 从 unfolded 行中提取某 VEVENT 块的字段。
 // T-6447：DTSTART 带 VALUE=DATE 参数（或值为 8 位日期）记为全天事件，视图不再显示 00:00。
 // T-6460：TZID 参数按 IANA 时区解析（无效回退浮动本地）；RRULE 解析为有界展开规则。
+// T-6462：EXDATE（剔除发生）与 RDATE（追加发生）逐条按自身行的 TZID/Z 语义解析为毫秒。
 function extractIcalEventFields(blockLines) {
-    const fields = {summary: "", location: "", start: null, end: null, allDay: false, utcFrame: false, rrule: null};
+    const fields = {summary: "", location: "", start: null, end: null, allDay: false, utcFrame: false, rrule: null, exdates: [], rdates: []};
     for (const line of blockLines) {
         const colon = line.indexOf(":");
         if (colon < 0) continue;
@@ -276,6 +277,14 @@ function extractIcalEventFields(blockLines) {
             if (!fields.rrule) {
                 const rule = parseIcalRrule(value);
                 if (rule) fields.rrule = rule;
+            }
+        }
+        else if (name === "EXDATE" || name === "RDATE") {
+            // 逗号分隔的多值逐个按本行的 TZID/Z 语义解析；无法解析的值静默跳过
+            const bucket = name === "EXDATE" ? fields.exdates : fields.rdates;
+            for (const single of value.split(",")) {
+                const ms = resolveIcalDateTime(left, single);
+                if (ms !== null && bucket.length < ICAL_RRULE_MAX_OCCURRENCES) bucket.push(ms);
             }
         }
     }
@@ -307,11 +316,22 @@ function parseIcsEvents(icsText, options = {}) {
         if (upper.startsWith("END:VEVENT") && block) {
             const fields = extractIcalEventFields(block);
             if (fields.start !== null && fields.summary) {
-                const occurrences = fields.rrule
-                    ? expandIcalRrule(fields, fields.rrule, horizon)
+                const excluded = new Set(fields.exdates);
+                const isExcluded = (start) => excluded.has(start);
+                let occurrences = fields.rrule
+                    ? expandIcalRrule(fields, fields.rrule, horizon).filter((occurrence) => !isExcluded(occurrence.start))
                     : [{start: fields.start, end: fields.end !== null ? fields.end : fields.start, allDay: fields.allDay === true}];
+                // RDATE 追加发生（与主事件同时长），同样受地平线与去重约束
+                for (const extra of fields.rdates) {
+                    if (extra > horizon) continue;
+                    const start = extra;
+                    if (occurrences.some((occurrence) => occurrence.start === start)) continue;
+                    occurrences.push({start, end: (fields.end !== null ? fields.end : fields.start) + (start - fields.start), allDay: fields.allDay === true});
+                }
+                occurrences.sort((a, b) => a.start - b.start);
                 for (const occurrence of occurrences) {
                     if (events.length >= maxEvents) break;
+                    if (isExcluded(occurrence.start)) continue;
                     events.push({
                         start: occurrence.start,
                         end: occurrence.end,

@@ -318,3 +318,37 @@ test("switcher keyboard action panel key opens the focused card menu", () => {
         assert.match(readme, /Shift\+F10/, `${name} documents the action panel key`);
     }
 });
+
+// ---------- T-6462 iCal EXDATE / RDATE ----------
+test("ical exdate removes specific occurrences from a recurrence set", () => {
+    const now = Date.parse("2026-09-20T10:00:00Z");
+    const text = icsCalendarOf(icsEvent([
+        "DTSTART:20260915T080000Z",
+        "DTEND:20260915T083000Z",
+        "RRULE:FREQ=DAILY;COUNT=4",
+        "EXDATE:20260917T080000Z",
+        "SUMMARY:三次例会",
+    ]));
+    const parsed = ical.parseIcsEvents(text, {now});
+    assert.equal(parsed.events.length, 3, "COUNT=4 生成 4 次，EXDATE 剔除 1 次");
+    assert.equal(parsed.events.some((event) => event.start === Date.parse("2026-09-17T08:00:00Z")), false, "被剔除日期不得出现");
+    assert.deepEqual(parsed.events.map((event) => event.start), [
+        Date.parse("2026-09-15T08:00:00Z"),
+        Date.parse("2026-09-16T08:00:00Z"),
+        Date.parse("2026-09-18T08:00:00Z"),
+    ]);
+});
+
+test("ical rdate appends extra occurrences and exdate still applies", () => {
+    const now = Date.parse("2026-09-20T10:00:00Z");
+    const text = icsCalendarOf(icsEvent([
+        "DTSTART:20260921T080000Z",
+        "DTEND:20260921T090000Z",
+        "RDATE:20260923T100000Z",
+        "SUMMARY:单次加补场",
+    ]));
+    const parsed = ical.parseIcsEvents(text, {now});
+    assert.equal(parsed.events.length, 2, "主事件 + RDATE 补场");
+    assert.equal(parsed.events[1].start, Date.parse("2026-09-23T10:00:00Z"));
+    assert.equal(parsed.events[1].end, Date.parse("2026-09-23T11:00:00Z"), "补场时长与主事件一致");
+});
