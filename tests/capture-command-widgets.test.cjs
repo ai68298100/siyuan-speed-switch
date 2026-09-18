@@ -46,3 +46,13 @@ test('plugin commands preserve legacy filter and support deterministic sorting a
     const empty = commands.buildPluginCommandsSnapshot(commandRows, {plugin: 'missing'}, {emptyFiltered: '无匹配'});
     assert.equal(empty.emptyHint, '无匹配');
 });
+
+test("plugin command CJK sorting pins an explicit collator (T-6464)", () => {
+    // localeCompare 缺省 locale 随宿主 ICU 漂移：CI 镜像升级曾令同一断言在
+    // 新旧 Runner 上一绿一红。排序必须显式钉定 zh 拼音 Collator。
+    const fs = require("node:fs");
+    const source = fs.readFileSync(require("node:path").join(__dirname, "..", "src", "home-model.js"), "utf8");
+    assert.match(source, /new Intl\.Collator\("zh-Hans-CN"\)/, "必须显式钉定 zh 拼音 Collator");
+    assert.match(source, /compareZh\(left\.label, right\.label\)/, "命令名称排序必须走钉定 Collator");
+    assert.match(source, /compareZh\(left\.pluginTitle, right\.pluginTitle\)/, "插件名称排序必须走钉定 Collator");
+});

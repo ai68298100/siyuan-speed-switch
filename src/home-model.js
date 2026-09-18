@@ -727,6 +727,11 @@ function normalizePluginCommandsConfig(value) {
         showRank: source.showRank === "是" || source.showRank === true,
     };
 }
+// T-6464：localeCompare 缺省 locale 随宿主 ICU 漂移（CI 镜像升级实证：同一测试
+// 在新旧 Runner 上给出不同的 CJK 顺序）。中文排序显式钉定拼音 Collator。
+const zhSortCollator = new Intl.Collator("zh-Hans-CN");
+const compareZh = (left, right) => zhSortCollator.compare(left, right);
+
 function buildPluginCommandsSnapshot(commands, config, labels = {}) {
     if (!Array.isArray(commands)) return null;
     const normalized = normalizePluginCommandsConfig(config);
@@ -748,8 +753,8 @@ function buildPluginCommandsSnapshot(commands, config, labels = {}) {
         entries.push({value, label, pluginTitle, order});
     });
     entries.sort((left, right) => {
-        if (normalized.sortBy === "命令名称") return left.label.localeCompare(right.label) || left.order - right.order;
-        if (normalized.sortBy === "插件名称") return left.pluginTitle.localeCompare(right.pluginTitle) || left.label.localeCompare(right.label) || left.order - right.order;
+        if (normalized.sortBy === "命令名称") return compareZh(left.label, right.label) || left.order - right.order;
+        if (normalized.sortBy === "插件名称") return compareZh(left.pluginTitle, right.pluginTitle) || compareZh(left.label, right.label) || left.order - right.order;
         return left.order - right.order;
     });
     const items = entries.slice(0, normalized.limit).map((entry, index) => ({
