@@ -90,6 +90,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "hourFormat", label: "小时制", type: "select", options: ["24 小时制", "12 小时制"], defaults: "24 小时制"},
         {key: "showSeconds", label: "显示秒", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "emphasis", label: "数字大小", type: "select", options: ["标准", "大", "特大"], defaults: "标准"},
     ]},
     {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "cities", label: "城市时区（IANA，逗号分隔，如 Asia/Shanghai）", type: "text", defaults: ""},
@@ -168,6 +169,7 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "external-quote-daily", title: "每日引言", icon: "iconQuote", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "quotes", label: "自定义语录（每行一条，可选 —— 分隔出处）", type: "textarea", defaults: ""},
         {key: "showSource", label: "显示出处", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "emphasis", label: "文字大小", type: "select", options: ["标准", "大", "特大"], defaults: "标准"},
     ]},
     {moduleId: "external-device-battery", title: "设备电量", icon: "iconDashboard", category: "siyuan", supportedDevices: ["desktop", "sidebar"], readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "showEstimate", label: "显示预计时间", type: "select", options: ["是", "否"], defaults: "是"},
@@ -306,6 +308,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "mode", label: "统计方式", type: "select", options: ["倒数", "累计"], defaults: "倒数"},
         {key: "repeat", label: "重复", type: "select", options: ["不重复", "每年"], defaults: "不重复"},
         {key: "showTargetDate", label: "显示目标日期", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "emphasis", label: "数字大小", type: "select", options: ["标准", "大", "特大"], defaults: "标准"},
     ]},
     {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},

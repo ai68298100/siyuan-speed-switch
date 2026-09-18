@@ -13,12 +13,20 @@ function normalizeClockLocale(value, fallback = "zh-CN") {
     return "en-US";
 }
 
+// T-6457 display 覆盖试点：强调档位白名单（标准=不带令牌，大/特大映射令牌）
+function emphasisToken(value) {
+    if (value === "大") return "large";
+    if (value === "特大") return "xl";
+    return "standard";
+}
+
 function normalizeLocalTimeConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
         hour12: source.hourFormat === "12 小时制",
         showSeconds: source.showSeconds === "是",
         showDate: source.showDate !== "否" && source.showDate !== false,
+        emphasis: emphasisToken(source.emphasis),
     };
 }
 
@@ -35,13 +43,12 @@ function buildLocalTimeSnapshot(date = new Date(), locale = "zh-CN", labels = {}
             value: "",
         });
     }
-    return {
-        stat: {
-            value: new Intl.DateTimeFormat(safeLocale, timeOptions).format(value),
-            label: typeof labels.localTime === "string" ? labels.localTime.slice(0, 32) : "",
-        },
-        items,
+    const stat = {
+        value: new Intl.DateTimeFormat(safeLocale, timeOptions).format(value),
+        label: typeof labels.localTime === "string" ? labels.localTime.slice(0, 32) : "",
     };
+    if (normalized.emphasis !== "standard") stat.emphasis = normalized.emphasis;
+    return {stat, items};
 }
 
 // ---------- T-6433/T-6456 年度进度：日历日语义 + 年/季/月周期 ----------
@@ -118,6 +125,7 @@ function normalizeCountdownConfig(value) {
         showTargetDate: source.showTargetDate !== "否" && source.showTargetDate !== false,
         // T-6455：倒数（默认，剩余天数）与累计（“已经 N 天”，从最近一次发生日起算）双模式
         mode: source.mode === "累计" ? "elapsed" : "countdown",
+        emphasis: emphasisToken(source.emphasis),
     };
 }
 
@@ -185,7 +193,7 @@ function buildCountdownSnapshot(now = new Date(), config = {}, labels = {}) {
         const parts2 = [title2, yearlyMark2];
         if (normalized.showTargetDate) parts2.push(displayDate);
         return {
-            stat: {value: String(elapsedDays), label: elapsedLabel.replace("{n}", String(elapsedDays))},
+            stat: applyEmphasis({value: String(elapsedDays), label: elapsedLabel.replace("{n}", String(elapsedDays))}, normalized.emphasis),
             items: [{label: parts2.filter(Boolean).join(" · "), value: ""}],
         };
     }
@@ -201,9 +209,14 @@ function buildCountdownSnapshot(now = new Date(), config = {}, labels = {}) {
     const content = [title, yearlyMark];
     if (normalized.showTargetDate) content.push(displayDate);
     return {
-        stat: {value: days === 0 ? "0" : String(Math.abs(days)), label: dayLabel},
+        stat: applyEmphasis({value: days === 0 ? "0" : String(Math.abs(days)), label: dayLabel}, normalized.emphasis),
         items: [{label: content.filter(Boolean).join(" · "), value: ""}],
     };
+}
+
+function applyEmphasis(stat, emphasis) {
+    if (emphasis && emphasis !== "standard") stat.emphasis = emphasis;
+    return stat;
 }
 
 const WORLD_CLOCK_MAX_CITIES = 8;

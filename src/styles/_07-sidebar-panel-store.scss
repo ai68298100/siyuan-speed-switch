@@ -274,6 +274,15 @@
         font-size: 12px;
         color: var(--b3-theme-on-surface-light);
     }
+
+    // T-6457 display 覆盖试点：快照 stat.emphasis（白名单 large/xl，归一层校验）→ 主数值放大
+    &--large .sw__home-stat-value {
+        font-size: 36px;
+    }
+
+    &--xl .sw__home-stat-value {
+        font-size: 46px;
+    }
 }
 
 // 紧凑密度：小号组件

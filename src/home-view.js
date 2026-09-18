@@ -144,6 +144,8 @@ function normalizeHomeViewResult(value, options = {}) {
                     label: text(rawSnapshot.stat.label, 32),
                     progress: Number.isFinite(rawSnapshot.stat.progress) ? Math.min(100, Math.max(0, rawSnapshot.stat.progress)) : null,
                 };
+                // T-6457 display 覆盖试点：白名单外的 emphasis 一律丢弃，不产生注入面
+                if (["large", "xl"].includes(rawSnapshot.stat.emphasis)) stat.emphasis = rawSnapshot.stat.emphasis;
                 const arc = rawSnapshot.stat.arc && typeof rawSnapshot.stat.arc === "object" ? rawSnapshot.stat.arc : null;
                 const max = arc && Number.isFinite(arc.max) ? Math.min(1000000, Math.max(0, arc.max)) : 0;
                 const value = arc && Number.isFinite(arc.value) ? Math.min(max, Math.max(0, arc.value)) : -1;
@@ -288,7 +290,8 @@ function renderHomeModuleView(doc, view, options = {}) {
     }
     if (view.stat && view.stat.value) {
         const hero = doc.createElement("div");
-        hero.className = "sw__home-stat";
+        // T-6457：emphasis 白名单校验在归一层完成，这里按令牌拼修饰类
+        hero.className = view.stat.emphasis ? `sw__home-stat sw__home-stat--${view.stat.emphasis}` : "sw__home-stat";
         const copy = doc.createElement("span");
         copy.className = "sw__home-stat-copy";
         const value = doc.createElement("span");

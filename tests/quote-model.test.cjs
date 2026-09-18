@@ -30,7 +30,7 @@ test("quote config bounds line count and length", () => {
     }
 });
 test("quote config rejects non-string input", () =>
-    assert.deepEqual(quote.normalizeDailyQuoteConfig(null), {custom: [], showSource: true}));
+    assert.deepEqual(quote.normalizeDailyQuoteConfig(null), {custom: [], showSource: true, emphasis: "standard"}));
 test("quote date key uses local date components", () => {
     // 用本地时间分量构造（时区无关）：零点与 23:59 同键，次日键值不同。
     assert.equal(quote.dailyQuoteDateKey(new Date(2026, 0, 5)), "2026-01-05");

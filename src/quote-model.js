@@ -89,7 +89,14 @@ function normalizeDailyQuoteConfig(value) {
         custom.push({text: quoteText, source: quoteSource});
     }
     // T-6453：出处显示可关闭（默认开，与旧版一致）
-    return {custom, showSource: source.showSource !== "否" && source.showSource !== false};
+    // T-6457：强调档位（标准/大/特大）
+    return {custom, showSource: source.showSource !== "否" && source.showSource !== false, emphasis: emphasisToken(source.emphasis)};
+}
+
+function emphasisToken(value) {
+    if (value === "大") return "large";
+    if (value === "特大") return "xl";
+    return "standard";
 }
 
 function dailyQuoteDateKey(date) {
@@ -127,9 +134,11 @@ function buildDailyQuoteSnapshot(now = new Date(), config = {}, labels = {}) {
     if (normalized.custom.length > 0) {
         items.push({label: `${boundedQuoteText(labels.source, 32) || "来源"}：${boundedQuoteText(labels.customSource, 24) || "自定义语录"}`, value: ""});
     }
+    const stat = {value: "", label: boundedQuoteText(labels.title, 48) || "每日引言"};
+    if (normalized.emphasis !== "standard") stat.emphasis = normalized.emphasis;
     return {
         title: boundedQuoteText(labels.title, 48) || "每日引言",
-        stat: {value: "", label: boundedQuoteText(labels.title, 48) || "每日引言"},
+        stat,
         items,
         dateKey,
         updatedAt: Number.isFinite(Number(now)) ? Number(now) : Date.now(),

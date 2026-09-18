@@ -1,4 +1,5 @@
 const {readSourceText} = require("./source-scan.cjs");
+const {declaresIn} = require("./css-block-scan.cjs");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
@@ -6,6 +7,7 @@ const fs = require("node:fs");
 const home = require("../src/home-model.js");
 const store = require("../src/home-store-model.js");
 const clock = require("../src/local-time-model.js");
+const quote = require("../src/quote-model.js");
 
 const LABELS = {
     hint: "请在配置中填写目标日期",
@@ -91,7 +93,7 @@ test("year progress supports year, quarter and month calendar windows", () => {
 test("second-round schemas land in semantic sections and stay bounded", () => {
     const modules = home.registerModules([]);
     const byId = new Map(modules.map((m) => [m.moduleId, m]));
-    assert.deepEqual(byId.get("countdown").configSchema.map((f) => f.key), ["title", "targetDate", "mode", "repeat", "showTargetDate"]);
+    assert.deepEqual(byId.get("countdown").configSchema.map((f) => f.key), ["title", "targetDate", "mode", "repeat", "showTargetDate", "emphasis"]);
     assert.deepEqual(byId.get("year-progress").configSchema.map((f) => f.key), ["period", "showElapsed", "showRemaining"]);
     assert.equal(store.resolveHomeConfigSection("countdown", "mode"), "display");
     assert.equal(store.resolveHomeConfigSection("year-progress", "period"), "range");
@@ -113,4 +115,48 @@ test("ADR 0062 recalibrates the raw bundle self-discipline line", () => {
     const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));
     assert.equal(zh.homeCountdownElapsed, "已经 {n} 天");
     assert.equal(en.homeCountdownElapsed, "{n} days since");
+});
+
+// ---------- T-6457 display 覆盖试点（时间/倒数/引言） ----------
+test("display override emphasis tokens flow into stat snapshots", () => {
+    const at = new Date(2026, 8, 17, 15, 5);
+    const plain = clock.buildLocalTimeSnapshot(at, "en-US", {}, {});
+    assert.equal(plain.stat.emphasis, undefined, "标准档不携带令牌");
+    const large = clock.buildLocalTimeSnapshot(at, "en-US", {}, {emphasis: "大"});
+    assert.equal(large.stat.emphasis, "large");
+    const xl = clock.buildLocalTimeSnapshot(at, "en-US", {}, {emphasis: "特大"});
+    assert.equal(xl.stat.emphasis, "xl");
+    assert.equal(clock.buildLocalTimeSnapshot(at, "en-US", {}, {emphasis: "hack"}).stat.emphasis, undefined);
+    const countdown = clock.buildCountdownSnapshot(
+        new Date(2026, 8, 17),
+        {targetDate: "2027-01-01", title: "DDL", emphasis: "特大"},
+        LABELS,
+    );
+    assert.equal(countdown.stat.emphasis, "xl");
+    const elapsed = clock.buildCountdownSnapshot(
+        new Date(2026, 8, 17),
+        {targetDate: "2026-01-01", mode: "累计", emphasis: "大"},
+        LABELS,
+    );
+    assert.equal(elapsed.stat.emphasis, "large");
+    const quoteSnapshot = quote.buildDailyQuoteSnapshot(new Date(2026, 8, 17), {emphasis: "大"}, {title: "每日引言"});
+    assert.equal(quoteSnapshot.stat.emphasis, "large");
+    const quotePlain = quote.buildDailyQuoteSnapshot(new Date(2026, 8, 17), {}, {title: "每日引言"});
+    assert.equal(quotePlain.stat.emphasis, undefined);
+});
+
+test("display override has a whitelisted view path and real css rules", () => {
+    const view = readSourceText(path.join(__dirname, "..", "src", "home-view.js"));
+    assert.match(view, /\["large", "xl"\]\.includes\(rawSnapshot\.stat\.emphasis\)/, "归一层白名单必须存在");
+    assert.match(view, /sw__home-stat--\$\{view\.stat\.emphasis\}/, "渲染层按令牌拼修饰类");
+    const css = readSourceText(path.join(__dirname, "..", "src", "styles", "_07-sidebar-panel-store.scss"));
+    assert.ok(declaresIn(css, ".sw__home-stat--large .sw__home-stat-value", /font-size: 36px/), "large 修饰类必须自己声明字号");
+    assert.ok(declaresIn(css, ".sw__home-stat--xl .sw__home-stat-value", /font-size: 46px/), "xl 修饰类必须自己声明字号");
+    const schema = home.registerModules([]).filter((m) => ["external-local-time", "countdown", "external-quote-daily"].includes(m.moduleId));
+    for (const def of schema) {
+        const emphasis = def.configSchema.find((f) => f.key === "emphasis");
+        assert.ok(emphasis, `${def.moduleId} exposes the emphasis field`);
+        assert.deepEqual(emphasis.options, ["标准", "大", "特大"]);
+    }
+    assert.equal(store.resolveHomeConfigSection("external-local-time", "emphasis"), "display");
 });
