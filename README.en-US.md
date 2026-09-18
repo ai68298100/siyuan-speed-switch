@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.22.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.23.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.22.0 fixes the load-time error from issue #1 and lets the widget panel consume SiYuan's own data directly: database table, pinned docs, inbox, recent updates, data health, recent docs, database navigator and saved searches; plus RSS/Atom feeds, air quality and Hacker News board switching, a monthly checkin widget for SiYuan-Checkin, right-click menus on the top-bar icons, and two command-palette commands.
+> v0.23.0 completes the per-widget deep optimization of all 58 widgets: unified search filter semantics across local tabs, remote results and full-text probing; full iCal subscription support with time zones and recurring events; countdown with countdown/elapsed dual modes; year/quarter/month progress periods; a writing strength score with a 12-month lookback; three display sizes for local time, countdown and daily quote; cross-day markers on the world clock; a storage usage section in the settings page; and a Shift+F10 action panel key in the switcher.
 
 > The current development head passes type checking, production build, 6257 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
@@ -166,10 +166,39 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.22.0`
+This release is published as `v0.23.0`
 
 ## Changelog
 
+### v0.23.0 (2026-09-19)
+
+- **Per-widget deep optimization completed for all 58 widgets**: reviewed and enhanced with an
+  8-dimension scorecard (config discoverability, data correctness, information hierarchy, size
+  fitness, interaction feedback, state recovery, performance lifecycle, three-surface/a11y/privacy);
+  ledger in `docs/component-deep-optimization-plan.md`. Highlights: path filters stay consistent
+  across local tabs, remote results and full-text probing (300-card filter p95 ≈ 0.56 ms); database
+  table typed cells; database/saved-searches/recent-updates/recent-edits gained search, sorting and
+  accurate totals; favorite group picker, document-set last-used ordering, random-review candidate
+  stats; world-clock cross-day markers; countdown yearly repeats with safe Feb-29 clamping; calendar
+  week-start option; weather/air-quality display toggles; maintenance state kept separate from
+  downtime in service status; checkin widgets remained render-only bridges with no protocol changes.
+- **Second-round increments (competitor research follow-ups)**:
+  - Countdown gained a **countdown/elapsed dual mode** (`N days since`); year progress supports
+    **year/quarter/month periods**.
+  - **Display override pilot**: local time, countdown and daily quote support three digit sizes
+    (standard/large/extra-large).
+  - Recent writing activity: a **writing strength score** (exponential-smoothing half-life, opt-in)
+    and a **12-month lookback window**.
+  - **Full time-zone and recurrence support for iCal subscriptions**: TZID resolution, RRULE
+    expansion (DAILY/WEEKLY/MONTHLY, COUNT/UNTIL/BYDAY), EXDATE cancellations and RDATE extras —
+    recurring events anchored in the past were previously invisible.
+  - The settings page gained a **storage usage** section: total and per-key approximate size
+    (UTF-8 bytes).
+  - Switcher action panel key: **Shift+F10 / ContextMenu** opens the focused card's action menu
+    from the keyboard (mouse-free).
+- **Engineering**: automated tests 6117 → 6257 (207 files); resource self-discipline lines
+  recalibrated per ADR 0059/0062 (224 KiB per-entry zip, 832 KiB raw; the 512 KiB archive hard
+  ceiling is unchanged); the production dependency graph stays at 52 modules.
 ### v0.22.0 (2026-09-18)
 
 - **Fixes the load error (issue #1)**: under certain host timing `window.siyuan.languages`
