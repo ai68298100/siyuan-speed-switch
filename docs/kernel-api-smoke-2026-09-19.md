@@ -45,3 +45,22 @@
 
 - 本工作区数据库 `content` 字段包含全表拼接文本（含敏感信息）——任何探针/日志不得输出该字段；本轮一次探针曾在本地终端输出过（未落盘、未外传），此后探针已收紧为只输出键名与计数。
 - CI 镜像漂移（T-6464）与本文件发现共同指向同一结论：**凡未经真实宿主核对的响应形状假设，都应在接线上视为待验证项**。
+
+## 追加探针（同日第二轮）：块 ID ≠ 数据库 ID——T-6470 根因确认
+
+- 内核版本实测：**3.8.4**（/api/system/version）。
+- 工作区 data/storage/av/ 下有 **119 个库文件**（最大 ~30 KB），远多于 SQL blocks type='av' 可见的块。
+- 用**库 ID**（而非块 ID）调用两个接口均正常：getAttributeView(库ID) → keyValues 5 条、
+  valuesSum=115、view rowIds=37；renderAttributeView(库ID, viewID, pageSize=100) → rows=31 /
+  rowCount=31，row[0].cells[0].value 含 {keyID, blockID, type, block, createdAt, updatedAt}——经典形状完整可用。
+- **根因定案**：嵌入/镜像形态下 av 块 ID ≠ 数据库 ID（块 IAL 里只有 view 引用），以块 ID 调
+  renderAttributeView/getAttributeView 得到空定义或 null。T-6330/T-6369 的模型假设在“块 ID=库 ID”
+  的直连库上成立，在嵌入库上不成立——这就是真机显示空表的完整解释。
+- **T-6470 实施规格（据实确定）**：
+  1. 发现层：SQL blocks type='av' 之外，补充“库 ID 直查”——对用户选定的库 ID 直接
+     renderAttributeView(库ID, viewID, pageSize)；配置选择器允许手填/粘贴库 ID。
+  2. 取数层：renderAttributeView 带 viewID + pageSize=100；rows/rowCount/cells/value{keyID,blockID,type}
+     形状已实证，模型按此投影（隐藏列、行帽 12、点击行块 ID 打开沿用 ADR 0058）。
+  3. 兼容层：块 ID 调用返回 0 行时不判定为空表，改为提示“该嵌入库需以库 ID 绑定”（诚实降级）。
+- 数据健康（T-6471）：getMissingAssets 元素含 blockIDs 数组（标准块 ID），点击跳转方案确认可行；
+  无 path 字段，showPath 相关说明需修正。
