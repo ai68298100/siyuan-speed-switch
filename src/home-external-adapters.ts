@@ -32,10 +32,11 @@ export interface HomeExternalAdapterHost {
 
 export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, register: HomeExternalAdapterRegister) {
         // 生活信息组件首批：完全离线的本地时钟。使用浏览器 Intl，避免引入日期库、
-        // 网络服务或定位权限；面板存活期间由单一分钟定时器强制刷新。
-        register("external-local-time", this.i18n.homeLocalTime, "iconClock", this.i18n.homeDescLocalTime, [], () => {
+        // 网络服务或定位权限；面板存活期间由分钟心跳强制刷新，开启秒显示的实例
+        // 走面板内的秒级心跳（仅刷新这些实例，见 second-panel-ui 的 clockSeconds）。
+        register("external-local-time", this.i18n.homeLocalTime, "iconClock", this.i18n.homeDescLocalTime, [], (config) => {
             const locale = document.documentElement.lang || navigator.language || "zh-CN";
-            return buildLocalTimeSnapshot(new Date(), locale, {localTime: this.i18n.homeLocalTimeZone});
+            return buildLocalTimeSnapshot(new Date(), locale, {localTime: this.i18n.homeLocalTimeZone}, config);
         });
         // 世界时钟：完全离线。用户配置 IANA 时区列表后用 Intl 按时区渲染；
         // 空配置回退本地 + UTC，开箱可用；与本地时钟共用分钟边界心跳。

@@ -177,11 +177,12 @@ test('data health counts missing assets with a bounded list and stat', () => {
     assert.equal(snapshot.emptyHint, "");
 });
 
-test('data health cap annotates the stat with a plus suffix', () => {
+test('data health cap reports shown over filtered total', () => {
     const assets = Array.from({length: 10}, (_, index) => ({item: `assets/${index}.png`, name: `${index}.png`}));
     const snapshot = model.buildDataHealthSnapshot(okResponse(assets), {limit: 5}, OK, NOW);
     assert.equal(snapshot.items.length, 5);
-    assert.equal(snapshot.stat.value, "5+");
+    // T-6434 起“N+”升级为准确的“已显示/总数”，全量计数有 512 条扫描上限
+    assert.equal(snapshot.stat.value, "5/10");
 });
 
 test('data health zero state reports a clean workspace', () => {

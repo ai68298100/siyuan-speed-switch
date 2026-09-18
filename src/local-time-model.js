@@ -13,18 +13,147 @@ function normalizeClockLocale(value, fallback = "zh-CN") {
     return "en-US";
 }
 
-function buildLocalTimeSnapshot(date = new Date(), locale = "zh-CN", labels = {}) {
+function normalizeLocalTimeConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {
+        hour12: source.hourFormat === "12 小时制",
+        showSeconds: source.showSeconds === "是",
+        showDate: source.showDate !== "否" && source.showDate !== false,
+    };
+}
+
+function buildLocalTimeSnapshot(date = new Date(), locale = "zh-CN", labels = {}, config = {}) {
     const value = date instanceof Date && Number.isFinite(date.getTime()) ? date : new Date(0);
     const safeLocale = normalizeClockLocale(locale);
-    return {
-        stat: {
-            value: new Intl.DateTimeFormat(safeLocale, {hour: "2-digit", minute: "2-digit", hour12: false}).format(value),
-            label: typeof labels.localTime === "string" ? labels.localTime.slice(0, 32) : "",
-        },
-        items: [{
+    const normalized = normalizeLocalTimeConfig(config);
+    const timeOptions = {hour: "2-digit", minute: "2-digit", hour12: normalized.hour12};
+    if (normalized.showSeconds) timeOptions.second = "2-digit";
+    const items = [];
+    if (normalized.showDate) {
+        items.push({
             label: `${new Intl.DateTimeFormat(safeLocale, {year: "numeric", month: "long", day: "numeric"}).format(value)} · ${new Intl.DateTimeFormat(safeLocale, {weekday: "long"}).format(value)}`,
             value: "",
-        }],
+        });
+    }
+    return {
+        stat: {
+            value: new Intl.DateTimeFormat(safeLocale, timeOptions).format(value),
+            label: typeof labels.localTime === "string" ? labels.localTime.slice(0, 32) : "",
+        },
+        items,
+    };
+}
+
+// ---------- T-6433 年度进度：日历日语义（跨时区/DST 稳定，闰年精确 366 天） ----------
+function normalizeYearProgressConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {
+        showElapsed: source.showElapsed !== "否" && source.showElapsed !== false,
+        showRemaining: source.showRemaining !== "否" && source.showRemaining !== false,
+    };
+}
+
+function buildYearProgressSnapshot(now = new Date(), config = {}, labels = {}) {
+    const value = now instanceof Date && Number.isFinite(now.getTime()) ? now : new Date(0);
+    const normalized = normalizeYearProgressConfig(config);
+    const year = value.getFullYear();
+    // 用本地年月日的 UTC 毫秒差计算日历天数：DST 造成的一小时偏移被整除吸收，
+    // 平年/闰年边界由日历本身给出（365/366），不依赖运行环境的时区偏移量。
+    const dayMs = 86400000;
+    const startUtc = Date.UTC(year, 0, 1);
+    const total = Math.round((Date.UTC(year + 1, 0, 1) - startUtc) / dayMs);
+    const elapsed = Math.min(total, Math.max(1, Math.round((Date.UTC(year, value.getMonth(), value.getDate()) - startUtc) / dayMs) + 1));
+    const remaining = total - elapsed;
+    const percent = Math.round((elapsed / total) * 100);
+    const items = [];
+    const elapsedLabel = typeof labels.elapsed === "string" ? labels.elapsed : "";
+    const remainingLabel = typeof labels.remaining === "string" ? labels.remaining : "";
+    if (normalized.showElapsed && elapsedLabel) items.push({label: elapsedLabel.replace("{x}", String(elapsed)), value: ""});
+    if (normalized.showRemaining && remainingLabel) items.push({label: remainingLabel.replace("{x}", String(remaining)), value: ""});
+    return {
+        stat: {value: `${percent}%`, label: `${year}`, progress: percent, arc: {value: elapsed, max: total}},
+        items,
+    };
+}
+
+// ---------- T-6435 倒数日：目标日期校验、每年重复与到期语义 ----------
+const COUNTDOWN_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizeCountdownConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    const target = typeof source.targetDate === "string" ? source.targetDate.trim() : "";
+    return {
+        title: typeof source.title === "string" ? source.title.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 32) : "",
+        targetDate: COUNTDOWN_DATE_PATTERN.test(target) ? target : "",
+        repeat: source.repeat === "每年" ? "yearly" : "none",
+        showTargetDate: source.showTargetDate !== "否" && source.showTargetDate !== false,
+    };
+}
+
+function countdownDayDiff(targetTime, todayStart) {
+    return Math.round((targetTime - todayStart) / 86400000);
+}
+
+function pad2(value) {
+    return String(value).padStart(2, "0");
+}
+
+function parseCountdownDate(target) {
+    if (!COUNTDOWN_DATE_PATTERN.test(target)) return null;
+    const year = Number(target.slice(0, 4));
+    const month = Number(target.slice(5, 7));
+    const day = Number(target.slice(8, 10));
+    if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31)) return null;
+    return {year, month, day};
+}
+
+function isRealCalendarDate(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+// 每年重复按“当月最后一天”钳制：2 月 29 日在平年落到 2 月 28 日，不漂移到别的月份。
+function yearlyOccurrence(year, month, day) {
+    const lastDay = new Date(year, month, 0).getDate();
+    const effectiveDay = Math.min(day, lastDay);
+    return {time: new Date(year, month - 1, effectiveDay).getTime(), day: effectiveDay};
+}
+
+function buildCountdownSnapshot(now = new Date(), config = {}, labels = {}) {
+    const normalized = normalizeCountdownConfig(config);
+    const hint = typeof labels.hint === "string" ? labels.hint : "";
+    const parts = parseCountdownDate(normalized.targetDate);
+    if (!parts) return {items: [{label: hint, value: ""}]};
+    const value = now instanceof Date && Number.isFinite(now.getTime()) ? now : new Date(0);
+    const todayStart = new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+    let targetTime;
+    let displayDate;
+    if (normalized.repeat === "yearly") {
+        let occurrence = yearlyOccurrence(value.getFullYear(), parts.month, parts.day);
+        if (occurrence.time < todayStart) occurrence = yearlyOccurrence(value.getFullYear() + 1, parts.month, parts.day);
+        targetTime = occurrence.time;
+        displayDate = `${pad2(parts.month)}-${pad2(occurrence.day)}`;
+    } else {
+        // 一次性目标日期严格校验：2 月 30 日等不可能日期回退配置提示，不静默溢出
+        if (!isRealCalendarDate(parts.year, parts.month, parts.day)) return {items: [{label: hint, value: ""}]};
+        targetTime = new Date(parts.year, parts.month - 1, parts.day).getTime();
+        displayDate = normalized.targetDate;
+    }
+    if (!Number.isFinite(targetTime)) return {items: [{label: hint, value: ""}]};
+    const days = countdownDayDiff(targetTime, todayStart);
+    const remaining = typeof labels.remaining === "string" ? labels.remaining : "";
+    const todayLabel = typeof labels.today === "string" ? labels.today : "";
+    const passed = typeof labels.passed === "string" ? labels.passed : "";
+    const dayLabel = days > 0 ? remaining.replace("{n}", String(days))
+        : days === 0 ? todayLabel
+            : passed.replace("{n}", String(-days));
+    const title = normalized.title || (typeof labels.untitled === "string" ? labels.untitled : "");
+    const yearlyMark = normalized.repeat === "yearly" && typeof labels.yearly === "string" ? labels.yearly : "";
+    const content = [title, yearlyMark];
+    if (normalized.showTargetDate) content.push(displayDate);
+    return {
+        stat: {value: days === 0 ? "0" : String(Math.abs(days)), label: dayLabel},
+        items: [{label: content.filter(Boolean).join(" · "), value: ""}],
     };
 }
 
@@ -99,4 +228,11 @@ function millisecondsToNextMinute(now = Date.now()) {
     return Math.min(60025, Math.max(25, 60000 - remainder + 25));
 }
 
-module.exports = {normalizeClockLocale, buildLocalTimeSnapshot, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, WORLD_CLOCK_MAX_CITIES};
+// 秒针模式专用：仅在被显式开启秒显示的本地时钟卡片存在时使用，其余路径保持分钟心跳。
+function millisecondsToNextSecond(now = Date.now()) {
+    const value = Number.isFinite(now) ? Math.max(0, Math.trunc(now)) : 0;
+    const remainder = value % 1000;
+    return Math.min(1025, Math.max(25, 1000 - remainder + 25));
+}
+
+module.exports = {normalizeClockLocale, buildLocalTimeSnapshot, normalizeLocalTimeConfig, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, millisecondsToNextSecond, normalizeYearProgressConfig, buildYearProgressSnapshot, normalizeCountdownConfig, buildCountdownSnapshot, WORLD_CLOCK_MAX_CITIES};

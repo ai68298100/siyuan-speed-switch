@@ -13,7 +13,7 @@ import {resolveMobileHomeSize} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {openHomeConfigForm} from "./home-config-form";
 import {openHomeWidgetStore} from "./home-store-ui";
-import {millisecondsToNextMinute} from "./local-time-model";
+import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-model";
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
 import type {ISwSettings} from "./index";
@@ -85,9 +85,10 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         const device = this.isMobile ? "mobile" : "desktop";
         let editing = false;
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
-        const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement }> = [];
+        const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement; clockSeconds?: boolean }> = [];
         const homeRefreshTimers: number[] = [];
         let homeClockTimer = 0;
+        let homeSecondsTimer = 0;
         let homeLifeTimer = 0;
         const homeRefreshObservers: IntersectionObserver[] = [];
         let homeRefreshBatchController: AbortController | null = null;
@@ -101,6 +102,8 @@ export function openSecondPanel(this: SecondPanelUiHost) {
             homeRefreshObservers.splice(0).forEach((observer) => observer.disconnect());
             if (homeClockTimer) window.clearTimeout(homeClockTimer);
             homeClockTimer = 0;
+            if (homeSecondsTimer) window.clearTimeout(homeSecondsTimer);
+            homeSecondsTimer = 0;
             if (homeLifeTimer) window.clearTimeout(homeLifeTimer);
             homeLifeTimer = 0;
         };
@@ -347,7 +350,13 @@ export function openSecondPanel(this: SecondPanelUiHost) {
                     },
                 });
                 if (!controller) return;
-                controllers.push({moduleId: inst.moduleId, refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => controller.refresh(config, readOptions), dispose: () => controller.dispose(), cell});
+                controllers.push({
+                    moduleId: inst.moduleId,
+                    refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => controller.refresh(config, readOptions),
+                    dispose: () => controller.dispose(),
+                    cell,
+                    clockSeconds: inst.moduleId === "external-local-time" && (inst.config as Record<string, unknown> | undefined)?.showSeconds === "是",
+                });
                 grid.appendChild(cell);
 
                 if (editing) {
@@ -564,20 +573,35 @@ export function openSecondPanel(this: SecondPanelUiHost) {
             controllers.forEach(scheduleRefresh);
 
             // 同一面板只建立一个对齐分钟边界的心跳；只刷新本地时钟与世界时钟，不触发网络组件。
+            // 开启秒显示的本地时钟实例改走独立的秒级心跳，只刷新这些实例，避免整组时钟每秒重绘。
             const clockModuleIds = new Set(["external-local-time", "external-world-clock", "external-quote-daily"]);
-            if (controllers.some((entry) => clockModuleIds.has(entry.moduleId))) {
-                const refreshClock = () => controllers.filter((entry) => clockModuleIds.has(entry.moduleId))
+            const clockEntries = controllers.filter((entry) => clockModuleIds.has(entry.moduleId));
+            const secondsClockEntries = clockEntries.filter((entry) => entry.clockSeconds === true);
+            const slowClockEntries = clockEntries.filter((entry) => entry.clockSeconds !== true);
+            const isPanelVisible = () => document.visibilityState !== "hidden";
+            if (clockEntries.length > 0) {
+                const refreshEntries = (entries: typeof clockEntries) => entries
                     .forEach((entry) => { void entry.refresh(undefined, {force: true}); });
                 const scheduleClock = () => {
-                    if (!root.isConnected || homeClockTimer) return;
+                    if (!root.isConnected || homeClockTimer || slowClockEntries.length === 0) return;
                     homeClockTimer = window.setTimeout(() => {
                         homeClockTimer = 0;
-                        if (document.visibilityState !== "hidden") refreshClock();
+                        if (isPanelVisible()) refreshEntries(slowClockEntries);
                         scheduleClock();
                     }, millisecondsToNextMinute());
                 };
+                const scheduleSeconds = () => {
+                    if (!root.isConnected || homeSecondsTimer || secondsClockEntries.length === 0) return;
+                    homeSecondsTimer = window.setTimeout(() => {
+                        homeSecondsTimer = 0;
+                        if (isPanelVisible()) refreshEntries(secondsClockEntries);
+                        scheduleSeconds();
+                    }, millisecondsToNextSecond());
+                };
                 const handleVisibility = () => {
-                    if (document.visibilityState !== "hidden") refreshClock();
+                    if (!isPanelVisible()) return;
+                    refreshEntries(slowClockEntries);
+                    refreshEntries(secondsClockEntries);
                 };
                 document.addEventListener("visibilitychange", handleVisibility);
                 const previousCleanup = panelEventCleanup;
@@ -586,6 +610,7 @@ export function openSecondPanel(this: SecondPanelUiHost) {
                     document.removeEventListener("visibilitychange", handleVisibility);
                 };
                 scheduleClock();
+                scheduleSeconds();
             }
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时

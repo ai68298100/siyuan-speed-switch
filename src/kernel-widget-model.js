@@ -297,32 +297,54 @@ function buildRecentUpdatesSnapshot(payload, config, labels = {}, now = Date.now
 }
 
 // ---------- T-6324 数据健康（/api/asset/getMissingAssets） ----------
+// T-6434：内核没有资产修复端点，组件不伪造“一键修复”入口；深度化收敛为
+// 检索/排序/投影开关 + 有界全量扫描后的“已显示/总数”与严重度标签。
+const DATA_HEALTH_SCAN_BOUND = 512;
+
 function normalizeDataHealthConfig(value) {
     const source = value && typeof value === "object" ? value : {};
-    return {limit: clampLimit(source.limit, 8)};
+    return {
+        limit: clampLimit(source.limit, 8),
+        query: boundedText(source.query, 64).toLowerCase(),
+        sortBy: source.sortBy === "名称" ? "name" : "order",
+        showPath: source.showPath !== "否" && source.showPath !== false,
+        showRank: source.showRank === "是" || source.showRank === true,
+    };
 }
 
 function buildDataHealthSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
     const assets = responseItems(payload);
     if (!assets) return null;
     const normalized = normalizeDataHealthConfig(config);
-    const items = [];
-    const seen = new Set();
-    for (const asset of assets) {
+    const distinct = new Map();
+    const scanned = assets.slice(0, DATA_HEALTH_SCAN_BOUND);
+    for (const asset of scanned) {
         if (!asset || typeof asset !== "object") continue;
         const name = boundedText(asset.name, 128) || boundedText(asset.item, 128);
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
-        if (items.length >= normalized.limit) break;
-        items.push({
-            label: name,
-            value: "",
-            secondary: boundedText(asset.path, 160),
-            rank: items.length + 1,
-        });
+        if (!name || distinct.has(name)) continue;
+        distinct.set(name, {name, path: boundedText(asset.path, 160)});
     }
+    let entries = [...distinct.values()];
+    if (normalized.query) {
+        entries = entries.filter((entry) => entry.name.toLowerCase().includes(normalized.query)
+            || entry.path.toLowerCase().includes(normalized.query));
+    }
+    if (normalized.sortBy === "name") {
+        entries.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: "base"}));
+    }
+    const items = entries.slice(0, normalized.limit).map((entry, index) => ({
+        label: entry.name,
+        value: "",
+        secondary: normalized.showPath ? entry.path : "",
+        rank: normalized.showRank ? index + 1 : undefined,
+    }));
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "数据健康", items, labels, now, status, "未发现缺失资源");
-    snapshot.stat = {value: String(items.length >= normalized.limit ? `${normalized.limit}+` : items.length), label: boundedText(labels.stat, 32) || "缺失资源"};
+    const total = entries.length;
+    const severe = total >= 10;
+    const statLabel = severe
+        ? boundedText(labels.statMany, 32) || boundedText(labels.stat, 32) || "缺失资源"
+        : boundedText(labels.stat, 32) || "缺失资源";
+    snapshot.stat = {value: items.length < total ? `${items.length}/${total}` : String(total), label: statLabel};
     return snapshot;
 }
 
@@ -1508,6 +1530,7 @@ module.exports = {
     buildRecentUpdatesSnapshot,
     normalizeDataHealthConfig,
     buildDataHealthSnapshot,
+    DATA_HEALTH_SCAN_BOUND,
     normalizeHostRecentDocsConfig,
     buildHostRecentDocsSnapshot,
     normalizeDatabaseListConfig,

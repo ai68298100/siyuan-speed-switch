@@ -62,7 +62,7 @@ import {openHomeWidgetStore} from "./home-store-ui";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets} from "./settings-sections";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
-import {millisecondsToNextMinute} from "./local-time-model";
+import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation} from "./life-widget-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
@@ -3559,24 +3559,14 @@ const version = beginSearch(session);
             if (!snapshot) throw new Error("invalid_note_stats");
             return snapshot;
         }, {timeoutMs: 1200, cacheTtlMs: 1000});
-        // 年度进度：纯前端计算（已过天数 / 剩余天数 / 百分比），带进度条
-        register("year-progress", this.i18n.homeYearProgress, "iconRefresh", this.i18n.homeDescYearProgress, [], () => {
-            const now = new Date();
-            const year = now.getFullYear();
-            const start = new Date(year, 0, 1);
-            const end = new Date(year + 1, 0, 1);
-            const dayMs = 86400000;
-            const total = Math.round((end.getTime() - start.getTime()) / dayMs);
-            const elapsed = Math.min(total, Math.floor((now.getTime() - start.getTime()) / dayMs) + 1);
-            const remaining = total - elapsed;
-            const percent = Math.round(elapsed / total * 100);
-            return {
-                stat: {value: `${percent}%`, label: `${year}`, progress: percent, arc: {value: elapsed, max: total}},
-                items: [
-                    {label: this.i18n.homeYearElapsed.replace("{x}", String(elapsed)), value: ""},
-                    {label: this.i18n.homeYearRemaining.replace("{x}", String(remaining)), value: ""},
-                ],
-            };
+        // 年度进度：纯前端计算（已过天数 / 剩余天数 / 百分比），带进度条；日历日语义在模型内固定
+        register("year-progress", this.i18n.homeYearProgress, "iconRefresh", this.i18n.homeDescYearProgress, [], (config, _device, context) => {
+            const snapshot = buildYearProgressSnapshot(new Date(), config, {
+                elapsed: this.i18n.homeYearElapsed, remaining: this.i18n.homeYearRemaining,
+            });
+            // xs 紧凑密度：只保留主进度，不铺两条明细
+            if (context && context.size === "xs") return {...snapshot, items: []};
+            return snapshot;
         });
         // 外部服务组件（13 个 external-* 适配器）的注册定义外迁至 home-external-adapters
         // （R2 重构 D-375）：register 闭包原样传入，宿主经 this 绑定提供 i18n 与内核代理
@@ -3729,26 +3719,13 @@ const version = beginSearch(session);
             if (!snapshot) throw new Error("invalid_writing_streak");
             return snapshot;
         }, {timeoutMs: 1200, cacheTtlMs: 1000});
-        // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数
+        // 倒数日：手动设定目标日期（纪念日/DDL），显示剩余或已过天数；支持每年重复
         register("countdown", this.i18n.homeCountdown, "iconClock", this.i18n.homeDescCountdown, ["loaded-protyle"], (config) => {
-            const title = String(config.title || "").trim().slice(0, 32);
-            const target = String(config.targetDate || "").trim();
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) {
-                return {items: [{label: this.i18n.homeCountdownHint, value: ""}]};
-            }
-            const targetTime = new Date(`${target}T00:00:00`).getTime();
-            if (!Number.isFinite(targetTime)) return {items: [{label: this.i18n.homeCountdownHint, value: ""}]};
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const days = Math.round((targetTime - today.getTime()) / 86400000);
-            const dayLabel = days > 0
-                ? this.i18n.homeCountdownRemaining.replace("{n}", String(days))
-                : days === 0 ? this.i18n.homeCountdownToday
-                    : this.i18n.homeCountdownPassed.replace("{n}", String(-days));
-            return {
-                stat: {value: days === 0 ? "0" : String(Math.abs(days)), label: dayLabel},
-                items: [{label: `${title || this.i18n.homeCountdown} · ${target}`, value: ""}],
-            };
+            return buildCountdownSnapshot(new Date(), config, {
+                hint: this.i18n.homeCountdownHint, untitled: this.i18n.homeCountdown,
+                remaining: this.i18n.homeCountdownRemaining, today: this.i18n.homeCountdownToday,
+                passed: this.i18n.homeCountdownPassed, yearly: this.i18n.homeCountdownYearly,
+            });
         });
         // 日历月视图：本月日历网格（周一开头），有日记的日期可点击直达
         register("journal-calendar", this.i18n.homeJournalCalendar, "iconCalendar", this.i18n.homeDescJournalCalendar, ["loaded-protyle"], async (config, _device, context) => {
@@ -3999,10 +3976,11 @@ const version = beginSearch(session);
             const json = await this.fetchKernelJson("/api/asset/getMissingAssets", {});
             const snapshot = buildDataHealthSnapshot(json, config, {
                 title: this.i18n.homeDataHealth, empty: this.i18n.homeDataHealthEmpty, stat: this.i18n.homeDataHealthStat,
+                statMany: this.i18n.homeDataHealthStatMany,
             });
             if (!snapshot) throw new Error("invalid_data_health");
             return snapshot;
-        });
+        }, {timeoutMs: 1200, cacheTtlMs: 1000});
         register("database-list", this.i18n.homeDatabaseList, "iconDatabase", this.i18n.homeDescDatabaseList, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const normalized = normalizeDatabaseListConfig(config);
             const notebookScope = buildNotebookBoxScope(normalized.notebook);

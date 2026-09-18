@@ -81,8 +81,15 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "primaryMetric", label: "主指标", type: "select", options: ["文档数", "估算字数"], defaults: "文档数"},
         {key: "showTrend", label: "显示环比趋势", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"]},
-    {moduleId: "external-local-time", title: "时间与日期", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"]},
+    {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"], protocolVersion: 2, configSchema: [
+        {key: "showElapsed", label: "显示已过天数", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showRemaining", label: "显示剩余天数", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
+    {moduleId: "external-local-time", title: "时间与日期", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+        {key: "hourFormat", label: "小时制", type: "select", options: ["24 小时制", "12 小时制"], defaults: "24 小时制"},
+        {key: "showSeconds", label: "显示秒", type: "select", options: ["否", "是"], defaults: "否"},
+        {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},
+    ]},
     {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "cities", label: "城市时区（IANA，逗号分隔，如 Asia/Shanghai）", type: "text", defaults: ""},
     ]},
@@ -267,6 +274,8 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
         {key: "targetDate", label: "目标日期", type: "date", defaults: ""},
+        {key: "repeat", label: "重复", type: "select", options: ["不重复", "每年"], defaults: "不重复"},
+        {key: "showTargetDate", label: "显示目标日期", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
     {moduleId: "plugin-commands", title: "插件命令", icon: "iconPlugin", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
@@ -322,6 +331,10 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "data-health", title: "数据健康", icon: "iconCloud", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "清单上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "query", label: "筛选名称或路径", type: "text", defaults: ""},
+        {key: "sortBy", label: "排序方式", type: "select", options: ["清单顺序", "名称"], defaults: "清单顺序"},
+        {key: "showPath", label: "显示资源路径", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "database-list", title: "数据库", icon: "iconDatabase", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},

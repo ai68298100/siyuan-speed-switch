@@ -2,6 +2,7 @@ const {readSourceText} = require("./source-scan.cjs");
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const home = require('../src/home-model.js');
+const clock = require('../src/local-time-model.js');
 
 test("insight-style widgets are registered with bounded sizes", () => {
     const modules = home.registerModules([]);
@@ -77,22 +78,19 @@ test("insight-style widgets are registered with bounded sizes", () => {
 });
 
 test("year progress percentage stays within bounds for leap and non-leap years", () => {
-    // 与适配器同口径的纯计算（闰年 366 天 / 平年 365 天）
-    const percentFor = (year, month, day) => {
-        const start = new Date(year, 0, 1);
-        const end = new Date(year + 1, 0, 1);
-        const dayMs = 86400000;
-        const total = Math.round((end.getTime() - start.getTime()) / dayMs);
-        const elapsed = Math.min(total, Math.floor((new Date(year, month, day).getTime() - start.getTime()) / dayMs) + 1);
-        return {total, percent: Math.round(elapsed / total * 100), elapsed, remaining: total - elapsed};
-    };
-    assert.equal(percentFor(2024, 0, 1).total, 366); // 闰年
-    assert.equal(percentFor(2025, 0, 1).total, 365); // 平年
-    assert.equal(percentFor(2025, 0, 1).percent, 0);   // 元旦约为 0%（1/365 → 0）
-    assert.equal(percentFor(2025, 11, 31).percent, 100); // 年末 100%
-    const mid = percentFor(2025, 5, 30);
-    assert.ok(mid.percent > 40 && mid.percent < 60);
-    assert.ok(mid.elapsed + mid.remaining === mid.total);
+    // T-6433 起断言真实模型（日历日语义），不再在测试里复刻适配器算法
+    const labels = {elapsed: "已过 {x}", remaining: "剩 {x}"};
+    const leap = clock.buildYearProgressSnapshot(new Date(2024, 0, 1), {}, labels);
+    assert.equal(leap.stat.arc.max, 366); // 闰年
+    const plain = clock.buildYearProgressSnapshot(new Date(2025, 0, 1), {}, labels);
+    assert.equal(plain.stat.arc.max, 365); // 平年
+    assert.equal(plain.stat.value, "0%");   // 元旦约为 0%（1/365 → 0）
+    const end = clock.buildYearProgressSnapshot(new Date(2025, 11, 31), {}, labels);
+    assert.equal(end.stat.value, "100%"); // 年末 100%
+    const mid = clock.buildYearProgressSnapshot(new Date(2025, 5, 30), {}, labels);
+    assert.ok(mid.stat.progress > 40 && mid.stat.progress < 60);
+    assert.equal(mid.stat.arc.value, 181);
+    assert.equal(mid.items.map((item) => item.label).join("|"), "已过 181|剩 184");
 });
 
 test("current document outline adapter reuses bounded outline data", () => {
