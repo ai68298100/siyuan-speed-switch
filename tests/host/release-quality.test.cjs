@@ -263,6 +263,13 @@ test('release batch audit declares fifty bounded local checks', () => {
     assert.match(script, /release-batch-audit: \$\{checks\.length - failed\.length\}\/\$\{checks\.length\}/);
 });
 
+test('release batch audit allows local ahead commits but rejects remote ahead commits', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts', 'release-batch-audit.cjs'), 'utf8');
+    assert.match(script, /local main is not behind origin main/);
+    assert.match(script, /aheadCount >= 0/);
+    assert.match(script, /behindCount === 0/);
+});
+
 test('quality batch audit declares fifty bounded local checks', () => {
     const script = fs.readFileSync(path.join(root, 'scripts', 'quality-batch-audit.cjs'), 'utf8');
     assert.equal((script.match(/add\('/g) || []).length, 50);

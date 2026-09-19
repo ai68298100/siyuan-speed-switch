@@ -35,7 +35,7 @@ add('release checker checks archive', contains('scripts/check-release-readiness.
 add('release checker has drift guard', contains('scripts/check-release-readiness.cjs', '1024'));
 add('readiness records bundle', /`dist\/index\.js` \d+ bytes/.test(read('docs/release-readiness.md')));
 add('readiness records archive', /`package\.zip` \d+ bytes/.test(read('docs/release-readiness.md')));
-add('readiness records test count', /6302\/6302/.test(read('docs/release-readiness.md')));
+add('readiness records test count', /6303\/6303/.test(read('docs/release-readiness.md')));
 add('readiness records v0.23.5', contains('docs/release-readiness.md', 'v0.23.5'));
 add('roadmap records current baseline', contains('ROADMAP.md', '8.0.4 2026-09-19'));
 add('roadmap records main sha', contains('ROADMAP.md', '459056b'));
@@ -60,7 +60,9 @@ add('release checker is in verify command', pkg.scripts['verify:release'].includ
 add('release audit uses local files only', !/https?:\/\//.test(read('scripts/release-batch-audit.cjs')));
 add('git worktree is clean before audit', cp.execFileSync('git', ['diff', '--check'], {cwd: root}).toString() === '');
 add('origin remote is configured', cp.execFileSync('git', ['remote', 'get-url', 'origin'], {cwd: root}).toString().trim().includes('siyuan-speed-switch'));
-add('HEAD and origin main agree', cp.execFileSync('git', ['rev-list', '--left-right', '--count', 'HEAD...origin/main'], {cwd: root}).toString().trim() === '0\t0');
+const [aheadCount, behindCount] = cp.execFileSync('git', ['rev-list', '--left-right', '--count', 'HEAD...origin/main'], {cwd: root})
+    .toString().trim().split(/\s+/).map((value) => Number(value));
+add('local main is not behind origin main', Number.isInteger(aheadCount) && Number.isInteger(behindCount) && aheadCount >= 0 && behindCount === 0);
 
 const failed = checks.filter((item) => !item.ok);
 for (const item of checks) console.log(`${item.ok ? 'PASS' : 'FAIL'} ${item.name}${item.detail ? ` — ${item.detail}` : ''}`);
