@@ -151,6 +151,7 @@ export const HOME_STATE_KEY = "sw_home_state"; // 第二面板小组件实例与
 export const THUMB_CACHE_KEY = "sw_thumb_cache"; // 缩略图缓存：rootID → 文档 HTML 快照，页签关闭前一直保留
 export const FAV_COLLAPSED_KEY = "sw_fav_collapsed"; // 收藏下拉中已折叠的分组名（持久化，重启后保持展开/折叠状态）
 export const SCHEMA_VERSION_KEY = "sw_schema_version"; // 存储版本戳（D-401）：持久化 STORAGE_SCHEMA_VERSION，识别降级/未知版本
+export const RSS_READ_KEY = "sw_rss_read"; // RSS 已读状态（T-6685）：条目键 → 标记时间 ms，有界 200 条
 // 全部持久化 key 的唯一清单。加载（loadPersistentKeys）与容量测量都必须遍历它，
 // 不得在别处再列一遍——历史上两处各写一份，新增 key 时极易漏掉一处。
 // 与本仓 storage-migration.js 的 KEY_ORDER 同集，由 tests/data-change-refresh.test.cjs 锁定。
@@ -158,7 +159,7 @@ export const PERSISTENT_KEYS: readonly string[] = Object.freeze([
     MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY,
     FAV_GROUPS_KEY, FAV_COLLAPSED_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY,
     QUICK_ACTIONS_DEFAULTS_KEY, DOCUMENT_SETS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY,
-    SCHEMA_VERSION_KEY,
+    SCHEMA_VERSION_KEY, RSS_READ_KEY,
 ]);
 
 export const QUICK_ACTIONS_MAX = 12;

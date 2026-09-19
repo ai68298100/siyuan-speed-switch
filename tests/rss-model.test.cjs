@@ -233,3 +233,23 @@ test('buildRssSnapshot builds bounded list with title fallback chain', () => {
     assert.equal(titled.title, "我的源", "用户配置标题优先");
     assert.equal(buildRssSnapshot("<html></html>", {}, {}), null, "无效 feed 必须返回 null");
 });
+
+test('rss read state is bounded, corrupt-tolerant, and stable (T-6685)', () => {
+    const {normalizeRssReadState, rssItemKey, RSS_READ_STATE_MAX} = rss;
+    assert.equal(RSS_READ_STATE_MAX, 200);
+    // 损坏键/值剔除 + changed 标记
+    const dirty = normalizeRssReadState({version: 1, seen: {ok: 5, bad: 'x', '': 1, long: 'y'}, other: 1});
+    assert.deepEqual(Object.keys(dirty.seen), ['ok']);
+    assert.equal(dirty.changed, true);
+    // 超限按最旧剪除
+    const flood = {};
+    for (let index = 0; index < 260; index += 1) flood['k' + index] = index + 1;
+    const bounded = normalizeRssReadState({version: 1, seen: flood});
+    assert.equal(Object.keys(bounded.seen).length, RSS_READ_STATE_MAX);
+    assert.equal(bounded.seen['k0'], undefined, 'oldest entries are pruned first');
+    assert.equal(bounded.seen['k259'], 260);
+    // 条目键：link 优先，title 兜底，128 字符钳制
+    assert.equal(rssItemKey({link: 'https://a/1', title: '标题'}), 'https://a/1');
+    assert.equal(rssItemKey({title: '标题'}), '标题');
+    assert.equal(rssItemKey({link: 'x'.repeat(300)}).length, 128);
+});

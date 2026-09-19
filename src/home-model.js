@@ -157,6 +157,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showDate", label: "显示日期", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showFeedTitle", label: "显示来源名", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
+        {key: "hideRead", label: "只看未读", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-ical-events", title: "iCal 日程", icon: "iconCalendar", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "url", label: "iCal 订阅地址（.ics）", type: "text", defaults: ""},

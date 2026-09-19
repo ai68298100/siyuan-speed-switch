@@ -23,7 +23,7 @@ const indexCode = readSourceText(path.join(root, 'src', 'index.ts'));
 
 test('storage: every key is registered in constants.ts with a usage comment', () => {
     const keys = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "([a-z0-9_]+)";\s*\/\/\s*(.+)/g)];
-    assert.ok(keys.length >= 14, `expected at least 14 registered storage keys, found ${keys.length}`);
+    assert.ok(keys.length >= 15, `expected at least 15 registered storage keys, found ${keys.length}`);
     const keyNames = keys.map(([, name]) => name);
     assert.equal(new Set(keyNames).size, keyNames.length, 'duplicate key constant names');
     const rawIds = keys.map(([, , id]) => id);
@@ -89,6 +89,7 @@ test('storage: every persisted key has a sanitize path before use', () => {
         SETTINGS_KEY: ['normalizeSettings'],
         THUMB_CACHE_KEY: ['normalizeThumbCache'],
         SCHEMA_VERSION_KEY: ['stampStorageSchemaVersion'],
+        RSS_READ_KEY: ['normalizeRssReadState'],
     };
     const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "/g)].map((m) => m[1]);
     const unknown = Object.keys(sanitizeAllowlist).filter((key) => !registered.includes(key));

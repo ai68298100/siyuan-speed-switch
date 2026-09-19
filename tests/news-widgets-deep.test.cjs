@@ -98,7 +98,7 @@ test("news widget schemas stay semantic and bounded", () => {
     assert.deepEqual(byId.get("external-hot-news-dailyhot").configSchema.map((f) => f.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
     assert.deepEqual(byId.get("external-news-newsnow").configSchema.map((f) => f.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
     assert.deepEqual(byId.get("external-news-hackernews").configSchema.map((f) => f.key), ["board", "limit", "showMeta", "showTime"]);
-    assert.deepEqual(byId.get("external-rss-subscription").configSchema.map((f) => f.key), ["url", "title", "maxItems", "showDate", "showFeedTitle", "showRank"]);
+    assert.deepEqual(byId.get("external-rss-subscription").configSchema.map((f) => f.key), ["url", "title", "maxItems", "showDate", "showFeedTitle", "showRank", "hideRead"]);
     for (const id of ["external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-rss-subscription"]) {
         assert.ok(byId.get(id).configSchema.length <= 12, `${id} stays within the protocol v2 field budget`);
     }

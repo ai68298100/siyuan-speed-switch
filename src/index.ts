@@ -112,6 +112,7 @@ import {
     runWorkspacePlan,
 } from "./agent-workspace-plan";
 import {createWorkspaceHostHandlers} from "./agent-workspace-registry";
+import {normalizeRssReadState} from "./rss-model";
 
 import {
     auditAgentCapabilityDefinitions,
@@ -210,6 +211,7 @@ import {
     TAB_GROUP_MODE_DEFAULT,
     PERSISTENT_KEYS,
     SCHEMA_VERSION_KEY,
+    RSS_READ_KEY,
 } from "./constants";
 import {
     getSiyuan,
@@ -1075,6 +1077,24 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return {structuredContent: receipt, result: JSON.stringify(receipt)};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+    }
+
+    // T-6685 RSS 已读状态：宿主侧唯一读写点。读取返回归一化后的 seen 映射；
+    // 标记合并进当前状态后重新有界化（最旧剪除），去抖落盘。
+    public rssReadState(): Record<string, number> {
+        return normalizeRssReadState(this.data[RSS_READ_KEY]).seen;
+    }
+
+    public markRssItemsSeen(keys: string[]): void {
+        if (!Array.isArray(keys) || keys.length === 0) return;
+        const state = normalizeRssReadState(this.data[RSS_READ_KEY]);
+        const stamp = Date.now();
+        for (const key of keys) {
+            if (typeof key === "string" && key.length >= 1 && key.length <= 128) state.seen[key] = stamp;
+        }
+        const bounded = normalizeRssReadState(state);
+        this.data[RSS_READ_KEY] = bounded;
+        this.saveDataDebounced(RSS_READ_KEY);
     }
 
     // 只读取持久化 key、不产生任何写入：onload 与 onDataChanged 共用同一份清单，

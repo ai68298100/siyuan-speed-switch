@@ -20,6 +20,7 @@ const {capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, norma
 const {normalizeClosedEntries} = require("./recent-closed.js");
 const {sanitizeQuickActions, migrateQuickActionDefaults, QUICK_ACTION_DEFAULTS_VERSION} = require("./quick-actions.js");
 const {normalizeDocumentSets} = require("./document-sets.js");
+const {normalizeRssReadState} = require("./rss-model.js");
 
 // 与 constants.ts 的上限保持一致（一致性由 storage-migration 契约测试锁定）。
 const DEFAULT_LIMITS = Object.freeze({
@@ -49,6 +50,7 @@ const HANDLED_KEYS = Object.freeze([
     "sw_quick_actions_defaults",
     "sw_document_sets",
     "sw_thumb_cache",
+    "sw_rss_read",
 ]);
 
 const INSPECTED_KEYS = Object.freeze([
@@ -62,7 +64,7 @@ const META_KEYS = Object.freeze([
     "sw_schema_version",
 ]);
 
-// KEY_ORDER 由三个分类集拼接而来（总数恒为 14）。拼接保证了「分类集与报告
+// KEY_ORDER 由三个分类集拼接而来（总数恒为 15）。拼接保证了「分类集与报告
 // key 集合不可能漂移」——这是有意的：sw_thumb_cache 从 inspect 毕业到 handled
 // 时，报告里它的位置随之从第 13 位移到第 11 位（遵循 handled 分组），但 key
 // 集合与总数完全不变，totals 结构也不变，所以下游只读快照无需改动。
@@ -172,6 +174,11 @@ const HANDLERS = {
             removed: Math.max(0, removed),
             note: boundNote(status === "migrated" ? "document sets migrated to current schema version" : ""),
         };
+    },
+    "sw_rss_read": (value) => {
+        // T-6685 已读状态：委托 rss-model 归一化（有界 200 条、键 ≤128、时间戳合法）
+        const state = normalizeRssReadState(value);
+        return {value: state, status: state.changed ? "cleaned" : "kept", kept: Object.keys(state.seen).length, removed: 0, note: state.changed ? boundNote("read state bounded and normalized") : ""};
     },
     "sw_thumb_cache": (value, limits) => {
         // 读取侧归一化（D-392）：清洗规则全部由 normalizeThumbCache 提供，与宿主

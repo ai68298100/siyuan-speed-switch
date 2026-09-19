@@ -28,6 +28,9 @@ export type HomeExternalAdapterRegister = (
 export interface HomeExternalAdapterHost {
     i18n: Record<string, string>;
     fetchActivityWatchViaKernel: (url: string, init: {body?: string; headers?: Record<string, string>}) => Promise<any>;
+    // T-6685 RSS 已读状态（有界，宿主持久化 sw_rss_read）
+    rssReadState?: () => Record<string, number>;
+    markRssItemsSeen?: (keys: string[]) => void;
 }
 
 export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, register: HomeExternalAdapterRegister) {
@@ -291,7 +294,13 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     signal: context?.signal,
                     fetchImpl: (reqUrl: string, init: {body?: string; headers?: Record<string, string>}) => this.fetchActivityWatchViaKernel(reqUrl, init),
                 });
-                const snapshot = buildRssSnapshot(feed.text, normalized, {source: this.i18n.homeQuoteSource}, undefined, feed.status);
+                // T-6685 已读状态（有界，宿主持久化）：只看未读时先过滤，
+                // 展示键回传宿主标记（下次刷新视为已读）
+                const seen = typeof this.rssReadState === "function" ? this.rssReadState() : {};
+                const snapshot = buildRssSnapshot(feed.text, normalized, {source: this.i18n.homeQuoteSource}, undefined, feed.status, {
+                    seenLookup: (key: string) => Object.prototype.hasOwnProperty.call(seen, key),
+                    onSeen: (keys: string[]) => this.markRssItemsSeen?.(keys),
+                });
                 if (!snapshot) throw new Error("invalid_rss_payload");
                 return snapshot;
             } catch (error) {

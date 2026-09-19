@@ -1,6 +1,7 @@
 "use strict";
 
 // 单向依赖网络模块仅取 ECB 货币白名单常量（network 模块无副作用、无反向依赖）。
+const {rssItemKey} = require("./rss-model");
 const {FRANKFURTER_CURRENCIES} = require("./life-widget-network.js");
 
 const WEATHER_CONDITIONS = Object.freeze(["clear", "cloudy", "fog", "rain", "snow", "storm"]);
@@ -497,11 +498,21 @@ function buildIcalSnapshot(icsText, config, labels = {}, now = Date.now(), statu
 // 标题回退链：用户配置标题 → feed 自带标题 → 通用名。
 const {normalizeRssSubscriptionConfig, parseRssFeed, latestRssItems} = require("./rss-model.js");
 
-function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), status = "fresh") {
+function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), status = "fresh", context = {}) {
     const normalized = normalizeRssSubscriptionConfig(config);
     const parsed = parseRssFeed(feedText);
     if (!parsed.ok) return null;
-    const latest = latestRssItems(parsed.items, {maxItems: normalized.maxItems});
+    const latestAll = latestRssItems(parsed.items, {maxItems: normalized.maxItems});
+    // T-6685 只看未读：seenLookup 判已读；展示后经 onSeen 回传展示键（宿主落盘）
+    const identities = latestAll.map(rssItemKey);
+    const seenLookup = typeof context.seenLookup === "function" ? context.seenLookup : null;
+    const latest = [];
+    const visibleKeys = [];
+    latestAll.forEach((item, index) => {
+        if (normalized.hideRead && seenLookup && seenLookup(identities[index])) return;
+        latest.push(item);
+        visibleKeys.push(identities[index]);
+    });
     const pad = (n) => String(n).padStart(2, "0");
     const feedLabel = normalized.showFeedTitle && parsed.feedTitle && parsed.feedTitle !== normalized.title ? parsed.feedTitle : "";
     const items = latest.map((item, index) => {
@@ -518,6 +529,7 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
             rank: normalized.showRank ? index + 1 : undefined,
         };
     });
+    if (typeof context.onSeen === "function" && visibleKeys.length) context.onSeen(visibleKeys);
     items.push({label: `${boundedText(labels.source, 32) || "数据来源"}：RSS/Atom`, value: ""});
     return {
         title: normalized.title || parsed.feedTitle || boundedText(labels.title, 96) || "RSS 订阅",

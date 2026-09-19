@@ -29,6 +29,8 @@ function normalizeRssSubscriptionConfig(value) {
         showFeedTitle: source.showFeedTitle !== "否" && source.showFeedTitle !== false,
         showDate: source.showDate !== "否" && source.showDate !== false,
         showRank: source.showRank === "是" || source.showRank === true,
+        // T-6685：只看未读（opt-in）——已读状态经宿主持久化（sw_rss_read）
+        hideRead: source.hideRead === "是" || source.hideRead === true,
     };
 }
 
@@ -138,7 +140,33 @@ function latestRssItems(parsedItems, options = {}) {
     return withIndex.slice(0, max).map((entry) => entry.item);
 }
 
+// T-6685 已读状态（有界）：键=条目稳定标识（link 优先，title 兜底，≤128 字符），
+// 值=标记时间 ms；超限按时间最旧剪除。纯函数，宿主负责读写持久化 key。
+const RSS_READ_STATE_MAX = 200;
+
+function normalizeRssReadState(value) {
+    const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const seen = source.seen && typeof source.seen === 'object' && !Array.isArray(source.seen) ? source.seen : {};
+    const entries = Object.entries(seen).filter(([key, at]) =>
+        typeof key === 'string' && key.length >= 1 && key.length <= 128 && Number.isFinite(at) && Number(at) > 0);
+    entries.sort((left, right) => left[1] - right[1]);
+    const bounded = entries.slice(-RSS_READ_STATE_MAX);
+    const changed = source.version !== 1 || bounded.length !== entries.length
+        || Object.keys(seen).length !== entries.length
+        || bounded.some(([key, at]) => seen[key] !== at);
+    return {version: 1, seen: Object.fromEntries(bounded), changed};
+}
+
+function rssItemKey(item) {
+    const link = typeof item?.link === 'string' ? item.link.trim() : '';
+    const title = typeof item?.title === 'string' ? item.title.trim() : '';
+    return (link || title).slice(0, 128);
+}
+
 module.exports = {
+    RSS_READ_STATE_MAX,
+    normalizeRssReadState,
+    rssItemKey,
     MAX_PARSE_ITEMS,
     MAX_TITLE_CHARS,
     normalizeRssSubscriptionConfig,
