@@ -10,7 +10,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     const noteStats = byId.get("note-stats");
     assert.ok(noteStats, "note-stats registered");
     assert.deepEqual(noteStats.sizes, ["small", "medium"]);
-    assert.deepEqual(noteStats.configSchema.map((field) => field.key), ["notebook", "days", "primaryMetric", "showTrend"]);
+    assert.deepEqual(noteStats.configSchema.map((field) => field.key), ["notebook", "days", "primaryMetric", "showTrend", "showStrength"]);
     assert.equal(noteStats.configSchema.find((field) => field.key === "days").max, 90);
     const yearProgress = byId.get("year-progress");
     assert.ok(yearProgress, "year-progress registered");
@@ -161,11 +161,16 @@ test("writing insights use deep bounded models, single aggregate queries, and sh
         [slice("writing-streak", "countdown"), "buildWritingStreakSnapshot"],
         [slice("recent-writing-activity", "recent-daily-notes"), "buildRecentWritingActivitySnapshot"],
     ];
-    for (const [adapter, builder] of checks) {
+    for (const [adapter, builder] of checks.slice(1)) {
         assert.match(adapter, new RegExp(`${builder}\\(`));
         assert.match(adapter, /timeoutMs: 1200, cacheTtlMs: 1000/);
         assert.equal((adapter.match(/fetchKernelJson\("\/api\/query\/sql"/g) || []).length, 1, `${builder} uses one SQL request`);
     }
+    // T-6682：note-stats 的强度分（opt-in）允许恰好多一条有界按日查询——必须受
+    // normalized.showStrength 守卫（关闭时零额外请求），保持同一超时/缓存信封
+    assert.match(checks[0][0], /timeoutMs: 1200, cacheTtlMs: 1000/);
+    assert.equal((checks[0][0].match(/fetchKernelJson\("\/api\/query\/sql"/g) || []).length, 2, "note-stats adds at most one guarded daily query for strength");
+    assert.match(checks[0][0], /if \(normalized\.showStrength\) \{[\s\S]*?fetchKernelJson\("\/api\/query\/sql"/, "the daily query must be guarded by the showStrength opt-in");
     assert.match(checks[0][0], /previous_created/);
     assert.match(checks[1][0], /COUNT\(CASE WHEN type<>'d'/);
     assert.match(checks[2][0], /normalizeWritingStreakConfig\(config\)/);

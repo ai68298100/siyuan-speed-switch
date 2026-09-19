@@ -469,6 +469,36 @@ test('note stats projects a selectable primary metric and adjacent-window trend'
     assert.equal(model.normalizeNoteStatsConfig({days: 999}).days, 90);
 });
 
+test('note stats strength metric is opt-in, bounded, and smoothing-stable (T-6682)', () => {
+    const payload = {
+        docs: 120, chars: 34567, created: 4, updated: 6, previousCreated: 2, previousUpdated: 3,
+        daily: [
+            {day: '20260912', created: 1, updated: 2},
+            {day: '20260910', created: 0, updated: 0},
+            {day: '20260914', created: 2, updated: 1},
+        ],
+    };
+    // 关闭（默认）：零强度条目，payload.daily 被忽略
+    const off = model.buildNoteStatsSnapshot(payload, {days: 14, primaryMetric: '估算字数'}, {}, NOW);
+    assert.equal(off.items.some((item) => item.label === '写作强度'), false);
+    // 开启：乱序 daily 行按日期升序平滑，输出百分数与半衰期说明
+    const on = model.buildNoteStatsSnapshot(payload, {days: 14, primaryMetric: '估算字数', showStrength: '是'}, {
+        strength: '写作强度', strengthHalfLife: '半衰期',
+    }, NOW);
+    const strengthItem = on.items.find((item) => item.label === '写作强度');
+    assert.ok(strengthItem, 'strength item is appended when opted in');
+    assert.match(strengthItem.value, /^[0-9]+%$/);
+    assert.match(strengthItem.secondary, /14/);
+    // 乱序与升序必须同结果（模型内部排序，不信任上游顺序）
+    const reordered = model.buildNoteStatsSnapshot({...payload, daily: [...payload.daily].reverse()}, {days: 14, primaryMetric: '估算字数', showStrength: '是'}, {strength: '写作强度'}, NOW);
+    assert.equal(reordered.items.find((item) => item.label === '写作强度').value, strengthItem.value);
+    // 全空活动 → 强度 0%
+    const zero = model.buildNoteStatsSnapshot({...payload, daily: [{day: '20260910', created: 0, updated: 0}]}, {days: 14, primaryMetric: '估算字数', showStrength: true}, {strength: '写作强度'}, NOW);
+    assert.equal(zero.items.find((item) => item.label === '写作强度').value, '0%');
+    assert.equal(model.normalizeNoteStatsConfig({showStrength: true}).showStrength, true);
+    assert.equal(model.normalizeNoteStatsConfig({}).showStrength, false);
+});
+
 test('today writing exposes zero-safe details and clamps goal progress', () => {
     const snapshot = model.buildTodayWritingSnapshot({chars: 1500, blocks: 12, createdDocs: 2, updatedDocs: 3}, {goal: 1000}, {
         characters: '新增字符', blocks: '新增内容块', createdDocs: '新建文档', updatedDocs: '修订文档',

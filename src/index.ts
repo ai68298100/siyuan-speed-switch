@@ -3771,15 +3771,24 @@ const version = beginSearch(session);
             const previousStart = kernelStamp(previous);
             const json = await this.fetchKernelJson("/api/query/sql", {stmt: `SELECT COUNT(CASE WHEN type='d' THEN 1 END) AS docs, COALESCE(SUM(CASE WHEN type<>'d' THEN length ELSE 0 END), 0) AS chars, COUNT(CASE WHEN type='d' AND created >= '${currentStart}' THEN 1 END) AS created, COUNT(CASE WHEN type='d' AND updated >= '${currentStart}' AND created < '${currentStart}' THEN 1 END) AS updated, COUNT(CASE WHEN type='d' AND created >= '${previousStart}' AND created < '${currentStart}' THEN 1 END) AS previous_created, COUNT(CASE WHEN type='d' AND updated >= '${previousStart}' AND updated < '${currentStart}' AND created < '${previousStart}' THEN 1 END) AS previous_updated FROM blocks WHERE 1=1${notebookScope}`});
             const row = (json?.data || [])[0];
+            // T-6682 写作强度（opt-in）：仅在启用时追加一条按日有界查询（≤2×窗口行），
+            // 模型层以同一指数平滑口径（半衰期 14 天）计算强度；关闭时零额外请求
+            let daily: Array<{day: string; created: number; updated: number}> | undefined;
+            if (normalized.showStrength) {
+                const dailyJson = await this.fetchKernelJson("/api/query/sql", {stmt: `SELECT substr(created, 1, 8) AS day, COUNT(CASE WHEN type='d' THEN 1 END) AS created, COUNT(CASE WHEN type<>'d' THEN 1 END) AS updated FROM blocks WHERE created >= '${previousStart}'${notebookScope} GROUP BY substr(created, 1, 8) ORDER BY day LIMIT ${normalized.days * 2}`});
+                daily = (dailyJson?.data || []) as Array<{day: string; created: number; updated: number}>;
+            }
             const snapshot = buildNoteStatsSnapshot(row ? {
                 docs: row.docs, chars: row.chars, created: row.created, updated: row.updated,
                 previousCreated: row.previous_created, previousUpdated: row.previous_updated,
+                daily,
             } : null, normalized, {
                 title: this.i18n.homeNoteStats, documents: this.i18n.homeUnitDocs,
                 characters: this.i18n.homeCharEstimate, created: this.i18n.homeWritingNewDocs,
                 updated: this.i18n.homeWritingEditedDocs, trendUp: this.i18n.homeWritingTrendUp,
                 trendDown: this.i18n.homeWritingTrendDown, trendFlat: this.i18n.homeWritingTrendFlat,
                 trendNew: this.i18n.homeWritingTrendNew,
+                strength: this.i18n.homeWritingStrength, strengthHalfLife: this.i18n.homeWritingStrengthHalfLife,
             });
             if (!snapshot) throw new Error("invalid_note_stats");
             return snapshot;

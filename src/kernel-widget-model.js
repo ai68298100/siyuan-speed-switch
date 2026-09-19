@@ -1289,6 +1289,7 @@ function normalizeNoteStatsConfig(value) {
         days: clampInteger(source.days, 7, 90, 7),
         primaryMetric: source.primaryMetric === "估算字数" ? "估算字数" : "文档数",
         showTrend: source.showTrend !== "否" && source.showTrend !== false,
+        showStrength: source.showStrength === "是" || source.showStrength === true,
     };
 }
 
@@ -1327,6 +1328,22 @@ function buildNoteStatsSnapshot(payload, config, labels = {}, now = Date.now(), 
             trendLabel = template.replace("{value}", String(trend));
         }
         items.push({label: trendLabel, value: "", count: Math.abs(trend)});
+    }
+    // T-6682 写作强度（opt-in）：与 recent-writing-activity 同源的指数平滑——对
+    // "当日有无文档活动"二值信号按半衰期 14 天递推（k = 0.5^(1/14)），得 [0,1]
+    // 强度后取百分数。数据来自 adapter 追加的按日有界序列（payload.daily）。
+    if (normalized.showStrength && Array.isArray(payload.daily) && payload.daily.length) {
+        const k = Math.pow(0.5, 1 / 14);
+        let strength = 0;
+        for (const row of [...payload.daily].sort((left, right) => (left && left.day < right.day ? -1 : left && left.day > right.day ? 1 : 0))) {
+            const active = finiteCount(row && (row.activity ?? row.created ?? row.updated)) > 0 ? 1 : 0;
+            strength = strength * k + active * (1 - k);
+        }
+        items.push({
+            label: boundedText(labels.strength, 24) || "写作强度",
+            value: `${Math.round(strength * 100)}%`,
+            secondary: `${boundedText(labels.strengthHalfLife, 24) || "半衰期"} 14 天`,
+        });
     }
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "笔记统计", items, labels, now, status);
     snapshot.stat = normalized.primaryMetric === "估算字数"

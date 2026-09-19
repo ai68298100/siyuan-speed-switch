@@ -80,6 +80,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "days", label: "趋势窗口（天）", type: "number", min: 7, max: 90, defaults: 7},
         {key: "primaryMetric", label: "主指标", type: "select", options: ["文档数", "估算字数"], defaults: "文档数"},
         {key: "showTrend", label: "显示环比趋势", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showStrength", label: "显示写作强度", type: "select", options: ["是", "否"], defaults: "否"},
     ]},
     {moduleId: "year-progress", title: "年度进度", icon: "iconRefresh", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"], protocolVersion: 2, configSchema: [
         {key: "period", label: "统计周期", type: "select", options: ["年度", "季度", "月份"], defaults: "年度"},
