@@ -354,9 +354,15 @@
 
 // ==================== 减少动态效果（系统"减弱动态效果"开启时） ====================
 // 尊重用户系统设置：关闭插件自身的过渡与动画（不波及思源宿主元素）
+// T-6692b/B2：补齐设置弹窗（sw-settings-dialog）与移动切换器
+//（sw-mobile-switcher-dialog）两个此前未覆盖的插件根容器。
 @media (prefers-reduced-motion: reduce) {
     .speed-switch,
     .speed-switch *,
+    .sw-settings-dialog,
+    .sw-settings-dialog *,
+    .sw-mobile-switcher-dialog,
+    .sw-mobile-switcher-dialog *,
     .sw__fab,
     .sw__fab *,
     .sw__mobile-sheet-overlay,

@@ -43,6 +43,11 @@ test('interactive controls keep visible keyboard focus styles', () => {
     const homeCards = read('src/styles/_08-home-store-cards.scss');
     assert.ok(baseControls.includes(':focus-visible'), 'base controls must keep :focus-visible styling');
     assert.ok(homeCards.includes(':focus-visible'), 'home store cards must keep :focus-visible styling');
+    // T-6692b：设置弹窗与移动切换器两个插件根容器必须登记进 reduced-motion 全局块（B2）
+    const rmBlock = read('src/styles/_05-settings-widgets.scss');
+    assert.ok(rmBlock.includes('sw-settings-dialog'), 'settings dialog root must stay in the reduced-motion block');
+    assert.ok(rmBlock.includes('sw-mobile-switcher-dialog'), 'mobile switcher root must stay in the reduced-motion block');
+    assert.ok(rmBlock.includes('sw-mobile-switcher-dialog'), 'mobile switcher root must stay in the reduced-motion block');
 });
 
 test('async status regions keep aria-live semantics in both panels and search', () => {
