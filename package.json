@@ -12,6 +12,7 @@
     "test:smoke:layout": "node tests/mobile-toolbar-layout.cjs",
     "test:smoke:browser": "node tests/chromium-style-smoke.cjs",
     "verify:release": "pnpm exec tsc --noEmit && pnpm repro:audit && pnpm test && pnpm run release:check && pnpm run quality:audit && pnpm run integration:audit && pnpm test:smoke && pnpm test:smoke:layout && pnpm test:smoke:browser",
+    "readiness:snapshot": "node scripts/readiness-snapshot.cjs",
     "release:check": "node scripts/check-release-readiness.cjs",
     "release:audit": "node scripts/release-batch-audit.cjs",
     "quality:audit": "node scripts/quality-batch-audit.cjs",

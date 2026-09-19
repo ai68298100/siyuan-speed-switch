@@ -265,6 +265,15 @@ const CITY_TIME_ZONES = Object.freeze({
     "Vancouver": "America/Vancouver", "Sao Paulo": "America/Sao_Paulo",
     "Sydney": "Australia/Sydney", "Melbourne": "Australia/Melbourne", "Auckland": "Pacific/Auckland",
     "Perth": "Australia/Perth", "Brisbane": "Australia/Brisbane",
+    // T-6699 第四波：更多中国城市（大连/厦门等见上批）与世界补充
+    "东莞": "Asia/Shanghai", "佛山": "Asia/Shanghai", "无锡": "Asia/Shanghai", "宁波": "Asia/Shanghai",
+    "青岛": "Asia/Shanghai", "大连": "Asia/Shanghai", "厦门": "Asia/Shanghai", "乌鲁木齐": "Asia/Urumqi",
+    "拉萨": "Asia/Shanghai", "西宁": "Asia/Shanghai", "兰州": "Asia/Shanghai", "南宁": "Asia/Shanghai",
+    "Osaka": "Asia/Tokyo", "Nagoya": "Asia/Tokyo", "Fukuoka": "Asia/Tokyo", "Sapporo": "Asia/Tokyo",
+    "Budapest": "Europe/Budapest", "Belgrade": "Europe/Belgrade", "Munich": "Europe/Berlin", "Hamburg": "Europe/Berlin",
+    "Milan": "Europe/Rome", "Florence": "Europe/Rome", "Seattle": "America/Los_Angeles", "Houston": "America/Chicago",
+    "Atlanta": "America/New_York", "Phoenix": "America/Phoenix", "Montreal": "America/Toronto", "Lima": "America/Lima",
+    "Santiago": "America/Santiago", "Bogota": "America/Bogota", "Tel Aviv": "Asia/Jerusalem", "Doha": "Asia/Qatar",
     // T-6694b 第三波：中国更多城市与世界补充
     "青岛": "Asia/Shanghai", "大连": "Asia/Shanghai", "厦门": "Asia/Shanghai", "福州": "Asia/Shanghai",
     "合肥": "Asia/Shanghai", "郑州": "Asia/Shanghai", "长沙": "Asia/Shanghai", "哈尔滨": "Asia/Shanghai",
