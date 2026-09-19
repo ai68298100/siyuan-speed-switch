@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.23.4-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.23.5-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.23.4 makes the widget store's "Checkin summary" natively bridged — it used to be listed as a third-party provider widget, so the store kept showing "requires the 小驴打卡 plugin" even when the plugin was installed; it now shows ready as soon as 小驴打卡 is installed and enabled, aggregating done-today, best streak, days this month, pending today and a top-3 streak list (read-only, no network requests).
+> v0.23.5 is a stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
 
 > The current development head passes type checking, production build, 6297 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
@@ -166,9 +166,41 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.23.4`
+This release is published as `v0.23.5`
 
 ## Changelog
+
+### v0.23.5 (2026-09-19)
+
+- **A sync no longer reloads the whole plugin**: SiYuan reloads a plugin wholesale whenever its
+  stored data changes, and this plugin keeps 13 persistent keys — so every cross-device merge, or a
+  write from another window, destroyed the open switcher, the second panel and any running search
+  session (visible as flickering toolbar/dock icons and dialogs closing on their own). The plugin
+  now overrides `onDataChanged`: it only performs a bounded re-read plus a lazy refresh, and the
+  chain is forbidden from writing (a write broadcasts another data change and re-enters the same
+  hook, which is the loop this closes). Coalesced repeat broadcasts, manual refresh and forced
+  refresh all keep working.
+- **The desktop journal entry point no longer wedges**: the "choose journal notebook" dialog only
+  resolved its value from the Confirm/Cancel buttons, so closing it with Escape or by clicking the
+  backdrop left the awaiting chain hanging forever — the next journal click did nothing. Close now
+  funnels through the host `Dialog` `destroyCallback` on every platform.
+- **Ordering and the calendar stop losing content once many tabs are open**: kernel
+  `/api/query/sql` truncates to `search.limit` (default 64, floor 32) when a statement has no outer
+  `LIMIT`, and the plugin never read `truncated` from the response. Fixed the update-time query
+  behind "recently edited" (it also bypassed the whitelisted dispatcher and had no timeout), the
+  month calendar limit with a stable tiebreak, and both settings pickers (databases / documents).
+- **A dead data source no longer slows every refresh**: life widgets re-paid an up-to-10-second
+  timeout per cycle for unreachable endpoints. There is now a 20-second suppression window per
+  endpoint that falls back to the widget's existing stale/empty state, cleared immediately by any
+  success, including a manual refresh.
+- **Long-run stability**: all dialog teardown now uses the host `destroyCallback` (previously eight
+  places overrode host methods and polled `isConnected`), and `setInterval` is now absent from the
+  plugin sources. SiYuan gives plugin disable/unload a single shared 5-second teardown budget, and
+  polling timers were exactly the leak living beyond it.
+- **Internal**: added gates that validate against SiYuan's official API contract snapshot (request
+  and response shapes for the 25 kernel endpoints, dispatcher consistency, and explicit records of
+  where the measured host diverges from the contract), and consolidated the persisted key list into
+  a single source.
 
 ### v0.23.4 (2026-09-19)
 
