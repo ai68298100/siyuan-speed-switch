@@ -250,7 +250,10 @@ test('release readiness checker is read-only and validates both artifact snapsho
     assert.match(script, /readFileSync\(readinessPath/);
     assert.match(script, /statSync\(file\)/);
     assert.doesNotMatch(script, /writeFileSync|appendFileSync/);
-    assert.match(JSON.stringify(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))), /release:check/);
+    const verify = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts['verify:release'];
+    assert.match(verify, /release:check/);
+    assert.match(verify, /quality:audit/);
+    assert.match(verify, /integration:audit/);
 });
 
 test('release batch audit declares fifty bounded local checks', () => {

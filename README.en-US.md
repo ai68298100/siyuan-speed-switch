@@ -467,7 +467,7 @@ pnpm test               # run every unit, contract, and host release test (curre
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
-pnpm verify:release     # local release-candidate gate (typecheck, build, tests, and all three UI smokes)
+pnpm verify:release     # local release-candidate gate (typecheck, build, tests, release/quality/integration audits, and all three UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.

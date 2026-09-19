@@ -445,7 +445,7 @@ pnpm test               # 自动运行全部单元、契约与宿主发版测试
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、6302 项测试和三套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、6302 项测试、发布/质量/集成审计和三套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
