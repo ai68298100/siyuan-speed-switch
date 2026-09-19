@@ -59,6 +59,7 @@ function normalizeSettings(saved, options = {}) {
         sidebarLayout: normalizeEnum(source.sidebarLayout, options.sidebarLayout || [], defaults.sidebarLayout),
         fullscreen: panelSizeMode === "fullscreen",
         fabEnabled: bool("fabEnabled"),
+        agentActionsEnabled: bool("agentActionsEnabled"),
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),

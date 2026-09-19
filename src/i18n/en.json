@@ -662,6 +662,8 @@
   "setStorageTotal": "Total",
   "setStorageApprox": "APPROXIMATE UTF-8 bytes",
   "setStorageMeasuring": "Measuring…",
+  "agentActionsEnabled": "Agent controlled actions",
+  "agentActionsEnabledTip": "Disabling turns off controlled write/batch capabilities and the execution chain; read-only capabilities remain",
   "fabEnabled": "Floating button",
   "fabEnabledTip": "Off by default: show a floating action button on the bottom-right of the mobile screen to open the tab switcher; swipe up to hide, swipe down to show",
   "mobileLayout": "Card layout",

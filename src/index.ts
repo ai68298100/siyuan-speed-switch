@@ -529,6 +529,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     quickActionsCollapsedDesktopRight: false,
     quickActionsCollapsedSidebar: false,
     quickActionsCollapsedMobile: false,
+    agentActionsEnabled: true, // T-6692b 灰度开关：Agent 受控动作总开关（默认开）
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -570,6 +571,7 @@ export interface ISwSettings {
     quickActionsCollapsedDesktopRight: boolean;
     quickActionsCollapsedSidebar: boolean;
     quickActionsCollapsedMobile: boolean;
+    agentActionsEnabled: boolean; // T-6692b 受控动作总开关
 }
 
 export interface IGroupedTab {
@@ -885,6 +887,10 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // 受控导航（批量）：AI 一次打开最多 5 篇文档组成工作区。ADR 0063：批量动作
         // 声明 localWrite → 确认（含标题列表、超时=拒绝）由宿主 Agent 确认卡承担
+        // T-6692b 灰度开关：受控写入/批量动作受 agentActionsEnabled 总开关约束（默认开）；
+        // 关闭后仅保留只读能力与单文档导航（open-document），执行链一并停用
+        const agentActionsOn = this.getSettings().agentActionsEnabled !== false;
+        if (agentActionsOn) {
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.openDocuments,
             effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
@@ -983,7 +989,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 if (!appendJson || appendJson.code !== 0) return {error: "append failed"};
                 return {structuredContent: {ok: true, docId}, result: JSON.stringify({ok: true, docId})};
             },
-        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));        }
         this.registerWorkspacePlanCapabilities(pluginWithAgentAction);
         this.registerBuiltinHomeAdapters();
     }
@@ -1006,6 +1012,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             spec: WORKSPACE_EXECUTE_SPEC,
             effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
             handler: async (args: Record<string, unknown>) => {
+                // T-6692b 灰度开关：execute 受 agentActionsEnabled 约束（注册期一次性判定）
+                if (this.getSettings().agentActionsEnabled === false) return {error: "agent actions disabled"};
                 const plan = args?.plan && typeof args.plan === "object" ? args.plan : args;
                 if (!validateWorkspacePlan(plan).ok) return {error: "invalid plan"};
                 if (isWorkspacePlanExpired(plan)) return {error: "plan expired"};

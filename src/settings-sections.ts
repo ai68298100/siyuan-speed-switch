@@ -135,6 +135,11 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
         ];
         wrapper.append(this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
             this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))));
+        // T-6692b Agent 受控动作灰度开关：关闭后受控写入/批量动作与执行链一并停用
+        wrapper.append(this.settingItem(this.i18n.agentActionsEnabled, this.i18n.agentActionsEnabledTip,
+            this.switcher(s.agentActionsEnabled, (v) => {
+                this.updateSettings({agentActionsEnabled: v});
+            })));
         return wrapper;
     }
 

@@ -662,6 +662,8 @@
   "setStorageTotal": "合计",
   "setStorageApprox": "占用为近似 UTF-8 字节数",
   "setStorageMeasuring": "统计中…",
+  "agentActionsEnabled": "智能体受控动作",
+  "agentActionsEnabledTip": "关闭后受控写入与批量动作能力整体停用（含工作区执行链），只读能力保留",
   "fabEnabled": "启用悬浮按钮",
   "fabEnabledTip": "默认关闭：在手机屏幕右下角显示一个悬浮按钮，轻触即可打开页签切换器；上滑隐藏、下滑出现",
   "mobileLayout": "卡片布局",

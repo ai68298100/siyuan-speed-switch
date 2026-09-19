@@ -1084,7 +1084,7 @@ test("workspace plan execution chain is wired through the host route (T-6680, AD
         "the workspace plan capabilities registrar must exist and be invoked");
     assert.match(source, /WORKSPACE_PLAN_SPEC,/, "propose capability must use WORKSPACE_PLAN_SPEC");
     assert.match(source, /spec: WORKSPACE_EXECUTE_SPEC,/, "execute capability must use WORKSPACE_EXECUTE_SPEC");
-    assert.match(source, /effects: \{localRead: true, localWrite: true, dataEgress: false, externalCost: false\},\s*\r?\n\s*handler: async \(args: Record<string, unknown>\) => \{\s*\r?\n\s*const plan = args\?\.plan/,
+    assert.match(source, /effects: \{localRead: true, localWrite: true, dataEgress: false, externalCost: false\},[\s\S]{0,400}?const plan = args\?\.plan/,
         "execute capability must declare localWrite (host confirmation card = approval unit)");
     // 执行必须走契约模块状态机 + 固定动作注册表
     assert.match(source, /runWorkspacePlan\(plan, \{/, "execution must go through the runWorkspacePlan state machine");
@@ -1093,4 +1093,7 @@ test("workspace plan execution chain is wired through the host route (T-6680, AD
     // 自建审批管线符号禁止回流生产
     assert.doesNotMatch(source, /agent-workspace-bridge|ApprovalToken|WorkspaceApprovalChallenge/,
         "self-built approval pipeline symbols must stay retired");
+    // T-6692b 灰度开关：execute 处理器必须响应 agentActionsEnabled 总开关
+    assert.match(source, /if \(this\.getSettings\(\)\.agentActionsEnabled === false\) return \{error: "agent actions disabled"\};/,
+        "the execute capability must honor the agentActionsEnabled kill switch");
 });
