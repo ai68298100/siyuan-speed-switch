@@ -170,7 +170,9 @@ window.addEventListener('load', () => {
       };
       const effectiveBackground = (element) => {
         let node = element;
-        while (node && node !== document.documentElement) {
+        // 注意：documentElement 自身可能就是不透明背景的载体（夹具 :root 令牌），
+        // 必须包含在检查内，否则暗色主题下全部回落白色、比值恒为 ~1。
+        while (node) {
           const bg = parseColor(getComputedStyle(node).backgroundColor);
           if (bg && bg.a > 0.9) return bg;
           node = node.parentElement;
@@ -192,6 +194,8 @@ window.addEventListener('load', () => {
         itemLabel: '[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-label',
         docTitle: '.sw__doc-title',
         settingsTitle: '.sw-settings__item-title',
+        mediaSecondary: '.sw__home-media-secondary',
+        windowLabel: '.sw__window-label',
         // T-6697b 扩充面：日历节假日文本、来源健康徽章、文档路径辅助文本、时钟周期
         calendarHoliday: '.is-holiday .sw__home-calendar-primary',
         sourceHealthStale: '.sw__home-source-health.is-stale',
@@ -306,7 +310,7 @@ try {
             console.log("[" + pass.name + "] contrast " + name + ": " + ratio);
         }
         // T-6697b：普通文本一组 ≥4.5；节假日日历/过期徽章按次要与大字号线 ≥3 归入聚合
-        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath"].every((name) => (result.contrast[name] || 0) >= 4.5);
+        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath", "mediaSecondary", "windowLabel"].every((name) => (result.contrast[name] || 0) >= 4.5);
         const badgeTextOk = ["calendarHoliday", "sourceHealthStale"].every((name) => (result.contrast[name] || 0) >= 3);
         console.log("[" + pass.name + "] " + (normalTextOk && badgeTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
         if (!(normalTextOk && badgeTextOk)) contrastAllOk = false;
