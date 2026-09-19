@@ -29,6 +29,9 @@ test('CI and release workflows invoke the same core local gates', () => {
     assert.match(release, /SW_REQUIRE_PACKAGE:\s*["']?1["']?/,
         'release archive gate must require a generated package.zip');
     assert.match(release, /package\.zip/);
+    const checklist = fs.readFileSync(path.join(root, 'docs', 'gate-audit-checklist.md'), 'utf8');
+    assert.match(checklist, /构建产物两次构建对比已完成（T-6659/);
+    assert.doesNotMatch(checklist, /\| 构建产物无两次构建对比 \|/);
 });
 
 test('workflow gate diagnostics preserve explicit failure categories', () => {
