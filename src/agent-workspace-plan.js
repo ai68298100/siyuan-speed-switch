@@ -90,6 +90,17 @@ const WORKSPACE_PLAN_RECEIPT_SCHEMA = Object.freeze({
     additionalProperties: false,
 });
 
+// T-1219 执行链（ADR 0063 宿主路线）：整份计划是一次确认单元——本能力声明
+// localWrite，宿主确认卡展示计划内容，批准即按序执行并返回有界回执。
+// 输入即 workspace-plan 的输出（plan 对象）；过期与结构校验在执行侧强制。
+const WORKSPACE_EXECUTE_SPEC = Object.freeze({
+    name: "execute-workspace-plan",
+    title: "小驴雷切执行工作区计划",
+    description: "执行一份未过期的工作区计划：按序运行固定白名单动作（最多 8 步）并返回有界回执。整份计划是一次确认单元，取消/超时由宿主确认卡承担。",
+    inputSchema: WORKSPACE_PLAN_SPEC.outputSchema,
+    outputSchema: WORKSPACE_PLAN_RECEIPT_SCHEMA,
+});
+
 function buildWorkspacePlan(input, now = Date.now()) {
     const source = input && typeof input === "object" ? input : {};
     const createdAt = Number.isFinite(now) && now > 0 ? Math.floor(now) : Date.now();
@@ -224,4 +235,4 @@ function makePlanId(createdAt, steps) {
     return `wp-${createdAt.toString(36)}-${hash.toString(36)}`.slice(0, 32);
 }
 
-module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, validateWorkspacePlan, buildWorkspaceReceipt, runWorkspacePlan};
+module.exports = {MAX_PLAN_STEPS, MAX_PLAN_TTL_MS, PLAN_ACTIONS, WORKSPACE_PLAN_SPEC, WORKSPACE_EXECUTE_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, validateWorkspacePlan, buildWorkspaceReceipt, runWorkspacePlan};

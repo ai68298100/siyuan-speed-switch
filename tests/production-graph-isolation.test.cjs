@@ -11,17 +11,14 @@ const srcDir = path.join(root, 'src');
 // 归档硬上限已于 2026-09-15 由 320 KiB 上调至经审核的 512 KiB(D-353),
 // 余量约 225 KiB,因此预算不再是"无声涌入"式的风险,但仍须逐次评审。
 const UNWIRED_CONTRACT_MODULES = [
-    'agent-document-set-actions',
-    'agent-host-actions',
-    'agent-workspace-actions',
     'agent-workspace-capability-definitions',
-    'agent-workspace-plan',
     'agent-workspace-probe',
-    'agent-workspace-registry',
-    'agent-write-actions',
-    // ADR 0063（T-6677）已撤除的自建审批管线：approval-token / workspace-approval /
-    // workspace-execution / workspace-session / workspace-capability / workspace-bridge。
-    // 它们不再存在，也不会回潜入生产图；上方清单只保留仍待择优接入的契约模块。
+    // T-6680（ADR 0063 宿主路线）：agent-workspace-plan / agent-workspace-actions /
+    // agent-workspace-registry / agent-host-actions / agent-write-actions /
+    // agent-document-set-actions 六模块作为 propose/execute 双能力进入生产图；
+    // ADR 0063（T-6677）撤除的自建审批管线（approval-token / workspace-approval /
+    // workspace-execution / workspace-session / workspace-capability / workspace-bridge）
+    // 不再存在，也不会回潜入生产图。
 ];
 
 const WIRED_SANITY_MODULES = [
@@ -122,7 +119,10 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 2026-09-18 T-6308：air-quality-model 入图（空气质量组件），闭包 49→50。
     // 2026-09-18 T-6321~6328：kernel-widget-model 入图（内核数据组件群投影），闭包 50→51。
     // 2026-09-18 T-6376~6383：document-widget-model 入图（收藏/文档集/指定文档纯投影），闭包 51→52。
+    // 2026-09-20 T-6680（ADR 0063 宿主路线）：执行链六模块入图（plan/actions/registry/
+    // host-actions/write-actions/document-set-actions，propose+execute 双能力），闭包 52→58。
+    // 包体复核：raw 832 KiB 自律线余量 >30 KiB、zip 硬上限余量 >138 KiB（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 52, `production graph grew to ${graph.size} modules; audited ceiling is 52`);
+    assert.ok(graph.size <= 58, `production graph grew to ${graph.size} modules; audited ceiling is 58`);
 });

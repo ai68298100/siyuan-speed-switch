@@ -1075,3 +1075,22 @@ test("agent capabilities declare actionEffects per action name (ADR 0063)", () =
     assert.match(indexSource, /AGENT_CAPABILITY_SPECS\.openDocuments,\s*effects: \{localRead: true, localWrite: true/,
         "openDocuments production effects must declare localWrite for the host confirmation chain");
 });
+
+test("workspace plan execution chain is wired through the host route (T-6680, ADR 0063)", () => {
+    const {readSourceText} = require("./source-scan.cjs");
+    const source = readSourceText(require("node:path").join(__dirname, "..", "src", "index.ts"));
+    // propose 只读 + execute 整单确认的双能力必须接线
+    assert.match(source, /registerWorkspacePlanCapabilities/,
+        "the workspace plan capabilities registrar must exist and be invoked");
+    assert.match(source, /WORKSPACE_PLAN_SPEC,/, "propose capability must use WORKSPACE_PLAN_SPEC");
+    assert.match(source, /spec: WORKSPACE_EXECUTE_SPEC,/, "execute capability must use WORKSPACE_EXECUTE_SPEC");
+    assert.match(source, /effects: \{localRead: true, localWrite: true, dataEgress: false, externalCost: false\},\s*\r?\n\s*handler: async \(args: Record<string, unknown>\) => \{\s*\r?\n\s*const plan = args\?\.plan/,
+        "execute capability must declare localWrite (host confirmation card = approval unit)");
+    // 执行必须走契约模块状态机 + 固定动作注册表
+    assert.match(source, /runWorkspacePlan\(plan, \{/, "execution must go through the runWorkspacePlan state machine");
+    assert.match(source, /approved: true,/, "host-route execution treats the confirmation card as approval");
+    assert.match(source, /createWorkspaceHostHandlers\(\{/, "fixed actions must come from the contract registry");
+    // 自建审批管线符号禁止回流生产
+    assert.doesNotMatch(source, /agent-workspace-bridge|ApprovalToken|WorkspaceApprovalChallenge/,
+        "self-built approval pipeline symbols must stay retired");
+});

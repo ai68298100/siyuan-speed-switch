@@ -102,6 +102,16 @@ import {
     registerAgentActionCapability,
 } from "./agent-capabilities";
 import {createWorkspaceRuntimeDiagnostics} from "./agent-workspace-diagnostics";
+// T-1219 执行链（ADR 0063 宿主路线）：propose 只读 + execute 整单一次确认
+import {
+    WORKSPACE_PLAN_SPEC,
+    WORKSPACE_EXECUTE_SPEC,
+    buildWorkspacePlan,
+    isWorkspacePlanExpired,
+    validateWorkspacePlan,
+    runWorkspacePlan,
+} from "./agent-workspace-plan";
+import {createWorkspaceHostHandlers} from "./agent-workspace-registry";
 
 import {
     auditAgentCapabilityDefinitions,
@@ -970,7 +980,101 @@ export default class SpeedSwitchPlugin extends Plugin {
                 return {structuredContent: {ok: true, docId}, result: JSON.stringify({ok: true, docId})};
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+        this.registerWorkspacePlanCapabilities(pluginWithAgentAction);
         this.registerBuiltinHomeAdapters();
+    }
+
+    // T-1219 执行链（ADR 0063 宿主路线）：
+    // - propose（只读，localRead）：把请求步骤归一化为固定白名单动作计划（≤8 步、带过期），不执行；
+    // - execute（localWrite）：整份计划是一次确认单元——宿主确认卡展示计划并承担批准/超时/取消，
+    //   批准后按序执行并返回有界回执。结构/过期校验在执行侧强制；单步失败不阻断其余步骤。
+    private registerWorkspacePlanCapabilities(pluginWithAgent: {addAgentCapability?: (options: Record<string, unknown>) => string}) {
+        registerReadOnlyAgentCapabilities(pluginWithAgent, [{
+            spec: WORKSPACE_PLAN_SPEC,
+            handler: async (args: Record<string, unknown>) => {
+                const plan = buildWorkspacePlan(args);
+                if (!plan || !plan.steps.length) return {error: "no valid steps"};
+                return {structuredContent: plan, result: JSON.stringify(plan)};
+            },
+        }], (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
+
+        registerAgentActionCapability(pluginWithAgent, {
+            spec: WORKSPACE_EXECUTE_SPEC,
+            effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
+            handler: async (args: Record<string, unknown>) => {
+                const plan = args?.plan && typeof args.plan === "object" ? args.plan : args;
+                if (!validateWorkspacePlan(plan).ok) return {error: "invalid plan"};
+                if (isWorkspacePlanExpired(plan)) return {error: "plan expired"};
+                const handlers = createWorkspaceHostHandlers({
+                    navigation: {
+                        isMobile: this.isMobile, app: this.app, openTab,
+                        tabs: getSiyuan()?.mobile?.tabs, logger,
+                    },
+                    documentSet: {
+                        getSet: (setId: string) => {
+                            const sets = normalizeDocumentSets(this.data[DOCUMENT_SETS_KEY]).sets as Array<{setId?: string}>;
+                            return sets.find((item) => item.setId === setId) || null;
+                        },
+                        openDocument: (rootId: string) =>
+                            this.isMobile ? this.mobileOpenDoc(rootId) : openDocumentOnDesktop({rootId, app: this.app, openTab, logger}),
+                    },
+                    write: {
+                        readTask: async (id: string) => {
+                            const json = await this.fetchKernelJson("/api/query/sql", {
+                                stmt: `SELECT markdown, content FROM blocks WHERE id='${id}' AND type='p'`,
+                            });
+                            return (json?.data || [])[0];
+                        },
+                        updateBlock: async (id: string, markdown: string) => {
+                            const json = await this.fetchKernelJson("/api/block/updateBlock", {
+                                dataType: "markdown", data: this.clampTaskWritePayload(markdown), id,
+                            });
+                            return !!json && json.code === 0;
+                        },
+                        createDocument: async (payload: {notebook: string; title: string; markdown: string}) => {
+                            const notebooks = await this.loadNotebooks();
+                            const target = normalizeAgentNotebookId(payload.notebook)
+                                ? notebooks.find((nb) => nb.id === payload.notebook)
+                                : notebooks.find((nb) => nb.name === payload.notebook);
+                            if (!target) return {docId: ""};
+                            const created = await this.fetchKernelJson("/api/filetree/createDocWithMd", {
+                                notebook: target.id, path: payload.title, markdown: payload.markdown,
+                            });
+                            if (!created || created.code !== 0) return {docId: ""};
+                            // createDocWithMd 不回传 ID：按标题回查最近创建的同名根文档
+                            const locate = await this.fetchKernelJson("/api/query/sql", {
+                                stmt: `SELECT id FROM blocks WHERE type='d' AND content='${payload.title.split("'").join("''")}' ORDER BY created DESC LIMIT 1`,
+                            });
+                            return {docId: (locate?.data || [])[0]?.id || ""};
+                        },
+                        ensureJournal: (notebook: string) => this.ensureTodayJournal(notebook),
+                        appendBlock: async (docId: string, content: string) => {
+                            const json = await this.fetchKernelJson("/api/block/appendBlock", {
+                                dataType: "markdown", data: content, parentID: docId,
+                            });
+                            return !!json && json.code === 0;
+                        },
+                        notebook: normalizeAgentNotebookId(this.getSettings().journalNotebook),
+                    },
+                });
+                const actionMap: Record<string, (step: Record<string, unknown>, context: {signal?: AbortSignal}) => Promise<unknown>> = {
+                    "open-document": handlers.openDocument,
+                    "open-documents": handlers.openDocuments,
+                    "restore-document-set": handlers.restoreDocumentSet,
+                    "update-task-status": handlers.updateTaskStatus,
+                    "create-document": handlers.createDocument,
+                    "append-to-journal": handlers.appendToJournal,
+                };
+                const receipt = await runWorkspacePlan(plan, {
+                    approved: true, // 宿主确认卡即审批：本能力声明 localWrite，批准/超时/取消由宿主承担
+                    runStep: async (step: Record<string, unknown>) => {
+                        const handler = actionMap[String(step.action)];
+                        return handler ? handler(step, {}) : {status: "failed", reason: "unsupported_action"};
+                    },
+                });
+                return {structuredContent: receipt, result: JSON.stringify(receipt)};
+            },
+        }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
     }
 
     // 只读取持久化 key、不产生任何写入：onload 与 onDataChanged 共用同一份清单，
