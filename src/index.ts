@@ -2315,19 +2315,23 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 全屏模式：切换器铺满整个窗口（Esc 退出由思源 Dialog 默认行为提供）
         const fullscreen = settings.fullscreen;
 
-        const dialog = this.createSwitcherDialog(settings, fullscreen);
+        // T-6481：Dialog 的 destroyCallback 必须在构造时就成型，而资源是在后续装配方法里
+        // 创建的，故用一个可变 holder 把两者接起来（宿主只认构造参数）。
+        const switcherRelease: {fn: () => void} = {fn: () => undefined};
+        const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease);
         // 宸ュ叿鏍?鍒楄〃/鍥炲埌椤堕儴/缂╃暐鍥炬噿鍔犺浇 绛夊瓙妯″潡瑁呴厤
-        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab);
+        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease);
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
-    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean): Dialog {
+    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean, release: {fn: () => void}): Dialog {
         const size = this.resolvePanelDialogSize(settings, fullscreen);
         return new Dialog({
             title: "",
             content: this.buildSwitcherHtml(fullscreen),
             width: `${size.width}px`,
             height: `${size.height}px`,
+            destroyCallback: () => release.fn(),
         });
     }
 
@@ -2399,6 +2403,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         fullscreen: boolean,
         tabs: Tab[],
         activeTab: Tab | undefined,
+        release: {fn: () => void},
     ) {
         this.prepareSwitcherChrome(dialog, fullscreen);
 
@@ -2468,15 +2473,16 @@ const updatedMap: {[rootId: string]: string} = {};
             ? bindDocSearchFilter.call(this, dialog.element, scrollElement, searchInput, closeOverlay)
             : () => undefined;
         const disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
-        const originalDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
+        let switcherReleased = false;
+        release.fn = () => {
+            if (switcherReleased) return;
+            switcherReleased = true;
             unregisterRefresh();
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
             disposeSearchFilter();
             disposeHistoryDropdown();
             disposeDocSearchSession.call(this, scrollElement);
-            originalDestroy();
         };
 
         this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);

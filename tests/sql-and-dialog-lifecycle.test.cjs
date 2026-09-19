@@ -108,9 +108,8 @@ test("no interval-based dialog disposal polling remains", () => {
 // 仍在覆写 dialog.destroy 的文件与数量（按文件计数，避免行号漂移造成假失败）。
 // 每条都要有理由与跟进任务；修掉一处就删一处。
 const DIALOG_DESTROY_OVERRIDES = [
-    {file: "src/index.ts", count: 2, why: "切换器弹窗多资源回收；suspendFABForDialog 包装任意弹窗需改显式配对", trackedBy: "T-6481"},
-    {file: "src/mobile-switcher-ui.ts", count: 1, why: "含 body 级 portal 拆除，需随 owner 一起迁", trackedBy: "T-6481"},
-    {file: "src/second-panel-ui.ts", count: 1, why: "批量刷新控制器与观察器随面板销毁", trackedBy: "T-6481"},
+    {file: "src/index.ts", count: 1, why: "suspendFABForDialog 包装任意弹窗，需改为显式配对（onDestroy 参数已在）", trackedBy: "T-6481"},
+    {file: "src/mobile-switcher-ui.ts", count: 1, why: "dialog 由 index.ts 构造后传入，需 holder 机制并扩 this 类型契约", trackedBy: "T-6481"},
 ];
 
 test("remaining dialog.destroy overrides match the recorded debt list", () => {

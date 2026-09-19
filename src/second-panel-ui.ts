@@ -57,11 +57,14 @@ export function openSecondPanel(this: SecondPanelUiHost) {
                     ? resolvePanelSize({...settings, panelSizeMode: "custom", dialogWidth: settings.homeWidth, dialogHeight: settings.homeHeight}, viewport)
                     : this.resolvePanelDialogSize(settings, settings.fullscreen);
         const fullscreenMode = mode === "fullscreen" || (mode === "follow" && settings.panelSizeMode === "fullscreen");
+        // T-6481：面板资源释放挂宿主 destroyCallback（构造与装配同函数，用可变 holder 前置声明）。
+        let releasePanel: () => void = () => undefined;
         const dialog = new Dialog({
             title: this.i18n.secondPanel,
             content: '<div class="speed-switch sw-home"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
+            destroyCallback: () => releasePanel(),
         });
         if (fullscreenMode) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
@@ -667,8 +670,10 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         };
         this.homeModuleChangeListeners.add(handleModuleChange);
 
-        const originalDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
+        let panelReleased = false;
+        releasePanel = () => {
+            if (panelReleased) return;
+            panelReleased = true;
             clearDeferredRefreshes();
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
@@ -678,7 +683,6 @@ export function openSecondPanel(this: SecondPanelUiHost) {
             panelEventCleanup?.();
             panelEventCleanup = null;
             this.homeModuleChangeListeners.delete(handleModuleChange);
-            originalDestroy();
         };
         renderPanel();
         scheduleIconClamp();
