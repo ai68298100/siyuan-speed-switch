@@ -249,6 +249,10 @@ test('release readiness matrix matches generated artifact sizes', () => {
     // keep a tight 1 KiB drift guard while avoiding false failures on Actions.
     assert.ok(metrics.withinDrift(Number(packageMatch[1]), archiveBytes),
         `package.zip size drift exceeds 1 KiB: documented ${packageMatch[1]}, actual ${archiveBytes}`);
+    assert.match(readiness, /v0\.23\.5 发布后开发头/);
+    assert.match(readiness, /51 个组件完成完整评分卡/);
+    assert.match(readiness, /T-6476~T-6663/);
+    assert.doesNotMatch(readiness, /前 43 个组件/);
 });
 
 test('release readiness checker is read-only and validates both artifact snapshots', () => {
