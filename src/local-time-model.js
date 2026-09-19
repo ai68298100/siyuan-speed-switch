@@ -231,11 +231,33 @@ function isValidTimeZone(timeZone) {
     }
 }
 
+// T-6690 离线城市表：常见城市中文名 → IANA 时区（纯静态、零网络、约 45 城）。
+// 目标是让 `cities` 文本字段可以直接写中文城市名（如 "上海,东京,纽约"），
+// 免去手打 IANA ID；已是合法 IANA 的条目原样直通，未知名称沿用既有丢弃语义。
+const CITY_TIME_ZONES = Object.freeze({
+    "北京": "Asia/Shanghai", "上海": "Asia/Shanghai", "深圳": "Asia/Shanghai", "广州": "Asia/Shanghai",
+    "成都": "Asia/Shanghai", "杭州": "Asia/Shanghai", "武汉": "Asia/Shanghai", "西安": "Asia/Shanghai",
+    "重庆": "Asia/Shanghai", "南京": "Asia/Shanghai",
+    "香港": "Asia/Hong_Kong", "澳门": "Asia/Macau", "台北": "Asia/Taipei",
+    "东京": "Asia/Tokyo", "首尔": "Asia/Seoul", "新加坡": "Asia/Singapore", "曼谷": "Asia/Bangkok",
+    "吉隆坡": "Asia/Kuala_Lumpur", "雅加达": "Asia/Jakarta", "新德里": "Asia/Kolkata", "孟买": "Asia/Kolkata",
+    "迪拜": "Asia/Dubai", "利雅得": "Asia/Riyadh",
+    "伦敦": "Europe/London", "巴黎": "Europe/Paris", "柏林": "Europe/Berlin", "罗马": "Europe/Rome",
+    "马德里": "Europe/Madrid", "阿姆斯特丹": "Europe/Amsterdam", "苏黎世": "Europe/Zurich",
+    "斯德哥尔摩": "Europe/Stockholm", "莫斯科": "Europe/Moscow", "伊斯坦布尔": "Europe/Istanbul",
+    "纽约": "America/New_York", "洛杉矶": "America/Los_Angeles", "旧金山": "America/Los_Angeles",
+    "芝加哥": "America/Chicago", "丹佛": "America/Denver", "多伦多": "America/Toronto",
+    "温哥华": "America/Vancouver", "圣保罗": "America/Sao_Paulo",
+    "布宜诺斯艾利斯": "America/Argentina/Buenos_Aires",
+    "悉尼": "Australia/Sydney", "墨尔本": "Australia/Melbourne", "奥克兰": "Pacific/Auckland",
+});
+
 function normalizeWorldClockConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const raw = typeof source.cities === "string" ? source.cities : "";
     const zones = [...new Set(raw.split(/[,，;；\s]+/)
         .map((item) => item.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 64))
+        .map((item) => (CITY_TIME_ZONES[item] !== undefined ? CITY_TIME_ZONES[item] : item))
         .filter((item) => isValidTimeZone(item)))]
         .slice(0, WORLD_CLOCK_MAX_CITIES);
     return {cities: zones, hour12: source.hourFormat === "12 小时制"};
@@ -319,4 +341,5 @@ function millisecondsToNextSecond(now = Date.now()) {
     return Math.min(1025, Math.max(25, 1000 - remainder + 25));
 }
 
-module.exports = {normalizeClockLocale, buildLocalTimeSnapshot, normalizeLocalTimeConfig, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, millisecondsToNextSecond, normalizeYearProgressConfig, buildYearProgressSnapshot, normalizeCountdownConfig, buildCountdownSnapshot, WORLD_CLOCK_MAX_CITIES};
+module.exports = {
+    CITY_TIME_ZONES,normalizeClockLocale, buildLocalTimeSnapshot, normalizeLocalTimeConfig, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, millisecondsToNextSecond, normalizeYearProgressConfig, buildYearProgressSnapshot, normalizeCountdownConfig, buildCountdownSnapshot, WORLD_CLOCK_MAX_CITIES};

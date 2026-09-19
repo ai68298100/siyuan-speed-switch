@@ -94,7 +94,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "emphasis", label: "数字大小", type: "select", options: ["标准", "大", "特大"], defaults: "标准"},
     ]},
     {moduleId: "external-world-clock", title: "世界时钟", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
-        {key: "cities", label: "城市时区（IANA，逗号分隔，如 Asia/Shanghai）", type: "text", defaults: ""},
+        {key: "cities", label: "城市（中文名或 IANA，逗号分隔，如 上海,东京）", type: "text", defaults: ""},
         {key: "hourFormat", label: "小时制", type: "select", options: ["24 小时制", "12 小时制"], defaults: "24 小时制"},
     ]},
     {moduleId: "external-weather-open-meteo", title: "近期天气", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide", "large"], protocolVersion: 2, configSchema: [

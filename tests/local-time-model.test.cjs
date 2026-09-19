@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {normalizeClockLocale, buildLocalTimeSnapshot, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, WORLD_CLOCK_MAX_CITIES} = require("../src/local-time-model.js");
+const {normalizeClockLocale, buildLocalTimeSnapshot, normalizeWorldClockConfig, buildWorldClockSnapshot, millisecondsToNextMinute, WORLD_CLOCK_MAX_CITIES, CITY_TIME_ZONES} = require("../src/local-time-model.js");
 
 test("clock locale keeps a supported BCP 47 tag", () => assert.equal(normalizeClockLocale("en-US"), "en-US"));
 test("clock locale converts underscores used by SiYuan", () => assert.equal(normalizeClockLocale("zh_CN"), "zh-CN"));
@@ -65,3 +65,15 @@ test("world clock stat mirrors the first row", () => {
     assert.equal(snapshot.stat.value, snapshot.items[0].value);
 });
 test("world clock safely handles invalid Date", () => assert.doesNotThrow(() => buildWorldClockSnapshot(new Date("bad"), {cities: "Asia/Shanghai"})));
+
+test('world clock cities accept offline Chinese city names via the built-in table (T-6690)', () => {
+    // 中文名 → IANA 自动解析；合法 IANA 直通；未知名称沿用丢弃语义
+    const normalized = normalizeWorldClockConfig({cities: '上海, 东京，纽约，Europe/London，亚特兰蒂斯'});
+    assert.deepEqual(normalized.cities, ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'Europe/London']);
+    // 重复（中文与 IANA 混写指向同一时区）去重
+    const deduped = normalizeWorldClockConfig({cities: '上海,Asia/Shanghai'});
+    assert.deepEqual(deduped.cities, ['Asia/Shanghai']);
+    // 表为纯静态：非城市名不误映射
+    assert.equal(CITY_TIME_ZONES['亚特兰蒂斯'], undefined);
+    assert.ok(CITY_TIME_ZONES['北京']);
+});
