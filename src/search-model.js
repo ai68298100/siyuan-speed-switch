@@ -442,22 +442,50 @@ function buildTabMeta(tab, index) {
  * flat on large tab sets; the grapheme-safe heavy normalization only runs
  * for matched items that actually get emitted.
  */
+// T-6700 本地页签过滤查询词法：
+//   - 空格分隔多词 = AND（全部命中才保留）；
+//   - `-前缀` = 排除词（命中即整条过滤）；
+//   - `"双引号短语"` = 保留空格的整体匹配。
+// 纯函数；单关键词行为与旧版完全一致（向后兼容）。
+function parseSearchTerms(query, maxTerms = 16) {
+    const raw = normalizeSearchQuery(query);
+    const includes = [];
+    const excludes = [];
+    if (!raw) return {includes, excludes};
+    const tokens = raw.match(/"[^"]*"|\S+/g) || [];
+    for (const token of tokens.slice(0, maxTerms)) {
+        if (token.startsWith('"')) {
+            const phrase = token.slice(1, -1).trim().toLowerCase();
+            if (phrase) includes.push(phrase);
+            continue;
+        }
+        if (token.startsWith("-") && token.length > 1) {
+            excludes.push(token.slice(1).toLowerCase());
+            continue;
+        }
+        includes.push(token.toLowerCase());
+    }
+    return {includes, excludes};
+}
+
 function filterOpenTabs(tabs, query, filters = {}) {
-    const keyword = normalizeSearchQuery(query).toLowerCase();
+    const terms = parseSearchTerms(query);
     const notebook = normalizeText(filters?.notebook, 64);
     const paths = normalizeSearchPaths(filters?.paths);
     if (!Array.isArray(tabs)) return [];
     const items = [];
     tabs.forEach((tab, index) => {
         if (!tab || typeof tab !== "object") return;
-        if (keyword) {
+        if (terms.includes.length || terms.excludes.length) {
             const loosePath = firstLooseText(tab.hPath, tab.path, tab.rootPath);
             const looseRootId = firstLooseText(tab.rootId, tab.rootID, tab.root_id, tab.documentId, tab.docId)
                 || (BLOCK_ID_RE.test(pathBase(loosePath)) ? pathBase(loosePath) : "");
             const looseTitle = firstLooseText(tab.title, tab.name, tab.label)
                 || pathBase(loosePath) || looseRootId || String(tab.id || index);
             const loose = looseNeedle(`${looseTitle} ${loosePath}`);
-            if (!loose.includes(keyword)) return;
+            // T-6700 查询词法：所有包含词都必须命中（AND 语义）；任一排除词命中即整条过滤
+            if (terms.includes.some((needle) => !loose.includes(needle))) return;
+            if (terms.excludes.some((needle) => loose.includes(needle))) return;
         }
         const meta = buildTabMeta(tab, index);
         if (notebook && meta.notebookId !== notebook) return;
@@ -996,6 +1024,7 @@ module.exports = {
     aggregateSearchResults,
     groupSearchResults,
     filterOpenTabs,
+    parseSearchTerms,
     isSemanticEmbeddingConfigured,
     mergeSearchLayers,
     shouldSearchRemote,

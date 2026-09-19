@@ -755,3 +755,28 @@ test("search model: planDocResultsPage treats non-finite expandedCount as render
     assert.equal(plan.hasMore, false);
     assert.deepEqual(Object.keys(plan).sort(), ["hasMore", "items", "totalVisible"]);
 });
+
+test('local tab filter supports query terms: AND, exclusion, phrases (T-6700)', () => {
+    const {parseSearchTerms, filterOpenTabs} = require('../src/search-model.js');
+    // 词法：包含词 + 排除词 + 短语
+    assert.deepEqual(parseSearchTerms('hello world -gone'), {includes: ['hello', 'world'], excludes: ['gone']});
+    assert.deepEqual(parseSearchTerms('"two words" -x'), {includes: ['two words'], excludes: ['x']});
+    assert.deepEqual(parseSearchTerms(''), {includes: [], excludes: []});
+    // 大小写归一
+    assert.deepEqual(parseSearchTerms('HeLLo').includes, ['hello']);
+    // 过滤语义：AND / 排除 / 空查询
+    const tabs = [
+        {id: '1', title: 'Roadmap 规划', hPath: '/n/roadmap'},
+        {id: '2', title: '周报', hPath: '/n/weekly'},
+        {id: '3', title: 'Roadmap 周报', hPath: '/n/mix'},
+    ];
+    const keep = (q) => filterOpenTabs(tabs, q, {}).map((item) => item.tab.id);
+    assert.deepEqual(keep('roadmap 周报'), ['3'], 'two terms behave as AND');
+    assert.deepEqual(keep('roadmap -周报'), ['1'], 'excluded term drops matching tabs');
+    assert.deepEqual(keep('"map 规"'), ['1'], 'phrase matches the substring of tab 1 title');
+    assert.deepEqual(keep('"p 规划"'), ['1'], 'phrase matches partial words');
+    assert.deepEqual(keep(''), ['1', '2', '3'], 'empty query keeps all tabs');
+    // 超过 16 个词法项被钳制（防退化长查询）
+    const flood = parseSearchTerms(Array.from({length: 40}, (_, i) => `t${i}`).join(' '));
+    assert.equal(flood.includes.length + flood.excludes.length, 16, 'terms clamp at 16');
+});
