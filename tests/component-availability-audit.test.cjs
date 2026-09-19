@@ -28,12 +28,12 @@ test("every built-in widget has exactly one runtime adapter", () => {
     }
 });
 
-test("third-party catalog entries are intentionally provider-backed and not local adapters", () => {
+test("third-party catalog entries are provider-backed and natively bridged", () => {
     assert.deepEqual(catalog.WIDGET_CATALOG.map((entry) => entry.moduleId), ["checkin-summary"]);
     for (const entry of catalog.WIDGET_CATALOG) {
         assert.match(entry.providerPlugin, /^[A-Za-z0-9._-]+$/);
         assert.ok(entry.providerName && entry.description);
-        assert.equal(registeredIds.includes(entry.moduleId), false);
+        assert.equal(registeredIds.includes(entry.moduleId), true);
     }
 });
 
