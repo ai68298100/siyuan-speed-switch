@@ -6,9 +6,31 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const ZipPlugin = require("zip-webpack-plugin");
 const pluginManifest = require("./plugin.json");
-// Construct local midnight so yazl's local Date getters emit DOS time=0 on
-// every builder timezone, while the calendar date remains ZIP's epoch.
-const RELEASE_ZIP_MTIME = new Date(1980, 0, 1, 0, 0, 0, 0);
+// T-6474：归档时间戳从 1980 纪元改为发版提交时间（SOURCE_DATE_EPOCH 模式）。
+// 固定 1980 纪元曾有一个真实代价——思源集市解压安装保留 zip 条目时间，装出的
+// 文件 mtime=1980，比云同步索引里任何文件都旧；WebDAV 同步按 mtime 判定"云端
+// 更新"并下载覆盖，用户装好的版本被回滚（仅本插件：只有我们的构建管线用固定
+// 纪元；其他插件作者的 zip 是真实构建时间）。改用提交时间后：同一提交的连续
+// 构建仍逐字节一致（可复现性保持），且安装文件的 mtime 足够新，同步会上传而
+// 非回滚。git 不可用时回退到 2026-01-01（仍远离纪元，防回归）。
+function resolveReleaseZipMtime() {
+    try {
+        const committedAtSeconds = Number.parseInt(
+            require("child_process").execSync("git log -1 --format=%ct", {
+                encoding: "utf8",
+                stdio: ["ignore", "pipe", "ignore"],
+            }).trim(),
+            10,
+        );
+        if (Number.isFinite(committedAtSeconds) && committedAtSeconds > 0) {
+            return new Date(committedAtSeconds * 1000);
+        }
+    } catch (_) {
+        // git 不可用（导出树/无仓库）：回退到稳定的非纪元默认值
+    }
+    return new Date(2026, 0, 1, 0, 0, 0, 0);
+}
+const RELEASE_ZIP_MTIME = resolveReleaseZipMtime();
 
 const packageImagePatterns = [
     ["icon", "icon.png"],

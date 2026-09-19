@@ -44,18 +44,28 @@ test('build metadata does not contain obvious wall-clock or random drift markers
     assert.doesNotMatch(source, /(?:timestamp|buildTime|generatedAt|randomSeed)\s*:/i);
 });
 
-test('release archive metadata uses a fixed ZIP timestamp', () => {
+test('release archive timestamp resolves from the release commit (SOURCE_DATE_EPOCH)', () => {
+    // T-6474：1980 纪元曾导致集市安装的文件 mtime 比云同步索引旧，用户版本被
+    // 同步回滚（仅本插件：只有我们的管线用固定纪元）。现要求：时间戳来自发版
+    // 提交（同一提交可复现），禁用墙钟，也禁用 1980 纪元回归。
     const source = fs.readFileSync(path.join(root, 'webpack.config.js'), 'utf8');
-    assert.match(source, /RELEASE_ZIP_MTIME\s*=\s*new Date\(1980,\s*0,\s*1,\s*0,\s*0,\s*0,\s*0\)/);
-    assert.match(source, /fileOptions\s*:\s*\{[\s\S]*mtime:\s*RELEASE_ZIP_MTIME/);
+    assert.match(source, /function resolveReleaseZipMtime\(\)/);
+    assert.match(source, /git log -1 --format=%ct/);
+    assert.match(source, /mtime:\s*RELEASE_ZIP_MTIME/);
     assert.doesNotMatch(source, /mtime:\s*new Date\(\)/);
+    assert.doesNotMatch(source, /new Date\(1980,\s*0,\s*1/);
+    assert.match(source, /new Date\(2026,\s*0,\s*1,\s*0,\s*0,\s*0,\s*0\)/, "git 不可用时的回退默认值必须仍远离纪元");
 });
 
-test('generated release archive carries the ZIP epoch timestamp', () => {
+test('generated release archive carries one deterministic non-epoch timestamp', () => {
     const archive = path.join(root, 'package.zip');
     if (!fs.existsSync(archive)) return;
     const entries = listZipEntries(fs.readFileSync(archive));
     assert.ok(entries.length > 0 && entries.length <= 32);
-    assert.deepEqual(entries.map((entry) => [entry.lastModFileTime, entry.lastModFileDate]),
-        entries.map(() => [0, 33]));
+    // 全部条目共享同一时间戳（可复现），且解码年份 >= 2026（非 1980 纪元）
+    const stamps = new Set(entries.map((entry) => `${entry.lastModFileDate}/${entry.lastModFileTime}`));
+    assert.equal(stamps.size, 1, `archive entries must share one timestamp, got ${[...stamps].join(', ')}`);
+    const dosDate = entries[0].lastModFileDate;
+    const year = ((dosDate >> 9) & 0x7f) + 1980;
+    assert.ok(year >= 2026, `archive timestamp year must be >= 2026, got ${year}`);
 });
