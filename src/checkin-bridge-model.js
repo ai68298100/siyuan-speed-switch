@@ -428,6 +428,71 @@ function buildCheckinMonthlySnapshot(items, events, config, labels, now) {
     };
 }
 
+// W4 · 打卡摘要：聚合今日完成/最长连续/本月天数与今日待续行，一图速览。
+// 口径全部复用既有快照实现，不发明新语义。
+function buildCheckinSummarySnapshot(items, events, config, labels, now) {
+    const todayKey = localDateKey(Number.isFinite(now) ? now : Date.now());
+    const monthPrefix = todayKey.slice(0, 7);
+    const active = activeItems(items);
+    const totals = sumByItemForDate(events, todayKey);
+    const doneToday = active.filter((item) => isTargetReached(item, totals.get(String(item.id || "")) || 0)).length;
+    const daysByItem = eventsByItem(events);
+    let bestStreak = 0;
+    let bestItem = null;
+    const streakRows = [];
+    active.forEach((item) => {
+        if (!["once", "count"].includes(String(item.kind || "once"))) return;
+        const streak = streakOf(daysByItem.get(String(item.id || "")), todayKey);
+        if (streak.days > bestStreak) { bestStreak = streak.days; bestItem = item; }
+        if (streak.days > 0) streakRows.push({item, streak});
+    });
+    const monthDays = new Set();
+    let monthTotal = 0;
+    events.forEach((event) => {
+        if (!event || typeof event !== "object") return;
+        const key = String(event.localDate || "");
+        if (!/^d{4}-d{2}-d{2}$/.test(key) || !key.startsWith(monthPrefix)) return;
+        monthDays.add(key);
+        monthTotal += Number(event.value) || 0;
+    });
+    const pending = active
+        .filter((item) => !isTargetReached(item, totals.get(String(item.id || "")) || 0))
+        .sort((a, b) => (Number(a?.sortOrder) || 0) - (Number(b?.sortOrder) || 0))
+        .slice(0, 3)
+        .map((item) => ({
+            label: itemName(item, labels.unnamed || "未命名"),
+            value: boundedText(labels.pendingLabel, 16) || "今天待续",
+            secondary: "",
+            done: false,
+        }));
+    const streakTop = streakRows.sort((a, b) => b.streak.days - a.streak.days).slice(0, 3).map((row) => ({
+        label: itemName(row.item, labels.unnamed || "未命名"),
+        value: row.streak.days + " " + (boundedText(labels.dayUnit, 8) || "天"),
+        secondary: row.streak.current ? "" : (boundedText(labels.pendingLabel, 16) || "今天待续"),
+        done: row.streak.current,
+    }));
+    return {
+        items: [...pending, ...streakTop],
+        stat: {
+            value: doneToday + "/" + active.length,
+            label: boundedText(labels.summaryTodayStat, 32) || "今日完成",
+            progress: active.length > 0 ? Math.round((doneToday / active.length) * 100) : 0,
+        },
+        secondaryStat: {
+            value: String(bestStreak),
+            label: boundedText(labels.summaryStreakStat, 32) || "最长连续",
+        },
+        tertiaryStat: {
+            value: String(monthDays.size),
+            label: boundedText(labels.summaryMonthStat, 32) || "本月天数",
+        },
+        bestStreakItem: bestItem ? itemName(bestItem, labels.unnamed || "未命名") : "",
+        monthTotal: formatNumber(monthTotal),
+        emptyHint: active.length ? "" : (boundedText(labels.empty, 96) || "今天还没有打卡记录"),
+        updatedAt: Number.isFinite(now) ? now : Date.now(),
+        caliber: CHECKIN_CALIBER,
+    };
+}
 // 统一的桥接读取入口：moduleId → 对应快照。打卡缺席/能力缺失时返回确定空态，不抛错。
 function readCheckinBridge(moduleId, options = {}) {
     const api = resolveCheckinApi(options.scope);
@@ -444,6 +509,9 @@ function readCheckinBridge(moduleId, options = {}) {
     const capability = CHECKIN_CAPABILITIES[moduleId] || "";
     if (capability && !hasCheckinCapability(api, capability)) {
         return {...missing, emptyHint: boundedText(labels.capabilityMissing, 96) || "当前版本的小驴打卡不支持该数据"};
+    }
+    if (moduleId === "checkin-summary") {
+        return buildCheckinSummarySnapshot(safeList(() => api.getItems()), safeList(() => api.getEvents()), config, labels, now);
     }
     if (moduleId === "checkin-today") {
         return buildCheckinTodaySnapshot(safeList(() => api.getItems()), safeList(() => api.getEvents()), config, labels, now);
@@ -497,5 +565,6 @@ module.exports = {
     buildCheckinWeeklySnapshot,
     buildCheckinOccasionsSnapshot,
     buildCheckinMonthlySnapshot,
+    buildCheckinSummarySnapshot,
     readCheckinBridge,
 };

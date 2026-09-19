@@ -2,7 +2,7 @@
 
 <!-- Current artifact snapshot: dist/index.js 799847 bytes; dist/index.css 149362 bytes; package.zip 378386 bytes; icon.png 160x160 18376 bytes; mobile self-regulation line 832 KiB (ADR 0062); archive ceiling 512 KiB. -->
 
-Current build: `dist/index.js` 799847 bytes; `dist/index.css` 149362 bytes; `package.zip` 378386 bytes; `icon.png` 160x160 18376 bytes.
+Current build: `dist/index.js` 802089 bytes; `dist/index.css` 149362 bytes; `package.zip` 379095 bytes; `icon.png` 160x160 18376 bytes.
 
 评估日期：2026-09-19（v0.22.0 发布后开发头，T-6307~T-6475 增量）；真实宿主补充验收仍按兼容性任务持续跟进。
 

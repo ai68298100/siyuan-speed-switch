@@ -399,12 +399,18 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
             monthlyStat: this.i18n.homeCheckinMonthlyStat,
             monthlyTotal: this.i18n.homeCheckinMonthlyTotal,
             monthlyEmpty: this.i18n.homeCheckinMonthlyEmpty,
+            summaryTodayStat: this.i18n.homeCheckinSummaryTodayStat,
+            summaryStreakStat: this.i18n.homeCheckinSummaryStreakStat,
+            summaryMonthStat: this.i18n.homeCheckinSummaryMonthStat,
+            pendingLabel: this.i18n.homeCheckinSummaryPendingLabel,
+            empty: this.i18n.homeCheckinSummaryEmpty,
         });
         const checkinSource = {pluginId: "siyuan-checkin", name: "小驴打卡", icon: "iconCheck"};
         const registerCheckinBridge = (moduleId: string, title: string, icon: string, description: string) => {
             register(moduleId, title, icon, description, [], (config) =>
                 readCheckinBridge(moduleId, {scope: window, config, labels: checkinLabels()}), {}, checkinSource);
         };
+        registerCheckinBridge("checkin-summary", this.i18n.homeCheckinSummary, "iconCalendar", this.i18n.homeDescCheckinSummary);
         registerCheckinBridge("checkin-today", this.i18n.homeCheckinToday, "iconCheck", this.i18n.homeDescCheckinToday);
         registerCheckinBridge("checkin-streak", this.i18n.homeCheckinStreak, "iconRefresh", this.i18n.homeDescCheckinStreak);
         registerCheckinBridge("checkin-year-heatmap", this.i18n.homeCheckinHeatmap, "iconGraph", this.i18n.homeDescCheckinHeatmap);

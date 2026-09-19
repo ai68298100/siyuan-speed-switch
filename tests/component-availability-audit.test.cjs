@@ -59,7 +59,7 @@ test("availability audit keeps normal empty states distinct from missing registr
     const definitions = home.registerModules([]);
     const ids = new Set(definitions.map((item) => item.moduleId));
     assert.equal(ids.has("checkin-summary"), true);
-    assert.equal(registeredIds.includes("checkin-summary"), false);
+    assert.equal(registeredIds.includes("checkin-summary"), true);
     assert.match(storeUiSource,/需安装插件后可用|homeStorePending/);
 });
 
