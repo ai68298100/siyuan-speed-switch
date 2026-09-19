@@ -288,6 +288,17 @@ const CITY_TIME_ZONES = Object.freeze({
     "Kuwait": "Asia/Kuwait", "Amman": "Asia/Amman", "Beirut": "Asia/Beirut", "Tashkent": "Asia/Tashkent",
     "Almaty": "Asia/Almaty", "Kathmandu": "Asia/Kathmandu", "Dhaka": "Asia/Dhaka", "Colombo": "Asia/Colombo",
     "Phnom Penh": "Asia/Phnom_Penh", "Havana": "America/Havana", "Caracas": "America/Caracas", "Quito": "America/Guayaquil",
+    // —— T-6699b 第六波：世界城市补充 ——
+    "仰光": "Asia/Yangon", "Yangon": "Asia/Yangon", "巴库": "Asia/Baku", "Baku": "Asia/Baku",
+    "埃里温": "Asia/Yerevan", "Yerevan": "Asia/Yerevan", "第比利斯": "Asia/Tbilisi", "Tbilisi": "Asia/Tbilisi",
+    "索非亚": "Europe/Sofia", "Sofia": "Europe/Sofia", "萨格勒布": "Europe/Zagreb", "Zagreb": "Europe/Zagreb",
+    "布加勒斯特": "Europe/Bucharest", "Bucharest": "Europe/Bucharest", "塔林": "Europe/Tallinn", "Tallinn": "Europe/Tallinn",
+    "里加": "Europe/Riga", "Riga": "Europe/Riga", "维尔纽斯": "Europe/Vilnius", "Vilnius": "Europe/Vilnius",
+    "雷克雅未克": "Atlantic/Reykjavik", "Reykjavik": "Atlantic/Reykjavik", "卡萨布兰卡": "Africa/Casablanca", "Casablanca": "Africa/Casablanca",
+    "拉各斯": "Africa/Lagos", "Lagos": "Africa/Lagos", "亚的斯亚贝巴": "Africa/Addis_Ababa", "Addis Ababa": "Africa/Addis_Ababa",
+    "墨西哥城": "America/Mexico_City", "Mexico City": "America/Mexico_City", "巴拿马城": "America/Panama", "Panama City": "America/Panama",
+    "苏瓦": "Pacific/Fiji", "Fiji": "Pacific/Fiji", "檀香山": "Pacific/Honolulu", "Honolulu": "Pacific/Honolulu",
+    "安克雷奇": "America/Anchorage", "Anchorage": "America/Anchorage", "惠灵顿": "Pacific/Auckland", "Wellington": "Pacific/Auckland",
 });
 function normalizeWorldClockConfig(value) {
     const source = value && typeof value === "object" ? value : {};
