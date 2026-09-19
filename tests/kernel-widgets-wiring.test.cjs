@@ -147,7 +147,7 @@ test('database search terms cannot overwrite the selected database id', () => {
 test('database table refresh uses the bounded one-second cache policy', () => {
     const registration = indexSource.indexOf('register("database-table"');
     assert.ok(registration > 0);
-    const window = indexSource.slice(registration, registration + 1100);
+    const window = indexSource.slice(registration, registration + 1700);
     assert.match(window, /homeAvTableRows/);
     assert.match(window, /timeoutMs: 1500, cacheTtlMs: 1000/);
 });

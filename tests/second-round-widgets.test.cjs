@@ -401,3 +401,15 @@ test("user-content sorting pins the zh collator across kernel models", () => {
     assert.match(utilSource, /new Intl\.Collator\("zh-Hans-CN", \{numeric: true\}\)/);
     assert.match(utilSource, /new Intl\.Collator\("zh-Hans-CN"\)/);
 });
+
+// ---------- T-6470 数据库表格两级取数（嵌入/镜像库修复） ----------
+test("database table adapter resolves embedded database ids via getAttributeView", () => {
+    const indexTs = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    assert.match(indexTs, /"\/api\/av\/renderAttributeView",\s*"\/api\/av\/getAttributeView",/, "getAttributeView 必须进 KERNEL_ENDPOINTS 白名单（紧邻 renderAttributeView）");
+    assert.match(indexTs, /case "\/api\/av\/getAttributeView":/, "字面量 switch 必须登记该端点");
+    assert.match(indexTs, /\/api\/av\/renderAttributeView", \{id, pageSize: 100, \.\.\.extra\}/, "取数必须带 pageSize");
+    assert.match(indexTs, /const full = await this\.fetchKernelJson\("\/api\/av\/getAttributeView", \{id: normalized\.blockId\}\)/, "0 行时必须经 getAttributeView 解析库 ID");
+    assert.match(indexTs, /fetchView\(dbId, \{viewID\}\)/, "必须以库 ID + viewID 重试");
+    const form = readSourceText(path.join(__dirname, "..", "src", "home-config-form.ts"));
+    assert.ok(form.includes('directId = /^\\d{14}-[0-9a-z]+$/i.test(query)'), "配置表单支持粘贴库 ID 直连");
+});

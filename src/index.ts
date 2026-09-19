@@ -3277,6 +3277,9 @@ const version = beginSearch(session);
         "/api/storage/getCriteria",
         // v3.8.x 数据库只读渲染（T-6330 / ADR 0058）。
         "/api/av/renderAttributeView",
+        // T-6470：数据库表格两级取数——renderAttributeView 0 行时经 getAttributeView
+        // 解析真实库 ID（data.av.id）重试（嵌入/镜像库块 ID ≠ 库 ID）。
+        "/api/av/getAttributeView",
     ]);
 
     /**
@@ -3365,6 +3368,9 @@ const version = beginSearch(session);
                     break;
                 case "/api/av/renderAttributeView":
                     response = await fetch("/api/av/renderAttributeView", init);
+                    break;
+                case "/api/av/getAttributeView":
+                    response = await fetch("/api/av/getAttributeView", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -4085,7 +4091,20 @@ const version = beginSearch(session);
         register("database-table", this.i18n.homeAvTable, "iconDatabase", this.i18n.homeDescAvTable, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const normalized = normalizeAvTableConfig(config);
             if (!normalized.blockId) return {emptyHint: this.i18n.homeAvTableConfigHint, items: []};
-            const json = await this.fetchKernelJson("/api/av/renderAttributeView", {id: normalized.blockId});
+            // T-6470：嵌入/镜像库块 ID≠库 ID，块 ID 调用 rows=0；pageSize 取数，0 行经 getAttributeView 解析库 ID 重试（证据 kernel-api-smoke）。
+            const fetchView = (id: string, extra: Record<string, unknown> = {}) =>
+                this.fetchKernelJson("/api/av/renderAttributeView", {id, pageSize: 100, ...extra});
+            let json = await fetchView(normalized.blockId);
+            if (!json?.data?.view?.rows?.length) {
+                try {
+                    const full = await this.fetchKernelJson("/api/av/getAttributeView", {id: normalized.blockId});
+                    const dbId = full?.data?.av?.id;
+                    const viewID = full?.data?.av?.viewID;
+                    if (typeof dbId === "string" && dbId && dbId !== normalized.blockId && typeof viewID === "string" && viewID) {
+                        json = await fetchView(dbId, {viewID});
+                    }
+                } catch (_) { /* 保持首呼结果 */ }
+            }
             const snapshot = buildAvTableSnapshot(json, normalized, {
                 title: this.i18n.homeAvTable, empty: this.i18n.homeAvTableEmpty,
                 stat: this.i18n.homeAvTableRows,

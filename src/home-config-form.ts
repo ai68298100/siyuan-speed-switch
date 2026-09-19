@@ -400,7 +400,10 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     if (!query) { list.innerHTML = ""; updateSummary(); return; }
                     queryTimer = window.setTimeout(() => {
                         const lower = query.toLocaleLowerCase();
-                        render(allItems.filter((item) => `${item.title} ${item.id}`.toLocaleLowerCase().includes(lower)));
+                        const filtered = allItems.filter((item) => `${item.title} ${item.id}`.toLocaleLowerCase().includes(lower));
+                        // T-6470：手填/粘贴库 ID（独立库不产生 av 块，SQL 发现不到）直接成为可选条目
+                        const directId = /^\d{14}-[0-9a-z]+$/i.test(query) ? [{id: query, title: `库 ID：${query}`}] : [];
+                        render(directId.length > 0 && !filtered.some((item) => item.id === query) ? [...directId, ...filtered] : filtered);
                     }, 180);
                 };
                 void this.loadHomeDatabaseOptions().then((items) => {
