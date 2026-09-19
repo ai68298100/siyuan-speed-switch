@@ -95,7 +95,7 @@ assert.equal(valid.test('v0.16.11'), true);
 
 ## 七、澄清：以下**不是**缺陷
 
-- **产物缺失即跳过**（8 处 `if (!fs.existsSync(...)) return;`）：有意设计。`verify:release` 链含 `pnpm build`，故本地产物必然存在；CI 通过 `SW_REQUIRE_PACKAGE=1` 强制（由 `ci-gate-consistency.test.cjs:29` 守护该设置），且 `package-integrity` 在该变量下会 `assert.fail`。
+- **产物缺失即跳过**（8 处 `if (!fs.existsSync(...)) return;`）：有意设计。`verify:release` 链含 `pnpm repro:audit`，故本地产物必然存在；CI 通过 `SW_REQUIRE_PACKAGE=1` 强制（由 `ci-gate-consistency.test.cjs:29` 守护该设置），且 `package-integrity` 在该变量下会 `assert.fail`。
 - **`if (missing.length) assert.deepEqual(missing, [])`**（`compatibility-matrix.test.cjs:48`）：条件冗余但语义无害。
 - **`github-release-preflight.test.cjs:21-22`**：两条断言逻辑等价（同加 `v` 前缀），冗余但确实能检出真实不一致。
 
@@ -136,3 +136,7 @@ P0～P3 已全部修复，并逐项完成负向验证。
 
 - 二 (5)(6) 的两处自造正则：若要彻底修复，应抽出**共享的版本/tag 校验模块**供生产与测试同时引用。这属于结构性改动，需要单独的预算与决策。
 - 第三节揭示的"文档级断言"（`github-release-preflight`、`rollback-preflight`、`release-final-consistency` 各有一条）只能验证文档提及，不能验证实际行为。这是此类"preflight 契约"的固有形态，可接受，但不应被当作行为保证。
+
+### 2026-09-19 后续收口
+
+T-6659 已补齐本报告当时记录的两次构建对比缺口：`scripts/reproducible-build-audit.cjs` 连续执行两次生产构建，并对 `dist/index.js`、`dist/index.css` 与 `package.zip` 做字节数和 SHA-256 比对；CI 与 Release workflow 均通过 `pnpm repro:audit` 调用。当前本机实测 3/3 产物一致；原节内容保留为历史审计现场，不再代表当前覆盖边界。

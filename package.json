@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "webpack --config webpack.config.js --mode development",
     "build": "webpack --config webpack.config.js --mode production",
+    "repro:audit": "node scripts/reproducible-build-audit.cjs",
     "test": "node tests/run-tests.cjs",
     "test:smoke": "node tests/mobile-card-smoke.cjs",
     "test:smoke:layout": "node tests/mobile-toolbar-layout.cjs",
     "test:smoke:browser": "node tests/chromium-style-smoke.cjs",
-    "verify:release": "pnpm exec tsc --noEmit && pnpm build && pnpm test && pnpm run release:check && pnpm run quality:audit && pnpm run integration:audit && pnpm test:smoke && pnpm test:smoke:layout && pnpm test:smoke:browser",
+    "verify:release": "pnpm exec tsc --noEmit && pnpm repro:audit && pnpm test && pnpm run release:check && pnpm run quality:audit && pnpm run integration:audit && pnpm test:smoke && pnpm test:smoke:layout && pnpm test:smoke:browser",
     "release:check": "node scripts/check-release-readiness.cjs",
     "release:audit": "node scripts/release-batch-audit.cjs",
     "quality:audit": "node scripts/quality-batch-audit.cjs",

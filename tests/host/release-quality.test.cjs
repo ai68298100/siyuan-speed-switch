@@ -206,7 +206,7 @@ test('release candidate command covers all local gates', () => {
     const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     const command = packageJson.scripts?.['verify:release'] || '';
     assert.match(command, /tsc --noEmit/);
-    assert.match(command, /pnpm build/);
+    assert.match(command, /pnpm repro:audit/);
     assert.match(command, /pnpm test(?:\s|$)/);
     assert.match(command, /test:smoke/);
     assert.match(command, /test:smoke:browser/);

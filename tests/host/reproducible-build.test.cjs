@@ -11,10 +11,6 @@ function digest(file) {
     return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
-// 测试名原为 "...are deterministic within one checkout"，但断言只有"文件存在"与
-// "诊断快照有界"，从未做任何确定性验证（未做两次构建对比、未比对固定哈希）。
-// 全仓亦无构建产物的两次构建对比——可复现性实际由下面两个固定 mtime 断言与构建
-// 配置共同保障，本测试不重复承担。名称与断言已一并修正，见 docs/host-gate-audit.md。
 test('build manifest resources are present with valid sha256 digests', () => {
     const dist = path.join(root, 'dist');
     if (!fs.existsSync(dist)) return;
@@ -28,6 +24,20 @@ test('build manifest resources are present with valid sha256 digests', () => {
         assert.match(digest(file), /^[0-9a-f]{64}$/,
             `sha256 digest must be a 64-char lowercase hex string: ${path.relative(root, file)}`);
     }
+});
+
+test('reproducible build audit is wired into package and release workflows', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts', 'reproducible-build-audit.cjs'), 'utf8');
+    const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const ci = fs.readFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
+    const release = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+    assert.match(script, /for \(let round = 1; round <= 2; round \+= 1\)/);
+    assert.match(script, /createHash\('sha256'\)/);
+    assert.match(script, /dist\/index\.js/);
+    assert.match(script, /package\.zip/);
+    assert.equal(packageJson.scripts['repro:audit'], 'node scripts/reproducible-build-audit.cjs');
+    assert.match(ci, /pnpm\s+repro:audit/);
+    assert.match(release, /pnpm\s+repro:audit/);
 });
 
 test('environment versions are available for reproducible-build diagnosis', () => {

@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.23.5 is a stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
 
-> The current development head passes type checking, production build, 6303 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 6304 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -430,7 +430,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 211 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6303 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 211 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6304 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -467,7 +467,7 @@ pnpm test               # run every unit, contract, and host release test (curre
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
-pnpm verify:release     # local release-candidate gate (typecheck, build, tests, release/quality/integration audits, and all three UI smokes)
+pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, tests, release/quality/integration audits, and all three UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.

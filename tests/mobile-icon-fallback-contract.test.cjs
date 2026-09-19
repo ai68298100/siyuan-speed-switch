@@ -256,7 +256,7 @@ test('every svg written by home view is explicitly sized or hosted by b3-button'
 
 test('declared fallback sizes still match the shipped stylesheet', () => {
     const distCssPath = path.join(repo, 'dist', 'index.css');
-    // 产物缺失即跳过（`verify:release` 链含 pnpm build，本地产物必然存在；
+    // 产物缺失即跳过（`verify:release` 链含 pnpm repro:audit，本地产物必然存在；
     // 与仓库既有 8 处产物前置检查同一形态）
     if (!fs.existsSync(distCssPath)) return;
     const distCss = fs.readFileSync(distCssPath, 'utf8');

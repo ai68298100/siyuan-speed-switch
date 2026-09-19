@@ -15,7 +15,7 @@ test('release dry-run contract names package.zip and generated notes', () => {
 test('dry-run validates release inputs without invoking upload commands', () => {
     const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
     assert.doesNotMatch(workflow, /gh\s+release\s+upload/);
-    assert.match(workflow, /pnpm\s+build/);
+    assert.match(workflow, /pnpm\s+repro:audit/);
     assert.match(workflow, /pnpm\s+test/);
 });
 

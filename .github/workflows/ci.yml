@@ -40,8 +40,8 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --noEmit
 
-      - name: Build
-        run: pnpm build
+      - name: Reproducible build audit
+        run: pnpm repro:audit
 
       - name: Unit tests
         run: pnpm test

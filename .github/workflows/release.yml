@@ -42,8 +42,8 @@ jobs:
 
       # 先构建再跑测试：兼容性矩阵等用例要求 dist/ 产物存在，
       # 顺带让包体预算与归档审计门禁校验的是本次构建的真实产物
-      - name: Build package.zip
-        run: pnpm build
+      - name: Reproducible package build
+        run: pnpm repro:audit
 
       - name: Unit tests
         run: pnpm test
