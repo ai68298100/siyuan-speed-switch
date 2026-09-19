@@ -1,5 +1,5 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
-import type {IMenu, TEventBus} from "siyuan";
+import type {IMenu, TEventBus, TPluginDataChangeReason} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
@@ -198,6 +198,7 @@ import {
     TabGroupMode,
     TAB_GROUP_MODES,
     TAB_GROUP_MODE_DEFAULT,
+    PERSISTENT_KEYS,
 } from "./constants";
 import {
     getSiyuan,
@@ -661,6 +662,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     private agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory(8);
     // 存储迁移演练快照（v0.20 数据连续性，D-386）：onload 只读恢复报告，仅内存、不落盘。
     private storageMigrationReport: ReturnType<typeof runStorageMigration>["report"] | null = null;
+    // onDataChanged 重入保护：同步批次会连续广播，合并为"这轮跑完再补一轮"。
+    private dataChangeReloadInFlight = false;
+    private dataChangeReloadQueued = false;
     private activeAgentSearchControllers = new Set<AbortController>();
     private activeDocumentSetRestoreControllers = new Set<AbortController>();
     private switcherRefreshers = new Set<() => void>();
@@ -982,23 +986,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.registerBuiltinHomeAdapters();
     }
 
-    // 预加载 7 个持久化 key：loadData 写入 this.data，让 getMru 等能读到旧值
+    // 只读取持久化 key、不产生任何写入：onload 与 onDataChanged 共用同一份清单，
+    // 防止两处 key 列表各写一遍而漂移。
+    private async loadPersistentKeys() {
+        return Promise.all(PERSISTENT_KEYS.map((key) => this.loadData(key)))
+            .catch((e) => logger.warn("load data fail", e));
+    }
+
+    // 预加载 13 个持久化 key：loadData 写入 this.data，让 getMru 等能读到旧值
     private async initPersistentData() {
-        await Promise.all([
-            this.loadData(MRU_KEY),
-            this.loadData(HISTORY_KEY),
-            this.loadData(CLOSED_HISTORY_KEY),
-            this.loadData(PINNED_KEY),
-            this.loadData(FAV_KEY),
-            this.loadData(FAV_GROUPS_KEY),
-            this.loadData(FAV_COLLAPSED_KEY),
-            this.loadData(QUICK_ACTIONS_KEY),
-            this.loadData(QUICK_ACTIONS_DEFAULTS_KEY),
-            this.loadData(DOCUMENT_SETS_KEY),
-            this.loadData(HOME_STATE_KEY),
-            this.loadData(SETTINGS_KEY),
-            this.loadData(THUMB_CACHE_KEY),
-        ]).catch((e) => logger.warn("load data fail", e));
+        await this.loadPersistentKeys();
         // 加载期 sanitize：清理历史脏数据（0.16.5），仅在确实变化时回写，避免每次启动重写文件
         this.sanitizePersistentData();
         // 存储迁移演练快照（v0.20 数据连续性，D-386）：在宿主静默修复链之后运行
@@ -1270,6 +1267,41 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
+    /**
+     * 宿主默认行为：插件存储数据变化时整体重载插件（并等待返回的 Promise）。
+     * 小驴速切有 13 个持久化 key，任一跨设备同步合并（sync）或其他窗口写盘（overwrite）
+     * 都会销毁已打开的切换器/第二面板与搜索会话，表现为图标闪烁、弹窗凭空关闭。
+     * 这里改为有界重读 + 惰性刷新。
+     *
+     * 纪律：本钩子调用链内不得写盘——写盘会再次广播数据变更并回到本钩子，形成
+     * "写⇄重载"回环。因此只走只读的 loadPersistentKeys + 只读演练，跳过
+     * sanitizePersistentData 与一次性默认值迁移这类会回写的步骤；各 getter 的读时
+     * sanitize 仍会兜住脏数据，加载期收敛留给下一次 onload。
+     * 另：宿主在拆除预算内等待本钩子返回的 Promise，故必须保持有界、不并发重入。
+     */
+    async onDataChanged(reason?: TPluginDataChangeReason) {
+        if (this.isUnloading || this.dataChangeReloadInFlight) {
+            this.dataChangeReloadQueued = true;
+            return;
+        }
+        this.dataChangeReloadInFlight = true;
+        try {
+            do {
+                this.dataChangeReloadQueued = false;
+                await this.loadPersistentKeys();
+                this.captureStorageMigrationSnapshot();
+                this.initFavCollapsed();
+                this.scheduleSidebarRefresh();
+            } while (this.dataChangeReloadQueued);
+        } catch (error) {
+            logger.warn("data change refresh fail", {reason: reason || "unknown"});
+            logger.debug(error);
+        } finally {
+            this.dataChangeReloadInFlight = false;
+            this.dataChangeReloadQueued = false;
+        }
+    }
+
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
@@ -1404,21 +1436,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
             return {key, bytes};
         };
-        return Promise.all([
-            measure(MRU_KEY, this.loadData(MRU_KEY)),
-            measure(HISTORY_KEY, this.loadData(HISTORY_KEY)),
-            measure(CLOSED_HISTORY_KEY, this.loadData(CLOSED_HISTORY_KEY)),
-            measure(PINNED_KEY, this.loadData(PINNED_KEY)),
-            measure(FAV_KEY, this.loadData(FAV_KEY)),
-            measure(FAV_GROUPS_KEY, this.loadData(FAV_GROUPS_KEY)),
-            measure(SETTINGS_KEY, this.loadData(SETTINGS_KEY)),
-            measure(QUICK_ACTIONS_KEY, this.loadData(QUICK_ACTIONS_KEY)),
-            measure(QUICK_ACTIONS_DEFAULTS_KEY, this.loadData(QUICK_ACTIONS_DEFAULTS_KEY)),
-            measure(DOCUMENT_SETS_KEY, this.loadData(DOCUMENT_SETS_KEY)),
-            measure(HOME_STATE_KEY, this.loadData(HOME_STATE_KEY)),
-            measure(THUMB_CACHE_KEY, this.loadData(THUMB_CACHE_KEY)),
-            measure(FAV_COLLAPSED_KEY, this.loadData(FAV_COLLAPSED_KEY)),
-        ]);
+        return Promise.all(PERSISTENT_KEYS.map((key) => measure(key, this.loadData(key))));
     }
 
     private saveDataDebounced(key: string) {

@@ -37,9 +37,22 @@ test('storage: plugin reads/writes only registered key constants, never bare str
     // queueSave(key, value) 防抖封装层是唯一的字符串间接点：其内部
     // `this.saveData(key, value)` 的 key 一律来自上层的 *_KEY 常量调用方。
     const queueSaveInternal = 'this.saveData(key, value)';
+    // 受控间接点：遍历 PERSISTENT_KEYS 的唯一清单读取每个 key（清单同源性由
+    // tests/data-change-refresh.test.cjs 与 KEY_ORDER 锁定），除此以外一律要求字面量 *_KEY。
+    const indirectLoads = [
+        'PERSISTENT_KEYS.map((key) => this.loadData(key))',
+        'PERSISTENT_KEYS.map((key) => measure(key, this.loadData(key)))',
+    ];
+    for (const site of indirectLoads) {
+        assert.ok(indexCode.includes(site), `受控间接点已消失，需同步审计：${site}`);
+    }
+    // 变量式读取必须恰好等于受控站点数，否则说明有人在清单之外走了间接读取。
+    assert.equal((indexCode.match(/this\.loadData\(key\)/g) || []).length, indirectLoads.length,
+        "this.loadData(key) 只允许出现在受控间接点内");
     for (const match of indexCode.matchAll(/this\.(?:loadData|saveData)\(([^)]*)\)/g)) {
         const call = match[0];
         if (call.includes(queueSaveInternal)) continue;
+        if (call === 'this.loadData(key)') continue;
         const args = match[1].trim();
         const firstArg = args.split(',')[0].trim();
         assert.match(firstArg, /^[A-Z0-9_]+_KEY$/,
@@ -76,7 +89,7 @@ test('storage: every persisted key has a sanitize path before use', () => {
         SETTINGS_KEY: ['normalizeSettings'],
         THUMB_CACHE_KEY: ['normalizeThumbCache'],
     };
-    const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY)/g)].map((m) => m[1]);
+    const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "/g)].map((m) => m[1]);
     const unknown = Object.keys(sanitizeAllowlist).filter((key) => !registered.includes(key));
     assert.deepEqual(unknown, [], `allowlist references unregistered keys: ${unknown.join(', ')}`);
     const unaccounted = registered.filter((key) => !(key in sanitizeAllowlist));
