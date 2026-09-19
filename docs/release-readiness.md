@@ -2,7 +2,7 @@
 
 <!-- Current artifact snapshot: dist/index.js 830539 bytes; dist/index.css 150880 bytes; package.zip 390095 bytes; icon.png 160x160 18376 bytes; mobile self-regulation line 832 KiB (ADR 0062); archive ceiling 512 KiB. -->
 
-Current build: `dist/index.js` 830539 bytes; `dist/index.css` 150880 bytes; `package.zip` 390095 bytes (本地构建实测；T-6675~T-6684 批次：版本下限抬升、存储版本戳、actionEffects、自建审批管线与确认弹窗撤除、执行链 propose/execute 双能力入图、note-stats 写作强度、写作活跃度年历网格、RSS 已读状态、DailyHot 基址+路由选择器、ActivityWatch 桶选择、世界时钟离线城市表)；`icon.png` 160x160 18376 bytes.
+Current build: `dist/index.js` 830539 bytes; `dist/index.css` 150880 bytes; `package.zip` 390095 bytes (本地构建实测；T-6675~T-6692 批次：版本下限抬升、存储版本戳、actionEffects、自建审批管线与确认弹窗撤除、执行链 propose/execute 双能力入图、note-stats 写作强度、写作活跃度年历网格、RSS 已读状态、DailyHot 基址+路由选择器、ActivityWatch 桶选择、世界时钟离线城市表)；`icon.png` 160x160 18376 bytes.
 
 评估日期：2026-09-20（v0.23.5 发布后开发头，T-6307~T-6685 增量）；真实宿主补充验收仍按兼容性任务持续跟进。
 
