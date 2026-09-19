@@ -1,0 +1,2830 @@
+{
+  "source": {
+    "repo": "siyuan-note/siyuan",
+    "branch": "master",
+    "kernelVersion": "3.8.4",
+    "retrievedAt": "2026-09-19",
+    "note": "上游契约快照的有端子集；由 scripts/gen-api-contract.cjs 生成，勿手改。运行时真值以 docs/kernel-api-smoke-*.md 实测为准。",
+    "subsetSha256": "7bf2ddd8cf09074dea806c96a8a7076c941c49ee94135564043faa37422b2348"
+  },
+  "nonKernel": [
+    {
+      "path": "/api/0/query/",
+      "reason": "ActivityWatch 第三方服务查询路径（经思源正向代理访问）"
+    },
+    {
+      "path": "/api/s",
+      "reason": "外部生活组件服务 URL 片段拼接来源，非独立内核端点"
+    }
+  ],
+  "endpoints": [
+    {
+      "path": "/api/asset/getMissingAssets",
+      "usedBy": [
+        "src/index.ts:3275",
+        "src/index.ts:3360",
+        "src/index.ts:3361",
+        "src/index.ts:4055"
+      ],
+      "method": "POST",
+      "handler": "getMissingAssets",
+      "body": "none",
+      "request": {
+        "required": [],
+        "properties": {}
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "blockIDs",
+              "item",
+              "name",
+              "path"
+            ],
+            "props": {
+              "blockIDs": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "item": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "path": {
+                "kind": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/av/getAttributeView",
+      "usedBy": [
+        "src/index.ts:3282",
+        "src/index.ts:3372",
+        "src/index.ts:3373",
+        "src/index.ts:4100"
+      ],
+      "method": "POST",
+      "handler": "getAttributeView",
+      "body": "json",
+      "request": {
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "av"
+          ],
+          "props": {
+            "av": {
+              "kind": "object",
+              "fields": [
+                "cardCoverPositions",
+                "customColors",
+                "defaultTemplateID",
+                "id",
+                "keyIDs",
+                "keyValues",
+                "name",
+                "newItemTemplates",
+                "spec",
+                "viewID",
+                "views"
+              ],
+              "props": {
+                "cardCoverPositions": {
+                  "kind": "object",
+                  "fields": [],
+                  "itemKind": "freeformMap"
+                },
+                "customColors": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "defaultTemplateID": {
+                  "kind": "string"
+                },
+                "id": {
+                  "kind": "string"
+                },
+                "keyIDs": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "keyValues": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "name": {
+                  "kind": "string"
+                },
+                "newItemTemplates": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "spec": {
+                  "kind": "integer"
+                },
+                "viewID": {
+                  "kind": "string"
+                },
+                "views": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/av/renderAttributeView",
+      "usedBy": [
+        "src/index.ts:3279",
+        "src/index.ts:3369",
+        "src/index.ts:3370",
+        "src/index.ts:4096",
+        "src/index.ts:4174"
+      ],
+      "method": "POST",
+      "handler": "renderAttributeView",
+      "body": "json",
+      "request": {
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "blockID": {
+            "type": "string|null",
+            "required": false
+          },
+          "createIfNotExist": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "groupPaging": {
+            "type": "object|null",
+            "required": false
+          },
+          "id": {
+            "type": "string",
+            "required": true
+          },
+          "ignoreRows": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "initialLayout": {
+            "type": "string|null",
+            "required": false
+          },
+          "page": {
+            "type": "number|null",
+            "required": false
+          },
+          "pageSize": {
+            "type": "number|null",
+            "required": false
+          },
+          "query": {
+            "type": "string|null",
+            "required": false
+          },
+          "targetGroupID": {
+            "type": "string|null",
+            "required": false
+          },
+          "targetItemID": {
+            "type": "string|null",
+            "required": false
+          },
+          "viewID": {
+            "type": "string|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "colorOrder",
+            "contextFilter",
+            "contextFilterFields",
+            "customColors",
+            "defaultTemplateID",
+            "id",
+            "isMirror",
+            "name",
+            "newItemTemplates",
+            "target",
+            "usedCustomColorIndexes",
+            "view",
+            "viewID",
+            "viewType",
+            "views"
+          ],
+          "props": {
+            "colorOrder": {
+              "kind": "array",
+              "item": {
+                "kind": "string"
+              }
+            },
+            "contextFilter": {
+              "kind": "object",
+              "fields": [
+                "keyID",
+                "spec"
+              ],
+              "props": {
+                "keyID": {
+                  "kind": "string"
+                },
+                "spec": {
+                  "kind": "integer",
+                  "enum": [
+                    1
+                  ]
+                }
+              }
+            },
+            "contextFilterFields": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "icon",
+                  "id",
+                  "name",
+                  "targetAvID"
+                ]
+              }
+            },
+            "customColors": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "dark",
+                  "hidden",
+                  "index",
+                  "light"
+                ]
+              }
+            },
+            "defaultTemplateID": {
+              "kind": "string"
+            },
+            "id": {
+              "kind": "string"
+            },
+            "isMirror": {
+              "kind": "boolean"
+            },
+            "name": {
+              "kind": "string"
+            },
+            "newItemTemplates": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "contentTemplatePath",
+                  "fieldValues",
+                  "hideInFileTree",
+                  "icon",
+                  "id",
+                  "name",
+                  "primaryKeyTemplate",
+                  "saveLocation",
+                  "targetType"
+                ]
+              }
+            },
+            "target": {
+              "kind": "object",
+              "fields": [
+                "groupID",
+                "index",
+                "itemID",
+                "offset",
+                "pageSize",
+                "status"
+              ],
+              "props": {
+                "groupID": {
+                  "kind": "string"
+                },
+                "index": {
+                  "kind": "integer"
+                },
+                "itemID": {
+                  "kind": "string"
+                },
+                "offset": {
+                  "kind": "integer"
+                },
+                "pageSize": {
+                  "kind": "integer"
+                },
+                "status": {
+                  "kind": "string",
+                  "enum": [
+                    "visible",
+                    "filtered",
+                    "itemNotFound",
+                    "groupHidden"
+                  ]
+                }
+              }
+            },
+            "usedCustomColorIndexes": {
+              "kind": "array",
+              "item": {
+                "kind": "integer"
+              }
+            },
+            "view": {
+              "kind": "object",
+              "fields": [
+                "columns",
+                "desc",
+                "filters",
+                "group",
+                "groupCalc",
+                "groupFolded",
+                "groupHidden",
+                "groupKey",
+                "groupValue",
+                "groups",
+                "hideAttrViewName",
+                "icon",
+                "id",
+                "name",
+                "pageSize",
+                "rowCount",
+                "rows",
+                "showIcon",
+                "sorts",
+                "wrapField"
+              ],
+              "props": {
+                "columns": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "desc": {
+                  "kind": "string"
+                },
+                "filters": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "group": {
+                  "kind": "object",
+                  "fields": [
+                    "field",
+                    "hideEmpty",
+                    "method",
+                    "order",
+                    "range",
+                    "valueSource"
+                  ]
+                },
+                "groupCalc": {
+                  "kind": "object",
+                  "fields": [
+                    "calc",
+                    "field"
+                  ]
+                },
+                "groupFolded": {
+                  "kind": "boolean"
+                },
+                "groupHidden": {
+                  "kind": "integer"
+                },
+                "groupKey": {
+                  "kind": "object",
+                  "fields": [
+                    "created",
+                    "date",
+                    "dateFormat",
+                    "desc",
+                    "icon",
+                    "id",
+                    "name",
+                    "numberFormat",
+                    "options",
+                    "relation",
+                    "renderTemplate",
+                    "rollup",
+                    "template",
+                    "type",
+                    "updated"
+                  ]
+                },
+                "groupValue": {
+                  "kind": "object",
+                  "fields": [
+                    "block",
+                    "blockID",
+                    "checkbox",
+                    "created",
+                    "createdAt",
+                    "date",
+                    "email",
+                    "id",
+                    "isDetached",
+                    "keyID",
+                    "mAsset",
+                    "mSelect",
+                    "number",
+                    "phone",
+                    "relation",
+                    "renderedContent",
+                    "rollup",
+                    "template",
+                    "text",
+                    "type",
+                    "updated",
+                    "updatedAt",
+                    "url"
+                  ]
+                },
+                "groups": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "hideAttrViewName": {
+                  "kind": "boolean"
+                },
+                "icon": {
+                  "kind": "string"
+                },
+                "id": {
+                  "kind": "string"
+                },
+                "name": {
+                  "kind": "string"
+                },
+                "pageSize": {
+                  "kind": "integer"
+                },
+                "rowCount": {
+                  "kind": "integer"
+                },
+                "rows": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "showIcon": {
+                  "kind": "boolean"
+                },
+                "sorts": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "wrapField": {
+                  "kind": "boolean"
+                }
+              }
+            },
+            "viewID": {
+              "kind": "string"
+            },
+            "viewType": {
+              "kind": "string",
+              "enum": [
+                "table",
+                "gallery",
+                "kanban"
+              ]
+            },
+            "views": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "desc",
+                  "hideAttrViewName",
+                  "icon",
+                  "id",
+                  "name",
+                  "pageSize",
+                  "type"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/block/appendBlock",
+      "usedBy": [
+        "src/index.ts:975",
+        "src/index.ts:1805",
+        "src/index.ts:3266",
+        "src/index.ts:3339",
+        "src/index.ts:3340"
+      ],
+      "method": "POST",
+      "handler": "appendBlock",
+      "body": "json",
+      "request": {
+        "required": [
+          "data",
+          "dataType",
+          "parentID"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "required": true
+          },
+          "dataType": {
+            "type": "string",
+            "required": true
+          },
+          "parentID": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "doOperations",
+              "templateDocTreePlanID",
+              "timestamp",
+              "undoOperations"
+            ],
+            "props": {
+              "doOperations": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "templateDocTreePlanID": {
+                "kind": "string"
+              },
+              "timestamp": {
+                "kind": "integer"
+              },
+              "undoOperations": {
+                "kind": "array",
+                "itemKind": "deferred"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/block/getRecentUpdatedBlocks",
+      "usedBy": [
+        "src/index.ts:3274",
+        "src/index.ts:3357",
+        "src/index.ts:3358",
+        "src/index.ts:4045"
+      ],
+      "method": "POST",
+      "handler": "getRecentUpdatedBlocks",
+      "body": "none",
+      "request": {
+        "required": [],
+        "properties": {}
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "alias",
+              "box",
+              "children",
+              "content",
+              "count",
+              "created",
+              "defID",
+              "defPath",
+              "depth",
+              "fcontent",
+              "folded",
+              "hPath",
+              "ial",
+              "id",
+              "markdown",
+              "memo",
+              "name",
+              "number",
+              "parentID",
+              "path",
+              "refCount",
+              "refText",
+              "refs",
+              "riffCard",
+              "riffCardID",
+              "rootID",
+              "sort",
+              "subType",
+              "tag",
+              "type",
+              "updated"
+            ],
+            "props": {
+              "alias": {
+                "kind": "string"
+              },
+              "box": {
+                "kind": "string"
+              },
+              "children": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "content": {
+                "kind": "string"
+              },
+              "count": {
+                "kind": "integer"
+              },
+              "created": {
+                "kind": "string"
+              },
+              "defID": {
+                "kind": "string"
+              },
+              "defPath": {
+                "kind": "string"
+              },
+              "depth": {
+                "kind": "integer"
+              },
+              "fcontent": {
+                "kind": "string"
+              },
+              "folded": {
+                "kind": "boolean"
+              },
+              "hPath": {
+                "kind": "string"
+              },
+              "ial": {
+                "kind": "object",
+                "fields": [],
+                "itemKind": "freeformMap"
+              },
+              "id": {
+                "kind": "string"
+              },
+              "markdown": {
+                "kind": "string"
+              },
+              "memo": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "number": {
+                "kind": "string"
+              },
+              "parentID": {
+                "kind": "string"
+              },
+              "path": {
+                "kind": "string"
+              },
+              "refCount": {
+                "kind": "integer"
+              },
+              "refText": {
+                "kind": "string"
+              },
+              "refs": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "riffCard": {
+                "kind": "object",
+                "fields": [
+                  "due",
+                  "lapses",
+                  "lastReview",
+                  "reps",
+                  "state"
+                ]
+              },
+              "riffCardID": {
+                "kind": "string"
+              },
+              "rootID": {
+                "kind": "string"
+              },
+              "sort": {
+                "kind": "integer"
+              },
+              "subType": {
+                "kind": "string"
+              },
+              "tag": {
+                "kind": "string"
+              },
+              "type": {
+                "kind": "string"
+              },
+              "updated": {
+                "kind": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/block/insertBlock",
+      "usedBy": [
+        "src/index.ts:3266",
+        "src/index.ts:3336",
+        "src/index.ts:3337"
+      ],
+      "method": "POST",
+      "handler": "insertBlock",
+      "body": "json",
+      "request": {
+        "required": [
+          "data",
+          "dataType"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "required": true
+          },
+          "dataType": {
+            "type": "string",
+            "required": true
+          },
+          "nextID": {
+            "type": "string|null",
+            "required": false
+          },
+          "parentID": {
+            "type": "string|null",
+            "required": false
+          },
+          "previousID": {
+            "type": "string|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "doOperations",
+              "templateDocTreePlanID",
+              "timestamp",
+              "undoOperations"
+            ],
+            "props": {
+              "doOperations": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "templateDocTreePlanID": {
+                "kind": "string"
+              },
+              "timestamp": {
+                "kind": "integer"
+              },
+              "undoOperations": {
+                "kind": "array",
+                "itemKind": "deferred"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/block/updateBlock",
+      "usedBy": [
+        "src/index.ts:918",
+        "src/index.ts:3266",
+        "src/index.ts:3333",
+        "src/index.ts:3334",
+        "src/index.ts:4252"
+      ],
+      "method": "POST",
+      "handler": "updateBlock",
+      "body": "json",
+      "request": {
+        "required": [
+          "data",
+          "dataType",
+          "id"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "required": true
+          },
+          "dataType": {
+            "type": "string",
+            "required": true
+          },
+          "id": {
+            "type": "string",
+            "required": true
+          },
+          "lockType": {
+            "type": "boolean|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "doOperations",
+              "templateDocTreePlanID",
+              "timestamp",
+              "undoOperations"
+            ],
+            "props": {
+              "doOperations": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "templateDocTreePlanID": {
+                "kind": "string"
+              },
+              "timestamp": {
+                "kind": "integer"
+              },
+              "undoOperations": {
+                "kind": "array",
+                "itemKind": "deferred"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/bookmark/getBookmark",
+      "usedBy": [
+        "src/index.ts:3264",
+        "src/index.ts:3324",
+        "src/index.ts:3325",
+        "src/index.ts:3579"
+      ],
+      "method": "POST",
+      "handler": "getBookmark",
+      "body": "none",
+      "request": {
+        "required": [],
+        "properties": {}
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "blocks",
+              "count",
+              "depth",
+              "name",
+              "type"
+            ],
+            "props": {
+              "blocks": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "count": {
+                "kind": "integer"
+              },
+              "depth": {
+                "kind": "integer"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "type": {
+                "kind": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/filetree/createDailyNote",
+      "usedBy": [
+        "src/journal-actions.js:17"
+      ],
+      "method": "POST",
+      "handler": "createDailyNote",
+      "body": "json",
+      "request": {
+        "required": [
+          "notebook"
+        ],
+        "properties": {
+          "app": {
+            "type": "string|null",
+            "required": false
+          },
+          "notebook": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1,
+          1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "id"
+          ],
+          "props": {
+            "id": {
+              "kind": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/filetree/createDocWithMd",
+      "usedBy": [
+        "src/index.ts:945",
+        "src/index.ts:3265",
+        "src/index.ts:3330",
+        "src/index.ts:3331"
+      ],
+      "method": "POST",
+      "handler": "createDocWithMd",
+      "body": "json",
+      "request": {
+        "required": [
+          "markdown",
+          "notebook",
+          "path"
+        ],
+        "properties": {
+          "clippingHref": {
+            "type": "string|null",
+            "required": false
+          },
+          "docCreateTemplatePath": {
+            "type": "string|null",
+            "required": false
+          },
+          "id": {
+            "type": "string|null",
+            "required": false
+          },
+          "listDocTree": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "markdown": {
+            "type": "string",
+            "required": true
+          },
+          "notebook": {
+            "type": "string",
+            "required": true
+          },
+          "parentID": {
+            "type": "string|null",
+            "required": false
+          },
+          "path": {
+            "type": "string",
+            "required": true
+          },
+          "sortPosition": {
+            "type": "string|null",
+            "required": false
+          },
+          "sortTargetID": {
+            "type": "string|null",
+            "required": false
+          },
+          "tags": {
+            "type": "string|null",
+            "required": false
+          },
+          "titleEmpty": {
+            "type": "boolean",
+            "required": false
+          },
+          "withMath": {
+            "type": "boolean|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "string"
+        }
+      }
+    },
+    {
+      "path": "/api/filetree/getDoc",
+      "usedBy": [
+        "src/index.ts:3265",
+        "src/index.ts:3327",
+        "src/index.ts:3328",
+        "src/index.ts:4682",
+        "src/index.ts:7670"
+      ],
+      "method": "POST",
+      "handler": "getDoc",
+      "body": "json",
+      "request": {
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "endID": {
+            "type": "string|null",
+            "required": false
+          },
+          "highlight": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "id": {
+            "type": "string",
+            "required": true
+          },
+          "includeDocInfo": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "index": {
+            "type": "number|null",
+            "required": false
+          },
+          "isBacklink": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "mode": {
+            "type": "number|null",
+            "required": false
+          },
+          "notebook": {
+            "type": "string|null",
+            "required": false
+          },
+          "originalRefBlockIDs": {
+            "type": "object|null",
+            "required": false
+          },
+          "query": {
+            "type": "string|null",
+            "required": false
+          },
+          "queryMethod": {
+            "type": "number|null",
+            "required": false
+          },
+          "querySubTypes": {
+            "type": "SearchSubtypeFilterInput|null",
+            "required": false
+          },
+          "queryTypes": {
+            "type": "object|null",
+            "required": false
+          },
+          "reqId": {
+            "type": "JSONValue|null",
+            "required": false
+          },
+          "size": {
+            "type": "number|null",
+            "required": false
+          },
+          "startID": {
+            "type": "string|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1,
+          1,
+          3
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "blockCount",
+            "box",
+            "content",
+            "docInfo",
+            "eof",
+            "headingNumbers",
+            "id",
+            "isBacklinkExpand",
+            "isSyncing",
+            "keywords",
+            "mode",
+            "parent2ID",
+            "parentID",
+            "path",
+            "publishAccessRequired",
+            "reqId",
+            "rootID",
+            "scroll",
+            "type"
+          ],
+          "props": {
+            "blockCount": {
+              "kind": "integer"
+            },
+            "box": {
+              "kind": "string"
+            },
+            "content": {
+              "kind": "string"
+            },
+            "docInfo": {
+              "kind": "object",
+              "fields": [
+                "attrViews",
+                "ial",
+                "icon",
+                "id",
+                "name",
+                "refCount",
+                "refIDs",
+                "rootID",
+                "subFileCount"
+              ],
+              "props": {
+                "attrViews": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "ial": {
+                  "kind": "object",
+                  "fields": [],
+                  "itemKind": "freeformMap"
+                },
+                "icon": {
+                  "kind": "string"
+                },
+                "id": {
+                  "kind": "string"
+                },
+                "name": {
+                  "kind": "string"
+                },
+                "refCount": {
+                  "kind": "integer"
+                },
+                "refIDs": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                },
+                "rootID": {
+                  "kind": "string"
+                },
+                "subFileCount": {
+                  "kind": "integer"
+                }
+              }
+            },
+            "eof": {
+              "kind": "boolean"
+            },
+            "headingNumbers": {
+              "kind": "object",
+              "fields": [],
+              "props": {},
+              "itemKind": "freeformMap"
+            },
+            "id": {
+              "kind": "string"
+            },
+            "isBacklinkExpand": {
+              "kind": "boolean"
+            },
+            "isSyncing": {
+              "kind": "boolean"
+            },
+            "keywords": {
+              "kind": "array",
+              "item": {
+                "kind": "string"
+              }
+            },
+            "mode": {
+              "kind": "integer"
+            },
+            "parent2ID": {
+              "kind": "string"
+            },
+            "parentID": {
+              "kind": "string"
+            },
+            "path": {
+              "kind": "string"
+            },
+            "publishAccessRequired": {
+              "kind": "boolean"
+            },
+            "reqId": {
+              "kind": "array",
+              "item": {
+                "kind": "array",
+                "itemKind": "deferred"
+              }
+            },
+            "rootID": {
+              "kind": "string"
+            },
+            "scroll": {
+              "kind": "boolean"
+            },
+            "type": {
+              "kind": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/filetree/getPinnedDocs",
+      "usedBy": [
+        "src/index.ts:3272",
+        "src/index.ts:3351",
+        "src/index.ts:3352",
+        "src/index.ts:4005"
+      ],
+      "method": "POST",
+      "handler": "getPinnedDocs",
+      "body": "none",
+      "request": {
+        "required": [],
+        "properties": {}
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "childrenSortMode",
+              "icon",
+              "id",
+              "name",
+              "notebook",
+              "path",
+              "subFileCount",
+              "unavailable"
+            ],
+            "props": {
+              "childrenSortMode": {
+                "kind": "integer|null"
+              },
+              "icon": {
+                "kind": "string"
+              },
+              "id": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "notebook": {
+                "kind": "string"
+              },
+              "path": {
+                "kind": "string"
+              },
+              "subFileCount": {
+                "kind": "integer"
+              },
+              "unavailable": {
+                "kind": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/filetree/listDocsByPath",
+      "usedBy": [
+        "src/doc-search-ui.ts:46",
+        "src/index.ts:3270",
+        "src/index.ts:3348",
+        "src/index.ts:3349",
+        "src/path-filter-model.js:29"
+      ],
+      "method": "POST",
+      "handler": "listDocsByPath",
+      "body": "json",
+      "request": {
+        "required": [
+          "notebook",
+          "path"
+        ],
+        "properties": {
+          "app": {
+            "type": "string|null",
+            "required": false
+          },
+          "flashcard": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "ignoreMaxListHint": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "maxListCount": {
+            "type": "number|null",
+            "required": false
+          },
+          "notebook": {
+            "type": "string",
+            "required": true
+          },
+          "path": {
+            "type": "string",
+            "required": true
+          },
+          "showHidden": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "sort": {
+            "type": "number|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "box",
+            "effectiveSortMode",
+            "files",
+            "path"
+          ],
+          "props": {
+            "box": {
+              "kind": "string"
+            },
+            "effectiveSortMode": {
+              "kind": "integer"
+            },
+            "files": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "alias",
+                  "bookmark",
+                  "childrenSortMode",
+                  "count",
+                  "ctime",
+                  "dueFlashcardCount",
+                  "flashcardCount",
+                  "hCtime",
+                  "hMtime",
+                  "hSize",
+                  "icon",
+                  "id",
+                  "memo",
+                  "mtime",
+                  "name",
+                  "name1",
+                  "newFlashcardCount",
+                  "path",
+                  "size",
+                  "sort",
+                  "subFileCount",
+                  "titleEmpty"
+                ]
+              }
+            },
+            "path": {
+              "kind": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/filetree/searchDocs",
+      "usedBy": [
+        "src/doc-search-ui.ts:532",
+        "src/index.ts:5207"
+      ],
+      "method": "POST",
+      "handler": "searchDocs",
+      "body": "json",
+      "request": {
+        "required": [
+          "k"
+        ],
+        "properties": {
+          "excludeIDs": {
+            "type": "array<string>|null",
+            "required": false
+          },
+          "flashcard": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "k": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "alias",
+              "box",
+              "boxIcon",
+              "dueFlashcardCount",
+              "flashcardCount",
+              "hPath",
+              "name",
+              "newFlashcardCount",
+              "path"
+            ],
+            "props": {
+              "alias": {
+                "kind": "string"
+              },
+              "box": {
+                "kind": "string"
+              },
+              "boxIcon": {
+                "kind": "string"
+              },
+              "dueFlashcardCount": {
+                "kind": "string"
+              },
+              "flashcardCount": {
+                "kind": "string"
+              },
+              "hPath": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "newFlashcardCount": {
+                "kind": "string"
+              },
+              "path": {
+                "kind": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/inbox/getShorthands",
+      "usedBy": [
+        "src/index.ts:3273",
+        "src/index.ts:3354",
+        "src/index.ts:3355",
+        "src/index.ts:4036"
+      ],
+      "method": "POST",
+      "handler": "getShorthands",
+      "body": "json",
+      "request": {
+        "required": [
+          "page"
+        ],
+        "properties": {
+          "page": {
+            "type": "number",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1,
+          1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "code",
+            "data",
+            "msg"
+          ],
+          "props": {
+            "code": {
+              "kind": "integer"
+            },
+            "data": {
+              "kind": "object",
+              "fields": [
+                "pagination",
+                "shorthands"
+              ],
+              "props": {
+                "pagination": {
+                  "kind": "object",
+                  "fields": [
+                    "paginationPageCount",
+                    "paginationPageNums",
+                    "paginationRecordCount"
+                  ]
+                },
+                "shorthands": {
+                  "kind": "array",
+                  "itemKind": "deferred"
+                }
+              }
+            },
+            "msg": {
+              "kind": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/network/forwardProxy",
+      "usedBy": [
+        "src/index.ts:3417"
+      ],
+      "method": "POST",
+      "handler": "forwardProxy",
+      "body": "json",
+      "request": {
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "contentType": {
+            "type": "string|null",
+            "required": false
+          },
+          "headers": {
+            "type": "array<object|null>|null",
+            "required": false
+          },
+          "method": {
+            "type": "string|null",
+            "required": false
+          },
+          "payload": {
+            "type": "JSONValue|null",
+            "required": false
+          },
+          "payloadEncoding": {
+            "type": "string|null",
+            "required": false
+          },
+          "redirect": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "responseEncoding": {
+            "type": "string|null",
+            "required": false
+          },
+          "timeout": {
+            "type": "number|null",
+            "required": false
+          },
+          "url": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          10
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "body",
+            "bodyEncoding",
+            "contentType",
+            "elapsed",
+            "headers",
+            "status",
+            "url"
+          ],
+          "props": {
+            "body": {
+              "kind": "string"
+            },
+            "bodyEncoding": {
+              "kind": "string"
+            },
+            "contentType": {
+              "kind": "string"
+            },
+            "elapsed": {
+              "kind": "integer"
+            },
+            "headers": {
+              "kind": "object",
+              "fields": [],
+              "props": {},
+              "itemKind": "freeformMap"
+            },
+            "status": {
+              "kind": "integer"
+            },
+            "url": {
+              "kind": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/notebook/lsNotebooks",
+      "usedBy": [
+        "src/index.ts:1631"
+      ],
+      "method": "POST",
+      "handler": "lsNotebooks",
+      "body": "legacyOptional",
+      "request": {
+        "required": [],
+        "properties": {
+          "flashcard": {
+            "type": "boolean|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "boxDocEnabled",
+            "notebooks"
+          ],
+          "props": {
+            "boxDocEnabled": {
+              "kind": "boolean"
+            },
+            "notebooks": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "closed",
+                  "dueFlashcardCount",
+                  "encrypted",
+                  "flashcardCount",
+                  "icon",
+                  "id",
+                  "name",
+                  "newFlashcardCount",
+                  "sort",
+                  "sortMode",
+                  "state",
+                  "subFileCount",
+                  "unlocked"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/outline/getDocOutline",
+      "usedBy": [
+        "src/index.ts:3267",
+        "src/index.ts:3342",
+        "src/index.ts:3343",
+        "src/index.ts:3963",
+        "src/index.ts:4783",
+        "src/index.ts:4849"
+      ],
+      "method": "POST",
+      "handler": "getDocOutline",
+      "body": "json",
+      "request": {
+        "required": [],
+        "properties": {
+          "id": {
+            "type": "string|null",
+            "required": false
+          },
+          "notebook": {
+            "type": "string|null",
+            "required": false
+          },
+          "preview": {
+            "type": "boolean|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1,
+          1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "blocks",
+              "box",
+              "children",
+              "count",
+              "created",
+              "depth",
+              "folded",
+              "hPath",
+              "id",
+              "name",
+              "nameIsHTML",
+              "nodeType",
+              "number",
+              "subType",
+              "type",
+              "updated"
+            ],
+            "props": {
+              "blocks": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "box": {
+                "kind": "string"
+              },
+              "children": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "count": {
+                "kind": "integer"
+              },
+              "created": {
+                "kind": "string"
+              },
+              "depth": {
+                "kind": "integer"
+              },
+              "folded": {
+                "kind": "boolean"
+              },
+              "hPath": {
+                "kind": "string"
+              },
+              "id": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "nameIsHTML": {
+                "kind": "boolean"
+              },
+              "nodeType": {
+                "kind": "string"
+              },
+              "number": {
+                "kind": "string"
+              },
+              "subType": {
+                "kind": "string"
+              },
+              "type": {
+                "kind": "string"
+              },
+              "updated": {
+                "kind": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/query/sql",
+      "usedBy": [
+        "src/index.ts:870",
+        "src/index.ts:907",
+        "src/index.ts:953",
+        "src/index.ts:3264",
+        "src/index.ts:3318",
+        "src/index.ts:3319",
+        "src/index.ts:3469",
+        "src/index.ts:3505",
+        "src/index.ts:3549",
+        "src/index.ts:3552",
+        "src/index.ts:3601",
+        "src/index.ts:3624",
+        "src/index.ts:3658",
+        "src/index.ts:3682",
+        "src/index.ts:3723",
+        "src/index.ts:3739",
+        "src/index.ts:3755",
+        "src/index.ts:3770",
+        "src/index.ts:3788",
+        "src/index.ts:3818",
+        "src/index.ts:3906",
+        "src/index.ts:3926",
+        "src/index.ts:3943",
+        "src/index.ts:3978",
+        "src/index.ts:4015",
+        "src/index.ts:4069",
+        "src/index.ts:4131",
+        "src/index.ts:4155",
+        "src/index.ts:4245",
+        "src/index.ts:4731",
+        "src/index.ts:4833",
+        "src/index.ts:5021",
+        "src/index.ts:6881"
+      ],
+      "method": "POST",
+      "handler": "SQL",
+      "body": "json",
+      "request": {
+        "required": [
+          "stmt"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string|null",
+            "required": false
+          },
+          "stmt": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "limit",
+          "msg",
+          "truncated"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "limit",
+          "msg",
+          "truncated"
+        ],
+        "errorCodes": [
+          -1,
+          1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [],
+            "props": {},
+            "itemKind": "freeformMap"
+          }
+        },
+        "top:limit": {
+          "kind": "integer"
+        },
+        "top:truncated": {
+          "kind": "boolean"
+        }
+      }
+    },
+    {
+      "path": "/api/riff/getNotebookRiffDueCards",
+      "usedBy": [
+        "src/index.ts:3267",
+        "src/index.ts:3345",
+        "src/index.ts:3346",
+        "src/index.ts:3674",
+        "src/index.ts:3702"
+      ],
+      "method": "POST",
+      "handler": "getNotebookRiffDueCards",
+      "body": "json",
+      "request": {
+        "required": [
+          "notebook"
+        ],
+        "properties": {
+          "notebook": {
+            "type": "string",
+            "required": true
+          },
+          "reviewedCards": {
+            "type": "array<RiffReviewedCardInput>|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "cards",
+            "unreviewedCount",
+            "unreviewedNewCardCount",
+            "unreviewedOldCardCount"
+          ],
+          "props": {
+            "cards": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "blockID",
+                  "cardID",
+                  "deckID",
+                  "lapses",
+                  "lastReview",
+                  "nextDues",
+                  "reps",
+                  "state"
+                ]
+              }
+            },
+            "unreviewedCount": {
+              "kind": "integer"
+            },
+            "unreviewedNewCardCount": {
+              "kind": "integer"
+            },
+            "unreviewedOldCardCount": {
+              "kind": "integer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/search/fullTextSearchBlock",
+      "usedBy": [
+        "src/doc-search-ui.ts:635",
+        "src/doc-search-ui.ts:690",
+        "src/search-model.js:683"
+      ],
+      "method": "POST",
+      "handler": "fullTextSearchBlock",
+      "body": "json",
+      "request": {
+        "required": [],
+        "properties": {
+          "groupBy": {
+            "type": "number|null",
+            "required": false
+          },
+          "method": {
+            "type": "number|null",
+            "required": false
+          },
+          "notebook": {
+            "type": "string|null",
+            "required": false
+          },
+          "orderBy": {
+            "type": "number|null",
+            "required": false
+          },
+          "page": {
+            "type": "number|null",
+            "required": false
+          },
+          "pageSize": {
+            "type": "number|null",
+            "required": false
+          },
+          "paths": {
+            "type": "array<string>|null",
+            "required": false
+          },
+          "query": {
+            "type": "string|null",
+            "required": false
+          },
+          "searchHPath": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "subTypes": {
+            "type": "SearchSubtypeFilterInput|null",
+            "required": false
+          },
+          "types": {
+            "type": "object|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "blocks",
+            "docMode",
+            "matchedBlockCount",
+            "matchedRootCount",
+            "pageCount"
+          ],
+          "props": {
+            "blocks": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "alias",
+                  "box",
+                  "children",
+                  "content",
+                  "count",
+                  "created",
+                  "defID",
+                  "defPath",
+                  "depth",
+                  "fcontent",
+                  "folded",
+                  "hPath",
+                  "ial",
+                  "id",
+                  "markdown",
+                  "memo",
+                  "name",
+                  "number",
+                  "parentID",
+                  "path",
+                  "refCount",
+                  "refText",
+                  "refs",
+                  "riffCard",
+                  "riffCardID",
+                  "rootID",
+                  "sort",
+                  "subType",
+                  "tag",
+                  "type",
+                  "updated"
+                ]
+              }
+            },
+            "docMode": {
+              "kind": "boolean"
+            },
+            "matchedBlockCount": {
+              "kind": "integer"
+            },
+            "matchedRootCount": {
+              "kind": "integer"
+            },
+            "pageCount": {
+              "kind": "integer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/search/semanticSearchBlock",
+      "usedBy": [
+        "src/doc-search-ui.ts:632",
+        "src/doc-search-ui.ts:633",
+        "src/doc-search-ui.ts:687",
+        "src/doc-search-ui.ts:688",
+        "src/search-model.js:683"
+      ],
+      "method": "POST",
+      "handler": "semanticSearchBlock",
+      "body": "json",
+      "request": {
+        "required": [],
+        "properties": {
+          "groupBy": {
+            "type": "number|null",
+            "required": false
+          },
+          "method": {
+            "type": "number|null",
+            "required": false
+          },
+          "orderBy": {
+            "type": "number|null",
+            "required": false
+          },
+          "page": {
+            "type": "number|null",
+            "required": false
+          },
+          "pageSize": {
+            "type": "number|null",
+            "required": false
+          },
+          "paths": {
+            "type": "array<string>|null",
+            "required": false
+          },
+          "query": {
+            "type": "string|null",
+            "required": false
+          },
+          "subTypes": {
+            "type": "SearchSubtypeFilterInput|null",
+            "required": false
+          },
+          "types": {
+            "type": "object|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "blocks",
+            "matchedBlockCount",
+            "matchedRootCount",
+            "pageCount"
+          ],
+          "props": {
+            "blocks": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "alias",
+                  "box",
+                  "children",
+                  "content",
+                  "count",
+                  "created",
+                  "defID",
+                  "defPath",
+                  "depth",
+                  "fcontent",
+                  "folded",
+                  "hPath",
+                  "ial",
+                  "id",
+                  "markdown",
+                  "memo",
+                  "name",
+                  "number",
+                  "parentID",
+                  "path",
+                  "refCount",
+                  "refText",
+                  "refs",
+                  "riffCard",
+                  "riffCardID",
+                  "rootID",
+                  "sort",
+                  "subType",
+                  "tag",
+                  "type",
+                  "updated"
+                ]
+              }
+            },
+            "matchedBlockCount": {
+              "kind": "integer"
+            },
+            "matchedRootCount": {
+              "kind": "integer"
+            },
+            "pageCount": {
+              "kind": "integer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/storage/getCriteria",
+      "usedBy": [
+        "src/index.ts:3277",
+        "src/index.ts:3366",
+        "src/index.ts:3367",
+        "src/index.ts:4080"
+      ],
+      "method": "POST",
+      "handler": "getCriteria",
+      "body": "none",
+      "request": {
+        "required": [],
+        "properties": {}
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "group",
+              "hPath",
+              "hasReplace",
+              "idPath",
+              "k",
+              "method",
+              "name",
+              "r",
+              "replaceTypes",
+              "sort",
+              "subTypes",
+              "types"
+            ],
+            "props": {
+              "group": {
+                "kind": "integer"
+              },
+              "hPath": {
+                "kind": "string"
+              },
+              "hasReplace": {
+                "kind": "boolean"
+              },
+              "idPath": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "k": {
+                "kind": "string"
+              },
+              "method": {
+                "kind": "integer"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "r": {
+                "kind": "string"
+              },
+              "replaceTypes": {
+                "kind": "object",
+                "fields": [
+                  "aHref",
+                  "aText",
+                  "aTitle",
+                  "blockRef",
+                  "code",
+                  "codeBlock",
+                  "docTitle",
+                  "em",
+                  "fileAnnotationRef",
+                  "htmlBlock",
+                  "imgSrc",
+                  "imgText",
+                  "imgTitle",
+                  "inlineMath",
+                  "inlineMemo",
+                  "kbd",
+                  "mark",
+                  "mathBlock",
+                  "s",
+                  "strong",
+                  "sub",
+                  "sup",
+                  "tag",
+                  "text",
+                  "u"
+                ]
+              },
+              "sort": {
+                "kind": "integer"
+              },
+              "subTypes": {
+                "kind": "object",
+                "fields": [
+                  "heading",
+                  "list",
+                  "listItem"
+                ]
+              },
+              "types": {
+                "kind": "object",
+                "fields": [
+                  "audioBlock",
+                  "blockquote",
+                  "callout",
+                  "codeBlock",
+                  "customBlock",
+                  "databaseBlock",
+                  "document",
+                  "embedBlock",
+                  "heading",
+                  "htmlBlock",
+                  "iframeBlock",
+                  "list",
+                  "listItem",
+                  "mathBlock",
+                  "paragraph",
+                  "superBlock",
+                  "tabItem",
+                  "table",
+                  "tabs",
+                  "videoBlock",
+                  "widgetBlock"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/storage/getRecentDocs",
+      "usedBy": [
+        "src/index.ts:3276",
+        "src/index.ts:3363",
+        "src/index.ts:3364",
+        "src/index.ts:3458",
+        "src/index.ts:5635"
+      ],
+      "method": "POST",
+      "handler": "getRecentDocs",
+      "body": "legacyOptional",
+      "request": {
+        "required": [],
+        "properties": {
+          "sortBy": {
+            "type": "string|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "closedAt",
+              "icon",
+              "openAt",
+              "rootID",
+              "title",
+              "viewedAt"
+            ],
+            "props": {
+              "closedAt": {
+                "kind": "integer"
+              },
+              "icon": {
+                "kind": "string"
+              },
+              "openAt": {
+                "kind": "integer"
+              },
+              "rootID": {
+                "kind": "string"
+              },
+              "title": {
+                "kind": "string"
+              },
+              "viewedAt": {
+                "kind": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/tag/getTag",
+      "usedBy": [
+        "src/index.ts:3264",
+        "src/index.ts:3321",
+        "src/index.ts:3322",
+        "src/index.ts:3568"
+      ],
+      "method": "POST",
+      "handler": "getTag",
+      "body": "json",
+      "request": {
+        "required": [],
+        "properties": {
+          "app": {
+            "type": "string|null",
+            "required": false
+          },
+          "ignoreMaxListHint": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "sort": {
+            "type": "number|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "array",
+          "item": {
+            "kind": "object",
+            "fields": [
+              "children",
+              "count",
+              "depth",
+              "label",
+              "name",
+              "type"
+            ],
+            "props": {
+              "children": {
+                "kind": "array",
+                "itemKind": "deferred"
+              },
+              "count": {
+                "kind": "integer"
+              },
+              "depth": {
+                "kind": "integer"
+              },
+              "label": {
+                "kind": "string"
+              },
+              "name": {
+                "kind": "string"
+              },
+              "type": {
+                "kind": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

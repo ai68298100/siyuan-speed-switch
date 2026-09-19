@@ -27,19 +27,21 @@ test('preview read stays on the selected module', () => assert.match(source, /th
 test('preview read carries the selected size', () => assert.match(storeUiSource, /\{\.\.\.readOptions, size: sizeKey\}/));
 test('preview forces a fresh read', () => assert.match(storeUiSource,/controller\.refresh\(\{\}, \{force: true\}\)/));
 test('preview tracks disposed state', () => assert.match(storeUiSource, /let disposed = false/));
-test('preview exposes one cleanup helper', () => assert.match(storeUiSource, /const disposePreview = \(\) =>/));
+test('preview exposes one cleanup helper', () => assert.match(storeUiSource, /disposePreview = \(\) => \{/));
 test('preview cleanup disposes controller', () => assert.match(storeUiSource, /controller\?\.dispose\(\)/));
-test('preview cleanup clears polling', () => assert.match(storeUiSource, /window\.clearInterval\(disposeTimer\)/));
+// T-6479：释放入口从"覆写 destroy + 轮询断连"改为宿主 Dialog 的 destroyCallback。
+test('preview cleanup is declared before construction', () => assert.match(storeUiSource, /let disposePreview: \(\) => void = \(\) => undefined;/));
+test('preview wires the host destroyCallback', () => assert.match(storeUiSource, /destroyCallback: \(\) => disposePreview\(\)/));
 test('preview cleanup restores opener focus', () => assert.match(storeUiSource,/if \(opener\?\.isConnected\) opener\.focus\(\)/));
-test('preview wraps dialog destroy', () => assert.match(storeUiSource, /const originalDestroy = dialog\.destroy\.bind\(dialog\)/));
-test('preview destroy invokes cleanup', () => assert.match(storeUiSource, /dialog\.destroy = \(\) => \{\s*disposePreview\(\);/));
-test('preview destroy invokes original destroy', () => assert.match(storeUiSource, /disposePreview\(\);\s*originalDestroy\(\);/));
+test('preview no longer wraps dialog destroy', () => assert.doesNotMatch(storeUiSource, /dialog\.destroy = \(\)/));
+test('preview no longer chains an original destroy', () => assert.doesNotMatch(storeUiSource, /originalDestroy\(\)/));
 test('preview mounts before refreshing', () => assert.match(storeUiSource, /controller\.mount\(\);\s*const markPreviewReady =/));
 test('preview clears busy state after refresh', () => assert.match(storeUiSource, /container\.setAttribute\("aria-busy", "false"\)/));
 test('preview refresh cleanup handles success and failure', () => assert.match(storeUiSource, /controller\.refresh\(\{\}, \{force: true\}\)\.then\(markPreviewReady, markPreviewReady\)/));
-test('preview polls dialog connectivity', () => assert.match(storeUiSource,/disposeTimer = window\.setInterval/));
-test('preview checks dialog connection', () => assert.match(storeUiSource, /if \(!dialog\.element\.isConnected\)/));
-test('preview polling uses shared cleanup', () => assert.match(storeUiSource,/if \(!dialog\.element\.isConnected\) \{\s*disposePreview\(\);/));
+// T-6479：轮询式断连释放已废除——宿主 destroyCallback 覆盖 Escape/遮罩/程序三种关闭路径。
+test('preview no longer polls dialog connectivity', () => assert.doesNotMatch(storeUiSource, /window\.setInterval/));
+test('preview no longer checks dialog connection for disposal', () => assert.doesNotMatch(storeUiSource, /dialog\.element\.isConnected/));
+test('preview no longer keeps a dispose timer', () => assert.doesNotMatch(storeUiSource, /disposeTimer/));
 test('preview has a bounded mobile width', () => assert.match(storeUiSource, /width: this\.isMobile \? "min\(420px, 92vw\)"/));
 test('preview has a bounded mobile height', () => assert.match(storeUiSource,/height: this\.isMobile \? "min\(560px, 80vh\)"/));
 test('preview styles remain scoped', () => assert.match(css, /\.sw-store-preview/));

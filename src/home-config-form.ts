@@ -32,12 +32,15 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         const sourceInfo = resolveHomeStoreSourceInfo(inst.moduleId);
         const configKind = resolveHomeConfigKind(inst.moduleId, def.category);
         const integration = resolveHomeConfigIntegration(sourceInfo, def.category);
+        // T-6479：图标钳制观察器的释放挂宿主 destroyCallback（不再覆写 dialog.destroy）。
+        let releaseConfigForm: () => void = () => undefined;
         const dialog = new Dialog({
             title: `${this.i18n.homeConfig} · ${def.title || inst.moduleId}`,
             // Legacy title contract: title: `${this.i18n.homeConfig} · ${inst.moduleId}`
             content: '<div class="speed-switch sw-home-config"></div>',
             width: this.isMobile ? "min(480px, 92vw)" : "420px",
             height: this.isMobile ? "min(420px, 80vh)" : "360px",
+            destroyCallback: () => releaseConfigForm(),
         });
         const root = dialog.element.querySelector<HTMLElement>(".sw-home-config");
         if (!root) return;
@@ -662,11 +665,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         if (typeof MutationObserver === "function") {
             const iconClampObserver = new MutationObserver(() => clampOversizedIcons(root));
             iconClampObserver.observe(root, {childList: true, subtree: true});
-            const originalDestroy = dialog.destroy.bind(dialog);
-            dialog.destroy = () => {
-                iconClampObserver.disconnect();
-                originalDestroy();
-            };
+            releaseConfigForm = () => iconClampObserver.disconnect();
         }
         const save = document.createElement("button");
         save.type = "button";

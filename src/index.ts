@@ -2,7 +2,7 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu, TEventBus} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER} from "./storage-migration";
@@ -1981,9 +1981,12 @@ export default class SpeedSwitchPlugin extends Plugin {
             storage: this.i18n.secStorage,
         };
 
+        // T-6479：设置弹窗的 resize 监听释放改挂宿主 destroyCallback（不再覆写 dialog.destroy）。
+        let releaseSettingsDialog: () => void = () => undefined;
         const dialog = new Dialog({
             title: this.i18n.settings,
             content: '<div class="sw-settings"></div>',
+            destroyCallback: () => releaseSettingsDialog(),
             // 桌面端独立采用 70% 视口自适应（不与第一面板的 panelScale 联动）；手机端按视口收缩，避免溢出屏幕
             width: this.isMobile ? "min(720px, 88vw)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).width}px`,
             height: this.isMobile ? "min(560px, 85vh)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).height}px`,
@@ -2012,15 +2015,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (typeof window === "object" && typeof window.addEventListener === "function") {
             window.addEventListener("resize", onSettingsResize);
         }
-        const originalSettingsDestroy = dialog.destroy.bind(dialog);
         let settingsDestroyed = false;
-        dialog.destroy = () => {
+        releaseSettingsDialog = () => {
             if (settingsDestroyed) return;
             settingsDestroyed = true;
             if (typeof window === "object" && typeof window.removeEventListener === "function") {
                 window.removeEventListener("resize", onSettingsResize);
             }
-            originalSettingsDestroy();
         };
         const panels = document.createElement("div");
         panels.className = "sw-settings__panels";
@@ -3816,11 +3817,11 @@ const version = beginSearch(session);
             const attrPrefix = `custom-dailynote-${year}${String(month + 1).padStart(2, "0")}`;
             const notebookScope = buildNotebookBoxScope(normalized.notebook, "b");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT b.id, b.content, b.updated, a.name AS daily_attr FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name GLOB '${attrPrefix}[0-3][0-9]' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR b.content LIKE '${prefix}%') ORDER BY b.updated DESC LIMIT 64`,
+                stmt: `SELECT b.id, b.content, b.updated, a.name AS daily_attr FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name GLOB '${attrPrefix}[0-3][0-9]' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR b.content LIKE '${prefix}%') ORDER BY b.updated DESC, b.id ASC LIMIT 200`,
             });
             // Hoist both matchers: they depend only on the month prefix, so
-            // compiling them per row would rebuild identical regexes up to 64
-            // times on every calendar render.
+            // compiling them per row would rebuild identical regexes up to the query
+            // limit (200) times on every calendar render.
             const attrRe = new RegExp(`^${attrPrefix}(\\d{2})$`);
             const titleRe = new RegExp(`^${prefix}(\\d{2})(?:\\D|$)`);
             const journalByDay = new Map<string, string>();
@@ -3941,7 +3942,7 @@ const version = beginSearch(session);
             if (!rootId || !BLOCK_ID_RE.test(rootId)) return {items: [], emptyHint: this.i18n.homeCurrentDocumentMissing};
             const escaped = rootId.split("'").join("''");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, content, id AS target_id, 'child' AS relation FROM blocks WHERE root_id='${escaped}' AND parent_id='${escaped}' UNION ALL SELECT id, content, root_id AS target_id, 'reference' AS relation FROM blocks WHERE id<>'${escaped}' AND markdown LIKE '%((${escaped}%' ORDER BY id DESC LIMIT 64`,
+                stmt: `SELECT id, content, id AS target_id, 'child' AS relation FROM blocks WHERE root_id='${escaped}' AND parent_id='${escaped}' UNION ALL SELECT id, content, root_id AS target_id, 'reference' AS relation FROM blocks WHERE id<>'${escaped}' AND markdown LIKE '%((${escaped}%' ORDER BY relation ASC, id DESC LIMIT 64`,
             });
             const rows = (json?.data || []) as Array<{id?: string; content?: string; target_id?: string; relation?: string}>;
             const snapshot = buildDocumentRelationsSnapshot(rows, config, {
@@ -4129,9 +4130,14 @@ const version = beginSearch(session);
 
     public async loadHomeDatabaseOptions(): Promise<Array<{id: string; title: string}>> {
         const json = await this.fetchKernelJson("/api/query/sql", {
-            stmt: "SELECT id, content, hpath FROM blocks WHERE type = 'av' ORDER BY updated DESC LIMIT 64",
+            stmt: "SELECT id, content, hpath FROM blocks WHERE type = 'av' ORDER BY updated DESC, id ASC LIMIT 200",
         });
-        const rows = Array.isArray(json?.data) ? json.data : [];
+        const payload = normalizeSqlResult(json);
+        if (payload.truncated) {
+            // 选择器被内核截断：目标项可能不在候选里。截断可见化待补 i18n 提示（T-6482）。
+            logger.warn("settings picker truncated by kernel limit", payload.limit);
+        }
+        const rows = payload.rows;
         const seen = new Set<string>();
         return rows.reduce((items: Array<{id: string; title: string}>, row: any) => {
             const id = typeof row?.id === "string" && BLOCK_ID_RE.test(row.id) ? row.id : "";
@@ -4153,9 +4159,14 @@ const version = beginSearch(session);
             ? ` AND (content LIKE '%${keyword}%' OR hpath LIKE '%${keyword}%' OR id LIKE '%${keyword}%')`
             : "";
         const json = await this.fetchKernelJson("/api/query/sql", {
-            stmt: `SELECT id, content, hpath FROM blocks WHERE type = 'd'${filter} ORDER BY updated DESC LIMIT 64`,
+            stmt: `SELECT id, content, hpath FROM blocks WHERE type = 'd'${filter} ORDER BY updated DESC, id ASC LIMIT 200`,
         });
-        const rows = Array.isArray(json?.data) ? json.data : [];
+        const payload = normalizeSqlResult(json);
+        if (payload.truncated) {
+            // 选择器被内核截断：目标项可能不在候选里。截断可见化待补 i18n 提示（T-6482）。
+            logger.warn("settings picker truncated by kernel limit", payload.limit);
+        }
+        const rows = payload.rows;
         const seen = new Set<string>();
         return rows.reduce((items: Array<{id: string; title: string}>, row: any) => {
             const id = typeof row?.id === "string" && BLOCK_ID_RE.test(row.id) ? row.id : "";
@@ -4728,17 +4739,18 @@ const version = beginSearch(session);
             return {...this.updatedMapCache.map};
         }
         try {
-            const response = await fetch("/api/query/sql", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({stmt: `SELECT root_id, updated, created FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}')`}),
+            // T-6478：改走统一分发（同源白名单 + 5s 超时 + 失败归一），并显式给出外层 LIMIT。
+            // 缺外层 LIMIT 时内核按 search.limit（默认 64、下限 32）截断，打开页签多于该数
+            // 会静默缺更新时间、令「最近编辑」排序错乱；ids 已由 sanitizeDocIds 去重净化。
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT root_id, updated, created FROM blocks WHERE type='d' AND root_id IN ('${ids.join("','")}') LIMIT ${ids.length}`,
             });
-            if (!response.ok) {
-                throw new Error(`query/sql HTTP ${response.status}`);
+            if (!json) {
+                // 失败不写缓存：下一次重渲染再取，避免把空映射固化 UPDATED_CACHE_MS。
+                return {};
             }
-            const json = await response.json();
             const map: {[rootId: string]: string} = {};
-            (json?.data || []).forEach((row: any) => {
+            normalizeSqlResult(json).rows.forEach((row: any) => {
                 map[row.root_id] = row.updated;
                 // created 顺带回填缓存（YYYYMMDDHHmmss），供按创建月份分组使用
                 if (typeof row.created === "string" && row.created) {

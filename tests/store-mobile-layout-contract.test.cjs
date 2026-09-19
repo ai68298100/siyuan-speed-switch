@@ -298,10 +298,10 @@ test('store preview task failure is surfaced', () => assert.match(secondPanelSou
 test('store preview task toggle refreshes content', () => assert.match(storeSource,/await controller\?\.refresh\(\)/));
 test('store preview disposal is idempotent', () => assert.match(source, /if \(disposed\) return;\s*disposed = true/));
 test('store preview disposal releases controller', () => assert.match(storeSource,/controller\?\.dispose\(\)/));
-test('store preview disposal clears interval', () => assert.match(storeSource,/if \(disposeTimer\) window\.clearInterval\(disposeTimer\)/));
+test('store preview disposal wires the host destroyCallback', () => assert.match(storeSource,/destroyCallback: \(\) => disposePreview\(\)/));
 test('store preview first refresh is forced', () => assert.match(storeSource,/controller\.refresh\(\{\}, \{force: true\}\)/));
 test('store preview clears busy on success and failure', () => assert.match(storeSource,/\.then\(markPreviewReady, markPreviewReady\)/));
-test('store preview disconnect watcher is bounded', () => { const i = storeSource.indexOf('window.setInterval(() => {'); assert.ok(i >= 0); const w = storeSource.slice(i, i + 400); assert.ok(w.includes('disposePreview();') && w.includes('}, 1500)'), '断连监视须 1500ms 周期调用 disposePreview'); });
+test('store preview has no polling disconnect watcher left', () => assert.doesNotMatch(storeSource, /window\.setInterval\(\(\) => \{\s*if \(!dialog\.element\.isConnected\)/));
 test('home config mobile width is viewport bounded', () => assert.match(configFormSource, /this\.isMobile \? "min\(480px, 92vw\)"/));
 test('home config mobile height is viewport bounded', () => assert.match(configFormSource, /this\.isMobile \? "min\(420px, 80vh\)"/));
 test('home config edits a detached draft', () => assert.match(configFormSource, /const draft: Record<string, unknown> = \{\.\.\.inst\.config\}/));
@@ -540,10 +540,10 @@ test('preview task toggle calls host adapter', () => assert.match(secondPanelSou
 test('preview task toggle refreshes after attempt', () => assert.match(storeSource,/await controller\?\.refresh\(\);/));
 test('preview dispose guards repeated calls', () => assert.match(source, /if \(disposed\) return;/));
 test('preview destroy wraps original dialog destroy', () => assert.match(source, /const originalDestroy = dialog\.destroy\.bind\(dialog\)/));
-test('preview destroy invokes original dialog destroy', () => assert.match(storeSource,/disposePreview\(\);\s*originalDestroy\(\)/));
+test('preview no longer chains an original dialog destroy', () => assert.doesNotMatch(storeSource,/disposePreview\(\);\s*originalDestroy\(\)/));
 test('preview busy marker only clears while mounted', () => assert.match(storeSource,/if \(!disposed\) \{\s*container\.setAttribute\("aria-busy", "false"\)/));
-test('preview watcher interval is assigned', () => assert.match(storeSource,/disposeTimer = window\.setInterval/));
-test('preview watcher interval is cleared during dispose', () => assert.match(storeSource,/window\.clearInterval\(disposeTimer\)/));
+test('preview watcher interval is gone', () => assert.doesNotMatch(storeSource,/disposeTimer = window\.setInterval/));
+test('preview dispose no longer clears a polling timer', () => assert.doesNotMatch(storeSource,/window\.clearInterval\(disposeTimer\)/));
 test('config field rows use dedicated class', () => assert.match(configFormSource, /row\.className = "sw-home-config__field"/));
 test('config labels use dedicated class', () => assert.match(configFormSource, /label\.className = "sw-home-config__label"/));
 test('config control ids sanitize unsafe characters', () => assert.match(configFormSource, /const controlId = .*\.replace\(\//));
@@ -740,4 +740,4 @@ test('store module refresh rerenders and notifies', () => assert.match(storeSour
 test('store registers module change listener', () => assert.match(secondPanelSource, /this\.homeModuleChangeListeners\.add\(handleModuleChange\)/));
 test('store provider rescan is delayed and connection guarded', () => assert.match(storeSource,/window\.setTimeout\(\(\) => \{\s*if \(root\.isConnected\) renderStore\(\);\s*\}, 400\)/));
 test('store destroy clears timer and module listener', () => assert.match(storeSource,/window\.clearTimeout\(rescanTimer\);\s*this\.homeModuleChangeListeners\.delete\(handleModuleChange\)/));
-test('store destroy delegates then restores opener focus', () => assert.match(storeSource,/originalDestroy\(\);\s*if \(opener\?\.isConnected\) opener\.focus\(\)/));
+test('store destroy releases listener then restores opener focus', () => assert.match(storeSource,/this\.homeModuleChangeListeners\.delete\(handleModuleChange\);\s*if \(opener\?\.isConnected\) opener\.focus\(\)/));

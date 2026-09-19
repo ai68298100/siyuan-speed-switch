@@ -70,11 +70,15 @@ export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, 
         const sizes: string[] = Array.isArray(def.sizes) && def.sizes.length > 0 ? def.sizes : ["medium"];
         const sizeKey = sizes.includes("medium") ? "medium" : sizes[0];
         const preset = HOME_WIDGET_SIZES[sizeKey as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+        // T-6479：关闭一律走宿主 Dialog 的 destroyCallback（petal siyuan.d.ts:874；
+        // 宿主 dialog/index.ts:134-151 在所有关闭路径上触发且有重入保护）。
+        let disposePreview: () => void = () => undefined;
         const dialog = new Dialog({
             title: `${this.i18n.homeStorePreview} · ${def.title || moduleId}`,
             content: '<div class="speed-switch sw-store-preview"></div>',
             width: this.isMobile ? "min(420px, 92vw)" : `${Math.max(360, Math.round(preset.w * 86))}px`,
             height: this.isMobile ? "min(560px, 80vh)" : `${Math.max(320, Math.round(preset.h * 86))}px`,
+            destroyCallback: () => disposePreview(),
         });
         const container = dialog.element.querySelector<HTMLElement>(".sw-store-preview");
         if (!container) return;
@@ -161,18 +165,11 @@ export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, 
             },
         });
         let disposed = false;
-        let disposeTimer = 0;
-        const disposePreview = () => {
+        disposePreview = () => {
             if (disposed) return;
             disposed = true;
             controller?.dispose();
-            if (disposeTimer) window.clearInterval(disposeTimer);
             if (opener?.isConnected) opener.focus();
-        };
-        const originalDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
-            disposePreview();
-            originalDestroy();
         };
         controller.mount();
         const markPreviewReady = () => {
@@ -182,12 +179,6 @@ export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, 
             }
         };
         void controller.refresh({}, {force: true}).then(markPreviewReady, markPreviewReady);
-        // 宿主 Dialog 关闭无回调：轮询断连即释放控制器，避免悬空读取
-        disposeTimer = window.setInterval(() => {
-            if (!dialog.element.isConnected) {
-                disposePreview();
-            }
-        }, 1500);
     }
 
 
@@ -197,11 +188,14 @@ export function openStoreWidgetPreview(this: HomeStoreUiHost, moduleId: string, 
     // 渲染后 400ms 异步复扫一次安装状态（增量识别，不影响首屏）。
 export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "sidebar" | "mobile", onChanged: () => void) {
         const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        // T-6479：商店弹窗的定时器与监听器释放同样挂到宿主 destroyCallback 上。
+        let disposeStore: () => void = () => undefined;
         const storeDialog = new Dialog({
             title: this.i18n.homeStoreTitle,
             content: '<div class="speed-switch sw-home-store"></div>',
             width: this.isMobile ? "min(680px, 94vw)" : `${Math.min(960, Math.round(window.innerWidth * 0.78))}px`,
             height: this.isMobile ? "min(560px, 85vh)" : `${Math.min(720, Math.round(window.innerHeight * 0.84))}px`,
+            destroyCallback: () => disposeStore(),
         });
         const root = storeDialog.element.querySelector<HTMLElement>(".sw-home-store");
         if (!root) return;
@@ -1263,11 +1257,12 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         const rescanTimer = window.setTimeout(() => {
             if (root.isConnected) renderStore();
         }, 400);
-        const originalDestroy = storeDialog.destroy.bind(storeDialog);
-        storeDialog.destroy = () => {
+        let storeReleased = false;
+        disposeStore = () => {
+            if (storeReleased) return;
+            storeReleased = true;
             window.clearTimeout(rescanTimer);
             this.homeModuleChangeListeners.delete(handleModuleChange);
-            originalDestroy();
             if (opener?.isConnected) opener.focus();
         };
     }
