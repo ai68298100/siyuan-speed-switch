@@ -24,6 +24,7 @@ const HEATMAP_MAX_CELLS = 371; // 速切热力图硬顶 400；366 天 + 周对�
 
 // 与速切侧 src/checkin-bridge-model.js 的 CHECKIN_MODULE_IDS 逐一致。
 const CHECKIN_MODULE_IDS = [
+    "checkin-summary",
     "checkin-today",
     "checkin-streak",
     "checkin-year-heatmap",

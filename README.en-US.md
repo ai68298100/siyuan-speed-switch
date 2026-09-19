@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.23.1 fixes a proxy-gate gap that prevented the Miniflux widget from fetching for real, and adds category filtering (categories load dynamically from your Miniflux instance). The same cycle brings countdown/elapsed dual modes, year/quarter/month periods, a writing strength score, full iCal time-zone and recurrence support, a storage usage section in the settings page, and a Shift+F10 action panel key in the switcher.
+> v0.23.3 fixes marketplace updates being rolled back by cloud sync (archive timestamps now come from the release commit instead of a fixed epoch, so installed files are no longer older than the sync index), fixes notebook grouping showing an “unknown notebook” group (real ownership is now restored from the kernel), and slims the widget card header — the config button is now a gear icon and update times are compact.
 
 > The current development head passes type checking, production build, 6267 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
@@ -170,6 +170,24 @@ This release is published as `v0.23.1`
 
 ## Changelog
 
+### v0.23.3 (2026-09-19)
+
+- **Fixes marketplace updates being rolled back by cloud sync**: the archive's zip entry
+  timestamps now come from the release commit instead of a fixed epoch. The fixed epoch made
+  installed files' modification times older than the sync index, so automatic sync judged the
+  cloud newer and overwrote the freshly updated version with the old one (only this plugin was
+  affected: only our build pipeline used a fixed-epoch timestamp).
+- **Fixes an “unknown notebook” group under notebook grouping**: when a tab lacks explicit
+  notebook metadata, the notebook id used to be derived from the first path segment — which is
+  the root document id, not a notebook. Opening the notebook-grouped panel now restores the
+  real ownership with one bounded kernel query and re-renders.
+- **Widget card header slimmer**: the config button is now a gear icon (tooltip keeps the
+  semantics) and update times are compact — the title no longer truncates into an ellipsis.
+- **First-paint icon sizes**: every switcher toolbar icon carries explicit width/height, so
+  oversized black icons no longer flash while styles load; the widget config dialog joins the
+  icon-clamp observer coverage.
+- **Also**: contribution heatmaps gained a “less → more” color-scale legend; performance
+  micro-benchmarks use best-of-3 sampling to resist host load spikes.
 ### v0.23.2 (2026-09-19)
 
 - **Fixes the database table widget showing an empty table for embedded/mirrored databases on

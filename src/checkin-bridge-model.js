@@ -21,6 +21,7 @@ const CHECKIN_MAX_EVENTS = 4000;
 const CHECKIN_CALIBER = "checkin-events-v1";
 
 const CHECKIN_MODULE_IDS = Object.freeze([
+    "checkin-summary",
     "checkin-today",
     "checkin-streak",
     "checkin-year-heatmap",
@@ -30,6 +31,7 @@ const CHECKIN_MODULE_IDS = Object.freeze([
 ]);
 
 const CHECKIN_CAPABILITIES = Object.freeze({
+    "checkin-summary": "items.read",
     "checkin-today": "items.read",
     "checkin-streak": "items.read",
     "checkin-year-heatmap": "items.read",
