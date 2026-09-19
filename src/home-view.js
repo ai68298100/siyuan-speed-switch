@@ -243,11 +243,11 @@ function renderHomeModuleView(doc, view, options = {}) {
     if (view.cached || updatedAt) {
         const meta = doc.createElement("span");
         meta.className = "sw__home-module-meta";
-        const parts = [];
-        if (view.cached) parts.push(labels.cached || "Cached");
-        if (updatedAt) parts.push(`${labels.updated || "Updated"} ${updatedAt}`);
-        meta.textContent = parts.join(" · ");
-        meta.setAttribute("aria-label", meta.textContent);
+        // T-6473 头部瘦身：首行只显示时间本身（"更新"前缀移入 tooltip），
+        // 收窄后标题不再被挤成省略号
+        const metaText = [view.cached ? (labels.cached || "Cached") : "", updatedAt].filter(Boolean).join(" · ");
+        meta.textContent = metaText;
+        meta.setAttribute("title", `${labels.updated || "Updated"} ${metaText}`);
         heading.appendChild(meta);
     }
     if (view.sourceHealth) {
@@ -258,11 +258,24 @@ function renderHomeModuleView(doc, view, options = {}) {
         heading.appendChild(health);
     }
     if (view.configurable && options.onConfig) {
+        // T-6473 头部瘦身：文字按钮改齿轮图标（title/aria 保留 Configure 语义），
+        // 宽度从 ~70px 收窄到 ~22px
         const configButton = doc.createElement("button");
         configButton.type = "button";
-        configButton.className = "sw__home-module-toggle b3-button b3-button--outline";
+        configButton.className = "sw__home-module-toggle b3-button b3-button--text sw__home-module-config";
         configButton.dataset.focusKey = "config";
-        configButton.textContent = labels.config || "Configure";
+        configButton.setAttribute("aria-label", labels.config || "Configure");
+        configButton.setAttribute("title", labels.config || "Configure");
+        const configIcon = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+        configIcon.setAttribute("aria-hidden", "true");
+        configIcon.setAttribute("width", "14");
+        configIcon.setAttribute("height", "14");
+        configIcon.setAttribute("viewBox", "0 0 24 24");
+        const configUse = doc.createElementNS("http://www.w3.org/2000/svg", "use");
+        configUse.setAttribute("href", "#iconSettings");
+        configUse.setAttribute("xlink:href", "#iconSettings");
+        configIcon.appendChild(configUse);
+        configButton.appendChild(configIcon);
         configButton.addEventListener("click", () => options.onConfig(view));
         heading.appendChild(configButton);
     }

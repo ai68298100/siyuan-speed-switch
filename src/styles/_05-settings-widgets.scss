@@ -589,8 +589,28 @@
 
     .sw__home-module-meta {
         flex: none;
+        max-width: 40%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         color: var(--b3-theme-on-surface-light);
         font-size: 11px;
+    }
+
+    // T-6473 头部瘦身：Configure 由文字按钮改为齿轮图标按钮
+    .sw__home-module-config {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        color: var(--b3-theme-primary);
+
+        svg { width: 14px; height: 14px; }
+
+        &:hover { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); }
     }
 
     .sw__home-module-toggle {

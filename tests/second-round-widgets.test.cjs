@@ -440,3 +440,37 @@ test("heatmap legend explains the color scale with swatches and text", () => {
     assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend", /font-size: 11px/), "图例文字样式必须存在");
     assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend .sw__home-heatmap-legend-swatch.is-level-4", /background/), "最高档色块样式必须存在");
 });
+
+// ---------- T-6473 头部瘦身 + 图标首帧兜底 + 分组标签恢复 ----------
+test("card header compresses config button and meta without losing semantics", () => {
+    const view = readSourceText(path.join(__dirname, "..", "src", "home-view.js"));
+    assert.match(view, /sw__home-module-config/, "配置按钮改为齿轮图标类");
+    assert.match(view, /#iconSettings/, "齿轮图标使用 iconSettings");
+    assert.doesNotMatch(view, /configButton\.textContent = labels\.config/, "不再渲染 Configure 文字按钮");
+    assert.match(view, /meta\.setAttribute\("title"/, "更新时间前缀移入 tooltip");
+    const css = readSourceText(path.join(__dirname, "..", "src", "styles", "_05-settings-widgets.scss"));
+    assert.ok(declaresIn(css, ".sw__home-module-header .sw__home-module-config", /width: 22px/), "齿轮按钮尺寸必须钉住");
+    assert.ok(declaresIn(css, ".sw__home-module-header .sw__home-module-meta", /max-width: 40%/), "meta 必须可收缩截断");
+});
+
+test("toolbar svgs carry intrinsic sizes and config dialog joins the clamp coverage", () => {
+    const indexTs = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    for (const icon of ["iconCalendar", "iconRefresh", "iconSettings", "iconSort", "iconFilter"]) {
+        assert.ok(
+            indexTs.includes(`<svg width="16" height="16"><use xlink:href="#${icon}"></use></svg>`)
+                || indexTs.includes(`<svg width="14" height="14"><use xlink:href="#${icon}"></use></svg>`),
+            `${icon} 工具栏 svg 必须带显式尺寸`,
+        );
+    }
+    const form = readSourceText(path.join(__dirname, "..", "src", "home-config-form.ts"));
+    assert.match(form, /iconClampObserver\.observe\(root/, "配置弹窗必须接入图标钳制观察器");
+    assert.match(form, /import \{clampOversizedIcons\} from "\.\/util"/);
+});
+
+test("notebook group labels recover from tab metadata when the cache misses", () => {
+    const indexTs = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    const block = indexTs.slice(indexTs.indexOf("notebookNameOf: (id: string) =>"));
+    assert.match(block, /for \(const tab of tabs\)/, "必须扫描页签自身元数据");
+    assert.match(block, /t\.notebookName \|\| t\.notebook \|\| t\.boxName/, "回退链必须覆盖三种字段名");
+    assert.match(block, /resolveSearchNotebookId\(tab as unknown\) !== id\) continue/, "必须按笔记本 ID 匹配");
+});

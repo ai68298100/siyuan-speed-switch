@@ -3,6 +3,7 @@
 // 主页状态与笔记本加载，签名见 HomeConfigFormHost。调用点以 .call(this) 绑定。
 import {Dialog} from "siyuan";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
+import {clampOversizedIcons} from "./util";
 import {buildHomeConfigSections, resolveHomeConfigHint, resolveHomeConfigIntegration, resolveHomeConfigKind, resolveHomeConfigPlaceholder, resolveHomeStoreSourceInfo, summarizeHomeConfigDraft} from "./home-store-model";
 
 export interface HomeConfigFormHost {
@@ -656,6 +657,17 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
         cancel.className = "b3-button b3-button--text";
         cancel.textContent = this.i18n.cancel;
         cancel.addEventListener("click", () => dialog.destroy());
+        // T-6473：配置弹窗此前不在图标钳制的观察器覆盖面内（弹窗/侧栏/第二面板均有），
+        // 动态插入的选项列表（数据库/分类/文档搜索结果）曾出现未钳制的超大 svg。
+        if (typeof MutationObserver === "function") {
+            const iconClampObserver = new MutationObserver(() => clampOversizedIcons(root));
+            iconClampObserver.observe(root, {childList: true, subtree: true});
+            const originalDestroy = dialog.destroy.bind(dialog);
+            dialog.destroy = () => {
+                iconClampObserver.disconnect();
+                originalDestroy();
+            };
+        }
         const save = document.createElement("button");
         save.type = "button";
         save.className = "b3-button b3-button--primary";

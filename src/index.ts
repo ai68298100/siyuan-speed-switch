@@ -2348,10 +2348,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         <div class="sw__content">
             <div class="sw__toolbar">
                 <div class="sw__search-wrap">
-                    <svg class="sw__search-icon"><use xlink:href="#iconSearch"></use></svg>
+                    <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
                     <input class="b3-text-field sw__search" placeholder="${this.i18n.searchTabs}" aria-label="${this.i18n.searchTabs}" autocomplete="off" spellcheck="false" />
                     <button type="button" class="sw__search-filter-btn" aria-label="${this.i18n.searchFilters}" title="${this.i18n.searchFilters}">
-                        <svg><use xlink:href="#iconFilter"></use></svg>
+                        <svg width="14" height="14"><use xlink:href="#iconFilter"></use></svg>
                     </button>
                 </div>
                 <div class="sw__select-wrap">
@@ -2362,22 +2362,22 @@ export default class SpeedSwitchPlugin extends Plugin {
                 </div>
                 <div class="sw__select-wrap">
                     <button type="button" class="b3-button b3-button--text sw__sort-trigger" aria-label="${this.i18n.setSortBy}">
-                        <svg><use xlink:href="#iconSort"></use></svg>
+                        <svg width="16" height="16"><use xlink:href="#iconSort"></use></svg>
                         <span class="sw__sort-trigger-label"></span>
                     </button>
                 </div>
                 <button type="button" class="b3-button b3-button--text sw__icon-btn sw__fullscreen-btn" aria-label="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}" title="${fullscreen ? this.i18n.exitFullscreen : this.i18n.enterFullscreen}">
-                    <svg class="sw__fs-enter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <svg class="sw__fs-exit" viewBox="0 0 24 24"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sw__fs-enter" width="16" height="16" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg class="sw__fs-exit" width="16" height="16" viewBox="0 0 24 24"><path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </button>
                 <button type="button" class="b3-button b3-button--text sw__icon-btn sw__journal-btn" aria-label="${this.i18n.journalBtn}" title="${this.i18n.journalBtn}">
-                    <svg><use xlink:href="#iconCalendar"></use></svg>
+                    <svg width="16" height="16"><use xlink:href="#iconCalendar"></use></svg>
                 </button>
                 <button type="button" class="b3-button b3-button--text sw__icon-btn sw__refresh-btn" aria-label="${this.i18n.homeRefreshAll}" title="${this.i18n.homeRefreshAll}">
-                    <svg><use xlink:href="#iconRefresh"></use></svg>
+                    <svg width="16" height="16"><use xlink:href="#iconRefresh"></use></svg>
                 </button>
                 <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}" title="${this.i18n.settings}">
-                    <svg><use xlink:href="#iconSettings"></use></svg>
+                    <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg>
                 </button>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
@@ -6770,7 +6770,19 @@ private rootIdOf(tab: Tab): string | null {
             notebookIdOf: (tab: Tab) => resolveSearchNotebookId(tab as unknown) || "",
             pathOf: (tab: Tab) => (tab as unknown as {path?: string; hPath?: string}).path
                 || (tab as unknown as {hPath?: string}).hPath || "",
-            notebookNameOf: (id: string) => notebookMap.get(id) || "",
+            notebookNameOf: (id: string) => {
+                const fromCache = notebookMap.get(id) || "";
+                if (fromCache) return fromCache;
+                // T-6473 分组识别修复：笔记本缓存缺失（未就绪/已关闭/旧数据残留的 ID）时，
+                // 从该组页签自带的笔记本名元数据恢复，避免组标签退化成裸 ID
+                for (const tab of tabs) {
+                    if (resolveSearchNotebookId(tab as unknown) !== id) continue;
+                    const t = tab as unknown as {notebookName?: string; notebook?: string; boxName?: string};
+                    const name = t.notebookName || t.notebook || t.boxName || "";
+                    if (name) return String(name).trim();
+                }
+                return "";
+            },
             notebookOrder,
             createdOf: (key: string) => this.createdByIdCache[key] || "",
             labels: {

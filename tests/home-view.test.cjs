@@ -347,8 +347,9 @@ test("home view exposes bounded cache and update metadata", () => {
     const meta = view.querySelector(".sw__home-module-meta");
     assert.ok(meta);
     assert.match(meta.textContent, /缓存/);
-    assert.match(meta.textContent, /更新/);
-    assert.equal(meta.getAttribute("aria-label"), meta.textContent);
+    // T-6473 头部瘦身："更新"前缀移入 title tooltip，行内只保留时间本身
+    assert.doesNotMatch(meta.textContent, /更新/);
+    assert.equal(meta.getAttribute("title"), `更新 ${meta.textContent}`);
 });
 
 
