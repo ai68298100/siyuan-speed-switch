@@ -206,6 +206,21 @@ test('document config searches the workspace without persisting raw search text'
     assert.doesNotMatch(documentField, /input\.addEventListener\("input", \(\) => \{\s*draft\[field\.key\] = input\.value/);
 });
 
+test('document and database pickers surface bounded truncation without fabricating options', () => {
+    const documentLoader = indexSource.slice(indexSource.indexOf('public async loadHomeDocumentOptions'), indexSource.indexOf('public async loadHomeDatabaseColumns'));
+    assert.match(documentLoader, /items\.truncated = payload\.truncated/);
+    assert.match(documentLoader, /items\.limit = payload\.limit/);
+    assert.match(configFormSource, /items\.truncated \?/);
+    assert.equal((configFormSource.match(/items\.truncated \?/g) || []).length, 2,
+        '文档与数据库选择器都必须显示截断提示');
+    assert.equal((configFormSource.match(/sw-home-config__truncated-hint/g) || []).length, 2,
+        '截断提示必须是非选项的提示节点');
+    assert.match(configFormSource, /homeConfigOptionsTruncated/);
+    assert.match(configFormSource, /draft\[field\.key\] = item\.id/);
+    assert.doesNotMatch(configFormSource, /truncatedHint[^\n]*id/,
+        '截断提示不能伪造可点击选项 ID');
+});
+
 test('document-entry widgets expose group, projection, validation, and recent-use wiring', () => {
     const modules = home.registerModules([]);
     const favorites = modules.find((item) => item.moduleId === 'favorites');

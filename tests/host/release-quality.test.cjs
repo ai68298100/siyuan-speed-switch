@@ -245,6 +245,33 @@ test('release readiness matrix matches generated artifact sizes', () => {
         `package.zip size drift exceeds 1 KiB: documented ${packageMatch[1]}, actual ${archiveBytes}`);
 });
 
+test('release readiness checker is read-only and validates both artifact snapshots', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts', 'check-release-readiness.cjs'), 'utf8');
+    assert.match(script, /readFileSync\(readinessPath/);
+    assert.match(script, /statSync\(file\)/);
+    assert.doesNotMatch(script, /writeFileSync|appendFileSync/);
+    assert.match(JSON.stringify(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))), /release:check/);
+});
+
+test('release batch audit declares fifty bounded local checks', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts', 'release-batch-audit.cjs'), 'utf8');
+    const declared = (script.match(/add\('/g) || []).length;
+    assert.equal(declared, 50);
+    assert.match(script, /release-batch-audit: \$\{checks\.length - failed\.length\}\/\$\{checks\.length\}/);
+});
+
+test('quality batch audit declares fifty bounded local checks', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts', 'quality-batch-audit.cjs'), 'utf8');
+    assert.equal((script.match(/add\('/g) || []).length, 50);
+    assert.doesNotMatch(script, /https?:\/\//);
+});
+
+test('integration boundary audit declares fifty bounded local checks', () => {
+    const script = fs.readFileSync(path.join(root, 'scripts', 'integration-boundary-audit.cjs'), 'utf8');
+    assert.equal((script.match(/add\('/g) || []).length, 50);
+    assert.doesNotMatch(script, /https?:\/\//);
+});
+
 test('README test-file count matches the discovered host test matrix', () => {
     const directories = [path.join(root, 'tests'), path.join(root, 'tests', 'host')];
     const count = directories.reduce((total, directory) => total + fs.readdirSync(directory)

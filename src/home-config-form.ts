@@ -15,8 +15,8 @@ export interface HomeConfigFormHost {
     loadNotebooks(): Promise<Array<{id: string, name: string}>>;
     loadHomeFavoriteGroups(): Array<{id: string; title: string}>;
     currentDocumentSetEntries(): Array<{rootId: string; title: string}>;
-    loadHomeDocumentOptions(query?: string): Promise<Array<{id: string; title: string}>>;
-    loadHomeDatabaseOptions(): Promise<Array<{id: string; title: string}>>;
+    loadHomeDocumentOptions(query?: string): Promise<Array<{id: string; title: string}> & {truncated?: boolean; limit?: number}>;
+    loadHomeDatabaseOptions(): Promise<Array<{id: string; title: string}> & {truncated?: boolean; limit?: number}>;
     loadHomeDatabaseColumns(blockId: string): Promise<Array<{id: string; title: string}>>;
     // T-6466 Miniflux 分类发现：凭据仅经请求头，选项由实例分类接口动态加载
     loadMinifluxCategoryOptions(endpoint: string, token: string): Promise<Array<{id: string; name: string}>>;
@@ -280,10 +280,17 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     input.dispatchEvent(new Event("change"));
                     updateSummary();
                 };
+                let truncatedHint = "";
                 const render = (items: Array<{id: string; title: string}>) => {
                     list.innerHTML = "";
+                    if (truncatedHint) {
+                        const hint = document.createElement("div");
+                        hint.className = "b3-label sw-home-config__truncated-hint";
+                        hint.textContent = truncatedHint;
+                        list.appendChild(hint);
+                    }
                     if (items.length === 0) {
-                        list.textContent = this.i18n.homeDocumentNoMatch || "没有匹配的文档";
+                        if (!truncatedHint) list.textContent = this.i18n.homeDocumentNoMatch || "没有匹配的文档";
                         return;
                     }
                     items.slice(0, 10).forEach((item) => {
@@ -300,6 +307,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     const generation = ++requestGeneration;
                     void this.loadHomeDocumentOptions(query).then((items) => {
                         if (generation !== requestGeneration) return;
+                        truncatedHint = items.truncated ? (this.i18n.homeConfigOptionsTruncated || "结果较多，仅显示前一部分，请继续输入关键词") : "";
                         const merged = [...openedDocuments.map((entry) => ({id: entry.rootId, title: entry.title})), ...items];
                         const seen = new Set<string>();
                         knownDocuments = merged.filter((item) => {
@@ -373,10 +381,17 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     });
                     selection.append(text, clear);
                 };
+                let truncatedHint = "";
                 const render = (items: Array<{id: string; title: string}>) => {
                     list.innerHTML = "";
+                    if (truncatedHint) {
+                        const hint = document.createElement("div");
+                        hint.className = "b3-label sw-home-config__truncated-hint";
+                        hint.textContent = truncatedHint;
+                        list.appendChild(hint);
+                    }
                     if (items.length === 0) {
-                        list.textContent = this.i18n.homeAvTableNoMatch || "没有匹配的数据库";
+                        if (!truncatedHint) list.textContent = this.i18n.homeAvTableNoMatch || "没有匹配的数据库";
                         return;
                     }
                     items.slice(0, 8).forEach((item) => {
@@ -412,6 +427,7 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 };
                 void this.loadHomeDatabaseOptions().then((items) => {
                     allItems = items;
+                    truncatedHint = items.truncated ? (this.i18n.homeConfigOptionsTruncated || "结果较多，仅显示前一部分，请继续输入关键词") : "";
                     renderSelection();
                     queueRender();
                 }).catch(() => { allItems = []; list.innerHTML = ""; renderSelection(); });

@@ -4169,7 +4169,7 @@ const version = beginSearch(session);
         }
         const rows = payload.rows;
         const seen = new Set<string>();
-        return rows.reduce((items: Array<{id: string; title: string}>, row: any) => {
+        const items = rows.reduce((items: Array<{id: string; title: string}>, row: any) => {
             const id = typeof row?.id === "string" && BLOCK_ID_RE.test(row.id) ? row.id : "";
             if (!id || seen.has(id)) return items;
             seen.add(id);
@@ -4178,7 +4178,10 @@ const version = beginSearch(session);
             const title = [content, path && path !== content ? path : ""].filter(Boolean).join(" · ");
             items.push({id, title: String(title || id).slice(0, 128)});
             return items;
-        }, []);
+        }, []) as Array<{id: string; title: string}> & {truncated?: boolean; limit?: number};
+        items.truncated = payload.truncated;
+        items.limit = payload.limit;
+        return items;
     }
 
     public async loadHomeDocumentOptions(query = ""): Promise<Array<{id: string; title: string}>> {
@@ -4198,7 +4201,7 @@ const version = beginSearch(session);
         }
         const rows = payload.rows;
         const seen = new Set<string>();
-        return rows.reduce((items: Array<{id: string; title: string}>, row: any) => {
+        const items = rows.reduce((items: Array<{id: string; title: string}>, row: any) => {
             const id = typeof row?.id === "string" && BLOCK_ID_RE.test(row.id) ? row.id : "";
             if (!id || seen.has(id)) return items;
             seen.add(id);
@@ -4207,7 +4210,10 @@ const version = beginSearch(session);
             const title = [content, path && path !== content ? path : ""].filter(Boolean).join(" · ");
             items.push({id, title: String(title || id).slice(0, 160)});
             return items;
-        }, []);
+        }, []) as Array<{id: string; title: string}> & {truncated?: boolean; limit?: number};
+        items.truncated = payload.truncated;
+        items.limit = payload.limit;
+        return items;
     }
 
     public async loadHomeDatabaseColumns(blockId: string): Promise<Array<{id: string; title: string}>> {

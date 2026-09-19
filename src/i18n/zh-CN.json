@@ -529,6 +529,7 @@
   "homeDocumentUnselected": "未选择文档（默认全库）",
   "homeDocumentClear": "清除",
   "homeDocumentNoMatch": "没有匹配的文档",
+  "homeConfigOptionsTruncated": "结果较多，仅显示前一部分，请继续输入关键词",
   "homeConfigUnavailableValue": "当前不可用",
   "homeConfigShowSecret": "显示",
   "homeConfigHideSecret": "隐藏",

@@ -529,6 +529,7 @@
   "homeDocumentUnselected": "No document selected (whole workspace)",
   "homeDocumentClear": "Clear",
   "homeDocumentNoMatch": "No matching documents",
+  "homeConfigOptionsTruncated": "Many results found; showing a partial list. Keep typing to narrow it down.",
   "homeConfigUnavailableValue": "Currently unavailable",
   "homeConfigShowSecret": "Show",
   "homeConfigHideSecret": "Hide",
