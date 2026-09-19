@@ -30,8 +30,56 @@
     margin-right: 0;
 }
 
+/* 真机同源（app/src/assets/scss/component/_dialog.scss）：对话框容器用
+ * surface 底色——缺失时容器透明，暗色令牌下的文字对比度无从计算（T-6696）。 */
+.b3-dialog__container {
+    background-color: var(--b3-theme-surface);
+}
+
 .b3-switch {
     display: inline-block;
     width: 36px;
     height: 20px;
+}
+
+/* ---------- T-6696 主题令牌集（对照真实 SiYuan appearance/themes 取值） ----------
+ * 此前夹具没有不透明背景与 b3 令牌定义：组件文本有的回落白色、有的回落黑色，
+ * 在透明背景上 WCAG 对比度无从计算（分母不存在）。这里补齐思源官方
+ * daylight（明）/ midnight（暗）两套核心令牌——对比度采样、色阶断言、
+ * 主题一致性检查从此有了可信的渲染基线。取值逐字对照：
+ *   daylight: app/appearance/themes/daylight/theme.css
+ *   midnight: app/appearance/themes/midnight/theme.css
+ */
+:root {
+    --b3-theme-primary: #3575f0;
+    --b3-theme-background: #fff;
+    --b3-theme-surface: #f6f6f6;
+    --b3-theme-surface-lighter: rgba(0, 0, 0, .04);
+    --b3-theme-on-primary: #fff;
+    --b3-theme-on-background: #222;
+    --b3-theme-on-surface: #5f6368;
+    --b3-theme-on-surface-light: rgba(95, 99, 104, .68);
+    --b3-border-color: rgba(0, 0, 0, .1);
+    --b3-list-hover: rgba(0, 0, 0, .075);
+    --b3-theme-warning: #d97917;
+    --b3-theme-error: #d23f31;
+    --b3-theme-success: #3575f0;
+    background-color: var(--b3-theme-background);
+    color: var(--b3-theme-on-background);
+}
+
+:root[data-theme-mode="dark"],
+:root.neo-mode-dark {
+    --b3-theme-primary: #3575f0;
+    --b3-theme-background: #1e1e1e;
+    --b3-theme-surface: #2c2c2c;
+    --b3-theme-surface-lighter: rgba(255, 255, 255, .04);
+    --b3-theme-on-primary: #fff;
+    --b3-theme-on-background: #dadada;
+    --b3-theme-on-surface: #9aa0a6;
+    --b3-theme-on-surface-light: #bababa;
+    --b3-border-color: #484848;
+    --b3-list-hover: rgba(255, 255, 255, .10);
+    background-color: var(--b3-theme-background);
+    color: var(--b3-theme-on-background);
 }

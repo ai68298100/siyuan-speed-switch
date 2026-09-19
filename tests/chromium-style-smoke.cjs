@@ -75,7 +75,7 @@ ${links}
     </div>
   </div>
 </div>
-<div class="b3-dialog"><div class="sw-settings__item">
+<div class="b3-dialog"><div class="b3-dialog__container"><div class="b3-dialog__body"><div class="sw-settings__item">
   <div class="sw-settings__item-main"><div class="sw-settings__item-title">Setting</div></div>
   <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
 </div></div>
@@ -151,6 +151,54 @@ window.addEventListener('load', () => {
     feedColumns: getComputedStyle(document.querySelector('[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-action')).gridTemplateColumns,
     feedRank: measure('[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-rank'),
     feedHealthRadius: getComputedStyle(document.querySelector('[data-module-id="external-hot-news-dailyhot"] .sw__home-source-health')).borderRadius,
+    contrast: (() => {
+      const parseColor = (value) => {
+        if (typeof value !== "string") return null;
+        const open = value.indexOf("(");
+        const close = value.indexOf(")");
+        if (open < 0 || close < open) return null;
+        const parts = value.slice(open + 1, close).split(/[,\s]+/).filter(Boolean).map(Number);
+        if (!parts.length || parts.some((part) => !Number.isFinite(part))) return null;
+        return {r: parts[0], g: parts[1], b: parts[2], a: parts.length > 3 ? parts[3] : 1};
+      };
+      const luminance = (color) => {
+        const channel = (value) => {
+          const v = value / 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+      };
+      const effectiveBackground = (element) => {
+        let node = element;
+        while (node && node !== document.documentElement) {
+          const bg = parseColor(getComputedStyle(node).backgroundColor);
+          if (bg && bg.a > 0.9) return bg;
+          node = node.parentElement;
+        }
+        return {r: 255, g: 255, b: 255, a: 1};
+      };
+      const contrastOf = (element) => {
+        const fg = parseColor(getComputedStyle(element).color);
+        if (!fg) return 0;
+        const bg = effectiveBackground(element);
+        const l1 = luminance(fg);
+        const l2 = luminance(bg);
+        return Math.round(((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)) * 100) / 100;
+      };
+      const samples = {
+        moduleTitle: '.sw__home-module-title',
+        statValue: '.sw__home-stat-value',
+        itemLabel: '[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-label',
+        docTitle: '.sw__doc-title',
+        settingsTitle: '.sw-settings__item-title',
+      };
+      const ratios = {};
+      for (const [name, selector] of Object.entries(samples)) {
+        const element = document.querySelector(selector);
+        ratios[name] = element ? contrastOf(element) : 0;
+      }
+      return ratios;
+    })(),
   };
   document.body.dataset.result = btoa(unescape(encodeURIComponent(JSON.stringify(result))));
 });
@@ -236,6 +284,16 @@ try {
         && result.feedRank.width === '22px'
         && result.feedRank.height === '22px'
         && parseFloat(result.feedHealthRadius) > 8;
+    // T-6697/B2 对比度采样（WCAG AA）：普通文本 >=4.5:1，大字号统计值 >=3:1。
+    // 夹具令牌集见 tests/fixtures/siyuan-mobile-base.css（T-6696）。
+    const contrastEntries = Object.entries(result.contrast || {});
+    for (const [name, ratio] of contrastEntries) {
+        console.log("contrast " + name + ": " + ratio);
+    }
+    const largeTextOk = (result.contrast.statValue || 0) >= 3;
+    const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle"].every((name) => (result.contrast[name] || 0) >= 4.5);
+    console.log((largeTextOk && normalTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
+    if (!(largeTextOk && normalTextOk)) process.exitCode = 1;
     console.log(JSON.stringify(result, null, 2));
     console.log(`${actionOk ? 'PASS' : 'FAIL'} Chromium mobile card actions`);
     console.log(`${switchOk ? 'PASS' : 'FAIL'} Chromium settings switch`);
