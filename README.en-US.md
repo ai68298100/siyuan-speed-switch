@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.23.5-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.24.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b3log.org/siyuan). It keeps **open tabs** first and uses live thumbnails for rapid preview and switching, then progressively exposes **favorites, workspace document search, panels, journals, and customizable quick actions**. Desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -8,7 +8,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="Desktop dialog, right sidebar, and mobile interface map"/></p>
 
-> v0.23.5 is a stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
+> v0.24.0 is the execution-chain release: a SiYuan agent can now complete multi-step workspace operations via plan → confirm → execute → receipt (each step gated by the host confirmation card, with a one-switch disable in settings), and the minimum SiYuan version rises to 3.8.0. Notes on the v0.23.5 stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
 
 > The current development head passes type checking, production build, 6305 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 58 widgets in total (51 full scorecards + 7 check-in bridge render enhancements, T-6348~T-6454). The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
@@ -165,9 +165,18 @@ Then verify in a real SiYuan environment:
 4. Themes: default light/dark themes, Neo or another third-party theme, resize, and rotation.
 5. Lifecycle: install, upgrade, uninstall, restart migration, and API failure/cancel/permission-denial paths.
 
-This release is published as `v0.23.5`
+The development head targets `v0.24.0` (not yet published; this line is updated to the actual tag once published)
 
 ## Changelog
+
+### v0.24.0 (2026-09-20)
+
+- **Agent execution chain goes live**: two new capabilities — `workspace-plan` (read-only, drafts a bounded ≤8-step plan) and `execute-workspace-plan` (executes the whole plan after one host confirmation card and returns a bounded receipt). Confirmation, timeout and cancellation are handled by the SiYuan host via `actionEffects` declarations; the self-built approval pipeline (6 modules) was removed.
+- **Gray-scale switch**: a settings toggle turns off all controlled write/batch capabilities and the execution chain at once; read-only capabilities stay.
+- **Storage governance**: persistent keys grow to 15 — a schema-version stamp (detects downgrade/unknown data) and RSS read-state (bounded to 200 entries); the RSS widget gains a hide-read filter.
+- **Widget second wave**: writing streak supports weekly n/m goals and rest-day exemptions; note stats gains an optional writing-strength score; recent writing activity gains a year-grid heatmap view (53-week paging + color legend).
+- **Ecosystem & configuration**: DailyHot supports a base-URL + route selector (validated by the same URL whitelist); the world clock accepts Chinese city names via a built-in 110-city offline table.
+- **Compatibility & engineering**: minimum SiYuan version raised to 3.8.0 (ADR 0064); four performance benchmarks, an accessibility baseline gate and dual-theme WCAG contrast sampling added to the release gates; ActivityWatch supports bucket selection.
 
 ### v0.23.5 (2026-09-19)
 
