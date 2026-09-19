@@ -105,12 +105,19 @@ test("no interval-based dialog disposal polling remains", () => {
         "轮询 isConnected 释放控制器会在宿主 5 秒拆除预算外泄漏，且宿主 Dialog 已有 destroyCallback");
 });
 
-// 仍在覆写 dialog.destroy 的文件与数量（按文件计数，避免行号漂移造成假失败）。
-// 每条都要有理由与跟进任务；修掉一处就删一处。
-const DIALOG_DESTROY_OVERRIDES = [
-    {file: "src/index.ts", count: 1, why: "suspendFABForDialog 包装任意弹窗，需改为显式配对（onDestroy 参数已在）", trackedBy: "T-6481"},
-    {file: "src/mobile-switcher-ui.ts", count: 1, why: "dialog 由 index.ts 构造后传入，需 holder 机制并扩 this 类型契约", trackedBy: "T-6481"},
-];
+// T-6481 已收口：src/ 内不得再出现 dialog.destroy 覆写，一律走宿主构造期 destroyCallback。
+// 本表清空后即为硬禁令——重新出现任何一条都会失败，除非确有构造期无法接线的理由再登记。
+const DIALOG_DESTROY_OVERRIDES = [];
+
+test("journal prompt resolves its promise on every close path (T-6487)", () => {
+    const indexSource = fs.readFileSync(path.join(ROOT, "src/index.ts"), "utf8");
+    assert.match(indexSource, /destroyCallback: \(\) => releaseJournalDialog\(\)/,
+        "日记弹窗必须把关闭接到 destroyCallback");
+    assert.match(indexSource, /releaseJournalDialog = this\.suspendFABForDialog\(\(\) => finish\(""\)\)/,
+        "onDestroy 必须经由统一释放入口接线，桌面端也不例外（旧实现非移动端早退，Promise 永挂）");
+    assert.doesNotMatch(indexSource, /if \(!this\.isMobile\) return;\s*this\.fabModalDepth \+= 1;/,
+        "suspendFABForDialog 不得再按平台早退");
+});
 
 test("remaining dialog.destroy overrides match the recorded debt list", () => {
     const found = new Map();

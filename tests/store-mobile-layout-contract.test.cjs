@@ -539,7 +539,7 @@ test('preview task toggle is asynchronous', () => { const i = secondPanelSource.
 test('preview task toggle calls host adapter', () => assert.match(secondPanelSource, /const ok = await this\.toggleHomeTaskBlock\(item\)/));
 test('preview task toggle refreshes after attempt', () => assert.match(storeSource,/await controller\?\.refresh\(\);/));
 test('preview dispose guards repeated calls', () => assert.match(source, /if \(disposed\) return;/));
-test('preview destroy wraps original dialog destroy', () => assert.match(source, /const originalDestroy = dialog\.destroy\.bind\(dialog\)/));
+test('preview no longer wraps the original dialog destroy', () => assert.doesNotMatch(source, /dialog\.destroy\.bind\(dialog\)/));
 test('preview no longer chains an original dialog destroy', () => assert.doesNotMatch(storeSource,/disposePreview\(\);\s*originalDestroy\(\)/));
 test('preview busy marker only clears while mounted', () => assert.match(storeSource,/if \(!disposed\) \{\s*container\.setAttribute\("aria-busy", "false"\)/));
 test('preview watcher interval is gone', () => assert.doesNotMatch(storeSource,/disposeTimer = window\.setInterval/));

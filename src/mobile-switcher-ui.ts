@@ -30,7 +30,7 @@ export interface MobileSwitcherUiHost {
     buildEmptyState(): HTMLElement;
     buildMobileGroupGrid(settings: ISwSettings): HTMLElement;
     closeGroupTabs(items: IFavoriteItem[]): Promise<number>;
-    createMobileSwitcherDialog(): Dialog;
+    createMobileSwitcherDialog(release: {fn: () => void}): Dialog;
     escapeAttr(text: string): string;
     getActiveTab(): Tab | undefined;
     getFavGroupRegistry(): string[];
@@ -58,7 +58,7 @@ export interface MobileSwitcherUiHost {
     showMobileFavSheet(dialog: Dialog, closeOverlay: IOverlayClose, onTabsChanged?: () => void): void;
     sortGroupItems(group: IGroupedTab[], sortBy: SortBy, mru: string[],
         pinned: Set<string>, updatedMap: {[rootId: string]: string}): IGroupedTab[];
-    suspendFABForDialog(dialog: Dialog, onDestroy?: () => void): () => void;
+    suspendFABForDialog(onDestroy?: () => void): () => void;
     updateSettings(patch: Partial<ISwSettings>): void;
     fabElement: HTMLElement | null;
     notebookListCache: Array<{id: string; name: string}> | null;
@@ -72,8 +72,11 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             ? ({id: this.getMobileActiveTabId()} as Tab)
             : this.getActiveTab();
 
-        const dialog = this.createMobileSwitcherDialog();
-        this.suspendFABForDialog(dialog);
+        // T-6481：destroyCallback 在构造期就要成型，而资源在后面才创建，故用 holder 传递；
+        // FAB 恢复并入同一个释放入口，不再覆写 dialog.destroy。
+        const switcherRelease: {fn: () => void} = {fn: () => undefined};
+        const dialog = this.createMobileSwitcherDialog(switcherRelease);
+        const releaseFab = this.suspendFABForDialog();
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-mobile-switcher-dialog");
         const mobileBody = dialog.element.querySelector<HTMLElement>(".sw__mobile");
         let readyFrame: number | null = null;
@@ -174,9 +177,11 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         let unregisterRefresh: () => void = () => undefined;
         let disposeMobileToolbar: () => void = () => undefined;
         let disposeHistoryDropdown: () => void = () => undefined;
-        // 钩住 Dialog.destroy（Escape/点击外部/程序调用）所有关闭路径都恢复 FAB
-        const origDestroy = dialog.destroy.bind(dialog);
-        dialog.destroy = () => {
+        // 释放入口：宿主 destroyCallback（Escape/点击外部/程序调用）统一收敛到这里。
+        let mobileReleased = false;
+        switcherRelease.fn = () => {
+            if (mobileReleased) return;
+            mobileReleased = true;
             revealCancelled = true;
             readyFrameCancel?.();
             readyFrame = null;
@@ -191,7 +196,7 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             if (scrollElement) {
                 disposeDocSearchSession.call(this, scrollElement);
             }
-            origDestroy();
+            releaseFab();
         };
         const closeOverlay = () => dialog.destroy();
 

@@ -1875,12 +1875,14 @@ export default class SpeedSwitchPlugin extends Plugin {
                 settled = true;
                 resolve(value);
             };
+            let releaseJournalDialog: () => void = () => undefined;
             const dialog = new Dialog({
                 title: this.i18n.journalChoose,
                 content: this.buildJournalPromptHtml(),
                 width: "min(460px, 90vw)",
+                destroyCallback: () => releaseJournalDialog(),
             });
-            this.suspendFABForDialog(dialog, () => finish(""));
+            releaseJournalDialog = this.suspendFABForDialog(() => finish(""));
             const sel = dialog.element.querySelector<HTMLSelectElement>(".sw-journal-prompt__sel > select")
                 ?? this.createJournalSelect(dialog);
             const confirmBtn = dialog.element.querySelector<HTMLButtonElement>(".sw-journal-prompt__confirm");
@@ -1983,15 +1985,19 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // T-6479：设置弹窗的 resize 监听释放改挂宿主 destroyCallback（不再覆写 dialog.destroy）。
         let releaseSettingsDialog: () => void = () => undefined;
+        let releaseSettingsFab: () => void = () => undefined;
         const dialog = new Dialog({
             title: this.i18n.settings,
             content: '<div class="sw-settings"></div>',
-            destroyCallback: () => releaseSettingsDialog(),
+            destroyCallback: () => {
+                releaseSettingsDialog();
+                releaseSettingsFab();
+            },
             // 桌面端独立采用 70% 视口自适应（不与第一面板的 panelScale 联动）；手机端按视口收缩，避免溢出屏幕
             width: this.isMobile ? "min(720px, 88vw)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).width}px`,
             height: this.isMobile ? "min(560px, 85vh)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).height}px`,
         });
-        this.suspendFABForDialog(dialog);
+        releaseSettingsFab = this.suspendFABForDialog();
 
         const root = dialog.element.querySelector<HTMLElement>(".sw-settings");
         if (!root) {
@@ -8003,13 +8009,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
-    private createMobileSwitcherDialog(): Dialog {
+    private createMobileSwitcherDialog(release: {fn: () => void}): Dialog {
         return new Dialog({
             title: "",
             content: this.buildMobileSwitcherHtml(),
             width: "92vw",
             height: "85vh",
             disableAnimation: true,
+            destroyCallback: () => release.fn(),
         });
     }
 
@@ -8298,17 +8305,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.bindFABScrollGesture();
     }
 
-    private suspendFABForDialog(dialog: Dialog, onDestroy?: () => void) {
-        if (!this.isMobile) return;
-        this.fabModalDepth += 1;
-        this.fabElement?.classList.add("sw__fab--hidden");
-        const originalDestroy = dialog.destroy.bind(dialog);
-        let destroyed = false;
-        dialog.destroy = () => {
-            if (destroyed) return;
-            destroyed = true;
+    private suspendFABForDialog(onDestroy?: () => void): () => void {
+        // T-6481：不再覆写 dialog.destroy——宿主 Dialog 的 destroyCallback 才是契约，
+        // 且 Escape / 遮罩关闭也会走到它。这里返回释放函数，由调用方接进 destroyCallback。
+        // T-6487：原实现在非移动端直接 return，onDestroy 永不触发——桌面端用 Escape 关掉
+        // 日记笔记本选择弹窗时，调用方 Promise 会永久挂起。
+        const suspended = Boolean(this.isMobile);
+        if (suspended) {
+            this.fabModalDepth += 1;
+            this.fabElement?.classList.add("sw__fab--hidden");
+        }
+        let released = false;
+        return () => {
+            if (released) return;
+            released = true;
+            if (!suspended) {
+                onDestroy?.();
+                return;
+            }
             this.fabModalDepth = Math.max(0, this.fabModalDepth - 1);
-            originalDestroy();
             onDestroy?.();
             if (this.fabModalDepth === 0) {
                 this.fabElement?.classList.remove("sw__fab--hidden", "sw__fab--scroll-hidden");
