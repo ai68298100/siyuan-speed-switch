@@ -568,7 +568,15 @@ function mergeSearchLayers(input = {}) {
     const openedAggregate = aggregateSearchResults(firstArray(input.opened, input.openedResults), {
         ...limits, source: "opened", excludedRootIds: displayedTabRoots,
     });
-    const opened = openedAggregate.cards.slice(0, limits.documents);
+    // T-6700 查询词法贯通：排除词在聚合卡片上同样生效（内核层仍收原始查询串，
+    // 排除语义由本层后置过滤保证跨层一致）。标题或路径命中排除词的卡片被丢弃。
+    const {excludes} = parseSearchTerms(query);
+    const cardExcluded = (card) => excludes.some((needle) => {
+        const title = String(card?.title || "").toLowerCase();
+        const path = String(card?.path || "").toLowerCase();
+        return title.includes(needle) || path.includes(needle);
+    });
+    let opened = openedAggregate.cards.filter((card) => !cardExcluded(card)).slice(0, limits.documents);
     opened.forEach((card) => allOpenRoots.add(card.rootId));
     const remaining = Math.max(0, limits.documents - opened.length);
     const globalAggregate = remaining > 0
@@ -576,7 +584,7 @@ function mergeSearchLayers(input = {}) {
             ...limits, documents: remaining, source: "global", excludedRootIds: allOpenRoots,
         })
         : {cards: [], totalDocuments: 0, rawTruncated: false};
-    const global = globalAggregate.cards.slice(0, remaining);
+    const global = globalAggregate.cards.filter((card) => !cardExcluded(card)).slice(0, remaining);
     return {
         query,
         remote: true,

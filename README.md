@@ -339,7 +339,7 @@ pnpm verify:release
 - **移动端修复**：图标尺寸越界、工具栏 chips 裁切、小组件面板高度与裸 svg 尺寸兜底补齐；布局门禁改按真实手机宽度量测。
 - **Workspace 运行时**：会话注册表、恢复流程、取消边界与安全退出等 20+ 契约能力补齐（事件管线接入生产）。
 - **工程质量**：全仓 365 条窗口断言迁移为块级有界断言（迁移中发现并修复 size tile 缺 `touch-action` 的真实缺陷）；复杂度性能门禁获得边际重测抗噪（天花板语义不变）；新增存储兼容矩阵文档与双向文档契约门禁、协议兼容声明一致性门禁。
-- 发版门禁：5872 项自动测试（171 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 631610 bytes、package.zip 318095 bytes。
+- 发版门禁：5872 项自动测试（171 个测试文件）、TypeScript、生产构建、移动端 smoke、Chromium smoke 与 `verify:release` 全部通过；产物 dist/index.js 631710 bytes、package.zip 318095 bytes。
 
 ### v0.19.0（2026-09-16）
 

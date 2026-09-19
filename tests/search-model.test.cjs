@@ -780,3 +780,18 @@ test('local tab filter supports query terms: AND, exclusion, phrases (T-6700)', 
     const flood = parseSearchTerms(Array.from({length: 40}, (_, i) => `t${i}`).join(' '));
     assert.equal(flood.includes.length + flood.excludes.length, 16, 'terms clamp at 16');
 });
+
+test('merge layers drop exclusion-matching cards across opened and global (T-6700)', () => {
+    const result = mergeSearchLayers({
+        query: 'roadmap -weekly',
+        tabs: [],
+        opened: [{rootId: '20260101000000-aaaaaaa', title: 'Roadmap Weekly', path: '/n/rw', source: 'global'}],
+        global: [
+            {rootId: '20260101000000-bbbbbbb', title: 'Roadmap 计划', path: '/n/plan', source: 'global'},
+            {rootId: '20260101000000-ccccccc', title: 'Roadmap Weekly 复盘', path: '/n/rw2', source: 'global'},
+        ],
+        filters: {},
+    });
+    assert.equal(result.opened.length, 0, 'opened card matching the exclusion is dropped');
+    assert.deepEqual(result.global.map((card) => card.title), ['Roadmap 计划'], 'only non-excluded global cards remain');
+});

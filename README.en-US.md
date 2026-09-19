@@ -365,7 +365,7 @@ The development head targets `v0.24.0` (not yet published; this line is updated 
 - **Mobile fixes**: icon size overruns, toolbar chip clipping, widget panel height, and bare-SVG fallback sizing; the layout gate now measures at real phone width.
 - **Workspace runtime**: session registry, recovery flow, cancellation boundary, and safe exit — 20+ contract capabilities completed (event pipeline wired into production).
 - **Engineering quality**: all 365 window assertions migrated to block-scoped gates (the migration surfaced and fixed a real product defect — the size tile lacked `touch-action`); the doubling-complexity perf gate gained marginal-rerun noise hardening (ceiling semantics unchanged); a storage compatibility matrix with bidirectional doc-contract gates and a protocol-compat-claim consistency gate were added.
-- Release gates pass: 5872 automated tests (171 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 631610 bytes, package.zip 318095 bytes.
+- Release gates pass: 5872 automated tests (171 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 631710 bytes, package.zip 318095 bytes.
 
 ### v0.19.0 (2026-09-16)
 
