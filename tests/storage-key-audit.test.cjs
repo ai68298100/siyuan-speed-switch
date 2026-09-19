@@ -23,7 +23,7 @@ const indexCode = readSourceText(path.join(root, 'src', 'index.ts'));
 
 test('storage: every key is registered in constants.ts with a usage comment', () => {
     const keys = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "([a-z0-9_]+)";\s*\/\/\s*(.+)/g)];
-    assert.ok(keys.length >= 13, `expected at least 13 registered storage keys, found ${keys.length}`);
+    assert.ok(keys.length >= 14, `expected at least 14 registered storage keys, found ${keys.length}`);
     const keyNames = keys.map(([, name]) => name);
     assert.equal(new Set(keyNames).size, keyNames.length, 'duplicate key constant names');
     const rawIds = keys.map(([, , id]) => id);
@@ -88,6 +88,7 @@ test('storage: every persisted key has a sanitize path before use', () => {
         HOME_STATE_KEY: ['normalizeHomeState'],
         SETTINGS_KEY: ['normalizeSettings'],
         THUMB_CACHE_KEY: ['normalizeThumbCache'],
+        SCHEMA_VERSION_KEY: ['stampStorageSchemaVersion'],
     };
     const registered = [...constants.matchAll(/export const ([A-Z0-9_]+_KEY) = "/g)].map((m) => m[1]);
     const unknown = Object.keys(sanitizeAllowlist).filter((key) => !registered.includes(key));
@@ -118,4 +119,27 @@ test('storage: every persisted key has a sanitize path before use', () => {
     }
     assert.equal(checkedKeys, registered.length, 'every registered key must be checked, not a subset');
     assert.ok(checkedCalls >= registered.length, 'each key needs at least one live call site');
+});
+
+test('storage: schema version stamp is wired onload-only (D-401)', () => {
+    // 落戳函数必须恰好定义一次、调用一次，且调用点在 initPersistentData
+    // （onload 路径，全部加载期清洗与一次性迁移之后）。
+    const definitions = (indexCode.match(/private stampStorageSchemaVersion\(\)/g) || []).length;
+    assert.equal(definitions, 1, 'stampStorageSchemaVersion must be defined exactly once');
+    const calls = (indexCode.match(/this\.stampStorageSchemaVersion\(\)/g) || []).length;
+    assert.equal(calls, 1, 'stampStorageSchemaVersion must be called exactly once');
+    const initStart = indexCode.indexOf('private async initPersistentData()');
+    const initEnd = indexCode.indexOf('private sanitizePersistentData()', initStart);
+    assert.ok(initStart >= 0 && initEnd > initStart, 'initPersistentData body slice not found');
+    assert.ok(indexCode.slice(initStart, initEnd).includes('this.stampStorageSchemaVersion()'),
+        'the stamp must be called from initPersistentData, after load-time sanitize and one-time migrations');
+    // onDataChanged 钩子链禁写盘（T-6488 的回环约束）：不得落戳、不得写版本 key。
+    const hookStart = indexCode.indexOf('async onDataChanged(');
+    const hookEnd = indexCode.indexOf('async onunload()', hookStart);
+    assert.ok(hookStart >= 0 && hookEnd > hookStart, 'onDataChanged body slice not found');
+    const hookBody = indexCode.slice(hookStart, hookEnd);
+    assert.ok(!hookBody.includes('stampStorageSchemaVersion'),
+        'onDataChanged must not stamp the schema version — the hook chain must never write');
+    assert.ok(!hookBody.includes('SCHEMA_VERSION_KEY'),
+        'onDataChanged must not write the schema version key');
 });

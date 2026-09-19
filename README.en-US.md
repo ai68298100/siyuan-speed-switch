@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.23.5 is a stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
 
-> The current development head passes type checking, production build, 6304 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 43 widgets in total. The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
+> The current development head passes type checking, production build, 6295 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 58 widgets in total (51 full scorecards + 7 check-in bridge render enhancements, T-6348~T-6454). The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
 
 ## Contents
 
@@ -137,11 +137,10 @@ Upgrading preserves favorites, groups, pins, MRU, and settings. On first `v0.16.
 
 ## Requirements And Compatibility
 
-- SiYuan v3.1.20+ (uses the `getAllTabs` API).
+- SiYuan **v3.8.0+** (`minAppVersion` raised as of v0.24.0, see ADR 0064; older hosts silently disable this plugin — upgrade SiYuan first).
 - Desktop client / browser-desktop frontend (tabs and split panes).
-- Mobile features (FAB, tab switching, favorites) require SiYuan **v3.8.0+** (relies on the mobile MobileTabs system).
-- Kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, database navigator, saved searches, database table) recommend SiYuan **v3.8.0+**; on older kernels they show empty states without affecting anything else. The inbox requires a signed-in SiYuan account with inbox data synced.
-- Agent capabilities are registered only when the host exposes `addAgentCapability`; older hosts skip them safely.
+- Kernel-data widgets (pinned docs, inbox, recent updates, data health, recent docs, database navigator, saved searches, database table) are adapted to the SiYuan **v3.8.0+** kernel contracts. The inbox requires a signed-in SiYuan account with inbox data synced.
+- Agent capabilities are registered only when the host exposes `addAgentCapability`; missing host capabilities are skipped safely.
 - Path-tree filtering is not exposed in the UI yet; only the model/request boundary exists until a stable host API is available.
 - Browser emulation is for structural/style checks only and is not Android SiYuan acceptance evidence.
 - Real install, upgrade, uninstall, and theme checks remain manual release steps.
@@ -430,7 +429,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 211 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6304 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 211 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6295 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |

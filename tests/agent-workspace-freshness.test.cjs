@@ -182,13 +182,13 @@ test('storage health clamps counts, version, and text lengths (bounded output)',
     const report = {version: 99999, totals: {kept: 99, cleaned: -5, migrated: 1.9, reset: 'x', inspect: null, missing: undefined}, keys};
     const health = buildAgentWorkspaceContext({storageHealth: report}).storageHealth;
     assert.equal(health.version, 9999, 'version caps at 9999');
-    assert.equal(health.totals.kept, 13, 'kept clamps to key-count ceiling');
+    assert.equal(health.totals.kept, 14, 'kept clamps to key-count ceiling');
     assert.equal(health.totals.cleaned, 0, 'negative counts clamp to zero');
     assert.equal(health.totals.migrated, 1, 'fractional counts truncate');
     assert.equal(health.totals.reset, 0, 'non-numeric counts degrade to zero');
     assert.equal(health.totals.inspect, 0);
     assert.equal(health.totals.missing, 0);
-    assert.equal(health.anomalies.length, 13, 'anomalies cap at 13 entries');
+    assert.equal(health.anomalies.length, 14, 'anomalies cap at 14 entries');
     assert.ok(health.anomalies.every((entry) => entry.key.length <= 32), 'anomaly keys stay bounded');
 });
 
@@ -210,7 +210,7 @@ test('storage health schema is bounded and required', () => {
     const health = schema.properties.storageHealth;
     assert.equal(health.additionalProperties, false);
     assert.deepEqual(health.required, ['available']);
-    assert.equal(health.properties.anomalies.maxItems, 13);
+    assert.equal(health.properties.anomalies.maxItems, 14);
     assert.equal(health.properties.anomalies.items.additionalProperties, false);
     assert.deepEqual([...health.properties.totals.required].sort(), ['cleaned', 'inspect', 'kept', 'migrated', 'missing', 'reset'].sort());
 });

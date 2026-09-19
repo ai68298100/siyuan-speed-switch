@@ -4,12 +4,9 @@
 // intentionally stays outside the production entry until bundle headroom and
 // real-host approval UX are ready; callers can pass the returned definitions to
 // the existing Agent registration helpers without duplicating bridge policy.
-const {
-    WORKSPACE_PLAN_HANDLER_SPEC,
-    EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC,
-    createWorkspacePlanHandler,
-    createWorkspaceExecuteHandler,
-} = require("./agent-workspace-bridge.js");
+// ADR 0063（T-6677）：自建审批管线（bridge/session/capability/execution/
+// approval/token）已撤除，本模块只保留 diagnostics 定义的构造与校验；
+// plan/execute 处理器将按宿主确认卡路线重新接线。
 const {buildWorkspaceCapabilityProbeSnapshot} = require("./agent-workspace-probe.js");
 // v0.17 阶段 1（D-220）：运行时/会话/registry/diagnostics 簇已整体搬移至
 // agent-workspace-runtime.js；此处同名引入并继续 re-export，供既有契约测试使用。
@@ -49,25 +46,12 @@ const {
     createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler,
 } = require("./agent-workspace-runtime.js");
 
-const WORKSPACE_PLAN_EFFECTS = Object.freeze({
-    localRead: true,
-    localWrite: false,
-    dataEgress: false,
-    externalCost: false,
-});
-
-const EXECUTE_WORKSPACE_PLAN_EFFECTS = Object.freeze({
-    localRead: true,
-    localWrite: true,
-    dataEgress: false,
-    externalCost: false,
-});
+// ADR 0063：plan/execute 处理器的 effects 常量随自建管线撤除；
+// 未来按宿主确认卡路线重新接线时在此登记新的声明。
 
 const WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION = 1;
 const WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION = 1;
 const WORKSPACE_CAPABILITY_NAMES = Object.freeze([
-    WORKSPACE_PLAN_HANDLER_SPEC.name,
-    EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name,
     WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name,
 ]);
 
@@ -79,34 +63,12 @@ function normalizeWorkspaceCapabilityHandle(handle) {
     return {managed: false, kind: "invalid"};
 }
 
-function createWorkspaceCapabilityDefinitions(bridge, now = Date.now) {
-    return Object.freeze([
-        Object.freeze({
-            spec: WORKSPACE_PLAN_HANDLER_SPEC,
-            effects: WORKSPACE_PLAN_EFFECTS,
-            handler: createWorkspacePlanHandler(bridge, now),
-        }),
-        Object.freeze({
-            spec: EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC,
-            effects: EXECUTE_WORKSPACE_PLAN_EFFECTS,
-            handler: createWorkspaceExecuteHandler(bridge, now),
-        }),
-    ]);
-}
-
 function createWorkspaceCapabilityDiagnosticsDefinition(registry, diffQueue = null, diffCoordinator = null) {
     return Object.freeze({
         spec: WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC,
         effects: WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS,
         handler: createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler(registry, diffQueue, diffCoordinator),
     });
-}
-
-function createWorkspaceCapabilityDefinitionsWithDiagnostics(bridge, registry, diffQueue = null, diffCoordinator = null, now = Date.now) {
-    return Object.freeze([
-        ...createWorkspaceCapabilityDefinitions(bridge, now),
-        createWorkspaceCapabilityDiagnosticsDefinition(registry, diffQueue, diffCoordinator),
-    ]);
 }
 
 function normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput(value) {
@@ -116,15 +78,12 @@ function normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput(value) {
 function validateWorkspaceCapabilityDefinition(definition) {
     const spec = definition && definition.spec;
     const name = typeof spec?.name === "string" ? spec.name : "";
-    const canonicalSpec = name === WORKSPACE_PLAN_HANDLER_SPEC.name ? spec === WORKSPACE_PLAN_HANDLER_SPEC
-        : name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name ? spec === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC
-            : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? spec === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC : false;
+    const canonicalSpec = name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? spec === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC : false;
     if (!canonicalSpec) return {ok: false, reason: "unknown_capability"};
     if (typeof definition.handler !== "function") return {ok: false, reason: "invalid_handler"};
     if (!spec.inputSchema || typeof spec.inputSchema !== "object" || !spec.outputSchema || typeof spec.outputSchema !== "object") return {ok: false, reason: "invalid_schema"};
     if (spec.inputSchema.type !== "object" || spec.outputSchema.type !== "object") return {ok: false, reason: "invalid_schema"};
-    const effects = name === EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name ? EXECUTE_WORKSPACE_PLAN_EFFECTS : name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name ? WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS : WORKSPACE_PLAN_EFFECTS;
-    return {ok: true, name, effects};
+    return {ok: true, name, effects: WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS};
 }
 
 function validateWorkspaceCapabilityDefinitions(definitions) {
@@ -202,7 +161,7 @@ function createWorkspaceCapabilityLifecycle(host, bridge, now = Date.now, onErro
         },
         register(definitionsOverride = null) {
             if (disposed || registrations.length) return registrations.slice();
-            const definitions = Array.isArray(definitionsOverride) ? definitionsOverride : createWorkspaceCapabilityDefinitions(bridge, now);
+            const definitions = Array.isArray(definitionsOverride) ? definitionsOverride : [createWorkspaceCapabilityDiagnosticsDefinition()];
             registrations = registerWorkspaceCapabilityDefinitions(host, definitions, (error, spec) => {
                 failed = Math.min(2, failed + 1);
                 const reason = normalizeWorkspaceCapabilityRegistrationFailureReason(error);
@@ -825,15 +784,11 @@ function createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator(registry) {
 }
 
 module.exports = {
-    WORKSPACE_PLAN_EFFECTS,
-    EXECUTE_WORKSPACE_PLAN_EFFECTS,
     WORKSPACE_CAPABILITY_NAMES,
     WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC,
     WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS,
     normalizeWorkspaceCapabilityHandle,
-    createWorkspaceCapabilityDefinitions,
     createWorkspaceCapabilityDiagnosticsDefinition,
-    createWorkspaceCapabilityDefinitionsWithDiagnostics,
     normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput,
     validateWorkspaceCapabilityDefinition,
     validateWorkspaceCapabilityDefinitions,

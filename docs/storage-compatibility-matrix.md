@@ -4,7 +4,7 @@
 >
 > 本文档是**开发文档**，不进发布归档（与 `gate-audit-checklist.md`、`host-gate-audit.md` 一致：`package.zip` 只收显式声明的 4 个 docs 文件）。
 
-## 0. 先勘误：是 13 个 key，不是 8 个
+## 0. 先勘误：是 13 个 key，不是 8 个（v0.24.0 起为 14 个）
 
 路线图该句沿用 R0 阶段写下的记录数字（`ROADMAP.md:114`「记录当前设置字段、8 个数据 key、思源最低版本和发布产物清单」）。逐 tag 统计 `src/constants.ts` + `src/index.ts` 中 `sw_*` 存储 key 的唯一数量，可以精确定位「8」的时点：
 
@@ -18,7 +18,8 @@
 | v0.15.0 | 7 | + `sw_fav_collapsed` |
 | **v0.16.9** | **8** | + `sw_quick_actions` ← **路线图「8 个数据 key」的时点** |
 | **v0.16.16** | **13** | + `sw_open_history` / `sw_closed_history` / `sw_quick_actions_defaults` / `sw_document_sets` / `sw_home_state` |
-| v0.16.16 → 当前 | 13 | 此后恒定不变 |
+| v0.16.16 → v0.23.5 | 13 | 此后恒定不变 |
+| **v0.24.0（D-401）** | **14** | + `sw_schema_version`（存储版本戳，见第 2 节末行） |
 
 复现命令：
 
@@ -30,20 +31,20 @@ for t in $(git tag --sort=creatordate); do
 done
 ```
 
-**因此本审计以代码为准：13 个 key。** 该数字由门禁钉住（见第 4 节），不会随文档漂移。
+**因此本审计以代码为准：14 个 key。** 该数字由门禁钉住（见第 4 节），不会随文档漂移。
 
 ## 1. 唯一登记处
 
 | 环节 | 位置 | 约束 |
 | --- | --- | --- |
 | key 常量定义 | `src/constants.ts`（ADR-0002） | 业务代码禁止手写 key 字符串字面量 |
-| 迁移/分类登记 | `src/storage-migration.js` 的 `HANDLED_KEYS`(11) + `INSPECTED_KEYS`(2) | 拼接为 `KEY_ORDER`，总数恒 13 |
-| 只读快照计数上限 | `src/agent-capabilities.js` | 与 `KEY_ORDER.length` 同源（钳制到 13） |
+| 迁移/分类登记 | `src/storage-migration.js` 的 `HANDLED_KEYS`(11) + `INSPECTED_KEYS`(2) + `META_KEYS`(1) | 拼接为 `KEY_ORDER`，总数恒 14 |
+| 只读快照计数上限 | `src/agent-capabilities.js` | 与 `KEY_ORDER.length` 同源（钳制到 14） |
 | 降级函数白名单 | `src/index.ts` 读取路径 | 每个 key 必须有清洗/归一化函数**被调用** |
 
-`KEY_ORDER = HANDLED_KEYS ∪ INSPECTED_KEYS` 是**拼接**而非独立字面量，因此「分类集与报告 key 集合不可能漂移」。`sw_thumb_cache` 从 inspect 毕业到 handled 时，报告里它的位置从第 13 位前移到第 11 位，但 key 集合与总数完全不变，下游只读快照无需改动。
+`KEY_ORDER = HANDLED_KEYS ∪ INSPECTED_KEYS ∪ META_KEYS` 是**拼接**而非独立字面量，因此「分类集与报告 key 集合不可能漂移」。`sw_thumb_cache` 从 inspect 毕业到 handled 时，报告里它的位置从第 13 位前移到第 11 位，但 key 集合与总数完全不变，下游只读快照无需改动。
 
-## 2. 13 个 key：迁移函数与容量边界
+## 2. 14 个 key：迁移函数与容量边界
 
 `分类` 列含义：**handled** = 进入迁移 `data`（宿主可据此覆盖）；**inspect** = 只报形状、不进 `data`（深度迁移由宿主读取路径负责）。
 
@@ -62,6 +63,9 @@ done
 | 11 | `sw_thumb_cache` | `THUMB_CACHE_KEY` | handled | `normalizeThumbCache` | util.js | **40 条 / 200 KiB**（`THUMB_CACHE_MAX` / `THUMB_HTML_MAX`；手机 30 / 80 KiB） | v0.2.0 |
 | 12 | `sw_settings` | `SETTINGS_KEY` | inspect | `normalizeSettings`（宿主读取路径） | settings-model.ts | 字段级（见设置 schema） | v0.1.0 |
 | 13 | `sw_home_state` | `HOME_STATE_KEY` | inspect | `normalizeHomeState` + `migrateHomeState`（宿主读取路径） | home-model.js | 每设备布局 64 条、config 32 字段 | v0.16.13 |
+| 14 | `sw_schema_version` | `SCHEMA_VERSION_KEY` | meta | `stampStorageSchemaVersion`（onload 落戳，D-401） | index.ts | 单值：`STORAGE_SCHEMA_VERSION`（当前 1） | v0.24.0 |
+
+`meta` 分类（D-401 新增）：不承载业务数据，永不进入迁移 `data`（写入完全由 onload 落戳函数管理）。演练判定：缺失 → missing；损坏（非 ≥1 整数）→ reset；等于当前版本 → kept；小于当前版本 → migrated（未来版本迁移入口）；大于当前版本 → kept 且值原样保留（疑似降级，保留证据，onload 侧 `logger.warn` 告警并记录 `storageSchemaDowngradeFrom`）。
 
 **为什么 12/13 仍是 inspect**：两者的宿主读取路径本来就有 `normalizeSettings` / `normalizeHomeState` 兜底（`index.ts:1345` / `index.ts:3709`），不存在「写入侧有上限、读取侧无校验」的缺口，因此不做重复动作（D-392 的克制点）。
 

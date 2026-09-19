@@ -3,22 +3,18 @@ const assert = require('node:assert/strict');
 const {
     AGENT_CAPABILITY_SPECS,
     flattenOutline,
+    registerAgentActionCapability,
+    registerReadOnlyAgentCapabilities,
 } = require('../src/agent-capabilities.js');
 const {DOCUMENT_CONTEXT_SPEC, buildDocumentContext} = require('../src/agent-document-context.js');
 const {WORKSPACE_PLAN_SPEC, WORKSPACE_PLAN_RECEIPT_SCHEMA, buildWorkspacePlan, isWorkspacePlanExpired, validateWorkspacePlan, buildWorkspaceReceipt, runWorkspacePlan} = require('../src/agent-workspace-plan.js');
 const {ACTION_KEYS, WORKSPACE_ACTION_SPECS, normalizeWorkspaceStep, normalizeWorkspaceActionResult, validateWorkspaceActionPostcondition, createWorkspaceActionExecutor, buildWorkspacePlanSummary} = require('../src/agent-workspace-actions.js');
-const {normalizePlanId, workspacePlanDigest, createWorkspaceExecutionGuard, executeWorkspacePlan} = require('../src/agent-workspace-execution.js');
-const {EXECUTE_WORKSPACE_PLAN_SPEC, normalizeExecutionRequest, buildExecutionGateResult} = require('../src/agent-workspace-capability.js');
-const {normalizeToken, createApprovalTokenStore} = require('../src/agent-approval-token.js');
-const {createWorkspaceApprovalChallenge, validateWorkspaceApprovalChallenge} = require('../src/agent-workspace-approval.js');
 const {createNavigationActionHandlers} = require('../src/agent-host-actions.js');
 const {createDocumentSetRestoreHandler} = require('../src/agent-document-set-actions.js');
 const {createDocumentSet} = require('../src/document-sets.js');
 const {createWriteActionHandlers} = require('../src/agent-write-actions.js');
 const {createWorkspaceHostHandlers} = require('../src/agent-workspace-registry.js');
-const {createWorkspaceExecutionSession} = require('../src/agent-workspace-session.js');
-const {createWorkspaceAgentBridge, MAX_STORED_PLANS, WORKSPACE_PLAN_HANDLER_SPEC, EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC, createWorkspacePlanHandler, createWorkspaceExecuteHandler} = require('../src/agent-workspace-bridge.js');
-const {WORKSPACE_PLAN_EFFECTS, EXECUTE_WORKSPACE_PLAN_EFFECTS, createWorkspaceCapabilityDefinitions, createWorkspaceCapabilityDiagnosticsDefinition, createWorkspaceCapabilityDefinitionsWithDiagnostics, normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput, validateWorkspaceCapabilityDefinition, validateWorkspaceCapabilityDefinitions, buildWorkspaceCapabilityDefinitionsDiagnostics, normalizeWorkspaceCapabilityDefinitionsDiagnostics, buildWorkspaceCapabilityLifecycleDiagnostics, buildWorkspaceCapabilityDefinitionLifecycleDiagnostics, buildWorkspaceCapabilityDiagnosticsSnapshot, normalizeWorkspaceCapabilityDiagnosticsSnapshot, isWorkspaceCapabilityDiagnosticsSnapshotCompatible, validateWorkspaceCapabilityDiagnosticsSnapshot, diffWorkspaceCapabilityDiagnosticsSnapshots, buildWorkspaceCapabilityDiagnosticsEvents, normalizeWorkspaceCapabilityDiagnosticsEvents, createWorkspaceCapabilityDiagnosticsEventQueue, enqueueWorkspaceCapabilityDiagnosticsDiff, readWorkspaceCapabilityDiagnosticsEventsForReplay, readWorkspaceCapabilityDiagnosticsEventsForReplayWithSignal, readWorkspaceCapabilityDiagnosticsEventsForReplayWithDeadline, commitWorkspaceCapabilityDiagnosticsReplay, recoverWorkspaceCapabilityDiagnostics, normalizeWorkspaceCapabilityDiagnosticsRecoveryResult, commitWorkspaceCapabilityDiagnosticsRecovery, createWorkspaceCapabilityDiagnosticsRecoveryCoordinator, normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult, createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator, createWorkspaceCapabilityDiagnosticsJointRecoveryHandler, normalizeWorkspaceCapabilityRegistrationFailureReason, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, normalizeWorkspaceCapabilityHandle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, recoverWorkspaceCapabilityRuntimeSafe, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot, isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible, validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff, diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots, buildWorkspaceCapabilityRuntimeSessionRegistrySummary, createWorkspaceCapabilityRuntimeRegistryDiffQueue, enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline, commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay, recoverWorkspaceCapabilityRuntimeSessionRegistryDiff, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult, recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe, commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery, createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator, buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline, commitWorkspaceCapabilityRuntimeRegistryReplay, commitWorkspaceCapabilityRuntimeRegistryRecovery, recoverWorkspaceCapabilityRuntimeRegistry, normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult, recoverWorkspaceCapabilityRuntimeRegistrySafe, createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS, createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler} = require('../src/agent-workspace-capability-definitions.js');
+const {WORKSPACE_CAPABILITY_NAMES, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC, WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_EFFECTS, normalizeWorkspaceCapabilityHandle, createWorkspaceCapabilityDiagnosticsDefinition, normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput, validateWorkspaceCapabilityDefinition, validateWorkspaceCapabilityDefinitions, normalizeWorkspaceCapabilityRegistrationFailureReason, registerWorkspaceCapabilityDefinitions, disposeWorkspaceCapabilityRegistrations, createWorkspaceCapabilityLifecycle, buildWorkspaceCapabilityRuntimeSnapshot, WORKSPACE_RUNTIME_SNAPSHOT_VERSION, normalizeWorkspaceCapabilityRuntimeSnapshot, isWorkspaceCapabilityRuntimeSnapshotCompatible, validateWorkspaceCapabilityRuntimeSnapshot, diffWorkspaceCapabilityRuntimeSnapshots, buildWorkspaceCapabilityRuntimeEvents, normalizeWorkspaceCapabilityRuntimeEvents, createWorkspaceCapabilityEventQueue, enqueueWorkspaceCapabilityRuntimeDiff, readWorkspaceCapabilityRuntimeEventsForReplay, recoverWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeWithSignal, recoverWorkspaceCapabilityRuntimeWithDeadline, normalizeWorkspaceCapabilityRuntimeRecoveryResult, commitWorkspaceCapabilityRuntimeRecovery, recoverAndCommitWorkspaceCapabilityRuntime, recoverWorkspaceCapabilityRuntimeSafe, createWorkspaceCapabilityRecoveryCoordinator, createWorkspaceCapabilityRuntimeSession, WORKSPACE_RUNTIME_SESSION_SNAPSHOT_VERSION, WORKSPACE_RUNTIME_SESSION_REGISTRY_SNAPSHOT_VERSION, WORKSPACE_CAPABILITY_DIAGNOSTICS_SNAPSHOT_VERSION, MAX_RUNTIME_SESSIONS, buildWorkspaceCapabilityRuntimeSessionSnapshot, normalizeWorkspaceCapabilityRuntimeSessionSnapshot, createWorkspaceCapabilityRuntimeSessionRegistry, normalizeWorkspaceCapabilityRuntimeSessionRegistrySnapshot, buildWorkspaceCapabilityRuntimeSessionRegistrySnapshot, isWorkspaceCapabilityRuntimeSessionRegistrySnapshotCompatible, validateWorkspaceCapabilityRuntimeSessionRegistrySnapshot, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiff, diffWorkspaceCapabilityRuntimeSessionRegistrySnapshots, buildWorkspaceCapabilityRuntimeSessionRegistrySummary, createWorkspaceCapabilityRuntimeRegistryDiffQueue, enqueueWorkspaceCapabilityRuntimeSessionRegistryDiff, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplay, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithSignal, readWorkspaceCapabilityRuntimeSessionRegistryDiffForReplayWithDeadline, commitWorkspaceCapabilityRuntimeSessionRegistryDiffReplay, recoverWorkspaceCapabilityRuntimeSessionRegistryDiff, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryResult, recoverWorkspaceCapabilityRuntimeSessionRegistryDiffSafe, commitWorkspaceCapabilityRuntimeSessionRegistryDiffRecovery, createWorkspaceCapabilityRuntimeSessionRegistryDiffRecoveryCoordinator, buildWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, normalizeWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryResult, normalizeWorkspaceCapabilityRuntimeSessionRegistryDiagnostics, createWorkspaceCapabilityRuntimeSessionRegistryDiagnosticsHandler, buildWorkspaceCapabilityDefinitionsDiagnostics, normalizeWorkspaceCapabilityDefinitionsDiagnostics, buildWorkspaceCapabilityLifecycleDiagnostics, buildWorkspaceCapabilityDefinitionLifecycleDiagnostics, buildWorkspaceCapabilityDiagnosticsSnapshot, normalizeWorkspaceCapabilityDiagnosticsSnapshot, isWorkspaceCapabilityDiagnosticsSnapshotCompatible, validateWorkspaceCapabilityDiagnosticsSnapshot, diffWorkspaceCapabilityDiagnosticsSnapshots, buildWorkspaceCapabilityDiagnosticsEvents, normalizeWorkspaceCapabilityDiagnosticsEvents, createWorkspaceCapabilityDiagnosticsEventQueue, enqueueWorkspaceCapabilityDiagnosticsDiff, readWorkspaceCapabilityDiagnosticsEventsForReplay, commitWorkspaceCapabilityDiagnosticsReplay, recoverWorkspaceCapabilityDiagnostics, readWorkspaceCapabilityDiagnosticsEventsForReplayWithSignal, readWorkspaceCapabilityDiagnosticsEventsForReplayWithDeadline, normalizeWorkspaceCapabilityDiagnosticsRecoveryResult, commitWorkspaceCapabilityDiagnosticsRecovery, createWorkspaceCapabilityDiagnosticsRecoveryCoordinator, normalizeWorkspaceCapabilityDiagnosticsJointRecoveryResult, createWorkspaceCapabilityDiagnosticsJointRecoveryCoordinator, createWorkspaceCapabilityDiagnosticsJointRecoveryHandler, createWorkspaceCapabilityRuntimeSessionRegistryJointRecoveryCoordinator, normalizeWorkspaceCapabilityRuntimeRegistryEvents, readWorkspaceCapabilityRuntimeRegistryEventsForReplay, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithSignal, readWorkspaceCapabilityRuntimeRegistryEventsForReplayWithDeadline, commitWorkspaceCapabilityRuntimeRegistryReplay, commitWorkspaceCapabilityRuntimeRegistryRecovery, recoverWorkspaceCapabilityRuntimeRegistry, normalizeWorkspaceCapabilityRuntimeRegistryRecoveryResult, recoverWorkspaceCapabilityRuntimeRegistrySafe, createWorkspaceCapabilityRuntimeRegistryRecoveryCoordinator} = require('../src/agent-workspace-capability-definitions.js');
 const {PROBE_REASONS, normalizeWorkspaceCapabilityProbeOutcome, probeWorkspaceCapabilityHost, buildWorkspaceCapabilityProbeSnapshot} = require('../src/agent-workspace-probe.js');
 
 test("outline capability spec is read-only, bounded and requires a document id", () => {
@@ -234,135 +230,10 @@ test("workspace host registry composes all six fixed action handlers", async () 
     assert.equal(opened.length, 1);
 });
 
-test("workspace execution session issues, executes once, and disposes state", async () => {
-    const opened = [];
-    const session = createWorkspaceExecutionSession({
-        navigation: {isMobile: false, app: {}, openTab: async ({doc}) => opened.push(doc.id)},
-        documentSet: {getSet: async () => null, openDocument: async () => true},
-    });
-    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    const challenge = session.issue({...plan}, "desktop", 1700000000100);
-    assert.equal(challenge.planId, plan.planId);
-    const preview = session.preview(buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000010), "desktop", 1700000000100);
-    assert.equal(preview.stepCount, 1);
-    assert.equal(preview.requiresConfirmation, true);
-    assert.equal(Object.hasOwn(preview, "content"), false);
-    const receipt = await session.execute(plan, challenge, {now: 1700000000101});
-    assert.equal(receipt.status, "completed");
-    assert.deepEqual(opened, ["20260913083000-abcdef"]);
-    const replay = await session.execute(plan, challenge, {now: 1700000000102});
-    assert.equal(replay.status, "consumed");
-    session.dispose();
-    const afterDispose = await session.execute(plan, challenge, {now: 1700000000103});
-    assert.equal(afterDispose.status, "invalid_token");
-});
 
-test("workspace agent bridge provides bounded plan issue execute lifecycle", async () => {
-    const opened = [];
-    const bridge = createWorkspaceAgentBridge({
-        maxPlans: 1,
-        navigation: {isMobile: false, app: {}, openTab: async ({doc}) => opened.push(doc.id)},
-        documentSet: {getSet: async () => null, openDocument: async () => true},
-    });
-    assert.equal(MAX_STORED_PLANS, 32);
-    const plan = bridge.plan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    assert.equal(plan.summary.stepCount, 1);
-    assert.deepEqual(bridge.status(), {planCount: 1, maxPlans: 1, disposed: false});
-    const challenge = bridge.issue(plan.planId, "desktop", 1700000000100);
-    assert.equal(challenge.planId, plan.planId);
-    const preview = bridge.preview(plan.planId, "desktop", 1700000000100);
-    assert.equal(preview.planId, plan.planId);
-    assert.equal(preview.stepCount, 1);
-    assert.equal(Object.hasOwn(preview, "content"), false);
-    assert.equal(bridge.preview("wp-missing"), null);
-    const result = await bridge.execute(challenge, 1700000000101);
-    assert.equal(result.status, "completed");
-    assert.deepEqual(opened, ["20260913083000-abcdef"]);
-    const unknown = await bridge.execute({...challenge, planId: "wp-missing"}, 1700000000101);
-    assert.equal(unknown.status, "plan_not_found");
-    const expiredPlan = bridge.plan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000000);
-    assert.equal(bridge.size(), 1);
-    assert.equal(bridge.prune(expiredPlan.expiresAt), 1);
-    assert.equal(bridge.size(), 0);
-    assert.deepEqual(bridge.status(), {planCount: 0, maxPlans: 1, disposed: false});
-    assert.equal(bridge.prune(expiredPlan.expiresAt + 1), 0);
-    bridge.dispose();
-    assert.equal(bridge.size(), 0);
-    assert.deepEqual(bridge.status(), {planCount: 0, maxPlans: 1, disposed: true});
-    assert.equal(bridge.plan({steps: [{action: "open-document", id: "20260913083002-abcdef"}]}, 1700000000000), null);
-    assert.equal(bridge.issue(plan.planId), null);
-    assert.equal(bridge.preview(plan.planId), null);
-    assert.deepEqual(await bridge.execute(challenge), {planId: "", status: "bridge_disposed", receipt: ""});
-    bridge.dispose();
-});
 
-test("workspace bridge handler factories expose structured capability results", async () => {
-    assert.equal(WORKSPACE_PLAN_HANDLER_SPEC.name, "workspace-plan");
-    assert.equal(EXECUTE_WORKSPACE_PLAN_HANDLER_SPEC.name, "execute-workspace-plan");
-    const bridge = createWorkspaceAgentBridge({
-        navigation: {isMobile: false, app: {}, openTab: async () => true},
-        documentSet: {getSet: async () => null, openDocument: async () => true},
-    });
-    const planHandler = createWorkspacePlanHandler(bridge, () => 1700000000000);
-    const planned = await planHandler({steps: [{action: "open-document", id: "20260913083000-abcdef"}]});
-    assert.equal(planned.structuredContent.planId.startsWith("wp-"), true);
-    assert.equal(planned.result, JSON.stringify(planned.structuredContent));
-    assert.deepEqual(await createWorkspacePlanHandler(bridge, () => 1700000000000)({steps: []}), {error: "invalid_plan"});
 
-    const executeHandler = createWorkspaceExecuteHandler({execute: async (request, now) => ({status: "completed", planId: request.planId, now})}, () => 1700000000010);
-    const executed = await executeHandler({planId: "wp-test", digest: "pd-test", approvalToken: "at-test"});
-    assert.deepEqual(executed.structuredContent, {status: "completed", planId: "wp-test", now: 1700000000010});
-    assert.equal(executed.result, JSON.stringify(executed.structuredContent));
-    assert.deepEqual(await createWorkspaceExecuteHandler(null)({}), {error: "executor_unavailable"});
-    assert.deepEqual(await createWorkspacePlanHandler({plan: () => { throw new Error("secret"); }})({steps: []}), {error: "invalid_plan"});
-    assert.deepEqual(await createWorkspaceExecuteHandler({execute: async () => { throw new Error("secret"); }})({}), {error: "executor_unavailable"});
-    bridge.dispose();
-});
 
-test("workspace capability definitions are data-driven and effect-scoped", async () => {
-    assert.deepEqual(WORKSPACE_PLAN_EFFECTS, {localRead: true, localWrite: false, dataEgress: false, externalCost: false});
-    assert.deepEqual(EXECUTE_WORKSPACE_PLAN_EFFECTS, {localRead: true, localWrite: true, dataEgress: false, externalCost: false});
-    const calls = [];
-    const bridge = {
-        plan: (args, now) => ({planId: "wp-def", steps: args.steps, now}),
-        execute: async (args, now) => { calls.push({args, now}); return {planId: args.planId, status: "completed", receipt: "rc-def"}; },
-    };
-    const definitions = createWorkspaceCapabilityDefinitions(bridge, () => 1700000000042);
-    assert.equal(Object.isFrozen(definitions), true);
-    assert.deepEqual(definitions.map((item) => item.spec.name), ["workspace-plan", "execute-workspace-plan"]);
-    assert.deepEqual(definitions[0].effects, WORKSPACE_PLAN_EFFECTS);
-    assert.deepEqual(definitions[1].effects, EXECUTE_WORKSPACE_PLAN_EFFECTS);
-    const planned = await definitions[0].handler({steps: [{action: "open-document", id: "20260913083000-abcdef"}]});
-    assert.equal(planned.structuredContent.planId, "wp-def");
-    const executed = await definitions[1].handler({planId: "wp-def", digest: "pd-abcdef", approvalToken: "at-valid"});
-    assert.equal(executed.structuredContent.status, "completed");
-    assert.equal(calls[0].now, 1700000000042);
-});
-
-test("workspace capability registration enforces known names and effects", () => {
-    const calls = [];
-    const host = {addAgentCapability: (definition) => { calls.push(definition); return `registered:${definition.name}`; }};
-    const definitions = createWorkspaceCapabilityDefinitions({plan: () => null, execute: async () => ({})});
-    const registered = registerWorkspaceCapabilityDefinitions(host, [
-        definitions[0],
-        {...definitions[1], effects: WORKSPACE_PLAN_EFFECTS},
-        {spec: {name: "unknown-capability"}, handler: () => true},
-        {spec: {...definitions[0].spec}, handler: () => true},
-        {spec: definitions[0].spec, handler: "not-a-function"},
-    ]);
-    assert.deepEqual(registered, ["registered:workspace-plan", "registered:execute-workspace-plan"]);
-    assert.deepEqual(calls[0].effects, WORKSPACE_PLAN_EFFECTS);
-    assert.deepEqual(calls[1].effects, EXECUTE_WORKSPACE_PLAN_EFFECTS);
-    assert.equal(typeof calls[0].handler, "function");
-    assert.deepEqual(validateWorkspaceCapabilityDefinition(definitions[0]), {ok: true, name: "workspace-plan", effects: WORKSPACE_PLAN_EFFECTS});
-    assert.deepEqual(validateWorkspaceCapabilityDefinition({spec: {name: "unknown"}, handler: () => true}), {ok: false, reason: "unknown_capability"});
-    assert.deepEqual(validateWorkspaceCapabilityDefinition({spec: definitions[0].spec, handler: null}), {ok: false, reason: "invalid_handler"});
-    const matrix = validateWorkspaceCapabilityDefinitions(definitions);
-    assert.equal(matrix.ok, true);
-    assert.equal(matrix.valid, 2);
-    assert.equal(matrix.invalid, 0);
-    assert.equal(validateWorkspaceCapabilityDefinitions([definitions[0], definitions[0]]).duplicate, 1);
-});
 
 test("workspace diagnostics definition is read-only and registration adapter preserves canonical effects", () => {
     const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
@@ -376,16 +247,6 @@ test("workspace diagnostics definition is read-only and registration adapter pre
     registry.dispose();
 });
 
-test("workspace definitions with diagnostics remain ordered and bounded", () => {
-    const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
-    const definitions = createWorkspaceCapabilityDefinitionsWithDiagnostics({plan: () => null, execute: async () => ({})}, registry, null, null, () => 1700000000042);
-    assert.equal(definitions.length, 3);
-    assert.deepEqual(definitions.map((item) => item.spec.name), ["workspace-plan", "execute-workspace-plan", "workspace-runtime-registry-diagnostics"]);
-    assert.equal(Object.isFrozen(definitions), true);
-    assert.deepEqual(normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput({secret: "drop"}), {});
-    assert.deepEqual(normalizeWorkspaceCapabilityRuntimeRegistryDiagnosticsInput(null), {});
-    registry.dispose();
-});
 
 test("workspace diagnostics registration participates in lifecycle disposal", () => {
     const removed = [];
@@ -426,35 +287,40 @@ test("workspace capability lifecycle registers once and disposes irreversibly", 
     const host = {
         addAgentCapability: ({name}) => { events.push(`add:${name}`); return () => events.push(`dispose:${name}`); },
     };
-    const lifecycle = createWorkspaceCapabilityLifecycle(host, {plan: () => null, execute: async () => ({})});
+    // ADR 0063：自建 plan/execute 定义撤除后，默认注册面仅剩 diagnostics 定义
+    const lifecycle = createWorkspaceCapabilityLifecycle(host, {});
     assert.deepEqual(lifecycle.probe(), {available: true, reason: "ready"});
     const first = lifecycle.register();
     const second = lifecycle.register();
     assert.deepEqual(second, first);
-    assert.equal(lifecycle.size(), 2);
-    assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
-    assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 0, disposed: false});
+    assert.equal(lifecycle.size(), 1);
+    assert.equal(events.filter((item) => item.startsWith("add:")).length, 1);
+    assert.deepEqual(lifecycle.status(), {registered: 1, failed: 0, unmanaged: 0, disposed: false});
     assert.deepEqual(lifecycle.snapshot(), {
         host: {available: true, reason: "ready"},
-        registration: {registered: 2, failed: 0, unmanaged: 0, disposed: false},
+        registration: {registered: 1, failed: 0, unmanaged: 0, disposed: false},
     });
-    assert.equal(lifecycle.dispose(), 2);
+    assert.equal(lifecycle.dispose(), 1);
     assert.equal(lifecycle.dispose(), 0);
     assert.equal(lifecycle.size(), 0);
     assert.deepEqual(lifecycle.status(), {registered: 0, failed: 0, unmanaged: 0, disposed: true});
     assert.deepEqual(lifecycle.register(), []);
-    assert.equal(events.filter((item) => item.startsWith("add:")).length, 2);
+    assert.equal(events.filter((item) => item.startsWith("add:")).length, 1);
 });
 
 test("workspace capability lifecycle reports bounded partial registration failures", () => {
     const errors = [];
-    const host = {addAgentCapability: ({name}) => {
-        if (name === "execute-workspace-plan") throw new Error("secret");
-        return "workspace-plan-handle";
+    let index = 0;
+    const host = {addAgentCapability: () => {
+        index += 1;
+        if (index === 1) throw new Error("secret");
+        return "second-handle";
     }};
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {}, Date.now, (error) => errors.push(error));
     assert.deepEqual(lifecycle.probe(), {available: true, reason: "ready"});
-    assert.deepEqual(lifecycle.register(), ["workspace-plan-handle"]);
+    // 覆盖两份合法定义：首次注册抛错、第二次成功 → 部分失败语义
+    const definitions = [createWorkspaceCapabilityDiagnosticsDefinition(), createWorkspaceCapabilityDiagnosticsDefinition()];
+    assert.deepEqual(lifecycle.register(definitions), ["second-handle"]);
     assert.deepEqual(lifecycle.status(), {registered: 1, failed: 1, unmanaged: 0, disposed: false});
     assert.equal(errors.length, 1);
     assert.equal(lifecycle.register().length, 1);
@@ -464,7 +330,8 @@ test("workspace capability lifecycle reports opaque and invalid host handles", (
     let index = 0;
     const host = {addAgentCapability: () => index++ === 0 ? undefined : null};
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {});
-    assert.equal(lifecycle.register().length, 2);
+    // 覆盖两份 diagnostics 定义以触发 opaque/invalid 两种句柄形态
+    assert.equal(lifecycle.register([createWorkspaceCapabilityDiagnosticsDefinition(), createWorkspaceCapabilityDiagnosticsDefinition()]).length, 2);
     assert.deepEqual(lifecycle.status(), {registered: 2, failed: 0, unmanaged: 2, disposed: false});
     assert.deepEqual(lifecycle.handleStatus(), {opaque: 1, invalid: 1});
 });
@@ -473,33 +340,32 @@ test("workspace capability registration failure reasons stay stable", () => {
     assert.equal(normalizeWorkspaceCapabilityRegistrationFailureReason({name: "AbortError"}), "cancelled");
     assert.equal(normalizeWorkspaceCapabilityRegistrationFailureReason({name: "TimeoutError"}), "timeout");
     assert.equal(normalizeWorkspaceCapabilityRegistrationFailureReason(new Error("secret")), "failed");
-    const host = {addAgentCapability: ({name}) => { if (name === "workspace-plan") throw Object.assign(new Error("x"), {name: "TimeoutError"}); return "ok"; }};
+    const host = {addAgentCapability: ({name}) => { if (name === WORKSPACE_RUNTIME_REGISTRY_DIAGNOSTICS_SPEC.name) throw Object.assign(new Error("x"), {name: "TimeoutError"}); return "ok"; }};
     const lifecycle = createWorkspaceCapabilityLifecycle(host, {});
     lifecycle.register();
     assert.deepEqual(lifecycle.failureStatus(), {total: 1, byReason: {cancelled: 0, timeout: 1, failed: 0}});
 });
 
 test("workspace capability definitions diagnostics stay bounded", () => {
-    const bridge = {plan: () => null, execute: async () => ({})};
-    const definitions = createWorkspaceCapabilityDefinitions(bridge);
-    assert.deepEqual(buildWorkspaceCapabilityDefinitionsDiagnostics(definitions), {ok: true, total: 2, valid: 2, invalid: 0, duplicate: 0});
+    const definitions = [createWorkspaceCapabilityDiagnosticsDefinition()];
+    assert.deepEqual(buildWorkspaceCapabilityDefinitionsDiagnostics(definitions), {ok: true, total: 1, valid: 1, invalid: 0, duplicate: 0});
     assert.deepEqual(buildWorkspaceCapabilityDefinitionsDiagnostics([{spec: {name: "secret"}, handler: () => true}]), {ok: false, total: 1, valid: 0, invalid: 1, duplicate: 0});
 });
 
 test("workspace definition/lifecycle diagnostics form a bounded read-only bundle", () => {
-    const definitions = createWorkspaceCapabilityDefinitions({plan: () => null, execute: async () => ({})});
+    const definitions = [createWorkspaceCapabilityDiagnosticsDefinition()];
     const lifecycle = createWorkspaceCapabilityLifecycle({addAgentCapability: () => undefined}, {});
     lifecycle.register();
     const bundle = buildWorkspaceCapabilityDefinitionLifecycleDiagnostics(definitions, lifecycle);
-    assert.equal(bundle.definitions.valid, 2);
-    assert.equal(bundle.lifecycle.status.registered, 2);
-    assert.equal(bundle.lifecycle.handles.opaque, 2);
+    assert.equal(bundle.definitions.valid, 1);
+    assert.equal(bundle.lifecycle.status.registered, 1);
+    assert.equal(bundle.lifecycle.handles.opaque, 1);
     assert.equal(bundle.lifecycle.failures.total, 0);
     assert.deepEqual(normalizeWorkspaceCapabilityDefinitionsDiagnostics({total: 99, valid: 99, invalid: -1, duplicate: 99, secret: "drop"}), {ok: false, total: 8, valid: 8, invalid: 0, duplicate: 8});
 });
 
 test("workspace diagnostics snapshot is versioned, compatible, and validated", () => {
-    const definitions = createWorkspaceCapabilityDefinitions({plan: () => null, execute: async () => ({})});
+    const definitions = [createWorkspaceCapabilityDiagnosticsDefinition()];
     const lifecycle = createWorkspaceCapabilityLifecycle({addAgentCapability: () => "ok"}, {});
     lifecycle.register();
     const registry = createWorkspaceCapabilityRuntimeSessionRegistry(1);
@@ -1150,103 +1016,11 @@ test("workspace action postconditions reject false completed results", () => {
     assert.deepEqual(validateWorkspaceActionPostcondition("open-document", {status: "failed", reason: "x"}), {status: "failed", reason: "x"});
 });
 
-test("workspace execution guard prevents replay and stays bounded", () => {
-    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    assert.equal(normalizePlanId(plan.planId), plan.planId);
-    assert.equal(normalizePlanId("javascript:bad"), "");
-    const guard = createWorkspaceExecutionGuard(1);
-    assert.deepEqual(guard.begin(plan, false, 1700000000100), {ok: false, reason: "denied"});
-    const digest = workspacePlanDigest(plan);
-    assert.equal(digest.startsWith("pd-"), true);
-    assert.equal(guard.begin(plan, {approved: true, digest: "pd-invalid"}, 1700000000100).reason, "digest_mismatch");
-    assert.deepEqual(guard.begin(plan, {approved: true, digest}, 1700000000100), {ok: true, planId: plan.planId});
-    assert.equal(guard.begin(plan, true, 1700000000101).reason, "already_running");
-    assert.equal(guard.finish(plan.planId, "rc-abc", "partial"), true);
-    assert.deepEqual(guard.get(plan.planId), {status: "partial", receipt: "rc-abc"});
-    assert.equal(guard.begin(plan, true, 1700000000102).reason, "already_consumed");
-    const other = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000001);
-    assert.equal(guard.begin(other, true, 1700000000100).ok, true);
-    assert.equal(guard.get(plan.planId), null);
-});
 
-test("workspace orchestrator binds approval digest and consumes once", async () => {
-    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    const guard = createWorkspaceExecutionGuard();
-    const calls = [];
-    const digest = workspacePlanDigest(plan);
-    const receipt = await executeWorkspacePlan(plan, {
-        guard, approved: true, digest, now: 1700000000100,
-        runStep: async (step) => { calls.push(step.action); return {status: "completed"}; },
-    });
-    assert.equal(receipt.status, "completed");
-    assert.deepEqual(calls, ["open-document"]);
-    const replay = await executeWorkspacePlan(plan, {guard, approved: true, digest, now: 1700000000101, runStep: async () => ({status: "completed"})});
-    assert.equal(replay.status, "already_consumed");
-});
 
-test("workspace orchestrator validates and consumes approval token before steps", async () => {
-    const base = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    const plan = {...base, digest: workspacePlanDigest(base)};
-    const approvalStore = createApprovalTokenStore();
-    const token = approvalStore.issue(plan, "desktop", 1700000000100, "integration");
-    let calls = 0;
-    const options = {
-        approvalStore, approvalToken: token, guard: createWorkspaceExecutionGuard(), approved: true,
-        digest: plan.digest, device: "desktop", now: 1700000000101,
-        runStep: async () => { calls += 1; return {status: "completed"}; },
-    };
-    const receipt = await executeWorkspacePlan(plan, options);
-    assert.equal(receipt.status, "completed");
-    assert.equal(calls, 1);
-    const replay = await executeWorkspacePlan(plan, {...options, now: 1700000000102});
-    assert.equal(replay.status, "consumed");
-    assert.equal(calls, 1);
-    const otherToken = approvalStore.issue(plan, "sidebar", 1700000000100, "other");
-    const mismatch = await executeWorkspacePlan(plan, {...options, approvalToken: otherToken, device: "desktop", guard: createWorkspaceExecutionGuard(), now: 1700000000103});
-    assert.equal(mismatch.status, "binding_mismatch");
-});
 
-test("execute-workspace-plan contract requires digest and one-time approval token", () => {
-    assert.equal(EXECUTE_WORKSPACE_PLAN_SPEC.name, "execute-workspace-plan");
-    assert.deepEqual(EXECUTE_WORKSPACE_PLAN_SPEC.inputSchema.required, ["planId", "digest", "approvalToken"]);
-    assert.equal(EXECUTE_WORKSPACE_PLAN_SPEC.inputSchema.additionalProperties, false);
-    const valid = normalizeExecutionRequest({planId: "wp-l8-abc123", digest: "pd-abc123", approvalToken: "approve_123", device: "sidebar"});
-    assert.deepEqual(valid, {planId: "wp-l8-abc123", digest: "pd-abc123", approvalToken: "approve_123", device: "sidebar"});
-    assert.equal(normalizeExecutionRequest({...valid, approvalToken: "short"}), null);
-    assert.equal(normalizeExecutionRequest({...valid, digest: "bad"}), null);
-    assert.deepEqual(buildExecutionGateResult(valid, "expired"), {planId: "wp-l8-abc123", status: "expired", receipt: ""});
-});
 
-test("approval token binds plan digest, device and one-time consumption", () => {
-    const base = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    const plan = {...base, digest: workspacePlanDigest(base)};
-    const store = createApprovalTokenStore(1);
-    const token = store.issue(plan, "sidebar", 1700000000100, "fixture");
-    assert.match(token, /^at-[a-z0-9]{8,16}$/);
-    assert.equal(normalizeToken(token), token);
-    assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "desktop"}, 1700000000101).reason, "binding_mismatch");
-    assert.deepEqual(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}, 1700000000101), {ok: true, planId: plan.planId, device: "sidebar"});
-    assert.deepEqual(store.consume(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}, 1700000000102), {ok: true, planId: plan.planId, device: "sidebar"});
-    assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}).reason, "consumed");
-    const other = {...buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083001-abcdef"}]}, 1700000000001), digest: "pd-abcdef"};
-    const second = store.issue(other, "desktop", 1700000000100, "other");
-    assert.ok(second);
-    assert.equal(store.size(), 1);
-    assert.equal(store.validate(token, {planId: plan.planId, digest: plan.digest, device: "sidebar"}).reason, "invalid_token");
-});
 
-test("workspace approval challenge binds immutable plan metadata", () => {
-    const plan = buildWorkspacePlan({steps: [{action: "open-document", id: "20260913083000-abcdef"}]}, 1700000000000);
-    const store = createApprovalTokenStore();
-    const challenge = createWorkspaceApprovalChallenge(plan, store, "sidebar", 1700000000100);
-    assert.deepEqual(Object.keys(challenge).sort(), ["approvalToken", "device", "digest", "expiresAt", "planId"]);
-    assert.equal(challenge.planId, plan.planId);
-    assert.equal(challenge.device, "sidebar");
-    assert.deepEqual(validateWorkspaceApprovalChallenge(challenge, plan, 1700000000101), {ok: true, planId: plan.planId, device: "sidebar"});
-    assert.equal(validateWorkspaceApprovalChallenge({...challenge, digest: "pd-tampered"}, plan, 1700000000101).reason, "digest_mismatch");
-    assert.equal(validateWorkspaceApprovalChallenge({...challenge, expiresAt: plan.expiresAt + 1}, plan, 1700000000101).reason, "expiry_mismatch");
-    assert.equal(createWorkspaceApprovalChallenge(plan, store, "desktop", plan.expiresAt), null);
-});
 
 test("flattenOutline flattens nested headings with depth and bounds", () => {
     const nested = [
@@ -1276,4 +1050,28 @@ test("flattenOutline respects the limit and skips malformed nodes", () => {
     assert.deepEqual(flattenOutline("bad", 48), []);
     // 超深层级被钳制到 8
     assert.equal(flattenOutline([{id: "20260101000003-ccccccc", name: "深", depth: 99}], 48)[0].depth, 8);
+});
+
+test("agent capabilities declare actionEffects per action name (ADR 0063)", () => {
+    const captured = [];
+    const host = {addAgentCapability: (options) => { captured.push(options); return "handle"; }};
+    const effects = {localRead: true, localWrite: false, dataEgress: false, externalCost: false};
+    registerReadOnlyAgentCapabilities(host, [{spec: {name: "get-document-outline"}, handler: async () => ({})}]);
+    registerAgentActionCapability(host, {spec: AGENT_CAPABILITY_SPECS.openDocument, effects, handler: async () => ({})});
+    registerAgentActionCapability(host, {spec: AGENT_CAPABILITY_SPECS.openDocuments, effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false}, handler: async () => ({})});
+    // 每个注册必须携带 actionEffects，且动作名键的效果与 effects 声明一致
+    for (const entry of captured) {
+        const declared = entry.actionEffects && entry.actionEffects[entry.name];
+        assert.ok(declared, `${entry.name} must declare actionEffects keyed by its action name`);
+        assert.deepEqual(declared, entry.effects, `${entry.name} actionEffects must mirror effects`);
+    }
+    const byName = new Map(captured.map((entry) => [entry.name, entry]));
+    // 受控导航单开必须显式 localRead（免确认）；批量必须 localWrite（宿主确认卡承担确认）
+    assert.equal(byName.get("open-document").effects.localRead, true);
+    assert.equal(byName.get("open-document").effects.localWrite, false);
+    assert.equal(byName.get("open-documents").effects.localWrite, true);
+    // 生产接线源码断言：openDocuments 的 effects 必须声明 localWrite（宿主确认卡）
+    const indexSource = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "src", "index.ts"), "utf8");
+    assert.match(indexSource, /AGENT_CAPABILITY_SPECS\.openDocuments,\s*effects: \{localRead: true, localWrite: true/,
+        "openDocuments production effects must declare localWrite for the host confirmation chain");
 });

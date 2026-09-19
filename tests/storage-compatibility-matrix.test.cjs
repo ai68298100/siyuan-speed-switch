@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {stripComments} = require('./source-scan.cjs');
-const {KEY_ORDER, HANDLED_KEYS, INSPECTED_KEYS, DEFAULT_LIMITS, STORAGE_SCHEMA_VERSION} = require('../src/storage-migration.js');
+const {KEY_ORDER, HANDLED_KEYS, INSPECTED_KEYS, META_KEYS, DEFAULT_LIMITS, STORAGE_SCHEMA_VERSION, runStorageMigration} = require('../src/storage-migration.js');
 const {QUICK_ACTION_DEFAULTS_VERSION} = require('../src/quick-actions.js');
 
 const root = path.resolve(__dirname, '..');
@@ -44,7 +44,7 @@ test('storage compatibility matrix exists and is a non-trivial document', () => 
     assert.ok(fs.existsSync(docsPath), 'docs/storage-compatibility-matrix.md must exist');
     const source = documentSource();
     assert.ok(source.length > 2000, 'the audit document must actually contain the matrix, not a stub');
-    assert.match(source, /13 个 key/, 'the document must state the authoritative key count');
+    assert.match(source, /14 个 key/, 'the document must state the authoritative key count');
 });
 
 test('documented key list equals the code registry in both directions', () => {
@@ -53,13 +53,13 @@ test('documented key list equals the code registry in both directions', () => {
     let match;
     while ((match = re.exec(constantsSource)) !== null) codeKeys.set(match[1], match[2]);
     // 审计面非空自检：空集合会让下面的比对恒真（gate-audit-checklist 模式 ④）
-    assert.equal(codeKeys.size, 13, 'constants.ts must define exactly 13 storage keys');
-    assert.equal(KEY_ORDER.length, 13, 'storage-migration KEY_ORDER must stay at 13');
+    assert.equal(codeKeys.size, 14, 'constants.ts must define exactly 14 storage keys');
+    assert.equal(KEY_ORDER.length, 14, 'storage-migration KEY_ORDER must stay at 14');
 
     const documented = new Set();
     const docRe = /`(sw_[a-z_]+)`/g;
     while ((match = docRe.exec(documentSource())) !== null) documented.add(match[1]);
-    assert.ok(documented.size >= 13, `the document must enumerate every key by literal, found ${documented.size}`);
+    assert.ok(documented.size >= 14, `the document must enumerate every key by literal, found ${documented.size}`);
 
     const codeValues = new Set(codeKeys.values());
     assert.deepEqual([...codeValues].filter((key) => !documented.has(key)), [], 'every registered key must appear in the audit document');
@@ -72,7 +72,7 @@ test('documented classification (handled vs inspect) matches storage-migration',
     const re = /^\|\s*\d+\s*\|\s*`(sw_[a-z_]+)`\s*\|\s*`[A-Z_]+`\s*\|\s*([a-z]+)\s*\|/gm;
     let match;
     while ((match = re.exec(documentSource())) !== null) rows.set(match[1], match[2]);
-    assert.ok(rows.size >= 13, `expected at least 13 classified rows, found ${rows.size}`);
+    assert.ok(rows.size >= 14, `expected at least 14 classified rows, found ${rows.size}`);
 
     for (const key of INSPECTED_KEYS) {
         assert.equal(rows.get(key), 'inspect', `${key} is inspected in code and must be documented as inspect`);
@@ -129,4 +129,27 @@ test('documented schema markers match their runtime values', () => {
         assert.ok(line, `the schema summary must have a ${name} row`);
         assert.match(line, new RegExp(`\\b${value}\\b`), `the documented ${name} must equal the runtime value ${value}`);
     }
+});
+
+test('schema version stamp drill semantics (D-401)', () => {
+    // 分类：meta key 不属于 handled/inspect，独立成组且位于 KEY_ORDER 末位。
+    assert.deepEqual(META_KEYS, ['sw_schema_version']);
+    assert.equal(KEY_ORDER[KEY_ORDER.length - 1], 'sw_schema_version');
+    assert.ok(!HANDLED_KEYS.includes('sw_schema_version') && !INSPECTED_KEYS.includes('sw_schema_version'),
+        'the meta key must not be classified as business data');
+
+    const entryOf = (payload) => runStorageMigration(payload).report.keys.find((entry) => entry.key === 'sw_schema_version');
+    assert.equal(entryOf({}).status, 'missing', 'absent stamp reports missing; onload stamps it');
+    assert.equal(entryOf({sw_schema_version: STORAGE_SCHEMA_VERSION}).status, 'kept', 'current stamp is kept');
+    assert.equal(entryOf({sw_schema_version: 0}).status, 'reset', 'corrupt stamp (non >=1 integer) is reset');
+    assert.equal(entryOf({sw_schema_version: 'x'}).status, 'reset', 'corrupt stamp (wrong type) is reset');
+    // 大于当前版本 → 疑似降级：状态 kept（不覆写）且 note 必须携带 downgrade 语义。
+    const newer = entryOf({sw_schema_version: STORAGE_SCHEMA_VERSION + 1});
+    assert.equal(newer.status, 'kept');
+    assert.match(newer.note, /downgrade/, 'a newer stamp must be flagged as a suspected downgrade');
+    // 迁移分支（stored < current）在 v1 为首个版本时不可达，注册于 metaHandler 供未来版本使用。
+
+    // 元数据永不产出 data：写入完全由宿主落戳函数管理。
+    const out = runStorageMigration({sw_schema_version: STORAGE_SCHEMA_VERSION, sw_mru: []}).data;
+    assert.ok(!('sw_schema_version' in out), 'the stamp must never be emitted through migration data');
 });

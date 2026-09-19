@@ -56,12 +56,19 @@ const INSPECTED_KEYS = Object.freeze([
     "sw_home_state",
 ]);
 
-// KEY_ORDER 由两个分类集拼接而来（总数恒为 13，与 agent-capabilities 的
-// 计数上限同源）。拼接保证了「分类集与报告 key 集合不可能漂移」——这是有意
-// 的：sw_thumb_cache 从 inspect 毕业到 handled 时，报告里它的位置随之从第 13
-// 位移到第 11 位（遵循 handled 分组），但 key 集合与总数完全不变，totals
-// 结构也不变，所以下游只读快照无需改动。
-const KEY_ORDER = Object.freeze([...HANDLED_KEYS, ...INSPECTED_KEYS]);
+// 元数据 key（D-401）：不承载业务数据，只持久化存储版本戳。onload 落戳、
+// 迁移语义由 META_HANDLER 判定，永不进入演练产出的 data（写入由宿主落戳函数管理）。
+const META_KEYS = Object.freeze([
+    "sw_schema_version",
+]);
+
+// KEY_ORDER 由三个分类集拼接而来（总数恒为 14）。拼接保证了「分类集与报告
+// key 集合不可能漂移」——这是有意的：sw_thumb_cache 从 inspect 毕业到 handled
+// 时，报告里它的位置随之从第 13 位移到第 11 位（遵循 handled 分组），但 key
+// 集合与总数完全不变，totals 结构也不变，所以下游只读快照无需改动。
+// sw_schema_version 追加在末位（meta 分组），agent storageHealth 的计数上限
+// 与 KEY_ORDER 总数同步为 14（agent-capabilities.js）。
+const KEY_ORDER = Object.freeze([...HANDLED_KEYS, ...INSPECTED_KEYS, ...META_KEYS]);
 
 const NOTE_MAX = 80;
 
@@ -191,6 +198,27 @@ function inspectHandler(value) {
     return {value: null, status: "inspect", kept: 0, removed: 0, note: boundNote(`shape=${describeShape(value)}; deep migration delegated`)};
 }
 
+// 元数据 key（sw_schema_version）的迁移判定（D-401）：
+// - 缺失 → missing（onload 落戳函数会写入当前版本）；
+// - 损坏（非 ≥1 整数）→ reset（onload 落戳函数重写为当前版本）；
+// - 等于当前版本 → kept（幂等，不产生写入）；
+// - 小于当前版本 → migrated（旧版本数据，加载期版本迁移入口；v1 为首个版本，
+//   当前等价于直接对齐，未来迁移函数在此分支注册）；
+// - 大于当前版本 → kept 且值原样保留（疑似降级：保留证据不覆写，onload 侧
+//   logger.warn 告警）。永不产出 data，写入完全由宿主落戳函数管理。
+function metaHandler(value) {
+    if (value === STORAGE_SCHEMA_VERSION) {
+        return {value: null, status: "kept", kept: 1, removed: 0, note: ""};
+    }
+    if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value >= 1) {
+        if (value < STORAGE_SCHEMA_VERSION) {
+            return {value: null, status: "migrated", kept: 0, removed: 0, note: boundNote("older schema stamp; load-time version migration applies")};
+        }
+        return {value: null, status: "kept", kept: 1, removed: 0, note: boundNote("newer stamp than plugin; downgrade suspected and preserved")};
+    }
+    return {value: null, status: "reset", kept: 0, removed: 0, note: boundNote("missing or corrupt schema stamp rewritten on load")};
+}
+
 // 执行演练迁移：payloads 为 {key: value}（模拟 loadData 汇总），返回
 // {fromVersion, toVersion, report, data}。
 // - data 仅包含被处理且输入存在的 key（missing 不产出；inspect 类不产出）；
@@ -210,6 +238,8 @@ function runStorageMigration(payloads, options = {}) {
         let entry;
         if (!present || value === undefined) {
             entry = {key, status: "missing", kept: 0, removed: 0, note: boundNote("absent; host default applies")};
+        } else if (META_KEYS.includes(key)) {
+            entry = {key, ...metaHandler(value)};
         } else if (INSPECTED_KEYS.includes(key)) {
             entry = {key, ...inspectHandler(value)};
         } else {
@@ -238,6 +268,7 @@ module.exports = {
     KEY_ORDER,
     HANDLED_KEYS,
     INSPECTED_KEYS,
+    META_KEYS,
     describeShape,
     runStorageMigration,
 };

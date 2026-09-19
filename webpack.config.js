@@ -147,7 +147,7 @@ module.exports = (env, argv) => {
                         {
                             loader: "esbuild-loader",
                             options: {
-                                // 思源桌面端为 Electron、手机端为现代 WebView（kernel minAppVersion 3.1.20），
+                                // 思源桌面端为 Electron、手机端为现代 WebView（minAppVersion 3.8.0，ADR 0064），
                                 // es2020 覆盖可选链/空值合并且保留 async/await 原生语法，
                                 // 避免降级到 es6 时注入大段 __async/generator 辅助函数。
                                 target: "es2020",

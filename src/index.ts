@@ -5,7 +5,7 @@ import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
-import {runStorageMigration, KEY_ORDER} from "./storage-migration";
+import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
@@ -199,6 +199,7 @@ import {
     TAB_GROUP_MODES,
     TAB_GROUP_MODE_DEFAULT,
     PERSISTENT_KEYS,
+    SCHEMA_VERSION_KEY,
 } from "./constants";
 import {
     getSiyuan,
@@ -662,6 +663,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     private agentReadOnlyAuditHistory = createAgentReadOnlyAuditHistory(8);
     // 存储迁移演练快照（v0.20 数据连续性，D-386）：onload 只读恢复报告，仅内存、不落盘。
     private storageMigrationReport: ReturnType<typeof runStorageMigration>["report"] | null = null;
+    // 存储版本戳降级证据（D-401）：载入到比当前插件更新的版本戳时记录原值——
+    // 数据可能来自更高版本的插件，保留证据且不覆写，供诊断透出；正常路径恒为 null。
+    private storageSchemaDowngradeFrom: number | null = null;
     // onDataChanged 重入保护：同步批次会连续广播，合并为"这轮跑完再补一轮"。
     private dataChangeReloadInFlight = false;
     private dataChangeReloadQueued = false;
@@ -846,7 +850,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.openDocument,
-            effects: {},
+            // ADR 0063：效果显式声明 localRead（免确认）——确认链由宿主 Agent 确认卡承担
+            effects: {localRead: true, localWrite: false, dataEgress: false, externalCost: false},
             handler: async (args: Record<string, unknown>) => {
                 const id = normalizeAgentDocumentId(args?.id);
                 if (!id) return {error: "invalid document id"};
@@ -864,10 +869,11 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
 
-        // 受控导航（批量）：AI 一次打开最多 5 篇文档组成工作区。执行前列出全部标题弹窗确认
+        // 受控导航（批量）：AI 一次打开最多 5 篇文档组成工作区。ADR 0063：批量动作
+        // 声明 localWrite → 宿主确认卡承担确认；内建弹窗为过渡期兜底（T-6678 撤除）
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.openDocuments,
-            effects: {localRead: true, localWrite: false, dataEgress: false, externalCost: false},
+            effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
             handler: async (args: Record<string, unknown>) => {
                 const ids = normalizeAgentDocumentIds(args?.ids);
                 if (ids.length === 0) return {error: "no valid document ids"};
@@ -1003,8 +1009,34 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 报告出现 cleaned/reset 即暴露宿主清洗缺口，是演练同源性的运行时验证。
         this.captureStorageMigrationSnapshot();
         this.runQuickActionDefaultsMigration();
+        // 存储版本戳（D-401）：在全部加载期清洗与一次性迁移之后落戳——戳存在
+        // 即代表"这份数据已经过当前版本的全部加载期处理"。仅在 onload 路径执行；
+        // onDataChanged 钩子链禁写盘（写盘会再次广播形成回环），不做落戳。
+        this.stampStorageSchemaVersion();
         // 收藏分组折叠状态：从持久化数据初始化（旧版本无此数据时为默认展开）
         this.initFavCollapsed();
+    }
+
+    // 存储版本戳（D-401）：STORAGE_SCHEMA_VERSION 此前只存在于演练管道，
+    // 无处持久化，因此无法识别"数据来自更新/更旧版本的插件"。
+    // 语义：缺失或损坏 → 落当前版本；等于当前版本 → 幂等跳过（无写入）；
+    // 小于当前版本 → 未来版本迁移入口，当前对齐后落戳；大于当前版本 →
+    // 疑似降级：保留原值不覆写（抹掉会丢失证据），记录字段并告警。
+    private stampStorageSchemaVersion() {
+        const stored = this.data[SCHEMA_VERSION_KEY];
+        if (stored === STORAGE_SCHEMA_VERSION) return;
+        if (typeof stored === "number" && Number.isInteger(stored) && Number.isFinite(stored) && stored >= 1) {
+            if (stored > STORAGE_SCHEMA_VERSION) {
+                this.storageSchemaDowngradeFrom = stored;
+                logger.warn("storage schema stamp is newer than the plugin (downgrade suspected); value preserved", {
+                    stored,
+                    current: STORAGE_SCHEMA_VERSION,
+                });
+                return;
+            }
+        }
+        this.data[SCHEMA_VERSION_KEY] = STORAGE_SCHEMA_VERSION;
+        this.saveDataDebounced(SCHEMA_VERSION_KEY);
     }
 
     // 加载期数据净化：收藏列表结构校验/按 key 去重，置顶与分组注册表过滤非法字符串

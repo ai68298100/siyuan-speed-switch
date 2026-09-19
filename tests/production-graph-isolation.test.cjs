@@ -11,20 +11,17 @@ const srcDir = path.join(root, 'src');
 // 归档硬上限已于 2026-09-15 由 320 KiB 上调至经审核的 512 KiB(D-353),
 // 余量约 225 KiB,因此预算不再是"无声涌入"式的风险,但仍须逐次评审。
 const UNWIRED_CONTRACT_MODULES = [
-    'agent-approval-token',
     'agent-document-set-actions',
     'agent-host-actions',
     'agent-workspace-actions',
-    'agent-workspace-approval',
-    'agent-workspace-bridge',
-    'agent-workspace-capability',
     'agent-workspace-capability-definitions',
-    'agent-workspace-execution',
     'agent-workspace-plan',
     'agent-workspace-probe',
     'agent-workspace-registry',
-    'agent-workspace-session',
     'agent-write-actions',
+    // ADR 0063（T-6677）已撤除的自建审批管线：approval-token / workspace-approval /
+    // workspace-execution / workspace-session / workspace-capability / workspace-bridge。
+    // 它们不再存在，也不会回潜入生产图；上方清单只保留仍待择优接入的契约模块。
 ];
 
 const WIRED_SANITY_MODULES = [
