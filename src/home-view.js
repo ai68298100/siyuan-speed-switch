@@ -210,6 +210,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         hasJournal: "有日记",
         heatmapEmpty: "无贡献",
         heatmapUnit: "次贡献",
+        heatmapLegend: "少 → 多",
         ...(options.labels && typeof options.labels === "object" ? options.labels : {}),
     };
     const root = doc.createElement("section");
@@ -464,6 +465,22 @@ function renderHomeModuleView(doc, view, options = {}) {
             grid.appendChild(cell);
         });
         body.appendChild(grid);
+        // T-6472 色阶文字图例：格点颜色强弱显式化（可及性；装饰色块对读屏隐藏）
+        const legendText = typeof labels.heatmapLegend === "string" ? labels.heatmapLegend : "";
+        if (legendText) {
+            const legend = doc.createElement("div");
+            legend.className = "sw__home-heatmap-legend";
+            for (let level = 0; level <= 4; level += 1) {
+                const swatch = doc.createElement("span");
+                swatch.className = "sw__home-heatmap-legend-swatch is-level-" + level;
+                swatch.setAttribute("aria-hidden", "true");
+                legend.appendChild(swatch);
+            }
+            const legendLabel = doc.createElement("span");
+            legendLabel.textContent = legendText;
+            legend.appendChild(legendLabel);
+            body.appendChild(legend);
+        }
         root.appendChild(body);
         return root;
     }

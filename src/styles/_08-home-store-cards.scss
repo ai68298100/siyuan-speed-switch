@@ -505,4 +505,25 @@
             background: transparent;
         }
     }
+
+    // T-6472 色阶文字图例：颜色含义显式化（可及性），装饰色块对读屏隐藏
+    .sw__home-heatmap-legend {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--b3-theme-on-surface-light);
+
+        .sw__home-heatmap-legend-swatch {
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            background: color-mix(in srgb, var(--b3-border-color) 55%, transparent);
+
+            &.is-level-1 { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 22%, var(--b3-theme-surface, #fff)); }
+            &.is-level-2 { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 45%, var(--b3-theme-surface, #fff)); }
+            &.is-level-3 { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 68%, var(--b3-theme-surface, #fff)); }
+            &.is-level-4 { background: color-mix(in srgb, var(--b3-theme-primary, #8576e8) 92%, var(--b3-theme-surface, #fff)); }
+        }
+    }
 }

@@ -429,3 +429,14 @@ test("data health missing assets link to their referencing blocks", () => {
     assert.equal(snapshot.items[0].secondary, "assets/missing.png", "引用路径默认展示");
     assert.equal(snapshot.items[1].value, "", "无引用块的条目不产生点击目标");
 });
+
+// ---------- T-6472 热力图色阶图例（可及性） ----------
+test("heatmap legend explains the color scale with swatches and text", () => {
+    const view = readSourceText(path.join(__dirname, "..", "src", "home-view.js"));
+    assert.match(view, /sw__home-heatmap-legend/);
+    assert.match(view, /labels\.heatmapLegend/);
+    assert.match(view, /aria-hidden", "true"\);\n\s*legend\.appendChild\(swatch\)/, "装饰色块对读屏隐藏");
+    const css = readSourceText(path.join(__dirname, "..", "src", "styles", "_08-home-store-cards.scss"));
+    assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend", /font-size: 11px/), "图例文字样式必须存在");
+    assert.ok(declaresIn(css, ".sw__home-heatmap .sw__home-heatmap-legend .sw__home-heatmap-legend-swatch.is-level-4", /background/), "最高档色块样式必须存在");
+});
