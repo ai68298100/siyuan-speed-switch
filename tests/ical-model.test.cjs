@@ -180,3 +180,23 @@ test('yearly rrule expands by year with leap-day skip (T-6693)', () => {
     assert.equal(new Date(events.events[0].start).getFullYear(), 2024);
     assert.equal(events.events[0].summary, '闰日');
 });
+
+test('monthly byday ordinals expand nth and last weekday occurrences (T-6695b)', () => {
+    const lines = (byday) => [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20260113T090000',
+        'SUMMARY:双周会',
+        'RRULE:FREQ=MONTHLY;BYDAY=' + byday + ';COUNT=3',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(String.fromCharCode(13, 10));
+    const dayOf = (result) => result.events.map((event) => event.start && new Date(event.start).getDate());
+    const second = parseIcsEvents(lines('2TU'), {now: new Date(2026, 0, 20).getTime()});
+    assert.deepEqual(dayOf(second), [13, 10, 10], 'the 2nd Tuesday of Jan/Feb/Mar 2026');
+    const last = parseIcsEvents(lines('-1FR'), {now: new Date(2026, 0, 31).getTime()});
+    assert.deepEqual(dayOf(last), [30, 27, 27], 'the last Fridays of Jan/Feb/Mar 2026 (COUNT=3)');
+    // 无序数裸星期（TU）在 MONTHLY 语义未支持 → 回退月内同日步进（锚 13 日）
+    const bare = parseIcsEvents(lines('TU'), {now: new Date(2026, 0, 20).getTime()});
+    assert.deepEqual(dayOf(bare), [13, 13, 13]);
+});

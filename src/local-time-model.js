@@ -265,6 +265,12 @@ const CITY_TIME_ZONES = Object.freeze({
     "Vancouver": "America/Vancouver", "Sao Paulo": "America/Sao_Paulo",
     "Sydney": "Australia/Sydney", "Melbourne": "Australia/Melbourne", "Auckland": "Pacific/Auckland",
     "Perth": "Australia/Perth", "Brisbane": "Australia/Brisbane",
+    // T-6694b 第三波：中国更多城市与世界补充
+    "青岛": "Asia/Shanghai", "大连": "Asia/Shanghai", "厦门": "Asia/Shanghai", "福州": "Asia/Shanghai",
+    "合肥": "Asia/Shanghai", "郑州": "Asia/Shanghai", "长沙": "Asia/Shanghai", "哈尔滨": "Asia/Shanghai",
+    "沈阳": "Asia/Shanghai", "昆明": "Asia/Shanghai", "海口": "Asia/Shanghai", "南昌": "Asia/Shanghai",
+    "Osaka": "Asia/Tokyo", "Nagoya": "Asia/Tokyo", "Busan": "Asia/Seoul", "Hanoi": "Asia/Ho_Chi_Minh",
+    "Barcelona": "Europe/Madrid", "Munich": "Europe/Berlin", "Geneva": "Europe/Zurich", "Brussels": "Europe/Brussels",
 });
 
 function normalizeWorldClockConfig(value) {
