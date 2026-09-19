@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {listZipEntryNames} = require(path.join(__dirname, 'lib', 'zip.cjs'));
+const {ARCHIVE_BUDGET_BYTES, headroom} = require('../../scripts/release-readiness-metrics.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -27,12 +28,12 @@ test('package.zip, when present, contains only release files', (t) => {
     // chain has room without another content-trimming decision. The allowlist,
     // metadata, duplicate-entry and remote-dependency gates are unchanged;
     // only the byte ceiling moves.
-    const budget = 512 * 1024;
-    const headroom = budget - bytes;
-    if (headroom >= 0 && headroom < 1024) {
-        t.diagnostic(`package.zip headroom is only ${headroom} bytes; keep future UI changes within the hard budget`);
+    const budget = ARCHIVE_BUDGET_BYTES;
+    const remaining = headroom(budget, bytes);
+    if (remaining >= 0 && remaining < 1024) {
+        t.diagnostic(`package.zip headroom is only ${remaining} bytes; keep future UI changes within the hard budget`);
     }
-    assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${headroom} bytes`);
+    assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${remaining} bytes`);
     // D-219: ROADMAP.md left the release archive (repo-only dev doc);
     // re-adding it must go through a new budget decision.
     const allowed = /^(index\.js|index\.css|icon\.png|preview\.png|README(?:\.en-US)?\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg|docs\/(?:component-store-guide|agent-document-context-m2)\.md)$/;

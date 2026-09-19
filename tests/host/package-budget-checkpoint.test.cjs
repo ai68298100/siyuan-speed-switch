@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {ARCHIVE_BUDGET_BYTES, headroom} = require('../../scripts/release-readiness-metrics.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -17,9 +18,9 @@ test('package budget checkpoint reports bounded headroom', (t) => {
     // 2 GB, so this is a self-discipline line, not a host constraint. The
     // larger ceiling keeps the checkpoint meaningful as an early-warning
     // signal instead of a ratchet that must be re-argued every few increments.
-    const budget = 512 * 1024;
-    const headroom = budget - bytes;
+    const budget = ARCHIVE_BUDGET_BYTES;
+    const remaining = headroom(budget, bytes);
     assert.ok(Number.isSafeInteger(bytes) && bytes > 0);
-    assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${headroom} bytes`);
-    if (headroom < 1024) t.diagnostic(`package budget checkpoint: ${bytes} bytes; headroom ${headroom} bytes`);
+    assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${remaining} bytes`);
+    if (remaining < 1024) t.diagnostic(`package budget checkpoint: ${bytes} bytes; headroom ${remaining} bytes`);
 });

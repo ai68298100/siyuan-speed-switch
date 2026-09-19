@@ -32,7 +32,7 @@ add('release checker exists', exists('scripts/check-release-readiness.cjs'));
 add('release checker is read-only', !/writeFileSync|appendFileSync|rmSync|unlinkSync/.test(read('scripts/check-release-readiness.cjs')));
 add('release checker checks bundle', contains('scripts/check-release-readiness.cjs', 'dist/index.js'));
 add('release checker checks archive', contains('scripts/check-release-readiness.cjs', 'package.zip'));
-add('release checker has drift guard', contains('scripts/check-release-readiness.cjs', '1024'));
+add('release checker has shared drift guard', contains('scripts/release-readiness-metrics.cjs', 'ARCHIVE_DRIFT_TOLERANCE_BYTES'));
 add('readiness records bundle', /`dist\/index\.js` \d+ bytes/.test(read('docs/release-readiness.md')));
 add('readiness records archive', /`package\.zip` \d+ bytes/.test(read('docs/release-readiness.md')));
 add('readiness records test count', /6304\/6304/.test(read('docs/release-readiness.md')));

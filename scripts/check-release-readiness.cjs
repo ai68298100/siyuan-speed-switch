@@ -1,5 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+    ARCHIVE_DRIFT_TOLERANCE_BYTES,
+    parseArtifactSnapshot,
+    withinDrift,
+} = require('./release-readiness-metrics.cjs');
 
 const root = path.resolve(__dirname, '..');
 const readinessPath = path.join(root, 'docs', 'release-readiness.md');
@@ -18,22 +23,20 @@ function main() {
         return 0;
     }
     const text = fs.readFileSync(readinessPath, 'utf8');
-    const bundleMatch = text.match(/`dist\/index\.js` (\d+) bytes/);
-    const archiveMatch = text.match(/`package\.zip` (\d+) bytes/);
-    if (!bundleMatch || !archiveMatch) {
+    const snapshot = parseArtifactSnapshot(text);
+    if (!snapshot) {
         console.error('release-readiness: required artifact snapshot is missing');
         return 1;
     }
-    const documentedBundle = Number(bundleMatch[1]);
-    const documentedArchive = Number(archiveMatch[1]);
-    const archiveDrift = Math.abs(documentedArchive - archive);
-    if (documentedBundle !== bundle || archiveDrift > 1024) {
+    const archiveDrift = Math.abs(snapshot.archive - archive);
+    if (snapshot.bundle !== bundle || !withinDrift(snapshot.archive, archive)) {
         console.error(JSON.stringify({
-            documentedBundle,
+            documentedBundle: snapshot.bundle,
             bundle,
-            documentedArchive,
+            documentedArchive: snapshot.archive,
             archive,
             archiveDrift,
+            archiveDriftTolerance: ARCHIVE_DRIFT_TOLERANCE_BYTES,
         }, null, 2));
         return 1;
     }

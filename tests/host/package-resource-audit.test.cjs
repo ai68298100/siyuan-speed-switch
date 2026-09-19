@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {listZipEntryStats} = require(path.join(__dirname, 'lib', 'zip.cjs'));
+const {COMPRESSED_ENTRY_BUDGET_BYTES} = require('../../scripts/release-readiness-metrics.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 const baselinePath = path.join(__dirname, 'package-resource-baseline.json');
@@ -25,7 +26,7 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // 字节，旧线仅余 1589 字节；继续遵循功能、性能、UI 与交互优先，并用独立的
 // 512 KiB 整包上限防止失控增长）。
 // 归档总上限独立为 512 KiB（D-353），当前仍余约 176 KiB。
-const MAX_COMPRESSED_ENTRY_BYTES = 224 * 1024;
+const MAX_COMPRESSED_ENTRY_BYTES = COMPRESSED_ENTRY_BUDGET_BYTES;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;
 

@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const metrics = require('../../scripts/release-readiness-metrics.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -183,7 +184,7 @@ test('production bundle remains within the mobile performance budget when built'
     // artifact of the ratchet rather than a real constraint. The zip archive
     // hard ceiling (512 KiB), the 224 KiB single-entry review line (ADR 0059)
     // and the drift diagnostics are unchanged. See docs/adr/0062.
-    const budget = 832 * 1024;
+    const budget = metrics.RAW_BUNDLE_BUDGET_BYTES;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 
@@ -236,12 +237,16 @@ test('release readiness matrix matches generated artifact sizes', () => {
     const readiness = fs.readFileSync(readinessPath, 'utf8');
     const archiveBytes = fs.statSync(archive).size;
     const bundleBytes = fs.statSync(bundle).size;
+    const snapshot = metrics.parseArtifactSnapshot(readiness);
+    assert.ok(snapshot, 'release readiness must contain artifact snapshots');
+    assert.equal(snapshot.bundle, bundleBytes);
+    assert.equal(metrics.withinDrift(snapshot.archive, archiveBytes), true);
     assert.match(readiness, new RegExp('`dist/index\\.js` ' + bundleBytes + ' bytes'));
     const packageMatch = readiness.match(/`package\.zip` (\d+) bytes/);
     assert.ok(packageMatch, 'release readiness must record package.zip size');
     // ZIP compressors may differ by a few bytes across Windows and Ubuntu;
     // keep a tight 1 KiB drift guard while avoiding false failures on Actions.
-    assert.ok(Math.abs(Number(packageMatch[1]) - archiveBytes) <= 1024,
+    assert.ok(metrics.withinDrift(Number(packageMatch[1]), archiveBytes),
         `package.zip size drift exceeds 1 KiB: documented ${packageMatch[1]}, actual ${archiveBytes}`);
 });
 

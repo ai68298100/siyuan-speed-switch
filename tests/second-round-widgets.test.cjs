@@ -8,6 +8,7 @@ const home = require("../src/home-model.js");
 const store = require("../src/home-store-model.js");
 const clock = require("../src/local-time-model.js");
 const quote = require("../src/quote-model.js");
+const releaseMetrics = require("../scripts/release-readiness-metrics.cjs");
 
 const LABELS = {
     hint: "请在配置中填写目标日期",
@@ -104,7 +105,8 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
 
 test("ADR 0062 recalibrates the raw bundle self-discipline line", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
-    assert.match(gate, /const budget = 832 \* 1024;/);
+    assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 832 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-19 \(ADR 0062\)/);
