@@ -200,3 +200,25 @@ test('monthly byday ordinals expand nth and last weekday occurrences (T-6695b)',
     const bare = parseIcsEvents(lines('TU'), {now: new Date(2026, 0, 20).getTime()});
     assert.deepEqual(dayOf(bare), [13, 13, 13]);
 });
+
+test('monthly bymonthday expands fixed and month-end days (T-6695c)', () => {
+    const lines = (bymonthday) => [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20260115T090000',
+        'SUMMARY:月度备份',
+        'RRULE:FREQ=MONTHLY;BYMONTHDAY=' + bymonthday + ';COUNT=3',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(String.fromCharCode(13, 10));
+    const dayOf = (result) => result.events.map((event) => event.start && new Date(event.start).getDate());
+    // 每月 15 日：1/15、2/15、3/15
+    const fixed = parseIcsEvents(lines('15'), {now: new Date(2026, 0, 20).getTime()});
+    assert.deepEqual(dayOf(fixed), [15, 15, 15]);
+    // 每月最后一天（-1）：1/31、2/28（2026 平年）、3/31
+    const last = parseIcsEvents(lines('-1'), {now: new Date(2026, 0, 31).getTime()});
+    assert.deepEqual(dayOf(last), [31, 28, 31]);
+    // 组合 15 与 -1：每月两次、月内升序
+    const combo = parseIcsEvents(lines('15,-1'), {now: new Date(2026, 0, 16).getTime()});
+    assert.deepEqual(dayOf(combo), [15, 31, 15]);
+});

@@ -201,6 +201,14 @@ function parseIcalRrule(value) {
                 return {ordinal, dow};
             }).filter(Boolean)
             : [],
+        // T-6695c MONTHLY BYMONTHDAY 子集："15"=每月 15 日、"-1"=每月最后一天；
+        // 0 与越界（|n|>31）视为未支持。
+        byMonthDay: freq === "MONTHLY" && parts.BYMONTHDAY
+            ? parts.BYMONTHDAY.split(",").map((token) => {
+                const n = Math.trunc(Number(token));
+                return Number.isFinite(n) && n !== 0 && Math.abs(n) <= 31 ? n : null;
+            }).filter((n) => n !== null)
+            : [],
     };
 }
 
@@ -246,6 +254,29 @@ function expandIcalRrule(fields, rrule, horizonMs) {
             const weekIndex = Math.floor(step / 7);
             if (weekIndex % rrule.interval !== 0) continue;
             if (!pushOccurrence(start)) break;
+        }
+        return occurrences;
+    }
+    if (rrule.freq === "MONTHLY" && rrule.byMonthDay.length) {
+        // T-6695c MONTHLY BYMONTHDAY 子集：正数=当月第 n 日（该月不存在则跳过，
+        // 不钳制——与"每日/每周"锚点语义不同，BYMONTHDAY 本身就指定目标日）；
+        // 负数=-1 为月末、-2 为倒数第二天，以此类推。月内按日期升序产出。
+        const daysInMonthOf = (y, mo) => new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
+            const monthShift = get.mo + i * rrule.interval;
+            const daysInMonth = daysInMonthOf(get.y, monthShift);
+            const starts = [];
+            for (const rule of rrule.byMonthDay) {
+                const day = rule > 0 ? rule : daysInMonth + 1 + rule;
+                if (day >= 1 && day <= daysInMonth) starts.push({day, ordinal: rule});
+            }
+            starts.sort((left, right) => left.day - right.day);
+            for (const {day} of starts) {
+                const start = fields.utcFrame === true
+                    ? Date.UTC(get.y, monthShift, day, get.h, get.mi, get.s)
+                    : new Date(get.y, monthShift, day, get.h, get.mi, get.s).getTime();
+                if (!pushOccurrence(start)) return occurrences;
+            }
         }
         return occurrences;
     }
