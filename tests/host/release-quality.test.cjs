@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const metrics = require('../../scripts/release-readiness-metrics.cjs');
+const {isPackageVersion} = require('../../scripts/release-version-contract.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -30,7 +31,7 @@ test('release package metadata stays aligned with plugin metadata', () => {
     const pluginJson = JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8'));
     assert.equal(typeof packageJson.version, 'string');
     assert.equal(pluginJson.version, packageJson.version);
-    assert.match(packageJson.version, /^\d+\.\d+\.\d+$/);
+    assert.equal(isPackageVersion(packageJson.version), true);
 });
 
 test('production bundle remains within the mobile performance budget when built', () => {

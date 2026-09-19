@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const cp = require('node:child_process');
+const {isPackageVersion} = require('./release-version-contract.cjs');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -12,7 +13,7 @@ const contains = (file, needle) => read(file).includes(needle);
 add('package metadata exists', exists('package.json'));
 const pkg = JSON.parse(read('package.json'));
 const plugin = JSON.parse(read('plugin.json'));
-add('package version is semver', /^\d+\.\d+\.\d+$/.test(pkg.version));
+add('package version is semver', isPackageVersion(pkg.version));
 add('plugin version matches package', plugin.version === pkg.version);
 add('main entry is index.js', pkg.main === 'index.js');
 add('verify release script exists', typeof pkg.scripts?.['verify:release'] === 'string');
@@ -28,7 +29,7 @@ add('README English exists', exists('README.en-US.md'));
 add('source directory exists', exists('src'));
 add('tests directory exists', exists('tests'));
 add('host tests directory exists', exists('tests/host'));
-add('release checker exists', exists('scripts/check-release-readiness.cjs'));
+add('release scripts exist', exists('scripts/check-release-readiness.cjs') && exists('scripts/release-version-preflight.cjs'));
 add('release checker is read-only', !/writeFileSync|appendFileSync|rmSync|unlinkSync/.test(read('scripts/check-release-readiness.cjs')));
 add('release checker checks bundle', contains('scripts/check-release-readiness.cjs', 'dist/index.js'));
 add('release checker checks archive', contains('scripts/check-release-readiness.cjs', 'package.zip'));

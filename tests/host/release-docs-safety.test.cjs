@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {isReleaseTag} = require('../../scripts/release-version-contract.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -15,10 +16,9 @@ test('release documentation consistently names package.zip and tag format', () =
 });
 
 test('release tag preflight rejects unsafe or mismatched tag shapes', () => {
-    const valid = /^v\d+\.\d+\.\d+$/;
-    assert.equal(valid.test('v0.16.11'), true);
+    assert.equal(isReleaseTag('v0.16.11'), true);
     for (const invalid of ['0.16.11', 'version-0.16.11', 'v0.16', 'v0.16.11-beta']) {
-        assert.equal(valid.test(invalid), false);
+        assert.equal(isReleaseTag(invalid), false);
     }
 });
 

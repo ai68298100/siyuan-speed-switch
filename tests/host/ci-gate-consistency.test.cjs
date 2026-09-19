@@ -33,8 +33,10 @@ test('CI and release workflows invoke the same core local gates', () => {
 
 test('workflow gate diagnostics preserve explicit failure categories', () => {
     const release = readWorkflow('release.yml');
-    assert.match(release, /version mismatch/i);
-    assert.match(release, /process\.exit\(1\)/);
+    assert.match(release, /release-version-preflight\.cjs/);
+    const preflight = fs.readFileSync(path.join(root, 'scripts', 'release-version-preflight.cjs'), 'utf8');
+    assert.match(preflight, /version mismatch/i);
+    assert.match(preflight, /process\.exitCode\s*=\s*1/);
     const hostReadme = fs.readFileSync(path.join(__dirname, 'README.md'), 'utf8');
     for (const marker of ['BUILD_FAILED', 'RESOURCE_MISSING', 'MANIFEST_MISMATCH', 'ENVIRONMENT_DRIFT']) {
         assert.match(hostReadme, new RegExp(marker));

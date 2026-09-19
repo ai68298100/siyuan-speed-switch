@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {isPackageVersion} = require('../../scripts/release-version-contract.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
 
@@ -23,7 +24,6 @@ test('rollback preflight requires a recoverable release reference', () => {
 });
 
 test('invalid version metadata is rejected before release', () => {
-    const valid = /^\d+\.\d+\.\d+$/;
-    for (const version of ['', 'dev', '1.2', '1.2.3-beta']) assert.equal(valid.test(version), false);
-    assert.equal(valid.test('0.16.11'), true);
+    for (const version of ['', 'dev', '1.2', '1.2.3-beta']) assert.equal(isPackageVersion(version), false);
+    assert.equal(isPackageVersion('0.16.11'), true);
 });
