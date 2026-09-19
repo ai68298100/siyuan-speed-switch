@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * 小驴速切 · 第三方组件最小示例
+ * 小驴雷切 · 第三方组件最小示例
  * ================================
  *
  * 这是一个可完整复制的 registerHomeModule 接入模板，对应
@@ -19,7 +19,7 @@ const EXAMPLE_CONFIG_SCHEMA = Object.freeze([
 
 function registerExampleHomeModule(switcherPlugin, myPlugin) {
     if (!switcherPlugin || typeof switcherPlugin.registerHomeModule !== "function") {
-        return null; // 未安装小驴速切或版本过旧：安静降级
+        return null; // 未安装小驴雷切或版本过旧：安静降级
     }
     return switcherPlugin.registerHomeModule({
         moduleId: "my-plugin-example-summary",

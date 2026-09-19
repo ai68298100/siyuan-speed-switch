@@ -1,4 +1,4 @@
-// 小驴速切 —— 文档搜索 UI 链路（R5b 自 index.ts 原样搬移，D-383）
+// 小驴雷切 —— 文档搜索 UI 链路（R5b 自 index.ts 原样搬移，D-383）
 // 搜索方法群以 this 参数模式运行：调用方式 renderDocResults.call(host, ...)。
 // host 契约见 DocSearchUiHost；群内互调在本模块内直接 .call(this)，
 // 状态对象（sessions/filters/...）由 host.docSearchState 持有（R5a，D-381）。
@@ -961,4 +961,3 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         });
         return item;
     }
-

@@ -1,6 +1,6 @@
 "use strict";
 
-// 小驴打卡（siyuan-checkin）× 小驴速切：只读桥接模型（ADR 0057）。
+// 小驴打卡（siyuan-checkin）× 小驴雷切：只读桥接模型（ADR 0057）。
 //
 // 为什么是「速切侧桥接」而不是「打卡侧注册」：
 //   打卡插件的生态 API v4（window.siyuanCheckin，协议 siyuan-checkin）已经是稳定公开的

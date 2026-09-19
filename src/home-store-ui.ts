@@ -1,4 +1,4 @@
-// 小驴速切 —— 小组件商店 UI（R1 自 index.ts 原样搬移，D-379）
+// 小驴雷切 —— 小组件商店 UI（R1 自 index.ts 原样搬移，D-379）
 // 两个入口以 this 参数模式运行：调用方式 openHomeWidgetStore.call(host, ...)。
 // host 契约见 HomeStoreUiHost；商店与预览互调在本模块内直接 .call(this)。
 import {Dialog, showMessage} from "siyuan";

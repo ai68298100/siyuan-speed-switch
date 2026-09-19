@@ -1269,7 +1269,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     /**
      * 宿主默认行为：插件存储数据变化时整体重载插件（并等待返回的 Promise）。
-     * 小驴速切有 13 个持久化 key，任一跨设备同步合并（sync）或其他窗口写盘（overwrite）
+     * 小驴雷切有 13 个持久化 key，任一跨设备同步合并（sync）或其他窗口写盘（overwrite）
      * 都会销毁已打开的切换器/第二面板与搜索会话，表现为图标闪烁、弹窗凭空关闭。
      * 这里改为有界重读 + 惰性刷新。
      *

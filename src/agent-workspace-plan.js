@@ -13,7 +13,7 @@ const PLAN_RESULT_STATUSES = Object.freeze(["completed", "partial", "failed", "c
 
 const WORKSPACE_PLAN_SPEC = Object.freeze({
     name: "workspace-plan",
-    title: "小驴速切工作区执行计划",
+    title: "小驴雷切工作区执行计划",
     description: "只读生成待审阅的工作区动作计划。仅列出固定白名单动作和有界目标，不执行任何导航或写入。",
     inputSchema: Object.freeze({
         type: "object",

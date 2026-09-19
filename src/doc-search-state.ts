@@ -1,4 +1,4 @@
-// 小驴速切 —— 文档搜索链路状态宿主（R5a 自 index.ts 收拢，D-381）
+// 小驴雷切 —— 文档搜索链路状态宿主（R5a 自 index.ts 收拢，D-381）
 // 6 个实例级状态字段收拢为单一状态对象：WeakMap/Set 语义与代际竞态保护不变，
 // 仅作用域重组。类型经 import type 自 "./index" 引用（编译期擦除，无运行时循环）。
 import type {IDocSearchFilters, IDocSearchResult, ISearchSession} from "./index";

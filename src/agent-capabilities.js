@@ -569,7 +569,7 @@ const AGENT_ITEMS_SCHEMA = Object.freeze({
 const AGENT_CAPABILITY_SPECS = Object.freeze({
     appendToJournal: Object.freeze({
         name: "append-to-journal",
-        title: "小驴速切追加今日日记",
+        title: "小驴雷切追加今日日记",
         description: "受控写操作：向今天的日记文档末尾追加一条内容（今日日记不存在时自动创建，日记笔记本取自插件设置）。执行前会弹窗请求用户确认，用户拒绝或超时则不执行。仅在日记末尾追加，不改写已有内容。",
         inputSchema: Object.freeze({
             type: "object",
@@ -591,7 +591,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     createDocument: Object.freeze({
         name: "create-document",
-        title: "小驴速切新建文档",
+        title: "小驴雷切新建文档",
         description: "受控写操作：在指定笔记本下新建一篇文档（可带初始内容）。执行前会弹窗请求用户确认，用户拒绝或超时则不执行。仅创建新文档，不修改既有内容。",
         inputSchema: Object.freeze({
             type: "object",
@@ -621,7 +621,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     updateTask: Object.freeze({
         name: "update-task-status",
-        title: "小驴速切换换任务状态",
+        title: "小驴雷切换换任务状态",
         description: "受控写操作：切换指定任务块的完成状态（勾选/取消勾选）。执行前会弹窗请求用户确认，用户拒绝或超时则不执行。仅修改该任务块的勾选标记，不改写任务文本。",
         inputSchema: Object.freeze({
             type: "object",
@@ -650,7 +650,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     openDocument: Object.freeze({
         name: "open-document",
-        title: "小驴速切打开文档",
+        title: "小驴雷切打开文档",
         description: "受控导航动作：在思源界面打开指定文档并定位（只切换页签，不修改任何笔记内容）。用于把查询结果变成可直达的页面。",
         inputSchema: Object.freeze({
             type: "object",
@@ -677,7 +677,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     openDocuments: Object.freeze({
         name: "open-documents",
-        title: "小驴速切批量打开文档",
+        title: "小驴雷切批量打开文档",
         description: "受控导航动作：一次打开最多 5 篇文档组成工作区（只切换页签，不修改任何笔记内容）。执行前列出全部文档弹窗请求用户确认，拒绝或超时则不打开。",
         inputSchema: Object.freeze({
             type: "object",
@@ -710,7 +710,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     homeWidgets: Object.freeze({
         name: "home-widget-snapshot",
-        title: "小驴速切组件面板数据",
+        title: "小驴雷切组件面板数据",
         description: "只读获取组件面板中任一已注册组件的有界数据快照（如今日待办、本月日记、最近打开、标签、第三方插件组件），或省略 moduleId 发现当前可查询组件。不会修改笔记或页签。",
         inputSchema: Object.freeze({
             type: "object",
@@ -868,7 +868,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     outline: Object.freeze({
         name: "get-document-outline",
-        title: "小驴速切文档大纲",
+        title: "小驴雷切文档大纲",
         description: "只读获取指定文档的标题大纲（标题文本与层级）。可与「打开文档」配合，按标题块 ID 定位到具体章节。不会修改笔记。",
         inputSchema: Object.freeze({
             type: "object",
@@ -909,8 +909,8 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     navigation: Object.freeze({
         name: "navigation-state",
-        title: "小驴速切导航状态",
-        description: "只读获取小驴速切当前打开页签、最近打开记录和收藏摘要。不会修改笔记或页签。",
+        title: "小驴雷切导航状态",
+        description: "只读获取小驴雷切当前打开页签、最近打开记录和收藏摘要。不会修改笔记或页签。",
         inputSchema: Object.freeze({
             type: "object",
             properties: {limit: {type: "integer", minimum: 1, maximum: MAX_ITEMS}},
@@ -932,7 +932,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     workspaceContext: Object.freeze({
         name: "workspace-context",
-        title: "小驴速切工作区上下文",
+        title: "小驴雷切工作区上下文",
         description: "只读汇总当前工作区：设备端、活动文档、打开页签、文档集清单、快捷入口、今日日记状态与存储演练健康。供 Agent 一次调用了解用户当前工作环境，不修改任何内容、不创建文档。",
         inputSchema: Object.freeze({
             type: "object",
@@ -1033,7 +1033,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     homeDiagnostics: Object.freeze({
         name: "home-adapter-diagnostics",
-        title: "小驴速切组件诊断摘要",
+        title: "小驴雷切组件诊断摘要",
         description: "只读返回组件适配器的最近成功、缓存、超时和失败状态，不包含异常对象、敏感文本或请求内容。",
         inputSchema: Object.freeze({
             type: "object",
@@ -1092,7 +1092,7 @@ const AGENT_CAPABILITY_SPECS = Object.freeze({
     }),
     search: Object.freeze({
         name: "search-documents",
-        title: "小驴速切搜索文档",
+        title: "小驴雷切搜索文档",
         description: "只读搜索思源文档；支持受限的笔记本、路径、内容类型、搜索方式和结果排序筛选，并在需要时使用原生块搜索。结果只返回根文档摘要和定位信息。",
         inputSchema: Object.freeze({
             type: "object",

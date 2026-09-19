@@ -85,7 +85,7 @@ function extractDocumentContextRecord(value) {
 
 const DOCUMENT_CONTEXT_SPEC = Object.freeze({
     name: "document-context",
-    title: "小驴速切文档上下文",
+    title: "小驴雷切文档上下文",
     description: "只读获取当前或指定文档的有限上下文：标题、笔记本、路径、活动状态和有界大纲。不返回正文，不修改笔记。",
     inputSchema: Object.freeze({
         type: "object",

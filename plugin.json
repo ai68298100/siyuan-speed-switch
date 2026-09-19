@@ -9,7 +9,7 @@
   "frontends": ["desktop", "browser-desktop", "desktop-window", "mobile", "browser-mobile"],
   "displayName": {
     "default": "LvSpeed Switch",
-    "zh-CN": "小驴速切"
+    "zh-CN": "小驴雷切"
   },
   "description": {
     "default": "A local-first SiYuan navigation workspace with live tab thumbnails, favorite folders, document card search, cross-plugin quick actions, sidebar mode, fullscreen, and mobile support.",
@@ -30,6 +30,6 @@
     "快捷入口",
     "speed switch",
     "lv speed switch",
-    "小驴速切"
+    "小驴雷切"
   ]
 }

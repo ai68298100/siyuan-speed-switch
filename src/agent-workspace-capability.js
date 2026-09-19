@@ -10,7 +10,7 @@ const EXECUTION_DEVICES = Object.freeze(["desktop", "sidebar", "mobile"]);
 
 const EXECUTE_WORKSPACE_PLAN_SPEC = Object.freeze({
     name: "execute-workspace-plan",
-    title: "小驴速切执行工作区计划",
+    title: "小驴雷切执行工作区计划",
     description: "受控执行已确认的工作区计划。必须提供与计划内容匹配的摘要和一次性确认令牌；过期、拒绝或重复计划不会执行。",
     inputSchema: Object.freeze({
         type: "object",

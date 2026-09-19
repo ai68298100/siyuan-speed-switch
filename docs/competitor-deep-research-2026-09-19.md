@@ -26,7 +26,7 @@ ROADMAP §6 既有约束：**不直接复制 GPL 项目实现；外部项目只�
 
 ## 1. 产品定位 → 参照系两条轴
 
-小驴速切 = **思源笔记的页签/文档导航器 + 58 组件的组件商店**。由此映射出两条参照轴：
+小驴雷切 = **思源笔记的页签/文档导航器 + 58 组件的组件商店**。由此映射出两条参照轴：
 
 - **轴 A（内容轴）**：组件承载的信息域有哪些成熟产品？
   - 习惯/打卡：uhabits(Loop)、mhabit(Table Habit)、habitica、beaverhabits、Obsidian 打卡插件、TickTick/Streaks/HabitKit/Habitify/小日常；

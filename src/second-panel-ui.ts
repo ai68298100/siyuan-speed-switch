@@ -1,4 +1,4 @@
-// 小驴速切 —— 第二面板（组件面板）装配链路（P1-1b 自 index.ts 原样搬移，ADR 0052）
+// 小驴雷切 —— 第二面板（组件面板）装配链路（P1-1b 自 index.ts 原样搬移，ADR 0052）
 // 本方法以 this 参数模式运行：调用方式 openSecondPanel.call(host)。
 // host 契约见 SecondPanelUiHost；方法体内的局部闭包（renderPanel 与时钟/生活两条心跳、
 // 拖拽排序、IntersectionObserver 懒读调度）是一个自洽运行时，本批保持原样不拆——

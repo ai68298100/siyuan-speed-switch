@@ -1,4 +1,4 @@
-// 小驴速切 —— 移动端切换器 UI 链路（P1-1a 自 index.ts 原样搬移，ADR 0048）
+// 小驴雷切 —— 移动端切换器 UI 链路（P1-1a 自 index.ts 原样搬移，ADR 0048）
 // 本群以 this 参数模式运行：调用方式 renderMobileList.call(host, ...)。
 // host 契约见 MobileSwitcherUiHost；群内互调在本模块内直接 .call(this)，
 // 留宿主的成员保持 this.xxx。
