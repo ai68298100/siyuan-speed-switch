@@ -1,6 +1,6 @@
 # 小驴速切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.23.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.23.4-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴速切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -8,9 +8,9 @@
 
 <p align="center"><img src="docs/interface-map.svg" width="860" alt="小驴速切桌面弹窗、右侧栏与手机端界面分布图"/></p>
 
-> v0.23.3 修复了集市更新后被云同步回滚的问题（安装包时间戳改为发版提交时间，不再早于同步索引），修复了按笔记本分组出现“未知笔记本”的问题（从内核恢复页签的真实笔记本归属），并把组件卡片头部的配置按钮瘦身为齿轮图标、更新时间收窄——首行不再拥挤。
+> v0.23.4 把组件商店的「打卡摘要」改为原生桥接——此前它以第三方提供方形式登记，即使小驴打卡已安装，商店也一直显示「需安装小驴打卡插件后可用」；现在安装并启用小驴打卡后即显示就绪，并提供今日完成、最长连续、本月天数、今日待续与连击 Top3 的聚合摘要（只读、无网络请求）。
 
-> 当前开发策略：开发头已通过类型检查、生产构建、6267 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、空气质量、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、Hacker News 榜单、ActivityWatch 使用时长、iCal 订阅日程、RSS/Atom 订阅、GitHub 贡献热力图、小驴打卡组件（需安装小驴打卡）、内核数据组件与可搜索/可选列的数据库表格（见 ADR 0058）。最近打开、数据库表格、随机回顾、收藏、文档集、指定文档、置顶文档、数据库、已存筛选、最近更新、近期编辑、当前文档大纲、文档关系摘要、标签、书签、剪藏待读、往年今日、近期日记、今日日记、本月日记、日历月视图、今日待办、闪卡待复习、快速记录、近期预约、插件命令、收集箱、笔记统计、今日写作、近期写作活跃度和写作打卡、年度进度、数据健康、倒数日、时间与日期、世界时钟、近期天气、空气质量、每日放送、热搜事件、实时资讯、Hacker News 热门和 RSS 订阅共 43 个组件已完成逐组件深度优化；页签面板支持刷新与一级路径分组。同步期间组件面板保持稳定；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
+> 当前开发策略：开发头已通过类型检查、生产构建、6268 项自动测试、移动端与 Chromium UI 烟测；已接入时间、天气、空气质量、节假日日历、Bangumi 每日放送、DailyHotApi 热搜、NewsNow 资讯、Hacker News 榜单、ActivityWatch 使用时长、iCal 订阅日程、RSS/Atom 订阅、GitHub 贡献热力图、小驴打卡组件（需安装小驴打卡）、内核数据组件与可搜索/可选列的数据库表格（见 ADR 0058）。最近打开、数据库表格、随机回顾、收藏、文档集、指定文档、置顶文档、数据库、已存筛选、最近更新、近期编辑、当前文档大纲、文档关系摘要、标签、书签、剪藏待读、往年今日、近期日记、今日日记、本月日记、日历月视图、今日待办、闪卡待复习、快速记录、近期预约、插件命令、收集箱、笔记统计、今日写作、近期写作活跃度和写作打卡、年度进度、数据健康、倒数日、时间与日期、世界时钟、近期天气、空气质量、每日放送、热搜事件、实时资讯、Hacker News 热门和 RSS 订阅共 43 个组件已完成逐组件深度优化；页签面板支持刷新与一级路径分组。同步期间组件面板保持稳定；Agent 仍保持既有只读审计与受控动作边界，不开放新的隐式写入；路径筛选真实宿主能力、窄侧栏、ActivityWatch 实机和 Android 真机验收继续作为兼容性补充。
 
 ## 目录
 
@@ -184,10 +184,18 @@ pnpm verify:release
 4. 主题：默认明暗主题、Neo 等第三方主题，以及窗口缩放和旋转后的布局。
 5. 生命周期：安装、升级、卸载、重启后数据迁移，以及 API 失败/取消/权限拒绝。
 
-本版本已正式发布为 `v0.23.3`
+本版本已正式发布为 `v0.23.4`
 
 ## 更新日志
 
+### v0.23.4（2026-09-19）
+
+- **「打卡摘要」组件改为原生桥接**：此前它以第三方提供方形式登记在组件目录，商店按
+  提供方握手判定可用性，即使小驴打卡已安装并启用，也一直显示「需安装小驴打卡插件后
+  可用」。现在它与其余六个打卡组件同等实现原生桥接（`checkin-summary` 进入桥接清单，
+  capability `items.read`），小驴打卡在位即就绪。
+- **摘要内容增强**：新增聚合快照——今日完成、最长连续、本月天数、今日待续行与连击
+  Top3；全部在本地计算，只读、无网络请求。
 ### v0.23.3（2026-09-19）
 
 - **修复集市更新后被同步回退的问题**：安装包的 zip 条目时间戳从此前的固定纪元改为
@@ -377,7 +385,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 6267 项测试（207 个测试文件）（207 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 6268 项测试（207 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -410,11 +418,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 6267 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 6268 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、构建、6267 项测试和三套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、构建、6268 项测试和三套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
