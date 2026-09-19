@@ -192,6 +192,12 @@ window.addEventListener('load', () => {
         itemLabel: '[data-module-id="external-hot-news-dailyhot"] .sw__home-module-item-label',
         docTitle: '.sw__doc-title',
         settingsTitle: '.sw-settings__item-title',
+        // T-6697b 扩充面：日历节假日文本、来源健康徽章、文档路径辅助文本、时钟周期
+        calendarHoliday: '.is-holiday .sw__home-calendar-primary',
+        sourceHealthStale: '.sw__home-source-health.is-stale',
+        docPath: '.sw__doc-path',
+        calendarPeriod: '.sw__home-calendar-period',
+        statValue: '.sw__home-stat-value',
       };
       const ratios = {};
       for (const [name, selector] of Object.entries(samples)) {
@@ -293,15 +299,17 @@ try {
         && result.feedRank.width === '22px'
         && result.feedRank.height === '22px'
         && parseFloat(result.feedHealthRadius) > 8;
-        // T-6697/B2 对比度采样（WCAG AA）：普通文本 >=4.5:1，大字号统计值 >=3:1。
+        // T-6697/B2 对比度采样（WCAG AA）：普通文本 >=4.5:1，大字号/徽章/辅助文本 >=3:1。
         // 夹具令牌集见 tests/fixtures/siyuan-mobile-base.css（T-6696）。
         const contrastEntries = Object.entries(result.contrast || {});
         for (const [name, ratio] of contrastEntries) {
             console.log("[" + pass.name + "] contrast " + name + ": " + ratio);
         }
-        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle"].every((name) => (result.contrast[name] || 0) >= 4.5);
-        console.log("[" + pass.name + "] " + (normalTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
-        if (!normalTextOk) contrastAllOk = false;
+        // T-6697b：普通文本一组 ≥4.5；节假日日历/过期徽章按次要与大字号线 ≥3 归入聚合
+        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath"].every((name) => (result.contrast[name] || 0) >= 4.5);
+        const badgeTextOk = ["calendarHoliday", "sourceHealthStale"].every((name) => (result.contrast[name] || 0) >= 3);
+        console.log("[" + pass.name + "] " + (normalTextOk && badgeTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
+        if (!(normalTextOk && badgeTextOk)) contrastAllOk = false;
         console.log(JSON.stringify(result, null, 2));
         console.log("[" + pass.name + "] " + (actionOk ? 'PASS' : 'FAIL') + " Chromium mobile card actions");
         console.log("[" + pass.name + "] " + (switchOk ? 'PASS' : 'FAIL') + " Chromium settings switch");
