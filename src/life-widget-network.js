@@ -325,7 +325,7 @@ function allowedActivityWatchUrl(value) {
         const url = new URL(value);
         const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
         return local && ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
-            && !url.search && !url.hash && url.pathname === "/api/0/query/";
+            && !url.search && !url.hash && (url.pathname === "/api/0/query/" || url.pathname === "/api/0/buckets");
     } catch (_) {
         return false;
     }
@@ -558,6 +558,22 @@ async function fetchActivityWatchQuery(url, body, options = {}) {
     }
 }
 
+async function loadActivityWatchBuckets(endpoint, options = {}) {
+    // T-6689 桶选择：列出 aw-watcher-window 桶供配置表单选择（GET /api/0/buckets，白名单内、仅本地）
+    const base = String(endpoint || "").replace(/\/+$/, "");
+    const url = `${base}/api/0/buckets`;
+    if (!allowedActivityWatchUrl(url)) throw new Error("blocked_endpoint");
+    const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
+    const key = `activitywatch-buckets:${url.slice(0, 256)}`;
+    const cached = responseCache.get(key);
+    if (options.force !== true && cached && now - cached.at < ACTIVITYWATCH_TTL_MS) {
+        return {payload: cached.value, status: "cached", fetchedAt: cached.at};
+    }
+    const payload = await fetchBoundedLifeJson(url, {signal: options.signal, isAllowed: (candidate) => allowedActivityWatchUrl(candidate)});
+    cacheWrite(key, payload, now);
+    return {payload, status: "fresh", fetchedAt: now};
+}
+
 async function loadActivityWatchSummary(request, options = {}) {
     if (!request || !allowedActivityWatchUrl(request.url)) throw new Error("blocked_endpoint");
     const key = `activitywatch:${String(request.cacheKey || request.url).slice(0, 512)}`;
@@ -699,6 +715,7 @@ module.exports = {
     loadBangumiCalendar,
     loadConfiguredFeed,
     fetchActivityWatchQuery,
+    loadActivityWatchBuckets,
     loadActivityWatchSummary,
     clearLifeWidgetCaches,
     lifeWidgetCacheSize,

@@ -85,7 +85,7 @@ test("basic life widget schemas stay semantic and bounded", () => {
     const modules = home.registerModules([]);
     const byId = new Map(modules.map((m) => [m.moduleId, m]));
     assert.deepEqual(byId.get("external-fx-frankfurter").configSchema.map((f) => f.key), ["base", "quotes", "showDate", "showInverse"]);
-    assert.deepEqual(byId.get("external-activitywatch-time").configSchema.map((f) => f.key), ["endpoint", "hours", "limit", "showPercent", "showRank"]);
+    assert.deepEqual(byId.get("external-activitywatch-time").configSchema.map((f) => f.key), ["endpoint", "hours", "limit", "showPercent", "showRank", "bucketId"]);
     assert.deepEqual(byId.get("external-device-battery").configSchema.map((f) => f.key), ["showEstimate", "showSource"]);
     assert.deepEqual(byId.get("external-quote-daily").configSchema.map((f) => f.key), ["quotes", "showSource", "emphasis"]);
     assert.equal(byId.get("external-device-battery").protocolVersion, 2, "battery declares protocol v2 with its first schema");

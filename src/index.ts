@@ -113,6 +113,8 @@ import {
 } from "./agent-workspace-plan";
 import {createWorkspaceHostHandlers} from "./agent-workspace-registry";
 import {normalizeRssReadState} from "./rss-model";
+import {buildActivityWatchBucketsUrl, normalizeActivityWatchBuckets} from "./life-widget-model";
+import {loadActivityWatchBuckets} from "./life-widget-network";
 
 import {
     auditAgentCapabilityDefinitions,
@@ -1533,6 +1535,15 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 避免连续收藏/置顶/切换页签时每个动作都触发一次内核文件写入（交互卡顿的根因）
     // T-6466 存储用量透明化配套之前：Miniflux 分类发现——设置表单的分类选择器
     // 据此渲染选项；凭据仅经 X-Auth-Token 请求头，绝不写入日志或缓存。
+    // T-6689 ActivityWatch 桶发现：仅本地端点（网络层白名单放行 /api/0/buckets），
+    // 只保留 aw-watcher-window 类型，供配置表单下拉选择
+    async loadActivityWatchBuckets(endpoint: string): Promise<Array<{id: string; hostname: string; label: string}>> {
+        const url = buildActivityWatchBucketsUrl({endpoint});
+        if (!url) return [];
+        const envelope = await loadActivityWatchBuckets(url);
+        return normalizeActivityWatchBuckets(envelope?.payload);
+    }
+
     async loadMinifluxCategoryOptions(endpoint: string, token: string): Promise<Array<{id: string; name: string}>> {
         const normalized = normalizeMinifluxConfig({endpoint, token});
         if (!normalized.origin || !normalized.token) return [];

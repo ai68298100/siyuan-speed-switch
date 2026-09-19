@@ -20,6 +20,8 @@ export interface HomeConfigFormHost {
     loadHomeDatabaseColumns(blockId: string): Promise<Array<{id: string; title: string}>>;
     // T-6466 Miniflux 分类发现：凭据仅经请求头，选项由实例分类接口动态加载
     loadMinifluxCategoryOptions(endpoint: string, token: string): Promise<Array<{id: string; name: string}>>;
+    // T-6689 ActivityWatch 桶发现：仅本地端点，列出 aw-watcher-window 桶供选择
+    loadActivityWatchBuckets?(endpoint: string): Promise<Array<{id: string; hostname: string; label: string}>>;
 }
 
 export function openHomeConfigForm(this: HomeConfigFormHost,
@@ -533,6 +535,50 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                     const fallback = document.createElement("option");
                     fallback.value = "";
                     fallback.textContent = this.i18n.homeMinifluxAllCategories || "全部分类";
+                    select.append(fallback);
+                    draft[field.key] = "";
+                });
+                controls.set(field.key, select);
+                select.addEventListener("change", () => { draft[field.key] = select.value; });
+                row.appendChild(select);
+            } else if (field.type === "activitywatch-bucket") {
+                // T-6689 ActivityWatch 桶发现：选项来自本地实例 /api/0/buckets
+                //（仅 aw-watcher-window 类型，按 id 排序有界）。载入失败/未配置时
+                // 回退“自动选择”（不过滤桶），不阻塞表单。
+                const select = document.createElement("select");
+                select.id = controlId;
+                select.className = "b3-select fn__block";
+                const draftValue = String(draft[field.key] ?? "").trim().slice(0, 128);
+                draft[field.key] = draftValue;
+                const loading = document.createElement("option");
+                loading.value = "";
+                loading.textContent = this.i18n.setStorageMeasuring || "加载中…";
+                select.append(loading);
+                void Promise.resolve(typeof this.loadActivityWatchBuckets === "function"
+                    ? this.loadActivityWatchBuckets(String(draft.endpoint || ""))
+                    : Promise.resolve([])).then((buckets) => {
+                    select.innerHTML = "";
+                    const auto = document.createElement("option");
+                    auto.value = "";
+                    auto.textContent = this.i18n.homeActivityWatchAutoBucket || "自动（首个 watcher 桶）";
+                    select.append(auto);
+                    for (const bucket of buckets) {
+                        const option = document.createElement("option");
+                        option.value = bucket.id;
+                        option.textContent = bucket.label;
+                        select.append(option);
+                    }
+                    const saved = String(draft[field.key] || "");
+                    if (!saved || ![...select.options].some((option) => option.value === saved)) {
+                        select.value = "";
+                        draft[field.key] = "";
+                    }
+                    select.value = saved;
+                }).catch(() => {
+                    select.innerHTML = "";
+                    const fallback = document.createElement("option");
+                    fallback.value = "";
+                    fallback.textContent = this.i18n.homeActivityWatchAutoBucket || "自动（首个 watcher 桶）";
                     select.append(fallback);
                     draft[field.key] = "";
                 });

@@ -505,6 +505,7 @@
   "homeFeedHot": "Heat",
   "homeFeedSource": "Source",
   "homeFeedEmpty": "No displayable content is available from this source",
+  "homeActivityWatchAutoBucket": "Auto (first watcher bucket)",
   "homeActivityWatch": "App usage",
   "homeDescActivityWatch": "Uses SiYuan's local proxy to query ActivityWatch for app-level aggregates only; cached for 5 minutes and never reads window titles or note content",
   "homeActivityWatchConfigHint": "Make sure ActivityWatch is running locally and check the service address",

@@ -648,3 +648,28 @@ test('recent writing activity year-grid view projects 53-week heatmap cells (T-6
     assert.equal(model.normalizeRecentWritingActivityConfig({yearOffset: 2}).yearOffset, 0);
     assert.equal(model.normalizeRecentWritingActivityConfig({}).view, '列表');
 });
+
+test('activitywatch bucket selection drives query, cache key, and buckets projection (T-6689)', () => {
+    const life = require('../src/life-widget-model.js');
+    // 显式桶 ID：query_bucket 直连该桶，缓存键随桶变化
+    const explicit = life.buildActivityWatchRequest({endpoint: 'http://127.0.0.1:5600', bucketId: 'aw-watcher-window_pc'}, Date.now());
+    assert.ok(explicit.body.query[0].includes('query_bucket("aw-watcher-window_pc")'), 'explicit bucket query line: ' + JSON.stringify(explicit.body.query[0]));
+    assert.equal(explicit.cacheKey.endsWith('aw-watcher-window_pc'), true);
+    // 留空：保持 find_bucket 旧行为，缓存键不含桶段
+    const legacy = life.buildActivityWatchRequest({endpoint: 'http://127.0.0.1:5600'}, Date.now());
+    assert.ok(legacy.body.query[0].includes('find_bucket("aw-watcher-window_")'), 'legacy query line: ' + JSON.stringify(legacy.body.query[0]));
+    assert.equal(legacy.cacheKey.includes('::'), false);
+    // 注入安全：含引号/分号的桶 ID 被丢弃并回退自动选择
+    const injection = life.buildActivityWatchRequest({endpoint: 'http://127.0.0.1:5600', bucketId: 'bad"; query_bucket("evil")'}, Date.now());
+    assert.doesNotMatch(injection.body.query[0], /evil/);
+    // 列桶清单：仅保留 watcher 类型、按 id 排序、超界截断
+    const buckets = life.normalizeActivityWatchBuckets({
+        'aw-watcher-window_b': {type: 'aw-watcher-window', hostname: 'pc-b'},
+        'aw-watcher-window_a': {type: 'aw-watcher-window', hostname: 'pc-a'},
+        'aw-accel': {type: 'other'},
+    });
+    assert.deepEqual(buckets.map((bucket) => bucket.id), ['aw-watcher-window_a', 'aw-watcher-window_b']);
+    assert.deepEqual(life.normalizeActivityWatchBuckets(null), []);
+    assert.equal(life.normalizeActivityWatchConfig({bucketId: 'x"y'}).bucketId, '', 'bucket ids with quotes are rejected');
+    assert.match(life.buildActivityWatchBucketsUrl({endpoint: 'http://127.0.0.1:5600'}), /\/api\/0\/buckets$/);
+});

@@ -193,6 +193,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "limit", label: "应用上限", type: "number", min: 3, max: 10, defaults: 6},
         {key: "showPercent", label: "显示时长占比", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "bucketId", label: "桶 ID（留空自动选择）", type: "activitywatch-bucket", defaults: ""},
     ]},
     {moduleId: "recent-edits", title: "近期编辑", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},

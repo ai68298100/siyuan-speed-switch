@@ -505,6 +505,7 @@
   "homeFeedHot": "热度",
   "homeFeedSource": "数据来源",
   "homeFeedEmpty": "当前来源暂无可显示内容",
+  "homeActivityWatchAutoBucket": "自动（首个 watcher 桶）",
   "homeActivityWatch": "使用时长",
   "homeDescActivityWatch": "通过思源本机代理连接 ActivityWatch 聚合查询，仅显示应用名与时长；5 分钟缓存，不读取窗口标题或笔记内容",
   "homeActivityWatchConfigHint": "请确认 ActivityWatch 正在本机运行，并检查服务地址",

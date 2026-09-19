@@ -1023,6 +1023,9 @@ function normalizeActivityWatchConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const requestedHours = Math.trunc(Number(source.hours));
     const requestedLimit = Math.trunc(Number(source.limit));
+    // T-6689 桶选择：显式桶 ID 剔除引号/反斜杠/控制字符（会破坏查询脚本字面量）
+    const rawBucket = typeof source.bucketId === "string" ? source.bucketId.trim() : "";
+    const bucketId = rawBucket && !["\"", "\\", ";"].some((ch) => rawBucket.includes(ch)) ? rawBucket.slice(0, 128) : "";
     return {
         endpoint: normalizeActivityWatchEndpoint(source.endpoint),
         hours: Number.isFinite(requestedHours) ? Math.min(168, Math.max(1, requestedHours)) : 24,
@@ -1030,6 +1033,7 @@ function normalizeActivityWatchConfig(value) {
         // T-6451：时长占比默认关；排名（按时长序）默认开、与旧版一致
         showPercent: source.showPercent === "是" || source.showPercent === true,
         showRank: source.showRank !== "否" && source.showRank !== false,
+        bucketId,
     };
 }
 
@@ -1038,8 +1042,13 @@ function buildActivityWatchRequest(config, now = Date.now()) {
     const end = Number.isFinite(Number(now)) ? Number(now) : Date.now();
     if (!normalized.endpoint) return null;
     const start = end - normalized.hours * 60 * 60 * 1000;
+    // T-6689 桶选择：显式桶 ID 走 query_bucket（用户从列桶清单选定）；
+    // 留空保持 find_bucket 自动选取首个 watcher 桶的旧行为。
+    const eventsLine = normalized.bucketId
+        ? `events = flood(query_bucket("${normalized.bucketId}"));`
+        : 'events = flood(query_bucket(find_bucket("aw-watcher-window_")));';
     const query = [
-        'events = flood(query_bucket(find_bucket("aw-watcher-window_")));',
+        eventsLine,
         'duration = sum_durations(events);',
         'app_events = sort_by_duration(merge_events_by_keys(events, ["app"]));',
         `app_events = limit_events(app_events, ${normalized.limit});`,
@@ -1049,8 +1058,30 @@ function buildActivityWatchRequest(config, now = Date.now()) {
         url: `${normalized.endpoint}/api/0/query/`,
         body: {timeperiods: [`${new Date(start).toISOString()}/${new Date(end).toISOString()}`], query},
         config: normalized,
-        cacheKey: `${normalized.endpoint}:${normalized.hours}:${normalized.limit}`,
+        cacheKey: `${normalized.endpoint}:${normalized.hours}:${normalized.limit}:${normalized.bucketId}`,
     };
+}
+
+// T-6689 列桶请求：GET /api/0/buckets（仅本地端点，网络层白名单放行该路径）
+function buildActivityWatchBucketsUrl(config, now = Date.now()) {
+    const normalized = normalizeActivityWatchConfig(config);
+    if (!normalized.endpoint) return "";
+    return `${normalized.endpoint}/api/0/buckets`;
+}
+
+// 桶清单归一化：只保留 aw-watcher-window 类型的桶，按 id 升序、有界 50 条，
+// 供配置表单下拉选择；形状异常一律空数组（视图显示自动模式即可）。
+function normalizeActivityWatchBuckets(payload) {
+    const source = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+    const buckets = [];
+    for (const [id, bucket] of Object.entries(source)) {
+        if (buckets.length >= 50) break;
+        const type = typeof bucket?.type === "string" ? bucket.type : "";
+        if (!id || !type.includes("aw-watcher-window")) continue;
+        const hostname = typeof bucket?.hostname === "string" ? bucket.hostname.slice(0, 64) : "";
+        buckets.push({id: id.slice(0, 128), hostname, label: hostname ? `${id} · ${hostname}` : id});
+    }
+    return buckets.sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
 }
 
 function normalizeActivityWatchPayload(payload, limit = 6) {
@@ -1174,6 +1205,8 @@ module.exports = {
     normalizeActivityWatchEndpoint,
     normalizeActivityWatchConfig,
     buildActivityWatchRequest,
+    buildActivityWatchBucketsUrl,
+    normalizeActivityWatchBuckets,
     normalizeActivityWatchPayload,
     formatActivityDuration,
     buildActivityWatchSnapshot,
