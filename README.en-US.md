@@ -170,6 +170,19 @@ This release is published as `v0.23.1`
 
 ## Changelog
 
+### v0.23.2 (2026-09-19)
+
+- **Fixes the database table widget showing an empty table for embedded/mirrored databases on
+  the 3.8.4 kernel**: the av block id and the database id differ; binding now resolves in two
+  steps (block id → getAttributeView → database id + viewID + pageSize retry), and the config
+  search accepts pasting a database ID directly (standalone databases produce no av block).
+- **Data health**: missing-asset rows link to the referencing block (the actual place to fix);
+  the reference display now reads the real response field (item) instead of the absent path.
+- **Sort determinism**: user-content sorting (names/titles/tags/paths) is pinned to a Chinese
+  pinyin collator, no longer drifting with the host environment.
+- **Engineering**: performance micro-benchmarks use best-of-3 sampling to resist host load
+  spikes; iCal TZID/RRULE/EXDATE/RDATE, a storage usage section, and the action panel key
+  (see v0.23.1).
 ### v0.23.1 (2026-09-19)
 
 - **Fixes the Miniflux widget never fetching for real**: the kernel proxy gateway URL
