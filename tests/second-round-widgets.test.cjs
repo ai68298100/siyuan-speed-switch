@@ -413,3 +413,19 @@ test("database table adapter resolves embedded database ids via getAttributeView
     const form = readSourceText(path.join(__dirname, "..", "src", "home-config-form.ts"));
     assert.ok(form.includes('directId = /^\\d{14}-[0-9a-z]+$/i.test(query)'), "配置表单支持粘贴库 ID 直连");
 });
+
+// ---------- T-6471 数据健康点击入口 ----------
+test("data health missing assets link to their referencing blocks", () => {
+    const snapshot = kernel.buildDataHealthSnapshot(
+        {data: [
+            {name: "missing.png", item: "assets/missing.png", blockIDs: ["20260918120000-abcdef", "20260918120001-zzzzzz"]},
+            {name: "orphan.png"},
+        ]},
+        {limit: 8, showRank: "是"},
+        {title: "数据健康", stat: "缺失资源", statMany: "缺失资源（较多）"},
+    );
+    assert.equal(snapshot.items[0].label, "missing.png");
+    assert.equal(snapshot.items[0].value, "20260918120000-abcdef", "点击打开首个引用块所在文档");
+    assert.equal(snapshot.items[0].secondary, "assets/missing.png", "引用路径默认展示");
+    assert.equal(snapshot.items[1].value, "", "无引用块的条目不产生点击目标");
+});

@@ -326,7 +326,11 @@ function buildDataHealthSnapshot(payload, config, labels = {}, now = Date.now(),
         if (!asset || typeof asset !== "object") continue;
         const name = boundedText(asset.name, 128) || boundedText(asset.item, 128);
         if (!name || distinct.has(name)) continue;
-        distinct.set(name, {name, path: boundedText(asset.path, 160)});
+        // T-6471：真实响应含 blockIDs（引用该资源的块）——取首个标准块 ID 作为
+        // 点击打开目标；item 为路径形态引用（真实响应无 path 字段，作回退）。
+        const blockIds = Array.isArray(asset.blockIDs) ? asset.blockIDs : [];
+        const blockId = blockIds.map((id) => boundedText(id, 64)).find((id) => /^\d{14}-[0-9a-z]+$/i.test(id)) || "";
+        distinct.set(name, {name, path: boundedText(asset.item, 160) || boundedText(asset.path, 160), blockId});
     }
     let entries = [...distinct.values()];
     if (normalized.query) {
@@ -338,7 +342,7 @@ function buildDataHealthSnapshot(payload, config, labels = {}, now = Date.now(),
     }
     const items = entries.slice(0, normalized.limit).map((entry, index) => ({
         label: entry.name,
-        value: "",
+        value: entry.blockId,
         secondary: normalized.showPath ? entry.path : "",
         rank: normalized.showRank ? index + 1 : undefined,
     }));
