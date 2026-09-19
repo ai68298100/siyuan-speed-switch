@@ -870,22 +870,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
 
         // 受控导航（批量）：AI 一次打开最多 5 篇文档组成工作区。ADR 0063：批量动作
-        // 声明 localWrite → 宿主确认卡承担确认；内建弹窗为过渡期兜底（T-6678 撤除）
+        // 声明 localWrite → 确认（含标题列表、超时=拒绝）由宿主 Agent 确认卡承担
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.openDocuments,
             effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
             handler: async (args: Record<string, unknown>) => {
                 const ids = normalizeAgentDocumentIds(args?.ids);
                 if (ids.length === 0) return {error: "no valid document ids"};
-                const titlesJson = await this.fetchKernelJson("/api/query/sql", {
-                    stmt: `SELECT id, content FROM blocks WHERE type='d' AND id IN ('${ids.join("','")}')`,
-                });
-                const titleById = new Map<string, string>(((titlesJson?.data || []) as Array<{id: string; content: string}>)
-                    .map((row) => [row.id, String(row.content || "")]));
-                const detail = this.i18n.aiOpenDocsDesc.replace("{count}", String(ids.length))
-                    + "\n" + ids.map((id, index) => `${index + 1}. ${titleById.get(id) || id}`).join("\n");
-                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
-                if (!approved) return {error: "user denied"};
                 const opened: string[] = [];
                 const failed: string[] = [];
                 for (const id of ids) {
@@ -905,8 +896,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
 
-        // 受控写试点：AI 切换任务勾选状态。写入前强制弹窗确认（30s 超时视为拒绝），
-        // 只改勾选标记不改写任务文本
+        // 受控写试点：AI 切换任务勾选状态。确认（含任务摘要、超时=拒绝）由宿主
+        // Agent 确认卡按 localWrite 声明承担，只改勾选标记不改写任务文本
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.updateTask,
             effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
@@ -921,10 +912,6 @@ export default class SpeedSwitchPlugin extends Plugin {
                 if (!row) return {error: "task not found"};
                 const newMarkdown = flipTaskMarkdown(String(row.markdown || ""), done);
                 if (!newMarkdown) return {error: "not a task block"};
-                const detail = (done ? this.i18n.aiTaskMarkDone : this.i18n.aiTaskMarkUndone)
-                    + "\n" + String(row.content || "").slice(0, 80);
-                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
-                if (!approved) return {error: "user denied"};
                 const updateJson = await this.fetchKernelJson("/api/block/updateBlock", {
                     dataType: "markdown", data: this.clampTaskWritePayload(newMarkdown), id,
                 });
@@ -933,7 +920,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
 
-        // 受控写：AI 在指定笔记本下新建文档（强制确认；参数 notebook 支持 ID 或名称）
+        // 受控写：AI 在指定笔记本下新建文档（确认由宿主确认卡按 localWrite 声明承担；
+        // 参数 notebook 支持 ID 或名称）
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.createDocument,
             effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
@@ -947,11 +935,6 @@ export default class SpeedSwitchPlugin extends Plugin {
                     ? notebooks.find((nb) => nb.id === rawNotebook)
                     : notebooks.find((nb) => nb.name === rawNotebook);
                 if (!target) return {error: "unknown notebook"};
-                const detail = this.i18n.aiCreateDocDesc
-                    .replace("{notebook}", target.name)
-                    .replace("{title}", title);
-                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
-                if (!approved) return {error: "user denied"};
                 const createJson = await this.fetchKernelJson("/api/filetree/createDocWithMd", {
                     notebook: target.id, path: title, markdown,
                 });
@@ -968,7 +951,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         }, (error: unknown, spec: {name?: string}) => logger.warn(`register Agent capability ${spec?.name || "unknown"} fail`, error));
 
-        // 受控写：向今日日记末尾追加一条内容（日记缺失自动创建；强制确认；只追加不改写）
+        // 受控写：向今日日记末尾追加一条内容（日记缺失自动创建；确认由宿主确认卡
+        // 按 localWrite 声明承担；只追加不改写）
         registerAgentActionCapability(pluginWithAgentAction, {
             spec: AGENT_CAPABILITY_SPECS.appendToJournal,
             effects: {localRead: true, localWrite: true, dataEgress: false, externalCost: false},
@@ -977,9 +961,6 @@ export default class SpeedSwitchPlugin extends Plugin {
                 if (!content) return {error: "invalid content"};
                 const notebook = normalizeAgentNotebookId(this.getSettings().journalNotebook);
                 if (!notebook) return {error: "journal notebook not configured"};
-                const detail = this.i18n.aiJournalAppendDesc.replace("{content}", content.slice(0, 120));
-                const approved = await this.confirmControlledAction(this.i18n.aiConfirmTitle, detail);
-                if (!approved) return {error: "user denied"};
                 const docId = await this.ensureTodayJournal(notebook);
                 if (!docId) return {error: "journal unavailable"};
                 const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
@@ -4466,47 +4447,6 @@ const version = beginSearch(session);
         document.addEventListener("pointerdown", outside, true);
         document.addEventListener("keydown", esc, true);
         window.addEventListener("resize", reposition);
-    }
-
-    // 受控写操作的人工确认：30s 超时视为拒绝；仅当用户点"允许执行"才 resolve(true)
-    private confirmControlledAction(title: string, detail: string): Promise<boolean> {
-        return new Promise((resolve) => {
-            let settled = false;
-            let timer = 0;
-            const dialog = new Dialog({
-                title,
-                content: '<div class="speed-switch sw-ai-confirm"></div>',
-                width: this.isMobile ? "min(420px, 92vw)" : "380px",
-                height: this.isMobile ? "min(300px, 70vh)" : "220px",
-            });
-            const settle = (value: boolean) => {
-                if (settled) return;
-                settled = true;
-                window.clearTimeout(timer);
-                dialog.destroy();
-                resolve(value);
-            };
-            const root = dialog.element.querySelector<HTMLElement>(".sw-ai-confirm");
-            if (!root) { settle(false); return; }
-            const detailEl = document.createElement("p");
-            detailEl.className = "sw-ai-confirm__detail";
-            detailEl.textContent = detail;
-            const actions = document.createElement("div");
-            actions.className = "sw-ai-confirm__actions";
-            const deny = document.createElement("button");
-            deny.type = "button";
-            deny.className = "b3-button b3-button--text";
-            deny.textContent = this.i18n.aiDeny;
-            deny.addEventListener("click", () => settle(false));
-            const allow = document.createElement("button");
-            allow.type = "button";
-            allow.className = "b3-button b3-button--outline";
-            allow.textContent = this.i18n.aiAllow;
-            allow.addEventListener("click", () => settle(true));
-            actions.append(deny, allow);
-            root.append(detailEl, actions);
-            timer = window.setTimeout(() => settle(false), 30000);
-        });
     }
 
     // 协议 v2 声明式配置表单：由 configSchema 渲染，保存写入实例 config 并回调刷新
@@ -8026,11 +7966,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             } as unknown as Tab));
     }
 
-    // 手机端 MobileTabs 状态是否可用（思源 3.8+ 才有；旧版手机端无多页签概念）
-    private hasMobileTabsApi(): boolean {
-        return !!getSiyuan()?.mobile?.tabs?.state;
-    }
-
     // 手机端当前激活页签 id（无激活时返回 undefined）
     private getMobileActiveTabId(): string | undefined {
         return getSiyuan()?.mobile?.tabs?.state?.activeTabID;
@@ -8052,15 +7987,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
     }
 
-    // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作
+    // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作。
+    // （T-6679：minAppVersion 已抬到 3.8.0，"旧版无 MobileTabs API 需提示升级"的
+    // 运行时门成为死代码，随 ADR 0064 首批兼容层简化移除）
     private showMobileSwitcher() {
         const tabs = this.getMobileTabs();
-        if (!this.hasMobileTabsApi()) {
-            // 手机端 WebView 会拦截原生 alert，必须用思源 showMessage 才有可见反馈；
-            // 旧版思源（<3.8）无 MobileTabs API，需提示升级而不是误报"无页签"
-            showMessage(this.i18n.mobileNeedsNewer);
-            return;
-        }
         openMobileSwitcherDialog.call(this, tabs);
     }
 

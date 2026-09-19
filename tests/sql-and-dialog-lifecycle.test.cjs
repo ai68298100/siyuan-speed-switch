@@ -55,8 +55,8 @@ test("kernel fetches outside the dispatcher match the recorded debt list", () =>
 // 无外层 LIMIT 的语句登记表：只允许天然有界（单行/聚合）的查询，且必须写明理由。
 // 登记表不得留僵尸条目——每条都必须至少命中一次，防止将来同类语句被无声放过。
 const LIMIT_EXEMPT = [
-    {pattern: /^SELECT id, content FROM blocks WHERE type='d' AND id IN \(/,
-        reason: "Agent 批量开文档：ids 由上游钳制到 ≤5 行"},
+    // T-6678：Agent 批量开文档的标题回查查询已随自建确认弹窗撤除
+    //（确认改由宿主确认卡按 localWrite 声明承担，不再需要回查标题）。
     {pattern: /^SELECT markdown, content FROM blocks WHERE id='/, reason: "单块等值查询，至多 1 行"},
     {pattern: /^SELECT markdown FROM blocks WHERE id='/, reason: "单块等值查询，至多 1 行"},
     {pattern: /^SELECT COUNT\(.*\) AS total FROM /, reason: "无 GROUP BY 的纯聚合，恒 1 行"},

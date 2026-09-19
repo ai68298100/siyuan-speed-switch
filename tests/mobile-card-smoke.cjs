@@ -382,9 +382,11 @@ if (!homeRefreshAllOk) allPassed = false;
 const homeRefreshSummaryOk = homeControllerSource.includes('function countHomeRefreshFailures')
     && homeControllerSource.includes('function summarizeHomeRefreshFailures')
     && secondPanelSource.includes('this.i18n.homeRefreshFailed')
-    && source.includes('.replace("{count}"')
+    // T-6678 改判：{count} 占位符属于第二面板刷新摘要，应锚定 second-panel-ui；
+    // 原先锚到 index.ts 恰好被已撤除的 Agent 确认弹窗文案满足（意外耦合）
+    && secondPanelSource.includes('.replace("{count}"')
     && secondPanelSource.includes('summary.timeout')
-    && source.includes('selectHomeRefreshRetryEntries')
+    && secondPanelSource.includes('selectHomeRefreshRetryEntries')
     && secondPanelSource.includes('label.textContent = this.i18n.homeRetry')
     && secondPanelSource.includes('if (failureCount > 0)');
 console.log(`${homeRefreshSummaryOk ? 'PASS' : 'FAIL'} home refresh failure-only summary`);
