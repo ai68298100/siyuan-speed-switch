@@ -5,6 +5,7 @@ import {Dialog} from "siyuan";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
 import {clampOversizedIcons} from "./util";
 import {buildHomeConfigSections, resolveHomeConfigHint, resolveHomeConfigIntegration, resolveHomeConfigKind, resolveHomeConfigPlaceholder, resolveHomeStoreSourceInfo, summarizeHomeConfigDraft} from "./home-store-model";
+import {CITY_TIME_ZONES} from "./local-time-model";
 
 export interface HomeConfigFormHost {
     i18n: Record<string, string>;
@@ -652,6 +653,20 @@ export function openHomeConfigForm(this: HomeConfigFormHost,
                 } else {
                     input.maxLength = 128;
                     input.placeholder = placeholderText(resolveHomeConfigPlaceholder(inst.moduleId, field.key));
+                    // T-6690 配套：世界时钟城市字段挂离线城市表 datalist——
+                    // 浏览器原生自动补全（161 城，输入即提示），无需额外 UI 组件
+                    if (inst.moduleId === "external-world-clock" && field.key === "cities") {
+                        const listId = `${controlId}-cities`;
+                        const datalist = document.createElement("datalist");
+                        datalist.id = listId;
+                        for (const city of Object.keys(CITY_TIME_ZONES)) {
+                            const option = document.createElement("option");
+                            option.value = city;
+                            datalist.append(option);
+                        }
+                        input.setAttribute("list", listId);
+                        input.after(datalist);
+                    }
                 }
                 draft[field.key] = field.type === "number" ? Number(input.value) : input.value;
                 controls.set(field.key, input);
