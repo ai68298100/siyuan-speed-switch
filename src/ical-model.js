@@ -179,7 +179,7 @@ function parseIcalRrule(value) {
         return acc;
     }, {});
     const freq = parts.FREQ;
-    if (!["DAILY", "WEEKLY", "MONTHLY"].includes(freq)) return null;
+    if (!["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].includes(freq)) return null;
     return {
         freq,
         interval: Math.min(366, Math.max(1, Math.trunc(Number(parts.INTERVAL)) || 1)),
@@ -246,6 +246,17 @@ function expandIcalRrule(fields, rrule, horizonMs) {
                 ? Date.UTC(get.y, monthShift, day, get.h, get.mi, get.s)
                 : new Date(get.y, monthShift, day, get.h, get.mi, get.s).getTime();
             if (!pushOccurrence(start)) break;
+        }
+        return occurrences;
+    }
+    if (rrule.freq === "YEARLY") {
+        // T-6693 深化：生日/周年类 YEARLY 订阅按年步进；2/29 锚点遇平年跳过
+        //（RFC 5545 语义：该年不发生，而非钳制到 2/28 伪造发生）。
+        const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
+            const y = get.y + i * rrule.interval;
+            if (get.mo === 1 && get.d === 29 && !isLeapYear(y)) continue;
+            if (!pushOccurrence(mk(y, get.mo, get.d))) break;
         }
         return occurrences;
     }

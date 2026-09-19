@@ -146,3 +146,37 @@ test('upcoming tolerates non-array input', () => {
 test('ical failure reasons are stable tokens', () => {
     assert.deepEqual([...ical.ICAL_FAILURE_REASONS], ["invalid_url", "parse_failed", "empty"]);
 });
+
+test('yearly rrule expands by year with leap-day skip (T-6693)', () => {
+    const CRLF = String.fromCharCode(13, 10);
+    const ics = [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20240310T090000',
+        'DTEND;TZID=Asia/Shanghai:20240310T100000',
+        'SUMMARY:周年纪念',
+        'RRULE:FREQ=YEARLY;COUNT=3',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(CRLF);
+    // 锚 2024-03-10、COUNT=3 → 2024/2025/2026 各一次（均 ≤ now+60 天地平线）
+    const past = parseIcsEvents(ics, {now: new Date(2026, 11, 1, 12).getTime()});
+    assert.ok(past, 'parse succeeds');
+    assert.equal(past.events.length, 3, 'COUNT=3 expands to three yearly occurrences');
+    assert.deepEqual(past.events.map((event) => new Date(event.start).getFullYear()), [2024, 2025, 2026]);
+    // 平年 2/29 跳过：锚 2024-02-29，INTERVAL=2 → 2024、2026 发生；2025（平年）不发生
+    const leap = [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20240229T090000',
+        'SUMMARY:闰日',
+        'RRULE:FREQ=YEARLY;INTERVAL=2',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(CRLF);
+    const events = parseIcsEvents(leap, {now: new Date(2025, 5, 1).getTime()});
+    // now=2025-06、地平线 60 天：2024-02-29 锚点发生保留；2025-02-29 不存在（平年）被跳过
+    assert.equal(events.events.length, 1, 'only the leap-year anchor occurrence is inside the horizon');
+    assert.equal(new Date(events.events[0].start).getFullYear(), 2024);
+    assert.equal(events.events[0].summary, '闰日');
+});

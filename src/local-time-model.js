@@ -250,6 +250,21 @@ const CITY_TIME_ZONES = Object.freeze({
     "温哥华": "America/Vancouver", "圣保罗": "America/Sao_Paulo",
     "布宜诺斯艾利斯": "America/Argentina/Buenos_Aires",
     "悉尼": "Australia/Sydney", "墨尔本": "Australia/Melbourne", "奥克兰": "Pacific/Auckland",
+    // T-6690 第二批：英文别名与更多城市（英文界面用户）
+    "Tokyo": "Asia/Tokyo", "Seoul": "Asia/Seoul", "Singapore": "Asia/Singapore", "Bangkok": "Asia/Bangkok",
+    "Dubai": "Asia/Dubai", "Delhi": "Asia/Kolkata", "Mumbai": "Asia/Kolkata", "Jakarta": "Asia/Jakarta",
+    "Hong Kong": "Asia/Hong_Kong", "Taipei": "Asia/Taipei", "Manila": "Asia/Manila", "Hanoi": "Asia/Bangkok",
+    "London": "Europe/London", "Paris": "Europe/Paris", "Berlin": "Europe/Berlin", "Rome": "Europe/Rome",
+    "Madrid": "Europe/Madrid", "Amsterdam": "Europe/Amsterdam", "Zurich": "Europe/Zurich", "Stockholm": "Europe/Stockholm",
+    "Moscow": "Europe/Moscow", "Istanbul": "Europe/Istanbul", "Vienna": "Europe/Vienna", "Prague": "Europe/Prague",
+    "Warsaw": "Europe/Warsaw", "Lisbon": "Europe/Lisbon", "Copenhagen": "Europe/Copenhagen", "Dublin": "Europe/Dublin",
+    "Athens": "Europe/Athens", "Helsinki": "Europe/Helsinki",
+    "New York": "America/New_York", "Los Angeles": "America/Los_Angeles", "San Francisco": "America/Los_Angeles",
+    "Chicago": "America/Chicago", "Denver": "America/Denver", "Seattle": "America/Los_Angeles",
+    "Boston": "America/New_York", "Miami": "America/New_York", "Toronto": "America/Toronto",
+    "Vancouver": "America/Vancouver", "Sao Paulo": "America/Sao_Paulo",
+    "Sydney": "Australia/Sydney", "Melbourne": "Australia/Melbourne", "Auckland": "Pacific/Auckland",
+    "Perth": "Australia/Perth", "Brisbane": "Australia/Brisbane",
 });
 
 function normalizeWorldClockConfig(value) {
