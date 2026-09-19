@@ -1446,6 +1446,17 @@ function buildRecentWritingActivitySnapshot(payload, config, labels = {}, now = 
     return snapshot;
 }
 
+const REST_DAY_PRESETS = Object.freeze(["无", "周末", "周六", "周日", "周一", "周二", "周三", "周四", "周五"]);
+
+// 休息日预设 → JS getDay 集合（0=周日…6=周六）；休息日豁免：不计达标也不断签（uhabits SKIP 语义）
+function restDaySetOf(preset) {
+    const set = new Set();
+    if (preset === "周末") return new Set([0, 6]);
+    const map = {"周日": 0, "周一": 1, "周二": 2, "周三": 3, "周四": 4, "周五": 5, "周六": 6};
+    if (map[preset] !== undefined) set.add(map[preset]);
+    return set;
+}
+
 function normalizeWritingStreakConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     return {
@@ -1455,6 +1466,8 @@ function normalizeWritingStreakConfig(value) {
         dailyGoal: clampInteger(source.dailyGoal, 1, 5000, 1),
         weekStart: source.weekStart === "周日" ? "周日" : "周一",
         todayGrace: source.todayGrace !== "否" && source.todayGrace !== false,
+        weeklyGoal: clampInteger(source.weeklyGoal, 0, 7, 0),
+        restDays: REST_DAY_PRESETS.includes(source.restDays) ? source.restDays : "无",
     };
 }
 
@@ -1474,32 +1487,83 @@ function buildWritingStreakSnapshot(payload, config, labels = {}, now = Date.now
     }
     const metricKey = normalized.metric === "内容块" ? "blocks" : "chars";
     const completed = new Set(keys.filter((key) => totals.get(key)[metricKey] >= normalized.dailyGoal));
+    // 豁免休息日：不计达标、不断签（从日键反推星期）
+    const restSet = restDaySetOf(normalized.restDays);
+    const isRestKey = (key) => {
+        if (!restSet.size || typeof key !== "string" || key.length !== 8) return false;
+        const day = new Date(Number(key.slice(0, 4)), Number(key.slice(4, 6)) - 1, Number(key.slice(6, 8)));
+        return restSet.has(day.getDay());
+    };
     let cursor = keys.length - 1;
     const todayComplete = completed.has(keys[cursor]);
-    if (!todayComplete && normalized.todayGrace) cursor -= 1;
+    if (!todayComplete && !isRestKey(keys[cursor]) && normalized.todayGrace) cursor -= 1;
     let streak = 0;
-    while (cursor >= 0 && completed.has(keys[cursor])) {
-        streak += 1;
-        cursor -= 1;
+    while (cursor >= 0) {
+        if (isRestKey(keys[cursor])) { cursor -= 1; continue; }
+        if (completed.has(keys[cursor])) { streak += 1; cursor -= 1; continue; }
+        break;
     }
     let gap = 0;
-    for (let index = keys.length - 1; index >= 0 && !completed.has(keys[index]); index -= 1) gap += 1;
+    for (let index = keys.length - 1; index >= 0; index -= 1) {
+        if (isRestKey(keys[index])) continue;
+        if (completed.has(keys[index])) break;
+        gap += 1;
+    }
     const current = new Date(Number.isFinite(now) ? now : Date.now());
     const dayIndex = normalized.weekStart === "周日" ? current.getDay() : (current.getDay() + 6) % 7;
     const weekStart = new Date(current.getFullYear(), current.getMonth(), current.getDate() - dayIndex);
     const labelsText = boundedText(labels.weekdays, 7) || "一二三四五六日";
     const weekLabels = normalized.weekStart === "周日" ? `${labelsText.slice(-1)}${labelsText.slice(0, -1)}` : labelsText;
+    const weekRest = [];
     const items = Array.from({length: 7}, (_unused, index) => {
         const day = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + index);
-        return {label: weekLabels.slice(index, index + 1), value: "", done: completed.has(localDateKey(day.getTime()))};
+        const key = localDateKey(day.getTime());
+        const rest = isRestKey(key);
+        weekRest.push(rest);
+        return {label: weekLabels.slice(index, index + 1), value: "", done: completed.has(key)};
     });
-    const completedThisWeek = items.filter((item) => item.done).length;
-    let statLabel = boundedText(labels.streak, 32) || "天连续";
-    if (!todayComplete && gap <= 1 && normalized.todayGrace && streak > 0) statLabel = boundedText(labels.pending, 32) || "天连续 · 今日待完成";
-    else if (streak === 0 && gap > 0) statLabel = (boundedText(labels.gap, 48) || "已中断 {value} 天").replace("{value}", String(gap));
+    // 每周 n/m 口径：周内非休息日达标数 ≥ weeklyGoal 记为一个达标周；本周未达标不断签（延续上周连击）
+    let completedThisWeek = 0;
+    items.forEach((item, index) => { if (!weekRest[index] && item.done) completedThisWeek += 1; });
+    let weeklyStreak = 0;
+    if (normalized.weeklyGoal >= 2) {
+        const weekTotals = new Map();
+        let currentWeekKey = "";
+        for (const key of keys) {
+            if (isRestKey(key)) continue;
+            const day = new Date(Number(key.slice(0, 4)), Number(key.slice(4, 6)) - 1, Number(key.slice(6, 8)));
+            const offset = normalized.weekStart === "周日" ? day.getDay() : (day.getDay() + 6) % 7;
+            const weekKey = localDateKey(new Date(day.getFullYear(), day.getMonth(), day.getDate() - offset).getTime());
+            if (key === keys[keys.length - 1]) currentWeekKey = weekKey;
+            if (completed.has(key)) weekTotals.set(weekKey, (weekTotals.get(weekKey) || 0) + 1);
+        }
+        const ordered = [...weekTotals.entries()].sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0));
+        const currentIndex = currentWeekKey ? ordered.findIndex(([weekKey]) => weekKey === currentWeekKey) : ordered.length - 1;
+        for (let w = ordered.length - 1; w >= 0; w -= 1) {
+            const met = ordered[w][1] >= normalized.weeklyGoal;
+            if (w === currentIndex) { if (met) weeklyStreak += 1; continue; }
+            if (met) weeklyStreak += 1; else break;
+        }
+    }
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "写作打卡", items, labels, now, status);
-    snapshot.stat = {value: String(streak), label: statLabel, arc: {value: completedThisWeek, max: 7}};
+    if (normalized.weeklyGoal >= 2) {
+        const pending = weeklyStreak > 0 && completedThisWeek < normalized.weeklyGoal;
+        snapshot.stat = {
+            value: String(weeklyStreak),
+            label: pending ? (boundedText(labels.weeklyPending, 32) || "周连续 · 本周待完成") : (boundedText(labels.weeklyStreak, 32) || "周连续"),
+            arc: {value: Math.min(completedThisWeek, normalized.weeklyGoal), max: normalized.weeklyGoal},
+        };
+        return snapshot;
+    }
+    snapshot.stat = {value: String(streak), label: statLabelOf(), arc: {value: completedThisWeek, max: 7}};
     return snapshot;
+
+    function statLabelOf() {
+        let statLabel = boundedText(labels.streak, 32) || "天连续";
+        if (!todayComplete && gap <= 1 && normalized.todayGrace && streak > 0) statLabel = boundedText(labels.pending, 32) || "天连续 · 今日待完成";
+        else if (streak === 0 && gap > 0) statLabel = (boundedText(labels.gap, 48) || "已中断 {value} 天").replace("{value}", String(gap));
+        return statLabel;
+    }
 }
 
 function buildSavedSearchesSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {

@@ -3940,6 +3940,7 @@ const version = beginSearch(session);
                 title: this.i18n.homeWritingStreak, weekdays: this.i18n.homeCalendarWeekdays,
                 streak: this.i18n.homeStatStreakDays, pending: this.i18n.homeStreakPending,
                 gap: this.i18n.homeStreakGap,
+                weeklyStreak: this.i18n.homeStatStreakWeeks, weeklyPending: this.i18n.homeStreakWeeklyPending,
             });
             if (!snapshot) throw new Error("invalid_writing_streak");
             return snapshot;

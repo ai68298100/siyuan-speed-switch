@@ -42,7 +42,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.deepEqual(writing.configSchema.map((field) => field.key), ["days", "notebook", "metric", "density", "showZero", "showAverage", "showStrength"]);
     assert.equal(writing.configSchema[0].max, 366);
     assert.deepEqual(byId.get("writing-streak").configSchema.map((field) => field.key), [
-        "notebook", "windowDays", "metric", "dailyGoal", "weekStart", "todayGrace",
+        "notebook", "windowDays", "metric", "dailyGoal", "weekStart", "todayGrace", "weeklyGoal", "restDays",
     ]);
     const daily = byId.get("recent-daily-notes");
     assert.ok(daily, "recent daily notes registered");

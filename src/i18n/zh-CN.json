@@ -159,6 +159,8 @@
   "homeStatStreakDays": "天连续",
   "homeStreakPending": "天连续 · 今日待完成",
   "homeStreakGap": "已中断 {value} 天",
+  "homeStatStreakWeeks": "周连续",
+  "homeStreakWeeklyPending": "周连续 · 本周待完成",
   "homeCountdown": "倒数日",
   "homeDescCountdown": "设定目标日期，显示剩余或已过天数（纪念日、截止日都适用）",
   "homeCountdownRemaining": "剩余 {n} 天",

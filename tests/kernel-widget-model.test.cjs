@@ -513,6 +513,46 @@ test('writing streak applies daily goals, grace today, gap state, and week start
     assert.equal(model.normalizeWritingStreakConfig({windowDays: 9999}).windowDays, 365);
 });
 
+test('writing streak weekly n/m quota, rest-day exemption, and legacy parity (T-6681)', () => {
+    // 2026-09-18 是周五。窗口内：周三/周四达标，周五（今天）未达标；
+    // 上一周（9/7~9/13，周一起始）有 3 天达标 → 周口径连击 = 1
+    const now = new Date(2026, 8, 18, 12).getTime();
+    const rows = [
+        {day: '20260918', chars: 10},            // 周五（今天）未达标
+        {day: '20260917', chars: 200},           // 周四达标
+        {day: '20260916', chars: 200},           // 周三达标
+        {day: '20260916', chars: 1},             // 同日合并
+        {day: '20260910', chars: 200},           // 上周四达标
+        {day: '20260909', chars: 200},           // 上周三达标
+        {day: '20260908', chars: 200},           // 上周二达标
+    ];
+    const labels = {weekdays: '一二三四五六日', streak: '天连续', pending: '天连续 · 今日待完成', gap: '已中断 {value} 天', weeklyStreak: '周连续', weeklyPending: '周连续 · 本周待完成'};
+    // 每周至少 2 天：本周三四已达标（2/2 满足）+ 上周 3 天达标 → 连击 = 2；arc 显示 2/2
+    const weekly = model.buildWritingStreakSnapshot(rows, {metric: '新增字符', dailyGoal: 100, weeklyGoal: 2, weekStart: '周一'}, labels, now);
+    assert.equal(weekly.stat.value, '2');
+    assert.equal(weekly.stat.label, '周连续');
+    assert.deepEqual(weekly.stat.arc, {value: 2, max: 2});
+    // 豁免日：周六休息时，周六未达标不断签——今天(周五)未达标 + 今日宽限关闭，
+    // 休息日中性跳过后仍延续到周四的达标
+    const exempt = model.buildWritingStreakSnapshot([
+        {day: '20260919', chars: 0},             // 周六（未来，应被窗口截掉）
+    ], {metric: '新增字符', dailyGoal: 100, todayGrace: '否', restDays: '周末'}, labels, now);
+    const legacy = model.buildWritingStreakSnapshot(rows, {metric: '新增字符', dailyGoal: 100, todayGrace: '否', weekStart: '周一'}, labels, now);
+    assert.equal(legacy.stat.value, '0', 'no weeklyGoal: unmet today breaks the daily streak');
+    // 休息日中性：达标日之间夹一个休息日（未达标）不打断连击
+    const bridged = model.buildWritingStreakSnapshot([
+        {day: '20260917', chars: 200},           // 周四达标（今天）
+        {day: '20260916', chars: 5},             // 周三未达标但被豁免（配置单日 周三）
+        {day: '20260915', chars: 200},           // 周二达标 → 豁免日桥接后连击 = 2
+    ], {metric: '新增字符', dailyGoal: 100, todayGrace: '是', restDays: '周三'}, labels, new Date(2026, 8, 17, 12).getTime());
+    assert.equal(bridged.stat.value, '2', 'a rest day between completed days must not break the streak');
+    assert.equal(bridged.items[2].done, false, 'rest day itself still shows as not-done in the weekday row');
+    // 归一化钳制与缺省
+    assert.equal(model.normalizeWritingStreakConfig({weeklyGoal: 12}).weeklyGoal, 7);
+    assert.equal(model.normalizeWritingStreakConfig({}).weeklyGoal, 0);
+    assert.equal(model.normalizeWritingStreakConfig({restDays: '每天'}).restDays, '无');
+});
+
 // ---------- 通用边界 ----------
 test('every builder clamps limits into 1..12 and tolerates non-object configs', () => {
     assert.equal(model.normalizePinnedDocsConfig({limit: 99}).limit, 12);

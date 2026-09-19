@@ -159,6 +159,8 @@
   "homeStatStreakDays": "day streak",
   "homeStreakPending": "day streak · today pending",
   "homeStreakGap": "Paused for {value} days",
+  "homeStatStreakWeeks": "week streak",
+  "homeStreakWeeklyPending": "week streak · this week pending",
   "homeCountdown": "Countdown",
   "homeDescCountdown": "Set a target date to track days remaining or elapsed - anniversaries, deadlines and more",
   "homeCountdownRemaining": "{n} days left",

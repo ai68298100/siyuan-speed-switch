@@ -303,6 +303,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "dailyGoal", label: "每日达标值", type: "number", min: 1, max: 5000, defaults: 1},
         {key: "weekStart", label: "每周起始日", type: "select", options: ["周一", "周日"], defaults: "周一"},
         {key: "todayGrace", label: "今天未达标时延续昨日", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "weeklyGoal", label: "每周达标天数（0 为关闭）", type: "number", min: 0, max: 7, defaults: 0},
+        {key: "restDays", label: "豁免休息日（不计达标也不断签）", type: "select", options: ["无", "周末", "周六", "周日", "周一", "周二", "周三", "周四", "周五"], defaults: "无"},
     ]},
     {moduleId: "countdown", title: "倒数日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
         {key: "title", label: "名称", type: "text", defaults: ""},
