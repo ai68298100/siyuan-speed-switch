@@ -235,62 +235,81 @@ function isValidTimeZone(timeZone) {
 // 目标是让 `cities` 文本字段可以直接写中文城市名（如 "上海,东京,纽约"），
 // 免去手打 IANA ID；已是合法 IANA 的条目原样直通，未知名称沿用既有丢弃语义。
 const CITY_TIME_ZONES = Object.freeze({
+    // —— 中国大陆 ——
     "北京": "Asia/Shanghai", "上海": "Asia/Shanghai", "深圳": "Asia/Shanghai", "广州": "Asia/Shanghai",
     "成都": "Asia/Shanghai", "杭州": "Asia/Shanghai", "武汉": "Asia/Shanghai", "西安": "Asia/Shanghai",
-    "重庆": "Asia/Shanghai", "南京": "Asia/Shanghai",
+    "重庆": "Asia/Shanghai", "南京": "Asia/Shanghai", "青岛": "Asia/Shanghai", "大连": "Asia/Shanghai",
+    "厦门": "Asia/Shanghai", "福州": "Asia/Shanghai", "合肥": "Asia/Shanghai", "郑州": "Asia/Shanghai",
+    "长沙": "Asia/Shanghai", "哈尔滨": "Asia/Shanghai", "沈阳": "Asia/Shanghai", "昆明": "Asia/Shanghai",
+    "海口": "Asia/Shanghai", "南昌": "Asia/Shanghai", "东莞": "Asia/Shanghai", "佛山": "Asia/Shanghai",
+    "无锡": "Asia/Shanghai", "宁波": "Asia/Shanghai", "乌鲁木齐": "Asia/Urumqi", "拉萨": "Asia/Shanghai",
+    "西宁": "Asia/Shanghai", "兰州": "Asia/Shanghai", "南宁": "Asia/Shanghai", "天津": "Asia/Shanghai",
+    "济南": "Asia/Shanghai", "太原": "Asia/Shanghai", "石家庄": "Asia/Shanghai", "长春": "Asia/Shanghai",
+    "珠海": "Asia/Shanghai", "中山": "Asia/Shanghai", "嘉兴": "Asia/Shanghai", "绍兴": "Asia/Shanghai",
+    "洛阳": "Asia/Shanghai", "徐州": "Asia/Shanghai", "温州": "Asia/Shanghai", "台州": "Asia/Shanghai",
+    "贵阳": "Asia/Shanghai",
+    // —— 港澳台 ——
     "香港": "Asia/Hong_Kong", "澳门": "Asia/Macau", "台北": "Asia/Taipei",
-    "东京": "Asia/Tokyo", "首尔": "Asia/Seoul", "新加坡": "Asia/Singapore", "曼谷": "Asia/Bangkok",
-    "吉隆坡": "Asia/Kuala_Lumpur", "雅加达": "Asia/Jakarta", "新德里": "Asia/Kolkata", "孟买": "Asia/Kolkata",
-    "迪拜": "Asia/Dubai", "利雅得": "Asia/Riyadh",
+    // —— 亚洲 ——
+    "东京": "Asia/Tokyo", "大阪": "Asia/Tokyo", "首尔": "Asia/Seoul", "新加坡": "Asia/Singapore",
+    "曼谷": "Asia/Bangkok", "吉隆坡": "Asia/Kuala_Lumpur", "雅加达": "Asia/Jakarta", "新德里": "Asia/Kolkata",
+    "孟买": "Asia/Kolkata", "迪拜": "Asia/Dubai", "利雅得": "Asia/Riyadh",
+    // —— 欧洲 ——
     "伦敦": "Europe/London", "巴黎": "Europe/Paris", "柏林": "Europe/Berlin", "罗马": "Europe/Rome",
     "马德里": "Europe/Madrid", "阿姆斯特丹": "Europe/Amsterdam", "苏黎世": "Europe/Zurich",
     "斯德哥尔摩": "Europe/Stockholm", "莫斯科": "Europe/Moscow", "伊斯坦布尔": "Europe/Istanbul",
+    // —— 美洲 ——
     "纽约": "America/New_York", "洛杉矶": "America/Los_Angeles", "旧金山": "America/Los_Angeles",
     "芝加哥": "America/Chicago", "丹佛": "America/Denver", "多伦多": "America/Toronto",
-    "温哥华": "America/Vancouver", "圣保罗": "America/Sao_Paulo",
-    "布宜诺斯艾利斯": "America/Argentina/Buenos_Aires",
+    "温哥华": "America/Vancouver", "圣保罗": "America/Sao_Paulo", "布宜诺斯艾利斯": "America/Argentina/Buenos_Aires",
+    // —— 大洋洲 ——
     "悉尼": "Australia/Sydney", "墨尔本": "Australia/Melbourne", "奥克兰": "Pacific/Auckland",
-    // T-6690 第二批：英文别名与更多城市（英文界面用户）
-    "Tokyo": "Asia/Tokyo", "Seoul": "Asia/Seoul", "Singapore": "Asia/Singapore", "Bangkok": "Asia/Bangkok",
-    "Dubai": "Asia/Dubai", "Delhi": "Asia/Kolkata", "Mumbai": "Asia/Kolkata", "Jakarta": "Asia/Jakarta",
-    "Hong Kong": "Asia/Hong_Kong", "Taipei": "Asia/Taipei", "Manila": "Asia/Manila", "Hanoi": "Asia/Bangkok",
+    // —— 英文别名（T-6690 第二批+第四批） ——
+    "Tokyo": "Asia/Tokyo", "Osaka": "Asia/Tokyo", "Nagoya": "Asia/Tokyo", "Fukuoka": "Asia/Tokyo", "Sapporo": "Asia/Tokyo",
+    "Seoul": "Asia/Seoul", "Busan": "Asia/Seoul", "Singapore": "Asia/Singapore", "Bangkok": "Asia/Bangkok",
+    "Jakarta": "Asia/Jakarta", "Delhi": "Asia/Kolkata", "Mumbai": "Asia/Kolkata", "Dubai": "Asia/Dubai",
+    "Hong Kong": "Asia/Hong_Kong", "Taipei": "Asia/Taipei", "Manila": "Asia/Manila", "Hanoi": "Asia/Ho_Chi_Minh",
     "London": "Europe/London", "Paris": "Europe/Paris", "Berlin": "Europe/Berlin", "Rome": "Europe/Rome",
     "Madrid": "Europe/Madrid", "Amsterdam": "Europe/Amsterdam", "Zurich": "Europe/Zurich", "Stockholm": "Europe/Stockholm",
     "Moscow": "Europe/Moscow", "Istanbul": "Europe/Istanbul", "Vienna": "Europe/Vienna", "Prague": "Europe/Prague",
     "Warsaw": "Europe/Warsaw", "Lisbon": "Europe/Lisbon", "Copenhagen": "Europe/Copenhagen", "Dublin": "Europe/Dublin",
-    "Athens": "Europe/Athens", "Helsinki": "Europe/Helsinki",
+    "Athens": "Europe/Athens", "Helsinki": "Europe/Helsinki", "Budapest": "Europe/Budapest", "Belgrade": "Europe/Belgrade",
+    "Munich": "Europe/Berlin", "Hamburg": "Europe/Berlin", "Milan": "Europe/Rome", "Florence": "Europe/Rome",
     "New York": "America/New_York", "Los Angeles": "America/Los_Angeles", "San Francisco": "America/Los_Angeles",
     "Chicago": "America/Chicago", "Denver": "America/Denver", "Seattle": "America/Los_Angeles",
     "Boston": "America/New_York", "Miami": "America/New_York", "Toronto": "America/Toronto",
-    "Vancouver": "America/Vancouver", "Sao Paulo": "America/Sao_Paulo",
+    "Vancouver": "America/Vancouver", "Sao Paulo": "America/Sao_Paulo", "Houston": "America/Chicago",
+    "Atlanta": "America/New_York", "Phoenix": "America/Phoenix", "Montreal": "America/Toronto",
+    "Lima": "America/Lima", "Santiago": "America/Santiago", "Bogota": "America/Bogota",
     "Sydney": "Australia/Sydney", "Melbourne": "Australia/Melbourne", "Auckland": "Pacific/Auckland",
     "Perth": "Australia/Perth", "Brisbane": "Australia/Brisbane",
-    // T-6699 第四波：更多中国城市（大连/厦门等见上批）与世界补充
-    "东莞": "Asia/Shanghai", "佛山": "Asia/Shanghai", "无锡": "Asia/Shanghai", "宁波": "Asia/Shanghai",
-    "青岛": "Asia/Shanghai", "大连": "Asia/Shanghai", "厦门": "Asia/Shanghai", "乌鲁木齐": "Asia/Urumqi",
-    "拉萨": "Asia/Shanghai", "西宁": "Asia/Shanghai", "兰州": "Asia/Shanghai", "南宁": "Asia/Shanghai",
-    "Osaka": "Asia/Tokyo", "Nagoya": "Asia/Tokyo", "Fukuoka": "Asia/Tokyo", "Sapporo": "Asia/Tokyo",
-    "Budapest": "Europe/Budapest", "Belgrade": "Europe/Belgrade", "Munich": "Europe/Berlin", "Hamburg": "Europe/Berlin",
-    "Milan": "Europe/Rome", "Florence": "Europe/Rome", "Seattle": "America/Los_Angeles", "Houston": "America/Chicago",
-    "Atlanta": "America/New_York", "Phoenix": "America/Phoenix", "Montreal": "America/Toronto", "Lima": "America/Lima",
-    "Santiago": "America/Santiago", "Bogota": "America/Bogota", "Tel Aviv": "Asia/Jerusalem", "Doha": "Asia/Qatar",
-    // T-6694b 第三波：中国更多城市与世界补充
-    "青岛": "Asia/Shanghai", "大连": "Asia/Shanghai", "厦门": "Asia/Shanghai", "福州": "Asia/Shanghai",
-    "合肥": "Asia/Shanghai", "郑州": "Asia/Shanghai", "长沙": "Asia/Shanghai", "哈尔滨": "Asia/Shanghai",
-    "沈阳": "Asia/Shanghai", "昆明": "Asia/Shanghai", "海口": "Asia/Shanghai", "南昌": "Asia/Shanghai",
-    "Osaka": "Asia/Tokyo", "Nagoya": "Asia/Tokyo", "Busan": "Asia/Seoul", "Hanoi": "Asia/Ho_Chi_Minh",
-    "Barcelona": "Europe/Madrid", "Munich": "Europe/Berlin", "Geneva": "Europe/Zurich", "Brussels": "Europe/Brussels",
+    // —— T-6695b 第五波 ——
+    "Cairo": "Africa/Cairo", "Nairobi": "Africa/Nairobi", "Cape Town": "Africa/Johannesburg", "Johannesburg": "Africa/Johannesburg",
+    "Kuwait": "Asia/Kuwait", "Amman": "Asia/Amman", "Beirut": "Asia/Beirut", "Tashkent": "Asia/Tashkent",
+    "Almaty": "Asia/Almaty", "Kathmandu": "Asia/Kathmandu", "Dhaka": "Asia/Dhaka", "Colombo": "Asia/Colombo",
+    "Phnom Penh": "Asia/Phnom_Penh", "Havana": "America/Havana", "Caracas": "America/Caracas", "Quito": "America/Guayaquil",
 });
-
 function normalizeWorldClockConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const raw = typeof source.cities === "string" ? source.cities : "";
-    const zones = [...new Set(raw.split(/[,，;；\s]+/)
+    // T-6690+：先按分隔符切分；城市名自带空格（如 New York）会被切碎——
+    // 贪心两段重连查离线城市表，命中即整体消费，避免表内多词条目成为死条目。
+    const tokens = raw.split(/[,，;；\s]+/)
         .map((item) => item.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 64))
-        .map((item) => (CITY_TIME_ZONES[item] !== undefined ? CITY_TIME_ZONES[item] : item))
-        .filter((item) => isValidTimeZone(item)))]
+        .filter(Boolean);
+    const zones = [];
+    for (let index = 0; index < tokens.length; index += 1) {
+        const pair = tokens[index] + " " + (tokens[index + 1] ?? "");
+        if (CITY_TIME_ZONES[pair] !== undefined) {
+            zones.push(CITY_TIME_ZONES[pair]);
+            index += 1;
+            continue;
+        }
+        zones.push(CITY_TIME_ZONES[tokens[index]] !== undefined ? CITY_TIME_ZONES[tokens[index]] : tokens[index]);
+    }
+    const unique = [...new Set(zones.filter((item) => isValidTimeZone(item)))]
         .slice(0, WORLD_CLOCK_MAX_CITIES);
-    return {cities: zones, hour12: source.hourFormat === "12 小时制"};
+    return {cities: unique, hour12: source.hourFormat === "12 小时制"};
 }
 
 function zoneDateParts(timeZone, date, locale) {

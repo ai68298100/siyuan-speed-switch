@@ -68,8 +68,12 @@ test("world clock safely handles invalid Date", () => assert.doesNotThrow(() => 
 
 test('world clock cities accept offline Chinese city names via the built-in table (T-6690)', () => {
     // 中文名 → IANA 自动解析；合法 IANA 直通；未知名称沿用丢弃语义
-    const normalized = normalizeWorldClockConfig({cities: '上海, 东京，纽约，Europe/London，亚特兰蒂斯'});
+    const normalized = normalizeWorldClockConfig({cities: '上海, 东京，纽约，New York，Europe/London，亚特兰蒂斯'});
+    // 贪心两词重连：'New York' 两 token 命中表内多词条目；'纽约' 单 token 直查
     assert.deepEqual(normalized.cities, ['Asia/Shanghai', 'Asia/Tokyo', 'America/New_York', 'Europe/London']);
+    // T-6697c 判别力用例：纯英文多词别名（无中文同名遮蔽）也必须命中
+    const englishOnly = normalizeWorldClockConfig({cities: 'San Francisco, Tokyo, 亚特兰蒂斯'});
+    assert.deepEqual(englishOnly.cities, ['America/Los_Angeles', 'Asia/Tokyo']);
     // 重复（中文与 IANA 混写指向同一时区）去重
     const deduped = normalizeWorldClockConfig({cities: '上海,Asia/Shanghai'});
     assert.deepEqual(deduped.cities, ['Asia/Shanghai']);
