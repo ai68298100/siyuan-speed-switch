@@ -60,6 +60,8 @@ Search always uses this priority:
 2. **Opened-document content**: queried inside at most six opened root documents; hits recover existing tab cards without creating duplicates.
 3. **Workspace documents**: queried by title first; an empty title result or advanced filters use a bounded native full-text fallback, aggregated into document cards with a small snippet limit.
 
+**Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`.
+
 Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports bounded notebook, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while advanced filters use native block search. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. Path-tree selection is still not exposed in the UI, and this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
 
 ### Panels, Journal, And Quick Actions
