@@ -89,3 +89,33 @@ test("new configurable widgets open setup after the explicit add action", () => 
     assert.match(storeUiSource, /if \(createdInstance && Array\.isArray\(def\.configSchema\)/);
     assert.match(storeUiSource,/openHomeConfigForm\.call\(this, createdInstance, def\.configSchema/);
 });
+
+// ---------- B4 三态一致性/信封门禁（T-6693） ----------
+test("network-backed widget adapters keep the bounded timeout and cache envelope", () => {
+    // 逐 adapter 切片：凡在读取路径发起内核或网络请求的 adapter，必须携带
+    // 统一的超时/缓存信封（第七批纪律的全量推广）；纯前端组件（countdown、
+    // year-progress 等）不发起请求，不在断言范围。
+    const files = [
+        {name: "src/index.ts", text: source},
+        {name: "src/home-external-adapters.ts", text: externalAdapters},
+    ];
+    let checked = 0;
+    for (const {name, text} of files) {
+        const marks = [...text.matchAll(/register\("([A-Za-z0-9._:-]+)"/g)].map((match) => match.index);
+        for (let index = 0; index < marks.length; index += 1) {
+            const sliceEnd = index + 1 < marks.length ? marks[index + 1] : text.length;
+            const slice = text.slice(marks[index], sliceEnd);
+            const networked = /fetchKernelJson\(|load[A-Z]/.test(slice);
+            if (!networked) continue;
+            checked += 1;
+            assert.match(slice, /timeoutMs: \d+/, `${name} adapter #${index + 1} keeps timeoutMs`);
+            assert.match(slice, /cacheTtlMs: \d+/, `${name} adapter #${index + 1} keeps cacheTtlMs`);
+        }
+    }
+    assert.ok(checked >= 20, `expected the envelope gate to cover the networked adapters, found ${checked}`);
+});
+
+test("the shared external-feed factory keeps the same bounded envelope (T-6693)", () => {
+    assert.match(externalAdapters, /cacheTtlMs: 30 \* 60 \* 1000/, "feed factory keeps the 30-minute cache envelope");
+    assert.match(externalAdapters, /timeoutMs: 8500/, "feed factory keeps the bounded timeout");
+});
