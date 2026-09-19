@@ -474,3 +474,21 @@ test("notebook group labels recover from tab metadata when the cache misses", ()
     assert.match(block, /t\.notebookName \|\| t\.notebook \|\| t\.boxName/, "回退链必须覆盖三种字段名");
     assert.match(block, /resolveSearchNotebookId\(tab as unknown\) !== id\) continue/, "必须按笔记本 ID 匹配");
 });
+
+// ---------- T-6475 笔记本分组富化（幻影 ID 纠正） ----------
+test("notebook grouping enriches phantom ids from the kernel box mapping", () => {
+    const indexTs = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
+    assert.match(indexTs, /private rootNotebookCache: \{\[rootId: string\]: string\} = \{\}/, "rootId→box 缓存必须存在");
+    assert.match(indexTs, /if \(!notebookMap\.has\(resolved\)\) \{[\s\S]*?rootNotebookCache\[rootIdOf\(tab\)\]/, "幻影 ID 必须经缓存纠正");
+    assert.match(indexTs, /private async loadRootNotebookMap\(rootIds: string\[\]\)/, "富化方法必须存在");
+    const loader = indexTs.slice(indexTs.indexOf("private async loadRootNotebookMap"));
+    assert.match(loader, /BLOCK_ID_RE\.test\(id\)\)\.slice\(0, 32\)/, "请求必须按块 ID 白名单过滤且有界");
+    assert.match(loader, /SELECT id, box FROM blocks WHERE type='d' AND id IN/, "SQL 必须按 blocks.box 恢复真实归属");
+    assert.match(loader, /BLOCK_ID_RE\.test\(box\) \? box : ""/, "响应 box 必须校验后落缓存");
+    // 富化触发条件：笔记本分组 + 清单就绪 + 存在未知归属的页签
+    const enrichment = indexTs.slice(indexTs.indexOf("if (groupMode === \"notebook\") {", indexTs.indexOf("rootNotebookCache:")));
+    assert.match(enrichment, /loadRootNotebookMap\(unknownRoots\)/);
+    assert.match(enrichment, /rootId in this\.rootNotebookCache\) continue/, "已富化过的 rootId 不重复请求");
+    assert.match(enrichment, /known\.has\(resolved\)\) continue/, "真实笔记本 ID 不触发富化");
+    assert.match(enrichment, /const enrich = unknownRoots\.length > 0/, "富化触发条件必须钉住（防死代码化）");
+});

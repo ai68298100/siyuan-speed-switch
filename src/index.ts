@@ -6689,6 +6689,10 @@ private rootIdOf(tab: Tab): string | null {
     private groupCollapseState = new Set<string>();
     private createdByIdCache: {[rootId: string]: string} = {};
     private notebookListCache: Array<{id: string; name: string}> | null = null;
+    // T-6475：rootId → 真实笔记本 ID 缓存。resolveSearchNotebookId 的路径回退会把
+    // 文档路径首段（根文档 ID）误当作笔记本 ID，产生"未知笔记本"幻影组；本缓存由
+    // 一次有界 SQL（blocks.box）异步富化，纠正这些页签的分组归属。
+    private rootNotebookCache: {[rootId: string]: string} = {};
 
     private groupFlowObserver: ResizeObserver | null = null;
     private homeRefreshTimer = 0;
@@ -6767,7 +6771,17 @@ private rootIdOf(tab: Tab): string | null {
             isFavorite: (key: string) => ctx.favorites.has(key),
             favoriteGroupOf: (key: string) => favoriteGroupByKey.get(key) || "",
             favoriteGroupOrder: this.getFavGroupRegistry(),
-            notebookIdOf: (tab: Tab) => resolveSearchNotebookId(tab as unknown) || "",
+            notebookIdOf: (tab: Tab) => {
+                const resolved = resolveSearchNotebookId(tab as unknown) || "";
+                // T-6475：路径回退会产出幻影笔记本 ID（思源文档路径首段是根文档 ID 而
+                // 非笔记本 ID，真机实证 id≠box）。凡不在真实笔记本清单里的结果，用
+                // rootId→box 缓存纠正（异步富化按需填充）。
+                if (!notebookMap.has(resolved)) {
+                    const fromRoot = this.rootNotebookCache[rootIdOf(tab)];
+                    if (fromRoot) return fromRoot;
+                }
+                return resolved;
+            },
             pathOf: (tab: Tab) => (tab as unknown as {path?: string; hPath?: string}).path
                 || (tab as unknown as {hPath?: string}).hPath || "",
             notebookNameOf: (id: string) => {
@@ -6820,6 +6834,59 @@ private rootIdOf(tab: Tab): string | null {
                 this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
             });
         }
+        // T-6475：笔记本分组富化——路径回退产生的幻影笔记本 ID（或完全缺失）在真实
+        // 笔记本清单就绪后，用一次有界 SQL（blocks.box）按 rootId 恢复真实归属并重排；
+        // 请求过的 rootId 无论查到与否都落键，保证只富化一次不循环。
+        if (groupMode === "notebook") {
+            const notebookReady = this.notebookListCache !== null
+                ? Promise.resolve(this.notebookListCache as Array<{id: string; name: string}>)
+                : this.loadNotebooks().then((notebooks) => {
+                    this.notebookListCache = notebooks;
+                    return notebooks;
+                });
+            void notebookReady.then((notebooks) => {
+                if (!scrollElement.isConnected || notebooks.length === 0) return;
+                const known = new Set(notebooks.map((nb) => nb.id));
+                const unknownRoots: string[] = [];
+                for (const tab of tabs) {
+                    const rootId = rootIdOf(tab);
+                    if (!rootId || rootId in this.rootNotebookCache) continue;
+                    const resolved = resolveSearchNotebookId(tab as unknown) || "";
+                    if (resolved && known.has(resolved)) continue;
+                    unknownRoots.push(rootId);
+                }
+                const enrich = unknownRoots.length > 0
+                    ? this.loadRootNotebookMap(unknownRoots).then(() => {
+                        tabs.forEach((tab) => {
+                            const rootId = rootIdOf(tab);
+                            if (rootId && !(rootId in this.rootNotebookCache)) this.rootNotebookCache[rootId] = "";
+                        });
+                    })
+                    : null;
+                if (!enrich) return;
+                void enrich.then(() => {
+                    if (!scrollElement.isConnected) return;
+                    this.renderList(scrollElement, tabs, activeTab, listOpts, sortBy, updatedMap);
+                });
+            });
+        }
+    }
+
+    // T-6475：按 rootId 批量恢复真实笔记本 ID（blocks.box），有界 32 个/请求；
+    // 非法 ID 过滤，响应字段校验后落缓存。
+    private async loadRootNotebookMap(rootIds: string[]) {
+        const valid = rootIds.filter((id) => BLOCK_ID_RE.test(id)).slice(0, 32);
+        if (valid.length === 0) return;
+        const list = valid.map((id) => `'${id}'`).join(",");
+        const json = await this.fetchKernelJson("/api/query/sql", {
+            stmt: `SELECT id, box FROM blocks WHERE type='d' AND id IN (${list}) LIMIT 64`,
+        });
+        const rows = Array.isArray(json?.data) ? json.data : [];
+        rows.forEach((row: {id?: unknown; box?: unknown}) => {
+            const id = typeof row?.id === "string" ? row.id : "";
+            const box = typeof row?.box === "string" ? row.box : "";
+            if (id && BLOCK_ID_RE.test(id)) this.rootNotebookCache[id] = BLOCK_ID_RE.test(box) ? box : "";
+        });
     }
 
     // 命名分组块：可折叠组头（图标+名称+计数）+ 内容网格；块宽 = span 列（上限满宽），
