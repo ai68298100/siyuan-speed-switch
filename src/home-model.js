@@ -117,6 +117,8 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "external-hot-news-dailyhot", title: "热搜事件", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "DailyHotApi 完整接口", type: "text", defaults: ""},
+        {key: "apiBase", label: "基址（可选，填后按路由拼接口）", type: "text", defaults: ""},
+        {key: "route", label: "热榜路由", type: "select", options: ["weibo", "zhihu", "bilibili", "baidu", "douyin", "douban-movie", "ithome", "36kr", "sspai", "v2ex"], defaults: "weibo"},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showTime", label: "显示时间", type: "select", options: ["是", "否"], defaults: "是"},

@@ -64,7 +64,12 @@ test("user-endpoint feeds expose bounded opt-in configuration", () => {
         assert.equal(feed.availability, "external");
         assert.equal(feed.readOnly, true);
         assert.deepEqual(feed.supportedDevices, ["desktop", "sidebar", "mobile"]);
-        assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
+        // T-6686：仅 dailyhot 增加 基址+路由 选择器字段；newsnow 维持原字段
+        if (moduleId === "external-hot-news-dailyhot") {
+            assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "apiBase", "route", "limit", "showHot", "showTime", "showRank"]);
+        } else {
+            assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
+        }
         assert.deepEqual(feed.sizes, ["medium", "wide", "large", "full"]);
     }
 });

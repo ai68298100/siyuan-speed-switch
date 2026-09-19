@@ -148,7 +148,15 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
         const registerExternalFeed = (moduleId: string, provider: "dailyhot" | "newsnow", title: string, icon: string, description: string) => {
             register(moduleId, title, icon, description, [], async (config, _device, context) => {
                 const normalized = normalizeFeedConfig(config);
-                const endpoint = normalizeConfiguredFeedUrl(normalized.endpoint, provider);
+                // T-6686 基址+路由选择器：apiBase 非空且 route 命中白名单时按
+                // `基址/路由` 组合并经同一 URL 白名单校验；校验失败或未配置则回退
+                // 完整接口字段（endpoint），旧配置行为不变。
+                let configured = normalized.endpoint;
+                if (normalized.apiBase && normalized.route) {
+                    const composed = normalizeConfiguredFeedUrl(`${normalized.apiBase.replace(/\/+$/, "")}/${normalized.route}`, provider);
+                    if (composed) configured = composed;
+                }
+                const endpoint = normalizeConfiguredFeedUrl(configured, provider);
                 if (!endpoint) return {emptyHint: this.i18n.homeFeedConfigHint, items: []};
                 const envelope = await loadConfiguredFeed(endpoint, {signal: context?.signal});
                 const snapshot = buildExternalFeedSnapshot(envelope, normalized, provider, {

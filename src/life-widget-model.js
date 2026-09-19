@@ -334,6 +334,10 @@ function normalizeFeedConfig(value) {
     const requestedLimit = Math.trunc(Number(source.limit));
     return {
         endpoint: boundedText(source.endpoint, 512),
+        // T-6686 基址+路由选择器：apiBase 非空且 route 命中白名单时按 `基址/路由`
+        // 组合接口地址（覆盖 endpoint 字段）；路由不在白名单一律视为未配置。
+        apiBase: boundedText(source.apiBase, 256),
+        route: DAILYHOT_ROUTES.includes(source.route) ? source.route : "",
         limit: Number.isFinite(requestedLimit) ? Math.min(12, Math.max(3, requestedLimit)) : 8,
         showHot: source.showHot !== "否" && source.showHot !== false,
         // T-6442：时间与排名均为可关闭的显示项；默认输出与旧版一致（时间在有数据时出现，排名保留）

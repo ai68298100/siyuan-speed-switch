@@ -95,7 +95,7 @@ test("rss snapshot gates feed title, date and rank independently", () => {
 test("news widget schemas stay semantic and bounded", () => {
     const modules = home.registerModules([]);
     const byId = new Map(modules.map((m) => [m.moduleId, m]));
-    assert.deepEqual(byId.get("external-hot-news-dailyhot").configSchema.map((f) => f.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
+    assert.deepEqual(byId.get("external-hot-news-dailyhot").configSchema.map((f) => f.key), ["endpoint", "apiBase", "route", "limit", "showHot", "showTime", "showRank"]);
     assert.deepEqual(byId.get("external-news-newsnow").configSchema.map((f) => f.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
     assert.deepEqual(byId.get("external-news-hackernews").configSchema.map((f) => f.key), ["board", "limit", "showMeta", "showTime"]);
     assert.deepEqual(byId.get("external-rss-subscription").configSchema.map((f) => f.key), ["url", "title", "maxItems", "showDate", "showFeedTitle", "showRank", "hideRead"]);
@@ -106,4 +106,14 @@ test("news widget schemas stay semantic and bounded", () => {
     assert.equal(store.resolveHomeConfigSection("external-news-hackernews", "showTime"), "display");
     assert.equal(store.resolveHomeConfigSection("external-rss-subscription", "showFeedTitle"), "display");
     assert.equal(store.resolveHomeConfigSection("external-rss-subscription", "maxItems"), "display");
+});
+
+test("dailyhot composes base+route through the same URL whitelist with endpoint fallback (T-6686)", () => {
+    const path = require("node:path");
+    const adapters = readSourceText(path.join(__dirname, "..", "src", "home-external-adapters.ts"));
+    const model = readSourceText(path.join(__dirname, "..", "src", "life-widget-model.js"));
+    assert.match(adapters, /normalized\.apiBase && normalized\.route/, "composition must require both fields");
+    assert.match(adapters, /normalizeConfiguredFeedUrl/, "composed URL must pass the same whitelist validator");
+    assert.match(adapters, /if \(composed\) configured = composed;/, "composition wins only when validated; otherwise endpoint fallback stays");
+    assert.match(model, /route: DAILYHOT_ROUTES\.includes\(source\.route\) \? source\.route : ""/, "route normalization must use the single whitelist source");
 });
