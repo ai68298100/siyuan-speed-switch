@@ -1400,6 +1400,9 @@ function normalizeRecentWritingActivityConfig(value) {
         showAverage: source.showAverage !== "否" && source.showAverage !== false,
         // T-6458：写作强度分（指数平滑半衰期口径，opt-in）
         showStrength: source.showStrength === "是" || source.showStrength === true,
+        // T-6684 年历网格视图：53 周分页（按年），yearOffset 偏移年份（0=今年）
+        view: source.view === "年历" ? "年历" : "列表",
+        yearOffset: clampInteger(source.yearOffset, -3, 0, 0),
     };
 }
 
@@ -1407,6 +1410,58 @@ function buildRecentWritingActivitySnapshot(payload, config, labels = {}, now = 
     const rows = Array.isArray(payload) ? payload : payload && Array.isArray(payload.data) ? payload.data : null;
     if (!rows) return null;
     const normalized = normalizeRecentWritingActivityConfig(config);
+    // T-6684 年历网格视图：53 周 × 7 天格子（列=周、行=周日~周六，与 heatmap 渲染契约
+    // 一致），展示 yearOffset 偏移年的每日活跃度。色阶 0~4 由当年非零计数的四分位量化
+    //（确定性纯函数，无全局状态）；非当年格子 outside=true。快照携带 viewType="heatmap"
+    //（视图组装层白名单校验后覆盖定义 viewType）。
+    if (normalized.view === "年历") {
+        const nowDate = new Date(Number.isFinite(now) ? now : Date.now());
+        const year = nowDate.getFullYear() + normalized.yearOffset;
+        const byDay = new Map();
+        for (const row of rows.slice(0, 400)) {
+            const day = boundedText(row && row.day, 8);
+            if (!byDay.has(day)) byDay.set(day, {blocks: 0, chars: 0});
+            const bucket = byDay.get(day);
+            bucket.blocks += finiteCount(row.blocks ?? row.n);
+            bucket.chars += finiteCount(row.chars);
+        }
+        const metricKey = normalized.metric === "新增字符" ? "chars" : "blocks";
+        const jan1 = new Date(year, 0, 1);
+        const gridStart = new Date(year, 0, 1 - jan1.getDay()); // 行=周日~周六：对齐到当年首日所在周的周日
+        const dayCounts = [];
+        for (let cell = 0; cell < 371; cell += 1) {
+            const day = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + cell);
+            const key = localDateKey(day.getTime());
+            if (day.getFullYear() === year) {
+                const value = (byDay.get(key) || {blocks: 0, chars: 0})[metricKey];
+                dayCounts.push({key, label: `${year}-${key.slice(4, 6)}-${key.slice(6, 8)}`, count: value});
+            } else {
+                dayCounts.push({key: "", label: "", count: 0, outside: true});
+            }
+        }
+        const nonzero = dayCounts.map((cell) => cell.count).filter((count) => count > 0).sort((left, right) => left - right);
+        // 色阶按非零计数的排名比例量化（1..4）：同值同档、最大值必达 4，确定性纯函数
+        const levelOf = (count) => {
+            if (!(count > 0) || !nonzero.length) return 0;
+            const rank = nonzero.indexOf(count);
+            return Math.min(4, 1 + Math.floor(4 * rank / Math.max(1, nonzero.length - 1)));
+        };
+        const items = dayCounts.map((cell) => {
+            if (cell.outside) return {label: "", count: 0, outside: true};
+            return {label: cell.label, count: cell.count, level: levelOf(cell.count)};
+        });
+        const total = dayCounts.reduce((sum, cell) => sum + cell.count, 0);
+        const activeDays = nonzero.length;
+        return {
+            title: `${boundedText(labels.title, 64) || "近期写作活跃度"} · ${year}`,
+            items,
+            emptyHint: "",
+            viewType: "heatmap",
+            stat: {value: total.toLocaleString(), label: `${normalized.metric} · ${boundedText(labels.yearActive, 32) || "活跃"} ${activeDays} 天`},
+            updatedAt: Number.isFinite(now) ? Math.floor(now) : Date.now(),
+            sourceHealth: ["fresh", "cached", "stale"].includes(status) ? status : "fresh",
+        };
+    }
     const keys = localDayKeys(normalized.days, now);
     const allowed = new Set(keys);
     const byDay = new Map(keys.map((key) => [key, {blocks: 0, chars: 0}]));

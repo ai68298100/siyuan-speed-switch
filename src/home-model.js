@@ -251,6 +251,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "metric", label: "统计指标", type: "select", options: ["内容块", "新增字符"], defaults: "内容块"},
         {key: "density", label: "图形密度", type: "select", options: ["每日", "紧凑"], defaults: "每日"},
         {key: "showZero", label: "显示零值日期", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "view", label: "视图", type: "select", options: ["列表", "年历"], defaults: "列表"},
+        {key: "yearOffset", label: "年历年份偏移（0 为今年）", type: "number", min: -3, max: 0, defaults: 0},
         {key: "showAverage", label: "显示日均值", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showStrength", label: "显示写作强度", type: "select", options: ["否", "是"], defaults: "否"},
     ]},

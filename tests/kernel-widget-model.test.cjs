@@ -614,3 +614,37 @@ test('health status passthrough only accepts the known trio', () => {
     assert.equal(model.buildPinnedDocsSnapshot(payload, {}, OK, NOW, "bogus").sourceHealth, "fresh");
     assert.equal(model.buildInboxSnapshot(inboxPage([]), {}, OK, NOW, "cached").sourceHealth, "cached");
 });
+
+test('recent writing activity year-grid view projects 53-week heatmap cells (T-6684)', () => {
+    const now = new Date(2026, 8, 18, 12).getTime(); // 2026-09-18
+    const rows = [
+        {day: '20260918', blocks: 12, chars: 400},
+        {day: '20260917', blocks: 3, chars: 90},
+        {day: '20260105', blocks: 6, chars: 150},
+    ];
+    const grid = model.buildRecentWritingActivitySnapshot(rows, {view: '年历', metric: '内容块'}, {title: '近期写作活跃度'}, now);
+    // 快照携带 viewType=heatmap（视图组装层白名单校验后切换渲染面）
+    assert.equal(grid.viewType, 'heatmap');
+    assert.equal(grid.items.length, 371, 'the grid is 53 weeks x 7 days');
+    // 2026-01-01 是周四：网格从 2025-12-28（周日）起，首 4 格与尾 5 格在年外
+    assert.equal(grid.items[0].outside, true);
+    assert.equal(grid.items[4].outside, undefined, '2026-01-01 itself is inside the year');
+    assert.equal(grid.items[370].outside, true, 'trailing days of the 371st cell belong to next year');
+    // 色阶：当年命中格点 level 在 1..4、零值格 level 0
+    const inside = grid.items.filter((cell) => !cell.outside);
+    const hit = inside.find((cell) => cell.count === 12);
+    assert.equal(hit.level, 4, 'the max-count day quantizes to the top level');
+    const zeroCell = inside.find((cell) => cell.count === 0);
+    assert.equal(zeroCell.level, 0);
+    // 统计：全年合计与活跃天
+    assert.equal(grid.stat.value, '21');
+    assert.match(grid.stat.label, /3 天/);
+    // 年份偏移：-1 → 2025 网格，且跨年行归属正确
+    const lastYear = model.buildRecentWritingActivitySnapshot([], {view: '年历', yearOffset: -1}, {}, now);
+    assert.equal(lastYear.title.includes('2025'), true);
+    assert.equal(lastYear.items.length, 371);
+    // 归一化钳制
+    assert.equal(model.normalizeRecentWritingActivityConfig({view: '年历'}).view, '年历');
+    assert.equal(model.normalizeRecentWritingActivityConfig({yearOffset: 2}).yearOffset, 0);
+    assert.equal(model.normalizeRecentWritingActivityConfig({}).view, '列表');
+});

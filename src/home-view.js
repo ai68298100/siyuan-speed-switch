@@ -161,8 +161,16 @@ function buildHomeModuleView(module, result, options = {}) {
     const definition = module && typeof module === "object" ? module : {};
     const moduleId = text(definition.moduleId, 64);
     if (!moduleId) return null;
-    const isCalendar = definition.viewType === "calendar";
-    const isHeatmap = definition.viewType === "heatmap";
+    // T-6684：快照可携带 viewType 覆盖静态定义（受限同一白名单）——配置驱动的
+    // 视图切换（如 activity 年历网格）无需拆分新模块；仅改变既有有界条目的呈现，
+    // 不引入任何新能力面。
+    const allowedViewTypes = ["calendar", "weekdays", "media", "heatmap"];
+    const snapshot = result && typeof result === "object" && result.snapshot && typeof result.snapshot === "object" ? result.snapshot : {};
+    const effectiveViewType = allowedViewTypes.includes(snapshot.viewType)
+        ? snapshot.viewType
+        : (allowedViewTypes.includes(definition.viewType) ? definition.viewType : "");
+    const isCalendar = effectiveViewType === "calendar";
+    const isHeatmap = effectiveViewType === "heatmap";
     const normalized = normalizeHomeViewResult(result, {
         keepEmptyItems: isCalendar || isHeatmap,
         maxItems: isHeatmap ? HEATMAP_MAX_ITEMS : isCalendar ? CALENDAR_MAX_ITEMS : MAX_ITEMS,
@@ -173,7 +181,7 @@ function buildHomeModuleView(module, result, options = {}) {
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
-        viewType: ["calendar", "weekdays", "media", "heatmap"].includes(definition.viewType) ? definition.viewType : "",
+        viewType: effectiveViewType,
         status: normalized.status,
         stat: normalized.stat,
         cached: normalized.cached,

@@ -39,7 +39,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.deepEqual(clipped.configSchema.map((field) => field.key), ["tag", "limit", "notebook", "sortBy", "showPath", "showUpdated", "showRank"]);
     const writing = byId.get("recent-writing-activity");
     assert.ok(writing, "recent writing activity registered");
-    assert.deepEqual(writing.configSchema.map((field) => field.key), ["days", "notebook", "metric", "density", "showZero", "showAverage", "showStrength"]);
+    assert.deepEqual(writing.configSchema.map((field) => field.key), ["days", "notebook", "metric", "density", "showZero", "view", "yearOffset", "showAverage", "showStrength"]);
     assert.equal(writing.configSchema[0].max, 366);
     assert.deepEqual(byId.get("writing-streak").configSchema.map((field) => field.key), [
         "notebook", "windowDays", "metric", "dailyGoal", "weekStart", "todayGrace", "weeklyGoal", "restDays",
@@ -334,4 +334,17 @@ test("plugin command adapter provides an explicit empty-state hint", () => {
     assert.match(commands, /buildPluginCommandsSnapshot\(this\.getPluginCommands\(\), config/);
     assert.match(commands, /empty: this\.i18n\.homePluginCommandsEmpty/);
     assert.match(commands, /emptyFiltered: this\.i18n\.homePluginCommandsFilteredEmpty/);
+});
+
+test("view assembly honors snapshot-driven viewType within the whitelisted set (T-6684)", () => {
+    const path = require("node:path");
+    const source = readSourceText(path.join(__dirname, "..", "src", "home-view.js"));
+    // 快照驱动的视图切换必须走同一白名单，且允许快照覆盖静态定义。
+    // 断言锚定 **赋值表达式**（`= allowedViewTypes...`）而非裸文本——
+    // `false && allowedViewTypes...` 这类死代码化注入必须被精确拦截。
+    assert.match(source, /const allowedViewTypes = \["calendar", "weekdays", "media", "heatmap"\];/);
+    assert.match(source, /= allowedViewTypes\.includes\(snapshot\.viewType\)/, "snapshot viewType override must be live and whitelisted");
+    assert.match(source, /= allowedViewTypes\.includes\(snapshot\.viewType\)\s*\? snapshot\.viewType\b/, "the override value must actually flow into the effective view type");
+    assert.match(source, /:\s*\(allowedViewTypes\.includes\(definition\.viewType\) \? definition\.viewType : ""\)/, "definition viewType remains the fallback");
+    assert.match(source, /viewType: effectiveViewType,/);
 });
