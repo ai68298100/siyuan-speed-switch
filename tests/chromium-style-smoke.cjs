@@ -201,6 +201,10 @@ window.addEventListener('load', () => {
         sourceHealthStale: '.sw__home-source-health.is-stale',
         docPath: '.sw__doc-path',
         calendarPeriod: '.sw__home-calendar-period',
+        // T-6701 第三波：模块上下文、日历星期头、媒体标题
+        moduleContext: '.sw__home-module-context',
+        calendarHead: '.sw__home-calendar-head',
+        mediaTitle: '[data-module-id="external-anime-bangumi"] .sw__home-media-title',
         statValue: '.sw__home-stat-value',
       };
       const ratios = {};
@@ -310,7 +314,7 @@ try {
             console.log("[" + pass.name + "] contrast " + name + ": " + ratio);
         }
         // T-6697b：普通文本一组 ≥4.5；节假日日历/过期徽章按次要与大字号线 ≥3 归入聚合
-        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath", "mediaSecondary", "windowLabel"].every((name) => (result.contrast[name] || 0) >= 4.5);
+        const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath", "mediaSecondary", "windowLabel", "calendarHead", "mediaTitle"].every((name) => (result.contrast[name] || 0) >= 4.5);
         const badgeTextOk = ["calendarHoliday", "sourceHealthStale"].every((name) => (result.contrast[name] || 0) >= 3);
         console.log("[" + pass.name + "] " + (normalTextOk && badgeTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
         if (!(normalTextOk && badgeTextOk)) contrastAllOk = false;
