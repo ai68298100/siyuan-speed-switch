@@ -343,7 +343,56 @@ function cacheWrite(key, value, now = Date.now()) {
     return value;
 }
 
+// 失败抑制窗（T-6489）：不可达或持续报错的源，在一个短窗内不再重复付出整段超时。
+// 借鉴第三方插件 siyuan-lumina 的"失败即终结"纪律，但保留强制刷新通道：窗内被抑制的
+// 请求抛 backoff，调用方沿用它已有的 stale / 空态分支，四条基本路径不受影响。
+const FAILURE_BACKOFF_MS = 20000;
+const FAILURE_LEDGER_MAX = 32;
+// 不代表端点健康的错误一律不记账：门禁拒绝、调用方取消、环境不支持、窗内自身抑制。
+const NON_BACKOFF_ERRORS = new Set(["blocked_endpoint", "aborted", "unsupported", "backoff"]);
+const failureLedger = new Map();
+
+function noteFetchFailure(url, now = Date.now()) {
+    failureLedger.set(url, now);
+    while (failureLedger.size > FAILURE_LEDGER_MAX) {
+        failureLedger.delete(failureLedger.keys().next().value);
+    }
+}
+
+function inFetchBackoff(url, now = Date.now()) {
+    const at = failureLedger.get(url);
+    if (typeof at !== "number") return false;
+    if (now - at < FAILURE_BACKOFF_MS) return true;
+    failureLedger.delete(url);
+    return false;
+}
+
+function resetLifeFetchBackoff() {
+    failureLedger.clear();
+}
+
+// 两个出网口共用的抑制包装：url 由下游做白名单门禁，此处只按 url 记窗，
+// 不引入任何"任意 URL"通道。options.now 仅供测试注入确定性时钟。
+async function fetchWithBackoff(url, options, fetcher) {
+    const now = Number.isFinite(options?.now) ? options.now : Date.now();
+    if (options?.force !== true && inFetchBackoff(url, now)) throw new Error("backoff");
+    try {
+        const value = await fetcher(url, options);
+        // 成功即作废旧窗：否则端点恢复后仍会被此前的失败记录抑制到窗满。
+        failureLedger.delete(url);
+        return value;
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error || "");
+        if (!options?.signal?.aborted && !NON_BACKOFF_ERRORS.has(reason)) noteFetchFailure(url, now);
+        throw error;
+    }
+}
+
 async function fetchBoundedLifeJson(url, options = {}) {
+    return fetchWithBackoff(url, options, fetchBoundedLifeJsonInner);
+}
+
+async function fetchBoundedLifeJsonInner(url, options = {}) {
     const configuredFeedAllowed = options.allowConfiguredFeed === true && allowedConfiguredFeedUrl(url);
     // 自定义端点门禁：仅当调用方传入确定性谓词（loader 内部先用各自白名单校验过）时放行，
     // 且谓词只针对该 loader 固定的端点形态，不引入任何"任意 URL"通道。
@@ -392,7 +441,12 @@ async function fetchBoundedLifeJson(url, options = {}) {
 
 // 文本抓取变体：与 JSON 抓取共享 bounded/超时/取消流程，但不做 JSON 解析。
 async function fetchBoundedLifeText(url, options = {}) {
-    return fetchBoundedLifeJson(url, {...options, responseKind: "text"});
+    return fetchWithBackoff(url, options, fetchBoundedLifeTextInner);
+}
+
+async function fetchBoundedLifeTextInner(url, options = {}) {
+    // 走 Inner 而非公开包装，避免同一 url 被记两次失败窗。
+    return fetchBoundedLifeJsonInner(url, {...options, responseKind: "text"});
 }
 
 async function loadWeatherLocation(url, options = {}) {
@@ -589,6 +643,8 @@ async function loadMinifluxEntries(url, token, options = {}) {
 
 function clearLifeWidgetCaches() {
     responseCache.clear();
+    // 清缓存同时清掉失败抑制窗：用户显式要求"重来一次"时不该还被旧失败挡着。
+    failureLedger.clear();
 }
 
 function lifeWidgetCacheSize() {
@@ -597,6 +653,8 @@ function lifeWidgetCacheSize() {
 
 module.exports = {
     MAX_RESPONSE_BYTES,
+    FAILURE_BACKOFF_MS,
+    resetLifeFetchBackoff,
     WEATHER_TTL_MS,
     LOCATION_TTL_MS,
     HOLIDAY_TTL_MS,

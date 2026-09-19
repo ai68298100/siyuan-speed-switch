@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const network = require("../src/life-widget-network.js");
 
+
 const geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=Beijing";
 const weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=1&longitude=2";
 const feedUrl = "https://hot.example/api/weibo";
