@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {listZipEntryStats} = require(path.join(__dirname, 'lib', 'zip.cjs'));
+const {listZipEntryStats, listZipEntryNames, readZipEntry} = require(path.join(__dirname, 'lib', 'zip.cjs'));
 const {COMPRESSED_ENTRY_BUDGET_BYTES} = require('../../scripts/release-readiness-metrics.cjs');
 
 const root = path.resolve(__dirname, '..', '..');
@@ -80,4 +80,50 @@ test('release archive reports bounded per-entry resource sizes', (t) => {
     if (baselineDrift) {
         t.diagnostic('baseline review required: update package-resource-baseline.json only after an intentional archive change');
     }
+});
+
+// F7 发布资源契约门禁（T-6707，上游 docs/PLUGIN-PUBLISH.md "Resource declaration"，
+// 2026-09-20 原文核实）：标准条目（index.js / index.css / i18n/*.json）自动可用；
+// 宿主消费的清单与列表资产（plugin.json / icon / preview / README*）由宿主直接
+// 读取；其余任何随包文件都必须在 plugin.json 的 publish.resources 逐文件声明。
+// 声明条目须为精确相对文件名（用 "/"；官方示例 "views/index.html" 允许子目录
+// 文件路径；禁止目录条目、通配符、绝对路径、父级穿越、百分号编码、链接）。
+// 未声明的文件在发布模式下不可服务。
+const STANDARD_ENTRY = (name) =>
+    name === 'index.js' || name === 'index.css' || (name.startsWith('i18n/') && name.endsWith('.json'));
+const HOST_CONSUMED_ENTRIES = new Set(['plugin.json', 'icon.png', 'preview.png', 'README.md', 'README.en-US.md']);
+const RESOURCE_NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._\/-]*$/;
+
+test('every packaged non-standard file is declared in plugin.json publish.resources', () => {
+    const zip = path.join(root, 'package.zip');
+    if (!fs.existsSync(zip)) return;
+    const archive = fs.readFileSync(zip);
+
+    const manifest = JSON.parse(readZipEntry(archive, 'plugin.json').toString('utf8'));
+    const declared = Array.isArray(manifest.publish?.resources) ? manifest.publish.resources : [];
+
+    const entryNames = listZipEntryNames(archive).sort();
+    assert.ok(entryNames.length >= 10,
+        `package.zip must contain the full plugin surface; only ${entryNames.length} entries readable`);
+
+    assert.equal(new Set(declared).size, declared.length, 'publish.resources must not contain duplicates');
+    for (const resource of declared) {
+        assert.match(resource, RESOURCE_NAME_PATTERN,
+            `publish.resources entry ${JSON.stringify(resource)} is not an exact relative filename`);
+        assert.doesNotMatch(resource, /\/$|(^|\/)\.\.(\/|$)/,
+            `publish.resources entry ${JSON.stringify(resource)} must not be a directory or traversal`);
+    }
+
+    const undeclared = entryNames.filter((name) =>
+        !STANDARD_ENTRY(name) && !HOST_CONSUMED_ENTRIES.has(name) && !declared.includes(name));
+    assert.deepEqual(undeclared, [],
+        `packaged files missing from publish.resources (unreachable in publish mode): ${undeclared.join(', ')}`);
+
+    // 体积基线交叉自检（防恒真）：即使 zip 条目读取路径失效，空/缺声明也会
+    // 因基线里登记的非标准条目未获声明而在此精确失败。
+    const baselineNames = Object.keys(readBaseline());
+    const undeclaredInBaseline = baselineNames
+        .filter((name) => !STANDARD_ENTRY(name) && !HOST_CONSUMED_ENTRIES.has(name) && !declared.includes(name));
+    assert.deepEqual(undeclaredInBaseline, [],
+        `baseline files missing from publish.resources: ${undeclaredInBaseline.join(', ')}`);
 });

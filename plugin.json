@@ -23,6 +23,14 @@
   "icon": "icon.png",
   "preview": "preview.png",
   "funding": {"custom": []},
+  "publish": {
+    "resources": [
+      "docs/agent-document-context-m2.md",
+      "docs/architecture.svg",
+      "docs/component-store-guide.md",
+      "docs/interface-map.svg"
+    ]
+  },
   "keywords": [
     "页签切换",
     "tab switch",
