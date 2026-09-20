@@ -121,3 +121,10 @@ v0.24.0 已按宿主路线接线 propose/execute 双能力（agentActionsEnabled
 2. 手机/窄屏会话（一次覆盖 5 项，含本会话 2 个产品修复的验证）
 3. 生命周期 + 组件矩阵（时间最长，可分多次）
 4. 全部通过后：解锁 T-103/T-1219/T-1220 的存档实现，规划 v0.18+ 发布
+
+### 5d 补充：标准夹具（T-6732，2026-09-21）
+
+5d.1/5d.2/5d.3 的验证不再需要手搓日历——标准夹具在 `docs/acceptance-fixtures/`，
+在本目录 `python -m http.server 8000` 后按 `http://localhost:8000/<夹具名>.ics`
+订阅即可（http+本机在 URL 白名单内）。夹具由 `tests/ical-acceptance-fixtures.test.cjs`
+门禁保护（规则漂移/解析失败即红）。webcal 分支（5d.4 前半）需要一个真实公网分享链接。
