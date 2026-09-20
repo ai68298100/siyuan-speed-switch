@@ -415,8 +415,8 @@
   "homeStoreGroupAdded": "已添加 {added}/{total}",
   "homeStoreProviderGroup": "来源插件：{name}",
   "homeIcal": "iCal 日程",
-  "homeDescIcal": "读取用户提供的 .ics 订阅地址，渲染未来窗口内的日程；订阅地址仅用于拉取日程文本，30 分钟缓存",
-  "homeIcalConfigHint": "请先填写 iCal（.ics）订阅地址；支持 HTTPS 公网或本机地址，无需 API Key",
+  "homeDescIcal": "读取用户提供的 iCal 订阅地址，渲染未来窗口内的日程；订阅地址仅用于拉取日程文本，30 分钟缓存",
+  "homeIcalConfigHint": "请先填写 iCal 订阅地址（.ics 链接或 webcal:// 分享链接均可）；支持 HTTPS 公网或本机地址，无需 API Key",
   "homeIcalEmpty": "窗口内暂无日程",
   "homeIcalAllDay": "全天",
 

@@ -415,8 +415,8 @@
   "homeStoreGroupAdded": "{added}/{total} added",
   "homeStoreProviderGroup": "Provider: {name}",
   "homeIcal": "iCal schedule",
-  "homeDescIcal": "Reads the schedule from a user-provided .ics subscription URL for the upcoming window; the URL is only used to fetch schedule text, 30-minute cache",
-  "homeIcalConfigHint": "Enter an iCal (.ics) subscription URL first; HTTPS public or local addresses are supported, no API key required",
+  "homeDescIcal": "Reads the schedule from a user-provided iCal subscription URL for the upcoming window; the URL is only used to fetch schedule text, 30-minute cache",
+  "homeIcalConfigHint": "Enter an iCal subscription URL first (.ics link or webcal:// share link); HTTPS public or local addresses are supported, no API key required",
   "homeIcalEmpty": "No events in the window",
   "homeIcalAllDay": "all-day",
 

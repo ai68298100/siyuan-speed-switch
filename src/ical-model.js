@@ -37,17 +37,22 @@ function boundedText(value, max) {
 }
 
 // T-630-1：订阅配置归一化。URL 传输规则与 allowedConfiguredFeedUrl 对齐：
-// https（或 http+本机）、拒绝 URL 内嵌凭据、要求 .ics 路径。
+// https（或 http+本机）、拒绝 URL 内嵌凭据。
+// T-6724：接受 webcal:// 分享链接（重写为 https——webcal 约定即 https 传输）；
+// 放宽 .ics 路径后缀要求（iCloud/Nextcloud/Fastmail 等真实订阅地址不带 .ics 后缀，
+// 内容解析失败有界降级为错误态，无需路径启发式）。
 function normalizeIcalSubscriptionConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const rawUrl = boundedText(source.url, 512);
+    const candidate = rawUrl.slice(0, 9).toLowerCase() === "webcal://"
+        ? "https://" + rawUrl.slice(9)
+        : rawUrl;
     let url = "";
     try {
-        const parsed = new URL(rawUrl);
+        const parsed = new URL(candidate);
         const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(parsed.hostname.toLowerCase());
         const transportOk = parsed.protocol === "https:" || (parsed.protocol === "http:" && local);
-        const pathOk = /\.ics$/i.test(parsed.pathname);
-        if (transportOk && pathOk && !parsed.username && !parsed.password) {
+        if (transportOk && !parsed.username && !parsed.password) {
             url = `${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.search}`;
         }
     } catch (_) { /* 留空触发配置提示 */ }

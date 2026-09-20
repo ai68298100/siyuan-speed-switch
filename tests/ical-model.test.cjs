@@ -36,9 +36,8 @@ test('ical config accepts https .ics url and clamps bounds', () => {
     assert.equal(config.maxEvents, 12);
     assert.equal(config.title, "课程表");
 });
-test('ical config rejects non-https public transport and non-ics paths', () => {
+test('ical config rejects non-https public transport (path suffix no longer required, T-6724)', () => {
     assert.equal(normalizeIcalSubscriptionConfig({url: "http://example.com/calendar.ics"}).url, "");
-    assert.equal(normalizeIcalSubscriptionConfig({url: "https://example.com/feed.rss"}).url, "");
 });
 test('ical config allows http for local hosts only', () => {
     assert.equal(normalizeIcalSubscriptionConfig({url: "http://localhost/cal.ics"}).url, "http://localhost/cal.ics");
@@ -351,4 +350,23 @@ test('unsupported selector combinations degrade to single occurrence (T-6719)', 
     assert.equal(single('FREQ=DAILY;INTERVAL=2;BYDAY=MO,WE'), 1, 'DAILY+BYDAY needs INTERVAL=1');
     assert.equal(single('FREQ=YEARLY;BYMONTH=12'), 1, 'YEARLY+BYMONTH alone unsupported');
     assert.equal(single('FREQ=YEARLY;BYDAY=FR'), 1, 'YEARLY+BYDAY unsupported');
+});
+// —— T-6724 订阅 URL 策略：webcal 重写 + 放宽 .ics 路径后缀 ——
+
+test('webcal share links are rewritten to https (T-6724)', () => {
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'webcal://example.com/cal.ics'}).url, 'https://example.com/cal.ics');
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'WEBCAL://example.com/cal.ics'}).url, 'https://example.com/cal.ics', 'scheme is case-insensitive');
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'webcal://example.com/calendar.ics?color=blue'}).url, 'https://example.com/calendar.ics?color=blue', 'query strings survive the rewrite');
+});
+
+test('https urls without the .ics path suffix are accepted (T-6724)', () => {
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'https://caldav.icloud.com/published/2/MTA4NjQ'}).url, 'https://caldav.icloud.com/published/2/MTA4NjQ', 'iCloud share links carry no .ics suffix');
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'https://host/remote.php/dav/public-calendars/abc?export'}).url, 'https://host/remote.php/dav/public-calendars/abc?export', 'Nextcloud export endpoints accepted');
+    assert.equal(normalizeIcalSubscriptionConfig({url: "https://example.com/calendar.ics?token=abc"}).url, "https://example.com/calendar.ics?token=abc", "legacy .ics urls keep working");
+});
+
+test('transport and credential rules survive the suffix relaxation (T-6724)', () => {
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'http://example.com/feed'}).url, '', 'plain http to non-local hosts stays rejected');
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'https://user:pass@example.com/feed'}).url, '', 'embedded credentials stay rejected');
+    assert.equal(normalizeIcalSubscriptionConfig({url: 'webcal://user:pass@example.com/cal.ics'}).url, '', 'credentials inside webcal links stay rejected after the rewrite');
 });
