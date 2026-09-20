@@ -83,6 +83,7 @@ test('world clock cities accept offline Chinese city names via the built-in tabl
 });
 
 test('city table zones are all valid IANA identifiers (T-6699b)', () => {
+    assert.ok(Object.keys(CITY_TIME_ZONES).length >= 217, 'city table size floor (accidental shrinkage guard)');
     // 表里任何一个拼错的 zone 都会在运行期被静默丢弃（isValidTimeZone 过滤）——
     // 在门禁层提前拦截，而不是等用户反馈"某个城市不显示"。
     for (const zone of Object.values(CITY_TIME_ZONES)) {

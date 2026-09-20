@@ -299,6 +299,12 @@ const CITY_TIME_ZONES = Object.freeze({
     "墨西哥城": "America/Mexico_City", "Mexico City": "America/Mexico_City", "巴拿马城": "America/Panama", "Panama City": "America/Panama",
     "苏瓦": "Pacific/Fiji", "Fiji": "Pacific/Fiji", "檀香山": "Pacific/Honolulu", "Honolulu": "Pacific/Honolulu",
     "安克雷奇": "America/Anchorage", "Anchorage": "America/Anchorage", "惠灵顿": "Pacific/Auckland", "Wellington": "Pacific/Auckland",
+
+    // —— T-6700b 第七波：区域补充 ——
+    "呼和浩特": "Asia/Shanghai", "银川": "Asia/Shanghai", "南通": "Asia/Shanghai", "扬州": "Asia/Shanghai",
+    "常州": "Asia/Shanghai", "泉州": "Asia/Shanghai", "奥斯陆": "Europe/Oslo", "Oslo": "Europe/Oslo",
+    "雅典": "Europe/Athens", "里斯本": "Europe/Lisbon", "万象": "Asia/Vientiane", "Vientiane": "Asia/Vientiane",
+    "蒙得维的亚": "America/Montevideo", "Montevideo": "America/Montevideo", "亚松森": "America/Asuncion", "Asuncion": "America/Asuncion",
 });
 function normalizeWorldClockConfig(value) {
     const source = value && typeof value === "object" ? value : {};
