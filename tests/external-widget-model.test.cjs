@@ -102,7 +102,6 @@ test("catalog group map keeps four activity entries", () => assert.equal(model.g
 test("catalog title sorting is deterministic across full catalog", () => { const sorted = model.sortExternalWidgetCatalog(); assert.deepEqual(sorted.map((entry) => entry.title), sorted.map((entry) => entry.title).slice().sort((a, b) => a.localeCompare(b))); });
 test("catalog availability sorting starts with builtin", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog(), "availability")[0].availability, "builtin"));
 test("catalog availability sorting ends with reference", () => assert.equal(model.sortExternalWidgetCatalog(model.listExternalWidgetCatalog(), "availability").at(-1).availability, "reference"));
-test("catalog guide links are unique", () => { const links = model.listExternalWidgetCatalog().map((entry) => model.buildExternalWidgetGuideLink(entry.moduleId)); assert.equal(new Set(links).size, links.length); });
 test("catalog state list preserves catalog count", () => assert.equal(model.normalizeExternalWidgetStateList(model.listExternalWidgetCatalog()).length, 20));
 test("catalog state list module ids are unique", () => { const ids = model.normalizeExternalWidgetStateList(model.listExternalWidgetCatalog()).map((entry) => entry.moduleId); assert.equal(new Set(ids).size, ids.length); });
 test("catalog snapshots preserve catalog module ids", () => { const snapshots = model.listExternalWidgetCatalog().map((entry) => model.buildExternalWidgetSnapshot(entry)); assert.equal(new Set(snapshots.map((snapshot) => snapshot.moduleId)).size, 20); });
@@ -147,11 +146,6 @@ test("summary custom list counts reference", () => assert.equal(model.summarizeE
 test("summary custom list counts configured auth", () => assert.equal(model.summarizeExternalWidgets([{moduleId: "x", auth: "api-key"}]).needsConfiguration, 1));
 test("group custom invalid category falls back to time", () => assert.equal(model.groupExternalWidgets([{moduleId: "x", category: "bad"}]).has("time"), true));
 test("group custom entries retain normalized order", () => assert.deepEqual(model.groupExternalWidgets([{moduleId: "b", category: "media"}, {moduleId: "a", category: "media"}]).get("media").map((entry) => entry.moduleId), ["b", "a"]));
-test("guide link strips spaces from anchor", () => assert.equal(model.buildExternalWidgetGuideLink("a b"), "docs/component-store-guide.md#ab"));
-test("guide link strips slash from anchor", () => assert.equal(model.buildExternalWidgetGuideLink("a/b"), "docs/component-store-guide.md#ab"));
-test("guide link preserves hyphen anchor", () => assert.equal(model.buildExternalWidgetGuideLink("a-b"), "docs/component-store-guide.md#a-b"));
-test("guide link strips query from base", () => assert.equal(model.buildExternalWidgetGuideLink("x", "guide.md?mode=raw"), "guide.md#x"));
-test("guide link strips fragment from base", () => assert.equal(model.buildExternalWidgetGuideLink("x", "guide.md#old"), "guide.md#x"));
 test("setup API key step is localized", () => assert.ok(model.getExternalWidgetSetupSteps({availability: "conditional", auth: "api-key"}).includes("填写个人 API Key")));
 test("setup endpoint step is localized", () => assert.ok(model.getExternalWidgetSetupSteps({availability: "external", auth: "user-endpoint"}).includes("填写可信的自建服务地址")));
 test("setup local service step is localized", () => assert.ok(model.getExternalWidgetSetupSteps({availability: "external", auth: "local-service"}).includes("启动本机服务并确认回环端口")));
@@ -310,8 +304,6 @@ test("state summary counts degraded health", () => assert.equal(model.summarizeE
 test("catalog title sort is deterministic", () => assert.equal(model.sortExternalWidgetCatalog([{title: "Z"}, {title: "A"}])[0].title, "A"));
 test("catalog availability sort prioritizes builtin", () => assert.equal(model.sortExternalWidgetCatalog([{title: "A", availability: "reference"}, {title: "B", availability: "builtin"}], "availability")[0].availability, "builtin"));
 test("catalog sort handles malformed input", () => assert.deepEqual(model.sortExternalWidgetCatalog(null), []));
-test("guide link includes sanitized module anchor", () => assert.equal(model.buildExternalWidgetGuideLink("external-weather-open-meteo"), "docs/component-store-guide.md#external-weather-open-meteo"));
-test("guide link strips unsafe anchor characters", () => assert.equal(model.buildExternalWidgetGuideLink("a/b"), "docs/component-store-guide.md#ab"));
 test("setup steps explain API key", () => assert.deepEqual(model.getExternalWidgetSetupSteps(model.findExternalWidget("external-movie-tmdb")), ["填写个人 API Key", "确认网络与隐私范围"]));
 test("setup steps explain local service", () => assert.deepEqual(model.getExternalWidgetSetupSteps(model.findExternalWidget("external-activitywatch-time")), ["启动本机服务并确认回环端口"]));
 test("setup steps explain reference limitation", () => assert.deepEqual(model.getExternalWidgetSetupSteps(model.findExternalWidget("external-active-window")), ["启动本机服务并确认回环端口", "仅阅读技术参考，不可直接添加"]));
@@ -445,8 +437,6 @@ test("selectable state accepts ready state", () => assert.equal(model.isExternal
 test("state summary counts healthy entries", () => assert.equal(model.summarizeExternalWidgetStates([{health: "healthy"}]).healthy, 1));
 test("state summary ignores malformed entries", () => assert.deepEqual(model.summarizeExternalWidgetStates([null, "bad"]), {total: 0, selectable: 0, needsSetup: 0, unavailable: 0, reference: 0, healthy: 0, degraded: 0}));
 test("catalog title sort preserves stable ties", () => assert.deepEqual(model.sortExternalWidgetCatalog([{title: "A", moduleId: "1"}, {title: "A", moduleId: "2"}]).map((x) => x.moduleId), ["1", "2"]));
-test("guide link strips query from custom base", () => assert.equal(model.buildExternalWidgetGuideLink("x", "docs/guide.md?raw=1"), "docs/guide.md#x"));
-test("guide link returns cleaned base when module id empty", () => assert.equal(model.buildExternalWidgetGuideLink("", "docs/guide.md"), "docs/guide.md"));
 test("setup steps include network notice for HTTP provider", () => assert.deepEqual(model.getExternalWidgetSetupSteps({integration: "http", availability: "external"}), ["确认网络与隐私范围"]));
 test("setup steps are empty for local direct provider", () => assert.deepEqual(model.getExternalWidgetSetupSteps({integration: "direct", availability: "builtin", auth: "none"}), []));
 test("privacy normalizer keeps preferences-only", () => assert.equal(model.resolveExternalWidgetPrivacyLevel("preferences-only"), "preferences-only"));
@@ -655,11 +645,6 @@ test("state summary counts reference items", () => assert.equal(model.summarizeE
 test("state summary counts healthy items", () => assert.equal(model.summarizeExternalWidgetStates([{health: "healthy"}]).healthy, 1));
 test("state summary counts all degraded health values", () => assert.equal(model.summarizeExternalWidgetStates([{health: "error"}, {health: "stale"}, {health: "offline"}]).degraded, 3));
 test("state summary ignores primitive values", () => assert.equal(model.summarizeExternalWidgetStates(["bad", 1, null]).total, 0));
-test("guide link uses default document", () => assert.equal(model.buildExternalWidgetGuideLink("weather"), "docs/component-store-guide.md#weather"));
-test("guide link sanitizes mixed-case anchor", () => assert.equal(model.buildExternalWidgetGuideLink("weather_01"), "docs/component-store-guide.md#weather01"));
-test("guide link strips query and fragment", () => assert.equal(model.buildExternalWidgetGuideLink("x", "guide.md?raw=1#old"), "guide.md#x"));
-test("guide link returns empty for empty base", () => assert.equal(model.buildExternalWidgetGuideLink("x", ""), ""));
-test("guide link returns cleaned base when module empty", () => assert.equal(model.buildExternalWidgetGuideLink("", "guide.md?raw=1"), "guide.md"));
 test("privacy level accepts none", () => assert.equal(model.resolveExternalWidgetPrivacyLevel("none"), "none"));
 test("privacy level accepts endpoint-only", () => assert.equal(model.resolveExternalWidgetPrivacyLevel("endpoint-only"), "endpoint-only"));
 test("privacy level accepts preferences-only", () => assert.equal(model.resolveExternalWidgetPrivacyLevel("preferences-only"), "preferences-only"));
@@ -1067,6 +1052,5 @@ test("state summary counts mixed degraded states", () => assert.equal(model.summ
 test("title sort uses normalized fallback title", () => assert.equal(model.sortExternalWidgetCatalog([{moduleId: "b"}, {moduleId: "a", title: "A"}])[0].moduleId, "b"));
 test("availability sort keeps unknown fallback stable with reference", () => assert.deepEqual(model.sortExternalWidgetCatalog([{moduleId: "u", title: "U", availability: "wat"}, {moduleId: "r", title: "R", availability: "reference"}], "availability").map((x) => x.moduleId), ["u", "r"]));
 test("filter null options is rejected explicitly", () => assert.throws(() => model.filterExternalWidgets([{moduleId: "x", title: "X"}], null), TypeError));
-test("guide link strips punctuation from anchor", () => assert.equal(model.buildExternalWidgetGuideLink("a!b.c_d"), "docs/component-store-guide.md#abcd"));
 test("setup steps keep auth before HTTP notice", () => assert.deepEqual(model.getExternalWidgetSetupSteps({availability: "external", auth: "user-endpoint", integration: "http"}), ["填写可信的自建服务地址", "确认网络与隐私范围"]));
 test("privacy level rejects numeric values", () => assert.equal(model.resolveExternalWidgetPrivacyLevel(1), "unknown"));

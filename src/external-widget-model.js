@@ -515,12 +515,6 @@ function sortExternalWidgetCatalog(entries, order = "title") {
     }).map(({entry}) => entry);
 }
 
-function buildExternalWidgetGuideLink(moduleId, base = "docs/component-store-guide.md") {
-    const id = boundedText(moduleId, 96).replace(/[^a-zA-Z0-9-]/g, "");
-    const path = boundedText(base, 256).replace(/[?#].*$/, "");
-    return id && path ? `${path}#${id}` : path;
-}
-
 function getExternalWidgetSetupSteps(entry) {
     const item = normalizeExternalWidget(entry);
     const steps = [];
@@ -935,7 +929,6 @@ module.exports = {
     isExternalWidgetSelectable,
     summarizeExternalWidgetStates,
     sortExternalWidgetCatalog,
-    buildExternalWidgetGuideLink,
     getExternalWidgetSetupSteps,
     resolveExternalWidgetPrivacyLevel,
     normalizeExternalWidgetStateList,
