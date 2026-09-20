@@ -40,3 +40,54 @@ test('bysetpos-alone fixture degrades to a single occurrence (5d.1 降级面)', 
     assert.equal(result.ok, true);
     assert.equal(result.events.length, 1, 'isolated BYSETPOS must degrade to the anchor occurrence only');
 });
+
+// —— T-6740 端到端集成：真实回环 HTTP 服务 + 生产加载器全链路（网关→有界抓取→解析）——
+const http = require('node:http');
+const {loadIcalText, loadRssFeed} = require('../src/life-widget-network.js');
+const {parseRssFeed} = require('../src/rss-model.js');
+
+test('fixtures serve over real loopback http and load through the production loader', async () => {
+    const server = http.createServer((req, res) => {
+        const name = decodeURIComponent((req.url || '/').replace(/^\//, ''));
+        const file = path.join(FIXTURE_DIR, name);
+        if (!fs.existsSync(file)) { res.writeHead(404); res.end('not found'); return; }
+        res.writeHead(200, {'content-type': 'text/plain; charset=utf-8'});
+        res.end(fs.readFileSync(file));
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const port = server.address().port;
+    try {
+        for (const name of ['bysetpos-last-weekday.ics', 'daily-weekdays.ics', 'yearly-quarterly-dates.ics', 'bysetpos-alone-invalid.ics']) {
+            const loaded = await loadIcalText(`http://127.0.0.1:${port}/${name}`);
+            assert.equal(loaded.status, 'fresh', `${name} must fetch fresh over loopback http`);
+            const parsed = parseIcsEvents(loaded.text, {now: Date.now()});
+            assert.equal(parsed.ok, true, `${name} must parse after the full load chain`);
+        }
+        const alone = await loadIcalText(`http://127.0.0.1:${port}/bysetpos-alone-invalid.ics`);
+        assert.equal(parseIcsEvents(alone.text, {now: Date.now()}).events.length, 1,
+            'isolated BYSETPOS degrades to a single occurrence through the real load path');
+    } finally {
+        if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+        await new Promise((resolve) => server.close(resolve));
+    }
+});
+
+test('rss fixture loads through the production loader with date tolerance intact', async () => {
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, {'content-type': 'text/xml; charset=utf-8'});
+        res.end(fs.readFileSync(path.join(FIXTURE_DIR, 'rss-date-fallback.xml')));
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+        const port2 = server.address().port;
+        const loaded = await loadRssFeed(`http://127.0.0.1:${port2}/rss-date-fallback.xml`);
+        const parsed = parseRssFeed(loaded.text, {now: Date.now()});
+        assert.equal(parsed.ok, true);
+        assert.equal(parsed.items.length, 3);
+        const rescued = parsed.items.find((item) => item.title.includes('dc:date'));
+        assert.ok(rescued && rescued.timestamp > 0, 'the malformed-pubDate entry keeps its timestamp through the real chain');
+    } finally {
+        if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+        await new Promise((resolve) => server.close(resolve));
+    }
+});
