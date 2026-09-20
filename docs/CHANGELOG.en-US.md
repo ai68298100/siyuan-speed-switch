@@ -5,6 +5,12 @@
 
 ## Changelog (full history)
 
+### v0.27.1 (2026-09-21)
+
+- **iCal recurrence supports BYSETPOS** (MONTHLY/WEEKLY candidate-set selection): "last weekday of the month" style events expand correctly; fixed the silent degradation of ordinal-less MONTHLY BYDAY to a single occurrence (RFC: every matching weekday of the month); standalone BYSETPOS still degrades safely.
+- **Engineering cleanup**: a repository-wide dead-export sweep removed 5 zero-reference items.
+
+
 ### v0.27.0 (2026-09-21)
 
 - **World-clock city table grows to 338 entries (wave 8)**: bilingual asymmetry closed (~70 cities gained their missing language); 24 new dual-language cities added; full-table IANA validation clean.

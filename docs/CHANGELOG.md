@@ -4,6 +4,12 @@
 
 ## 更新日志（完整历史）
 
+### v0.27.1（2026-09-21）
+
+- **iCal 重复规则支持 BYSETPOS**（MONTHLY/WEEKLY 候选集选位）：「每月最后一个工作日」类重复事件正确展开；修正 MONTHLY 无序数 BYDAY 被误降级为单次的语义缺陷（RFC：当月全部匹配星期）；孤立 BYSETPOS 等无效组合维持安全降级。
+- **工程清理**：全仓死导出扫描并移除 5 个零引用死项（home-model DEFAULT_LAYOUT、home-source-model SOURCE_KINDS、life-widget-model WEATHER_CONDITIONS、checkin-bridge CHECKIN_LIST_MAX_ITEMS、util summarizeStorageCapacityReportEventQueue 包装）。
+
+
 ### v0.27.0（2026-09-21）
 
 - **世界时钟城市表扩至 338 城（第八波）**：补齐中英文名不对称（约 70 城补齐缺失语言）；新增 24 城双语条目（堪培拉/达尔文/德黑兰/巴格达/安卡拉/特拉维夫/多哈/基辅/日内瓦/布鲁塞尔/渥太华/卡尔加里/圣迭戈/达拉斯/莫尔兹比港等）；全表 IANA 校验零无效。
