@@ -5,6 +5,13 @@
 
 ## Changelog (full history)
 
+### v0.28.2 (2026-09-21)
+
+- **World-clock city table grows to 460 entries (wave 9)**: Chinese-city English aliases completed plus 25 new dual-language zone groups; full-table IANA validation clean.
+- **iCal subscription URL policy relaxed**: webcal:// links accepted; .ics suffix requirement dropped; security rules unchanged.
+- **RSS/Atom date tolerance**: later date candidates are tried when the first is malformed.
+
+
 ### v0.28.1 (2026-09-21)
 
 - **iCal subscription URL policy relaxed**: webcal:// links accepted; the .ics suffix requirement dropped; security rules unchanged.
