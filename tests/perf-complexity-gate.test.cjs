@@ -19,7 +19,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {sortItems, sanitizeFavorites} = require('../src/util.js');
-const {buildSearchCacheKey, planDocResultsPage} = require('../src/search-model.js');
+const {aggregateSearchResults, buildSearchCacheKey, planDocResultsPage} = require('../src/search-model.js');
 
 const RATIO_CEILING = 3;
 const SAMPLES = 5;
@@ -145,6 +145,39 @@ test('planDocResultsPage complexity stays linear under doubling (perf gate)', (t
         'n=165', 'n=330', 5, RATIO_CEILING);
 });
 
+function makeAggHits(rootCount, hitsPerRoot) {
+    const hits = [];
+    for (let root = 0; root < rootCount; root += 1) {
+        const rootId = `20260920090000-${root.toString(16).padStart(8, '0')}`;
+        for (let hit = 0; hit < hitsPerRoot; hit += 1) {
+            hits.push({
+                rootId,
+                blockId: `${rootId}-b${hit}`,
+                title: `大库文档 ${root}`,
+                path: `/笔记本/项目/大库文档-${root}`,
+                notebookId: '20250910120000-abc1234',
+                snippet: `命中片段 ${root}-${hit}`,
+                source: 'fulltext',
+                score: 1 - hit * 0.01,
+            });
+        }
+    }
+    return hits;
+}
+
+test('aggregateSearchResults complexity stays linear or better under doubling (perf gate)', (t) => {
+    const small = makeAggHits(150, 4);
+    const large = makeAggHits(300, 4);
+    // 聚合层是三层合并与卡片化的咽喉；倍增比值锁复杂度类别，绝对成本由
+    // search-orchestration-perf 的病理性告警线兜底（T-6706：机器速度差异
+    // 被比值自然消去，渐近回退（O(n²) 化）在倍增时比值 ≈4，精确拦截）。
+    aggregateSearchResults(small, {source: 'fulltext'});
+    aggregateSearchResults(large, {source: 'fulltext'});
+    assertDoubling(t, 'aggregateSearchResults',
+        () => aggregateSearchResults(small, {source: 'fulltext'}),
+        () => aggregateSearchResults(large, {source: 'fulltext'}),
+        'hits=600', 'hits=1200', 4, RATIO_CEILING);
+});
 test('marginal rerun absorbs one-shot noise but keeps genuine regressions (self-check)', () => {
     // fake minTime：按调用序交替返回 small=10 / large=32（噪声场景首轮 large 被毛刺拉长到 112）
     let calls = 0;

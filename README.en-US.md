@@ -10,7 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.24.0 is the execution-chain release: a SiYuan agent can now complete multi-step workspace operations via plan → confirm → execute → receipt (each step gated by the host confirmation card, with a one-switch disable in settings), and the minimum SiYuan version rises to 3.8.0. Notes on the v0.23.5 stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
 
-> The development head passes type checking, production build, 6317 automated tests, and mobile/Chromium UI smoke tests. All 58 widgets have completed the component-by-component depth pass (51 full scorecards + 7 check-in bridge render enhancements); the component catalog, layered search with query terms, the agent execution chain (propose / execute via host confirmation cards) and the settings gray-scale switch are documented below.
+> The development head passes type checking, production build, 6318 automated tests, and mobile/Chromium UI smoke tests. All 58 widgets have completed the component-by-component depth pass (51 full scorecards + 7 check-in bridge render enhancements); the component catalog, layered search with query terms, the agent execution chain (propose / execute via host confirmation cards) and the settings gray-scale switch are documented below.
 
 **Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`.
 
@@ -398,7 +398,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 212 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6317 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 212 `*.test.cjs` files under `tests/` and `tests/host/`, currently 6318 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
