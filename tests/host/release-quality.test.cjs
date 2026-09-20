@@ -353,3 +353,17 @@ test('test-count references agree across readme, roadmap, readiness, and audit (
     const auditHit = auditScript.includes(String(theCount) + "/");
     assert.ok(auditHit, 'release-batch-audit regex must cite the same count');
 });
+
+test('version metadata is consistent across manifests, badges, and release lines (T-6744b)', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const pluginManifest = JSON.parse(fs.readFileSync(path.join(root, 'plugin.json'), 'utf8'));
+    const readMe = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+    const readMeEn = fs.readFileSync(path.join(root, 'README.en-US.md'), 'utf8');
+    assert.equal(pkg.version, pluginManifest.version, 'package.json and plugin.json versions must match');
+    const badgeZh = (readMe.match(/version-([0-9.]+)-blue/) || [])[1];
+    const badgeEn = (readMeEn.match(/version-([0-9.]+)-blue/) || [])[1];
+    assert.equal(badgeZh, pkg.version, 'README badge version must match package.json');
+    assert.equal(badgeEn, pkg.version, 'EN README badge version must match package.json');
+    assert.ok(readMe.includes('当前版本为 `v' + pkg.version + '`'), 'zh README release line must cite the current version');
+    assert.ok(readMeEn.includes('current version is `v' + pkg.version + '`'), 'EN README release line must cite the current version');
+});
