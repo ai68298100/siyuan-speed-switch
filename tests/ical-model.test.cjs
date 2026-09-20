@@ -301,3 +301,54 @@ test('bysetpos without a day selector degrades to a single occurrence (T-6716)',
     const result = parseIcsEvents(lines, {now: new Date(2026, 0, 20).getTime()});
     assert.equal(result.events.length, 1, 'BYSETPOS alone is an invalid combination: single occurrence');
 });
+// —— T-6719 RRULE 语义完备二批：DAILY+BYDAY / YEARLY+BYMONTH+BYMONTHDAY / 无效组合降级 ——
+
+test('daily with byday expands weekdays only (T-6719)', () => {
+    const lines = [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20260114T090000',
+        'SUMMARY:工作日站会',
+        'RRULE:FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR;COUNT=5',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(String.fromCharCode(13, 10));
+    const result = parseIcsEvents(lines, {now: new Date(2026, 0, 14).getTime()});
+    const dayOf = result.events.map((event) => event.start && new Date(event.start).getDate());
+    assert.deepEqual(dayOf, [14, 15, 16, 19, 20], 'weekdays only: skips Sat 17 / Sun 18');
+});
+
+test('yearly bymonth+bymonthday expands annual fixed dates (T-6719)', () => {
+    const lines = [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20251205T090000',
+        'SUMMARY:年度固定日',
+        'RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=25;COUNT=2',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(String.fromCharCode(13, 10));
+    const result = parseIcsEvents(lines, {now: new Date(2027, 0, 15).getTime()});
+    const dates = result.events.map((event) => { const d = new Date(event.start); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); });
+    assert.deepEqual(dates, ['2025-12-25', '2026-12-25'], 'annual on Dec 25 regardless of anchor month/day');
+});
+
+test('unsupported selector combinations degrade to single occurrence (T-6719)', () => {
+    const single = (rrule) => parseIcsEvents([
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20260114T090000',
+        'SUMMARY:降级',
+        'RRULE:' + rrule + ';COUNT=5',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(String.fromCharCode(13, 10)), {now: new Date(2026, 0, 14).getTime()}).events.length;
+    assert.equal(single('FREQ=DAILY;BYMONTHDAY=15'), 1, 'DAILY+BYMONTHDAY unsupported');
+    assert.equal(single('FREQ=DAILY;BYMONTH=12'), 1, 'DAILY+BYMONTH unsupported');
+    assert.equal(single('FREQ=DAILY;BYSETPOS=1'), 1, 'DAILY+BYSETPOS unsupported');
+    assert.equal(single('FREQ=WEEKLY;BYMONTHDAY=15'), 1, 'WEEKLY+BYMONTHDAY unsupported');
+    assert.equal(single('FREQ=DAILY;BYDAY=2TU'), 1, 'DAILY+ordinal BYDAY invalid');
+    assert.equal(single('FREQ=DAILY;INTERVAL=2;BYDAY=MO,WE'), 1, 'DAILY+BYDAY needs INTERVAL=1');
+    assert.equal(single('FREQ=YEARLY;BYMONTH=12'), 1, 'YEARLY+BYMONTH alone unsupported');
+    assert.equal(single('FREQ=YEARLY;BYDAY=FR'), 1, 'YEARLY+BYDAY unsupported');
+});

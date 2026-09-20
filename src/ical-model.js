@@ -170,8 +170,9 @@ function resolveIcalDateTime(left, value) {
     return new Date(parts.y, parts.mo, parts.d, parts.h, parts.mi, parts.s).getTime();
 }
 
-// RRULE 子集：FREQ=DAILY/WEEKLY/MONTHLY/YEARLY、INTERVAL、COUNT、UNTIL、WEEKLY 的 BYDAY、
-// MONTHLY 的 BYDAY（含无序数=当月全部匹配星期）与 BYMONTHDAY、BYSETPOS（MONTHLY/WEEKLY 候选集选位）。
+// RRULE 子集：FREQ=DAILY/WEEKLY/MONTHLY/YEARLY、INTERVAL、COUNT、UNTIL、WEEKLY/DAILY 的 BYDAY
+// （DAILY 需 INTERVAL=1，工作日类过滤）、MONTHLY 的 BYDAY（含无序数）与 BYMONTHDAY、
+// YEARLY 的 BYMONTH+BYMONTHDAY 成对、BYSETPOS（MONTHLY/WEEKLY 候选集选位）。
 // 其余组合或无法成立的搭配返回 null → 按单次事件呈现，不猜测语义。
 function parseIcalRrule(value) {
     const parts = String(value || "").split(";").reduce((acc, item) => {
@@ -186,7 +187,7 @@ function parseIcalRrule(value) {
         interval: Math.min(366, Math.max(1, Math.trunc(Number(parts.INTERVAL)) || 1)),
         count: parts.COUNT !== undefined ? Math.min(ICAL_RRULE_MAX_OCCURRENCES, Math.max(1, Math.trunc(Number(parts.COUNT)) || 1)) : null,
         until: parts.UNTIL !== undefined && parseIcalDateValue(parts.UNTIL) !== null ? parseIcalDateValue(parts.UNTIL) : null,
-        byday: freq === "WEEKLY" && parts.BYDAY
+        byday: (freq === "WEEKLY" || freq === "DAILY") && parts.BYDAY
             ? parts.BYDAY.split(",").map((token) => ICAL_RRULE_WEEKDAYS[token.trim()]).filter((n) => Number.isInteger(n))
             : [],
         // T-6695b+T-6716 MONTHLY BYDAY："2TU"=每月第 2 个周二、"-1FR"=最后一个周五；
@@ -210,6 +211,20 @@ function parseIcalRrule(value) {
                 return Number.isFinite(n) && n !== 0 && Math.abs(n) <= 31 ? n : null;
             }).filter((n) => n !== null)
             : [],
+        // T-6719 YEARLY 子集：BYMONTH+BYMONTHDAY 成对（如"每年 12 月 25 日"）；
+        // 单独出现或搭配其他选择器按不支持降级。
+        byYearMonth: freq === "YEARLY" && parts.BYMONTH
+            ? parts.BYMONTH.split(",").slice(0, 24).map((token) => {
+                const n = Math.trunc(Number(token));
+                return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
+            }).filter((n) => n !== null)
+            : [],
+        byYearMonthDay: freq === "YEARLY" && parts.BYMONTHDAY
+            ? parts.BYMONTHDAY.split(",").slice(0, 32).map((token) => {
+                const n = Math.trunc(Number(token));
+                return Number.isFinite(n) && n !== 0 && Math.abs(n) <= 31 ? n : null;
+            }).filter((n) => n !== null)
+            : [],
         // T-6716 BYSETPOS 子集（MONTHLY/WEEKLY）：对周期内生成的候选集重排选位——
         // 正数=升序第 n 个、负数=倒数第 n 个；0、越界（|n|>300）与溢出条目忽略（上限 32 条）。
         bySetPos: ["MONTHLY", "WEEKLY"].includes(freq) && parts.BYSETPOS
@@ -225,6 +240,15 @@ function parseIcalRrule(value) {
         && (freq === "WEEKLY"
             ? rule.byday.length === 0
             : rule.byMonthlyByday.length === 0 && rule.byMonthDay.length === 0)) return null;
+    // T-6719 语义完备守卫：无效/未支持组合显式降级为单次呈现，不静默猜错。
+    if (parts.BYWEEKNO !== undefined || parts.BYYEARDAY !== undefined) return null;
+    if (freq === "DAILY" && (parts.BYMONTHDAY || parts.BYMONTH || parts.BYSETPOS)) return null;
+    if (freq === "DAILY" && parts.BYDAY && (rule.byday.length === 0 || rule.interval !== 1)) return null;
+    if (freq === "WEEKLY" && (parts.BYMONTHDAY || parts.BYMONTH)) return null;
+    if (freq === "MONTHLY" && parts.BYMONTH) return null;
+    if (freq === "YEARLY"
+        && (parts.BYMONTH !== undefined || parts.BYMONTHDAY !== undefined || parts.BYDAY !== undefined || parts.BYSETPOS !== undefined)
+        && !(rule.byYearMonth.length && rule.byYearMonthDay.length)) return null;
     return rule;
 }
 
@@ -250,8 +274,15 @@ function expandIcalRrule(fields, rrule, horizonMs) {
         return occurrences.length < limit;
     };
     if (rrule.freq === "DAILY") {
+        // T-6719 DAILY+BYDAY（工作日类）：按匹配星期过滤步进日；INTERVAL 必须为 1
+        // （否则解析期守卫降级）。无 BYDAY 时与旧口径一致逐 interval 日产出。
+        const dowOf = (dayShift) => (fields.utcFrame === true
+            ? new Date(Date.UTC(get.y, get.mo, get.d + dayShift)).getUTCDay()
+            : new Date(get.y, get.mo, get.d + dayShift).getDay());
         for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
-            if (!pushOccurrence(mk(get.y, get.mo, get.d + i * rrule.interval))) break;
+            const dayShift = i * rrule.interval;
+            if (rrule.byday.length && !rrule.byday.includes(dowOf(dayShift))) continue;
+            if (!pushOccurrence(mk(get.y, get.mo, get.d + dayShift))) break;
         }
         return occurrences;
     }
@@ -357,6 +388,29 @@ function expandIcalRrule(fields, rrule, horizonMs) {
                 ? Date.UTC(get.y, monthShift, day, get.h, get.mi, get.s)
                 : new Date(get.y, monthShift, day, get.h, get.mi, get.s).getTime();
             if (!pushOccurrence(start)) break;
+        }
+        return occurrences;
+    }
+    if (rrule.freq === "YEARLY" && rrule.byYearMonth.length && rrule.byYearMonthDay.length) {
+        // T-6719 YEARLY+BYMONTH+BYMONTHDAY 成对（年度固定日，如"每年 12 月 25 日"）：
+        // 年内按月×日组合升序；不存在的组合跳过（与 2/29 口径一致：该年不发生，不钳制）。
+        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
+            const y = get.y + i * rrule.interval;
+            const starts = [];
+            for (const mo of rrule.byYearMonth) {
+                const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+                for (const rule of rrule.byYearMonthDay) {
+                    const day = rule > 0 ? rule : daysInMonth + 1 + rule;
+                    if (day >= 1 && day <= daysInMonth) starts.push({mo, day});
+                }
+            }
+            starts.sort((left, right) => (left.mo - right.mo) || (left.day - right.day));
+            for (const {mo, day} of starts) {
+                const start = fields.utcFrame === true
+                    ? Date.UTC(y, mo - 1, day, get.h, get.mi, get.s)
+                    : new Date(y, mo - 1, day, get.h, get.mi, get.s).getTime();
+                if (!pushOccurrence(start)) return occurrences;
+            }
         }
         return occurrences;
     }
