@@ -79,3 +79,13 @@ test('title config keeps the raw text bounded without trimming', () => {
     assert.equal(normalizeIcalSubscriptionConfig({title: "  课程表  "}).title, "  课程表  ", "title 有界但不 trim，钉住现状");
     assert.equal(normalizeIcalSubscriptionConfig({title: `${"长".repeat(100)}`}).title.length, 64);
 });
+
+// —— T-6735 加载器网关与配置归一化同口径（v0.28.2 曾出现配置收、拉取拒的半成品缺口）——
+test('ical feed gate mirrors config normalization: webcal-rewritten and suffix-less urls pass (T-6735)', () => {
+    const {allowedIcalFeedUrl} = require('../src/life-widget-network.js');
+    assert.equal(allowedIcalFeedUrl('https://caldav.icloud.com/published/2/MTA4NjQ'), true, 'iCloud share links carry no .ics suffix');
+    assert.equal(allowedIcalFeedUrl('http://localhost:8000/bysetpos-last-weekday.ics'), true, 'http+localhost is the acceptance-fixture serving path');
+    assert.equal(allowedIcalFeedUrl('http://example.com/cal.ics'), false, 'plain http to public hosts stays rejected');
+    assert.equal(allowedIcalFeedUrl('https://user:pass@example.com/cal.ics'), false, 'embedded credentials stay rejected');
+    assert.equal(allowedIcalFeedUrl('webcal://example.com/cal.ics'), false, 'raw webcal never reaches the loader: config normalization rewrites it first');
+});

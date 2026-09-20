@@ -5,6 +5,11 @@
 
 ## Changelog (full history)
 
+### v0.28.3 (2026-09-21)
+
+- **Fixed the iCal feed gateway lagging behind the config policy**: suffix-less addresses saved fine but failed at fetch; the loader gate now mirrors the config normalization.
+
+
 ### v0.28.2 (2026-09-21)
 
 - **World-clock city table grows to 460 entries (wave 9)**: Chinese-city English aliases completed plus 25 new dual-language zone groups; full-table IANA validation clean.

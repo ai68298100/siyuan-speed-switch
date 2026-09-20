@@ -109,8 +109,10 @@ function allowedIcalFeedUrl(value) {
     try {
         const url = new URL(value);
         const local = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+        // T-6724/T-6735：与配置归一化同口径——不再要求 .ics 后缀（iCloud/Nextcloud/
+        // Fastmail 等真实订阅地址不带后缀）；https 或 http+本机、拒绝内嵌凭据不变。
         if ((url.protocol !== "https:" && !(url.protocol === "http:" && local)) || url.username || url.password) return false;
-        return /\.ics$/i.test(url.pathname);
+        return true;
     } catch (_) {
         return false;
     }
