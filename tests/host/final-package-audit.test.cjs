@@ -29,7 +29,7 @@ test('release archive carries the current candidate documentation', () => {
     const buffer = fs.readFileSync(zip);
     const readme = readZipEntry(buffer, 'README.md').toString('utf8');
     assert.match(readme, /verify:release/);
-    assert.match(readme, /当前开发策略/);
+    assert.match(readme, /开发头目标版本/);
     assert.match(readme, /发布前检查/);
     // D-219：ROADMAP 移出发布归档为纯开发文档；完整路线保留在仓库根目录，
     // 由本测试在仓库边界继续把关内容，不再随包分发。
