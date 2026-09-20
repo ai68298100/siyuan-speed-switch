@@ -4,6 +4,12 @@
 
 ## 更新日志（完整历史）
 
+### v0.28.0（2026-09-21）
+
+- **iCal 重复规则语义完备**：BYSETPOS 候选集选位、DAILY+BYDAY 工作日过滤、MONTHLY 无序数 BYDAY 修正、YEARLY+BYMONTH+BYMONTHDAY 年度固定日、8 类无效组合显式降级。
+- **包体结构优化**：城市表按 zone 分组声明（338 城/104 时区），回收约 2.9KB raw 余量，构建期深度等价验证。
+
+
 ### v0.27.1（2026-09-21）
 
 - **iCal 重复规则支持 BYSETPOS**（MONTHLY/WEEKLY 候选集选位）：「每月最后一个工作日」类重复事件正确展开；修正 MONTHLY 无序数 BYDAY 被误降级为单次的语义缺陷（RFC：当月全部匹配星期）；孤立 BYSETPOS 等无效组合维持安全降级。

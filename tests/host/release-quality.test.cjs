@@ -249,12 +249,12 @@ test('release readiness matrix matches generated artifact sizes', () => {
     // keep a tight 1 KiB drift guard while avoiding false failures on Actions.
     assert.ok(metrics.withinDrift(Number(packageMatch[1]), archiveBytes),
         `package.zip size drift exceeds 1 KiB: documented ${packageMatch[1]}, actual ${archiveBytes}`);
-    assert.match(readiness, /v0\.27\.1 发布后 v0\.27\.x 开发头/);
+    assert.match(readiness, /v0\.27\.1 发布后 v0\.28\.x 开发头/);
     assert.match(readiness, /51 个组件完成完整评分卡/);
     assert.match(readiness, /T-6476~T-6663/);
     assert.doesNotMatch(readiness, /前 43 个组件/);
     const releaseOrder = readiness.slice(readiness.indexOf('## 建议发布顺序'));
-    assert.match(releaseOrder, /`v0\.27\.0` 已完成发布/);
+    assert.match(releaseOrder, /`v0\.27\.1` 已完成发布/);
     assert.doesNotMatch(releaseOrder, /v0\.22\.0|作为 v0\.23 准入/);
 });
 

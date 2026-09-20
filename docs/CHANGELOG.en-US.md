@@ -5,6 +5,12 @@
 
 ## Changelog (full history)
 
+### v0.28.0 (2026-09-21)
+
+- **iCal recurrence semantics completed**: BYSETPOS selection, DAILY+BYDAY weekday filtering, MONTHLY ordinal-less BYDAY fix, YEARLY+BYMONTH+BYMONTHDAY annual dates, and 8 explicit degrade guards.
+- **Bundle structure optimization**: the city table declares per IANA zone (338 cities / 104 zones), recovering ~2.9KB raw margin with deep-equality verification.
+
+
 ### v0.27.1 (2026-09-21)
 
 - **iCal recurrence supports BYSETPOS** (MONTHLY/WEEKLY candidate-set selection): "last weekday of the month" style events expand correctly; fixed the silent degradation of ordinal-less MONTHLY BYDAY to a single occurrence (RFC: every matching weekday of the month); standalone BYSETPOS still degrades safely.
