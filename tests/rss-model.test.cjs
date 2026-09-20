@@ -5,6 +5,8 @@
 // 200 条解析上限（超限整体拒绝而非静默截断）、实体单轮解码。
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const rss = require('../src/rss-model.js');
 const network = require('../src/life-widget-network.js');
 const {normalizeRssSubscriptionConfig, parseRssFeed, latestRssItems, decodeXmlEntities, extractAtomLink} = rss;
@@ -302,4 +304,16 @@ test('all candidate dates malformed still yields timestamp zero (T-6725)', () =>
     ].join(String.fromCharCode(10)));
     const parsed = parseRssFeed(text);
     assert.equal(parsed.items[0].timestamp, 0, 'graceful zero without fabricating a time');
+});
+// —— T-6734 验收夹具：rss-date-fallback.xml（runbook 5d.8 配套）——
+test('acceptance fixture rss-date-fallback exercises the multi-candidate fallback', () => {
+    const fixture = path.join(__dirname, '..', 'docs', 'acceptance-fixtures', 'rss-date-fallback.xml');
+    assert.ok(fs.existsSync(fixture), 'fixture must exist next to the tests');
+    const parsed = parseRssFeed(fs.readFileSync(fixture, 'utf8'));
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.items.length, 3);
+    const byTitle = new Map(parsed.items.map((item) => [item.title, item.timestamp]));
+    assert.ok(byTitle.get('标准 pubDate 条目') > 0, 'valid pubDate parses');
+    assert.ok(byTitle.get('pubDate 损坏但 dc:date 完好') > 0, 'dc:date rescues the malformed-pubDate entry');
+    assert.equal(byTitle.get('完全没有日期的条目'), 0, 'no date at all degrades to zero');
 });

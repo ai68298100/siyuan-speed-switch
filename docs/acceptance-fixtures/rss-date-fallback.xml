@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+<title>日期容错验收夹具</title>
+<link>https://example.com/</link>
+<item>
+<title>标准 pubDate 条目</title>
+<link>https://example.com/a</link>
+<pubDate>Mon, 02 Feb 2026 09:00:00 GMT</pubDate>
+</item>
+<item>
+<title>pubDate 损坏但 dc:date 完好</title>
+<link>https://example.com/b</link>
+<pubDate>not-a-date</pubDate>
+<dc:date>2026-02-14T09:30:00Z</dc:date>
+</item>
+<item>
+<title>完全没有日期的条目</title>
+<link>https://example.com/c</link>
+</item>
+</channel>
+</rss>
