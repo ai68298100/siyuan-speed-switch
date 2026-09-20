@@ -324,3 +324,32 @@ test('production sources hoist Intl.Segmenter instead of building one per call',
     assert.equal(total, 1, `Intl.Segmenter must be held exactly once across src (found ${total})`);
     assert.equal(holder, 'util.js', `the single Intl.Segmenter holder must be util.js (found ${holder})`);
 });
+
+
+test('test-count references agree across readme, roadmap, readiness, and audit (T-6742b)', () => {
+    const readMe = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+    const readMeEn = fs.readFileSync(path.join(root, 'README.en-US.md'), 'utf8');
+    const roadMap = fs.readFileSync(path.join(root, 'ROADMAP.md'), 'utf8');
+    const readiness = fs.readFileSync(path.join(root, 'docs', 'release-readiness.md'), 'utf8');
+    const auditScript = fs.readFileSync(path.join(root, 'scripts', 'release-batch-audit.cjs'), 'utf8');
+    // 五处引用必须写同一个数字——T-6724/T-6733 批次曾出现改三漏二的漂移。
+    const digitsAfter = (text, prefix) => {
+        const at = text.indexOf(prefix);
+        if (at < 0) return null;
+        let i = at + prefix.length;
+        let out = '';
+        while (i < text.length && text[i] >= '0' && text[i] <= '9') { out += text[i]; i += 1; }
+        return out ? Number(out) : null;
+    };
+    const numbers = new Set();
+    numbers.add(digitsAfter(readMe, '当前共 '));
+    numbers.add(digitsAfter(readMeEn, 'currently '));
+    numbers.add(digitsAfter(readiness, '完整测试 **'));
+    numbers.add(digitsAfter(roadMap, '全量测试 '));
+    numbers.delete(null);
+    assert.equal(numbers.size, 1, `test-count references diverge: ${[...numbers].join(', ')}`);
+    const theCount = [...numbers][0];
+    assert.equal(theCount >= 5000, true, 'suspiciously low test count');
+    const auditHit = auditScript.includes(String(theCount) + "/");
+    assert.ok(auditHit, 'release-batch-audit regex must cite the same count');
+});
