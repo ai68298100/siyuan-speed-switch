@@ -125,6 +125,8 @@ v0.24.0 已按宿主路线接线 propose/execute 双能力（agentActionsEnabled
 ### 5d 补充：标准夹具（T-6732，2026-09-21）
 
 5d.1/5d.2/5d.3 的验证不再需要手搓日历——标准夹具在 `docs/acceptance-fixtures/`，
-在本目录 `python -m http.server 8000` 后按 `http://localhost:8000/<夹具名>.ics`
-订阅即可（http+本机在 URL 白名单内）。夹具由 `tests/ical-acceptance-fixtures.test.cjs`
-门禁保护（规则漂移/解析失败即红）。webcal 分支（5d.4 前半）需要一个真实公网分享链接。
+在仓库根目录运行 `node scripts/serve-acceptance-fixtures.cjs 8000`（带 CORS 头的零依赖伺服器）
+后按 `http://127.0.0.1:8000/<夹具名>.ics` 订阅即可（http+本机在 URL 白名单内；CORS 头必须——
+插件的浏览器上下文拉取跨源地址需要响应带 Access-Control-Allow-Origin）。夹具由
+`tests/ical-acceptance-fixtures.test.cjs` 门禁保护（规则漂移/解析失败即红）。webcal 分支（5d.4 前半）
+需要一个真实公网分享链接。

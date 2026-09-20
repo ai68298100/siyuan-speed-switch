@@ -5,11 +5,10 @@
 
 ## 用法
 
-1. 在本目录启动一个本机静态服务（URL 策略允许 http+本机）：
+1. 在仓库根目录启动夹具伺服器（带 CORS 头的零依赖伺服器，插件拉取跨源地址需要响应带 Access-Control-Allow-Origin）：
 
    ```bash
-   cd docs/acceptance-fixtures
-   python -m http.server 8000
+   node scripts/serve-acceptance-fixtures.cjs 8000
    ```
 
 2. 在小驴雷切设置 → 第二面板 → iCal 日程组件配置中订阅：
