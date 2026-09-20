@@ -123,6 +123,12 @@ The development head targets `v0.24.0` (not yet published; this line is updated 
 
 ## Changelog
 
+### v0.25.0 (2026-09-20)
+
+- **Tab filter query syntax**: space-separated terms all match (AND); `-term` excludes tabs containing it; "quoted phrase" matches as a whole. Exclusions also filter aggregated workspace cards across the opened and global layers.
+- **World-clock offline city table grows to 217 entries**: the cities field accepts Chinese names directly (上海,东京) with native datalist autocomplete in the config form.
+- **Accessibility**: reduced-motion fallbacks now cover the settings dialog and mobile switcher roots; a gate validates every city-table entry as a valid IANA identifier.
+
 ### v0.24.0 (2026-09-20)
 
 - **Agent execution chain goes live**: two new capabilities — `workspace-plan` (read-only, drafts a bounded ≤8-step plan) and `execute-workspace-plan` (executes the whole plan after one host confirmation card and returns a bounded receipt). Confirmation, timeout and cancellation are handled by the SiYuan host via `actionEffects` declarations; the self-built approval pipeline (6 modules) was removed.

@@ -202,3 +202,9 @@
 
 完整的逐版本更新历史见 [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases)。
 
+
+### v0.25.0（2026-09-20）
+
+- **本地页签过滤查询语法**：空格分隔多词 = AND（全部命中）；`-词` = 排除含该词的页签；`"短语"` = 整体匹配。排除词同时作用于聚合后的全库卡片（opened/global 都生效）。
+- **世界时钟离线城市表扩至 217 城**：`cities` 直接支持中文名与英文别名（如「上海,东京,New York」），配置表单原生 datalist 自动补全。
+- **可访问性**：reduced-motion 回退覆盖设置弹窗与移动切换器根容器；城市表全量 IANA 合法性门禁。
