@@ -170,8 +170,9 @@ function resolveIcalDateTime(left, value) {
     return new Date(parts.y, parts.mo, parts.d, parts.h, parts.mi, parts.s).getTime();
 }
 
-// RRULE 子集：FREQ=DAILY/WEEKLY/MONTHLY、INTERVAL、COUNT、UNTIL、WEEKLY 的 BYDAY。
-// 其余（BYMONTHDAY/BYSETPOS/yearly 类）返回 null → 按单次事件呈现，不猜测语义。
+// RRULE 子集：FREQ=DAILY/WEEKLY/MONTHLY/YEARLY、INTERVAL、COUNT、UNTIL、WEEKLY 的 BYDAY、
+// MONTHLY 的 BYDAY（含无序数=当月全部匹配星期）与 BYMONTHDAY、BYSETPOS（MONTHLY/WEEKLY 候选集选位）。
+// 其余组合或无法成立的搭配返回 null → 按单次事件呈现，不猜测语义。
 function parseIcalRrule(value) {
     const parts = String(value || "").split(";").reduce((acc, item) => {
         const eq = item.indexOf("=");
@@ -180,7 +181,7 @@ function parseIcalRrule(value) {
     }, {});
     const freq = parts.FREQ;
     if (!["DAILY", "WEEKLY", "MONTHLY", "YEARLY"].includes(freq)) return null;
-    return {
+    const rule = {
         freq,
         interval: Math.min(366, Math.max(1, Math.trunc(Number(parts.INTERVAL)) || 1)),
         count: parts.COUNT !== undefined ? Math.min(ICAL_RRULE_MAX_OCCURRENCES, Math.max(1, Math.trunc(Number(parts.COUNT)) || 1)) : null,
@@ -188,8 +189,8 @@ function parseIcalRrule(value) {
         byday: freq === "WEEKLY" && parts.BYDAY
             ? parts.BYDAY.split(",").map((token) => ICAL_RRULE_WEEKDAYS[token.trim()]).filter((n) => Number.isInteger(n))
             : [],
-        // T-6695b MONTHLY BYDAY 序数子集："2TU"=每月第 2 个周二、"-1FR"=最后一个周五；
-        // 无序数前缀（"TU"）在 MONTHLY 语义下视为未支持，整条忽略（回退月内同日步进）。
+        // T-6695b+T-6716 MONTHLY BYDAY："2TU"=每月第 2 个周二、"-1FR"=最后一个周五；
+        // 无序数前缀（"TU"）=当月全部匹配星期（RFC 5545 MONTHLY+BYDAY 语义）。
         byMonthlyByday: freq === "MONTHLY" && parts.BYDAY
             ? parts.BYDAY.split(",").map((token) => {
                 const m = token.trim().match(/^(-?\d{1,2})?([A-Z]{2})$/);
@@ -197,7 +198,7 @@ function parseIcalRrule(value) {
                 const dow = ICAL_RRULE_WEEKDAYS[m[2]];
                 if (!Number.isInteger(dow)) return null;
                 const ordinal = m[1] !== undefined ? Math.trunc(Number(m[1])) : 0;
-                if (ordinal === 0 || Math.abs(ordinal) > 5) return null;
+                if (ordinal !== 0 && Math.abs(ordinal) > 5) return null;
                 return {ordinal, dow};
             }).filter(Boolean)
             : [],
@@ -209,7 +210,22 @@ function parseIcalRrule(value) {
                 return Number.isFinite(n) && n !== 0 && Math.abs(n) <= 31 ? n : null;
             }).filter((n) => n !== null)
             : [],
+        // T-6716 BYSETPOS 子集（MONTHLY/WEEKLY）：对周期内生成的候选集重排选位——
+        // 正数=升序第 n 个、负数=倒数第 n 个；0、越界（|n|>300）与溢出条目忽略（上限 32 条）。
+        bySetPos: ["MONTHLY", "WEEKLY"].includes(freq) && parts.BYSETPOS
+            ? parts.BYSETPOS.split(",").slice(0, 32).map((token) => {
+                const n = Math.trunc(Number(token));
+                return Number.isFinite(n) && n !== 0 && Math.abs(n) <= 300 ? n : null;
+            }).filter((n) => n !== null)
+            : [],
     };
+    // RFC 5545：BYSETPOS 必须与另一 BYxxx 选择器并用；单独出现（WEEKLY 无 BYDAY、
+    // MONTHLY 无 BYDAY 也无 BYMONTHDAY）或搭配 DAILY/YEARLY 时语义不成立，按不支持降级。
+    if (rule.bySetPos.length
+        && (freq === "WEEKLY"
+            ? rule.byday.length === 0
+            : rule.byMonthlyByday.length === 0 && rule.byMonthDay.length === 0)) return null;
+    return rule;
 }
 
 // 按事件自身的帧（UTC 或浮动本地）做日历步进，避免 DST 造成的小时漂移。
@@ -245,6 +261,27 @@ function expandIcalRrule(fields, rrule, horizonMs) {
         }
         return occurrences;
     }
+    if (rrule.freq === "WEEKLY" && rrule.bySetPos.length) {
+        // T-6716 WEEKLY+BYSETPOS：对本周 BYDAY 候选（按日升序）重排选位——
+        // 如 BYDAY=MO,WE,FR;BYSETPOS=2 = 每周第 2 个事件日。首周自锚点日起算（与流式分支口径一致）。
+        for (let step = 0; step < ICAL_RRULE_MAX_ITERATIONS; step += 1) {
+            const weekIndex = Math.floor(step / 7);
+            if (weekIndex % rrule.interval !== 0) continue;
+            const dow = (get.dow + step) % 7;
+            if (!rrule.byday.includes(dow)) continue;
+            const weekStartStep = weekIndex * 7;
+            const weekCandidates = [];
+            for (let cursor = weekStartStep; cursor < weekStartStep + 7 && cursor < ICAL_RRULE_MAX_ITERATIONS; cursor += 1) {
+                if (rrule.byday.includes((get.dow + cursor) % 7)) weekCandidates.push(mk(get.y, get.mo, get.d + cursor));
+            }
+            for (const pos of rrule.bySetPos) {
+                const picked = pos > 0 ? weekCandidates[pos - 1] : weekCandidates[weekCandidates.length + pos];
+                if (picked !== undefined && !pushOccurrence(picked)) return occurrences;
+            }
+            step = weekStartStep + 6;
+        }
+        return occurrences;
+    }
     if (rrule.freq === "WEEKLY") {
         // BYDAY：自锚点日逐日历日步进；命中候选星期且落在第 n 个 interval 周内则产出
         for (let step = 0; step < ICAL_RRULE_MAX_ITERATIONS; step += 1) {
@@ -257,52 +294,51 @@ function expandIcalRrule(fields, rrule, horizonMs) {
         }
         return occurrences;
     }
-    if (rrule.freq === "MONTHLY" && rrule.byMonthDay.length) {
-        // T-6695c MONTHLY BYMONTHDAY 子集：正数=当月第 n 日（该月不存在则跳过，
-        // 不钳制——与"每日/每周"锚点语义不同，BYMONTHDAY 本身就指定目标日）；
-        // 负数=-1 为月末、-2 为倒数第二天，以此类推。月内按日期升序产出。
+    if (rrule.freq === "MONTHLY" && (rrule.bySetPos.length || rrule.byMonthDay.length || rrule.byMonthlyByday.length)) {
+        // T-6695b/c + T-6716 统一 MONTHLY 候选集：BYMONTHDAY（正=第 n 日、负=倒数，
+        // 不存在则跳过不钳制）与 BYDAY（无序数=当月全部匹配星期、带序数=第 n 个/倒数）
+        // 合并去重为月内候选日并升序；BYSETPOS（在位）对该候选集重排选位。
+        // COUNT/UNTIL/地平线由 pushOccurrence 统一约束。
         const daysInMonthOf = (y, mo) => new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
-        for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
-            const monthShift = get.mo + i * rrule.interval;
-            const daysInMonth = daysInMonthOf(get.y, monthShift);
-            const starts = [];
-            for (const rule of rrule.byMonthDay) {
-                const day = rule > 0 ? rule : daysInMonth + 1 + rule;
-                if (day >= 1 && day <= daysInMonth) starts.push({day, ordinal: rule});
-            }
-            starts.sort((left, right) => left.day - right.day);
-            for (const {day} of starts) {
-                const start = fields.utcFrame === true
-                    ? Date.UTC(get.y, monthShift, day, get.h, get.mi, get.s)
-                    : new Date(get.y, monthShift, day, get.h, get.mi, get.s).getTime();
-                if (!pushOccurrence(start)) return occurrences;
-            }
-        }
-        return occurrences;
-    }
-    if (rrule.freq === "MONTHLY" && rrule.byMonthlyByday.length) {
-        // T-6695b MONTHLY BYDAY 序数子集：逐月定位第 n 个/最后一个目标星期，
-        // 月内按日期升序产出；COUNT/UNTIL/地平线由 pushOccurrence 统一约束。
         const nthWeekday = (y, mo, ordinal, dow) => {
-            const daysInMonth = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+            const monthDays = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
             const dowOf = (day) => new Date(Date.UTC(y, mo, day)).getUTCDay();
             if (ordinal > 0) {
                 const first = 1 + ((dow - dowOf(1) + 7) % 7);
                 const day = first + (ordinal - 1) * 7;
-                return day <= daysInMonth ? day : null;
+                return day <= monthDays ? day : null;
             }
-            const day = daysInMonth - ((dowOf(daysInMonth) - dow + 7) % 7) + (ordinal + 1) * 7;
+            const day = monthDays - ((dowOf(monthDays) - dow + 7) % 7) + (ordinal + 1) * 7;
             return day >= 1 ? day : null;
         };
         for (let i = 0; i < ICAL_RRULE_MAX_ITERATIONS; i += 1) {
             const monthShift = get.mo + i * rrule.interval;
-            const starts = [];
-            for (const entry of rrule.byMonthlyByday) {
-                const day = nthWeekday(get.y, monthShift, entry.ordinal, entry.dow);
-                if (day !== null) starts.push({day, ordinal: entry.ordinal});
+            const daysInMonth = daysInMonthOf(get.y, monthShift);
+            const daySet = new Map();
+            for (const rule of rrule.byMonthDay) {
+                const day = rule > 0 ? rule : daysInMonth + 1 + rule;
+                if (day >= 1 && day <= daysInMonth) daySet.set(day, true);
             }
-            starts.sort((left, right) => left.day - right.day);
-            for (const {day} of starts) {
+            for (const entry of rrule.byMonthlyByday) {
+                if (entry.ordinal === 0) {
+                    for (let day = 1; day <= daysInMonth; day += 1) {
+                        if (new Date(Date.UTC(get.y, monthShift, day)).getUTCDay() === entry.dow) daySet.set(day, true);
+                    }
+                } else {
+                    const day = nthWeekday(get.y, monthShift, entry.ordinal, entry.dow);
+                    if (day !== null) daySet.set(day, true);
+                }
+            }
+            let days = [...daySet.keys()].sort((left, right) => left - right);
+            if (rrule.bySetPos.length) {
+                const picked = [];
+                for (const pos of rrule.bySetPos) {
+                    const day = pos > 0 ? days[pos - 1] : days[days.length + pos];
+                    if (day !== undefined) picked.push(day);
+                }
+                days = [...new Set(picked)].sort((left, right) => left - right);
+            }
+            for (const day of days) {
                 const start = fields.utcFrame === true
                     ? Date.UTC(get.y, monthShift, day, get.h, get.mi, get.s)
                     : new Date(get.y, monthShift, day, get.h, get.mi, get.s).getTime();
