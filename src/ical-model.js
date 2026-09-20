@@ -246,9 +246,11 @@ function parseIcalRrule(value) {
             ? rule.byday.length === 0
             : rule.byMonthlyByday.length === 0 && rule.byMonthDay.length === 0)) return null;
     // T-6719 语义完备守卫：无效/未支持组合显式降级为单次呈现，不静默猜错。
+    // T-6747 放宽：DAILY+BYDAY（如"每 2 天限周一/周三"）的星期过滤对任意
+    // INTERVAL 数学上成立（过滤作用于实际步进日期的星期），不再要求 INTERVAL=1。
     if (parts.BYWEEKNO !== undefined || parts.BYYEARDAY !== undefined) return null;
     if (freq === "DAILY" && (parts.BYMONTHDAY || parts.BYMONTH || parts.BYSETPOS)) return null;
-    if (freq === "DAILY" && parts.BYDAY && (rule.byday.length === 0 || rule.interval !== 1)) return null;
+    if (freq === "DAILY" && parts.BYDAY && rule.byday.length === 0) return null;
     if (freq === "WEEKLY" && (parts.BYMONTHDAY || parts.BYMONTH)) return null;
     if (freq === "MONTHLY" && parts.BYMONTH) return null;
     if (freq === "YEARLY"

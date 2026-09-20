@@ -347,8 +347,7 @@ test('unsupported selector combinations degrade to single occurrence (T-6719)', 
     assert.equal(single('FREQ=DAILY;BYSETPOS=1'), 1, 'DAILY+BYSETPOS unsupported');
     assert.equal(single('FREQ=WEEKLY;BYMONTHDAY=15'), 1, 'WEEKLY+BYMONTHDAY unsupported');
     assert.equal(single('FREQ=DAILY;BYDAY=2TU'), 1, 'DAILY+ordinal BYDAY invalid');
-    assert.equal(single('FREQ=DAILY;INTERVAL=2;BYDAY=MO,WE'), 1, 'DAILY+BYDAY needs INTERVAL=1');
-    assert.equal(single('FREQ=YEARLY;BYMONTH=12'), 1, 'YEARLY+BYMONTH alone unsupported');
+        assert.equal(single('FREQ=YEARLY;BYMONTH=12'), 1, 'YEARLY+BYMONTH alone unsupported');
     assert.equal(single('FREQ=YEARLY;BYDAY=FR'), 1, 'YEARLY+BYDAY unsupported');
 });
 // —— T-6724 订阅 URL 策略：webcal 重写 + 放宽 .ics 路径后缀 ——
@@ -369,4 +368,20 @@ test('transport and credential rules survive the suffix relaxation (T-6724)', ()
     assert.equal(normalizeIcalSubscriptionConfig({url: 'http://example.com/feed'}).url, '', 'plain http to non-local hosts stays rejected');
     assert.equal(normalizeIcalSubscriptionConfig({url: 'https://user:pass@example.com/feed'}).url, '', 'embedded credentials stay rejected');
     assert.equal(normalizeIcalSubscriptionConfig({url: 'webcal://user:pass@example.com/cal.ics'}).url, '', 'credentials inside webcal links stay rejected after the rewrite');
+});
+// —— T-6747 DAILY+BYDAY+INTERVAL>1（隔 N 日限星期）——
+test('daily byday with interval 2 expands every-other-day filtered to weekdays (T-6747)', () => {
+    const lines = [
+        'BEGIN:VCALENDAR',
+        'BEGIN:VEVENT',
+        'DTSTART;TZID=Asia/Shanghai:20260112T090000',
+        'SUMMARY:隔日限星期',
+        'RRULE:FREQ=DAILY;INTERVAL=2;BYDAY=MO,WE;COUNT=3',
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ].join(String.fromCharCode(13, 10));
+    const result = parseIcsEvents(lines, {now: new Date(2026, 0, 12).getTime()});
+    const labels = result.events.map((event) => { const d = new Date(event.start); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); });
+    assert.deepEqual(labels, ['2026-1-12', '2026-1-14', '2026-1-26'],
+        'every 2 days from Mon Jan 12 limited to Mon/Wed: 12, 14, 26');
 });
