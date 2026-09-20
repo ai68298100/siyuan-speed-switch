@@ -1,0 +1,38 @@
+name: 功能需求 / Feature request
+description: 想要新功能、新组件或行为改进 / Suggest an idea or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提议！请描述你想解决的问题和使用场景——场景越具体，越容易被采纳。
+        Thanks! Describe the problem and context — concrete scenarios get adopted faster.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题 / The problem
+      description: 现在什么让你不方便或效率低 / what is inconvenient or slow today
+      placeholder: "每当我 … 时，需要 … / Whenever I …, I have to …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的方案 / Expected solution
+      description: 你理想中的行为或呈现方式 / how you would like it to work
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案 / Alternatives considered
+      description: 现在其他工具或手动流程是怎么做的 / workarounds you use today
+
+  - type: checkboxes
+    attributes:
+      label: 确认 / Confirm
+      options:
+        - label: 我已检索 README 与既有 issue，未发现重复 / checked README and existing issues

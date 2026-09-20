@@ -1,0 +1,72 @@
+name: Bug 报告 / Bug report
+description: 插件行为异常、报错、显示问题时使用 / Something is not working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量填写以下信息——**思源版本、插件版本和复现步骤**直接决定排查速度。
+        Thanks! The SiYuan/plugin versions and repro steps below directly affect triage speed.
+
+  - type: input
+    id: siyuan-version
+    attributes:
+      label: 思源笔记版本 / SiYuan version
+      description: 设置 → 关于 → 当前版本 / Settings → About
+      placeholder: "例 / e.g. 3.8.4"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本 / Plugin version
+      description: 设置 → 插件 → 小驴雷切，或 Releases 页面
+      placeholder: "例 / e.g. v0.28.3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: 使用环境 / Environment
+      options:
+        - 桌面客户端 / Desktop client
+        - 浏览器桌面端 / Browser (desktop)
+        - 手机端 / Mobile
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么 / What happened
+      description: 期望的行为 vs 实际的行为 / expected vs actual
+      placeholder: "简洁清晰地描述问题 / A clear description"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: 复现步骤 / Repro steps
+      placeholder: |
+        1. 打开切换器 / open the switcher
+        2. 点击 … / click …
+        3. 出现 … / see …
+
+  - type: textarea
+    id: console-output
+    attributes:
+      label: 控制台报错 / Console errors (if any)
+      description: 桌面端 Ctrl+Shift+I 打开开发者工具，Console 标签页的红色报错截图或文本
+      placeholder: "可粘贴文本或截图 / paste text or screenshots"
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认 / Confirm
+      options:
+        - label: 已将思源本体升级到最新版 / SiYuan itself is up to date
+        - label: 已尝试重启思源后复现 / reproduced after restarting SiYuan

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用说明（先看这里）
+    url: https://github.com/ai68298100/siyuan-speed-switch#readme
+    about: 快速上手、设置说明、常见问题与查询语法
+  - name: 功能需求 / Feature request
+    url: https://github.com/ai68298100/siyuan-speed-switch/issues/new?template=feature_request.yml
+    about: 想要新功能或改进时点这里
