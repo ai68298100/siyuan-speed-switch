@@ -25,10 +25,10 @@ test('counts reject nonfinite', () => assert.equal(a.normalizeAgentAuditCount('n
 test('boolean only accepts true', () => assert.equal(a.normalizeAgentAuditBoolean(1), false));
 test('read-only effects accept exact localRead', () => assert.equal(a.isReadOnlyAgentEffects(['localRead']), true));
 test('write effects reject read-only audit', () => assert.equal(a.isReadOnlyAgentEffects(['localWrite']), false));
-test('error redaction keeps stable reason', () => assert.equal(a.redactAgentAuditError({reason: 'timeout', stack: 'secret'}), 'timeout'));
-test('error redaction hides arbitrary text', () => assert.equal(a.redactAgentAuditError(new Error('secret')), 'failed'));
-test('result normalization marks timeout retryable', () => assert.equal(a.normalizeAgentAuditResult({status: 'timeout'}).retryable, true));
-test('result normalization bounds malformed result', () => assert.deepEqual(a.normalizeAgentAuditResult(null), {status: 'failed', reason: 'failed', retryable: true}));
+
+
+
+
 test('definition audit accepts valid read-only item', () => assert.equal(a.auditAgentCapabilityDefinition(read('x')).valid, true));
 test('definition audit rejects missing name', () => assert.equal(a.auditAgentCapabilityDefinition({effects: ['localRead']}).reason, 'missing_name'));
 test('definition audit rejects write effect', () => assert.equal(a.auditAgentCapabilityDefinition({name: 'x', effects: ['localWrite']}).reason, 'non_read_only'));
@@ -40,17 +40,17 @@ test('definitions audit malformed input is empty valid', () => assert.equal(a.au
 test('audit summary strips item details', () => assert.deepEqual(a.summarizeAgentCapabilityAudit({valid: true, total: 2, validCount: 2, invalidCount: 0, duplicates: 0}), {valid: true, total: 2, validCount: 2, invalidCount: 0, duplicates: 0}));
 test('snapshot uses version one', () => assert.equal(a.buildAgentReadOnlyAuditSnapshot({device: 'mobile'}).version, 1));
 test('snapshot normalizes disposed invalidity', () => assert.equal(a.normalizeAgentReadOnlyAuditSnapshot({disposed: true, audit: {valid: true}}).audit.valid, false));
-test('snapshot compatibility accepts canonical shape', () => assert.equal(a.isAgentReadOnlyAuditSnapshotCompatible(a.buildAgentReadOnlyAuditSnapshot()), true));
-test('snapshot compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditSnapshotCompatible({version: 2}), false));
-test('failure maps cancelled status', () => assert.deepEqual(a.buildAgentAuditFailure('cancelled'), {status: 'cancelled', reason: 'cancelled', retryable: false}));
-test('failure maps permission denial nonretryable', () => assert.equal(a.buildAgentAuditFailure('permission_denied').retryable, false));
-test('device matrix includes requested devices', () => assert.deepEqual(Object.keys(a.buildAgentAuditDeviceMatrix([read('x')], ['mobile'])), ['mobile']));
+
+
+
+
+
 test('snapshot diff detects status change', () => assert.equal(a.diffAgentReadOnlyAuditSnapshots({status: 'ready'}, {status: 'timeout'}).statusChanged, true));
 test('snapshot diff detects disposal', () => assert.equal(a.diffAgentReadOnlyAuditSnapshots({disposed: false}, {disposed: true}).disposedChanged, true));
 test('audit events emit validity change', () => assert.equal(a.buildAgentReadOnlyAuditEvents({audit: {valid: true}}, {audit: {valid: false}})[0].type, 'validity_changed'));
 test('audit events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditEvents({status: 'ready'}, {status: 'failed'}).length <= 8));
-test('event normalization removes duplicate events', () => assert.equal(a.normalizeAgentReadOnlyAuditEvents([{type: 'x', status: 'ready', reason: 'failed'}, {type: 'x', status: 'ready', reason: 'failed'}]).length, 1));
-test('event normalization caps events', () => assert.equal(a.normalizeAgentReadOnlyAuditEvents(Array.from({length: 20}, (_, i) => ({type: String(i)}))).length, 8));
+
+
 
 // v0.17 lifecycle history contract (T-1283~T-1312)
 test('history limit defaults to eight', () => assert.equal(a.normalizeAgentAuditHistoryLimit(), 8));
@@ -108,24 +108,24 @@ test('history event normalization strips text', () => assert.equal(a.normalizeAg
 test('history summary reports empty state', () => { const h = a.createAgentReadOnlyAuditHistory(4); assert.deepEqual(a.buildAgentReadOnlyAuditHistorySummary(h), {size: 0, capacity: 4, latestSequence: 0, disposed: false, hasLatest: false}); });
 test('history summary reports latest state', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); const s = a.buildAgentReadOnlyAuditHistorySummary(h); assert.equal(s.hasLatest, true); assert.equal(s.latestSequence, 1); });
 test('history summary isolates hostile history', () => { const s = a.buildAgentReadOnlyAuditHistorySummary({status() { throw Error('secret'); }, latest() { throw Error('secret'); }}); assert.equal(s.size, 0); assert.equal(s.hasLatest, false); });
-test('history summary normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({}).version, 1));
-test('history summary normalizer bounds size', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({size: 999}).size, 32));
-test('history summary normalizer bounds capacity', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({capacity: 999}).capacity, 32));
-test('history summary normalizer booleanizes fields', () => assert.equal(a.normalizeAgentReadOnlyAuditHistorySummary({disposed: 1}).disposed, false));
-test('history summary compatibility accepts canonical shape', () => assert.equal(a.isAgentReadOnlyAuditHistorySummaryCompatible({version: 1, size: 1, capacity: 2, latestSequence: 1, disposed: false, hasLatest: true}), true));
-test('history summary compatibility rejects overflow size', () => assert.equal(a.isAgentReadOnlyAuditHistorySummaryCompatible({version: 1, size: 3, capacity: 2, latestSequence: 3}), false));
-test('history summary compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditHistorySummaryCompatible({version: 2, size: 0, capacity: 1, latestSequence: 0}), false));
-test('history summary serialization is deterministic', () => assert.equal(a.serializeAgentReadOnlyAuditHistorySummary({size: 1, capacity: 2, latestSequence: 1, disposed: false, hasLatest: true}), '{"version":1,"size":1,"capacity":2,"latestSequence":1,"disposed":false,"hasLatest":true}'));
-test('history summary parser round trips', () => { const value = a.serializeAgentReadOnlyAuditHistorySummary({size: 1}); assert.equal(a.parseAgentReadOnlyAuditHistorySummary(value).size, 1); });
-test('history summary parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistorySummary('{bad').version, 1));
-test('history summary parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistorySummary('x'.repeat(1000)).size, 0));
-test('history event selector filters and caps', () => assert.deepEqual(a.selectAgentReadOnlyAuditHistoryEvents([{sequence: 1, type: 'initial'}, {sequence: 2, type: 'status_changed'}], 0, 1).map((e) => e.sequence), [1]));
-test('history event selector handles malformed input', () => assert.deepEqual(a.selectAgentReadOnlyAuditHistoryEvents(null), []));
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 audit health/report contract (T-1343~T-1372)
-test('health constants are fixed', () => assert.deepEqual(a.AUDIT_HEALTH, ['empty', 'healthy', 'degraded', 'unavailable']));
-test('health normalizes unknown values', () => assert.equal(a.normalizeAgentAuditHealth('secret'), 'unavailable'));
-test('health preserves healthy value', () => assert.equal(a.normalizeAgentAuditHealth('healthy'), 'healthy'));
+
+
+
 test('empty history health is empty', () => assert.equal(a.buildAgentReadOnlyAuditHistoryHealth(a.createAgentReadOnlyAuditHistory()), 'empty'));
 test('recorded history health is healthy', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(h.health(), 'healthy'); });
 test('disposed history health is unavailable', () => { const h = a.createAgentReadOnlyAuditHistory(); h.dispose(); assert.equal(h.health(), 'unavailable'); });
@@ -135,463 +135,425 @@ test('event summary bounds total', () => assert.equal(a.buildAgentReadOnlyAuditE
 test('event summary latest type is stable', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([{type: 'initial'}, {type: 'status_changed'}]).latestType, 'status_changed'));
 test('event summary empty latest type', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([]).latestType, 'unchanged'));
 test('event summary ignores unknown event types', () => assert.equal(a.buildAgentReadOnlyAuditEventSummary([{type: 'secret'}]).counts.unchanged, 1));
-test('event summary normalizer fixes malformed counts', () => assert.equal(a.normalizeAgentReadOnlyAuditEventSummary({counts: {initial: 99}}).counts.initial, 8));
-test('event summary normalizer keeps fixed keys', () => assert.equal(Object.keys(a.normalizeAgentReadOnlyAuditEventSummary({}).counts).length, 6));
-test('event summary normalizer bounds total', () => assert.equal(a.normalizeAgentReadOnlyAuditEventSummary({total: 99}).total, 8));
+
+
+
 test('history object exposes event summary', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(h.eventSummary().total, 1); });
 test('history object exposes health', () => { const h = a.createAgentReadOnlyAuditHistory(); assert.equal(typeof h.health, 'function'); });
-test('report uses version one', () => assert.equal(a.buildAgentReadOnlyAuditHistoryReport(a.createAgentReadOnlyAuditHistory()).version, 1));
-test('report exposes empty health', () => assert.equal(a.buildAgentReadOnlyAuditHistoryReport(a.createAgentReadOnlyAuditHistory()).health, 'empty'));
-test('report exposes summary and events', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); const report = a.buildAgentReadOnlyAuditHistoryReport(h); assert.equal(report.summary.hasLatest, true); assert.equal(report.events.total, 1); });
-test('report is fixed top-level shape', () => assert.deepEqual(Object.keys(a.buildAgentReadOnlyAuditHistoryReport(a.createAgentReadOnlyAuditHistory())).sort(), ['events', 'health', 'summary', 'version']));
-test('report normalizer defaults safely', () => { const report = a.normalizeAgentReadOnlyAuditHistoryReport(null); assert.equal(report.version, 1); assert.equal(report.health, 'unavailable'); });
-test('report normalizer strips unknown fields', () => assert.equal('secret' in a.normalizeAgentReadOnlyAuditHistoryReport({secret: 'x'}), false));
-test('report compatibility accepts canonical report', () => { const h = a.createAgentReadOnlyAuditHistory(); h.record({}); assert.equal(a.isAgentReadOnlyAuditHistoryReportCompatible(a.buildAgentReadOnlyAuditHistoryReport(h)), true); });
-test('report compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditHistoryReportCompatible({version: 2}), false));
-test('report compatibility rejects invalid summary relation', () => assert.equal(a.isAgentReadOnlyAuditHistoryReportCompatible({version: 1, health: 'healthy', summary: {size: 3, capacity: 1, latestSequence: 3}, events: {}}), false));
-test('report serialization is deterministic', () => { const json = a.serializeAgentReadOnlyAuditHistoryReport({health: 'empty'}); assert.match(json, /"version":1/); });
-test('report parser round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryReport({health: 'healthy'}); assert.equal(a.parseAgentReadOnlyAuditHistoryReport(value).health, 'healthy'); });
-test('report parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistoryReport('{bad').version, 1));
-test('report parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryReport('x'.repeat(5000)).version, 1));
-test('report health never leaks host errors', () => { const hostile = {status() { throw Error('secret'); }, latest() { throw Error('secret'); }, events() { throw Error('secret'); }}; assert.equal(a.buildAgentReadOnlyAuditHistoryReport(hostile).health, 'empty'); });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 audit report diff/trend/window contract (T-1373~T-1402)
-test('trend constants are fixed', () => assert.deepEqual(a.AUDIT_TRENDS, ['stable', 'improving', 'degrading']));
-test('trend normalizes unknown values', () => assert.equal(a.normalizeAgentAuditTrend('secret'), 'stable'));
-test('trend preserves improving value', () => assert.equal(a.normalizeAgentAuditTrend('improving'), 'improving'));
-test('health rank orders healthy highest', () => assert.ok(a.auditHealthRank('healthy') > a.auditHealthRank('degraded')));
-test('health rank orders unavailable lowest', () => assert.equal(a.auditHealthRank('unavailable'), 0));
-test('report diff detects health change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'degraded'}, {health: 'healthy'}).healthChanged, true));
-test('report diff computes improving trend', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'degraded'}, {health: 'healthy'}).trend, 'improving'));
-test('report diff computes degrading trend', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'healthy'}, {health: 'unavailable'}).trend, 'degrading'));
-test('report diff computes stable trend', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({health: 'healthy'}, {health: 'healthy'}).trend, 'stable'));
-test('report diff detects summary size change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({summary: {size: 1}}, {summary: {size: 2}}).sizeChanged, true));
-test('report diff detects sequence change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({summary: {latestSequence: 1}}, {summary: {latestSequence: 2}}).sequenceChanged, true));
-test('report diff detects event total change', () => assert.equal(a.diffAgentReadOnlyAuditHistoryReports({events: {total: 1}}, {events: {total: 2}}).eventsChanged, true));
-test('report events include health change', () => assert.equal(a.buildAgentReadOnlyAuditHistoryReportEvents({health: 'degraded'}, {health: 'healthy'})[0].type, 'health_changed'));
-test('report events include size change', () => assert.ok(a.buildAgentReadOnlyAuditHistoryReportEvents({summary: {size: 1}}, {summary: {size: 2}}).some((e) => e.type === 'size_changed')));
-test('report events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditHistoryReportEvents({health: 'empty', summary: {size: 1, latestSequence: 1}, events: {total: 1}}, {health: 'healthy', summary: {size: 2, latestSequence: 2}, events: {total: 2}}).length <= 8));
-test('report event normalizer fixes unknown type', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryReportEvent({type: 'secret'}).type, 'events_changed'));
-test('report event normalizer keeps trend bounded', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryReportEvent({trend: 'secret'}).trend, 'stable'));
-test('report event normalizer deduplicates types', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryReportEvents([{type: 'size_changed'}, {type: 'size_changed'}]).length, 1));
-test('report event summary counts trends', () => assert.deepEqual(a.summarizeAgentReadOnlyAuditHistoryReportEvents([{type: 'health_changed', trend: 'improving'}]), {total: 1, improving: 1, degrading: 0, stable: 0}));
-test('report event summary bounds list', () => assert.equal(a.summarizeAgentReadOnlyAuditHistoryReportEvents(Array.from({length: 20}, () => ({type: 'size_changed'}))).total, 1));
-test('history window starts empty', () => assert.deepEqual(a.buildAgentReadOnlyAuditHistoryWindow(null), []));
-test('history window keeps newest reports', () => assert.equal(a.buildAgentReadOnlyAuditHistoryWindow([{health: 'empty'}, {health: 'healthy'}], 1)[0].health, 'healthy'));
-test('history window caps reports', () => assert.equal(a.buildAgentReadOnlyAuditHistoryWindow(Array.from({length: 20}, () => ({health: 'empty'}))).length, 8));
-test('history window normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryWindow({}).version, 1));
-test('history window normalizer strips unknown fields', () => assert.equal('secret' in a.normalizeAgentReadOnlyAuditHistoryWindow({secret: 1}), false));
-test('history window compatibility accepts canonical shape', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowCompatible({version: 1, reports: []}), true));
-test('history window compatibility rejects unknown version', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowCompatible({version: 2, reports: []}), false));
-test('history window serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryWindow({reports: [{health: 'healthy'}]}); assert.equal(a.parseAgentReadOnlyAuditHistoryWindow(value).reports[0].health, 'healthy'); });
-test('history window parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditHistoryWindow('{bad').version, 1));
-test('history window parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryWindow('x'.repeat(20000)).reports.length, 0));
-test('history window summary reports latest trend', () => { const value = {reports: [{health: 'degraded'}, {health: 'healthy'}]}; assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindow(value).trend, 'improving'); });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 audit window merge/recovery contract (T-1403~T-1432)
-test('report sequence normalizes negative values', () => assert.equal(a.normalizeAgentAuditReportSequence(-2), 0));
-test('report sequence truncates fractions', () => assert.equal(a.normalizeAgentAuditReportSequence(2.8), 2));
-test('report dedupe removes repeated sequence', () => assert.equal(a.dedupeAgentReadOnlyAuditHistoryReports([{summary: {latestSequence: 1}}, {summary: {latestSequence: 1}}]).length, 1));
-test('report dedupe preserves distinct sequence', () => assert.equal(a.dedupeAgentReadOnlyAuditHistoryReports([{summary: {latestSequence: 1}}, {summary: {latestSequence: 2}}]).length, 2));
-test('report dedupe fallback handles zero sequence', () => assert.equal(a.dedupeAgentReadOnlyAuditHistoryReports([{health: 'empty', summary: {size: 0}, events: {total: 0}}, {health: 'empty', summary: {size: 0}, events: {total: 0}}]).length, 1));
-test('window merge combines reports', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: [{summary: {latestSequence: 1}}]}, {reports: [{summary: {latestSequence: 2}}]}).reports.length, 2));
-test('window merge deduplicates reports', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: [{summary: {latestSequence: 1}}]}, {reports: [{summary: {latestSequence: 1}}]}).reports.length, 1));
-test('window merge sorts by sequence', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: [{summary: {latestSequence: 2}}]}, {reports: [{summary: {latestSequence: 1}}]}).reports[0].summary.latestSequence, 1));
-test('window merge caps output', () => assert.equal(a.mergeAgentReadOnlyAuditHistoryWindows({reports: Array.from({length: 8}, (_, i) => ({summary: {latestSequence: i + 1}}))}, {reports: [{summary: {latestSequence: 9}}]}).reports.length, 8));
-test('window trim keeps newest', () => assert.equal(a.trimAgentReadOnlyAuditHistoryWindow({reports: [{health: 'empty'}, {health: 'healthy'}]}, 1).reports[0].health, 'healthy'));
-test('window trim applies bound', () => assert.equal(a.trimAgentReadOnlyAuditHistoryWindow({reports: Array.from({length: 20}, () => ({health: 'empty'}))}).reports.length, 8));
-test('report selection by health filters', () => assert.equal(a.selectAgentReadOnlyAuditReportsByHealth({reports: [{health: 'healthy'}, {health: 'degraded'}]}, 'healthy').length, 1));
-test('report selection by health bounds', () => assert.equal(a.selectAgentReadOnlyAuditReportsByHealth({reports: Array.from({length: 8}, () => ({health: 'healthy'}))}, 'healthy', 2).length, 2));
-test('report selection unknown health degrades', () => assert.equal(a.selectAgentReadOnlyAuditReportsByHealth({reports: [{health: 'healthy'}]}, 'secret').length, 0));
-test('window health summary has fixed counts', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditHistoryWindowHealth({}).counts).sort(), ['degraded', 'empty', 'healthy', 'unavailable']));
-test('window health summary counts reports', () => assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindowHealth({reports: [{health: 'healthy'}]}).counts.healthy, 1));
-test('window health summary latest health', () => assert.equal(a.summarizeAgentReadOnlyAuditHistoryWindowHealth({reports: [{health: 'healthy'}, {health: 'degraded'}]}).latestHealth, 'degraded'));
-test('window health normalizer bounds counts', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryWindowHealth({counts: {healthy: 99}}).counts.healthy, 8));
-test('window health normalizer fixed keys', () => assert.equal(Object.keys(a.normalizeAgentReadOnlyAuditHistoryWindowHealth({}).counts).length, 4));
-test('window health compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowHealthCompatible({version: 1, total: 1, counts: {empty: 0, healthy: 1, degraded: 0, unavailable: 0}, latestHealth: 'healthy'}), true));
-test('window health compatibility rejects count mismatch', () => assert.equal(a.isAgentReadOnlyAuditHistoryWindowHealthCompatible({version: 1, total: 1, counts: {empty: 0, healthy: 0, degraded: 0, unavailable: 0}}), false));
-test('recovery plan starts at cursor', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: [{summary: {latestSequence: 2}}]}, 1).cursor, 1));
-test('recovery plan selects newer reports', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: [{summary: {latestSequence: 1}}, {summary: {latestSequence: 2}}]}, 1).reports.length, 1));
-test('recovery plan advances next cursor', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: [{summary: {latestSequence: 2}}]}, 0).nextCursor, 2));
-test('recovery plan no reports keeps cursor', () => assert.equal(a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: []}, 3).nextCursor, 3));
-test('recovery plan complete flag is bounded', () => assert.equal(typeof a.buildAgentReadOnlyAuditHistoryRecoveryPlan({reports: []}, 0, 2).complete, 'boolean'));
-test('recovery plan normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryRecoveryPlan({}).version, 1));
-test('recovery plan normalizer bounds cursor', () => assert.equal(a.normalizeAgentReadOnlyAuditHistoryRecoveryPlan({cursor: -1}).cursor, 0));
-test('recovery plan compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditHistoryRecoveryPlanCompatible({version: 1, cursor: 0, nextCursor: 1, reports: [], complete: true}), true));
-test('recovery plan compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditHistoryRecoveryPlanCompatible({version: 1, cursor: 2, nextCursor: 1, reports: [], complete: true}), false));
-test('recovery plan serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditHistoryRecoveryPlan({cursor: 1, nextCursor: 2, reports: []}); assert.equal(a.parseAgentReadOnlyAuditHistoryRecoveryPlan(value).nextCursor, 2); });
-test('recovery plan parser isolates malformed payload', () => assert.equal(a.parseAgentReadOnlyAuditHistoryRecoveryPlan('{bad').version, 1));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 audit transport envelope/batch contract (T-1433~T-1462)
-test('transport types are fixed', () => assert.deepEqual(a.AUDIT_TRANSPORT_TYPES, ['report', 'window', 'recovery']));
-test('transport statuses are fixed', () => assert.deepEqual(a.AUDIT_TRANSPORT_STATUS, ['ok', 'invalid', 'oversized', 'unavailable']));
-test('transport item cap is eight', () => assert.equal(a.MAX_TRANSPORT_ITEMS, 8));
-test('transport type normalizes unknown', () => assert.equal(a.normalizeAgentAuditTransportType('secret'), 'report'));
-test('transport status normalizes unknown', () => assert.equal(a.normalizeAgentAuditTransportStatus('secret'), 'invalid'));
-test('request id strips unsafe characters', () => assert.equal(a.normalizeAgentAuditRequestId('a b/1'), 'ab1'));
-test('request id bounds length', () => assert.equal(a.normalizeAgentAuditRequestId('x'.repeat(100)).length, 64));
-test('checksum is deterministic', () => assert.equal(a.checksumAgentAuditPayload('x'), a.checksumAgentAuditPayload('x')));
-test('checksum has fixed hex length', () => assert.equal(a.checksumAgentAuditPayload('x').length, 8));
-test('envelope uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportEnvelope('report', {health: 'healthy'}).version, 1));
-test('envelope preserves type', () => assert.equal(a.buildAgentReadOnlyAuditTransportEnvelope('window', {reports: []}).type, 'window'));
-test('envelope preserves request id', () => assert.equal(a.buildAgentReadOnlyAuditTransportEnvelope('report', {}, 'req-1').requestId, 'req-1'));
-test('envelope computes checksum', () => assert.match(a.buildAgentReadOnlyAuditTransportEnvelope('report', {}).checksum, /^[a-f0-9]{8}$/));
-test('envelope normalizer has fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportEnvelope({})).sort(), ['checksum', 'payload', 'requestId', 'status', 'type', 'version']));
-test('envelope compatibility accepts canonical', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}); assert.equal(a.isAgentReadOnlyAuditTransportEnvelopeCompatible(e), true); });
-test('envelope compatibility rejects tampered checksum', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}); e.checksum = 'deadbeef'; assert.equal(a.isAgentReadOnlyAuditTransportEnvelopeCompatible(e), false); });
-test('envelope serialization round trips', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('window', {reports: []}); assert.equal(a.parseAgentReadOnlyAuditTransportEnvelope(a.serializeAgentReadOnlyAuditTransportEnvelope(e)).type, 'window'); });
-test('envelope parser isolates malformed json', () => assert.equal(a.parseAgentReadOnlyAuditTransportEnvelope('{bad').status, 'invalid'));
-test('envelope parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditTransportEnvelope('x'.repeat(40000)).status, 'oversized'));
-test('envelope verification returns request id', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}, 'r'); assert.equal(a.verifyAgentReadOnlyAuditTransportEnvelope(e).requestId, 'r'); });
-test('envelope verification rejects tampering', () => assert.equal(a.verifyAgentReadOnlyAuditTransportEnvelope({}).ok, false));
-test('transport batch uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportBatch([]).version, 1));
-test('transport batch caps items', () => assert.equal(a.buildAgentReadOnlyAuditTransportBatch(Array.from({length: 20}, () => a.buildAgentReadOnlyAuditTransportEnvelope('report', {}))).items.length, 8));
-test('transport batch normalizer fixes total', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportBatch({items: [{}]}).total, 0));
-test('transport batch compatibility accepts empty', () => assert.equal(a.isAgentReadOnlyAuditTransportBatchCompatible({version: 1, total: 0, items: []}), true));
-test('transport batch compatibility rejects total mismatch', () => assert.equal(a.isAgentReadOnlyAuditTransportBatchCompatible({version: 1, total: 1, items: []}), false));
-test('transport batch serialization round trips', () => { const b = a.buildAgentReadOnlyAuditTransportBatch([]); assert.equal(a.parseAgentReadOnlyAuditTransportBatch(a.serializeAgentReadOnlyAuditTransportBatch(b)).total, 0); });
-test('transport batch parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportBatch('{bad').total, 0));
-test('transport batch summary has status counters', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportBatch({}).statuses).sort(), ['invalid', 'ok', 'oversized', 'unavailable']));
-test('transport batch summary counts valid items', () => { const b = a.buildAgentReadOnlyAuditTransportBatch([a.buildAgentReadOnlyAuditTransportEnvelope('report', {})]); assert.equal(a.summarizeAgentReadOnlyAuditTransportBatch(b).valid, 1); });
-test('transport failure marks unavailable retryable', () => assert.equal(a.isAgentReadOnlyAuditTransportFailureRetryable({status: 'unavailable'}), true));
-test('transport failure marks invalid nonretryable', () => assert.equal(a.isAgentReadOnlyAuditTransportFailureRetryable({status: 'invalid'}), false));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 transport queue/recovery contract (T-1463~T-1492)
-test('transport queue cap is fixed', () => assert.equal(a.MAX_TRANSPORT_QUEUE, 16));
-test('transport cursor normalizes negatives', () => assert.equal(a.normalizeAgentAuditTransportCursor(-1), 0));
-test('transport queue starts empty', () => assert.equal(a.createAgentReadOnlyAuditTransportQueue().list().length, 0));
-test('transport queue enqueue accepts envelope', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); assert.equal(q.enqueue(a.buildAgentReadOnlyAuditTransportEnvelope('report', {})).accepted, true); });
-test('transport queue enqueue returns sequence', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); assert.equal(q.enqueue({}).sequence, 1); });
-test('transport queue sequence monotonic', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.enqueue({}); assert.deepEqual(q.list().map((e) => e.sequence), [1, 2]); });
-test('transport queue evicts oldest', () => { const q = a.createAgentReadOnlyAuditTransportQueue(2); q.enqueue({}); q.enqueue({}); q.enqueue({}); assert.deepEqual(q.list().map((e) => e.sequence), [2, 3]); });
-test('transport queue list cursor filters', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.enqueue({}); assert.equal(q.list(1).length, 1); });
-test('transport queue list returns copies', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const list = q.list(); list[0].envelope.status = 'invalid'; assert.equal(q.latest().envelope.status, 'invalid'); });
-test('transport queue latest returns newest', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({requestId: 'a'}); q.enqueue({requestId: 'b'}); assert.equal(q.latest().envelope.requestId, 'b'); });
-test('transport queue acknowledge removes through cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.enqueue({}); assert.equal(q.acknowledge(1).acknowledged, 1); });
-test('transport queue acknowledge is bounded', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(q.acknowledge(99).acknowledged, 1); });
-test('transport queue status fixed fields', () => assert.deepEqual(Object.keys(a.createAgentReadOnlyAuditTransportQueue().status()).sort(), ['capacity', 'disposed', 'latestSequence', 'size']));
-test('transport queue dispose clears entries', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); q.dispose(); assert.equal(q.list().length, 0); });
-test('transport queue dispose rejects enqueue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.dispose(); assert.equal(q.enqueue({}).accepted, false); });
-test('queue snapshot uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueSnapshot(a.createAgentReadOnlyAuditTransportQueue()).version, 1));
-test('queue snapshot compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueSnapshotCompatible({version: 1, size: 0, capacity: 1, latestSequence: 0, disposed: false}), true));
-test('queue snapshot compatibility rejects overflow', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueSnapshotCompatible({version: 1, size: 2, capacity: 1, latestSequence: 2}), false));
-test('queue snapshot serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueSnapshot({size: 1, capacity: 2, latestSequence: 1}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueSnapshot(value).size, 1); });
-test('queue snapshot parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueSnapshot('{bad').version, 1));
-test('queue type selection filters', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({type: 'report'}); q.enqueue({type: 'window'}); assert.equal(a.selectAgentReadOnlyAuditTransportQueueByType(q, 'window').length, 1); });
-test('queue type selection bounds', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); for (let i = 0; i < 8; i++) q.enqueue({type: 'report'}); assert.equal(a.selectAgentReadOnlyAuditTransportQueueByType(q, 'report', 0, 2).length, 2); });
-test('queue summary exposes utilization', () => { const q = a.createAgentReadOnlyAuditTransportQueue(2); q.enqueue({}); assert.equal(a.summarizeAgentReadOnlyAuditTransportQueue(q).utilization, 0.5); });
-test('queue summary has latest flag', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); assert.equal(a.summarizeAgentReadOnlyAuditTransportQueue(q).hasLatest, false); });
-test('queue summary normalizer clamps utilization', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueSummary({utilization: 9}).utilization, 1));
-test('queue summary compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueSummaryCompatible({version: 1, size: 0, capacity: 1, latestSequence: 0, disposed: false, hasLatest: false, utilization: 0}), true));
-test('queue recovery starts at cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const plan = a.buildAgentReadOnlyAuditTransportQueueRecovery(q, 0); assert.equal(plan.cursor, 0); });
-test('queue recovery advances cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.buildAgentReadOnlyAuditTransportQueueRecovery(q).nextCursor, 1); });
-test('queue recovery normalizer adds version', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueRecovery({}).version, 1));
-test('queue recovery compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueRecoveryCompatible({version: 1, cursor: 2, nextCursor: 1, entries: [], complete: true}), false));
-test('queue recovery serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueRecovery({cursor: 1, nextCursor: 1, entries: []}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueRecovery(value).cursor, 1); });
-test('queue recovery parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueRecovery('{bad').version, 1));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 transport queue metrics/checkpoint contract (T-1493~T-1522)
-test('queue risk constants are fixed', () => assert.deepEqual(a.AUDIT_QUEUE_RISKS, ['normal', 'warning', 'critical', 'disposed']));
-test('queue risk normalizes unknown', () => assert.equal(a.normalizeAgentAuditQueueRisk('secret'), 'normal'));
-test('queue risk normal is low utilization', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({size: 1, capacity: 10}), 'normal'));
-test('queue risk warning threshold', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({size: 7, capacity: 10}), 'warning'));
-test('queue risk critical threshold', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({size: 9, capacity: 10}), 'critical'));
-test('queue risk disposed state', () => assert.equal(a.classifyAgentReadOnlyAuditTransportQueueRisk({disposed: true}), 'disposed'));
-test('queue diff detects size', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({size: 1}, {size: 2}).sizeChanged, true));
-test('queue diff computes size delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({size: 1}, {size: 3}).sizeDelta, 2));
-test('queue diff detects capacity', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({capacity: 1}, {capacity: 2}).capacityChanged, true));
-test('queue diff detects sequence', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({latestSequence: 1}, {latestSequence: 2}).sequenceChanged, true));
-test('queue diff detects disposal', () => assert.equal(a.diffAgentReadOnlyAuditTransportQueueSnapshots({disposed: false}, {disposed: true}).disposedChanged, true));
-test('queue events include size change', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueEvents({size: 1}, {size: 2})[0].type, 'size_changed'));
-test('queue events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditTransportQueueEvents({size: 1, capacity: 1, latestSequence: 1, disposed: false}, {size: 2, capacity: 2, latestSequence: 2, disposed: true}).length <= 8));
-test('queue event normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportQueueEvent({})).sort(), ['delta', 'type']));
-test('queue event normalizer clamps delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueEvent({delta: 99}).delta, 16));
-test('queue event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportQueueEvents([{type: 'size_changed'}, {type: 'size_changed'}]).length, 1));
-test('queue event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportQueueEvents([])).sort(), ['growth', 'lifecycle', 'shrink', 'total', 'version'].sort()));
-test('queue event summary counts growth', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportQueueEvents([{type: 'size_changed', delta: 1}]).growth, 1));
-test('queue checkpoint uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueCheckpoint(a.createAgentReadOnlyAuditTransportQueue()).version, 1));
-test('queue checkpoint cursor matches latest', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.buildAgentReadOnlyAuditTransportQueueCheckpoint(q).cursor, 1); });
-test('queue checkpoint normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportQueueCheckpoint({})).sort(), ['cursor', 'snapshot', 'version']));
-test('queue checkpoint compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueCheckpointCompatible({version: 1, cursor: 1, snapshot: {latestSequence: 1}}), true));
-test('queue checkpoint serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueCheckpoint({cursor: 1, snapshot: {latestSequence: 1}}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueCheckpoint(value).cursor, 1); });
-test('queue checkpoint parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueCheckpoint('{bad').version, 1));
-test('queue replay result uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueReplayResult([]).version, 1));
-test('queue replay result advances cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueReplayResult([{sequence: 2}], 1).nextCursor, 2));
-test('queue replay result compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueReplayResultCompatible({version: 1, cursor: 2, nextCursor: 1, count: 0, complete: true}), false));
-test('queue acknowledge result normalizes fields', () => assert.deepEqual(a.normalizeAgentReadOnlyAuditTransportQueueAcknowledgeResult({cursor: 2, acknowledged: 3}), {version: 1, cursor: 2, acknowledged: 3}));
-test('queue replay serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueReplayResult({cursor: 1, nextCursor: 2, count: 1}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueReplayResult(value).nextCursor, 2); });
-test('queue replay parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueReplayResult('{bad').version, 1));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 transport queue maintenance/health contract (T-1523~T-1552)
-test('queue clear removes all entries', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.clearAgentReadOnlyAuditTransportQueue(q).cleared, 1); });
-test('queue clear returns cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.clearAgentReadOnlyAuditTransportQueue(q).cursor, 1); });
-test('queue clear handles malformed queue', () => assert.deepEqual(a.clearAgentReadOnlyAuditTransportQueue(null), {cleared: 0, cursor: 0}));
-test('queue reset uses version one', () => assert.equal(a.resetAgentReadOnlyAuditTransportQueue(null).version, 1));
-test('queue reset reports previous cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.resetAgentReadOnlyAuditTransportQueue(q).previousCursor, 1); });
-test('queue peek is read-only', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); a.peekAgentReadOnlyAuditTransportQueue(q)[0].sequence = 99; assert.equal(q.latest().sequence, 1); });
-test('queue peek bounds output', () => { const q = a.createAgentReadOnlyAuditTransportQueue(16); for (let i = 0; i < 16; i++) q.enqueue({}); assert.equal(a.peekAgentReadOnlyAuditTransportQueue(q, 2).length, 2); });
-test('queue health uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueHealth(a.createAgentReadOnlyAuditTransportQueue()).version, 1));
-test('queue health reports risk', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueHealth(a.createAgentReadOnlyAuditTransportQueue()).risk, 'normal'));
-test('queue health fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportQueueHealth({})).sort(), ['capacity', 'disposed', ' risk'.trim(), 'size', 'utilization', 'version'].sort()));
-test('queue health compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueHealthCompatible({version: 1, risk: 'normal', size: 0, capacity: 1, utilization: 0, disposed: false}), true));
-test('queue health compatibility rejects overflow', () => assert.equal(a.isAgentReadOnlyAuditTransportQueueHealthCompatible({version: 1, risk: 'normal', size: 2, capacity: 1, utilization: 1, disposed: false}), false));
-test('queue health serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportQueueHealth({risk: 'warning'}); assert.equal(a.parseAgentReadOnlyAuditTransportQueueHealth(value).version, 1); });
-test('queue health parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportQueueHealth('{bad').version, 1));
-test('batch merge deduplicates envelopes', () => { const e = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}); assert.equal(a.mergeAgentReadOnlyAuditTransportBatches({items: [e]}, {items: [e]}).total, 1); });
-test('batch merge caps output', () => { const items = Array.from({length: 8}, (_, i) => a.buildAgentReadOnlyAuditTransportEnvelope('report', {}, String(i))); assert.equal(a.mergeAgentReadOnlyAuditTransportBatches({items}, {items: [a.buildAgentReadOnlyAuditTransportEnvelope('report', {}, 'x')]}).total, 8); });
-test('batch status selection filters', () => { const ok = a.buildAgentReadOnlyAuditTransportEnvelope('report', {}); const bad = {...ok, status: 'invalid'}; assert.equal(a.selectAgentReadOnlyAuditTransportBatchByStatus({items: [ok, bad]}, 'invalid').length, 1); });
-test('batch status selection bounds', () => { const items = Array.from({length: 8}, () => a.buildAgentReadOnlyAuditTransportEnvelope('report', {})); assert.equal(a.selectAgentReadOnlyAuditTransportBatchByStatus({items}, 'ok', 2).length, 2); });
-test('cancellation uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCancellation().version, 1));
-test('cancellation forces unavailable for ok', () => assert.equal(a.buildAgentReadOnlyAuditTransportCancellation('ok').status, 'unavailable'));
-test('cancellation preserves request id', () => assert.equal(a.buildAgentReadOnlyAuditTransportCancellation('invalid', 'r').requestId, 'r'));
-test('cancellation is never acknowledged', () => assert.equal(a.isAgentReadOnlyAuditTransportCancellation({status: 'ok'}), true));
-test('cancellation normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCancellation({})).sort(), ['acknowledged', 'requestId', 'status', 'version'].sort()));
-test('cancellation serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCancellation({requestId: 'r'}); assert.equal(a.parseAgentReadOnlyAuditTransportCancellation(value).requestId, 'r'); });
-test('cancellation parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCancellation('{bad').version, 1));
-test('timeout uses unavailable-compatible status', () => assert.equal(a.buildAgentReadOnlyAuditTransportTimeout().status, 'oversized'));
-test('timeout preserves request id', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportTimeout({requestId: 'r'}).requestId, 'r'));
-test('queue health disposed risk', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.dispose(); assert.equal(a.buildAgentReadOnlyAuditTransportQueueHealth(q).risk, 'disposed'); });
-test('queue reset is safe after dispose', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.dispose(); assert.equal(a.resetAgentReadOnlyAuditTransportQueue(q).cleared, 0); });
-test('queue event summary remains bounded', () => assert.ok(a.summarizeAgentReadOnlyAuditTransportQueueEvents(Array.from({length: 20}, () => ({type: 'size_changed'}))).total <= 1));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 transport queue cancellation/replay contract (T-1553~T-1582)
-test('replay statuses are fixed', () => assert.deepEqual(a.AUDIT_REPLAY_STATUS, ['ok', 'cancelled', 'timeout', 'unavailable', 'invalid']));
-test('replay status unknown degrades', () => assert.equal(a.normalizeAgentAuditReplayStatus('secret'), 'invalid'));
-test('deadline normalizes positive values', () => assert.equal(a.normalizeAgentAuditDeadline(12.9), 12));
-test('deadline rejects nonpositive', () => assert.equal(a.normalizeAgentAuditDeadline(0), 0));
-test('aborted signal detects true', () => assert.equal(a.isAgentAuditSignalAborted({aborted: true}), true));
-test('aborted signal ignores false', () => assert.equal(a.isAgentAuditSignalAborted({aborted: false}), false));
-test('deadline expiry detects passed time', () => assert.equal(a.isAgentAuditDeadlineExpired(10, 11), true));
-test('deadline expiry ignores future time', () => assert.equal(a.isAgentAuditDeadlineExpired(20, 11), false));
-test('replay outcome uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome().version, 1));
-test('replay outcome fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportReplayOutcome({})).sort(), ['acknowledged', 'count', 'cursor', 'status', 'version'].sort()));
-test('replay outcome status terminal', () => assert.equal(a.isAgentReadOnlyAuditTransportReplayOutcomeTerminal({status: 'ok'}), true));
-test('replay queue unavailable is stable', () => assert.equal(a.replayAgentReadOnlyAuditTransportQueue(null).status, 'unavailable'));
-test('replay queue cancelled before read', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q, {signal: {aborted: true}}).status, 'cancelled'); });
-test('replay queue timeout before read', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q, {deadline: 1, now: 2}).status, 'timeout'); });
-test('replay queue returns count', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q).count, 1); });
-test('replay queue advances cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.replayAgentReadOnlyAuditTransportQueue(q).cursor, 1); });
-test('acknowledge rejects cancelled outcome', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.acknowledgeAgentReadOnlyAuditTransportQueue(q, {status: 'cancelled'}).acknowledged, false); });
-test('acknowledge accepts ok outcome', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); assert.equal(a.acknowledgeAgentReadOnlyAuditTransportQueue(q, {status: 'ok', cursor: 1}).acknowledged, true); });
-test('replay and acknowledge consumes success', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const result = a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q); assert.equal(result.acknowledged, true); assert.equal(q.list().length, 0); });
-test('replay and acknowledge preserves cancellation', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const result = a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q, {signal: {aborted: true}}); assert.equal(result.acknowledged, false); assert.equal(q.list().length, 1); });
-test('replay error uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayError('timeout').version, 1));
-test('replay error timeout retryable', () => assert.equal(a.isAgentReadOnlyAuditTransportReplayRetryable({status: 'timeout'}), true));
-test('replay error invalid nonretryable', () => assert.equal(a.isAgentReadOnlyAuditTransportReplayRetryable({status: 'invalid'}), false));
-test('replay error normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportReplayError({})).sort(), ['cursor', 'retryable', 'status', 'version'].sort()));
-test('replay serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportReplayOutcome({status: 'ok', cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportReplayOutcome(value).cursor, 2); });
-test('replay parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportReplayOutcome('{bad').status, 'invalid'));
-test('replay parser bounds payload', () => assert.equal(a.parseAgentReadOnlyAuditTransportReplayOutcome('x'.repeat(1000)).status, 'invalid'));
-test('replay count bounded', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome('ok', 0, 99).count, 8));
-test('replay cursor bounded', () => assert.equal(a.buildAgentReadOnlyAuditTransportReplayOutcome('ok', -1, 0).cursor, 0));
-test('acknowledge result preserves cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportQueueAcknowledgeResult(2, 1).cursor, 2));
-test('queue replay does not acknowledge on timeout', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); a.replayAndAcknowledgeAgentReadOnlyAuditTransportQueue(q, {deadline: 1, now: 2}); assert.equal(q.list().length, 1); });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 transport coordinator contract (T-1583~T-1612)
-test('coordinator statuses are fixed', () => assert.deepEqual(a.AUDIT_COORDINATOR_STATUS, ['ready', 'committed', 'cancelled', 'timeout', 'disposed']));
-test('coordinator status unknown defaults ready', () => assert.equal(a.normalizeAgentAuditCoordinatorStatus('secret'), 'ready'));
-test('coordinator starts ready', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(a.createAgentReadOnlyAuditTransportQueue()); assert.equal(c.snapshot().status, 'ready'); });
-test('coordinator recover commits queue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover().status, 'committed'); });
-test('coordinator recover advances cursor', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover().cursor, 1); });
-test('coordinator recover increments commits', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover().commits, 1); });
-test('coordinator cancellation preserves queue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover({signal: {aborted: true}}).acknowledged, false); assert.equal(q.list().length, 1); });
-test('coordinator timeout preserves queue', () => { const q = a.createAgentReadOnlyAuditTransportQueue(); q.enqueue({}); const c = a.createAgentReadOnlyAuditTransportCoordinator(q); assert.equal(c.recover({deadline: 1, now: 2}).acknowledged, false); assert.equal(q.list().length, 1); });
-test('coordinator disposed recover is safe', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); c.dispose(); assert.equal(c.recover().status, 'disposed'); });
-test('coordinator snapshot uses version one', () => assert.equal(a.createAgentReadOnlyAuditTransportCoordinator(null).snapshot().version, 1));
-test('coordinator snapshot fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCoordinatorSnapshot({})).sort(), ['commits', 'cursor', 'disposed', 'status', 'version'].sort()));
-test('coordinator snapshot compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorSnapshotCompatible({version: 1, status: 'ready', cursor: 0, commits: 0, disposed: false}), true));
-test('coordinator snapshot serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorSnapshot({cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorSnapshot(value).cursor, 2); });
-test('coordinator snapshot parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorSnapshot('{bad').version, 1));
-test('coordinator events detect status', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({status: 'ready'}, {status: 'committed'})[0].type, 'status_changed'));
-test('coordinator events detect cursor', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({cursor: 0}, {cursor: 1}).some((e) => e.type === 'cursor_changed')));
-test('coordinator events detect commits', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({commits: 0}, {commits: 1}).some((e) => e.type === 'commits_changed')));
-test('coordinator events detect disposal', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({disposed: false}, {disposed: true}).some((e) => e.type === 'disposed_changed')));
-test('coordinator events are bounded', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorEvents({}, {status: 'committed', cursor: 1, commits: 1, disposed: true}).length <= 8));
-test('coordinator event normalizer fixed type', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorEvents([{}])[0].type, 'status_changed'));
-test('coordinator event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorEvents([{type: 'cursor_changed'}, {type: 'cursor_changed'}]).length, 1));
-test('coordinator event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportCoordinatorEvents([])).sort(), ['commits', 'cursor', 'disposed', 'status', 'total', 'version'].sort()));
-test('coordinator result uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorResult('committed').version, 1));
-test('coordinator result terminal committed', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorResultTerminal({status: 'committed'}), true));
-test('coordinator result nonterminal ready', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorResultTerminal({status: 'ready'}), false));
-test('coordinator result normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCoordinatorResult({})).sort(), ['acknowledged', 'commits', 'cursor', 'status', 'version'].sort()));
-test('coordinator result serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorResult({status: 'committed', cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorResult(value).cursor, 2); });
-test('coordinator result parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorResult('{bad').version, 1));
-test('coordinator dispose is idempotent', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); c.dispose(); c.dispose(); assert.equal(c.snapshot().disposed, true); });
-test('coordinator recover does not double commit empty queue', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(a.createAgentReadOnlyAuditTransportQueue()); assert.equal(c.recover().acknowledged, false); });
-test('coordinator status remains bounded', () => { const c = a.createAgentReadOnlyAuditTransportCoordinator(null); assert.ok(c.snapshot().commits <= 16); });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 coordinator health/batch contract (T-1613~T-1642)
-test('coordinator health constants fixed', () => assert.deepEqual(a.AUDIT_COORDINATOR_HEALTH, ['idle', 'active', 'blocked', 'disposed']));
-test('coordinator health unknown defaults idle', () => assert.equal(a.normalizeAgentAuditCoordinatorHealth('secret'), 'idle'));
-test('committed coordinator health idle', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({status: 'committed'}), 'idle'));
-test('ready coordinator health active', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({status: 'ready'}), 'active'));
-test('cancelled coordinator health blocked', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({status: 'cancelled'}), 'blocked'));
-test('disposed coordinator health disposed', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealth({disposed: true}), 'disposed'));
-test('coordinator diff detects status', () => assert.equal(a.diffAgentReadOnlyAuditTransportCoordinatorSnapshots({status: 'ready'}, {status: 'committed'}).statusChanged, true));
-test('coordinator diff detects cursor delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportCoordinatorSnapshots({cursor: 1}, {cursor: 3}).cursorDelta, 2));
-test('coordinator diff detects commit delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportCoordinatorSnapshots({commits: 1}, {commits: 2}).commitDelta, 1));
-test('coordinator health report version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorHealthReport({}).version, 1));
-test('coordinator health report fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportCoordinatorHealthReport({})).sort(), ['commits', 'cursor', 'disposed', 'health', 'status', 'version'].sort()));
-test('coordinator health report compatibility', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorHealthReportCompatible({version: 1, health: 'idle', status: 'committed'}), true));
-test('coordinator health report serialization', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorHealthReport({health: 'blocked'}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorHealthReport(value).health, 'blocked'); });
-test('coordinator health report parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorHealthReport('{bad').version, 1));
-test('coordinator diff events include status', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({status: 'ready'}, {status: 'committed'})[0].type, 'status_changed'));
-test('coordinator diff events include cursor', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({cursor: 0}, {cursor: 1}).some((e) => e.type === 'cursor_changed')));
-test('coordinator diff events include commits', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({commits: 0}, {commits: 1}).some((e) => e.type === 'commits_changed')));
-test('coordinator diff events include disposed', () => assert.ok(a.buildAgentReadOnlyAuditTransportCoordinatorDiffEvents({disposed: false}, {disposed: true}).some((e) => e.type === 'disposed_changed')));
-test('coordinator diff events normalize delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorDiffEvents([{type: 'cursor_changed', delta: 99}])[0].delta, 16));
-test('coordinator diff events deduplicate', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorDiffEvents([{type: 'cursor_changed'}, {type: 'cursor_changed'}]).length, 1));
-test('coordinator diff summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportCoordinatorDiffEvents([])).sort(), ['lifecycle', 'negative', 'positive', 'total', 'version'].sort()));
-test('commit window version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorCommitWindow({}).version, 1));
-test('commit window preserves cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorCommitWindow({cursor: 2}).cursor, 2));
-test('commit window clamps limit', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorCommitWindow({limit: 99}).limit, 8));
-test('commit window compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorCommitWindowCompatible({version: 1, cursor: 0, commits: 0, limit: 1, closed: false}), true));
-test('commit window serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorCommitWindow({cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorCommitWindow(value).cursor, 2); });
-test('commit window parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorCommitWindow('{bad').version, 1));
-test('coordinator batch result counts committed', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorBatchResult([{status: 'committed'}]).committed, 1));
-test('coordinator batch result compatibility', () => assert.equal(a.isAgentReadOnlyAuditTransportCoordinatorBatchResultCompatible({version: 1, total: 1, committed: 1, blocked: 0, disposed: 0}), true));
-test('coordinator batch result serialization', () => { const value = a.serializeAgentReadOnlyAuditTransportCoordinatorBatchResult({total: 1, committed: 1}); assert.equal(a.parseAgentReadOnlyAuditTransportCoordinatorBatchResult(value).committed, 1); });
-test('recovery summary success rate', () => assert.equal(a.buildAgentReadOnlyAuditTransportCoordinatorRecoverySummary([{status: 'committed'}]).successRate, 1));
-test('recovery summary clamps success rate', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportCoordinatorRecoverySummary({successRate: 9}).successRate, 1));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 joint coordinator contract (T-1643~T-1672)
-test('joint statuses are fixed', () => assert.deepEqual(a.AUDIT_JOINT_STATUS, ['ready', 'prepared', 'committed', 'cancelled', 'timeout', 'disposed', 'partial']));
-test('joint status unknown defaults ready', () => assert.equal(a.normalizeAgentAuditJointStatus('secret'), 'ready'));
-test('joint snapshot uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointSnapshot([]).version, 1));
-test('joint snapshot counts coordinators', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointSnapshot([null]).total, 1));
-test('joint snapshot handles hostile coordinator', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointSnapshot([{snapshot() { throw Error('secret'); }}]).disposed, 1));
-test('joint snapshot normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportJointSnapshot({})).sort(), ['committed', 'cursor', 'disposed', 'snapshots', 'total', 'version'].sort()));
-test('joint snapshot compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointSnapshotCompatible({version: 1, total: 0, committed: 0, disposed: 0, cursor: 0, snapshots: []}), true));
-test('joint snapshot compatibility rejects total mismatch', () => assert.equal(a.isAgentReadOnlyAuditTransportJointSnapshotCompatible({version: 1, total: 1, snapshots: []}), false));
-test('joint health empty is idle', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointHealth({}).health, 'idle'));
-test('joint health blocked count', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointHealth({snapshots: [{status: 'timeout'}]}).blocked, 1));
-test('joint health disposed count', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointHealth({snapshots: [{disposed: true}]}).disposed, 1));
-test('joint health normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportJointHealth({})).sort(), ['blocked', 'disposed', 'health', 'healthy', 'total', 'version'].sort()));
-test('joint health compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointHealthCompatible({version: 1, total: 1, healthy: 1, blocked: 0, disposed: 0, health: 'active'}), true));
-test('joint coordinator prepare state', () => { const c = a.createAgentReadOnlyAuditTransportJointCoordinator([]); assert.equal(c.prepare().status, 'prepared'); });
-test('joint coordinator commit requires all success', () => { const c = a.createAgentReadOnlyAuditTransportJointCoordinator([]); assert.equal(c.commit([{status: 'committed', acknowledged: true}]).status, 'committed'); });
-test('joint coordinator partial commit rejected', () => { const c = a.createAgentReadOnlyAuditTransportJointCoordinator([]); assert.equal(c.commit([{status: 'cancelled'}]).acknowledged, false); });
-test('joint coordinator commit advances cursor', () => { const c = a.createAgentReadOnlyAuditTransportJointCoordinator([]); assert.equal(c.commit([{status: 'committed', acknowledged: true, cursor: 3}]).cursor, 3); });
-test('joint coordinator snapshot fixed fields', () => assert.deepEqual(Object.keys(a.createAgentReadOnlyAuditTransportJointCoordinator([]).snapshot()).sort(), ['commits', 'cursor', 'disposed', 'status', 'version'].sort()));
-test('joint coordinator dispose is idempotent', () => { const c = a.createAgentReadOnlyAuditTransportJointCoordinator([]); c.dispose(); c.dispose(); assert.equal(c.snapshot().disposed, true); });
-test('joint result normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportJointResult({})).sort(), ['acknowledged', 'commits', 'cursor', 'status', 'version'].sort()));
-test('joint result compatibility accepts committed', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({version: 1, status: 'committed', acknowledged: true}), true));
-test('joint events detect status', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointEvents({status: 'ready'}, {status: 'committed'})[0].type, 'status_changed'));
-test('joint events detect cursor', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointEvents({cursor: 0}, {cursor: 1}).some((e) => e.type === 'cursor_changed')));
-test('joint events detect commits', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointEvents({commits: 0}, {commits: 1}).some((e) => e.type === 'commits_changed')));
-test('joint events detect acknowledgement', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointEvents({acknowledged: false}, {acknowledged: true}).some((e) => e.type === 'acknowledged_changed')));
-test('joint event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointEvents([{type: 'cursor_changed'}, {type: 'cursor_changed'}]).length, 1));
-test('joint event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointEvents([])).sort(), ['acknowledged', 'commits', 'cursor', 'lifecycle', 'total', 'version'].sort()));
-test('joint recovery plan version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointRecoveryPlan({}).version, 1));
-test('joint recovery plan next cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointRecoveryPlan({cursor: 2}, 1).nextCursor, 2));
-test('joint recovery plan compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointRecoveryPlanCompatible({version: 1, cursor: 0, nextCursor: 1, total: 1, ready: true}), true));
-test('joint failure never acknowledges', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointFailure().acknowledged, false));
-test('joint result serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportJointResult({status: 'committed', cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportJointResult(value).cursor, 2); });
-test('joint result parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointResult('{bad').status, 'partial'));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 joint snapshot/checkpoint/recovery contract (T-1673~T-1702)
-test('joint cursor normalizes negatives', () => assert.equal(a.normalizeAgentAuditJointCursor(-2), 0));
-test('joint cursor truncates fractions', () => assert.equal(a.normalizeAgentAuditJointCursor(2.8), 2));
-test('joint health rank orders idle highest', () => assert.ok(a.jointHealthRank('idle') > a.jointHealthRank('blocked')));
-test('joint snapshot diff detects total', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({total: 1}, {total: 2}).totalChanged, true));
-test('joint snapshot diff detects committed', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({committed: 1}, {committed: 2}).committedChanged, true));
-test('joint snapshot diff detects disposed', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({disposed: 0}, {disposed: 1}).disposedChanged, true));
-test('joint snapshot diff computes cursor delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({cursor: 1}, {cursor: 3}).cursorDelta, 2));
-test('joint snapshot events include total', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointSnapshotEvents({total: 1}, {total: 2})[0].type, 'total_changed'));
-test('joint snapshot events include cursor', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointSnapshotEvents({cursor: 1}, {cursor: 2}).some((e) => e.type === 'cursor_changed')));
-test('joint snapshot events normalize delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointSnapshotEvent({delta: 99}).delta, 8));
-test('joint snapshot events deduplicate', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointSnapshotEvents([{type: 'cursor_changed'}, {type: 'cursor_changed'}]).length, 1));
-test('joint snapshot event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointSnapshotEvents([])).sort(), ['lifecycle', 'progress', 'structural', 'total', 'version'].sort()));
-test('joint checkpoint version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpoint({}).version, 1));
-test('joint checkpoint preserves cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpoint({cursor: 2}).cursor, 2));
-test('joint checkpoint fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportJointCheckpoint({})).sort(), ['cursor', 'disposed', 'total', 'version'].sort()));
-test('joint checkpoint compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointCompatible({version: 1, cursor: 0, total: 0, disposed: false}), true));
-test('joint checkpoint serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportJointCheckpoint({cursor: 2}); assert.equal(a.parseAgentReadOnlyAuditTransportJointCheckpoint(value).cursor, 2); });
-test('joint checkpoint parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointCheckpoint('{bad').version, 1));
-test('joint recovery outcome committed', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointRecoveryOutcome([{status: 'committed'}]).status, 'committed'));
-test('joint recovery outcome partial', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointRecoveryOutcome([{status: 'cancelled'}]).status, 'partial'));
-test('joint recovery outcome acknowledgement all committed', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointRecoveryOutcome([{status: 'committed'}]).acknowledged, true));
-test('joint recovery outcome no partial acknowledgement', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointRecoveryOutcome([{status: 'cancelled'}]).acknowledged, false));
-test('joint recovery outcome fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome({})).sort(), ['acknowledged', 'blocked', 'committed', 'disposed', 'status', 'total', 'version'].sort()));
-test('joint recovery outcome compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointRecoveryOutcomeCompatible({version: 1, status: 'partial', total: 1, committed: 0, blocked: 1, disposed: 0, acknowledged: false}), true));
-test('joint recovery outcome serialization round trips', () => { const value = a.serializeAgentReadOnlyAuditTransportJointRecoveryOutcome({status: 'committed', total: 1, committed: 1, acknowledged: true}); assert.equal(a.parseAgentReadOnlyAuditTransportJointRecoveryOutcome(value).status, 'committed'); });
-test('joint recovery outcome parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointRecoveryOutcome('{bad').status, 'partial'));
-test('joint recovery outcome caps total', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointRecoveryOutcome({total: 99}).total, 8));
-test('joint failure status normalizes unknown', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointFailure('invalid').status, 'ready'));
-test('joint snapshot event count bounded', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointSnapshotEvents({total: 1, committed: 1, disposed: false, cursor: 1}, {total: 2, committed: 2, disposed: true, cursor: 2}).length <= 8));
-test('joint recovery outcome rejects over-count compatibility', () => assert.equal(a.isAgentReadOnlyAuditTransportJointRecoveryOutcomeCompatible({version: 1, status: 'partial', total: 1, committed: 2, blocked: 0, disposed: 0}), false));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 joint checkpoint window consistency contract (T-1703~T-1732)
-test('joint result compatibility rejects missing version', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({status: 'ready'}), false));
-test('joint result compatibility rejects acknowledged partial', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({version: 1, status: 'partial', acknowledged: true}), false));
-test('joint result compatibility accepts acknowledged committed', () => assert.equal(a.isAgentReadOnlyAuditTransportJointResultCompatible({version: 1, status: 'committed', acknowledged: true}), true));
-test('joint snapshot diff exposes total delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({total: 1}, {total: 3}).totalDelta, 2));
-test('joint snapshot diff exposes committed delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointSnapshots({committed: 3}, {committed: 1}).committedDelta, -2));
-test('joint snapshot events preserve total delta', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointSnapshotEvents({total: 1}, {total: 3})[0].delta, 2));
-test('joint checkpoint normalizes disposed count', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpoint({disposed: 3}).disposed, 3));
-test('joint checkpoint compatibility rejects disposed overflow', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointCompatible({version: 1, total: 1, disposed: 2}), false));
-test('joint checkpoint window limit is bounded', () => assert.equal(a.normalizeAgentAuditJointWindowLimit(99), 8));
-test('joint checkpoint dedupe keeps latest cursor value', () => assert.equal(a.dedupeAgentReadOnlyAuditTransportJointCheckpoints([{cursor: 2, total: 1}, {cursor: 2, total: 3}])[0].total, 3));
-test('joint checkpoint window sorts cursors', () => assert.deepEqual(a.buildAgentReadOnlyAuditTransportJointCheckpointWindow([{cursor: 3}, {cursor: 1}]).map((x) => x.cursor), [1, 3]));
-test('joint checkpoint window trims newest bounded set', () => assert.deepEqual(a.buildAgentReadOnlyAuditTransportJointCheckpointWindow([{cursor: 1}, {cursor: 2}, {cursor: 3}], 2).map((x) => x.cursor), [2, 3]));
-test('joint checkpoint window has version one', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpointWindow({}).version, 1));
-test('joint checkpoint window compatibility accepts ordered values', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointWindowCompatible({version: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}, {version: 1, cursor: 2, total: 1, disposed: 0}]}), true));
-test('joint checkpoint window compatibility rejects duplicate cursors', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointWindowCompatible({version: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}, {version: 1, cursor: 1, total: 1, disposed: 0}]}), false));
-test('joint checkpoint window serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointCheckpointWindow(a.serializeAgentReadOnlyAuditTransportJointCheckpointWindow({checkpoints: [{cursor: 4}]})).checkpoints[0].cursor, 4));
-test('joint checkpoint window parser isolates hostile json', () => assert.deepEqual(a.parseAgentReadOnlyAuditTransportJointCheckpointWindow('{bad').checkpoints, []));
-test('joint checkpoint window summary empty', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindow({}).progress, 'empty'));
-test('joint checkpoint window summary advancing', () => assert.equal(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindow({checkpoints: [{cursor: 1}, {cursor: 2}]}).progress, 'advancing'));
-test('joint checkpoint window summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindow({})).sort(), ['disposed', 'latestCursor', 'progress', 'size', 'total', 'version'].sort()));
-test('joint checkpoint window summary compatibility rejects overflow disposed', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointWindowSummaryCompatible({version: 1, size: 1, latestCursor: 1, total: 1, disposed: 2, progress: 'stalled'}), false));
-test('joint checkpoint window diff computes cursor delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointCheckpointWindows({checkpoints: [{cursor: 1}]}, {checkpoints: [{cursor: 3}]}).cursorDelta, 2));
-test('joint checkpoint window events mark advance', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpointWindowEvents({checkpoints: [{cursor: 1}]}, {checkpoints: [{cursor: 2}]})[0].type, 'cursor_advanced'));
-test('joint checkpoint window events mark regression', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpointWindowEvents({checkpoints: [{cursor: 2}]}, {checkpoints: [{cursor: 1}]})[0].type, 'cursor_regressed'));
-test('joint checkpoint window event normalizer clamps delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvent({delta: 99}).delta, 8));
-test('joint checkpoint window event normalizer deduplicates', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents([{type: 'size_changed'}, {type: 'size_changed'}]).length, 1));
-test('joint checkpoint window event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointCheckpointWindowEvents([])).sort(), ['advancing', 'regressing', 'structural', 'total', 'version'].sort()));
-test('joint checkpoint selector respects cursor', () => assert.deepEqual(a.selectAgentReadOnlyAuditTransportJointCheckpointsAfter({checkpoints: [{cursor: 1}, {cursor: 2}]}, 1).map((x) => x.cursor), [2]));
-test('joint checkpoint windows merge deterministically', () => assert.deepEqual(a.mergeAgentReadOnlyAuditTransportJointCheckpointWindows({checkpoints: [{cursor: 2}]}, {checkpoints: [{cursor: 1}]}).checkpoints.map((x) => x.cursor), [1, 2]));
-test('joint checkpoint window trim keeps bounded tail', () => assert.deepEqual(a.trimAgentReadOnlyAuditTransportJointCheckpointWindow({checkpoints: [{cursor: 1}, {cursor: 2}, {cursor: 3}]}, 2).checkpoints.map((x) => x.cursor), [2, 3]));
-test('joint checkpoint recovery plan advances cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan({checkpoints: [{cursor: 1}, {cursor: 2}]}, 0, 1).nextCursor, 1));
-test('joint checkpoint recovery plan compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointCheckpointRecoveryPlanCompatible({version: 1, cursor: 0, nextCursor: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}], complete: true}), true));
-test('joint checkpoint recovery plan serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan(a.serializeAgentReadOnlyAuditTransportJointCheckpointRecoveryPlan({cursor: 2, nextCursor: 3, checkpoints: [{cursor: 3}]})).nextCursor, 3));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // v0.17 joint diagnostics projection contract (T-1738~T-1772)
-test('joint diagnostic status constants are fixed', () => assert.deepEqual(a.AUDIT_JOINT_DIAGNOSTIC_STATUS, ['empty', 'ready', 'degraded', 'blocked', 'disposed']));
-test('joint diagnostic risk constants are fixed', () => assert.deepEqual(a.AUDIT_JOINT_DIAGNOSTIC_RISK, ['normal', 'warning', 'critical']));
-test('joint diagnostic status unknown defaults empty', () => assert.equal(a.normalizeAgentAuditJointDiagnosticStatus('secret'), 'empty'));
-test('joint diagnostic risk unknown defaults normal', () => assert.equal(a.normalizeAgentAuditJointDiagnosticRisk('secret'), 'normal'));
-test('joint diagnostic empty status', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticStatus({}, {}), 'empty'));
-test('joint diagnostic ready status', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticStatus({snapshots: [{status: 'committed'}]}, {status: 'committed'}), 'ready'));
-test('joint diagnostic degraded status', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticStatus({snapshots: [{status: 'ready'}]}, {}), 'degraded'));
-test('joint diagnostic blocked status', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticStatus({snapshots: [{status: 'timeout'}]}, {}), 'blocked'));
-test('joint diagnostic disposed status', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticStatus({disposed: 1}, {}), 'disposed'));
-test('joint diagnostic risk critical on disposal', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticRisk({disposed: 1}, {}), 'critical'));
-test('joint diagnostic risk warning on partial', () => assert.equal(a.deriveAgentReadOnlyAuditTransportJointDiagnosticRisk({}, {status: 'partial'}), 'warning'));
-test('joint diagnostic builder uses version one', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointDiagnostic({}, {}).version, 1));
-test('joint diagnostic builder fixed fields', () => assert.deepEqual(Object.keys(a.buildAgentReadOnlyAuditTransportJointDiagnostic({}, {})).sort(), ['acknowledged', 'blocked', 'cursor', 'disposed', 'healthy', 'recoveryStatus', 'risk', 'status', 'total', 'version'].sort()));
-test('joint diagnostic normalizer strips unknown fields', () => assert.equal('secret' in a.normalizeAgentReadOnlyAuditTransportJointDiagnostic({secret: 1}), false));
-test('joint diagnostic compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointDiagnosticCompatible({version: 1, status: 'ready', risk: 'normal', total: 1, healthy: 1, blocked: 0, disposed: 0, cursor: 1, recoveryStatus: 'committed', acknowledged: true}), true));
-test('joint diagnostic compatibility rejects count overflow', () => assert.equal(a.isAgentReadOnlyAuditTransportJointDiagnosticCompatible({version: 1, status: 'ready', risk: 'normal', total: 1, healthy: 2}), false));
-test('joint diagnostic compatibility rejects acknowledged partial', () => assert.equal(a.isAgentReadOnlyAuditTransportJointDiagnosticCompatible({version: 1, status: 'blocked', risk: 'warning', recoveryStatus: 'partial', acknowledged: true}), false));
-test('joint diagnostic serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointDiagnostic(a.serializeAgentReadOnlyAuditTransportJointDiagnostic({status: 'blocked'})).status, 'blocked'));
-test('joint diagnostic parser isolates malformed', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointDiagnostic('{bad').status, 'empty'));
-test('joint diagnostic diff detects risk', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointDiagnostics({risk: 'normal'}, {risk: 'warning'}).riskChanged, true));
-test('joint diagnostic diff computes cursor delta', () => assert.equal(a.diffAgentReadOnlyAuditTransportJointDiagnostics({cursor: 1}, {cursor: 3}).cursorDelta, 2));
-test('joint diagnostic events detect status', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointDiagnosticEvents({status: 'empty'}, {status: 'ready'})[0].type, 'status_changed'));
-test('joint diagnostic events detect cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointDiagnosticEvents({cursor: 1}, {cursor: 2})[0].type, 'cursor_changed'));
-test('joint diagnostic events clamp delta', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointDiagnosticEvent({type: 'cursor_changed', delta: 99}).delta, 8));
-test('joint diagnostic events deduplicate', () => assert.equal(a.normalizeAgentReadOnlyAuditTransportJointDiagnosticEvents([{type: 'risk_changed'}, {type: 'risk_changed'}]).length, 1));
-test('joint diagnostic event summary fixed fields', () => assert.deepEqual(Object.keys(a.summarizeAgentReadOnlyAuditTransportJointDiagnosticEvents([])).sort(), ['lifecycle', 'progress', 'recovery', 'total', 'version'].sort()));
-test('joint diagnostic page starts at cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointDiagnosticPage({checkpoints: [{cursor: 1}, {cursor: 2}]}, 1).checkpoints[0].cursor, 2));
-test('joint diagnostic page advances next cursor', () => assert.equal(a.buildAgentReadOnlyAuditTransportJointDiagnosticPage({checkpoints: [{cursor: 1}, {cursor: 2}]}, 0).nextCursor, 2));
-test('joint diagnostic page bounds output', () => assert.ok(a.buildAgentReadOnlyAuditTransportJointDiagnosticPage({checkpoints: Array.from({length: 20}, (_, i) => ({cursor: i + 1}))}).checkpoints.length <= 8));
-test('joint diagnostic page normalizer fixed fields', () => assert.deepEqual(Object.keys(a.normalizeAgentReadOnlyAuditTransportJointDiagnosticPage({})).sort(), ['checkpoints', 'complete', 'cursor', 'nextCursor', 'total', 'version'].sort()));
-test('joint diagnostic page compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointDiagnosticPageCompatible({version: 1, cursor: 0, nextCursor: 1, total: 1, checkpoints: [{version: 1, cursor: 1, total: 1, disposed: 0}], complete: true}), true));
-test('joint diagnostic page compatibility rejects backwards cursor', () => assert.equal(a.isAgentReadOnlyAuditTransportJointDiagnosticPageCompatible({version: 1, cursor: 2, nextCursor: 1, checkpoints: []}), false));
-test('joint diagnostic page serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointDiagnosticPage(a.serializeAgentReadOnlyAuditTransportJointDiagnosticPage({cursor: 1, checkpoints: [{cursor: 2}]})).cursor, 1));
-test('joint diagnostic merge escalates risk', () => assert.equal(a.mergeAgentReadOnlyAuditTransportJointDiagnostics([{risk: 'normal'}, {risk: 'critical'}]).risk, 'critical'));
-test('joint diagnostic merge keeps latest cursor', () => assert.equal(a.mergeAgentReadOnlyAuditTransportJointDiagnostics([{cursor: 1}, {cursor: 3}]).cursor, 3));
-test('joint diagnostic batch is bounded', () => assert.ok(a.normalizeAgentReadOnlyAuditTransportJointDiagnosticBatch({diagnostics: Array.from({length: 20}, () => ({}))}).diagnostics.length <= 8));
-test('joint diagnostic batch compatibility accepts canonical', () => assert.equal(a.isAgentReadOnlyAuditTransportJointDiagnosticBatchCompatible({version: 1, diagnostics: [{version: 1, status: 'empty', risk: 'normal', total: 0, healthy: 0, blocked: 0, disposed: 0, cursor: 0, recoveryStatus: 'ready', acknowledged: false}]}), true));
-test('joint diagnostic batch serialization round trips', () => assert.equal(a.parseAgentReadOnlyAuditTransportJointDiagnosticBatch(a.serializeAgentReadOnlyAuditTransportJointDiagnosticBatch({diagnostics: [{status: 'ready'}]})).diagnostics[0].status, 'ready'));

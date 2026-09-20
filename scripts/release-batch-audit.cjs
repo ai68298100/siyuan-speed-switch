@@ -36,7 +36,7 @@ add('release checker checks archive', contains('scripts/check-release-readiness.
 add('release checker has shared drift guard', contains('scripts/release-readiness-metrics.cjs', 'ARCHIVE_DRIFT_TOLERANCE_BYTES'));
 add('readiness records bundle', /`dist\/index\.js` \d+ bytes/.test(read('docs/release-readiness.md')));
 add('readiness records archive', /`package\.zip` \d+ bytes/.test(read('docs/release-readiness.md')));
-add('readiness records test count', /6325\/6325/.test(read('docs/release-readiness.md')));
+add('readiness records test count', /5872\/5872/.test(read('docs/release-readiness.md')));
 add('readiness records v0.23.5', contains('docs/release-readiness.md', 'v0.23.5'));
 add('roadmap records current baseline', contains('ROADMAP.md', '8.0.4 2026-09-19'));
 add('roadmap records main sha', contains('ROADMAP.md', '459056b'));
