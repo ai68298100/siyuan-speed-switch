@@ -366,4 +366,9 @@ test('version metadata is consistent across manifests, badges, and release lines
     assert.equal(badgeEn, pkg.version, 'EN README badge version must match package.json');
     assert.ok(readMe.includes('当前版本为 `v' + pkg.version + '`'), 'zh README release line must cite the current version');
     assert.ok(readMeEn.includes('current version is `v' + pkg.version + '`'), 'EN README release line must cite the current version');
+    // T-6750：ROADMAP 基线行与 readiness 版本元数据行也纳入一致性检查
+    const roadMapText = fs.readFileSync(path.join(root, 'ROADMAP.md'), 'utf8');
+    assert.ok(roadMapText.includes('基线：`v' + pkg.version + '`'), 'ROADMAP baseline must cite the current version');
+    const readinessText = fs.readFileSync(path.join(root, 'docs', 'release-readiness.md'), 'utf8');
+    assert.ok(readinessText.includes('`' + pkg.version + '` 已同步'), 'readiness version metadata row must cite the current version');
 });
