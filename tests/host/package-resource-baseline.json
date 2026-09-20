@@ -2,11 +2,11 @@
   "version": 1,
   "entries": {
     "index.css": 22060,
-    "index.js": 224816,
+    "index.js": 225750,
     "icon.png": 18386,
     "preview.png": 50389,
     "README.en-US.md": 13755,
-    "README.md": 14652,
+    "README.md": 14653,
     "docs/architecture.svg": 1897,
     "docs/interface-map.svg": 1805,
     "docs/component-store-guide.md": 3250,
