@@ -1,0 +1,236 @@
+# LvSpeed Switch Changelog (Full English History)
+
+> Full per-version history in English. `README.en-US.md` keeps only summaries of the most recent
+> releases; new entries are appended here at release time. 中文完整历史见 [`docs/CHANGELOG.md`](./CHANGELOG.md)。
+
+## Changelog (full history)
+
+### v0.23.5 (2026-09-19)
+
+- **A sync no longer reloads the whole plugin**: SiYuan reloads a plugin wholesale whenever its
+  stored data changes, and this plugin keeps 13 persistent keys — so every cross-device merge, or a
+  write from another window, destroyed the open switcher, the second panel and any running search
+  session (visible as flickering toolbar/dock icons and dialogs closing on their own). The plugin
+  now overrides `onDataChanged`: it only performs a bounded re-read plus a lazy refresh, and the
+  chain is forbidden from writing (a write broadcasts another data change and re-enters the same
+  hook, which is the loop this closes). Coalesced repeat broadcasts, manual refresh and forced
+  refresh all keep working.
+- **The desktop journal entry point no longer wedges**: the "choose journal notebook" dialog only
+  resolved its value from the Confirm/Cancel buttons, so closing it with Escape or by clicking the
+  backdrop left the awaiting chain hanging forever — the next journal click did nothing. Close now
+  funnels through the host `Dialog` `destroyCallback` on every platform.
+- **Ordering and the calendar stop losing content once many tabs are open**: kernel
+  `/api/query/sql` truncates to `search.limit` (default 64, floor 32) when a statement has no outer
+  `LIMIT`, and the plugin never read `truncated` from the response. Fixed the update-time query
+  behind "recently edited" (it also bypassed the whitelisted dispatcher and had no timeout), the
+  month calendar limit with a stable tiebreak, and both settings pickers (databases / documents).
+- **A dead data source no longer slows every refresh**: life widgets re-paid an up-to-10-second
+  timeout per cycle for unreachable endpoints. There is now a 20-second suppression window per
+  endpoint that falls back to the widget's existing stale/empty state, cleared immediately by any
+  success, including a manual refresh.
+- **Long-run stability**: all dialog teardown now uses the host `destroyCallback` (previously eight
+  places overrode host methods and polled `isConnected`), and `setInterval` is now absent from the
+  plugin sources. SiYuan gives plugin disable/unload a single shared 5-second teardown budget, and
+  polling timers were exactly the leak living beyond it.
+- **Internal**: added gates that validate against SiYuan's official API contract snapshot (request
+  and response shapes for the 25 kernel endpoints, dispatcher consistency, and explicit records of
+  where the measured host diverges from the contract), and consolidated the persisted key list into
+  a single source.
+
+### v0.23.4 (2026-09-19)
+
+- **The "Checkin summary" widget is now natively bridged**: it used to be registered as a
+  third-party provider widget whose availability depended on a provider handshake, so the store
+  kept saying "requires the 小驴打卡 plugin" even with the plugin installed and enabled. It now
+  bridges natively like the other six checkin widgets (`checkin-summary` joins the bridge list
+  with the `items.read` capability): ready whenever 小驴打卡 is present.
+- **Richer summary**: a new aggregated snapshot — done today, best streak, days this month,
+  pending today, and the top-3 streak list; computed locally, read-only, no network requests.
+### v0.23.3 (2026-09-19)
+
+- **Fixes marketplace updates being rolled back by cloud sync**: the archive's zip entry
+  timestamps now come from the release commit instead of a fixed epoch. The fixed epoch made
+  installed files' modification times older than the sync index, so automatic sync judged the
+  cloud newer and overwrote the freshly updated version with the old one (only this plugin was
+  affected: only our build pipeline used a fixed-epoch timestamp).
+- **Fixes an “unknown notebook” group under notebook grouping**: when a tab lacks explicit
+  notebook metadata, the notebook id used to be derived from the first path segment — which is
+  the root document id, not a notebook. Opening the notebook-grouped panel now restores the
+  real ownership with one bounded kernel query and re-renders.
+- **Widget card header slimmer**: the config button is now a gear icon (tooltip keeps the
+  semantics) and update times are compact — the title no longer truncates into an ellipsis.
+- **First-paint icon sizes**: every switcher toolbar icon carries explicit width/height, so
+  oversized black icons no longer flash while styles load; the widget config dialog joins the
+  icon-clamp observer coverage.
+- **Also**: contribution heatmaps gained a “less → more” color-scale legend; performance
+  micro-benchmarks use best-of-3 sampling to resist host load spikes.
+### v0.23.2 (2026-09-19)
+
+- **Fixes the database table widget showing an empty table for embedded/mirrored databases on
+  the 3.8.4 kernel**: the av block id and the database id differ; binding now resolves in two
+  steps (block id → getAttributeView → database id + viewID + pageSize retry), and the config
+  search accepts pasting a database ID directly (standalone databases produce no av block).
+- **Data health**: missing-asset rows link to the referencing block (the actual place to fix);
+  the reference display now reads the real response field (item) instead of the absent path.
+- **Sort determinism**: user-content sorting (names/titles/tags/paths) is pinned to a Chinese
+  pinyin collator, no longer drifting with the host environment.
+- **Engineering**: performance micro-benchmarks use best-of-3 sampling to resist host load
+  spikes; iCal TZID/RRULE/EXDATE/RDATE, a storage usage section, and the action panel key
+  (see v0.23.1).
+### v0.23.1 (2026-09-19)
+
+- **Fixes the Miniflux widget never fetching for real**: the kernel proxy gateway URL
+  gate lacked Miniflux routes, so production unread-list requests were always blocked
+  (unit tests mocked the network layer and never caught it). Entries and categories
+  routes are now allowlisted following the established pattern.
+- **Category filter for the Miniflux widget**: categories load dynamically from your
+  Miniflux instance (inside the config form); credentials travel only via request headers,
+  and filtering runs server-side.
+- **Also**: a storage usage settings section; a switcher action panel key
+  (Shift+F10 / ContextMenu); user-content sorting pinned to a Chinese pinyin collator
+  (stable across devices); full iCal time zone, recurrence, cancellation and extra-date
+  support; a writing strength score and a 12-month lookback; countdown/elapsed dual modes;
+  year/quarter/month progress.
+### v0.23.0 (2026-09-19)
+
+- **Per-widget deep optimization completed for all 58 widgets**: reviewed and enhanced with an
+  8-dimension scorecard (config discoverability, data correctness, information hierarchy, size
+  fitness, interaction feedback, state recovery, performance lifecycle, three-surface/a11y/privacy);
+  ledger in `docs/component-deep-optimization-plan.md`. Highlights: path filters stay consistent
+  across local tabs, remote results and full-text probing (300-card filter p95 ≈ 0.56 ms); database
+  table typed cells; database/saved-searches/recent-updates/recent-edits gained search, sorting and
+  accurate totals; favorite group picker, document-set last-used ordering, random-review candidate
+  stats; world-clock cross-day markers; countdown yearly repeats with safe Feb-29 clamping; calendar
+  week-start option; weather/air-quality display toggles; maintenance state kept separate from
+  downtime in service status; checkin widgets remained render-only bridges with no protocol changes.
+- **Second-round increments (competitor research follow-ups)**:
+  - Countdown gained a **countdown/elapsed dual mode** (`N days since`); year progress supports
+    **year/quarter/month periods**.
+  - **Display override pilot**: local time, countdown and daily quote support three digit sizes
+    (standard/large/extra-large).
+  - Recent writing activity: a **writing strength score** (exponential-smoothing half-life, opt-in)
+    and a **12-month lookback window**.
+  - **Full time-zone and recurrence support for iCal subscriptions**: TZID resolution, RRULE
+    expansion (DAILY/WEEKLY/MONTHLY, COUNT/UNTIL/BYDAY), EXDATE cancellations and RDATE extras —
+    recurring events anchored in the past were previously invisible.
+  - The settings page gained a **storage usage** section: total and per-key approximate size
+    (UTF-8 bytes).
+  - Switcher action panel key: **Shift+F10 / ContextMenu** opens the focused card's action menu
+    from the keyboard (mouse-free).
+- **Engineering**: automated tests 6117 → 6258 (207 files); resource self-discipline lines
+  recalibrated per ADR 0059/0062 (224 KiB per-entry zip, 832 KiB raw; the 512 KiB archive hard
+  ceiling is unchanged); the production dependency graph stays at 52 modules.
+### v0.22.0 (2026-09-18)
+
+- **Fixes the load error (issue #1)**: under certain host timing `window.siyuan.languages`
+  is not yet populated, and registering a global-hotkey command made the kernel read
+  `_trayMenu` off it, throwing a TypeError that aborted plugin loading (every agent
+  capability registered afterwards was skipped). Command registration is now fully
+  isolated: a single failed command no longer affects loading, and the global hotkey
+  degrades to the in-app hotkey until the host is ready.
+- **Eleven new widget-panel widgets (48 → 59)**:
+  - **Kernel-data widgets (read-only SiYuan v3.8.x endpoints)**: database table (bind one
+    SiYuan database block and render its current view read-only, following the filters
+    and sorts you set in SiYuan; clicking a row opens its document; see ADR 0058), pinned
+    docs, inbox (cloud shorthands with a determined empty state when signed out), recent
+    updates, data health (missing-asset survey), recent docs (SiYuan's own recent list),
+    database navigator, saved searches (the native search's saved criteria).
+  - **External-data widgets**: RSS/Atom subscription (any feed URL, zero credentials, zero
+    server), air quality (Open-Meteo European AQI with PM2.5/PM10, six-tier bands), and
+    Hacker News board switching (front page / best / Ask HN / Show HN).
+  - **Ecosystem bridge**: SiYuan-Checkin monthly summary (checkin days, record total and a
+    per-item ranking).
+- **Top bar and command palette**: both top-bar icons gained right-click menus (quick
+  access to settings / switcher / widget panel); the command palette gains "open
+  settings" and "open today's journal" commands.
+- **Compatibility**: a compatibility survey against the SiYuan v3.8.4 kernel source found
+  no breaking changes; all new widgets are read-only endpoints with no new writes or
+  implicit data egress.
+- **Engineering quality**: automated tests 5872 → 6138 (198 test files); boundary
+  hardening across eleven existing modules; performance gates and the package budget hold
+  (package.zip 339861 bytes, within the 512 KiB ceiling).
+
+### v0.21.0 (2026-09-17)
+
+- **Widget provenance becomes first-class (ADR 0057)**: widget protocol v2.4 adds a
+  structured `source` field (`pluginId/name/icon/version/homepage/collection/order`),
+  replacing grouping by free-text author. The store now prefers **source grouping over
+  functional grouping** — one plugin's widgets collapse into a single source group whose
+  header shows the provider icon, an **added x/y** counter and **select/clear whole group**;
+  cards inside a group follow `source.order`; the "needs plugin" area aggregates per
+  provider; provider and collection names join the card search text.
+- **Five SiYuan-Checkin bridge widgets**: `checkin-today / checkin-streak /
+  checkin-year-heatmap / checkin-weekly / checkin-occasions`, built on the checkin plugin's
+  public ecosystem API v4 (`window.siyuanCheckin`, read-only, local-only, zero network).
+  A missing plugin or capability yields a deterministic empty state instead of an error
+  state; if the plugin later registers the same `moduleId`, its native implementation takes
+  over without migrating user configuration.
+- **Semantic search (third search method)**: joins query-syntax and regexp; the method menu
+  only offers it when host AI embedding is configured, and a stale selection silently falls
+  back to keyword search.
+- **GitHub contributions become a grid heatmap**: a fourth `viewType: heatmap` with the item
+  ceiling raised from 42 to 371, Sunday-aligned placeholder cells preserved, and levels
+  passed through from the provider rather than recomputed by the view.
+- **Third-party integration example now runs end to end**: the provider template
+  `docs/widget-example/siyuan-checkin-home-modules.js` plus six runtime contracts exercise
+  register → listModules → read → buildHomeModuleView → unregister as a real plugin.
+- **Engineering**: `src/index.ts` shrank from 9226 to 8104 lines (mobile switcher and second
+  panel UI extracted); `src/index.scss` (6517 lines) split into tokens plus nine **ordered**
+  slices — CSS order is cascade order, so slicing must stay sequential rather than clustered
+  by domain — with an exclusive-anchor coverage gate; three root ledgers archived under a
+  root-doc budget gate; the perf self-check moved to adaptive calibration plus a ratio
+  assertion.
+- Release gates: 5959 automated tests (178 test files), TypeScript, production build, mobile
+  smoke, Chromium smoke and `verify:release`; artifacts dist/index.js 653949 bytes,
+  package.zip 330184 bytes.
+
+### v0.20.0 (2026-09-17)
+
+- **Life-info line (new widgets)**: **iCal schedule subscription** (user-provided `.ics` URL, bounded RFC 5545 parsing — 256 KiB source / 500-event caps, over-limit rejected instead of silently truncated, upcoming-window rendering, 30-minute cache) and **GitHub contribution heatmap** (official public event feed without a key; the optional token travels only in a request header and never enters the URL, cache, or cache key; UTC date buckets render a week-column contribution grid with an 84-day default window (28–366 configurable) and the caliber difference from GitHub's official heatmap honestly documented; 60-minute cache). Both fetch through the kernel proxy and are listed in the store catalog, dependency notes, and endpoint allowlist.
+- **Fix**: the iCal text-fetch defect (D-397) — the text-fetch variant's `responseKind` option was ignored by the underlying bounded fetcher, which always JSON-parsed, so the iCal card could never fetch successfully on a live host; the new GitHub network gates surfaced it naturally before release, and a regression gate now locks it.
+- **Storage data integrity**: `sw_thumb_cache` now normalizes on read — entries corrupted structurally or left behind by the mobile v0.7.0 upper-bound semantics (the write side hardcoded desktop constants) get cleaned up; a read-only storage migration drill with a bounded recovery report now runs on load, with drill health exposed via workspace-context; document-set restore exports a structured report.
+- **Mobile fixes**: icon size overruns, toolbar chip clipping, widget panel height, and bare-SVG fallback sizing; the layout gate now measures at real phone width.
+- **Workspace runtime**: session registry, recovery flow, cancellation boundary, and safe exit — 20+ contract capabilities completed (event pipeline wired into production).
+- **Engineering quality**: all 365 window assertions migrated to block-scoped gates (the migration surfaced and fixed a real product defect — the size tile lacked `touch-action`); the doubling-complexity perf gate gained marginal-rerun noise hardening (ceiling semantics unchanged); a storage compatibility matrix with bidirectional doc-contract gates and a protocol-compat-claim consistency gate were added.
+- Release gates pass: 5872 automated tests (171 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 631710 bytes, package.zip 318095 bytes.
+
+### v0.19.0 (2026-09-16)
+
+- **Search maturation**: workspace document results gain an in-panel "Load more" incremental expansion — the first 12 render immediately, clicking expands more results purely client-side (no cache-key changes, no new requests, focus preserved after re-render), and the native SiYuan search becomes the fallback once everything is expanded. The fetch cap is now a named constant (33) shared with the Agent path; the unified cache key (sorted object keys + unordered-key set + v:1 versioning) was audited and is locked by existing tests.
+- **Architecture refactor (no behavior change)**: the search method group — 20 methods plus 1 module-level function, about 887 lines — moved to `doc-search-ui.ts`, bringing `src/index.ts` down to 9156 lines (about -28% across seven rounds). Document-search instance state now lives in `doc-search-state.ts`; the production dependency graph covers 41 modules with full gate review.
+- **Fix**: all 351 comments corrupted by the v0.16.9 encoding accident are restored — 322 matched automatically against the v0.16.8 revision, 29 sourced manually (two born-corrupted lines were reconstructed semantically and split back into their original multi-line form). Comment text only; no behavior change.
+- **Docs**: the widget protocol adds a "Cross-surface layout" section covering three independent layouts (desktop/sidebar/mobile) over globally shared configuration, `supportedDevices` pruning, full-width single-column mobile widgets, and layout cleanup semantics.
+- Release gates pass: 5703 automated tests (160 test files), TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 601607 bytes, package.zip 309233 bytes.
+
+### v0.18.0 (2026-09-16)
+
+- **Third-party widget ecosystem**: added external-source widgets including World Clock, Hacker News, Uptime Kuma status, Frankfurter rates, Miniflux unread, daily quote, device battery, NewsNow live news, and ActivityWatch app usage, backed by a pure-model candidate catalog and source audit docs; sources without configured credentials stay offline by default.
+- **Path filtering on desktop**: endpoint gating lifted based on real-host evidence (kernel 3.8.4, `/api/filetree/listDocsByPath`); the desktop dialog now offers notebook/path filters with generation-based cancellation locked by contract tests.
+- **Store regrouping**: built-in widgets reorganized into seven purpose groups with bilingual descriptions; a new dependencies tab, dependency state parsing, and structured summaries; single-column mobile widget panel.
+- **Resilience**: SiYuan sync lifecycle integration freezes panel interaction during sync; a 120-second sync watchdog covers lost end events.
+- **Polish**: unified motion tokens, pressed-state feedback, and `prefers-contrast` accessibility.
+- **Refactor (no behavior change)**: six rounds shrank `src/index.ts` from 12681 to 10003 lines (-21%), splitting store UI, settings, config forms, external widget registration, grapheme utils, and search state into modules; production graph 31→40.
+- **Fixes**: repaired the corrupted `home-adapter-diagnostics` capability text (since v0.17.0); aligned release claims with actual registration (41 widgets, 11 capabilities).
+- Release gates pass: 5693 automated tests, TypeScript, production build, mobile smoke, Chromium smoke, and `verify:release`; artifacts dist/index.js 601563 bytes, package.zip 307859 bytes.
+
+### v0.17.0 (2026-09-14)
+
+- Read-only SiYuan Agent audits now include bounded lifecycle history, health reports, trend windows, transport envelopes, queues, and recovery coordinators.
+- Joint recovery adds atomic multi-coordinator commits, checkpoint windows, cursor-based incremental recovery, diagnostics status/risk projections, and bounded pagination.
+- Safety boundaries remain unchanged: no new Agent write actions, no handler/instance/document-body leakage, and all outputs are bounded and sanitized.
+- Release gates pass: 1513 automated tests, TypeScript, mobile smoke, Chromium smoke, production graph, and package-size checks.
+
+### v0.16.39 (2026-09-13)
+
+- The built-in **Journal calendar** now renders a complete 6-week × 7-column month: it detects SiYuan daily-note attributes with a date-title fallback, shows the month, adjacent dates, weekends, today, and journal dots, opens existing journals, and navigates ±24 months. The same release also includes **Countdown**, **Clipped to read**, and **Quick capture**.
+- Widget store UI overhaul: larger dialog (up to 960×720), builtin widgets grouped by function (7 groups), plugin widgets grouped by source author, miniature skeleton previews with proportional size rectangles, and on-demand live preview dialogs.
+- Widget store availability and interaction improvements: category, conditional, and added-state filters compose independently; configured third-party widgets retain their settings and show an unavailable state while their provider is unloaded, then recover immediately after re-registration; localized grouping, persistent filters, and an explicit no-results state complete the flow.
+- Configuration UX improvements: countdown uses a native date picker, pinned documents offer suggestions from currently open documents with block-ID validation, and notebook filters preserve an explicit empty option plus unavailable-value feedback before save.
+- Widget panel UI polish: single-layer chrome (inner module card removed), compact chevron fold toggle, muted empty-state prefix, calendar cell hover tint, list item hover accent bar, larger stat hero numbers, rounded progress bar caps, smooth collapse animation, staggered widget loading.
+- Fixed append-to-journal agent capability that was defined but never registered; added a capability registration guard test.
+- 675 automated tests.
+
+### Older releases
+
+For the full per-version history, see [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases).
+

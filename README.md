@@ -21,6 +21,7 @@
 - [架构与测试](#架构与测试)
 - [开发](#开发)
 - [开发路线与决策记录](#开发路线与决策记录)
+- [发布前检查](#发布前检查)
 - [更新日志](#更新日志)
 - [许可证](#许可证)
 
@@ -300,8 +301,6 @@ pnpm verify:release
 当前版本为 `v0.25.0`（2026-09-20 正式发布，Release 资产由 workflow 自动构建）。
 
 ## 更新日志
-
-完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
 
