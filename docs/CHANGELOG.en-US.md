@@ -5,6 +5,13 @@
 
 ## Changelog (full history)
 
+### v0.27.0 (2026-09-21)
+
+- **World-clock city table grows to 338 entries (wave 8)**: bilingual asymmetry closed (~70 cities gained their missing language); 24 new dual-language cities added; full-table IANA validation clean.
+- **Performance benchmarks promoted to hard gates**: filter benchmarks measure CPU time with unconditional asserts; the 40 ms aggregation pathology line now also blocks on CI.
+- **Full storage-migration drill**: 12 keys x 5 corruption classes through a sanitize fixpoint; v0.23.5-era upgrade simulation survives key-by-key.
+
+
 ### v0.26.0 (2026-09-21)
 
 - **Publish compliance (F7 closed)**: `plugin.json` declares `publish.resources` for the four packaged docs assets; a package-resource contract gate keeps the declaration from drifting.
