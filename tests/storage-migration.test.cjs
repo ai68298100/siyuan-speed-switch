@@ -447,3 +447,62 @@ test('report totals always reconcile with per-key statuses', () => {
     assert.equal(sum, KEY_ORDER.length, 'every key status is represented in totals');
     assert.equal(result.report.totals.cleaned + result.report.totals.kept + result.report.totals.reset + result.report.totals.migrated + result.report.totals.inspect + result.report.totals.missing, KEY_ORDER.length);
 });
+// —— T-6712 存储迁移矩阵全面演练（v0.27.x）：全 key 损坏电池 + 旧载荷升级模拟 ——
+
+test('per-key corruption battery: every handled key degrades deterministically into a sanitize fixpoint', () => {
+    const corruptInputs = [null, 'garbage-string', 42, {nonsense: true}, [undefined]];
+    for (const key of HANDLED_KEYS) {
+        for (const bad of corruptInputs) {
+            const result = runStorageMigration({sw_schema_version: STORAGE_SCHEMA_VERSION, [key]: bad});
+            const entry = result.report.keys.find((e) => e.key === key);
+            assert.ok(entry, key + ' must report');
+            assert.ok(['kept', 'cleaned', 'reset', 'migrated'].includes(entry.status),
+                key + ' with ' + describeShape(bad) + ' must degrade to a defined status, got ' + entry.status);
+            if (result.data[key] !== undefined) {
+                const second = runStorageMigration({sw_schema_version: STORAGE_SCHEMA_VERSION, [key]: result.data[key]});
+                const again = second.report.keys.find((e) => e.key === key);
+                assert.equal(again.status, 'kept', key + ' drill output must be a sanitize fixpoint, got ' + again.status + ': ' + again.note);
+            }
+        }
+    }
+});
+
+test('inspected and meta keys classify corrupted payloads without throwing or emitting data', () => {
+    for (const key of [...INSPECTED_KEYS, ...META_KEYS]) {
+        for (const bad of [null, 'garbage', {deep: {path: true}}]) {
+            const result = runStorageMigration({[key]: bad});
+            const entry = result.report.keys.find((e) => e.key === key);
+            assert.ok(entry && ['inspect', 'reset', 'kept'].includes(entry.status), key + ' corrupt input must classify safely, got ' + (entry && entry.status));
+            assert.ok(!(key in result.data), key + ' must never emit data');
+        }
+    }
+});
+
+test('v0.23.5-era payload set (13 keys, no stamp) drills into the current schema', () => {
+    const legacy = {
+        'sw_mru': [VALID_ROOT, '20240102120000-abcdefg'],
+        'sw_pinned': [VALID_ROOT],
+        'sw_favorites': [makeFavorite('k1'), makeFavorite('k2')],
+        'sw_fav_groups': ['研究', '写作'],
+        'sw_fav_collapsed': ['研究'],
+        'sw_open_history': [{key: VALID_ROOT, rootId: VALID_ROOT, title: 't', ts: 1}],
+        'sw_closed_history': [{rootId: VALID_ROOT, title: 't', closedAt: 123}],
+        'sw_quick_actions': [{id: 'switcher', label: '切换', icon: 'iconLayout', kind: 'builtin', value: 'switcher', targets: ['desktop', 'sidebar', 'mobile'], order: 10, enabled: true}],
+        'sw_quick_actions_defaults': QUICK_ACTION_DEFAULTS_VERSION,
+        'sw_document_sets': {schemaVersion: 1, sets: []},
+        'sw_settings': {sortMode: 'mru'},
+        'sw_home_state': {widgets: []},
+        'sw_thumb_cache': {},
+    };
+    const result = runStorageMigration(legacy);
+    const stamp = result.report.keys.find((e) => e.key === 'sw_schema_version');
+    const rss = result.report.keys.find((e) => e.key === 'sw_rss_read');
+    assert.equal(stamp.status, 'missing', 'v0.23.5 payloads carry no schema stamp; onload writes it');
+    assert.equal(rss.status, 'missing', 'rss read-state did not exist before v0.24.0');
+    assert.equal(result.report.totals.missing, 2);
+    for (const entry of result.report.keys) {
+        if (entry.key === 'sw_schema_version' || entry.key === 'sw_rss_read') continue;
+        assert.ok(['kept', 'inspect'].includes(entry.status),
+            entry.key + ' healthy legacy data must survive the upgrade unchanged, got ' + entry.status + ': ' + entry.note);
+    }
+});

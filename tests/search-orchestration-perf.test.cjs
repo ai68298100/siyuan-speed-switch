@@ -8,7 +8,6 @@
  */
 const test = require('node:test');
 const os = require('node:os');
-const IS_CI = process.env.CI === 'true';
 const assert = require('node:assert/strict');
 
 const {
@@ -180,12 +179,13 @@ test('large-library aggregation (1200 raw hits / 300 roots) converges to bounded
     // avg 8.2~10.9ms → 套件内 13.9~16.9ms → 八核人为饱和 22.4ms；12ms 线在任一
     // 非安静场景必然假红。40ms ≈ 安静成本的 4~5 倍、最坏环境污染的 1.8 倍；
     // 真实 O(n²) 化在本规模（4800 命中）为数百毫秒级，任何条件下都会穿线。
-    // cpu p95 由 GC 支配、机器空闲度只反映外部负载，均作趋势诊断；升硬门禁
-    // 按 A1/ROADMAP §8.0.6 v0.27.x 准入（连续两个版本稳定）。CI 只记录趋势。
+    // cpu p95 由 GC 支配、机器空闲度只反映外部负载，均作趋势诊断。
+    // 硬门禁升格（T-6711，ROADMAP §8.0.6 v0.27.x 首项；准入=连续三版稳定
+    // v0.24/v0.25/v0.26）：病理线本地与 CI 一律无条件断言，不再豁免——
+    // 40ms 为安静成本 4~5 倍，CI 慢核与并行噪声的最坏估算（~30ms）仍在
+    // 线内，真病理回退（数百 ms 级）任何环境都会穿线。
     t.diagnostic(`aggregateSearchResults(1200 hits / 300 roots), best of ${ROUNDS}: cpu avg ${bestAverage.toFixed(4)}ms, cpu p95 ${bestP95.toFixed(4)}ms, machine idle ${(idleFraction * 100).toFixed(0)}% (pathology alert line 40ms cpu)`);
-    if (!IS_CI) {
-        assert.ok(bestAverage < 40, `best avg ${bestAverage.toFixed(3)}ms exceeds 40ms pathology alert line`);
-        }
+    assert.ok(bestAverage < 40, `best avg ${bestAverage.toFixed(3)}ms exceeds 40ms pathology alert line`);
     assert.ok(produced, 'aggregation must produce a result');
     assert.ok(produced.totalDocuments <= ROOTS, 'aggregation covers the input roots');
     // 聚合层按根文档出全量卡片，12 条首屏上限由下游分页器（planDocResultsPage）执行
