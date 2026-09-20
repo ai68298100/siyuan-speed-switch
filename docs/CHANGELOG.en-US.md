@@ -5,6 +5,12 @@
 
 ## Changelog (full history)
 
+### v0.26.0 (2026-09-21)
+
+- **Publish compliance (F7 closed)**: `plugin.json` declares `publish.resources` for the four packaged docs assets; a package-resource contract gate keeps the declaration from drifting.
+- **Documentation alignment**: the English README mirrors the Chinese one 1:1 across 15 sections; full English history lives here.
+- **Quality gates**: CPU-time aggregation benchmark with a 40 ms pathology line; `aggregateSearchResults` doubling gate; store collapse aria contracts and zero-match empty-state tests (B4 closed).
+
 ### v0.23.5 (2026-09-19)
 
 - **A sync no longer reloads the whole plugin**: SiYuan reloads a plugin wholesale whenever its
