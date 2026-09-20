@@ -207,7 +207,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 6338 项测试（212 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 6341 项测试（212 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -239,11 +239,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 6338 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 6341 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、6338 项测试、发布/质量/集成审计和三套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、6341 项测试、发布/质量/集成审计和三套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。

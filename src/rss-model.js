@@ -89,12 +89,14 @@ function extractAtomLink(block) {
 }
 
 function parseFeedDate(block, candidates) {
+    // T-6725：按序尝试全部候选标签——首个存在但格式异常（Date.parse 失败）时
+    // 继续尝试下一个（如 pubDate 损坏回退 dc:date、updated 异常回退 published），
+    // 全部耗尽才放弃返回 0（UI 对 <=0 时间戳省略显示，不伪造时间）。
     for (const tag of candidates) {
         const raw = extractTagText(block, tag);
         if (!raw) continue;
         const value = Date.parse(raw);
         if (Number.isFinite(value)) return {timestamp: value, dateRaw: raw};
-        return {timestamp: 0, dateRaw: raw};
     }
     return {timestamp: 0, dateRaw: ""};
 }

@@ -253,3 +253,53 @@ test('rss read state is bounded, corrupt-tolerant, and stable (T-6685)', () => {
     assert.equal(rssItemKey({title: '标题'}), '标题');
     assert.equal(rssItemKey({link: 'x'.repeat(300)}).length, 128);
 });
+
+// —— T-6725 多候选日期回退：首个标签损坏时回退后续标签 ——
+
+test('rss item falls back to dc:date when pubDate is malformed (T-6725)', () => {
+    const text = rssFeedOf([
+        '<item>',
+        '<title>混合标签</title>',
+        '<pubDate>not-a-real-date</pubDate>',
+        '<dc:date>2026-02-14T09:30:00Z</dc:date>',
+        '</item>',
+    ].join(String.fromCharCode(10)));
+    const parsed = parseRssFeed(text);
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.items.length, 1);
+    const stamp = parsed.items[0].timestamp;
+    assert.ok(Number.isFinite(stamp) && stamp > 0, 'dc:date rescues the entry after pubDate fails to parse');
+    assert.equal(new Date(stamp).toISOString().slice(0, 10), '2026-02-14');
+});
+
+test('atom entry falls back to published when updated is malformed (T-6725)', () => {
+    const text = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<feed xmlns="http://www.w3.org/2005/Atom">',
+        '<title>Atom 示例</title>',
+        '<entry>',
+        '<title>回退条目</title>',
+        '<link href="https://example.com/a"/>',
+        '<updated>gibberish</updated>',
+        '<published>2026-03-01T08:00:00Z</published>',
+        '</entry>',
+        '</feed>',
+    ].join(String.fromCharCode(10));
+    const parsed = parseRssFeed(text);
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.format, 'atom');
+    const stamp = parsed.items[0].timestamp;
+    assert.ok(stamp > 0 && new Date(stamp).toISOString().slice(0, 10) === '2026-03-01', 'published rescues the entry after updated fails to parse');
+});
+
+test('all candidate dates malformed still yields timestamp zero (T-6725)', () => {
+    const text = rssFeedOf([
+        '<item>',
+        '<title>全坏</title>',
+        '<pubDate>nope</pubDate>',
+        '<dc:date>also-nope</dc:date>',
+        '</item>',
+    ].join(String.fromCharCode(10)));
+    const parsed = parseRssFeed(text);
+    assert.equal(parsed.items[0].timestamp, 0, 'graceful zero without fabricating a time');
+});
