@@ -16,7 +16,8 @@
     "release:check": "node scripts/check-release-readiness.cjs",
     "release:audit": "node scripts/release-batch-audit.cjs",
     "quality:audit": "node scripts/quality-batch-audit.cjs",
-    "integration:audit": "node scripts/integration-boundary-audit.cjs"
+    "integration:audit": "node scripts/integration-boundary-audit.cjs",
+    "fixtures": "node scripts/serve-acceptance-fixtures.cjs 8000"
   },
   "keywords": [
     "siyuan",
