@@ -4,7 +4,6 @@
 const {rssItemKey} = require("./rss-model");
 const {FRANKFURTER_CURRENCIES} = require("./life-widget-network.js");
 
-const WEATHER_CONDITIONS = Object.freeze(["clear", "cloudy", "fog", "rain", "snow", "storm"]);
 const TEMPERATURE_UNITS = Object.freeze(["°C", "°F"]);
 const BANGUMI_DAY_RANGES = Object.freeze(["今天", "明天", "本周"]);
 const EXTERNAL_FEED_PROVIDERS = Object.freeze(["dailyhot", "newsnow"]);
@@ -1139,7 +1138,6 @@ function buildActivityWatchSnapshot(envelope, config, labels = {}) {
 }
 
 module.exports = {
-    WEATHER_CONDITIONS,
     TEMPERATURE_UNITS,
     BANGUMI_DAY_RANGES,
     EXTERNAL_FEED_PROVIDERS,

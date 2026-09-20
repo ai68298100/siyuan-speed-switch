@@ -10,7 +10,6 @@
 //
 // 本模块只做纯函数决策，DOM 渲染仍归 home-store-ui.ts。
 
-const SOURCE_KINDS = Object.freeze(["builtin", "plugin", "unknown"]);
 const BUILTIN_SOURCE_KEY = "builtin";
 
 function boundedText(value, max) {
@@ -149,7 +148,6 @@ function buildHomeStoreProviderGroups(states) {
 }
 
 module.exports = {
-    SOURCE_KINDS,
     BUILTIN_SOURCE_KEY,
     resolveHomeModuleSource,
     buildHomeStoreSourceGroups,

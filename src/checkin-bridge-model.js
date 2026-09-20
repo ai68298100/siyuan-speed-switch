@@ -14,7 +14,6 @@
 
 const CHECKIN_API_GLOBAL = "siyuanCheckin";
 const CHECKIN_PROTOCOL = "siyuan-checkin";
-const CHECKIN_LIST_MAX_ITEMS = 24;
 const CHECKIN_STREAK_MAX_ITEMS = 12;
 const CHECKIN_HEATMAP_MAX_ITEMS = 371;
 const CHECKIN_MAX_EVENTS = 4000;
@@ -551,7 +550,6 @@ module.exports = {
     CHECKIN_MODULE_IDS,
     CHECKIN_CAPABILITIES,
     CHECKIN_HEATMAP_MAX_ITEMS,
-    CHECKIN_LIST_MAX_ITEMS,
     CHECKIN_CALIBER,
     resolveCheckinApi,
     hasCheckinCapability,
