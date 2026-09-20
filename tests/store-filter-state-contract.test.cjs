@@ -61,3 +61,7 @@ test('store group labels wrap', () => assert.match(css, /\.sw-home-store__group-
 test('hidden cards are skipped by content visibility', () => assert.ok(declaresIn(css, '.sw-home-store__card[aria-hidden="true"]', /content-visibility: hidden/, base)));
 test('hidden empty state is visually de-emphasized', () => assert.ok(declaresIn(css, '.sw-home-store__filter-empty[aria-hidden="true"]', /opacity: \.72/, base)));
 test('summary remains selectable', () => assert.ok(declaresIn(css, '.sw-home-store__summary', /user-select: text/, base)));
+
+test('store group toggle exposes expanded state', () => assert.ok(storeUiSource.includes('groupToggle.setAttribute("aria-expanded", String(!collapsedGroups.has(label)));')));
+test('store group toggle label follows the collapsed state', () => assert.ok(storeUiSource.includes('groupToggle.setAttribute("aria-label", collapsedGroups.has(label) ? this.i18n.homeStoreExpandGroup : this.i18n.homeStoreCollapseGroup);')));
+test('collapsed group grid hides from assistive tech', () => assert.ok(storeUiSource.includes('grid.setAttribute("aria-hidden", String(!visible || heading.dataset.collapsed === "true"));')));

@@ -440,3 +440,15 @@ test('keyboard hint falls back for unknown surface', () => assert.match(model.re
 test('source label is bounded', () => assert.equal(model.normalizeHomeStoreSourceLabel('x'.repeat(100)).length, 64));
 test('status label is bounded', () => assert.equal(model.normalizeHomeStoreStatusLabel('x'.repeat(100)).length, 64));
 test('tooltip is deterministic for same card', () => assert.equal(model.buildHomeStoreTooltip(card()), model.buildHomeStoreTooltip(card())));
+
+test('no-match query drives the zero-visible empty summary', () => {
+    const cards = [card(), card({search: 'weather weather-api'})];
+    const summary = model.summarizeHomeStoreCards(cards, 'no-such-keyword', model.resolveHomeStoreFilter('all'));
+    assert.equal(summary.total, 2);
+    assert.equal(summary.visible, 0, 'the UI switches its summary to the empty state exactly when visible reaches 0');
+});
+test('excluding filter drives the zero-visible empty summary', () => {
+    const cards = [card(), card({search: 'notes notes-api'})];
+    const summary = model.summarizeHomeStoreCards(cards, '', model.resolveHomeStoreFilter('added'));
+    assert.equal(summary.visible, 0, 'added-only tab with no added cards must surface the filter empty state');
+});
