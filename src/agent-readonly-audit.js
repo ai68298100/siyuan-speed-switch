@@ -599,7 +599,6 @@ function serializeAgentReadOnlyAuditTransportCoordinatorBatchResult(value) { ret
 function parseAgentReadOnlyAuditTransportCoordinatorBatchResult(value) { if (typeof value !== "string" || value.length > 512) return normalizeAgentReadOnlyAuditTransportCoordinatorBatchResult({}); try { return normalizeAgentReadOnlyAuditTransportCoordinatorBatchResult(JSON.parse(value)); } catch (_) { return normalizeAgentReadOnlyAuditTransportCoordinatorBatchResult({}); } }
 function buildAgentReadOnlyAuditTransportCoordinatorRecoverySummary(results) { const summary = buildAgentReadOnlyAuditTransportCoordinatorBatchResult(results); return {version: 1, ...summary, successRate: summary.total ? Number((summary.committed / summary.total).toFixed(4)) : 0}; }
 function normalizeAgentReadOnlyAuditTransportCoordinatorRecoverySummary(value) { const source = value && typeof value === "object" ? value : {}; const summary = normalizeAgentReadOnlyAuditTransportCoordinatorBatchResult(source); return {version: 1, ...summary, successRate: Math.max(0, Math.min(1, Number(source.successRate) || 0))}; }
-function isAgentReadOnlyAuditTransportCoordinatorRecoverySummaryCompatible(value) { const summary = normalizeAgentReadOnlyAuditTransportCoordinatorRecoverySummary(value); return value && value.version === 1 && summary.successRate <= 1; }
 
 const AUDIT_JOINT_STATUS = Object.freeze(["ready", "prepared", "committed", "cancelled", "timeout", "disposed", "partial"]);
 function normalizeAgentAuditJointStatus(value) { return AUDIT_JOINT_STATUS.includes(value) ? value : "ready"; }
@@ -845,7 +844,7 @@ module.exports = {
     buildAgentReadOnlyAuditTransportCoordinatorBatchResult, normalizeAgentReadOnlyAuditTransportCoordinatorBatchResult,
     isAgentReadOnlyAuditTransportCoordinatorBatchResultCompatible, serializeAgentReadOnlyAuditTransportCoordinatorBatchResult,
     parseAgentReadOnlyAuditTransportCoordinatorBatchResult, buildAgentReadOnlyAuditTransportCoordinatorRecoverySummary,
-    normalizeAgentReadOnlyAuditTransportCoordinatorRecoverySummary, isAgentReadOnlyAuditTransportCoordinatorRecoverySummaryCompatible,
+    normalizeAgentReadOnlyAuditTransportCoordinatorRecoverySummary,
     AUDIT_JOINT_STATUS, normalizeAgentAuditJointStatus, buildAgentReadOnlyAuditTransportJointSnapshot,
     normalizeAgentReadOnlyAuditTransportJointSnapshot, isAgentReadOnlyAuditTransportJointSnapshotCompatible,
     summarizeAgentReadOnlyAuditTransportJointHealth, normalizeAgentReadOnlyAuditTransportJointHealth,
