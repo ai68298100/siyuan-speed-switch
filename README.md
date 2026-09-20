@@ -1,6 +1,6 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.28.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.29.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、58 个组件的聚合面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -298,11 +298,17 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和三套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.28.3`（2026-09-21 正式发布，Release 资产由 workflow 自动构建）。
+当前版本为 `v0.29.0`（2026-09-21 正式发布，Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
+
+### v0.29.0（2026-09-21）
+
+- **世界时钟城市表扩至 535 城（第十一波）**：欧美二线名城（那不勒斯/威尼斯/都灵/波尔多/尼斯/莱比锡/德累斯顿/伯明翰/格拉斯哥/波尔图/塞维利亚/萨尔茨堡/伯尔尼）、俄中亚（叶卡捷琳堡/新西伯利亚/海参崴）、美洲（新奥尔良/奥斯汀/纳什维尔/温尼伯）、大洋洲（克赖斯特彻奇）、亚洲（海得拉巴/喀布尔/关岛/金沙萨/胡志明市）等全部中英双语；全表 IANA 校验零无效。
+- **订阅修复**：iCal 订阅支持 webcal:// 分享链接与无 .ics 后缀地址（iCloud/Nextcloud/Fastmail 可直接粘贴）；RSS/Atom 日期解析多候选回退（首个日期损坏时回退后续标签）。
+- **质量基建**：版本一致性门禁（六处版本号互等）、计数一致性门禁（五处引用同值）、夹具端到端集成测试（真实回环 HTTP 全链路）、issue 模板双语三件、仓库元数据刷新、死子图剪枝与死导出清理。
 
 ### v0.28.3（2026-09-21）
 

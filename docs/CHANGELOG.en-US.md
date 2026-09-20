@@ -5,6 +5,13 @@
 
 ## Changelog (full history)
 
+### v0.29.0 (2026-09-21)
+
+- **World-clock city table grows to 535 entries (wave 11)**: European second-tier cities, Russia/Central Asia, the Americas, and Oceania additions - all bilingual; full-table IANA validation clean.
+- **Subscription fixes**: iCal webcal:// and suffix-less URL support; RSS/Atom multi-candidate date parsing.
+- **Quality infrastructure**: version-consistency and count-consistency gates, fixture end-to-end integration tests, issue templates, repo metadata refresh.
+
+
 ### v0.28.3 (2026-09-21)
 
 - **Fixed the iCal feed gateway lagging behind the config policy**: suffix-less addresses saved fine but failed at fetch; the loader gate now mirrors the config normalization.

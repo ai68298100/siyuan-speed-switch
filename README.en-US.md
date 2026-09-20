@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.28.3-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.29.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -298,11 +298,17 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the three UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.28.3` (officially published on 2026-09-21; Release assets are built automatically by the workflow).
+The current version is `v0.29.0` (officially published on 2026-09-21; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.29.0 (2026-09-21)
+
+- **World-clock city table grows to 535 entries (wave 11)**: European second-tier cities (Naples/Venice/Turin/Bordeaux/Nice/Leipzig/Dresden/Birmingham/Glasgow/Porto/Seville/Salzburg/Bern), Russia/Central Asia (Yekaterinburg/Novosibirsk/Vladivostok), the Americas (New Orleans/Austin/Nashville/Winnipeg), Oceania (Christchurch), and Asia (Hyderabad/Kabul/Guam/Kinshasa/Ho Chi Minh City) - all bilingual; full-table IANA validation clean.
+- **Subscription fixes**: iCal accepts webcal:// share links and suffix-less addresses (iCloud/Nextcloud/Fastmail work as-is); RSS/Atom date parsing tries later candidates when the first tag is malformed.
+- **Quality infrastructure**: version-consistency and count-consistency gates, end-to-end loopback integration tests for the acceptance fixtures, bilingual issue templates, repo metadata refresh, dead-subgraph pruning and dead-export cleanup.
 
 ### v0.28.3 (2026-09-21)
 

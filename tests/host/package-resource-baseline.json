@@ -2,16 +2,16 @@
   "version": 1,
   "entries": {
     "index.css": 22060,
-    "index.js": 217070,
+    "index.js": 217401,
     "icon.png": 18386,
     "preview.png": 50389,
-    "README.en-US.md": 14371,
-    "README.md": 15458,
+    "README.en-US.md": 14746,
+    "README.md": 15918,
     "docs/architecture.svg": 1897,
     "docs/interface-map.svg": 1805,
     "docs/component-store-guide.md": 3250,
     "docs/agent-document-context-m2.md": 1109,
-    "plugin.json": 774,
+    "plugin.json": 772,
     "i18n/en.json": 12936,
     "i18n/zh-CN.json": 14153
   }
