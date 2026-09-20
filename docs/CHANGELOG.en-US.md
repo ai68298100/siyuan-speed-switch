@@ -5,6 +5,13 @@
 
 ## Changelog (full history)
 
+### v0.28.1 (2026-09-21)
+
+- **iCal subscription URL policy relaxed**: webcal:// links accepted; the .ics suffix requirement dropped; security rules unchanged.
+- **RSS/Atom date tolerance**: later date candidates are tried when the first is malformed.
+- **Engineering**: dead shim removed; acceptance checklist grew section 5d for recent features.
+
+
 ### v0.28.0 (2026-09-21)
 
 - **iCal recurrence semantics completed**: BYSETPOS selection, DAILY+BYDAY weekday filtering, MONTHLY ordinal-less BYDAY fix, YEARLY+BYMONTH+BYMONTHDAY annual dates, and 8 explicit degrade guards.

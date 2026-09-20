@@ -4,6 +4,13 @@
 
 ## 更新日志（完整历史）
 
+### v0.28.1（2026-09-21）
+
+- **iCal 订阅地址策略放宽**：支持 webcal:// 分享链接；不再要求 .ics 路径后缀（iCloud/Nextcloud/Fastmail 地址可用）；安全规则不变。
+- **RSS/Atom 日期容错**：首个日期标签损坏时回退后续候选，条目不再丢时间戳。
+- **工程**：移除零引用死垫片；真机验收清单扩充 5d 节。
+
+
 ### v0.28.0（2026-09-21）
 
 - **iCal 重复规则语义完备**：BYSETPOS 候选集选位、DAILY+BYDAY 工作日过滤、MONTHLY 无序数 BYDAY 修正、YEARLY+BYMONTH+BYMONTHDAY 年度固定日、8 类无效组合显式降级。
