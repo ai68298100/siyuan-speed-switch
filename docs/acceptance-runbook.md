@@ -61,7 +61,7 @@ v0.24.0 已按宿主路线接线 propose/execute 双能力（agentActionsEnabled
 
 ## 5. 组件逐项矩阵（T-366/T-266 主体）
 
-- 29 个内置组件逐项记录：首读、刷新、空态、点击、配置、失败重试。
+- 58 个组件逐项记录：首读、刷新、空态、点击、配置、失败重试（含 7 个小驴打卡桥接组件）。
 - 优先：今日日记任务、月历（含农历/月度导航）、联网天气、Bangumi、DailyHot/NewsNow、Uptime Kuma、Frankfurter、Miniflux。
 - 记录表格沿用 `docs/desktop-acceptance-template.md` 的证据边界。
 
