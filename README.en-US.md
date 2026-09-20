@@ -10,55 +10,7 @@ LvSpeed Switch is a lightweight navigation workspace for [SiYuan Note](https://b
 
 > v0.24.0 is the execution-chain release: a SiYuan agent can now complete multi-step workspace operations via plan → confirm → execute → receipt (each step gated by the host confirmation card, with a one-switch disable in settings), and the minimum SiYuan version rises to 3.8.0. Notes on the v0.23.5 stability release: a cross-device sync no longer reloads the whole plugin (open switcher and second panel stop flickering and search sessions survive), closing the journal notebook picker with Escape on desktop no longer wedges the journal entry point, "recently edited" ordering and the month calendar stop silently losing content once many tabs are open, and a dead data source no longer pays an up-to-10-second timeout on every refresh cycle.
 
-> The current development head passes type checking, production build, 6305 automated tests, and mobile/Chromium UI smoke tests. Thirty-one widgets have completed their first component-by-component depth pass: recently opened, database table, random review, favorites, document sets, fixed document, pinned documents, database navigator, saved searches, recent updates, recently edited, current document outline, document relations, tags, bookmarks, clipped-to-read, on this day, recent daily notes, today’s journal, monthly journal, journal calendar, today’s tasks, flashcard review, quick capture, upcoming reservations, plugin commands, inbox, note stats, today’s writing, recent writing activity, and writing streak, with year progress, data health, countdown, local time, world clock, weather, air quality, anime calendar, hot events, live news, Hacker News, and RSS subscription now at 58 widgets in total (51 full scorecards + 7 check-in bridge render enhancements, T-6348~T-6454). The tab panel adds manual refresh plus top-level path grouping. Panel interactions stay frozen during SiYuan sync and refresh once afterwards. Agent capabilities keep the existing read-only audit and controlled-action boundaries with no new implicit writes; real-host path-filter, narrow-sidebar, ActivityWatch, and Android-device acceptance remain follow-up compatibility checks.
-
-## Contents
-
-- [Core Capabilities](#core-capabilities)
-- [Native SiYuan Agent capabilities](#native-siyuan-agent-capabilities)
-- [Quick Start](#quick-start)
-- [Shortcuts](#shortcuts)
-- [Settings](#settings)
-- [Install And Upgrade](#install-and-upgrade)
-- [Requirements And Compatibility](#requirements-and-compatibility)
-- [Release Checklist](#release-checklist)
-- [Changelog](#changelog)
-- [Architecture And Tests](#architecture-and-tests)
-- [Development](#development)
-- [Development Roadmap](#development-roadmap)
-
-## Native SiYuan Agent capabilities
-
-On SiYuan versions that expose `addAgentCapability` (the current adapter follows the SiYuan 3.8.3 source), the plugin registers eleven capabilities after a runtime check: `navigation-state`, `search-documents`, `get-document-outline`, `home-widget-snapshot`, `workspace-context`, and `home-adapter-diagnostics` (read-only), `open-document` and `open-documents` (controlled navigation — up to 5 documents per call, behind a confirmation dialog listing every title), and `update-task-status`, `create-document`, `append-to-journal` (controlled writes behind a mandatory confirmation dialog). Document search supports bounded notebook and path scopes, content filters, search method, and result ordering. Read-only capabilities declare `localRead` only, with no writes, data egress, or external cost; controlled navigation declares no writes. Input, output, and text sizes are bounded. Older SiYuan versions skip registration without affecting tab switching or mobile startup. SiYuan owns policy and lifecycle cleanup; further cross-document or destructive actions will be added only after explicit approval, cancellation, and permission-denial tests. See the AI capability section in [ROADMAP.md](./ROADMAP.md).
-
-[中文说明](./README.md)
-
-## Core Capabilities
-
-### Tab Switching And Live Refresh
-
-- **Live thumbnails**: each tab card shows current document content; background documents are filled through the kernel API when needed, while off-screen content is rendered lazily.
-- **Native split panes**: tabs remain grouped by SiYuan window/pane and switching activates the correct pane. Opening, closing, or batch-changing tabs refreshes every active plugin view immediately.
-- **Keyboard and pointer control**: arrows and `Tab` move across the real grid, `Enter` opens, and `Esc` closes. Cards provide pin, favorite, close, and context-menu actions.
-- **Six sort modes**: recent use, open order, reversed open order, recently edited, title ascending, and title descending; the choice persists.
-- **Unified history entry**: desktop, sidebar, and mobile share the clock entry; recently opened and recently closed documents are separated, closed documents can be reopened, and stale records can be removed individually.
-- **Desktop fullscreen**: fullscreen belongs only to the desktop dialog. Sidebar and mobile do not render an action that cannot apply there.
-
-### Favorite Folders And Ordering
-
-- Favorites use stable document root IDs, so they can reopen after a tab closes or SiYuan restarts.
-- Favorite folders show order and item count, and support collapse, rename, delete, move up, and move down. Desktop also supports dragging folders into order.
-- Favorite items live inside their folder, show an in-folder order number, and can move between folders or up/down within one. Desktop supports in-folder drag sorting.
-- Mobile settings disable whole-row drag to avoid stealing vertical scrolling; explicit move controls provide the same result.
-- A folder can open or close all its tabs, with separate handling for duplicate documents, failed items, and no-op states.
-
-### Layered Card Search
-
-Search always uses this priority:
-
-1. **Open tabs**: filtered locally and immediately while preserving pane grouping, pinning, sorting, and keyboard navigation.
-2. **Opened-document content**: queried inside at most six opened root documents; hits recover existing tab cards without creating duplicates.
-3. **Workspace documents**: queried by title first; an empty title result or advanced filters use a bounded native full-text fallback, aggregated into document cards with a small snippet limit.
+> The development head passes type checking, production build, 6317 automated tests, and mobile/Chromium UI smoke tests. All 58 widgets have completed the component-by-component depth pass (51 full scorecards + 7 check-in bridge render enhancements); the component catalog, layered search with query terms, the agent execution chain (propose / execute via host confirmation cards) and the settings gray-scale switch are documented below.
 
 **Tab filter query syntax** (local layer): space-separated terms all match (AND); `-term` excludes tabs containing it; `"quoted phrase"` matches as a whole. Example: `project -weekly "meeting notes"`.
 
