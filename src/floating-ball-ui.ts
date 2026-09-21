@@ -57,6 +57,8 @@ export interface FloatingBallUiOptions {
     available?: boolean;
     /** Yield while the document is in fullscreen. Hidden documents always yield. */
     hideOnFullscreen?: boolean;
+    /** Hide while the host surface scrolls downward; reveal on upward scroll. */
+    hideOnScroll?: boolean;
     ariaLabel?: string;
     observeHost?: boolean;
     onOpenSwitcher?: () => void;
@@ -75,6 +77,7 @@ export interface FloatingBallUiPatch {
     halfHide?: boolean;
     available?: boolean;
     hideOnFullscreen?: boolean;
+    hideOnScroll?: boolean;
     ariaLabel?: string;
 }
 
@@ -83,6 +86,7 @@ export interface FloatingBallUiController {
     update(patch: FloatingBallUiPatch): void;
     setSuspended(suspended: boolean): void;
     setHidden(hidden: boolean): void;
+    setScrollHidden(hidden: boolean): void;
     setState(state: FloatingBallState): void;
     getState(): FloatingBallState;
     getPosition(): FloatingBallPosition;
@@ -166,6 +170,9 @@ export class FloatingBallUi implements FloatingBallUiController {
     private halfHide: boolean;
     private available: boolean;
     private hideOnFullscreen: boolean;
+    private hideOnScroll: boolean;
+    private scrollCleanup: Cleanup | null = null;
+    private scrollOffsets = new WeakMap<object, number>();
     // CSS fixes the portal footprint per surface (48px desktop/mobile, 44px
     // sidebar). Keep it as a value so pointer frames do not force layout reads.
     private ballSize: number;
@@ -174,6 +181,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         manual: false,
         fullscreen: false,
         visibility: false,
+        scroll: false,
     };
     private pointerInside = false;
     private focused = false;
@@ -196,6 +204,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.halfHide = options.halfHide !== false;
         this.available = options.available !== false;
         this.hideOnFullscreen = options.hideOnFullscreen !== false;
+        this.hideOnScroll = options.hideOnScroll !== false;
         this.ballSize = this.surface === "sidebar" ? 44 : 48;
     }
 
@@ -230,6 +239,11 @@ export class FloatingBallUi implements FloatingBallUiController {
             this.hideOnFullscreen = patch.hideOnFullscreen !== false;
             this.syncDocumentVisibility();
         }
+        if (patch.hideOnScroll !== undefined) {
+            this.hideOnScroll = patch.hideOnScroll !== false;
+            if (!this.hideOnScroll) this.setScrollHidden(false);
+            this.syncScrollLifecycle();
+        }
         if (patch.ariaLabel !== undefined && this.trigger) {
             this.trigger.setAttribute("aria-label", patch.ariaLabel);
             this.trigger.setAttribute("title", patch.ariaLabel);
@@ -255,6 +269,18 @@ export class FloatingBallUi implements FloatingBallUiController {
     setHidden(hidden: boolean): void {
         if (this.disposed || this.hiddenReasons.manual === hidden) return;
         this.hiddenReasons.manual = hidden;
+        if (hidden) {
+            this.cancelPointer(true);
+            this.clearIdleTimer();
+            this.setIdle(false);
+        }
+        this.applyState(this.effectiveBlockedState() || "docked");
+        if (!hidden) this.markActive();
+    }
+
+    setScrollHidden(hidden: boolean): void {
+        if (this.disposed || this.hiddenReasons.scroll === hidden) return;
+        this.hiddenReasons.scroll = hidden;
         if (hidden) {
             this.cancelPointer(true);
             this.clearIdleTimer();
@@ -316,6 +342,8 @@ export class FloatingBallUi implements FloatingBallUiController {
         }
         this.observer?.disconnect();
         this.observer = null;
+        this.scrollCleanup?.();
+        this.scrollCleanup = null;
         this.pointerInside = false;
         this.focused = false;
         while (this.cleanups.length) this.cleanups.pop()?.();
@@ -357,6 +385,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.bindActivityLifecycle(trigger);
         this.bindEnvironmentLifecycle();
         this.bindViewportLifecycle();
+        this.syncScrollLifecycle();
         this.applyPosition();
         this.applyState(this.effectiveBlockedState() || this.state);
         this.scheduleIdle();
@@ -600,6 +629,43 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.setEnvironmentHidden("visibility", this.doc?.visibilityState === "hidden");
     }
 
+    private syncScrollLifecycle(): void {
+        this.scrollCleanup?.();
+        this.scrollCleanup = null;
+        this.scrollOffsets = new WeakMap<object, number>();
+        if (!this.doc || this.disposed || !this.hideOnScroll) return;
+        const onScroll = (event: Event) => {
+            if (this.disposed || !this.hideOnScroll || this.state === "executing") return;
+            const rawTarget = event.target;
+            if (!rawTarget || (typeof rawTarget !== "object")) return;
+            const target = rawTarget as object;
+            const nodeType = Number((rawTarget as Node).nodeType);
+            if (this.root && nodeType > 0 && this.root.contains(rawTarget as Node)) return;
+            const offset = this.readScrollOffset(target);
+            if (offset === null) return;
+            const previous = this.scrollOffsets.get(target);
+            this.scrollOffsets.set(target, offset);
+            // The first event establishes a baseline and does not hide the
+            // ball. Subsequent direction changes are the only state writes.
+            if (previous === undefined || Math.abs(offset - previous) < 1) return;
+            this.setScrollHidden(offset > previous);
+        };
+        this.doc.addEventListener("scroll", onScroll, {capture: true, passive: true});
+        this.scrollCleanup = () => {
+            this.doc?.removeEventListener("scroll", onScroll, true);
+            this.scrollCleanup = null;
+        };
+    }
+
+    private readScrollOffset(target: object): number | null {
+        if (target === this.doc || target === this.doc.documentElement || target === this.doc.body) {
+            const view = this.doc.defaultView;
+            return Math.max(0, Number(view?.scrollY) || 0, Number(this.doc.documentElement?.scrollTop) || 0, Number(this.doc.body?.scrollTop) || 0);
+        }
+        const value = Number((target as HTMLElement).scrollTop);
+        return Number.isFinite(value) ? Math.max(0, value) : null;
+    }
+
     private setEnvironmentHidden(reason: "fullscreen" | "visibility", hidden: boolean): void {
         if (this.disposed || this.hiddenReasons[reason] === hidden) return;
         this.hiddenReasons[reason] = hidden;
@@ -614,7 +680,7 @@ export class FloatingBallUi implements FloatingBallUiController {
 
     private effectiveBlockedState(): FloatingBallState | null {
         if (this.suspendedReason) return "suspended";
-        if (this.hiddenReasons.manual || this.hiddenReasons.fullscreen || this.hiddenReasons.visibility) return "hidden";
+        if (this.hiddenReasons.manual || this.hiddenReasons.fullscreen || this.hiddenReasons.visibility || this.hiddenReasons.scroll) return "hidden";
         return null;
     }
 

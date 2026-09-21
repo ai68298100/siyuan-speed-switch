@@ -754,8 +754,6 @@ export default class SpeedSwitchPlugin extends Plugin {
     private floatingBallPanels = new Map<FloatingBallSurface, ReturnType<typeof createFloatingBallPanelController>>();
     private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
-    private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
-    private fabGestureHandlers: {touchstart: (e: TouchEvent) => void, touchmove: (e: TouchEvent) => void} | null = null;
     private cardTabs = new WeakMap<HTMLElement, Tab>(); // 澶嶇敤鍗＄墖濮嬬粓鎸囧悜鏈€鏂扮殑 Tab 瀵硅薄
     // T-6461 动作面板键：卡片构建时缓存 handlers，供 Shift+F10 / ContextMenu 键盘呼出动作菜单
     private cardMenuHandlers = new WeakMap<HTMLElement, {
@@ -1564,7 +1562,6 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.floatingBallUi = null;
         this.fabElement = null;
         this.fabModalDepth = 0;
-        this.unbindFABScrollGesture();
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
         await pendingSaves;
@@ -8456,7 +8453,6 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const controller = this.createFloatingBallSurface("mobile");
         this.floatingBallUi = controller;
         this.fabElement = controller?.getElement() || null;
-        this.bindFABScrollGesture();
     }
 
     /** Build the floating-ball catalogue from the shared quick-action model.
@@ -8553,6 +8549,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 idleDelayMs: config.appearance?.idleDelayMs,
                 halfHide: config.appearance?.halfHide,
                 hideOnFullscreen: config.behavior?.hideOnFullscreen,
+                hideOnScroll: config.behavior?.hideOnScroll,
                 marginPx: 8,
                 ariaLabel: this.i18n.switchTabs,
                 onOpenSwitcher: () => {
@@ -8576,6 +8573,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             idleDelayMs: config.appearance?.idleDelayMs,
             halfHide: config.appearance?.halfHide,
             hideOnFullscreen: config.behavior?.hideOnFullscreen,
+            hideOnScroll: config.behavior?.hideOnScroll,
             ariaLabel: this.i18n.switchTabs,
         });
         controller.mount();
@@ -8661,66 +8659,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onDestroy?.();
             if (this.fabModalDepth === 0) {
                 this.floatingBallUis.forEach((controller) => controller.setSuspended(false));
-                this.fabElement?.classList.remove("sw__fab--hidden", "sw__fab--scroll-hidden");
+                this.fabElement?.classList.remove("sw__fab--hidden");
             }
         };
-    }
-
-    // 滚动手势控制 FAB 显隐（与思源手机端底部工具条行为一致）：
-    // 手指上滑（内容向下滚）隐藏、下滑出现。用独立类 sw__fab--scroll-hidden，
-    // 涓庢墦寮€鍒囨崲鍣ㄦ椂鐨?sw__fab--hidden 浜掍笉骞叉壈
-    private bindFABScrollGesture() {
-        if (this.fabGestureBound) {
-            return;
-        }
-        this.fabGestureBound = true;
-        const THRESHOLD = 12; // 位移超过该值才判定方向，避免抖动误触发
-        let startX = 0;
-        let startY = 0;
-        this.fabGestureHandlers = {
-            touchstart: (event: TouchEvent) => {
-                startX = event.touches[0]?.clientX ?? 0;
-                startY = event.touches[0]?.clientY ?? 0;
-            },
-            touchmove: (event: TouchEvent) => {
-                if (!this.fabElement || this.fabModalDepth > 0 || event.touches.length !== 1) {
-                    return;
-                }
-                // 触点落在 FAB 自身上不处理（点击按钮时不应触发隐藏）
-                if (this.fabElement.contains(event.target as Node)) {
-                    return;
-                }
-                const x = event.touches[0].clientX;
-                const y = event.touches[0].clientY;
-                const deltaX = x - startX;
-                const deltaY = y - startY;
-                // 仅垂直主导的滑动才触发显隐，横向滑动（如查看宽表格）不误触
-                if (Math.abs(deltaY) < THRESHOLD || Math.abs(deltaY) <= Math.abs(deltaX)) {
-                    return;
-                }
-                startY = y; // 重置起点，连续滑动可多次触发
-                if (deltaY < 0) {
-                    // 鎵嬫寚涓婃粦 鈫?闅愯棌
-                    this.fabElement.classList.add("sw__fab--scroll-hidden");
-                } else {
-                    // 鎵嬫寚涓嬫粦 鈫?鍑虹幇
-                    this.fabElement.classList.remove("sw__fab--scroll-hidden");
-                }
-            },
-        };
-        document.addEventListener("touchstart", this.fabGestureHandlers.touchstart, {passive: true});
-        document.addEventListener("touchmove", this.fabGestureHandlers.touchmove, {passive: true});
-    }
-
-    private unbindFABScrollGesture() {
-        if (!this.fabGestureHandlers) {
-            this.fabGestureBound = false;
-            return;
-        }
-        document.removeEventListener("touchstart", this.fabGestureHandlers.touchstart);
-        document.removeEventListener("touchmove", this.fabGestureHandlers.touchmove);
-        this.fabGestureHandlers = null;
-        this.fabGestureBound = false;
     }
 
     private updateFABVisibility() {
@@ -8754,11 +8695,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.floatingBallUi = controller;
                 this.fabElement = controller.getElement();
                 this.fabElement?.classList.toggle("sw__fab--hidden", this.fabModalDepth > 0);
-                this.bindFABScrollGesture();
             }
         });
-
-        if (!this.isMobile) this.unbindFABScrollGesture();
     }
 
     // 手机端顶栏入口按钮：思源 3.8.x 手机端 addTopBar 只会进右侧菜单"扩展"分组，

@@ -257,6 +257,46 @@ test("fullscreen and visibility listeners hide without leaving stale listeners",
     dom.window.close();
 });
 
+test("scroll visibility follows each surface scroll target and cleans up when disabled", () => {
+    const dom = new JSDOM("<!doctype html><body><main id='scroll-host'></main></body>", {pretendToBeVisual: true});
+    const host = dom.window.document.getElementById("scroll-host");
+    const {controller, root} = mount(dom.window.document, {
+        surface: "desktop",
+        host,
+        hideOnScroll: false,
+    });
+    host.scrollTop = 10;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    host.scrollTop = 20;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    assert.equal(controller.getState(), "docked", "disabled scroll hiding must not bind a listener");
+
+    controller.update({hideOnScroll: true});
+    host.scrollTop = 30;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    host.scrollTop = 50;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    assert.equal(controller.getState(), "hidden", "downward host scrolling hides the ball");
+    assert.equal(root.getAttribute("aria-hidden"), "true");
+
+    controller.setSuspended(true);
+    host.scrollTop = 10;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    assert.equal(controller.getState(), "suspended", "suspension remains independent from scroll hidden");
+    controller.setSuspended(false);
+    assert.equal(controller.getState(), "docked", "upward scroll clears the scroll reason");
+
+    controller.update({hideOnScroll: false});
+    host.scrollTop = 80;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    assert.equal(controller.getState(), "docked", "turning the setting off clears the reason and listener");
+    controller.destroy();
+    host.scrollTop = 100;
+    host.dispatchEvent(new dom.window.Event("scroll", {bubbles: true}));
+    assert.equal(root.isConnected, false);
+    dom.window.close();
+});
+
 test("viewport changes re-apply the portal position and clean listeners on destroy", () => {
     const dom = new JSDOM("<!doctype html><body></body>", {pretendToBeVisual: true});
     const {controller, root} = mount(dom.window.document, {position: {edge: "left", yRatio: 0.3}});
