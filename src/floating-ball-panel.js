@@ -115,10 +115,14 @@ function selectFloatingBallMoreActions(config, surface, availableActions = [], o
         .map(normalizeAction)
         .filter(Boolean);
     const byId = new Map(available.map((action) => [actionIdOf(action), action]));
+    const firstIds = new Set(selectFloatingBallFirstLayer(config, normalizedSurface, available, options).map(actionIdOf));
     const result = [];
     const seen = new Set();
     entries
-        .filter((entry) => entry.enabled !== false)
+        // An action promoted to the first layer must not be duplicated in the
+        // expanded list.  Provider-missing entries remain visible as unknown
+        // rows so the user can understand and recover the configuration.
+        .filter((entry) => entry.enabled !== false && !firstIds.has(actionIdOf(entry)))
         .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
         .forEach((entry) => {
             const id = actionIdOf(entry);

@@ -60,7 +60,7 @@ import {openMobileSwitcherDialog, bindMobileSwitcherToolbarActions, renderMobile
 import {openSecondPanel} from "./second-panel-ui";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {resolveStoreNetworkLabel, resolveStorePrivacyLabel} from "./store-labels";
-import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets, buildSettingsStorage} from "./settings-sections";
+import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, buildSettingsDockToggles, buildSettingsHomePanel, buildSettingsMobile, buildSettingsFloatingBall, buildSettingsJournal, buildSettingsFavorites, buildSettingsFavCreateRow, buildSettingsFavGroupList, buildSettingsFavSection, buildFavGroupRowActions, buildSettingsFavItemRow, buildSettingsQuickActions, buildQuickActionsTransferControls, buildSettingsDocumentSets, buildSettingsStorage} from "./settings-sections";
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
@@ -1736,6 +1736,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         if (Object.prototype.hasOwnProperty.call(patch, "floatingBall")) {
             this.updateFloatingBallVisibility();
+            if (typeof document === "object") {
+                document.querySelector<HTMLElement>(".sw-floating-ball-settings")
+                    ?.dispatchEvent(new Event("sw-floating-ball-refresh"));
+            }
         }
     }
 
@@ -2180,13 +2184,14 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
     openSetting(initialPanel?: string) {
         const s = this.getSettings();
-        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "documentSets", "journal", "mobile", "storage"] as const;
+        const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "floatingBall", "documentSets", "journal", "mobile", "storage"] as const;
         const panelLabels: Record<string, string> = {
             appearance: this.i18n.secAppearance,
             behavior: this.i18n.secBehavior,
             panels: this.i18n.secPanels,
             favorites: this.i18n.secFavorites,
             quickActions: this.i18n.secQuickActions,
+            floatingBall: this.i18n.secFloatingBall,
             documentSets: this.i18n.secDocumentSets,
             journal: this.i18n.secJournal,
             mobile: this.i18n.secMobile,
@@ -2269,6 +2274,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 切换分组：仅激活对应标签与面板，同步 aria-selected 供读屏感知；
         // persist=true 时记录最近选中的标签页（仅用户主动点击时写盘，避免打开设置就产生一次无效写入）
         const activate = (key: string, persist = false) => {
+            if (key === "floatingBall") {
+                panels.querySelector(".sw-floating-ball-settings")?.dispatchEvent(new Event("sw-floating-ball-refresh"));
+            }
             tabs.querySelectorAll<HTMLElement>(".sw-settings__tab").forEach((tab) => {
                 const active = tab.dataset.panel === key;
                 tab.classList.toggle("is-active", active);
@@ -2301,6 +2309,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             panels: () => buildSettingsPanels.call(this, s),
             favorites: () => buildSettingsFavorites.call(this, ),
             quickActions: () => buildSettingsQuickActions.call(this, ),
+            floatingBall: () => buildSettingsFloatingBall.call(this, s),
             documentSets: () => buildSettingsDocumentSets.call(this, ),
             journal: () => buildSettingsJournal.call(this, s),
             mobile: () => buildSettingsMobile.call(this, s),
@@ -3065,6 +3074,10 @@ const version = beginSearch(session);
         this.refreshOpenSwitchers();
         this.refreshSidebar();
         this.refreshFloatingBallPanels();
+        if (typeof document === "object") {
+            document.querySelector<HTMLElement>(".sw-floating-ball-settings")
+                ?.dispatchEvent(new Event("sw-floating-ball-refresh"));
+        }
     }
 
     private refreshFloatingBallPanels() {
@@ -8560,7 +8573,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 actions: this.getFloatingBallActions(),
                 includeBuiltins: false,
                 labels: {
-                    more: this.i18n.quickActions,
+                    more: this.i18n.floatingBallMore,
                     close: this.i18n.close,
                     unavailable: this.i18n.quickActionUnavailable,
                     empty: this.i18n.quickActionUnavailable,
@@ -8618,20 +8631,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // T-6487：原实现在非移动端直接 return，onDestroy 永不触发——桌面端用 Escape 关掉
         // 日记笔记本选择弹窗时，调用方 Promise 会永久挂起。
         const modalControllers = [...this.floatingBallUis.values()];
-        const suspended = modalControllers.length > 0;
-        if (suspended) {
-            this.fabModalDepth += 1;
-            modalControllers.forEach((controller) => controller.setSuspended(true));
-            this.fabElement?.classList.add("sw__fab--hidden");
-        }
+        // Count dialogs even when no ball exists yet: enabling a surface from
+        // Settings must not put a newly mounted ball above that dialog.
+        this.fabModalDepth += 1;
+        modalControllers.forEach((controller) => controller.setSuspended(true));
+        this.fabElement?.classList.add("sw__fab--hidden");
         let released = false;
         return () => {
             if (released) return;
             released = true;
-            if (!suspended) {
-                onDestroy?.();
-                return;
-            }
             this.fabModalDepth = Math.max(0, this.fabModalDepth - 1);
             onDestroy?.();
             if (this.fabModalDepth === 0) {
@@ -8724,6 +8732,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 return;
             }
             const controller = this.createFloatingBallSurface(surface);
+            controller.setSuspended(this.fabModalDepth > 0);
             if (surface === "mobile") {
                 this.floatingBallUi = controller;
                 this.fabElement = controller.getElement();

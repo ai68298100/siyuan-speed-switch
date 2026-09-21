@@ -51,7 +51,8 @@ test("more selector excludes first layer and unsupported entries", () => {
         action("provider-a", {targets: ["desktop"]}),
         action("provider-b", {targets: ["mobile"]}),
     ]);
-    assert.deepEqual(result.map((item) => item.actionId), ["provider-a"]);
+    assert.deepEqual(result.map((item) => item.actionId), ["provider-a", "missing"]);
+    assert.equal(result[1].availability.status, "unknown");
 });
 
 test("unknown-capability actions stay visible but disabled", () => {
@@ -64,6 +65,32 @@ test("unknown-capability actions stay visible but disabled", () => {
     ]);
     assert.equal(result.length, 1);
     assert.equal(result[0].availability.status, "unknown");
+});
+
+test("more selector preserves first-layer overflow and unverified first-layer entries", () => {
+    const config = createDefaultFloatingBallConfig();
+    const actions = Array.from({length: 7}, (_, index) => action(`provider-${index}`));
+    actions.push(action("unverified", {kind: "command"}));
+    config.actions.mobile = actions.map((item, index) => ({actionId: item.id, enabled: true, firstLayer: true, order: index}));
+    const result = selectFloatingBallMoreActions(config, "mobile", actions);
+    assert.deepEqual(result.map((item) => item.actionId), ["provider-5", "provider-6", "unverified"]);
+    assert.equal(result.at(-1).availability.status, "unknown");
+});
+
+test("open panel refresh keeps the drawer open and uses current action configuration", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const config = createDefaultFloatingBallConfig();
+    config.actions.desktop = [{actionId: "provider-a", enabled: true, firstLayer: false, order: 10}];
+    const panel = createFloatingBallPanelController({document: dom.window.document, container: dom.window.document.body,
+        config, surface: "desktop", actions: [action("provider-a"), action("provider-b")], includeBuiltins: false});
+    panel.openMore();
+    config.actions.desktop = [{actionId: "provider-b", enabled: true, firstLayer: false, order: 10}];
+    panel.update({config});
+    assert.equal(panel.isMoreOpen(), true);
+    assert.equal(panel.getElement().querySelector(".sw__floating-ball-more").hidden, false);
+    assert.deepEqual([...panel.getElement().querySelectorAll(".sw__floating-ball-more-list [data-action-id]")].map((item) => item.dataset.actionId), ["provider-b"]);
+    panel.destroy();
+    dom.window.close();
 });
 
 test("panel mounts first layer, opens more drawer and invokes supported actions", () => {

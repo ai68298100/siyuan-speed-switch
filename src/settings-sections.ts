@@ -11,6 +11,9 @@ import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
+import {normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
+import {selectFloatingBallMoreActions} from "./floating-ball-panel";
+import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings} from "./floating-ball-settings-model";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
 import type {ISwSettings, IFavoriteItem, IQuickAction, IQuickActionPickerCandidate, QuickActionSupport, QuickActionTarget, SortBy, QuickActionDisplay, HomePalette, DockDisplay, SidebarLayout} from "./index";
 declare module "./document-sets" {
@@ -82,6 +85,7 @@ export interface SettingsSectionsHost {
     updateFABVisibility(): void;
     getQuickActions(): IQuickAction[];
     saveQuickActions(actions: IQuickAction[]): void;
+    getFloatingBallActions(): IQuickAction[];
     getQuickActionSupport(action: IQuickAction, target: QuickActionTarget): QuickActionSupport;
     getQuickActionPickerCandidates(actions: IQuickAction[]): IQuickActionPickerCandidate[];
     openQuickActionIconPicker(action: IQuickAction, onPick: (icon: string) => void): void;
@@ -247,7 +251,7 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
             panelNote,
             this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
                 this.switcher(s.floatingBall?.enabled?.mobile ?? s.fabEnabled, (v) => {
-                    const floatingBall = s.floatingBall || {};
+                    const floatingBall = this.getSettings().floatingBall || {};
                     this.updateSettings({
                         fabEnabled: v,
                         floatingBall: {
@@ -730,19 +734,22 @@ export function buildSettingsQuickActions(this: SettingsSectionsHost, ): HTMLEle
         return wrapper;
     }
 
-export function buildQuickActionsTransferControls(this: SettingsSectionsHost, onImported: () => void): HTMLElement {
+export function buildQuickActionsTransferControls(this: SettingsSectionsHost, onImported: () => void, floatingBall = false): HTMLElement {
         const box = document.createElement("div");
         box.className = "sw-setting__quick-transfer";
         const exportButton = document.createElement("button");
         exportButton.type = "button";
         exportButton.className = "b3-button b3-button--text";
-        exportButton.textContent = this.i18n.quickExport;
+        exportButton.textContent = floatingBall ? this.i18n.floatingBallExport : this.i18n.quickExport;
         exportButton.addEventListener("click", () => {
-            const blob = new Blob([JSON.stringify(this.getQuickActions(), null, 2)], {type: "application/json"});
+            const payload = floatingBall
+                ? serializeFloatingBallSettings(this.getSettings().floatingBall, this.getQuickActions())
+                : JSON.stringify(this.getQuickActions(), null, 2);
+            const blob = new Blob([payload], {type: "application/json"});
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
-            link.download = "siyuan-speed-switch-quick-actions.json";
+            link.download = floatingBall ? "siyuan-speed-switch-floating-ball.json" : "siyuan-speed-switch-quick-actions.json";
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -751,32 +758,55 @@ export function buildQuickActionsTransferControls(this: SettingsSectionsHost, on
         const importButton = document.createElement("button");
         importButton.type = "button";
         importButton.className = "b3-button b3-button--text";
-        importButton.textContent = this.i18n.quickImport;
+        importButton.textContent = floatingBall ? this.i18n.floatingBallImport : this.i18n.quickImport;
         const fileInput = document.createElement("input");
         fileInput.type = "file";
         fileInput.accept = "application/json,.json";
         fileInput.className = "fn__none";
-        importButton.addEventListener("click", () => fileInput.click());
+        let importing = false;
+        importButton.addEventListener("click", () => { if (!importing) fileInput.click(); });
         fileInput.addEventListener("change", async () => {
             const file = fileInput.files?.[0];
-            if (!file) return;
+            if (!file || importing || this.isUnloading || !box.isConnected) return;
+            importing = true;
+            importButton.disabled = true;
+            importButton.setAttribute("aria-busy", "true");
             try {
-                const parsed = JSON.parse(await file.text());
-                const result = sanitizeQuickActions(parsed, QUICK_ACTIONS_MAX);
-                // An empty array is a valid intentional configuration: it
-                // lets users clear all custom quick actions and start over.
-                if (!Array.isArray(parsed)) {
-                    showMessage(this.i18n.quickImportFailed);
+                if (floatingBall && Number.isFinite(file.size) && file.size > FLOATING_BALL_SETTINGS_MAX_BYTES) {
+                    showMessage(this.i18n.floatingBallImportFailed);
                     return;
                 }
-                this.saveQuickActions(result.items);
+                const text = await file.text();
+                if (this.isUnloading || !box.isConnected) return;
+                const parsed = JSON.parse(text);
+                const result = importFloatingBallSettings(parsed, this.getSettings().floatingBall, this.getQuickActions());
+                if (!result.ok) {
+                    showMessage(floatingBall ? this.i18n.floatingBallImportFailed : this.i18n.quickImportFailed);
+                    return;
+                }
+                const hasFloatingBall = Boolean(parsed && typeof parsed === "object" && !Array.isArray(parsed)
+                    && Object.prototype.hasOwnProperty.call(parsed, "floatingBall"));
+                if (result.reason === "legacy-quick-actions") {
+                    this.saveQuickActions(result.quickActions as IQuickAction[]);
+                    onImported();
+                    showMessage(this.i18n.quickImportDone);
+                    return;
+                }
+                if (hasFloatingBall) {
+                    if (!confirm(this.i18n.floatingBallImportConfirm)) return;
+                    this.updateSettings({floatingBall: result.config, fabEnabled: (result.config as any).enabled.mobile});
+                }
+                this.saveQuickActions(result.quickActions as IQuickAction[]);
                 onImported();
-                showMessage(this.i18n.quickImportDone);
+                showMessage(hasFloatingBall ? this.i18n.floatingBallImportDone : this.i18n.quickImportDone);
             } catch (error) {
-                logger.warn("import quick actions fail", error);
-                showMessage(this.i18n.quickImportFailed);
+                logger.warn("import action settings fail", error);
+                if (box.isConnected && !this.isUnloading) showMessage(floatingBall ? this.i18n.floatingBallImportFailed : this.i18n.quickImportFailed);
             } finally {
+                importing = false;
                 fileInput.value = "";
+                importButton.disabled = false;
+                importButton.removeAttribute("aria-busy");
             }
         });
         box.append(exportButton, importButton, fileInput);
@@ -1176,4 +1206,290 @@ export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
         note.textContent = this.i18n.homeModuleError || "统计失败";
     });
     return root;
+}
+
+/**
+ * Floating-ball settings are intentionally kept beside the shared quick-action
+ * editor, but use their own surface/action projection.  The persisted value is
+ * always replaced with the model's normalized config so partially written
+ * settings cannot leak into the runtime controllers.
+ */
+export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
+    const wrapper = document.createElement("div");
+    wrapper.className = "sw-floating-ball-settings";
+    const note = document.createElement("p");
+    note.className = "sw-settings__hint sw-floating-ball-settings__note";
+    note.textContent = this.i18n.floatingBallSettingsTip;
+    wrapper.appendChild(note);
+
+    const persist = (next: unknown) => {
+        const config: any = normalizeFloatingBallConfig(next);
+        this.updateSettings({
+            floatingBall: config,
+            // Keep the old mobile flag in sync for installations upgraded from
+            // the pre-B0 mobile-only FAB setting.
+            fabEnabled: config.enabled.mobile,
+        });
+    };
+    const initial: any = normalizeFloatingBallConfig(s.floatingBall);
+    const surfaceLabels: Record<string, string> = {
+        desktop: this.i18n.floatingBallDesktop,
+        sidebar: this.i18n.floatingBallSidebar,
+        mobile: this.i18n.floatingBallMobile,
+    };
+    const toggleBox = document.createElement("div");
+    toggleBox.className = "sw-floating-ball-settings__toggles";
+    const toggles = new Map<string, HTMLInputElement>();
+    FLOATING_BALL_SURFACES.forEach((surface) => {
+        const label = surfaceLabels[surface] || surface;
+        const toggle = this.switcher(Boolean(initial.enabled[surface]), (checked) => {
+            const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+            next.enabled[surface] = checked;
+            persist(next);
+            renderActions();
+        });
+        const input = toggle.querySelector<HTMLInputElement>("input");
+        if (input) {
+            input.setAttribute("aria-label", label);
+            input.dataset.surface = surface;
+            toggles.set(surface, input);
+        }
+        toggleBox.appendChild(this.settingItem(
+            label,
+            this.i18n.floatingBallSurfaceTip,
+            toggle,
+        ));
+    });
+    wrapper.appendChild(toggleBox);
+
+    const surfaceSelectRow = document.createElement("div");
+    surfaceSelectRow.className = "sw-floating-ball-settings__surface";
+    const surfaceLabel = document.createElement("span");
+    surfaceLabel.className = "sw-settings__item-title";
+    surfaceLabel.textContent = this.i18n.floatingBallEditSurface;
+    const surfaceSelect = document.createElement("select");
+    surfaceSelect.className = "b3-select fn__flex-center";
+    FLOATING_BALL_SURFACES.forEach((surface) => surfaceSelect.appendChild(new Option(surfaceLabels[surface] || surface, surface)));
+    surfaceSelect.value = this.isMobile ? "mobile" : "desktop";
+    surfaceSelect.setAttribute("aria-label", this.i18n.floatingBallEditSurface);
+    surfaceSelectRow.append(surfaceLabel, surfaceSelect);
+    wrapper.appendChild(surfaceSelectRow);
+
+    const preview = document.createElement("section");
+    preview.className = "sw-floating-ball-settings__preview";
+    preview.setAttribute("aria-label", this.i18n.floatingBallPreview);
+    const previewTitle = document.createElement("strong");
+    previewTitle.textContent = this.i18n.floatingBallPreview;
+    const previewStage = document.createElement("div");
+    previewStage.className = "sw-floating-ball-settings__preview-stage";
+    const previewStatus = document.createElement("p");
+    previewStatus.className = "sw-settings__hint";
+    previewStatus.setAttribute("role", "status");
+    previewStatus.setAttribute("aria-live", "polite");
+    previewStatus.textContent = this.i18n.floatingBallPreviewTip;
+    preview.append(previewTitle, previewStage, previewStatus);
+    wrapper.appendChild(preview);
+
+    const actionSection = document.createElement("section");
+    actionSection.className = "sw-floating-ball-settings__actions";
+    const actionHeading = document.createElement("div");
+    actionHeading.className = "sw-floating-ball-settings__actions-heading";
+    const heading = document.createElement("strong");
+    heading.textContent = this.i18n.floatingBallActions;
+    actionHeading.appendChild(heading);
+    const actionHint = document.createElement("span");
+    actionHint.className = "sw-settings__hint";
+    actionHint.textContent = this.i18n.floatingBallActionsTip;
+    actionHeading.appendChild(actionHint);
+    actionSection.appendChild(actionHeading);
+    const actionList = document.createElement("div");
+    actionList.className = "sw-floating-ball-settings__list";
+    actionSection.appendChild(actionList);
+    wrapper.appendChild(actionSection);
+
+    const renderActions = (focusId?: string, focusKind?: string) => {
+        const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        toggles.forEach((input, target) => { input.checked = config.enabled[target]; });
+        const support = {resolveSupport: (action: IQuickAction, target: string) => this.getQuickActionSupport(action, target as QuickActionTarget)};
+        const rows: any[] = buildFloatingBallSettingsRows(config, surface, catalog, {
+            ...support,
+        });
+        previewStage.innerHTML = "";
+        previewStage.dataset.surface = surface;
+        previewStage.dataset.edge = config.position[surface].edge;
+        previewStage.classList.toggle("is-disabled", !config.enabled[surface]);
+        const makePreviewButton = (action: {actionId?: string; id?: string; label?: string}, ball = false) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = ball ? "sw-floating-ball-settings__preview-ball" : "b3-button b3-button--outline";
+            button.dataset.actionId = action.actionId || action.id;
+            button.textContent = action.label;
+            button.addEventListener("click", () => {
+                previewStatus.textContent = this.i18n.floatingBallPreviewResult.replace("{x}", action.label);
+            });
+            return button;
+        };
+        const previewActions = document.createElement("div");
+        previewActions.className = "sw-floating-ball-settings__preview-actions";
+        const firstLayer = selectFloatingBallFirstLayer(config, surface, catalog, support);
+        firstLayer.forEach((action: any) => previewActions.appendChild(makePreviewButton({
+            ...action, label: action.kind === "more" ? this.i18n.floatingBallMore : action.label,
+        }, action.kind === "builtin" && action.id === "switcher")));
+        const more = selectFloatingBallMoreActions(config, surface, catalog, support);
+        const moreSummary = document.createElement("span");
+        moreSummary.className = "sw-settings__hint";
+        moreSummary.textContent = this.i18n.floatingBallMoreCount.replace("{x}", String(more.length));
+        previewStage.append(previewActions, moreSummary);
+        actionList.innerHTML = "";
+        if (rows.length === 0) {
+            const empty = document.createElement("p");
+            empty.className = "sw-settings__hint";
+            empty.textContent = this.i18n.floatingBallNoActions;
+            actionList.appendChild(empty);
+        }
+        const firstLayerCount = rows.filter((row) => row.firstLayer).length;
+        rows.forEach((row, index) => {
+            const item = document.createElement("div");
+            item.className = "sw-floating-ball-settings__row";
+            item.dataset.actionId = row.actionId;
+            const order = document.createElement("span");
+            order.className = "sw-floating-ball-settings__order";
+            order.textContent = String(index + 1);
+            const title = document.createElement("span");
+            title.className = "sw-floating-ball-settings__label";
+            title.textContent = row.label;
+            title.title = row.actionId;
+            const status = document.createElement("span");
+            status.className = `sw-floating-ball-settings__status is-${row.status}`;
+            status.textContent = row.status === "supported"
+                ? this.i18n.floatingBallStatusReady
+                : row.status === "unknown" ? this.i18n.floatingBallStatusUnknown
+                    : row.status === "unsupported" ? this.i18n.floatingBallStatusUnsupported
+                        : this.i18n.floatingBallStatusUnavailable;
+            status.title = row.status === "supported" ? this.i18n.floatingBallStatusReady
+                : row.status === "unsupported" ? this.i18n.quickSupportUnsupported
+                    : row.status === "unknown" ? this.i18n.quickSupportUnknown
+                        : this.i18n.quickActionUnavailable;
+            const enabledLabel = document.createElement("label");
+            enabledLabel.className = "sw-floating-ball-settings__check";
+            const enabled = document.createElement("input");
+            enabled.type = "checkbox";
+            enabled.checked = row.enabled;
+            // Configuration remains editable while a provider is absent.
+            enabled.dataset.control = "enabled";
+            enabled.setAttribute("aria-label", `${this.i18n.floatingBallEnableAction}: ${row.label}`);
+            enabled.addEventListener("change", () => {
+                persist(updateFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId, {enabled: enabled.checked}));
+                renderActions(row.actionId, "enabled");
+            });
+            enabledLabel.append(enabled, document.createTextNode(this.i18n.floatingBallEnabled));
+            const firstLabel = document.createElement("label");
+            firstLabel.className = "sw-floating-ball-settings__check";
+            const first = document.createElement("input");
+            first.type = "checkbox";
+            first.checked = row.firstLayer;
+            // The sixth first-layer slot is reserved for the synthetic More
+            // entry, so at most five configured actions can be promoted.
+            first.disabled = !row.firstLayer && firstLayerCount >= FLOATING_BALL_FIRST_LAYER_LIMIT - 1;
+            first.dataset.control = "first";
+            first.setAttribute("aria-label", `${this.i18n.floatingBallFirstLayer}: ${row.label}`);
+            first.addEventListener("change", () => {
+                persist(updateFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId, {firstLayer: first.checked}));
+                renderActions(row.actionId, "first");
+            });
+            firstLabel.append(first, document.createTextNode(this.i18n.floatingBallFirstLayer));
+            const controls = document.createElement("span");
+            controls.className = "sw-floating-ball-settings__controls";
+            const moveButton = (icon: string, label: string, delta: number) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "b3-button b3-button--text";
+                button.title = label;
+                button.setAttribute("aria-label", label);
+                button.dataset.control = delta < 0 ? "up" : "down";
+                button.innerHTML = `<svg><use xlink:href="#${icon}"></use></svg>`;
+                button.disabled = (delta < 0 && index === 0) || (delta > 0 && index === rows.length - 1);
+                button.addEventListener("click", () => {
+                    persist(moveFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId, delta));
+                    renderActions(row.actionId, delta < 0 ? "up" : "down");
+                });
+                return button;
+            };
+            controls.append(moveButton("iconUp", this.i18n.floatingBallMoveUp, -1), moveButton("iconDown", this.i18n.floatingBallMoveDown, 1));
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.quickRemove;
+            remove.setAttribute("aria-label", `${this.i18n.quickRemove}: ${row.label}`);
+            remove.addEventListener("click", () => {
+                persist(removeFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId));
+                renderActions(rows[index + 1]?.actionId || rows[index - 1]?.actionId, "enabled");
+            });
+            controls.appendChild(remove);
+            item.draggable = !this.isMobile;
+            if (!this.isMobile) {
+                item.addEventListener("dragstart", (event) => event.dataTransfer?.setData("application/x-sw-floating-action", row.actionId));
+                item.addEventListener("dragover", (event) => event.preventDefault());
+                item.addEventListener("drop", (event) => {
+                    event.preventDefault();
+                    const id = event.dataTransfer?.getData("application/x-sw-floating-action");
+                    const from = rows.findIndex((candidate) => candidate.actionId === id);
+                    if (from < 0 || from === index) return;
+                    persist(moveFloatingBallAction(this.getSettings().floatingBall, surface, id, index - from));
+                    renderActions(id, "enabled");
+                });
+            }
+            item.append(order, title, status, enabledLabel, firstLabel, controls);
+            actionList.appendChild(item);
+        });
+
+        const available = catalog.filter((action) => !rows.some((row) => row.actionId === action.id) && this.getQuickActionSupport(action, surface as QuickActionTarget) !== "unsupported");
+        if (available.length > 0 && rows.length < FLOATING_BALL_ACTION_LIMIT) {
+            const add = document.createElement("button");
+            add.type = "button";
+            add.className = "b3-button b3-button--outline sw-floating-ball-settings__add";
+            add.textContent = this.i18n.floatingBallAddAction;
+            add.addEventListener("click", () => mountQuickActionPicker({
+                trigger: add, host: actionList,
+                candidates: available.map((action) => ({...action, label: action.label || action.value, group: action.kind})),
+                searchPlaceholder: this.i18n.quickPickerSearch,
+                emptyText: this.i18n.quickPickerEmpty,
+                onSelect: (selected: IQuickAction) => {
+                    const current: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+                    const entries: any[] = current.actions[surface];
+                    if (entries.some((entry) => entry.actionId === selected.id) || entries.length >= FLOATING_BALL_ACTION_LIMIT) return;
+                    entries.push({actionId: selected.id, enabled: true, firstLayer: false, order: Math.max(0, ...entries.map((entry) => entry.order)) + 10});
+                    persist(current);
+                    renderActions(selected.id, "enabled");
+                },
+            }));
+            actionList.appendChild(add);
+        }
+        if (focusId) {
+            const targetRow = Array.from(actionList.querySelectorAll<HTMLElement>("[data-action-id]")).find((item) => item.dataset.actionId === focusId);
+            const target = targetRow?.querySelector<HTMLInputElement | HTMLButtonElement>(`[data-control="${focusKind}"]`);
+            (target && !target.disabled ? target : targetRow?.querySelector<HTMLInputElement>("[data-control='enabled']"))?.focus();
+        }
+    };
+    surfaceSelect.addEventListener("change", () => renderActions());
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderActions());
+    renderActions();
+
+    const footer = document.createElement("div");
+    footer.className = "sw-floating-ball-settings__footer";
+    const restore = document.createElement("button");
+    restore.type = "button";
+    restore.className = "b3-button b3-button--text";
+    restore.textContent = this.i18n.floatingBallRestoreDefaults;
+    restore.addEventListener("click", () => {
+        if (!confirm(this.i18n.floatingBallRestoreConfirm)) return;
+        persist(restoreFloatingBallDefaults(this.getSettings().floatingBall, surfaceSelect.value));
+        renderActions();
+        restore.focus();
+    });
+    footer.append(restore, buildQuickActionsTransferControls.call(this, () => renderActions(), true));
+    wrapper.appendChild(footer);
+    return wrapper;
 }

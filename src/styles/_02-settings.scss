@@ -485,4 +485,199 @@
     }
 }
 
+// 悬浮球设置：端侧开关、动作顺序与导入导出
+.sw-floating-ball-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    &__note {
+        margin: 0;
+    }
+
+    &__preview {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        border: 1px dashed var(--b3-border-color);
+        border-radius: 10px;
+    }
+
+    &__preview-stage {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        min-height: 76px;
+        padding: 8px;
+        background: var(--b3-theme-surface);
+        border-radius: 8px;
+
+        &[data-edge="right"] { flex-direction: row-reverse; }
+        &.is-disabled { opacity: 0.6; }
+    }
+
+    &__preview-actions { display: flex; flex: 1; flex-wrap: wrap; gap: 6px; }
+
+    &__preview-ball {
+        flex: none;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        border: 1px solid var(--b3-theme-primary);
+        border-radius: 50%;
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary);
+        cursor: pointer;
+    }
+
+    button:focus-visible, input:focus-visible, select:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+    }
+
+    button, select { min-height: 44px; }
+
+    &__toggles {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    &__surface {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+    }
+
+    &__surface .b3-select {
+        min-width: 180px;
+    }
+
+    &__actions {
+        border: 1px solid var(--b3-border-color);
+        border-radius: 10px;
+        padding: 12px;
+    }
+
+    &__actions-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    &__actions-heading .sw-settings__hint {
+        margin: 0;
+        text-align: end;
+    }
+
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__row {
+        display: grid;
+        grid-template-columns: 28px minmax(100px, 1fr) auto auto auto auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        background: var(--b3-theme-background-light);
+    }
+
+    &__order {
+        color: var(--b3-theme-on-surface-light);
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    &__label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__status {
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+
+        &.is-supported { color: var(--b3-theme-primary); }
+        &.is-unknown { color: var(--b3-theme-warning); }
+        &.is-unavailable { color: var(--b3-theme-error); }
+    }
+
+    &__check {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        font-size: 12px;
+    }
+
+    &__controls {
+        display: inline-flex;
+        gap: 2px;
+    }
+
+    &__controls .b3-button {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 4px;
+
+        svg { width: 16px; height: 16px; }
+    }
+
+    &__add {
+        align-self: flex-start;
+        max-width: 280px;
+        margin-top: 4px;
+    }
+
+    &__footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 700px) {
+    .sw-floating-ball-settings__toggles {
+        grid-template-columns: 1fr;
+    }
+
+    .sw-floating-ball-settings__actions-heading {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .sw-floating-ball-settings__row {
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+    }
+
+    .sw-floating-ball-settings__row .sw-floating-ball-settings__check {
+        min-height: 44px;
+        justify-content: center;
+        grid-column: auto;
+    }
+
+    .sw-floating-ball-settings__row .sw-floating-ball-settings__check input {
+        width: 18px;
+        height: 18px;
+    }
+
+    .sw-floating-ball-settings__surface { flex-wrap: wrap; }
+    .sw-floating-ball-settings__surface .b3-select { min-width: 0; max-width: 100%; }
+    .sw-floating-ball-settings__row .sw-floating-ball-settings__controls { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
 // 首次点击日记按钮选择默认笔记本的弹窗
