@@ -56,6 +56,9 @@ const WIRED_SANITY_MODULES = [
     // T-6294（P1-1b）：第二面板装配链路外迁至 second-panel-ui（openSecondPanel，
     // 601 行原样搬移，仅 4 处调用点改 .call(this)）。闭包 45→46 已复核。
     'second-panel-ui',
+    // T-6759/B2：悬浮球动作执行器与首层/更多动作面板进入生产图。
+    'floating-ball-actions',
+    'floating-ball-panel',
 ];
 
 function resolveModule(fromFile, spec) {
@@ -126,8 +129,9 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // host-actions/write-actions/document-set-actions，propose+execute 双能力），闭包 52→58。
     // T-6757/B0：floating-ball-ui 接入 index.ts，闭包 58→59；模型已由
     // settings-model 的版本化配置入口进入同一闭包。
+    // T-6759/B2：floating-ball-actions 与 floating-ball-panel 接入 index.ts，闭包 59→61。
     // 包体复核：raw 832 KiB 自律线余量 >30 KiB、zip 硬上限余量 >138 KiB（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 59, `production graph grew to ${graph.size} modules; audited ceiling is 59`);
+    assert.ok(graph.size <= 61, `production graph grew to ${graph.size} modules; audited ceiling is 61`);
 });

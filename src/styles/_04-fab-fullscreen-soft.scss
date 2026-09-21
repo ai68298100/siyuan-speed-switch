@@ -60,6 +60,16 @@
     background: transparent;
     box-shadow: none;
 
+    &[data-edge="right"] {
+        .sw__floating-ball-first-layer,
+        .sw__floating-ball-more { right: calc(100% + 10px); }
+    }
+
+    &[data-edge="left"] {
+        .sw__floating-ball-first-layer,
+        .sw__floating-ball-more { left: calc(100% + 10px); }
+    }
+
     .sw-fab-trigger {
         display: flex;
         align-items: center;
@@ -106,6 +116,257 @@
     &[data-state="hidden"] {
         opacity: 0;
         pointer-events: none;
+    }
+
+    // B2 action viewport.  The panel lives inside the portal so it follows
+    // edge/position updates without a second fixed-position singleton.  The
+    // root remains pointer-transparent until a target or the overflow card
+    // is explicitly opened by the controller.
+    .sw__floating-ball-panel {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        font-size: 13px;
+        color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+
+        button {
+            font: inherit;
+        }
+    }
+
+    .sw__floating-ball-first-layer {
+        position: absolute;
+        top: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        min-width: 44px;
+        transform: translateY(-50%);
+        opacity: 1;
+        visibility: visible;
+        transition: opacity $sw-dur-panel $sw-ease, transform $sw-dur-panel $sw-ease;
+
+        // Keep the targets inside the window: edge-specific offsets are set
+        // on the portal root above so both hosts share one geometry rule.
+    }
+
+    // Targets only become interactive during the explicit targeting state;
+    // this prevents an always-mounted panel from stealing document clicks.
+    &:not([data-state="dragging"]):not([data-state="targeting"]):not([data-state="more"]) {
+        .sw__floating-ball-first-layer {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(-50%) scale(.94);
+        }
+    }
+
+    .sw__floating-ball-action {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 7px;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 6px 10px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 64%, transparent);
+        border-radius: 12px;
+        background: var(--b3-theme-surface, var(--b3-theme-background));
+        color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+        box-shadow: 0 5px 16px rgba(35, 42, 75, .16);
+        cursor: pointer;
+        pointer-events: auto;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease,
+            box-shadow $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease, opacity $sw-dur-fast $sw-ease;
+
+        &:hover,
+        &:focus-visible {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, #6e62c6) 44%, var(--b3-border-color));
+            background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+            box-shadow: 0 7px 20px rgba(35, 42, 75, .2);
+            outline: none;
+        }
+
+        &:focus-visible {
+            box-shadow: var(--sw-focus-ring, 0 0 0 3px color-mix(in srgb, var(--b3-theme-primary) 24%, transparent)),
+                0 7px 20px rgba(35, 42, 75, .2);
+        }
+
+        &:active { transform: scale(.94); }
+
+        &.is-more {
+            border-color: color-mix(in srgb, var(--b3-theme-primary, #6e62c6) 24%, var(--b3-border-color));
+            background: var(--sw-accent-soft, var(--b3-theme-surface));
+        }
+
+        &:disabled,
+        &.is-unavailable {
+            opacity: .56;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        svg {
+            flex: 0 0 20px;
+            width: 20px;
+            height: 20px;
+            color: var(--b3-theme-primary, var(--b3-theme-on-surface));
+        }
+
+        .sw__floating-ball-action-label {
+            max-width: 112px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    // Compact side rail keeps icon targets easy to scan; labels remain in
+    // the accessible name/title and are shown on keyboard focus.
+    &[data-surface="sidebar"] {
+        width: 44px;
+        height: 44px;
+
+        .sw__floating-ball-action {
+            justify-content: center;
+            padding: 0;
+
+            .sw__floating-ball-action-label { display: none; }
+        }
+
+        .sw__floating-ball-first-layer { gap: 6px; }
+    }
+
+    // The mobile overflow card is a bottom sheet.  Removing the translated
+    // containing block lets position:fixed resolve against the viewport; the
+    // negative margin preserves the ball's center at the inline top ratio.
+    &[data-surface="mobile"] {
+        transform: none;
+
+        // The portal itself must stay untransformed so the bottom sheet can
+        // use viewport-fixed positioning; offset only the trigger to retain
+        // the normalized yRatio's centre semantics.
+        .sw-fab-trigger { transform: translateY(-50%); }
+        &[data-state="dragging"] .sw-fab-trigger { transform: translateY(-50%) scale(.94); }
+        .sw-fab-trigger:active { transform: translateY(-50%) scale(.92); }
+
+        .sw__floating-ball-more {
+            position: fixed;
+            inset: auto 8px calc(8px + env(safe-area-inset-bottom, 0px));
+            width: auto;
+            max-width: 520px;
+            max-height: min(70vh, 520px);
+            margin-inline: auto;
+        }
+
+        .sw__floating-ball-action {
+            min-height: 48px;
+        }
+    }
+
+    .sw__floating-ball-more {
+        position: absolute;
+        bottom: 0;
+        width: min(320px, calc(100vw - 72px));
+        max-height: min(70vh, 520px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        padding: 8px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+        border-radius: 16px;
+        background: var(--b3-theme-surface, var(--b3-theme-background));
+        box-shadow: var(--sw-float-shadow, 0 14px 36px rgba(35, 42, 75, .2));
+        pointer-events: auto;
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity $sw-dur-panel $sw-ease, transform $sw-dur-panel $sw-ease;
+
+        &[hidden] {
+            display: block;
+            visibility: hidden;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(8px);
+        }
+    }
+
+    .sw__floating-ball-more-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 36px;
+        padding: 0 4px 6px 8px;
+        color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .sw__floating-ball-more-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+        cursor: pointer;
+        pointer-events: auto;
+
+        &:hover,
+        &:focus-visible {
+            background: var(--b3-list-hover, var(--b3-theme-surface-lighter));
+            color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+            outline: none;
+        }
+    }
+
+    .sw__floating-ball-more-list {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+
+        .sw__floating-ball-action {
+            width: 100%;
+            border-color: transparent;
+            border-radius: 10px;
+            background: transparent;
+            box-shadow: none;
+
+            &:hover,
+            &:focus-visible { background: var(--b3-list-hover, var(--b3-theme-surface-lighter)); }
+        }
+    }
+
+    .sw__floating-ball-more-empty {
+        margin: 0;
+        padding: 18px 8px;
+        color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+        text-align: center;
+    }
+
+    // Hover labels are useful on desktop without widening the collapsed
+    // target rail.  More-actions rows always retain their text labels.
+    &[data-surface="desktop"] .sw__floating-ball-first-layer {
+        .sw__floating-ball-action-label {
+            max-width: 0;
+            opacity: 0;
+            transition: max-width $sw-dur-fast $sw-ease, opacity $sw-dur-fast $sw-ease;
+        }
+
+        .sw__floating-ball-action:hover .sw__floating-ball-action-label,
+        .sw__floating-ball-action:focus-visible .sw__floating-ball-action-label {
+            max-width: 112px;
+            opacity: 1;
+        }
     }
 }
 
@@ -358,7 +619,9 @@
 
 @media (prefers-reduced-motion: reduce) {
     .speed-switch,
-    .speed-switch * {
+    .speed-switch *,
+    .sw-fab-root.sw__fab,
+    .sw-fab-root.sw__fab * {
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
         animation-duration: 0.01ms !important;
@@ -368,6 +631,11 @@
     // 按下反馈里的缩放属于位移类动效，即便过渡被压到 0.01ms 仍会瞬间跳变。
     // 减弱动效时改用纯颜色反馈（背景仍会加深，功能提示不丢失）。
     .speed-switch .sw__icon-btn:active {
+        transform: none;
+    }
+
+    .sw-fab-root.sw__fab .sw__floating-ball-action:active,
+    .sw-fab-root.sw__fab .sw-fab-trigger:active {
         transform: none;
     }
 }

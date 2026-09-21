@@ -65,7 +65,7 @@ export interface MobileSwitcherUiHost {
     createdByIdCache: {[rootId: string]: string};
 }
 
-export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]) {
+export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[], focusSearch = false) {
         const settings = this.getSettings();
         // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
         const activeTab: Tab | undefined = this.isMobile
@@ -222,6 +222,13 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         disposeHistoryDropdown = this.setupOpenHistoryDropdown(dialog.element.querySelector<HTMLElement>(".sw__history-dd"), closeOverlay);
         this.renderQuickActions(dialog.element, "mobile", searchInput, closeOverlay);
         rendered = true;
+
+        // Explicit search actions (for example from the floating ball) opt in
+        // to focus. Ordinary mobile switcher opens deliberately leave focus
+        // untouched so the WebView does not summon the keyboard immediately.
+        if (focusSearch) {
+            searchInput.focus();
+        }
 
         // 把 FAB 关闭时的 FAB 恢复优先级插在 destroy 之后；保证打开收藏弹窗关闭后会回到列表
         dialog.element.querySelector(".sw__mobile-fav-btn")?.addEventListener("click", () => {

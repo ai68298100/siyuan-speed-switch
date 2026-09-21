@@ -41,6 +41,8 @@ export interface FloatingBallUiOptions {
     observeHost?: boolean;
     onOpenSwitcher?: () => void;
     onOpenMore?: () => void;
+    /** Called when a drag ends over a mounted action target. */
+    onActionTarget?: (target: HTMLElement) => void;
     onPositionChange?: (position: FloatingBallPosition) => void;
 }
 
@@ -338,6 +340,16 @@ export class FloatingBallUi implements FloatingBallUiController {
                 this.position = this.positionFromPointer(event.clientX, event.clientY);
                 this.applyPosition();
                 this.options.onPositionChange?.(this.getPosition());
+                // Pointer capture keeps the gesture on the trigger, so use
+                // hit-testing to hand a drag release to the action panel.
+                // The panel remains an optional host concern; a missing or
+                // stale target simply behaves like a normal drop on empty
+                // space and does not execute the switcher.
+                const element = this.doc?.elementFromPoint?.(event.clientX, event.clientY) as HTMLElement | null;
+                const target = element?.closest?.("[data-action-id]") as HTMLElement | null;
+                if (target && this.root?.contains(target)) {
+                    this.options.onActionTarget?.(target);
+                }
                 event.preventDefault();
             }
             this.cancelPointer(false);

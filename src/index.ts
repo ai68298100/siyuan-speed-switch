@@ -72,7 +72,9 @@ import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
 import {createDefaultFloatingBallConfig} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
+import {createFloatingBallActionExecutor} from "./floating-ball-actions";
 import type {FloatingBallUiController, FloatingBallPosition, FloatingBallSurface} from "./floating-ball-ui";
+import {createFloatingBallPanelController} from "./floating-ball-panel";
 import {
     AGENT_CAPABILITY_SPECS,
     flattenOutline,
@@ -286,6 +288,22 @@ declare module "./quick-actions" {
     export function shouldRenderQuickAction(action: IQuickAction, surface: string, context?: string, declaredTargets?: string[]): boolean;
     export function appendQuickAction(actions: IQuickAction[], candidate: Partial<IQuickAction> & {declaredTargets?: string[]}, max?: number): {items: IQuickAction[], added: boolean, reason: string};
     export function createQuickActionRegistry(): any;
+}
+
+declare module "./floating-ball-panel" {
+    export function createFloatingBallPanelController(options: Record<string, unknown>): {
+        mount: () => HTMLElement | null;
+        update: (patch?: Record<string, unknown>) => void;
+        openMore: () => void;
+        closeMore: () => void;
+        destroy: () => void;
+        getElement: () => HTMLElement | null;
+        isMoreOpen: () => boolean;
+    } | null;
+}
+
+declare module "./floating-ball-actions" {
+    export function createFloatingBallActionExecutor(options: Record<string, unknown>): (action: unknown) => Promise<{ok: boolean; reason?: string; result?: unknown}>;
 }
 
 declare module "./quick-actions-ui" {
@@ -733,6 +751,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // legacy `floatingBallUi` field remains a mobile alias for existing
     // suspend/toolbar code until the action surface is fully migrated.
     private floatingBallUis = new Map<FloatingBallSurface, FloatingBallUiController>();
+    private floatingBallPanels = new Map<FloatingBallSurface, ReturnType<typeof createFloatingBallPanelController>>();
     private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
@@ -1538,6 +1557,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarIconFrameCancel = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
         this.sidebarElement = null;
+        this.floatingBallPanels.forEach((panel) => panel?.destroy());
+        this.floatingBallPanels.clear();
         this.floatingBallUis.forEach((controller) => controller.destroy());
         this.floatingBallUis.clear();
         this.floatingBallUi = null;
@@ -1712,6 +1733,9 @@ export default class SpeedSwitchPlugin extends Plugin {
             if (this.sidebarElement?.isConnected) {
                 this.refreshSidebar();
             }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "floatingBall")) {
+            this.updateFloatingBallVisibility();
         }
     }
 
@@ -2494,10 +2518,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     // ==================== 鍒囨崲鍣?====================
 
     // 打开页签切换器
-    private showSwitcher() {
+    private showSwitcher(focusSearch = false) {
         // 手机端走独立适配
         if (this.isMobile) {
-            this.showMobileSwitcher();
+            this.showMobileSwitcher(focusSearch);
             return;
         }
 
@@ -2509,10 +2533,11 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         // T-6481：Dialog 的 destroyCallback 必须在构造时就成型，而资源是在后续装配方法里
         // 创建的，故用一个可变 holder 把两者接起来（宿主只认构造参数）。
-        const switcherRelease: {fn: () => void} = {fn: () => undefined};
+        const releaseFab = this.suspendFABForDialog();
+        const switcherRelease: {fn: () => void} = {fn: releaseFab};
         const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease);
         // 宸ュ叿鏍?鍒楄〃/鍥炲埌椤堕儴/缂╃暐鍥炬噿鍔犺浇 绛夊瓙妯″潡瑁呴厤
-        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease);
+        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch);
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
@@ -2596,7 +2621,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         tabs: Tab[],
         activeTab: Tab | undefined,
         release: {fn: () => void},
+        focusSearch = false,
     ) {
+        const releaseFab = release.fn;
         this.prepareSwitcherChrome(dialog, fullscreen);
 
         // 左侧侧边栏面板列表（与思源 Ctrl+Tab 切换面板一致），按设置排除与显示方式渲染，无可面板时自动隐藏
@@ -2669,6 +2696,7 @@ const updatedMap: {[rootId: string]: string} = {};
         release.fn = () => {
             if (switcherReleased) return;
             switcherReleased = true;
+            releaseFab();
             unregisterRefresh();
             iconObserver?.disconnect();
             if (iconClampFrame) cancelAnimationFrame(iconClampFrame);
@@ -2691,8 +2719,14 @@ const updatedMap: {[rootId: string]: string} = {};
         this.bindSwitcherListArea(dialog, scrollElement, tabs, activeTab, listOpts, settings, searchInput, sortSelect, closeOverlay, updatedMap);
         refreshQuickActions();
 
-        // 让滚动区域获得焦点以接收键盘导航
-        scrollElement.focus();
+        // 普通打开仍把焦点交给滚动区，保持键盘卡片导航语义；动作面板
+        // 的“搜索”入口显式要求搜索框获得焦点，避免只打开切换器却让
+        // 用户再点一次输入框。
+        if (focusSearch && searchInput) {
+            searchInput.focus();
+        } else {
+            scrollElement.focus();
+        }
 
         // 鍥炲埌椤堕儴鎸夐挳
         this.bindSwitcherBackTop(dialog, scrollElement);
@@ -3030,6 +3064,14 @@ const version = beginSearch(session);
         this.saveDataDebounced(QUICK_ACTIONS_KEY);
         this.refreshOpenSwitchers();
         this.refreshSidebar();
+        this.refreshFloatingBallPanels();
+    }
+
+    private refreshFloatingBallPanels() {
+        if (this.floatingBallPanels.size === 0) return;
+        const config = this.getSettings().floatingBall || {};
+        const actions = this.getFloatingBallActions();
+        this.floatingBallPanels.forEach((panel) => panel?.update({config, actions}));
     }
 
     /**
@@ -3047,10 +3089,12 @@ const version = beginSearch(session);
         } else {
             this.quickActionAdapterTargets.delete(id);
         }
+        this.refreshFloatingBallPanels();
         return () => {
             if (this.quickActionAdapters.get(id) === handler) {
                 this.quickActionAdapters.delete(id);
                 this.quickActionAdapterTargets.delete(id);
+                this.refreshFloatingBallPanels();
             }
         };
     }
@@ -3098,12 +3142,14 @@ const version = beginSearch(session);
             existing.targets = declaredTargets ? [...declaredTargets] : existing.targets;
             this.saveQuickActions(actions);
         }
+        this.refreshFloatingBallPanels();
         return () => {
             if (this.quickActionProviderTokens.get(actionValue) !== registrationToken) return;
             this.quickActionProviderTokens.delete(actionValue);
             unregisterAdapter();
             this.quickActionProviders.delete(actionValue);
             this.quickActionRegistry.unregister(adapterId);
+            this.refreshFloatingBallPanels();
         };
     }
 
@@ -3359,83 +3405,43 @@ const version = beginSearch(session);
     }
 
     private executeQuickAction(action: IQuickAction, searchInput: HTMLInputElement | null, close: () => void) {
-        if (action.kind === "adapter") {
-            const adapterId = action.value.split("/", 1)[0];
-            const handler = this.quickActionAdapters.get(adapterId);
-            if (!handler) {
-                const result = this.quickActionRegistry.invoke({providerId: adapterId, value: action.value});
-                if (result.ok) {
-                    close();
+        const executor = createFloatingBallActionExecutor({
+            adapters: this.quickActionAdapters,
+            registry: this.quickActionRegistry,
+            getDockByType: (type: string) => this.getDockByType(type),
+            plugins: (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins,
+            context: {surface: this.isMobile ? "mobile" : "desktop", source: "quick-actions"},
+            close,
+            onSwitcher: () => this.showSwitcher(),
+            onSearch: () => {
+                if (searchInput?.isConnected) {
+                    searchInput.focus();
                     return;
                 }
-                logger.warn("quick action adapter unavailable", action.value);
-                showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
-                return;
-            }
-            close();
-            Promise.resolve(handler(action.value.slice(adapterId.length + 1))).catch((error) => {
-                logger.warn("quick action adapter failed", error);
-                showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
-            });
-            return;
-        }
-        if (action.kind === "dock") {
-            const dock = this.getDockByType(action.value);
-            if (!dock?.toggleModel) {
-                showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
-                return;
-            }
-            try {
-                dock.toggleModel(action.value, true);
-                close();
-            } catch (e) {
-                logger.warn("quick dock action fail", e);
-                showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
-            }
-            return;
-        }
-        if (action.kind === "command") {
-            const separator = action.value.indexOf("::");
-            const pluginName = separator > 0 ? action.value.slice(0, separator) : "";
-            const commandKey = separator > 0 ? action.value.slice(separator + 2) : "";
-            const plugins = (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins;
-            const plugin = Array.isArray(plugins) ? plugins.find((item) => item?.name === pluginName) : undefined;
-            const command = plugin?.commands?.find((item) => item.langKey === commandKey);
-            const callback = command?.callback || command?.globalCallback;
-            if (!callback) {
-                logger.warn("quick plugin command unavailable", action.value);
-                showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
-                return;
-            }
-            close();
-            try {
-                Promise.resolve(callback.call(plugin)).catch((error) => {
-                    logger.warn("quick plugin command failed", error);
-                    showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
-                });
-            } catch (error) {
-                logger.warn("quick plugin command failed", error);
-                showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
-            }
-            return;
-        }
-        switch (action.value) {
-            case "switcher":
-                close();
-                this.showSwitcher();
-                break;
-            case "search":
-                searchInput?.focus();
-                break;
-            case "journal":
-                close();
-                this.openJournal();
-                break;
-            case "settings":
-                close();
-                this.openSetting();
-                break;
-        }
+                // Home/second-panel callers do not own a search input. Keep
+                // the action useful by opening the correct switcher surface
+                // and asking that surface to focus its real input.
+                this.showSwitcher(true);
+            },
+            onJournal: () => this.openJournal(),
+            onSettings: () => this.openSetting(),
+        });
+        void Promise.resolve(executor(action)).then((result) => {
+            if (result?.ok) return;
+            const reason = result?.reason === "failed" ? "failed" : "unavailable";
+            logger.warn(`quick action ${reason}`, action.value);
+            showMessage(
+                reason === "failed" ? this.i18n.quickActionFailed : this.i18n.quickActionUnavailable,
+                MESSAGE_DEFAULT_MS,
+                "error",
+            );
+        }).catch((error) => {
+            // The executor normalises provider errors, but keep this final
+            // boundary defensive so a host callback can never create an
+            // unhandled rejection in a toolbar click handler.
+            logger.warn("quick action execution failed", error);
+            showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
+        });
     }
 
     // ==================== 第二面板（小组件主页） ====================
@@ -8155,9 +8161,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作。
     // （T-6679：minAppVersion 已抬到 3.8.0，"旧版无 MobileTabs API 需提示升级"的
     // 运行时门成为死代码，随 ADR 0064 首批兼容层简化移除）
-    private showMobileSwitcher() {
+    private showMobileSwitcher(focusSearch = false) {
         const tabs = this.getMobileTabs();
-        openMobileSwitcherDialog.call(this, tabs);
+        openMobileSwitcherDialog.call(this, tabs, focusSearch);
     }
 
     // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
@@ -8440,6 +8446,66 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.bindFABScrollGesture();
     }
 
+    /** Build the floating-ball catalogue from the shared quick-action model.
+     * Persisted actions remain authoritative; picker candidates fill in
+     * registered builtins, docks, providers and commands without copying a
+     * second action definition into the floating-ball layer.
+     */
+    private getFloatingBallActions(): IQuickAction[] {
+        const saved = this.getQuickActions();
+        const seen = new Set(saved.map((action) => `${action.kind}:${action.value}`));
+        const result = saved.map((action) => ({...action}));
+        this.getQuickActionPickerCandidates(saved).forEach((candidate) => {
+            const action = candidate.action;
+            const key = `${action.kind}:${action.value}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            result.push({...action});
+        });
+        return result;
+    }
+
+    private executeFloatingBallSurfaceAction(surface: FloatingBallSurface, action: unknown) {
+        const controller = this.floatingBallUis.get(surface);
+        const panel = this.floatingBallPanels.get(surface);
+        panel?.closeMore();
+        controller?.setState("executing");
+        const executor = createFloatingBallActionExecutor({
+            adapters: this.quickActionAdapters,
+            registry: this.quickActionRegistry,
+            context: {surface: `floating-ball:${surface}`},
+            plugins: (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins,
+            getDockByType: (type: string) => this.getDockByType(type),
+            close: () => panel?.closeMore(),
+            onSwitcher: () => this.showSwitcher(),
+            onSearch: () => {
+                if (surface === "sidebar") {
+                    this.sidebarElement?.querySelector<HTMLInputElement>(".sw__search")?.focus();
+                } else {
+                    this.showSwitcher(true);
+                }
+            },
+            onJournal: () => this.openJournal(),
+            onSettings: () => this.openSetting(),
+        });
+        const restoreControllerState = () => {
+            if (controller?.getState() === "executing") controller.setState("docked");
+        };
+        void executor(action).then((result) => {
+            if (!result.ok) {
+                const message = result.reason === "failed"
+                    ? this.i18n.quickActionFailed
+                    : this.i18n.quickActionUnavailable;
+                showMessage(message, MESSAGE_DEFAULT_MS, "error");
+            }
+            restoreControllerState();
+        }).catch((error) => {
+            logger.warn("floating-ball action failed", error);
+            showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
+            restoreControllerState();
+        });
+    }
+
     /**
      * Mount one portal for a surface.  The shared action surface is still a
      * later batch; B1 only wires the stable switcher route and independent
@@ -8467,6 +8533,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 onOpenSwitcher: () => {
                     if (this.fabModalDepth === 0) this.showSwitcher();
                 },
+                onOpenMore: () => {
+                    this.floatingBallPanels.get(surface)?.openMore();
+                },
+                onActionTarget: (target) => {
+                    const actionButton = target.closest("[data-action-id]") as HTMLElement | null;
+                    actionButton?.click();
+                },
                 onPositionChange: (next) => this.persistFloatingBallPosition(surface, next),
             });
             this.floatingBallUis.set(surface, controller);
@@ -8477,10 +8550,45 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             ariaLabel: this.i18n.switchTabs,
         });
         controller.mount();
+        const container = controller.getElement();
+        if (container) {
+            const panelOptions = {
+                document,
+                container,
+                surface,
+                config,
+                actions: this.getFloatingBallActions(),
+                includeBuiltins: false,
+                labels: {
+                    more: this.i18n.quickActions,
+                    close: this.i18n.close,
+                    unavailable: this.i18n.quickActionUnavailable,
+                    empty: this.i18n.quickActionUnavailable,
+                },
+                onAction: (action: unknown) => this.executeFloatingBallSurfaceAction(surface, action),
+                onOpenMore: () => controller?.setState("more"),
+                onCloseMore: () => {
+                    controller?.setState("docked");
+                    controller?.focus();
+                },
+            };
+            let panel = this.floatingBallPanels.get(surface);
+            if (!panel) {
+                panel = createFloatingBallPanelController(panelOptions);
+                if (panel) {
+                    this.floatingBallPanels.set(surface, panel);
+                    panel.mount();
+                }
+            } else {
+                panel.update(panelOptions);
+            }
+        }
         return controller;
     }
 
     private destroyFloatingBallSurface(surface: FloatingBallSurface) {
+        this.floatingBallPanels.get(surface)?.destroy();
+        this.floatingBallPanels.delete(surface);
         const controller = this.floatingBallUis.get(surface);
         controller?.destroy();
         this.floatingBallUis.delete(surface);
@@ -8509,10 +8617,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 且 Escape / 遮罩关闭也会走到它。这里返回释放函数，由调用方接进 destroyCallback。
         // T-6487：原实现在非移动端直接 return，onDestroy 永不触发——桌面端用 Escape 关掉
         // 日记笔记本选择弹窗时，调用方 Promise 会永久挂起。
-        const suspended = Boolean(this.isMobile);
+        const modalControllers = [...this.floatingBallUis.values()];
+        const suspended = modalControllers.length > 0;
         if (suspended) {
             this.fabModalDepth += 1;
-            this.floatingBallUi?.setSuspended(true);
+            modalControllers.forEach((controller) => controller.setSuspended(true));
             this.fabElement?.classList.add("sw__fab--hidden");
         }
         let released = false;
@@ -8526,7 +8635,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.fabModalDepth = Math.max(0, this.fabModalDepth - 1);
             onDestroy?.();
             if (this.fabModalDepth === 0) {
-                this.floatingBallUi?.setSuspended(false);
+                this.floatingBallUis.forEach((controller) => controller.setSuspended(false));
                 this.fabElement?.classList.remove("sw__fab--hidden", "sw__fab--scroll-hidden");
             }
         };
