@@ -36,6 +36,9 @@ const WIRED_SANITY_MODULES = [
     // R5a 重构（D-381）：搜索链路状态收拢至 doc-search-state（仅新增自身，import type 擦除）。
     // R5b 重构（D-383）：搜索方法群外迁至 doc-search-ui。
     'settings-sections',
+    // T-6757/B0：悬浮球配置模型与 portal 生命周期控制器随移动入口进入生产图。
+    'floating-ball-model',
+    'floating-ball-ui',
     'home-config-form',
     'store-labels',
     'home-store-ui',
@@ -121,8 +124,10 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // 2026-09-18 T-6376~6383：document-widget-model 入图（收藏/文档集/指定文档纯投影），闭包 51→52。
     // 2026-09-20 T-6680（ADR 0063 宿主路线）：执行链六模块入图（plan/actions/registry/
     // host-actions/write-actions/document-set-actions，propose+execute 双能力），闭包 52→58。
+    // T-6757/B0：floating-ball-ui 接入 index.ts，闭包 58→59；模型已由
+    // settings-model 的版本化配置入口进入同一闭包。
     // 包体复核：raw 832 KiB 自律线余量 >30 KiB、zip 硬上限余量 >138 KiB（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 58, `production graph grew to ${graph.size} modules; audited ceiling is 58`);
+    assert.ok(graph.size <= 59, `production graph grew to ${graph.size} modules; audited ceiling is 59`);
 });

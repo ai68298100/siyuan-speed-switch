@@ -246,8 +246,18 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
         wrapper.append(
             panelNote,
             this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
-                this.switcher(s.fabEnabled, (v) => {
-                    this.updateSettings({fabEnabled: v});
+                this.switcher(s.floatingBall?.enabled?.mobile ?? s.fabEnabled, (v) => {
+                    const floatingBall = s.floatingBall || {};
+                    this.updateSettings({
+                        fabEnabled: v,
+                        floatingBall: {
+                            ...floatingBall,
+                            enabled: {
+                                ...(floatingBall.enabled || {}),
+                                mobile: v,
+                            },
+                        },
+                    });
                     this.updateFABVisibility();
                 })),
             this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,

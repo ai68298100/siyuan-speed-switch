@@ -1,5 +1,7 @@
 "use strict";
 
+const {normalizeFloatingBallConfig} = require("./floating-ball-model.js");
+
 /**
  * Normalize persisted settings independently from DOM and plugin instances.
  * `options` supplies range and enum validators so this module remains a small
@@ -21,6 +23,13 @@ function normalizeSettings(saved, options = {}) {
     const quickActions = typeof options.quickActions === "function"
         ? options.quickActions(source.quickActions)
         : (Array.isArray(source.quickActions) ? source.quickActions : (defaults.quickActions || []));
+    // T-6757: keep the new spatial entry configuration inside the existing
+    // settings object.  The legacy fabEnabled flag is passed only as a
+    // migration hint; once a versioned floatingBall.mobile value exists it
+    // remains authoritative.
+    const floatingBall = normalizeFloatingBallConfig(source.floatingBall, {
+        legacyFabEnabled: source.fabEnabled,
+    });
     const excludedDocks = Array.isArray(source.excludedDocks)
         ? source.excludedDocks.filter((value) => typeof value === "string")
         : [];
@@ -58,7 +67,11 @@ function normalizeSettings(saved, options = {}) {
         dockDisplay: normalizeEnum(source.dockDisplay, options.dockDisplay || [], defaults.dockDisplay),
         sidebarLayout: normalizeEnum(source.sidebarLayout, options.sidebarLayout || [], defaults.sidebarLayout),
         fullscreen: panelSizeMode === "fullscreen",
-        fabEnabled: bool("fabEnabled"),
+        // Keep the legacy field as a read-compatible projection of the
+        // versioned mobile entry.  This prevents old and new settings views
+        // from rendering opposite switch states after a partial migration.
+        fabEnabled: floatingBall.enabled.mobile,
+        floatingBall,
         agentActionsEnabled: bool("agentActionsEnabled"),
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),

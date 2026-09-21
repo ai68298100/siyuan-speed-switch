@@ -70,6 +70,9 @@ import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
+import {createDefaultFloatingBallConfig} from "./floating-ball-model";
+import {createFloatingBallUi} from "./floating-ball-ui";
+import type {FloatingBallUiController, FloatingBallPosition} from "./floating-ball-ui";
 import {
     AGENT_CAPABILITY_SPECS,
     flattenOutline,
@@ -516,6 +519,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     fullscreen: false,     // 鍏ㄥ睆妯″紡锛氬垏鎹㈠櫒閾烘弧鏁翠釜绐楀彛锛屾寜 Esc 閫€鍑?
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
     fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
+    floatingBall: createDefaultFloatingBallConfig(), // T-6757 版本化悬浮球配置（旧 fabEnabled 仍兼容）
     mobileColumns: MOBILE_COLUMNS_AUTO, // 默认自动（竖屏单列，横屏双列）
     mobileThumbHeight: 80, // 手机端缩略图高度
     journalNotebook: "",   // 默认日记笔记本 id，空=未设置（首次点击日记按钮时弹出选择）
@@ -558,6 +562,7 @@ export interface ISwSettings {
     sidebarLayout: SidebarLayout; // 侧边栏缩略图布局：enlarge 放大 / columns 自动加列
     // 鎵嬫満绔?
     fabEnabled: boolean;       // 是否启用悬浮按钮
+    floatingBall: any;         // 版本化悬浮球配置；由 floating-ball-model 负责净化
     mobileColumns: number;     // 0=单列 1=双列 2=自动
     mobileThumbHeight: number; // 手机端缩略图高度
     journalNotebook: string;   // 默认日记笔记本 id，空=未设置
@@ -723,6 +728,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     } | null = null;
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（已持久化，重启后恢复）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
+    private floatingBallUi: FloatingBallUiController | null = null;
     private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
@@ -1436,6 +1442,8 @@ export default class SpeedSwitchPlugin extends Plugin {
             do {
                 this.dataChangeReloadQueued = false;
                 await this.loadPersistentKeys();
+                this.settingsCache = null;
+                if (this.isMobile) this.updateFABVisibility();
                 this.captureStorageMigrationSnapshot();
                 this.initFavCollapsed();
                 this.scheduleSidebarRefresh();
@@ -1523,15 +1531,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarIconFrameCancel = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
         this.sidebarElement = null;
-        this.fabElement?.remove();
+        this.floatingBallUi?.destroy();
+        this.floatingBallUi = null;
         this.fabElement = null;
         this.fabModalDepth = 0;
-        if (this.fabGestureHandlers) {
-            document.removeEventListener("touchstart", this.fabGestureHandlers.touchstart);
-            document.removeEventListener("touchmove", this.fabGestureHandlers.touchmove);
-            this.fabGestureHandlers = null;
-            this.fabGestureBound = false;
-        }
+        this.unbindFABScrollGesture();
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = null;
         await pendingSaves;
@@ -8422,27 +8426,46 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     // 手机端分组批量操作单（嵌套于收藏弹窗之上、层级更高）：一键开启/关闭组内页签
     private createFAB() {
-        // 已在文档中则跳过；仅存在引用但已脱挂（被外部移除）时重建
-        if (this.fabElement?.isConnected) {
-            return;
+        const settings = this.getSettings();
+        const config = settings.floatingBall || {};
+        const position = config.position?.mobile || {edge: "right", yRatio: 0.72};
+        if (!this.floatingBallUi) {
+            this.floatingBallUi = createFloatingBallUi({
+                surface: "mobile",
+                document,
+                host: document.body,
+                position,
+                touchSlopPx: config.behavior?.touchSlopPx,
+                marginPx: 8,
+                ariaLabel: this.i18n.switchTabs,
+                onOpenSwitcher: () => {
+                    if (this.fabModalDepth === 0) this.showSwitcher();
+                },
+                onPositionChange: (next) => this.persistFloatingBallPosition(next),
+            });
         }
-        this.fabElement?.remove();
-        this.fabElement = document.createElement("div");
-        this.fabElement.className = "sw__fab";
-        this.fabElement.setAttribute("role", "button");
-        this.fabElement.setAttribute("aria-label", this.i18n.switchTabs);
-        this.fabElement.tabIndex = 0;
-        this.fabElement.innerHTML = `<svg><use xlink:href="#iconLayout"></use></svg>`;
-        this.fabElement.addEventListener("click", () => {
-            this.showSwitcher();
+        this.floatingBallUi.update({
+            position,
+            touchSlopPx: config.behavior?.touchSlopPx,
+            ariaLabel: this.i18n.switchTabs,
         });
-        this.fabElement.addEventListener("keydown", (event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            this.showSwitcher();
-        });
-        document.body.appendChild(this.fabElement);
+        this.floatingBallUi.mount();
+        this.fabElement = this.floatingBallUi.getElement();
         this.bindFABScrollGesture();
+    }
+
+    private persistFloatingBallPosition(position: FloatingBallPosition) {
+        const current = this.getSettings();
+        const currentBall = current.floatingBall || {};
+        this.updateSettings({
+            floatingBall: {
+                ...currentBall,
+                position: {
+                    ...(currentBall.position || {}),
+                    mobile: {edge: position.edge, yRatio: position.yRatio},
+                },
+            },
+        });
     }
 
     private suspendFABForDialog(onDestroy?: () => void): () => void {
@@ -8453,6 +8476,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const suspended = Boolean(this.isMobile);
         if (suspended) {
             this.fabModalDepth += 1;
+            this.floatingBallUi?.setSuspended(true);
             this.fabElement?.classList.add("sw__fab--hidden");
         }
         let released = false;
@@ -8466,6 +8490,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.fabModalDepth = Math.max(0, this.fabModalDepth - 1);
             onDestroy?.();
             if (this.fabModalDepth === 0) {
+                this.floatingBallUi?.setSuspended(false);
                 this.fabElement?.classList.remove("sw__fab--hidden", "sw__fab--scroll-hidden");
             }
         };
@@ -8517,14 +8542,28 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         document.addEventListener("touchmove", this.fabGestureHandlers.touchmove, {passive: true});
     }
 
+    private unbindFABScrollGesture() {
+        if (!this.fabGestureHandlers) {
+            this.fabGestureBound = false;
+            return;
+        }
+        document.removeEventListener("touchstart", this.fabGestureHandlers.touchstart);
+        document.removeEventListener("touchmove", this.fabGestureHandlers.touchmove);
+        this.fabGestureHandlers = null;
+        this.fabGestureBound = false;
+    }
+
     private updateFABVisibility() {
         const settings = this.getSettings();
-        if (this.isMobile && settings.fabEnabled) {
+        const enabled = settings.floatingBall?.enabled?.mobile ?? settings.fabEnabled;
+        if (this.isMobile && enabled) {
             this.createFAB();
             this.fabElement?.classList.toggle("sw__fab--hidden", this.fabModalDepth > 0);
         } else {
-            this.fabElement?.remove();
+            this.floatingBallUi?.destroy();
+            this.floatingBallUi = null;
             this.fabElement = null;
+            this.unbindFABScrollGesture();
         }
     }
 

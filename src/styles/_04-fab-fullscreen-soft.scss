@@ -45,6 +45,70 @@
     }
 }
 
+// T-6757 floating-ball portal.  The portal root owns placement and lifecycle;
+// the real button owns hit testing so host redraws cannot leave a dead control.
+.sw-fab-root.sw__fab {
+    top: 72%;
+    right: auto;
+    bottom: auto;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    overflow: visible;
+    pointer-events: none;
+    transform: translateY(-50%);
+    background: transparent;
+    box-shadow: none;
+
+    .sw-fab-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary);
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .2), 0 1px 4px rgba(0, 0, 0, .1);
+        cursor: pointer;
+        touch-action: none;
+        pointer-events: auto;
+        -webkit-tap-highlight-color: transparent;
+        transition: transform $sw-dur-panel $sw-ease, opacity $sw-dur-panel $sw-ease, box-shadow $sw-dur-slow $sw-ease;
+
+        svg {
+            width: 18px;
+            height: 18px;
+            color: var(--b3-theme-on-primary);
+        }
+
+        &:active {
+            transform: scale(.92);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 3px;
+        }
+    }
+
+    &[data-state="dragging"] .sw-fab-trigger { cursor: grabbing; }
+
+    &[data-state="dragging"] .sw-fab-trigger {
+        opacity: .72;
+        transform: scale(.94);
+    }
+
+    &[data-state="suspended"],
+    &[data-state="hidden"] {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
 // 手机端顶栏入口按钮：思源 3.8.x 手机端不向插件开放顶栏（addTopBar 只进右侧菜单"扩展"分组），
 // 由 JS 直接插入 #mobileTopBar，这里只负责尺寸与按压反馈
 #swMobileTopBarBtn {
