@@ -1,6 +1,6 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.29.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.29.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、58 个组件的聚合面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -207,7 +207,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5879 项测试（214 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5880 项测试（214 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -239,11 +239,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5879 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5880 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5879 项测试、发布/质量/集成审计和三套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5880 项测试、发布/质量/集成审计和三套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
@@ -298,11 +298,17 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和三套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.29.0`（2026-09-21 正式发布，Release 资产由 workflow 自动构建）。
+当前版本为 `v0.29.1`（2026-09-21 正式发布，Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
+
+### v0.29.1（2026-09-21）
+
+- **修复 iCal 每隔 N 日限星期重复规则**（`FREQ=DAILY;INTERVAL=N;BYDAY=…`）：此前被保守降级为单次呈现，现按 RFC 正确展开（如"每 2 天限周一/周三"）。
+- **城市表扩至 555 城（第十二波）**：三亚、清迈、普吉、芽庄、槟城、沙迦、马累、伏尔加格勒、亚速尔群岛、基里蒂马蒂、金沙萨、胡志明市、亚历山大等旅游与区域城市补缺，全部中英双语；全表 IANA 校验零无效。
+- **工程与仓库**：版本一致性门禁（六处版本号互等）、计数一致性门禁（五处引用同值）、夹具端到端集成测试与 CORS 伺服器、双语 issue 模板、仓库元数据刷新、远端分支收拢（4 个已合入分支清理）、依赖更新（jsdom/sass/webpack）。
 
 ### v0.29.0（2026-09-21）
 

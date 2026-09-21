@@ -5,6 +5,11 @@
 
 ## Changelog (full history)
 
+### v0.29.1 (2026-09-21)
+
+- **Fixed iCal every-N-days weekday recurrence** (`FREQ=DAILY;INTERVAL=N;BYDAY=…`) degrading to a single occurrence; city table grows to 555 entries (wave 12); version-consistency and count-consistency gates, fixture end-to-end integration tests, bilingual issue templates and repo metadata refresh.
+
+
 ### v0.29.0 (2026-09-21)
 
 - **World-clock city table grows to 535 entries (wave 11)**: European second-tier cities, Russia/Central Asia, the Americas, and Oceania additions - all bilingual; full-table IANA validation clean.

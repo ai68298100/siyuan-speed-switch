@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.29.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.29.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -207,7 +207,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 214 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5879 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 214 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5880 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -239,11 +239,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5879)
+pnpm test               # run every unit, contract, and host release test (currently 5880)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
-pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, 5879 tests, release/quality/integration audits, and all three UI smokes)
+pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, 5880 tests, release/quality/integration audits, and all three UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
@@ -298,11 +298,17 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the three UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.29.0` (officially published on 2026-09-21; Release assets are built automatically by the workflow).
+The current version is `v0.29.1` (officially published on 2026-09-21; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.29.1 (2026-09-21)
+
+- **Fixed iCal every-N-days weekday recurrence** (`FREQ=DAILY;INTERVAL=N;BYDAY=…`): previously conservatively degraded to a single occurrence, now expands correctly per RFC (e.g. "every 2 days limited to Mon/Wed").
+- **City table grows to 555 entries (wave 12)**: Sanya, Chiang Mai, Phuket, Nha Trang, Penang, Sharjah, Male, Volgograd, Azores, Kiritimati, Kinshasa, Ho Chi Minh City, Alexandria and more - all bilingual; full-table IANA validation clean.
+- **Engineering & repo**: version-consistency gate (six version surfaces must match), count-consistency gate, fixture end-to-end integration tests with a CORS fixture server, bilingual issue templates, repo metadata refresh, remote branch consolidation (4 merged branches cleaned), dependency updates.
 
 ### v0.29.0 (2026-09-21)
 
