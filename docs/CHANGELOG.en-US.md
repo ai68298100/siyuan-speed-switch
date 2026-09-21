@@ -5,6 +5,13 @@
 
 ## Changelog (full history)
 
+### v0.30.0 (2026-09-22)
+
+- **Complete floating ball**: independent desktop, sidebar, and mobile surfaces with stable drag targets, free placement, action execution, overflow search, and keyboard-equivalent access.
+- **Configuration governance**: appearance/behavior settings, per-surface enablement and action ordering, default presets, import/export, capability states, and safe fallback.
+- **Reliability and viewport handling**: scroll/modal/fullscreen yielding, execution watchdog, visualViewport/safe-area handling, and host-aware layering.
+- **Verification**: 5,990 tests, four UI smoke suites, 22 Chromium scenarios, and 100 real pointer drags passed.
+
 ### v0.29.1 (2026-09-21)
 
 - **Fixed iCal every-N-days weekday recurrence** (`FREQ=DAILY;INTERVAL=N;BYDAY=…`) degrading to a single occurrence; city table grows to 555 entries (wave 12); version-consistency and count-consistency gates, fixture end-to-end integration tests, bilingual issue templates and repo metadata refresh.
