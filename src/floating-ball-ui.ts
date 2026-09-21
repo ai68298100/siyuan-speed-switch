@@ -37,6 +37,16 @@ export interface FloatingBallUiOptions {
     position?: FloatingBallPosition;
     touchSlopPx?: number;
     marginPx?: number;
+    /** Opacity applied after the ball has been idle for idleDelayMs. */
+    idleOpacity?: number;
+    /** Delay before the idle presentation is applied. */
+    idleDelayMs?: number;
+    /** Move the idle ball partly beyond its attached edge. */
+    halfHide?: boolean;
+    /** Disable the trigger while the host action surface is unavailable. */
+    available?: boolean;
+    /** Yield while the document is in fullscreen. Hidden documents always yield. */
+    hideOnFullscreen?: boolean;
     ariaLabel?: string;
     observeHost?: boolean;
     onOpenSwitcher?: () => void;
@@ -50,6 +60,11 @@ export interface FloatingBallUiPatch {
     position?: FloatingBallPosition;
     touchSlopPx?: number;
     marginPx?: number;
+    idleOpacity?: number;
+    idleDelayMs?: number;
+    halfHide?: boolean;
+    available?: boolean;
+    hideOnFullscreen?: boolean;
     ariaLabel?: string;
 }
 
@@ -74,6 +89,9 @@ const DEFAULT_TOUCH_SLOP = 9;
 const DEFAULT_MARGIN = 8;
 const MIN_TOUCH_SLOP = 8;
 const MAX_TOUCH_SLOP = 12;
+const DEFAULT_IDLE_OPACITY = 0.4;
+const DEFAULT_IDLE_DELAY_MS = 5000;
+const MAX_IDLE_DELAY_MS = 60_000;
 
 type Cleanup = () => void;
 
@@ -94,6 +112,16 @@ function normalizePosition(value: FloatingBallPosition | undefined): FloatingBal
 function normalizeTouchSlop(value: number | undefined): number {
     const candidate = Number(value);
     return clamp(Number.isFinite(candidate) ? candidate : DEFAULT_TOUCH_SLOP, MIN_TOUCH_SLOP, MAX_TOUCH_SLOP);
+}
+
+function normalizeIdleOpacity(value: number | undefined): number {
+    const candidate = Number(value);
+    return clamp(Number.isFinite(candidate) ? candidate : DEFAULT_IDLE_OPACITY, 0.4, 1);
+}
+
+function normalizeIdleDelay(value: number | undefined): number {
+    const candidate = Number(value);
+    return clamp(Number.isFinite(candidate) ? candidate : DEFAULT_IDLE_DELAY_MS, 0, MAX_IDLE_DELAY_MS);
 }
 
 function getControllerMap(doc: Document): Map<FloatingBallSurface, FloatingBallUiController> {
@@ -123,6 +151,20 @@ export class FloatingBallUi implements FloatingBallUiController {
     private position: FloatingBallPosition;
     private touchSlop: number;
     private margin: number;
+    private idleOpacity: number;
+    private idleDelayMs: number;
+    private halfHide: boolean;
+    private available: boolean;
+    private hideOnFullscreen: boolean;
+    private suspendedReason = false;
+    private hiddenReasons = {
+        manual: false,
+        fullscreen: false,
+        visibility: false,
+    };
+    private pointerInside = false;
+    private focused = false;
+    private idleTimer: number | null = null;
     private activePointerId: number | null = null;
     private pointerStart: {x: number; y: number} | null = null;
     private positionAtPointerStart: FloatingBallPosition | null = null;
@@ -136,6 +178,11 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.touchSlop = normalizeTouchSlop(options.touchSlopPx);
         this.margin = clamp(Number(options.marginPx), 0, 64);
         if (!Number.isFinite(this.margin)) this.margin = DEFAULT_MARGIN;
+        this.idleOpacity = normalizeIdleOpacity(options.idleOpacity);
+        this.idleDelayMs = normalizeIdleDelay(options.idleDelayMs);
+        this.halfHide = options.halfHide !== false;
+        this.available = options.available !== false;
+        this.hideOnFullscreen = options.hideOnFullscreen !== false;
     }
 
     mount(): HTMLElement | null {
@@ -161,41 +208,67 @@ export class FloatingBallUi implements FloatingBallUiController {
             const margin = Number(patch.marginPx);
             this.margin = clamp(Number.isFinite(margin) ? margin : DEFAULT_MARGIN, 0, 64);
         }
+        if (patch.idleOpacity !== undefined) this.idleOpacity = normalizeIdleOpacity(patch.idleOpacity);
+        if (patch.idleDelayMs !== undefined) this.idleDelayMs = normalizeIdleDelay(patch.idleDelayMs);
+        if (patch.halfHide !== undefined) this.halfHide = patch.halfHide !== false;
+        if (patch.available !== undefined) this.available = patch.available === true;
+        if (patch.hideOnFullscreen !== undefined) {
+            this.hideOnFullscreen = patch.hideOnFullscreen !== false;
+            this.syncDocumentVisibility();
+        }
         if (patch.ariaLabel !== undefined && this.trigger) {
             this.trigger.setAttribute("aria-label", patch.ariaLabel);
             this.trigger.setAttribute("title", patch.ariaLabel);
         }
         this.applyPosition();
+        this.applyAccessibilityState();
+        this.setIdle(false);
+        this.scheduleIdle();
     }
 
     setSuspended(suspended: boolean): void {
-        if (this.disposed) return;
+        if (this.disposed || this.suspendedReason === suspended) return;
+        this.suspendedReason = suspended;
         if (suspended) {
             this.cancelPointer(true);
-            this.setState("suspended");
-        } else if (this.state === "suspended") {
-            this.setState("docked");
+            this.clearIdleTimer();
+            this.setIdle(false);
         }
+        this.applyState(this.effectiveBlockedState() || "docked");
+        if (!suspended) this.markActive();
     }
 
     setHidden(hidden: boolean): void {
-        if (this.disposed) return;
+        if (this.disposed || this.hiddenReasons.manual === hidden) return;
+        this.hiddenReasons.manual = hidden;
         if (hidden) {
             this.cancelPointer(true);
-            this.setState("hidden");
-        } else if (this.state === "hidden") {
-            this.setState("docked");
+            this.clearIdleTimer();
+            this.setIdle(false);
         }
+        this.applyState(this.effectiveBlockedState() || "docked");
+        if (!hidden) this.markActive();
     }
 
     setState(state: FloatingBallState): void {
         if (this.disposed) return;
+        if (state === "suspended") return this.setSuspended(true);
+        if (state === "hidden") return this.setHidden(true);
+        this.applyState(this.effectiveBlockedState() || state);
+    }
+
+    private applyState(state: FloatingBallState): void {
+        if (this.disposed) return;
         this.state = state;
         if (this.root) this.root.dataset.state = state;
         if (this.trigger) {
-            this.trigger.disabled = state === "executing";
-            this.trigger.setAttribute("aria-busy", String(state === "executing"));
-            this.trigger.setAttribute("aria-expanded", String(state === "targeting" || state === "more"));
+            this.applyAccessibilityState();
+        }
+        if (state !== "docked") {
+            this.clearIdleTimer();
+            this.setIdle(false);
+        } else {
+            this.scheduleIdle();
         }
     }
 
@@ -212,13 +285,15 @@ export class FloatingBallUi implements FloatingBallUiController {
     }
 
     focus(): void {
-        this.trigger?.focus();
+        if (this.disposed || !this.trigger || !this.available || this.isInteractionBlocked()) return;
+        this.trigger.focus();
     }
 
     destroy(): void {
         if (this.disposed) return;
         this.disposed = true;
         this.cancelPointer(true);
+        this.clearIdleTimer();
         if (this.reconcileTimer !== null && this.doc) {
             const view = this.doc.defaultView;
             if (view) view.clearTimeout(this.reconcileTimer);
@@ -227,6 +302,8 @@ export class FloatingBallUi implements FloatingBallUiController {
         }
         this.observer?.disconnect();
         this.observer = null;
+        this.pointerInside = false;
+        this.focused = false;
         while (this.cleanups.length) this.cleanups.pop()?.();
         this.root?.remove();
         this.root = null;
@@ -246,6 +323,9 @@ export class FloatingBallUi implements FloatingBallUiController {
         root.setAttribute(ROOT_MARKER, this.surface);
         root.dataset.surface = this.surface;
         root.dataset.state = this.state;
+        root.dataset.idle = "false";
+        root.dataset.halfHide = String(this.halfHide);
+        root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
 
         const trigger = this.doc.createElement("button");
         trigger.type = "button";
@@ -260,7 +340,11 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.trigger = trigger;
         this.bindPointerLifecycle(trigger);
         this.bindKeyboardLifecycle(trigger);
+        this.bindActivityLifecycle(trigger);
+        this.bindEnvironmentLifecycle();
         this.applyPosition();
+        this.applyState(this.effectiveBlockedState() || this.state);
+        this.scheduleIdle();
     }
 
     private resolvePortalHost(): HTMLElement | null {
@@ -312,9 +396,10 @@ export class FloatingBallUi implements FloatingBallUiController {
 
     private bindPointerLifecycle(trigger: HTMLButtonElement): void {
         const onPointerDown = (event: PointerEvent) => {
-            if (this.state === "suspended" || this.state === "hidden" || this.state === "executing") return;
+            if (this.isInteractionBlocked() || this.activePointerId !== null) return;
             if (event.button !== undefined && event.button !== 0) return;
             this.activePointerId = event.pointerId;
+            this.markActive();
             this.pointerStart = {x: event.clientX, y: event.clientY};
             this.positionAtPointerStart = this.getPosition();
             this.suppressClick = false;
@@ -322,6 +407,10 @@ export class FloatingBallUi implements FloatingBallUiController {
         };
         const onPointerMove = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId || !this.pointerStart) return;
+            if (this.isInteractionBlocked()) {
+                this.cancelPointer(true);
+                return;
+            }
             const dx = event.clientX - this.pointerStart.x;
             const dy = event.clientY - this.pointerStart.y;
             if (this.state !== "dragging" && Math.hypot(dx, dy) > this.touchSlop) {
@@ -335,6 +424,10 @@ export class FloatingBallUi implements FloatingBallUiController {
         };
         const onPointerUp = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId) return;
+            if (this.isInteractionBlocked()) {
+                this.cancelPointer(true);
+                return;
+            }
             const wasDragging = this.state === "dragging";
             if (wasDragging) {
                 this.position = this.positionFromPointer(event.clientX, event.clientY);
@@ -363,17 +456,19 @@ export class FloatingBallUi implements FloatingBallUiController {
             this.cancelPointer(true);
         };
         const onClick = (event: MouseEvent) => {
+            this.markActive();
             if (this.suppressClick) {
                 this.suppressClick = false;
                 event.preventDefault();
                 return;
             }
-            if (this.state === "suspended" || this.state === "hidden" || this.state === "executing") return;
+            if (this.isInteractionBlocked()) return;
             this.options.onOpenSwitcher?.();
         };
         const onContextMenu = (event: MouseEvent) => {
+            this.markActive();
             event.preventDefault();
-            if (this.state === "suspended" || this.state === "hidden" || this.state === "executing") return;
+            if (this.isInteractionBlocked()) return;
             if (!this.options.onOpenMore) return;
             this.setState("more");
             this.options.onOpenMore?.();
@@ -405,13 +500,146 @@ export class FloatingBallUi implements FloatingBallUiController {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey)) return;
             event.preventDefault();
-            if (this.state === "suspended" || this.state === "hidden" || this.state === "executing") return;
+            this.markActive();
+            if (this.isInteractionBlocked()) return;
             if (!this.options.onOpenMore) return;
             this.setState("more");
             this.options.onOpenMore?.();
         };
         trigger.addEventListener("keydown", onKeyDown);
         this.cleanups.push(() => trigger.removeEventListener("keydown", onKeyDown));
+    }
+
+    private bindActivityLifecycle(trigger: HTMLButtonElement): void {
+        const onPointerEnter = () => {
+            this.pointerInside = true;
+            this.markActive();
+        };
+        const onPointerLeave = () => {
+            this.pointerInside = false;
+            this.scheduleIdle();
+        };
+        const onFocus = () => {
+            this.focused = true;
+            this.markActive();
+        };
+        const onFocusOut = (event: FocusEvent) => {
+            const related = event.relatedTarget as Node | null;
+            if (related && this.root?.contains(related)) return;
+            this.focused = false;
+            this.scheduleIdle();
+        };
+        trigger.addEventListener("pointerenter", onPointerEnter);
+        trigger.addEventListener("pointerleave", onPointerLeave);
+        const root = this.root;
+        trigger.addEventListener("focus", onFocus);
+        root.addEventListener("focusin", onFocus);
+        root.addEventListener("focusout", onFocusOut);
+        this.cleanups.push(() => {
+            trigger.removeEventListener("pointerenter", onPointerEnter);
+            trigger.removeEventListener("pointerleave", onPointerLeave);
+            root.removeEventListener("focusin", onFocus);
+            trigger.removeEventListener("focus", onFocus);
+            root.removeEventListener("focusout", onFocusOut);
+        });
+    }
+
+    private bindEnvironmentLifecycle(): void {
+        const onVisibilityChange = () => this.syncDocumentVisibility();
+        this.doc.addEventListener("fullscreenchange", onVisibilityChange);
+        this.doc.addEventListener("visibilitychange", onVisibilityChange);
+        this.cleanups.push(() => {
+            this.doc?.removeEventListener("fullscreenchange", onVisibilityChange);
+            this.doc?.removeEventListener("visibilitychange", onVisibilityChange);
+        });
+        onVisibilityChange();
+    }
+
+    private syncDocumentVisibility(): void {
+        this.setEnvironmentHidden("fullscreen", this.hideOnFullscreen && Boolean(this.doc?.fullscreenElement));
+        this.setEnvironmentHidden("visibility", this.doc?.visibilityState === "hidden");
+    }
+
+    private setEnvironmentHidden(reason: "fullscreen" | "visibility", hidden: boolean): void {
+        if (this.disposed || this.hiddenReasons[reason] === hidden) return;
+        this.hiddenReasons[reason] = hidden;
+        if (hidden) {
+            this.cancelPointer(true);
+            this.clearIdleTimer();
+            this.setIdle(false);
+        }
+        this.applyState(this.effectiveBlockedState() || "docked");
+        if (!hidden) this.markActive();
+    }
+
+    private effectiveBlockedState(): FloatingBallState | null {
+        if (this.suspendedReason) return "suspended";
+        if (this.hiddenReasons.manual || this.hiddenReasons.fullscreen || this.hiddenReasons.visibility) return "hidden";
+        return null;
+    }
+
+    private isInteractionBlocked(): boolean {
+        return this.state === "suspended" || this.state === "hidden" || this.state === "executing"
+            || !this.available;
+    }
+
+    private applyAccessibilityState(): void {
+        if (!this.root || !this.trigger) return;
+        const inert = this.state === "suspended" || this.state === "hidden";
+        if (inert) {
+            const active = this.doc?.activeElement as HTMLElement | null;
+            if (active && this.root.contains(active)) active.blur?.();
+            this.focused = false;
+            this.pointerInside = false;
+        }
+        this.root.setAttribute("aria-hidden", String(inert));
+        this.root.toggleAttribute("inert", inert);
+        this.root.inert = inert;
+        this.trigger.tabIndex = inert ? -1 : 0;
+        this.trigger.disabled = !this.available || this.state === "executing" || inert;
+        this.trigger.setAttribute("aria-busy", String(this.state === "executing"));
+        this.trigger.setAttribute("aria-expanded", String(this.state === "targeting" || this.state === "more"));
+    }
+
+    private markActive(): void {
+        if (this.disposed || this.state === "suspended" || this.state === "hidden") return;
+        this.setIdle(false);
+        if (this.pointerInside || this.focused || this.activePointerId !== null) this.clearIdleTimer();
+        else this.scheduleIdle();
+    }
+
+    private setIdle(idle: boolean): void {
+        if (!this.root) return;
+        this.root.dataset.idle = String(idle);
+        this.root.dataset.halfHide = String(this.halfHide);
+        this.root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
+    }
+
+    private clearIdleTimer(): void {
+        if (this.idleTimer === null || !this.doc) return;
+        const view = this.doc.defaultView;
+        if (view) view.clearTimeout(this.idleTimer);
+        else clearTimeout(this.idleTimer);
+        this.idleTimer = null;
+    }
+
+    private scheduleIdle(): void {
+        if (!this.root || this.disposed || this.state !== "docked") return;
+        this.clearIdleTimer();
+        if (this.pointerInside || this.focused || this.activePointerId !== null) return;
+        if (this.idleDelayMs <= 0) {
+            this.setIdle(true);
+            return;
+        }
+        const view = this.doc.defaultView;
+        const timeout = () => {
+            this.idleTimer = null;
+            if (this.disposed || this.state !== "docked") return;
+            this.setIdle(true);
+        };
+        this.idleTimer = view
+            ? view.setTimeout(timeout, this.idleDelayMs)
+            : setTimeout(timeout, this.idleDelayMs) as unknown as number;
     }
 
     private cancelPointer(restore: boolean): void {
@@ -428,6 +656,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.positionAtPointerStart = null;
         this.suppressClick = preserveClickSuppression;
         if (this.state === "dragging" || this.state === "targeting") this.setState("docked");
+        else this.scheduleIdle();
     }
 
     private positionFromPointer(clientX: number, clientY: number): FloatingBallPosition {

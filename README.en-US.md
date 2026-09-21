@@ -207,7 +207,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 220 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5934 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 220 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5941 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -239,11 +239,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5934)
+pnpm test               # run every unit, contract, and host release test (currently 5941)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
-pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, 5934 tests, release/quality/integration audits, and all three UI smokes)
+pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, 5941 tests, release/quality/integration audits, and all three UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.
@@ -285,7 +285,7 @@ See [ROADMAP.md](./ROADMAP.md) for the planned feature order, design constraints
 
 - [ADR-0057 widget sources as first-class citizens](docs/adr/0057-widget-source-and-store-grouping.md) — widget protocol v2.4 and store source grouping
 - [ADR-0058 database table projection](docs/adr/0058-av-widget-bounded-list-projection.md) — why the database widget is a read-only bounded list projection
-- [ADR-0059/0062/0065 resource self-discipline lines](docs/adr/0062-raw-bundle-line-recalibration.md) — size gates guard against runaway growth only: raw 832 KiB, 256 KiB per-entry zip, 512 KiB archive ceiling
+- [ADR-0059/0062/0065/0067 resource self-discipline lines](docs/adr/0067-raw-bundle-line-recalibration.md) — size gates guard against runaway growth only: raw 896 KiB, 256 KiB per-entry zip, 512 KiB archive ceiling
 - [ADR-0063/0064 execution chain and version floor](docs/adr/0063-execution-chain-host-action-effects.md) — the execution chain runs on host confirmation cards; minAppVersion raised to 3.8.0
 
 ## Release Checklist

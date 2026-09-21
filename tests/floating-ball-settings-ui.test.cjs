@@ -307,6 +307,23 @@ test("floating settings UI preview is live but never executes production actions
     assert.ok(preview.querySelector('[data-action-id="search"]'), "switching surfaces displays its independent configuration");
 });
 
+test("floating settings preview renders the fallback switcher only once", (t) => {
+    const config = createDefaultFloatingBallConfig();
+    config.actions.desktop = [];
+    const ui = mount(t, {config});
+    const switchers = ui.root.querySelectorAll('.sw-floating-ball-settings__preview [data-action-id="switcher"]');
+    assert.equal(switchers.length, 1, "empty configurations use one model-provided fallback switcher");
+
+    const configured = createDefaultFloatingBallConfig();
+    configured.actions.desktop = [{actionId: "switcher", enabled: true, firstLayer: true, order: 10}];
+    const configuredUi = mount(t, {config: configured});
+    assert.equal(
+        configuredUi.root.querySelectorAll('.sw-floating-ball-settings__preview [data-action-id="switcher"]').length,
+        1,
+        "an explicitly configured switcher is not duplicated by the preview shell",
+    );
+});
+
 test("floating settings UI import and restore respect cancelled confirmations", async (t) => {
     const config = createDefaultFloatingBallConfig();
     config.actions.desktop = [{actionId: "search", enabled: true, firstLayer: true, order: 10}];

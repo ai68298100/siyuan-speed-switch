@@ -207,7 +207,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5934 项测试（220 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5941 项测试（220 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -239,11 +239,11 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5934 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5941 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5934 项测试、发布/质量/集成审计和三套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5941 项测试、发布/质量/集成审计和三套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
@@ -285,7 +285,7 @@ this.unregisterSpeedSwitchAction?.();
 
 - [ADR-0057 组件来源一等公民](docs/adr/0057-widget-source-and-store-grouping.md) — 组件协议 v2.4 与商店来源分组
 - [ADR-0058 数据库表格投影](docs/adr/0058-av-widget-bounded-list-projection.md) — 数据库组件为什么是只读的有界列表投影
-- [ADR-0059/0062/0065 资源自律线](docs/adr/0062-raw-bundle-line-recalibration.md) — 体积只防失控增长：raw 832 KiB、zip 单条目 256 KiB、512 KiB 归档硬上限
+- [ADR-0059/0062/0065/0067 资源自律线](docs/adr/0067-raw-bundle-line-recalibration.md) — 体积只防失控增长：raw 896 KiB、zip 单条目 256 KiB、512 KiB 归档硬上限
 - [ADR-0063/0064 执行链与版本下限](docs/adr/0063-execution-chain-host-action-effects.md) — 执行链走宿主确认卡、minAppVersion 抬到 3.8.0
 
 ## 发布前检查

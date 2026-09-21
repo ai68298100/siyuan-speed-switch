@@ -131,7 +131,7 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // settings-model 的版本化配置入口进入同一闭包。
     // T-6759/B2：floating-ball-actions 与 floating-ball-panel 接入 index.ts，闭包 59→61。
     // T-6760/B3：floating-ball-settings-model 接入设置页，闭包 61→62。
-    // 包体复核：raw 832 KiB 自律线余量 >30 KiB、zip 硬上限余量 >138 KiB（见 release-readiness 快照）。
+    // 包体复核：raw 896 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
     assert.ok(graph.size <= 62, `production graph grew to ${graph.size} modules; audited ceiling is 62`);

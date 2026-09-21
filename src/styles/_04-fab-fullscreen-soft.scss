@@ -86,6 +86,7 @@
         touch-action: none;
         pointer-events: auto;
         -webkit-tap-highlight-color: transparent;
+        transform: translateX(var(--sw-fab-idle-x, 0));
         transition: transform $sw-dur-panel $sw-ease, opacity $sw-dur-panel $sw-ease, box-shadow $sw-dur-slow $sw-ease;
 
         svg {
@@ -109,7 +110,31 @@
 
     &[data-state="dragging"] .sw-fab-trigger {
         opacity: .72;
-        transform: scale(.94);
+        transform: scale(.94) translateX(0);
+    }
+
+    // B4 idle presentation: keep the 44px hit target available while making
+    // the resting ball quiet.  Half-hide is edge-aware and never applies to
+    // focused/dragging/action states, so keyboard and touch users can always
+    // wake it predictably.
+    &[data-idle="true"] {
+        .sw-fab-trigger {
+            opacity: var(--sw-fab-idle-opacity, .4);
+        }
+
+        &[data-half-hide="true"][data-edge="right"] .sw-fab-trigger {
+            --sw-fab-idle-x: 42%;
+        }
+
+        &[data-half-hide="true"][data-edge="left"] .sw-fab-trigger {
+            --sw-fab-idle-x: -42%;
+        }
+
+        &:focus-within .sw-fab-trigger,
+        &:hover .sw-fab-trigger {
+            opacity: 1;
+            --sw-fab-idle-x: 0;
+        }
     }
 
     &[data-state="suspended"],
@@ -251,7 +276,7 @@
         // The portal itself must stay untransformed so the bottom sheet can
         // use viewport-fixed positioning; offset only the trigger to retain
         // the normalized yRatio's centre semantics.
-        .sw-fab-trigger { transform: translateY(-50%); }
+        .sw-fab-trigger { transform: translateY(-50%) translateX(var(--sw-fab-idle-x, 0)); }
         &[data-state="dragging"] .sw-fab-trigger { transform: translateY(-50%) scale(.94); }
         .sw-fab-trigger:active { transform: translateY(-50%) scale(.92); }
 

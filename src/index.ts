@@ -8541,6 +8541,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     : () => document.body,
                 position,
                 touchSlopPx: config.behavior?.touchSlopPx,
+                idleOpacity: config.appearance?.idleOpacity,
+                idleDelayMs: config.appearance?.idleDelayMs,
+                halfHide: config.appearance?.halfHide,
+                hideOnFullscreen: config.behavior?.hideOnFullscreen,
                 marginPx: 8,
                 ariaLabel: this.i18n.switchTabs,
                 onOpenSwitcher: () => {
@@ -8560,6 +8564,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         controller.update({
             position,
             touchSlopPx: config.behavior?.touchSlopPx,
+            idleOpacity: config.appearance?.idleOpacity,
+            idleDelayMs: config.appearance?.idleDelayMs,
+            halfHide: config.appearance?.halfHide,
+            hideOnFullscreen: config.behavior?.hideOnFullscreen,
             ariaLabel: this.i18n.switchTabs,
         });
         controller.mount();
@@ -8634,6 +8642,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // Count dialogs even when no ball exists yet: enabling a surface from
         // Settings must not put a newly mounted ball above that dialog.
         this.fabModalDepth += 1;
+        this.floatingBallPanels.forEach((panel) => panel?.closeMore());
         modalControllers.forEach((controller) => controller.setSuspended(true));
         this.fabElement?.classList.add("sw__fab--hidden");
         let released = false;

@@ -1,4 +1,8 @@
-const RAW_BUNDLE_BUDGET_BYTES = 832 * 1024;
+// T-6761 / ADR 0067 (2026-09-21): the floating-ball B4 lifecycle and
+// accessibility surface adds real production code. Keep this as a review
+// signal while leaving the 512 KiB archive ceiling and 256 KiB compressed
+// entry line unchanged.
+const RAW_BUNDLE_BUDGET_BYTES = 896 * 1024;
 const ARCHIVE_BUDGET_BYTES = 512 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the

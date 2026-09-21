@@ -34,7 +34,7 @@ function zipCompressedEntrySize(zipPath, entryName) {
     throw new Error(`zip entry not found: ${entryName}`);
 }
 
-const RAW_BUNDLE_BUDGET = 832 * 1024;   // ADR 0062
+const RAW_BUNDLE_BUDGET = 896 * 1024;   // ADR 0067
 const ARCHIVE_BUDGET = 512 * 1024;      // 归档硬上限
 const COMPRESSED_ENTRY_BUDGET = 256 * 1024; // ADR 0065
 
@@ -52,8 +52,8 @@ doc = doc.replace(/`dist\/index\.js` \d+ bytes; `dist\/index\.css` (\d+) bytes; 
     `\`dist/index.js\` ${size} bytes; \`dist/index.css\` $1 bytes; \`package.zip\` ${zip} bytes`);
 
 // 2) 生产产物表行：三类数字与余量
-doc = doc.replace(/`dist\/index\.js` \d+ bytes（832 KiB 自律线内，余量 \d+ bytes，ADR 0062）/,
-    `\`dist/index.js\` ${size} bytes（832 KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR 0062）`);
+doc = doc.replace(/`dist\/index\.js` \d+ bytes（(?:832|896) KiB 自律线内，余量 -?\d+ bytes，ADR 00(?:62|67)）/,
+    `\`dist/index.js\` ${size} bytes（896 KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR 0067）`);
 doc = doc.replace(/`package\.zip` \d+ bytes（512 KiB 硬上限余量 \d+ bytes）/,
     `\`package.zip\` ${zip} bytes（512 KiB 硬上限余量 ${ARCHIVE_BUDGET - zip} bytes）`);
 doc = doc.replace(/当前 `index\.js` 压缩后 \d+ bytes，余量 \d+ bytes）/,

@@ -141,3 +141,118 @@ test("suspend blocks activation and destroy releases observers and listeners", a
     assert.equal(opened, 1, "destroy removes the trigger listener");
     dom.window.close();
 });
+
+test("idle presentation fades after the configured delay and wakes on focus", async () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const {controller, root, trigger} = mount(dom.window.document, {
+        idleDelayMs: 8,
+        idleOpacity: 0.55,
+        halfHide: true,
+    });
+    assert.equal(root.dataset.idle, "false");
+    assert.equal(root.dataset.halfHide, "true");
+    assert.equal(root.style.getPropertyValue("--sw-fab-idle-opacity"), "0.55");
+    await new Promise((resolve) => setTimeout(resolve, 16));
+    assert.equal(root.dataset.idle, "true");
+    trigger.dispatchEvent(new dom.window.Event("focus"));
+    assert.equal(root.dataset.idle, "false");
+    controller.destroy();
+    dom.window.close();
+});
+
+test("idle timer is cancelled while suspended and resumes after release", async () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const {controller, root} = mount(dom.window.document, {idleDelayMs: 8});
+    controller.setSuspended(true);
+    await new Promise((resolve) => setTimeout(resolve, 16));
+    assert.equal(root.dataset.idle, "false");
+    controller.setSuspended(false);
+    await new Promise((resolve) => setTimeout(resolve, 16));
+    assert.equal(root.dataset.idle, "true");
+    controller.destroy();
+    dom.window.close();
+});
+
+test("suspended and hidden states are removed from the accessibility tree", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const {controller, root, trigger} = mount(dom.window.document);
+    trigger.focus();
+    assert.equal(dom.window.document.activeElement, trigger);
+
+    controller.setSuspended(true);
+    assert.equal(root.getAttribute("aria-hidden"), "true");
+    assert.equal(trigger.tabIndex, -1);
+    assert.notEqual(dom.window.document.activeElement, trigger);
+
+    controller.setSuspended(false);
+    assert.equal(root.getAttribute("aria-hidden"), "false");
+    assert.equal(trigger.tabIndex, 0);
+
+    trigger.focus();
+    controller.setHidden(true);
+    assert.equal(root.getAttribute("aria-hidden"), "true");
+    assert.equal(trigger.tabIndex, -1);
+    assert.notEqual(dom.window.document.activeElement, trigger);
+    controller.setHidden(false);
+    assert.equal(root.getAttribute("aria-hidden"), "false");
+    assert.equal(trigger.tabIndex, 0);
+
+    controller.destroy();
+    dom.window.close();
+});
+
+test("suspension and hidden reasons remain independent", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const {controller, root, trigger} = mount(dom.window.document);
+    controller.setSuspended(true);
+    controller.setHidden(true);
+    controller.setSuspended(false);
+    assert.equal(controller.getState(), "hidden");
+    assert.equal(root.getAttribute("aria-hidden"), "true");
+    controller.setHidden(false);
+    assert.equal(controller.getState(), "docked");
+    assert.equal(root.getAttribute("aria-hidden"), "false");
+
+    controller.setHidden(true);
+    controller.setState("docked");
+    assert.equal(controller.getState(), "hidden", "panel cleanup must not clear an external hidden reason");
+    controller.setHidden(false);
+    controller.destroy();
+    dom.window.close();
+});
+
+test("unavailable trigger cannot be focused or activated", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let opened = 0;
+    const {controller, root, trigger} = mount(dom.window.document, {
+        available: false,
+        onOpenSwitcher: () => { opened += 1; },
+    });
+    assert.equal(root.getAttribute("aria-hidden"), "false");
+    assert.equal(trigger.disabled, true);
+    assert.equal(trigger.getAttribute("aria-hidden"), null);
+    controller.focus();
+    assert.notEqual(dom.window.document.activeElement, trigger);
+    trigger.click();
+    assert.equal(opened, 0);
+    trigger.dispatchEvent(new dom.window.MouseEvent("contextmenu", {bubbles: true, cancelable: true}));
+    trigger.dispatchEvent(new dom.window.KeyboardEvent("keydown", {key: "ContextMenu", bubbles: true, cancelable: true}));
+    assert.equal(opened, 0);
+    controller.destroy();
+    dom.window.close();
+});
+
+test("fullscreen and visibility listeners hide without leaving stale listeners", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const {controller, root} = mount(dom.window.document, {hideOnFullscreen: true});
+    Object.defineProperty(dom.window.document, "fullscreenElement", {configurable: true, value: dom.window.document.body});
+    dom.window.document.dispatchEvent(new dom.window.Event("fullscreenchange"));
+    assert.equal(controller.getState(), "hidden");
+    Object.defineProperty(dom.window.document, "fullscreenElement", {configurable: true, value: null});
+    dom.window.document.dispatchEvent(new dom.window.Event("fullscreenchange"));
+    assert.equal(controller.getState(), "docked");
+    controller.destroy();
+    dom.window.document.dispatchEvent(new dom.window.Event("fullscreenchange"));
+    assert.equal(root.isConnected, false);
+    dom.window.close();
+});
