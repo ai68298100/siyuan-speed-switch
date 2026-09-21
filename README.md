@@ -157,8 +157,11 @@
 | 面板 | 左侧面板列表显示 / 隐藏、显示方式（完整 / 折叠图标 / 隐藏）、侧边栏缩略图布局（放大 / 自动增列） |
 | 收藏 | 收藏夹折叠、序号、新建 / 重命名 / 删除 / 排序，组内收藏排序和分组调整 |
 | 快捷入口 | 标签、图标、三端可见性、启用、拖拽或按钮排序、右侧入口栏、配置导入导出 |
+| 悬浮球 | 三端独立开关、停靠位置与自由拖动、尺寸/边距/闲置样式、场景让位、动作排序、首层/更多、模拟预览和导入导出 |
 | 日记 | 默认日记笔记本（下拉选择，首次点击日记按钮也会弹出选择） |
-| 手机端 | 悬浮按钮开关（默认关）、卡片布局（单列 / 双列 / 自动）、缩略图高度 |
+| 手机端 | 卡片布局（单列 / 双列 / 自动）、缩略图高度；旧悬浮按钮开关自动迁移到悬浮球页 |
+
+悬浮球轻触打开切换器，拖动选取日记、搜索、组件面板等动作，空白处松手保存位置。右键或 `Shift+F10` 打开可搜索的更多动作；滚动隐藏后可点击边缘把手恢复。位置、开关和动作按端侧保存，外观与行为设置共用；侧栏保持 44 px 紧凑尺寸。缺失的插件动作保留配置并显示原因，提供方恢复后自动可用。真实思源宿主与 Android 验收状态见 [BLOCKERS.md](BLOCKERS.md)。
 
 ## 安装与升级
 
@@ -207,7 +210,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5945 项测试（220 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5990 项测试（222 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -239,11 +242,12 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5945 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5990 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
-pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5945 项测试、发布/质量/集成审计和三套 UI 冒烟）
+pnpm test:smoke:floating-ball # 三端悬浮球 Chromium 交互/几何验收（可用 BROWSER_PATH 指定浏览器）
+pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5990 项测试、发布/质量/集成审计和四套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
@@ -296,7 +300,7 @@ this.unregisterSpeedSwitchAction?.();
 pnpm verify:release
 ```
 
-它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和三套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
+它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
 当前版本为 `v0.29.1`（2026-09-21 正式发布，Release 资产由 workflow 自动构建）。
 

@@ -16,7 +16,7 @@ const FLOATING_BALL_SWITCHER_ACTION_ID = "switcher";
 const FLOATING_BALL_SETTINGS_ACTION_ID = "settings";
 
 const DEFAULT_POSITION = {edge: "right", yRatio: 0.72};
-const DEFAULT_ACTION_IDS = ["journal", "search", "settings"];
+const DEFAULT_ACTION_IDS = ["journal", "search", "home", "settings"];
 
 function isRecord(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -73,6 +73,7 @@ function createDefaultFloatingBallConfig() {
         position: positions,
         appearance: {
             size: 48,
+            marginPx: 8,
             idleOpacity: 0.4,
             halfHide: true,
             idleDelayMs: 5000,
@@ -94,6 +95,8 @@ function normalizeFloatingBallPosition(value, fallback = DEFAULT_POSITION) {
     return {
         edge: normalizeEdge(source.edge, normalizeEdge(base.edge)),
         yRatio: normalizeYRatio(source.yRatio, normalizeYRatio(base.yRatio)),
+        ...(typeof source.xRatio === "number" && Number.isFinite(source.xRatio)
+            ? {xRatio: normalizeYRatio(source.xRatio, 0.5)} : {}),
     };
 }
 
@@ -162,6 +165,7 @@ function normalizeFloatingBallConfig(input, options = {}) {
 
     const appearance = isRecord(source.appearance) ? source.appearance : {};
     config.appearance.size = Math.round(clamp(appearance.size, 44, 64, defaults.appearance.size));
+    config.appearance.marginPx = Math.round(clamp(appearance.marginPx, 0, 32, defaults.appearance.marginPx));
     config.appearance.idleOpacity = Math.round(clamp(appearance.idleOpacity, 0.4, 1, defaults.appearance.idleOpacity) * 100) / 100;
     config.appearance.halfHide = bool(appearance.halfHide, defaults.appearance.halfHide);
     config.appearance.idleDelayMs = Math.round(clamp(appearance.idleDelayMs, 3000, 8000, defaults.appearance.idleDelayMs));
@@ -209,7 +213,7 @@ function positionMetrics(viewport = {}, options = {}) {
     const width = Math.max(0, Number(viewport.width) || 0);
     const height = Math.max(0, Number(viewport.height) || 0);
     const size = clamp(options.size, 44, 128, 48);
-    const margin = Math.max(0, Number(options.margin ?? options.edgeMargin) || 8);
+    const margin = clamp(options.margin ?? options.edgeMargin, 0, 64, 8);
     const safeTop = Math.max(margin, Number(options.safeTop) || 0);
     const safeBottomInset = Math.max(margin, Number(options.safeBottom) || 0);
     const safeBottom = Math.max(safeTop, height - safeBottomInset);
@@ -228,16 +232,18 @@ function clampFloatingBallPosition(position, viewport = {}, options = {}) {
     const metrics = positionMetrics(viewport, options);
     const edge = normalizeEdge(source.edge, Number.isFinite(Number(source.x)) && metrics.width > 0
         ? (Number(source.x) <= metrics.width / 2 ? "left" : "right") : DEFAULT_POSITION.edge);
-    if (!metrics.height) return {edge, yRatio: normalizeYRatio(source.yRatio)};
+    const horizontal = typeof source.xRatio === "number" && Number.isFinite(source.xRatio)
+        ? {xRatio: normalizeYRatio(source.xRatio, 0.5)} : {};
+    if (!metrics.height) return {edge, yRatio: normalizeYRatio(source.yRatio), ...horizontal};
     // Persisted ratios describe the ball centre within the safe vertical
     // travel range. Keep their exact bounded value; pointer-derived y
     // coordinates below are the path that needs pixel clamping.
-    if (!Number.isFinite(Number(source.y))) return {edge, yRatio: normalizeYRatio(source.yRatio)};
+    if (!Number.isFinite(Number(source.y))) return {edge, yRatio: normalizeYRatio(source.yRatio), ...horizontal};
     const fallbackY = metrics.minY + normalizeYRatio(source.yRatio) * metrics.usableHeight;
     const rawY = Number.isFinite(Number(source.y)) ? Number(source.y) : fallbackY;
     const y = Math.min(metrics.maxY, Math.max(metrics.minY, rawY));
     const denominator = Math.max(1, metrics.usableHeight);
-    return {edge, yRatio: normalizeYRatio((y - metrics.minY) / denominator)};
+    return {edge, yRatio: normalizeYRatio((y - metrics.minY) / denominator), ...horizontal};
 }
 
 /** Snap a pointer position to the nearest horizontal edge, then clamp y. */
@@ -247,7 +253,7 @@ function snapFloatingBallPosition(position, viewport = {}, options = {}) {
     const edge = width > 0 && Number.isFinite(Number(source.x))
         ? (Number(source.x) <= width / 2 ? "left" : "right")
         : normalizeEdge(source.edge);
-    return clampFloatingBallPosition({...source, edge}, viewport, options);
+    return clampFloatingBallPosition({...source, edge, xRatio: undefined}, viewport, options);
 }
 
 /** Convert normalized edge/yRatio data to a centre point for rendering. */
@@ -258,8 +264,10 @@ function resolveFloatingBallPosition(position, viewport = {}, options = {}) {
     const y = metrics.height
         ? metrics.minY + normalized.yRatio * usableHeight
         : normalized.yRatio;
+    const minX = metrics.margin + metrics.size / 2;
+    const maxX = Math.max(minX, metrics.width - metrics.margin - metrics.size / 2);
     const x = metrics.width
-        ? (normalized.edge === "left" ? metrics.margin + metrics.size / 2 : metrics.width - metrics.margin - metrics.size / 2)
+        ? minX + (maxX - minX) * (normalized.xRatio ?? (normalized.edge === "left" ? 0 : 1))
         : (normalized.edge === "left" ? metrics.margin : 0);
     return {x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, edge: normalized.edge, yRatio: normalized.yRatio};
 }

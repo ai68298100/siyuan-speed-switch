@@ -2,12 +2,13 @@
 const {normalizeQuickActionText, graphemeLength, graphemeSlice} = require("./util.js");
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
-const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings"]);
+const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings", "home"]);
 const BUILTIN_QUICK_ACTIONS = [
     {id: "switcher", label: "切换", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "search", label: "搜索", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
-    {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "mobile"], order: 10, enabled: true},
+    {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
+    {id: "home", label: "组件面板", icon: "iconLayoutHome", kind: "builtin", value: "home", targets: ["desktop", "sidebar", "mobile"], order: 30, enabled: true},
 ];
 // Keep a deliberately small first-run workspace. External providers remain
 // available from “Add action” and must never occupy the bar automatically.

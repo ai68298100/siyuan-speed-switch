@@ -68,3 +68,11 @@ test("floating action adapter never throws on unavailable or failing providers",
     registry.register({id: "async", name: "Async", actions: [{value: "run"}]}, () => Promise.reject(new Error("boom")));
     assert.deepEqual(await executeFloatingBallAction({kind: "adapter", value: "async/run"}, {registry}), {ok: false, reason: "failed"});
 });
+test("component panel uses the shared builtin executor and preserves unavailable failures", async () => {
+    const {executeFloatingBallAction} = require("../src/floating-ball-actions.js");
+    const events = [];
+    const action = {kind: "builtin", value: "home"};
+    assert.deepEqual(await executeFloatingBallAction(action, {close: () => events.push("close"), onHome: () => { events.push("home"); }}), {ok: true});
+    assert.deepEqual(events, ["close", "home"]);
+    assert.deepEqual(await executeFloatingBallAction(action), {ok: false, reason: "unavailable"});
+});

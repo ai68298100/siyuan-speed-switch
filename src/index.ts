@@ -295,7 +295,7 @@ declare module "./floating-ball-panel" {
         mount: () => HTMLElement | null;
         update: (patch?: Record<string, unknown>) => void;
         openMore: () => void;
-        closeMore: () => void;
+        closeMore: (options?: {restoreFocus?: boolean}) => void;
         destroy: () => void;
         getElement: () => HTMLElement | null;
         isMoreOpen: () => boolean;
@@ -3435,6 +3435,7 @@ const version = beginSearch(session);
             },
             onJournal: () => this.openJournal(),
             onSettings: () => this.openSetting(),
+            onHome: () => openSecondPanel.call(this),
         });
         void Promise.resolve(executor(action)).then((result) => {
             if (result?.ok) return;
@@ -4659,6 +4660,7 @@ const version = beginSearch(session);
             search: this.i18n.quickBuiltinSearch,
             journal: this.i18n.quickBuiltinJournal,
             settings: this.i18n.quickBuiltinSettings,
+            home: this.i18n.secondPanel,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -8471,21 +8473,44 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             seen.add(key);
             result.push({...action});
         });
-        return result;
+        const providers = this.quickActionRegistry.snapshot();
+        return result.map((action) => {
+            let available = true;
+            let providerId = "";
+            let source = "";
+            if (action.kind === "adapter") {
+                providerId = action.value.split("/")[0];
+                const provider = providers.find((item: {id: string; name?: string}) => item.id === providerId);
+                available = this.quickActionAdapters.has(providerId) || Boolean(provider);
+                source = provider?.name || providerId;
+            } else if (action.kind === "command") {
+                const [pluginId, commandKey] = action.value.split("::");
+                const plugin = (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins?.find((item) => item.name === pluginId);
+                const command = plugin?.commands?.find((item) => item.langKey === commandKey);
+                available = typeof (command?.callback || command?.globalCallback) === "function";
+                providerId = pluginId;
+                source = pluginId;
+            } else if (action.kind === "dock") {
+                available = Boolean(this.getDockByType(action.value));
+            }
+            return {...action, available, providerId, source, providerName: source,
+                ...(available ? {} : {providerMissing: true, reason: "provider-missing"})};
+        });
     }
 
     private executeFloatingBallSurfaceAction(surface: FloatingBallSurface, action: unknown) {
         const controller = this.floatingBallUis.get(surface);
         const panel = this.floatingBallPanels.get(surface);
-        panel?.closeMore();
-        controller?.setState("executing");
+        if (!controller) return;
+        panel?.closeMore({restoreFocus: false});
+        const restoreControllerState = controller?.beginExecution() || (() => undefined);
         const executor = createFloatingBallActionExecutor({
             adapters: this.quickActionAdapters,
             registry: this.quickActionRegistry,
             context: {surface: `floating-ball:${surface}`},
             plugins: (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins,
             getDockByType: (type: string) => this.getDockByType(type),
-            close: () => panel?.closeMore(),
+            close: () => panel?.closeMore({restoreFocus: false}),
             onSwitcher: () => this.showSwitcher(),
             onSearch: () => {
                 if (surface === "sidebar") {
@@ -8496,11 +8521,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             },
             onJournal: () => this.openJournal(),
             onSettings: () => this.openSetting(),
+            onHome: () => openSecondPanel.call(this),
         });
-        const restoreControllerState = () => {
-            if (controller?.getState() === "executing") controller.setState("docked");
-        };
         void executor(action).then((result) => {
+            if (this.floatingBallUis.get(surface) !== controller) return;
             if (!result.ok) {
                 const message = result.reason === "failed"
                     ? this.i18n.quickActionFailed
@@ -8509,6 +8533,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
             restoreControllerState();
         }).catch((error) => {
+            if (this.floatingBallUis.get(surface) !== controller) return;
             logger.warn("floating-ball action failed", error);
             showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
             restoreControllerState();
@@ -8525,9 +8550,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const settings = this.getSettings();
         const config = settings.floatingBall || {};
         const position = config.position?.[surface] || {edge: "right", yRatio: 0.72};
+        const isSidebar = surface === "sidebar";
         let controller = this.floatingBallUis.get(surface);
         if (!controller) {
-            const isSidebar = surface === "sidebar";
             controller = createFloatingBallUi({
                 surface,
                 document,
@@ -8550,14 +8575,23 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 halfHide: config.appearance?.halfHide,
                 hideOnFullscreen: config.behavior?.hideOnFullscreen,
                 hideOnScroll: config.behavior?.hideOnScroll,
-                marginPx: 8,
+                resolveScrollTarget: isSidebar ? () => this.sidebarElement : undefined,
+                excludeScrollTarget: !isSidebar ? (target) => Boolean((target as Node).nodeType && this.sidebarElement?.contains(target as Node)) : undefined,
+                recoveryLabel: this.i18n.floatingBallRestoreVisible,
+                resolveLayer: () => Number((window as any).siyuan?.zIndex),
+                size: isSidebar ? undefined : config.appearance?.size,
+                snap: config.behavior?.snap,
+                marginPx: config.appearance?.marginPx,
                 ariaLabel: this.i18n.switchTabs,
                 onOpenSwitcher: () => {
-                    if (this.fabModalDepth === 0) this.showSwitcher();
+                    if (this.fabModalDepth === 0 || this.getSettings().floatingBall?.behavior?.yieldToModals === false) this.showSwitcher();
                 },
                 onOpenMore: () => {
+                    this.refreshFloatingBallPanels();
                     this.floatingBallPanels.get(surface)?.openMore();
                 },
+                onBeforeTargeting: () => this.refreshFloatingBallPanels(),
+                onDismissOverlays: () => this.floatingBallPanels.get(surface)?.closeMore({restoreFocus: false}),
                 onActionTarget: (target) => {
                     const actionButton = target.closest("[data-action-id]") as HTMLElement | null;
                     actionButton?.click();
@@ -8574,6 +8608,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             halfHide: config.appearance?.halfHide,
             hideOnFullscreen: config.behavior?.hideOnFullscreen,
             hideOnScroll: config.behavior?.hideOnScroll,
+            size: isSidebar ? undefined : config.appearance?.size,
+            snap: config.behavior?.snap,
+            marginPx: config.appearance?.marginPx,
             ariaLabel: this.i18n.switchTabs,
         });
         controller.mount();
@@ -8591,12 +8628,38 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     close: this.i18n.close,
                     unavailable: this.i18n.quickActionUnavailable,
                     empty: this.i18n.quickActionUnavailable,
+                    search: this.i18n.floatingBallActionSearch,
+                    noResults: this.i18n.quickPickerEmpty,
+                    builtin: this.i18n.quickBuiltin,
+                    component: this.i18n.secondPanel,
+                    plugin: this.i18n.floatingBallPluginActions,
+                    other: this.i18n.floatingBallOtherActions,
+                    unknown: this.i18n.quickSupportUnknown,
+                    providerMissing: this.i18n.floatingBallProviderMissing,
+                    disabled: this.i18n.floatingBallActionDisabled,
+                    enabled: this.i18n.floatingBallEnabled,
+                    manage: this.i18n.floatingBallManageActions,
+                    toggleFailed: this.i18n.quickActionFailed,
+                    builtins: {
+                        switcher: this.i18n.switchTabs, search: this.i18n.quickBuiltinSearch,
+                        journal: this.i18n.quickBuiltinJournal, settings: this.i18n.quickBuiltinSettings,
+                        home: this.i18n.secondPanel,
+                    },
                 },
                 onAction: (action: unknown) => this.executeFloatingBallSurfaceAction(surface, action),
+                resolveSupport: (action: IQuickAction, target: QuickActionTarget) => this.getQuickActionSupport(action, target),
+                onManageSettings: () => this.openSetting("floatingBall"),
+                onToggleAction: (actionId: string, enabled: boolean) => {
+                    const current = this.getSettings().floatingBall;
+                    this.updateSettings({floatingBall: {
+                        ...current,
+                        actions: {...current.actions, [surface]: current.actions[surface].map((entry: any) =>
+                            entry.actionId === actionId ? {...entry, enabled} : entry)},
+                    }});
+                },
                 onOpenMore: () => controller?.setState("more"),
                 onCloseMore: () => {
-                    controller?.setState("docked");
-                    controller?.focus();
+                    if (controller?.getState() === "more") controller.setState("docked");
                 },
             };
             let panel = this.floatingBallPanels.get(surface);
@@ -8633,7 +8696,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 ...currentBall,
                 position: {
                     ...(currentBall.position || {}),
-                    [surface]: {edge: position.edge, yRatio: position.yRatio},
+                    [surface]: {...position},
                 },
             },
         });
@@ -8645,12 +8708,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // T-6487：原实现在非移动端直接 return，onDestroy 永不触发——桌面端用 Escape 关掉
         // 日记笔记本选择弹窗时，调用方 Promise 会永久挂起。
         const modalControllers = [...this.floatingBallUis.values()];
+        const shouldYield = this.getSettings().floatingBall?.behavior?.yieldToModals !== false;
         // Count dialogs even when no ball exists yet: enabling a surface from
         // Settings must not put a newly mounted ball above that dialog.
         this.fabModalDepth += 1;
-        this.floatingBallPanels.forEach((panel) => panel?.closeMore());
-        modalControllers.forEach((controller) => controller.setSuspended(true));
-        this.fabElement?.classList.add("sw__fab--hidden");
+        this.floatingBallPanels.forEach((panel) => panel?.closeMore({restoreFocus: false}));
+        if (shouldYield) {
+            modalControllers.forEach((controller) => controller.setSuspended(true));
+            this.fabElement?.classList.add("sw__fab--hidden");
+        }
         let released = false;
         return () => {
             if (released) return;
@@ -8690,11 +8756,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 return;
             }
             const controller = this.createFloatingBallSurface(surface);
-            controller.setSuspended(this.fabModalDepth > 0);
+            const suspended = this.fabModalDepth > 0 && config.behavior?.yieldToModals !== false;
+            controller.setSuspended(suspended);
             if (surface === "mobile") {
                 this.floatingBallUi = controller;
                 this.fabElement = controller.getElement();
-                this.fabElement?.classList.toggle("sw__fab--hidden", this.fabModalDepth > 0);
+                this.fabElement?.classList.toggle("sw__fab--hidden", suspended);
             }
         });
     }

@@ -8,6 +8,8 @@
  * adapter for settings and the shared quick-action registry.
  */
 
+import {layoutFloatingBallActions, hitTestFloatingBallActions} from "./floating-ball-layout.js";
+
 export type FloatingBallSurface = "desktop" | "sidebar" | "mobile";
 
 export type FloatingBallState =
@@ -25,6 +27,8 @@ export interface FloatingBallPosition {
     edge: FloatingBallEdge;
     /** Normalized vertical position in the visible viewport. */
     yRatio: number;
+    /** Present only for free placement when edge snapping is disabled. */
+    xRatio?: number;
 }
 
 export interface FloatingBallBounds {
@@ -53,16 +57,29 @@ export interface FloatingBallUiOptions {
     idleDelayMs?: number;
     /** Move the idle ball partly beyond its attached edge. */
     halfHide?: boolean;
+    /** Render size in CSS pixels. Sidebar hosts keep their compact rail. */
+    size?: number;
+    /** When false, dragging persists a normalized free horizontal position. */
+    snap?: boolean;
     /** Disable the trigger while the host action surface is unavailable. */
     available?: boolean;
     /** Yield while the document is in fullscreen. Hidden documents always yield. */
     hideOnFullscreen?: boolean;
     /** Hide while the host surface scrolls downward; reveal on upward scroll. */
     hideOnScroll?: boolean;
+    /** Restrict scroll visibility to this host (or its current replacement). */
+    resolveScrollTarget?: () => EventTarget | null;
+    excludeScrollTarget?: (target: EventTarget) => boolean;
+    recoveryLabel?: string;
+    /** Current host overlay counter; the ball always stays below it. */
+    resolveLayer?: () => number;
     ariaLabel?: string;
     observeHost?: boolean;
     onOpenSwitcher?: () => void;
     onOpenMore?: () => void;
+    onBeforeTargeting?: () => void;
+    /** Hide transient panels whenever a lifecycle reason blocks the ball. */
+    onDismissOverlays?: () => void;
     /** Called when a drag ends over a mounted action target. */
     onActionTarget?: (target: HTMLElement) => void;
     onPositionChange?: (position: FloatingBallPosition) => void;
@@ -75,6 +92,8 @@ export interface FloatingBallUiPatch {
     idleOpacity?: number;
     idleDelayMs?: number;
     halfHide?: boolean;
+    size?: number;
+    snap?: boolean;
     available?: boolean;
     hideOnFullscreen?: boolean;
     hideOnScroll?: boolean;
@@ -88,6 +107,8 @@ export interface FloatingBallUiController {
     setHidden(hidden: boolean): void;
     setScrollHidden(hidden: boolean): void;
     setState(state: FloatingBallState): void;
+    /** Bounded busy feedback; a stale completion cannot clear a newer run. */
+    beginExecution(): () => void;
     getState(): FloatingBallState;
     getPosition(): FloatingBallPosition;
     getElement(): HTMLElement | null;
@@ -106,6 +127,9 @@ const MAX_TOUCH_SLOP = 12;
 const DEFAULT_IDLE_OPACITY = 0.4;
 const DEFAULT_IDLE_DELAY_MS = 5000;
 const MAX_IDLE_DELAY_MS = 60_000;
+const DEFAULT_BALL_SIZE = 48;
+const MIN_BALL_SIZE = 44;
+const MAX_BALL_SIZE = 64;
 
 type Cleanup = () => void;
 
@@ -120,6 +144,7 @@ function normalizePosition(value: FloatingBallPosition | undefined): FloatingBal
     return {
         edge: value?.edge === "left" ? "left" : "right",
         yRatio: clamp(Number.isFinite(value?.yRatio) ? Number(value?.yRatio) : DEFAULT_POSITION.yRatio, 0, 1),
+        ...(Number.isFinite(value?.xRatio) ? {xRatio: clamp(Number(value.xRatio), 0, 1)} : {}),
     };
 }
 
@@ -136,6 +161,11 @@ function normalizeIdleOpacity(value: number | undefined): number {
 function normalizeIdleDelay(value: number | undefined): number {
     const candidate = Number(value);
     return clamp(Number.isFinite(candidate) ? candidate : DEFAULT_IDLE_DELAY_MS, 0, MAX_IDLE_DELAY_MS);
+}
+
+function normalizeBallSize(value: number | undefined, fallback = DEFAULT_BALL_SIZE): number {
+    const candidate = Number(value);
+    return Math.round(clamp(Number.isFinite(candidate) ? candidate : fallback, MIN_BALL_SIZE, MAX_BALL_SIZE));
 }
 
 function getControllerMap(doc: Document): Map<FloatingBallSurface, FloatingBallUiController> {
@@ -158,6 +188,8 @@ export class FloatingBallUi implements FloatingBallUiController {
     private readonly cleanups: Cleanup[] = [];
     private root: HTMLElement | null = null;
     private trigger: HTMLButtonElement | null = null;
+    private recovery: HTMLButtonElement | null = null;
+    private targetCaption: HTMLElement | null = null;
     private observer: MutationObserver | null = null;
     private reconcileTimer: number | null = null;
     private disposed = false;
@@ -168,13 +200,13 @@ export class FloatingBallUi implements FloatingBallUiController {
     private idleOpacity: number;
     private idleDelayMs: number;
     private halfHide: boolean;
+    private snap: boolean;
     private available: boolean;
     private hideOnFullscreen: boolean;
     private hideOnScroll: boolean;
     private scrollCleanup: Cleanup | null = null;
     private scrollOffsets = new WeakMap<object, number>();
-    // CSS fixes the portal footprint per surface (48px desktop/mobile, 44px
-    // sidebar). Keep it as a value so pointer frames do not force layout reads.
+    // Keep the footprint as a value so pointer frames do not force layout reads.
     private ballSize: number;
     private suspendedReason = false;
     private hiddenReasons = {
@@ -190,6 +222,15 @@ export class FloatingBallUi implements FloatingBallUiController {
     private pointerStart: {x: number; y: number} | null = null;
     private positionAtPointerStart: FloatingBallPosition | null = null;
     private suppressClick = false;
+    private busyTimer: number | null = null;
+    private executionVersion = 0;
+    private dragBounds: FloatingBallBounds | null = null;
+    private dragAnchor: {x: number; y: number} | null = null;
+    private dragTargets: Array<{x: number; y: number; size: number; index: number}> = [];
+    private dragButtons: HTMLButtonElement[] = [];
+    private targetedIndex = -1;
+    private layoutBounds: FloatingBallBounds | null = null;
+    private renderedAnchor: {x: number; y: number} | null = null;
 
     constructor(options: FloatingBallUiOptions) {
         this.options = options;
@@ -202,10 +243,11 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.idleOpacity = normalizeIdleOpacity(options.idleOpacity);
         this.idleDelayMs = normalizeIdleDelay(options.idleDelayMs);
         this.halfHide = options.halfHide !== false;
+        this.snap = options.snap !== false;
         this.available = options.available !== false;
         this.hideOnFullscreen = options.hideOnFullscreen !== false;
         this.hideOnScroll = options.hideOnScroll !== false;
-        this.ballSize = this.surface === "sidebar" ? 44 : 48;
+        this.ballSize = this.surface === "sidebar" ? 44 : normalizeBallSize(options.size);
     }
 
     mount(): HTMLElement | null {
@@ -225,6 +267,7 @@ export class FloatingBallUi implements FloatingBallUiController {
 
     update(patch: FloatingBallUiPatch): void {
         if (this.disposed) return;
+        if (this.activePointerId !== null) this.cancelPointer(true);
         if (patch.position) this.position = normalizePosition(patch.position);
         if (patch.touchSlopPx !== undefined) this.touchSlop = normalizeTouchSlop(patch.touchSlopPx);
         if (patch.marginPx !== undefined) {
@@ -234,6 +277,8 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (patch.idleOpacity !== undefined) this.idleOpacity = normalizeIdleOpacity(patch.idleOpacity);
         if (patch.idleDelayMs !== undefined) this.idleDelayMs = normalizeIdleDelay(patch.idleDelayMs);
         if (patch.halfHide !== undefined) this.halfHide = patch.halfHide !== false;
+        if (patch.size !== undefined && this.surface !== "sidebar") this.ballSize = normalizeBallSize(patch.size);
+        if (patch.snap !== undefined) this.snap = patch.snap !== false;
         if (patch.available !== undefined) this.available = patch.available === true;
         if (patch.hideOnFullscreen !== undefined) {
             this.hideOnFullscreen = patch.hideOnFullscreen !== false;
@@ -258,6 +303,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (this.disposed || this.suspendedReason === suspended) return;
         this.suspendedReason = suspended;
         if (suspended) {
+            this.options.onDismissOverlays?.();
             this.cancelPointer(true);
             this.clearIdleTimer();
             this.setIdle(false);
@@ -270,6 +316,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (this.disposed || this.hiddenReasons.manual === hidden) return;
         this.hiddenReasons.manual = hidden;
         if (hidden) {
+            this.options.onDismissOverlays?.();
             this.cancelPointer(true);
             this.clearIdleTimer();
             this.setIdle(false);
@@ -282,6 +329,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (this.disposed || this.hiddenReasons.scroll === hidden) return;
         this.hiddenReasons.scroll = hidden;
         if (hidden) {
+            this.options.onDismissOverlays?.();
             this.cancelPointer(true);
             this.clearIdleTimer();
             this.setIdle(false);
@@ -297,10 +345,25 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.applyState(this.effectiveBlockedState() || state);
     }
 
+    beginExecution(): () => void {
+        const version = ++this.executionVersion;
+        if (this.busyTimer !== null) this.doc?.defaultView?.clearTimeout(this.busyTimer);
+        this.setState("executing");
+        const finish = () => {
+            if (this.disposed || version !== this.executionVersion) return;
+            if (this.busyTimer !== null) this.doc?.defaultView?.clearTimeout(this.busyTimer);
+            this.busyTimer = null;
+            if (this.state === "executing") this.setState("docked");
+        };
+        this.busyTimer = this.doc?.defaultView?.setTimeout(finish, 1500) ?? null;
+        return finish;
+    }
+
     private applyState(state: FloatingBallState): void {
         if (this.disposed) return;
         this.state = state;
         if (this.root) this.root.dataset.state = state;
+        this.syncRecovery();
         if (this.trigger) {
             this.applyAccessibilityState();
         }
@@ -334,6 +397,9 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.disposed = true;
         this.cancelPointer(true);
         this.clearIdleTimer();
+        if (this.busyTimer !== null) this.doc?.defaultView?.clearTimeout(this.busyTimer);
+        this.busyTimer = null;
+        this.executionVersion += 1;
         if (this.reconcileTimer !== null && this.doc) {
             const view = this.doc.defaultView;
             if (view) view.clearTimeout(this.reconcileTimer);
@@ -348,8 +414,11 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.focused = false;
         while (this.cleanups.length) this.cleanups.pop()?.();
         this.root?.remove();
+        this.recovery?.remove();
+        this.recovery = null;
         this.root = null;
         this.trigger = null;
+        this.targetCaption = null;
         if (this.doc) {
             const map = ACTIVE_CONTROLLERS.get(this.doc);
             if (map?.get(this.surface) === this) map.delete(this.surface);
@@ -368,6 +437,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         root.dataset.idle = "false";
         root.dataset.halfHide = String(this.halfHide);
         root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
+        root.style.setProperty("--sw-fab-size", `${this.ballSize}px`);
 
         const trigger = this.doc.createElement("button");
         trigger.type = "button";
@@ -377,9 +447,26 @@ export class FloatingBallUi implements FloatingBallUiController {
         trigger.setAttribute("aria-expanded", "false");
         trigger.innerHTML = "<svg aria-hidden=\"true\"><use href=\"#iconLayout\" xlink:href=\"#iconLayout\"></use></svg>";
         root.appendChild(trigger);
+        const caption = this.doc.createElement("span");
+        caption.className = "sw-fab-target-caption";
+        caption.setAttribute("aria-hidden", "true");
+        caption.hidden = true;
+        root.appendChild(caption);
+        this.targetCaption = caption;
 
         this.root = root;
         this.trigger = trigger;
+        const recovery = this.doc.createElement("button");
+        recovery.type = "button";
+        recovery.className = "sw-fab-recovery";
+        recovery.dataset.surface = this.surface;
+        recovery.setAttribute("aria-label", this.options.recoveryLabel || "恢复悬浮球");
+        recovery.textContent = "⋮";
+        recovery.hidden = true;
+        const restoreScroll = () => { this.setScrollHidden(false); this.focus(); };
+        recovery.addEventListener("click", restoreScroll);
+        this.cleanups.push(() => recovery.removeEventListener("click", restoreScroll));
+        this.recovery = recovery;
         this.bindPointerLifecycle(trigger);
         this.bindKeyboardLifecycle(trigger);
         this.bindActivityLifecycle(trigger);
@@ -392,8 +479,7 @@ export class FloatingBallUi implements FloatingBallUiController {
     }
 
     private resolvePortalHost(): HTMLElement | null {
-        const resolved = this.options.resolveHost?.();
-        if (resolved) return resolved;
+        if (this.options.resolveHost) return this.options.resolveHost();
         if (this.options.host) return this.options.host;
         return this.doc.body || null;
     }
@@ -408,7 +494,10 @@ export class FloatingBallUi implements FloatingBallUiController {
             `${ROOT_SELECTOR}[${ROOT_MARKER}="${this.surface}"]`,
         );
         if (stale && stale !== this.root) stale.remove();
+        const staleRecovery = host.querySelector(`.sw-fab-recovery[data-surface="${this.surface}"]`);
+        if (staleRecovery && staleRecovery !== this.recovery) staleRecovery.remove();
         if (this.root.parentElement !== host) host.appendChild(this.root);
+        if (this.recovery?.parentElement !== host) host.appendChild(this.recovery);
         this.applyPosition();
     }
 
@@ -420,7 +509,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         const observedRoot = host.ownerDocument.body || host;
         this.observer = new MutationObserverCtor(() => {
             if (this.disposed || this.reconcileTimer !== null) return;
-            if (this.root?.isConnected && this.root.parentElement === host) return;
+            if (this.root?.isConnected && this.root.parentElement === host && this.recovery?.parentElement === host) return;
             const view = this.doc.defaultView;
             const schedule = () => {
                 this.reconcileTimer = null;
@@ -441,6 +530,7 @@ export class FloatingBallUi implements FloatingBallUiController {
     private bindPointerLifecycle(trigger: HTMLButtonElement): void {
         const onPointerDown = (event: PointerEvent) => {
             if (this.isInteractionBlocked() || this.activePointerId !== null) return;
+            if (event.isPrimary === false) return;
             if (event.button !== undefined && event.button !== 0) return;
             this.activePointerId = event.pointerId;
             this.markActive();
@@ -457,14 +547,40 @@ export class FloatingBallUi implements FloatingBallUiController {
             }
             const dx = event.clientX - this.pointerStart.x;
             const dy = event.clientY - this.pointerStart.y;
-            if (this.state !== "dragging" && Math.hypot(dx, dy) > this.touchSlop) {
+            if (this.state !== "dragging" && this.state !== "targeting" && Math.hypot(dx, dy) > this.touchSlop) {
                 this.suppressClick = true;
+                this.prepareDragTargets();
                 this.setState("dragging");
             }
-            if (this.state !== "dragging") return;
+            if (this.state !== "dragging" && this.state !== "targeting") return;
             event.preventDefault();
             this.position = this.positionFromPointer(event.clientX, event.clientY);
-            this.applyPosition();
+            const bounds = this.dragBounds;
+            const anchor = this.dragAnchor;
+            if (bounds && anchor) {
+                const radius = this.ballSize / 2;
+                const x = clamp(event.clientX, bounds.left + this.margin + radius, Math.max(bounds.left + this.margin + radius, bounds.right - this.margin - radius));
+                const y = clamp(event.clientY, bounds.top + this.margin + radius, Math.max(bounds.top + this.margin + radius, bounds.bottom - this.margin - radius));
+                this.root?.style.setProperty("--sw-fab-drag-x", `${x - anchor.x}px`);
+                this.root?.style.setProperty("--sw-fab-drag-y", `${y - anchor.y}px`);
+            }
+            this.targetedIndex = hitTestFloatingBallActions(this.dragTargets, event.clientX, event.clientY, 8);
+            this.dragButtons.forEach((button, index) => button.classList.toggle("is-targeted", index === this.targetedIndex));
+            if (this.targetCaption && bounds && anchor) {
+                const target = this.dragTargets.find((point) => point.index === this.targetedIndex);
+                this.targetCaption.hidden = !target;
+                if (target) {
+                    const width = Math.min(144, bounds.right - bounds.left - 16);
+                    const left = clamp(target.x - width / 2, bounds.left + 8, bounds.right - width - 8);
+                    const above = target.y - target.size / 2 - 32;
+                    const top = above >= bounds.top + 8 ? above : target.y + target.size / 2 + 4;
+                    this.targetCaption.textContent = this.dragButtons[this.targetedIndex]?.getAttribute("aria-label") || "";
+                    this.targetCaption.style.width = `${width}px`;
+                    this.targetCaption.style.left = `${left - anchor.x + this.ballSize / 2}px`;
+                    this.targetCaption.style.top = `${top - anchor.y + (this.surface === "mobile" ? 0 : this.ballSize / 2)}px`;
+                }
+            }
+            this.setState(this.targetedIndex >= 0 ? "targeting" : "dragging");
         };
         const onPointerUp = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId) return;
@@ -472,24 +588,20 @@ export class FloatingBallUi implements FloatingBallUiController {
                 this.cancelPointer(true);
                 return;
             }
-            const wasDragging = this.state === "dragging";
+            const wasDragging = this.state === "dragging" || this.state === "targeting";
+            let target: HTMLButtonElement | undefined;
             if (wasDragging) {
-                this.position = this.positionFromPointer(event.clientX, event.clientY);
-                this.applyPosition();
-                this.options.onPositionChange?.(this.getPosition());
-                // Pointer capture keeps the gesture on the trigger, so use
-                // hit-testing to hand a drag release to the action panel.
-                // The panel remains an optional host concern; a missing or
-                // stale target simply behaves like a normal drop on empty
-                // space and does not execute the switcher.
-                const element = this.doc?.elementFromPoint?.(event.clientX, event.clientY) as HTMLElement | null;
-                const target = element?.closest?.("[data-action-id]") as HTMLElement | null;
-                if (target && this.root?.contains(target)) {
-                    this.options.onActionTarget?.(target);
-                }
+                const index = hitTestFloatingBallActions(this.dragTargets, event.clientX, event.clientY, 8);
+                target = this.dragButtons[index];
+                this.position = target ? {...this.positionAtPointerStart} : this.positionFromPointer(event.clientX, event.clientY);
                 event.preventDefault();
             }
             this.cancelPointer(false);
+            if (wasDragging) {
+                this.applyPosition();
+                if (target?.isConnected && !target.disabled) this.options.onActionTarget?.(target);
+                else if (!target) this.options.onPositionChange?.(this.getPosition());
+            }
             // A drag's pointerup can still be followed by the synthetic
             // button click.  Keep the guard alive until that click handler
             // consumes it; pointercancel/blur clear it immediately.
@@ -518,16 +630,18 @@ export class FloatingBallUi implements FloatingBallUiController {
             this.options.onOpenMore?.();
         };
         trigger.addEventListener("pointerdown", onPointerDown);
-        trigger.addEventListener("pointermove", onPointerMove);
-        trigger.addEventListener("pointerup", onPointerUp);
-        trigger.addEventListener("pointercancel", onPointerCancel);
+        this.doc.addEventListener("pointermove", onPointerMove);
+        this.doc.addEventListener("pointerup", onPointerUp);
+        this.doc.addEventListener("pointercancel", onPointerCancel);
+        trigger.addEventListener("lostpointercapture", onPointerCancel);
         trigger.addEventListener("click", onClick);
         trigger.addEventListener("contextmenu", onContextMenu);
         this.cleanups.push(() => {
             trigger.removeEventListener("pointerdown", onPointerDown);
-            trigger.removeEventListener("pointermove", onPointerMove);
-            trigger.removeEventListener("pointerup", onPointerUp);
-            trigger.removeEventListener("pointercancel", onPointerCancel);
+            this.doc.removeEventListener("pointermove", onPointerMove);
+            this.doc.removeEventListener("pointerup", onPointerUp);
+            this.doc.removeEventListener("pointercancel", onPointerCancel);
+            trigger.removeEventListener("lostpointercapture", onPointerCancel);
             trigger.removeEventListener("click", onClick);
             trigger.removeEventListener("contextmenu", onContextMenu);
         });
@@ -609,6 +723,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (!view) return;
         const onViewportChange = () => {
             if (this.disposed) return;
+            this.cancelPointer(true);
             this.applyPosition();
             this.syncDocumentVisibility();
             if (this.state === "docked") this.scheduleIdle();
@@ -617,10 +732,12 @@ export class FloatingBallUi implements FloatingBallUiController {
         view.addEventListener("orientationchange", onViewportChange, {passive: true});
         const visualViewport = view.visualViewport;
         visualViewport?.addEventListener("resize", onViewportChange, {passive: true});
+        visualViewport?.addEventListener("scroll", onViewportChange, {passive: true});
         this.cleanups.push(() => {
             view.removeEventListener("resize", onViewportChange);
             view.removeEventListener("orientationchange", onViewportChange);
             visualViewport?.removeEventListener("resize", onViewportChange);
+            visualViewport?.removeEventListener("scroll", onViewportChange);
         });
     }
 
@@ -635,10 +752,16 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.scrollOffsets = new WeakMap<object, number>();
         if (!this.doc || this.disposed || !this.hideOnScroll) return;
         const onScroll = (event: Event) => {
-            if (this.disposed || !this.hideOnScroll || this.state === "executing") return;
+            if (this.disposed || !this.hideOnScroll || ["executing", "dragging", "targeting", "more"].includes(this.state)) return;
             const rawTarget = event.target;
             if (!rawTarget || (typeof rawTarget !== "object")) return;
             const target = rawTarget as object;
+            if (this.options.excludeScrollTarget?.(rawTarget)) return;
+            const scrollHost = this.options.resolveScrollTarget?.() || null;
+            if (scrollHost && scrollHost !== rawTarget) {
+                const hostNode = scrollHost as Node;
+                if (!hostNode.nodeType || !(rawTarget as Node).nodeType || !hostNode.contains(rawTarget as Node)) return;
+            }
             const nodeType = Number((rawTarget as Node).nodeType);
             if (this.root && nodeType > 0 && this.root.contains(rawTarget as Node)) return;
             const offset = this.readScrollOffset(target);
@@ -670,6 +793,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (this.disposed || this.hiddenReasons[reason] === hidden) return;
         this.hiddenReasons[reason] = hidden;
         if (hidden) {
+            this.options.onDismissOverlays?.();
             this.cancelPointer(true);
             this.clearIdleTimer();
             this.setIdle(false);
@@ -717,7 +841,7 @@ export class FloatingBallUi implements FloatingBallUiController {
     private setIdle(idle: boolean): void {
         if (!this.root) return;
         this.root.dataset.idle = String(idle);
-        this.root.dataset.halfHide = String(this.halfHide);
+        this.root.dataset.halfHide = String(this.halfHide && (this.snap || this.position.xRatio === undefined));
         this.root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
     }
 
@@ -754,12 +878,22 @@ export class FloatingBallUi implements FloatingBallUiController {
             this.position = this.positionAtPointerStart;
             this.applyPosition();
         }
-        if (this.activePointerId !== null && this.trigger) {
-            try { this.trigger.releasePointerCapture(this.activePointerId); } catch (_) { /* already released */ }
-        }
+        const pointerId = this.activePointerId;
         this.activePointerId = null;
+        if (pointerId !== null && this.trigger) {
+            try { this.trigger.releasePointerCapture(pointerId); } catch (_) { /* already released */ }
+        }
         this.pointerStart = null;
         this.positionAtPointerStart = null;
+        this.dragTargets = [];
+        this.dragButtons.forEach((button) => { button.classList.remove("is-targeted"); button.hidden = false; });
+        this.dragButtons = [];
+        this.dragBounds = null;
+        this.dragAnchor = null;
+        this.targetedIndex = -1;
+        if (this.targetCaption) this.targetCaption.hidden = true;
+        this.root?.style.removeProperty("--sw-fab-drag-x");
+        this.root?.style.removeProperty("--sw-fab-drag-y");
         this.suppressClick = preserveClickSuppression;
         if (this.state === "dragging" || this.state === "targeting") this.setState("docked");
         else this.scheduleIdle();
@@ -769,7 +903,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         const view = this.doc.defaultView;
         const viewportWidth = Math.max(1, view?.innerWidth || this.doc.documentElement.clientWidth || 1);
         const viewportHeight = Math.max(1, view?.innerHeight || this.doc.documentElement.clientHeight || 1);
-        const bounds = this.getBounds(viewportWidth, viewportHeight);
+        const bounds = this.dragBounds || this.getBounds(viewportWidth, viewportHeight);
         const ballHeight = this.ballSize;
         const minCenter = bounds.top + this.margin + ballHeight / 2;
         const maxCenter = Math.max(minCenter, bounds.bottom - this.margin - ballHeight / 2);
@@ -777,24 +911,41 @@ export class FloatingBallUi implements FloatingBallUiController {
         return {
             edge: clientX <= bounds.left + (bounds.right - bounds.left) / 2 ? "left" : "right",
             yRatio: clamp((clientY - minCenter) / availableHeight, 0, 1),
+            ...(!this.snap ? {xRatio: clamp((clientX - bounds.left - this.margin - ballHeight / 2)
+                / Math.max(1, bounds.right - bounds.left - 2 * this.margin - ballHeight), 0, 1)} : {}),
         };
     }
 
     private getBounds(viewportWidth: number, viewportHeight: number): FloatingBallBounds {
+        const visual = this.doc.defaultView?.visualViewport;
+        const visible = {
+            left: Math.max(0, visual?.offsetLeft || 0),
+            top: Math.max(0, visual?.offsetTop || 0),
+            right: Math.min(viewportWidth, (visual?.offsetLeft || 0) + (visual?.width || viewportWidth)),
+            bottom: Math.min(viewportHeight, (visual?.offsetTop || 0) + (visual?.height || viewportHeight)),
+        };
+        if (this.surface === "mobile" && this.root) {
+            const style = this.doc.defaultView?.getComputedStyle(this.root);
+            const inset = (key: string) => Math.max(0, parseFloat(style?.getPropertyValue(key) || "0") || 0);
+            visible.top += inset("--sw-fab-safe-top");
+            visible.bottom -= inset("--sw-fab-safe-bottom") + 48;
+            visible.left += inset("--sw-fab-safe-left");
+            visible.right -= inset("--sw-fab-safe-right");
+        }
         const raw = this.options.resolveBounds?.();
-        if (!raw) return {left: 0, right: viewportWidth, top: 0, bottom: viewportHeight};
+        if (!raw) return visible;
         const left = Number(raw.left);
         const right = Number(raw.right);
         const top = Number(raw.top);
         const bottom = Number(raw.bottom);
         if (![left, right, top, bottom].every(Number.isFinite) || right <= left || bottom <= top) {
-            return {left: 0, right: viewportWidth, top: 0, bottom: viewportHeight};
+            return visible;
         }
         return {
-            left: clamp(left, 0, viewportWidth),
-            right: clamp(right, 0, viewportWidth),
-            top: clamp(top, 0, viewportHeight),
-            bottom: clamp(bottom, 0, viewportHeight),
+            left: clamp(left, visible.left, visible.right),
+            right: clamp(right, visible.left, visible.right),
+            top: clamp(top, visible.top, visible.bottom),
+            bottom: clamp(bottom, visible.top, visible.bottom),
         };
     }
 
@@ -805,28 +956,68 @@ export class FloatingBallUi implements FloatingBallUiController {
         const viewportWidth = Math.max(1, view?.innerWidth || this.doc.documentElement.clientWidth || 1);
         const viewportHeight = Math.max(1, view?.innerHeight || this.doc.documentElement.clientHeight || 1);
         const bounds = this.getBounds(viewportWidth, viewportHeight);
+        this.layoutBounds = bounds;
         this.root.dataset.edge = edge;
         this.root.dataset.yRatio = String(yRatio);
+        this.root.style.setProperty("--sw-fab-size", `${this.ballSize}px`);
+        const hostLayer = this.options.resolveLayer?.();
+        this.root.style.zIndex = String(Number.isFinite(hostLayer) ? Math.max(0, Math.min(999, hostLayer - 1)) : 999);
+        if (this.recovery) this.recovery.style.zIndex = this.root.style.zIndex;
         if (this.options.resolveBounds) {
             this.root.style.setProperty("--sw-fab-host-width", `${Math.max(0, bounds.right - bounds.left)}px`);
         } else {
             this.root.style.removeProperty("--sw-fab-host-width");
         }
-        if (this.options.resolveBounds && bounds.right > bounds.left && bounds.bottom > bounds.top) {
-            const height = this.ballSize;
-            const minCenter = bounds.top + this.margin + height / 2;
-            const maxCenter = Math.max(minCenter, bounds.bottom - this.margin - height / 2);
-            const center = minCenter + (maxCenter - minCenter) * yRatio;
-            this.root.style.top = `${center.toFixed(3)}px`;
-            this.root.style.left = edge === "left" ? `${(bounds.left + this.margin).toFixed(3)}px` : "auto";
-            this.root.style.right = edge === "right"
-                ? `${(viewportWidth - bounds.right + this.margin).toFixed(3)}px`
-                : "auto";
-            return;
-        }
-        this.root.style.top = `${(yRatio * 100).toFixed(3)}%`;
-        this.root.style.left = edge === "left" ? `${this.margin}px` : "auto";
-        this.root.style.right = edge === "right" ? `${this.margin}px` : "auto";
+        const radius = this.ballSize / 2;
+        const minCenter = bounds.top + this.margin + radius;
+        const maxCenter = Math.max(minCenter, bounds.bottom - this.margin - radius);
+        const center = minCenter + (maxCenter - minCenter) * yRatio;
+        const minX = bounds.left + this.margin + radius;
+        const maxX = Math.max(minX, bounds.right - this.margin - radius);
+        const xRatio = !this.snap && this.position.xRatio !== undefined ? this.position.xRatio : (edge === "left" ? 0 : 1);
+        const x = minX + (maxX - minX) * xRatio;
+        this.renderedAnchor = {x, y: center};
+        this.root.style.top = `${center.toFixed(3)}px`;
+        this.root.style.left = xRatio === 1 ? "auto" : `${(x - radius).toFixed(3)}px`;
+        this.root.style.right = xRatio === 1 ? `${(viewportWidth - bounds.right + this.margin).toFixed(3)}px` : "auto";
+        this.syncRecovery();
+    }
+
+    private prepareDragTargets(): void {
+        this.options.onBeforeTargeting?.();
+        this.applyPosition();
+        this.dragBounds = this.layoutBounds;
+        this.dragAnchor = this.renderedAnchor;
+        if (!this.root || !this.dragBounds || !this.dragAnchor) return;
+        const host = this.root.querySelector<HTMLElement>(".sw__floating-ball-first-layer");
+        if (!host) return;
+        this.dragButtons = Array.from(host.querySelectorAll<HTMLButtonElement>("[data-action-id]"));
+        const layout = layoutFloatingBallActions({bounds: this.dragBounds, anchor: this.dragAnchor,
+            edge: this.position.edge, surface: this.surface, count: this.dragButtons.length,
+            size: this.surface === "mobile" ? 48 : 44, margin: Math.max(8, this.margin)});
+        this.dragTargets = layout.targets;
+        host.classList.add("is-positioned");
+        host.dataset.layout = layout.mode;
+        this.dragButtons.forEach((button, index) => {
+            const point = this.dragTargets.find((item) => item.index === index);
+            button.hidden = !point;
+            if (!point) return;
+            button.style.left = `${point.x - this.dragAnchor.x + this.ballSize / 2}px`;
+            button.style.top = `${point.y - this.dragAnchor.y + (this.surface === "mobile" ? 0 : this.ballSize / 2)}px`;
+            button.style.width = `${point.size}px`;
+            button.style.height = `${point.size}px`;
+        });
+    }
+
+    private syncRecovery(): void {
+        if (!this.recovery) return;
+        this.recovery.hidden = !this.hiddenReasons.scroll || this.suspendedReason || this.hiddenReasons.manual
+            || this.hiddenReasons.fullscreen || this.hiddenReasons.visibility || this.disposed;
+        if (!this.root || !this.layoutBounds || !this.renderedAnchor) return;
+        this.recovery.style.top = `${this.renderedAnchor.y - 22}px`;
+        this.recovery.style.left = this.position.edge === "left" ? `${this.layoutBounds.left}px` : "auto";
+        const width = this.doc.defaultView?.innerWidth || this.doc.documentElement.clientWidth;
+        this.recovery.style.right = this.position.edge === "right" ? `${width - this.layoutBounds.right}px` : "auto";
     }
 }
 

@@ -27,6 +27,23 @@ test("floating ball config: defaults are bounded, independent and cloned", () =>
     assert.equal(again.actions.mobile[0].actionId, "journal");
 });
 
+test("free position and margin migrate additively and stay local during transfer", () => {
+    const {serializeFloatingBallSettings, importFloatingBallSettings} = require("../src/floating-ball-settings-model.js");
+    const config = normalizeFloatingBallConfig({position: {mobile: {xRatio: 0.45, edge: "left", yRatio: 0.2}}, appearance: {marginPx: 0}});
+    assert.equal(config.position.mobile.xRatio, 0.45);
+    assert.equal(config.appearance.marginPx, 0);
+    assert.deepEqual(normalizeFloatingBallConfig({position: {mobile: {xRatio: NaN}}}).position.mobile, {edge: "right", yRatio: 0.72});
+    assert.equal(normalizeFloatingBallConfig({appearance: {marginPx: 800}}).appearance.marginPx, 32);
+    const exported = serializeFloatingBallSettings(config, []);
+    assert.equal(exported.includes("xRatio"), false);
+    const current = normalizeFloatingBallConfig({position: {mobile: {edge: "left", yRatio: 0.6, xRatio: 0.8}}});
+    const imported = importFloatingBallSettings(exported, current, []);
+    assert.equal(imported.ok, true);
+    assert.deepEqual(imported.config.position, current.position);
+    assert.equal(imported.config.appearance.marginPx, 0);
+    assert.equal(resolveFloatingBallPosition({edge: "left", yRatio: 0.5, xRatio: 0.5}, {width: 400, height: 800}).x, 200);
+});
+
 test("floating ball config: legacy fabEnabled migrates only mobile and sidebar follows desktop", () => {
     const result = normalizeFloatingBallConfig({fabEnabled: true, enabled: {desktop: true}});
     assert.deepEqual(result.enabled, {desktop: true, sidebar: true, mobile: true});
@@ -73,7 +90,7 @@ test("floating ball config: explicit empty action lists survive normalization", 
     const result = normalizeFloatingBallConfig({actions: {mobile: []}});
     assert.deepEqual(result.actions.mobile, []);
     assert.equal(sanitizeFloatingBallConfig({fabEnabled: true}).migrated, true);
-    assert.equal(normalizeFloatingBallActionList(undefined).length, 3);
+    assert.deepEqual(normalizeFloatingBallActionList(undefined).map((entry) => entry.actionId), ["journal", "search", "home", "settings"]);
     assert.equal(normalizeFloatingBallActionList(Array.from({length: FLOATING_BALL_ACTION_LIMIT + 5}, (_, index) => ({actionId: `a-${index}`}))).length, FLOATING_BALL_ACTION_LIMIT);
 });
 

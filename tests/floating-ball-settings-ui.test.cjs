@@ -189,7 +189,135 @@ test("floating settings UI sorting follows rendered order and leaves other surfa
     assert.equal(ui.state.floatingBall.actions.desktop.find((entry) => entry.actionId === "journal").firstLayer, true);
     assert.equal(JSON.stringify(ui.state.floatingBall.actions.mobile), mobileBefore);
     selectSurface(ui, "mobile");
-    assert.deepEqual(rowIds(ui.root), ["journal", "search", "settings"]);
+    assert.deepEqual(rowIds(ui.root), ["journal", "search", "home", "settings"]);
+});
+
+test("floating settings sliders preview without writes and commit once on change", (t) => {
+    const ui = mount(t);
+    const size = ui.root.querySelector('[data-control="size"]');
+    const previewBall = () => ui.root.querySelector(".sw-floating-ball-settings__preview-ball");
+    assert.equal(size.getAttribute("aria-label"), i18n.floatingBallSize);
+    assert.equal(size.labels.length, 1, "the visible label is associated with the range");
+    size.value = "60";
+    size.dispatchEvent(new ui.window.Event("input", {bubbles: true}));
+    size.value = "64";
+    size.dispatchEvent(new ui.window.Event("input", {bubbles: true}));
+    assert.equal(previewBall().style.width, "64px", "the draft immediately changes real preview geometry");
+    assert.equal(size.getAttribute("aria-valuetext"), "64 px");
+    assert.equal(size.closest("label").querySelector("output").value, "64 px");
+    assert.equal(ui.state.floatingBall.appearance.size, 48, "input does not persist the draft");
+    assert.equal(ui.patches.length, 0, "pointer frames must not rerender the full plugin");
+    size.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.equal(ui.patches.length, 1);
+    assert.equal(ui.state.floatingBall.appearance.size, 64);
+    selectSurface(ui, "sidebar");
+    assert.equal(size.disabled, true);
+    assert.equal(size.value, "44");
+    assert.equal(previewBall().style.width, "44px", "narrow sidebars retain their dedicated size");
+    selectSurface(ui, "mobile");
+    assert.equal(size.disabled, false);
+    assert.equal(size.value, "64", "desktop and mobile use the saved shared size");
+    const opacity = ui.root.querySelector('[data-control="idleOpacity"]');
+    opacity.value = "0.75";
+    opacity.dispatchEvent(new ui.window.Event("input", {bubbles: true}));
+    assert.equal(previewBall().style.opacity, "0.75");
+    assert.equal(ui.patches.length, 1);
+    opacity.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.equal(ui.state.floatingBall.appearance.idleOpacity, 0.75);
+    assert.equal(ui.patches.length, 2);
+});
+
+test("floating settings positions edit only the selected surface and redock free positions", (t) => {
+    const config = createDefaultFloatingBallConfig();
+    config.behavior.snap = false;
+    config.position.desktop = {edge: "left", xRatio: 0.35, yRatio: 0.2};
+    config.position.mobile = {edge: "right", xRatio: 0.7, yRatio: 0.8};
+    const ui = mount(t, {config});
+    const edge = ui.root.querySelector('[data-control="edge"]');
+    const vertical = ui.root.querySelector('[data-control="yRatio"]');
+    const stage = ui.root.querySelector(".sw-floating-ball-settings__preview-stage");
+    const ball = () => stage.querySelector(".sw-floating-ball-settings__preview-ball");
+    assert.equal(stage.dataset.direction, "right");
+    assert.match(ball().style.left, /35%/, "free horizontal position is represented in the preview");
+    edge.value = "right";
+    edge.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.deepEqual(ui.state.floatingBall.position.desktop, {edge: "right", yRatio: 0.2});
+    assert.deepEqual(ui.state.floatingBall.position.mobile, {edge: "right", xRatio: 0.7, yRatio: 0.8});
+    assert.equal(stage.dataset.direction, "left", "targets expand inward after changing edges");
+    assert.match(ball().style.left, /100%/);
+    const oldTop = ball().style.top;
+    vertical.value = "55";
+    vertical.dispatchEvent(new ui.window.Event("input", {bubbles: true}));
+    assert.notEqual(ball().style.top, oldTop);
+    assert.equal(ui.patches.length, 1);
+    vertical.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.equal(ui.state.floatingBall.position.desktop.yRatio, 0.55);
+    selectSurface(ui, "mobile");
+    assert.equal(vertical.value, "80");
+    assert.match(ball().style.left, /70%/);
+});
+
+test("floating settings restore appearance and behavior without replacing positions or actions", (t) => {
+    const config = createDefaultFloatingBallConfig();
+    config.enabled.desktop = true;
+    config.position.desktop = {edge: "left", yRatio: 0.11};
+    config.actions.desktop = [{actionId: "search", enabled: false, firstLayer: false, order: 10}];
+    const ui = mount(t, {config});
+    const rangeValues = {marginPx: "24", idleDelayMs: "7500", touchSlopPx: "12"};
+    for (const [key, value] of Object.entries(rangeValues)) {
+        const input = ui.root.querySelector(`[data-control="${key}"]`);
+        input.value = value;
+        input.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+        assert.ok(input.getAttribute("aria-valuetext"), `${key} exposes its value with units`);
+    }
+    for (const key of ["halfHide", "snap", "hideOnScroll", "hideOnFullscreen", "yieldToModals"]) {
+        const input = ui.root.querySelector(`[data-control="${key}"]`);
+        assert.ok(input.getAttribute("aria-label"));
+        input.click();
+        assert.equal(ui.state.floatingBall[key === "halfHide" ? "appearance" : "behavior"][key], false);
+    }
+    assert.equal(ui.state.floatingBall.appearance.marginPx, 24);
+    assert.equal(ui.state.floatingBall.appearance.idleDelayMs, 7500);
+    assert.equal(ui.state.floatingBall.behavior.touchSlopPx, 12);
+    assert.equal(ui.root.querySelector("details").open, false, "advanced threshold stays out of the main flow");
+    const positions = JSON.stringify(ui.state.floatingBall.position);
+    const actions = JSON.stringify(ui.state.floatingBall.actions);
+    buttonByLabel(ui.root, i18n.floatingBallRestoreAppearance).click();
+    assert.equal(ui.confirmations.at(-1), i18n.floatingBallRestoreAppearanceConfirm);
+    assert.deepEqual(ui.state.floatingBall.appearance, createDefaultFloatingBallConfig().appearance);
+    assert.deepEqual(ui.state.floatingBall.behavior, createDefaultFloatingBallConfig().behavior);
+    assert.equal(JSON.stringify(ui.state.floatingBall.position), positions);
+    assert.equal(JSON.stringify(ui.state.floatingBall.actions), actions);
+    assert.equal(ui.state.floatingBall.enabled.desktop, true);
+    assert.equal(ui.root.querySelector('[data-control="marginPx"]').value, "8");
+    assert.equal(ui.root.querySelector('[data-control="hideOnScroll"]').checked, true);
+    assert.equal(ui.document.activeElement, buttonByLabel(ui.root, i18n.floatingBallRestoreAppearance));
+});
+
+test("floating settings refresh and imports synchronize controls and preview", async (t) => {
+    const ui = mount(t);
+    const refreshed = createDefaultFloatingBallConfig();
+    refreshed.appearance.size = 60;
+    refreshed.appearance.marginPx = 18;
+    refreshed.position.desktop = {edge: "left", yRatio: 0.4};
+    ui.state = {...ui.state, floatingBall: refreshed};
+    ui.root.dispatchEvent(new ui.window.Event("sw-floating-ball-refresh"));
+    assert.equal(ui.root.querySelector('[data-control="size"]').value, "60");
+    assert.equal(ui.root.querySelector('[data-control="marginPx"]').value, "18");
+    assert.equal(ui.root.querySelector('[data-control="edge"]').value, "left");
+    assert.equal(ui.root.querySelector('[data-control="yRatio"]').value, "40");
+    assert.equal(ui.root.querySelector(".sw-floating-ball-settings__preview-ball").style.width, "60px");
+    const incoming = createDefaultFloatingBallConfig();
+    incoming.appearance.size = 56;
+    incoming.appearance.marginPx = 12;
+    incoming.behavior.hideOnFullscreen = false;
+    importFile(ui, {size: 64, text: async () => serializeFloatingBallSettings(incoming, getBuiltinQuickActions())});
+    await settle();
+    assert.equal(ui.root.querySelector('[data-control="size"]').value, "56");
+    assert.equal(ui.root.querySelector('[data-control="marginPx"]').value, "12");
+    assert.equal(ui.root.querySelector('[data-control="hideOnFullscreen"]').checked, false);
+    assert.equal(ui.root.querySelector(".sw-floating-ball-settings__preview-ball").style.width, "56px");
+    assert.equal(ui.root.querySelector('[data-control="yRatio"]').value, "40", "imports preserve local position controls");
 });
 
 test("floating settings UI reserves More by limiting first-layer controls to five actions", (t) => {
@@ -331,6 +459,8 @@ test("floating settings UI import and restore respect cancelled confirmations", 
     const before = JSON.stringify(ui.state);
     buttonByLabel(ui.root, i18n.floatingBallRestoreDefaults).click();
     assert.equal(ui.confirmations.at(-1), i18n.floatingBallRestoreConfirm);
+    buttonByLabel(ui.root, i18n.floatingBallRestoreAppearance).click();
+    assert.equal(ui.confirmations.at(-1), i18n.floatingBallRestoreAppearanceConfirm);
     const incoming = createDefaultFloatingBallConfig();
     incoming.enabled.mobile = true;
     importFile(ui, {size: 32, text: async () => serializeFloatingBallSettings(incoming, getBuiltinQuickActions())});

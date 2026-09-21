@@ -11,7 +11,7 @@ import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
-import {normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
 import {selectFloatingBallMoreActions} from "./floating-ball-panel";
 import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings} from "./floating-ball-settings-model";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
@@ -1275,6 +1275,171 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     surfaceSelectRow.append(surfaceLabel, surfaceSelect);
     wrapper.appendChild(surfaceSelectRow);
 
+    const controlsSection = document.createElement("section");
+    controlsSection.className = "sw-floating-ball-settings__controls-panel";
+    const controlsHeading = document.createElement("strong");
+    controlsHeading.textContent = this.i18n.floatingBallAppearance;
+    controlsSection.appendChild(controlsHeading);
+    const controlsHint = document.createElement("p");
+    controlsHint.className = "sw-settings__hint";
+    controlsHint.textContent = this.i18n.floatingBallAppearanceTip;
+    controlsSection.appendChild(controlsHint);
+    const controlsGrid = document.createElement("div");
+    controlsGrid.className = "sw-floating-ball-settings__controls-grid";
+    controlsSection.appendChild(controlsGrid);
+    wrapper.appendChild(controlsSection);
+
+    const controlValues = new Map<HTMLInputElement, {output: HTMLOutputElement; format: (value: number) => string}>();
+    const controlLabel = (text: string, control: HTMLElement, hint?: string, format?: (value: number) => string, host: HTMLElement = controlsGrid) => {
+        const label = document.createElement("label");
+        label.className = "sw-floating-ball-settings__control";
+        label.classList.toggle("is-toggle", control.getAttribute("type") === "checkbox");
+        const title = document.createElement("span");
+        title.className = "sw-settings__item-title";
+        title.textContent = text;
+        label.appendChild(title);
+        control.setAttribute("aria-label", text);
+        if (hint) {
+            const small = document.createElement("span");
+            small.className = "sw-settings__hint";
+            small.textContent = hint;
+            label.appendChild(small);
+        }
+        label.appendChild(control);
+        if (format) {
+            const output = document.createElement("output");
+            output.className = "sw-floating-ball-settings__value";
+            output.setAttribute("aria-hidden", "true");
+            label.appendChild(output);
+            controlValues.set(control as HTMLInputElement, {output, format});
+        }
+        host.appendChild(label);
+    };
+    const edgeSelect = document.createElement("select");
+    edgeSelect.className = "b3-select";
+    edgeSelect.dataset.control = "edge";
+    edgeSelect.append(new Option(this.i18n.floatingBallEdgeLeft, "left"), new Option(this.i18n.floatingBallEdgeRight, "right"));
+    const vertical = document.createElement("input");
+    vertical.type = "range";
+    vertical.min = "0";
+    vertical.max = "100";
+    vertical.step = "1";
+    vertical.dataset.control = "yRatio";
+    const size = document.createElement("input");
+    size.type = "range";
+    size.min = "44";
+    size.max = "64";
+    size.step = "1";
+    size.dataset.control = "size";
+    const margin = document.createElement("input");
+    margin.type = "range";
+    margin.min = "0";
+    margin.max = "32";
+    margin.step = "1";
+    margin.dataset.control = "marginPx";
+    const opacity = document.createElement("input");
+    opacity.type = "range";
+    opacity.min = "0.4";
+    opacity.max = "1";
+    opacity.step = "0.05";
+    opacity.dataset.control = "idleOpacity";
+    const delay = document.createElement("input");
+    delay.type = "range";
+    delay.min = "3000";
+    delay.max = "8000";
+    delay.step = "500";
+    delay.dataset.control = "idleDelayMs";
+    const checkbox = (key: string) => {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.control = key;
+        return input;
+    };
+    const halfHide = checkbox("halfHide");
+    const snap = checkbox("snap");
+    const hideOnScroll = checkbox("hideOnScroll");
+    const hideOnFullscreen = checkbox("hideOnFullscreen");
+    const yieldToModals = checkbox("yieldToModals");
+    const touchSlop = document.createElement("input");
+    touchSlop.type = "range";
+    touchSlop.min = "8";
+    touchSlop.max = "12";
+    touchSlop.step = "1";
+    touchSlop.dataset.control = "touchSlopPx";
+    const pixels = (value: number) => `${value} ${this.i18n.unitPx}`;
+    controlLabel(this.i18n.floatingBallEdge, edgeSelect);
+    controlLabel(this.i18n.floatingBallVertical, vertical, undefined, (value) => `${value}%`);
+    controlLabel(this.i18n.floatingBallSize, size, this.i18n.floatingBallSizeTip, pixels);
+    controlLabel(this.i18n.floatingBallMargin, margin, this.i18n.floatingBallMarginTip, pixels);
+    controlLabel(this.i18n.floatingBallIdleOpacity, opacity, undefined, (value) => `${Math.round(value * 100)}%`);
+    controlLabel(this.i18n.floatingBallIdleDelay, delay, undefined, (value) => `${value / 1000} ${this.i18n.floatingBallSeconds}`);
+    controlLabel(this.i18n.floatingBallHalfHide, halfHide);
+    controlLabel(this.i18n.floatingBallSnap, snap, this.i18n.floatingBallSnapTip);
+    controlLabel(this.i18n.floatingBallHideOnScroll, hideOnScroll);
+    controlLabel(this.i18n.floatingBallHideOnFullscreen, hideOnFullscreen);
+    controlLabel(this.i18n.floatingBallYieldToModals, yieldToModals);
+    const advanced = document.createElement("details");
+    advanced.className = "sw-floating-ball-settings__advanced";
+    const advancedSummary = document.createElement("summary");
+    advancedSummary.textContent = this.i18n.floatingBallAdvanced;
+    advanced.appendChild(advancedSummary);
+    controlLabel(this.i18n.floatingBallTouchSlop, touchSlop, undefined, pixels, advanced);
+    controlsSection.appendChild(advanced);
+
+    let renderControls: () => void = () => undefined;
+    let renderPreview: (config?: any) => void = () => undefined;
+    const renderControlValues = () => controlValues.forEach(({output, format}, input) => {
+        const text = format(Number(input.value));
+        output.value = text;
+        input.setAttribute("aria-valuetext", text);
+    });
+    const updateControlConfig = (mutate: (next: any, surface: "desktop" | "sidebar" | "mobile") => void) => {
+        const current: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        mutate(current, surfaceSelect.value as "desktop" | "sidebar" | "mobile");
+        persist(current);
+        renderControls();
+        renderActions();
+    };
+    edgeSelect.addEventListener("change", () => updateControlConfig((next, surface) => {
+        next.position[surface].edge = edgeSelect.value;
+        delete next.position[surface].xRatio;
+    }));
+    const rangeControl = (input: HTMLInputElement, mutate: (next: any, surface: "desktop" | "sidebar" | "mobile") => void) => {
+        input.addEventListener("input", () => {
+            if (input.disabled) return;
+            const draft: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+            mutate(draft, surfaceSelect.value as "desktop" | "sidebar" | "mobile");
+            renderControlValues();
+            renderPreview(normalizeFloatingBallConfig(draft));
+        });
+        input.addEventListener("change", () => { if (!input.disabled) updateControlConfig(mutate); });
+    };
+    rangeControl(vertical, (next, surface) => { next.position[surface].yRatio = Number(vertical.value) / 100; });
+    rangeControl(size, (next) => { next.appearance.size = Number(size.value); });
+    rangeControl(margin, (next) => { next.appearance.marginPx = Number(margin.value); });
+    rangeControl(opacity, (next) => { next.appearance.idleOpacity = Number(opacity.value); });
+    rangeControl(delay, (next) => { next.appearance.idleDelayMs = Number(delay.value); });
+    rangeControl(touchSlop, (next) => { next.behavior.touchSlopPx = Number(touchSlop.value); });
+    halfHide.addEventListener("change", () => updateControlConfig((next) => { next.appearance.halfHide = halfHide.checked; }));
+    snap.addEventListener("change", () => updateControlConfig((next) => { next.behavior.snap = snap.checked; }));
+    hideOnScroll.addEventListener("change", () => updateControlConfig((next) => { next.behavior.hideOnScroll = hideOnScroll.checked; }));
+    hideOnFullscreen.addEventListener("change", () => updateControlConfig((next) => { next.behavior.hideOnFullscreen = hideOnFullscreen.checked; }));
+    yieldToModals.addEventListener("change", () => updateControlConfig((next) => { next.behavior.yieldToModals = yieldToModals.checked; }));
+    const restoreAppearance = document.createElement("button");
+    restoreAppearance.type = "button";
+    restoreAppearance.className = "b3-button b3-button--text sw-floating-ball-settings__restore-appearance";
+    restoreAppearance.textContent = this.i18n.floatingBallRestoreAppearance;
+    restoreAppearance.addEventListener("click", () => {
+        if (!confirm(this.i18n.floatingBallRestoreAppearanceConfirm)) return;
+        const defaults = createDefaultFloatingBallConfig();
+        updateControlConfig((next) => {
+            next.appearance = defaults.appearance;
+            next.behavior = defaults.behavior;
+        });
+        restoreAppearance.focus();
+    });
+    controlsSection.appendChild(restoreAppearance);
+
     const preview = document.createElement("section");
     preview.className = "sw-floating-ball-settings__preview";
     preview.setAttribute("aria-label", this.i18n.floatingBallPreview);
@@ -1287,8 +1452,10 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     previewStatus.setAttribute("role", "status");
     previewStatus.setAttribute("aria-live", "polite");
     previewStatus.textContent = this.i18n.floatingBallPreviewTip;
-    preview.append(previewTitle, previewStage, previewStatus);
-    wrapper.appendChild(preview);
+    const previewMoreSummary = document.createElement("span");
+    previewMoreSummary.className = "sw-settings__hint";
+    preview.append(previewTitle, previewStage, previewMoreSummary, previewStatus);
+    wrapper.insertBefore(preview, controlsSection);
 
     const actionSection = document.createElement("section");
     actionSection.className = "sw-floating-ball-settings__actions";
@@ -1307,18 +1474,24 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     actionSection.appendChild(actionList);
     wrapper.appendChild(actionSection);
 
-    const renderActions = (focusId?: string, focusKind?: string) => {
+    renderPreview = (draft?: any) => {
         const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
-        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const config: any = draft || normalizeFloatingBallConfig(this.getSettings().floatingBall);
         const catalog = this.getFloatingBallActions();
-        toggles.forEach((input, target) => { input.checked = config.enabled[target]; });
         const support = {resolveSupport: (action: IQuickAction, target: string) => this.getQuickActionSupport(action, target as QuickActionTarget)};
-        const rows: any[] = buildFloatingBallSettingsRows(config, surface, catalog, {
-            ...support,
-        });
+        const position = config.position[surface];
+        const sizePx = surface === "sidebar" ? 44 : config.appearance.size;
+        const marginPx = config.appearance.marginPx ?? 8;
+        const xRatio = !config.behavior.snap && typeof position.xRatio === "number" ? position.xRatio : position.edge === "left" ? 0 : 1;
+        const direction = xRatio <= 0.5 ? "right" : "left";
+        // Resolve proportional coordinates without measuring layout on each input.
+        const coordinate = (ratio: number, extra = 0) => `calc(${ratio * 100}% + ${(1 - 2 * ratio) * (marginPx + sizePx / 2) + extra}px)`;
         previewStage.innerHTML = "";
         previewStage.dataset.surface = surface;
-        previewStage.dataset.edge = config.position[surface].edge;
+        previewStage.dataset.edge = position.edge;
+        previewStage.dataset.direction = direction;
+        previewStage.dataset.snap = String(config.behavior.snap);
+        previewStage.dataset.halfHide = String(config.appearance.halfHide && (config.behavior.snap || position.xRatio === undefined));
         previewStage.classList.toggle("is-disabled", !config.enabled[surface]);
         const makePreviewButton = (action: {actionId?: string; id?: string; label?: string}, ball = false) => {
             const button = document.createElement("button");
@@ -1326,6 +1499,8 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             button.className = ball ? "sw-floating-ball-settings__preview-ball" : "b3-button b3-button--outline";
             button.dataset.actionId = action.actionId || action.id;
             button.textContent = action.label;
+            button.setAttribute("aria-label", action.label);
+            button.title = action.label;
             button.addEventListener("click", () => {
                 previewStatus.textContent = this.i18n.floatingBallPreviewResult.replace("{x}", action.label);
             });
@@ -1333,15 +1508,36 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         };
         const previewActions = document.createElement("div");
         previewActions.className = "sw-floating-ball-settings__preview-actions";
+        const ball = makePreviewButton({id: "switcher", label: this.i18n.quickBuiltinSwitcher}, true);
+        ball.innerHTML = '<svg width="20" height="20" aria-hidden="true"><use href="#iconLayout"></use></svg>';
+        ball.style.width = `${sizePx}px`;
+        ball.style.height = `${sizePx}px`;
+        ball.style.left = coordinate(xRatio);
+        ball.style.top = coordinate(position.yRatio);
+        ball.style.opacity = String(config.appearance.idleOpacity);
         const firstLayer = selectFloatingBallFirstLayer(config, surface, catalog, support);
-        firstLayer.forEach((action: any) => previewActions.appendChild(makePreviewButton({
+        // The simulated ball already supplies the switcher path, including the
+        // empty-config fallback. Do not display a second switcher in its targets.
+        const targets = firstLayer.filter((action: any) => action.id !== "switcher");
+        targets.forEach((action: any) => previewActions.appendChild(makePreviewButton({
             ...action, label: action.kind === "more" ? this.i18n.floatingBallMore : action.label,
-        }, action.kind === "builtin" && action.id === "switcher")));
+        })));
+        previewActions.style.left = coordinate(xRatio, (sizePx / 2 + 8) * (direction === "right" ? 1 : -1));
+        const targetsHeight = targets.length * 44 + Math.max(0, targets.length - 1) * 6;
+        previewActions.style.top = `clamp(8px, ${coordinate(position.yRatio, -targetsHeight / 2)}, calc(100% - ${targetsHeight + 8}px))`;
         const more = selectFloatingBallMoreActions(config, surface, catalog, support);
-        const moreSummary = document.createElement("span");
-        moreSummary.className = "sw-settings__hint";
-        moreSummary.textContent = this.i18n.floatingBallMoreCount.replace("{x}", String(more.length));
-        previewStage.append(previewActions, moreSummary);
+        previewMoreSummary.textContent = this.i18n.floatingBallMoreCount.replace("{x}", String(more.length));
+        previewStage.append(ball, previewActions);
+    };
+
+    const renderActions = (focusId?: string, focusKind?: string) => {
+        const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        toggles.forEach((input, target) => { input.checked = config.enabled[target]; });
+        const support = {resolveSupport: (action: IQuickAction, target: string) => this.getQuickActionSupport(action, target as QuickActionTarget)};
+        const rows: any[] = buildFloatingBallSettingsRows(config, surface, catalog, support);
+        renderPreview(config);
         actionList.innerHTML = "";
         if (rows.length === 0) {
             const empty = document.createElement("p");
@@ -1473,8 +1669,27 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             (target && !target.disabled ? target : targetRow?.querySelector<HTMLInputElement>("[data-control='enabled']"))?.focus();
         }
     };
-    surfaceSelect.addEventListener("change", () => renderActions());
-    wrapper.addEventListener("sw-floating-ball-refresh", () => renderActions());
+    renderControls = () => {
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
+        edgeSelect.value = config.position[surface].edge;
+        vertical.value = String(Math.round(config.position[surface].yRatio * 100));
+        size.disabled = surface === "sidebar";
+        size.value = String(surface === "sidebar" ? 44 : config.appearance.size);
+        margin.value = String(config.appearance.marginPx ?? 8);
+        opacity.value = String(config.appearance.idleOpacity);
+        delay.value = String(config.appearance.idleDelayMs);
+        touchSlop.value = String(config.behavior.touchSlopPx);
+        halfHide.checked = config.appearance.halfHide;
+        snap.checked = config.behavior.snap;
+        hideOnScroll.checked = config.behavior.hideOnScroll;
+        hideOnFullscreen.checked = config.behavior.hideOnFullscreen;
+        yieldToModals.checked = config.behavior.yieldToModals;
+        renderControlValues();
+    };
+    surfaceSelect.addEventListener("change", () => { renderControls(); renderActions(); });
+    wrapper.addEventListener("sw-floating-ball-refresh", () => { renderControls(); renderActions(); });
+    renderControls();
     renderActions();
 
     const footer = document.createElement("div");
@@ -1489,7 +1704,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         renderActions();
         restore.focus();
     });
-    footer.append(restore, buildQuickActionsTransferControls.call(this, () => renderActions(), true));
+    footer.append(restore, buildQuickActionsTransferControls.call(this, () => { renderControls(); renderActions(); }, true));
     wrapper.appendChild(footer);
     return wrapper;
 }

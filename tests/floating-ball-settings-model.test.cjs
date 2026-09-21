@@ -309,7 +309,7 @@ test("action editor updates, moves, removes and restores one surface only", () =
     assert.deepEqual(removed.actions.mobile, original.actions.mobile,
         "editing desktop must not mutate another surface");
     const restored = restoreFloatingBallDefaults(removed, "desktop");
-    assert.deepEqual(restored.actions.desktop.map((item) => item.actionId), ["journal", "search", "settings"]);
+    assert.deepEqual(restored.actions.desktop.map((item) => item.actionId), ["journal", "search", "home", "settings"]);
     assert.deepEqual(restored.position, original.position, "restore defaults does not move the ball");
 });
 

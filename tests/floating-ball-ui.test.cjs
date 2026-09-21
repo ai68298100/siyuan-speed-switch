@@ -16,7 +16,8 @@ const transpiled = ts.transpileModule(source, {
     fileName: "floating-ball-ui.ts",
 }).outputText;
 const floatingBallModule = {exports: {}};
-new Function("require", "module", "exports", transpiled)(require, floatingBallModule, floatingBallModule.exports);
+new Function("require", "module", "exports", transpiled)((id) => id.startsWith("./floating-ball-")
+    ? require(`../src/${id.slice(2)}`) : require(id), floatingBallModule, floatingBallModule.exports);
 const {createFloatingBallUi} = floatingBallModule.exports;
 
 function waitForMutation() {
@@ -99,6 +100,8 @@ test("floating ball keeps a tap as a switcher click and suppresses the synthetic
     });
 
     trigger.dispatchEvent(pointerEvent(dom.window, "pointerdown", {pointerId: 1, clientX: 80, clientY: 120}));
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {pointerId: 1, clientX: 86, clientY: 120}));
+    assert.equal(controller.getState(), "docked", "sub-threshold movement stays a click candidate");
     trigger.dispatchEvent(pointerEvent(dom.window, "pointerup", {pointerId: 1, clientX: 80, clientY: 120}));
     trigger.click();
     assert.equal(opened, 1, "a tap remains the stable switcher route");
@@ -336,4 +339,200 @@ test("sidebar bounds keep the portal inside a narrow host and follow resize", ()
 
     controller.destroy();
     dom.window.close();
+});
+
+test("size, margins and free placement update geometry and persist through resize", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let saved;
+    const {controller, root, trigger} = mount(dom.window.document, {
+        surface: "desktop", size: 64, marginPx: 16, snap: false,
+        position: {edge: "right", yRatio: 0}, onPositionChange: (next) => { saved = next; },
+    });
+    assert.equal(root.style.getPropertyValue("--sw-fab-size"), "64px");
+    assert.equal(parseFloat(root.style.top), 48, "top edge retains a whole hit target");
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointerdown"));
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {clientX: 500, clientY: 300}));
+    trigger.dispatchEvent(pointerEvent(dom.window, "pointerup", {clientX: 500, clientY: 300}));
+    assert.ok(saved.xRatio > 0.4 && saved.xRatio < 0.6, "snap=false preserves free horizontal placement");
+    assert.equal(parseFloat(root.style.left), 468);
+    assert.equal(parseFloat(root.style.top), 300);
+    dom.window.innerWidth = 800;
+    dom.window.dispatchEvent(new dom.window.Event("resize"));
+    assert.ok(parseFloat(root.style.left) > 300 && parseFloat(root.style.left) < 400);
+    controller.update({size: 44, snap: true, position: {edge: "left", yRatio: 1}});
+    assert.equal(root.style.getPropertyValue("--sw-fab-size"), "44px");
+    assert.equal(parseFloat(root.style.left), 16);
+    assert.equal(parseFloat(root.style.top), 768 - 16 - 22);
+    controller.destroy();
+    dom.window.close();
+});
+
+test("mobile safe bounds follow keyboard viewport and safe area insets", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const viewport = new dom.window.EventTarget();
+    Object.assign(viewport, {width: 390, height: 500, offsetTop: 25, offsetLeft: 0});
+    Object.defineProperty(dom.window, "visualViewport", {value: viewport, configurable: true});
+    const {controller, root} = mount(dom.window.document, {position: {edge: "right", yRatio: 1}});
+    root.style.setProperty("--sw-fab-safe-bottom", "20px");
+    root.style.setProperty("--sw-fab-safe-top", "18px");
+    viewport.dispatchEvent(new dom.window.Event("resize"));
+    assert.equal(parseFloat(root.style.top), 25 + 500 - 20 - 48 - 8 - 24);
+    controller.update({position: {edge: "left", yRatio: 0}});
+    assert.equal(parseFloat(root.style.top), 25 + 18 + 8 + 24);
+    controller.destroy();
+    viewport.dispatchEvent(new dom.window.Event("scroll"));
+    assert.equal(root.isConnected, false);
+    dom.window.close();
+});
+
+test("drag targets stay anchored, use expanded hit areas and execute only once", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let executions = 0;
+    let moves = 0;
+    let clicks = 0;
+    const {controller, root, trigger} = mount(dom.window.document, {
+        surface: "desktop", position: {edge: "right", yRatio: 0.5},
+        onActionTarget: () => { executions += 1; }, onPositionChange: () => { moves += 1; },
+        onOpenSwitcher: () => { clicks += 1; },
+    });
+    const {createFloatingBallPanelController} = require("../src/floating-ball-panel.js");
+    const panel = createFloatingBallPanelController({document: dom.window.document, container: root,
+        config: {actions: {desktop: [{actionId: "search", firstLayer: true}]}}, surface: "desktop"});
+    panel.mount();
+    const original = controller.getPosition();
+    for (let i = 0; i < 100; i += 1) {
+        trigger.dispatchEvent(pointerEvent(dom.window, "pointerdown", {clientX: 992, clientY: 384}));
+        trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {clientX: 980, clientY: 384}));
+        const action = root.querySelector('.sw__floating-ball-first-layer [data-action-id="search"]');
+        const left = action.style.left;
+        const x = 968 + parseFloat(left);
+        const y = 360 + parseFloat(action.style.top);
+        trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {clientX: x, clientY: y}));
+        assert.equal(action.style.left, left, "action geometry does not chase the pointer");
+        assert.equal(controller.getState(), "targeting");
+        assert.ok(action.classList.contains("is-targeted"));
+        trigger.dispatchEvent(pointerEvent(dom.window, "pointerup", {clientX: x, clientY: y}));
+        trigger.click();
+    }
+    assert.equal(executions, 100);
+    assert.equal(moves, 0, "action selection preserves the parked position");
+    assert.equal(clicks, 0, "captured drag never clicks through to switcher");
+    assert.deepEqual(controller.getPosition(), original);
+    panel.destroy();
+    controller.destroy();
+    dom.window.close();
+});
+
+test("pointer cancellation, lost capture and window blur restore the parked position", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let moves = 0;
+    const {controller, trigger} = mount(dom.window.document, {onPositionChange: () => { moves += 1; }});
+    const original = controller.getPosition();
+    for (const kind of ["pointercancel", "lostpointercapture", "blur"]) {
+        trigger.dispatchEvent(pointerEvent(dom.window, "pointerdown"));
+        trigger.dispatchEvent(pointerEvent(dom.window, "pointermove", {clientX: 220, clientY: 80}));
+        if (kind === "blur") dom.window.dispatchEvent(new dom.window.Event("blur"));
+        else trigger.dispatchEvent(pointerEvent(dom.window, kind));
+        assert.equal(controller.getState(), "docked");
+        assert.deepEqual(controller.getPosition(), original);
+    }
+    assert.equal(moves, 0);
+    controller.destroy();
+    dom.window.close();
+});
+
+test("scroll hosts are isolated and the recovery handle yields to modal reasons", () => {
+    const dom = new JSDOM("<!doctype html><body><main></main><aside></aside></body>");
+    const main = dom.window.document.querySelector("main");
+    const sidebar = dom.window.document.querySelector("aside");
+    const desk = mount(dom.window.document, {surface: "desktop", excludeScrollTarget: (target) => sidebar.contains(target)});
+    const side = mount(dom.window.document, {surface: "sidebar", host: sidebar, resolveScrollTarget: () => sidebar});
+    const scroll = (host, top) => { host.scrollTop = top; host.dispatchEvent(new dom.window.Event("scroll")); };
+    scroll(main, 10); scroll(main, 30);
+    assert.equal(desk.controller.getState(), "hidden");
+    assert.equal(side.controller.getState(), "docked");
+    const recovery = dom.window.document.querySelector('.sw-fab-recovery[data-surface="desktop"]');
+    assert.equal(recovery.hidden, false);
+    desk.controller.setSuspended(true);
+    assert.equal(recovery.hidden, true);
+    desk.controller.setSuspended(false);
+    recovery.click();
+    assert.equal(desk.controller.getState(), "docked");
+    assert.equal(dom.window.document.activeElement, desk.trigger);
+    scroll(sidebar, 10); scroll(sidebar, 40);
+    assert.equal(side.controller.getState(), "hidden");
+    assert.equal(desk.controller.getState(), "docked");
+    desk.controller.destroy(); side.controller.destroy();
+    assert.equal(dom.window.document.querySelectorAll(".sw-fab-recovery").length, 0);
+    dom.window.close();
+});
+
+test("busy watchdog releases at 1500ms and stale completion cannot unlock a newer action", (t) => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const pending = new Map();
+    const originalSetTimeout = dom.window.setTimeout.bind(dom.window);
+    const originalClearTimeout = dom.window.clearTimeout.bind(dom.window);
+    let sequence = -1;
+    dom.window.setTimeout = (callback, delay) => {
+        if (delay !== 1500) return originalSetTimeout(callback, delay);
+        pending.set(sequence, callback);
+        return sequence--;
+    };
+    dom.window.clearTimeout = (id) => { pending.delete(id); originalClearTimeout(id); };
+    const {controller, trigger} = mount(dom.window.document);
+    t.after(() => { controller.destroy(); dom.window.close(); });
+    const finishFirst = controller.beginExecution();
+    assert.equal(trigger.disabled, true);
+    assert.equal(pending.size, 1, "watchdog must be scheduled for 1500 ms");
+    pending.get(-1)();
+    assert.equal(controller.getState(), "docked");
+    const finishSecond = controller.beginExecution();
+    finishFirst();
+    assert.equal(controller.getState(), "executing");
+    finishSecond();
+    assert.equal(trigger.disabled, false);
+    controller.beginExecution();
+    controller.destroy();
+    assert.equal(pending.size, 0);
+    dom.window.close();
+});
+
+test("keyboard menu opens without a pointer gesture and host layer stays lower", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let opens = 0;
+    const {controller, root, trigger} = mount(dom.window.document, {resolveLayer: () => 50, onOpenMore: () => { opens += 1; }});
+    assert.equal(root.style.zIndex, "49");
+    trigger.dispatchEvent(new dom.window.KeyboardEvent("keydown", {key: "F10", shiftKey: true, bubbles: true, cancelable: true}));
+    assert.equal(controller.getState(), "more");
+    assert.equal(opens, 1);
+    controller.setState("docked");
+    trigger.dispatchEvent(new dom.window.KeyboardEvent("keydown", {key: "ContextMenu", bubbles: true, cancelable: true}));
+    assert.equal(opens, 2);
+    controller.destroy();
+    dom.window.close();
+});
+
+test("environment hiding closes the drawer and restores a consistent gesture state", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    let panel;
+    const {controller, root} = mount(dom.window.document, {surface: "desktop",
+        onDismissOverlays: () => panel?.closeMore({restoreFocus: false}),
+    });
+    const {createFloatingBallPanelController} = require("../src/floating-ball-panel.js");
+    panel = createFloatingBallPanelController({document: dom.window.document, container: root,
+        onOpenMore: () => controller.setState("more"),
+        onCloseMore: () => { if (controller.getState() === "more") controller.setState("docked"); },
+    });
+    panel.mount(); panel.openMore();
+    assert.equal(controller.getState(), "more");
+    Object.defineProperty(dom.window.document, "fullscreenElement", {value: dom.window.document.body, configurable: true});
+    dom.window.document.dispatchEvent(new dom.window.Event("fullscreenchange"));
+    assert.equal(panel.isMoreOpen(), false);
+    assert.equal(controller.getState(), "hidden");
+    Object.defineProperty(dom.window.document, "fullscreenElement", {value: null, configurable: true});
+    dom.window.document.dispatchEvent(new dom.window.Event("fullscreenchange"));
+    assert.equal(controller.getState(), "docked");
+    assert.equal(root.querySelector(".sw__floating-ball-first-layer").hidden, false);
+    assert.equal(root.querySelector(".sw-fab-trigger").getAttribute("aria-expanded"), "false");
+    panel.destroy(); controller.destroy(); dom.window.close();
 });

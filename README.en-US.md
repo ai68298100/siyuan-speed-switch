@@ -157,8 +157,11 @@ Open **Settings → Plugins → LvSpeed Switch → Settings**, or use the gear i
 | Panels | Show / hide left-rail panels, display mode (full list / collapsed icon rail / hidden), sidebar thumbnail layout (enlarge / auto columns) |
 | Favorites | Collapse and order folders, create / rename / delete, order items, and reassign favorites |
 | Quick Actions | Label, icon, surface targets, enable state, drag/button ordering, right action rail, and import/export |
+| Floating Ball | Independent surface switches, docked/free positioning, size/margins/idle styling, visibility preferences, action ordering, first layer/overflow, simulated preview, and import/export |
 | Journal | Default journal notebook (dropdown; first click of the journal button also prompts a picker) |
-| Mobile | Floating button toggle (off by default), card layout (single / double / auto), and thumbnail height |
+| Mobile | Card layout (single / double / auto) and thumbnail height; the legacy floating button toggle migrates to Floating Ball settings |
+
+Tap the floating ball to open the switcher; drag onto journal, search, widget panel, or another configured action. Dropping on empty space saves its position. Right-click or `Shift+F10` opens searchable actions; an edge handle restores the ball after scroll hiding. Position, actions, and enable state are independent per surface; appearance and behavior are shared, with the sidebar fixed at 44 px. Missing providers retain their configuration and recover when reloaded. Real SiYuan and Android acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ## Install And Upgrade
 
@@ -207,7 +210,7 @@ const unregister = speedSwitch.registerHomeModule({
 // The caller explicitly creates the controller in its own container and owns its lifecycle.
 ```
 
-**Test matrix**: `pnpm test` discovers all 220 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5945 tests in total; the authoritative count is the command output. UI smoke tests run separately:
+**Test matrix**: `pnpm test` discovers all 222 `*.test.cjs` files under `tests/` and `tests/host/`, currently 5990 tests in total; the authoritative count is the command output. UI smoke tests run separately:
 
 | File | Scope |
 | --- | --- |
@@ -239,11 +242,12 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # install dependencies
 pnpm dev                # dev watch (outputs dev dist/)
 pnpm build              # production build → dist/* + package.zip
-pnpm test               # run every unit, contract, and host release test (currently 5945)
+pnpm test               # run every unit, contract, and host release test (currently 5990)
 pnpm test:smoke         # mobile UI smoke test (requires `pnpm build` first)
 pnpm test:smoke:layout  # mobile toolbar/widget-panel layout gate with a bare-svg control (requires `pnpm build` first)
 pnpm test:smoke:browser # Chromium/theme test (supports SIYUAN_BASE_CSS and SIYUAN_THEME_CSS)
-pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, 5945 tests, release/quality/integration audits, and all three UI smokes)
+pnpm test:smoke:floating-ball # three-surface Chromium interaction/geometry checks (BROWSER_PATH supported)
+pnpm verify:release     # local release-candidate gate (typecheck, reproducible two-build audit, 5990 tests, release/quality/integration audits, and all four UI smokes)
 ```
 
 Pushing a `v*` tag triggers GitHub Actions to build and publish a Release.

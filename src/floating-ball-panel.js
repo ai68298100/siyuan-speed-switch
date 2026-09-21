@@ -19,6 +19,18 @@ const DEFAULT_LABELS = Object.freeze({
     close: "关闭",
     unavailable: "当前端不可用",
     empty: "暂无可用动作",
+    search: "搜索名称、动作 ID 或来源",
+    noResults: "没有匹配的动作",
+    builtin: "内置",
+    component: "组件面板",
+    plugin: "插件动作",
+    other: "其他",
+    unknown: "当前端能力尚未确认",
+    providerMissing: "提供此动作的插件尚未加载",
+    disabled: "已停用",
+    enabled: "启用",
+    manage: "管理快捷动作",
+    toggleFailed: "未能保存，请重试",
 });
 
 function actionIdOf(action) {
@@ -53,7 +65,6 @@ function resolveActionLabel(action, labels = {}, options = {}) {
         maps.push(options.builtinLabels, labels.builtins);
     }
     maps.push(options.actionLabels, labels.actions, options.fallbackLabels, labels.fallbacks);
-    maps.push(labels);
     for (const map of maps) {
         if (!map || typeof map !== "object") continue;
         for (const key of [id, value]) {
@@ -98,11 +109,6 @@ function configEntries(config, surface) {
     return Array.isArray(normalized.actions?.[surface]) ? normalized.actions[surface] : [];
 }
 
-function descriptorForAction(entries, action) {
-    const id = actionIdOf(action);
-    return entries.find((entry) => actionIdOf(entry) === id) || null;
-}
-
 /**
  * Return actions for the expanded panel. Unsupported actions are omitted;
  * actions whose capability is unknown remain visible but disabled so users
@@ -122,7 +128,8 @@ function selectFloatingBallMoreActions(config, surface, availableActions = [], o
         // An action promoted to the first layer must not be duplicated in the
         // expanded list.  Provider-missing entries remain visible as unknown
         // rows so the user can understand and recover the configuration.
-        .filter((entry) => entry.enabled !== false && !firstIds.has(actionIdOf(entry)))
+        .filter((entry) => (entry.enabled !== false || typeof options.onToggleAction === "function")
+            && !firstIds.has(actionIdOf(entry)))
         .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
         .forEach((entry) => {
             const id = actionIdOf(entry);
@@ -140,13 +147,16 @@ function selectFloatingBallMoreActions(config, surface, availableActions = [], o
                 targets: [normalizedSurface],
                 providerMissing: true,
             };
-            const availability = action.providerMissing
+            if (!action.providerMissing && resolveFloatingActionAvailability({...action, enabled: true, available: true},
+                normalizedSurface, options).status === "unsupported") return;
+            let availability = action.providerMissing
                 ? {status: "unknown", reason: "provider-missing"}
                 : resolveFloatingActionAvailability(action, normalizedSurface, options);
-            if (availability.status === "unsupported" || availability.status === "unavailable") return;
+            if (availability.status === "unsupported") return;
+            if (entry.enabled === false) availability = {status: "unavailable", reason: "disabled"};
             seen.add(id);
-            const normalized = normalizeAction(action);
-            result.push({...normalized, actionId: id, availability, firstLayer: false});
+            const normalized = localizeAction(action, options.labels, options);
+            result.push({...normalized, actionId: id, availability, firstLayer: false, configuredEnabled: entry.enabled !== false});
         });
     // If a caller supplies provider actions not persisted yet, keep them out
     // of the panel. The settings picker remains the explicit registration
@@ -170,14 +180,41 @@ function appendActionIcon(documentRef, host, action) {
     host.appendChild(svg);
 }
 
+function actionReason(action, labels) {
+    const {status, reason} = action.availability || {};
+    if (status !== "unknown" && status !== "unavailable") return "";
+    if (labels.reasons?.[reason]) return labels.reasons[reason];
+    if (reason === "provider-missing") return labels.providerMissing;
+    if (reason === "disabled") return labels.disabled;
+    return status === "unknown" ? labels.unknown : labels.unavailable;
+}
+
+function actionGroup(action) {
+    if (["builtin", "component", "plugin", "other"].includes(action.group)) return action.group;
+    if (action.kind === "builtin" && action.value === "home") return "component";
+    if (action.kind === "builtin") return "builtin";
+    if (action.kind === "dock") return "component";
+    if (!action.providerMissing && (action.kind === "command" || action.kind === "adapter")) return "plugin";
+    return "other";
+}
+
+function actionSource(action, labels) {
+    const value = typeof action.value === "string" ? action.value : "";
+    const provider = action.providerName || action.providerId || action.pluginName
+        || (action.kind === "command" && value.includes("::") ? value.split("::")[0] : "");
+    return typeof provider === "string" && provider.trim() ? provider.trim() : labels[actionGroup(action)];
+}
+
 function makeActionButton(documentRef, action, onActivate, labels, extraClass = "") {
     const button = documentRef.createElement("button");
     button.type = "button";
     button.className = `sw__floating-ball-action ${extraClass}`.trim();
     button.dataset.actionId = actionIdOf(action);
-    button.setAttribute("aria-label", action.label);
-    button.title = action.availability?.status === "unknown"
-        ? `${action.label}（${labels.unavailable}）` : action.label;
+    const reason = actionReason(action, labels);
+    const source = extraClass === "is-more-item" ? actionSource(action, labels) : "";
+    const description = [action.label, source, reason].filter(Boolean).join(" · ");
+    button.setAttribute("aria-label", description);
+    button.title = description;
     const iconHost = documentRef.createElement("span");
     iconHost.className = "sw__floating-ball-action-icon";
     appendActionIcon(documentRef, iconHost, action);
@@ -185,7 +222,13 @@ function makeActionButton(documentRef, action, onActivate, labels, extraClass = 
     label.className = "sw__floating-ball-action-label";
     label.textContent = action.label;
     button.append(iconHost, label);
-    if (action.availability?.status === "unknown") {
+    if (source || reason) {
+        const details = documentRef.createElement("span");
+        details.className = "sw__floating-ball-action-details";
+        details.textContent = [source, reason].filter(Boolean).join(" · ");
+        button.appendChild(details);
+    }
+    if (reason) {
         button.disabled = true;
         button.setAttribute("aria-disabled", "true");
         button.classList.add("is-unavailable");
@@ -213,37 +256,146 @@ function createFloatingBallPanelController(options = {}) {
     let root = null;
     let firstLayerHost = null;
     let moreHost = null;
+    let searchInput = null;
+    let listHost = null;
+    let emptyHost = null;
+    let manageButton = null;
+    let searchQuery = "";
+    let rows = [];
     let lastFocusedElement = null;
     let lastFocusedActionId = null;
     let config = options.config;
     let surface = options.surface || "desktop";
     let availableActions = collectFloatingBallActions(options);
-    const labels = {...DEFAULT_LABELS, ...(options.labels || {})};
-    const onAction = typeof options.onAction === "function" ? options.onAction : () => undefined;
+    let labels = {...DEFAULT_LABELS, ...(options.labels || {})};
 
     const onDocumentPointerDown = (event) => {
         if (!open || !root) return;
         const target = event.target;
         if (target && root.contains(target)) return;
-        closeMore();
+        closeMore({restoreFocus: false});
     };
     documentRef.addEventListener?.("pointerdown", onDocumentPointerDown, true);
 
+    function canFocus(element) {
+        if (!element?.isConnected || element.disabled
+            || element.closest?.('[hidden], [inert], [aria-hidden="true"]')) return false;
+        const ball = element.closest?.(".sw-fab-root");
+        if (element.closest?.(".sw__floating-ball-first-layer") && ball
+            && !["dragging", "targeting", "more"].includes(ball.dataset.state)) return false;
+        return true;
+    }
+
+    function activateAction(item) {
+        // Closing first is essential: onAction can synchronously enter an
+        // executing/suspended state which onCloseMore must not overwrite.
+        closeMore({restoreFocus: false});
+        options.onAction?.(item);
+    }
+
+    function syncFirstLayerVisibility() {
+        if (!firstLayerHost) return;
+        firstLayerHost.hidden = open;
+        firstLayerHost.setAttribute("aria-hidden", String(open));
+        if (open) firstLayerHost.setAttribute("inert", "");
+        else firstLayerHost.removeAttribute("inert");
+        firstLayerHost.querySelectorAll("button").forEach((button) => { button.tabIndex = open ? -1 : 0; });
+    }
+
+    function filterRows() {
+        const query = searchQuery.trim().toLocaleLowerCase();
+        let visible = 0;
+        rows.forEach(({row, search}) => {
+            row.hidden = Boolean(query && !search.includes(query));
+            if (!row.hidden) visible += 1;
+        });
+        listHost?.querySelectorAll(".sw__floating-ball-more-group").forEach((group) => {
+            group.hidden = ![...group.querySelectorAll(".sw__floating-ball-more-row")].some((row) => !row.hidden);
+        });
+        if (emptyHost) {
+            emptyHost.hidden = visible > 0;
+            emptyHost.textContent = query ? labels.noResults : labels.empty;
+        }
+    }
+
+    function positionMore() {
+        if (!open || !moreHost) return;
+        const view = documentRef.defaultView;
+        const viewport = view?.visualViewport;
+        let left = viewport?.offsetLeft || 0;
+        let top = viewport?.offsetTop || 0;
+        let right = left + (viewport?.width || view?.innerWidth || 1);
+        let bottom = top + (viewport?.height || view?.innerHeight || 1);
+        if (surface === "mobile") {
+            // A mobile keyboard and pinch zoom change the visual viewport,
+            // while CSS fixed/bottom/vh still use the larger layout viewport.
+            // Keep this bottom sheet entirely inside the area users can see.
+            const style = view?.getComputedStyle(container);
+            const inset = (key) => Math.max(0, parseFloat(style?.getPropertyValue(key) || "0") || 0);
+            left += inset("--sw-fab-safe-left");
+            right -= inset("--sw-fab-safe-right");
+            top += inset("--sw-fab-safe-top");
+            bottom -= inset("--sw-fab-safe-bottom");
+            const width = Math.max(1, Math.min(520, right - left - 16));
+            const maxHeight = Math.max(1, Math.min(520, (bottom - top) * 0.7, bottom - top - 16));
+            moreHost.style.width = `${width}px`;
+            moreHost.style.maxHeight = `${maxHeight}px`;
+            const height = Math.min(moreHost.getBoundingClientRect().height || maxHeight, maxHeight);
+            moreHost.style.left = `${left + Math.max(8, (right - left - width) / 2)}px`;
+            moreHost.style.top = `${Math.max(top + 8, bottom - 8 - height)}px`;
+            moreHost.style.right = "auto";
+            moreHost.style.bottom = "auto";
+            return;
+        }
+        if (surface === "sidebar") {
+            const host = container.parentElement?.getBoundingClientRect();
+            if (host?.width > 0 && host?.height > 0) {
+                left = Math.max(left, host.left);
+                right = Math.min(right, host.right);
+                top = Math.max(top, host.top);
+                bottom = Math.min(bottom, host.bottom);
+            }
+        }
+        const bounds = container.getBoundingClientRect();
+        const width = Math.max(1, Math.min(320, right - left - 16));
+        const maxHeight = Math.max(1, bottom - top - 16);
+        moreHost.style.width = `${width}px`;
+        moreHost.style.maxHeight = `${Math.min(520, maxHeight)}px`;
+        const height = Math.min(moreHost.getBoundingClientRect().height || 520, maxHeight);
+        const preferredLeft = container.dataset.edge === "left" ? bounds.right + 10 : bounds.left - width - 10;
+        const targetLeft = Math.max(left + 8, Math.min(preferredLeft, right - width - 8));
+        const targetTop = Math.max(top + 8, Math.min(bounds.bottom - height, bottom - height - 8));
+        // The ball is transformed, so a fixed descendant would still use its
+        // containing block. Convert the viewport clamp into local coordinates.
+        moreHost.style.left = `${targetLeft - bounds.left}px`;
+        moreHost.style.top = `${targetTop - bounds.top}px`;
+        moreHost.style.right = "auto";
+        moreHost.style.bottom = "auto";
+    }
+
     function render() {
         if (disposed || !root || !firstLayerHost || !moreHost) return;
+        const active = documentRef.activeElement;
+        const focusedId = active?.getAttribute?.("data-action-id");
+        const focusedToggleId = active?.getAttribute?.("data-toggle-action-id");
+        const ownedFocus = root.contains(active);
+        const scrollTop = moreHost.scrollTop;
         // Avoid replaceChildren(): older embedded Android WebViews used by
         // SiYuan may not expose it even though append/remove are available.
         while (firstLayerHost.firstChild) firstLayerHost.removeChild(firstLayerHost.firstChild);
-        while (moreHost.firstChild) moreHost.removeChild(moreHost.firstChild);
+        while (listHost.firstChild) listHost.removeChild(listHost.firstChild);
+        root.dataset.surface = surface;
         const firstLayer = selectFloatingBallFirstLayer(config, surface, availableActions, options);
-        firstLayer.forEach((action) => {
+        firstLayer.forEach((raw) => {
+            const action = localizeAction(raw, labels, options);
+            if (action.actionId === FLOATING_BALL_MORE_ACTION_ID) action.label = labels.more;
             const className = action.actionId === FLOATING_BALL_MORE_ACTION_ID ? "is-more" : "";
             const button = makeActionButton(documentRef, action, (item) => {
                 if (item.actionId === FLOATING_BALL_MORE_ACTION_ID) {
                     openMore();
                     return;
                 }
-                onAction(item);
+                activateAction(item);
             }, labels, className);
             if (action.actionId === FLOATING_BALL_MORE_ACTION_ID) {
                 button.setAttribute("aria-haspopup", "dialog");
@@ -251,43 +403,100 @@ function createFloatingBallPanelController(options = {}) {
             }
             firstLayerHost.appendChild(button);
         });
-        const moreActions = selectFloatingBallMoreActions(config, surface, availableActions, options);
-        const heading = documentRef.createElement("div");
-        heading.className = "sw__floating-ball-more-heading";
-        heading.textContent = labels.more;
-        const close = documentRef.createElement("button");
-        close.type = "button";
-        close.className = "sw__floating-ball-more-close";
-        close.setAttribute("aria-label", labels.close);
-        close.textContent = "×";
-        close.addEventListener("click", closeMore);
-        heading.appendChild(close);
-        moreHost.appendChild(heading);
-        if (moreActions.length === 0) {
-            const empty = documentRef.createElement("p");
-            empty.className = "sw__floating-ball-more-empty";
-            empty.setAttribute("role", "status");
-            empty.textContent = labels.empty;
-            moreHost.appendChild(empty);
-        } else {
-            const list = documentRef.createElement("div");
-            list.className = "sw__floating-ball-more-list";
-            moreActions.forEach((action) => list.appendChild(makeActionButton(documentRef, action, (item) => {
-                onAction(item);
-                closeMore();
-            }, labels, "is-more-item")));
-            moreHost.appendChild(list);
-        }
+        syncFirstLayerVisibility();
+        // The drawer is the keyboard equivalent of the drag targets. Move
+        // first-layer actions into its single visible list while it is open;
+        // retain the public overflow selector's existing meaning for callers.
+        const descriptors = configEntries(config, surface);
+        const drawerActions = new Map();
+        firstLayer.filter((action) => action.actionId !== FLOATING_BALL_MORE_ACTION_ID).forEach((raw) => {
+            const descriptor = descriptors.find((entry) => entry.actionId === raw.actionId);
+            drawerActions.set(raw.actionId, {...localizeAction(raw, labels, options),
+                configuredEnabled: descriptor?.enabled !== false, canToggle: Boolean(descriptor) && !raw.fallback});
+        });
+        selectFloatingBallMoreActions(config, surface, availableActions, {...options, labels}).forEach((action) => {
+            if (!drawerActions.has(action.actionId)) drawerActions.set(action.actionId, {...action, canToggle: true});
+        });
+        const moreActions = [...drawerActions.values()];
+        rows = [];
+        ["builtin", "component", "plugin", "other"].forEach((groupName) => {
+            const groupActions = moreActions.filter((action) => actionGroup(action) === groupName);
+            if (!groupActions.length) return;
+            const group = documentRef.createElement("section");
+            group.className = "sw__floating-ball-more-group";
+            group.dataset.group = groupName;
+            group.setAttribute("aria-label", labels[groupName]);
+            const heading = documentRef.createElement("h3");
+            heading.className = "sw__floating-ball-more-group-title";
+            heading.textContent = labels[groupName];
+            group.appendChild(heading);
+            groupActions.forEach((action) => {
+                const row = documentRef.createElement("div");
+                row.className = "sw__floating-ball-more-row";
+                row.appendChild(makeActionButton(documentRef, action, activateAction, labels, "is-more-item"));
+                if (typeof options.onToggleAction === "function" && action.canToggle) {
+                    const toggleLabel = documentRef.createElement("label");
+                    toggleLabel.className = "sw__floating-ball-more-toggle";
+                    const toggle = documentRef.createElement("input");
+                    toggle.type = "checkbox";
+                    toggle.dataset.toggleActionId = action.actionId;
+                    toggle.checked = action.configuredEnabled;
+                    toggle.setAttribute("aria-label", `${labels.enabled} · ${action.label}`);
+                    toggle.addEventListener("change", async () => {
+                        const previous = action.configuredEnabled;
+                        toggle.disabled = true;
+                        toggle.setAttribute("aria-busy", "true");
+                        try {
+                            await options.onToggleAction(action.actionId, toggle.checked, surface);
+                        } catch {
+                            toggle.checked = previous;
+                            if (!disposed) {
+                                emptyHost.hidden = false;
+                                emptyHost.textContent = labels.toggleFailed;
+                            }
+                        } finally {
+                            toggle.disabled = false;
+                            toggle.removeAttribute("aria-busy");
+                        }
+                    });
+                    toggleLabel.appendChild(toggle);
+                    row.appendChild(toggleLabel);
+                }
+                group.appendChild(row);
+                rows.push({row, search: [action.label, action.actionId, action.value,
+                    action.providerId, action.providerName, actionSource(action, labels)]
+                    .filter(Boolean).join(" ").toLocaleLowerCase()});
+            });
+            listHost.appendChild(group);
+        });
+        searchInput.setAttribute("aria-label", labels.search);
+        searchInput.placeholder = labels.search;
+        root.setAttribute("aria-label", labels.more);
+        moreHost.setAttribute("aria-label", labels.more);
+        moreHost.querySelector(".sw__floating-ball-more-title").textContent = labels.more;
+        moreHost.querySelector(".sw__floating-ball-more-close").setAttribute("aria-label", labels.close);
+        manageButton.textContent = labels.manage;
+        manageButton.hidden = typeof options.onManageSettings !== "function";
+        filterRows();
         moreHost.hidden = !open;
         moreHost.setAttribute("aria-hidden", String(!open));
         const moreButton = firstLayerHost.querySelector(`[data-action-id="${FLOATING_BALL_MORE_ACTION_ID}"]`);
         moreButton?.setAttribute("aria-expanded", String(open));
+        moreHost.scrollTop = scrollTop;
+        if (ownedFocus && active !== searchInput && !active?.isConnected) {
+            const key = focusedToggleId ? "data-toggle-action-id" : "data-action-id";
+            const id = focusedToggleId || focusedId;
+            const target = id ? [...root.querySelectorAll(`[${key}]`)]
+                .find((item) => item.getAttribute(key) === id && canFocus(item)) : null;
+            if (canFocus(target)) target.focus({preventScroll: true});
+            else if (open && canFocus(searchInput)) searchInput.focus({preventScroll: true});
+        }
+        positionMore();
     }
 
     function focusMoreEntry() {
         if (!open || !moreHost) return;
-        const target = moreHost.querySelector("button:not([disabled])");
-        target?.focus?.();
+        if (canFocus(searchInput)) searchInput.focus({preventScroll: true});
     }
 
     function mount() {
@@ -304,46 +513,90 @@ function createFloatingBallPanelController(options = {}) {
         moreHost.className = "sw__floating-ball-more";
         moreHost.setAttribute("role", "dialog");
         moreHost.setAttribute("aria-modal", "false");
+        const heading = documentRef.createElement("div");
+        heading.className = "sw__floating-ball-more-heading";
+        const title = documentRef.createElement("span");
+        title.className = "sw__floating-ball-more-title";
+        title.textContent = labels.more;
+        heading.appendChild(title);
+        const close = documentRef.createElement("button");
+        close.type = "button";
+        close.className = "sw__floating-ball-more-close";
+        close.setAttribute("aria-label", labels.close);
+        close.textContent = "×";
+        close.addEventListener("click", () => closeMore());
+        heading.appendChild(close);
+        searchInput = documentRef.createElement("input");
+        searchInput.type = "search";
+        searchInput.className = "sw__floating-ball-more-search";
+        searchInput.addEventListener("input", () => {
+            searchQuery = searchInput.value;
+            filterRows();
+        });
+        listHost = documentRef.createElement("div");
+        listHost.className = "sw__floating-ball-more-list";
+        emptyHost = documentRef.createElement("p");
+        emptyHost.className = "sw__floating-ball-more-empty";
+        emptyHost.setAttribute("role", "status");
+        manageButton = documentRef.createElement("button");
+        manageButton.type = "button";
+        manageButton.className = "sw__floating-ball-more-manage";
+        manageButton.addEventListener("click", () => {
+            closeMore({restoreFocus: false});
+            options.onManageSettings?.(surface);
+        });
+        moreHost.append(heading, searchInput, listHost, emptyHost, manageButton);
         root.append(firstLayerHost, moreHost);
         container.appendChild(root);
         mounted = true;
+        documentRef.defaultView?.addEventListener("resize", positionMore);
+        documentRef.defaultView?.visualViewport?.addEventListener("resize", positionMore);
+        documentRef.defaultView?.visualViewport?.addEventListener("scroll", positionMore);
         render();
         return root;
     }
 
     function openMore() {
-        if (disposed) return;
+        if (disposed || open) return;
         if (!mounted) mount();
         if (!open) {
             const active = documentRef.activeElement;
             const fallback = firstLayerHost?.querySelector(`[data-action-id="${FLOATING_BALL_MORE_ACTION_ID}"]`);
-            lastFocusedElement = active && root?.contains(active) ? active : fallback;
+            lastFocusedElement = active && container.contains(active) ? active : fallback;
             lastFocusedActionId = lastFocusedElement?.getAttribute?.("data-action-id") || FLOATING_BALL_MORE_ACTION_ID;
         }
         open = true;
+        options.onOpenMore?.();
         render();
         focusMoreEntry();
-        options.onOpenMore?.();
     }
 
-    function closeMore() {
-        if (disposed) return;
+    function closeMore(closeOptions = {}) {
+        if (disposed || !open) return;
         const restore = lastFocusedElement;
+        const shouldRestore = closeOptions.restoreFocus !== false && moreHost?.contains(documentRef.activeElement);
         open = false;
-        render();
-        options.onCloseMore?.();
-        let focusTarget = restore && restore.isConnected && !moreHost?.contains(restore) ? restore : null;
+        moreHost.hidden = true;
+        moreHost.setAttribute("aria-hidden", "true");
+        syncFirstLayerVisibility();
+        firstLayerHost?.querySelector(`[data-action-id="${FLOATING_BALL_MORE_ACTION_ID}"]`)?.setAttribute("aria-expanded", "false");
+        options.onCloseMore?.({restoreFocus: shouldRestore});
+        let focusTarget = canFocus(restore) && !moreHost?.contains(restore) ? restore : null;
         if (!focusTarget && lastFocusedActionId && firstLayerHost) {
             focusTarget = [...firstLayerHost.querySelectorAll("[data-action-id]")]
                 .find((item) => item.getAttribute("data-action-id") === lastFocusedActionId) || null;
         }
-        focusTarget?.focus?.({preventScroll: true});
+        if (!canFocus(focusTarget)) focusTarget = container.querySelector?.(".sw-fab-trigger");
+        if (shouldRestore && canFocus(focusTarget)) focusTarget.focus({preventScroll: true});
+        if (moreHost?.contains(documentRef.activeElement)) documentRef.activeElement?.blur?.();
         lastFocusedElement = null;
         lastFocusedActionId = null;
     }
 
     function update(patch = {}) {
         if (disposed) return;
+        options = {...options, ...patch};
+        labels = {...DEFAULT_LABELS, ...(options.labels || {})};
         if (patch.config !== undefined) config = patch.config;
         if (patch.surface) surface = patch.surface;
         if (Object.prototype.hasOwnProperty.call(patch, "actions")
@@ -355,11 +608,25 @@ function createFloatingBallPanelController(options = {}) {
 
     function destroy() {
         if (disposed) return;
+        const activeInside = root?.contains(documentRef.activeElement);
+        const fallback = canFocus(lastFocusedElement) && !root?.contains(lastFocusedElement)
+            ? lastFocusedElement : container.querySelector?.(".sw-fab-trigger");
         disposed = true;
+        open = false;
+        documentRef.defaultView?.removeEventListener("resize", positionMore);
+        documentRef.defaultView?.visualViewport?.removeEventListener("resize", positionMore);
+        documentRef.defaultView?.visualViewport?.removeEventListener("scroll", positionMore);
+        if (activeInside && canFocus(fallback)) fallback.focus({preventScroll: true});
+        else if (activeInside) documentRef.activeElement?.blur?.();
         root?.remove();
         root = null;
         firstLayerHost = null;
         moreHost = null;
+        searchInput = null;
+        listHost = null;
+        emptyHost = null;
+        manageButton = null;
+        rows = [];
         mounted = false;
     }
 
@@ -371,7 +638,7 @@ function createFloatingBallPanelController(options = {}) {
         }
         if (event.key !== "Tab" || !open || !moreHost) return;
         const focusable = [...moreHost.querySelectorAll("button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")]
-            .filter((item) => !item.hasAttribute("disabled") && item.getAttribute("aria-hidden") !== "true");
+            .filter(canFocus);
         if (focusable.length === 0) return;
         const active = documentRef.activeElement;
         const index = focusable.indexOf(active);

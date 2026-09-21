@@ -55,7 +55,9 @@ test("quick actions: empty labels receive an accessible fallback", () => {
 
 test("quick actions: optional built-ins remain available without becoming defaults", () => {
     assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["search", "journal", "settings"]);
-    assert.deepEqual(getBuiltinQuickActions().map((item) => item.value), ["switcher", "search", "journal", "settings"]);
+    assert.deepEqual(getBuiltinQuickActions().map((item) => item.value), ["switcher", "search", "journal", "settings", "home"]);
+    assert.equal(resolveQuickActionSupport("builtin", "journal", "sidebar"), "supported");
+    assert.equal(resolveQuickActionSupport("builtin", "home", "mobile"), "supported");
 });
 
 test("quick actions: an explicit empty target list stays empty", () => {

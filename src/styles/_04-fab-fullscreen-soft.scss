@@ -48,17 +48,22 @@
 // T-6757 floating-ball portal.  The portal root owns placement and lifecycle;
 // the real button owns hit testing so host redraws cannot leave a dead control.
 .sw-fab-root.sw__fab {
+    --sw-fab-safe-top: env(safe-area-inset-top, 0px);
+    --sw-fab-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --sw-fab-safe-left: env(safe-area-inset-left, 0px);
+    --sw-fab-safe-right: env(safe-area-inset-right, 0px);
     top: 72%;
     right: auto;
     bottom: auto;
-    width: 48px;
-    height: 48px;
+    width: var(--sw-fab-size, 48px);
+    height: var(--sw-fab-size, 48px);
     padding: 0;
     overflow: visible;
     pointer-events: none;
     transform: translateY(-50%);
     background: transparent;
     box-shadow: none;
+    opacity: 1;
 
     &[data-edge="right"] {
         .sw__floating-ball-first-layer,
@@ -106,11 +111,39 @@
         }
     }
 
-    &[data-state="dragging"] .sw-fab-trigger { cursor: grabbing; }
+    &[data-state="dragging"] .sw-fab-trigger,
+    &[data-state="targeting"] .sw-fab-trigger { cursor: grabbing; }
 
-    &[data-state="dragging"] .sw-fab-trigger {
+    &[data-state="dragging"] .sw-fab-trigger,
+    &[data-state="targeting"] .sw-fab-trigger {
         opacity: .72;
-        transform: scale(.94) translateX(0);
+        transform: translate(var(--sw-fab-drag-x, 0), var(--sw-fab-drag-y, 0)) scale(.94);
+        transition: none;
+        pointer-events: none;
+    }
+
+    &[data-state="executing"] .sw-fab-trigger {
+        outline: 3px solid var(--sw-accent-soft, var(--b3-border-color));
+        outline-offset: 3px;
+    }
+
+    .sw-fab-target-caption {
+        position: absolute;
+        box-sizing: border-box;
+        padding: 4px 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        border-radius: 8px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+        font-size: 12px;
+        line-height: 20px;
+        text-align: center;
+        pointer-events: none;
+        z-index: 2;
+        &[hidden] { display: none; }
     }
 
     // B4 idle presentation: keep the 44px hit target available while making
@@ -223,6 +256,7 @@
         }
 
         &:active { transform: scale(.94); }
+        &[hidden] { display: none; }
 
         &.is-more {
             border-color: color-mix(in srgb, var(--b3-theme-primary, #6e62c6) 24%, var(--b3-border-color));
@@ -256,6 +290,7 @@
     &[data-surface="sidebar"] {
         width: 44px;
         height: 44px;
+        --sw-fab-size: 44px;
 
         .sw__floating-ball-action {
             justify-content: center;
@@ -283,7 +318,10 @@
         // use viewport-fixed positioning; offset only the trigger to retain
         // the normalized yRatio's centre semantics.
         .sw-fab-trigger { transform: translateY(-50%) translateX(var(--sw-fab-idle-x, 0)); }
-        &[data-state="dragging"] .sw-fab-trigger { transform: translateY(-50%) scale(.94); }
+        &[data-state="dragging"] .sw-fab-trigger,
+        &[data-state="targeting"] .sw-fab-trigger {
+            transform: translate(var(--sw-fab-drag-x, 0), calc(-50% + var(--sw-fab-drag-y, 0px))) scale(.94);
+        }
         .sw-fab-trigger:active { transform: translateY(-50%) scale(.92); }
 
         .sw__floating-ball-more {
@@ -341,9 +379,9 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        min-width: 36px;
-        height: 36px;
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
         padding: 0;
         border: 0;
         border-radius: 10px;
@@ -399,6 +437,46 @@
             opacity: 1;
         }
     }
+
+    // Targets are laid out once per gesture in viewport coordinates. The
+    // trigger follows the pointer independently, so targets never chase it.
+    .sw__floating-ball-first-layer.is-positioned {
+        inset: 0;
+        transform: none;
+        display: block;
+        .sw__floating-ball-action {
+            position: absolute;
+            box-sizing: border-box;
+            padding: 0;
+            justify-content: center;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            .sw__floating-ball-action-label { display: none; }
+            &.is-targeted {
+                transform: translate(-50%, -50%) scale(1.1);
+                outline: 2px solid var(--b3-theme-primary);
+                outline-offset: 2px;
+                background: var(--sw-accent-soft, var(--b3-theme-surface));
+            }
+        }
+    }
+}
+
+.sw-fab-recovery {
+    position: fixed;
+    box-sizing: border-box;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 12px;
+    color: var(--b3-theme-on-surface);
+    background: var(--b3-theme-surface);
+    opacity: .65;
+    touch-action: manipulation;
+    cursor: pointer;
+    &[hidden] { display: none; }
+    &:focus-visible { outline: 2px solid var(--b3-theme-primary); outline-offset: -2px; opacity: 1; }
 }
 
 // 手机端顶栏入口按钮：思源 3.8.x 手机端不向插件开放顶栏（addTopBar 只进右侧菜单"扩展"分组），
