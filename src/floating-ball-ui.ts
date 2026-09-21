@@ -27,6 +27,14 @@ export interface FloatingBallPosition {
     yRatio: number;
 }
 
+export interface FloatingBallBounds {
+    /** Viewport coordinates of the host surface's visible rectangle. */
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+}
+
 export interface FloatingBallUiOptions {
     surface: FloatingBallSurface;
     document?: Document;
@@ -34,6 +42,8 @@ export interface FloatingBallUiOptions {
     host?: HTMLElement;
     /** Re-resolve the parent after a host redraw/replacement. */
     resolveHost?: () => HTMLElement | null;
+    /** Optional viewport rectangle used by embedded surfaces such as sidebars. */
+    resolveBounds?: () => FloatingBallBounds | null;
     position?: FloatingBallPosition;
     touchSlopPx?: number;
     marginPx?: number;
@@ -156,6 +166,9 @@ export class FloatingBallUi implements FloatingBallUiController {
     private halfHide: boolean;
     private available: boolean;
     private hideOnFullscreen: boolean;
+    // CSS fixes the portal footprint per surface (48px desktop/mobile, 44px
+    // sidebar). Keep it as a value so pointer frames do not force layout reads.
+    private ballSize: number;
     private suspendedReason = false;
     private hiddenReasons = {
         manual: false,
@@ -183,6 +196,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.halfHide = options.halfHide !== false;
         this.available = options.available !== false;
         this.hideOnFullscreen = options.hideOnFullscreen !== false;
+        this.ballSize = this.surface === "sidebar" ? 44 : 48;
     }
 
     mount(): HTMLElement | null {
@@ -342,6 +356,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.bindKeyboardLifecycle(trigger);
         this.bindActivityLifecycle(trigger);
         this.bindEnvironmentLifecycle();
+        this.bindViewportLifecycle();
         this.applyPosition();
         this.applyState(this.effectiveBlockedState() || this.state);
         this.scheduleIdle();
@@ -555,6 +570,31 @@ export class FloatingBallUi implements FloatingBallUiController {
         onVisibilityChange();
     }
 
+    /**
+     * Re-apply the fixed portal position after a resize, rotation, or mobile
+     * keyboard viewport change. The listener is event-driven and does no
+     * polling or layout work while the viewport is stable.
+     */
+    private bindViewportLifecycle(): void {
+        const view = this.doc.defaultView;
+        if (!view) return;
+        const onViewportChange = () => {
+            if (this.disposed) return;
+            this.applyPosition();
+            this.syncDocumentVisibility();
+            if (this.state === "docked") this.scheduleIdle();
+        };
+        view.addEventListener("resize", onViewportChange, {passive: true});
+        view.addEventListener("orientationchange", onViewportChange, {passive: true});
+        const visualViewport = view.visualViewport;
+        visualViewport?.addEventListener("resize", onViewportChange, {passive: true});
+        this.cleanups.push(() => {
+            view.removeEventListener("resize", onViewportChange);
+            view.removeEventListener("orientationchange", onViewportChange);
+            visualViewport?.removeEventListener("resize", onViewportChange);
+        });
+    }
+
     private syncDocumentVisibility(): void {
         this.setEnvironmentHidden("fullscreen", this.hideOnFullscreen && Boolean(this.doc?.fullscreenElement));
         this.setEnvironmentHidden("visibility", this.doc?.visibilityState === "hidden");
@@ -661,22 +701,63 @@ export class FloatingBallUi implements FloatingBallUiController {
 
     private positionFromPointer(clientX: number, clientY: number): FloatingBallPosition {
         const view = this.doc.defaultView;
-        const width = Math.max(1, view?.innerWidth || this.doc.documentElement.clientWidth || 1);
-        const height = Math.max(1, view?.innerHeight || this.doc.documentElement.clientHeight || 1);
-        const rect = this.root?.getBoundingClientRect();
-        const ballHeight = rect?.height || 48;
-        const availableHeight = Math.max(1, height - ballHeight - this.margin * 2);
+        const viewportWidth = Math.max(1, view?.innerWidth || this.doc.documentElement.clientWidth || 1);
+        const viewportHeight = Math.max(1, view?.innerHeight || this.doc.documentElement.clientHeight || 1);
+        const bounds = this.getBounds(viewportWidth, viewportHeight);
+        const ballHeight = this.ballSize;
+        const minCenter = bounds.top + this.margin + ballHeight / 2;
+        const maxCenter = Math.max(minCenter, bounds.bottom - this.margin - ballHeight / 2);
+        const availableHeight = Math.max(1, maxCenter - minCenter);
         return {
-            edge: clientX <= width / 2 ? "left" : "right",
-            yRatio: clamp((clientY - ballHeight / 2 - this.margin) / availableHeight, 0, 1),
+            edge: clientX <= bounds.left + (bounds.right - bounds.left) / 2 ? "left" : "right",
+            yRatio: clamp((clientY - minCenter) / availableHeight, 0, 1),
+        };
+    }
+
+    private getBounds(viewportWidth: number, viewportHeight: number): FloatingBallBounds {
+        const raw = this.options.resolveBounds?.();
+        if (!raw) return {left: 0, right: viewportWidth, top: 0, bottom: viewportHeight};
+        const left = Number(raw.left);
+        const right = Number(raw.right);
+        const top = Number(raw.top);
+        const bottom = Number(raw.bottom);
+        if (![left, right, top, bottom].every(Number.isFinite) || right <= left || bottom <= top) {
+            return {left: 0, right: viewportWidth, top: 0, bottom: viewportHeight};
+        }
+        return {
+            left: clamp(left, 0, viewportWidth),
+            right: clamp(right, 0, viewportWidth),
+            top: clamp(top, 0, viewportHeight),
+            bottom: clamp(bottom, 0, viewportHeight),
         };
     }
 
     private applyPosition(): void {
         if (!this.root) return;
         const {edge, yRatio} = this.position;
+        const view = this.doc.defaultView;
+        const viewportWidth = Math.max(1, view?.innerWidth || this.doc.documentElement.clientWidth || 1);
+        const viewportHeight = Math.max(1, view?.innerHeight || this.doc.documentElement.clientHeight || 1);
+        const bounds = this.getBounds(viewportWidth, viewportHeight);
         this.root.dataset.edge = edge;
         this.root.dataset.yRatio = String(yRatio);
+        if (this.options.resolveBounds) {
+            this.root.style.setProperty("--sw-fab-host-width", `${Math.max(0, bounds.right - bounds.left)}px`);
+        } else {
+            this.root.style.removeProperty("--sw-fab-host-width");
+        }
+        if (this.options.resolveBounds && bounds.right > bounds.left && bounds.bottom > bounds.top) {
+            const height = this.ballSize;
+            const minCenter = bounds.top + this.margin + height / 2;
+            const maxCenter = Math.max(minCenter, bounds.bottom - this.margin - height / 2);
+            const center = minCenter + (maxCenter - minCenter) * yRatio;
+            this.root.style.top = `${center.toFixed(3)}px`;
+            this.root.style.left = edge === "left" ? `${(bounds.left + this.margin).toFixed(3)}px` : "auto";
+            this.root.style.right = edge === "right"
+                ? `${(viewportWidth - bounds.right + this.margin).toFixed(3)}px`
+                : "auto";
+            return;
+        }
         this.root.style.top = `${(yRatio * 100).toFixed(3)}%`;
         this.root.style.left = edge === "left" ? `${this.margin}px` : "auto";
         this.root.style.right = edge === "right" ? `${this.margin}px` : "auto";

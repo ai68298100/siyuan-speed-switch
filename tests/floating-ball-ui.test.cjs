@@ -256,3 +256,44 @@ test("fullscreen and visibility listeners hide without leaving stale listeners",
     assert.equal(root.isConnected, false);
     dom.window.close();
 });
+
+test("viewport changes re-apply the portal position and clean listeners on destroy", () => {
+    const dom = new JSDOM("<!doctype html><body></body>", {pretendToBeVisual: true});
+    const {controller, root} = mount(dom.window.document, {position: {edge: "left", yRatio: 0.3}});
+    const before = root.style.top;
+    dom.window.dispatchEvent(new dom.window.Event("resize"));
+    assert.equal(root.style.top, before);
+    controller.destroy();
+    dom.window.dispatchEvent(new dom.window.Event("resize"));
+    assert.equal(root.isConnected, false);
+    dom.window.close();
+});
+
+test("sidebar bounds keep the portal inside a narrow host and follow resize", () => {
+    const dom = new JSDOM("<!doctype html><body><aside id='sidebar'></aside></body>", {
+        pretendToBeVisual: true,
+    });
+    const sidebar = dom.window.document.getElementById("sidebar");
+    let bounds = {left: 700, right: 980, top: 80, bottom: 680};
+    const {controller, root} = mount(dom.window.document, {
+        surface: "sidebar",
+        host: sidebar,
+        resolveHost: () => sidebar,
+        resolveBounds: () => bounds,
+        position: {edge: "right", yRatio: 0.5},
+    });
+
+    assert.equal(root.style.top, "380px");
+    assert.equal(root.style.right, "52px");
+    assert.equal(root.style.left, "auto");
+    assert.equal(root.style.getPropertyValue("--sw-fab-host-width"), "280px");
+
+    bounds = {left: 12, right: 196, top: 20, bottom: 420};
+    dom.window.dispatchEvent(new dom.window.Event("resize"));
+    assert.equal(root.style.top, "220px");
+    assert.equal(root.style.right, "836px");
+    assert.equal(root.style.getPropertyValue("--sw-fab-host-width"), "184px");
+
+    controller.destroy();
+    dom.window.close();
+});

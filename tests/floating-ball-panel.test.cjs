@@ -149,3 +149,30 @@ test("empty action configuration keeps a safe switcher and more entry", () => {
     controller.destroy();
     dom.window.close();
 });
+
+test("more panel focuses an entry, traps Tab, and restores the trigger focus", () => {
+    const dom = new JSDOM("<!doctype html><body></body>");
+    const config = createDefaultFloatingBallConfig();
+    config.actions.desktop = [{actionId: "provider-a", enabled: true, firstLayer: false, order: 10}];
+    const controller = createFloatingBallPanelController({
+        document: dom.window.document,
+        container: dom.window.document.body,
+        surface: "desktop",
+        config,
+        actions: [action("provider-a")],
+    });
+    const root = controller.mount();
+    const trigger = root.querySelector("[data-action-id='__floating-ball-more__']");
+    trigger.focus();
+    controller.openMore();
+    const closeButton = root.querySelector(".sw__floating-ball-more-close");
+    const actionButton = root.querySelector(".sw__floating-ball-more-list [data-action-id='provider-a']");
+    assert.equal(dom.window.document.activeElement, closeButton);
+    closeButton.dispatchEvent(new dom.window.KeyboardEvent("keydown", {key: "Tab", bubbles: true, cancelable: true}));
+    assert.equal(dom.window.document.activeElement, actionButton);
+    controller.closeMore();
+    const restoredTrigger = root.querySelector("[data-action-id='__floating-ball-more__']");
+    assert.equal(dom.window.document.activeElement, restoredTrigger);
+    controller.destroy();
+    dom.window.close();
+});

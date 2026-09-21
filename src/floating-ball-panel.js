@@ -213,6 +213,8 @@ function createFloatingBallPanelController(options = {}) {
     let root = null;
     let firstLayerHost = null;
     let moreHost = null;
+    let lastFocusedElement = null;
+    let lastFocusedActionId = null;
     let config = options.config;
     let surface = options.surface || "desktop";
     let availableActions = collectFloatingBallActions(options);
@@ -282,6 +284,12 @@ function createFloatingBallPanelController(options = {}) {
         moreButton?.setAttribute("aria-expanded", String(open));
     }
 
+    function focusMoreEntry() {
+        if (!open || !moreHost) return;
+        const target = moreHost.querySelector("button:not([disabled])");
+        target?.focus?.();
+    }
+
     function mount() {
         if (disposed) return null;
         if (mounted) return root;
@@ -306,16 +314,32 @@ function createFloatingBallPanelController(options = {}) {
     function openMore() {
         if (disposed) return;
         if (!mounted) mount();
+        if (!open) {
+            const active = documentRef.activeElement;
+            const fallback = firstLayerHost?.querySelector(`[data-action-id="${FLOATING_BALL_MORE_ACTION_ID}"]`);
+            lastFocusedElement = active && root?.contains(active) ? active : fallback;
+            lastFocusedActionId = lastFocusedElement?.getAttribute?.("data-action-id") || FLOATING_BALL_MORE_ACTION_ID;
+        }
         open = true;
         render();
+        focusMoreEntry();
         options.onOpenMore?.();
     }
 
     function closeMore() {
         if (disposed) return;
+        const restore = lastFocusedElement;
         open = false;
         render();
         options.onCloseMore?.();
+        let focusTarget = restore && restore.isConnected && !moreHost?.contains(restore) ? restore : null;
+        if (!focusTarget && lastFocusedActionId && firstLayerHost) {
+            focusTarget = [...firstLayerHost.querySelectorAll("[data-action-id]")]
+                .find((item) => item.getAttribute("data-action-id") === lastFocusedActionId) || null;
+        }
+        focusTarget?.focus?.({preventScroll: true});
+        lastFocusedElement = null;
+        lastFocusedActionId = null;
     }
 
     function update(patch = {}) {
@@ -343,7 +367,19 @@ function createFloatingBallPanelController(options = {}) {
         if (event.key === "Escape" && open) {
             event.preventDefault();
             closeMore();
+            return;
         }
+        if (event.key !== "Tab" || !open || !moreHost) return;
+        const focusable = [...moreHost.querySelectorAll("button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")]
+            .filter((item) => !item.hasAttribute("disabled") && item.getAttribute("aria-hidden") !== "true");
+        if (focusable.length === 0) return;
+        const active = documentRef.activeElement;
+        const index = focusable.indexOf(active);
+        const next = event.shiftKey
+            ? (index <= 0 ? focusable.length - 1 : index - 1)
+            : (index < 0 || index === focusable.length - 1 ? 0 : index + 1);
+        event.preventDefault();
+        focusable[next]?.focus?.();
     }
     container.addEventListener?.("keydown", handleKeydown);
 

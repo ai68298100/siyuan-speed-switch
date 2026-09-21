@@ -8539,6 +8539,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 resolveHost: isSidebar
                     ? () => this.sidebarElement?.isConnected ? this.sidebarElement : null
                     : () => document.body,
+                resolveBounds: isSidebar
+                    ? () => {
+                        const host = this.sidebarElement;
+                        if (!host?.isConnected) return null;
+                        const rect = host.getBoundingClientRect();
+                        return {left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom};
+                    }
+                    : undefined,
                 position,
                 touchSlopPx: config.behavior?.touchSlopPx,
                 idleOpacity: config.appearance?.idleOpacity,
@@ -8899,7 +8907,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.sidebarResizeObserver = null;
             return;
         }
-        this.sidebarResizeObserver = new ResizeObserver(() => this.rescaleThumbs(element));
+        this.sidebarResizeObserver = new ResizeObserver(() => {
+            this.rescaleThumbs(element);
+            // T-6762/B5: the divider can resize the dock without a viewport
+            // resize. Ask the existing controller to re-read host bounds;
+            // this is one event-driven style update, with no polling.
+            this.floatingBallUis.get("sidebar")?.update({});
+        });
         this.sidebarResizeObserver.observe(element);
     }
 

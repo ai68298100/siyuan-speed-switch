@@ -265,6 +265,12 @@
         }
 
         .sw__floating-ball-first-layer { gap: 6px; }
+
+        // Keep the drawer inside a narrow dock; the controller refreshes the
+        // host width variable on divider and viewport changes.
+        .sw__floating-ball-more {
+            width: min(320px, calc(var(--sw-fab-host-width, 320px) - 16px));
+        }
     }
 
     // The mobile overflow card is a bottom sheet.  Removing the translated
