@@ -72,7 +72,7 @@ import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
 import {createDefaultFloatingBallConfig} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
-import type {FloatingBallUiController, FloatingBallPosition} from "./floating-ball-ui";
+import type {FloatingBallUiController, FloatingBallPosition, FloatingBallSurface} from "./floating-ball-ui";
 import {
     AGENT_CAPABILITY_SPECS,
     flattenOutline,
@@ -729,6 +729,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     private favCollapsed = new Set<string>(); // 收藏下拉中已折叠的分组名（已持久化，重启后恢复）
     private fabElement: HTMLElement | null = null; // 手机端悬浮按钮
     private floatingBallUi: FloatingBallUiController | null = null;
+    // T-6758: each surface owns its controller and persisted position.  The
+    // legacy `floatingBallUi` field remains a mobile alias for existing
+    // suspend/toolbar code until the action surface is fully migrated.
+    private floatingBallUis = new Map<FloatingBallSurface, FloatingBallUiController>();
     private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
     private fabGestureBound = false; // FAB 滚动手势监听是否已绑定（document 级，只绑一次）
@@ -819,6 +823,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
         if (this.isMobile) {
             this.registerMobileEntries();
+        } else {
+            // Desktop and sidebar floating-ball entries are independently
+            // enabled.  Sidebar is mounted lazily when its dock element is
+            // first created by the host.
+            this.updateFloatingBallVisibility();
         }
 
         this.captureRecentOpenSnapshot();
@@ -1414,10 +1423,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 布局就绪后再次确认手机端入口：部分机型上 onload 执行时顶栏尚未构建完成，
     // 鎻掍欢鎸夐挳浼氭彃鍏ュけ璐ワ紱杩欓噷鍏滃簳閲嶈瘯涓€娆?
     onLayoutReady() {
-        if (this.isMobile) {
-            this.ensureMobileTopBarButton();
-            this.updateFABVisibility();
-        }
+        this.isMobile ? this.ensureMobileTopBarButton() : undefined;
+        this.updateFloatingBallVisibility();
     }
 
     /**
@@ -1443,7 +1450,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 this.dataChangeReloadQueued = false;
                 await this.loadPersistentKeys();
                 this.settingsCache = null;
-                if (this.isMobile) this.updateFABVisibility();
+                this.updateFloatingBallVisibility();
                 this.captureStorageMigrationSnapshot();
                 this.initFavCollapsed();
                 this.scheduleSidebarRefresh();
@@ -1531,7 +1538,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.sidebarIconFrameCancel = null;
         this.removeDock(SIDEBAR_DOCK_TYPE);
         this.sidebarElement = null;
-        this.floatingBallUi?.destroy();
+        this.floatingBallUis.forEach((controller) => controller.destroy());
+        this.floatingBallUis.clear();
         this.floatingBallUi = null;
         this.fabElement = null;
         this.fabModalDepth = 0;
@@ -8426,14 +8434,32 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     // 手机端分组批量操作单（嵌套于收藏弹窗之上、层级更高）：一键开启/关闭组内页签
     private createFAB() {
+        const controller = this.createFloatingBallSurface("mobile");
+        this.floatingBallUi = controller;
+        this.fabElement = controller?.getElement() || null;
+        this.bindFABScrollGesture();
+    }
+
+    /**
+     * Mount one portal for a surface.  The shared action surface is still a
+     * later batch; B1 only wires the stable switcher route and independent
+     * persisted position.  Sidebar resolves its host lazily because SiYuan
+     * creates and replaces dock content on demand.
+     */
+    private createFloatingBallSurface(surface: FloatingBallSurface): FloatingBallUiController {
         const settings = this.getSettings();
         const config = settings.floatingBall || {};
-        const position = config.position?.mobile || {edge: "right", yRatio: 0.72};
-        if (!this.floatingBallUi) {
-            this.floatingBallUi = createFloatingBallUi({
-                surface: "mobile",
+        const position = config.position?.[surface] || {edge: "right", yRatio: 0.72};
+        let controller = this.floatingBallUis.get(surface);
+        if (!controller) {
+            const isSidebar = surface === "sidebar";
+            controller = createFloatingBallUi({
+                surface,
                 document,
-                host: document.body,
+                host: isSidebar ? (this.sidebarElement || document.body) : document.body,
+                resolveHost: isSidebar
+                    ? () => this.sidebarElement?.isConnected ? this.sidebarElement : null
+                    : () => document.body,
                 position,
                 touchSlopPx: config.behavior?.touchSlopPx,
                 marginPx: 8,
@@ -8441,20 +8467,30 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 onOpenSwitcher: () => {
                     if (this.fabModalDepth === 0) this.showSwitcher();
                 },
-                onPositionChange: (next) => this.persistFloatingBallPosition(next),
+                onPositionChange: (next) => this.persistFloatingBallPosition(surface, next),
             });
+            this.floatingBallUis.set(surface, controller);
         }
-        this.floatingBallUi.update({
+        controller.update({
             position,
             touchSlopPx: config.behavior?.touchSlopPx,
             ariaLabel: this.i18n.switchTabs,
         });
-        this.floatingBallUi.mount();
-        this.fabElement = this.floatingBallUi.getElement();
-        this.bindFABScrollGesture();
+        controller.mount();
+        return controller;
     }
 
-    private persistFloatingBallPosition(position: FloatingBallPosition) {
+    private destroyFloatingBallSurface(surface: FloatingBallSurface) {
+        const controller = this.floatingBallUis.get(surface);
+        controller?.destroy();
+        this.floatingBallUis.delete(surface);
+        if (surface === "mobile") {
+            this.floatingBallUi = null;
+            this.fabElement = null;
+        }
+    }
+
+    private persistFloatingBallPosition(surface: FloatingBallSurface, position: FloatingBallPosition) {
         const current = this.getSettings();
         const currentBall = current.floatingBall || {};
         this.updateSettings({
@@ -8462,7 +8498,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 ...currentBall,
                 position: {
                     ...(currentBall.position || {}),
-                    mobile: {edge: position.edge, yRatio: position.yRatio},
+                    [surface]: {edge: position.edge, yRatio: position.yRatio},
                 },
             },
         });
@@ -8554,17 +8590,40 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     private updateFABVisibility() {
+        this.updateFloatingBallVisibility();
+    }
+
+    /** Refresh all spatial entries after settings/data or host layout changes. */
+    private updateFloatingBallVisibility() {
         const settings = this.getSettings();
-        const enabled = settings.floatingBall?.enabled?.mobile ?? settings.fabEnabled;
-        if (this.isMobile && enabled) {
-            this.createFAB();
-            this.fabElement?.classList.toggle("sw__fab--hidden", this.fabModalDepth > 0);
-        } else {
-            this.floatingBallUi?.destroy();
-            this.floatingBallUi = null;
-            this.fabElement = null;
-            this.unbindFABScrollGesture();
-        }
+        const config = settings.floatingBall || {};
+        const enabled = (surface: FloatingBallSurface) => Boolean(config.enabled?.[surface]);
+        const surfaces: FloatingBallSurface[] = this.isMobile
+            ? ["mobile"]
+            : ["desktop", "sidebar"];
+
+        // A frontend switch/hot reload must not leave a controller from the
+        // previous surface alive.  The controller's destroy is idempotent.
+        (Object.freeze(["desktop", "sidebar", "mobile"]) as FloatingBallSurface[])
+            .filter((surface) => !surfaces.includes(surface))
+            .forEach((surface) => this.destroyFloatingBallSurface(surface));
+
+        surfaces.forEach((surface) => {
+            const hostReady = surface !== "sidebar" || Boolean(this.sidebarElement?.isConnected);
+            if (!enabled(surface) || !hostReady) {
+                this.destroyFloatingBallSurface(surface);
+                return;
+            }
+            const controller = this.createFloatingBallSurface(surface);
+            if (surface === "mobile") {
+                this.floatingBallUi = controller;
+                this.fabElement = controller.getElement();
+                this.fabElement?.classList.toggle("sw__fab--hidden", this.fabModalDepth > 0);
+                this.bindFABScrollGesture();
+            }
+        });
+
+        if (!this.isMobile) this.unbindFABScrollGesture();
     }
 
     // 手机端顶栏入口按钮：思源 3.8.x 手机端 addTopBar 只会进右侧菜单"扩展"分组，
@@ -8629,6 +8688,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 侧边栏缩略图布局：enlarge（默认）放大填满栏宽；columns 按宽度自动增加列数
         element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");
         element.innerHTML = this.buildSidebarHtml();
+        // T-6758: the sidebar host is created/replaced by SiYuan lazily.  Run
+        // reconciliation after the host's own markup is ready so mounting the
+        // portal cannot be lost to this render's innerHTML replacement.
+        this.updateFloatingBallVisibility();
         this.observeSidebarIcons(element);
 
         const tabs = getAllTabs();

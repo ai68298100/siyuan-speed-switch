@@ -67,6 +67,27 @@ test("floating ball mounts one portal per document surface and recovers after ho
     dom.window.close();
 });
 
+test("floating ball keeps desktop, sidebar, and mobile portals independent", () => {
+    const dom = new JSDOM("<!doctype html><body><aside id='sidebar'></aside></body>");
+    const surfaces = ["desktop", "sidebar", "mobile"];
+    const controllers = surfaces.map((surface) => createFloatingBallUi({
+        document: dom.window.document,
+        surface,
+        host: surface === "sidebar" ? dom.window.document.getElementById("sidebar") : dom.window.document.body,
+        position: {edge: surface === "sidebar" ? "left" : "right", yRatio: surface === "mobile" ? 0.2 : 0.7},
+    }));
+    controllers.forEach((controller) => controller.mount());
+    assert.equal(dom.window.document.querySelectorAll(".sw-fab-root[data-sw-floating-ball]").length, 3);
+    assert.deepEqual(controllers.map((controller) => controller.getPosition()), [
+        {edge: "right", yRatio: 0.7},
+        {edge: "left", yRatio: 0.7},
+        {edge: "right", yRatio: 0.2},
+    ]);
+    controllers.forEach((controller) => controller.destroy());
+    assert.equal(dom.window.document.querySelectorAll(".sw-fab-root[data-sw-floating-ball]").length, 0);
+    dom.window.close();
+});
+
 test("floating ball keeps a tap as a switcher click and suppresses the synthetic click after drag slop", () => {
     const dom = new JSDOM("<!doctype html><body></body>");
     let opened = 0;
