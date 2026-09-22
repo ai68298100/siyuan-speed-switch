@@ -16,6 +16,7 @@ import {
     getBuiltinQuickActions,
     getDefaultQuickActionTargets,
     resolveQuickActionSupport,
+    getQuickActionCommandTargets,
     shouldRenderQuickAction,
     appendQuickAction,
     migrateQuickActionDefaults,
@@ -653,12 +654,14 @@ interface IQuickActionPluginCommand {
     pluginName: string;
     pluginTitle: string;
     commandKey: string;
+    declaredTargets?: QuickActionTarget[];
 }
 
 interface IQuickActionPluginLike {
     name?: string;
     displayName?: string;
     i18n?: Record<string, string>;
+    getQuickActionCapabilities?: () => unknown;
     commands?: Array<{
         langKey?: string;
         langText?: string;
@@ -3293,6 +3296,7 @@ const version = beginSearch(session);
                     pluginName,
                     pluginTitle,
                     commandKey,
+                    declaredTargets: this.getQuickActionDeclaredTargets({kind: "command", value} as IQuickAction),
                 });
             });
         });
@@ -3300,6 +3304,10 @@ const version = beginSearch(session);
     }
 
     private getQuickActionDeclaredTargets(action: IQuickAction): QuickActionTarget[] | undefined {
+        if (action.kind === "command") {
+            const plugins = (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins;
+            return getQuickActionCommandTargets(plugins, action.value) as QuickActionTarget[] | undefined;
+        }
         if (action.kind !== "adapter") return undefined;
         const adapterId = action.value.split("/", 1)[0];
         return this.quickActionAdapterTargets.get(adapterId);
@@ -4751,7 +4759,7 @@ const version = beginSearch(session);
         });
         this.getPluginCommands().forEach((command) => {
             if (existing.has(`command:${command.value}`)) return;
-            const targets = getDefaultQuickActionTargets("command", command.value) as QuickActionTarget[];
+            const targets = getDefaultQuickActionTargets("command", command.value, command.declaredTargets) as QuickActionTarget[];
             const displayLabel = normalizeQuickActionText(command.label, 24) || normalizeQuickActionText(command.value, 24);
             const pluginTitle = normalizeQuickActionText(command.pluginTitle, 32) || command.pluginName;
             const action: IQuickAction = {
@@ -4770,7 +4778,7 @@ const version = beginSearch(session);
                 icon: command.icon,
                 group: this.i18n.quickPluginCommands,
                 fallbackIcon: ["iconPlugin", "iconFile"],
-                secondary: `${pluginTitle} · ${describe(action.kind, action.value, targets)}`,
+                secondary: `${pluginTitle} · ${describe(action.kind, action.value, targets, command.declaredTargets)}`,
                 searchText: `${displayLabel} ${pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
                 action,
             });
@@ -8554,6 +8562,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 available = Boolean(this.getDockByType(action.value));
             }
             return {...action, available, providerId, source, providerName: source,
+                declaredTargets: this.getQuickActionDeclaredTargets(action),
                 ...(available ? {} : {providerMissing: true, reason: "provider-missing"})};
         });
     }

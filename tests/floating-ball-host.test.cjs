@@ -93,7 +93,7 @@ function mount(t, options = {}) {
         i18n: {...i18n, switchTabs: "Switcher", floatingBallMore: "More", close: "Close", quickActionUnavailable: "Unavailable", quickActionFailed: "Failed"},
         getSettings: () => settings,
         updateSettings(patch) { settings = {...settings, ...patch}; },
-        getFloatingBallActions: () => [], getQuickActionSupport: () => "supported",
+        getFloatingBallActions: () => [], getQuickActionSupport: () => "supported", getQuickActionDeclaredTargets: () => undefined,
         getDockByType: () => null, openJournal() {},
         showSwitcher: (...args) => calls.switcher.push(args),
         openSetting: (...args) => calls.settings.push(args),
@@ -199,7 +199,7 @@ function assertRealMobilePanel(t, options = {}) {
     const routed = [];
     const external = {id: "external", kind: "command", value: "plugin::run", targets: ["desktop", "sidebar"], enabled: true, available: true, label: "External"};
     host.getFloatingBallActions = () => [external, {id: "search", kind: "builtin", value: "search", label: "搜索", icon: "iconSearch", enabled: true}];
-    host.getQuickActionSupport = (action, surface) => resolveQuickActionSupport(action.kind, action.value, surface, action.targets);
+    host.getQuickActionSupport = (action, surface) => resolveQuickActionSupport(action.kind, action.value, surface, action.declaredTargets);
     host.executeFloatingBallSurfaceAction = (_surface, action) => routed.push(action.id);
     config.actions.mobile = [
         {actionId: "external", enabled: true, firstLayer: true, order: 10, mobileOverride: true},

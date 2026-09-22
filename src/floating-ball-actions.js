@@ -6,6 +6,8 @@
 // deterministic: callers provide host capabilities, and every invocation is
 // reduced to {ok:true} or a safe {ok:false, reason} result.
 
+const {getQuickActionCommandTargets, resolveQuickActionSupport} = require("./quick-actions.js");
+
 function success(result) {
     return result === undefined ? {ok: true} : {ok: true, result};
 }
@@ -95,11 +97,26 @@ async function invokeCommand(action, options) {
     const command = plugin?.commands?.find((candidate) => candidate?.langKey === commandKey);
     const callback = command?.callback || command?.globalCallback;
     if (typeof callback !== "function") return unavailable();
+    const surface = String(options.context?.surface || "").replace(/^floating-ball:/, "");
+    if (["desktop", "sidebar", "mobile"].includes(surface)) {
+        const support = resolveQuickActionSupport("command", value, surface,
+            getQuickActionCommandTargets(findPlugins(options), value));
+        if (support === "unsupported" || (support === "unknown" && action.mobileOverride !== true)) return unavailable();
+    }
     invokeClose(options);
+    let timer;
     try {
-        return success(await callback.call(plugin));
+        const timeoutMs = Math.min(60000, Math.max(1, Number(options.commandTimeoutMs) || 30000));
+        const result = await Promise.race([
+            Promise.resolve().then(() => callback.call(plugin)),
+            new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("command-timeout")), timeoutMs); }),
+        ]);
+        if (result === false || result?.ok === false) return failed();
+        return success(result);
     } catch {
         return failed();
+    } finally {
+        clearTimeout(timer);
     }
 }
 

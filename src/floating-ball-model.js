@@ -324,7 +324,7 @@ function resolveFloatingActionAvailability(action, surface, options = {}) {
         }
     }
     status = status || resolveQuickActionSupport(action.kind, action.value, normalizedSurface,
-        action.declaredTargets ?? action.supportedSurfaces ?? action.targets);
+        action.kind === "command" ? action.declaredTargets : (action.declaredTargets ?? action.supportedSurfaces ?? action.targets));
     if (status === "unknown" && normalizedSurface === "mobile" && action.mobileOverride === true) {
         return {status: "supported", reason: "manual-mobile-override"};
     }

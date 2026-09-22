@@ -85,10 +85,30 @@ function normalizeTargets(value) {
     return Array.from(new Set(value.filter((target) => QUICK_ACTION_TARGETS.includes(target))));
 }
 
+// Read capability claims only from the live provider, never from saved user
+// placement. No declaration (or a broken/unknown version) remains unknown.
+function getQuickActionCommandTargets(plugins, value) {
+    if (!Array.isArray(plugins) || typeof value !== "string") return undefined;
+    const separator = value.indexOf("::");
+    if (separator <= 0) return undefined;
+    const plugin = plugins.find((item) => item?.name === value.slice(0, separator));
+    if (typeof plugin?.getQuickActionCapabilities !== "function") return undefined;
+    try {
+        const metadata = plugin.getQuickActionCapabilities();
+        const key = value.slice(separator + 2);
+        if (metadata?.version !== 1 || !metadata.commands
+            || !Object.prototype.hasOwnProperty.call(metadata.commands, key)) return undefined;
+        const targets = metadata.commands[key];
+        return Array.isArray(targets) ? normalizeTargets(targets) : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
  * Returns whether an action is known to work on a surface. Third-party
- * commands have no mobile capability metadata in SiYuan's command API, so
- * mobile remains "unknown" instead of being guessed from the callback shape.
+ * commands without the optional plugin capability declaration remain
+ * "unknown" on mobile instead of being guessed from the callback shape.
  */
 function resolveQuickActionSupport(kind, value, target, declaredTargets) {
     if (!QUICK_ACTION_TARGETS.includes(target)) return "unsupported";
@@ -97,7 +117,10 @@ function resolveQuickActionSupport(kind, value, target, declaredTargets) {
         return builtin?.targets.includes(target) ? "supported" : "unsupported";
     }
     if (kind === "dock") return target === "mobile" ? "unsupported" : "supported";
-    if (kind === "command") return target === "mobile" ? "unknown" : "supported";
+    if (kind === "command") {
+        if (Array.isArray(declaredTargets)) return normalizeTargets(declaredTargets).includes(target) ? "supported" : "unsupported";
+        return target === "mobile" ? "unknown" : "supported";
+    }
     if (kind === "adapter") {
         if (Array.isArray(declaredTargets)) {
             return normalizeTargets(declaredTargets).includes(target) ? "supported" : "unsupported";
@@ -213,6 +236,7 @@ function getBuiltinQuickActions() {
 }
 
 module.exports = {
+    getQuickActionCommandTargets,
     normalizeProvider,
     createQuickActionRegistry,
     sanitizeQuickActions,
