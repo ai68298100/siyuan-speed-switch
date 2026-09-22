@@ -3084,6 +3084,8 @@ const updatedMap: {[rootId: string]: string} = {};
         // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
         // 页签卡片与全库文档结果之间；空查询时整块移除。
         this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
+        // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口。
+        this.renderWorkbench(scrollElement, keyword, onClose);
 
         // 每次输入都让上一轮请求失效。空关键词或缓存命中也必须递增序号；
         // 否则较慢的旧请求返回后会覆盖当前界面。
@@ -3783,6 +3785,124 @@ const version = beginSearch(session);
             logger.warn("quick action execution failed", error);
             showMessage(this.i18n.quickActionFailed, MESSAGE_DEFAULT_MS, "error");
         });
+    }
+
+    // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口
+    // （Kvaesitso/Notion 的零态即工作台思想）。全部来自本地配置或按需拉取，
+    // 不发任何无界请求；有查询时整块移除，避免与结果区争抢注意力。
+    private renderWorkbench(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose) {
+        const existing = scrollElement.querySelector<HTMLElement>(".sw__workbench");
+        if (keyword) {
+            existing?.remove();
+            return;
+        }
+        if (existing) return;
+        const presets = normalizeFloatingBallConfig(this.getSettings().floatingBall).presets || [];
+        const docSets = this.getDocumentSets();
+        const smartGroups = this.getSettings().favoriteSmartGroups || [];
+        if (!presets.length && !docSets.length && !smartGroups.length) return;
+
+        const box = document.createElement("div");
+        box.className = "sw__workbench";
+        const title = document.createElement("div");
+        title.className = "sw__window-label";
+        title.textContent = this.i18n.workbenchLabel;
+        box.appendChild(title);
+
+        const addRow = (label: string, items: Array<{label: string; onClick: () => void}>) => {
+            if (!items.length) return;
+            const rowTitle = document.createElement("div");
+            rowTitle.className = "sw__workbench-row-label";
+            rowTitle.textContent = label;
+            box.appendChild(rowTitle);
+            const row = document.createElement("div");
+            row.className = "sw__workbench-row";
+            items.forEach((item) => {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "sw__workbench-chip";
+                chip.textContent = item.label;
+                chip.addEventListener("click", () => {
+                    chip.disabled = true;
+                    item.onClick();
+                    chip.disabled = false;
+                });
+                row.appendChild(chip);
+            });
+            box.appendChild(row);
+        };
+
+        addRow(this.i18n.workbenchPresets, presets.map((preset: any) => ({
+            label: preset.name,
+            onClick: () => {
+                const applied = applyFloatingBallPreset(this.getSettings().floatingBall, preset.id);
+                if (!applied.preset) return;
+                this.updateSettings({floatingBall: applied.config});
+                showMessage(this.i18n.floatingBallPresetApplied.replace("{x}", applied.preset.name), MESSAGE_DEFAULT_MS);
+            },
+        })));
+        addRow(this.i18n.workbenchDocSets, docSets.map((set: any) => ({
+            label: set.name,
+            onClick: () => {
+                onClose();
+                void this.restoreDocumentSetFromHome(set.setId);
+            },
+        })));
+        addRow(this.i18n.workbenchSmart, smartGroups.map((group) => ({
+            label: `#${group.tag}`,
+            onClick: () => this.openTagSmartGroupEntries(group),
+        })));
+
+        const docResults = scrollElement.querySelector(".sw__doc-results");
+        if (docResults) scrollElement.insertBefore(box, docResults);
+        else scrollElement.appendChild(box);
+    }
+
+    // T-6804/T-6807：拉取一个标签智能分组的条目并以只读列表呈现
+    private openTagSmartGroupEntries(group: {name: string; tag: string}) {
+        const query = buildTagSmartGroupQuery(group.tag);
+        if (!query) return;
+        void this.fetchKernelJson("/api/query/sql", query).then((json) => {
+            const entries = projectTagSmartGroupEntries(json?.data);
+            const list = document.createElement("div");
+            list.className = "sw__workbench-entries";
+            entries.forEach((entry) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__doc-item";
+                const copy = document.createElement("span");
+                copy.className = "sw__doc-copy";
+                const title = document.createElement("span");
+                title.className = "sw__doc-title";
+                title.textContent = entry.title;
+                copy.appendChild(title);
+                item.appendChild(copy);
+                item.addEventListener("click", () => {
+                    if (this.isMobile) void this.mobileOpenDoc(entry.rootId);
+                    else void openTab({app: this.app, doc: {id: entry.rootId}});
+                });
+                list.appendChild(item);
+            });
+            if (!entries.length) {
+                const empty = document.createElement("p");
+                empty.className = "sw-settings__hint";
+                empty.textContent = this.i18n.favSmartGroupEmpty;
+                list.appendChild(empty);
+            }
+            this.openHostListDialog(`${group.name} · #${group.tag}`, list);
+        });
+    }
+
+    private openHostListDialog(title: string, content: HTMLElement) {
+        const dialog = new Dialog({
+            title,
+            content: '<div class="speed-switch sw__host-list"></div>',
+            width: this.isMobile ? "min(440px, 92vw)" : "400px",
+            height: this.isMobile ? "min(420px, 68vh)" : "360px",
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw__host-list");
+        if (!root) return;
+        root.appendChild(content);
     }
 
     // ==================== 第二面板（小组件主页） ====================

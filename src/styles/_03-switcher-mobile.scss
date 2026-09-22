@@ -787,6 +787,49 @@
         }
     }
 
+    // ==================== 零词条工作台（T-6807） ====================
+    .sw__workbench {
+        margin-top: 16px;
+        min-width: 0;
+    }
+
+    .sw__workbench-row-label {
+        margin: 8px 2px 4px;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .sw__workbench-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .sw__workbench-chip {
+        min-height: 32px;
+        padding: 4px 12px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 999px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        cursor: pointer;
+
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 36%, var(--b3-border-color));
+            color: var(--b3-theme-primary);
+        }
+    }
+
+    .sw__workbench-entries {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .sw__doc-item { min-height: 44px; padding: 8px 10px; }
+    }
+
     // ==================== 全库文档搜索结果 / 统一索引分区（T-6799） ====================
     .sw__unified {
         display: flex;

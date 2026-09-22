@@ -328,3 +328,11 @@ test('skin layer wiring: body marker, unload cleanup and three registered skins'
     assert.match(skins, /body\[data-sw-skin="paper"\]/, 'paper must define its scope');
     assert.match(skins, /--b3-theme-primary/, 'skins override theme variables by design');
 });
+
+test('zero-term workbench wiring: renders on empty query and removes on input (T-6807)', () => {
+    assert.match(indexSource, /private renderWorkbench\(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose\)/);
+    assert.match(indexSource, /this\.renderWorkbench\(scrollElement, keyword, onClose\);/);
+    assert.match(indexSource, /if \(keyword\) \{\s*existing\?\.remove\(\);/);
+    assert.match(indexSource, /applyFloatingBallPreset\(this\.getSettings\(\)\.floatingBall, preset\.id\)/);
+    assert.match(indexSource, /restoreDocumentSetFromHome\(set\.setId\)/);
+});
