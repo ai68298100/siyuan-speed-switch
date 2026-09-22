@@ -307,9 +307,23 @@
         display: none;
         min-width: 0;
         overflow-x: hidden;
+        // T-6783 卡片语言统一：每个标签页一张卡片（对齐悬浮球标签的层级语言）
+        padding: 12px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 12px;
+        background: var(--b3-theme-surface, var(--b3-theme-background-light));
+        box-shadow: 0 1px 3px rgba(35, 42, 75, .05);
 
         &.is-active {
             display: block;
+        }
+
+        // 标签页内的分节标题沿用主色竖条语言
+        > strong {
+            display: inline-flex;
+            align-items: center;
+            padding-left: 10px;
+            border-left: 3px solid var(--b3-theme-primary);
         }
     }
 
