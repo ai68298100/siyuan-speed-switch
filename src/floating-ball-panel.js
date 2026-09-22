@@ -12,7 +12,9 @@ const {
     selectFloatingBallFirstLayer,
     makeFloatingBallMoreAction,
     makeFloatingBallSwitcherAction,
+    applyFloatingBallActionPresentation,
 } = require("./floating-ball-model.js");
+const {normalizeCustomIcon, isImageIconReference} = require("./util.js");
 
 const DEFAULT_LABELS = Object.freeze({
     more: "更多动作",
@@ -58,6 +60,7 @@ function normalizeAction(action) {
 }
 
 function resolveActionLabel(action, labels = {}, options = {}) {
+    if (action?.labelOverride) return action.labelOverride;
     const id = actionIdOf(action);
     const value = typeof action?.value === "string" ? action.value.trim() : "";
     const maps = [];
@@ -147,15 +150,16 @@ function selectFloatingBallMoreActions(config, surface, availableActions = [], o
                 targets: [normalizedSurface],
                 providerMissing: true,
             };
-            if (!action.providerMissing && resolveFloatingActionAvailability({...action, enabled: true, available: true},
+            const presented = applyFloatingBallActionPresentation(action, entry);
+            if (!presented.providerMissing && resolveFloatingActionAvailability({...presented, enabled: true, available: true},
                 normalizedSurface, options).status === "unsupported") return;
-            let availability = action.providerMissing
+            let availability = presented.providerMissing
                 ? {status: "unknown", reason: "provider-missing"}
-                : resolveFloatingActionAvailability(action, normalizedSurface, options);
+                : resolveFloatingActionAvailability(presented, normalizedSurface, options);
             if (availability.status === "unsupported") return;
             if (entry.enabled === false) availability = {status: "unavailable", reason: "disabled"};
             seen.add(id);
-            const normalized = localizeAction(action, options.labels, options);
+            const normalized = localizeAction(presented, options.labels, options);
             result.push({...normalized, actionId: id, availability, firstLayer: false, configuredEnabled: entry.enabled !== false});
         });
     // If a caller supplies provider actions not persisted yet, keep them out
@@ -170,7 +174,32 @@ function safeIconId(raw, fallback = "iconPlugin") {
 }
 
 function appendActionIcon(documentRef, host, action) {
-    const icon = safeIconId(action?.icon);
+    const raw = typeof action?.icon === "string" ? action.icon.trim() : "";
+    const image = normalizeCustomIcon(raw);
+    if (image && isImageIconReference(image)) {
+        const img = documentRef.createElement("img");
+        img.alt = "";
+        img.loading = "lazy";
+        img.referrerPolicy = "no-referrer";
+        img.src = image;
+        img.className = "sw__floating-ball-action-image";
+        img.addEventListener("error", () => {
+            if (img.parentNode !== host) return;
+            img.remove();
+            host.classList.remove("is-image-icon");
+            appendActionIcon(documentRef, host, {icon: "iconPlugin"});
+        }, {once: true});
+        host.appendChild(img);
+        host.classList.add("is-image-icon");
+        return;
+    }
+    const isTextIcon = image && !/^(?:icon[A-Za-z0-9_-]+|lucide-|siyuan-)/.test(image);
+    if (isTextIcon) {
+        host.textContent = raw;
+        host.classList.add("is-text-icon");
+        return;
+    }
+    const icon = safeIconId(raw);
     const svg = documentRef.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("aria-hidden", "true");
     const use = documentRef.createElementNS("http://www.w3.org/2000/svg", "use");
@@ -182,6 +211,7 @@ function appendActionIcon(documentRef, host, action) {
 
 function actionReason(action, labels) {
     const {status, reason} = action.availability || {};
+    if (reason === "manual-mobile-override") return labels.mobileTry || labels.unknown;
     if (status !== "unknown" && status !== "unavailable") return "";
     if (labels.reasons?.[reason]) return labels.reasons[reason];
     if (reason === "provider-missing") return labels.providerMissing;
@@ -228,7 +258,7 @@ function makeActionButton(documentRef, action, onActivate, labels, extraClass = 
         details.textContent = [source, reason].filter(Boolean).join(" · ");
         button.appendChild(details);
     }
-    if (reason) {
+    if (action.availability && action.availability.status !== "supported") {
         button.disabled = true;
         button.setAttribute("aria-disabled", "true");
         button.classList.add("is-unavailable");

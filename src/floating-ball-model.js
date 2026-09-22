@@ -5,6 +5,7 @@
 // module dependency-free (apart from the existing quick-action capability
 // helper) makes migration and geometry safe to exercise in isolation.
 const {resolveQuickActionSupport} = require("./quick-actions.js");
+const {normalizeCustomIcon} = require("./util.js");
 
 const FLOATING_BALL_SCHEMA_VERSION = 1;
 const FLOATING_BALL_SURFACES = ["desktop", "sidebar", "mobile"];
@@ -17,6 +18,16 @@ const FLOATING_BALL_SETTINGS_ACTION_ID = "settings";
 
 const DEFAULT_POSITION = {edge: "right", yRatio: 0.72};
 const DEFAULT_ACTION_IDS = ["journal", "search", "home", "settings"];
+const DEFAULT_CLICK_ACTION = "switcher";
+
+function cleanDisplayText(value, max = 80) {
+    if (typeof value !== "string") return "";
+    return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
+}
+
+function cleanDisplayIcon(value) {
+    return normalizeCustomIcon(value) || "";
+}
 
 function isRecord(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -78,6 +89,7 @@ function createDefaultFloatingBallConfig() {
             halfHide: true,
             idleDelayMs: 5000,
         },
+        clickAction: Object.fromEntries(FLOATING_BALL_SURFACES.map((surface) => [surface, DEFAULT_CLICK_ACTION])),
         behavior: {
             snap: true,
             hideOnScroll: true,
@@ -116,6 +128,9 @@ function normalizeFloatingBallActionList(value, fallback = createDefaultFloating
             enabled: bool(raw.enabled, true),
             firstLayer: bool(raw.firstLayer, false),
             order: Number.isFinite(order) ? order : (index + 1) * 10,
+            ...(cleanDisplayText(raw.label) ? {label: cleanDisplayText(raw.label)} : {}),
+            ...(cleanDisplayIcon(raw.icon) ? {icon: cleanDisplayIcon(raw.icon)} : {}),
+            ...(raw.mobileOverride === true ? {mobileOverride: true} : {}),
         });
     });
     return result;
@@ -132,6 +147,7 @@ function normalizeFloatingBallConfig(input, options = {}) {
         enabled: {},
         position: {},
         appearance: {},
+        clickAction: {},
         behavior: {},
         actions: {},
     };
@@ -169,6 +185,11 @@ function normalizeFloatingBallConfig(input, options = {}) {
     config.appearance.idleOpacity = Math.round(clamp(appearance.idleOpacity, 0.4, 1, defaults.appearance.idleOpacity) * 100) / 100;
     config.appearance.halfHide = bool(appearance.halfHide, defaults.appearance.halfHide);
     config.appearance.idleDelayMs = Math.round(clamp(appearance.idleDelayMs, 3000, 8000, defaults.appearance.idleDelayMs));
+
+    const sourceClickAction = isRecord(source.clickAction) ? source.clickAction : {};
+    FLOATING_BALL_SURFACES.forEach((surface) => {
+        config.clickAction[surface] = normalizeActionId(sourceClickAction[surface]) || defaults.clickAction[surface];
+    });
 
     const behavior = isRecord(source.behavior) ? source.behavior : {};
     config.behavior.snap = bool(behavior.snap, defaults.behavior.snap);
@@ -281,18 +302,32 @@ function findFloatingAction(actions, actionId) {
     return (Array.isArray(actions) ? actions : []).find((action) => actionIdOf(action) === id) || null;
 }
 
+function applyFloatingBallActionPresentation(action, descriptor) {
+    if (!action || !descriptor) return action;
+    return {
+        ...action,
+        ...(cleanDisplayText(descriptor.label) ? {label: cleanDisplayText(descriptor.label), labelOverride: cleanDisplayText(descriptor.label)} : {}),
+        ...(cleanDisplayIcon(descriptor.icon) ? {icon: cleanDisplayIcon(descriptor.icon)} : {}),
+        ...(descriptor.mobileOverride === true ? {mobileOverride: true} : {}),
+    };
+}
+
 function resolveFloatingActionAvailability(action, surface, options = {}) {
     const normalizedSurface = normalizeSurface(surface);
     if (!action || action.enabled === false) return {status: "unavailable", reason: "disabled"};
     if (action.available === false) return {status: "unavailable", reason: action.reason || "unavailable"};
+    let status;
     if (typeof options.resolveSupport === "function") {
         const resolved = options.resolveSupport(action, normalizedSurface);
         if (resolved === "supported" || resolved === "unknown" || resolved === "unsupported") {
-            return {status: resolved, reason: resolved};
+            status = resolved;
         }
     }
-    const status = resolveQuickActionSupport(action.kind, action.value, normalizedSurface,
+    status = status || resolveQuickActionSupport(action.kind, action.value, normalizedSurface,
         action.declaredTargets ?? action.supportedSurfaces ?? action.targets);
+    if (status === "unknown" && normalizedSurface === "mobile" && action.mobileOverride === true) {
+        return {status: "supported", reason: "manual-mobile-override"};
+    }
     if (status === "supported" || status === "unknown") return {status, reason: status};
     return {status: "unsupported", reason: "unsupported"};
 }
@@ -347,10 +382,11 @@ function selectFloatingBallFirstLayer(config, surface, availableActions = [], op
             if (selected.length >= max - 1) return;
             const action = findFloatingAction(available, entry.actionId);
             if (!action || seen.has(actionIdOf(action))) return;
-            const availability = resolveFloatingActionAvailability(action, normalizedSurface, options);
+            const presented = applyFloatingBallActionPresentation(action, entry);
+            const availability = resolveFloatingActionAvailability(presented, normalizedSurface, options);
             if (availability.status !== "supported") return;
             seen.add(actionIdOf(action));
-            selected.push({...action, actionId: actionIdOf(action), firstLayer: true, availability});
+            selected.push({...presented, actionId: actionIdOf(action), firstLayer: true, availability});
         });
     if (selected.length === 0) {
         const switcher = findFloatingAction(available, FLOATING_BALL_SWITCHER_ACTION_ID);
@@ -368,8 +404,10 @@ function selectFloatingBallFirstLayer(config, surface, availableActions = [], op
 function resolveFloatingBallClickAction(requested, availableActions = [], surface = "desktop", options = {}) {
     const available = Array.isArray(availableActions) ? availableActions : [];
     const normalizedSurface = normalizeSurface(surface);
-    const candidate = isRecord(requested) ? requested : findFloatingAction(available, requested);
-    if (candidate && resolveFloatingActionAvailability(candidate, normalizedSurface, options).status === "supported") {
+    const raw = isRecord(requested) ? requested : findFloatingAction(available, requested);
+    const candidate = applyFloatingBallActionPresentation(raw, options.descriptor);
+    if (candidate && options.descriptor?.enabled !== false
+        && resolveFloatingActionAvailability(candidate, normalizedSurface, options).status === "supported") {
         return {action: candidate, fallback: false, reason: "ready"};
     }
     const switcher = findFloatingAction(available, FLOATING_BALL_SWITCHER_ACTION_ID);
@@ -407,6 +445,8 @@ module.exports = {
     selectFirstLayerActions: selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
     resolveFloatingBallAction: resolveFloatingBallClickAction,
+    applyFloatingBallActionPresentation,
+    DEFAULT_CLICK_ACTION,
     makeFloatingBallMoreAction,
     makeFloatingBallSwitcherAction,
 };

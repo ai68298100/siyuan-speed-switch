@@ -132,19 +132,28 @@ function buildFloatingBallSettingsRows(config, surface, catalog = [], options = 
     const rows = descriptors.map((descriptor) => {
         const action = byId.get(descriptor.actionId) || null;
         const availability = action
-            ? resolveFloatingActionAvailability(action, target, options)
+            ? resolveFloatingActionAvailability(
+                descriptor.mobileOverride === true ? {...action, mobileOverride: true} : action,
+                target,
+                options,
+            )
             : {status: "unavailable", reason: "not-loaded"};
+        const displayAvailability = descriptor.mobileOverride === true && target === "mobile"
+            && availability.reason === "manual-mobile-override"
+            ? {status: "unknown", reason: "manual-mobile-override"}
+            : availability;
         return {
             actionId: descriptor.actionId,
             descriptor: {...descriptor},
             action: action ? {...action} : null,
-            label: action?.label || descriptor.actionId,
-            icon: action?.icon || "iconHelp",
+            label: descriptor.label || action?.label || descriptor.actionId,
+            icon: descriptor.icon || action?.icon || "iconHelp",
             kind: action?.kind || "unknown",
-            status: availability.status,
-            reason: availability.reason,
+            status: displayAvailability.status,
+            reason: displayAvailability.reason,
             enabled: descriptor.enabled,
             firstLayer: descriptor.firstLayer,
+            mobileOverride: descriptor.mobileOverride === true,
             order: descriptor.order,
         };
     });
@@ -169,6 +178,7 @@ function exportFloatingBallSettings(config, quickActions = []) {
             schemaVersion: FLOATING_BALL_SCHEMA_VERSION,
             enabled: clone(normalized.enabled),
             appearance: clone(normalized.appearance),
+            clickAction: clone(normalized.clickAction),
             behavior: clone(normalized.behavior),
             actions: clone(normalized.actions),
         },
@@ -177,6 +187,22 @@ function exportFloatingBallSettings(config, quickActions = []) {
 
 function serializeFloatingBallSettings(config, quickActions = []) {
     return JSON.stringify(exportFloatingBallSettings(config, quickActions), null, 2);
+}
+
+/**
+ * Check the complete export envelope before a settings editor commits a large
+ * icon or label.  The import limit applies to the combined quick-action and
+ * floating-ball payload, so checking only one action would let a later import
+ * fail after the UI already reported success.
+ */
+function checkFloatingBallSettingsBudget(config, quickActions = []) {
+    try {
+        const serialized = serializeFloatingBallSettings(config, quickActions);
+        const bytes = byteLength(serialized);
+        return {ok: bytes <= FLOATING_BALL_SETTINGS_MAX_BYTES, bytes, maxBytes: FLOATING_BALL_SETTINGS_MAX_BYTES};
+    } catch {
+        return {ok: false, bytes: Number.POSITIVE_INFINITY, maxBytes: FLOATING_BALL_SETTINGS_MAX_BYTES};
+    }
 }
 
 function currentImportState(currentConfig, currentQuickActions) {
@@ -215,13 +241,13 @@ function parseSchemaVersion(value, max = FLOATING_BALL_SETTINGS_SCHEMA_VERSION) 
 function hasFloatingBallPayload(value) {
     if (!isRecord(value)) return false;
     const defaults = createDefaultFloatingBallConfig();
-    return ["enabled", "appearance", "behavior", "actions"].some((section) => isRecord(value[section])
+    return ["enabled", "appearance", "clickAction", "behavior", "actions"].some((section) => isRecord(value[section])
         && Object.keys(defaults[section]).some((key) => Object.prototype.hasOwnProperty.call(value[section], key)));
 }
 
 function validFloatingBallSections(value) {
     const defaults = createDefaultFloatingBallConfig();
-    return ["enabled", "appearance", "behavior", "actions"].every((section) => {
+    return ["enabled", "appearance", "clickAction", "behavior", "actions"].every((section) => {
         if (!Object.prototype.hasOwnProperty.call(value, section)) return true;
         const supplied = value[section];
         if (!isRecord(supplied)) return false;
@@ -306,7 +332,7 @@ function importFloatingBallSettings(input, currentConfig, currentQuickActions = 
     // when its key is present. Normalization still strips unknown keys/clamps.
     const merge = {...current.config};
     if (importedBall) {
-        ["enabled", "appearance", "behavior", "actions"].forEach((section) => {
+        ["enabled", "appearance", "clickAction", "behavior", "actions"].forEach((section) => {
             merge[section] = {...current.config[section], ...importedBall[section]};
         });
     }
@@ -339,6 +365,7 @@ module.exports = {
     buildFloatingBallSettingsRows,
     exportFloatingBallSettings,
     serializeFloatingBallSettings,
+    checkFloatingBallSettingsBudget,
     importFloatingBallSettings,
     byteLength,
 };

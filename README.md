@@ -210,7 +210,7 @@ const unregister = speedSwitch.registerHomeModule({
 // 由调用方在自己的容器中显式创建并管理面板生命周期。
 ```
 
-**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 5990 项测试（222 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
+**测试矩阵**：`pnpm test` 自动发现 `tests/` 与 `tests/host/` 下的 `*.test.cjs` 文件，当前共 6011 项测试（222 个测试文件），精确计数以命令输出为准；UI 冒烟测试单独执行：
 
 | 文件 | 覆盖范围 |
 | --- | --- |
@@ -242,12 +242,12 @@ const unregister = speedSwitch.registerHomeModule({
 pnpm install            # 安装依赖
 pnpm dev                # 开发监听（产出 dev 版 dist/）
 pnpm build              # 生产构建 → dist/* + package.zip
-pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 5990 项）
+pnpm test               # 自动运行全部单元、契约与宿主发版测试（当前 6011 项）
 pnpm test:smoke         # 移动端 UI 烟雾测试（需先 pnpm build）
 pnpm test:smoke:layout  # 手机顶栏/组件面板布局门禁，含裸 svg 对照（需先 pnpm build）
 pnpm test:smoke:browser # Chromium/主题兼容测试（可指定 SIYUAN_BASE_CSS、SIYUAN_THEME_CSS）
 pnpm test:smoke:floating-ball # 三端悬浮球 Chromium 交互/几何验收（可用 BROWSER_PATH 指定浏览器）
-pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、5990 项测试、发布/质量/集成审计和四套 UI 冒烟）
+pnpm verify:release     # 发布候选本地总门禁（类型、双构建复现审计、6011 项测试、发布/质量/集成审计和四套 UI 冒烟）
 ```
 
 推送 `v*` 标签即会触发 GitHub Actions 自动构建并发布 Release。
@@ -313,7 +313,7 @@ pnpm verify:release
 - **悬浮球完整交付**：桌面、侧栏、手机三端独立入口、稳定拖动目标、自由停放、动作执行、更多动作搜索与键盘路径。
 - **配置治理**：外观/行为设置、端侧开关与动作排序、默认预设、导入导出、能力状态和安全回退。
 - **可靠性与可视区**：滚动/弹层/全屏让位、执行超时保护、visualViewport/安全区适配及低层级宿主接入。
-- **验证**：5990 项测试、四套 UI 冒烟、Chromium 22 场景和 100 次真实拖动通过。
+- **验证**：6011 项测试、四套 UI 冒烟、Chromium 22 场景和 100 次真实拖动通过。
 
 ### v0.29.1（2026-09-21）
 

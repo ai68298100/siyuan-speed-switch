@@ -472,6 +472,13 @@
         width: 18px;
         height: 18px;
     }
+
+    .sw-setting__picker-icon-image {
+        width: 18px;
+        height: 18px;
+        object-fit: contain;
+        border-radius: 3px;
+    }
 }
 
 .sw-setting__quick-picker-copy {
@@ -556,6 +563,46 @@
     width: 100%;
     min-width: 0;
     margin: 8px 0;
+}
+
+.sw-quick-icon-picker__custom-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.sw-quick-icon-picker__custom {
+    flex: 1 1 160px;
+    min-width: 0;
+    min-height: 44px;
+}
+
+.sw-quick-icon-picker__custom-apply { min-height: 44px; }
+
+.sw-quick-icon-picker__preview {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    overflow: hidden;
+}
+
+.sw-quick-icon-picker__hint {
+    margin: 6px 0 10px;
+    color: var(--b3-theme-on-surface-light);
+}
+
+:is(.sw-quick-icon-picker__item, .sw-setting__quick-icon-preview, .sw-quick-icon-picker__preview) {
+    .sw__quick-action-icon-image,
+    svg {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+    }
 }
 
 .sw-quick-icon-picker__grid {

@@ -333,3 +333,23 @@ test("settings rows expose supported, unsupported and not-loaded action states",
     assert.equal(rows[2].reason, "not-loaded");
     assert.equal(rows[2].kind, "unknown");
 });
+
+test("settings rows expose presentation overrides and mobile try without changing capability semantics", () => {
+    const config = createDefaultFloatingBallConfig();
+    config.actions.mobile = [{
+        actionId: "plugin-command", enabled: true, firstLayer: true, order: 10,
+        label: "移动入口", icon: "🚀", mobileOverride: true,
+    }];
+    const rows = buildFloatingBallSettingsRows(config, "mobile", [{
+        id: "plugin-command", label: "Plugin command", icon: "iconPlugin",
+        kind: "command", value: "plugin::command", targets: ["desktop", "sidebar"],
+    }]);
+    assert.equal(rows[0].label, "移动入口");
+    assert.equal(rows[0].icon, "🚀");
+    assert.equal(rows[0].mobileOverride, true);
+    assert.equal(rows[0].status, "unknown", "explicit mobile try remains visibly unverified");
+    const exported = exportFloatingBallSettings(config, []);
+    const imported = importFloatingBallSettings(exported, createDefaultFloatingBallConfig(), []);
+    assert.equal(imported.ok, true);
+    assert.deepEqual(imported.config.actions.mobile, config.actions.mobile);
+});

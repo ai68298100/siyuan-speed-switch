@@ -8,7 +8,15 @@ function appendIcon(document, host, icon, fallback = "iconFile") {
     const iconHost = document.createElement("span");
     iconHost.className = "sw-setting__picker-icon";
     const resolved = resolveIconReference(icon, getAvailableSymbolIds(document), fallback);
-    if (resolved.type === "emoji") {
+    if (resolved.type === "image") {
+        const image = document.createElement("img");
+        image.alt = "";
+        image.loading = "lazy";
+        image.referrerPolicy = "no-referrer";
+        image.src = resolved.value;
+        image.className = "sw-setting__picker-icon-image";
+        iconHost.appendChild(image);
+    } else if (resolved.type === "emoji") {
         iconHost.textContent = resolved.value;
         iconHost.classList.add("sw-setting__picker-icon--emoji");
     } else {

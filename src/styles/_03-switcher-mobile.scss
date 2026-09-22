@@ -1268,6 +1268,13 @@
             width: 16px;
             height: 16px;
         }
+
+        .sw__quick-action-icon-image {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+            border-radius: 3px;
+        }
     }
 
     .sw__quick-action-label {

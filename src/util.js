@@ -8,6 +8,44 @@
 const zhSortCollator = new Intl.Collator("zh-Hans-CN");
 const zhNumericCollator = new Intl.Collator("zh-Hans-CN", {numeric: true});
 
+// Keep user supplied image icons small enough to live safely inside settings
+// data.  This mirrors 小驴打卡's custom icon contract while making the image
+// grammar stricter: only base64 image data and HTTPS URLs without credentials
+// are accepted.  The renderer still treats this value as data, never as HTML.
+const MAX_CUSTOM_ICON_BYTES = 240_000;
+const MAX_CUSTOM_ICON_URL_LENGTH = 500;
+
+function normalizeCustomIcon(value) {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length > MAX_CUSTOM_ICON_BYTES) return undefined;
+    if (/^data:/i.test(trimmed)) {
+        const compact = trimmed.replace(/\s+/g, "");
+        return /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/]+={0,2})$/i.test(compact)
+            && compact.length <= MAX_CUSTOM_ICON_BYTES ? compact : undefined;
+    }
+    if (!/^https:\/\//i.test(trimmed)) {
+        if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || /[\u0000-\u001f\u007f<>"'`]/.test(trimmed)) return undefined;
+        if (/^(?:icon[A-Za-z0-9_-]+|lucide-[A-Za-z0-9_-]+|siyuan-[A-Za-z0-9_-]*icon)$/.test(trimmed)) {
+            return trimmed.length <= 128 ? trimmed : undefined;
+        }
+        return graphemeLength(trimmed) <= 4 ? trimmed : undefined;
+    }
+    try {
+        const url = new URL(trimmed);
+        if (url.protocol !== "https:" || url.username || url.password || url.hostname.length < 2) return undefined;
+        const normalized = url.toString();
+        return normalized.length <= MAX_CUSTOM_ICON_URL_LENGTH ? normalized : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function isImageIconReference(value) {
+    return typeof value === "string" && (/^https:\/\//i.test(value)
+        || /^data:image\/(?:png|jpeg|jpg|gif|webp|svg\+xml);base64,/i.test(value));
+}
+
 /**
  * 用户可见文本（标题/名称/标签）的确定性比较：zh 拼音 Collator 单例。
  * @param {string} a
@@ -239,12 +277,17 @@ function resolveIconFallback(raw) {
  * @param {unknown} raw
  * @param {Iterable<string>|null|undefined} availableSymbols
  * @param {string|string[]} fallback
- * @returns {{type: "svg", value: string} | {type: "emoji", value: string}}
+ * @returns {{type: "svg", value: string} | {type: "emoji", value: string} | {type: "image", value: string}}
  */
 function resolveIconReference(raw, availableSymbols, fallback = "iconFile") {
     const value = typeof raw === "string" ? raw.trim() : "";
     const symbols = availableSymbols == null ? null : new Set(availableSymbols);
     const isSafeSymbolId = (candidate) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(candidate);
+
+    const customIcon = normalizeCustomIcon(value);
+    if (customIcon && isImageIconReference(customIcon)) {
+        return {type: "image", value: customIcon};
+    }
 
     if (value && isSafeSymbolId(value) && (!symbols || symbols.has(value))) {
         return {type: "svg", value};
@@ -255,6 +298,9 @@ function resolveIconReference(raw, availableSymbols, fallback = "iconFile") {
     const parsed = resolveIconFallback(value);
     if (parsed.type === "emoji") {
         return parsed;
+    }
+    if (customIcon && !/^(?:icon[A-Za-z0-9_-]+|lucide-|siyuan-)/.test(customIcon)) {
+        return {type: "emoji", value: customIcon};
     }
 
     const fallbacks = Array.isArray(fallback) ? fallback : [fallback];
@@ -1401,4 +1447,4 @@ function normalizeSqlResult(json) {
     };
 }
 
-module.exports = {isGlobalShortcutHostReady, safeRegisterPluginCommand, MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache, compareText};
+module.exports = {isGlobalShortcutHostReady, safeRegisterPluginCommand, MOBILE_ICON_SIZE_FALLBACKS, clampOversizedIcons, graphemeLength, graphemeSlice, graphemeSliceByCodePoints, clampNum, stableSortBy, normalizeSortBy, sortItems, sortGroupItems, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, normalizeCapacityLimit, buildCapacitySummary, buildStorageCapacitySnapshot, normalizeStorageCapacitySnapshot, serializeStorageCapacitySnapshot, parseStorageCapacitySnapshot, mergeStorageCapacitySnapshots, diffStorageCapacitySnapshots, summarizeStorageCapacityDiff, classifyStorageCapacityRisk, buildStorageCapacityHealth, normalizeStorageCapacityHealth, serializeStorageCapacityHealth, parseStorageCapacityHealth, diffStorageCapacityHealth, assessStorageCapacityTrend, normalizeStorageCapacityTrend, serializeStorageCapacityTrend, parseStorageCapacityTrend, buildStorageCapacityReport, normalizeStorageCapacityReport, serializeStorageCapacityReport, parseStorageCapacityReport, summarizeStorageCapacityReports, trimStorageCapacityReportHistory, selectStorageCapacityReportWindow, summarizeStorageCapacityReportWindow, normalizeStorageCapacityReportWindow, serializeStorageCapacityReportWindow, parseStorageCapacityReportWindow, validateStorageCapacityReportWindow, validateStorageCapacityReport, reconcileStorageCapacityReport, buildStorageCapacityReportEvents, normalizeStorageCapacityReportEvents, serializeStorageCapacityReportEvents, parseStorageCapacityReportEvents, createStorageCapacityReportEventQueue, replayStorageCapacityReportEvents, recoverStorageCapacityReportEventQueue, createStorageCapacityReportEventCoordinator, readStorageCapacityReportEventsWithSignal, readStorageCapacityReportEventsWithDeadline, normalizeStorageCapacityReportEventQueueStatus, getStorageCapacityReportEventQueueStatus, normalizeStorageCapacityReportEventQueueSummary, serializeStorageCapacityReportEventQueueSummary, parseStorageCapacityReportEventQueueSummary, diffStorageCapacityReportEventQueueSummary, buildStorageCapacityReportEventQueueSummaryEvents, normalizeStorageCapacityReportEventQueueSummaryHistory, summarizeStorageCapacityReportEventQueueSummaryHistory, serializeStorageCapacityReportEventQueueSummaryHistory, parseStorageCapacityReportEventQueueSummaryHistory, validateStorageCapacityReportEventQueueSummary, capMru, sanitizeStringList, sanitizeFavorites, sanitizeOpenHistory, isSuccessfulMobileTabsResult, normalizeQuickActionText, normalizeThumbCache, compareText};

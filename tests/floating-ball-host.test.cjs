@@ -1,12 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const {createRequire} = require("node:module");
 const ts = require("typescript");
 const {JSDOM} = require("jsdom");
 const {readSourceFile} = require("./source-scan.cjs");
-const {createDefaultFloatingBallConfig, selectFloatingBallFirstLayer} = require("../src/floating-ball-model.js");
+const {createDefaultFloatingBallConfig, selectFloatingBallFirstLayer, resolveFloatingBallClickAction} = require("../src/floating-ball-model.js");
 const {createFloatingBallActionExecutor} = require("../src/floating-ball-actions.js");
 const {selectFloatingBallMoreActions, createFloatingBallPanelController: createRealPanel} = require("../src/floating-ball-panel.js");
-const {createQuickActionRegistry} = require("../src/quick-actions.js");
+const {createQuickActionRegistry, resolveQuickActionSupport} = require("../src/quick-actions.js");
 const i18n = require("../src/i18n/zh-CN.json");
 
 // Run the actual host methods, keeping imports for unrelated plugin features out
@@ -25,10 +26,12 @@ const methods = methodNames.map((name) => {
     assert.equal(matches.length, 1, `production host method ${name} must have one implementation`);
     return matches[0].getText(sourceFile);
 });
-const compiled = ts.transpileModule(`class FloatingBallHost {${methods.join("\n")}}`, {
-    compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019},
-    fileName: "floating-ball-host.ts",
-}).outputText;
+function compileHost(transform = (source) => source) {
+    return ts.transpileModule(transform(`class FloatingBallHost {${methods.join("\n")}}`), {
+        compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019},
+        fileName: "floating-ball-host.ts",
+    }).outputText;
+}
 
 function mount(t, options = {}) {
     const dom = new JSDOM("<!doctype html><body><aside><input class='sw__search'></aside></body>");
@@ -56,15 +59,15 @@ function mount(t, options = {}) {
     };
     const createFloatingBallPanelController = (config) => {
         if (options.realPanels) {
-            const panel = createRealPanel(config);
+            const panel = (options.createRealPanel || createRealPanel)(config);
             calls.panels.push(panel);
             t.after(() => panel.destroy());
             return panel;
         }
         const panel = {
-            config, closeCount: 0, destroyed: false,
+            config, closeCount: 0, openCount: 0, destroyed: false,
             mount() {}, update(next) { this.config = {...this.config, ...next}; },
-            openMore() { this.config.onOpenMore(); },
+            openMore() { this.openCount += 1; this.config.onOpenMore(); },
             closeMore() { this.closeCount += 1; this.config.onCloseMore(); },
             destroy() { this.destroyed = true; },
         };
@@ -73,11 +76,13 @@ function mount(t, options = {}) {
     };
     const dependencies = {
         window: dom.window, document, createFloatingBallUi, createFloatingBallPanelController, createFloatingBallActionExecutor,
+        resolveFloatingBallClickAction,
         openSecondPanel() { calls.home.push(this); },
         showMessage: (...args) => calls.messages.push(args),
         MESSAGE_DEFAULT_MS: 2500,
         logger: {warn: (...args) => calls.warnings.push(args)},
     };
+    const compiled = compileHost(options.transformSource);
     const Host = new Function(...Object.keys(dependencies), `${compiled}\nreturn FloatingBallHost;`)(...Object.values(dependencies));
     const host = new Host();
     Object.assign(host, {
@@ -97,6 +102,149 @@ function mount(t, options = {}) {
 }
 
 const settleAction = () => new Promise((resolve) => setImmediate(resolve));
+
+function assertConfiguredClickRouting(t, options = {}) {
+    const {host, config, calls} = mount(t, options);
+    const routed = [];
+    host.executeFloatingBallSurfaceAction = (surface, action) => routed.push([surface, action.id]);
+    host.getFloatingBallActions = () => [
+        {id: "search", kind: "builtin", value: "search", enabled: true},
+        {id: "home", kind: "builtin", value: "home", enabled: true},
+    ];
+    config.clickAction = {desktop: "search", sidebar: "home", mobile: "__floating-ball-more__"};
+    const desktop = host.createFloatingBallSurface("desktop");
+    const sidebar = host.createFloatingBallSurface("sidebar");
+    const mobile = host.createFloatingBallSurface("mobile");
+    desktop.config.onOpenSwitcher();
+    sidebar.config.onOpenSwitcher();
+    mobile.config.onOpenSwitcher();
+    assert.deepEqual(routed, [["desktop", "search"], ["sidebar", "home"]], "each click reads its selected surface action");
+    assert.equal(calls.panels[2].openCount, 1, "More opens the mobile panel without dispatching a command");
+    config.clickAction.desktop = "home";
+    desktop.config.onOpenSwitcher();
+    assert.deepEqual(routed.at(-1), ["desktop", "home"], "mounted controllers read the latest selection");
+}
+
+test("floating ball host primary click uses each surface selection and live changes", (t) => {
+    assertConfiguredClickRouting(t);
+});
+
+test("floating ball host primary click falls back for missing, disabled and unavailable actions", (t) => {
+    const {host, config} = mount(t);
+    const routed = [];
+    host.executeFloatingBallSurfaceAction = (_surface, action) => routed.push(action.id);
+    const candidate = {id: "external", kind: "command", value: "plugin::run", enabled: true, available: true};
+    host.getFloatingBallActions = () => [candidate];
+    const controller = host.createFloatingBallSurface("desktop");
+    config.clickAction.desktop = "missing";
+    controller.config.onOpenSwitcher();
+    config.clickAction.desktop = "external";
+    candidate.available = false;
+    controller.config.onOpenSwitcher();
+    candidate.available = true;
+    candidate.enabled = false;
+    controller.config.onOpenSwitcher();
+    candidate.enabled = true;
+    config.actions.desktop = [{actionId: "external", enabled: false, firstLayer: false, order: 10}];
+    controller.config.onOpenSwitcher();
+    config.actions.desktop[0].enabled = true;
+    host.getQuickActionSupport = () => "unsupported";
+    controller.config.onOpenSwitcher();
+    assert.deepEqual(routed, ["switcher", "switcher", "switcher", "switcher", "switcher"]);
+});
+
+function assertMobileClickOptIn(t, options = {}) {
+    const {host, config} = mount(t, {...options, mobile: true});
+    const routed = [];
+    const candidate = {id: "external", kind: "command", value: "plugin::run", enabled: true, available: true};
+    host.executeFloatingBallSurfaceAction = (_surface, action) => routed.push(action.id);
+    host.getFloatingBallActions = () => [candidate];
+    host.getQuickActionSupport = () => "unknown";
+    config.clickAction.mobile = "external";
+    config.actions.mobile = [{actionId: "external", enabled: true, firstLayer: false, order: 10}];
+    const controller = host.createFloatingBallSurface("mobile");
+    controller.config.onOpenSwitcher();
+    assert.equal(routed.at(-1), "switcher", "unknown capabilities stay conservative before opt-in");
+    config.actions.mobile[0].mobileOverride = true;
+    controller.config.onOpenSwitcher();
+    assert.equal(routed.at(-1), "external", "explicit opt-in reaches the executor");
+    candidate.available = false;
+    controller.config.onOpenSwitcher();
+    assert.equal(routed.at(-1), "switcher", "provider loss is never overridden");
+    candidate.available = true;
+    host.getQuickActionSupport = () => "unsupported";
+    controller.config.onOpenSwitcher();
+    assert.equal(routed.at(-1), "switcher", "explicit unsupported metadata is never overridden");
+}
+
+test("floating ball host primary mobile click tries unknown actions only after explicit opt-in", (t) => {
+    assertMobileClickOptIn(t);
+});
+
+test("floating ball host click contracts reject fixed routing and removed opt-in in memory", (t) => {
+    const original = methods.join("\n");
+    for (const [target, replacement, contract, failure] of [
+        ['current.clickAction?.[surface] || "switcher"', '"switcher"', assertConfiguredClickRouting, "each click reads its selected surface action"],
+        ['                        descriptor,', '                        descriptor: undefined,', assertMobileClickOptIn, "explicit opt-in reaches the executor"],
+    ]) {
+        assert.equal(original.split(target).length - 1, 1, `mutation target exists exactly once: ${target}`);
+        const transformSource = (source) => source.replace(target, replacement);
+        assert.throws(() => contract(t, {transformSource}), (error) => error instanceof assert.AssertionError && error.message.includes(failure),
+            `the production mutation must violate its named behavioral contract: ${target}`);
+    }
+});
+
+function assertRealMobilePanel(t, options = {}) {
+    const {host, config} = mount(t, {...options, realPanels: true, mobile: true});
+    const routed = [];
+    const external = {id: "external", kind: "command", value: "plugin::run", targets: ["desktop", "sidebar"], enabled: true, available: true, label: "External"};
+    host.getFloatingBallActions = () => [external, {id: "search", kind: "builtin", value: "search", label: "搜索", icon: "iconSearch", enabled: true}];
+    host.getQuickActionSupport = (action, surface) => resolveQuickActionSupport(action.kind, action.value, surface, action.targets);
+    host.executeFloatingBallSurfaceAction = (_surface, action) => routed.push(action.id);
+    config.actions.mobile = [
+        {actionId: "external", enabled: true, firstLayer: true, order: 10, mobileOverride: true},
+        {actionId: "search", enabled: true, firstLayer: true, order: 20, label: "我的查找", icon: "🚀"},
+    ];
+    const controller = host.createFloatingBallSurface("mobile");
+    const panel = host.floatingBallPanels.get("mobile");
+    const root = panel.getElement();
+    const first = (id) => root.querySelector(`.sw__floating-ball-first-layer [data-action-id='${id}']`);
+    assert.ok(first("external"), "manual mobile opt-in reaches the real panel through the host support callback");
+    assert.equal(first("external").disabled, false, "the unverified warning does not disable an opted-in action");
+    first("external").click();
+    assert.deepEqual(routed, ["external"]);
+    assert.equal(first("search").querySelector(".sw__floating-ball-action-label").textContent, "我的查找", "a custom builtin label wins over localization");
+    assert.equal(first("search").querySelector(".sw__floating-ball-action-icon").textContent, "🚀");
+    external.available = false;
+    external.providerMissing = true;
+    controller.config.onBeforeTargeting();
+    assert.equal(first("external"), null);
+    const unavailable = root.querySelector(".sw__floating-ball-more-list [data-action-id='external']");
+    assert.ok(unavailable, "missing providers retain a recovery row");
+    assert.equal(unavailable.disabled, true, "mobile opt-in cannot override provider loss");
+    unavailable.click();
+    assert.deepEqual(routed, ["external"], "a missing provider is never dispatched");
+}
+
+test("floating ball real panel honors mobile opt-in, custom builtin labels and provider loss", (t) => {
+    assertRealMobilePanel(t);
+});
+
+test("floating ball real panel contracts reject warning-based disabling and lost builtin overrides in memory", (t) => {
+    const original = readSourceFile("src/floating-ball-panel.js");
+    for (const [target, replacement, failure] of [
+        ['if (action.availability && action.availability.status !== "supported")', 'if (reason)', "the unverified warning does not disable an opted-in action"],
+        ['if (action?.labelOverride) return action.labelOverride;', '', "a custom builtin label wins over localization"],
+    ]) {
+        assert.equal(original.split(target).length - 1, 1, `mutation target exists exactly once: ${target}`);
+        const module = {exports: {}};
+        const requirePanel = createRequire(require.resolve("../src/floating-ball-panel.js"));
+        new Function("require", "module", "exports", original.replace(target, replacement))(requirePanel, module, module.exports);
+        assert.throws(() => assertRealMobilePanel(t, {createRealPanel: module.exports.createFloatingBallPanelController}),
+            (error) => error instanceof assert.AssertionError && error.message.includes(failure),
+            `the actual panel mutation must violate its named behavioral contract: ${target}`);
+    }
+});
 
 test("floating ball host forwards size, margin and snap on creation and live configuration updates", (t) => {
     const {host, calls, config} = mount(t);

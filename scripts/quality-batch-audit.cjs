@@ -40,7 +40,7 @@ add('source has widget snapshot', allSrc.includes('home-widget-snapshot'));
 add('source has bounded fetch timeout', allSrc.includes('timeoutMs'));
 add('source has path filter model', allSrc.includes('path-filter'));
 add('source has i18n injection', allSrc.includes('this.i18n'));
-add('source has no absolute Windows paths', !/[A-Za-z]:\\/.test(allSrc));
+add('source has no absolute Windows paths', !/(?:^|[^A-Za-z])[A-Za-z]:\\/.test(allSrc));
 add('source has no token literals', !/api[_-]?token\s*[:=]\s*['"][^'"]+['"]/i.test(allSrc));
 add('source files are non-empty', srcFiles.every((name) => read(`src/${name}`).trim().length > 0));
 add('top-level test files exist', testFiles.length > 0);

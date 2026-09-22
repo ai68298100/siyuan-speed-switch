@@ -2,6 +2,67 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {JSDOM} = require("jsdom");
 const {mountQuickActionPicker} = require("../src/quick-actions-ui.js");
+const ts = require("typescript");
+const {readSourceFile} = require("./source-scan.cjs");
+const {normalizeCustomIcon, isImageIconReference, resolveIconReference} = require("../src/util.js");
+const {sanitizeQuickActions} = require("../src/quick-actions.js");
+
+function customIconPicker(t) {
+    const source = readSourceFile("src/index.ts");
+    const parsed = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true);
+    const hostClass = parsed.statements.find((node) => ts.isClassDeclaration(node) && node.name?.text === "SpeedSwitchPlugin");
+    const names = ["getAvailableIconSymbols", "renderQuickActionIcon", "getAvailableQuickActionIcons", "openQuickActionIconPicker"];
+    const members = names.map((name) => hostClass.members.find((node) => ts.isMethodDeclaration(node)
+        && node.name.getText(parsed) === name).getText(parsed));
+    const output = ts.transpileModule(`class IconHost {${members.join("\n")}}`, {
+        compilerOptions: {target: ts.ScriptTarget.ES2019},
+    }).outputText;
+    const dom = new JSDOM('<svg><symbol id="iconPlugin"></symbol><symbol id="iconFile"></symbol></svg>');
+    t.after(() => dom.window.close());
+    const IconHost = new Function("document", "normalizeCustomIcon", "isImageIconReference", "resolveIconReference",
+        `${output}; return IconHost;`)(dom.window.document, normalizeCustomIcon, isImageIconReference, resolveIconReference);
+    const host = new IconHost();
+    host.i18n = require("../src/i18n/zh-CN.json");
+    host.isMobile = true;
+    const values = [];
+    host.openQuickActionIconPicker({icon: "iconPlugin"}, (icon) => values.push(icon));
+    const document = dom.window.document;
+    return {dom, document, values, input: document.querySelector(".sw-quick-icon-picker__custom"),
+        apply: document.querySelector(".sw-quick-icon-picker__custom-apply")};
+}
+
+test("custom icon picker previews safe images, rejects unsafe URLs, and preserves selection in settings", (t) => {
+    const {dom, document, values, input, apply} = customIconPicker(t);
+    input.value = "https://user:pass@example.com/icon.png";
+    input.dispatchEvent(new dom.window.Event("input"));
+    assert.equal(apply.disabled, true);
+    apply.click();
+    assert.deepEqual(values, []);
+    assert.equal(document.querySelector(".sw-quick-icon-picker__preview img"), null);
+    input.value = "https://cdn.example.com/icon.png";
+    input.dispatchEvent(new dom.window.Event("input"));
+    assert.equal(apply.disabled, false);
+    assert.equal(document.querySelector(".sw-quick-icon-picker__preview img").src, input.value);
+    apply.click();
+    assert.deepEqual(values, ["https://cdn.example.com/icon.png"]);
+    assert.equal(document.querySelector(".sw-quick-icon-picker-overlay"), null);
+    const saved = sanitizeQuickActions([{id: "search", kind: "builtin", value: "search", label: "搜索", icon: values[0], targets: ["desktop"]}]);
+    assert.equal(saved.items[0].icon, values[0]);
+});
+
+test("custom icon picker renders ASCII short text and composite emoji as text", (t) => {
+    const {dom, document, values, input, apply} = customIconPicker(t);
+    for (const value of ["Go", "打卡", "👨‍👩‍👧‍👦"]) {
+        input.value = value;
+        input.dispatchEvent(new dom.window.Event("input"));
+        assert.equal(apply.disabled, false);
+        const preview = document.querySelector(".sw-quick-icon-picker__preview");
+        assert.equal(preview.textContent, value);
+        assert.equal(preview.querySelector("svg"), null);
+    }
+    apply.click();
+    assert.deepEqual(values, ["👨‍👩‍👧‍👦"]);
+});
 
 test("quick action picker opens inline and selects one candidate", () => {
     const dom = new JSDOM('<button id="add" aria-expanded="false">Add</button><div id="host"></div>');

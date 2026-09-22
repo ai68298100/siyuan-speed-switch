@@ -221,7 +221,7 @@ test('production sources contain no debug output or machine-local paths', () => 
         if (/console\.log\s*\(|\bdebugger\b|\bwindow\.alert\s*\(/.test(source)) {
             violations.push(name);
         }
-        if (/(?:[A-Za-z]:\\|\/Users\/|\/home\/)[^\n"']+/.test(source)) {
+        if (/(?:^|[^A-Za-z])(?:[A-Za-z]:\\|\/Users\/|\/home\/)[^\n"']+/.test(source)) {
             violations.push(`${name}:absolute-path`);
         }
     }

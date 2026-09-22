@@ -1,5 +1,5 @@
 // 快捷入口配置的纯函数层：持久化数据不可信，所有字段在进入 UI 前统一清理。
-const {normalizeQuickActionText, graphemeLength, graphemeSlice} = require("./util.js");
+const {normalizeQuickActionText, graphemeLength, graphemeSlice, normalizeCustomIcon} = require("./util.js");
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings", "home"]);
@@ -162,11 +162,7 @@ function normalizeIcon(value, fallback) {
     // register `lucide-*` or `siyuan-*-icon` symbols. Keep those serializable
     // identifiers so the renderer can resolve them when the plugin is loaded;
     // an unavailable symbol still falls back visually at render time.
-    if (/^icon[A-Za-z0-9_-]+$/.test(text)
-        || /^lucide-[A-Za-z0-9_-]+$/.test(text)
-        || /^siyuan-[A-Za-z0-9_-]*icon$/.test(text)) return text;
-    if (graphemeLength(text) === 1) return text;
-    return fallback;
+    return normalizeCustomIcon(text) || fallback;
 }
 
 function sanitizeQuickActions(value, max = 12) {

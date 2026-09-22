@@ -2,7 +2,7 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu, TEventBus, TPluginDataChangeReason} from "siyuan";
 import "./index.scss";
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
@@ -70,9 +70,10 @@ import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
-import {createDefaultFloatingBallConfig} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
 import {createFloatingBallActionExecutor} from "./floating-ball-actions";
+import {checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
 import type {FloatingBallUiController, FloatingBallPosition, FloatingBallSurface} from "./floating-ball-ui";
 import {createFloatingBallPanelController} from "./floating-ball-panel";
 import {
@@ -259,7 +260,9 @@ declare module "./util" {
     };
     export function groupFavoritesByGroup<T extends {group?: string}>(favorites: T[], groupNames: string[]): Map<string, T[]>;
     export function resolveIconFallback(raw: string): {type: "svg", value: string} | {type: "emoji", value: string};
-    export function resolveIconReference(raw: unknown, availableSymbols: Iterable<string> | null | undefined, fallback?: string | string[]): {type: "svg", value: string} | {type: "emoji", value: string};
+    export function normalizeCustomIcon(value: unknown): string | undefined;
+    export function isImageIconReference(value: unknown): boolean;
+    export function resolveIconReference(raw: unknown, availableSymbols: Iterable<string> | null | undefined, fallback?: string | string[]): {type: "svg", value: string} | {type: "emoji", value: string} | {type: "image", value: string};
     export function normalizeQuickActionText(value: unknown, max?: number): string;
     export function buildTabGroupsByParent<T extends {parent?: {element?: HTMLElement, headersElement?: HTMLElement}}>(
         tabs: T[], fallbackKey: HTMLElement,
@@ -3066,7 +3069,12 @@ const version = beginSearch(session);
     }
 
     private saveQuickActions(actions: IQuickAction[]) {
-        this.data[QUICK_ACTIONS_KEY] = sanitizeQuickActions(actions, QUICK_ACTIONS_MAX).items;
+        const normalized = sanitizeQuickActions(actions, QUICK_ACTIONS_MAX).items;
+        if (!checkFloatingBallSettingsBudget(this.getSettings().floatingBall, normalized).ok) {
+            showMessage(this.i18n.floatingBallImportFailed);
+            return;
+        }
+        this.data[QUICK_ACTIONS_KEY] = normalized;
         this.saveDataDebounced(QUICK_ACTIONS_KEY);
         this.refreshOpenSwitchers();
         this.refreshSidebar();
@@ -3317,6 +3325,21 @@ const version = beginSearch(session);
     private renderQuickActionIcon(host: HTMLElement, raw: string, fallback: string | string[] = "iconFile") {
         host.innerHTML = "";
         const resolved = resolveIconReference(raw, this.getAvailableIconSymbols(), fallback);
+        host.classList.remove("sw__quick-action-icon--image", "sw__quick-action-icon--emoji");
+        if (resolved.type === "image") {
+            const image = document.createElement("img");
+            image.alt = "";
+            image.loading = "lazy";
+            image.referrerPolicy = "no-referrer";
+            image.src = resolved.value;
+            image.className = "sw__quick-action-icon-image";
+            image.addEventListener("error", () => {
+                if (image.parentNode === host) this.renderQuickActionIcon(host, "", fallback);
+            }, {once: true});
+            host.appendChild(image);
+            host.classList.add("sw__quick-action-icon--image");
+            return;
+        }
         if (resolved.type === "emoji") {
             host.textContent = resolved.value;
             host.classList.add("sw__quick-action-icon--emoji");
@@ -4762,7 +4785,7 @@ const version = beginSearch(session);
         this.renderQuickActionIcon(preview, icon, ["iconPlugin", "iconFile"]);
         const name = document.createElement("span");
         name.className = "sw-setting__quick-icon-name";
-        name.textContent = /^icon/.test(icon) ? icon.slice(4) : icon;
+        name.textContent = isImageIconReference(icon) ? this.i18n.quickIconImage : /^icon/.test(icon) ? icon.slice(4) : icon;
         const arrow = document.createElement("svg");
         arrow.className = "sw-setting__quick-icon-arrow";
         arrow.innerHTML = '<use xlink:href="#iconDown"></use>';
@@ -4805,6 +4828,32 @@ const version = beginSearch(session);
         search.className = "b3-text-field sw-quick-icon-picker__search";
         search.placeholder = this.i18n.quickIconSearch;
         search.setAttribute("aria-label", this.i18n.quickIconSearch);
+        const custom = document.createElement("input");
+        custom.type = "text";
+        custom.className = "b3-text-field sw-quick-icon-picker__custom";
+        custom.placeholder = this.i18n.quickIconCustom || "Emoji、短文字、HTTPS 图片或 data URL";
+        custom.setAttribute("aria-label", custom.placeholder);
+        custom.value = /^icon[A-Za-z0-9_-]+$/.test(action.icon || "") ? "" : (action.icon || "");
+        const customApply = document.createElement("button");
+        customApply.type = "button";
+        customApply.className = "b3-button sw-quick-icon-picker__custom-apply";
+        customApply.textContent = this.i18n.quickIconApplyCustom || "使用自定义图标";
+        const customRow = document.createElement("div");
+        customRow.className = "sw-quick-icon-picker__custom-row";
+        const customPreview = document.createElement("span");
+        customPreview.className = "sw-quick-icon-picker__preview";
+        customPreview.setAttribute("aria-label", this.i18n.quickIconPreview);
+        const customHint = document.createElement("small");
+        customHint.className = "sw-quick-icon-picker__hint";
+        customHint.textContent = this.i18n.quickIconCustomHint;
+        const refreshCustomPreview = () => {
+            custom.setCustomValidity("");
+            const candidate = normalizeCustomIcon(custom.value);
+            customApply.disabled = !candidate;
+            this.renderQuickActionIcon(customPreview, candidate || "iconPlugin", ["iconPlugin", "iconFile"]);
+        };
+        custom.addEventListener("input", refreshCustomPreview);
+        customRow.append(customPreview, custom, customApply);
         const grid = document.createElement("div");
         grid.className = "sw-quick-icon-picker__grid";
         const icons = this.getAvailableQuickActionIcons(action.icon);
@@ -4816,8 +4865,8 @@ const version = beginSearch(session);
                 option.type = "button";
                 option.className = "sw-quick-icon-picker__item";
                 option.classList.toggle("is-selected", icon === action.icon);
-                option.title = icon;
-                option.setAttribute("aria-label", icon);
+                option.title = isImageIconReference(icon) ? this.i18n.quickIconImage : icon;
+                option.setAttribute("aria-label", option.title);
                 this.renderQuickActionIcon(option, icon, ["iconPlugin", "iconFile"]);
                 option.addEventListener("click", () => {
                     cleanup();
@@ -4834,15 +4883,26 @@ const version = beginSearch(session);
             overlay.remove();
         };
         closeButton.addEventListener("click", cleanup);
+        customApply.addEventListener("click", () => {
+            const candidate = normalizeCustomIcon(custom.value);
+            if (!candidate) {
+                custom.setCustomValidity(this.i18n.quickIconInvalid || "请输入短文字、Emoji 或安全的 HTTPS/data URL 图标");
+                custom.reportValidity?.();
+                return;
+            }
+            cleanup();
+            onPick(candidate);
+        });
         overlay.addEventListener("click", (event) => {
             if (event.target === overlay) cleanup();
         });
         search.addEventListener("input", renderIcons);
         document.addEventListener("keydown", onKeyDown);
-        sheet.append(header, search, grid);
+        sheet.append(header, search, customRow, customHint, grid);
         overlay.appendChild(sheet);
         document.body.appendChild(overlay);
         renderIcons();
+        refreshCustomPreview();
         if (!this.isMobile) search.focus({preventScroll: true});
     }
 
@@ -8541,9 +8601,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     /**
-     * Mount one portal for a surface.  The shared action surface is still a
-     * later batch; B1 only wires the stable switcher route and independent
-     * persisted position.  Sidebar resolves its host lazily because SiYuan
+     * Mount one portal with independent click and drag actions per surface.
+     * Sidebar resolves its host lazily because SiYuan
      * creates and replaces dock content on demand.
      */
     private createFloatingBallSurface(surface: FloatingBallSurface): FloatingBallUiController {
@@ -8584,7 +8643,21 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 marginPx: config.appearance?.marginPx,
                 ariaLabel: this.i18n.switchTabs,
                 onOpenSwitcher: () => {
-                    if (this.fabModalDepth === 0 || this.getSettings().floatingBall?.behavior?.yieldToModals === false) this.showSwitcher();
+                    const current: any = this.getSettings().floatingBall || {};
+                    if (!(this.fabModalDepth === 0 || current.behavior?.yieldToModals === false)) return;
+                    const requested = current.clickAction?.[surface] || "switcher";
+                    const moreActionId = "__floating-ball-more__";
+                    if (requested === moreActionId || requested === "more") {
+                        this.refreshFloatingBallPanels();
+                        this.floatingBallPanels.get(surface)?.openMore();
+                        return;
+                    }
+                    const descriptor = current.actions?.[surface]?.find((entry: any) => entry.actionId === requested);
+                    const resolved = resolveFloatingBallClickAction(requested, this.getFloatingBallActions(), surface, {
+                        descriptor,
+                        resolveSupport: (action: IQuickAction, target: QuickActionTarget) => this.getQuickActionSupport(action, target),
+                    });
+                    this.executeFloatingBallSurfaceAction(surface, resolved.action);
                 },
                 onOpenMore: () => {
                     this.refreshFloatingBallPanels();
@@ -8635,6 +8708,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     plugin: this.i18n.floatingBallPluginActions,
                     other: this.i18n.floatingBallOtherActions,
                     unknown: this.i18n.quickSupportUnknown,
+                    mobileTry: this.i18n.floatingBallMobileTryStatus,
                     providerMissing: this.i18n.floatingBallProviderMissing,
                     disabled: this.i18n.floatingBallActionDisabled,
                     enabled: this.i18n.floatingBallEnabled,

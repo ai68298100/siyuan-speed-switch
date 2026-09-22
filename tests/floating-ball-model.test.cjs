@@ -147,3 +147,44 @@ test("floating ball click: unavailable requested action falls back to switcher s
     assert.equal(safeResult.action.id, "switcher");
     assert.equal(safeResult.reason, "safe-switcher");
 });
+
+test("floating ball click actions are per-surface and default to the switcher", () => {
+    const defaults = createDefaultFloatingBallConfig();
+    assert.deepEqual(defaults.clickAction, {desktop: "switcher", sidebar: "switcher", mobile: "switcher"});
+    const normalized = normalizeFloatingBallConfig({clickAction: {desktop: "search", mobile: "\u0000bad"}});
+    assert.equal(normalized.clickAction.desktop, "search");
+    assert.equal(normalized.clickAction.sidebar, "switcher");
+    assert.equal(normalized.clickAction.mobile, "bad");
+});
+
+test("floating ball action presentation stays bounded and can opt an unknown action into mobile", () => {
+    const config = normalizeFloatingBallConfig({actions: {mobile: [
+        {actionId: "mobile-plugin", firstLayer: true, label: "  手机入口  ", icon: "🚀", mobileOverride: true},
+        {actionId: "unsafe", firstLayer: true, label: "<bad>", icon: "<svg onload=x>"},
+    ]}});
+    const catalog = [
+        {id: "mobile-plugin", value: "plugin::mobile", kind: "command", targets: ["desktop", "sidebar"]},
+        {id: "unsafe", value: "plugin::unsafe", kind: "command", targets: ["desktop", "sidebar"]},
+    ];
+    const selected = selectFloatingBallFirstLayer(config, "mobile", catalog);
+    assert.equal(selected[0].label, "手机入口");
+    assert.equal(selected[0].icon, "🚀");
+    assert.equal(selected[0].mobileOverride, true);
+    assert.equal(selected.some((item) => item.actionId === "unsafe"), false);
+    assert.equal(config.actions.mobile[1].label, "<bad>");
+    assert.equal(Object.hasOwn(config.actions.mobile[1], "icon"), false);
+});
+
+test("floating ball action presentation accepts safe custom image icons", () => {
+    const data = `data:image/png;base64,${"A".repeat(32)}`;
+    const config = normalizeFloatingBallConfig({actions: {desktop: [
+        {actionId: "image", firstLayer: true, icon: data},
+        {actionId: "credentialed", firstLayer: true, icon: "https://user:pass@example.com/icon.png"},
+        {actionId: "oversize", firstLayer: true, icon: "data:image/png;base64," + "A".repeat(240001)},
+        {actionId: "symbol", firstLayer: true, icon: "siyuan-some-long-plugin-action-icon"},
+    ]}});
+    assert.equal(config.actions.desktop[0].icon, data);
+    assert.equal(Object.hasOwn(config.actions.desktop[1], "icon"), false);
+    assert.equal(Object.hasOwn(config.actions.desktop[2], "icon"), false);
+    assert.equal(config.actions.desktop[3].icon, "siyuan-some-long-plugin-action-icon");
+});

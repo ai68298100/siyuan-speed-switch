@@ -13,7 +13,7 @@ import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
 import {selectFloatingBallMoreActions} from "./floating-ball-panel";
-import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings} from "./floating-ball-settings-model";
+import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings, checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
 import type {ISwSettings, IFavoriteItem, IQuickAction, IQuickActionPickerCandidate, QuickActionSupport, QuickActionTarget, SortBy, QuickActionDisplay, HomePalette, DockDisplay, SidebarLayout} from "./index";
 declare module "./document-sets" {
@@ -1224,12 +1224,17 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
 
     const persist = (next: unknown) => {
         const config: any = normalizeFloatingBallConfig(next);
+        if (!checkFloatingBallSettingsBudget(config, this.getQuickActions()).ok) {
+            showMessage(this.i18n.floatingBallImportFailed);
+            return false;
+        }
         this.updateSettings({
             floatingBall: config,
             // Keep the old mobile flag in sync for installations upgraded from
             // the pre-B0 mobile-only FAB setting.
             fabEnabled: config.enabled.mobile,
         });
+        return true;
     };
     const initial: any = normalizeFloatingBallConfig(s.floatingBall);
     const surfaceLabels: Record<string, string> = {
@@ -1274,6 +1279,21 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     surfaceSelect.setAttribute("aria-label", this.i18n.floatingBallEditSurface);
     surfaceSelectRow.append(surfaceLabel, surfaceSelect);
     wrapper.appendChild(surfaceSelectRow);
+
+    const clickActionRow = document.createElement("div");
+    clickActionRow.className = "sw-floating-ball-settings__click-action";
+    const clickActionTitle = document.createElement("span");
+    clickActionTitle.className = "sw-settings__item-title";
+    clickActionTitle.textContent = this.i18n.floatingBallClickAction;
+    const clickActionSelect = document.createElement("select");
+    clickActionSelect.className = "b3-select";
+    clickActionSelect.dataset.control = "clickAction";
+    clickActionSelect.setAttribute("aria-label", this.i18n.floatingBallClickAction);
+    const clickActionHint = document.createElement("span");
+    clickActionHint.className = "sw-settings__hint";
+    clickActionHint.textContent = this.i18n.floatingBallClickActionTip;
+    clickActionRow.append(clickActionTitle, clickActionSelect, clickActionHint);
+    wrapper.appendChild(clickActionRow);
 
     const controlsSection = document.createElement("section");
     controlsSection.className = "sw-floating-ball-settings__controls-panel";
@@ -1388,6 +1408,40 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
 
     let renderControls: () => void = () => undefined;
     let renderPreview: (config?: any) => void = () => undefined;
+    const clickActionLabel = (action: any, config: any, surface: string) => {
+        const descriptor = config.actions?.[surface]?.find((entry: any) => entry.actionId === action.id);
+        if (descriptor?.label) return descriptor.label;
+        const builtinLabels: Record<string, string> = {
+            switcher: this.i18n.quickBuiltinSwitcher,
+            search: this.i18n.quickBuiltinSearch,
+            journal: this.i18n.quickBuiltinJournal,
+            settings: this.i18n.quickBuiltinSettings,
+            home: this.i18n.secondPanel,
+        };
+        return builtinLabels[action.value] || action.label || action.id;
+    };
+    const renderClickActionOptions = (config: any, surface: string) => {
+        const current = config.clickAction?.[surface] || "switcher";
+        const catalog = this.getFloatingBallActions();
+        const options: Array<{value: string; label: string}> = [
+            {value: "switcher", label: this.i18n.floatingBallClickSwitcher},
+            {value: "__floating-ball-more__", label: this.i18n.floatingBallClickMore},
+        ];
+        const seen = new Set(options.map((option) => option.value));
+        catalog.forEach((action: any) => {
+            if (!action?.id || seen.has(action.id)) return;
+            if (this.getQuickActionSupport(action, surface as QuickActionTarget) === "unsupported") return;
+            seen.add(action.id);
+            options.push({value: action.id, label: clickActionLabel(action, config, surface)});
+        });
+        if (!seen.has(current)) {
+            const descriptor = config.actions?.[surface]?.find((entry: any) => entry.actionId === current);
+            options.push({value: current, label: descriptor?.label || current});
+        }
+        clickActionSelect.innerHTML = "";
+        options.forEach((option) => clickActionSelect.appendChild(new Option(option.label, option.value)));
+        clickActionSelect.value = current;
+    };
     const renderControlValues = () => controlValues.forEach(({output, format}, input) => {
         const text = format(Number(input.value));
         output.value = text;
@@ -1425,6 +1479,9 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     hideOnScroll.addEventListener("change", () => updateControlConfig((next) => { next.behavior.hideOnScroll = hideOnScroll.checked; }));
     hideOnFullscreen.addEventListener("change", () => updateControlConfig((next) => { next.behavior.hideOnFullscreen = hideOnFullscreen.checked; }));
     yieldToModals.addEventListener("change", () => updateControlConfig((next) => { next.behavior.yieldToModals = yieldToModals.checked; }));
+    clickActionSelect.addEventListener("change", () => updateControlConfig((next, surface) => {
+        next.clickAction[surface] = clickActionSelect.value;
+    }));
     const restoreAppearance = document.createElement("button");
     restoreAppearance.type = "button";
     restoreAppearance.className = "b3-button b3-button--text sw-floating-ball-settings__restore-appearance";
@@ -1553,10 +1610,45 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             const order = document.createElement("span");
             order.className = "sw-floating-ball-settings__order";
             order.textContent = String(index + 1);
-            const title = document.createElement("span");
-            title.className = "sw-floating-ball-settings__label";
-            title.textContent = row.label;
+            const title = document.createElement("input");
+            title.type = "text";
+            title.className = "b3-text-field sw-floating-ball-settings__label";
+            title.value = row.label;
+            title.maxLength = 80;
+            title.dataset.control = "label";
+            title.setAttribute("aria-label", `${this.i18n.floatingBallCustomLabel}: ${row.actionId}`);
             title.title = row.actionId;
+            title.addEventListener("change", () => {
+                persist(updateFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId, {label: title.value}));
+                renderActions(row.actionId, "label");
+            });
+            const iconButton = document.createElement("button");
+            iconButton.type = "button";
+            iconButton.className = "b3-button b3-button--text sw-floating-ball-settings__icon";
+            iconButton.setAttribute("aria-label", `${this.i18n.floatingBallCustomIcon}: ${row.label}`);
+            iconButton.title = this.i18n.floatingBallCustomIcon;
+            iconButton.dataset.control = "icon";
+            if (typeof (this as any).renderQuickActionIconButton === "function") {
+                this.renderQuickActionIconButton(iconButton, row.icon);
+            } else {
+                iconButton.textContent = row.icon;
+            }
+            iconButton.addEventListener("click", () => {
+                const action = row.action ? {...row.action, label: row.label, icon: row.icon} : {
+                    id: row.actionId,
+                    label: row.label,
+                    icon: row.icon,
+                    kind: row.kind === "unknown" ? "adapter" : row.kind,
+                    value: row.actionId,
+                    targets: [surface],
+                    enabled: row.enabled,
+                    order: row.order,
+                } as IQuickAction;
+                this.openQuickActionIconPicker(action, (icon) => {
+                    persist(updateFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId, {icon}));
+                    renderActions(row.actionId, "icon");
+                });
+            });
             const status = document.createElement("span");
             status.className = `sw-floating-ball-settings__status is-${row.status}`;
             status.textContent = row.status === "supported"
@@ -1596,6 +1688,21 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
                 renderActions(row.actionId, "first");
             });
             firstLabel.append(first, document.createTextNode(this.i18n.floatingBallFirstLayer));
+            let mobileTryLabel: HTMLLabelElement | null = null;
+            if (surface === "mobile" && row.status === "unknown") {
+                mobileTryLabel = document.createElement("label");
+                mobileTryLabel.className = "sw-floating-ball-settings__check is-warning";
+                const mobileTry = document.createElement("input");
+                mobileTry.type = "checkbox";
+                mobileTry.checked = row.mobileOverride;
+                mobileTry.dataset.control = "mobileOverride";
+                mobileTry.setAttribute("aria-label", `${this.i18n.floatingBallMobileTry}: ${row.label}`);
+                mobileTry.addEventListener("change", () => {
+                    persist(updateFloatingBallAction(this.getSettings().floatingBall, surface, row.actionId, {mobileOverride: mobileTry.checked}));
+                    renderActions(row.actionId, "mobileOverride");
+                });
+                mobileTryLabel.append(mobileTry, document.createTextNode(this.i18n.floatingBallMobileTry));
+            }
             const controls = document.createElement("span");
             controls.className = "sw-floating-ball-settings__controls";
             const moveButton = (icon: string, label: string, delta: number) => {
@@ -1637,7 +1744,10 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
                     renderActions(id, "enabled");
                 });
             }
-            item.append(order, title, status, enabledLabel, firstLabel, controls);
+            const metadata = document.createElement("div");
+            metadata.className = "sw-floating-ball-settings__metadata";
+            metadata.append(status, enabledLabel, firstLabel, ...(mobileTryLabel ? [mobileTryLabel] : []));
+            item.append(order, title, iconButton, metadata, controls);
             actionList.appendChild(item);
         });
 
@@ -1672,6 +1782,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     renderControls = () => {
         const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
         const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
+        renderClickActionOptions(config, surface);
         edgeSelect.value = config.position[surface].edge;
         vertical.value = String(Math.round(config.position[surface].yRatio * 100));
         size.disabled = surface === "sidebar";

@@ -603,6 +603,17 @@
         min-width: 180px;
     }
 
+    &__click-action {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        align-items: center;
+        gap: 8px;
+        margin: 10px 0;
+    }
+
+    &__click-action .sw-settings__hint { margin: 0; grid-column: 1 / -1; }
+    &__click-action .b3-select { min-width: 0; max-width: 100%; min-height: 44px; }
+
     &__actions {
         border: 1px solid var(--b3-border-color);
         border-radius: 10px;
@@ -630,7 +641,7 @@
 
     &__row {
         display: grid;
-        grid-template-columns: 28px minmax(100px, 1fr) auto auto auto auto;
+        grid-template-columns: 28px minmax(0, 1fr) 44px auto;
         align-items: center;
         gap: 8px;
         min-height: 38px;
@@ -646,6 +657,10 @@
     }
 
     &__label {
+        min-width: 0;
+        width: 100%;
+        min-height: 44px;
+        box-sizing: border-box;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -670,7 +685,30 @@
 
     &__controls {
         display: inline-flex;
+        grid-column: 4;
+        grid-row: 1;
         gap: 2px;
+    }
+
+    &__metadata {
+        display: flex;
+        grid-column: 2 / -1;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 16px;
+        min-width: 0;
+    }
+
+    &__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 4px;
+
+        .sw-setting__quick-icon-name, .sw-setting__quick-icon-arrow { display: none; }
+        .sw-setting__quick-icon-preview { overflow: hidden; max-width: 32px; }
     }
 
     &__controls .b3-button {
@@ -719,9 +757,10 @@
         height: 18px;
     }
 
-    .sw-floating-ball-settings__surface { flex-wrap: wrap; }
+    .sw-floating-ball-settings__surface, .sw-floating-ball-settings__click-action { flex-wrap: wrap; }
+    .sw-floating-ball-settings__click-action { display: flex; align-items: center; }
     .sw-floating-ball-settings__surface .b3-select { min-width: 0; max-width: 100%; }
-    .sw-floating-ball-settings__row .sw-floating-ball-settings__controls { grid-column: 1 / -1; justify-content: flex-end; }
+    .sw-floating-ball-settings__row .sw-floating-ball-settings__controls { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; }
 }
 
 // 首次点击日记按钮选择默认笔记本的弹窗

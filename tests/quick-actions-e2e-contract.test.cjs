@@ -27,7 +27,7 @@ test("provider e2e contract: unknown mobile commands stay visibly unknown", () =
 });
 
 test("provider e2e contract: icon fallback and candidate upper bound hold together", () => {
-    const actions = sanitizeQuickActions(Array.from({length: 20}, (_, i) => ({id: `p${i}`, kind: "command", value: `p${i}`, label: "入口", icon: "bad"})), 12).items;
+    const actions = sanitizeQuickActions(Array.from({length: 20}, (_, i) => ({id: `p${i}`, kind: "command", value: `p${i}`, label: "入口", icon: "javascript:alert(1)"})), 12).items;
     assert.equal(actions.length, 12);
     assert.ok(actions.every((item) => item.icon === "iconPlugin"));
 });

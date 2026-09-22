@@ -37,6 +37,7 @@ function mount(t, options = {}) {
     const saves = [];
     const executions = [];
     const confirmations = [];
+    const iconPickers = [];
     const defaults = createDefaultFloatingBallConfig();
     let state = {floatingBall: options.config || defaults, fabEnabled: false};
     let currentQuickActions = options.quickActions || getBuiltinQuickActions();
@@ -87,9 +88,11 @@ function mount(t, options = {}) {
         executeQuickAction: (...args) => executions.push(args),
         executeFloatingBallSurfaceAction: (...args) => executions.push(args),
         showSwitcher: (...args) => executions.push(args),
+        openQuickActionIconPicker(action, onSelect) { iconPickers.push({action, onSelect}); },
     };
     const constants = compile(readSourceFile("src/constants.ts"), "constants.ts", srcRequire);
-    const module = compile(readSourceFile("src/settings-sections.ts"), "settings-sections.ts", (name) => {
+    const builderSource = readSourceFile("src/settings-sections.ts");
+    const module = compile(options.transformSource ? options.transformSource(builderSource) : builderSource, "settings-sections.ts", (name) => {
         if (name === "siyuan") return {showMessage: (text) => messages.push(text)};
         if (name === "./logger") return {logger: {warn() {}}};
         if (name === "./constants") return constants;
@@ -102,7 +105,7 @@ function mount(t, options = {}) {
         ? module.buildQuickActionsTransferControls.call(host, () => {}, false)
         : module.buildSettingsFloatingBall.call(host, state);
     document.body.appendChild(root);
-    return {root, window, document, host, messages, patches, saves, executions, confirmations,
+    return {root, window, document, host, messages, patches, saves, executions, confirmations, iconPickers,
         get state() { return state; }, set state(value) { state = value; }};
 }
 
@@ -149,6 +152,97 @@ function settle() {
 function action(id) {
     return {id, value: `provider/${id}`, kind: "adapter", label: id, icon: "iconPlugin", targets: ["desktop", "sidebar", "mobile"], enabled: true};
 }
+
+function assertClickActionSettings(t, options = {}) {
+    const ui = mount(t, options);
+    const select = ui.root.querySelector('[data-control="clickAction"]');
+    assert.ok(select, "real settings expose the primary click selector");
+    const set = (value) => {
+        select.value = value;
+        assert.equal(select.value, value, "the requested action exists in the selector");
+        select.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    };
+    set("search");
+    selectSurface(ui, "sidebar");
+    assert.equal(select.value, "switcher");
+    set("__floating-ball-more__");
+    selectSurface(ui, "mobile");
+    set("home");
+    assert.deepEqual(ui.state.floatingBall.clickAction, {desktop: "search", sidebar: "__floating-ball-more__", mobile: "home"}, "click settings are surface-independent");
+    selectSurface(ui, "desktop");
+    assert.equal(select.value, "search", "returning to a surface restores its saved choice");
+}
+
+test("floating settings primary click selector persists each surface independently", (t) => {
+    assertClickActionSettings(t);
+});
+
+function assertPresentationSettings(t, options = {}) {
+    const ui = mount(t, options);
+    const sourceActions = JSON.stringify(ui.host.getQuickActions());
+    const mobileActions = JSON.stringify(ui.state.floatingBall.actions.mobile);
+    const label = row(ui.root, "search").querySelector(".sw-floating-ball-settings__label");
+    label.value = "我的查找";
+    label.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.equal(ui.state.floatingBall.actions.desktop.find((item) => item.actionId === "search").label, "我的查找", "label override persists");
+    assert.equal(ui.root.querySelector('.sw-floating-ball-settings__preview [data-action-id="search"]').textContent, "我的查找");
+    row(ui.root, "search").querySelector(".sw-floating-ball-settings__icon").click();
+    assert.equal(ui.iconPickers.length, 1, "the icon button opens the host picker");
+    ui.iconPickers[0].onSelect("🚀");
+    assert.equal(ui.state.floatingBall.actions.desktop.find((item) => item.actionId === "search").icon, "🚀", "icon override persists");
+    assert.equal(row(ui.root, "search").querySelector(".sw-floating-ball-settings__icon").textContent, "🚀");
+    row(ui.root, "search").querySelector(".sw-floating-ball-settings__icon").click();
+    assert.equal(ui.iconPickers[1].action.icon, "🚀", "reopening the picker uses the visible override");
+    assert.equal(ui.iconPickers[1].action.label, "我的查找");
+    assert.equal(JSON.stringify(ui.state.floatingBall.actions.mobile), mobileActions);
+    assert.equal(JSON.stringify(ui.host.getQuickActions()), sourceActions, "display overrides never mutate the shared action registry");
+    assert.equal(ui.saves.length, 0);
+}
+
+test("floating settings label and icon overrides update preview and preserve shared actions", (t) => {
+    assertPresentationSettings(t);
+});
+
+function assertMobileTrySettings(t, options = {}) {
+    const config = createDefaultFloatingBallConfig();
+    const command = {id: "external", value: "plugin::run", kind: "command", label: "External", icon: "iconPlugin", targets: ["desktop", "sidebar"], enabled: true};
+    config.actions.mobile = [{actionId: "external", enabled: true, firstLayer: true, order: 10}];
+    const ui = mount(t, {...options, config, catalog: [command]});
+    assert.equal(ui.root.querySelector('[data-control="mobileOverride"]'), null);
+    selectSurface(ui, "mobile");
+    const tryControl = () => row(ui.root, "external").querySelector('[data-control="mobileOverride"]');
+    assert.ok(tryControl(), "unknown mobile commands have an explicit try control");
+    assert.equal(tryControl().checked, false);
+    assert.equal(ui.root.querySelector('.sw-floating-ball-settings__preview [data-action-id="external"]'), null);
+    tryControl().click();
+    assert.equal(ui.state.floatingBall.actions.mobile[0].mobileOverride, true, "mobile opt-in persists");
+    assert.equal(tryControl().checked, true, "the opt-in remains reversible after rerender");
+    assert.ok(row(ui.root, "external").querySelector(".is-unknown"), "an opt-in never claims verified mobile capability");
+    assert.ok(ui.root.querySelector('.sw-floating-ball-settings__preview [data-action-id="external"]'), "preview reflects mobile opt-in through the host support callback");
+    tryControl().click();
+    assert.equal(ui.state.floatingBall.actions.mobile[0].mobileOverride, undefined);
+    assert.equal(tryControl().checked, false);
+    assert.equal(ui.executions.length, 0, "editing capability preferences does not execute actions");
+}
+
+test("floating settings mobile try control remains explicit, reversible and unverified", (t) => {
+    assertMobileTrySettings(t);
+});
+
+test("floating settings contracts reject lost per-surface writes, presentation and opt-in in memory", (t) => {
+    const original = readSourceFile("src/settings-sections.ts");
+    for (const [target, replacement, contract, failure] of [
+        ['next.clickAction[surface] = clickActionSelect.value', 'next.clickAction.desktop = clickActionSelect.value', assertClickActionSettings, "click settings are surface-independent"],
+        ['{label: title.value}', '{label: ""}', assertPresentationSettings, "label override persists"],
+        ['{icon}));', '{icon: "iconPlugin"}));', assertPresentationSettings, "icon override persists"],
+        ['{mobileOverride: mobileTry.checked}', '{mobileOverride: false}', assertMobileTrySettings, "mobile opt-in persists"],
+    ]) {
+        assert.equal(original.split(target).length - 1, 1, `mutation target exists exactly once: ${target}`);
+        const transformSource = (source) => source.replace(target, replacement);
+        assert.throws(() => contract(t, {transformSource}), (error) => error instanceof assert.AssertionError && error.message.includes(failure),
+            `the production mutation must violate its named behavioral contract: ${target}`);
+    }
+});
 
 test("floating settings UI toggles three surfaces independently and reads latest config", (t) => {
     const ui = mount(t);
@@ -363,6 +457,21 @@ test("floating settings UI rejects oversized files before reading their text", a
     assert.equal(ui.patches.length, 0);
     assert.equal(ui.saves.length, 0);
     assert.equal(ui.messages.at(-1), i18n.floatingBallImportFailed);
+});
+
+test("floating settings UI rejects an icon that would exceed the combined export budget", (t) => {
+    const dataIcon = (size) => `data:image/png;base64,${"A".repeat(size)}`;
+    const config = createDefaultFloatingBallConfig();
+    config.actions.sidebar[0].icon = dataIcon(180000);
+    config.actions.mobile[0].icon = dataIcon(180000);
+    const ui = mount(t, {config});
+    const baseline = JSON.stringify(ui.state.floatingBall);
+    row(ui.root, "search").querySelector('[data-control="icon"]').click();
+    assert.equal(ui.iconPickers.length, 1);
+    ui.iconPickers[0].onSelect(dataIcon(180000));
+    assert.equal(ui.patches.length, 0, "a candidate that makes the complete transfer exceed 512 KiB is rejected");
+    assert.equal(JSON.stringify(ui.state.floatingBall), baseline, "rejected icon keeps the prior presentation");
+    assert.equal(ui.messages.at(-1), i18n.floatingBallImportFailed, "the existing bounded-transfer message is reused");
 });
 
 test("floating settings UI import stays busy and ignores duplicate requests", async (t) => {

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {sanitizeQuickActions, createQuickActionRegistry} = require("../src/quick-actions.js");
 
 test("rc gate: package schema and persisted actions are safe together", () => {
-    const pkg = {schemaVersion: 1, items: [{id: "p", kind: "command", value: "plugin/open", label: "入口", callback: () => "x", icon: "https://evil"}]};
+    const pkg = {schemaVersion: 1, items: [{id: "p", kind: "command", value: "plugin/open", label: "入口", callback: () => "x", icon: "http://evil"}]};
     const items = sanitizeQuickActions(pkg.items).items;
     assert.equal(items.length, 1);
     assert.equal(Object.prototype.hasOwnProperty.call(items[0], "callback"), false);

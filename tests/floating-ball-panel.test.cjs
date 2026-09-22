@@ -67,6 +67,51 @@ test("unknown-capability actions stay visible but disabled", () => {
     assert.equal(result[0].availability.status, "unknown");
 });
 
+test("mobile unknown actions require an explicit try flag while keeping custom presentation", () => {
+    const config = createDefaultFloatingBallConfig();
+    config.actions.mobile = [{
+        actionId: "command-x", enabled: true, firstLayer: false, order: 10,
+        label: "移动命令", icon: "🚀", mobileOverride: true,
+    }];
+    const result = selectFloatingBallMoreActions(config, "mobile", [
+        action("command-x", {kind: "command", value: "plugin::x", targets: ["desktop", "sidebar"]}),
+    ]);
+    assert.equal(result[0].availability.status, "supported");
+    assert.equal(result[0].label, "移动命令");
+    assert.equal(result[0].icon, "🚀");
+});
+
+test("panel renders a custom short text icon without creating an SVG reference", () => {
+    const config = createDefaultFloatingBallConfig();
+    config.actions.desktop = [{actionId: "rocket", enabled: true, firstLayer: true, order: 1, label: "火箭", icon: "🚀"}];
+    const {dom, panel, root} = setupPanel([action("rocket", {label: "Rocket", icon: "iconPlugin"})], {config});
+    const icon = root.querySelector('[data-action-id="rocket"] .sw__floating-ball-action-icon');
+    assert.equal(icon.textContent, "🚀");
+    assert.equal(icon.classList.contains("is-text-icon"), true);
+    assert.equal(icon.querySelector("svg"), null);
+    panel.destroy();
+    dom.window.close();
+});
+
+test("panel renders a safe image icon as a bounded image rather than markup", () => {
+    const config = createDefaultFloatingBallConfig();
+    config.actions.desktop = [{actionId: "image", enabled: true, firstLayer: true, order: 1,
+        icon: "https://cdn.example.com/icon.png"}];
+    const {dom, panel, root} = setupPanel([action("image")], {config});
+    const icon = root.querySelector('[data-action-id="image"] .sw__floating-ball-action-icon');
+    const image = icon.querySelector("img");
+    assert.ok(image);
+    assert.equal(image.src, "https://cdn.example.com/icon.png");
+    assert.equal(image.referrerPolicy, "no-referrer");
+    assert.equal(image.alt, "");
+    assert.equal(icon.querySelector("svg"), null);
+    image.dispatchEvent(new dom.window.Event("error"));
+    assert.equal(icon.querySelector("img"), null);
+    assert.equal(icon.querySelector("use").getAttribute("href"), "#iconPlugin");
+    panel.destroy();
+    dom.window.close();
+});
+
 test("more selector preserves first-layer overflow and unverified first-layer entries", () => {
     const config = createDefaultFloatingBallConfig();
     const actions = Array.from({length: 7}, (_, index) => action(`provider-${index}`));

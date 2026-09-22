@@ -11,7 +11,7 @@ test("release suite: normalized persistence and runtime registry remain separate
 });
 
 test("release suite: all safety boundaries compose without expanding surfaces", () => {
-    const items = sanitizeQuickActions(Array.from({length: 30}, (_, i) => ({id: `p${i}`, kind: "command", value: `p${i}`, label: "入口", icon: "bad", targets: ["desktop", "mobile"]})), 12).items;
+    const items = sanitizeQuickActions(Array.from({length: 30}, (_, i) => ({id: `p${i}`, kind: "command", value: `p${i}`, label: "入口", icon: "javascript:alert(1)", targets: ["desktop", "mobile"]})), 12).items;
     assert.equal(items.length, 12);
     assert.ok(items.every((item) => item.icon === "iconPlugin"));
     assert.equal(resolveQuickActionSupport("command", "p0", "mobile"), "unknown");
