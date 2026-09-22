@@ -103,6 +103,8 @@ function normalizeSettings(saved, options = {}) {
         favoriteSmartGroups: smartGroups,
         // T-6796 皮肤：白名单外的值一律回落融合主题
         skin: normalizeSkin(source.skin),
+        // T-6805 拼音辅助匹配：默认开启；关闭后标题匹配只走子串
+        pinyinMatch: source.pinyinMatch === undefined ? true : source.pinyinMatch === true,
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),

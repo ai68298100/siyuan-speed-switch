@@ -468,7 +468,81 @@ function parseSearchTerms(query, maxTerms = 16) {
     return {includes, excludes};
 }
 
-function filterOpenTabs(tabs, query, filters = {}) {
+// ==================== T-6805 拼音首字母/全拼匹配 ====================
+// 引擎：vendor tiny-pinyin（MIT，见 src/vendor/tiny-pinyin/LICENSE），仅取
+// 全拼/首字母形态；多音字由 L0 汉字子串兜底，不消歧。表单缓存有界（4000 条，
+// 超限整体清空——标题重复转换成本仅几十 ms/万篇，正确性优先于缓存粘性）。
+
+let pinyinEngineCache;
+function getPinyinEngine() {
+    if (pinyinEngineCache === undefined) {
+        try {
+            const engine = require("./vendor/tiny-pinyin/index.js");
+            pinyinEngineCache = engine && typeof engine.isSupported === "function" && engine.isSupported() ? engine : false;
+        } catch (_) {
+            pinyinEngineCache = false;
+        }
+    }
+    return pinyinEngineCache || null;
+}
+
+const PINYIN_FORMS_CACHE = new Map();
+const PINYIN_FORMS_CACHE_MAX = 4000;
+const PINYIN_TOKEN_TYPE = 2;
+const ASCII_NEEDLE_RE = /^[a-z0-9]+$/;
+
+function getPinyinForms(title) {
+    const engine = getPinyinEngine();
+    if (!engine) return null;
+    const key = String(title || "");
+    if (!key) return null;
+    let forms = PINYIN_FORMS_CACHE.get(key);
+    if (forms !== undefined) return forms;
+    if (PINYIN_FORMS_CACHE.size > PINYIN_FORMS_CACHE_MAX) PINYIN_FORMS_CACHE.clear();
+    const chars = [];
+    engine.parse(key).forEach((token) => {
+        const target = String(token.target || "").toLowerCase();
+        if (token.type === PINYIN_TOKEN_TYPE) {
+            chars.push({full: target, initial: target.charAt(0)});
+        } else {
+            // 非汉字字符（字母/数字/空格）：全拼与首字母同形，逐字符入列
+            for (const ch of target) {
+                chars.push({full: ch, initial: ch});
+            }
+        }
+    });
+    forms = {chars};
+    PINYIN_FORMS_CACHE.set(key, forms);
+    return forms;
+}
+
+// 查询词为纯 ASCII 字母数字时，做"逐字拼音序列"匹配：每个标题字符的拼音
+// 既可只消耗查询的 1 个首字母字符（首字母模式），也可消耗其整个全拼
+// （全拼/首字母混输，如 cpin → 产品路线图）。带回溯的线性扫描，标题长度
+// 有限（≤256 字符），最坏代价可控。
+function pinyinTitleHit(title, needle) {
+    const safeNeedle = typeof needle === "string" ? needle.toLowerCase() : "";
+    if (!safeNeedle || !ASCII_NEEDLE_RE.test(safeNeedle)) return false;
+    const forms = getPinyinForms(title);
+    if (!forms) return false;
+    const chars = forms.chars;
+    const total = chars.length;
+    const needleLen = safeNeedle.length;
+    const walk = (charIndex, needleIndex) => {
+        if (needleIndex === needleLen) return true;
+        if (charIndex >= total) return false;
+        const ch = chars[charIndex];
+        // 首字母分支：消耗查询 1 个字符
+        if (ch.initial === safeNeedle[needleIndex] && walk(charIndex + 1, needleIndex + 1)) return true;
+        // 全拼分支：消耗查询中该字的全拼整段
+        if (ch.full.length > 1 && safeNeedle.startsWith(ch.full, needleIndex)
+            && walk(charIndex + 1, needleIndex + ch.full.length)) return true;
+        return false;
+    };
+    return walk(0, 0);
+}
+
+function filterOpenTabs(tabs, query, filters = {}, options = {}) {
     const terms = parseSearchTerms(query);
     const notebook = normalizeText(filters?.notebook, 64);
     const paths = normalizeSearchPaths(filters?.paths);
@@ -483,8 +557,11 @@ function filterOpenTabs(tabs, query, filters = {}) {
             const looseTitle = firstLooseText(tab.title, tab.name, tab.label)
                 || pathBase(loosePath) || looseRootId || String(tab.id || index);
             const loose = looseNeedle(`${looseTitle} ${loosePath}`);
-            // T-6700 查询词法：所有包含词都必须命中（AND 语义）；任一排除词命中即整条过滤
-            if (terms.includes.some((needle) => !loose.includes(needle))) return;
+            // T-6700 查询词法：所有包含词都必须命中（AND 语义）；任一排除词命中即整条过滤。
+            // T-6805 拼音辅助：包含词为纯 ASCII 时，标题拼音全拼/首字母命中亦算命中。
+            const pinyinOn = options.pinyinMatch !== false;
+            if (terms.includes.some((needle) => !loose.includes(needle)
+                && !(pinyinOn && pinyinTitleHit(looseTitle, needle)))) return;
             if (terms.excludes.some((needle) => loose.includes(needle))) return;
         }
         const meta = buildTabMeta(tab, index);
@@ -1189,6 +1266,7 @@ module.exports = {
     parseSearchQuery,
     formatCleanQuery,
     matchesParsedQuery,
+    pinyinTitleHit,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,

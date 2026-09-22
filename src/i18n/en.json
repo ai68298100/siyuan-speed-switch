@@ -806,6 +806,8 @@
   ,"favSmartGroupRemove": "Remove"
   ,"favSmartGroupEmpty": "No smart groups"
   ,"favSmartGroupLoading": "Collecting…"
+  ,"pinyinMatchLabel": "Pinyin matching"
+  ,"pinyinMatchTip": "Match document titles by full pinyin or initials (e.g. cp → 产品). When off, substring only."
   ,"skinLabel": "UI skin"
   ,"skinTip": "Fusion follows the SiYuan theme; standalone skins apply only to Speed Switch surfaces and never touch SiYuan or other plugins."
   ,"skinFusion": "Fusion (default)"

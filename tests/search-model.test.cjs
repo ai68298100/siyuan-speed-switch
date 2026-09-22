@@ -879,3 +879,20 @@ test("search syntax: operators parse into phrases, excludes and AND terms", () =
     assert.equal(matchesParsedQuery("anything", bare), true, "exclude-only query keeps titles without the term");
     assert.equal(matchesParsedQuery("x file", bare), false, "a title containing the excluded term is vetoed");
 });
+
+test("search model: pinyin initials and full pinyin match ASCII queries (T-6805)", () => {
+    const tab = {id: "tab-py", rootId: ROOT_A, title: "产品路线图", path: "工作/产品"};
+    // L1 首字母：cp → 产品
+    assert.equal(filterOpenTabs([tab], "cp", {}, {pinyinMatch: true}).length, 1);
+    // L2 全拼：chanpin → 产品
+    assert.equal(filterOpenTabs([tab], "chanpin", {}, {pinyinMatch: true}).length, 1);
+    // 混合：cpin → 产品（首字母 c + 全拼 pin 同串连续命中）
+    assert.equal(filterOpenTabs([tab], "cpin", {}, {pinyinMatch: true}).length, 1);
+    // 关闭开关后纯拼音不命中（汉字子串仍命中）
+    assert.equal(filterOpenTabs([tab], "cp", {}, {pinyinMatch: false}).length, 0);
+    assert.equal(filterOpenTabs([tab], "产品", {}).length, 1, "hanzi substring keeps matching regardless");
+    // 无关词不误配
+    assert.equal(filterOpenTabs([tab], "xz", {}, {pinyinMatch: true}).length, 0);
+    // 非文档行/空标题不抛错
+    assert.equal(filterOpenTabs([{title: ""}], "cp", {}, {pinyinMatch: true}).length, 0);
+});

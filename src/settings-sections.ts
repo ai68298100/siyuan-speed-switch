@@ -156,6 +156,11 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
             this.switcher(s.agentActionsEnabled, (v) => {
                 this.updateSettings({agentActionsEnabled: v});
             })));
+        // T-6805 拼音辅助匹配：全拼/首字母匹配文档标题
+        wrapper.append(this.settingItem(this.i18n.pinyinMatchLabel, this.i18n.pinyinMatchTip,
+            this.switcher(s.pinyinMatch, (v) => {
+                this.updateSettings({pinyinMatch: v});
+            })));
         return wrapper;
     }
 

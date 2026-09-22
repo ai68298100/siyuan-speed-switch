@@ -6,7 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -562,6 +562,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     documentSetsCurrentId: "", // T-6800 当前工作区集 id（空=尚未激活任何集）
     favoriteSmartGroups: [], // T-6804 标签智能分组
     skin: "fusion", // T-6796 默认融合思源主题
+    pinyinMatch: true, // T-6805 拼音辅助匹配默认开
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -609,6 +610,7 @@ export interface ISwSettings {
     documentSetsCurrentId: string; // T-6800 当前工作区语义：最近一次恢复/激活的文档集 id
     favoriteSmartGroups: Array<{name: string; tag: string}>; // T-6804 标签智能分组（最多 4 组）
     skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
+    pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
 }
 
 export interface IGroupedTab {
@@ -5969,6 +5971,7 @@ const version = beginSearch(session);
         const kw = keyword.trim().toLowerCase();
         const parsed = parsedQuery || parseSearchQuery(keyword);
         const parsedPositive = parsed.phrases.length + parsed.terms.length;
+        const pinyinOn = this.getSettings().pinyinMatch !== false;
         const allowLocalTitleMatch = (!filters.method || filters.method === "keyword")
             && (!filters.types || filters.types.document === true)
             && !filters.subTypes;
@@ -5987,6 +5990,7 @@ const version = beginSearch(session);
             // 否则维持旧的"原始子串包含"。
             const titleMatch = parsedPositive > 0 || parsed.excludes.length > 0
                 ? matchesParsedQuery(title, parsed)
+                    || (pinyinOn && (parsed.terms.concat(parsed.phrases)).some((needle) => pinyinTitleHit(title, needle)))
                 : (!kw || title.includes(kw));
             const match = matchesNotebook && matchesPath
                 && (!kw || (allowLocalTitleMatch && titleMatch) || contentRoots.has(rootId));
