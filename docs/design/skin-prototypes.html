@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="zh-CN" data-theme-mode="light">
+<head>
+<meta charset="utf-8">
+<title>小驴速切 · 皮肤层设计原型（ADR 0073）</title>
+<link rel="stylesheet" href="../../tests/fixtures/siyuan-mobile-base.css">
+<link rel="stylesheet" href="../../dist/index.css">
+<style>
+/* ============ 原型页布局（非生产样式） ============ */
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 28px 40px; background: #e9eaf0; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+.proto-header { max-width: 1560px; margin: 0 auto 18px; }
+.proto-header h1 { font-size: 20px; margin: 0 0 6px; color: #26282f; }
+.proto-header p { margin: 0; font-size: 13px; color: #5b5e6b; line-height: 1.7; }
+.proto-header code { background: rgba(0,0,0,.06); padding: 1px 6px; border-radius: 5px; }
+.proto-grid { display: grid; grid-template-columns: repeat(4, 360px); gap: 24px; max-width: 1560px; margin: 0 auto; }
+.proto-col { border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.proto-col > .proto-name { padding: 12px 16px 10px; font-size: 14px; font-weight: 700; }
+.proto-col > .proto-desc { padding: 0 16px 10px; font-size: 12px; line-height: 1.6; opacity: .75; }
+.proto-body { padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.proto-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .55; margin: 4px 2px 0; }
+.proto-fab-stage { position: relative; height: 168px; border-radius: 14px; }
+/* 悬浮球在原型里以静态舞台呈现（生产中由 controller 绝对定位） */
+.proto-fab-stage .sw-fab-root { position: absolute; right: 14px; top: 58px; width: 48px; height: 48px; }
+.proto-fab-stage .sw__floating-ball-first-layer { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; right: calc(100% + 10px); left: auto; }
+.proto-fab-stage .sw__floating-ball-action { display: inline-flex; }
+
+/* ============ 皮肤层机制演示（未来 _10-skins.scss 的种子） ============
+   只做两件事：1) 作用域内重定义 --b3-* 变量（组件选择器零改写）；
+              2) 少量质感补充规则（blur/圆角/阴影/壁纸），可整文件卸载。 */
+
+/* ---- 1. 融合基线：无覆盖，直通宿主主题 ---- */
+.proto-col[data-skin="fusion"] { background: #f6f6f6; }
+
+/* ---- 2. 苹果风格 · 液态玻璃 Light ---- */
+.sw-skin-apple {
+    --b3-theme-background: #f5f5f7;
+    --b3-theme-surface: rgba(255, 255, 255, .78);
+    --b3-theme-surface-lighter: rgba(0, 0, 0, .045);
+    --b3-theme-primary: #0a84ff;
+    --b3-theme-on-primary: #ffffff;
+    --b3-theme-on-background: #1d1d1f;
+    --b3-theme-on-surface: #48484d;
+    --b3-theme-on-surface-light: rgba(29, 29, 31, .58);
+    --b3-border-color: rgba(0, 0, 0, .09);
+    --b3-theme-warning: #ff9f0a;
+    --b3-theme-error: #ff453a;
+    background:
+        radial-gradient(120% 90% at 12% 0%, #dfe9fb 0%, transparent 52%),
+        radial-gradient(110% 80% at 92% 12%, #f6e3ee 0%, transparent 50%),
+        radial-gradient(120% 100% at 50% 108%, #dcefe6 0%, transparent 55%),
+        #f2f3f7;
+}
+.sw-skin-apple .proto-body .sw__card,
+.sw-skin-apple .proto-body .sw__doc-item,
+.sw-skin-apple .sw-home__cell,
+.sw-skin-apple .sw__search {
+    backdrop-filter: blur(18px) saturate(1.6);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 28px rgba(29, 35, 60, .10);
+}
+.sw-skin-apple .sw-fab-trigger { box-shadow: 0 4px 16px rgba(10, 90, 220, .38); }
+.sw-skin-apple .sw__floating-ball-action {
+    backdrop-filter: blur(18px) saturate(1.6);
+    border-radius: 14px;
+    box-shadow: 0 8px 22px rgba(29, 35, 60, .14);
+}
+
+/* ---- 3. 暗夜玻璃 · Dark Glass ---- */
+.sw-skin-midnight {
+    --b3-theme-background: #0b0e16;
+    --b3-theme-surface: rgba(24, 29, 42, .82);
+    --b3-theme-surface-lighter: rgba(255, 255, 255, .06);
+    --b3-theme-primary: #8b9dff;
+    --b3-theme-on-primary: #0d1020;
+    --b3-theme-on-background: #e8eaf4;
+    --b3-theme-on-surface: #b9bdd1;
+    --b3-theme-on-surface-light: rgba(232, 234, 244, .60);
+    --b3-border-color: rgba(255, 255, 255, .10);
+    --b3-theme-warning: #ffc46b;
+    --b3-theme-error: #ff7a76;
+    background:
+        radial-gradient(120% 90% at 10% 0%, #1b2440 0%, transparent 55%),
+        radial-gradient(110% 80% at 90% 16%, #3a1f47 0%, transparent 52%),
+        radial-gradient(130% 100% at 50% 110%, #14273a 0%, transparent 58%),
+        #0b0e16;
+    color-scheme: dark;
+}
+.sw-skin-midnight .proto-body .sw__card,
+.sw-skin-midnight .proto-body .sw__doc-item,
+.sw-skin-midnight .sw-home__cell,
+.sw-skin-midnight .sw__search {
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.sw-skin-midnight .sw-fab-trigger { box-shadow: 0 4px 18px rgba(139, 157, 255, .45); }
+.sw-skin-midnight .proto-name, .sw-skin-midnight .proto-desc, .sw-skin-midnight .proto-label { color: #e8eaf4; }
+.sw-skin-midnight .sw__thumb { background: linear-gradient(150deg, rgba(139, 157, 255, .28), rgba(102, 204, 204, .18)); }
+.sw-skin-apple .proto-name, .sw-skin-paper .proto-name { color: inherit; }
+.sw-skin-midnight .sw__floating-ball-action {
+    backdrop-filter: blur(20px) saturate(1.3);
+    background: rgba(28, 34, 50, .88);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+    color: #e8eaf4;
+}
+
+/* ---- 4. 暖纸墨水 · Paper ---- */
+.sw-skin-paper {
+    --b3-theme-background: #f7f3ec;
+    --b3-theme-surface: #fffdf8;
+    --b3-theme-surface-lighter: #f0e9dc;
+    --b3-theme-primary: #b4552f;
+    --b3-theme-on-primary: #fff8f2;
+    --b3-theme-on-background: #2f2a22;
+    --b3-theme-on-surface: #6b6252;
+    --b3-theme-on-surface-light: rgba(47, 42, 34, .62);
+    --b3-border-color: #e2d8c6;
+    --b3-theme-warning: #b07a1f;
+    --b3-theme-error: #a83a2e;
+    background:
+        radial-gradient(100% 70% at 85% 0%, #f2e7d3 0%, transparent 55%),
+        #f7f3ec;
+}
+.sw-skin-paper .proto-body .sw__card,
+.sw-skin-paper .proto-body .sw__doc-item,
+.sw-skin-paper .sw-home__cell {
+    border-radius: 10px;
+    box-shadow: 0 1px 0 rgba(120, 100, 70, .12), 0 6px 16px rgba(120, 100, 70, .08);
+    border: 1px solid #e8ddc9;
+}
+.sw-skin-paper .sw-fab-trigger { border-radius: 14px; box-shadow: 0 3px 10px rgba(120, 70, 30, .28); }
+.sw-skin-paper .sw__floating-ball-action { border-radius: 10px; box-shadow: 0 3px 10px rgba(120, 100, 70, .16); }
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M8 2.8V6M16 2.8V6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.5L12 4l8 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5V20h11v-9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
+</svg>
+
+<div class="proto-header">
+  <h1>小驴速切 · 可选独立皮肤层设计原型（ADR 0073）</h1>
+  <p>同一套<b>真实生产 DOM 与生产样式</b>（dist/index.css）在四种变量环境下的渲染对照。皮肤机制 = 根作用域重定义 <code>--b3-*</code> 变量（组件选择器零改写）+ 少量质感补充（blur/圆角/阴影/壁纸，可整文件卸载）。默认仍为"融合基线"；皮肤为用户显式选择。</p>
+</div>
+
+<div class="proto-grid">
+  <!-- 四栏共用同一份面板标记；仅外层 data-skin/class 不同 -->
+  <section class="proto-col" data-skin="fusion">
+    <div class="proto-name">融合基线（现状）</div>
+    <div class="proto-desc">直通思源主题变量，与任意主题融合</div>
+    <div class="proto-body">
+      <div class="proto-label">快速切换器</div>
+      <div class="speed-switch sw__body sw__mobile">
+        <input class="sw__search" type="text" placeholder="搜索页签与文档" aria-label="搜索">
+        <div class="sw__grid sw__mobile-grid">
+          <div class="sw__card sw__mobile-card">
+            <div class="sw__thumb"></div>
+            <div class="sw__meta"><span class="sw__icon">A</span><span class="sw__title">产品需求文档</span></div>
+            <div class="sw__actions">
+              <button type="button" class="sw__pin" aria-label="置顶"><svg viewBox="0 0 24 24"><path d="M12 2v20" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__fav-btn" aria-label="收藏"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-6 5 2 8-6-4-6 4 2-8-6-5h7z" fill="none" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__close" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="sw__doc-results sw__group">
+          <div class="sw__window-label">工作区文档 · 1</div>
+          <div class="sw__doc-grid">
+            <button type="button" class="sw__doc-item">
+              <span class="sw__doc-icon"><svg><use href="#i-doc"></use></svg></span>
+              <span class="sw__doc-copy">
+                <span class="sw__doc-title">2026 Q3 路线评审纪要</span>
+                <span class="sw__doc-path">/项目/产品/2026 Q3 路线评审纪要</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="proto-label">组件面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="journal-calendar">
+          <div class="sw__home-module-body">
+            <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
+            <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span><span class="sw__home-calendar-cell is-outside"><span class="sw__home-calendar-primary">31</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">5</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">6</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">7</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">8</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">9</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">10</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">11</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">12</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">13</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">14</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">15</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">16</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">17</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">18</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">19</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">20</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">21</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">22</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">23</span></span><span class="sw__home-calendar-cell is-today"><span class="sw__home-calendar-primary">24</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">25</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">26</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">27</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">28</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">29</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">30</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span></div>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-label">悬浮球与动作面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-weather-open-meteo"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="external-weather-open-meteo">
+          <div class="sw__home-module-header"><strong class="sw__home-module-title">近期天气</strong></div>
+          <div class="sw__home-module-context">北京 · 中国</div>
+          <div class="sw__home-module-body"><div class="sw__home-stat"><strong class="sw__home-stat-value">21°</strong><span class="sw__home-stat-label">⛅ 多云</span></div>
+            <ul class="sw__home-module-list"><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周五 18° / 27°</span><span class="sw__home-module-item-secondary">降水 10%</span></span></li><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周六 19° / 26°</span><span class="sw__home-module-item-secondary">降水 30%</span></span></li></ul>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-fab-stage">
+        <div class="sw-fab-root sw__fab" data-surface="mobile" data-state="targeting">
+          <button type="button" class="sw-fab-trigger" aria-label="悬浮球"><svg width="20" height="20"><use href="#i-dots"></use></svg></button>
+          <div class="sw__floating-ball-panel">
+            <div class="sw__floating-ball-first-layer">
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-search"></use></svg><span class="sw__floating-ball-action-label">搜索</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-cal"></use></svg><span class="sw__floating-ball-action-label">日记</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-home"></use></svg><span class="sw__floating-ball-action-label">组件面板</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-gear"></use></svg><span class="sw__floating-ball-action-label">更多动作</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sw-settings__item">
+        <div class="sw-settings__item-main"><div class="sw-settings__item-title">显示设置项示例</div></div>
+        <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="proto-col sw-skin-apple" data-skin="apple">
+    <div class="proto-name">苹果风格 · 液态玻璃 Light</div>
+    <div class="proto-desc">半透明表面 + backdrop blur + 大圆角；强调色 iOS 蓝</div>
+    <div class="proto-body">
+      <div class="proto-label">快速切换器</div>
+      <div class="speed-switch sw__body sw__mobile">
+        <input class="sw__search" type="text" placeholder="搜索页签与文档" aria-label="搜索">
+        <div class="sw__grid sw__mobile-grid">
+          <div class="sw__card sw__mobile-card">
+            <div class="sw__thumb"></div>
+            <div class="sw__meta"><span class="sw__icon">A</span><span class="sw__title">产品需求文档</span></div>
+            <div class="sw__actions">
+              <button type="button" class="sw__pin" aria-label="置顶"><svg viewBox="0 0 24 24"><path d="M12 2v20" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__fav-btn" aria-label="收藏"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-6 5 2 8-6-4-6 4 2-8-6-5h7z" fill="none" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__close" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="sw__doc-results sw__group">
+          <div class="sw__window-label">工作区文档 · 1</div>
+          <div class="sw__doc-grid">
+            <button type="button" class="sw__doc-item">
+              <span class="sw__doc-icon"><svg><use href="#i-doc"></use></svg></span>
+              <span class="sw__doc-copy">
+                <span class="sw__doc-title">2026 Q3 路线评审纪要</span>
+                <span class="sw__doc-path">/项目/产品/2026 Q3 路线评审纪要</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="proto-label">组件面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="journal-calendar">
+          <div class="sw__home-module-body">
+            <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
+            <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span><span class="sw__home-calendar-cell is-outside"><span class="sw__home-calendar-primary">31</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">5</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">6</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">7</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">8</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">9</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">10</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">11</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">12</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">13</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">14</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">15</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">16</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">17</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">18</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">19</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">20</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">21</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">22</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">23</span></span><span class="sw__home-calendar-cell is-today"><span class="sw__home-calendar-primary">24</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">25</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">26</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">27</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">28</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">29</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">30</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span></div>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-label">悬浮球与动作面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-weather-open-meteo"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="external-weather-open-meteo">
+          <div class="sw__home-module-header"><strong class="sw__home-module-title">近期天气</strong></div>
+          <div class="sw__home-module-context">北京 · 中国</div>
+          <div class="sw__home-module-body"><div class="sw__home-stat"><strong class="sw__home-stat-value">21°</strong><span class="sw__home-stat-label">⛅ 多云</span></div>
+            <ul class="sw__home-module-list"><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周五 18° / 27°</span><span class="sw__home-module-item-secondary">降水 10%</span></span></li><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周六 19° / 26°</span><span class="sw__home-module-item-secondary">降水 30%</span></span></li></ul>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-fab-stage">
+        <div class="sw-fab-root sw__fab" data-surface="mobile" data-state="targeting">
+          <button type="button" class="sw-fab-trigger" aria-label="悬浮球"><svg width="20" height="20"><use href="#i-dots"></use></svg></button>
+          <div class="sw__floating-ball-panel">
+            <div class="sw__floating-ball-first-layer">
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-search"></use></svg><span class="sw__floating-ball-action-label">搜索</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-cal"></use></svg><span class="sw__floating-ball-action-label">日记</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-home"></use></svg><span class="sw__floating-ball-action-label">组件面板</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-gear"></use></svg><span class="sw__floating-ball-action-label">更多动作</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sw-settings__item">
+        <div class="sw-settings__item-main"><div class="sw-settings__item-title">显示设置项示例</div></div>
+        <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="proto-col sw-skin-midnight" data-skin="midnight">
+    <div class="proto-name">暗夜玻璃 · Dark Glass</div>
+    <div class="proto-desc">深色玻璃层 + 发光阴影；强调色长春花紫；强制暗色不随主题</div>
+    <div class="proto-body">
+      <div class="proto-label">快速切换器</div>
+      <div class="speed-switch sw__body sw__mobile">
+        <input class="sw__search" type="text" placeholder="搜索页签与文档" aria-label="搜索">
+        <div class="sw__grid sw__mobile-grid">
+          <div class="sw__card sw__mobile-card">
+            <div class="sw__thumb"></div>
+            <div class="sw__meta"><span class="sw__icon">A</span><span class="sw__title">产品需求文档</span></div>
+            <div class="sw__actions">
+              <button type="button" class="sw__pin" aria-label="置顶"><svg viewBox="0 0 24 24"><path d="M12 2v20" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__fav-btn" aria-label="收藏"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-6 5 2 8-6-4-6 4 2-8-6-5h7z" fill="none" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__close" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="sw__doc-results sw__group">
+          <div class="sw__window-label">工作区文档 · 1</div>
+          <div class="sw__doc-grid">
+            <button type="button" class="sw__doc-item">
+              <span class="sw__doc-icon"><svg><use href="#i-doc"></use></svg></span>
+              <span class="sw__doc-copy">
+                <span class="sw__doc-title">2026 Q3 路线评审纪要</span>
+                <span class="sw__doc-path">/项目/产品/2026 Q3 路线评审纪要</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="proto-label">组件面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="journal-calendar">
+          <div class="sw__home-module-body">
+            <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
+            <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span><span class="sw__home-calendar-cell is-outside"><span class="sw__home-calendar-primary">31</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">5</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">6</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">7</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">8</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">9</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">10</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">11</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">12</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">13</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">14</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">15</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">16</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">17</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">18</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">19</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">20</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">21</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">22</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">23</span></span><span class="sw__home-calendar-cell is-today"><span class="sw__home-calendar-primary">24</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">25</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">26</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">27</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">28</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">29</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">30</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span></div>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-label">悬浮球与动作面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-weather-open-meteo"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="external-weather-open-meteo">
+          <div class="sw__home-module-header"><strong class="sw__home-module-title">近期天气</strong></div>
+          <div class="sw__home-module-context">北京 · 中国</div>
+          <div class="sw__home-module-body"><div class="sw__home-stat"><strong class="sw__home-stat-value">21°</strong><span class="sw__home-stat-label">⛅ 多云</span></div>
+            <ul class="sw__home-module-list"><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周五 18° / 27°</span><span class="sw__home-module-item-secondary">降水 10%</span></span></li><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周六 19° / 26°</span><span class="sw__home-module-item-secondary">降水 30%</span></span></li></ul>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-fab-stage">
+        <div class="sw-fab-root sw__fab" data-surface="mobile" data-state="targeting">
+          <button type="button" class="sw-fab-trigger" aria-label="悬浮球"><svg width="20" height="20"><use href="#i-dots"></use></svg></button>
+          <div class="sw__floating-ball-panel">
+            <div class="sw__floating-ball-first-layer">
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-search"></use></svg><span class="sw__floating-ball-action-label">搜索</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-cal"></use></svg><span class="sw__floating-ball-action-label">日记</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-home"></use></svg><span class="sw__floating-ball-action-label">组件面板</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-gear"></use></svg><span class="sw__floating-ball-action-label">更多动作</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sw-settings__item">
+        <div class="sw-settings__item-main"><div class="sw-settings__item-title">显示设置项示例</div></div>
+        <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="proto-col sw-skin-paper" data-skin="paper">
+    <div class="proto-name">暖纸墨水 · Paper</div>
+    <div class="proto-desc">暖纸底色 + 墨色文字 + 朱砂强调；小圆角、轻阴影、扁平纸感</div>
+    <div class="proto-body">
+      <div class="proto-label">快速切换器</div>
+      <div class="speed-switch sw__body sw__mobile">
+        <input class="sw__search" type="text" placeholder="搜索页签与文档" aria-label="搜索">
+        <div class="sw__grid sw__mobile-grid">
+          <div class="sw__card sw__mobile-card">
+            <div class="sw__thumb"></div>
+            <div class="sw__meta"><span class="sw__icon">A</span><span class="sw__title">产品需求文档</span></div>
+            <div class="sw__actions">
+              <button type="button" class="sw__pin" aria-label="置顶"><svg viewBox="0 0 24 24"><path d="M12 2v20" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__fav-btn" aria-label="收藏"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-6 5 2 8-6-4-6 4 2-8-6-5h7z" fill="none" stroke="currentColor"/></svg></button>
+              <button type="button" class="sw__close" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="sw__doc-results sw__group">
+          <div class="sw__window-label">工作区文档 · 1</div>
+          <div class="sw__doc-grid">
+            <button type="button" class="sw__doc-item">
+              <span class="sw__doc-icon"><svg><use href="#i-doc"></use></svg></span>
+              <span class="sw__doc-copy">
+                <span class="sw__doc-title">2026 Q3 路线评审纪要</span>
+                <span class="sw__doc-path">/项目/产品/2026 Q3 路线评审纪要</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="proto-label">组件面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="journal-calendar">
+          <div class="sw__home-module-body">
+            <div class="sw__home-calendar-nav"><button>‹</button><strong class="sw__home-calendar-period">2026年9月</strong><button>今天</button><button>›</button></div>
+            <div class="sw__home-calendar"><span class="sw__home-calendar-head">一</span><span class="sw__home-calendar-head">二</span><span class="sw__home-calendar-head">三</span><span class="sw__home-calendar-head">四</span><span class="sw__home-calendar-head">五</span><span class="sw__home-calendar-head">六</span><span class="sw__home-calendar-head">日</span><span class="sw__home-calendar-cell is-outside"><span class="sw__home-calendar-primary">31</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">5</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">6</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">7</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">8</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">9</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">10</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">11</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">12</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">13</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">14</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">15</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">16</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">17</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">18</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">19</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">20</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">21</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">22</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">23</span></span><span class="sw__home-calendar-cell is-today"><span class="sw__home-calendar-primary">24</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">25</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">26</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">27</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">28</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">29</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">30</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">1</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">2</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">3</span></span><span class="sw__home-calendar-cell"><span class="sw__home-calendar-primary">4</span></span></div>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-label">悬浮球与动作面板</div>
+      <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="external-weather-open-meteo"><div class="sw-home__cell-body">
+        <section class="sw__home-module" data-module-id="external-weather-open-meteo">
+          <div class="sw__home-module-header"><strong class="sw__home-module-title">近期天气</strong></div>
+          <div class="sw__home-module-context">北京 · 中国</div>
+          <div class="sw__home-module-body"><div class="sw__home-stat"><strong class="sw__home-stat-value">21°</strong><span class="sw__home-stat-label">⛅ 多云</span></div>
+            <ul class="sw__home-module-list"><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周五 18° / 27°</span><span class="sw__home-module-item-secondary">降水 10%</span></span></li><li class="sw__home-module-item"><span class="sw__home-module-item-action"><span class="sw__home-module-item-label">周六 19° / 26°</span><span class="sw__home-module-item-secondary">降水 30%</span></span></li></ul>
+          </div>
+        </section>
+      </div></section></div>
+      <div class="proto-fab-stage">
+        <div class="sw-fab-root sw__fab" data-surface="mobile" data-state="targeting">
+          <button type="button" class="sw-fab-trigger" aria-label="悬浮球"><svg width="20" height="20"><use href="#i-dots"></use></svg></button>
+          <div class="sw__floating-ball-panel">
+            <div class="sw__floating-ball-first-layer">
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-search"></use></svg><span class="sw__floating-ball-action-label">搜索</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-cal"></use></svg><span class="sw__floating-ball-action-label">日记</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-home"></use></svg><span class="sw__floating-ball-action-label">组件面板</span></button>
+              <button class="sw__floating-ball-action"><svg width="20" height="20"><use href="#i-gear"></use></svg><span class="sw__floating-ball-action-label">更多动作</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sw-settings__item">
+        <div class="sw-settings__item-main"><div class="sw-settings__item-title">显示设置项示例</div></div>
+        <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>
