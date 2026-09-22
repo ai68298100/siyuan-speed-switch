@@ -71,7 +71,7 @@ import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocum
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
-import {normalizeSettings, resolvePanelSize} from "./settings-model";
+import {normalizeSettings, resolvePanelSize, normalizeEssentials} from "./settings-model";
 import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
 import {createFloatingBallActionExecutor} from "./floating-ball-actions";
@@ -563,6 +563,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     favoriteSmartGroups: [], // T-6804 标签智能分组
     skin: "fusion", // T-6796 默认融合思源主题
     pinyinMatch: true, // T-6805 拼音辅助匹配默认开
+    documentSetEssentials: [], // T-6810 Essentials 常驻文档
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -611,6 +612,7 @@ export interface ISwSettings {
     favoriteSmartGroups: Array<{name: string; tag: string}>; // T-6804 标签智能分组（最多 4 组）
     skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
     pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
+    documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
 }
 
 export interface IGroupedTab {
@@ -5004,6 +5006,8 @@ const version = beginSearch(session);
                 const applied = applyFloatingBallPreset(this.getSettings().floatingBall, presetMatch.id);
                 if (applied.preset) this.updateSettings({floatingBall: applied.config});
             }
+            // T-6810 Essentials 常驻层：恢复后自动打开必需文档（已打开的跳过）
+            void this.openDocumentSetEssentials();
         }
         showMessage(`${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`);
     }
@@ -7138,6 +7142,105 @@ private rootIdOf(tab: Tab): string | null {
             this.getFavoriteSmartGroups().filter((group) => group.name !== name),
         );
         this.updateSettings({favoriteSmartGroups: next});
+    }
+
+    // ==================== T-6810 Essentials 常驻层 ====================
+
+    public getDocumentSetEssentials(): string[] {
+        return this.getSettings().documentSetEssentials || [];
+    }
+
+    public addDocumentSetEssentialsFromCurrentTabs(): number {
+        const merged = normalizeEssentials([
+            ...this.getSettings().documentSetEssentials,
+            ...this.currentDocumentSetEntries().map((entry) => entry.rootId),
+        ]);
+        this.updateSettings({documentSetEssentials: merged});
+        return merged.length;
+    }
+
+    public removeDocumentSetEssential(rootId: string): void {
+        this.updateSettings({
+            documentSetEssentials: (this.getSettings().documentSetEssentials || []).filter((id) => id !== rootId),
+        });
+    }
+
+    private async openDocumentSetEssentials(): Promise<void> {
+        const essentials = this.getSettings().documentSetEssentials || [];
+        const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+        for (const rootId of essentials) {
+            if (opened.has(rootId)) continue;
+            if (this.isMobile) await this.mobileOpenDoc(rootId);
+            else await openTab({app: this.app, doc: {id: rootId}});
+        }
+    }
+
+    // T-6810 设置页管理器：把当前打开的页签一键加入常驻，逐条移除或全部清空。
+    // 自含内部重渲染，不依赖外层 render 闭包。
+    public buildDocumentSetEssentialsManager(): HTMLElement {
+        const section = document.createElement("div");
+        section.className = "sw-document-set-essentials";
+        const title = document.createElement("strong");
+        title.textContent = this.i18n.documentSetEssentialsLabel;
+        const tip = document.createElement("p");
+        tip.className = "sw-settings__hint";
+        tip.textContent = this.i18n.documentSetEssentialsTip;
+        section.append(title, tip);
+        const buildContent = () => {
+            section.querySelectorAll(".sw-document-set-essentials__dynamic").forEach((el) => el.remove());
+            const dynamic = document.createElement("div");
+            dynamic.className = "sw-document-set-essentials__dynamic";
+            const essentials = this.getDocumentSetEssentials();
+            const add = document.createElement("button");
+            add.type = "button";
+            add.className = "b3-button b3-button--outline";
+            add.textContent = this.i18n.documentSetEssentialsAdd;
+            add.addEventListener("click", () => {
+                this.addDocumentSetEssentialsFromCurrentTabs();
+                buildContent();
+            });
+            dynamic.appendChild(add);
+            if (essentials.length) {
+                const clear = document.createElement("button");
+                clear.type = "button";
+                clear.className = "b3-button b3-button--text";
+                clear.textContent = this.i18n.documentSetEssentialsClear;
+                clear.addEventListener("click", () => {
+                    this.updateSettings({documentSetEssentials: []});
+                    buildContent();
+                });
+                dynamic.appendChild(clear);
+            }
+            if (!essentials.length) {
+                const empty = document.createElement("p");
+                empty.className = "sw-settings__hint";
+                empty.textContent = this.i18n.documentSetEssentialsEmpty;
+                dynamic.appendChild(empty);
+            } else {
+                const list = document.createElement("div");
+                list.className = "sw-document-set-essentials__list";
+                essentials.forEach((rootId, index) => {
+                    const row = document.createElement("div");
+                    row.className = "sw-document-set-essentials__item";
+                    const label = document.createElement("span");
+                    label.textContent = `#${index + 1} · ${rootId.slice(0, 14)}…`;
+                    const remove = document.createElement("button");
+                    remove.type = "button";
+                    remove.className = "b3-button b3-button--text";
+                    remove.textContent = this.i18n.documentSetEssentialsRemove;
+                    remove.addEventListener("click", () => {
+                        this.removeDocumentSetEssential(rootId);
+                        buildContent();
+                    });
+                    row.append(label, remove);
+                    list.appendChild(row);
+                });
+                dynamic.appendChild(list);
+            }
+            section.appendChild(dynamic);
+        };
+        buildContent();
+        return section;
     }
 
     public async getFavoriteTagOptions(): Promise<Array<{name: string; count: number}>> {

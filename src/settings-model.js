@@ -14,6 +14,21 @@ const {normalizeFloatingBallConfig} = require("./floating-ball-model.js");
 
 const SKIN_IDS = ["fusion", "apple", "midnight", "paper"];
 
+// T-6810：Essentials rootId 形态校验（14 位时间戳 + '-' + 字母数字），去重、限 10 条
+const ESSENTIAL_ID_RE = /^\d{14}-[0-9a-z]+$/i;
+function normalizeEssentials(value, max = 10) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const items = [];
+    for (const raw of value) {
+        if (items.length >= max) break;
+        if (typeof raw !== "string" || !ESSENTIAL_ID_RE.test(raw) || seen.has(raw)) continue;
+        seen.add(raw);
+        items.push(raw);
+    }
+    return items;
+}
+
 function normalizeSkin(value) {
     return SKIN_IDS.includes(value) ? value : "fusion";
 }
@@ -105,6 +120,8 @@ function normalizeSettings(saved, options = {}) {
         skin: normalizeSkin(source.skin),
         // T-6805 拼音辅助匹配：默认开启；关闭后标题匹配只走子串
         pinyinMatch: source.pinyinMatch === undefined ? true : source.pinyinMatch === true,
+        // T-6810 Essentials 常驻层：跨文档集自动打开的必需文档 rootId（≤10，形态校验）
+        documentSetEssentials: normalizeEssentials(source.documentSetEssentials),
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),
@@ -173,4 +190,4 @@ function buildStorageUsageSummary(entries) {
     return {rows, total};
 }
 
-module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary, normalizeSkin, SKIN_IDS};
+module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary, normalizeSkin, normalizeEssentials, SKIN_IDS};

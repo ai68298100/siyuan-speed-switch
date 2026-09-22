@@ -124,3 +124,22 @@ test("skin: registry whitelist falls back to fusion", () => {
     });
     assert.equal(themed.skin, "paper");
 });
+
+test("settings: document set essentials normalize bounds and dedupes", () => {
+    const good = "20260923120000-aaaaaaa";
+    const alsoGood = "20260923120001-bbbbbbb";
+    const normalized = normalizeSettings({
+        documentSetEssentials: [good, good, "bad-id", alsoGood, 42],
+    }, {
+        sortBy: [], dockDisplay: [], sidebarLayout: [],
+        quickActions: (value) => value,
+        floatingBall: (value) => value,
+    });
+    assert.deepEqual(normalized.documentSetEssentials, [good, alsoGood],
+        "malformed ids drop, duplicates collapse, order preserved");
+    assert.equal(normalizeSettings({}, {
+        sortBy: [], dockDisplay: [], sidebarLayout: [],
+        quickActions: (value) => value,
+        floatingBall: (value) => value,
+    }).documentSetEssentials.length, 0);
+});

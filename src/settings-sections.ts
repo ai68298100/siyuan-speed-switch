@@ -79,6 +79,10 @@ export interface SettingsSectionsHost {
     addFavoriteSmartGroup(name: string, tag: string): boolean;
     removeFavoriteSmartGroup(name: string): void;
     getFavoriteTagOptions(): Promise<Array<{name: string; count: string | number}>>;
+    getDocumentSetEssentials(): string[];
+    addDocumentSetEssentialsFromCurrentTabs(): number;
+    removeDocumentSetEssential(rootId: string): void;
+    buildDocumentSetEssentialsManager(): HTMLElement;
     createFavoriteGroup(name: string): boolean;
     deleteFavoriteGroup(name: string): void;
     renameFavoriteGroup(from: string, to: string): void;
@@ -923,6 +927,8 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
         guideNote.className = "sw-document-set-guide__note";
         guideNote.textContent = this.i18n.documentSetsGuideNote;
         guide.append(guideTitle, guidePurpose, guideSteps, guideNote);
+        // T-6810 Essentials 常驻层：跨文档集自动打开的必需文档管理
+        guide.appendChild(this.buildDocumentSetEssentialsManager.call(this));
         const hint = document.createElement("p");
         hint.className = "sw-settings__hint";
         hint.textContent = this.i18n.documentSetsTip;
