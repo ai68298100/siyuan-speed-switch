@@ -317,3 +317,14 @@ test('new command and widget i18n keys exist in both languages', () => {
         assert.ok(en[key] && en[key].length > 0, `en 缺少 ${key}`);
     }
 });
+
+test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
+    assert.match(indexSource, /private applySkin\(\): void/);
+    assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
+    assert.match(indexSource, /delete document\.body\.dataset\.swSkin;/, 'unload must remove the body marker');
+    const skins = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_10-skins.scss'));
+    assert.match(skins, /body\[data-sw-skin="apple"\]/, 'apple must define its scope');
+    assert.match(skins, /body\[data-sw-skin="midnight"\]/, 'midnight must define its scope');
+    assert.match(skins, /body\[data-sw-skin="paper"\]/, 'paper must define its scope');
+    assert.match(skins, /--b3-theme-primary/, 'skins override theme variables by design');
+});

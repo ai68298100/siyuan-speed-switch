@@ -561,6 +561,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     documentSetsAutoSave: true, // T-6800 工作区切换：离开当前集时自动快照（默认开）
     documentSetsCurrentId: "", // T-6800 当前工作区集 id（空=尚未激活任何集）
     favoriteSmartGroups: [], // T-6804 标签智能分组
+    skin: "fusion", // T-6796 默认融合思源主题
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -607,6 +608,7 @@ export interface ISwSettings {
     documentSetsAutoSave: boolean; // T-6800 切换文档集时自动把现场快照回当前集（默认开）
     documentSetsCurrentId: string; // T-6800 当前工作区语义：最近一次恢复/激活的文档集 id
     favoriteSmartGroups: Array<{name: string; tag: string}>; // T-6804 标签智能分组（最多 4 组）
+    skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
 }
 
 export interface IGroupedTab {
@@ -621,6 +623,7 @@ interface IDockPanel {
 }
 
 export type QuickActionTarget = "desktop" | "sidebar" | "mobile";
+export type PanelSkin = "fusion" | "apple" | "midnight" | "paper";
 type QuickActionKind = "builtin" | "dock" | "adapter" | "command" | "global";
 export type QuickActionSupport = "supported" | "unsupported" | "unknown";
 export interface IQuickAction {
@@ -861,6 +864,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
 
         this.captureRecentOpenSnapshot();
+        // T-6796：设置加载完成后应用已保存的皮肤（body 标记）
+        this.applySkin();
         this.bindGlobalEvents();
         // 命令注册经 safeRegisterPluginCommand 隔离：内核 addCommand 抛错（如
         // globalCallback 触发的 sendGlobalShortcut 读 window.siyuan.languages["_trayMenu"]
@@ -1497,6 +1502,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
+        // T-6796 皮肤层：卸载时移除 body 标记，宿主恢复纯净主题
+        if (typeof document !== "undefined" && document.body) {
+            delete document.body.dataset.swSkin;
+        }
         const pendingSaves = this.flushPendingSaves();
         const globalEventHandlers = this.globalEventHandlers;
         if (globalEventHandlers && typeof this.eventBus.off === "function") {
@@ -1738,6 +1747,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.data[SETTINGS_KEY] = settings;
         this.settingsCache = null; // 设置已变更，下一次读取重新规范化
         this.saveDataDebounced(SETTINGS_KEY);
+        if (Object.prototype.hasOwnProperty.call(patch, "skin")) {
+            this.applySkin();
+        }
         if (Object.keys(patch).some((key) => key !== "lastSettingsTab")) {
             this.refreshOpenSwitchers();
             if (this.sidebarElement?.isConnected) {
@@ -1750,6 +1762,19 @@ export default class SpeedSwitchPlugin extends Plugin {
                 document.querySelector<HTMLElement>(".sw-floating-ball-settings")
                     ?.dispatchEvent(new Event("sw-floating-ball-refresh"));
             }
+        }
+    }
+
+    // T-6796 皮肤层应用：body 上只放标记属性；变量覆盖在 CSS 内限定于速切
+    // 自己的根容器（.speed-switch/.sw-home/.sw-fab-root/.sw-settings-dialog），
+    // 宿主思源与其他插件零影响。onload 应用、设置变更即刷新、onunload 移除。
+    private applySkin(): void {
+        if (typeof document === "undefined" || !document.body) return;
+        const skin = this.getSettings().skin || "fusion";
+        if (skin === "fusion") {
+            delete document.body.dataset.swSkin;
+        } else {
+            document.body.dataset.swSkin = skin;
         }
     }
 

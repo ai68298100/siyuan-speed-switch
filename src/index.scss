@@ -17,3 +17,5 @@
 @use "styles/07-sidebar-panel-store" as *;
 @use "styles/08-home-store-cards" as *;
 @use "styles/09-store-preview-polish" as *;
+//   10 可选独立皮肤层（ADR 0073）：变量作用域限速切根容器，宿主零影响
+@use "styles/10-skins" as *;

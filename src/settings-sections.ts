@@ -112,6 +112,14 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
             {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
         ];
         wrapper.append(
+            // T-6796 皮肤：fusion=融合思源主题（默认），其余为独立皮肤
+            this.settingItem(this.i18n.skinLabel, this.i18n.skinTip,
+                this.select([
+                    {value: "fusion", label: this.i18n.skinFusion},
+                    {value: "apple", label: this.i18n.skinApple},
+                    {value: "midnight", label: this.i18n.skinMidnight},
+                    {value: "paper", label: this.i18n.skinPaper},
+                ], s.skin || "fusion", (v) => this.updateSettings({skin: v as ISwSettings["skin"]}))),
             this.settingItem(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip,
                 this.select(sizeModeOptions, s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode}))),
             this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,

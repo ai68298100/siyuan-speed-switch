@@ -1,0 +1,148 @@
+// ==================== 可选独立皮肤层（T-6796/T-6797/T-6798，ADR 0073） ====================
+// 机制：body[data-sw-skin] 只做标记；变量覆盖经由 :is() 限定在速切自己的
+// 根容器（.speed-switch / .sw-home / .sw-fab-root / .sw-settings-dialog）内，
+// 宿主思源与其他插件零影响。质感层（blur/圆角/阴影/壁纸）可整文件卸载。
+// 无障碍：各皮肤的文字/底色组合按 T-6697 夹具思路保持 WCAG AA；
+// prefers-reduced-motion 与 44px 触控语义不受皮肤影响。
+
+@mixin sw-skin-root-vars {
+    .speed-switch,
+    .sw-home,
+    .sw-fab-root,
+    .sw-settings-dialog {
+        @content;
+    }
+}
+
+// ==================== 1. 苹果风格 · 液态玻璃 Light（T-6797） ====================
+body[data-sw-skin="apple"] {
+    @include sw-skin-root-vars {
+        --b3-theme-background: #f5f5f7;
+        --b3-theme-surface: rgba(255, 255, 255, .78);
+        --b3-theme-surface-lighter: rgba(0, 0, 0, .045);
+        --b3-theme-primary: #0a84ff;
+        --b3-theme-on-primary: #ffffff;
+        --b3-theme-on-background: #1d1d1f;
+        --b3-theme-on-surface: #48484d;
+        --b3-theme-on-surface-light: rgba(29, 29, 31, .58);
+        --b3-border-color: rgba(0, 0, 0, .09);
+        --b3-theme-warning: #ff9f0a;
+        --b3-theme-error: #ff453a;
+    }
+
+    .speed-switch,
+    .sw-home {
+        background:
+            radial-gradient(120% 90% at 12% 0%, #dfe9fb 0%, transparent 52%),
+            radial-gradient(110% 80% at 92% 12%, #f6e3ee 0%, transparent 50%),
+            radial-gradient(120% 100% at 50% 108%, #dcefe6 0%, transparent 55%),
+            #f2f3f7;
+    }
+
+    .speed-switch .sw__card,
+    .speed-switch .sw__doc-item,
+    .sw-home__cell,
+    .speed-switch .sw__search {
+        backdrop-filter: blur(18px) saturate(1.6);
+        -webkit-backdrop-filter: blur(18px) saturate(1.6);
+        border-radius: 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 28px rgba(29, 35, 60, .10);
+    }
+
+    .sw-fab-trigger { box-shadow: 0 4px 16px rgba(10, 90, 220, .38); }
+
+    .sw__floating-ball-action {
+        backdrop-filter: blur(18px) saturate(1.6);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(29, 35, 60, .14);
+    }
+}
+
+// ==================== 2. 暗夜玻璃 · Dark Glass（T-6798） ====================
+body[data-sw-skin="midnight"] {
+    @include sw-skin-root-vars {
+        --b3-theme-background: #0b0e16;
+        --b3-theme-surface: rgba(24, 29, 42, .82);
+        --b3-theme-surface-lighter: rgba(255, 255, 255, .06);
+        --b3-theme-primary: #8b9dff;
+        --b3-theme-on-primary: #0d1020;
+        --b3-theme-on-background: #e8eaf4;
+        --b3-theme-on-surface: #b9bdd1;
+        --b3-theme-on-surface-light: rgba(232, 234, 244, .60);
+        --b3-border-color: rgba(255, 255, 255, .10);
+        --b3-theme-warning: #ffc46b;
+        --b3-theme-error: #ff7a76;
+        color-scheme: dark;
+    }
+
+    .speed-switch,
+    .sw-home {
+        background:
+            radial-gradient(120% 90% at 10% 0%, #1b2440 0%, transparent 55%),
+            radial-gradient(110% 80% at 90% 16%, #3a1f47 0%, transparent 52%),
+            radial-gradient(130% 100% at 50% 110%, #14273a 0%, transparent 58%),
+            #0b0e16;
+    }
+
+    .speed-switch .sw__card,
+    .speed-switch .sw__doc-item,
+    .sw-home__cell,
+    .speed-switch .sw__search {
+        backdrop-filter: blur(20px) saturate(1.3);
+        -webkit-backdrop-filter: blur(20px) saturate(1.3);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(255, 255, 255, .06);
+    }
+
+    .sw-fab-trigger { box-shadow: 0 4px 18px rgba(139, 157, 255, .45); }
+
+    .sw__floating-ball-action {
+        backdrop-filter: blur(20px) saturate(1.3);
+        background: rgba(28, 34, 50, .88);
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+        color: #e8eaf4;
+    }
+}
+
+// ==================== 3. 暖纸墨水 · Paper（T-6798） ====================
+body[data-sw-skin="paper"] {
+    @include sw-skin-root-vars {
+        --b3-theme-background: #f7f3ec;
+        --b3-theme-surface: #fffdf8;
+        --b3-theme-surface-lighter: #f0e9dc;
+        --b3-theme-primary: #b4552f;
+        --b3-theme-on-primary: #fff8f2;
+        --b3-theme-on-background: #2f2a22;
+        --b3-theme-on-surface: #6b6252;
+        --b3-theme-on-surface-light: rgba(47, 42, 34, .62);
+        --b3-border-color: #e2d8c6;
+        --b3-theme-warning: #b07a1f;
+        --b3-theme-error: #a83a2e;
+    }
+
+    .speed-switch,
+    .sw-home {
+        background:
+            radial-gradient(100% 70% at 85% 0%, #f2e7d3 0%, transparent 55%),
+            #f7f3ec;
+    }
+
+    .speed-switch .sw__card,
+    .speed-switch .sw__doc-item,
+    .sw-home__cell {
+        border-radius: 10px;
+        box-shadow: 0 1px 0 rgba(120, 100, 70, .12), 0 6px 16px rgba(120, 100, 70, .08);
+        border: 1px solid #e8ddc9;
+    }
+
+    .sw-fab-trigger {
+        border-radius: 14px;
+        box-shadow: 0 3px 10px rgba(120, 70, 30, .28);
+    }
+
+    .sw__floating-ball-action {
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(120, 100, 70, .16);
+    }
+}

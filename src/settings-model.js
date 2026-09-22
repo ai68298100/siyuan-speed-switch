@@ -7,6 +7,17 @@ const {normalizeFloatingBallConfig} = require("./floating-ball-model.js");
  * `options` supplies range and enum validators so this module remains a small
  * serializable boundary that can also be reused by migration tooling.
  */
+// ==================== T-6796 皮肤注册表（白名单） ====================
+// fusion = 跟随思源主题（默认，无覆盖）；其余为 _10-skins.scss 中定义的
+// 独立皮肤 id。新增皮肤必须：①加入白名单 ②在 _10-skins.scss 提供变量与
+// 质感层 ③i18n 三键（名称/描述）④对比度采样过 WCAG AA。
+
+const SKIN_IDS = ["fusion", "apple", "midnight", "paper"];
+
+function normalizeSkin(value) {
+    return SKIN_IDS.includes(value) ? value : "fusion";
+}
+
 function normalizeSettings(saved, options = {}) {
     const defaults = options.defaults && typeof options.defaults === "object" ? options.defaults : {};
     const source = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
@@ -24,8 +35,7 @@ function normalizeSettings(saved, options = {}) {
         ? options.quickActions(source.quickActions)
         : (Array.isArray(source.quickActions) ? source.quickActions : (defaults.quickActions || []));
     // T-6804 标签智能分组（与 favorite-actions.js 的清洗规则保持一致）
-    const smartGroups = [];
-    if (Array.isArray(source.favoriteSmartGroups)) {
+    const smartGroups = [];    if (Array.isArray(source.favoriteSmartGroups)) {
         for (const raw of source.favoriteSmartGroups) {
             if (smartGroups.length >= 4) break;
             if (!raw || typeof raw !== "object") continue;
@@ -91,6 +101,8 @@ function normalizeSettings(saved, options = {}) {
             ? source.documentSetsCurrentId.trim().slice(0, 64) : "",
         // T-6804 标签智能分组：有界（4 组），标签名剔除 LIKE 通配/引号字符
         favoriteSmartGroups: smartGroups,
+        // T-6796 皮肤：白名单外的值一律回落融合主题
+        skin: normalizeSkin(source.skin),
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),
@@ -159,4 +171,4 @@ function buildStorageUsageSummary(entries) {
     return {rows, total};
 }
 
-module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary};
+module.exports = {normalizeSettings, resolvePanelSize, formatStorageBytes, buildStorageUsageSummary, normalizeSkin, SKIN_IDS};

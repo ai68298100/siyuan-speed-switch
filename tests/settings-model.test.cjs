@@ -104,3 +104,23 @@ test("settings: document set session fields default and bound", () => {
     assert.ok(bounded.documentSetsCurrentId.length <= 64);
     assert.equal(bounded.documentSetsCurrentId, bounded.documentSetsCurrentId.trim());
 });
+
+test("skin: registry whitelist falls back to fusion", () => {
+    const {normalizeSkin, SKIN_IDS} = require("../src/settings-model.js");
+    assert.deepEqual(SKIN_IDS, ["fusion", "apple", "midnight", "paper"]);
+    for (const id of SKIN_IDS) assert.equal(normalizeSkin(id), id);
+    assert.equal(normalizeSkin("rainbow"), "fusion", "unregistered skins fall back to fusion");
+    assert.equal(normalizeSkin(undefined), "fusion");
+    const defaults = normalizeSettings({}, {
+        sortBy: [], dockDisplay: [], sidebarLayout: [],
+        quickActions: (value) => value,
+        floatingBall: (value) => value,
+    });
+    assert.equal(defaults.skin, "fusion", "skin defaults to fusion mode");
+    const themed = normalizeSettings({skin: "paper"}, {
+        sortBy: [], dockDisplay: [], sidebarLayout: [],
+        quickActions: (value) => value,
+        floatingBall: (value) => value,
+    });
+    assert.equal(themed.skin, "paper");
+});
