@@ -302,7 +302,7 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.30.1`（2026-09-22 发布；包含悬浮球与 Task Horizon 手机命令联动，Release 资产由 workflow 自动构建）。
+当前版本为 `v0.30.1`（2026-09-22 正式发布；包含悬浮球与 Task Horizon 手机命令联动，Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
