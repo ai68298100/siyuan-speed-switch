@@ -76,3 +76,29 @@ test("component panel uses the shared builtin executor and preserves unavailable
     assert.deepEqual(events, ["close", "home"]);
     assert.deepEqual(await executeFloatingBallAction(action), {ok: false, reason: "unavailable"});
 });
+
+test("floating action executor dispatches host commands through the bridge", async () => {
+    const calls = [];
+    const result = await executeFloatingBallAction({kind: "global", value: "riffCard"}, {
+        close: () => calls.push("close"),
+        onGlobalCommand: (action) => { calls.push(`global:${action.command}`); },
+    });
+    assert.deepEqual(result, {ok: true});
+    assert.deepEqual(calls, ["close", "global:riffCard"]);
+});
+
+test("floating action executor reports unavailable when the host bridge is missing", async () => {
+    const calls = [];
+    const missing = await executeFloatingBallAction({kind: "global", value: "outline"}, {});
+    assert.deepEqual(missing, {ok: false, reason: "unavailable"}, "no bridge callback means unavailable");
+    const declined = await executeFloatingBallAction({kind: "global", value: "outline"}, {
+        onGlobalCommand: () => ({ok: false, reason: "unavailable"}),
+    });
+    assert.deepEqual(declined, {ok: false, reason: "unavailable"},
+        "pre-3.8.3 hosts decline through the callback and surface as unavailable");
+    const result = await executeFloatingBallAction({kind: "global", value: "outline"}, {
+        onGlobalCommand: () => { calls.push("ran"); },
+    });
+    assert.deepEqual(result, {ok: true});
+    assert.deepEqual(calls, ["ran"]);
+});

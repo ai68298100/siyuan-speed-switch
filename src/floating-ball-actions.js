@@ -87,6 +87,23 @@ async function invokeDock(action, options) {
     }
 }
 
+// Host commands (T-6789) are executed through the host-provided bridge; this
+// module only checks that a bridge callback exists and forwards the verified
+// command key. The callback answers with {ok:false} when the running SiYuan
+// lacks globalCommand (pre-3.8.3) so callers get the unavailable state.
+async function invokeGlobal(action, options) {
+    const command = actionValue(action);
+    if (!command) return unavailable();
+    const callback = callbackOf(options, "onGlobalCommand");
+    if (!callback) return unavailable();
+    invokeClose(options);
+    const result = await callback({...action, command});
+    if (result && typeof result === "object" && result.ok === false) {
+        return result.reason === "failed" ? failed() : unavailable();
+    }
+    return success(result);
+}
+
 async function invokeCommand(action, options) {
     const value = actionValue(action);
     const separator = value.indexOf("::");
@@ -133,6 +150,7 @@ async function executeFloatingBallAction(action, options = {}) {
         if (kind === "adapter") return await invokeAdapter(action, options);
         if (kind === "dock") return await invokeDock(action, options);
         if (kind === "command") return await invokeCommand(action, options);
+        if (kind === "global") return await invokeGlobal(action, options);
         switch (actionValue(action)) {
             case "switcher": {
                 const callback = callbackOf(options, "onSwitcher");

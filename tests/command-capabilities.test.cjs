@@ -69,7 +69,7 @@ function host(transform = (text) => text) {
     const source = readFileSync(require.resolve("../src/index.ts"), "utf8");
     const file = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
     const klass = file.statements.find((node) => ts.isClassDeclaration(node) && node.name?.text === "SpeedSwitchPlugin");
-    const names = ["getPluginCommands", "getQuickActionDeclaredTargets", "getQuickActionSupport", "getQuickActionPickerCandidates", "getFloatingBallActions"];
+    const names = ["getPluginCommands", "getQuickActionDeclaredTargets", "getQuickActionSupport", "getQuickActionPickerCandidates", "getFloatingBallActions", "hostCommandsAvailable"];
     const methods = names.map((name) => {
         const members = klass.members.filter((node) => ts.isMethodDeclaration(node) && node.name?.getText(file) === name);
         assert.equal(members.length, 1);

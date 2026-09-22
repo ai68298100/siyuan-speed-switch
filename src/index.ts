@@ -17,6 +17,7 @@ import {
     getDefaultQuickActionTargets,
     resolveQuickActionSupport,
     getQuickActionCommandTargets,
+    getGlobalQuickActions,
     shouldRenderQuickAction,
     appendQuickAction,
     migrateQuickActionDefaults,
@@ -614,7 +615,7 @@ interface IDockPanel {
 }
 
 export type QuickActionTarget = "desktop" | "sidebar" | "mobile";
-type QuickActionKind = "builtin" | "dock" | "adapter" | "command";
+type QuickActionKind = "builtin" | "dock" | "adapter" | "command" | "global";
 export type QuickActionSupport = "supported" | "unsupported" | "unknown";
 export interface IQuickAction {
     id: string;
@@ -3308,14 +3309,35 @@ const version = beginSearch(session);
             const plugins = (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins;
             return getQuickActionCommandTargets(plugins, action.value) as QuickActionTarget[] | undefined;
         }
+        // Host commands ship a source-verified surface set in their catalog
+        // entry (T-6790); treat it as the declaration.
+        if (action.kind === "global" && Array.isArray(action.targets)) {
+            return [...action.targets];
+        }
         if (action.kind !== "adapter") return undefined;
         const adapterId = action.value.split("/", 1)[0];
         return this.quickActionAdapterTargets.get(adapterId);
     }
 
     private getQuickActionSupport(action: IQuickAction, target: QuickActionTarget): QuickActionSupport {
+        // globalCommand is only exported by SiYuan 3.8.3+; older hosts must
+        // see these actions as unsupported rather than broken at runtime.
+        if (action.kind === "global" && !this.hostCommandsAvailable()) return "unsupported";
         return resolveQuickActionSupport(action.kind, action.value, target,
             this.getQuickActionDeclaredTargets(action)) as QuickActionSupport;
+    }
+
+    /** SiYuan 3.8.3+ exposes globalCommand on the plugin instance (API.ts createAPI). */
+    private hostCommandsAvailable(): boolean {
+        return typeof (this as unknown as {globalCommand?: unknown}).globalCommand === "function";
+    }
+
+    /** Dispatch a verified host command (T-6790 catalog) through the official bridge. */
+    private runHostCommand(value: string): boolean {
+        const bridge = this as unknown as {globalCommand?: (command: string, app: unknown) => unknown};
+        if (typeof bridge.globalCommand !== "function") return false;
+        bridge.globalCommand.call(this, value, this.app);
+        return true;
     }
 
     /**
@@ -3497,6 +3519,8 @@ const version = beginSearch(session);
             onNextTab: () => this.cycleFloatingBallTab(1),
             onScrollTop: () => this.scrollFloatingBallSurface(actionSurface, "top"),
             onScrollBottom: () => this.scrollFloatingBallSurface(actionSurface, "bottom"),
+            onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
+                ? undefined : {ok: false, reason: "unavailable"},
         });
         void Promise.resolve(executor(action)).then((result) => {
             if (result?.ok) return;
@@ -4739,6 +4763,31 @@ const version = beginSearch(session);
                 group: this.i18n.quickBuiltin,
                 secondary: describe(action.kind, action.value, action.targets),
                 searchText: `${action.label} ${action.value} ${this.i18n.quickBuiltin}`,
+                action,
+            });
+        });
+        const globalLabels: Record<string, string> = {
+            outline: this.i18n.quickGlobalOutline,
+            bookmark: this.i18n.quickGlobalBookmark,
+            tag: this.i18n.quickGlobalTag,
+            inbox: this.i18n.quickGlobalInbox,
+            backlinks: this.i18n.quickGlobalBacklinks,
+            recentDocs: this.i18n.quickGlobalRecentDocs,
+            recentClosed: this.i18n.quickGlobalRecentClosed,
+            riffCard: this.i18n.quickGlobalRiffCard,
+            editReadonly: this.i18n.quickGlobalEditReadonly,
+        };
+        getGlobalQuickActions().forEach((raw) => {
+            const action = raw as IQuickAction;
+            if (existing.has(`global:${action.value}`)) return;
+            action.label = globalLabels[action.value] || action.label;
+            candidates.push({
+                id: action.id,
+                label: action.label,
+                icon: action.icon,
+                group: this.i18n.quickHostCommands,
+                secondary: describe(action.kind, action.value, action.targets, action.targets),
+                searchText: `${action.label} ${action.value} ${this.i18n.quickHostCommands}`,
                 action,
             });
         });
@@ -8593,6 +8642,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 available = typeof (command?.callback || command?.globalCallback) === "function";
                 providerId = pluginId;
                 source = pluginId;
+            } else if (action.kind === "global") {
+                available = this.hostCommandsAvailable();
+                providerId = "siyuan";
+                source = this.i18n.quickHostSource;
             } else if (action.kind === "dock") {
                 available = Boolean(this.getDockByType(action.value));
             }
@@ -8631,6 +8684,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onNextTab: () => this.cycleFloatingBallTab(1),
             onScrollTop: () => this.scrollFloatingBallSurface(surface, "top"),
             onScrollBottom: () => this.scrollFloatingBallSurface(surface, "bottom"),
+            onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
+                ? undefined : {ok: false, reason: "unavailable"},
         });
         void executor(action).then((result) => {
             if (this.floatingBallUis.get(surface) !== controller) return;

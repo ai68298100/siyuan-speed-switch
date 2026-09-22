@@ -1424,6 +1424,15 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             "next-tab": this.i18n.quickBuiltinNextTab,
             "scroll-top": this.i18n.quickBuiltinScrollTop,
             "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
+            outline: this.i18n.quickGlobalOutline,
+            bookmark: this.i18n.quickGlobalBookmark,
+            tag: this.i18n.quickGlobalTag,
+            inbox: this.i18n.quickGlobalInbox,
+            backlinks: this.i18n.quickGlobalBacklinks,
+            recentDocs: this.i18n.quickGlobalRecentDocs,
+            recentClosed: this.i18n.quickGlobalRecentClosed,
+            riffCard: this.i18n.quickGlobalRiffCard,
+            editReadonly: this.i18n.quickGlobalEditReadonly,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };

@@ -1,11 +1,29 @@
 // 快捷入口配置的纯函数层：持久化数据不可信，所有字段在进入 UI 前统一清理。
 const {normalizeQuickActionText, graphemeLength, graphemeSlice, normalizeCustomIcon} = require("./util.js");
-const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
+const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command", "global"]);
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set([
     "switcher", "search", "journal", "settings", "home",
     "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom",
 ]);
+// T-6789/T-6790（§8.0.11）：宿主命令动作目录。targets 按思源源码证据声明：
+// global.ts 的 MOBILE 分支（v3.8.1+ 源码核对）仅支持 fileTree/outline/bookmark/
+// tag/inbox/backlinks/mainMenu/globalSearch/recentDocs；riffCard/recentClosed/
+// editReadonly 只在桌面分支。能力检测（globalCommand 是否存在）由宿主层负责。
+const GLOBAL_QUICK_ACTIONS = [
+    {id: "global-outline", label: "大纲", icon: "iconList", kind: "global", value: "outline", targets: ["desktop", "mobile"], order: 10, enabled: true},
+    {id: "global-bookmark", label: "书签", icon: "iconBookmark", kind: "global", value: "bookmark", targets: ["desktop", "mobile"], order: 20, enabled: true},
+    {id: "global-tag", label: "标签", icon: "iconTags", kind: "global", value: "tag", targets: ["desktop", "mobile"], order: 30, enabled: true},
+    {id: "global-inbox", label: "收集箱", icon: "iconInbox", kind: "global", value: "inbox", targets: ["desktop", "mobile"], order: 40, enabled: true},
+    {id: "global-backlinks", label: "反链", icon: "iconBacklink", kind: "global", value: "backlinks", targets: ["desktop", "mobile"], order: 50, enabled: true},
+    {id: "global-recent-docs", label: "最近文档", icon: "iconHistory", kind: "global", value: "recentDocs", targets: ["desktop", "mobile"], order: 60, enabled: true},
+    {id: "global-recent-closed", label: "最近关闭", icon: "iconClose", kind: "global", value: "recentClosed", targets: ["desktop"], order: 70, enabled: true},
+    {id: "global-riff-card", label: "闪卡复习", icon: "iconRiff", kind: "global", value: "riffCard", targets: ["desktop"], order: 80, enabled: true},
+    {id: "global-edit-readonly", label: "编辑只读", icon: "iconLock", kind: "global", value: "editReadonly", targets: ["desktop"], order: 90, enabled: true},
+];
+function getGlobalQuickActions() {
+    return GLOBAL_QUICK_ACTIONS.map((item) => ({...item}));
+}
 const BUILTIN_QUICK_ACTIONS = [
     {id: "switcher", label: "切换", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "search", label: "搜索", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
@@ -125,6 +143,13 @@ function resolveQuickActionSupport(kind, value, target, declaredTargets) {
         return builtin?.targets.includes(target) ? "supported" : "unsupported";
     }
     if (kind === "dock") return target === "mobile" ? "unsupported" : "supported";
+    if (kind === "global") {
+        // Declared targets carry the source-verified surface set. Without a
+        // declaration stay conservative: mobile is unknown until the provider
+        // proves it, matching the command-kind contract.
+        if (Array.isArray(declaredTargets)) return normalizeTargets(declaredTargets).includes(target) ? "supported" : "unsupported";
+        return target === "mobile" ? "unknown" : "supported";
+    }
     if (kind === "command") {
         if (Array.isArray(declaredTargets)) return normalizeTargets(declaredTargets).includes(target) ? "supported" : "unsupported";
         return target === "mobile" ? "unknown" : "supported";
@@ -208,7 +233,7 @@ function sanitizeQuickActions(value, max = 12) {
         if (!raw || typeof raw !== "object") { changed = true; return; }
         const kind = QUICK_ACTION_KINDS.has(raw.kind) ? raw.kind : "builtin";
         const valueId = typeof raw.value === "string" ? raw.value : "";
-        const validValue = kind === "dock" || kind === "adapter" || kind === "command"
+        const validValue = kind === "dock" || kind === "adapter" || kind === "command" || kind === "global"
             ? valueId.length > 0 : BUILTIN_VALUES.has(valueId);
         const id = typeof raw.id === "string" && /^[A-Za-z0-9_-]+$/.test(raw.id) ? raw.id : `${kind}-${valueId || index}`;
         if (!validValue || seen.has(id)) { changed = true; return; }
@@ -250,6 +275,7 @@ module.exports = {
     sanitizeQuickActions,
     getDefaultQuickActions,
     getBuiltinQuickActions,
+    getGlobalQuickActions,
     getDefaultQuickActionTargets,
     resolveQuickActionSupport,
     shouldRenderQuickAction,

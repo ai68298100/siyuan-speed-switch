@@ -4,6 +4,7 @@ const {
     sanitizeQuickActions,
     getDefaultQuickActions,
     getBuiltinQuickActions,
+    getGlobalQuickActions,
     getDefaultQuickActionTargets,
     resolveQuickActionSupport,
     shouldRenderQuickAction,
@@ -185,4 +186,39 @@ test("quick actions: append normalizes external labels and icons", () => {
     assert.equal(result.items[0].label, "新建 任");
     assert.equal(result.items[0].icon, "iconPlugin");
     assert.deepEqual(result.items[0].targets, ["desktop", "sidebar"]);
+});
+
+test("host commands: catalog carries source-verified surface declarations", () => {
+    const globals = getGlobalQuickActions();
+    assert.equal(globals.length, 9);
+    assert.equal(new Set(globals.map((item) => item.value)).size, 9, "command keys stay unique");
+    globals.forEach((item) => {
+        assert.equal(item.kind, "global");
+        assert.ok(Array.isArray(item.targets) && item.targets.length > 0, `${item.value} declares targets`);
+    });
+    // global.ts mobile branch (v3.8.1+ source) covers these six commands.
+    for (const key of ["outline", "bookmark", "tag", "inbox", "backlinks", "recentDocs"]) {
+        const action = globals.find((item) => item.value === key);
+        assert.deepEqual(action.targets, ["desktop", "mobile"], `${key} is desktop+mobile`);
+    }
+    // Desktop-only: absent from the global.ts mobile switch.
+    for (const key of ["recentClosed", "riffCard", "editReadonly"]) {
+        const action = globals.find((item) => item.value === key);
+        assert.deepEqual(action.targets, ["desktop"], `${key} stays desktop-only until mobile evidence exists`);
+    }
+});
+
+test("host commands: support follows declarations and sanitizing keeps the kind", () => {
+    assert.equal(resolveQuickActionSupport("global", "riffCard", "desktop", ["desktop"]), "supported");
+    assert.equal(resolveQuickActionSupport("global", "riffCard", "mobile", ["desktop"]), "unsupported");
+    assert.equal(resolveQuickActionSupport("global", "outline", "mobile", ["desktop", "mobile"]), "supported");
+    assert.equal(resolveQuickActionSupport("global", "outline", "mobile", undefined), "unknown",
+        "undeclared host commands keep the conservative mobile unknown state");
+    assert.equal(resolveQuickActionSupport("global", "outline", "sidebar", ["desktop", "mobile"]), "unsupported");
+    assert.equal(getDefaultQuickActionTargets("global", "outline", undefined)[0], "desktop");
+    const result = sanitizeQuickActions([
+        {id: "global-outline", kind: "global", value: "outline", label: "大纲", targets: ["desktop", "mobile"], order: 10, enabled: true},
+    ]);
+    assert.equal(result.items[0].kind, "global", "the global kind survives storage sanitizing");
+    assert.deepEqual(result.items[0].targets, ["desktop", "mobile"]);
 });
