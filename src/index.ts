@@ -6,7 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -3046,22 +3046,28 @@ const updatedMap: {[rootId: string]: string} = {};
         scrollElement.dataset.swDocSearchQuery = keyword;
         const session = getDocSearchSession.call(this, scrollElement);
         const filters = this.docSearchState.filters.get(scrollElement) || {};
-        this.filterCards(scrollElement, searchInput.value, new Set(), filters);
+        // T-6802 查询运算符：解析一次，全链路共享（本地页签匹配 / 内核查询清洗 /
+        // 统一索引分区 / 文档结果客户端预过滤）。发给内核的查询剔除排除项。
+        const parsedQuery = parseSearchQuery(searchInput.value);
+        const kernelQuery = formatCleanQuery(parsedQuery);
+        this.docSearchState.parsedQueries.set(scrollElement, parsedQuery);
+        this.filterCards(scrollElement, searchInput.value, new Set(), filters, parsedQuery);
         // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
         // 页签卡片与全库文档结果之间；空查询时整块移除。
-        this.renderUnifiedSections(scrollElement, keyword, onClose);
+        this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
 
         // 每次输入都让上一轮请求失效。空关键词或缓存命中也必须递增序号；
         // 否则较慢的旧请求返回后会覆盖当前界面。
 const version = beginSearch(session);
 
         // 鍏抽敭璇嶄负绌猴細闅愯棌鏂囨。缁撴灉锛屾仮澶嶇函鍒楄〃
-        if (keyword === "") {
+        if (keyword === "" || kernelQuery === "") {
+            // 空查询，或只剩排除项（没有正向词可交给内核）时不发请求
             renderDocResults.call(this, scrollElement, null, onClose);
             return;
         }
-        // 鍛戒腑缂撳瓨鐩存帴娓叉煋锛堝凡鎵撳紑鏂囨。鍦ㄦ覆鏌撴椂鎺掗櫎锛岀紦瀛樼粨鏋滃彲瀹夊叏澶嶇敤锛?
-        const cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters});
+        // 鍛戒腑缂撳瓨鐩存帴娓叉煋锛堜紝鍚庢灉鍙?缂撳瓨缁撴灉鍙?瀹夊叏澶嶇敤锛?
+        const cacheKey = buildSearchCacheKey({scope: "global", query: kernelQuery, filters});
         const cached = session.cache.get(cacheKey);
         if (cached) {
             renderDocResults.call(this, scrollElement, cached, onClose);
@@ -3071,14 +3077,14 @@ const version = beginSearch(session);
         // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核；
         session.timer = window.setTimeout(() => {
             session.timer = null;
-            runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey);
+            runDocSearchFetch.call(this, scrollElement, searchInput, kernelQuery, version, onClose, filters, cacheKey);
         }, SEARCH_DEBOUNCE_MS);
     }
 
     // T-6799 统一索引分区：收藏/最近关闭/文档集的查询命中。挂在页签卡片之后、
     // 全库文档结果区之前；激活语义见 activateUnifiedItem。纯过滤逻辑在
     // switcher-unified-index.js（可单元测试），本层只做装配。
-    private renderUnifiedSections(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose) {
+    private renderUnifiedSections(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose, parsedQuery?: {phrases: string[]; excludes: string[]; terms: string[]}) {
         const existing = scrollElement.querySelector<HTMLElement>(".sw__unified");
         if (!keyword) {
             existing?.remove();
@@ -3091,6 +3097,7 @@ const version = beginSearch(session);
             documentSets: this.getDocumentSets(),
             excludeRootIds: collectOpenRootIds.call(this),
             limitPerSection: 4,
+            parsedQuery,
         });
         if (!sections.length) {
             existing?.remove();
@@ -5883,8 +5890,11 @@ const version = beginSearch(session);
         keyword: string,
         contentRoots: Set<string> = new Set(),
         filters: IDocSearchFilters = this.docSearchState.filters.get(scrollElement) || {},
+        parsedQuery?: {phrases: string[]; excludes: string[]; terms: string[]},
     ): number {
         const kw = keyword.trim().toLowerCase();
+        const parsed = parsedQuery || parseSearchQuery(keyword);
+        const parsedPositive = parsed.phrases.length + parsed.terms.length;
         const allowLocalTitleMatch = (!filters.method || filters.method === "keyword")
             && (!filters.types || filters.types.document === true)
             && !filters.subTypes;
@@ -5899,8 +5909,13 @@ const version = beginSearch(session);
                 hPath: card.dataset.searchPath || "",
                 notebookId: card.dataset.notebookId || "",
             }, normalizedScope);
+            // T-6802：有解析结果时用运算符语义（短语+词 AND、排除项剔除），
+            // 否则维持旧的"原始子串包含"。
+            const titleMatch = parsedPositive > 0 || parsed.excludes.length > 0
+                ? matchesParsedQuery(title, parsed)
+                : (!kw || title.includes(kw));
             const match = matchesNotebook && matchesPath
-                && (!kw || (allowLocalTitleMatch && title.includes(kw)) || contentRoots.has(rootId));
+                && (!kw || (allowLocalTitleMatch && titleMatch) || contentRoots.has(rootId));
             card.classList.toggle("fn__none", !match);
             if (match) {
                 visible++;
@@ -6483,6 +6498,8 @@ private rootIdOf(tab: Tab): string | null {
     // 不持久化——跨会话的"浏览位置"属宿主能力，插件不伪造。
 
     private docScrollMemory = new Map<string, number>();
+    // T-6802 上次选择置顶：同一查询下用户上次选中的文档结果优先展示（会话级，FIFO 32）
+    private lastPickedByQuery = new Map<string, string>();
 
     private captureDocScrollFromElement(rootId: string, element: HTMLElement) {
         if (!BLOCK_ID_RE.test(rootId)) return;

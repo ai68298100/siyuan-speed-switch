@@ -20,12 +20,12 @@ const zh = JSON.parse(fs.readFileSync(path.join(root, "src", "i18n", "zh-CN.json
 const en = JSON.parse(fs.readFileSync(path.join(root, "src", "i18n", "en.json"), "utf8"));
 
 test("render layer consumes the pure pagination planner", () => {
-    assert.match(docSearchUi, /const plan = planDocResultsPage\(docs, openRootIds, expandedCount\)/,
-        "渲染切片必须由纯模型决策");
+    assert.match(docSearchUi, /const plan = planDocResultsPage\(effectiveDocs, openRootIds, expandedCount, promoteId\)/,
+        "渲染切片必须由纯模型决策（T-6802 起消费运算符预过滤与置顶 id）");
     assert.match(docSearchUi, /plan\.items\.forEach\(\(\{doc, id\}\) => \{/,
         "卡片装配必须消费 plan.items");
-    assert.match(searchModel, /function planDocResultsPage\(docs, openRootIds, expandedCount\) \{/,
-        "纯模型必须存在于 search-model");
+    assert.match(searchModel, /function planDocResultsPage\(docs, openRootIds, expandedCount, promoteId\) \{/,
+        "纯模型必须存在于 search-model（含 T-6802 置顶参数）");
 });
 
 test("load-more button expands incrementally with focus continuity", () => {

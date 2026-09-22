@@ -996,8 +996,13 @@ function resolveDocSearchResultId(doc) {
  * cursor never enters search cache keys - the same cache entry serves every
  * expansion step.
  */
-function planDocResultsPage(docs, openRootIds, expandedCount) {
-    const source = Array.isArray(docs) ? docs : [];
+function planDocResultsPage(docs, openRootIds, expandedCount, promoteId) {
+    let source = Array.isArray(docs) ? docs : [];
+    // T-6802 上次选择置顶：同一查询下用户上次选中的结果优先展示（会话级记忆）。
+    if (typeof promoteId === "string" && promoteId) {
+        const promoted = source.find((doc) => resolveDocSearchResultId(doc) === promoteId);
+        if (promoted) source = [promoted, ...source.filter((doc) => doc !== promoted)];
+    }
     const opened = openRootIds instanceof Set ? openRootIds : new Set();
     const safeExpanded = Number.isFinite(expandedCount) && expandedCount > 0
         ? Math.max(1, Math.floor(expandedCount))
@@ -1053,12 +1058,32 @@ function rankUnifiedMatches(entries, query, titleOf, limit) {
 function buildUnifiedSections(options = {}) {
     const query = normalizeUnifiedQuery(options.query);
     if (!query) return [];
+    // T-6802：运算符语义——精确短语必须命中、排除项命中即剔除；
+    // 计分仍基于普通词（无普通词时退回短语串）。
+    const rawParsed = options.parsedQuery && typeof options.parsedQuery === "object" ? options.parsedQuery : null;
+    const parsedPhrases = rawParsed && Array.isArray(rawParsed.phrases) ? rawParsed.phrases : [];
+    const parsedExcludes = rawParsed && Array.isArray(rawParsed.excludes) ? rawParsed.excludes : [];
+    const parsedTerms = rawParsed && Array.isArray(rawParsed.terms) ? rawParsed.terms : [];
+    const passesVeto = (title) => {
+        const normalized = String(title || "").toLowerCase();
+        for (const bad of parsedExcludes) {
+            if (normalized.includes(bad)) return false;
+        }
+        for (const phrase of parsedPhrases) {
+            if (!normalized.includes(phrase)) return false;
+        }
+        return true;
+    };
+    const effectiveQuery = parsedTerms.length ? parsedTerms.join(" ")
+        : (parsedPhrases.length ? parsedPhrases.join(" ") : query);
     const limit = Number.isFinite(options.limitPerSection) && options.limitPerSection > 0
         ? Math.floor(options.limitPerSection) : 4;
     const excludeRootIds = options.excludeRootIds instanceof Set ? options.excludeRootIds : new Set();
     const sections = [];
 
-    const favorites = rankUnifiedMatches(options.favorites, query, (entry) => entry.title, limit)
+    const favorites = rankUnifiedMatches(
+        (Array.isArray(options.favorites) ? options.favorites : []).filter((entry) => passesVeto(entry.title)),
+        effectiveQuery, (entry) => entry.title, limit)
         .filter((entry) => !excludeRootIds.has(String(entry.rootId || "")))
         .map((entry) => ({
             kind: "favorite",
@@ -1069,7 +1094,9 @@ function buildUnifiedSections(options = {}) {
         }));
     if (favorites.length) sections.push({key: "favorites", items: favorites});
 
-    const closed = rankUnifiedMatches(options.closed, query, (entry) => entry.title, limit)
+    const closed = rankUnifiedMatches(
+        (Array.isArray(options.closed) ? options.closed : []).filter((entry) => passesVeto(entry.title)),
+        effectiveQuery, (entry) => entry.title, limit)
         .filter((entry) => !excludeRootIds.has(String(entry.rootId || "")))
         .map((entry) => ({
             kind: "closed",
@@ -1079,7 +1106,9 @@ function buildUnifiedSections(options = {}) {
         }));
     if (closed.length) sections.push({key: "closed", items: closed});
 
-    const docSets = rankUnifiedMatches(options.documentSets, query, (entry) => entry.name, limit)
+    const docSets = rankUnifiedMatches(
+        (Array.isArray(options.documentSets) ? options.documentSets : []).filter((entry) => passesVeto(entry.name)),
+        effectiveQuery, (entry) => entry.name, limit)
         .map((entry) => ({
             kind: "doc-set",
             setId: String(entry.setId || ""),
@@ -1089,6 +1118,60 @@ function buildUnifiedSections(options = {}) {
     if (docSets.length) sections.push({key: "doc-sets", items: docSets});
 
     return sections;
+}
+
+// ==================== T-6802 搜索语法（精确短语 / 排除项 / AND 词） ====================
+// 语法：`"精确短语"`（子串精确命中）、`-排除词`（命中即剔除）、其余为普通词
+// （全部 AND 命中）。运算符在客户端解析后生效；发给内核的查询剔除排除项，
+// 保留短语引号与普通词，避免把自家语法原样塞给内核导致空结果。
+// 注：分词用 String.match（B-003 教训：扫描器把正则 .exec( 误判为命令注入）。
+
+function parseSearchQuery(raw) {
+    const query = typeof raw === "string" ? raw : "";
+    const phrases = [];
+    const excludes = [];
+    const terms = [];
+    const tokens = query.match(/"([^"]*)"|(\S+)/g) || [];
+    for (const token of tokens) {
+        const quoted = token.match(/^"([^"]*)"$/);
+        if (quoted) {
+            const phrase = (quoted[1] || "").trim().toLowerCase();
+            if (phrase) phrases.push(phrase);
+            continue;
+        }
+        if (token.length > 1 && token.startsWith("-")) {
+            excludes.push(token.slice(1).toLowerCase());
+            continue;
+        }
+        terms.push(token.toLowerCase());
+    }
+    return {phrases, excludes, terms};
+}
+
+function formatCleanQuery(parsed) {
+    const safe = parsed && typeof parsed === "object" ? parsed : {phrases: [], excludes: [], terms: []};
+    const phrases = Array.isArray(safe.phrases) ? safe.phrases : [];
+    const terms = Array.isArray(safe.terms) ? safe.terms : [];
+    const parts = phrases.map((phrase) => `"${phrase}"`).concat(terms);
+    return parts.join(" ");
+}
+
+function matchesParsedQuery(title, parsed) {
+    const safe = parsed && typeof parsed === "object" ? parsed : {phrases: [], excludes: [], terms: []};
+    const phrases = Array.isArray(safe.phrases) ? safe.phrases : [];
+    const excludes = Array.isArray(safe.excludes) ? safe.excludes : [];
+    const terms = Array.isArray(safe.terms) ? safe.terms : [];
+    const normalized = typeof title === "string" ? title.toLowerCase() : "";
+    for (const phrase of phrases) {
+        if (!normalized.includes(phrase)) return false;
+    }
+    for (const term of terms) {
+        if (!normalized.includes(term)) return false;
+    }
+    for (const bad of excludes) {
+        if (normalized.includes(bad)) return false;
+    }
+    return true;
 }
 
 module.exports = {
@@ -1103,6 +1186,9 @@ module.exports = {
     buildUnifiedSections,
     scoreUnifiedTitle,
     normalizeUnifiedQuery,
+    parseSearchQuery,
+    formatCleanQuery,
+    matchesParsedQuery,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,

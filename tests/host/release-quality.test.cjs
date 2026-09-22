@@ -183,6 +183,10 @@ test('production bundle remains within the mobile performance budget when built'
     // B4 lifecycle/accessibility surface landed. The raw line is a review
     // signal rather than a host limit; the 512 KiB archive ceiling, 256 KiB
     // compressed-entry line, and drift diagnostics remain unchanged.
+    // 2026-09-23 (ADR 0074): recalibrated to 960 KiB after the research-absorb
+    // cycle R1 landed host-command bridge, sync, template insert, unified
+    // index, workspace switching, and scroll restoration. Same review-signal
+    // policy; hard ceilings unchanged and the next bump requires a new audit.
     const budget = metrics.RAW_BUNDLE_BUDGET_BYTES;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });

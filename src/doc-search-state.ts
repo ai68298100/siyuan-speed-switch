@@ -16,6 +16,15 @@ export interface DocSearchState {
     pathGeneration: number;
     /** 每个 scroll 元素已预取的路径标题 */
     pathTitles: WeakMap<HTMLElement, Map<string, string>>;
+    /** T-6802：每个 scroll 元素当前查询的运算符解析结果（精确短语/排除项/普通词） */
+    parsedQueries: WeakMap<HTMLElement, IParsedSearchQuery>;
+}
+
+/** T-6802 查询运算符解析结果：`"精确短语"` / `-排除词` / 普通词（全部 AND） */
+export interface IParsedSearchQuery {
+    phrases: string[];
+    excludes: string[];
+    terms: string[];
 }
 
 export function createDocSearchState(): DocSearchState {
@@ -26,5 +35,6 @@ export function createDocSearchState(): DocSearchState {
         notebookNames: new WeakMap(),
         pathGeneration: 0,
         pathTitles: new WeakMap(),
+        parsedQueries: new WeakMap(),
     };
 }

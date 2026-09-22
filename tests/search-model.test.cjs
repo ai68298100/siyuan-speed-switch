@@ -863,3 +863,19 @@ test("unified index: non-matching sources produce no empty sections", () => {
     });
     assert.deepEqual(sections, []);
 });
+
+test("search syntax: operators parse into phrases, excludes and AND terms", () => {
+    const {parseSearchQuery, formatCleanQuery, matchesParsedQuery} = require("../src/search-model.js");
+    const parsed = parseSearchQuery('产品 "路线 图" -日记 -随手');
+    assert.deepEqual(parsed.phrases, ["路线 图"]);
+    assert.deepEqual(parsed.excludes, ["日记", "随手"]);
+    assert.deepEqual(parsed.terms, ["产品"]);
+    assert.equal(formatCleanQuery(parsed), '"路线 图" 产品');
+    assert.equal(formatCleanQuery(parseSearchQuery("")), "");
+    assert.equal(matchesParsedQuery("2026 产品路线 图规划", parsed), true);
+    assert.equal(matchesParsedQuery("产品 日记", parsed), false, "excluded term vetoes the match");
+    assert.equal(matchesParsedQuery("产品 规划", parsed), false, "missing phrase fails the match");
+    const bare = parseSearchQuery("-x");
+    assert.equal(matchesParsedQuery("anything", bare), true, "exclude-only query keeps titles without the term");
+    assert.equal(matchesParsedQuery("x file", bare), false, "a title containing the excluded term is vetoed");
+});

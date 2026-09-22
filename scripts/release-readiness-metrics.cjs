@@ -2,7 +2,11 @@
 // accessibility surface adds real production code. Keep this as a review
 // signal while leaving the 512 KiB archive ceiling and 256 KiB compressed
 // entry line unchanged.
-const RAW_BUNDLE_BUDGET_BYTES = 896 * 1024;
+// ADR 0074 (2026-09-23): recalibrated 896 -> 960 KiB after the research-absorb
+// cycle R1 batch (host-command bridge, sync, template insert, unified index,
+// workspace switching, scroll restoration). Dated recalibration, hard ceilings
+// unchanged; the next bump requires a new audit (ADR 0059/0062/0067 program).
+const RAW_BUNDLE_BUDGET_BYTES = 960 * 1024;
 const ARCHIVE_BUDGET_BYTES = 512 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the

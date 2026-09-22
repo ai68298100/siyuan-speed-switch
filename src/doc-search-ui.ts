@@ -6,7 +6,7 @@ import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, normalizeSearchResult, planDocResultsPage, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, planDocResultsPage, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
@@ -33,6 +33,7 @@ export interface DocSearchUiHost {
     getMobileTabs(): Tab[];
     rootIdOf(tab: Tab): string | null;
     mobileOpenDoc(rootId: string): Promise<boolean>;
+    lastPickedByQuery: Map<string, string>;
 }
 
 export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook: string, path: string, generation: number) {
@@ -741,9 +742,22 @@ export function renderDocResults(this: DocSearchUiHost,
             return;
         }
         // 鎺掗櫎褰撳墠宸叉墦寮€鐨勬枃妗ｏ紙涓婂崐閮ㄥ垎宸叉湁瀵瑰簲鍗＄墖锛夛紱鎵嬫満绔?getAllTabs() 鎭掍负绌猴紝闇€鐢?MobileTabs 鏁版嵁婧?
-const openRootIds = collectOpenRootIds.call(this);
+        const openRootIds = collectOpenRootIds.call(this);
 
-        if (docs.length === 0) {
+        // T-6802：运算符客户端预过滤（排除项剔除 / 短语必须命中），以及
+        // "上次选择置顶"——同一查询下用户上次选中的结果优先展示。
+        const parsedQuery = this.docSearchState.parsedQueries.get(scrollElement);
+        let effectiveDocs = docs;
+        if (parsedQuery && (parsedQuery.phrases.length > 0 || parsedQuery.excludes.length > 0)) {
+            effectiveDocs = docs.filter((doc) => matchesParsedQuery(
+                `${String(doc.title || "")} ${String(doc.hPath || "")}`,
+                parsedQuery,
+            ));
+        }
+        const queryKey = (scrollElement.dataset.swDocSearchQuery || "").trim().toLowerCase();
+        const promoteId = queryKey ? this.lastPickedByQuery.get(queryKey) : undefined;
+
+        if (effectiveDocs.length === 0) {
             appendDocResultsEmpty.call(this, box);
             return;
         }
@@ -751,11 +765,11 @@ const openRootIds = collectOpenRootIds.call(this);
         // T-6257（D-384）增量展开：切片/去重/已打开排除/是否还有余量
         // 全部由纯模型 planDocResultsPage 决策（可单元测试），
         // 本层只负责 DOM 装配与按钮接线。
-        const plan = planDocResultsPage(docs, openRootIds, expandedCount);
+        const plan = planDocResultsPage(effectiveDocs, openRootIds, expandedCount, promoteId);
         const grid = document.createElement("div");
         grid.className = "sw__doc-grid";
         plan.items.forEach(({doc, id}) => {
-            grid.appendChild(buildDocResultItem.call(this, doc, id, onClose));
+            grid.appendChild(buildDocResultItem.call(this, doc, id, onClose, queryKey));
         });
         if (grid.childElementCount === 0) {
             appendDocResultsEmpty.call(this, box);
@@ -916,7 +930,7 @@ export async function openDocSearchResult(this: DocSearchUiHost, rootId: string,
     }
 
     // 单个文档搜索结果按钮（图标 + 标题 + 路径）；点击直开文档（手机端走 MobileTabs.open）
-export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult, id: string, onClose: IOverlayClose): HTMLButtonElement {
+export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult, id: string, onClose: IOverlayClose, query = ""): HTMLButtonElement {
         const item = document.createElement("button");
         item.type = "button";
         item.className = "sw__doc-item";
@@ -956,6 +970,17 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         item.title = hPath || docTitle;
         item.setAttribute("aria-label", hPath || docTitle);
         item.addEventListener("click", () => {
+            // T-6802 上次选择置顶：记录"该查询 → 选中结果"，会话内重复查询时置顶
+            if (query) {
+                const map = this.lastPickedByQuery;
+                map.delete(query);
+                map.set(query, id);
+                while (map.size > 32) {
+                    const oldest = map.keys().next().value;
+                    if (oldest === undefined) break;
+                    map.delete(oldest);
+                }
+            }
             onClose();
             void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id));
         });
