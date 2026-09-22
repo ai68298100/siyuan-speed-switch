@@ -1507,6 +1507,9 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     preview.setAttribute("aria-label", this.i18n.floatingBallPreview);
     const previewTitle = document.createElement("strong");
     previewTitle.textContent = this.i18n.floatingBallPreview;
+    const previewSurfaceChip = document.createElement("span");
+    previewSurfaceChip.className = "sw-floating-ball-settings__surface-chip";
+    previewSurfaceChip.setAttribute("aria-hidden", "true");
     const previewStage = document.createElement("div");
     previewStage.className = "sw-floating-ball-settings__preview-stage";
     const previewStatus = document.createElement("p");
@@ -1516,7 +1519,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     previewStatus.textContent = this.i18n.floatingBallPreviewTip;
     const previewMoreSummary = document.createElement("span");
     previewMoreSummary.className = "sw-settings__hint";
-    preview.append(previewTitle, previewStage, previewMoreSummary, previewStatus);
+    preview.append(previewTitle, previewSurfaceChip, previewStage, previewMoreSummary, previewStatus);
     wrapper.insertBefore(preview, controlsSection);
 
     const actionSection = document.createElement("section");
@@ -1549,6 +1552,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         // Resolve proportional coordinates without measuring layout on each input.
         const coordinate = (ratio: number, extra = 0) => `calc(${ratio * 100}% + ${(1 - 2 * ratio) * (marginPx + sizePx / 2) + extra}px)`;
         previewStage.innerHTML = "";
+        previewSurfaceChip.textContent = surfaceLabels[surface] || surface;
         previewStage.dataset.surface = surface;
         previewStage.dataset.edge = position.edge;
         previewStage.dataset.direction = direction;
