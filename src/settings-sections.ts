@@ -11,7 +11,7 @@ import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
-import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
 import {selectFloatingBallMoreActions} from "./floating-ball-panel";
 import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings, checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
@@ -1245,7 +1245,9 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     const toggleBox = document.createElement("div");
     toggleBox.className = "sw-floating-ball-settings__toggles";
     const toggles = new Map<string, HTMLInputElement>();
-    FLOATING_BALL_SURFACES.forEach((surface) => {
+    // ADR 0072: the sidebar portal is withdrawn — settings expose desktop and
+    // mobile only; legacy sidebar fields stay tolerated in the stored config.
+    FLOATING_BALL_UI_SURFACES.forEach((surface) => {
         const label = surfaceLabels[surface] || surface;
         const toggle = this.switcher(Boolean(initial.enabled[surface]), (checked) => {
             const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
@@ -1274,7 +1276,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     surfaceLabel.textContent = this.i18n.floatingBallEditSurface;
     const surfaceSelect = document.createElement("select");
     surfaceSelect.className = "b3-select fn__flex-center";
-    FLOATING_BALL_SURFACES.forEach((surface) => surfaceSelect.appendChild(new Option(surfaceLabels[surface] || surface, surface)));
+    FLOATING_BALL_UI_SURFACES.forEach((surface) => surfaceSelect.appendChild(new Option(surfaceLabels[surface] || surface, surface)));
     surfaceSelect.value = this.isMobile ? "mobile" : "desktop";
     surfaceSelect.setAttribute("aria-label", this.i18n.floatingBallEditSurface);
     surfaceSelectRow.append(surfaceLabel, surfaceSelect);

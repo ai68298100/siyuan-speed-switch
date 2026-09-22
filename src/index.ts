@@ -848,9 +848,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (this.isMobile) {
             this.registerMobileEntries();
         } else {
-            // Desktop and sidebar floating-ball entries are independently
-            // enabled.  Sidebar is mounted lazily when its dock element is
-            // first created by the host.
+            // ADR 0072: only the desktop window mounts a floating ball; the
+            // sidebar dock no longer hosts its own portal.
             this.updateFloatingBallVisibility();
         }
 
@@ -8863,9 +8862,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const settings = this.getSettings();
         const config = settings.floatingBall || {};
         const enabled = (surface: FloatingBallSurface) => Boolean(config.enabled?.[surface]);
-        const surfaces: FloatingBallSurface[] = this.isMobile
-            ? ["mobile"]
-            : ["desktop", "sidebar"];
+        // ADR 0072: the sidebar portal is withdrawn (it duplicated the
+        // desktop-window ball inside the same host window). The sweep below
+        // still destroys a stale sidebar controller left by an earlier release.
+        const surfaces: FloatingBallSurface[] = this.isMobile ? ["mobile"] : ["desktop"];
 
         // A frontend switch/hot reload must not leave a controller from the
         // previous surface alive.  The controller's destroy is idempotent.
@@ -8874,8 +8874,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             .forEach((surface) => this.destroyFloatingBallSurface(surface));
 
         surfaces.forEach((surface) => {
-            const hostReady = surface !== "sidebar" || Boolean(this.sidebarElement?.isConnected);
-            if (!enabled(surface) || !hostReady) {
+            if (!enabled(surface)) {
                 this.destroyFloatingBallSurface(surface);
                 return;
             }

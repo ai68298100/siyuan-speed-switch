@@ -164,12 +164,10 @@ function assertClickActionSettings(t, options = {}) {
         select.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
     };
     set("search");
-    selectSurface(ui, "sidebar");
-    assert.equal(select.value, "switcher");
-    set("__floating-ball-more__");
     selectSurface(ui, "mobile");
+    assert.equal(select.value, "switcher");
     set("home");
-    assert.deepEqual(ui.state.floatingBall.clickAction, {desktop: "search", sidebar: "__floating-ball-more__", mobile: "home"}, "click settings are surface-independent");
+    assert.deepEqual(ui.state.floatingBall.clickAction, {desktop: "search", sidebar: "switcher", mobile: "home"}, "click settings are surface-independent and legacy sidebar values stay untouched");
     selectSurface(ui, "desktop");
     assert.equal(select.value, "search", "returning to a surface restores its saved choice");
 }
@@ -245,10 +243,10 @@ test("floating settings contracts reject lost per-surface writes, presentation a
     }
 });
 
-test("floating settings UI toggles three surfaces independently and reads latest config", (t) => {
+test("floating settings UI toggles desktop and mobile independently and reads latest config", (t) => {
     const ui = mount(t);
     const switches = [...ui.root.querySelectorAll(".sw-floating-ball-settings__toggles input[type=checkbox]")];
-    assert.equal(switches.length, 3);
+    assert.equal(switches.length, 2, "ADR 0072: only desktop and mobile toggles remain");
     // Simulate a position write arriving after the settings DOM was created.
     ui.state = {
         ...ui.state,
@@ -260,12 +258,11 @@ test("floating settings UI toggles three surfaces independently and reads latest
     switches[0].click();
     assert.deepEqual(ui.state.floatingBall.enabled, {desktop: true, sidebar: false, mobile: false});
     switches[1].click();
-    switches[2].click();
     switches[0].click();
-    assert.deepEqual(ui.state.floatingBall.enabled, {desktop: false, sidebar: true, mobile: true});
+    assert.deepEqual(ui.state.floatingBall.enabled, {desktop: false, sidebar: false, mobile: true}, "legacy sidebar flags persist untouched but lose their toggle");
     assert.deepEqual(ui.state.floatingBall.position.mobile, {edge: "left", yRatio: 0.11});
     assert.equal(ui.state.fabEnabled, true, "legacy mobile projection remains in sync");
-    assert.equal(ui.patches.length, 4);
+    assert.equal(ui.patches.length, 3);
 });
 
 test("floating settings UI sorting follows rendered order and leaves other surfaces intact", (t) => {
@@ -305,10 +302,8 @@ test("floating settings sliders preview without writes and commit once on change
     size.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
     assert.equal(ui.patches.length, 1);
     assert.equal(ui.state.floatingBall.appearance.size, 64);
-    selectSurface(ui, "sidebar");
-    assert.equal(size.disabled, true);
-    assert.equal(size.value, "44");
-    assert.equal(previewBall().style.width, "44px", "narrow sidebars retain their dedicated size");
+    const surfaceOptions = [...ui.root.querySelectorAll(".sw-floating-ball-settings__surface select option")].map((option) => option.value);
+    assert.deepEqual(surfaceOptions, ["desktop", "mobile"], "ADR 0072: the sidebar surface is withdrawn from settings");
     selectSurface(ui, "mobile");
     assert.equal(size.disabled, false);
     assert.equal(size.value, "64", "desktop and mobile use the saved shared size");

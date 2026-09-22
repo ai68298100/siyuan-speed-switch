@@ -423,6 +423,12 @@ function resolveFloatingBallClickAction(requested, availableActions = [], surfac
 module.exports = {
     FLOATING_BALL_SCHEMA_VERSION,
     FLOATING_BALL_SURFACES,
+    // ADR 0072: the sidebar portal is withdrawn from the product (it overlapped
+    // the desktop-window ball on the same host window). The schema-level
+    // FLOATING_BALL_SURFACES above still normalizes legacy sidebar fields so
+    // old configs and imports stay valid; only mounting and settings entry
+    // shrink to these two surfaces.
+    FLOATING_BALL_UI_SURFACES: ["desktop", "mobile"],
     FLOATING_BALL_EDGES,
     FLOATING_BALL_FIRST_LAYER_LIMIT,
     FLOATING_BALL_ACTION_LIMIT,

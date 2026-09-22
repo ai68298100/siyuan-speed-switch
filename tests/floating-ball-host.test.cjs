@@ -333,16 +333,13 @@ test("floating ball host tracks nested dialogs while surfaces are enabled and mo
     assert.equal(host.fabModalDepth, 0);
 });
 
-test("floating ball host destroys stale frontends and disconnected sidebar surfaces", (t) => {
+test("floating ball host mounts desktop and mobile only after sidebar withdrawal", (t) => {
     const {host, config} = mount(t);
     Object.assign(config.enabled, {desktop: true, sidebar: true, mobile: true});
     host.updateFloatingBallVisibility();
+    assert.equal(host.floatingBallUis.has("sidebar"), false, "ADR 0072: the sidebar portal is withdrawn");
     const desktop = host.floatingBallUis.get("desktop");
-    const sidebar = host.floatingBallUis.get("sidebar");
-    host.sidebarElement.remove();
-    host.updateFloatingBallVisibility();
-    assert.equal(sidebar.destroyed, true);
-    assert.equal(host.floatingBallPanels.has("sidebar"), false);
+    assert.ok(desktop);
     host.isMobile = true;
     host.updateFloatingBallVisibility();
     assert.equal(desktop.destroyed, true);
