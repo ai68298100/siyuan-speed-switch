@@ -542,6 +542,19 @@ F1 修复设计（下批实施）：home-view 渲染纯文本行组件时输出 
 
 2026-09-23 用户指令（[ADR 0072](docs/adr/0072-floating-ball-sidebar-withdrawal.md)）：悬浮球撤出侧栏端（T-6788 已完成），只保留桌面主窗口与手机端——侧栏与桌面同窗重复且空间狭窄。挂载与设置收缩为 `FLOATING_BALL_UI_SURFACES=["desktop","mobile"]`；schema 三面保留以兼容旧配置与导入包，纯函数层不删。后续悬浮球触发器（T-6784~T-6787）只需覆盖两端。
 
+### 8.0.11 2026-09-23 悬浮球增量功能路线（现行，基于源码与竞品调研）
+
+调研完成（`docs/floating-ball-next-research-2026-09-23.md`）：思源 3.8.3+ 官方命令系统 `globalCommand`（插件可直接调用桌面 68+移动 27 条宿主命令）是最大增量，配合 `openTab({card})`、`getActiveEditor().protyle.insert`、`/api/template/render`、`/api/sync/performSync`、`openWindow`、`platformUtils.sendNotification` 与移动端原生桥，悬浮球动作空间从"插件自建动作"扩展到"宿主命令 + 系统桥接"。竞品分类学（FV 二维手势/drag-to-target/任务分享、AssistiveTouch 槽位、OPPO 场景化、三星 App Pairs）按单应用笔记软件过滤后确认：截屏录屏/分屏浮窗/应用推荐/背面敲击等不适配，明确不做。
+
+| 批次 | 任务 | 内容 | 状态 |
+| --- | --- | --- | --- |
+| 近批 | T-6789 | 命令类动作底座：executor 增 `globalCommand` 分支 + 能力检测（3.8.3+，缺失降级不抬 minAppVersion） | ⏸ 排队 |
+| 近批 | T-6790 | 首批命令动作：闪卡复习、大纲、反链、收集箱、最近文档/关闭、只读切换（桌面 openTab 优先、手机命令分支回退） | ⏸ 排队 |
+| 近批 | T-6791 | 一键同步动作：performSync 直调 + sync 事件执行态 + 只读/发布模式降级 | ⏸ 排队 |
+| 近批 | T-6792 | 模板插入/快速记录升级：template/render + protyle.insert 光标写入 | ⏸ 排队 |
+| 次批 | T-6793~T-6795 | 桌面抛独立窗口；手机系统动作包（通知/收起键盘/回桌面/iOS 震动，裸桥判空降级）；键盘事件避让 | ⏸ 排队 |
+| 池 | 评估池 | drag-to-target、AI 选区问答、addFloatLayer、配置分享等（见调研报告 §4）；导出为图片/护眼/全屏**不可稳定达，明确不做** | ⏸ 等反馈 |
+
 Task Horizon 移动联动（T-6772～T-6775）：提供方复用现有手机管理器/快速新建表单并修复两条命令；雷切识别实时 `getQuickActionCapabilities()` 声明，复用旧动作 ID，执行时重查能力并接收失败结果。实现与作者交付在独立分支推进，设备验收仍归 B-004/B-005；详见 [ADR 0070](docs/adr/0070-task-horizon-mobile-commands.md) 和 [补丁交付说明](docs/integrations/task-horizon-mobile.md)。本次未将主工作区未提交的 P1 通用动作记为完成。
 
 ### 8.0.9 2026-09-22 思源 3.8.5 侧滑与悬浮球输入边界复核（研究完成，暂不开发）
