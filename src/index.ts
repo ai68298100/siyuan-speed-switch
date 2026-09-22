@@ -3752,6 +3752,10 @@ const version = beginSearch(session);
             onInsertTemplate: () => this.openTemplatePicker(),
             onCycleDocSet: () => this.cycleDocumentSet(),
             onCycleBallPreset: () => this.cycleBallPreset(),
+            onThrowToWindow: () => this.throwActiveDocToWindow()
+                ? undefined : {ok: false, reason: "unavailable"},
+            onHideKeyboard: () => this.hideMobileKeyboard()
+                ? undefined : {ok: false, reason: "unavailable"},
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -4841,6 +4845,31 @@ const version = beginSearch(session);
         showMessage(this.i18n.floatingBallPresetApplied.replace("{x}", applied.preset.name), MESSAGE_DEFAULT_MS);
     }
 
+    // T-6793 抛独立窗口：把当前活动文档送入思源桌面独立小窗（官方 openWindow，
+    // 仅桌面；无活动文档/非桌面时如实不可用）。
+    private throwActiveDocToWindow(): boolean {
+        if (this.isMobile) return false;
+        const editor = this.resolveActiveHostEditor();
+        const rootId = (editor?.protyle as unknown as {block?: {parentID?: string}})?.block?.parentID || "";
+        if (!rootId || !BLOCK_ID_RE.test(rootId)) return false;
+        const bridge = this as unknown as {openWindow?: (options: {doc: {id: string}}) => void};
+        if (typeof bridge.openWindow !== "function") return false;
+        bridge.openWindow.call(this, {doc: {id: rootId}});
+        return true;
+    }
+
+    // T-6794 收起键盘：Android 原生桥（思源 keyboardToolbar 同款守卫调用）；
+    // iOS 无对应桥，如实不可用。
+    private hideMobileKeyboard(): boolean {
+        if (!this.isMobile) return false;
+        const bridge = window as unknown as {JSAndroid?: {hideKeyboard?: () => void}};
+        if (bridge.JSAndroid && typeof bridge.JSAndroid.hideKeyboard === "function") {
+            bridge.JSAndroid.hideKeyboard();
+            return true;
+        }
+        return false;
+    }
+
     // 执行 "插件名::命令key"（协议 v2 条目级命令 / 模块级 clickCommand 共用）
     private executeHomeCommand(command: string, close: () => void): boolean {
         if (!/^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(command)) return false;
@@ -5049,6 +5078,8 @@ const version = beginSearch(session);
             "insert-template": this.i18n.quickBuiltinInsertTemplate,
             "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
             "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
+            "throw-window": this.i18n.quickBuiltinThrowWindow,
+            "hide-keyboard": this.i18n.quickBuiltinHideKeyboard,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -9215,6 +9246,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onInsertTemplate: () => this.openTemplatePicker(),
             onCycleDocSet: () => this.cycleDocumentSet(),
             onCycleBallPreset: () => this.cycleBallPreset(),
+            onThrowToWindow: () => this.throwActiveDocToWindow()
+                ? undefined : {ok: false, reason: "unavailable"},
+            onHideKeyboard: () => this.hideMobileKeyboard()
+                ? undefined : {ok: false, reason: "unavailable"},
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

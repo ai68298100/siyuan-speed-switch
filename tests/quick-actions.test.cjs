@@ -57,11 +57,15 @@ test("quick actions: empty labels receive an accessible fallback", () => {
 test("quick actions: optional built-ins remain available without becoming defaults", () => {
     assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["search", "journal", "settings"]);
     assert.deepEqual(getBuiltinQuickActions().map((item) => item.value),
-        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset"]);
+        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset", "throw-window", "hide-keyboard"]);
     assert.equal(resolveQuickActionSupport("builtin", "journal", "sidebar"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "home", "mobile"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "sync-now", "mobile"), "supported",
         "the kernel is local to the device, so manual sync is mobile-safe");
+    assert.deepEqual(getBuiltinQuickActions().find((item) => item.value === "throw-window").targets, ["desktop"],
+        "openWindow is a desktop-only host API");
+    assert.deepEqual(getBuiltinQuickActions().find((item) => item.value === "hide-keyboard").targets, ["mobile"],
+        "the Android keyboard bridge only exists on mobile");
     assert.equal(resolveQuickActionSupport("builtin", "insert-template", "sidebar"), "unsupported",
         "the sidebar dock has no document editor to insert into");
 });

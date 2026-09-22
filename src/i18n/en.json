@@ -786,6 +786,8 @@
   ,"templateInsertFailed": "Template insert failed: empty render or unusable template"
   ,"quickBuiltinCycleDocSet": "Next document set"
   ,"quickBuiltinCycleBallPreset": "Next ball preset"
+  ,"quickBuiltinThrowWindow": "Open in new window"
+  ,"quickBuiltinHideKeyboard": "Dismiss keyboard"
   ,"documentSetCycleNone": "No document sets to switch (need at least two)"
   ,"floatingBallPresets": "Ball presets"
   ,"floatingBallPresetsTip": "Save the current action layout and primary click as a named scene; apply or cycle anytime."

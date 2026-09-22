@@ -138,3 +138,20 @@ test("floating action executor dispatches document set cycling to the host", asy
     assert.deepEqual(missing, {ok: false, reason: "unavailable"});
     assert.deepEqual(calls, ["close", "cycle"]);
 });
+
+test("floating action executor dispatches window-throw and keyboard-dismiss to the host", async () => {
+    const calls = [];
+    const okThrow = await executeFloatingBallAction({kind: "builtin", value: "throw-window"}, {
+        close: () => calls.push("close:throw"),
+        onThrowToWindow: () => { calls.push("throw"); },
+    });
+    assert.deepEqual(okThrow, {ok: true});
+    const okHide = await executeFloatingBallAction({kind: "builtin", value: "hide-keyboard"}, {
+        close: () => calls.push("close:hide"),
+        onHideKeyboard: () => { calls.push("hide"); },
+    });
+    assert.deepEqual(okHide, {ok: true});
+    assert.deepEqual(calls, ["close:throw", "throw", "close:hide", "hide"]);
+    const missing = await executeFloatingBallAction({kind: "builtin", value: "throw-window"}, {});
+    assert.deepEqual(missing, {ok: false, reason: "unavailable"});
+});

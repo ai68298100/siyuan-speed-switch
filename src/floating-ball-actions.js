@@ -234,6 +234,18 @@ async function executeFloatingBallAction(action, options = {}) {
                 invokeClose(options);
                 return success(await callback(action));
             }
+            case "throw-window": {
+                const callback = callbackOf(options, "onThrowToWindow");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "hide-keyboard": {
+                const callback = callbackOf(options, "onHideKeyboard");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
             default:
                 return unavailable();
         }

@@ -1519,6 +1519,8 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             "insert-template": this.i18n.quickBuiltinInsertTemplate,
             "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
             "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
+            "throw-window": this.i18n.quickBuiltinThrowWindow,
+            "hide-keyboard": this.i18n.quickBuiltinHideKeyboard,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };
