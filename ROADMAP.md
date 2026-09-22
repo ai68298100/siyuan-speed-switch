@@ -540,6 +540,22 @@ F1 修复设计（下批实施）：home-view 渲染纯文本行组件时输出 
 
 Task Horizon 移动联动（T-6772～T-6775）：提供方复用现有手机管理器/快速新建表单并修复两条命令；雷切识别实时 `getQuickActionCapabilities()` 声明，复用旧动作 ID，执行时重查能力并接收失败结果。实现与作者交付在独立分支推进，设备验收仍归 B-004/B-005；详见 [ADR 0070](docs/adr/0070-task-horizon-mobile-commands.md) 和 [补丁交付说明](docs/integrations/task-horizon-mobile.md)。本次未将主工作区未提交的 P1 通用动作记为完成。
 
+### 8.0.9 2026-09-22 思源 3.8.5 侧滑与悬浮球输入边界复核（研究完成，暂不开发）
+
+用户反馈思源手机端 3.8.5 更新左右滑后，左右边缘悬浮球容易触发侧栏。源码复核已完成（`docs/mobile-swipe-floating-ball-research-2026-09-22.md`、[ADR 0071](docs/adr/0071-mobile-swipe-ownership-for-floating-ball.md)）：3.8.5 在 `touch.ts` 中把普通页面侧滑方向激活距离设为 12 px，并按屏宽三分之一或 32 px+快速甩动提交；document 级 touch listeners 会继续看到悬浮球触摸。现有 `touch-action:none`、Pointer Capture 和 8~12 px plugin slop 不能表达对宿主 JavaScript 手势的所有权。思源已有 `data-prevent-swipe` 整轮手势契约，悬浮球当前 portal 尚未声明它。
+
+本轮结论：B0~B7 的悬浮球架构、动作目录、几何和位置方案继续可用；下一次实现只补移动端宿主手势契约，不先调阈值、不修改用户 `sidebarSwipe`、不把球简单移离边缘。推荐方案 A 是给移动 portal 根、触发按钮和恢复按钮设置 `data-prevent-swipe`；方案 B（局部 touch 冒泡隔离）只在 3.8.0 或真实设备仍有冲突时评估。3.8.1~3.8.5 已从源码确认 marker 契约，3.8.0 未发现，最低版本暂不抬升。
+
+| 批次 | 任务 | 内容 | 状态 |
+| --- | --- | --- | --- |
+| 研究 | T-6777 | 锁定 v3.8.5/v3.8.4 源码、还原侧滑阈值/提交条件、核对现有 portal 事件链、记录替代方案和验收矩阵 | ✅ 完成；本轮无生产代码变更 |
+| P0 | T-6778 | 移动 portal 根/触发按钮/恢复按钮加入 `data-prevent-swipe`；保留 Pointer Events、CSS 和配置 schema | ⏸ 待用户确认后开发 |
+| P0 | T-6779 | v3.8.5 touch 判定夹具：有 marker 时整轮不触发侧栏，无 marker 时保留宿主行为；负向注入与生命周期清理 | ⏸ 待 T-6778 |
+| 真机 | T-6780 | 3.8.5 Android/桌面验收：左右拖动、更多面板竖向滚动、旋转、键盘、侧栏开关与连续拖动 | ⏸ 受 B-004/B-005 后置 |
+| 条件 | T-6781 | 仅当 3.8.0 兼容或真机证据证明 marker 不足时，评估局部 touch firewall 或独立抬升最低版本 | ⏸ 依赖 T-6780，不预先实现 |
+
+退出条件：左右两侧悬浮球连续拖动零次意外侧栏提交、零次重复动作；更多面板竖向滚动和长按语义不回归；契约测试按 `docs/gate-audit-checklist.md` 完成负向验证；真实 Android 证据与浏览器夹具分开记录。
+
 ### 8.1 2026-09-09 重整基线（历史记录）
 
 - 以下内容记录 2026-09-09 的阶段性基线，仅用于追溯，不代表当前 GitHub 状态；当前状态以本文顶部和 8.0 确认计划为准。
