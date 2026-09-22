@@ -222,6 +222,12 @@ async function executeFloatingBallAction(action, options = {}) {
                 invokeClose(options);
                 return success(await callback(action));
             }
+            case "cycle-doc-set": {
+                const callback = callbackOf(options, "onCycleDocSet");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
             default:
                 return unavailable();
         }

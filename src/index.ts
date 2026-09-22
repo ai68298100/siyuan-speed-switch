@@ -67,7 +67,7 @@ import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, s
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
-import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore} from "./document-sets";
+import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "./favorite-actions";
@@ -558,6 +558,8 @@ const DEFAULT_SETTINGS: ISwSettings = {
     quickActionsCollapsedSidebar: false,
     quickActionsCollapsedMobile: false,
     agentActionsEnabled: true, // T-6692b 灰度开关：Agent 受控动作总开关（默认开）
+    documentSetsAutoSave: true, // T-6800 工作区切换：离开当前集时自动快照（默认开）
+    documentSetsCurrentId: "", // T-6800 当前工作区集 id（空=尚未激活任何集）
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -601,6 +603,8 @@ export interface ISwSettings {
     quickActionsCollapsedSidebar: boolean;
     quickActionsCollapsedMobile: boolean;
     agentActionsEnabled: boolean; // T-6692b 受控动作总开关
+    documentSetsAutoSave: boolean; // T-6800 切换文档集时自动把现场快照回当前集（默认开）
+    documentSetsCurrentId: string; // T-6800 当前工作区语义：最近一次恢复/激活的文档集 id
 }
 
 export interface IGroupedTab {
@@ -3712,6 +3716,7 @@ const version = beginSearch(session);
             onScrollBottom: () => this.scrollFloatingBallSurface(actionSurface, "bottom"),
             onSyncNow: () => this.syncNow(),
             onInsertTemplate: () => this.openTemplatePicker(),
+            onCycleDocSet: () => this.cycleDocumentSet(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -4729,6 +4734,9 @@ const version = beginSearch(session);
     private async restoreDocumentSetFromHome(setId: string) {
         const item = this.getDocumentSets().find((candidate: any) => candidate?.setId === setId);
         if (!item) return;
+        // T-6800 工作区切换：离开当前集（自动保存开、存在已激活集、目标不同）时，
+        // 先把当前打开现场快照回当前集，再执行目标集恢复。
+        this.snapshotCurrentDocumentSetBeforeSwitch(setId);
         const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
         const plan = planDocumentSetRestore(item, opened, null);
         if (!plan.pending.length) {
@@ -4752,8 +4760,36 @@ const version = beginSearch(session);
             return this.isMobile ? await this.mobileOpenDoc(rootId) : ((await openTab({app: this.app, doc: {id: rootId}})), true);
         });
         const summary = summarizeDocumentSetRestore(plan, probe, execution);
-        if (summary.attempted > 0) this.saveDocumentSet(item);
+        if (summary.attempted > 0) {
+            this.saveDocumentSet(item);
+            // T-6800：恢复成功即标记当前工作区集（指示器与循环切换的基准）。
+            this.updateSettings({documentSetsCurrentId: String(item.setId || "").slice(0, 64)});
+        }
         showMessage(`${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`);
+    }
+
+    // T-6800 工作区切换的"离开即快照"：把当前打开的文档现场写回当前集
+    // （条目上限沿用 DOCUMENT_SET_ENTRY_MAX，超界由 upsertDocumentSet 裁剪）。
+    private snapshotCurrentDocumentSetBeforeSwitch(targetSetId: string) {
+        const settings = this.getSettings();
+        if (settings.documentSetsAutoSave === false) return;
+        const currentId = String(settings.documentSetsCurrentId || "");
+        if (!currentId || currentId === targetSetId) return;
+        const currentSet = this.getDocumentSets().find((candidate: any) => candidate?.setId === currentId);
+        if (!currentSet) return;
+        const entries = this.currentDocumentSetEntries();
+        if (!entries.length) return;
+        this.saveDocumentSet({setId: currentId, name: currentSet.name, entries});
+    }
+
+    // T-6800 循环切换：按文档集列表顺序切到下一个（环绕）；无集或单集时不动作。
+    private async cycleDocumentSet(): Promise<void> {
+        const next = pickNextDocumentSet(this.getDocumentSets(), this.getSettings().documentSetsCurrentId);
+        if (!next) {
+            showMessage(this.i18n.documentSetCycleNone, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        await this.restoreDocumentSetFromHome(next.setId);
     }
 
     // 执行 "插件名::命令key"（协议 v2 条目级命令 / 模块级 clickCommand 共用）
@@ -4962,6 +4998,7 @@ const version = beginSearch(session);
             "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
             "sync-now": this.i18n.quickBuiltinSyncNow,
             "insert-template": this.i18n.quickBuiltinInsertTemplate,
+            "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -8897,6 +8934,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onScrollBottom: () => this.scrollFloatingBallSurface(surface, "bottom"),
             onSyncNow: () => this.syncNow(),
             onInsertTemplate: () => this.openTemplatePicker(),
+            onCycleDocSet: () => this.cycleDocumentSet(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

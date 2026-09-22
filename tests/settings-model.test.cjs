@@ -83,3 +83,24 @@ test('resolvePanelSize clamps tiny viewports and out-of-range scales', () => {
     // Missing viewport values still produce usable integers via the floor.
     assert.deepEqual(resolvePanelSize({panelSizeMode: 'adaptive', panelScale: 80}, {}), {width: 320, height: 320});
 });
+
+test("settings: document set session fields default and bound", () => {
+    const defaults = normalizeSettings({}, {
+        sortBy: [], dockDisplay: [], sidebarLayout: [],
+        quickActions: (value) => value,
+        floatingBall: (value) => value,
+    });
+    assert.equal(defaults.documentSetsAutoSave, true, "auto-save defaults on (Workona-style switching)");
+    assert.equal(defaults.documentSetsCurrentId, "");
+    const bounded = normalizeSettings({
+        documentSetsAutoSave: false,
+        documentSetsCurrentId: "  x".repeat(64) + "tail",
+    }, {
+        sortBy: [], dockDisplay: [], sidebarLayout: [],
+        quickActions: (value) => value,
+        floatingBall: (value) => value,
+    });
+    assert.equal(bounded.documentSetsAutoSave, false);
+    assert.ok(bounded.documentSetsCurrentId.length <= 64);
+    assert.equal(bounded.documentSetsCurrentId, bounded.documentSetsCurrentId.trim());
+});

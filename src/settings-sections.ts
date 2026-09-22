@@ -1435,6 +1435,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             editReadonly: this.i18n.quickGlobalEditReadonly,
             "sync-now": this.i18n.quickBuiltinSyncNow,
             "insert-template": this.i18n.quickBuiltinInsertTemplate,
+            "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };

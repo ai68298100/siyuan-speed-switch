@@ -249,6 +249,15 @@ function buildDocumentSetRestoreReport(plan, probe, execution = {}, options = {}
     };
 }
 
+// T-6800 工作区切换：循环切换目标选取。仅有一个集合或空列表时返回 null
+// （无意义切换）；当前集不在列表中时回到第一个，形成稳定环绕。
+function pickNextDocumentSet(sets, currentSetId) {
+    const list = (Array.isArray(sets) ? sets : []).filter((item) => item && typeof item.setId === "string" && item.setId);
+    if (list.length < 2) return null;
+    const index = list.findIndex((item) => item.setId === currentSetId);
+    return list[(index + 1 + list.length) % list.length] || list[0];
+}
+
 module.exports = {
     DOCUMENT_SET_SCHEMA_VERSION,
     DOCUMENT_SET_MAX,
@@ -264,4 +273,5 @@ module.exports = {
     summarizeDocumentSetRestore,
     runDocumentSetRestore,
     buildDocumentSetRestoreReport,
+    pickNextDocumentSet,
 };

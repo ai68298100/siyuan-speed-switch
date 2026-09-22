@@ -235,7 +235,7 @@ test('document-entry widgets expose group, projection, validation, and recent-us
     assert.match(indexSource, /buildFavoritesWidgetSnapshot/);
     assert.match(indexSource, /buildDocumentSetsWidgetSnapshot/);
     assert.match(indexSource, /buildFixedDocumentSnapshot/);
-    assert.match(indexSource, /if \(summary\.attempted > 0\) this\.saveDocumentSet\(item\)/);
+    assert.match(indexSource, /if \(summary\.attempted > 0\) \{\s*this\.saveDocumentSet\(item\);\s*this\.updateSettings\(\{documentSetsCurrentId: String\(item\.setId \|\| ""\)\.slice\(0, 64\)\}\);/);
 });
 
 test('favorite group config uses the registered groups and never falls back to free text', () => {

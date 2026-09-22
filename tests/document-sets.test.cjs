@@ -177,3 +177,18 @@ test("document set restore report keeps the first result per id and leaves untri
     assert.equal("error" in report.entries[0], false);
     assert.equal(report.entries[1].status, "pending", "an entry never attempted must not be reported as failed");
 });
+
+test("document sets: cycle picker wraps and requires at least two sets", () => {
+    const {pickNextDocumentSet} = require("../src/document-sets.js");
+    const sets = [
+        {setId: "s1", name: "写作"},
+        {setId: "s2", name: "阅读"},
+        {setId: "s3", name: "行政"},
+    ];
+    assert.equal(pickNextDocumentSet(sets, "s1").setId, "s2");
+    assert.equal(pickNextDocumentSet(sets, "s3").setId, "s1", "wraps from the last set to the first");
+    assert.equal(pickNextDocumentSet(sets, "missing").setId, "s1", "unknown current id starts from the first set");
+    assert.equal(pickNextDocumentSet([sets[0]], "s1"), null, "a single set is not worth cycling");
+    assert.equal(pickNextDocumentSet([], ""), null);
+    assert.equal(pickNextDocumentSet([{name: "no id"}, {name: "also no id"}], ""), null, "entries without setId are ignored");
+});

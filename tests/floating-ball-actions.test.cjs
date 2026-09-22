@@ -126,3 +126,15 @@ test("floating action executor dispatches insert-template to the host picker", a
     assert.deepEqual(missing, {ok: false, reason: "unavailable"});
     assert.deepEqual(calls, ["close", "picker"]);
 });
+
+test("floating action executor dispatches document set cycling to the host", async () => {
+    const calls = [];
+    const ok = await executeFloatingBallAction({kind: "builtin", value: "cycle-doc-set"}, {
+        close: () => calls.push("close"),
+        onCycleDocSet: async () => { calls.push("cycle"); },
+    });
+    assert.deepEqual(ok, {ok: true});
+    const missing = await executeFloatingBallAction({kind: "builtin", value: "cycle-doc-set"}, {});
+    assert.deepEqual(missing, {ok: false, reason: "unavailable"});
+    assert.deepEqual(calls, ["close", "cycle"]);
+});

@@ -854,6 +854,8 @@
   "templatePickerEmpty": "暂无模板：请先在思源模板目录中创建",
   "templatePickerNoEditor": "请先打开一个文档再插入模板",
   "templateInsertFailed": "模板插入失败：渲染为空或模板不可用",
+  "quickBuiltinCycleDocSet": "切换文档集",
+  "documentSetCycleNone": "暂无可切换的文档集（至少需要两个）",
   "unifiedFavorites": "收藏",
   "unifiedClosed": "最近关闭",
   "unifiedDocSets": "文档集",

@@ -784,6 +784,8 @@
   ,"templatePickerEmpty": "No templates yet: create one in the SiYuan templates directory"
   ,"templatePickerNoEditor": "Open a document before inserting a template"
   ,"templateInsertFailed": "Template insert failed: empty render or unusable template"
+  ,"quickBuiltinCycleDocSet": "Next document set"
+  ,"documentSetCycleNone": "No document sets to switch (need at least two)"
   ,"unifiedFavorites": "Favorites"
   ,"unifiedClosed": "Recently closed"
   ,"unifiedDocSets": "Document sets"

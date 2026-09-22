@@ -73,6 +73,10 @@ function normalizeSettings(saved, options = {}) {
         fabEnabled: floatingBall.enabled.mobile,
         floatingBall,
         agentActionsEnabled: bool("agentActionsEnabled"),
+        // T-6800 文档集工作区切换：自动保存默认开启；当前集 id 有界（setId 形态）
+        documentSetsAutoSave: source.documentSetsAutoSave === undefined ? true : source.documentSetsAutoSave === true,
+        documentSetsCurrentId: typeof source.documentSetsCurrentId === "string"
+            ? source.documentSetsCurrentId.trim().slice(0, 64) : "",
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),
