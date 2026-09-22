@@ -213,4 +213,27 @@ function entryChangedWithin(entry, updatedById, windowStart) {
     return typeof updated === "string" && updated.length > 0 && updated >= windowStart;
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin};
+// ==================== T-6801 重开现场（会话级滚动记忆） ====================
+// 关闭/离开文档前计算滚动比例，重开后按比例回卷。纯比例计算在此；
+// 捕获时机与 DOM 回卷由宿主承担。会话级内存态，不持久化。
+
+function computeScrollRatio(scrollTop, scrollHeight, clientHeight) {
+    const top = Number(scrollTop);
+    const total = Number(scrollHeight);
+    const visible = Number(clientHeight);
+    if (!Number.isFinite(top) || !Number.isFinite(total) || !Number.isFinite(visible)) return 0;
+    const max = Math.max(1, total - visible);
+    return Math.min(1, Math.max(0, top / max));
+}
+
+function planScrollRestore(metrics, ratio) {
+    const top = Number(metrics?.scrollTop);
+    const total = Number(metrics?.scrollHeight);
+    const visible = Number(metrics?.clientHeight);
+    const bounded = Number(ratio);
+    if (!Number.isFinite(top) || !Number.isFinite(total) || !Number.isFinite(visible) || !Number.isFinite(bounded)) return null;
+    const max = Math.max(0, total - visible);
+    return {top: Math.min(max, Math.max(0, Math.round(Math.min(1, Math.max(0, bounded)) * max)))};
+}
+
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore};

@@ -4,7 +4,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin} from "./recent-closed";
+import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
@@ -6445,6 +6445,8 @@ private rootIdOf(tab: Tab): string | null {
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const current = opened.find((tab) => this.pinKeyOf(tab) === entry.key);
         if (current) { this.activateTab(current); return; }
+        // T-6801：切换离开前记录当前活动文档的滚动现场（若活动编辑器可读）
+        this.captureActiveDocScroll();
         if (!entry.rootId || !BLOCK_ID_RE.test(entry.rootId)) {
             if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId || entry.key);
             else this.removeOpenHistoryEntry(entry.key);
@@ -6468,8 +6470,64 @@ private rootIdOf(tab: Tab): string | null {
                 if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId || entry.key);
                 else this.removeOpenHistoryEntry(entry.key);
                 showMessage(this.i18n.openDocFailed);
+            } else {
+                // T-6801 重开现场：会话内有过离开记录的文档按比例回卷滚动位置
+                this.applyDocScrollAfterOpen(entry.rootId);
             }
         }
+    }
+
+    // ==================== T-6801 重开现场（会话级滚动记忆） ====================
+    // 纯比例计算在 recent-closed.js；本层只负责捕获时机（关闭前/切换离开前）、
+    // 有界等待渲染后的回卷，以及 50 份现场的 FIFO 容量上限。会话级内存态，
+    // 不持久化——跨会话的"浏览位置"属宿主能力，插件不伪造。
+
+    private docScrollMemory = new Map<string, number>();
+
+    private captureDocScrollFromElement(rootId: string, element: HTMLElement) {
+        if (!BLOCK_ID_RE.test(rootId)) return;
+        const container = element.querySelector<HTMLElement>(".protyle-content");
+        if (!container) return;
+        const ratio = computeScrollRatio(container.scrollTop, container.scrollHeight, container.clientHeight);
+        if (ratio <= 0) {
+            this.docScrollMemory.delete(rootId);
+            return;
+        }
+        this.docScrollMemory.set(rootId, ratio);
+        while (this.docScrollMemory.size > 50) {
+            const oldest = this.docScrollMemory.keys().next().value;
+            if (oldest === undefined) break;
+            this.docScrollMemory.delete(oldest);
+        }
+    }
+
+    private captureActiveDocScroll() {
+        const editor = this.resolveActiveHostEditor();
+        const element = (editor?.protyle as unknown as {element?: HTMLElement} | undefined)?.element;
+        if (!element) return;
+        const rootId = (editor!.protyle as unknown as {block?: {parentID?: string}}).block?.parentID || "";
+        this.captureDocScrollFromElement(rootId, element);
+    }
+
+    private applyDocScrollAfterOpen(rootId: string) {
+        const ratio = this.docScrollMemory.get(rootId);
+        if (typeof ratio !== "number" || !Number.isFinite(ratio)) return;
+        let attempts = 0;
+        const tick = () => {
+            const editor = this.resolveActiveHostEditor();
+            const element = (editor?.protyle as unknown as {element?: HTMLElement} | undefined)?.element;
+            const container = element?.querySelector<HTMLElement>(".protyle-content");
+            if (container && container.scrollHeight > container.clientHeight) {
+                const plan = planScrollRestore(
+                    {scrollTop: container.scrollTop, scrollHeight: container.scrollHeight, clientHeight: container.clientHeight},
+                    ratio,
+                );
+                if (plan) container.scrollTop = plan.top;
+                return;
+            }
+            if (attempts++ < 30) window.setTimeout(tick, 50);
+        };
+        tick();
     }
 
     private refreshOpenHistoryDropdowns() {

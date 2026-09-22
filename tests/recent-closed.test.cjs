@@ -197,3 +197,17 @@ test("recent changed filter: window formatting and per-entry predicate", () => {
     assert.equal(entryChangedWithin(entries[0], updatedById, ""), true,
         "an empty window keeps everything (filter disabled)");
 });
+
+test("reopen scroll memory: ratio computation clamps and rejects garbage", () => {
+    const {computeScrollRatio, planScrollRestore} = require("../src/recent-closed.js");
+    assert.equal(computeScrollRatio(300, 1300, 300), 0.3);
+    assert.equal(computeScrollRatio(-50, 1300, 300), 0, "negative scroll clamps to 0");
+    assert.equal(computeScrollRatio(9999, 1300, 300), 1, "over-scroll clamps to 1");
+    assert.equal(computeScrollRatio("x", 1300, 300), 0);
+    const plan = planScrollRestore({scrollTop: 0, scrollHeight: 1300, clientHeight: 300}, 0.5);
+    assert.deepEqual(plan, {top: 500});
+    assert.equal(planScrollRestore({scrollTop: 0, scrollHeight: 100, clientHeight: 300}, 1).top, 0,
+        "a short document never scrolls");
+    assert.equal(planScrollRestore(null, 0.5), null);
+    assert.equal(planScrollRestore({scrollTop: 0, scrollHeight: "x", clientHeight: 300}, 0.5), null);
+});
