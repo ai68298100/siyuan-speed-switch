@@ -5,6 +5,25 @@
 
 ## Changelog (full history)
 
+### v0.31.0 (2026-09-23)
+
+- **Floating ball · Host command actions**: nine SiYuan commands wired in (outline, bookmarks, tags, inbox, backlinks, recent documents, recently closed, flashcard review, read-only toggle) with capability detection and safe fallback on older hosts.
+- **Floating ball · One-tap sync**: invokes the kernel performSync directly with completion/failure feedback; read-only mode and sync mutexes surface honestly.
+- **Floating ball · Insert template**: lists the template directory, renders the chosen template and inserts it at the caret of the active document.
+- **Floating ball · Scene presets**: save the current action layout and primary click as named scenes; apply or cycle in one click (up to 8, same-name overwrites).
+- **Floating ball · Throw to window** (desktop) and **dismiss keyboard** (mobile).
+- **Floating ball · Jump back / forward**: speed-switch driven jumps can be undone and redone (session stack, FIFO 50).
+- **Floating ball · Surface shrink**: the ball no longer appears on the sidebar dock (it duplicated the desktop-window ball); legacy configs stay compatible.
+- **Switcher · Unified index**: one search box sections across open tabs, favorites, recently closed and document sets.
+- **Switcher · Query operators**: `"exact phrases"`, `-exclusions`, multi-term AND; last-pick boost (session memory).
+- **Switcher · Pinyin matching**: full pinyin, initials and mixed input (e.g. cp → 产品), on by default and toggleable in settings; off means substring only.
+- **Switcher · Zero-term workbench**: with an empty query the panel surfaces scene, document-set and smart-group entries directly.
+- **Recent · Show changed only**: one click filters to documents changed within the last 7 days.
+- **Document sets · Workspace switching**: switching snapshots the current tabs back into the active set (toggleable), marks the restored set as current, and supports cycling.
+- **Skins (new)**: optional standalone skin layer — Apple liquid glass, Midnight glass, Paper ink; fusion stays the default, skins touch only Speed Switch surfaces and pass the WCAG AA contrast gate.
+- **Behavior changes**: the floating ball no longer appears on the sidebar; pinyin matching is on by default. Everything else is additive with no destructive migrations.
+- **Verification**: 6,060 tests across 225 files, four UI smoke suites (including 22 floating-ball Chromium scenarios); Android on-device items remain pending.
+
 ### v0.30.1 (2026-09-22)
 
 - **Task Horizon mobile integration**: the floating ball can discover and invoke the task manager and quick-add plugin commands, rechecking provider capabilities before execution and safely handling failures, timeouts, and unloads.

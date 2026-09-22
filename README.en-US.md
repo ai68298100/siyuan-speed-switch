@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.30.1-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.31.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -302,7 +302,7 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.30.1` (floating-ball and Task Horizon mobile command integration; Release assets are built automatically by the workflow).
+The current version is `v0.31.0` (release candidate: pinyin matching, unified index, workbench, scene presets, skin layer; Release assets are built automatically by the workflow).
 
 ## Changelog
 
