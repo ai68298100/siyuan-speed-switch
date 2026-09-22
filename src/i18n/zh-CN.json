@@ -885,6 +885,7 @@
   "workbenchPresets": "场景",
   "workbenchDocSets": "文档集",
   "workbenchSmart": "智能分组",
+  "docSearchSplitHint": "右键：在右侧分屏打开",
   "chipsLabel": "结果类型过滤",
   "chipsAll": "全部",
   "chipsTabs": "页签",

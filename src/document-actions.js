@@ -45,13 +45,17 @@ async function openDocumentOnMobile({rootId, tabs, app, openTab, logger, onFailu
  *   logger?: {warn?: (...args: unknown[]) => void}}}
  * @returns {Promise<boolean>}
  */
-async function openDocumentOnDesktop({rootId, hitId = null, app, openTab, logger}) {
+async function openDocumentOnDesktop({rootId, hitId = null, app, openTab, logger, position}) {
     if (typeof rootId !== "string" || !rootId || typeof openTab !== "function") return false;
     const targetId = typeof hitId === "string" && hitId && hitId !== rootId ? hitId : rootId;
+    // T-6810 并排打开：position "right"/"bottom" 为思源 openTab 官方参数
+    //（API.ts openTab options），仅桌面布局有效。
+    const extra = position === "right" || position === "bottom" ? {position} : {};
     try {
         await openTab({
             app,
             doc: targetId === rootId ? {id: rootId} : {id: targetId, action: ["cb-get-scroll"]},
+            ...extra,
         });
         return true;
     } catch (error) {
@@ -61,7 +65,7 @@ async function openDocumentOnDesktop({rootId, hitId = null, app, openTab, logger
         }
         logger?.warn?.("open document search hit fail, falling back to root", error);
         try {
-            await openTab({app, doc: {id: rootId}});
+            await openTab({app, doc: {id: rootId}, ...extra});
             return true;
         } catch (fallbackError) {
             logger?.warn?.("open document search root fallback fail", fallbackError);

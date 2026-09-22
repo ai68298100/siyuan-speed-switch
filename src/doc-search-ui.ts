@@ -912,7 +912,7 @@ export function docSearchHitId(this: DocSearchUiHost, doc: IDocSearchResult, roo
         return hit ? String(hit) : null;
     }
 
-export async function openDocSearchResult(this: DocSearchUiHost, rootId: string, hitId: string | null): Promise<void> {
+export async function openDocSearchResult(this: DocSearchUiHost, rootId: string, hitId: string | null, position?: "right"): Promise<void> {
         if (this.isMobile) {
             // MobileTabs only accepts a root document ID. Keep block targeting
             // desktop-only until SiYuan exposes a stable mobile equivalent.
@@ -925,6 +925,7 @@ export async function openDocSearchResult(this: DocSearchUiHost, rootId: string,
             app: this.app,
             openTab,
             logger,
+            ...(position ? {position} : {}),
         });
         if (!opened) showMessage(this.i18n.openDocFailed);
     }
@@ -984,5 +985,14 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
             onClose();
             void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id));
         });
+        // T-6810 并排打开：右键结果在右侧分屏打开（桌面）
+        if (!this.isMobile) {
+            item.title = (item.title ? item.title + " · " : "") + this.i18n.docSearchSplitHint;
+            item.addEventListener("contextmenu", (event) => {
+                event.preventDefault();
+                onClose();
+                void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id), "right");
+            });
+        }
         return item;
     }

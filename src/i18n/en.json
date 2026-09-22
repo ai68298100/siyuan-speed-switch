@@ -815,6 +815,7 @@
   ,"workbenchPresets": "Scenes"
   ,"workbenchDocSets": "Sets"
   ,"workbenchSmart": "Smart groups"
+  ,"docSearchSplitHint": "Right-click: open in right split"
   ,"chipsLabel": "Result type filter"
   ,"chipsAll": "All"
   ,"chipsTabs": "Tabs"

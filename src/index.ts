@@ -3231,6 +3231,19 @@ const version = beginSearch(session);
                 copy.append(title, metaEl);
                 button.appendChild(copy);
                 button.addEventListener("click", () => this.activateUnifiedItem(item, onClose));
+                // T-6810 并排打开：右键在右侧分屏打开（桌面）
+                if (!this.isMobile && (item.kind === "favorite" || item.kind === "closed")) {
+                    const itemRecord = item as Record<string, unknown>;
+                    const rootId = String(itemRecord.rootId || "");
+                    if (rootId && BLOCK_ID_RE.test(rootId)) {
+                        button.title = (button.title ? button.title + " · " : "") + this.i18n.docSearchSplitHint;
+                        button.addEventListener("contextmenu", (event) => {
+                            event.preventDefault();
+                            onClose();
+                            void openTab({app: this.app, doc: {id: rootId}, position: "right"});
+                        });
+                    }
+                }
                 grid.appendChild(button);
             });
             sectionEl.append(label, grid);
@@ -4983,6 +4996,14 @@ const version = beginSearch(session);
             this.saveDocumentSet(item);
             // T-6800：恢复成功即标记当前工作区集（指示器与循环切换的基准）。
             this.updateSettings({documentSetsCurrentId: String(item.setId || "").slice(0, 64)});
+            // T-6810 场景×文档集联动：存在与集合同名的悬浮球场景时自动应用，
+            // 实现"切工作区=换工作现场+换球布局"的完整语义。
+            const presetMatch = normalizeFloatingBallConfig(this.getSettings().floatingBall)
+                .presets.find((preset: {name: string}) => preset.name === item.name);
+            if (presetMatch) {
+                const applied = applyFloatingBallPreset(this.getSettings().floatingBall, presetMatch.id);
+                if (applied.preset) this.updateSettings({floatingBall: applied.config});
+            }
         }
         showMessage(`${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`);
     }
