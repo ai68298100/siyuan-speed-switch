@@ -75,6 +75,10 @@ export interface SettingsSectionsHost {
     getDockPanels(): Array<{type: string; title: string; icon: string}>;
     getFavoriteGroupNames(): string[];
     getFavorites(): IFavoriteItem[];
+    getFavoriteSmartGroups(): Array<{name: string; tag: string}>;
+    addFavoriteSmartGroup(name: string, tag: string): boolean;
+    removeFavoriteSmartGroup(name: string): void;
+    getFavoriteTagOptions(): Promise<Array<{name: string; count: string | number}>>;
     createFavoriteGroup(name: string): boolean;
     deleteFavoriteGroup(name: string): void;
     renameFavoriteGroup(from: string, to: string): void;
@@ -301,14 +305,84 @@ export function buildSettingsFavorites(this: SettingsSectionsHost, ): HTMLElemen
             if (ungrouped.length > 0) {
                 box.appendChild(buildSettingsFavSection.call(this, this.i18n.ungrouped, ungrouped, groupNames, render, false));
             }
+            buildSettingsFavSmartGroups.call(this, box, render);
         };
         render();
         return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
     }
 
     // 鏂板缓鍒嗙粍琛岋細杈撳叆鍚嶇О鍗冲垱寤猴紙绌哄垎缁勪繚鐣欙紝鏀惰棌鏃跺彲閫夌敤锛?
-export function buildSettingsFavCreateRow(this: SettingsSectionsHost, render: () => void): HTMLElement {
-        const createRow = document.createElement("div");
+// T-6804 智能分组配置：名称 + 标签选择（标签清单来自内核 getTag），最多 4 组。
+export function buildSettingsFavSmartGroups(this: SettingsSectionsHost, box: HTMLElement, render: () => void): void {
+    const section = document.createElement("div");
+    section.className = "sw-setting__fav-smart";
+    const title = document.createElement("div");
+    title.className = "sw-settings__item-title";
+    title.textContent = this.i18n.favSmartGroups;
+    const tip = document.createElement("p");
+    tip.className = "sw-settings__hint";
+    tip.textContent = this.i18n.favSmartGroupsTip;
+    section.append(title, tip);
+
+    const list = document.createElement("div");
+    list.className = "sw-setting__fav-smart-list";
+    const renderList = () => {
+        list.textContent = "";
+        const groups = this.getFavoriteSmartGroups();
+        if (!groups.length) {
+            const empty = document.createElement("p");
+            empty.className = "sw-settings__hint";
+            empty.textContent = this.i18n.favSmartGroupEmpty;
+            list.appendChild(empty);
+            return;
+        }
+        groups.forEach((group) => {
+            const row = document.createElement("div");
+            row.className = "sw-setting__fav-smart-item";
+            const name = document.createElement("span");
+            name.textContent = `${group.name} · #${group.tag}`;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.favSmartGroupRemove;
+            remove.addEventListener("click", () => {
+                this.removeFavoriteSmartGroup(group.name);
+                render();
+            });
+            row.append(name, remove);
+            list.appendChild(row);
+        });
+    };
+    renderList();
+
+    const addName = document.createElement("input");
+    addName.className = "b3-text-field";
+    addName.placeholder = this.i18n.favSmartGroupName;
+    addName.maxLength = 24;
+    addName.setAttribute("aria-label", this.i18n.favSmartGroupName);
+    const addTag = document.createElement("select");
+    addTag.className = "b3-select";
+    addTag.appendChild(new Option(this.i18n.favSmartGroupTagPick, ""));
+    void this.getFavoriteTagOptions().then((options) => {
+        if (!addTag.isConnected) return;
+        options.forEach((option) => addTag.appendChild(new Option(`#${option.name} (${option.count})`, option.name)));
+    });
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "b3-button b3-button--outline";
+    addBtn.textContent = this.i18n.favSmartGroupAdd;
+    addBtn.addEventListener("click", () => {
+        if (!addName.value.trim() || !addTag.value) return;
+        if (this.addFavoriteSmartGroup(addName.value, addTag.value)) render();
+    });
+    const addRow = document.createElement("div");
+    addRow.className = "sw-setting__fav-smart-add";
+    addRow.append(addName, addTag, addBtn);
+    section.append(list, addRow);
+    box.appendChild(section);
+}
+
+export function buildSettingsFavCreateRow(this: SettingsSectionsHost, render: () => void): HTMLElement {        const createRow = document.createElement("div");
         createRow.className = "sw-setting__fav-create";
         const nameInput = document.createElement("input");
         nameInput.className = "b3-text-field";

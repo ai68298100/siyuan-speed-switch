@@ -70,7 +70,7 @@ import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLif
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
-import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "./favorite-actions";
+import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
 import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
@@ -560,6 +560,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     agentActionsEnabled: true, // T-6692b 灰度开关：Agent 受控动作总开关（默认开）
     documentSetsAutoSave: true, // T-6800 工作区切换：离开当前集时自动快照（默认开）
     documentSetsCurrentId: "", // T-6800 当前工作区集 id（空=尚未激活任何集）
+    favoriteSmartGroups: [], // T-6804 标签智能分组
 };
 
 // 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
@@ -605,6 +606,7 @@ export interface ISwSettings {
     agentActionsEnabled: boolean; // T-6692b 受控动作总开关
     documentSetsAutoSave: boolean; // T-6800 切换文档集时自动把现场快照回当前集（默认开）
     documentSetsCurrentId: string; // T-6800 当前工作区语义：最近一次恢复/激活的文档集 id
+    favoriteSmartGroups: Array<{name: string; tag: string}>; // T-6804 标签智能分组（最多 4 组）
 }
 
 export interface IGroupedTab {
@@ -6726,6 +6728,109 @@ private rootIdOf(tab: Tab): string | null {
                 this.appendFavGroup(panel, this.i18n.ungrouped, ungrouped, onPick, onChanged);
             }
         }
+
+        // T-6804 标签智能分组：动态分区置于静态分组之后，按需拉取（面板打开时一次）
+        const smartGroups = this.getSettings().favoriteSmartGroups || [];
+        smartGroups.forEach((group) => this.appendFavSmartGroup(panel, group, onPick, onChanged));
+    }
+
+    // T-6804 智能分组分区：壳体先渲染（加载态），内核按需返回后填充条目。
+    // 条目为只读投影：点击跳转，不提供静态收藏的移动/取消菜单。
+    private appendFavSmartGroup(panel: HTMLElement, group: {name: string; tag: string}, onPick: () => void, onChanged: IOverlayClose = () => undefined) {
+        const groupEl = document.createElement("div");
+        groupEl.className = "sw__fav-group sw__fav-group--smart";
+
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "sw__fav-group-head";
+        head.title = `${group.tag}`;
+        head.innerHTML = `<svg class="sw__fav-arrow"><use xlink:href="#iconRight"></use></svg>
+<span class="sw__fav-group-name"></span>
+<span class="sw__fav-count">#${group.tag}</span>`;
+        head.querySelector<HTMLElement>(".sw__fav-group-name")!.textContent = group.name;
+        groupEl.appendChild(head);
+
+        const list = document.createElement("div");
+        list.className = "sw__fav-items";
+        const status = document.createElement("div");
+        status.className = "sw__history-empty sw__fav-smart-status";
+        status.textContent = this.i18n.favSmartGroupLoading;
+        list.appendChild(status);
+        groupEl.appendChild(list);
+        panel.appendChild(groupEl);
+
+        const query = buildTagSmartGroupQuery(group.tag);
+        if (!query) {
+            status.textContent = this.i18n.favSmartGroupLoading;
+            return;
+        }
+        void this.fetchKernelJson("/api/query/sql", query).then((json) => {
+            const entries = projectTagSmartGroupEntries(json?.data);
+            status.remove();
+            entries.forEach((entry) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__fav-item";
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span></span>`;
+                item.querySelector("span")!.textContent = entry.title;
+                item.title = entry.title;
+                item.setAttribute("role", "menuitem");
+                item.addEventListener("click", () => {
+                    onPick();
+                    if (this.isMobile) {
+                        void this.mobileOpenDoc(entry.rootId);
+                    } else {
+                        void openTab({app: this.app, doc: {id: entry.rootId}});
+                    }
+                });
+                list.appendChild(item);
+            });
+            if (!entries.length) {
+                const emptyItem = document.createElement("div");
+                emptyItem.className = "sw__fav-smart-status";
+                emptyItem.textContent = this.i18n.favSmartGroupEmpty;
+                list.appendChild(emptyItem);
+            }
+            const count = head.querySelector<HTMLElement>(".sw__fav-count");
+            if (count) count.textContent = `${entries.length} · #${group.tag}`;
+            onChanged();
+        }).catch(() => {
+            status.textContent = this.i18n.favSmartGroupEmpty;
+        });
+    }
+
+    // ==================== T-6804 智能分组配置（设置页 + 面板共用） ====================
+
+    public getFavoriteSmartGroups(): Array<{name: string; tag: string}> {
+        return this.getSettings().favoriteSmartGroups || [];
+    }
+
+    public addFavoriteSmartGroup(name: string, tag: string): boolean {
+        const current = this.getFavoriteSmartGroups();
+        if (current.length >= 4) return false;
+        const next = normalizeFavoriteSmartGroups([...current, {name, tag}]);
+        if (next.length === current.length) return false;
+        this.updateSettings({favoriteSmartGroups: next});
+        return true;
+    }
+
+    public removeFavoriteSmartGroup(name: string): void {
+        const next = normalizeFavoriteSmartGroups(
+            this.getFavoriteSmartGroups().filter((group) => group.name !== name),
+        );
+        this.updateSettings({favoriteSmartGroups: next});
+    }
+
+    public async getFavoriteTagOptions(): Promise<Array<{name: string; count: number}>> {
+        const json = await this.fetchKernelJson("/api/tag/getTag", {});
+        const rows = Array.isArray(json?.data) ? json.data : Array.isArray(json?.data?.tags) ? json.data.tags : [];
+        return rows
+            .map((row: {name?: unknown; count?: unknown}) => ({
+                name: typeof row?.name === "string" ? row.name : "",
+                count: Number(row?.count) || 0,
+            }))
+            .filter((row: {name: string}) => row.name.length > 0)
+            .slice(0, 200);
     }
 
     // 渲染单个收藏分组：可折叠组头（右键弹出一键开/关菜单）+ 组内项列表

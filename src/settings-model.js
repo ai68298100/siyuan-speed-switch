@@ -23,6 +23,18 @@ function normalizeSettings(saved, options = {}) {
     const quickActions = typeof options.quickActions === "function"
         ? options.quickActions(source.quickActions)
         : (Array.isArray(source.quickActions) ? source.quickActions : (defaults.quickActions || []));
+    // T-6804 标签智能分组（与 favorite-actions.js 的清洗规则保持一致）
+    const smartGroups = [];
+    if (Array.isArray(source.favoriteSmartGroups)) {
+        for (const raw of source.favoriteSmartGroups) {
+            if (smartGroups.length >= 4) break;
+            if (!raw || typeof raw !== "object") continue;
+            const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 24) : "";
+            const tag = typeof raw.tag === "string" ? raw.tag.trim().replace(/['\\%_]/g, "").slice(0, 32) : "";
+            if (!name || !tag || smartGroups.some((item) => item.name === name)) continue;
+            smartGroups.push({name, tag});
+        }
+    }
     // T-6757: keep the new spatial entry configuration inside the existing
     // settings object.  The legacy fabEnabled flag is passed only as a
     // migration hint; once a versioned floatingBall.mobile value exists it
@@ -77,6 +89,8 @@ function normalizeSettings(saved, options = {}) {
         documentSetsAutoSave: source.documentSetsAutoSave === undefined ? true : source.documentSetsAutoSave === true,
         documentSetsCurrentId: typeof source.documentSetsCurrentId === "string"
             ? source.documentSetsCurrentId.trim().slice(0, 64) : "",
+        // T-6804 标签智能分组：有界（4 组），标签名剔除 LIKE 通配/引号字符
+        favoriteSmartGroups: smartGroups,
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),
         mobileThumbHeight: clamp(source.mobileThumbHeight, ...range("mobileThumbHeight"), defaults.mobileThumbHeight),
         journalNotebook: string("journalNotebook"),

@@ -39,4 +39,59 @@ function migrateFavoriteEntry(entries, legacyKey, rootId) {
     return {items, changed: true, migrated: true, duplicate: false};
 }
 
-module.exports = {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry};
+module.exports = {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry,
+    normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries};
+
+// ==================== T-6804 智能分组（标签驱动的动态收藏组） ====================
+// 用户只选择标签名（来自内核 getTag），查询由插件按白名单端点参数化构造——
+// 不向用户暴露 SQL（执行口径）。条目为只读投影：跳转复用打开链路，不可
+// 移动分组/取消收藏（那属于静态收藏的操作语义）。
+
+const SMART_GROUP_MAX = 4;
+const SMART_GROUP_NAME_MAX = 24;
+const SMART_GROUP_TAG_MAX = 32;
+const SMART_GROUP_ENTRY_LIMIT = 20;
+
+function normalizeFavoriteSmartGroups(value, max = SMART_GROUP_MAX) {
+    const cap = Number.isFinite(max) && max > 0 ? Math.floor(max) : SMART_GROUP_MAX;
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const groups = [];
+    for (const raw of value) {
+        if (groups.length >= cap) break;
+        if (!raw || typeof raw !== "object") continue;
+        const name = typeof raw.name === "string" ? raw.name.trim().slice(0, SMART_GROUP_NAME_MAX) : "";
+        // 剔除 LIKE 通配符与引号类字符：标签名来自内核清单，可能包含任意内容
+        const tag = typeof raw.tag === "string" ? raw.tag.trim().replace(/['\\%_]/g, "").slice(0, SMART_GROUP_TAG_MAX) : "";
+        if (!name || !tag || seen.has(name)) continue;
+        seen.add(name);
+        groups.push({name, tag});
+    }
+    return groups;
+}
+
+// 文档级标签在思源以 #标签# 形态存在于根块 content；首尾 # 保证标签边界
+//（"读"不会误配"读书"）。LIMIT 由插件注入并钳制，杜绝无界行数。
+function buildTagSmartGroupQuery(tag, limit = SMART_GROUP_ENTRY_LIMIT) {
+    const safe = typeof tag === "string" ? tag.trim().replace(/['\\%_]/g, "").slice(0, SMART_GROUP_TAG_MAX) : "";
+    if (!safe) return null;
+    const cap = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : SMART_GROUP_ENTRY_LIMIT;
+    return {stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '%#${safe}#%' LIMIT ${cap}`};
+}
+
+function projectTagSmartGroupEntries(rows) {
+    if (!Array.isArray(rows)) return [];
+    // 与宿主 BLOCK_ID_RE 同款：14 位时间戳 + '-' + 字母数字，挡住非文档行
+    const blockIdRe = /^\d{14}-[0-9a-z]+$/i;
+    const seen = new Set();
+    const items = [];
+    for (const row of rows) {
+        const rootId = typeof row?.id === "string" ? row.id : "";
+        const title = typeof row?.content === "string" && row.content.trim() ? row.content.trim().slice(0, 200) : "";
+        if (!rootId || !blockIdRe.test(rootId) || !title || seen.has(rootId)) continue;
+        seen.add(rootId);
+        items.push({rootId, title});
+        if (items.length >= SMART_GROUP_ENTRY_LIMIT) break;
+    }
+    return items;
+}
