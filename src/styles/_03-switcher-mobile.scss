@@ -787,8 +787,20 @@
         }
     }
 
-    // ==================== 全库文档搜索结果 ====================
-    .sw__doc-results {
+    // ==================== 全库文档搜索结果 / 统一索引分区（T-6799） ====================
+    .sw__unified {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 16px;
+        min-width: 0;
+
+        // 分区间距由容器 gap 统一，抵消分区自带的 margin-top
+        .sw__unified-section { margin-top: 0; }
+    }
+
+    .sw__doc-results,
+    .sw__unified-section {
         margin-top: 16px;
         min-width: 0;
 

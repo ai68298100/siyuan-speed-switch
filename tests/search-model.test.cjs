@@ -26,6 +26,9 @@ const {
     buildOpenedDocumentSearchRequest,
     buildOpenedDocumentSearchRequests,
     planDocResultsPage,
+    buildUnifiedSections,
+    normalizeUnifiedQuery,
+    scoreUnifiedTitle,
 } = require("../src/search-model.js");
 
 const ROOT_A = "20260906120000-aaaaaaa";
@@ -794,4 +797,69 @@ test('merge layers drop exclusion-matching cards across opened and global (T-670
     });
     assert.equal(result.opened.length, 0, 'opened card matching the exclusion is dropped');
     assert.deepEqual(result.global.map((card) => card.title), ['Roadmap 计划'], 'only non-excluded global cards remain');
+});
+
+test("unified index: scoring ranks prefix over inclusion over token spread", () => {
+    assert.equal(scoreUnifiedTitle("月度报告", "月度"), 3);
+    assert.equal(scoreUnifiedTitle("四月度计划", "月度"), 2);
+    assert.equal(scoreUnifiedTitle("季度计划与月度回顾", "季度 回顾"), 1, "multi-token all-hit scores lowest");
+    assert.equal(scoreUnifiedTitle("日记", "月度"), 0);
+    assert.equal(scoreUnifiedTitle("日记", ""), 0);
+    assert.equal(scoreUnifiedTitle(undefined, "月度"), 0);
+    assert.equal(normalizeUnifiedQuery("  月度 \n"), "月度");
+});
+
+test("unified index: empty query yields no sections", () => {
+    assert.deepEqual(buildUnifiedSections({query: "  ", favorites: [{title: "x"}]}), []);
+});
+
+test("unified index: matching favorites and closed docs rank and exclude opened roots", () => {
+    const sections = buildUnifiedSections({
+        query: "产品",
+        favorites: [
+            {key: "f1", rootId: "root-open", title: "产品需求文档", group: "工作"},
+            {key: "f2", rootId: "root-kept", title: "产品路线图", group: "工作"},
+            {key: "f3", rootId: "root-other", title: "日记本", group: ""},
+        ],
+        closed: [
+            {rootId: "root-c1", title: "产品评审纪要", closedAt: 1700000000000},
+            {rootId: "root-open", title: "产品需求文档（关闭副本）", closedAt: 1700000001000},
+        ],
+        excludeRootIds: new Set(["root-open"]),
+        limitPerSection: 4,
+    });
+    assert.deepEqual(sections.map((section) => section.key), ["favorites", "closed"]);
+    assert.equal(sections[0].items.length, 1, "opened roots are excluded");
+    assert.equal(sections[0].items[0].kind, "favorite");
+    assert.equal(sections[0].items[0].rootId, "root-kept");
+    assert.equal(sections[1].items[0].rootId, "root-c1");
+});
+
+test("unified index: doc sets match by name and carry entry counts", () => {
+    const sections = buildUnifiedSections({
+        query: "论文",
+        documentSets: [
+            {setId: "set1", name: "论文写作", entries: [{rootId: "a"}, {rootId: "b"}]},
+            {setId: "set2", name: "日记", entries: []},
+        ],
+    });
+    assert.deepEqual(sections.map((section) => section.key), ["doc-sets"]);
+    assert.equal(sections[0].items[0].setId, "set1");
+    assert.equal(sections[0].items[0].entryCount, 2);
+});
+
+test("unified index: per-section limit keeps the switcher bounded", () => {
+    const many = Array.from({length: 9}, (_, index) => ({rootId: `c${index}`, title: `产品文档 ${index}`, closedAt: index}));
+    const sections = buildUnifiedSections({query: "产品", closed: many, limitPerSection: 4});
+    assert.equal(sections[0].items.length, 4);
+});
+
+test("unified index: non-matching sources produce no empty sections", () => {
+    const sections = buildUnifiedSections({
+        query: "zzz",
+        favorites: [{key: "f1", title: "产品"}],
+        closed: [{rootId: "c1", title: "产品"}],
+        documentSets: [{setId: "s1", name: "论文"}],
+    });
+    assert.deepEqual(sections, []);
 });

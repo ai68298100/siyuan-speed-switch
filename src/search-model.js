@@ -1015,6 +1015,82 @@ function planDocResultsPage(docs, openRootIds, expandedCount) {
     return {items, totalVisible, hasMore: totalVisible > items.length};
 }
 
+// ==================== T-6799 切换器统一索引 ====================
+// 把"收藏 / 最近关闭 / 文档集"纳入切换器的一次查询（Chrome Search Tabs 思想）。
+// 纯函数：查询归一化 + 计分（前缀 > 包含 > 全部分词）+ 分区限额；
+// DOM 装配与激活语义留在宿主（index.ts）。
+
+function normalizeUnifiedQuery(value) {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function scoreUnifiedTitle(title, query) {
+    const normalized = typeof title === "string" ? title.toLowerCase() : "";
+    if (!query || !normalized) return 0;
+    if (normalized.startsWith(query)) return 3;
+    if (normalized.includes(query)) return 2;
+    const tokens = query.split(/\s+/).filter(Boolean);
+    if (tokens.length > 1 && tokens.every((token) => normalized.includes(token))) return 1;
+    return 0;
+}
+
+function rankUnifiedMatches(entries, query, titleOf, limit) {
+    const cap = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 4;
+    const scored = [];
+    (Array.isArray(entries) ? entries : []).forEach((entry) => {
+        if (!entry || typeof entry !== "object") return;
+        const score = scoreUnifiedTitle(String(titleOf(entry) || ""), query);
+        if (score > 0) scored.push({entry, score});
+    });
+    // 稳定排序：同分保持数据源原有顺序（收藏按用户排序、最近按时间倒序）。
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, cap).map((item) => item.entry);
+}
+
+// 输入：归一化后的各数据集 + 已打开 rootId 排除集；输出：非空分区数组。
+// 每个分区条目自带 kind，激活语义由宿主分发（favorite→jumpToFavorite，
+// closed→按 rootId 打开，doc-set→恢复预检链路）。
+function buildUnifiedSections(options = {}) {
+    const query = normalizeUnifiedQuery(options.query);
+    if (!query) return [];
+    const limit = Number.isFinite(options.limitPerSection) && options.limitPerSection > 0
+        ? Math.floor(options.limitPerSection) : 4;
+    const excludeRootIds = options.excludeRootIds instanceof Set ? options.excludeRootIds : new Set();
+    const sections = [];
+
+    const favorites = rankUnifiedMatches(options.favorites, query, (entry) => entry.title, limit)
+        .filter((entry) => !excludeRootIds.has(String(entry.rootId || "")))
+        .map((entry) => ({
+            kind: "favorite",
+            key: String(entry.key || ""),
+            rootId: String(entry.rootId || ""),
+            title: String(entry.title || entry.key || ""),
+            group: String(entry.group || ""),
+        }));
+    if (favorites.length) sections.push({key: "favorites", items: favorites});
+
+    const closed = rankUnifiedMatches(options.closed, query, (entry) => entry.title, limit)
+        .filter((entry) => !excludeRootIds.has(String(entry.rootId || "")))
+        .map((entry) => ({
+            kind: "closed",
+            rootId: String(entry.rootId || ""),
+            title: String(entry.title || entry.rootId || ""),
+            closedAt: Number(entry.closedAt) || 0,
+        }));
+    if (closed.length) sections.push({key: "closed", items: closed});
+
+    const docSets = rankUnifiedMatches(options.documentSets, query, (entry) => entry.name, limit)
+        .map((entry) => ({
+            kind: "doc-set",
+            setId: String(entry.setId || ""),
+            name: String(entry.name || ""),
+            entryCount: Array.isArray(entry.entries) ? entry.entries.length : 0,
+        }));
+    if (docSets.length) sections.push({key: "doc-sets", items: docSets});
+
+    return sections;
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -1024,6 +1100,9 @@ module.exports = {
     buildSearchCacheKey,
     canUseTitleSearch,
     normalizeSearchResult,
+    buildUnifiedSections,
+    scoreUnifiedTitle,
+    normalizeUnifiedQuery,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,

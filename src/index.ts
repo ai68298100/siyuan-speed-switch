@@ -6,7 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -3043,6 +3043,9 @@ const updatedMap: {[rootId: string]: string} = {};
         const session = getDocSearchSession.call(this, scrollElement);
         const filters = this.docSearchState.filters.get(scrollElement) || {};
         this.filterCards(scrollElement, searchInput.value, new Set(), filters);
+        // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
+        // 页签卡片与全库文档结果之间；空查询时整块移除。
+        this.renderUnifiedSections(scrollElement, keyword, onClose);
 
         // 每次输入都让上一轮请求失效。空关键词或缓存命中也必须递增序号；
         // 否则较慢的旧请求返回后会覆盖当前界面。
@@ -3066,6 +3069,105 @@ const version = beginSearch(session);
             session.timer = null;
             runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey);
         }, SEARCH_DEBOUNCE_MS);
+    }
+
+    // T-6799 统一索引分区：收藏/最近关闭/文档集的查询命中。挂在页签卡片之后、
+    // 全库文档结果区之前；激活语义见 activateUnifiedItem。纯过滤逻辑在
+    // switcher-unified-index.js（可单元测试），本层只做装配。
+    private renderUnifiedSections(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose) {
+        const existing = scrollElement.querySelector<HTMLElement>(".sw__unified");
+        if (!keyword) {
+            existing?.remove();
+            return;
+        }
+        const sections = buildUnifiedSections({
+            query: keyword,
+            favorites: this.getFavorites(),
+            closed: this.getClosedHistory(),
+            documentSets: this.getDocumentSets(),
+            excludeRootIds: collectOpenRootIds.call(this),
+            limitPerSection: 4,
+        });
+        if (!sections.length) {
+            existing?.remove();
+            return;
+        }
+        let box = existing;
+        if (!box) {
+            box = document.createElement("div");
+            box.className = "sw__unified";
+            const docResults = scrollElement.querySelector(".sw__doc-results");
+            if (docResults) scrollElement.insertBefore(box, docResults);
+            else scrollElement.appendChild(box);
+        }
+        box.textContent = "";
+        const sectionTitles: Record<string, string> = {
+            favorites: this.i18n.unifiedFavorites,
+            closed: this.i18n.unifiedClosed,
+            "doc-sets": this.i18n.unifiedDocSets,
+        };
+        sections.forEach((section) => {
+            const sectionEl = document.createElement("div");
+            sectionEl.className = "sw__unified-section";
+            const label = document.createElement("div");
+            label.className = "sw__window-label";
+            label.textContent = sectionTitles[section.key] || section.key;
+            const grid = document.createElement("div");
+            grid.className = "sw__doc-grid";
+            section.items.forEach((item) => {
+                const record = item as Record<string, unknown>;
+                const meta = item.kind === "favorite"
+                    ? (String(record.group || "") || this.i18n.unifiedFavorites)
+                    : item.kind === "doc-set"
+                        ? `${record.entryCount} ${this.i18n.unifiedDocSetDocs}`
+                        : (Number(record.closedAt) > 0 ? new Date(Number(record.closedAt)).toLocaleDateString() : "");
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "sw__doc-item";
+                const copy = document.createElement("span");
+                copy.className = "sw__doc-copy";
+                const title = document.createElement("span");
+                title.className = "sw__doc-title";
+                title.textContent = item.kind === "doc-set"
+                    ? String(record.name || "")
+                    : String(record.title || "");
+                const metaEl = document.createElement("span");
+                metaEl.className = "sw__doc-path";
+                if (meta) metaEl.textContent = meta;
+                copy.append(title, metaEl);
+                button.appendChild(copy);
+                button.addEventListener("click", () => this.activateUnifiedItem(item, onClose));
+                grid.appendChild(button);
+            });
+            sectionEl.append(label, grid);
+            box.appendChild(sectionEl);
+        });
+    }
+
+    private activateUnifiedItem(item: {kind: string; key?: string; rootId?: string; setId?: string}, onClose: IOverlayClose) {
+        if (item.kind === "favorite") {
+            const favorite = this.getFavorites().find((fav) => fav.key === item.key);
+            if (favorite) {
+                onClose();
+                void this.jumpToFavorite(favorite, () => undefined);
+                return;
+            }
+        }
+        if (item.kind === "closed" || (item.kind === "favorite" && item.rootId)) {
+            const rootId = String(item.rootId || "");
+            if (!rootId) return;
+            onClose();
+            if (this.isMobile) {
+                void this.mobileOpenDoc(rootId);
+            } else {
+                void openTab({app: this.app, doc: {id: rootId}});
+            }
+            return;
+        }
+        if (item.kind === "doc-set" && item.setId) {
+            onClose();
+            void this.restoreDocumentSetFromHome(item.setId);
+        }
     }
 
     private getQuickActions(): IQuickAction[] {
