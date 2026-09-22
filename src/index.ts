@@ -74,6 +74,7 @@ import {normalizeSettings, resolvePanelSize} from "./settings-model";
 import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
 import {createFloatingBallActionExecutor} from "./floating-ball-actions";
+import {selectAdjacentTab, scrollSurfaceTo} from "./floating-ball-generic-actions";
 import {checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
 import type {FloatingBallUiController, FloatingBallPosition, FloatingBallSurface} from "./floating-ball-ui";
 import {createFloatingBallPanelController} from "./floating-ball-panel";
@@ -3409,7 +3410,7 @@ const version = beginSearch(session);
             label.className = "sw__quick-action-label";
             label.textContent = action.label;
             button.append(icon, label);
-            button.addEventListener("click", () => this.executeQuickAction(action, searchInput, close));
+            button.addEventListener("click", () => this.executeQuickAction(action, searchInput, close, surface));
             host.appendChild(button);
         });
         // 组件面板入口：桌面与手机底栏都常驻（手机端此前只能绕道"更多"菜单）
@@ -3445,13 +3446,38 @@ const version = beginSearch(session);
         host.appendChild(addButton);
     }
 
-    private executeQuickAction(action: IQuickAction, searchInput: HTMLInputElement | null, close: () => void) {
+    /** Cycle through the host's current tabs, wrapping at either edge. */
+    private cycleFloatingBallTab(offset: number): boolean {
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        const activeId = this.isMobile ? this.getMobileActiveTabId() : this.getActiveTab()?.id;
+        const next = selectAdjacentTab(tabs, activeId, offset);
+        if (!next) return false;
+        this.activateTab(next);
+        return true;
+    }
+
+    /** Scroll the active document first, then fall back to a visible host list. */
+    private scrollFloatingBallSurface(surface: QuickActionTarget, edge: "top" | "bottom") {
+        const preferred: HTMLElement[] = [];
+        if (surface !== "sidebar") {
+            const active = this.isMobile
+                ? this.getMobileTabs().find((tab) => tab.id === this.getMobileActiveTabId())
+                : this.getActiveTab();
+            const panel = (active as unknown as {panelElement?: HTMLElement} | undefined)?.panelElement;
+            const content = panel?.querySelector<HTMLElement>(".protyle-content, .protyle-wysiwyg");
+            if (content) preferred.push(content);
+        }
+        return scrollSurfaceTo(document, surface, this.sidebarElement, edge, {preferredElements: preferred});
+    }
+
+    private executeQuickAction(action: IQuickAction, searchInput: HTMLInputElement | null, close: () => void, surface?: QuickActionTarget) {
+        const actionSurface = surface || (this.isMobile ? "mobile" : "desktop");
         const executor = createFloatingBallActionExecutor({
             adapters: this.quickActionAdapters,
             registry: this.quickActionRegistry,
             getDockByType: (type: string) => this.getDockByType(type),
             plugins: (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins,
-            context: {surface: this.isMobile ? "mobile" : "desktop", source: "quick-actions"},
+            context: {surface: actionSurface, source: "quick-actions"},
             close,
             onSwitcher: () => this.showSwitcher(),
             onSearch: () => {
@@ -3467,6 +3493,11 @@ const version = beginSearch(session);
             onJournal: () => this.openJournal(),
             onSettings: () => this.openSetting(),
             onHome: () => openSecondPanel.call(this),
+            onQuickCapture: () => this.openQuickCapture(),
+            onPreviousTab: () => this.cycleFloatingBallTab(-1),
+            onNextTab: () => this.cycleFloatingBallTab(1),
+            onScrollTop: () => this.scrollFloatingBallSurface(actionSurface, "top"),
+            onScrollBottom: () => this.scrollFloatingBallSurface(actionSurface, "bottom"),
         });
         void Promise.resolve(executor(action)).then((result) => {
             if (result?.ok) return;
@@ -4692,6 +4723,11 @@ const version = beginSearch(session);
             journal: this.i18n.quickBuiltinJournal,
             settings: this.i18n.quickBuiltinSettings,
             home: this.i18n.secondPanel,
+            "quick-capture": this.i18n.quickBuiltinQuickCapture,
+            "previous-tab": this.i18n.quickBuiltinPreviousTab,
+            "next-tab": this.i18n.quickBuiltinNextTab,
+            "scroll-top": this.i18n.quickBuiltinScrollTop,
+            "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -8591,6 +8627,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onJournal: () => this.openJournal(),
             onSettings: () => this.openSetting(),
             onHome: () => openSecondPanel.call(this),
+            onQuickCapture: () => this.openQuickCapture(),
+            onPreviousTab: () => this.cycleFloatingBallTab(-1),
+            onNextTab: () => this.cycleFloatingBallTab(1),
+            onScrollTop: () => this.scrollFloatingBallSurface(surface, "top"),
+            onScrollBottom: () => this.scrollFloatingBallSurface(surface, "bottom"),
         });
         void executor(action).then((result) => {
             if (this.floatingBallUis.get(surface) !== controller) return;

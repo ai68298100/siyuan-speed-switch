@@ -162,6 +162,36 @@ async function executeFloatingBallAction(action, options = {}) {
                 invokeClose(options);
                 return success(await callback(action));
             }
+            case "quick-capture": {
+                const callback = callbackOf(options, "onQuickCapture");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "previous-tab": {
+                const callback = callbackOf(options, "onPreviousTab");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "next-tab": {
+                const callback = callbackOf(options, "onNextTab");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "scroll-top": {
+                const callback = callbackOf(options, "onScrollTop");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "scroll-bottom": {
+                const callback = callbackOf(options, "onScrollBottom");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
             default:
                 return unavailable();
         }

@@ -1417,6 +1417,11 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             journal: this.i18n.quickBuiltinJournal,
             settings: this.i18n.quickBuiltinSettings,
             home: this.i18n.secondPanel,
+            "quick-capture": this.i18n.quickBuiltinQuickCapture,
+            "previous-tab": this.i18n.quickBuiltinPreviousTab,
+            "next-tab": this.i18n.quickBuiltinNextTab,
+            "scroll-top": this.i18n.quickBuiltinScrollTop,
+            "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };

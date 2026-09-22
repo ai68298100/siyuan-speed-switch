@@ -2,13 +2,21 @@
 const {normalizeQuickActionText, graphemeLength, graphemeSlice, normalizeCustomIcon} = require("./util.js");
 const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command"]);
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
-const BUILTIN_VALUES = new Set(["switcher", "search", "journal", "settings", "home"]);
+const BUILTIN_VALUES = new Set([
+    "switcher", "search", "journal", "settings", "home",
+    "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom",
+]);
 const BUILTIN_QUICK_ACTIONS = [
     {id: "switcher", label: "切换", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "search", label: "搜索", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
     {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
     {id: "home", label: "组件面板", icon: "iconLayoutHome", kind: "builtin", value: "home", targets: ["desktop", "sidebar", "mobile"], order: 30, enabled: true},
+    {id: "quick-capture", label: "快速记录", icon: "iconAdd", kind: "builtin", value: "quick-capture", targets: ["desktop", "sidebar", "mobile"], order: 40, enabled: true, mobileSafe: true},
+    {id: "previous-tab", label: "上一个页签", icon: "iconLeft", kind: "builtin", value: "previous-tab", targets: ["desktop", "sidebar", "mobile"], order: 50, enabled: true, mobileSafe: true},
+    {id: "next-tab", label: "下一个页签", icon: "iconRight", kind: "builtin", value: "next-tab", targets: ["desktop", "sidebar", "mobile"], order: 60, enabled: true, mobileSafe: true},
+    {id: "scroll-top", label: "滚动到顶部", icon: "iconUp", kind: "builtin", value: "scroll-top", targets: ["desktop", "sidebar", "mobile"], order: 70, enabled: true, mobileSafe: true},
+    {id: "scroll-bottom", label: "滚动到底部", icon: "iconDown", kind: "builtin", value: "scroll-bottom", targets: ["desktop", "sidebar", "mobile"], order: 80, enabled: true, mobileSafe: true},
 ];
 // Keep a deliberately small first-run workspace. External providers remain
 // available from “Add action” and must never occupy the bar automatically.
