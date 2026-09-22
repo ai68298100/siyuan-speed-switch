@@ -5,7 +5,7 @@ const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set([
     "switcher", "search", "journal", "settings", "home",
     "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom",
-    "sync-now", "insert-template", "cycle-doc-set",
+    "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset",
 ]);
 // T-6789/T-6790（§8.0.11）：宿主命令动作目录。targets 按思源源码证据声明：
 // global.ts 的 MOBILE 分支（v3.8.1+ 源码核对）仅支持 fileTree/outline/bookmark/
@@ -39,6 +39,7 @@ const BUILTIN_QUICK_ACTIONS = [
     {id: "sync-now", label: "同步", icon: "iconSync", kind: "builtin", value: "sync-now", targets: ["desktop", "sidebar", "mobile"], order: 90, enabled: true, mobileSafe: true},
     {id: "insert-template", label: "插入模板", icon: "iconMarkdown", kind: "builtin", value: "insert-template", targets: ["desktop", "mobile"], order: 100, enabled: true, mobileSafe: true},
     {id: "cycle-doc-set", label: "切换文档集", icon: "iconRefresh", kind: "builtin", value: "cycle-doc-set", targets: ["desktop", "mobile"], order: 110, enabled: true, mobileSafe: true},
+    {id: "cycle-ball-preset", label: "切换球预设", icon: "iconComposition", kind: "builtin", value: "cycle-ball-preset", targets: ["desktop", "mobile"], order: 120, enabled: true, mobileSafe: true},
 ];
 // Keep a deliberately small first-run workspace. External providers remain
 // available from “Add action” and must never occupy the bar automatically.

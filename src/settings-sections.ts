@@ -11,7 +11,7 @@ import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
-import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
 import {selectFloatingBallMoreActions} from "./floating-ball-panel";
 import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings, checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
@@ -1436,6 +1436,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             "sync-now": this.i18n.quickBuiltinSyncNow,
             "insert-template": this.i18n.quickBuiltinInsertTemplate,
             "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
+            "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };
@@ -1552,6 +1553,86 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     actionList.className = "sw-floating-ball-settings__list";
     actionSection.appendChild(actionList);
     wrapper.appendChild(actionSection);
+
+    // T-6803 场景预设：命名保存当前动作布局与主点击，一键应用/删除/循环
+    const presetSection = document.createElement("section");
+    presetSection.className = "sw-floating-ball-settings__presets";
+    const presetHeading = document.createElement("strong");
+    presetHeading.textContent = this.i18n.floatingBallPresets;
+    const presetHint = document.createElement("p");
+    presetHint.className = "sw-settings__hint";
+    presetHint.textContent = this.i18n.floatingBallPresetsTip;
+    const presetRow = document.createElement("div");
+    presetRow.className = "sw-floating-ball-settings__preset-row";
+    const presetName = document.createElement("input");
+    presetName.type = "text";
+    presetName.className = "b3-text-field";
+    presetName.maxLength = 24;
+    presetName.placeholder = this.i18n.floatingBallPresetName;
+    presetName.setAttribute("aria-label", this.i18n.floatingBallPresetName);
+    const presetSave = document.createElement("button");
+    presetSave.type = "button";
+    presetSave.className = "b3-button b3-button--text";
+    presetSave.textContent = this.i18n.floatingBallPresetSave;
+    presetRow.append(presetName, presetSave);
+    const presetList = document.createElement("div");
+    presetList.className = "sw-floating-ball-settings__preset-list";
+    presetSection.append(presetHeading, presetHint, presetRow, presetList);
+    wrapper.appendChild(presetSection);
+
+    const renderPresets = () => {
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        presetList.textContent = "";
+        const presets: any[] = Array.isArray(config.presets) ? config.presets : [];
+        if (!presets.length) {
+            const empty = document.createElement("p");
+            empty.className = "sw-settings__hint";
+            empty.textContent = this.i18n.floatingBallPresetEmpty;
+            presetList.appendChild(empty);
+            return;
+        }
+        presets.forEach((preset: any) => {
+            const row = document.createElement("div");
+            row.className = "sw-floating-ball-settings__preset-item" + (preset.id === config.currentPresetId ? " is-current" : "");
+            const name = document.createElement("span");
+            name.className = "sw-floating-ball-settings__preset-name";
+            name.textContent = preset.name;
+            const apply = document.createElement("button");
+            apply.type = "button";
+            apply.className = "b3-button b3-button--text";
+            apply.textContent = this.i18n.floatingBallPresetApply;
+            apply.addEventListener("click", () => {
+                const result = applyFloatingBallPreset(this.getSettings().floatingBall, preset.id);
+                if (!result.preset) return;
+                if (persist(result.config)) {
+                    renderActions();
+                    renderPresets();
+                }
+            });
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "b3-button b3-button--text";
+            remove.textContent = this.i18n.floatingBallPresetDelete;
+            remove.addEventListener("click", () => {
+                const result = removeFloatingBallPreset(this.getSettings().floatingBall, preset.id);
+                if (persist(result.config)) {
+                    renderActions();
+                    renderPresets();
+                }
+            });
+            row.append(name, apply, remove);
+            presetList.appendChild(row);
+        });
+    };
+    presetSave.addEventListener("click", () => {
+        const result = saveFloatingBallPreset(this.getSettings().floatingBall, presetName.value);
+        if (!result.preset) return;
+        if (persist(result.config)) {
+            presetName.value = "";
+            renderActions();
+            renderPresets();
+        }
+    });
 
     renderPreview = (draft?: any) => {
         const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
@@ -1825,6 +1906,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     wrapper.addEventListener("sw-floating-ball-refresh", () => { renderControls(); renderActions(); });
     renderControls();
     renderActions();
+    renderPresets();
 
     const footer = document.createElement("div");
     footer.className = "sw-floating-ball-settings__footer";

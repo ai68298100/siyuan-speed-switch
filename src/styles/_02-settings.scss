@@ -711,6 +711,51 @@
     }
     &__restore-appearance { align-self: flex-start; }
 
+    // T-6803 场景预设
+    &__presets {
+        @extend %sw-fb-panel;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+
+        > strong { @extend %sw-fb-heading; }
+    }
+
+    &__preset-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+
+        .b3-text-field { flex: 1 1 auto; min-width: 0; }
+        .b3-button { flex: 0 0 auto; }
+    }
+
+    &__preset-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        background: var(--b3-theme-background-light);
+
+        &.is-current {
+            border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, transparent);
+            background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
+        }
+
+        .sw-floating-ball-settings__preset-name {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .b3-button { flex: 0 0 auto; min-height: 32px; padding: 2px 8px; }
+    }
+
     button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
         outline: 2px solid var(--b3-theme-primary);
         outline-offset: 2px;

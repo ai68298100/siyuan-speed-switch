@@ -72,7 +72,7 @@ import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize} from "./settings-model";
-import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
 import {createFloatingBallActionExecutor} from "./floating-ball-actions";
 import {selectAdjacentTab, scrollSurfaceTo} from "./floating-ball-generic-actions";
@@ -3724,6 +3724,7 @@ const version = beginSearch(session);
             onSyncNow: () => this.syncNow(),
             onInsertTemplate: () => this.openTemplatePicker(),
             onCycleDocSet: () => this.cycleDocumentSet(),
+            onCycleBallPreset: () => this.cycleBallPreset(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -4799,6 +4800,20 @@ const version = beginSearch(session);
         await this.restoreDocumentSetFromHome(next.setId);
     }
 
+    // T-6803 循环切换悬浮球场景预设：无预设/单预设时提示；切换后气泡提示场景名。
+    private cycleBallPreset(): void {
+        const current = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const next = pickNextFloatingBallPreset(current.presets, current.currentPresetId);
+        if (!next) {
+            showMessage(this.i18n.floatingBallPresetCycleNone, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const applied = applyFloatingBallPreset(current, next.id);
+        if (!applied.preset) return;
+        this.updateSettings({floatingBall: applied.config});
+        showMessage(this.i18n.floatingBallPresetApplied.replace("{x}", applied.preset.name), MESSAGE_DEFAULT_MS);
+    }
+
     // 执行 "插件名::命令key"（协议 v2 条目级命令 / 模块级 clickCommand 共用）
     private executeHomeCommand(command: string, close: () => void): boolean {
         if (!/^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(command)) return false;
@@ -5006,6 +5021,7 @@ const version = beginSearch(session);
             "sync-now": this.i18n.quickBuiltinSyncNow,
             "insert-template": this.i18n.quickBuiltinInsertTemplate,
             "cycle-doc-set": this.i18n.quickBuiltinCycleDocSet,
+            "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -9068,6 +9084,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onSyncNow: () => this.syncNow(),
             onInsertTemplate: () => this.openTemplatePicker(),
             onCycleDocSet: () => this.cycleDocumentSet(),
+            onCycleBallPreset: () => this.cycleBallPreset(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

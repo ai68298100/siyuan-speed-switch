@@ -188,3 +188,48 @@ test("floating ball action presentation accepts safe custom image icons", () => 
     assert.equal(Object.hasOwn(config.actions.desktop[2], "icon"), false);
     assert.equal(config.actions.desktop[3].icon, "siyuan-some-long-plugin-action-icon");
 });
+
+test("floating ball presets: normalize bounds and drops malformed entries", () => {
+    const {normalizeFloatingBallPresets, saveFloatingBallPreset, applyFloatingBallPreset, removeFloatingBallPreset, pickNextFloatingBallPreset, createDefaultFloatingBallConfig} = require("../src/floating-ball-model.js");
+    const base = createDefaultFloatingBallConfig();
+    // 保存两个场景
+    const first = saveFloatingBallPreset(base, "阅读", 1000);
+    assert.ok(first.preset, "valid save returns the preset");
+    const second = saveFloatingBallPreset(first.config, "写作", 2000);
+    assert.equal(second.config.presets.length, 2);
+    // 同名覆盖不新增
+    const overwrite = saveFloatingBallPreset(second.config, "阅读", 3000);
+    assert.equal(overwrite.config.presets.length, 2);
+    assert.equal(overwrite.config.presets.find((p) => p.name === "阅读").savedAt, 3000);
+    // 应用：拷贝动作布局与主点击，外观保持
+    const marked = {...second.config, appearance: {...second.config.appearance, size: 60}};
+    const applied = applyFloatingBallPreset(marked, "preset-2000");
+    assert.equal(applied.preset.name, "写作");
+    assert.equal(applied.config.currentPresetId, "preset-2000");
+    assert.equal(applied.config.appearance.size, 60, "appearance stays global, not part of a scene");
+    applied.config.actions.mobile.length >= 1;
+    // 删除：连带清掉 current 指向
+    const removed = removeFloatingBallPreset(applied.config, "preset-2000");
+    assert.equal(removed.config.presets.length, 1);
+    assert.equal(removed.config.currentPresetId, "");
+    // 循环：环绕 + 单集/空拒绝（在删除前用双预设列表断言环绕）
+    const cycleList = second.config.presets;
+    assert.equal(pickNextFloatingBallPreset(cycleList, "preset-1000")?.id, "preset-2000");
+    assert.equal(pickNextFloatingBallPreset(cycleList, "preset-2000")?.id, "preset-1000", "wraps from last to first");
+    assert.equal(pickNextFloatingBallPreset([], ""), null);
+    assert.equal(pickNextFloatingBallPreset([{id: "only", name: "only"}], ""), null);
+});
+
+test("floating ball presets: normalize caps at eight and drops garbage", () => {
+    const {normalizeFloatingBallPresets} = require("../src/floating-ball-model.js");
+    const nine = Array.from({length: 9}, (_, index) => ({
+        id: `p${index}`, name: `场景${index}`, savedAt: index,
+        clickAction: {desktop: "switcher", mobile: "switcher"},
+        actions: {desktop: [], mobile: []},
+    }));
+    const presets = normalizeFloatingBallPresets(nine);
+    assert.equal(presets.length, 8, "only the newest eight survive");
+    assert.equal(normalizeFloatingBallPresets([{id: "", name: "broken"}, null, "x"]).length, 0);
+    const kept = normalizeFloatingBallPresets(nine).every((preset) => preset.actions.desktop.length === 0);
+    assert.equal(kept, true);
+});

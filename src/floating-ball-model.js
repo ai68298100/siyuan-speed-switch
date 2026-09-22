@@ -9,6 +9,8 @@ const {normalizeCustomIcon} = require("./util.js");
 
 const FLOATING_BALL_SCHEMA_VERSION = 1;
 const FLOATING_BALL_SURFACES = ["desktop", "sidebar", "mobile"];
+// ADR 0072：挂载与设置入口仅桌面/移动两端（schema 仍容忍 sidebar 字段）。
+const FLOATING_BALL_UI_SURFACES = ["desktop", "mobile"];
 const FLOATING_BALL_EDGES = ["left", "right"];
 const FLOATING_BALL_FIRST_LAYER_LIMIT = 6;
 const FLOATING_BALL_ACTION_LIMIT = 64;
@@ -98,6 +100,8 @@ function createDefaultFloatingBallConfig() {
             touchSlopPx: 8,
         },
         actions,
+        presets: [],
+        currentPresetId: "",
     };
 }
 
@@ -136,6 +140,91 @@ function normalizeFloatingBallActionList(value, fallback = createDefaultFloating
     return result;
 }
 
+// ==================== T-6803 场景预设（命名动作布局快照） ====================
+// 场景 = {点击动作 + 各端动作列表} 的命名快照；外观/行为不进入场景
+// （它们是全局观感，不是场景差异）。有界：最多 8 个，同名覆盖。
+
+const FLOATING_BALL_PRESET_MAX = 8;
+const FLOATING_BALL_PRESET_NAME_MAX = 24;
+
+function normalizeFloatingBallPresets(value, max = FLOATING_BALL_PRESET_MAX) {
+    const cap = Number.isFinite(max) && max > 0 ? Math.floor(max) : FLOATING_BALL_PRESET_MAX;
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const presets = [];
+    for (const raw of value) {
+        if (presets.length >= cap) break;
+        if (!isRecord(raw)) continue;
+        const id = typeof raw.id === "string" ? raw.id.trim().slice(0, 64) : "";
+        const name = typeof raw.name === "string" ? raw.name.trim().slice(0, FLOATING_BALL_PRESET_NAME_MAX) : "";
+        if (!id || !name || seen.has(id)) continue;
+        seen.add(id);
+        const sourceActions = isRecord(raw.actions) ? raw.actions : {};
+        const sourceClick = isRecord(raw.clickAction) ? raw.clickAction : {};
+        presets.push({
+            id,
+            name,
+            savedAt: Number.isFinite(raw.savedAt) && raw.savedAt > 0 ? raw.savedAt : 0,
+            clickAction: Object.fromEntries(FLOATING_BALL_SURFACES.map((surface) => [surface,
+                normalizeActionId(sourceClick[surface]) || DEFAULT_CLICK_ACTION])),
+            actions: Object.fromEntries(FLOATING_BALL_SURFACES.map((surface) => [surface,
+                normalizeFloatingBallActionList(sourceActions[surface], [])])),
+        });
+    }
+    return presets;
+}
+
+function saveFloatingBallPreset(config, name, now = Date.now()) {
+    const source = normalizeFloatingBallConfig(config);
+    const cleanName = typeof name === "string" ? name.trim().slice(0, FLOATING_BALL_PRESET_NAME_MAX) : "";
+    if (!cleanName) return {config: source, preset: null};
+    const presets = normalizeFloatingBallPresets(source.presets);
+    const stamp = Math.floor(Number(now) || Date.now());
+    const existing = presets.find((preset) => preset.name === cleanName);
+    const snapshotActions = (surface) => source.actions[surface].map((item) => ({...item}));
+    const preset = {
+        id: existing ? existing.id : `preset-${stamp}`,
+        name: cleanName,
+        savedAt: stamp,
+        clickAction: {desktop: source.clickAction.desktop, mobile: source.clickAction.mobile},
+        actions: {desktop: snapshotActions("desktop"), mobile: snapshotActions("mobile")},
+    };
+    const next = existing
+        ? presets.map((item) => (item.id === existing.id ? preset : item))
+        : [...presets, preset].slice(-FLOATING_BALL_PRESET_MAX);
+    return {config: {...source, presets: next}, preset};
+}
+
+function applyFloatingBallPreset(config, presetId) {
+    const source = normalizeFloatingBallConfig(config);
+    const preset = normalizeFloatingBallPresets(source.presets).find((item) => item.id === presetId);
+    if (!preset) return {config: source, preset: null};
+    const next = {
+        ...source,
+        clickAction: {...preset.clickAction},
+        actions: {
+            desktop: preset.actions.desktop.map((item) => ({...item})),
+            mobile: preset.actions.mobile.map((item) => ({...item})),
+        },
+        currentPresetId: preset.id,
+    };
+    return {config: next, preset};
+}
+
+function removeFloatingBallPreset(config, presetId) {
+    const source = normalizeFloatingBallConfig(config);
+    const presets = normalizeFloatingBallPresets(source.presets).filter((item) => item.id !== presetId);
+    const currentPresetId = source.currentPresetId === presetId ? "" : source.currentPresetId;
+    return {config: {...source, presets, currentPresetId}, removed: true};
+}
+
+function pickNextFloatingBallPreset(presets, currentPresetId) {
+    const list = normalizeFloatingBallPresets(presets);
+    if (list.length < 2) return null;
+    const index = list.findIndex((item) => item.id === currentPresetId);
+    return list[(index + 1 + list.length) % list.length] || list[0];
+}
+
 function normalizeFloatingBallConfig(input, options = {}) {
     const defaults = createDefaultFloatingBallConfig();
     // Settings integrations may pass the full settings object.  Accepting the
@@ -150,6 +239,8 @@ function normalizeFloatingBallConfig(input, options = {}) {
         clickAction: {},
         behavior: {},
         actions: {},
+        presets: [],
+        currentPresetId: "",
     };
 
     const sourceEnabled = isRecord(source.enabled) ? source.enabled : {};
@@ -207,6 +298,11 @@ function normalizeFloatingBallConfig(input, options = {}) {
             defaults.actions[surface],
         );
     });
+    // T-6803 场景预设：命名保存的动作布局快照（含端侧主点击）。有界、
+    // 可选字段；旧版本读到此字段会安全忽略，新版本对旧数据补空数组。
+    config.presets = normalizeFloatingBallPresets(source.presets);
+    config.currentPresetId = typeof source.currentPresetId === "string"
+        ? source.currentPresetId.trim().slice(0, 64) : "";
     return config;
 }
 
@@ -423,12 +519,13 @@ function resolveFloatingBallClickAction(requested, availableActions = [], surfac
 module.exports = {
     FLOATING_BALL_SCHEMA_VERSION,
     FLOATING_BALL_SURFACES,
+    FLOATING_BALL_PRESET_MAX,
     // ADR 0072: the sidebar portal is withdrawn from the product (it overlapped
     // the desktop-window ball on the same host window). The schema-level
     // FLOATING_BALL_SURFACES above still normalizes legacy sidebar fields so
     // old configs and imports stay valid; only mounting and settings entry
     // shrink to these two surfaces.
-    FLOATING_BALL_UI_SURFACES: ["desktop", "mobile"],
+    FLOATING_BALL_UI_SURFACES,
     FLOATING_BALL_EDGES,
     FLOATING_BALL_FIRST_LAYER_LIMIT,
     FLOATING_BALL_ACTION_LIMIT,
@@ -451,6 +548,11 @@ module.exports = {
     selectFirstLayerActions: selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
     resolveFloatingBallAction: resolveFloatingBallClickAction,
+    normalizeFloatingBallPresets,
+    saveFloatingBallPreset,
+    applyFloatingBallPreset,
+    removeFloatingBallPreset,
+    pickNextFloatingBallPreset,
     applyFloatingBallActionPresentation,
     DEFAULT_CLICK_ACTION,
     makeFloatingBallMoreAction,
