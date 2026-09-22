@@ -1433,6 +1433,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             recentClosed: this.i18n.quickGlobalRecentClosed,
             riffCard: this.i18n.quickGlobalRiffCard,
             editReadonly: this.i18n.quickGlobalEditReadonly,
+            "sync-now": this.i18n.quickBuiltinSyncNow,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };

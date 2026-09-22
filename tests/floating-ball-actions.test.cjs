@@ -102,3 +102,15 @@ test("floating action executor reports unavailable when the host bridge is missi
     assert.deepEqual(result, {ok: true});
     assert.deepEqual(calls, ["ran"]);
 });
+
+test("floating action executor dispatches sync-now and reports unavailable without the host hook", async () => {
+    const calls = [];
+    const ok = await executeFloatingBallAction({kind: "builtin", value: "sync-now"}, {
+        close: () => calls.push("close"),
+        onSyncNow: async () => { calls.push("sync"); },
+    });
+    assert.deepEqual(ok, {ok: true});
+    const missing = await executeFloatingBallAction({kind: "builtin", value: "sync-now"}, {});
+    assert.deepEqual(missing, {ok: false, reason: "unavailable"});
+    assert.deepEqual(calls, ["close", "sync"]);
+});

@@ -3341,6 +3341,21 @@ const version = beginSearch(session);
     }
 
     /**
+     * T-6791 一键同步：直调内核 performSync（不走 globalCommand 的确认弹窗）。
+     * 只读/发布模式与同步进行中的拒绝都来自内核（CheckReadonly/互斥），
+     * 插件侧只区分完成与失败两种提示；大库同步放宽到 60s 超时。
+     */
+    private async syncNow(): Promise<void> {
+        const payload = await this.fetchKernelJson("/api/sync/performSync", {}, 60000);
+        if (!payload || payload.code !== 0) {
+            logger.warn("sync failed", payload?.msg || "kernel unreachable");
+            showMessage(this.i18n.syncNowFailed, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        showMessage(this.i18n.syncNowCompleted, MESSAGE_DEFAULT_MS);
+    }
+
+    /**
      * Return only SVG symbol ids from the current document.  Plugin DOM
      * elements can legitimately share an id with an icon-like value, so
      * getElementById alone is not sufficient for deciding whether a symbol
@@ -3519,6 +3534,7 @@ const version = beginSearch(session);
             onNextTab: () => this.cycleFloatingBallTab(1),
             onScrollTop: () => this.scrollFloatingBallSurface(actionSurface, "top"),
             onScrollBottom: () => this.scrollFloatingBallSurface(actionSurface, "bottom"),
+            onSyncNow: () => this.syncNow(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -3581,6 +3597,9 @@ const version = beginSearch(session);
         // T-6470：数据库表格两级取数——renderAttributeView 0 行时经 getAttributeView
         // 解析真实库 ID（data.av.id）重试（嵌入/镜像库块 ID ≠ 库 ID）。
         "/api/av/getAttributeView",
+        // T-6791 一键同步：写端点，CheckAdminRole+CheckReadonly（只读/发布模式）
+        // 由内核侧拒绝；同步进行中的互斥也由内核处理。
+        "/api/sync/performSync",
     ]);
 
     /**
@@ -3596,7 +3615,7 @@ const version = beginSearch(session);
         }
     }
 
-    private async fetchKernelJson(url: string, body: Record<string, unknown>): Promise<any | null> {
+    private async fetchKernelJson(url: string, body: Record<string, unknown>, timeoutMs = 5000): Promise<any | null> {
         // 安全守卫（纵深防御）：仅允许同源、硬编码的思源内核相对路径。
         // - 必须以 "/" 开头（相对路径 → 同源），拒绝任何绝对 URL 与外部 host；
         // - 必须命中端点白名单，杜绝把请求指向任意地址（SSRF）。
@@ -3605,7 +3624,7 @@ const version = beginSearch(session);
             return null;
         }
         const controller = typeof AbortController === "function" ? new AbortController() : null;
-        const timer = window.setTimeout(() => controller?.abort(), 5000);
+        const timer = window.setTimeout(() => controller?.abort(), timeoutMs);
         try {
             // 每个端点的 fetch 都使用字面量 URL（安全扫描要求：不存在变量 URL 请求）
             const init = {
@@ -3672,6 +3691,9 @@ const version = beginSearch(session);
                     break;
                 case "/api/av/getAttributeView":
                     response = await fetch("/api/av/getAttributeView", init);
+                    break;
+                case "/api/sync/performSync":
+                    response = await fetch("/api/sync/performSync", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -4751,6 +4773,7 @@ const version = beginSearch(session);
             "next-tab": this.i18n.quickBuiltinNextTab,
             "scroll-top": this.i18n.quickBuiltinScrollTop,
             "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
+            "sync-now": this.i18n.quickBuiltinSyncNow,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -8684,6 +8707,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onNextTab: () => this.cycleFloatingBallTab(1),
             onScrollTop: () => this.scrollFloatingBallSurface(surface, "top"),
             onScrollBottom: () => this.scrollFloatingBallSurface(surface, "bottom"),
+            onSyncNow: () => this.syncNow(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

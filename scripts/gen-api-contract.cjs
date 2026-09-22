@@ -8,6 +8,9 @@ const crypto = require("crypto");
 const ROOT = path.resolve(__dirname, "..");
 const SCHEMA = process.argv[2]
     || path.join(ROOT, ".research/refs/siyuan-master/kernel/apicontract/schema.json");
+// 上游源码根从 schema 路径推导（schema 位于 <root>/kernel/apicontract/），
+// 便于对任意本地克隆（如 research-clones/siyuan）重新生成。
+const UPSTREAM_ROOT = path.dirname(path.dirname(path.dirname(path.resolve(SCHEMA))));
 const OUT = path.join(ROOT, "tests/fixtures/siyuan-api-contract.json");
 const SRC = path.join(ROOT, "src");
 
@@ -16,6 +19,7 @@ const SRC = path.join(ROOT, "src");
 const NON_KERNEL = {
     "/api/0/query/": "ActivityWatch 第三方服务查询路径（经思源正向代理访问）",
     "/api/s": "外部生活组件服务 URL 片段拼接来源，非独立内核端点",
+    "/api/0/buckets": "ActivityWatch 第三方服务列桶路径（经思源正向代理访问，T-6689 桶选择）",
 };
 
 function scanKernelLiterals() {
@@ -162,8 +166,8 @@ function main() {
         source: {
             repo: "siyuan-note/siyuan",
             branch: "master",
-            kernelVersion: (fs.readFileSync(path.join(ROOT,
-                ".research/refs/siyuan-master/kernel/util/working.go"), "utf8").match(/const Ver = "([^"]+)"/) || [])[1],
+            kernelVersion: (fs.readFileSync(path.join(UPSTREAM_ROOT,
+                "kernel/util/working.go"), "utf8").match(/const Ver = "([^"]+)"/) || [])[1],
             retrievedAt: process.env.SW_CONTRACT_RETRIEVED_AT || "REPLACE_WITH_SNAPSHOT_DATE",
             note: "上游契约快照的有端子集；由 scripts/gen-api-contract.cjs 生成，勿手改。运行时真值以 docs/kernel-api-smoke-*.md 实测为准。",
             subsetSha256: crypto.createHash("sha256").update(subset).digest("hex"),
