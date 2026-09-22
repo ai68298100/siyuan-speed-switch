@@ -4,9 +4,9 @@
 
 Current build: `dist/index.js` 895720 bytes; `dist/index.css` 173748 bytes; `package.zip` 410219 bytes (本地构建实测；T-6675~T-6692 批次：版本下限抬升、存储版本戳、actionEffects、自建审批管线与确认弹窗撤除、执行链 propose/execute 双能力入图、note-stats 写作强度、写作活跃度年历网格、RSS 已读状态、DailyHot 基址+路由选择器、ActivityWatch 桶选择、世界时钟离线城市表；T-6760~T-6764 B3~B7 悬浮球治理)；`icon.png` 160x160 18376 bytes.
 
-评估日期：2026-09-22（v0.30.0 悬浮球完整功能发布候选，T-6750~T-6764）；真实宿主补充验收仍按兼容性任务持续跟进。
+评估日期：2026-09-22（v0.30.1 悬浮球与 Task Horizon 手机联动发布候选，T-6750~T-6775）；真实宿主补充验收仍按兼容性任务持续跟进。
 
-历史发布窗口：v0.29.0 发布后 v0.29.x 开发头；当前候选已切换至 `v0.30.0`。
+历史发布窗口：v0.29.0 发布后 v0.29.x 开发头；当前候选已切换至 `v0.30.1`。
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ Current build: `dist/index.js` 895720 bytes; `dist/index.css` 173748 bytes; `pac
 | 生产产物与包体 | 已通过 | 当前构建由 `scripts/readiness-snapshot.cjs` 自动回写（raw 896 KiB 自律线，归档硬上限 512 KiB）；zip 单条目压缩预算 180→192→224→256 KiB（T-6357/T-6400 / ADR 0059 / ADR 0065）。raw 线是异常膨胀预警，不限制功能实现；预算、余量和快照漂移统一由 `scripts/release-readiness-metrics.cjs` 提供。 |
 | 集市图标规范 | 已通过 | `icon.png` 160x160、18376 bytes，符合思源官方「推荐 160x160、不超过 20 KB」规范（此前 256x256、44720 bytes 超标 2.2 倍）；`preview.png` 53.1 KiB 亦在 200 KB 内 |
 | 归档可复现性 | 已通过 | `pnpm run repro:audit` 连续执行两次生产构建，并对 `dist/index.js`、`dist/index.css`、`package.zip` 做字节数与 SHA-256 比对，当前 3/3 一致；ZIP 条目时间戳 = 发版提交时间（SOURCE_DATE_EPOCH 模式，T-6474：1980 纪元曾致集市安装的文件 mtime 比云同步索引旧、版本被同步回滚） |
-| 版本元数据 | 已通过 | `0.30.0` 已同步 `package.json`、`plugin.json`、中英文 README 与双语 changelog（发版准备，tag `v0.30.0`） |
+| 版本元数据 | 已通过 | `0.30.1` 已同步 `package.json`、`plugin.json`、中英文 README 与双语 changelog（发版准备，tag `v0.30.1`）；Task Horizon 手机命令联动需要提供方配套版本 |
 | 真实桌面/侧栏验收 | 待处理 | T-107：路径端点能力、窄侧栏宽度、最新 UI 生命周期 |
 | Android 真机验收 | 后置 | 按 D-042；当前环境无 `adb`、`java` 与设备 |
 | GitHub 发布动作 | 已通过 | `v0.29.1` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 376991 bytes）；`v0.28.3` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 374957 bytes）；`v0.28.2` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 383400 bytes）；`v0.28.1` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 381382 bytes）；`v0.28.0` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 380718 bytes）；`v0.27.1` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 380196 bytes）；`v0.27.0` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 379551 bytes）；`v0.26.0` 已于 2026-09-21 发布（Release workflow 自动构建，package.zip 377395 bytes）；`v0.24.0` 已于 2026-09-20 发布（Release workflow 自动构建，package.zip 393300 bytes，SOURCE_DATE_EPOCH 提交时间戳）；`v0.23.5` 已于 2026-09-19 发布（Release 资产 `package.zip` 382231 bytes；Release workflow run #73 与 CI run #101 均 completed/success）。推送方式：`https://github.com:443` 间歇不可达，改走 SSH over 443（`ssh.github.com`）一次性 URL 推送 `HEAD:main`（`34a7bb8..8d2e498` 纯 fast-forward）与 `v0.23.5` 标签，未使用 force push、远端历史无损；本地 7 个提交已 rebase 到 `origin/main` 之上，此前的"同步提交"已丢弃 |
