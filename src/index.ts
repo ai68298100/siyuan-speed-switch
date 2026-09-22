@@ -3341,6 +3341,80 @@ const version = beginSearch(session);
     }
 
     /**
+     * T-6792 插入模板：列出 <data>/templates/ 下的模板（内核 manage 端点），
+     * 选中后 render 为 HTML 并经官方 protyle.insert 写入当前光标处。
+     * 渲染目标 id 取活动编辑器根块；无活动编辑器时提示后放弃。
+     */
+    private async openTemplatePicker(): Promise<void> {
+        const editor = this.resolveActiveHostEditor();
+        if (!editor) {
+            showMessage(this.i18n.templatePickerNoEditor, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const listing = await this.fetchKernelJson("/api/template/manage", {action: "list"});
+        const entries = Array.isArray(listing?.data)
+            ? listing.data.filter((entry: unknown) => {
+                const item = entry as {path?: unknown; isDir?: unknown};
+                return Boolean(item) && typeof item.path === "string" && item.path.length > 0 && item.isDir !== true;
+            })
+            : [];
+        if (!entries.length) {
+            showMessage(this.i18n.templatePickerEmpty, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const dialog = new Dialog({
+            title: this.i18n.templatePickerTitle,
+            content: '<div class="speed-switch sw-template-picker"></div>',
+            width: this.isMobile ? "min(440px, 92vw)" : "400px",
+            height: this.isMobile ? "min(420px, 68vh)" : "360px",
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw-template-picker");
+        if (!root) return;
+        const list = document.createElement("div");
+        list.className = "sw-template-picker__list";
+        entries.forEach((entry: {path: string}) => {
+            const name = entry.path.split("/").pop() || entry.path;
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-list-item b3-list-item--narrow sw-template-picker__item";
+            button.textContent = name;
+            button.title = entry.path;
+            button.addEventListener("click", () => {
+                button.disabled = true;
+                void this.insertHostTemplate(editor, entry.path).then((inserted) => {
+                    if (inserted) dialog.destroy();
+                    else button.disabled = false;
+                });
+            });
+            list.appendChild(button);
+        });
+        root.appendChild(list);
+    }
+
+    private resolveActiveHostEditor(): {protyle: {block?: {parentID?: string}; insert: (html: string, isBlock?: boolean, useProtyleRange?: boolean) => void}} | null {
+        const bridge = this as unknown as {getActiveEditor?: (wndActive?: boolean) => unknown};
+        if (typeof bridge.getActiveEditor !== "function") return null;
+        const editor = bridge.getActiveEditor.call(this) as {protyle?: {block?: {parentID?: string}; insert?: (html: string, isBlock?: boolean, useProtyleRange?: boolean) => void}} | undefined;
+        return editor?.protyle?.insert ? (editor as {protyle: {block?: {parentID?: string}; insert: (html: string, isBlock?: boolean, useProtyleRange?: boolean) => void}}) : null;
+    }
+
+    private async insertHostTemplate(editor: {protyle: {block?: {parentID?: string}; insert: (html: string, isBlock?: boolean, useProtyleRange?: boolean) => void}}, path: string): Promise<boolean> {
+        const rendered = await this.fetchKernelJson("/api/template/render", {
+            id: editor.protyle.block?.parentID || "",
+            path,
+            mode: "editorInsert",
+        }, 15000);
+        const content = rendered?.data?.content;
+        if (!rendered || rendered.code !== 0 || typeof content !== "string" || !content.trim()) {
+            logger.warn("template insert failed", rendered?.msg || "empty content");
+            showMessage(this.i18n.templateInsertFailed, MESSAGE_DEFAULT_MS, "error");
+            return false;
+        }
+        editor.protyle.insert(content, true, true);
+        return true;
+    }
+
+    /**
      * T-6791 一键同步：直调内核 performSync（不走 globalCommand 的确认弹窗）。
      * 只读/发布模式与同步进行中的拒绝都来自内核（CheckReadonly/互斥），
      * 插件侧只区分完成与失败两种提示；大库同步放宽到 60s 超时。
@@ -3535,6 +3609,7 @@ const version = beginSearch(session);
             onScrollTop: () => this.scrollFloatingBallSurface(actionSurface, "top"),
             onScrollBottom: () => this.scrollFloatingBallSurface(actionSurface, "bottom"),
             onSyncNow: () => this.syncNow(),
+            onInsertTemplate: () => this.openTemplatePicker(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -3600,6 +3675,10 @@ const version = beginSearch(session);
         // T-6791 一键同步：写端点，CheckAdminRole+CheckReadonly（只读/发布模式）
         // 由内核侧拒绝；同步进行中的互斥也由内核处理。
         "/api/sync/performSync",
+        // T-6792 插入模板：manage 列清单，render 渲染为 HTML 后经 protyle.insert
+        // 写入光标处；render 的 path 校验（必须在 <data>/templates/ 内）由内核负责。
+        "/api/template/manage",
+        "/api/template/render",
     ]);
 
     /**
@@ -3694,6 +3773,12 @@ const version = beginSearch(session);
                     break;
                 case "/api/sync/performSync":
                     response = await fetch("/api/sync/performSync", init);
+                    break;
+                case "/api/template/manage":
+                    response = await fetch("/api/template/manage", init);
+                    break;
+                case "/api/template/render":
+                    response = await fetch("/api/template/render", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);
@@ -4774,6 +4859,7 @@ const version = beginSearch(session);
             "scroll-top": this.i18n.quickBuiltinScrollTop,
             "scroll-bottom": this.i18n.quickBuiltinScrollBottom,
             "sync-now": this.i18n.quickBuiltinSyncNow,
+            "insert-template": this.i18n.quickBuiltinInsertTemplate,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -8708,6 +8794,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onScrollTop: () => this.scrollFloatingBallSurface(surface, "top"),
             onScrollBottom: () => this.scrollFloatingBallSurface(surface, "bottom"),
             onSyncNow: () => this.syncNow(),
+            onInsertTemplate: () => this.openTemplatePicker(),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

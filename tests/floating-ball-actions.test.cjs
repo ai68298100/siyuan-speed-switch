@@ -114,3 +114,15 @@ test("floating action executor dispatches sync-now and reports unavailable witho
     assert.deepEqual(missing, {ok: false, reason: "unavailable"});
     assert.deepEqual(calls, ["close", "sync"]);
 });
+
+test("floating action executor dispatches insert-template to the host picker", async () => {
+    const calls = [];
+    const ok = await executeFloatingBallAction({kind: "builtin", value: "insert-template"}, {
+        close: () => calls.push("close"),
+        onInsertTemplate: async () => { calls.push("picker"); },
+    });
+    assert.deepEqual(ok, {ok: true});
+    const missing = await executeFloatingBallAction({kind: "builtin", value: "insert-template"}, {});
+    assert.deepEqual(missing, {ok: false, reason: "unavailable"});
+    assert.deepEqual(calls, ["close", "picker"]);
+});

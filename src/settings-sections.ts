@@ -1434,6 +1434,7 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
             riffCard: this.i18n.quickGlobalRiffCard,
             editReadonly: this.i18n.quickGlobalEditReadonly,
             "sync-now": this.i18n.quickBuiltinSyncNow,
+            "insert-template": this.i18n.quickBuiltinInsertTemplate,
         };
         return builtinLabels[action.value] || action.label || action.id;
     };

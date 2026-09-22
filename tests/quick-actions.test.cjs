@@ -57,11 +57,13 @@ test("quick actions: empty labels receive an accessible fallback", () => {
 test("quick actions: optional built-ins remain available without becoming defaults", () => {
     assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["search", "journal", "settings"]);
     assert.deepEqual(getBuiltinQuickActions().map((item) => item.value),
-        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now"]);
+        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template"]);
     assert.equal(resolveQuickActionSupport("builtin", "journal", "sidebar"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "home", "mobile"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "sync-now", "mobile"), "supported",
         "the kernel is local to the device, so manual sync is mobile-safe");
+    assert.equal(resolveQuickActionSupport("builtin", "insert-template", "sidebar"), "unsupported",
+        "the sidebar dock has no document editor to insert into");
 });
 
 test("quick actions: an explicit empty target list stays empty", () => {
