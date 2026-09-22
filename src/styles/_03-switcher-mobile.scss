@@ -787,6 +787,46 @@
         }
     }
 
+    // ==================== 搜索过滤条（T-6809） ====================
+    .sw__search-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 2px 4px;
+    }
+
+    .sw__search-chip {
+        min-height: 30px;
+        padding: 3px 12px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 999px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-background);
+        font-size: 12px;
+        cursor: pointer;
+
+        &:hover { border-color: color-mix(in srgb, var(--b3-theme-primary) 36%, var(--b3-border-color)); }
+
+        &.is-active {
+            border-color: var(--b3-theme-primary);
+            background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
+            color: var(--b3-theme-primary);
+        }
+    }
+
+    // 过滤条可见性语义：按选中类型隐藏非命中分区（纯展示层，不改搜索）
+    &[data-sw-chip="tabs"] {
+        .sw__unified, .sw__doc-results { display: none; }
+    }
+
+    &[data-sw-chip="unified"] {
+        .sw__group, .sw__doc-results { display: none; }
+    }
+
+    &[data-sw-chip="docs"] {
+        .sw__group, .sw__unified { display: none; }
+    }
+
     // ==================== 零词条工作台（T-6807） ====================
     .sw__workbench {
         margin-top: 16px;

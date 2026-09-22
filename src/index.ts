@@ -3086,6 +3086,8 @@ const updatedMap: {[rootId: string]: string} = {};
         this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
         // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口。
         this.renderWorkbench(scrollElement, keyword, onClose);
+        // T-6809 过滤条：查询时在结果区顶部提供类型收窄 chips（纯展示层可见性）。
+        this.applySearchChips(scrollElement, keyword);
 
         // 每次输入都让上一轮请求失效。空关键词或缓存命中也必须递增序号；
         // 否则较慢的旧请求返回后会覆盖当前界面。
@@ -3110,6 +3112,56 @@ const version = beginSearch(session);
             session.timer = null;
             runDocSearchFetch.call(this, scrollElement, searchInput, kernelQuery, version, onClose, filters, cacheKey);
         }, SEARCH_DEBOUNCE_MS);
+    }
+
+    // ==================== T-6809 搜索过滤条（类型收窄 chips） ====================
+
+    private applySearchChips(scrollElement: HTMLElement, keyword: string) {
+        if (!keyword) {
+            this.docSearchState.chipFilters.delete(scrollElement);
+            scrollElement.removeAttribute("data-sw-chip");
+            scrollElement.querySelector(".sw__search-chips")?.remove();
+            return;
+        }
+        const selected = this.docSearchState.chipFilters.get(scrollElement) || "all";
+        scrollElement.dataset.swChip = selected;
+        let row = scrollElement.querySelector<HTMLElement>(".sw__search-chips");
+        if (!row) {
+            row = document.createElement("div");
+            row.className = "sw__search-chips";
+            row.setAttribute("role", "tablist");
+            row.setAttribute("aria-label", this.i18n.chipsLabel);
+            const defs: Array<[string, string]> = [
+                ["all", this.i18n.chipsAll],
+                ["tabs", this.i18n.chipsTabs],
+                ["unified", this.i18n.chipsCollections],
+                ["docs", this.i18n.chipsDocs],
+            ];
+            defs.forEach(([key, label]) => {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "sw__search-chip";
+                chip.dataset.chip = key;
+                chip.textContent = label;
+                chip.setAttribute("role", "tab");
+                chip.addEventListener("click", () => {
+                    this.docSearchState.chipFilters.set(scrollElement, key);
+                    scrollElement.dataset.swChip = key;
+                    row!.querySelectorAll<HTMLElement>(".sw__search-chip").forEach((el) => {
+                        const active = el.dataset.chip === key;
+                        el.classList.toggle("is-active", active);
+                        el.setAttribute("aria-selected", String(active));
+                    });
+                });
+                row.appendChild(chip);
+            });
+            scrollElement.prepend(row);
+        }
+        row.querySelectorAll<HTMLElement>(".sw__search-chip").forEach((el) => {
+            const active = el.dataset.chip === selected;
+            el.classList.toggle("is-active", active);
+            el.setAttribute("aria-selected", String(active));
+        });
     }
 
     // T-6799 统一索引分区：收藏/最近关闭/文档集的查询命中。挂在页签卡片之后、

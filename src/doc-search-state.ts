@@ -18,6 +18,8 @@ export interface DocSearchState {
     pathTitles: WeakMap<HTMLElement, Map<string, string>>;
     /** T-6802：每个 scroll 元素当前查询的运算符解析结果（精确短语/排除项/普通词） */
     parsedQueries: WeakMap<HTMLElement, IParsedSearchQuery>;
+    /** T-6809：每个 scroll 元素当前选中的过滤条（all/tabs/unified/docs），空查询时重置 */
+    chipFilters: WeakMap<HTMLElement, string>;
 }
 
 /** T-6802 查询运算符解析结果：`"精确短语"` / `-排除词` / 普通词（全部 AND） */
@@ -36,5 +38,6 @@ export function createDocSearchState(): DocSearchState {
         pathGeneration: 0,
         pathTitles: new WeakMap(),
         parsedQueries: new WeakMap(),
+        chipFilters: new WeakMap(),
     };
 }
