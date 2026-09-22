@@ -896,3 +896,21 @@ test("search model: pinyin initials and full pinyin match ASCII queries (T-6805)
     // 非文档行/空标题不抛错
     assert.equal(filterOpenTabs([{title: ""}], "cp", {}, {pinyinMatch: true}).length, 0);
 });
+
+test("unified index: pinyin fallback covers collections when toggle is on (T-6805 phase 2)", () => {
+    const sections = buildUnifiedSections({
+        query: "cp",
+        favorites: [{key: "f1", rootId: "r1", title: "产品需求文档", group: "工作"}],
+        closed: [{rootId: "c1", title: "产品评审纪要", closedAt: 1700000000000}],
+        documentSets: [{setId: "s1", name: "产品集", entries: [{rootId: "a"}]}],
+        pinyinMatch: true,
+    });
+    assert.deepEqual(sections.map((s) => s.key), ["favorites", "closed", "doc-sets"],
+        "pinyin initials match collections without any hanzi substring");
+    const off = buildUnifiedSections({
+        query: "cp",
+        favorites: [{key: "f1", rootId: "r1", title: "产品需求文档", group: "工作"}],
+        pinyinMatch: false,
+    });
+    assert.deepEqual(off, [], "pinyin off restores substring-only semantics");
+});

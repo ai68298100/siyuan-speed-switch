@@ -1116,12 +1116,13 @@ function scoreUnifiedTitle(title, query) {
     return 0;
 }
 
-function rankUnifiedMatches(entries, query, titleOf, limit) {
+function rankUnifiedMatches(entries, query, titleOf, limit, scoreFn) {
     const cap = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 4;
+    const scoreOf = scoreFn || ((title) => scoreUnifiedTitle(title, query));
     const scored = [];
     (Array.isArray(entries) ? entries : []).forEach((entry) => {
         if (!entry || typeof entry !== "object") return;
-        const score = scoreUnifiedTitle(String(titleOf(entry) || ""), query);
+        const score = scoreOf(String(titleOf(entry) || ""));
         if (score > 0) scored.push({entry, score});
     });
     // 稳定排序：同分保持数据源原有顺序（收藏按用户排序、最近按时间倒序）。
@@ -1153,6 +1154,16 @@ function buildUnifiedSections(options = {}) {
     };
     const effectiveQuery = parsedTerms.length ? parsedTerms.join(" ")
         : (parsedPhrases.length ? parsedPhrases.join(" ") : query);
+    // T-6805 phase 2：拼音辅助下沉到统一索引——普通词无子串命中时，
+    // 标题拼音全拼/首字母命中按最低分计（尊重 pinyinMatch 开关）。
+    const pinyinOn = options.pinyinMatch !== false;
+    const effectiveTokens = effectiveQuery.split(" ").filter(Boolean);
+    const scoreTitle = (title) => {
+        const direct = scoreUnifiedTitle(title, effectiveQuery);
+        if (direct > 0 || !pinyinOn) return direct;
+        const normalized = String(title || "").toLowerCase();
+        return effectiveTokens.every((token) => pinyinTitleHit(normalized, token)) ? 1 : 0;
+    };
     const limit = Number.isFinite(options.limitPerSection) && options.limitPerSection > 0
         ? Math.floor(options.limitPerSection) : 4;
     const excludeRootIds = options.excludeRootIds instanceof Set ? options.excludeRootIds : new Set();
@@ -1160,7 +1171,7 @@ function buildUnifiedSections(options = {}) {
 
     const favorites = rankUnifiedMatches(
         (Array.isArray(options.favorites) ? options.favorites : []).filter((entry) => passesVeto(entry.title)),
-        effectiveQuery, (entry) => entry.title, limit)
+        effectiveQuery, (entry) => entry.title, limit, scoreTitle)
         .filter((entry) => !excludeRootIds.has(String(entry.rootId || "")))
         .map((entry) => ({
             kind: "favorite",
@@ -1173,7 +1184,7 @@ function buildUnifiedSections(options = {}) {
 
     const closed = rankUnifiedMatches(
         (Array.isArray(options.closed) ? options.closed : []).filter((entry) => passesVeto(entry.title)),
-        effectiveQuery, (entry) => entry.title, limit)
+        effectiveQuery, (entry) => entry.title, limit, scoreTitle)
         .filter((entry) => !excludeRootIds.has(String(entry.rootId || "")))
         .map((entry) => ({
             kind: "closed",
@@ -1185,7 +1196,7 @@ function buildUnifiedSections(options = {}) {
 
     const docSets = rankUnifiedMatches(
         (Array.isArray(options.documentSets) ? options.documentSets : []).filter((entry) => passesVeto(entry.name)),
-        effectiveQuery, (entry) => entry.name, limit)
+        effectiveQuery, (entry) => entry.name, limit, scoreTitle)
         .map((entry) => ({
             kind: "doc-set",
             setId: String(entry.setId || ""),
