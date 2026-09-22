@@ -10,7 +10,7 @@
 - **Complete floating ball**: independent desktop, sidebar, and mobile surfaces with stable drag targets, free placement, action execution, overflow search, and keyboard-equivalent access.
 - **Configuration governance**: appearance/behavior settings, per-surface enablement and action ordering, default presets, import/export, capability states, and safe fallback.
 - **Reliability and viewport handling**: scroll/modal/fullscreen yielding, execution watchdog, visualViewport/safe-area handling, and host-aware layering.
-- **Verification**: 5,990 tests, four UI smoke suites, 22 Chromium scenarios, and 100 real pointer drags passed.
+- **Verification**: 6,011 tests, four UI smoke suites, 22 Chromium scenarios, and 100 real pointer drags passed.
 
 ### v0.29.1 (2026-09-21)
 
