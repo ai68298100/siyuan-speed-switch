@@ -246,6 +246,18 @@ async function executeFloatingBallAction(action, options = {}) {
                 invokeClose(options);
                 return success(await callback(action));
             }
+            case "jump-back": {
+                const callback = callbackOf(options, "onJumpBack");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "jump-forward": {
+                const callback = callbackOf(options, "onJumpForward");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
             default:
                 return unavailable();
         }

@@ -3758,6 +3758,12 @@ const version = beginSearch(session);
                 ? undefined : {ok: false, reason: "unavailable"},
             onHideKeyboard: () => this.hideMobileKeyboard()
                 ? undefined : {ok: false, reason: "unavailable"},
+            onJumpBack: () => this.jumpBack().then((ok) => {
+                if (!ok) showMessage(this.i18n.jumpStackEmpty, MESSAGE_DEFAULT_MS, "error");
+            }),
+            onJumpForward: () => this.jumpForward().then((ok) => {
+                if (!ok) showMessage(this.i18n.jumpStackEmpty, MESSAGE_DEFAULT_MS, "error");
+            }),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -4872,6 +4878,56 @@ const version = beginSearch(session);
         return false;
     }
 
+    // ==================== T-6806 跳转栈（后退/前进） ====================
+
+    private captureJumpOrigin(): void {
+        if (this.suppressJumpCapture) return;
+        const editor = this.resolveActiveHostEditor();
+        const rootId = (editor?.protyle as unknown as {block?: {parentID?: string}})?.block?.parentID || "";
+        if (!rootId || !BLOCK_ID_RE.test(rootId)) return;
+        this.jumpBackStack.push({rootId});
+        if (this.jumpBackStack.length > 50) this.jumpBackStack.shift();
+        this.jumpForwardStack = [];
+    }
+
+    private async jumpBack(): Promise<boolean> {
+        const target = this.jumpBackStack.pop();
+        if (!target) return false;
+        const editor = this.resolveActiveHostEditor();
+        const currentRootId = (editor?.protyle as unknown as {block?: {parentID?: string}})?.block?.parentID || "";
+        if (currentRootId && BLOCK_ID_RE.test(currentRootId)) {
+            this.jumpForwardStack.push({rootId: currentRootId});
+            if (this.jumpForwardStack.length > 50) this.jumpForwardStack.shift();
+        }
+        this.suppressJumpCapture = true;
+        try {
+            if (this.isMobile) await this.mobileOpenDoc(target.rootId);
+            else await openTab({app: this.app, doc: {id: target.rootId}});
+        } finally {
+            this.suppressJumpCapture = false;
+        }
+        return true;
+    }
+
+    private async jumpForward(): Promise<boolean> {
+        const target = this.jumpForwardStack.pop();
+        if (!target) return false;
+        const editor = this.resolveActiveHostEditor();
+        const currentRootId = (editor?.protyle as unknown as {block?: {parentID?: string}})?.block?.parentID || "";
+        if (currentRootId && BLOCK_ID_RE.test(currentRootId)) {
+            this.jumpBackStack.push({rootId: currentRootId});
+            if (this.jumpBackStack.length > 50) this.jumpBackStack.shift();
+        }
+        this.suppressJumpCapture = true;
+        try {
+            if (this.isMobile) await this.mobileOpenDoc(target.rootId);
+            else await openTab({app: this.app, doc: {id: target.rootId}});
+        } finally {
+            this.suppressJumpCapture = false;
+        }
+        return true;
+    }
+
     // 执行 "插件名::命令key"（协议 v2 条目级命令 / 模块级 clickCommand 共用）
     private executeHomeCommand(command: string, close: () => void): boolean {
         if (!/^[A-Za-z0-9_-]{1,64}::[A-Za-z0-9_-]{1,64}$/.test(command)) return false;
@@ -5082,6 +5138,8 @@ const version = beginSearch(session);
             "cycle-ball-preset": this.i18n.quickBuiltinCycleBallPreset,
             "throw-window": this.i18n.quickBuiltinThrowWindow,
             "hide-keyboard": this.i18n.quickBuiltinHideKeyboard,
+            "jump-back": this.i18n.quickBuiltinJumpBack,
+            "jump-forward": this.i18n.quickBuiltinJumpForward,
         };
         getBuiltinQuickActions().forEach((raw) => {
             const action = raw as IQuickAction;
@@ -6540,6 +6598,8 @@ private rootIdOf(tab: Tab): string | null {
         if (current) { this.activateTab(current); return; }
         // T-6801：切换离开前记录当前活动文档的滚动现场（若活动编辑器可读）
         this.captureActiveDocScroll();
+        // T-6806：切换离开前记录跳转原点（后退栈）
+        this.captureJumpOrigin();
         if (!entry.rootId || !BLOCK_ID_RE.test(entry.rootId)) {
             if (entry.source === "closed") this.removeClosedHistoryEntry(entry.rootId || entry.key);
             else this.removeOpenHistoryEntry(entry.key);
@@ -6578,6 +6638,12 @@ private rootIdOf(tab: Tab): string | null {
     private docScrollMemory = new Map<string, number>();
     // T-6802 上次选择置顶：同一查询下用户上次选中的文档结果优先展示（会话级，FIFO 32）
     private lastPickedByQuery = new Map<string, string>();
+    // T-6806 跳转栈：速切驱动的文档跳转可后退/前进（会话级，FIFO 50）。
+    // 思源原生 backStack 的正确推入依赖模块私有 forwardStack 与内部选区契约，
+    // 公开 API 不可达（R2 取证），故自建等价栈。
+    private jumpBackStack: Array<{rootId: string}> = [];
+    private jumpForwardStack: Array<{rootId: string}> = [];
+    private suppressJumpCapture = false;
 
     private captureDocScrollFromElement(rootId: string, element: HTMLElement) {
         if (!BLOCK_ID_RE.test(rootId)) return;
@@ -7353,13 +7419,15 @@ private rootIdOf(tab: Tab): string | null {
     // 收藏项永久留存（直到用户主动删除）：无法定位文档的历史脏条目仅提示、不自动清理，
     // 用户打开对应页签后星标操作会自动将其迁移修复
     private async jumpToFavorite(favorite: IFavoriteItem, onClose: IOverlayClose) {
-        // 鎵嬫満绔?getAllTabs() 鎭掍负绌猴紝闇€鐢?MobileTabs 鏁版嵁婧?
+        // 鎵嬫満绔?getAllTabs() 鎭仴涓虹┖锛岄渶鐢?MobileTabs 鏁版嵁婧?
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const tab = opened.find((item) => this.pinKeyOf(item) === favorite.key);
         if (tab) {
             this.activateTab(tab, onClose);
             return;
         }
+        // T-6806：跳转离开前记录当前现场（后退栈）
+        this.captureJumpOrigin();
         const rootId = resolveFavoriteRootId(favorite);
         if (!rootId) {
             showMessage(this.i18n.favInvalidEntry);
@@ -9254,6 +9322,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 ? undefined : {ok: false, reason: "unavailable"},
             onHideKeyboard: () => this.hideMobileKeyboard()
                 ? undefined : {ok: false, reason: "unavailable"},
+            onJumpBack: () => this.jumpBack().then((ok) => {
+                if (!ok) showMessage(this.i18n.jumpStackEmpty, MESSAGE_DEFAULT_MS, "error");
+            }),
+            onJumpForward: () => this.jumpForward().then((ok) => {
+                if (!ok) showMessage(this.i18n.jumpStackEmpty, MESSAGE_DEFAULT_MS, "error");
+            }),
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

@@ -155,3 +155,21 @@ test("floating action executor dispatches window-throw and keyboard-dismiss to t
     const missing = await executeFloatingBallAction({kind: "builtin", value: "throw-window"}, {});
     assert.deepEqual(missing, {ok: false, reason: "unavailable"});
 });
+
+test("floating action executor dispatches jump back/forward to the host", async () => {
+    const calls = [];
+    const okBack = await executeFloatingBallAction({kind: "builtin", value: "jump-back"}, {
+        onJumpBack: () => { calls.push("back"); },
+    });
+    assert.deepEqual(okBack, {ok: true});
+    const okForward = await executeFloatingBallAction({kind: "builtin", value: "jump-forward"}, {
+        onJumpForward: () => { calls.push("forward"); },
+    });
+    assert.deepEqual(okForward, {ok: true});
+    const noBack = await executeFloatingBallAction({kind: "builtin", value: "jump-back"}, {
+        onJumpBack: () => ({ok: false, reason: "unavailable"}),
+    });
+    assert.deepEqual(noBack, {ok: true, result: {ok: false, reason: "unavailable"}},
+        "the host answers the empty-stack case; the executor forwards its verdict");
+    assert.deepEqual(calls, ["back", "forward"]);
+});
