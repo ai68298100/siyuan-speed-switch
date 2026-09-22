@@ -188,4 +188,29 @@ function recordRecentOpen(openEntries, closedEntries, entry, max = 50) {
     };
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen};
+// ==================== T-6799b 最近列表"只看有改动" ====================
+// JetBrains Recent Files 的 "show changed only"：把最近列表过滤到窗口期内
+// 有内容改动的文档。改动真值来自内核 blocks.updated（宿主批量 SQL 取回），
+// 两侧同为 "YYYYMMDDHHmmss" 形态可直接做字符串比较，无时区换算。
+
+function formatChangedWindowStart(now, days = 7) {
+    const ms = Number(now);
+    const span = Number.isFinite(days) && days > 0 ? days : 7;
+    const date = new Date(ms - span * 86400000);
+    if (Number.isNaN(date.getTime())) return "";
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`
+        + `${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+// 无更新信息的条目（内核查不到/未取回）在过滤开启时被隐藏——它们无法证明
+// 自己在窗口期内有过改动，这与"只看有改动"的语义一致而不是缺陷。
+function entryChangedWithin(entry, updatedById, windowStart) {
+    if (!windowStart) return true;
+    const rootId = typeof entry?.rootId === "string" ? entry.rootId : "";
+    if (!rootId) return false;
+    const updated = updatedById instanceof Map ? updatedById.get(rootId) : undefined;
+    return typeof updated === "string" && updated.length > 0 && updated >= windowStart;
+}
+
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin};

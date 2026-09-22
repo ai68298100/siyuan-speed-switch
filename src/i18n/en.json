@@ -790,6 +790,8 @@
   ,"unifiedClosed": "Recently closed"
   ,"unifiedDocSets": "Document sets"
   ,"unifiedDocSetDocs": "docs"
+  ,"historyChangedOnly": "Show changed only"
+  ,"historyChangedEmpty": "No documents changed within the window"
   ,"syncNowCompleted": "Sync completed"
   ,"syncNowFailed": "Sync failed: kernel unreachable, cloud sync not configured, or read-only mode"
   ,"secFloatingBall": "Floating ball"

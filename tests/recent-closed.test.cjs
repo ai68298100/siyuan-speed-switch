@@ -173,3 +173,27 @@ test("recent entries: recording an open item moves it to the front and clears cl
     assert.deepEqual(result.closed.map((item) => item.rootId), ["b"]);
     assert.equal(result.changed, true);
 });
+
+test("recent changed filter: window formatting and per-entry predicate", () => {
+    const {formatChangedWindowStart, entryChangedWithin} = require("../src/recent-closed.js");
+    // 固定时刻：2026-09-23 12:00:00 本地时间 → 7 天前窗口起点
+    const now = new Date(2026, 8, 23, 12, 0, 0).getTime();
+    const windowStart = formatChangedWindowStart(now, 7);
+    assert.equal(windowStart, "20260916120000");
+    assert.equal(formatChangedWindowStart(Number.NaN), "", "invalid now yields an empty (pass-through) window");
+    const updatedById = new Map([
+        ["root-fresh", "20260922100000"],
+        ["root-stale", "20260901000000"],
+    ]);
+    const entries = [
+        {rootId: "root-fresh", title: "fresh"},
+        {rootId: "root-stale", title: "stale"},
+        {rootId: "root-unknown", title: "unknown"},
+        {rootId: null, title: "no root"},
+    ];
+    const kept = entries.filter((entry) => entryChangedWithin(entry, updatedById, windowStart));
+    assert.deepEqual(kept.map((entry) => entry.rootId), ["root-fresh"],
+        "stale and unprovable entries drop out when the filter is on");
+    assert.equal(entryChangedWithin(entries[0], updatedById, ""), true,
+        "an empty window keeps everything (filter disabled)");
+});

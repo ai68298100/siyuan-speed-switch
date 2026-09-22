@@ -4,7 +4,7 @@ import "./index.scss";
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen} from "./recent-closed";
+import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, isSemanticEmbeddingConfigured, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
@@ -6215,12 +6215,44 @@ private rootIdOf(tab: Tab): string | null {
             trigger.setAttribute("aria-busy", "true");
             await this.syncOfficialRecentHistory();
             trigger.removeAttribute("aria-busy");
-            if (disposed || !panel.isConnected) return;
+        if (disposed || !panel.isConnected) return;
+        // T-6799b "只看有改动"：开关状态与内核更新时间缓存在下拉生命周期内保持；
+        // 过滤真值 = 内核 blocks.updated 落在窗口期（默认 7 天）内。
+        let changedOnly = false;
+        let changedUpdatedMap: Map<string, string> | null = null;
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "b3-button b3-button--text sw__history-changed-toggle";
+        toggle.textContent = this.i18n.historyChangedOnly;
+        const renderPanel = () => {
+            const windowStart = changedOnly && changedUpdatedMap ? formatChangedWindowStart(Date.now()) : "";
+            const filter = changedOnly && changedUpdatedMap
+                ? (entry: IOpenHistoryEntry) => entryChangedWithin(entry, changedUpdatedMap!, windowStart)
+                : undefined;
             this.renderOpenHistoryPanel(panel, (entry) => {
                 close();
                 onClose();
                 void this.openHistoryEntry(entry);
-            });
+            }, filter);
+            panel.prepend(toggle);
+            toggle.setAttribute("aria-pressed", String(changedOnly));
+        };
+        toggle.addEventListener("click", async () => {
+            changedOnly = !changedOnly;
+            toggle.setAttribute("aria-pressed", String(changedOnly));
+            if (changedOnly && !changedUpdatedMap) {
+                toggle.setAttribute("aria-busy", "true");
+                const ids = [
+                    ...this.getOpenHistory().map((entry) => entry.rootId || ""),
+                    ...this.getClosedHistory().map((entry) => entry.rootId || ""),
+                ].filter((id) => BLOCK_ID_RE.test(id));
+                changedUpdatedMap = await this.fetchDocUpdatedMap(ids);
+                toggle.removeAttribute("aria-busy");
+            }
+            if (disposed || !panel.isConnected) return;
+            renderPanel();
+        });
+        renderPanel();
             panel.classList.remove("fn__none");
             this.positionOpenHistoryPanel(trigger, panel);
             outsideHandler = (event) => { if (!container.contains(event.target as Node)) close(); };
@@ -6232,6 +6264,23 @@ private rootIdOf(tab: Tab): string | null {
         });
         this.refreshOpenHistoryDropdown(container);
         return dispose;
+    }
+
+    // T-6799b：批量取文档根块的 updated（内核 14 位时间戳），32 条/块的有界分批。
+    private async fetchDocUpdatedMap(rootIds: string[]): Promise<Map<string, string>> {
+        const result = new Map<string, string>();
+        const valid = Array.from(new Set(rootIds.filter((id) => BLOCK_ID_RE.test(id))));
+        for (let index = 0; index < valid.length; index += 32) {
+            const chunk = valid.slice(index, index + 32);
+            const list = chunk.map((id) => `'${id}'`).join(",");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT id, updated FROM blocks WHERE id IN (${list})`,
+            });
+            (Array.isArray(json?.data) ? json.data : []).forEach((row: {id?: string; updated?: string}) => {
+                if (row?.id && typeof row.updated === "string") result.set(row.id, row.updated);
+            });
+        }
+        return result;
     }
 
     private async syncOfficialRecentHistory() {
@@ -6268,7 +6317,7 @@ private rootIdOf(tab: Tab): string | null {
         panel.style.maxHeight = `${Math.max(140, window.innerHeight - top - margin)}px`;
     }
 
-    private renderOpenHistoryPanel(panel: HTMLElement, onPick: (entry: IOpenHistoryEntry) => void) {
+    private renderOpenHistoryPanel(panel: HTMLElement, onPick: (entry: IOpenHistoryEntry) => void, entryFilter?: (entry: IOpenHistoryEntry) => boolean) {
         panel.innerHTML = "";
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const openedKeys = new Set(opened.map((tab) => this.pinKeyOf(tab)));
@@ -6281,9 +6330,12 @@ private rootIdOf(tab: Tab): string | null {
             panel.appendChild(empty);
             return;
         }
+        let shown = 0;
 
         const appendSection = (title: string, entries: IOpenHistoryEntry[], clearLabel: string, clearAction: () => void) => {
-            if (entries.length === 0) return;
+            const visible = typeof entryFilter === "function" ? entries.filter(entryFilter) : entries;
+            if (visible.length === 0) return;
+            shown += visible.length;
             const heading = document.createElement("div");
             heading.className = "sw__history-section-title";
             heading.textContent = title;
@@ -6297,7 +6349,7 @@ private rootIdOf(tab: Tab): string | null {
                 clearAction();
             });
             panel.appendChild(clear);
-            entries.forEach((entry) => {
+            visible.forEach((entry) => {
             const item = document.createElement("button");
             item.type = "button";
             item.className = `sw__history-item${entry.source === "closed" ? " sw__history-item--closed" : ""}`;
@@ -6323,6 +6375,12 @@ private rootIdOf(tab: Tab): string | null {
             this.saveDataDebounced(CLOSED_HISTORY_KEY);
             this.refreshOpenHistoryDropdowns();
         });
+        if (shown === 0) {
+            const empty = document.createElement("div");
+            empty.className = "sw__history-empty";
+            empty.textContent = this.i18n.historyChangedEmpty;
+            panel.appendChild(empty);
+        }
     }
 
     private bindHistoryItemActions(item: HTMLButtonElement, entry: IOpenHistoryEntry, onPick: (entry: IOpenHistoryEntry) => void) {

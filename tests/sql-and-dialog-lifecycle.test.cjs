@@ -62,6 +62,8 @@ const LIMIT_EXEMPT = [
     {pattern: /^SELECT COUNT\(.*\) AS total FROM /, reason: "无 GROUP BY 的纯聚合，恒 1 行"},
     {pattern: /^SELECT COUNT\(CASE/, reason: "无 GROUP BY 的纯聚合，恒 1 行"},
     {pattern: /^SELECT COALESCE\(SUM\(/, reason: "无 GROUP BY 的纯聚合，恒 1 行"},
+    // T-6799b "只看有改动"：updated 批量回查，IN 列表由 BLOCK_ID_RE 校验且按 32 条分块，天然有界。
+    {pattern: /^SELECT id, updated FROM blocks WHERE id IN \(/, reason: "IN 列表为已验证 rootId 的 32 条分块，至多 32 行"},
 ];
 
 test("every kernel SQL literal carries an outer LIMIT or a recorded exemption", () => {

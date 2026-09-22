@@ -860,6 +860,8 @@
   "unifiedClosed": "最近关闭",
   "unifiedDocSets": "文档集",
   "unifiedDocSetDocs": "篇文档",
+  "historyChangedOnly": "只看有改动",
+  "historyChangedEmpty": "窗口期内没有改动过的文档",
   "syncNowCompleted": "同步完成",
   "syncNowFailed": "同步失败：内核不可达、未配置云端同步或当前为只读模式",
   "secDocumentSets": "文档集",
