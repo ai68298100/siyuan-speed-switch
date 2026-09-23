@@ -511,6 +511,15 @@ test('config pack: export/import wiring with confirm and atomic validation (T-68
         'documentSets 深校验必须走既有 normalizeDocumentSets 迁移门禁');
 });
 
+test('mobile swipe ownership: portal root and recovery handle declare data-prevent-swipe (T-6778)', () => {
+    const fabUi = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-ui.ts'));
+    assert.match(fabUi, /if \(this\.surface === "mobile"\) \{\s*root\.dataset\.preventSwipe = "true";/,
+        '移动 portal 根必须声明 data-prevent-swipe（宿主 hasClosestByAttribute 向上匹配，覆盖触发按钮/动作面板）');
+    assert.match(fabUi, /if \(this\.surface === "mobile"\) \{\s*recovery\.dataset\.preventSwipe = "true";/,
+        '恢复把手挂在 body 层（portal 根之外），必须自带标记');
+    assert.match(fabUi, /dataset\.preventSwipe/, '标记经由 dataset 写出（即 data-prevent-swipe）');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

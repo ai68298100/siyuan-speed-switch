@@ -436,6 +436,11 @@ export class FloatingBallUi implements FloatingBallUiController {
         root.dataset.state = this.state;
         root.dataset.idle = "false";
         root.dataset.halfHide = String(this.halfHide);
+        // T-6778（ADR 0071 方案 A）：思源 3.8.x 宿主以 data-prevent-swipe 整轮
+        // 让出侧滑手势所有权——声明后球上的触摸不再触发宿主左/右侧栏。
+        if (this.surface === "mobile") {
+            root.dataset.preventSwipe = "true";
+        }
         root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
         root.style.setProperty("--sw-fab-size", `${this.ballSize}px`);
 
@@ -460,6 +465,10 @@ export class FloatingBallUi implements FloatingBallUiController {
         recovery.type = "button";
         recovery.className = "sw-fab-recovery";
         recovery.dataset.surface = this.surface;
+        // T-6778：恢复把手挂在 body 层（portal 根之外），需自带侧滑让位标记
+        if (this.surface === "mobile") {
+            recovery.dataset.preventSwipe = "true";
+        }
         recovery.setAttribute("aria-label", this.options.recoveryLabel || "恢复悬浮球");
         recovery.textContent = "⋮";
         recovery.hidden = true;
