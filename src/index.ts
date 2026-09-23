@@ -1499,6 +1499,24 @@ export default class SpeedSwitchPlugin extends Plugin {
     onLayoutReady() {
         this.isMobile ? this.ensureMobileTopBarButton() : undefined;
         this.updateFloatingBallVisibility();
+        this.exposePublicApi();
+    }
+
+    /**
+     * T-6833 公开钩子：E2E 真实例测试与生态消费的稳定入口
+     * （契约对齐小驴打卡 window.siyuanCheckin：whenReady 为就绪信号）。
+     * 钩子在 onLayoutReady 后挂载——它的存在本身即代表初始化完成；
+     * onunload 移除，不留悬挂引用。只暴露受控动作，不泄漏内部状态。
+     */
+    private exposePublicApi() {
+        (window as any).siyuanSpeedSwitch = {
+            whenReady: () => true,
+            openSwitcher: () => {
+                if (!this.isMobile && !this.isUnloading) {
+                    this.showSwitcher(true);
+                }
+            },
+        };
     }
 
     /**
@@ -1541,6 +1559,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
+        // T-6833：公开钩子随生命周期拆除
+        if (typeof window !== "undefined") {
+            delete (window as any).siyuanSpeedSwitch;
+        }
         // T-6796 皮肤层：卸载时移除 body 标记，宿主恢复纯净主题
         if (typeof document !== "undefined" && document.body) {
             delete document.body.dataset.swSkin;

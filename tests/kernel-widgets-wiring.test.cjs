@@ -318,6 +318,19 @@ test('new command and widget i18n keys exist in both languages', () => {
     }
 });
 
+test('public API hook mounts on layout ready and unloads cleanly (T-6833)', () => {
+    assert.match(indexSource, /private exposePublicApi\(\)/,
+        '公开钩子必须是独立的宿主方法');
+    assert.match(indexSource, /this\.exposePublicApi\(\);/,
+        'onLayoutReady 必须挂载公开钩子（E2E 与生态的就绪信号）');
+    assert.match(indexSource, /delete \(window as any\)\.siyuanSpeedSwitch;/,
+        'onunload 必须移除公开钩子，不留悬挂引用');
+    assert.match(indexSource, /whenReady: \(\) => true/,
+        'whenReady 是就绪信号（契约对齐小驴打卡）');
+    assert.match(indexSource, /openSwitcher: \(\) => \{/,
+        '钩子只暴露受控动作，不泄漏内部状态');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
