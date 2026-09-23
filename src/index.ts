@@ -545,7 +545,7 @@ declare module "./search-model" {
 
 export type DocSearchRenderState = "results" | "loading" | "error";
 
-// IMobileTabEntry / IMobileTabsState 宸茶縼绉昏嚦 ./types.ts锛堟€濇簮鍏ㄥ眬瀵硅薄鐨勭浉鍏崇粨鏋勶級
+// IMobileTabEntry / IMobileTabsState 已迁移至 ./types.ts（思源全局对象的相关结构）
 // 页签排序方式：mru=最近使用 layout=打开顺序 layoutDesc=打开倒序 titleAsc/titleDesc=标题升降序 updatedDesc=最近编辑
 
 // addDock 回调里的 this 类型（思源把面板元素挂到回调自身的 .element 上）
@@ -577,7 +577,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     sortBy: "mru",         // 页签排序方式
     excludedDocks: [],     // 涓嶆樉绀哄湪宸︿晶鍒楄〃鐨勯潰鏉跨被鍨?
     dockDisplay: "collapsed",   // Default to the compact icon rail; users can expand it when labels are needed.
-    fullscreen: false,     // 鍏ㄥ睆妯″紡锛氬垏鎹㈠櫒閾烘弧鏁翠釜绐楀彛锛屾寜 Esc 閫€鍑?
+    fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
     fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
     floatingBall: createDefaultFloatingBallConfig(), // T-6757 版本化悬浮球配置（旧 fabEnabled 仍兼容）
@@ -605,7 +605,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     documentSetEssentials: [], // T-6810 Essentials 常驻文档
 };
 
-// 宸︿晶闈㈡澘鏄剧ず鏂瑰紡
+// 左侧面板显示方式
 export type DockDisplay = "hidden" | "collapsed" | "full";
 const DOCK_DISPLAY_LIST: DockDisplay[] = ["hidden", "collapsed", "full"];
 // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认） / columns 按宽度自动增加列数
@@ -627,7 +627,7 @@ export interface ISwSettings {
     sortBy: SortBy;
     excludedDocks: string[];
     dockDisplay: DockDisplay;
-    fullscreen: boolean;       // 鍏ㄥ睆妯″紡锛氬垏鎹㈠櫒閾烘弧鏁翠釜绐楀彛锛孍sc 閫€鍑?
+    fullscreen: boolean;       // 全屏模式：切换器铺满整个窗口，Esc 退出
     sidebarLayout: SidebarLayout; // 侧边栏缩略图布局：enlarge 放大 / columns 自动加列
     // 鎵嬫満绔?
     fabEnabled: boolean;       // 是否启用悬浮按钮
@@ -816,7 +816,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     private floatingBallPanels = new Map<FloatingBallSurface, ReturnType<typeof createFloatingBallPanelController>>();
     private fabModalDepth = 0; // Keep the floating button behind plugin dialogs, including nested transitions.
     private mobileTopBarButton: HTMLElement | null = null; // 手机端顶栏切换器入口按钮（自行注入 mobileTopBar）
-    private cardTabs = new WeakMap<HTMLElement, Tab>(); // 澶嶇敤鍗＄墖濮嬬粓鎸囧悜鏈€鏂扮殑 Tab 瀵硅薄
+    private cardTabs = new WeakMap<HTMLElement, Tab>(); // 复用卡片始终指向最新的 Tab 对象
     // T-6461 动作面板键：卡片构建时缓存 handlers，供 Shift+F10 / ContextMenu 键盘呼出动作菜单
     private cardMenuHandlers = new WeakMap<HTMLElement, {
         onActivate: (tab: Tab) => void,
@@ -1508,7 +1508,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 布局就绪后再次确认手机端入口：部分机型上 onload 执行时顶栏尚未构建完成，
-    // 鎻掍欢鎸夐挳浼氭彃鍏ュけ璐ワ紱杩欓噷鍏滃簳閲嶈瘯涓€娆?
+    // 插件按钮会插入失败；这里兜底重试一次
     onLayoutReady() {
         this.isMobile ? this.ensureMobileTopBarButton() : undefined;
         this.updateFloatingBallVisibility();
@@ -1811,7 +1811,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         }
     }
 
-    // ==================== 璁剧疆 ====================
+    // ==================== 设置 ====================
 
     // 读取设置：与默认值合并，保证新增字段有默认值
     private settingsCache: ISwSettings | null = null;
@@ -1939,7 +1939,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         return clampNum(value, min, max, fallback);
     }
 
-    // ==================== 璁剧疆椤垫湰鍦版帶浠跺伐鍘傦紙缁熶竴鏍煎紡銆佸噺灏戦噸澶嶏級 ====================
+    // ==================== 设置页本地控件工厂（统一格式、减少重复） ====================
 
     // 数字输入：右侧带单位标签，change 时经 clampNum 校验后回调；label 用于读屏与移动端语义
     private num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement {
@@ -1969,7 +1969,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         return wrap;
     }
 
-    // 涓嬫媺閫夋嫨鎺т欢
+    // 下拉选择控件
     private select(options: Array<{value: string, label: string}>, value: string, onChange: (v: string) => void): HTMLElement {
         const selectEl = document.createElement("select");
         selectEl.className = "b3-select fn__flex-center";
@@ -2463,7 +2463,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
-    // 鎻掍欢璁剧疆椤碉紙璁剧疆 鈫?鎻掍欢 鈫?灏忛┐閫熷垏 鈫?璁剧疆鍥炬爣锛?
+    // 插件设置页（设置 → 插件 → 小驴速切 → 设置图标）
     // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
     openSetting(initialPanel?: string) {
         const s = this.getSettings();
@@ -6911,7 +6911,7 @@ const updatedMap: {[rootId: string]: string} = {};
         return panels;
     }
 
-    // 鎸?type 鏌ユ壘闈㈡澘鎵€灞炵殑 Dock锛堝乏渚?鍙充晶/搴曢儴锛夛紝涓庢€濇簮 getDockByType 琛屼负涓€鑷?
+    // 按 type 查找面板所属的 Dock（左侧/右侧/底部），与思源 getDockByType 行为一致
     private getDockByType(type: string): ISiyuanLayoutDock | undefined {
         const layout = getSiyuan()?.layout;
         if (!layout) {
