@@ -336,3 +336,13 @@ test('zero-term workbench wiring: renders on empty query and removes on input (T
     assert.match(indexSource, /applyFloatingBallPreset\(this\.getSettings\(\)\.floatingBall, preset\.id\)/);
     assert.match(indexSource, /restoreDocumentSetFromHome\(set\.setId\)/);
 });
+
+test('operator query guards use raw keyword while kernel calls use cleaned query (T-6802 fix)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    assert.match(indexSource, /runDocSearchFetch\.call\(this, scrollElement, searchInput, keyword, kernelQuery, version, onClose, filters, cacheKey\)/,
+        'applySearch passes raw keyword for guards and kernelQuery for fetching');
+    assert.match(docSearchUi, /searchInput\.value\.trim\(\) !== keyword/,
+        'staleness guards keep comparing the raw user input');
+    assert.match(docSearchUi, /\{k: fetchText\}/,
+        'the kernel title search request carries the cleaned query');
+});

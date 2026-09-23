@@ -1772,6 +1772,48 @@ export default class SpeedSwitchPlugin extends Plugin {
     // T-6796 皮肤层应用：body 上只放标记属性；变量覆盖在 CSS 内限定于速切
     // 自己的根容器（.speed-switch/.sw-home/.sw-fab-root/.sw-settings-dialog），
     // 宿主思源与其他插件零影响。onload 应用、设置变更即刷新、onunload 移除。
+    // ==================== T-6805 phase 3：全库标题拼音补齐 ====================
+    // 纯 ASCII 查询且内核标题结果不足时，从惰性标题缓存（一次有界 SQL + 5 分钟
+    // TTL）中按拼音补齐结果。缓存超界（>20000 行）整体重建。
+
+    private pinyinTitleCache: {rows: Array<{id: string; title: string}>; ts: number} | null = null;
+
+    private async getPinyinTitleMatches(keyword: string, existing: IDocSearchResult[]): Promise<IDocSearchResult[]> {
+        if (this.isMobile) return [];
+        const needle = keyword.trim().toLowerCase();
+        if (!/^[a-z0-9]+$/.test(needle) || needle.length < 2) return [];
+        const now = Date.now();
+        if (!this.pinyinTitleCache || now - this.pinyinTitleCache.ts > 300000) {
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: "SELECT id, content FROM blocks WHERE type='d' LIMIT 20000",
+            });
+            const rows = (Array.isArray(json?.data) ? json.data : [])
+                .map((row: {id?: unknown; content?: unknown}) => ({
+                    id: typeof row?.id === "string" ? row.id : "",
+                    title: typeof row?.content === "string" ? row.content.trim() : "",
+                }))
+                .filter((row: {id: string; title: string}) => row.id && row.title);
+            this.pinyinTitleCache = {rows, ts: now};
+        }
+        const exclude = new Set<string>(existing.map((doc) => doc.id).filter(Boolean) as string[]);
+        const matches: IDocSearchResult[] = [];
+        for (const row of this.pinyinTitleCache.rows) {
+            if (exclude.has(row.id)) continue;
+            if (pinyinTitleHit(row.title, needle)) {
+                exclude.add(row.id);
+                matches.push({
+                    id: row.id,
+                    rootId: row.id,
+                    title: row.title,
+                    hPath: "",
+                    source: "pinyin",
+                });
+            }
+            if (matches.length >= 12) break;
+        }
+        return matches;
+    }
+
     private applySkin(): void {
         if (typeof document === "undefined" || !document.body) return;
         const skin = this.getSettings().skin || "fusion";
@@ -3112,7 +3154,8 @@ const version = beginSearch(session);
         // 延迟 180ms 再请求全库文档（防抖），避免每个按键都打内核；
         session.timer = window.setTimeout(() => {
             session.timer = null;
-            runDocSearchFetch.call(this, scrollElement, searchInput, kernelQuery, version, onClose, filters, cacheKey);
+            // 守卫用原始 keyword，内核请求用清洗后的 kernelQuery（T-6802 修正）
+            runDocSearchFetch.call(this, scrollElement, searchInput, keyword, kernelQuery, version, onClose, filters, cacheKey);
         }, SEARCH_DEBOUNCE_MS);
     }
 

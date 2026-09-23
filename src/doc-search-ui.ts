@@ -472,7 +472,12 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
         onClose: IOverlayClose,
         filters: IDocSearchFilters = {},
         cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters}),
+        fetchQuery?: string,
     ) {
+        // T-6802 修正：guards 用原始 keyword（用户输入），内核请求用清洗后的
+        // fetchQuery（运算符剔除）。两者分离，否则带运算符的查询会永远被判
+        // "输入已变化"而丢弃结果。
+        const fetchText = typeof fetchQuery === "string" ? fetchQuery : keyword;
         const session = getDocSearchSession.call(this, scrollElement);
         // 期间关键词已变化或容器已销毁则放弃本次结果
         if (version !== session.version || !scrollElement.isConnected) {
@@ -499,7 +504,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                     return;
                 }
                 this.filterCards(scrollElement, keyword, openedContentRoots, filters);
-                const docs = await runFullTextSearchFallback.call(this, keyword, signal, filters, DOC_SEARCH_FETCH_LIMIT);
+                const docs = await runFullTextSearchFallback.call(this, fetchText, signal, filters, DOC_SEARCH_FETCH_LIMIT);
                 if (docs === null) {
                     if (openedContentRoots.size === 0) {
                         renderDocResults.call(this, scrollElement, [], onClose, "error");
@@ -533,7 +538,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                 const response = await fetch("/api/filetree/searchDocs", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({k: keyword}),
+                    body: JSON.stringify({k: fetchText}),
                     ...(signal ? {signal} : {}),
                 });
                 if (!response.ok) {
@@ -564,7 +569,7 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             // endpoint when it found no documents, preserving existing
             // ordering and request cost for the common case.
             if (docs.length === 0) {
-                const fallbackDocs = await runFullTextSearchFallback.call(this, keyword, signal, filters, DOC_SEARCH_FETCH_LIMIT);
+                const fallbackDocs = await runFullTextSearchFallback.call(this, fetchText, signal, filters, DOC_SEARCH_FETCH_LIMIT);
                 if (fallbackDocs === null) {
                     if (openedContentRoots.size === 0) {
                         renderDocResults.call(this, scrollElement, [], onClose, "error");
