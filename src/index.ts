@@ -4243,7 +4243,7 @@ const updatedMap: {[rootId: string]: string} = {};
 
     // T-6804/T-6807：拉取一个标签智能分组的条目并以只读列表呈现
     private openTagSmartGroupEntries(group: {name: string; tag: string}) {
-        const query = buildTagSmartGroupQuery(group.tag);
+        const query = buildTagSmartGroupQuery(group, {nowMs: Date.now()});
         if (!query) return;
         void this.fetchKernelJson("/api/query/sql", query).then((json) => {
             const entries = projectTagSmartGroupEntries(json?.data);
@@ -7485,7 +7485,7 @@ private rootIdOf(tab: Tab): string | null {
         groupEl.appendChild(list);
         panel.appendChild(groupEl);
 
-        const query = buildTagSmartGroupQuery(group.tag);
+        const query = buildTagSmartGroupQuery(group, {nowMs: Date.now()});
         if (!query) {
             status.textContent = this.i18n.favSmartGroupLoading;
             return;
@@ -7527,14 +7527,14 @@ private rootIdOf(tab: Tab): string | null {
 
     // ==================== T-6804 智能分组配置（设置页 + 面板共用） ====================
 
-    public getFavoriteSmartGroups(): Array<{name: string; tag: string}> {
+    public getFavoriteSmartGroups(): Array<{name: string; tag: string; notebook?: string; updatedWithinDays?: number}> {
         return this.getSettings().favoriteSmartGroups || [];
     }
 
-    public addFavoriteSmartGroup(name: string, tag: string): boolean {
+    public addFavoriteSmartGroup(name: string, tag: string, notebook = "", updatedWithinDays = 0): boolean {
         const current = this.getFavoriteSmartGroups();
         if (current.length >= 4) return false;
-        const next = normalizeFavoriteSmartGroups([...current, {name, tag}]);
+        const next = normalizeFavoriteSmartGroups([...current, {name, tag, notebook, updatedWithinDays}]);
         if (next.length === current.length) return false;
         this.updateSettings({favoriteSmartGroups: next});
         return true;
@@ -7665,6 +7665,12 @@ private rootIdOf(tab: Tab): string | null {
             }))
             .filter((row: {name: string}) => row.name.length > 0)
             .slice(0, 200);
+    }
+
+    // T-6817 动态组：笔记本范围下拉的数据源（有界清单，来自内核 lsNotebooks）
+    public async getFavoriteNotebookOptions(): Promise<Array<{id: string; name: string}>> {
+        const notebooks = await this.loadNotebooks();
+        return notebooks.slice(0, 100);
     }
 
     // 渲染单个收藏分组：可折叠组头（右键弹出一键开/关菜单）+ 组内项列表

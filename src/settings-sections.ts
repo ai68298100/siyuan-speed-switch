@@ -76,8 +76,9 @@ export interface SettingsSectionsHost {
     getDockPanels(): Array<{type: string; title: string; icon: string}>;
     getFavoriteGroupNames(): string[];
     getFavorites(): IFavoriteItem[];
-    getFavoriteSmartGroups(): Array<{name: string; tag: string}>;
-    addFavoriteSmartGroup(name: string, tag: string): boolean;
+    getFavoriteSmartGroups(): Array<{name: string; tag: string; notebook?: string; updatedWithinDays?: number}>;
+    addFavoriteSmartGroup(name: string, tag: string, notebook?: string, updatedWithinDays?: number): boolean;
+    getFavoriteNotebookOptions(): Promise<Array<{id: string; name: string}>>;
     removeFavoriteSmartGroup(name: string): void;
     getFavoriteTagOptions(): Promise<Array<{name: string; count: string | number}>>;
     getDocumentSetEssentials(): string[];
@@ -363,7 +364,13 @@ export function buildSettingsFavSmartGroups(this: SettingsSectionsHost, box: HTM
             const row = document.createElement("div");
             row.className = "sw-setting__fav-smart-item";
             const name = document.createElement("span");
-            name.textContent = `${group.name} · #${group.tag}`;
+            // T-6817：行内展示组合条件（笔记本范围 + 更新时间窗）
+            const scopeParts = [
+                `#${group.tag}`,
+                group.notebook ? `@${group.notebook}` : "",
+                group.updatedWithinDays ? `≤${group.updatedWithinDays}d` : "",
+            ].filter(Boolean);
+            name.textContent = `${group.name} · ${scopeParts.join(" ")}`;
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "b3-button b3-button--text";
@@ -390,17 +397,37 @@ export function buildSettingsFavSmartGroups(this: SettingsSectionsHost, box: HTM
         if (!addTag.isConnected) return;
         options.forEach((option) => addTag.appendChild(new Option(`#${option.name} (${option.count})`, option.name)));
     });
+    // T-6817 动态组：可选笔记本范围与更新时间窗
+    const addNotebook = document.createElement("select");
+    addNotebook.className = "b3-select";
+    addNotebook.appendChild(new Option(this.i18n.favSmartGroupNotebookAny, ""));
+    void this.getFavoriteNotebookOptions().then((options) => {
+        if (!addNotebook.isConnected) return;
+        options.forEach((option) => addNotebook.appendChild(new Option(option.name, option.id)));
+    });
+    const addUpdated = document.createElement("select");
+    addUpdated.className = "b3-select";
+    addUpdated.appendChild(new Option(this.i18n.favSmartGroupUpdatedAny, ""));
+    // i18n 卫生门禁要求字面量访问：档位 → key 显式映射
+    const updatedLabels: Record<number, string> = {
+        7: this.i18n.favSmartGroupUpdated7,
+        30: this.i18n.favSmartGroupUpdated30,
+        90: this.i18n.favSmartGroupUpdated90,
+    };
+    for (const days of [7, 30, 90]) {
+        addUpdated.appendChild(new Option(updatedLabels[days], String(days)));
+    }
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = "b3-button b3-button--outline";
     addBtn.textContent = this.i18n.favSmartGroupAdd;
     addBtn.addEventListener("click", () => {
         if (!addName.value.trim() || !addTag.value) return;
-        if (this.addFavoriteSmartGroup(addName.value, addTag.value)) render();
+        if (this.addFavoriteSmartGroup(addName.value, addTag.value, addNotebook.value, Number(addUpdated.value) || 0)) render();
     });
     const addRow = document.createElement("div");
     addRow.className = "sw-setting__fav-smart-add";
-    addRow.append(addName, addTag, addBtn);
+    addRow.append(addName, addTag, addNotebook, addUpdated, addBtn);
     section.append(list, addRow);
     box.appendChild(section);
 }

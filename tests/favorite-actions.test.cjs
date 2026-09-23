@@ -64,3 +64,34 @@ test("smart groups: query builder escapes and projects validated entries", () =>
     assert.equal(entries[0].title, "论文草稿");
     assert.equal(projectTagSmartGroupEntries("x").length, 0);
 });
+
+test("dynamic groups: tag + notebook + updated-window compose a bounded query (T-6817)", () => {
+    const {buildTagSmartGroupQuery} = require("../src/favorite-actions.js");
+    const now = Date.UTC(2026, 8, 24, 12, 0, 0); // 2026-09-24T12:00:00Z
+    const full = buildTagSmartGroupQuery(
+        {tag: "论文", notebook: "20260924000000-notebook", updatedWithinDays: 7},
+        {limit: 20, nowMs: now},
+    );
+    assert.match(full.stmt, /content LIKE '%#论文#%'/, "标签锚点保留");
+    assert.match(full.stmt, /AND box='20260924000000-notebook'/, "笔记本范围参数化");
+    assert.match(full.stmt, /AND updated >= '20260917120000'/, "7 天窗按 nowMs 计算 cutoff");
+    assert.match(full.stmt, /LIMIT 20$/, "LIMIT 仍由插件钳制");
+    // 仅标签：不携带 box/updated 条件
+    const tagOnly = buildTagSmartGroupQuery({tag: "论文"}, {nowMs: now});
+    assert.doesNotMatch(tagOnly.stmt, /AND box=/);
+    assert.doesNotMatch(tagOnly.stmt, /AND updated/);
+    // 兼容旧字符串入参
+    const legacy = buildTagSmartGroupQuery("论文", 20);
+    assert.equal(legacy.stmt, tagOnly.stmt.replace(" LIMIT 20", " LIMIT 20"));
+    // 白名单外天数与非法笔记本被丢弃
+    const sanitized = buildTagSmartGroupQuery(
+        {tag: "论文", notebook: "bad id!!'; DROP", updatedWithinDays: 13},
+        {nowMs: now},
+    );
+    // 清洗语义与 setId 同规：剔除引号/空格等危险字符后无害保留（无法逃逸 SQL 字符串）
+    assert.match(sanitized.stmt, /AND box='badidDROP'/, "非法字符清洗后保留");
+    assert.doesNotMatch(sanitized.stmt, /AND updated/, "白名单外天数剔除");
+    // 13 天被拒绝但不影响 7/30/90
+    assert.match(buildTagSmartGroupQuery({tag: "t", updatedWithinDays: 30}, {nowMs: now}).stmt, /AND updated/);
+    assert.equal(buildTagSmartGroupQuery({tag: "", notebook: "x"}, {nowMs: now}), null, "无标签锚点拒绝构造");
+});

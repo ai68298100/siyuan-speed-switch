@@ -431,6 +431,20 @@ test('preview open: alt+click on doc results uses doc.mode preview (T-6816)', ()
         '预览打开跳过页签复用（用户明确要一个预览页签）');
 });
 
+test('dynamic groups: composed conditions reach the bounded query builder (T-6817)', () => {
+    const favoriteActions = readSourceText(path.join(__dirname, '..', 'src', 'favorite-actions.js'));
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(indexSource, /buildTagSmartGroupQuery\(group, \{nowMs: Date\.now\(\)\}\)/,
+        '条目拉取必须传整组（含笔记本/时间窗）并注入当前时间');
+    assert.match(favoriteActions, /SMART_GROUP_UPDATED_CHOICES = \[7, 30, 90\]/,
+        '更新时间窗必须白名单档位，拒绝任意天数');
+    assert.match(favoriteActions, /AND box='/, '笔记本范围参数化进 WHERE');
+    assert.match(favoriteActions, /AND updated >= '/, '更新窗参数化进 WHERE');
+    assert.match(settingsSections, /favSmartGroupNotebookAny/, '管理器必须提供笔记本范围下拉');
+    assert.match(settingsSections, /addFavoriteSmartGroup\(addName\.value, addTag\.value, addNotebook\.value, Number\(addUpdated\.value\) \|\| 0\)/,
+        '新增组合条件必须透传到设置持久化');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

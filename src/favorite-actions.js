@@ -46,11 +46,24 @@ module.exports = {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEnt
 // 用户只选择标签名（来自内核 getTag），查询由插件按白名单端点参数化构造——
 // 不向用户暴露 SQL（执行口径）。条目为只读投影：跳转复用打开链路，不可
 // 移动分组/取消收藏（那属于静态收藏的操作语义）。
+// T-6817 动态组扩展：标签为锚点，可叠加笔记本范围与更新时间窗（参数化组合，
+// 仍是白名单构造，不开放任意 SQL）。
 
 const SMART_GROUP_MAX = 4;
 const SMART_GROUP_NAME_MAX = 24;
 const SMART_GROUP_TAG_MAX = 32;
 const SMART_GROUP_ENTRY_LIMIT = 20;
+// 更新时间窗白名单：只允许预设档位，拒绝任意天数
+const SMART_GROUP_UPDATED_CHOICES = [7, 30, 90];
+
+function normalizeSmartGroupNotebook(value) {
+    return typeof value === "string" ? value.trim().replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 64) : "";
+}
+
+function normalizeSmartGroupDays(value) {
+    const days = Number(value);
+    return SMART_GROUP_UPDATED_CHOICES.includes(days) ? days : 0;
+}
 
 function normalizeFavoriteSmartGroups(value, max = SMART_GROUP_MAX) {
     const cap = Number.isFinite(max) && max > 0 ? Math.floor(max) : SMART_GROUP_MAX;
@@ -64,19 +77,40 @@ function normalizeFavoriteSmartGroups(value, max = SMART_GROUP_MAX) {
         // 剔除 LIKE 通配符与引号类字符：标签名来自内核清单，可能包含任意内容
         const tag = typeof raw.tag === "string" ? raw.tag.trim().replace(/['\\%_]/g, "").slice(0, SMART_GROUP_TAG_MAX) : "";
         if (!name || !tag || seen.has(name)) continue;
+        const notebook = normalizeSmartGroupNotebook(raw.notebook);
+        const updatedWithinDays = normalizeSmartGroupDays(raw.updatedWithinDays);
         seen.add(name);
-        groups.push({name, tag});
+        groups.push({
+            name, tag,
+            ...(notebook ? {notebook} : {}),
+            ...(updatedWithinDays ? {updatedWithinDays} : {}),
+        });
     }
     return groups;
 }
 
 // 文档级标签在思源以 #标签# 形态存在于根块 content；首尾 # 保证标签边界
 //（"读"不会误配"读书"）。LIMIT 由插件注入并钳制，杜绝无界行数。
-function buildTagSmartGroupQuery(tag, limit = SMART_GROUP_ENTRY_LIMIT) {
-    const safe = typeof tag === "string" ? tag.trim().replace(/['\\%_]/g, "").slice(0, SMART_GROUP_TAG_MAX) : "";
+// T-6817：group 可传对象 {tag, notebook?, updatedWithinDays?}；兼容旧字符串标签。
+// updated >= cutoff 利用 updated（YYYYMMDDHHMMSS 定长字符串）的字典序比较。
+function buildTagSmartGroupQuery(group, options = {}) {
+    const limit = typeof options === "number" ? options : (Number.isFinite(options?.limit) ? options.limit : SMART_GROUP_ENTRY_LIMIT);
+    const nowMs = Number.isFinite(options?.nowMs) && options.nowMs > 0 ? options.nowMs : Date.now();
+    const raw = group && typeof group === "object" ? group : {tag: group};
+    const safe = typeof raw.tag === "string" ? raw.tag.trim().replace(/['\\%_]/g, "").slice(0, SMART_GROUP_TAG_MAX) : "";
     if (!safe) return null;
     const cap = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : SMART_GROUP_ENTRY_LIMIT;
-    return {stmt: `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '%#${safe}#%' LIMIT ${cap}`};
+    let stmt = `SELECT id, content FROM blocks WHERE type='d' AND content LIKE '%#${safe}#%'`;
+    const notebook = normalizeSmartGroupNotebook(raw.notebook);
+    if (notebook) stmt += ` AND box='${notebook}'`;
+    const days = normalizeSmartGroupDays(raw.updatedWithinDays);
+    if (days) {
+        const cutoff = new Date(nowMs - days * 86400000)
+            .toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
+        stmt += ` AND updated >= '${cutoff}'`;
+    }
+    stmt += ` LIMIT ${cap}`;
+    return {stmt};
 }
 
 function projectTagSmartGroupEntries(rows) {
