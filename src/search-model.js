@@ -13,6 +13,155 @@ const DEFAULT_SEARCH_LIMITS = Object.freeze({
 });
 const DEFAULT_SEARCH_PAGE_SIZE = 32;
 
+// Shared result contract for the next navigation surface. This module only
+// shapes and bounds data; it does not decide how an item is executed.
+const NAVIGATION_GROUP_ORDER = ["tabs", "unified", "opened", "global", "actions"];
+const DEFAULT_NAVIGATION_LIMITS = Object.freeze({
+    maxItemsPerGroup: 40,
+    maxTotalItems: 120,
+    maxUnifiedSections: 8,
+});
+
+function cleanNavigationText(value, max = 240) {
+    return typeof value === "string"
+        ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max)
+        : "";
+}
+
+function normalizeNavigationLimit(value, fallback, max = 1000) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0
+        ? Math.min(max, Math.floor(number))
+        : fallback;
+}
+
+function navigationItemKey(item, group, index) {
+    if (item && typeof item === "object") {
+        const value = item.key ?? item.rootId ?? item.setId ?? item.actionId
+            ?? item.id ?? item.blockId ?? item.name ?? item.title;
+        const key = cleanNavigationText(value, 160);
+        if (key) return key;
+    }
+    return `${group}-${index}`;
+}
+
+function normalizeNavigationItem(item, group, index, sectionKey = "") {
+    const source = item && typeof item === "object" ? item : {title: item};
+    const title = cleanNavigationText(source.title ?? source.name ?? source.label ?? source.text);
+    const key = navigationItemKey(source, group, index);
+    return {
+        ...source,
+        title,
+        navigationGroup: group,
+        navigationSection: sectionKey,
+        navigationKey: `${group}:${sectionKey ? `${sectionKey}:` : ""}${key}`,
+        source: cleanNavigationText(source.source, 64) || group,
+    };
+}
+
+function normalizeNavigationSimpleGroup(items, group, limit) {
+    const raw = Array.isArray(items) ? items : [];
+    const available = raw.length;
+    const normalized = [];
+    raw.slice(0, limit).forEach((item, index) => {
+        if (item === null || typeof item === "undefined") return;
+        normalized.push(normalizeNavigationItem(item, group, index));
+    });
+    return {key: group, items: normalized, available, hidden: Math.max(0, available - normalized.length)};
+}
+
+function normalizeNavigationUnifiedGroup(sections, limits) {
+    const raw = Array.isArray(sections) ? sections : [];
+    const available = raw.reduce((sum, section) =>
+        sum + (section && Array.isArray(section.items) ? section.items.length : 0), 0);
+    const result = [];
+    let visible = 0;
+    for (const section of raw.slice(0, limits.maxUnifiedSections)) {
+        if (!section || typeof section !== "object") continue;
+        const key = cleanNavigationText(section.key, 64);
+        if (!key) continue;
+        const items = [];
+        (Array.isArray(section.items) ? section.items : [])
+            .slice(0, limits.maxItemsPerGroup)
+            .forEach((item, index) => {
+                if (item === null || typeof item === "undefined") return;
+                items.push(normalizeNavigationItem(item, "unified", index, key));
+            });
+        if (!items.length) continue;
+        result.push({...section, key, items});
+        visible += items.length;
+    }
+    return {
+        key: "unified",
+        sections: result,
+        items: result.flatMap((section) => section.items),
+        available,
+        hidden: Math.max(0, available - visible),
+    };
+}
+
+/**
+ * Build the bounded, provenance-labelled view model shared by navigation
+ * surfaces. Later providers can join through a group without changing the
+ * renderer or execution registry.
+ */
+function buildNavigationResultModel(options = {}) {
+    const limits = {
+        maxItemsPerGroup: normalizeNavigationLimit(options.maxItemsPerGroup, DEFAULT_NAVIGATION_LIMITS.maxItemsPerGroup),
+        maxTotalItems: normalizeNavigationLimit(options.maxTotalItems, DEFAULT_NAVIGATION_LIMITS.maxTotalItems),
+        maxUnifiedSections: normalizeNavigationLimit(options.maxUnifiedSections, DEFAULT_NAVIGATION_LIMITS.maxUnifiedSections, 100),
+    };
+    const candidates = new Map([
+        ["tabs", normalizeNavigationSimpleGroup(options.tabs, "tabs", limits.maxItemsPerGroup)],
+        ["unified", normalizeNavigationUnifiedGroup(options.unifiedSections ?? options.unified, limits)],
+        ["opened", normalizeNavigationSimpleGroup(options.opened, "opened", limits.maxItemsPerGroup)],
+        ["global", normalizeNavigationSimpleGroup(options.global, "global", limits.maxItemsPerGroup)],
+        ["actions", normalizeNavigationSimpleGroup(options.actions, "actions", limits.maxItemsPerGroup)],
+    ]);
+    const groups = [];
+    let total = 0;
+    let availableTotal = 0;
+    for (const key of NAVIGATION_GROUP_ORDER) {
+        const group = candidates.get(key);
+        if (!group) continue;
+        availableTotal += group.available;
+        const remaining = Math.max(0, limits.maxTotalItems - total);
+        if (key === "unified") {
+            const sections = [];
+            const items = [];
+            for (const section of group.sections) {
+                const sectionItems = section.items.slice(0, remaining - items.length);
+                if (!sectionItems.length) break;
+                sections.push({...section, items: sectionItems});
+                items.push(...sectionItems);
+            }
+            group.sections = sections;
+            group.items = items;
+            group.hidden = Math.max(group.hidden, group.available - items.length);
+        } else {
+            group.items = group.items.slice(0, remaining);
+        }
+        if (!group.items.length) continue;
+        group.visible = group.items.length;
+        total += group.visible;
+        groups.push(group);
+    }
+    const hiddenTotal = Math.max(0, availableTotal - total);
+    return {
+        query: cleanNavigationText(options.query, 240),
+        groups,
+        counts: Object.fromEntries(groups.map((group) => [group.key, {
+            available: group.available,
+            visible: group.visible,
+            hidden: Math.max(group.hidden, group.available - group.visible),
+        }])),
+        total,
+        availableTotal,
+        hiddenTotal,
+        limits,
+    };
+}
+
 const SEARCH_SOURCES = new Set(["tabs", "opened", "global"]);
 const BLOCK_ID_RE = /^\d{14}-[0-9a-z]+$/i;
 const MAX_TITLE_LENGTH = 256;
@@ -1265,6 +1414,9 @@ function matchesParsedQuery(title, parsed) {
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
+    DEFAULT_NAVIGATION_LIMITS,
+    NAVIGATION_GROUP_ORDER,
+    buildNavigationResultModel,
     normalizeSearchQuery,
     normalizeSearchFilters,
     normalizeSearchLimits,

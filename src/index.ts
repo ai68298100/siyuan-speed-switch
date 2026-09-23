@@ -6,7 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -3229,7 +3229,15 @@ const version = beginSearch(session);
             limitPerSection: 4,
             parsedQuery,
         });
-        if (!sections.length) {
+        const navigation: any = buildNavigationResultModel({
+            query: keyword,
+            unifiedSections: sections,
+            maxItemsPerGroup: 4,
+            maxTotalItems: 12,
+        });
+        const unifiedGroup = navigation.groups.find((group: any) => group.key === "unified");
+        const visibleSections = unifiedGroup?.sections || [];
+        if (!visibleSections.length) {
             existing?.remove();
             return;
         }
@@ -3247,7 +3255,7 @@ const version = beginSearch(session);
             closed: this.i18n.unifiedClosed,
             "doc-sets": this.i18n.unifiedDocSets,
         };
-        sections.forEach((section) => {
+        visibleSections.forEach((section: any) => {
             const sectionEl = document.createElement("div");
             sectionEl.className = "sw__unified-section";
             const label = document.createElement("div");
@@ -3255,7 +3263,7 @@ const version = beginSearch(session);
             label.textContent = sectionTitles[section.key] || section.key;
             const grid = document.createElement("div");
             grid.className = "sw__doc-grid";
-            section.items.forEach((item) => {
+            section.items.forEach((item: any) => {
                 const record = item as Record<string, unknown>;
                 const meta = item.kind === "favorite"
                     ? (String(record.group || "") || this.i18n.unifiedFavorites)
