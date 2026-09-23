@@ -954,6 +954,13 @@ export default class SpeedSwitchPlugin extends Plugin {
                 void this.openJournal();
             },
         }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
+        safeRegisterPluginCommand(this, {
+            langKey: "clipboardEntry",
+            hotkey: "",
+            callback: () => {
+                void this.openClipboardEntry();
+            },
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
         this.registerAgentCapabilities();
         // 受控导航动作：Agent 可把查询结果直接打开为页面（不修改任何笔记数据）
         const pluginWithAgentAction = this as unknown as {
@@ -4221,6 +4228,32 @@ const updatedMap: {[rootId: string]: string} = {};
         const docResults = scrollElement.querySelector(".sw__doc-results");
         if (docResults) scrollElement.insertBefore(box, docResults);
         else scrollElement.appendChild(box);
+    }
+
+    // T-6821 深链接/剪贴板入口：读剪贴板 → 思源块链接（siyuan://blocks/<id>）
+    // 确认后打开；普通文本预填进快速捕获（目标选择照常）。消毒、来源标记、
+    // 用户确认、不保存凭据；空/不可读剪贴板给出明确回执。
+    async openClipboardEntry() {
+        let text = "";
+        try {
+            text = String(await navigator.clipboard?.readText?.() || "");
+        } catch (error) {
+            logger.warn("clipboard read fail", error);
+        }
+        const clean = text.trim();
+        if (!clean) {
+            showMessage(this.i18n.clipboardEmpty, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const linkMatch = clean.match(/^siyuan:\/\/blocks\/(\d{14}-[0-9a-z]+)$/i);
+        if (linkMatch) {
+            // 来源标记：链接来自剪贴板，打开前向用户确认目的地
+            if (confirm(this.i18n.clipboardOpenConfirm)) {
+                void openDocSearchResult.call(this, linkMatch[1], null);
+            }
+            return;
+        }
+        this.openQuickCapture("", clean.slice(0, 500));
     }
 
     // T-6827 保存的搜索：设置读取、保存（名称默认=查询文本，免去 Electron 不支持的

@@ -125,6 +125,8 @@ const ALLOWED_UNUSED = [
   // i18n[langKey]，源码中不存在 .i18n.openSettings 字面引用。
   "openSettings",
   "openJournal",
+  // T-6821：剪贴板入口命令名，同上经 addCommand langKey 动态查。
+  "clipboardEntry",
 ];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {

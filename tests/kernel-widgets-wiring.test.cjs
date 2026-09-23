@@ -473,6 +473,19 @@ test('keyboard-first: digit direct access and chip cycling shortcuts (T-6820)', 
         'Enter 与数字直达共用激活逻辑（单一事实来源）');
 });
 
+test('clipboard entry: deep link open with confirm and capture fallback (T-6821)', () => {
+    assert.match(indexSource, /langKey: "clipboardEntry"/,
+        '剪贴板入口必须注册为插件命令（命令面板白得发现性）');
+    assert.ok(indexSource.includes('match(/^siyuan:\\/\\/blocks\\/(\\d{14}-[0-9a-z]+)$/i)'),
+        '思源块链接必须严格锚定匹配（消毒：ID 形态校验）');
+    assert.match(indexSource, /if \(confirm\(this\.i18n\.clipboardOpenConfirm\)\)/,
+        '链接打开前必须经用户确认（来源标记+确认）');
+    assert.match(indexSource, /this\.openQuickCapture\("", clean\.slice\(0, 500\)\)/,
+        '普通文本必须预填进快速捕获（有界 500 字）');
+    assert.match(indexSource, /showMessage\(this\.i18n\.clipboardEmpty, MESSAGE_DEFAULT_MS, "error"\)/,
+        '空/不可读剪贴板必须有明确回执');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
