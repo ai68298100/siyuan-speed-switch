@@ -1261,21 +1261,36 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                 rollback.className = "b3-button b3-button--text";
                 rollback.textContent = `${this.i18n.documentSetRollback}${versionCount > 0 ? ` (${versionCount})` : ""}`;
                 rollback.disabled = versionCount === 0;
+                const versionList = document.createElement("div");
+                versionList.className = "sw-setting__doc-set-versions";
+                versionList.hidden = true;
                 rollback.addEventListener("click", () => {
                     if (versionCount === 0) return;
-                    if (!confirm(this.i18n.documentSetRollbackConfirm)) return;
-                    const result = rollbackDocumentSet(this.data[DOCUMENT_SETS_KEY], item.setId, {now: Date.now()});
-                    if (!result.changed) {
-                        showMessage(this.i18n.documentSetRollbackNone);
-                        return;
-                    }
-                    this.data[DOCUMENT_SETS_KEY] = result.state;
-                    this.saveDataDebounced(DOCUMENT_SETS_KEY);
-                    showMessage(this.i18n.documentSetRollbackDone.replace("{x}", String(item.name || "")));
-                    render();
+                    // T-6824 版本时间轴：展开版本列表，可任选版本回滚（默认最近一版）
+                    versionList.hidden = !versionList.hidden;
+                });
+                (item.versions || []).forEach((version: {savedAt: number; entries: unknown[]}, vIndex: number) => {
+                    const versionRow = document.createElement("button");
+                    versionRow.type = "button";
+                    versionRow.className = "b3-button b3-button--text sw-setting__doc-set-version";
+                    const savedText = version.savedAt > 0 ? new Date(version.savedAt).toLocaleString() : "";
+                    versionRow.textContent = `↩ ${savedText} (${Array.isArray(version.entries) ? version.entries.length : 0})`;
+                    versionRow.addEventListener("click", () => {
+                        if (!confirm(this.i18n.documentSetRollbackConfirm)) return;
+                        const result = rollbackDocumentSet(this.data[DOCUMENT_SETS_KEY], item.setId, {now: Date.now(), versionIndex: vIndex});
+                        if (!result.changed) {
+                            showMessage(this.i18n.documentSetRollbackNone);
+                            return;
+                        }
+                        this.data[DOCUMENT_SETS_KEY] = result.state;
+                        this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                        showMessage(this.i18n.documentSetRollbackDone.replace("{x}", String(item.name || "")));
+                        render();
+                    });
+                    versionList.appendChild(versionRow);
                 });
                 actions.append(rename, restore, exportReport, preview, rollback, remove);
-                row.append(copy, actions);
+                row.append(copy, actions, versionList);
                 list.appendChild(row);
             });
         };

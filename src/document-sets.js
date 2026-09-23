@@ -139,8 +139,9 @@ function upsertDocumentSet(value, candidate, options = {}) {
 }
 
 /**
- * T-6829 回滚到最近一个版本：当前内容压回版本栈（回滚可逆），版本栈其余顺延。
- * 无版本可回滚时返回 changed: false；纯函数，now 由调用方注入以便测试。
+ * 回滚到指定历史版本（默认最近一版）：当前内容压回版本栈（回滚可逆），
+ * 被选中的版本从栈中移除（成为正文）。无版本可回滚时返回 changed: false；
+ * 纯函数，now 由调用方注入以便测试。
  */
 function rollbackDocumentSet(value, setId, options = {}) {
     const state = normalizeDocumentSets(value, options.max).sets;
@@ -148,13 +149,16 @@ function rollbackDocumentSet(value, setId, options = {}) {
     const index = state.findIndex((item) => item.setId === cleanText(setId, 96));
     if (index < 0) return {state: normalizeDocumentSets(value, options.max), changed: false, item: null};
     const item = state[index];
-    const target = (item.versions || [])[0];
+    const versions = item.versions || [];
+    const versionIndex = Number.isFinite(options.versionIndex) ? Math.max(0, Math.min(versions.length - 1, Math.floor(options.versionIndex))) : 0;
+    const target = versions[versionIndex];
     if (!target) return {state: normalizeDocumentSets(value, options.max), changed: false, item};
-    const versions = [
+    const remaining = versions.filter((_, i) => i !== versionIndex);
+    const nextVersions = [
         {savedAt: now, entries: item.entries},
-        ...item.versions.slice(1),
+        ...remaining,
     ].slice(0, DOCUMENT_SET_VERSION_MAX);
-    const next = {...item, entries: target.entries, updatedAt: now, versions};
+    const next = {...item, entries: target.entries, updatedAt: now, versions: nextVersions};
     const sets = state.slice();
     sets[index] = next;
     const bounded = normalizeDocumentSets({schemaVersion: DOCUMENT_SET_SCHEMA_VERSION, sets}, options.max);

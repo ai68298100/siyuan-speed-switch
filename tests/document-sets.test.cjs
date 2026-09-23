@@ -252,3 +252,21 @@ test("document sets: presetId persists through overwrite and rollback (T-6815)",
     const cleaned = sets.normalizeDocumentSets([{setId: "set-q", name: "Q", entries: [{rootId: "20260924100000-aaaaaaaa"}], presetId: "bad id!!"}]);
     assert.equal(cleaned.sets[0].presetId, "badid", "非法字符被清洗剔除（与 setId 同规），清洗后无害保留");
 });
+
+test("document sets: rollback targets a specific version index (T-6824 timeline)", () => {
+    let state = null;
+    state = sets.upsertDocumentSet(null, {setId: "set-t", name: "T", entries: [{rootId: "20260924100000-aaaaaaaa"}]}, {now: 1000}).state;
+    state = sets.upsertDocumentSet(state, {setId: "set-t", name: "T", entries: [{rootId: "20260924100000-bbbbbbbb"}]}, {now: 2000}).state;
+    state = sets.upsertDocumentSet(state, {setId: "set-t", name: "T", entries: [{rootId: "20260924100000-cccccccc"}]}, {now: 3000}).state;
+    // 版本栈：[v(2000,b), v(1000,a)]，当前 c
+    const item = sets.normalizeDocumentSets(state).sets[0];
+    assert.equal(item.versions.length, 2);
+    // 回滚到栈中第 2 个版本（index 1 = 1000 的 a）
+    const rolled = sets.rollbackDocumentSet(state, "set-t", {now: 4000, versionIndex: 1});
+    assert.deepEqual(rolled.item.entries.map((e) => e.rootId), ["20260924100000-aaaaaaaa"]);
+    // 被选中的版本从栈移除，当前 c 压入栈首
+    assert.deepEqual(rolled.item.versions.map((v) => v.savedAt), [4000, 2000]);
+    // 越界 index 钳制到最近一版
+    const clamped = sets.rollbackDocumentSet(state, "set-t", {now: 5000, versionIndex: 9});
+    assert.equal(clamped.item.versions.length, 2);
+});

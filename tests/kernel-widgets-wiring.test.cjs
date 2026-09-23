@@ -364,8 +364,8 @@ test('document set version history: overwrite stashes and settings can rollback 
         '覆盖保存必须把被覆盖内容压入有界版本栈（内容未变不留噪音版本）');
     assert.match(documentSets, /function rollbackDocumentSet\(/,
         '回滚必须是 document-sets 纯函数（可单测、可逆）');
-    assert.match(settingsSections, /rollbackDocumentSet\(this\.data\[DOCUMENT_SETS_KEY\], item\.setId, \{now: Date\.now\(\)\}\)/,
-        '设置页回滚按钮必须走纯模型并注入当前时间');
+    assert.match(settingsSections, /rollbackDocumentSet\(this\.data\[DOCUMENT_SETS_KEY\], item\.setId, \{now: Date\.now\(\), versionIndex: vIndex\}\)/,
+        '设置页回滚按钮必须走纯模型、注入当前时间并透传所选版本下标');
     assert.match(settingsSections, /rollback\.disabled = versionCount === 0;/,
         '无版本时回滚按钮必须禁用');
 });
@@ -554,6 +554,15 @@ test('command prefix: `>` mode lists executable actions in place of doc results 
     assert.match(indexSource, /matched\.slice\(0, 12\)/, '命令列表有界（≤12）');
 });
 
+test('version timeline: rollback targets a chosen version from an inline list (T-6824)', () => {
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(settingsSections, /versionList\.hidden = !versionList\.hidden;/,
+        '回滚按钮必须展开/收起版本列表');
+    assert.match(settingsSections, /versionIndex: vIndex/,
+        '版本行回滚必须透传所选版本下标');
+    assert.match(readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js')), /versionIndex/,
+        '模型支持指定版本回滚');
+});
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
