@@ -629,6 +629,23 @@ R2 三路完成（CJK/拼音搜索专项、导航交互复扫、思源生态增�
 
 Task Horizon 移动联动（T-6772～T-6775）：提供方复用现有手机管理器/快速新建表单并修复两条命令；雷切识别实时 `getQuickActionCapabilities()` 声明，复用旧动作 ID，执行时重查能力并接收失败结果。实现与作者交付在独立分支推进，设备验收仍归 B-004/B-005；详见 [ADR 0070](docs/adr/0070-task-horizon-mobile-commands.md) 和 [补丁交付说明](docs/integrations/task-horizon-mobile.md)。本次未将主工作区未提交的 P1 通用动作记为完成。
 
+### 8.0.17 2026-09-23 调研-吸收循环 R5 成果与吸收批（现行，补充 §8.0.16）
+
+R5 三路机制层调研完成（Obsidian+Notion/Craft、启动器/浏览器/编辑器/手机广域、思源生态+新兴笔记软件，报告 `docs/research-cycle-r5-2026-09-23.md`）。结论：**R4 骨架（ADR 0076 五阶段）不变，注入机制级吸收批 R5-A**；关键宿主 API（插件 RPC 网关、`/api/history/` 域、`openTab` 新选项、`addBreadcrumbButton`）已对上游源码逐项核实。定位两处强化：①生态出口——速切只读能力可经 `/api/plugin/rpc` 被外部 Agent/MCP 消费（T-6832 评估池）；②开源窗口——sy-quickswitch 停更闭源 + 番茄工具箱转专有，导航品类开源真空确认。竞品动态：Panda Navigation 功能面窄于速切（其前进后退/滚动收起/预设均已由 T-6806/B6/T-6803 先行交付），保持差异化迭代不响应。
+
+| 任务 | 内容 | 来源 | 归位 |
+| --- | --- | --- | --- |
+| T-6825 | 搜索结果身份锚定：异步层返回/分区刷新时选中行与视口钉住（fzf --track 机制） | fzf v0.71+ | P0 可靠性，紧跟 T-6813 |
+| T-6826 | openTab 新选项接入：`keepCursor`/`removeCurrentTab`/`afterOpen`/`doc.mode`，能力检测+旧版降级；恢复链不抢焦点 | 上游 API.ts | P0，支撑 T-6815/T-6816 |
+| T-6827 | 保存的搜索命令化：查询+筛选存为命名命令，进全局命令注册表/悬浮球/数字槽 | Another Quick Switcher | P1 动作生态 |
+| T-6828 | `/api/history/` 域接入：官方文档历史替换"只看有改动"SQL 数据源 + 历史回滚入口 | 上游 router.go | P0 工作上下文 |
+| T-6829 | 文档集/场景预设版本历史：覆盖保存自动留 N 版可回滚 + Snapshot 手动档 | Workspace++/Context Workspaces | P1 |
+| T-6830 | 打开策略层：按来源配置复用 vs 新开页签，防重复（含临时页签标记） | Open Tab Settings | P1 |
+| T-6831 | 面包屑入口按钮：`addBreadcrumbButton` 一键进速切/关联内容 | 上游 Plugin 类 | P1 动作生态 |
+| T-6832（评估池） | 插件 RPC 网关：只读能力注册为 RPC 方法供外部 Agent/MCP 消费 | 上游 router.go | 依赖 D6/D14 进入条件 |
+
+执行归位：T-6825 排 T-6813 后同批收口；T-6826/T-6828 并入 P0 工作上下文批；其余按表归位。候补池与"不值得吸收"清单见 R5 报告 §5/§6。
+
 ### 8.0.9 2026-09-22 思源 3.8.5 侧滑与悬浮球输入边界复核（研究完成，暂不开发）
 
 用户反馈思源手机端 3.8.5 更新左右滑后，左右边缘悬浮球容易触发侧栏。源码复核已完成（`docs/mobile-swipe-floating-ball-research-2026-09-22.md`、[ADR 0071](docs/adr/0071-mobile-swipe-ownership-for-floating-ball.md)）：3.8.5 在 `touch.ts` 中把普通页面侧滑方向激活距离设为 12 px，并按屏宽三分之一或 32 px+快速甩动提交；document 级 touch listeners 会继续看到悬浮球触摸。现有 `touch-action:none`、Pointer Capture 和 8~12 px plugin slop 不能表达对宿主 JavaScript 手势的所有权。思源已有 `data-prevent-swipe` 整轮手势契约，悬浮球当前 portal 尚未声明它。
