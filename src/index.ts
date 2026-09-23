@@ -9374,7 +9374,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             if (!thumb) {
                 return;
             }
-            // 澶嶇敤鐨勬棫鍗＄墖宸叉覆鏌撹繃锛堟棤鍔犺浇鍗犱綅锛夛細璺宠繃瑙傚療锛岄伩鍏嶉噸鍏嬮殕
+            // 复用的旧卡片已渲染过（无加载占位）：跳过观察，避免重克隆
             if (!thumb.querySelector(".sw__thumb-loading")) {
                 return;
             }
@@ -9383,7 +9383,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
     }
 
-    // 鍒嗘壒鍏ㄩ噺娓叉煋锛圛ntersectionObserver 涓嶅彲鐢ㄦ椂鐨勫厹搴曡矾寰勶級
+    // 分批全量渲染（IntersectionObserver 不可用时的兜底路径）
     private renderThumbBatch(list: IGroupedTab[], batch: number) {
         const cache = this.getThumbCache();
         let dirty = false;
@@ -9534,7 +9534,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 注意：每次打开切换器都会重新调用本方法克隆实时 DOM，保证缩略图展示的是页签当前最新状态
     private getThumbSource(tab: Tab): HTMLElement | null {
         try {
-            // Editor 妯″瀷鐨?.editor 鍗?Protyle 瀹炰緥锛屽叾 wysiwyg.element 涓哄疄鏃舵枃妗?DOM
+            // Editor 模型的 .editor 即 Protyle 实例，其 wysiwyg.element 为实时文档 DOM
             const model = (tab as unknown as { model?: IProtyleTabModel }).model;
             const wysiwyg = model?.editor?.wysiwyg?.element;
             if (wysiwyg && wysiwyg.childElementCount > 0) {
@@ -9741,7 +9741,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
     }
 
-    // 鍒囨崲鍒扮洰鏍囬〉绛撅紱寮圭獥妯″紡闅忓悗閿€姣佸脊绐楋紝渚ц竟鏍忔ā寮忛殢鍚庡埛鏂板垪琛?
+    // 切换到目标页签；弹窗模式随后销毁弹窗，侧边栏模式随后刷新列表
     private activateTab(tab: Tab, onClose?: IOverlayClose) {
         // 记录 MRU：按 pinKey（文档页签为 rootID）记录，手机端与桌面端使用同一份 MRU 数据，
         // 通过插件数据同步后两端「最近使用」保持一致
@@ -9984,9 +9984,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 娓叉煋鍒嗙粍/鍗曞垪琛?绌烘€?
         this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay);
 
-        // 鍔ㄧ敾锛氫笅涓€甯ф粦鍏?
+        // 动画：下一帧滑入
         this.scheduleAnimationFrame(() => { if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open"); });
-        // 鐐瑰嚮鑳屾櫙鍏抽棴
+        // 点击背景关闭
         this.bindMobileFavSheetBackdropClose(overlay, sheet);
     }
 
@@ -10461,14 +10461,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 手机端顶栏入口按钮：思源 3.8.x 手机端 addTopBar 只会进右侧菜单"扩展"分组，
-    // 杩欓噷鐩存帴鎻掑叆 mobileTopBar锛堟棫鐗堟棤姝ゅ厓绱犳椂闈欓粯璺宠繃锛屼笉褰卞搷鍏朵粬鍏ュ彛锛夈€?
+    // 这里直接插入 mobileTopBar（旧版无此元素时静默跳过，不影响其他入口）。
     // 切换器入口 + 日记入口各自独立注入，常规运行每个在首次时插入一次即可。
     private ensureMobileTopBarButton() {
         const topBar = document.getElementById("mobileTopBar") || document.getElementById("toolbar");
         if (!topBar) {
             return;
         }
-        // 鍒囨崲鍣ㄥ叆鍙ｏ紙澶栭儴鍙湁涓€涓叚鍙ユ寜閽紱鏃ヨ鎸夐挳浣嶄簬鍒囨崲鍣ㄥ脊绐楅《鏍忓唴锛?
+        // 切换器入口（外部只有一个六边形按钮；日记按钮位于切换器弹窗顶栏内）
         if (!this.mobileTopBarButton?.isConnected && !topBar.querySelector("#swMobileTopBarBtn")) {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -10554,7 +10554,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
         // 面板尺寸变化时仅重算缩略图缩放比例（ResizeObserver 覆盖拖动分隔条等所有场景）
         this.observeSidebarResize(element);
-        // 椤舵爮浜や簰锛氭悳绱?/ 鏀惰棌涓嬫媺 / 鎺掑簭 / 璁剧疆 / 鍥炲埌椤堕儴
+        // 顶栏交互：搜索 / 收藏下拉 / 排序 / 设置 / 回到顶部
         this.sidebarHistoryDropdownDispose = this.bindSidebarToolbarEvents(element, scrollElement, refresh);
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
         if (searchInput && (previousSearchQuery || hasDocSearchFilter.call(this, scrollElement))) {
@@ -10564,7 +10564,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.renderQuickActions(element, "sidebar", element.querySelector<HTMLInputElement>(".sw__search"), refresh);
     }
 
-    // 渚ц竟鏍?DOM 楠ㄦ灦锛氭悳绱?+ 鏀惰棌涓嬫媺 + 鎺掑簭 + 璁剧疆 + 婊氬姩鍖?+ 鍥炲埌椤堕儴
+    // 侧边栏 DOM 骨架：搜索 + 收藏下拉 + 排序 + 设置 + 滚动区 + 回到顶部
     private buildSidebarHtml(): string {
         return `<div class="sw__content">
     <div class="sw__toolbar">
@@ -10642,7 +10642,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         schedule();
     }
 
-    // 渚ц竟鏍忛《鏍忎簨浠讹細鎼滅储 / 鏀惰棌涓嬫媺 / 鎺掑簭鍒囨崲 / 璁剧疆 / 鍥炲埌椤堕儴
+    // 侧边栏顶栏事件：搜索 / 收藏下拉 / 排序切换 / 设置 / 回到顶部
     private bindSidebarToolbarEvents(element: HTMLElement, scrollElement: HTMLDivElement, refresh: IOverlayClose): () => void {
         // 搜索：与弹窗一致，页签匹配在上、全库文档在下
         const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
