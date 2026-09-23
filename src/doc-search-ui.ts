@@ -6,7 +6,7 @@ import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, planDocResultsPage, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, planDocResultsPage, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
@@ -449,7 +449,29 @@ export function getDocSearchSession(this: DocSearchUiHost, scrollElement: HTMLEl
         return session;
     }
 
+export function updateDocSearchHealth(this: DocSearchUiHost, scrollElement: HTMLElement,
+        options: Record<string, any> = {}, reset = false) {
+    const previous = reset ? undefined : this.docSearchState.health.get(scrollElement);
+    const sources: Record<string, {key: string; status: string; count: number; latencyMs: number}> = {};
+    for (const source of previous?.sources || []) sources[source.key] = source;
+    const snapshot = buildSearchHealthSnapshot({
+        ...previous,
+        ...options,
+        query: scrollElement.dataset.swDocSearchQuery || "",
+        counts: {...previous?.counts, ...options.counts},
+        sources: {...sources, ...options.sources},
+    });
+    this.docSearchState.health.set(scrollElement, snapshot);
+    // Only coarse diagnostic labels enter DOM; contents stay in the session.
+    scrollElement.dataset.swSearchState = snapshot.state;
+    scrollElement.dataset.swSearchReasons = snapshot.reasons.join(" ");
+    return snapshot;
+}
+
 export function disposeDocSearchSession(this: DocSearchUiHost, scrollElement: HTMLElement) {
+        this.docSearchState.health.delete(scrollElement);
+        delete scrollElement.dataset.swSearchState;
+        delete scrollElement.dataset.swSearchReasons;
         const session = this.docSearchState.sessions.get(scrollElement);
         if (!session) {
             this.docSearchState.filters.delete(scrollElement);
@@ -474,138 +496,125 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
         cacheKey = buildSearchCacheKey({scope: "global", query: keyword, filters}),
         fetchQuery?: string,
     ) {
-        // T-6802 修正：guards 用原始 keyword（用户输入），内核请求用清洗后的
-        // fetchQuery（运算符剔除）。两者分离，否则带运算符的查询会永远被判
-        // "输入已变化"而丢弃结果。
         const fetchText = typeof fetchQuery === "string" ? fetchQuery : keyword;
         const session = getDocSearchSession.call(this, scrollElement);
-        // 期间关键词已变化或容器已销毁则放弃本次结果
-        if (version !== session.version || !scrollElement.isConnected) {
-            if (!scrollElement.isConnected) {
-                disposeDocSearchSession.call(this, scrollElement);
-            }
+        const current = () => version === session.version && scrollElement.isConnected
+            && searchInput.value.trim() === keyword;
+        if (!current()) {
+            if (!scrollElement.isConnected) disposeDocSearchSession.call(this, scrollElement);
             return;
         }
-        if (searchInput.value.trim() === "") {
+        if (!fetchText) {
             renderDocResults.call(this, scrollElement, null, onClose);
             return;
         }
+        const startedAt = performance.now();
+        const elapsed = () => Math.max(0, performance.now() - startedAt);
+        const report = (options: Record<string, unknown>) => {
+            if (current()) updateDocSearchHealth.call(this, scrollElement, options);
+        };
         let controller: AbortController | null = null;
+        let openedPromise: Promise<Set<string>> | null = null;
         try {
-            // Older embedded WebViews may not expose AbortController. Keep
-            // the request/version guards active in that case and simply omit
-            // the optional fetch cancellation signal.
             controller = typeof AbortController === "function" ? new AbortController() : null;
             session.controller = controller;
             const signal = controller?.signal;
-            if (!canUseTitleSearch(filters)) {
-                const openedContentRoots = await runOpenedDocumentContentSearch.call(this, keyword, signal, filters);
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
+            // Keep local content probing independent of the global fast path,
+            // including cache hits. Report failures separately from zero hits.
+            openedPromise = runOpenedDocumentContentSearch.call(this, fetchText, signal, filters,
+                (source: {status: string; count: number; latencyMs: number}) => {
+                    report({counts: {opened: source.count}, sources: {opened: source}});
+                });
+            openedPromise = openedPromise.then((roots) => {
+                if (current()) {
+                    const visible = this.filterCards(scrollElement, keyword, roots, filters);
+                    report({counts: {tabs: visible}});
                 }
-                this.filterCards(scrollElement, keyword, openedContentRoots, filters);
-                const docs = await runFullTextSearchFallback.call(this, fetchText, signal, filters, DOC_SEARCH_FETCH_LIMIT);
-                if (docs === null) {
-                    if (openedContentRoots.size === 0) {
-                        renderDocResults.call(this, scrollElement, [], onClose, "error");
-                    } else {
-                        renderDocResults.call(this, scrollElement, null, onClose);
-                    }
-                    return;
-                }
-                cacheSearchResult(session, cacheKey, docs);
-                renderDocResults.call(this, scrollElement, docs, onClose);
-                return;
-            }
-            // Probe opened-document content in parallel with the title fast path.
-            // A title hit must not hide a content hit inside an already-open tab:
-            // reveal matching tab cards as soon as the bounded probe completes,
-            // while keeping the title result latency unchanged.
-            const openedContentPromise: Promise<Set<string>> = runOpenedDocumentContentSearch.call(this, keyword, signal, filters);
-            void openedContentPromise.then((roots: Set<string>) => {
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
-                }
-                this.filterCards(scrollElement, keyword, roots, filters);
-            }, (error: unknown) => {
+                return roots;
+            }).catch((error: unknown) => {
                 if ((error as DOMException)?.name !== "AbortError") {
+                    report({sources: {opened: {status: "error", latencyMs: elapsed()}}});
                     logger.warn("opened document search unavailable", error);
                 }
+                return new Set<string>();
             });
+
+            const cached = session.cache.get(cacheKey);
+            if (cached) {
+                report({state: "ready", cacheHit: true, totalLatencyMs: elapsed(),
+                    counts: {global: cached.length}, sources: {global: {status: cached.length ? "ready" : "empty"}}});
+                return;
+            }
             let docs: IDocSearchResult[] = [];
-            let titleSearchUnavailable = false;
-            try {
-                const response = await fetch("/api/filetree/searchDocs", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({k: fetchText}),
-                    ...(signal ? {signal} : {}),
-                });
-                if (!response.ok) {
-                    throw new Error(`searchDocs HTTP ${response.status}`);
+            let fallbackUsed = !canUseTitleSearch(filters);
+            if (!fallbackUsed) {
+                try {
+                    const response = await fetch("/api/filetree/searchDocs", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({k: fetchText}),
+                        ...(signal ? {signal} : {}),
+                    });
+                    if (!response.ok) throw new Error("searchDocs unavailable");
+                    const json = await response.json();
+                    if (!current()) return;
+                    if (json?.code !== undefined && json.code !== 0) throw new Error("searchDocs failed");
+                    if (!Array.isArray(json?.data)) throw new Error("searchDocs invalid response");
+                    docs = filterDocSearchResults.call(this,
+                        json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object"), filters);
+                } catch (error) {
+                    if ((error as DOMException)?.name === "AbortError") throw error;
+                    if (!current()) return;
+                    report({fallbackReason: "title-unavailable"});
+                    logger.warn("title search unavailable; trying compatible fallbacks", error);
                 }
-                const json = await response.json();
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
-                }
-                docs = Array.isArray(json?.data)
-                    ? json.data.filter((doc: unknown): doc is IDocSearchResult => Boolean(doc) && typeof doc === "object")
-                    : [];
-                docs = filterDocSearchResults.call(this, docs, filters);
-            } catch (error) {
-                if ((error as DOMException)?.name === "AbortError") throw error;
-                titleSearchUnavailable = true;
-                logger.warn("title search unavailable; trying compatible fallbacks", error);
+                fallbackUsed = docs.length === 0;
             }
-            let openedContentRoots = new Set<string>();
-            if (titleSearchUnavailable || docs.length === 0) {
-                openedContentRoots = await openedContentPromise;
-                if (version !== session.version || !scrollElement.isConnected || searchInput.value.trim() !== keyword) {
-                    return;
-                }
-                this.filterCards(scrollElement, keyword, openedContentRoots, filters);
-            }
-            // Keep title search as the fast path. Only ask the native block
-            // endpoint when it found no documents, preserving existing
-            // ordering and request cost for the common case.
-            if (docs.length === 0) {
-                const fallbackDocs = await runFullTextSearchFallback.call(this, fetchText, signal, filters, DOC_SEARCH_FETCH_LIMIT);
+            if (!current()) return;
+            if (fallbackUsed) {
+                report({fallbackUsed: true});
+                const fallbackDocs: IDocSearchResult[] | null = await runFullTextSearchFallback.call(this,
+                    fetchText, signal, filters, DOC_SEARCH_FETCH_LIMIT);
+                // WebViews without AbortController still reject stale results
+                // before cache writes, diagnostics, errors or DOM changes.
+                if (!current()) return;
                 if (fallbackDocs === null) {
-                    if (openedContentRoots.size === 0) {
-                        renderDocResults.call(this, scrollElement, [], onClose, "error");
-                    } else {
-                        renderDocResults.call(this, scrollElement, null, onClose);
-                    }
+                    const roots = await openedPromise;
+                    if (!current()) return;
+                    report({state: "error", counts: {global: 0}, totalLatencyMs: elapsed(),
+                        sources: {global: {status: "error", latencyMs: elapsed()}}});
+                    renderDocResults.call(this, scrollElement, roots.size ? null : [], onClose, "error");
                     return;
                 }
                 docs = fallbackDocs;
             }
+            if (!current()) return;
             cacheSearchResult(session, cacheKey, docs);
+            report({state: "ready", counts: {global: docs.length}, totalLatencyMs: elapsed(),
+                fallbackUsed, sources: {global: {status: docs.length ? "ready" : "empty", latencyMs: elapsed()}}});
             renderDocResults.call(this, scrollElement, docs, onClose);
-        } catch (e) {
-            // 主动取消的请求不算异常
-if ((e as DOMException)?.name !== "AbortError") {
-                logger.warn("search docs fail", e);
-                if (version === session.version && scrollElement.isConnected && searchInput.value.trim() === keyword) {
-                    renderDocResults.call(this, scrollElement, [], onClose, "error");
-                }
+        } catch (error) {
+            if ((error as DOMException)?.name !== "AbortError" && current()) {
+                report({state: "error", totalLatencyMs: elapsed(), sources: {global: {status: "error"}}});
+                logger.warn("search docs fail", error);
+                renderDocResults.call(this, scrollElement, [], onClose, "error");
             }
         } finally {
-            if (controller && session.controller === controller) {
-                session.controller = null;
-            }
-            if (!scrollElement.isConnected) {
-                disposeDocSearchSession.call(this, scrollElement);
-            }
+            // Results render immediately; retain cancellation until the slower
+            // parallel probe settles. It must not overwrite a newer controller.
+            if (openedPromise) await openedPromise;
+            if (controller && session.controller === controller) session.controller = null;
+            if (!scrollElement.isConnected) disposeDocSearchSession.call(this, scrollElement);
         }
     }
 
-    // 娓叉煋鍏ㄥ簱鏂囨。鎼滅储缁撴灉鍒嗙粍锛坉ocs 涓?null 琛ㄧず闅愯棌锛夛紱宸叉墦寮€鐨勬枃妗ｄ笉鍐嶉噸澶嶅垪鍑?
 export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
         keyword: string,
         signal?: AbortSignal,
         filters: IDocSearchFilters = {},
+        report?: (source: {status: string; count: number; latencyMs: number}) => void,
     ): Promise<Set<string>> {
+        const startedAt = performance.now();
         const tabs = (this.isMobile ? this.getMobileTabs() : getAllTabs()).filter((tab) =>
             !filters.notebook || resolveSearchNotebookId(tab as unknown) === filters.notebook);
         const requests = buildOpenedDocumentSearchRequests(tabs, keyword, {
@@ -619,8 +628,12 @@ export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
             filters,
         });
         const roots = new Set<string>();
-        if (requests.length === 0) return roots;
+        if (requests.length === 0) {
+            report?.({status: "skipped", count: 0, latencyMs: 0});
+            return roots;
+        }
         const results = new Array<boolean>(requests.length).fill(false);
+        let failures = 0;
         let nextIndex = 0;
         const worker = async () => {
             while (nextIndex < requests.length) {
@@ -640,12 +653,14 @@ export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
                     } else {
                         response = await fetch("/api/search/fullTextSearchBlock", init);
                     }
-                    if (!response.ok) continue;
+                    if (!response.ok) { failures++; continue; }
                     const payload = await response.json();
+                    if (payload?.code !== undefined && payload.code !== 0) { failures++; continue; }
                     results[index] = extractSearchRecords(payload)
                         .some((record) => Boolean(normalizeSearchResult(record, "opened")));
                 } catch (error) {
                     if ((error as DOMException)?.name === "AbortError") throw error;
+                    failures++;
                 }
             }
         };
@@ -653,6 +668,8 @@ export async function runOpenedDocumentContentSearch(this: DocSearchUiHost,
         results.forEach((matched, index) => {
             if (matched) roots.add(requests[index].scope.rootId);
         });
+        report?.({status: failures > 0 ? "unavailable" : roots.size ? "ready" : "empty",
+            count: roots.size, latencyMs: Math.max(0, performance.now() - startedAt)});
         return roots;
     }
 
@@ -699,6 +716,7 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
                 throw new Error(`full text search HTTP ${response.status}`);
             }
             const payload = await response.json();
+            if (payload?.code !== undefined && payload.code !== 0) throw new Error("full text search failed");
             const aggregate = aggregateSearchResults(extractSearchRecords(payload), {
                 source: "global",
                 documents: documentLimit,

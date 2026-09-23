@@ -540,8 +540,8 @@ const searchFilterUiOk = (source.match(/class="sw__search-filter-btn/g) || []).l
     && docSearchUiSource.includes('label: this.i18n.searchResultOrder')
     && docSearchUiSource.includes('label: this.i18n.searchResetFilters')
     && docSearchUiSource.includes('this.docSearchState.filters.set(scrollElement, Object.freeze(next))')
-    && docSearchUiSource.includes('if (!canUseTitleSearch(filters))')
-    && docSearchUiSource.includes('runOpenedDocumentContentSearch.call(this, keyword, signal, filters)')
+    && docSearchUiSource.includes('!canUseTitleSearch(filters)')
+    && docSearchUiSource.includes('runOpenedDocumentContentSearch.call(this, fetchText, signal, filters')
     && source.includes('card.dataset.notebookId = resolveSearchNotebookId(tab as unknown)')
     && pluginCss.includes('.sw__search-filter-btn')
     && pluginCss.includes('.sw__search-filter-btn.sw__active');

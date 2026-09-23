@@ -434,6 +434,165 @@ function sourceRank(source) {
     return source === "opened" ? 3 : source === "tabs" ? 2 : 1;
 }
 
+const SEARCH_HEALTH_SOURCE_KEYS = ["tabs", "opened", "global"];
+const SEARCH_HEALTH_STATES = new Set(["idle", "loading", "ready", "degraded", "error"]);
+const SEARCH_HEALTH_SOURCE_STATES = new Set(["skipped", "empty", "ready", "pending", "unavailable", "error"]);
+
+function finiteHealthNumber(value, fallback = 0, min = 0, max = 600000) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+
+function normalizeHealthState(value, fallback = "ready") {
+    const state = typeof value === "string" ? value : "";
+    return SEARCH_HEALTH_STATES.has(state) ? state : fallback;
+}
+
+function normalizeHealthSourceState(value, fallback = "empty") {
+    const state = typeof value === "string" ? value : "";
+    return SEARCH_HEALTH_SOURCE_STATES.has(state) ? state : fallback;
+}
+
+function healthCount(value) {
+    if (Array.isArray(value)) return value.length;
+    return Math.max(0, Math.floor(finiteHealthNumber(value, 0, 0, 100000)));
+}
+
+function healthSourceInput(sources, key) {
+    if (!sources || typeof sources !== "object") return {};
+    const value = sources[key];
+    return value && typeof value === "object" ? value : {};
+}
+
+function normalizeHealthQuery(value) {
+    return normalizeText(value, 240);
+}
+
+/**
+ * Explain the fields that contribute to a result's display score without
+ * changing the existing ordering. Consumers can show the explanation or use
+ * it while tuning a future ranking pass; the search pipeline remains stable.
+ */
+function buildSearchScoreBreakdown(item, options = {}) {
+    const source = normalizeSource(item?.source || options.source || "global");
+    const query = normalizeSearchQuery(options.query).toLowerCase();
+    const parsed = parseSearchQuery(query);
+    const title = normalizeText(item?.title || item?.name, MAX_TITLE_LENGTH).toLowerCase();
+    const path = normalizeText(item?.path || item?.hPath, MAX_PATH_LENGTH).toLowerCase();
+    const hasPositive = parsed.terms.length + parsed.phrases.length > 0;
+    const titleMatch = hasPositive && matchesParsedQuery(title, parsed);
+    const pathMatch = hasPositive && matchesParsedQuery(path, parsed);
+    const pinyinMatch = Boolean(hasPositive && !titleMatch && options.pinyinMatch === true
+        && parsed.phrases.every((phrase) => title.includes(phrase))
+        && parsed.excludes.every((term) => !title.includes(term))
+        && parsed.terms.every((term) => title.includes(term) || pinyinTitleHit(title, term)));
+    const filterMatch = matchesSearchDocumentFilters(item, normalizeSearchDocumentFilters(options.filters));
+    const effectiveQuery = parsed.terms.concat(parsed.phrases).join(" ");
+    const titleScore = titleMatch ? scoreUnifiedTitle(title, effectiveQuery) : 0;
+    const sourceWeight = sourceRank(source);
+    const lastPicked = Boolean(options.promoteId && resolveDocSearchResultId(item) === options.promoteId);
+    return {
+        source,
+        sourceWeight,
+        titleScore,
+        kernelScore: typeof item?.score === "number" && Number.isFinite(item.score) ? item.score : null,
+        // Descriptive composite only; ordering keeps using the pipeline's own sort.
+        total: titleScore + sourceWeight,
+        titleMatch,
+        pathMatch,
+        pinyinMatch,
+        filterMatch,
+        lastPicked,
+        // Descriptive only: existing ordering has no recency weight.
+        updated: normalizeText(item?.updated || item?.updatedAt, 32),
+        matchedFields: [
+            titleMatch ? "title" : "",
+            pathMatch ? "path" : "",
+            pinyinMatch ? "pinyin" : "",
+        ].filter(Boolean),
+    };
+}
+
+/**
+ * Build a bounded, serializable diagnostic snapshot for one search surface.
+ * It deliberately reports coarse reason codes rather than host error text so
+ * the snapshot is safe to expose through a DOM data attribute or telemetry
+ * adapter. It is observability only and never decides whether a request runs.
+ */
+function buildSearchHealthSnapshot(options = {}) {
+    options = options && typeof options === "object" ? options : {};
+    const query = normalizeHealthQuery(options.query);
+    const layers = options.layers && typeof options.layers === "object" ? options.layers : {};
+    const counts = layers.counts && typeof layers.counts === "object" ? layers.counts : {};
+    const docs = options.docs ?? options.global ?? layers.global;
+    const explicitCounts = options.counts && typeof options.counts === "object" ? options.counts : {};
+    const sources = options.sources && typeof options.sources === "object" ? options.sources : {};
+    const countFor = (key) => healthCount(explicitCounts[key] ?? counts[key] ?? layers[key]
+        ?? (key === "global" ? docs : undefined));
+    const remote = Boolean(query) && (options.remote ?? layers.remote) !== false;
+    const state = normalizeHealthState(options.state, query ? "ready" : "idle");
+    const totalLatencyMs = Math.round(finiteHealthNumber(
+        options.totalLatencyMs ?? options.latencyMs,
+        0,
+        0,
+        600000,
+    ));
+    const slowThresholdMs = Math.round(finiteHealthNumber(options.slowThresholdMs, 800, 1, 600000));
+    const truncated = options.truncated === true || layers.truncated === true;
+    const cacheHit = options.cacheHit === true;
+    const fallbackUsed = options.fallbackUsed === true;
+    const fallbackReason = options.fallbackReason === "title-unavailable" ? "title-unavailable" : "";
+    const error = options.error === true || state === "error";
+    const sourceSnapshots = SEARCH_HEALTH_SOURCE_KEYS.map((key) => {
+        const source = healthSourceInput(sources, key);
+        const count = countFor(key);
+        let sourceState = normalizeHealthSourceState(source.status, count > 0 ? "ready" : "empty");
+        if (source.pending === true) sourceState = "pending";
+        if (source.unavailable === true) sourceState = "unavailable";
+        if (source.error === true) sourceState = "error";
+        return {
+            key,
+            status: sourceState,
+            count,
+            latencyMs: Math.round(finiteHealthNumber(source.latencyMs, 0, 0, 600000)),
+        };
+    });
+    const reasons = [];
+    if (!query) reasons.push("empty-query");
+    if (remote && sourceSnapshots.some((source) => source.status === "pending")) reasons.push("remote-pending");
+    if (sourceSnapshots.some((source) => source.status === "unavailable" || source.status === "error")) reasons.push("source-unavailable");
+    if (error) reasons.push("remote-error");
+    if (fallbackUsed) reasons.push("fallback-used");
+    if (fallbackReason) reasons.push(fallbackReason);
+    if (truncated) reasons.push("truncated");
+    const slow = totalLatencyMs >= slowThresholdMs || sourceSnapshots.some((source) => source.latencyMs >= slowThresholdMs);
+    if (slow) reasons.push("slow-request");
+    if (query && sourceSnapshots.every((source) => source.count === 0 && source.status !== "pending")
+        && state !== "loading" && state !== "idle" && !error) reasons.push("no-results");
+    const degraded = Boolean(error || fallbackReason
+        || sourceSnapshots.some((source) => source.status === "unavailable" || source.status === "error")
+        || slow);
+    // A slow or broken surface is degraded even while still loading; only an
+    // outright error outranks it.
+    const resolvedState = error ? "error" : degraded ? "degraded" : state;
+    return {
+        query,
+        state: resolvedState,
+        remote,
+        cacheHit,
+        fallbackUsed,
+        fallbackReason,
+        counts: Object.fromEntries(sourceSnapshots.map((source) => [source.key, source.count])),
+        sources: sourceSnapshots,
+        totalLatencyMs,
+        slowThresholdMs,
+        slow,
+        truncated,
+        degraded,
+        reasons: [...new Set(reasons)].slice(0, 8),
+    };
+}
+
 function mergeText(existing, next, maxLength) {
     return existing || normalizeText(next, maxLength);
 }
@@ -1423,6 +1582,8 @@ module.exports = {
     buildSearchCacheKey,
     canUseTitleSearch,
     normalizeSearchResult,
+    buildSearchScoreBreakdown,
+    buildSearchHealthSnapshot,
     buildUnifiedSections,
     scoreUnifiedTitle,
     normalizeUnifiedQuery,

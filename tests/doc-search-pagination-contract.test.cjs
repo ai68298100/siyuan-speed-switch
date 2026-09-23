@@ -47,8 +47,12 @@ test("expanded-exhausted results fall back to the native search exit", () => {
 });
 
 test("UI fetch requests the audited fetch limit", () => {
+    // T-6813 起缓存命中刷新与防抖取数共用 runDocSearchFetch，回退调用点合并为一处；
+    // 契约改为"每处回退取数都必须传共享上限"，不再钉死调用点数量。
+    const fallbackCalls = [...docSearchUi.matchAll(/runFullTextSearchFallback\.call\(/g)].length;
     const callUses = [...docSearchUi.matchAll(/DOC_SEARCH_FETCH_LIMIT\)/g)].length;
-    assert.ok(callUses >= 2, `两处 UI 取数调用必须传 DOC_SEARCH_FETCH_LIMIT，实测 ${callUses} 处`);
+    assert.ok(fallbackCalls >= 1, "回退取数入口必须存在");
+    assert.equal(callUses, fallbackCalls, `每处回退取数必须传 DOC_SEARCH_FETCH_LIMIT，实测调用 ${fallbackCalls} 处 / 传上限 ${callUses} 处`);
     assert.match(docSearchUi, /Math\.min\(DOC_SEARCH_FETCH_LIMIT, Math\.max\(1, Math\.floor\(Number\(documents\)/,
         "回退取数天花板必须引用共享常量");
     assert.match(constants, /export const DOC_SEARCH_FETCH_LIMIT = 33;/,

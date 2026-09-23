@@ -6,7 +6,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -57,6 +57,7 @@ import {
     runDocSearchFetch,
     runFullTextSearchFallback,
     runOpenedDocumentContentSearch,
+    updateDocSearchHealth,
 } from "./doc-search-ui";
 import {openMobileSwitcherDialog, bindMobileSwitcherToolbarActions, renderMobileList, openMobileGroupActions} from "./mobile-switcher-ui";
 import {openSecondPanel} from "./second-panel-ui";
@@ -488,6 +489,36 @@ declare module "./search-model" {
         path?: string;
         notebookId?: string;
     } | null;
+    export function buildSearchScoreBreakdown(value: unknown, options?: Record<string, unknown>): {
+        source: string;
+        sourceWeight: number;
+        titleScore: number;
+        total: number;
+        kernelScore: number | null;
+        titleMatch: boolean;
+        pathMatch: boolean;
+        pinyinMatch: boolean;
+        filterMatch: boolean;
+        lastPicked: boolean;
+        updated: string;
+        matchedFields: string[];
+    };
+    export function buildSearchHealthSnapshot(options?: Record<string, unknown>): {
+        query: string;
+        state: string;
+        remote: boolean;
+        cacheHit: boolean;
+        fallbackUsed: boolean;
+        fallbackReason: string;
+        counts: Record<string, number>;
+        sources: Array<{key: string; status: string; count: number; latencyMs: number}>;
+        totalLatencyMs: number;
+        slowThresholdMs: number;
+        slow: boolean;
+        truncated: boolean;
+        degraded: boolean;
+        reasons: string[];
+    };
     export function filterSearchDocuments(value: unknown[], filters?: Record<string, unknown>): unknown[];
     export function matchesSearchDocumentFilters(value: unknown, filters?: {
         notebook?: string;
@@ -3126,7 +3157,18 @@ const updatedMap: {[rootId: string]: string} = {};
         const parsedQuery = parseSearchQuery(searchInput.value);
         const kernelQuery = formatCleanQuery(parsedQuery);
         this.docSearchState.parsedQueries.set(scrollElement, parsedQuery);
-        this.filterCards(scrollElement, searchInput.value, new Set(), filters, parsedQuery);
+        const localTabCount = this.filterCards(scrollElement, searchInput.value, new Set(), filters, parsedQuery);
+        updateDocSearchHealth.call(this, scrollElement, {
+            query: keyword,
+            remote: Boolean(kernelQuery),
+            state: kernelQuery ? "loading" : "idle",
+            counts: {tabs: localTabCount},
+            sources: {
+                tabs: {status: localTabCount > 0 ? "ready" : "empty"},
+                opened: {status: kernelQuery ? "pending" : "skipped"},
+                global: {status: kernelQuery ? "pending" : "skipped"},
+            },
+        }, true);
         // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
         // 页签卡片与全库文档结果之间；空查询时整块移除。
         this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
@@ -3137,9 +3179,9 @@ const updatedMap: {[rootId: string]: string} = {};
 
         // 每次输入都让上一轮请求失效。空关键词或缓存命中也必须递增序号；
         // 否则较慢的旧请求返回后会覆盖当前界面。
-const version = beginSearch(session);
+        const version = beginSearch(session);
 
-        // 鍏抽敭璇嶄负绌猴細闅愯棌鏂囨。缁撴灉锛屾仮澶嶇函鍒楄〃
+        // 关键词为空：隐藏文档结果，恢复纯列表
         if (keyword === "" || kernelQuery === "") {
             // 空查询，或只剩排除项（没有正向词可交给内核）时不发请求
             renderDocResults.call(this, scrollElement, null, onClose);
@@ -3150,6 +3192,9 @@ const version = beginSearch(session);
         const cached = session.cache.get(cacheKey);
         if (cached) {
             renderDocResults.call(this, scrollElement, cached, onClose);
+            // Open-tab content is surface-specific and may have changed since
+            // the cached global result. Refresh it without re-fetching global.
+            void runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey, kernelQuery);
             return;
         }
         renderDocResults.call(this, scrollElement, [], onClose, "loading");
@@ -3157,7 +3202,7 @@ const version = beginSearch(session);
         session.timer = window.setTimeout(() => {
             session.timer = null;
             // 守卫用原始 keyword，内核请求用清洗后的 kernelQuery（T-6802 修正）
-            runDocSearchFetch.call(this, scrollElement, searchInput, keyword, kernelQuery, version, onClose, filters, cacheKey);
+            void runDocSearchFetch.call(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey, kernelQuery);
         }, SEARCH_DEBOUNCE_MS);
     }
 

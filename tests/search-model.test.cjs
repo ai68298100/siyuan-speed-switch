@@ -7,6 +7,8 @@ const {
     buildSearchCacheKey,
     canUseTitleSearch,
     normalizeSearchResult,
+    buildSearchScoreBreakdown,
+    buildSearchHealthSnapshot,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
@@ -913,4 +915,66 @@ test("unified index: pinyin fallback covers collections when toggle is on (T-680
         pinyinMatch: false,
     });
     assert.deepEqual(off, [], "pinyin off restores substring-only semantics");
+});
+
+test("search diagnostics: score breakdown exposes explainable matches without changing cards", () => {
+    const breakdown = buildSearchScoreBreakdown({
+        source: "opened",
+        title: "产品路线图",
+        path: "工作/产品路线图",
+        updated: "1700000000000",
+    }, {
+        query: "cp",
+        pinyinMatch: true,
+        nowMs: 1700000000000,
+        filters: {paths: ["工作"]},
+    });
+    assert.equal(breakdown.source, "opened");
+    assert.equal(breakdown.sourceWeight, 3);
+    assert.equal(breakdown.titleMatch, false);
+    assert.equal(breakdown.pathMatch, false);
+    assert.equal(breakdown.pinyinMatch, true);
+    assert.equal(breakdown.filterMatch, true);
+    assert.deepEqual(breakdown.matchedFields, ["pinyin"]);
+    assert.equal(Number.isFinite(breakdown.total), true);
+});
+
+test("search diagnostics: health snapshot reports bounded counts and degradation reasons", () => {
+    const snapshot = buildSearchHealthSnapshot({
+        query: "产品",
+        layers: {
+            counts: {tabs: 2, opened: 1, global: 0},
+            truncated: true,
+        },
+        sources: {
+            tabs: {latencyMs: 3},
+            opened: {status: "ready", latencyMs: 80},
+            global: {status: "pending", latencyMs: 1200},
+        },
+        remote: true,
+        state: "loading",
+        totalLatencyMs: 1200,
+        slowThresholdMs: 800,
+    });
+    assert.equal(snapshot.state, "degraded");
+    assert.deepEqual(snapshot.counts, {tabs: 2, opened: 1, global: 0});
+    assert.equal(snapshot.sources.find((source) => source.key === "global").status, "pending");
+    assert.equal(snapshot.slow, true);
+    assert.equal(snapshot.truncated, true);
+    assert.equal(snapshot.degraded, true);
+    assert.deepEqual(snapshot.reasons, ["remote-pending", "truncated", "slow-request"]);
+});
+
+test("search diagnostics: empty and unavailable sources remain safe and serializable", () => {
+    const snapshot = buildSearchHealthSnapshot({
+        query: "",
+        sources: {global: {unavailable: true}},
+        counts: {tabs: "bad", opened: -5, global: 4},
+        error: true,
+    });
+    assert.equal(snapshot.state, "error");
+    assert.equal(snapshot.remote, false);
+    assert.deepEqual(snapshot.counts, {tabs: 0, opened: 0, global: 4});
+    assert.deepEqual(snapshot.reasons, ["empty-query", "source-unavailable", "remote-error"]);
+    assert.doesNotThrow(() => JSON.stringify(snapshot));
 });

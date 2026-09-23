@@ -339,9 +339,13 @@ test('zero-term workbench wiring: renders on empty query and removes on input (T
 
 test('operator query guards use raw keyword while kernel calls use cleaned query (T-6802 fix)', () => {
     const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
-    assert.match(indexSource, /runDocSearchFetch\.call\(this, scrollElement, searchInput, keyword, kernelQuery, version, onClose, filters, cacheKey\)/,
-        'applySearch passes raw keyword for guards and kernelQuery for fetching');
-    assert.match(docSearchUi, /searchInput\.value\.trim\(\) !== keyword/,
+    // T-6813 起签名重排为 (…, keyword, version, onClose, filters, cacheKey, fetchQuery)：
+    // version 必须是请求版本号，fetchQuery（最后一位）才是清洗后的内核查询——
+    // 错位会把 keyword 当版本号，远程搜索静默退出（行为测试见 doc-search-fetch-behavior.test.cjs）。
+    assert.match(indexSource, /runDocSearchFetch\.call\(this, scrollElement, searchInput, keyword, version, onClose, filters, cacheKey, kernelQuery\)/,
+        'applySearch passes the request version and the cleaned kernel query in the reordered signature');
+    // T-6813 起 current() 用正向比较收拢三个过期条件，语义不变：仍逐字对比原始输入。
+    assert.match(docSearchUi, /searchInput\.value\.trim\(\) === keyword/,
         'staleness guards keep comparing the raw user input');
     assert.match(docSearchUi, /\{k: fetchText\}/,
         'the kernel title search request carries the cleaned query');

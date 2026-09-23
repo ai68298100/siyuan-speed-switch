@@ -2,6 +2,7 @@
 // 6 个实例级状态字段收拢为单一状态对象：WeakMap/Set 语义与代际竞态保护不变，
 // 仅作用域重组。类型经 import type 自 "./index" 引用（编译期擦除，无运行时循环）。
 import type {IDocSearchFilters, IDocSearchResult, ISearchSession} from "./index";
+import type {buildSearchHealthSnapshot} from "./search-model";
 
 export interface DocSearchState {
     /** 每个 scroll 元素各自的搜索会话（缓存 + AbortController） */
@@ -20,6 +21,8 @@ export interface DocSearchState {
     parsedQueries: WeakMap<HTMLElement, IParsedSearchQuery>;
     /** T-6809：每个 scroll 元素当前选中的过滤条（all/tabs/unified/docs），空查询时重置 */
     chipFilters: WeakMap<HTMLElement, string>;
+    /** Current diagnostic only, discarded with its surface; no search history. */
+    health: WeakMap<HTMLElement, ReturnType<typeof buildSearchHealthSnapshot>>;
 }
 
 /** T-6802 查询运算符解析结果：`"精确短语"` / `-排除词` / 普通词（全部 AND） */
@@ -39,5 +42,6 @@ export function createDocSearchState(): DocSearchState {
         pathTitles: new WeakMap(),
         parsedQueries: new WeakMap(),
         chipFilters: new WeakMap(),
+        health: new WeakMap(),
     };
 }
