@@ -331,6 +331,17 @@ test('public API hook mounts on layout ready and unloads cleanly (T-6833)', () =
         '钩子只暴露受控动作，不泄漏内部状态');
 });
 
+test('document set restore and essentials open without stealing focus (T-6826)', () => {
+    // 恢复链必须走 keepCursor 批量后台打开（思源 3.8.5 官方选项，旧版宿主自动忽略），
+    // 不得退回逐个直连 openTab 抢焦点的形态。
+    assert.match(indexSource, /openDocumentOnDesktop\(\{rootId, app: this\.app, openTab, logger, keepCursor: true\}\)/,
+        '文档集恢复链必须以 keepCursor:true 后台打开');
+    assert.match(indexSource, /else await openDocumentOnDesktop\(\{rootId, app: this\.app, openTab, logger, keepCursor: true\}\)/,
+        'Essentials 常驻层跟随恢复链语义');
+    assert.doesNotMatch(indexSource, /await openTab\(\{app: this\.app, doc: \{id: rootId\}\}\)/,
+        '恢复链内不得残留直连 openTab 的抢焦点打开');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

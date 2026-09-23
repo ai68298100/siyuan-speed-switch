@@ -5113,7 +5113,10 @@ const updatedMap: {[rootId: string]: string} = {};
         if (!confirm(confirmation)) return;
         const execution = await runDocumentSetRestore(candidates, async (rootId) => {
             if (this.isUnloading) return false;
-            return this.isMobile ? await this.mobileOpenDoc(rootId) : ((await openTab({app: this.app, doc: {id: rootId}})), true);
+            // T-6826 keepCursor：恢复链批量打开不抢焦点（思源 3.8.5 openTab 官方
+            // 选项，旧版宿主自动忽略），现场就位由当前页签保持，不逐个跳转。
+            return this.isMobile ? await this.mobileOpenDoc(rootId)
+                : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
         });
         const summary = summarizeDocumentSetRestore(plan, probe, execution);
         if (summary.attempted > 0) {
@@ -7362,7 +7365,8 @@ private rootIdOf(tab: Tab): string | null {
         for (const rootId of essentials) {
             if (opened.has(rootId)) continue;
             if (this.isMobile) await this.mobileOpenDoc(rootId);
-            else await openTab({app: this.app, doc: {id: rootId}});
+            // T-6826：常驻层同样不抢焦点（跟随恢复链语义）
+            else await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
         }
     }
 

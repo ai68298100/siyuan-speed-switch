@@ -1,0 +1,55 @@
+/* T-6826 真实打开链路 E2E：在真实内核里创建笔记本与文档，经切换器三层搜索
+   （真实 searchDocs 端点）命中并单击打开，断言真实 protyle 页签出现。
+   这是"搜索 → 打开"主路径的真实宿主证据（不 mock 任何内核请求）。 */
+import {expect, test} from "@playwright/test";
+import {openApp, openSwitcher, createClient} from "./helpers/app.mjs";
+
+const NOTEBOOK_NAME = "速切E2E打开链路";
+const DOC_TITLE = "速切锚定文档";
+
+let notebookId = "";
+
+async function seedDocs(client) {
+    const created = await client.postChecked("/api/notebook/createNotebook", {name: NOTEBOOK_NAME});
+    // 契约：CreateNotebookData.notebook 为 Notebook 对象（含 id），不是裸字符串
+    notebookId = String(created.notebook?.id || created.notebook || "");
+    expect(notebookId.length).toBeGreaterThan(0);
+    for (const title of [DOC_TITLE, "速切锚定陪衬"]) {
+        await client.postChecked("/api/filetree/createDocWithMd", {
+            notebook: notebookId,
+            path: `/${title}`,
+            markdown: `${title} 的内容`,
+        });
+    }
+}
+
+test("真实内核：切换器搜索命中真实文档并单击打开真实页签", async ({page}) => {
+    const client = createClient();
+    await seedDocs(client);
+    try {
+        const pageErrors = [];
+        page.on("pageerror", (error) => pageErrors.push(String(error.message || error)));
+
+        await openApp(page);
+        await openSwitcher(page);
+
+        const search = page.locator("input.sw__search");
+        await search.fill(DOC_TITLE);
+        // 防抖 + 真实 searchDocs 往返，文档结果卡片出现
+        await page.waitForSelector(".sw__doc-item", {timeout: 20000});
+        const firstDoc = page.locator(".sw__doc-item").first();
+        await expect(firstDoc).toContainText(DOC_TITLE, {timeout: 10000});
+
+        await firstDoc.click();
+        // 打开的是真实 protyle 编辑器页签，且加载了目标文档
+        await page.waitForFunction((title) => {
+            return Array.from(document.querySelectorAll(".protyle-title"))
+                .some((element) => (element.textContent || "").includes(title));
+        }, DOC_TITLE, {timeout: 20000});
+
+        expect(pageErrors, `真实打开链路出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
+    } finally {
+        // 测试自清理：移除 E2E 笔记本（隔离工作区内，无用户数据）
+        await client.post("/api/notebook/removeNotebook", {notebook: notebookId}).catch(() => undefined);
+    }
+});
