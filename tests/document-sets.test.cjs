@@ -192,3 +192,45 @@ test("document sets: cycle picker wraps and requires at least two sets", () => {
     assert.equal(pickNextDocumentSet([], ""), null);
     assert.equal(pickNextDocumentSet([{name: "no id"}, {name: "also no id"}], ""), null, "entries without setId are ignored");
 });
+
+test("document sets: overwrite save stashes the previous content as a version (T-6829)", () => {
+    const {normalizeDocumentSets, upsertDocumentSet, DOCUMENT_SET_VERSION_MAX} = require("../src/document-sets.js");
+    const first = sets.upsertDocumentSet(null, {setId: "set-1", name: "项目", entries: [{rootId: "20260924000000-aaaaaaaa"}, {rootId: "20260924000000-bbbbbbbb"}]}, {now: 1000});
+    assert.deepEqual(first.item.versions, [], "首次保存没有版本");
+    // 覆盖保存：内容变化 → 前一版入栈
+    const second = sets.upsertDocumentSet(first.state, {setId: "set-1", name: "项目", entries: [{rootId: "20260924000000-aaaaaaaa"}]}, {now: 2000});
+    assert.equal(second.item.versions.length, 1);
+    assert.equal(second.item.versions[0].savedAt, 1000);
+    assert.equal(second.item.versions[0].entries.length, 2);
+    // 内容完全相同的覆盖：不产生噪音版本
+    const third = sets.upsertDocumentSet(second.state, {setId: "set-1", name: "项目", entries: [{rootId: "20260924000000-aaaaaaaa"}]}, {now: 3000});
+    assert.equal(third.item.versions.length, 1, "相同内容覆盖不新增版本");
+    // 容量上限 FIFO
+    let state = third.state;
+    for (let round = 0; round < DOCUMENT_SET_VERSION_MAX + 2; round++) {
+        const entry = {rootId: `20260924000000-c${round}aaaaa`};
+        state = sets.upsertDocumentSet(state, {setId: "set-1", name: "项目", entries: [entry]}, {now: 4000 + round}).state;
+    }
+    const capped = normalizeDocumentSets(state).sets[0];
+    assert.equal(capped.versions.length, DOCUMENT_SET_VERSION_MAX, "版本栈 FIFO 有界");
+});
+
+test("document sets: rollback swaps current with latest version and is reversible (T-6829)", () => {
+    const {rollbackDocumentSet} = require("../src/document-sets.js");
+    let state = null;
+    state = sets.upsertDocumentSet(state, {setId: "set-r", name: "研究", entries: [{rootId: "20260924000000-aaaaaaaa"}]}, {now: 1000}).state;
+    state = sets.upsertDocumentSet(state, {setId: "set-r", name: "研究", entries: [{rootId: "20260924000000-bbbbbbbb"}, {rootId: "20260924000000-aaaaaaaa"}]}, {now: 2000}).state;
+    // 当前 = b+a，版本[0] = a（savedAt 1000）
+    const rolled = rollbackDocumentSet(state, "set-r", {now: 3000});
+    assert.equal(rolled.changed, true);
+    assert.deepEqual(rolled.item.entries.map((entry) => entry.rootId), ["20260924000000-aaaaaaaa"], "回滚到版本[0]");
+    assert.equal(rolled.item.versions[0].savedAt, 3000, "当前内容成为最新版本");
+    assert.deepEqual(rolled.item.versions[0].entries.map((entry) => entry.rootId), ["20260924000000-bbbbbbbb", "20260924000000-aaaaaaaa"]);
+    // 再回滚一次回到 b+a —— 回滚可逆
+    const again = rollbackDocumentSet(rolled.state, "set-r", {now: 4000});
+    assert.deepEqual(again.item.entries.map((entry) => entry.rootId), ["20260924000000-bbbbbbbb", "20260924000000-aaaaaaaa"]);
+    // 无版本/未知 id 安全
+    assert.equal(rollbackDocumentSet(state, "set-nothing", {now: 1}).changed, false);
+    const empty = rollbackDocumentSet([{setId: "set-e", name: "空", entries: [{rootId: "20260924000000-aaaaaaaa"}], createdAt: 1, updatedAt: 1}], "set-e", {now: 1});
+    assert.equal(empty.changed, false);
+});

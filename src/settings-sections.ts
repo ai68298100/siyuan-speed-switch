@@ -8,7 +8,7 @@ import {getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
-import {createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
+import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
@@ -21,6 +21,7 @@ declare module "./document-sets" {
     export function createDocumentSet(name: string, entries: unknown[], options?: Record<string, unknown>): any;
     export function upsertDocumentSet(value: unknown, candidate: unknown, options?: Record<string, unknown>): any;
     export function removeDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): any;
+    export function rollbackDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): {state: unknown; changed: boolean; item: any};
     export function mergeDocumentSets(value: unknown, incoming: unknown, options?: Record<string, unknown>): any;
     export function planDocumentSetRestore(value: unknown, openedRootIds?: unknown, availableRootIds?: unknown, max?: number): any;
     export function summarizeDocumentSetRestore(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean}): {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
@@ -164,6 +165,11 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
         wrapper.append(this.settingItem(this.i18n.pinyinMatchLabel, this.i18n.pinyinMatchTip,
             this.switcher(s.pinyinMatch, (v) => {
                 this.updateSettings({pinyinMatch: v});
+            })));
+        // T-6830 打开策略：搜索结果命中已开页签时聚焦复用
+        wrapper.append(this.settingItem(this.i18n.reuseTabsLabel, this.i18n.reuseTabsTip,
+            this.switcher(s.reuseOpenTabs, (v) => {
+                this.updateSettings({reuseOpenTabs: v});
             })));
         return wrapper;
     }
@@ -1214,7 +1220,27 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     if (result.changed) this.saveDataDebounced(DOCUMENT_SETS_KEY);
                     render();
                 });
-                actions.append(rename, restore, exportReport, preview, remove);
+                // T-6829 版本历史：回滚到最近一版（覆盖保存时自动留版，回滚可逆）
+                const versionCount = Array.isArray(item.versions) ? item.versions.length : 0;
+                const rollback = document.createElement("button");
+                rollback.type = "button";
+                rollback.className = "b3-button b3-button--text";
+                rollback.textContent = `${this.i18n.documentSetRollback}${versionCount > 0 ? ` (${versionCount})` : ""}`;
+                rollback.disabled = versionCount === 0;
+                rollback.addEventListener("click", () => {
+                    if (versionCount === 0) return;
+                    if (!confirm(this.i18n.documentSetRollbackConfirm)) return;
+                    const result = rollbackDocumentSet(this.data[DOCUMENT_SETS_KEY], item.setId, {now: Date.now()});
+                    if (!result.changed) {
+                        showMessage(this.i18n.documentSetRollbackNone);
+                        return;
+                    }
+                    this.data[DOCUMENT_SETS_KEY] = result.state;
+                    this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                    showMessage(this.i18n.documentSetRollbackDone.replace("{x}", String(item.name || "")));
+                    render();
+                });
+                actions.append(rename, restore, exportReport, preview, rollback, remove);
                 row.append(copy, actions);
                 list.appendChild(row);
             });

@@ -139,6 +139,8 @@ function normalizeSettings(saved, options = {}) {
         skin: normalizeSkin(source.skin),
         // T-6805 拼音辅助匹配：默认开启；关闭后标题匹配只走子串
         pinyinMatch: source.pinyinMatch === undefined ? true : source.pinyinMatch === true,
+        // T-6830 打开策略：开启后搜索结果命中已开页签时聚焦而非新开（防重复页签），默认关
+        reuseOpenTabs: source.reuseOpenTabs === undefined ? false : source.reuseOpenTabs === true,
         // T-6810 Essentials 常驻层：跨文档集自动打开的必需文档 rootId（≤10，形态校验）
         documentSetEssentials: normalizeEssentials(source.documentSetEssentials),
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),

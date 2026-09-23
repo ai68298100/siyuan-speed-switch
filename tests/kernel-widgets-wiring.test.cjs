@@ -357,6 +357,43 @@ test('saved searches round-trip through menu save and workbench replay (T-6827)'
         '保存的搜索容量上限 16 必须在设置归一化中执行');
 });
 
+test('document set version history: overwrite stashes and settings can rollback (T-6829)', () => {
+    const documentSets = readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js'));
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(documentSets, /versions = identical \? previous\.versions\n            : \[\{savedAt: previous\.updatedAt \|\| now, entries: previous\.entries\}, \.\.\.previous\.versions\]\.slice\(0, DOCUMENT_SET_VERSION_MAX\)/,
+        '覆盖保存必须把被覆盖内容压入有界版本栈（内容未变不留噪音版本）');
+    assert.match(documentSets, /function rollbackDocumentSet\(/,
+        '回滚必须是 document-sets 纯函数（可单测、可逆）');
+    assert.match(settingsSections, /rollbackDocumentSet\(this\.data\[DOCUMENT_SETS_KEY\], item\.setId, \{now: Date\.now\(\)\}\)/,
+        '设置页回滚按钮必须走纯模型并注入当前时间');
+    assert.match(settingsSections, /rollback\.disabled = versionCount === 0;/,
+        '无版本时回滚按钮必须禁用');
+});
+
+test('open strategy: search results can reuse already-open tabs (T-6830)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(docSearchUi, /if \(this\.reuseOpenTabsEnabled\(\) && this\.activateTabForReuse\(rootId\)\) \{/,
+        '搜索结果打开必须先走复用分支（开关关闭时保持总是新开）');
+    assert.match(indexSource, /findOpenTabByRootId\(rootId: string\): Tab \| null \{/,
+        '复用必须按 rootId 归一查找已开页签（桌面/移动同源）');
+    assert.match(settingsSections, /this\.switcher\(s\.reuseOpenTabs, \(v\) => \{/,
+        '行为页必须提供复用开关');
+});
+
+test('breadcrumb entry mounts via capability detection and unloads cleanly (T-6831)', () => {
+    assert.match(indexSource, /private setupBreadcrumbEntry\(\)/,
+        '面包屑入口必须是独立宿主方法');
+    assert.match(indexSource, /typeof host\.addBreadcrumbButton !== "function"\) return;/,
+        '3.8.5 以下宿主无此 API 时必须静默不挂载（能力检测降级）');
+    assert.match(indexSource, /private teardownBreadcrumbEntry\(\)/,
+        '卸载必须移除面包屑按钮');
+    assert.match(indexSource, /this\.teardownBreadcrumbEntry\(\);/,
+        'onunload 必须调用面包屑拆除');
+    assert.match(indexSource, /if \(!this\.isMobile && !this\.isUnloading\) this\.showSwitcher\(true\);/,
+        '按钮回调只打开切换器（受控动作）');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

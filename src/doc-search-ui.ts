@@ -38,6 +38,9 @@ export interface DocSearchUiHost {
     getSavedSearches(): Array<{id: string; name: string; query: string; notebook?: string}>;
     saveCurrentSearch(query: string, filters: IDocSearchFilters): void;
     applySavedSearch(scrollElement: HTMLElement, saved: {id: string; query: string; notebook?: string}, onClose: IOverlayClose): void;
+    /** T-6830 打开策略：复用已开页签 */
+    reuseOpenTabsEnabled(): boolean;
+    activateTabForReuse(rootId: string, onClose?: IOverlayClose): boolean;
 }
 
 export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook: string, path: string, generation: number) {
@@ -1012,6 +1015,11 @@ export function docSearchHitId(this: DocSearchUiHost, doc: IDocSearchResult, roo
     }
 
 export async function openDocSearchResult(this: DocSearchUiHost, rootId: string, hitId: string | null, position?: "right"): Promise<void> {
+        // T-6830 打开策略：开启复用且该文档已打开时，聚焦既有页签而非新开（防重复页签）。
+        // 命中块定位（hitId）只在打开新页签时才有意义，复用路径直接聚焦。
+        if (this.reuseOpenTabsEnabled() && this.activateTabForReuse(rootId)) {
+            return;
+        }
         if (this.isMobile) {
             // MobileTabs only accepts a root document ID. Keep block targeting
             // desktop-only until SiYuan exposes a stable mobile equivalent.

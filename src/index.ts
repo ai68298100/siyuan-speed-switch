@@ -600,6 +600,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     savedSearches: [], // T-6827 保存的搜索
     skin: "fusion", // T-6796 默认融合思源主题
     pinyinMatch: true, // T-6805 拼音辅助匹配默认开
+    reuseOpenTabs: false, // T-6830 打开策略默认总是新开
     documentSetEssentials: [], // T-6810 Essentials 常驻文档
 };
 
@@ -650,6 +651,7 @@ export interface ISwSettings {
     savedSearches: Array<{id: string; name: string; query: string; notebook?: string}>; // T-6827 保存的搜索（最多 16 条）
     skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
     pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
+    reuseOpenTabs: boolean; // T-6830 打开策略：命中已开页签时聚焦复用（默认关=总是新开）
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
 }
 
@@ -1503,6 +1505,44 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.isMobile ? this.ensureMobileTopBarButton() : undefined;
         this.updateFloatingBallVisibility();
         this.exposePublicApi();
+        this.setupBreadcrumbEntry();
+    }
+
+    // T-6831 面包屑入口：3.8.5+ Plugin.addBreadcrumbButton（v3.8.5 源码实证，
+    // icon 须为 svg id/tag）。旧版宿主无此方法=能力缺失，静默不挂载不报错。
+    private breadcrumbButtonId = "";
+
+    private setupBreadcrumbEntry() {
+        const host = this as unknown as {
+            addBreadcrumbButton?: (options: {id: string; icon: string; title: string; callback: (event: MouseEvent) => void}) => string;
+        };
+        if (typeof host.addBreadcrumbButton !== "function") return;
+        try {
+            this.breadcrumbButtonId = host.addBreadcrumbButton({
+                id: "swBreadcrumbEntry",
+                icon: "iconSearch",
+                title: this.i18n.breadcrumbEntry,
+                callback: () => {
+                    if (!this.isMobile && !this.isUnloading) this.showSwitcher(true);
+                },
+            }) || "";
+        } catch (error) {
+            logger.warn("breadcrumb entry unavailable", error);
+            this.breadcrumbButtonId = "";
+        }
+    }
+
+    private teardownBreadcrumbEntry() {
+        if (!this.breadcrumbButtonId) return;
+        const host = this as unknown as {removeBreadcrumbButton?: (id: string) => void};
+        if (typeof host.removeBreadcrumbButton === "function") {
+            try {
+                host.removeBreadcrumbButton(this.breadcrumbButtonId);
+            } catch (error) {
+                logger.warn("breadcrumb entry teardown fail", error);
+            }
+        }
+        this.breadcrumbButtonId = "";
     }
 
     /**
@@ -1562,6 +1602,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
+        // T-6831：面包屑入口随生命周期拆除
+        this.teardownBreadcrumbEntry();
         // T-6833：公开钩子随生命周期拆除
         if (typeof window !== "undefined") {
             delete (window as any).siyuanSpeedSwitch;
@@ -4097,6 +4139,25 @@ const updatedMap: {[rootId: string]: string} = {};
         const searchInput = (root || scrollElement.ownerDocument).querySelector<HTMLInputElement>(".sw__search");
         if (!searchInput) return;
         applySavedSearchFilters.call(this, scrollElement, searchInput, saved, onClose);
+    }
+
+    // T-6830 打开策略：按 rootId 找已打开页签；桌面/移动共用 rootIdOf 归一
+    findOpenTabByRootId(rootId: string): Tab | null {
+        const target = String(rootId || "");
+        if (!target) return null;
+        const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
+        return tabs.find((tab) => this.rootIdOf(tab) === target) || null;
+    }
+
+    reuseOpenTabsEnabled(): boolean {
+        return this.getSettings().reuseOpenTabs === true;
+    }
+
+    activateTabForReuse(rootId: string, onClose?: IOverlayClose): boolean {
+        const existing = this.findOpenTabByRootId(rootId);
+        if (!existing) return false;
+        this.activateTab(existing, onClose);
+        return true;
     }
 
     // T-6804/T-6807：拉取一个标签智能分组的条目并以只读列表呈现

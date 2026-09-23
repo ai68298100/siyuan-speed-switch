@@ -108,3 +108,9 @@ test('saved searches are bounded, sanitized and deduplicated (T-6827)', () => {
     assert.deepEqual(normalize({savedSearches: "bad"}).savedSearches, []);
     assert.deepEqual(normalize({}).savedSearches, []);
 });
+
+test('reuse open tabs strategy defaults to off and accepts only booleans (T-6830)', () => {
+    assert.equal(normalize({}).reuseOpenTabs, false, '默认关闭（保持既有总是新开行为）');
+    assert.equal(normalize({reuseOpenTabs: true}).reuseOpenTabs, true);
+    assert.equal(normalize({reuseOpenTabs: "yes"}).reuseOpenTabs, false, '非布尔一律回落默认');
+});

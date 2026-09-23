@@ -1,20 +1,34 @@
 /* T-6826 真实打开链路 E2E：在真实内核里创建笔记本与文档，经切换器三层搜索
    （真实 searchDocs 端点）命中并单击打开，断言真实 protyle 页签出现。
-   这是"搜索 → 打开"主路径的真实宿主证据（不 mock 任何内核请求）。 */
+   这是"搜索 → 打开"主路径的真实宿主证据（不 mock 任何内核请求）。
+   每轮使用唯一后缀，避免命中历史运行残留的旧文档；启动时清理残留笔记本。 */
 import {expect, test} from "@playwright/test";
 import {openApp, openSwitcher, createClient} from "./helpers/app.mjs";
 
-const NOTEBOOK_NAME = "速切E2E打开链路";
-const DOC_TITLE = "速切锚定文档";
+const RUN = String(Date.now()).slice(-6);
+const NOTEBOOK_PREFIX = "速切E2E打开链路";
+const NOTEBOOK_NAME = `${NOTEBOOK_PREFIX}-${RUN}`;
+const DOC_TITLE = `速切锚定文档${RUN}`;
 
 let notebookId = "";
+
+async function removeLegacyNotebooks(client) {
+    // 历史运行残留清理（失败运行的 finally 可能被强杀跳过）
+    const listed = await client.postChecked("/api/notebook/lsNotebooks", {});
+    const notebooks = Array.isArray(listed?.notebooks) ? listed.notebooks : [];
+    for (const notebook of notebooks) {
+        if (String(notebook?.name || "").startsWith(NOTEBOOK_PREFIX)) {
+            await client.post("/api/notebook/removeNotebook", {notebook: notebook.id}).catch(() => undefined);
+        }
+    }
+}
 
 async function seedDocs(client) {
     const created = await client.postChecked("/api/notebook/createNotebook", {name: NOTEBOOK_NAME});
     // 契约：CreateNotebookData.notebook 为 Notebook 对象（含 id），不是裸字符串
     notebookId = String(created.notebook?.id || created.notebook || "");
     expect(notebookId.length).toBeGreaterThan(0);
-    for (const title of [DOC_TITLE, "速切锚定陪衬"]) {
+    for (const title of [DOC_TITLE, `速切锚定陪衬${RUN}`]) {
         await client.postChecked("/api/filetree/createDocWithMd", {
             notebook: notebookId,
             path: `/${title}`,
@@ -25,6 +39,7 @@ async function seedDocs(client) {
 
 test("真实内核：切换器搜索命中真实文档并单击打开真实页签", async ({page}) => {
     const client = createClient();
+    await removeLegacyNotebooks(client);
     await seedDocs(client);
     try {
         const pageErrors = [];
@@ -37,8 +52,8 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
         await search.fill(DOC_TITLE);
         // 防抖 + 真实 searchDocs 往返，文档结果卡片出现
         await page.waitForSelector(".sw__doc-item", {timeout: 20000});
-        const firstDoc = page.locator(".sw__doc-item").first();
-        await expect(firstDoc).toContainText(DOC_TITLE, {timeout: 10000});
+        const firstDoc = page.locator(".sw__doc-item", {hasText: DOC_TITLE}).first();
+        await expect(firstDoc).toBeVisible({timeout: 10000});
 
         await firstDoc.click();
         // 打开的是真实 protyle 编辑器页签，且加载了目标文档
@@ -46,6 +61,11 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
             return Array.from(document.querySelectorAll(".protyle-title"))
                 .some((element) => (element.textContent || "").includes(title));
         }, DOC_TITLE, {timeout: 20000});
+        // T-6831：真实面包屑入口按钮（3.8.5 addBreadcrumbButton）已挂载
+        // （多编辑器会挂多个且部分在隐藏分栏里，以计数为准）
+        await page.waitForFunction(() => {
+            return document.querySelectorAll('[data-plugin-name="siyuan-speed-switch"]').length > 0;
+        }, undefined, {timeout: 10000});
 
         expect(pageErrors, `真实打开链路出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
     } finally {

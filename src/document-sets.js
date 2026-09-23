@@ -7,6 +7,8 @@ const DOCUMENT_SET_ENTRY_MAX = 40;
 const DOCUMENT_SET_NAME_MAX = 80;
 const DOCUMENT_SET_TITLE_MAX = 200;
 const DOCUMENT_SET_GROUP_MAX = 64;
+// T-6829 版本历史：覆盖保存时自动留前一版（FIFO 有界），回滚可逆
+const DOCUMENT_SET_VERSION_MAX = 3;
 
 function cleanText(value, max) {
     return typeof value === "string"
@@ -37,6 +39,30 @@ function normalizeEntry(value, index = 0) {
     };
 }
 
+// 版本快照条目与正文条目同一清洗规则；空版本无意义，直接丢弃
+function normalizeVersions(value) {
+    const versions = [];
+    for (const raw of Array.isArray(value) ? value : []) {
+        if (versions.length >= DOCUMENT_SET_VERSION_MAX) break;
+        if (!raw || typeof raw !== "object") continue;
+        const savedAt = Number.isFinite(raw.savedAt) && raw.savedAt > 0 ? raw.savedAt : 0;
+        const entries = [];
+        const seen = new Set();
+        for (const rawEntry of Array.isArray(raw.entries) ? raw.entries : []) {
+            if (entries.length >= DOCUMENT_SET_ENTRY_MAX) break;
+            const entry = normalizeEntry(rawEntry, entries.length);
+            if (!entry || seen.has(entry.rootId)) continue;
+            seen.add(entry.rootId);
+            entries.push(entry);
+        }
+        if (entries.length === 0) continue;
+        if (versions.some((version) => version.savedAt === savedAt
+            && JSON.stringify(version.entries) === JSON.stringify(entries))) continue;
+        versions.push({savedAt, entries});
+    }
+    return versions;
+}
+
 function normalizeSet(value, index = 0) {
     if (!value || typeof value !== "object") return null;
     const entries = [];
@@ -53,7 +79,7 @@ function normalizeSet(value, index = 0) {
     const setId = cleanText(value.setId, 96).replace(/[^A-Za-z0-9._:-]/g, "") || `set-${index + 1}`;
     const createdAt = Number.isFinite(value.createdAt) && value.createdAt > 0 ? value.createdAt : 0;
     const updatedAt = Number.isFinite(value.updatedAt) && value.updatedAt > 0 ? value.updatedAt : createdAt;
-    return {setId, name, entries, createdAt, updatedAt};
+    return {setId, name, entries, createdAt, updatedAt, versions: normalizeVersions(value.versions)};
 }
 
 function normalizeDocumentSets(value, max = DOCUMENT_SET_MAX) {
@@ -92,12 +118,43 @@ function upsertDocumentSet(value, candidate, options = {}) {
     if (!normalized) return {state: normalizeDocumentSets(value, options.max), changed: false, item: null};
     const now = Number.isFinite(options.now) && options.now > 0 ? options.now : Date.now();
     const existingIndex = state.findIndex((item) => item.setId === normalized.setId);
-    const next = {...normalized, createdAt: existingIndex >= 0 ? state[existingIndex].createdAt : (normalized.createdAt || now), updatedAt: now};
+    let versions = normalized.versions;
+    if (existingIndex >= 0) {
+        const previous = state[existingIndex];
+        // T-6829 覆盖保存自动留版：把被覆盖内容压入版本栈（内容未变化则不产生噪音版本）
+        const identical = JSON.stringify(previous.entries) === JSON.stringify(normalized.entries);
+        versions = identical ? previous.versions
+            : [{savedAt: previous.updatedAt || now, entries: previous.entries}, ...previous.versions].slice(0, DOCUMENT_SET_VERSION_MAX);
+    }
+    const next = {...normalized, createdAt: existingIndex >= 0 ? state[existingIndex].createdAt : (normalized.createdAt || now), updatedAt: now, versions};
     const sets = state.slice();
     if (existingIndex >= 0) sets[existingIndex] = next;
     else sets.unshift(next);
     const bounded = normalizeDocumentSets({schemaVersion: DOCUMENT_SET_SCHEMA_VERSION, sets}, options.max);
     return {state: bounded, changed: true, item: next};
+}
+
+/**
+ * T-6829 回滚到最近一个版本：当前内容压回版本栈（回滚可逆），版本栈其余顺延。
+ * 无版本可回滚时返回 changed: false；纯函数，now 由调用方注入以便测试。
+ */
+function rollbackDocumentSet(value, setId, options = {}) {
+    const state = normalizeDocumentSets(value, options.max).sets;
+    const now = Number.isFinite(options.now) && options.now > 0 ? options.now : Date.now();
+    const index = state.findIndex((item) => item.setId === cleanText(setId, 96));
+    if (index < 0) return {state: normalizeDocumentSets(value, options.max), changed: false, item: null};
+    const item = state[index];
+    const target = (item.versions || [])[0];
+    if (!target) return {state: normalizeDocumentSets(value, options.max), changed: false, item};
+    const versions = [
+        {savedAt: now, entries: item.entries},
+        ...item.versions.slice(1),
+    ].slice(0, DOCUMENT_SET_VERSION_MAX);
+    const next = {...item, entries: target.entries, updatedAt: now, versions};
+    const sets = state.slice();
+    sets[index] = next;
+    const bounded = normalizeDocumentSets({schemaVersion: DOCUMENT_SET_SCHEMA_VERSION, sets}, options.max);
+    return {state: bounded, changed: true, item: bounded.sets[index] || next};
 }
 
 function removeDocumentSet(value, setId, options = {}) {
@@ -262,12 +319,14 @@ module.exports = {
     DOCUMENT_SET_SCHEMA_VERSION,
     DOCUMENT_SET_MAX,
     DOCUMENT_SET_ENTRY_MAX,
+    DOCUMENT_SET_VERSION_MAX,
     DOCUMENT_SET_RESTORE_REPORT_VERSION,
     DOCUMENT_SET_RESTORE_STATUS,
     normalizeDocumentSets,
     createDocumentSet,
     upsertDocumentSet,
     removeDocumentSet,
+    rollbackDocumentSet,
     mergeDocumentSets,
     planDocumentSetRestore,
     summarizeDocumentSetRestore,
