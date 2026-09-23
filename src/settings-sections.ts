@@ -79,6 +79,8 @@ export interface SettingsSectionsHost {
     getFavoriteSmartGroups(): Array<{name: string; tag: string; notebook?: string; updatedWithinDays?: number}>;
     addFavoriteSmartGroup(name: string, tag: string, notebook?: string, updatedWithinDays?: number): boolean;
     getFavoriteNotebookOptions(): Promise<Array<{id: string; name: string}>>;
+    exportConfigPack(): string;
+    importConfigPack(payload: unknown): {ok: boolean; reason?: string};
     removeFavoriteSmartGroup(name: string): void;
     getFavoriteTagOptions(): Promise<Array<{name: string; count: string | number}>>;
     getDocumentSetEssentials(): string[];
@@ -1330,6 +1332,56 @@ const STORAGE_USAGE_KEYS: ReadonlyArray<{key: string, label: string}> = Object.f
 export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
     const root = document.createElement("div");
     root.className = "sw-settings__storage";
+    // T-6824 可迁移配置包：导出（版本化 JSON）/ 导入（整体校验→确认→原子应用）
+    const packRow = document.createElement("div");
+    packRow.className = "sw-settings__storage-pack";
+    const packExport = document.createElement("button");
+    packExport.type = "button";
+    packExport.className = "b3-button b3-button--text";
+    packExport.textContent = this.i18n.configPackExport;
+    packExport.addEventListener("click", () => {
+        const payload = this.exportConfigPack();
+        const blob = new Blob([payload], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "siyuan-speed-switch-config-pack.json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+    const packImport = document.createElement("button");
+    packImport.type = "button";
+    packImport.className = "b3-button b3-button--text";
+    packImport.textContent = this.i18n.configPackImport;
+    const packInput = document.createElement("input");
+    packInput.type = "file";
+    packInput.accept = "application/json,.json";
+    packInput.className = "fn__none";
+    packImport.addEventListener("click", () => packInput.click());
+    packInput.addEventListener("change", async () => {
+        const file = packInput.files?.[0];
+        if (!file) return;
+        try {
+            if (Number.isFinite(file.size) && file.size > 512 * 1024) {
+                showMessage(this.i18n.configPackImportFailed, 7000, "error");
+                return;
+            }
+            const parsed = JSON.parse(await file.text());
+            if (this.isUnloading) return;
+            if (!confirm(this.i18n.configPackImportConfirm)) return;
+            const result = this.importConfigPack(parsed);
+            showMessage(result.ok ? this.i18n.configPackImportDone : this.i18n.configPackImportFailed,
+                7000, result.ok ? undefined : "error");
+        } catch {
+            showMessage(this.i18n.configPackImportFailed, 7000, "error");
+        } finally {
+            packInput.value = "";
+        }
+    });
+    packRow.append(packExport, packImport, packInput);
+    root.append(packRow);
     const rows = document.createElement("div");
     rows.className = "sw-settings__storage-rows";
     const note = document.createElement("p");

@@ -71,6 +71,7 @@ import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit} from "./related-content-model";
+import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
@@ -4276,6 +4277,37 @@ const updatedMap: {[rootId: string]: string} = {};
             return;
         }
         this.openQuickCapture("", clean.slice(0, 500));
+    }
+
+    // ==================== T-6824 可迁移配置包：导出 / 导入 ====================
+
+    public exportConfigPack(): string {
+        const pack = buildConfigPack(
+            {settings: this.getSettings(), documentSets: this.data[DOCUMENT_SETS_KEY]},
+            {now: Date.now()},
+        );
+        return JSON.stringify(pack, null, 2);
+    }
+
+    /**
+     * 导入配置包：整体校验通过后才落盘（校验-提交两段式，任一环节失败零写入）。
+     * settings 深校验走既有 normalizeSettings；documentSets 深校验走既有
+     * normalizeDocumentSets 迁移门禁。返回 {ok, reason?} 供 UI 呈现失败原因。
+     */
+    public importConfigPack(payload: unknown): {ok: boolean; reason?: string} {
+        const result = normalizeConfigPackImport(payload);
+        if (!result.ok) return {ok: false, reason: result.reason};
+        let dsState: unknown = null;
+        if (result.documentSets) {
+            const normalized = normalizeDocumentSets(result.documentSets);
+            dsState = {schemaVersion: normalized.schemaVersion, sets: normalized.sets};
+        }
+        this.updateSettings(result.settings);
+        if (result.documentSets) {
+            this.data[DOCUMENT_SETS_KEY] = dsState;
+            this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        }
+        return {ok: true};
     }
 
     // T-6827 保存的搜索：设置读取、保存（名称默认=查询文本，免去 Electron 不支持的

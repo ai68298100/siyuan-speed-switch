@@ -498,6 +498,19 @@ test('density wiring: body marker mounted on load, toggled from settings, remove
     assert.match(skins, /body\[data-sw-density="compact"\]/, '紧凑密度必须以 body 标记作用域生效');
 });
 
+test('config pack: export/import wiring with confirm and atomic validation (T-6824)', () => {
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    const configPack = readSourceText(path.join(__dirname, '..', 'src', 'config-pack-model.js'));
+    assert.match(settingsSections, /this\.exportConfigPack\(\)/, '设置页必须提供配置包导出');
+    assert.match(settingsSections, /this\.importConfigPack\(parsed\)/, '设置页必须提供配置包导入');
+    assert.match(settingsSections, /if \(!confirm\(this\.i18n\.configPackImportConfirm\)\) return;/,
+        '导入应用前必须经用户确认');
+    assert.match(configPack, /CONFIG_PACK_SETTINGS_KEYS = \[/, '可迁移键必须走白名单');
+    assert.match(configPack, /payload\.app !== "siyuan-speed-switch"/, '外来包必须拒绝（来源校验）');
+    assert.match(indexSource, /const normalized = normalizeDocumentSets\(result\.documentSets\);/,
+        'documentSets 深校验必须走既有 normalizeDocumentSets 迁移门禁');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
