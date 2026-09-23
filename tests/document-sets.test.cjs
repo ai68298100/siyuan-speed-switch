@@ -234,3 +234,21 @@ test("document sets: rollback swaps current with latest version and is reversibl
     const empty = rollbackDocumentSet([{setId: "set-e", name: "空", entries: [{rootId: "20260924000000-aaaaaaaa"}], createdAt: 1, updatedAt: 1}], "set-e", {now: 1});
     assert.equal(empty.changed, false);
 });
+
+test("document sets: presetId persists through overwrite and rollback (T-6815)", () => {
+    let state = sets.upsertDocumentSet(null, {
+        setId: "set-p", name: "带场景", entries: [{rootId: "20260924100000-aaaaaaaa"}], presetId: "preset-9",
+    }, {now: 1000}).state;
+    assert.equal(sets.normalizeDocumentSets(state).sets[0].presetId, "preset-9", "normalize 保留合法 presetId");
+    // 候选未携带 presetId 的覆盖保存：保留上一版固化场景（分层不丢失）
+    const afterOverwrite = sets.upsertDocumentSet(state, {
+        setId: "set-p", name: "带场景", entries: [{rootId: "20260924100000-bbbbbbbb"}],
+    }, {now: 2000});
+    assert.equal(afterOverwrite.item.presetId, "preset-9");
+    // 回滚同样保留
+    const rolled = sets.rollbackDocumentSet(afterOverwrite.state, "set-p", {now: 3000});
+    assert.equal(rolled.item.presetId, "preset-9");
+    // 非法字符被清洗
+    const cleaned = sets.normalizeDocumentSets([{setId: "set-q", name: "Q", entries: [{rootId: "20260924100000-aaaaaaaa"}], presetId: "bad id!!"}]);
+    assert.equal(cleaned.sets[0].presetId, "badid", "非法字符被清洗剔除（与 setId 同规），清洗后无害保留");
+});

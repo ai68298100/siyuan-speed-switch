@@ -948,6 +948,7 @@
   ,"documentSetRestoreReport": "Export restore report"
   ,"documentSetRestoreReportNone": "No restore report yet — run a restore first"
   ,"documentSetRestoreReportExported": "Restore report exported"
+  ,"documentSetEssentialsApplied": "Essentials opened"
   ,"documentSetRollback": "Rollback"
   ,"documentSetRollbackConfirm": "Roll back to the latest version? Current content is kept as a version and can be rolled back again."
   ,"documentSetRollbackDone": "Rolled back \"{x}\""

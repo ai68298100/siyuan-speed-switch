@@ -79,7 +79,9 @@ function normalizeSet(value, index = 0) {
     const setId = cleanText(value.setId, 96).replace(/[^A-Za-z0-9._:-]/g, "") || `set-${index + 1}`;
     const createdAt = Number.isFinite(value.createdAt) && value.createdAt > 0 ? value.createdAt : 0;
     const updatedAt = Number.isFinite(value.updatedAt) && value.updatedAt > 0 ? value.updatedAt : createdAt;
-    return {setId, name, entries, createdAt, updatedAt, versions: normalizeVersions(value.versions)};
+    // T-6815 分层快照：集内固化的悬浮球场景预设（可选；字符集与 setId 同规）
+    const presetId = cleanText(value.presetId, 96).replace(/[^A-Za-z0-9._:-]/g, "");
+    return {setId, name, entries, createdAt, updatedAt, versions: normalizeVersions(value.versions), ...(presetId ? {presetId} : {})};
 }
 
 function normalizeDocumentSets(value, max = DOCUMENT_SET_MAX) {
@@ -125,6 +127,8 @@ function upsertDocumentSet(value, candidate, options = {}) {
         const identical = JSON.stringify(previous.entries) === JSON.stringify(normalized.entries);
         versions = identical ? previous.versions
             : [{savedAt: previous.updatedAt || now, entries: previous.entries}, ...previous.versions].slice(0, DOCUMENT_SET_VERSION_MAX);
+        // T-6815：候选未携带场景固化时保留上一版的 presetId（分层不因覆盖丢失）
+        if (!normalized.presetId && previous.presetId) normalized.presetId = previous.presetId;
     }
     const next = {...normalized, createdAt: existingIndex >= 0 ? state[existingIndex].createdAt : (normalized.createdAt || now), updatedAt: now, versions};
     const sets = state.slice();

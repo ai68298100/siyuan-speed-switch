@@ -948,6 +948,7 @@
   "documentSetRestoreReport": "导出恢复报告",
   "documentSetRestoreReportNone": "还没有可导出的恢复报告，请先执行一次恢复",
   "documentSetRestoreReportExported": "恢复报告已导出",
+  "documentSetEssentialsApplied": "常驻打开",
   "documentSetRollback": "回滚上一版",
   "documentSetRollbackConfirm": "回滚到最近一个版本？当前内容会保留为一个版本，可再次回滚。",
   "documentSetRollbackDone": "已回滚「{x}」",

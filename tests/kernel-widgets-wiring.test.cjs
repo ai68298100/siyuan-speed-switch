@@ -336,8 +336,8 @@ test('document set restore and essentials open without stealing focus (T-6826)',
     // 不得退回逐个直连 openTab 抢焦点的形态。
     assert.match(indexSource, /openDocumentOnDesktop\(\{rootId, app: this\.app, openTab, logger, keepCursor: true\}\)/,
         '文档集恢复链必须以 keepCursor:true 后台打开');
-    assert.match(indexSource, /else await openDocumentOnDesktop\(\{rootId, app: this\.app, openTab, logger, keepCursor: true\}\)/,
-        'Essentials 常驻层跟随恢复链语义');
+    assert.match(indexSource, /: await openDocumentOnDesktop\(\{rootId, app: this\.app, openTab, logger, keepCursor: true\}\);/,
+        'Essentials 常驻层跟随恢复链语义（T-6815 起带回执）');
     assert.doesNotMatch(indexSource, /await openTab\(\{app: this\.app, doc: \{id: rootId\}\}\)/,
         '恢复链内不得残留直连 openTab 的抢焦点打开');
 });
@@ -404,6 +404,21 @@ test('related content: workbench region uses official backlink endpoint with bou
         '投影必须有界纯函数（反链优先/去重/限额/截断可解释）');
     assert.match(relatedModel, /truncated: shown < total/,
         '截断必须以 shown 与内核总量比较，可解释');
+});
+
+test('layered workspace snapshot: preset is persisted into the set and essentials produce receipts (T-6815)', () => {
+    // 恢复链：场景按 presetId 优先固化，Essentials 带回执打开并并入统一摘要
+    assert.match(indexSource, /presets\.find\(\(preset: \{id: string\}\) => preset\.id === item\.presetId\)/,
+        '场景联动必须优先使用集内固化的 presetId（分层快照）');
+    assert.match(indexSource, /item\.presetId = String\(applied\.preset\.id \|\| ""\)\.slice\(0, 96\);/,
+        '场景应用成功后必须固化回文档集');
+    assert.match(indexSource, /essentialsOutcome = await this\.openDocumentSetEssentials\(\);/,
+        'Essentials 必须带回执打开（不再 fire-and-forget）');
+    assert.match(indexSource, /documentSetEssentialsApplied/,
+        '统一恢复摘要必须包含常驻层回执');
+    const documentSets = readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js'));
+    assert.match(documentSets, /if \(!normalized\.presetId && previous\.presetId\) normalized\.presetId = previous\.presetId;/,
+        '覆盖保存不得丢失上一版的场景固化');
 });
 
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {

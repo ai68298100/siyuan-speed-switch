@@ -5318,22 +5318,32 @@ const updatedMap: {[rootId: string]: string} = {};
                 : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
         });
         const summary = summarizeDocumentSetRestore(plan, probe, execution);
+        let essentialsOutcome: {opened: number; failed: number; skipped: number} | null = null;
         if (summary.attempted > 0) {
             this.saveDocumentSet(item);
             // T-6800：恢复成功即标记当前工作区集（指示器与循环切换的基准）。
             this.updateSettings({documentSetsCurrentId: String(item.setId || "").slice(0, 64)});
-            // T-6810 场景×文档集联动：存在与集合同名的悬浮球场景时自动应用，
-            // 实现"切工作区=换工作现场+换球布局"的完整语义。
-            const presetMatch = normalizeFloatingBallConfig(this.getSettings().floatingBall)
-                .presets.find((preset: {name: string}) => preset.name === item.name);
+            // T-6810/T-6815 场景×文档集联动（分层快照）：优先用集内固化的 presetId，
+            // 回退同名匹配；应用成功后把场景固化回集，双向稳定。
+            const presets = normalizeFloatingBallConfig(this.getSettings().floatingBall).presets;
+            const presetMatch = (item.presetId ? presets.find((preset: {id: string}) => preset.id === item.presetId) : undefined)
+                || presets.find((preset: {name: string}) => preset.name === item.name);
             if (presetMatch) {
                 const applied = applyFloatingBallPreset(this.getSettings().floatingBall, presetMatch.id);
-                if (applied.preset) this.updateSettings({floatingBall: applied.config});
+                if (applied.preset) {
+                    this.updateSettings({floatingBall: applied.config});
+                    item.presetId = String(applied.preset.id || "").slice(0, 96);
+                }
             }
-            // T-6810 Essentials 常驻层：恢复后自动打开必需文档（已打开的跳过）
-            void this.openDocumentSetEssentials();
+            // T-6815 Essentials 常驻层：带回执打开（opened/failed/skipped），并入统一摘要
+            essentialsOutcome = await this.openDocumentSetEssentials();
         }
-        showMessage(`${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`);
+        let message = `${this.i18n.documentSetRestore}: ${summary.succeeded}/${summary.attempted}`;
+        if (essentialsOutcome && essentialsOutcome.opened + essentialsOutcome.failed > 0) {
+            message += ` · ${this.i18n.documentSetEssentialsApplied}: +${essentialsOutcome.opened}`;
+            if (essentialsOutcome.failed > 0) message += ` / ${this.i18n.documentSetRestoreFailed}: ${essentialsOutcome.failed}`;
+        }
+        showMessage(message);
     }
 
     // T-6800 工作区切换的"离开即快照"：把当前打开的文档现场写回当前集
@@ -7558,15 +7568,23 @@ private rootIdOf(tab: Tab): string | null {
         });
     }
 
-    private async openDocumentSetEssentials(): Promise<void> {
+    private async openDocumentSetEssentials(): Promise<{opened: number; failed: number; skipped: number}> {
         const essentials = this.getSettings().documentSetEssentials || [];
         const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+        // T-6815：带回执打开——opened=本次成功、failed=尝试失败、skipped=已打开跳过
+        const outcome = {opened: 0, failed: 0, skipped: 0};
         for (const rootId of essentials) {
-            if (opened.has(rootId)) continue;
-            if (this.isMobile) await this.mobileOpenDoc(rootId);
-            // T-6826：常驻层同样不抢焦点（跟随恢复链语义）
-            else await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
+            if (opened.has(rootId)) {
+                outcome.skipped += 1;
+                continue;
+            }
+            const ok = this.isMobile ? await this.mobileOpenDoc(rootId)
+                // T-6826：常驻层同样不抢焦点（跟随恢复链语义）
+                : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
+            if (ok) outcome.opened += 1;
+            else outcome.failed += 1;
         }
+        return outcome;
     }
 
     // T-6810 设置页管理器：把当前打开的页签一键加入常驻，逐条移除或全部清空。
