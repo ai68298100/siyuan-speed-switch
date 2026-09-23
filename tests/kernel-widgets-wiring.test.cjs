@@ -342,6 +342,21 @@ test('document set restore and essentials open without stealing focus (T-6826)',
         '恢复链内不得残留直连 openTab 的抢焦点打开');
 });
 
+test('saved searches round-trip through menu save and workbench replay (T-6827)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    assert.match(indexSource, /addRow\(this\.i18n\.workbenchSaved, savedSearches\.map\(\(saved: any\) => \(\{/,
+        '零词条工作台必须呈现保存的搜索 chips');
+    assert.match(indexSource, /applySavedSearchFilters\.call\(this, scrollElement, searchInput, saved, onClose\)/,
+        '应用保存的搜索必须走共享回放函数（查询+筛选+徽标同步）');
+    assert.match(indexSource, /this\.updateSettings\(\{savedSearches: \[\.\.\.this\.getSavedSearches\(\), entry\]\}\)/,
+        '保存动作必须经设置归一化持久化（容量/形态门禁生效）');
+    assert.match(docSearchUi, /click: \(\) => this\.saveCurrentSearch\(searchInput\.value, this\.docSearchState\.filters\.get\(scrollElement\) \|\| \{\}\)/,
+        '筛选菜单必须提供"保存当前搜索"入口（仅在有查询时）');
+    const settingsModel = readSourceText(path.join(__dirname, '..', 'src', 'settings-model.js'));
+    assert.match(settingsModel, /savedSearches\.length >= 16/,
+        '保存的搜索容量上限 16 必须在设置归一化中执行');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

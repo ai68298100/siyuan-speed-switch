@@ -75,3 +75,36 @@ test('excluded docks survive without range validators (pure passthrough field)',
     const settings = normalizeSettings({excludedDocks: ["a", "b"]}, {});
     assert.deepEqual(settings.excludedDocks, ["a", "b"]);
 });
+
+test('saved searches are bounded, sanitized and deduplicated (T-6827)', () => {
+    const raw = [
+        {id: "sw-1", name: "  项目路线图  ", query: " 路线图 "},
+        {id: "sw-2", name: "工作区文档", query: "工作区", notebook: "20260924100000-notebook"},
+        {id: "", name: "无 id", query: "x"},
+        {id: "sw-4", name: "", query: "x"},
+        {id: "sw-5", name: "空查询", query: "   "},
+        {name: "缺 id", query: "x"},
+        "junk",
+        {id: "sw-8", name: "重复", query: "重复"},
+        {id: "sw-8", name: "撞 id", query: "别的"},
+    ];
+    const saved = normalize({savedSearches: raw}).savedSearches;
+    assert.equal(saved.length, 3, "畸形项丢弃、撞 id 去重");
+    assert.deepEqual(saved[0], {id: "sw-1", name: "项目路线图", query: "路线图"});
+    assert.deepEqual(saved[1], {id: "sw-2", name: "工作区文档", query: "工作区", notebook: "20260924100000-notebook"});
+    assert.equal(saved[2].name, "重复");
+    // 超长字段裁剪 + 同（名称+查询）去重
+    const saved2 = normalize({savedSearches: [
+        {id: "a", name: "n".repeat(60), query: "q".repeat(200)},
+        {id: "b", name: "n".repeat(60), query: "q".repeat(200)},
+    ]}).savedSearches;
+    assert.equal(saved2.length, 1, "同（名称+查询）去重");
+    assert.equal(saved2[0].name.length, 40);
+    assert.equal(saved2[0].query.length, 120);
+    // 容量上限 16
+    const bulk = Array.from({length: 20}, (_, index) => ({id: `k${index}`, name: `n${index}`, query: `q${index}`}));
+    assert.equal(normalize({savedSearches: bulk}).savedSearches.length, 16);
+    // 非数组与缺省安全
+    assert.deepEqual(normalize({savedSearches: "bad"}).savedSearches, []);
+    assert.deepEqual(normalize({}).savedSearches, []);
+});

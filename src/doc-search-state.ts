@@ -25,6 +25,8 @@ export interface DocSearchState {
     health: WeakMap<HTMLElement, ReturnType<typeof buildSearchHealthSnapshot>>;
     /** T-6825：文档区清空（loading）期间暂存的视口锚点，results 渲染后消费即清 */
     docAnchors: WeakMap<HTMLElement, {key: string; offset: number} | null>;
+    /** T-6827：每个 scroll 元素的筛选按钮状态同步器（外部改筛选后刷新徽标） */
+    filterButtonSync: WeakMap<HTMLElement, () => void>;
 }
 
 /** T-6802 查询运算符解析结果：`"精确短语"` / `-排除词` / 普通词（全部 AND） */
@@ -46,5 +48,6 @@ export function createDocSearchState(): DocSearchState {
         chipFilters: new WeakMap(),
         health: new WeakMap(),
         docAnchors: new WeakMap(),
+        filterButtonSync: new WeakMap(),
     };
 }

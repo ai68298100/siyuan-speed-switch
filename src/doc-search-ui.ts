@@ -34,6 +34,10 @@ export interface DocSearchUiHost {
     rootIdOf(tab: Tab): string | null;
     mobileOpenDoc(rootId: string): Promise<boolean>;
     lastPickedByQuery: Map<string, string>;
+    /** T-6827 保存的搜索 */
+    getSavedSearches(): Array<{id: string; name: string; query: string; notebook?: string}>;
+    saveCurrentSearch(query: string, filters: IDocSearchFilters): void;
+    applySavedSearch(scrollElement: HTMLElement, saved: {id: string; query: string; notebook?: string}, onClose: IOverlayClose): void;
 }
 
 export async function loadDocSearchPathChildren(this: DocSearchUiHost, notebook: string, path: string, generation: number) {
@@ -92,6 +96,8 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
             button.setAttribute("aria-label", accessibleLabel);
             button.title = accessibleLabel;
         };
+        // T-6827：外部路径（保存的搜索应用）改筛选后同步按钮徽标
+        this.docSearchState.filterButtonSync.set(scrollElement, updateButton);
         const commitFilters = (change: (next: IDocSearchFilters) => void) => {
             const next: IDocSearchFilters = {...(this.docSearchState.filters.get(scrollElement) || {})};
             change(next);
@@ -355,7 +361,29 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                     }),
                 })),
             });
+            // T-6827 保存的搜索：已有保存项时提供快速应用子菜单
+            const savedList = this.getSavedSearches();
+            if (savedList.length > 0) {
+                menu.addItem({
+                    type: "submenu",
+                    label: this.i18n.workbenchSaved,
+                    icon: "iconBookmark",
+                    submenu: savedList.map((saved) => ({
+                        label: saved.name,
+                        icon: "iconSearch",
+                        click: () => this.applySavedSearch(scrollElement, saved, onClose),
+                    })),
+                });
+            }
             menu.addSeparator();
+            // 有查询时才可保存（空查询没有可固化的语义）
+            if (searchInput.value.trim()) {
+                menu.addItem({
+                    label: this.i18n.searchSaveCurrent,
+                    icon: "iconAdd",
+                    click: () => this.saveCurrentSearch(searchInput.value, this.docSearchState.filters.get(scrollElement) || {}),
+                });
+            }
             menu.addItem({
                 label: this.i18n.searchResetFilters,
                 icon: "iconRefresh",
@@ -375,11 +403,32 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
             document.removeEventListener("keydown", onMenuKeyDown, true);
             activeMenu?.close();
             activeMenu = null;
+            this.docSearchState.filterButtonSync.delete(scrollElement);
         };
     }
 
-export function getDocSearchFilterCount(this: DocSearchUiHost, filters: IDocSearchFilters = {}): number {
-        return Number(Boolean(filters.notebook))
+    /**
+     * T-6827：应用一条保存的搜索——查询写回输入框、笔记本筛选覆盖、
+     * 筛选按钮徽标同步并立即执行一次搜索。工作台 chips 与菜单共用。
+     */
+export function applySavedSearchFilters(this: DocSearchUiHost, scrollElement: HTMLElement,
+        searchInput: HTMLInputElement,
+        saved: {id?: string; name?: string; query: string; notebook?: string},
+        onClose: IOverlayClose,
+    ) {
+        const query = typeof saved?.query === "string" ? saved.query : "";
+        if (!query) return;
+        const filters: IDocSearchFilters = {...(this.docSearchState.filters.get(scrollElement) || {})};
+        if (saved.notebook) filters.notebook = saved.notebook;
+        else delete filters.notebook;
+        this.docSearchState.filters.set(scrollElement, Object.freeze(filters));
+        this.docSearchState.filterButtonSync.get(scrollElement)?.();
+        searchInput.value = query;
+        this.applySearch(scrollElement, searchInput, onClose);
+        searchInput.focus({preventScroll: true});
+    }
+
+export function getDocSearchFilterCount(this: DocSearchUiHost, filters: IDocSearchFilters = {}): number {        return Number(Boolean(filters.notebook))
             + Number(Boolean(filters.paths?.length))
             + Number(Boolean(filters.types && Object.keys(filters.types).length))
             + Number(Boolean(filters.subTypes && Object.keys(filters.subTypes).length))

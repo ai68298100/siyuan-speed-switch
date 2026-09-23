@@ -39,6 +39,7 @@ import {
     appendDocResultsEmpty,
     appendDocResultsViewAll,
     appendDocSearchStatus,
+    applySavedSearchFilters,
     bindDocSearchFilter,
     buildDocResultItem,
     collectOpenRootIds,
@@ -596,6 +597,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     documentSetsAutoSave: true, // T-6800 工作区切换：离开当前集时自动快照（默认开）
     documentSetsCurrentId: "", // T-6800 当前工作区集 id（空=尚未激活任何集）
     favoriteSmartGroups: [], // T-6804 标签智能分组
+    savedSearches: [], // T-6827 保存的搜索
     skin: "fusion", // T-6796 默认融合思源主题
     pinyinMatch: true, // T-6805 拼音辅助匹配默认开
     documentSetEssentials: [], // T-6810 Essentials 常驻文档
@@ -645,6 +647,7 @@ export interface ISwSettings {
     documentSetsAutoSave: boolean; // T-6800 切换文档集时自动把现场快照回当前集（默认开）
     documentSetsCurrentId: string; // T-6800 当前工作区语义：最近一次恢复/激活的文档集 id
     favoriteSmartGroups: Array<{name: string; tag: string}>; // T-6804 标签智能分组（最多 4 组）
+    savedSearches: Array<{id: string; name: string; query: string; notebook?: string}>; // T-6827 保存的搜索（最多 16 条）
     skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
     pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
@@ -3989,7 +3992,8 @@ const updatedMap: {[rootId: string]: string} = {};
         const presets = normalizeFloatingBallConfig(this.getSettings().floatingBall).presets || [];
         const docSets = this.getDocumentSets();
         const smartGroups = this.getSettings().favoriteSmartGroups || [];
-        if (!presets.length && !docSets.length && !smartGroups.length) return;
+        const savedSearches = this.getSettings().savedSearches || [];
+        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length) return;
 
         const box = document.createElement("div");
         box.className = "sw__workbench";
@@ -3998,7 +4002,7 @@ const updatedMap: {[rootId: string]: string} = {};
         title.textContent = this.i18n.workbenchLabel;
         box.appendChild(title);
 
-        const addRow = (label: string, items: Array<{label: string; onClick: () => void}>) => {
+        const addRow = (label: string, items: Array<{label: string; onClick: () => void; onRemove?: () => void}>) => {
             if (!items.length) return;
             const rowTitle = document.createElement("div");
             rowTitle.className = "sw__workbench-row-label";
@@ -4015,6 +4019,12 @@ const updatedMap: {[rootId: string]: string} = {};
                     chip.disabled = true;
                     item.onClick();
                     chip.disabled = false;
+                });
+                // T-6827：保存的搜索支持右键删除（确认后移除并重建工作台）
+                chip.addEventListener("contextmenu", (event) => {
+                    if (!item.onRemove) return;
+                    event.preventDefault();
+                    item.onRemove();
                 });
                 row.appendChild(chip);
             });
@@ -4041,10 +4051,52 @@ const updatedMap: {[rootId: string]: string} = {};
             label: `#${group.tag}`,
             onClick: () => this.openTagSmartGroupEntries(group),
         })));
+        // T-6827 保存的搜索：单击应用（查询+笔记本筛选回放），右键删除
+        addRow(this.i18n.workbenchSaved, savedSearches.map((saved: any) => ({
+            label: saved.name,
+            onClick: () => this.applySavedSearch(scrollElement, saved, onClose),
+            onRemove: () => {
+                if (!confirm(String(this.i18n.searchSavedDeleteConfirm).replace("{x}", String(saved.name || "")))) return;
+                this.updateSettings({
+                    savedSearches: (this.getSettings().savedSearches || []).filter((item: any) => item?.id !== saved.id),
+                });
+                scrollElement.querySelector(".sw__workbench")?.remove();
+                this.renderWorkbench(scrollElement, "", onClose);
+            },
+        })));
 
         const docResults = scrollElement.querySelector(".sw__doc-results");
         if (docResults) scrollElement.insertBefore(box, docResults);
         else scrollElement.appendChild(box);
+    }
+
+    // T-6827 保存的搜索：设置读取、保存（名称默认=查询文本，免去 Electron 不支持的
+    // window.prompt；重命名交由后续版本）与应用回放。
+    getSavedSearches(): Array<{id: string; name: string; query: string; notebook?: string}> {
+        return Array.isArray(this.getSettings().savedSearches) ? this.getSettings().savedSearches : [];
+    }
+
+    saveCurrentSearch(query: string, filters: IDocSearchFilters = {}) {
+        const cleanQuery = String(query || "").trim();
+        if (!cleanQuery) return;
+        const entry: {id: string; name: string; query: string; notebook?: string} = {
+            id: `sw-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            name: cleanQuery.slice(0, 40),
+            query: cleanQuery.slice(0, 120),
+        };
+        if (filters && typeof (filters as any).notebook === "string" && (filters as any).notebook) {
+            entry.notebook = String((filters as any).notebook).slice(0, 64);
+        }
+        this.updateSettings({savedSearches: [...this.getSavedSearches(), entry]});
+        showMessage(this.i18n.searchSavedDone, MESSAGE_DEFAULT_MS);
+    }
+
+    applySavedSearch(scrollElement: HTMLElement, saved: {id?: string; name?: string; query: string; notebook?: string}, onClose: IOverlayClose) {
+        // 输入框在顶栏（.sw__toolbar），是滚动容器的兄弟节点——必须从对话框根查找
+        const root = scrollElement.closest(".speed-switch") as HTMLElement | null;
+        const searchInput = (root || scrollElement.ownerDocument).querySelector<HTMLInputElement>(".sw__search");
+        if (!searchInput) return;
+        applySavedSearchFilters.call(this, scrollElement, searchInput, saved, onClose);
     }
 
     // T-6804/T-6807：拉取一个标签智能分组的条目并以只读列表呈现

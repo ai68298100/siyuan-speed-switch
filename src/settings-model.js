@@ -60,6 +60,23 @@ function normalizeSettings(saved, options = {}) {
             smartGroups.push({name, tag});
         }
     }
+    // T-6827 保存的搜索：有界（16 条），名称/查询有界、笔记本 ID 形态校验，
+    // 同 id 或同（名称+查询）去重。
+    const savedSearches = [];
+    if (Array.isArray(source.savedSearches)) {
+        for (const raw of source.savedSearches) {
+            if (savedSearches.length >= 16) break;
+            if (!raw || typeof raw !== "object") continue;
+            const id = typeof raw.id === "string" ? raw.id.trim().slice(0, 64) : "";
+            const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 40) : "";
+            const query = typeof raw.query === "string" ? raw.query.trim().slice(0, 120) : "";
+            const notebook = typeof raw.notebook === "string" ? raw.notebook.trim().slice(0, 64) : "";
+            if (!id || !name || !query) continue;
+            if (savedSearches.some((item) => item.id === id
+                || (item.name === name && item.query === query))) continue;
+            savedSearches.push(notebook ? {id, name, query, notebook} : {id, name, query});
+        }
+    }
     // T-6757: keep the new spatial entry configuration inside the existing
     // settings object.  The legacy fabEnabled flag is passed only as a
     // migration hint; once a versioned floatingBall.mobile value exists it
@@ -116,6 +133,8 @@ function normalizeSettings(saved, options = {}) {
             ? source.documentSetsCurrentId.trim().slice(0, 64) : "",
         // T-6804 标签智能分组：有界（4 组），标签名剔除 LIKE 通配/引号字符
         favoriteSmartGroups: smartGroups,
+        // T-6827 保存的搜索：有界（16 条）
+        savedSearches,
         // T-6796 皮肤：白名单外的值一律回落融合主题
         skin: normalizeSkin(source.skin),
         // T-6805 拼音辅助匹配：默认开启；关闭后标题匹配只走子串
