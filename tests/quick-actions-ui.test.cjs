@@ -19,8 +19,12 @@ function customIconPicker(t) {
     }).outputText;
     const dom = new JSDOM('<svg><symbol id="iconPlugin"></symbol><symbol id="iconFile"></symbol></svg>');
     t.after(() => dom.window.close());
-    const IconHost = new Function("document", "normalizeCustomIcon", "isImageIconReference", "resolveIconReference",
-        `${output}; return IconHost;`)(dom.window.document, normalizeCustomIcon, isImageIconReference, resolveIconReference);
+    const catalogModule = {exports: {}};
+    new Function("module", "exports", ts.transpileModule(readSourceFile("src/constants.ts"), {
+        compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019},
+    }).outputText)(catalogModule, catalogModule.exports);
+    const IconHost = new Function("document", "ICON_CATALOG", "ICON_CATEGORIES", "normalizeCustomIcon", "isImageIconReference", "resolveIconReference",
+        `${output}; return IconHost;`)(dom.window.document, catalogModule.exports.ICON_CATALOG, catalogModule.exports.ICON_CATEGORIES, normalizeCustomIcon, isImageIconReference, resolveIconReference);
     const host = new IconHost();
     host.i18n = require("../src/i18n/zh-CN.json");
     host.isMobile = true;

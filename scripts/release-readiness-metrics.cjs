@@ -12,7 +12,11 @@ const ARCHIVE_BUDGET_BYTES = 512 * 1024;
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same
 // program as ADR 0059/0062: dated recalibration, hard ceiling unchanged.
-const COMPRESSED_ENTRY_BUDGET_BYTES = 256 * 1024;
+// ADR 0075 (2026-09-23): recalibrated 256 -> 288 KiB after the research-absorb
+// cycles R1/R2 (host-command bridge, pinyin vendor, unified index, skins,
+// essentials) pushed the compressed index.js past 256 KiB. Hard 512 KiB
+// archive ceiling unchanged; next bump requires a new audit.
+const COMPRESSED_ENTRY_BUDGET_BYTES = 288 * 1024;
 const ARCHIVE_DRIFT_TOLERANCE_BYTES = 1024;
 
 function parseArtifactSnapshot(text) {

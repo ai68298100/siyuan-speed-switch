@@ -887,6 +887,8 @@
   "documentSetEssentialsRemove": "移除",
   "documentSetEssentialsClear": "全部清空",
   "documentSetEssentialsEmpty": "暂无常驻文档",
+  "quickIconSearchEmpty": "没有匹配的图标",
+  "quickIconCategoryAll": "全部",
   "workbenchLabel": "工作台",
   "workbenchPresets": "场景",
   "workbenchDocSets": "文档集",

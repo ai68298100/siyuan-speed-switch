@@ -97,3 +97,18 @@ test("BLOCK_ID_RE rejects uuid tab ids and malformed input", () => {
     assert.ok(!BLOCK_ID_RE.test("20260721173719-"), "empty suffix must not match");
     assert.ok(!BLOCK_ID_RE.test("abc20260721173719-zlynli0"), "leading garbage must not match");
 });
+
+test("icon catalog: entries well-formed, categories whitelisted, ids unique-first-wins", () => {
+    const {ICON_CATALOG, ICON_CATEGORIES} = constants;
+    assert.ok(ICON_CATALOG.length >= 100, "catalog covers the core SiYuan sprite");
+    const categorySet = new Set(ICON_CATEGORIES);
+    const seen = new Set();
+    for (const [id, zh, en, category] of ICON_CATALOG) {
+        assert.match(id, /^icon[A-Za-z0-9_-]+$/, `id must look like a SiYuan icon: ${id}`);
+        assert.ok(zh.length > 0 && zh.length <= 16, `zh label required for ${id}`);
+        assert.ok(en.length > 0, `en keyword required for ${id}`);
+        assert.ok(categorySet.has(category), `${id}: category "${category}" must be whitelisted`);
+        assert.ok(!seen.has(id + category), `no duplicate (id, category) pairs: ${id}/${category}`);
+        seen.add(id + category);
+    }
+});

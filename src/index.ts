@@ -223,6 +223,8 @@ import {
     PERSISTENT_KEYS,
     SCHEMA_VERSION_KEY,
     RSS_READ_KEY,
+    ICON_CATALOG,
+    ICON_CATEGORIES,
 } from "./constants";
 import {
     getSiyuan,
@@ -5463,7 +5465,8 @@ const version = beginSearch(session);
                 id: action.id,
                 label: providerLabel,
                 icon: provider.icon,
-                group: this.i18n.quickPluginActions,
+                // T-6811 按来源插件分组：同一插件的动作聚合在以其命名的分组下
+                group: providerLabel || this.i18n.quickPluginActions,
                 fallbackIcon: ["iconPlugin", "iconFile"],
                 secondary: describe(action.kind, action.value, action.targets, provider.declaredTargets),
                 searchText: `${providerLabel} ${provider.id} ${provider.value} ${this.i18n.quickPluginActions}`,
@@ -5489,7 +5492,8 @@ const version = beginSearch(session);
                 id: action.id,
                 label: displayLabel,
                 icon: command.icon,
-                group: this.i18n.quickPluginCommands,
+                // T-6811 按来源插件分组：同一插件的命令聚合在以其命名的分组下
+                group: pluginTitle || command.pluginName || this.i18n.quickPluginCommands,
                 fallbackIcon: ["iconPlugin", "iconFile"],
                 secondary: `${pluginTitle} · ${describe(action.kind, action.value, targets, command.declaredTargets)}`,
                 searchText: `${displayLabel} ${pluginTitle} ${command.pluginName} ${command.commandKey} ${this.i18n.quickPluginCommands}`,
@@ -5578,20 +5582,87 @@ const version = beginSearch(session);
         const grid = document.createElement("div");
         grid.className = "sw-quick-icon-picker__grid";
         const icons = this.getAvailableQuickActionIcons(action.icon);
+
+        // T-6811 图标目录：分类浏览 + 中文/拼音/英文 id 搜索。
+        // 目录里没有的宿主图标归入"其他"，Emoji 归入"表情"。
+        const catalogMap = new Map<string, {zh: string; en: string; category: string}>(
+            ICON_CATALOG.map((entry) => [entry[0], {zh: entry[1], en: entry[2], category: entry[3]}]),
+        );
+        const categorize = (icon: string): {zh: string; en: string; category: string} => {
+            const entry = catalogMap.get(icon);
+            if (entry) return entry;
+            if (/^icon[A-Za-z0-9_-]+$/.test(icon)) return {zh: icon, en: icon.toLowerCase(), category: "其他"};
+            return {zh: "表情", en: "emoji", category: "表情"};
+        };
+        const items = icons.map((icon) => ({icon, meta: categorize(icon)}));
+        const categoryOrder = [...ICON_CATEGORIES, "表情", "其他"];
+        const presentCategories = categoryOrder.filter((category) =>
+            items.some((item) => item.meta.category === category));
+        let activeCategory = "全部";
+
+        const cats = document.createElement("div");
+        cats.className = "sw-quick-icon-picker__cats";
+        cats.setAttribute("role", "tablist");
+        const renderCats = () => {
+            cats.textContent = "";
+            for (const category of [this.i18n.quickIconCategoryAll || "全部", ...presentCategories]) {
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "sw-quick-icon-picker__cat" + (category === activeCategory ? " is-active" : "");
+                chip.textContent = category;
+                chip.setAttribute("role", "tab");
+                chip.setAttribute("aria-selected", String(category === activeCategory));
+                chip.addEventListener("click", () => {
+                    activeCategory = category;
+                    renderCats();
+                    renderIcons();
+                });
+                cats.appendChild(chip);
+            }
+        };
+        renderCats();
+
         const renderIcons = () => {
             const keyword = search.value.trim().toLocaleLowerCase();
             grid.innerHTML = "";
-            icons.filter((icon) => !keyword || icon.toLocaleLowerCase().includes(keyword)).forEach((icon) => {
+            const hit = (icon: string, meta: {zh: string; en: string; category: string}) => {
+                if (!keyword) return true;
+                if (icon.toLocaleLowerCase().includes(keyword)) return true;
+                if (meta.zh.toLocaleLowerCase().includes(keyword)) return true;
+                if (meta.en.toLowerCase().includes(keyword)) return true;
+                // 中文拼音首字母/全拼（复用 T-6805 引擎）
+                if (pinyinTitleHit(meta.zh, keyword)) return true;
+                return false;
+            };
+            const visible = items.filter((item) =>
+                (activeCategory === "全部" || item.meta.category === activeCategory)
+                && hit(item.icon, item.meta));
+            if (!visible.length) {
+                const empty = document.createElement("div");
+                empty.className = "sw-quick-icon-picker__hint";
+                empty.textContent = this.i18n.quickIconSearchEmpty || this.i18n.noOpenHistory;
+                grid.appendChild(empty);
+                return;
+            }
+            let lastCategory = "";
+            visible.forEach((item) => {
+                if (item.meta.category !== lastCategory) {
+                    lastCategory = item.meta.category;
+                    const heading = document.createElement("div");
+                    heading.className = "sw-quick-icon-picker__group-title";
+                    heading.textContent = item.meta.category;
+                    grid.appendChild(heading);
+                }
                 const option = document.createElement("button");
                 option.type = "button";
                 option.className = "sw-quick-icon-picker__item";
-                option.classList.toggle("is-selected", icon === action.icon);
-                option.title = isImageIconReference(icon) ? this.i18n.quickIconImage : icon;
+                option.classList.toggle("is-selected", item.icon === action.icon);
+                option.title = item.meta.zh === item.icon ? item.icon : `${item.meta.zh} · ${item.icon}`;
                 option.setAttribute("aria-label", option.title);
-                this.renderQuickActionIcon(option, icon, ["iconPlugin", "iconFile"]);
+                this.renderQuickActionIcon(option, item.icon, ["iconPlugin", "iconFile"]);
                 option.addEventListener("click", () => {
                     cleanup();
-                    onPick(icon);
+                    onPick(item.icon);
                 });
                 grid.appendChild(option);
             });
@@ -5619,7 +5690,7 @@ const version = beginSearch(session);
         });
         search.addEventListener("input", renderIcons);
         document.addEventListener("keydown", onKeyDown);
-        sheet.append(header, search, customRow, customHint, grid);
+        sheet.append(header, search, cats, customRow, customHint, grid);
         overlay.appendChild(sheet);
         document.body.appendChild(overlay);
         renderIcons();

@@ -988,4 +988,37 @@
     .sw-floating-ball-settings__row .sw-floating-ball-settings__controls { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; }
 }
 
+// ==================== T-6811 图标选择器：分类 chips 与组标题 ====================
+.sw-quick-icon-picker__cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.sw-quick-icon-picker__cat {
+    min-height: 28px;
+    padding: 2px 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 999px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    cursor: pointer;
+
+    &.is-active {
+        border-color: var(--b3-theme-primary);
+        background: var(--sw-accent-soft, var(--b3-theme-surface-lighter));
+        color: var(--b3-theme-primary);
+    }
+}
+
+.sw-quick-icon-picker__group-title {
+    grid-column: 1 / -1;
+    margin: 6px 2px 2px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--b3-theme-on-surface-light);
+}
+
 // 首次点击日记按钮选择默认笔记本的弹窗

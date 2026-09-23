@@ -817,6 +817,8 @@
   ,"documentSetEssentialsRemove": "Remove"
   ,"documentSetEssentialsClear": "Clear all"
   ,"documentSetEssentialsEmpty": "No essentials yet"
+  ,"quickIconSearchEmpty": "No matching icons"
+  ,"quickIconCategoryAll": "All"
   ,"workbenchLabel": "Workbench"
   ,"workbenchPresets": "Scenes"
   ,"workbenchDocSets": "Sets"
