@@ -5,6 +5,19 @@
 
 ## Changelog (full history)
 
+### v0.32.0 (2026-09-23)
+
+- **Search · Full-library pinyin completion**: pure-letter queries (e.g. cp) now also surface matches from all library titles via a lazy pinyin cache (zero standing requests).
+- **Search · Filter chips**: one-click result-type narrowing (all/tabs/collections/documents) above the results.
+- **Switcher · Jump back / forward**: speed-switch driven jumps can be undone and redone (session stack).
+- **Switcher · Split-right open**: right-click a result to open it in the right split (desktop).
+- **Document sets · Essentials layer**: marked documents auto-open after every set restore (up to 10, manageable).
+- **Document sets · Scene linkage**: restoring a set auto-applies a same-named ball preset (e.g. "writing" set → writing layout).
+- **Quick actions · Icon catalog**: the icon picker is browsable by category with Chinese/pinyin/English-id search.
+- **Quick actions · Plugin grouping**: add-action candidates are grouped by their source plugin.
+- **Fixed · Query operators**: queries with `-exclusions` / `"phrases"` no longer blank the document results.
+- **Verification**: 6,065 tests across 225 files, four UI smoke suites (including 22 floating-ball Chromium scenarios); Android on-device items remain pending.
+
 ### v0.31.0 (2026-09-23)
 
 - **Floating ball · Host command actions**: nine SiYuan commands wired in (outline, bookmarks, tags, inbox, backlinks, recent documents, recently closed, flashcard review, read-only toggle) with capability detection and safe fallback on older hosts.
