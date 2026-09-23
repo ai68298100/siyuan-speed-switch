@@ -114,3 +114,9 @@ test('reuse open tabs strategy defaults to off and accepts only booleans (T-6830
     assert.equal(normalize({reuseOpenTabs: true}).reuseOpenTabs, true);
     assert.equal(normalize({reuseOpenTabs: "yes"}).reuseOpenTabs, false, '非布尔一律回落默认');
 });
+
+test('density accepts only compact and falls back to comfortable (T-6823)', () => {
+    assert.equal(normalize({}).density, "comfortable", "默认舒适档");
+    assert.equal(normalize({density: "compact"}).density, "compact");
+    assert.equal(normalize({density: "cozy"}).density, "comfortable", "白名单外回落");
+});

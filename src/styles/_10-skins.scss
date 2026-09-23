@@ -146,3 +146,25 @@ body[data-sw-skin="paper"] {
         box-shadow: 0 3px 10px rgba(120, 100, 70, .16);
     }
 }
+
+// ==================== T-6823 密度档位：compact ====================
+// 与皮肤同机制：body 标记 + :is() 限定速切根容器；只收窄间距/行高，
+// 不改颜色/圆角语义，44px 触控与焦点样式不降级。
+body[data-sw-density="compact"] {
+  :is(.speed-switch, .sw-home, .sw-settings-dialog) {
+    .sw__card {
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+    .sw__scroll {
+      gap: 6px;
+    }
+    .sw__group {
+      gap: 4px;
+    }
+    .sw__doc-item {
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
+  }
+}

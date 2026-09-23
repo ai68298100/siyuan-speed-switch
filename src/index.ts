@@ -601,6 +601,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     savedSearches: [], // T-6827 保存的搜索
     skin: "fusion", // T-6796 默认融合思源主题
     pinyinMatch: true, // T-6805 拼音辅助匹配默认开
+    density: "comfortable", // T-6823 密度默认舒适
     reuseOpenTabs: false, // T-6830 打开策略默认总是新开
     documentSetEssentials: [], // T-6810 Essentials 常驻文档
 };
@@ -652,6 +653,7 @@ export interface ISwSettings {
     savedSearches: Array<{id: string; name: string; query: string; notebook?: string}>; // T-6827 保存的搜索（最多 16 条）
     skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
     pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
+    density: "comfortable" | "compact"; // T-6823 密度档位（默认 comfortable）
     reuseOpenTabs: boolean; // T-6830 打开策略：命中已开页签时聚焦复用（默认关=总是新开）
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
 }
@@ -911,6 +913,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.captureRecentOpenSnapshot();
         // T-6796：设置加载完成后应用已保存的皮肤（body 标记）
         this.applySkin();
+        // T-6823：密度档位（body 标记）随 onload 一并应用
+        this.applyDensity();
         this.bindGlobalEvents();
         // 命令注册经 safeRegisterPluginCommand 隔离：内核 addCommand 抛错（如
         // globalCallback 触发的 sendGlobalShortcut 读 window.siyuan.languages["_trayMenu"]
@@ -1612,6 +1616,10 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.lifecycleGeneration += 1;
         // T-6831：面包屑入口随生命周期拆除
         this.teardownBreadcrumbEntry();
+        // T-6823：密度档位标记随生命周期移除
+        if (typeof document !== "undefined" && document.body) {
+            delete document.body.dataset.swDensity;
+        }
         // T-6833：公开钩子随生命周期拆除
         if (typeof window !== "undefined") {
             delete (window as any).siyuanSpeedSwitch;
@@ -1864,6 +1872,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (Object.prototype.hasOwnProperty.call(patch, "skin")) {
             this.applySkin();
         }
+        if (Object.prototype.hasOwnProperty.call(patch, "density")) {
+            this.applyDensity();
+        }
         if (Object.keys(patch).some((key) => key !== "lastSettingsTab")) {
             this.refreshOpenSwitchers();
             if (this.sidebarElement?.isConnected) {
@@ -1931,6 +1942,17 @@ export default class SpeedSwitchPlugin extends Plugin {
             delete document.body.dataset.swSkin;
         } else {
             document.body.dataset.swSkin = skin;
+        }
+    }
+
+    // T-6823 密度档位：comfortable（默认，现状）| compact（紧凑行高/间距）。
+    // 与皮肤同机制：body 只放标记，SCSS 按标记覆盖间距变量；卸载移除。
+    private applyDensity(): void {
+        if (typeof document === "undefined" || !document.body) return;
+        if (this.getSettings().density === "compact") {
+            document.body.dataset.swDensity = "compact";
+        } else {
+            delete document.body.dataset.swDensity;
         }
     }
 

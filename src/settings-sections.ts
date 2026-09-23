@@ -167,6 +167,11 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
             this.switcher(s.pinyinMatch, (v) => {
                 this.updateSettings({pinyinMatch: v});
             })));
+        // T-6823 密度档位：紧凑（compact）开关，关闭即舒适（comfortable）
+        wrapper.append(this.settingItem(this.i18n.densityCompactLabel, this.i18n.densityCompactTip,
+            this.switcher(s.density === "compact", (v) => {
+                this.updateSettings({density: v ? "compact" : "comfortable"});
+            })));
         // T-6830 打开策略：搜索结果命中已开页签时聚焦复用
         wrapper.append(this.settingItem(this.i18n.reuseTabsLabel, this.i18n.reuseTabsTip,
             this.switcher(s.reuseOpenTabs, (v) => {

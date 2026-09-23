@@ -486,6 +486,18 @@ test('clipboard entry: deep link open with confirm and capture fallback (T-6821)
         '空/不可读剪贴板必须有明确回执');
 });
 
+test('density wiring: body marker mounted on load, toggled from settings, removed on unload (T-6823)', () => {
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(indexSource, /private applyDensity\(\): void/);
+    assert.match(indexSource, /document\.body\.dataset\.swDensity = "compact";/);
+    assert.match(indexSource, /delete document\.body\.dataset\.swDensity;/, 'unload must remove the density marker');
+    assert.match(indexSource, /this\.applyDensity\(\);/, 'onload must apply the density');
+    assert.match(settingsSections, /this\.updateSettings\(\{density: v \? "compact" : "comfortable"\}\)/,
+        '行为页必须提供密度开关');
+    const skins = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_10-skins.scss'));
+    assert.match(skins, /body\[data-sw-density="compact"\]/, '紧凑密度必须以 body 标记作用域生效');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

@@ -895,6 +895,8 @@
   "reuseTabsLabel": "复用已开页签",
   "reuseTabsTip": "搜索结果命中的文档已打开时，聚焦既有页签而不是重复新开。",
   "breadcrumbEntry": "打开切换器",
+  "densityCompactLabel": "紧凑密度",
+  "densityCompactTip": "收窄切换器卡片与列表间距，同屏显示更多内容；关闭即舒适档。",
   "pinyinMatchLabel": "拼音辅助匹配",
   "pinyinMatchTip": "用全拼或拼音首字母匹配文档标题（如 cp → 产品）。关闭后仅子串匹配。",
   "documentSetEssentialsLabel": "Essentials 常驻文档",
