@@ -916,7 +916,7 @@ export function appendDocResultsLoadMore(this: DocSearchUiHost,
         box.appendChild(action);
     }
 
-    // 澶嶇敤鐜版湁 .sw__doc-results 瀹瑰櫒锛沝ocs===null 鏃剁洿鎺ョЩ闄ゅ苟杩斿洖 null
+    // 复用现有 .sw__doc-results 容器；docs===null 时直接移除并返回 null
 export function ensureDocResultsBox(this: DocSearchUiHost, scrollElement: HTMLElement, docs: IDocSearchResult[] | null): HTMLElement | null {
         let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
         if (docs === null) {

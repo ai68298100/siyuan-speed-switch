@@ -164,7 +164,7 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
         // 关键修复：Dialog 先把元素挂到 DOM，b3-dialog--open 类要等 50ms 超时才补上，
         // 期间容器处于 transform: scale(.8) 过渡态；手机 WebView 中带 backdrop-filter 的
-        // 瀛愬厓绱犲湪璇ュ姩鐢荤獥鍙ｅ唴浼氭覆鏌撻敊涔憋紙鍥炬爣宸ㄥぇ/浣嶇疆閿欎綅锛夛紝鍔ㄧ敾缁撴潫鍙堣嚜鎰堚€斺€?
+        // 子元素在该动画窗口内会渲染错乱（图标巨大/位置错位），动画结束又自愈——
         // 即"刚打开闪一下错乱"的根因。禁用动画让容器同步进入最终态，彻底消除该窗口
         const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
         if (dialogBody) {
