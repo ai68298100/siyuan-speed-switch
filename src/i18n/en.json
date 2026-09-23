@@ -825,6 +825,7 @@
   ,"workbenchLabel": "Workbench"
   ,"workbenchPresets": "Scenes"
   ,"workbenchDocSets": "Sets"
+  ,"workbenchRelated": "Related to current doc"
   ,"workbenchSaved": "Saved searches"
   ,"searchSaveCurrent": "Save current search"
   ,"searchSavedDeleteConfirm": "Delete saved search \"{x}\"?"

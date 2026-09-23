@@ -895,6 +895,7 @@
   "workbenchLabel": "工作台",
   "workbenchPresets": "场景",
   "workbenchDocSets": "文档集",
+  "workbenchRelated": "当前文档相关",
   "workbenchSaved": "保存的搜索",
   "searchSaveCurrent": "保存当前搜索",
   "searchSavedDeleteConfirm": "删除保存的搜索「{x}」？",

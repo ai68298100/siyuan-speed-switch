@@ -394,6 +394,18 @@ test('breadcrumb entry mounts via capability detection and unloads cleanly (T-68
         '按钮回调只打开切换器（受控动作）');
 });
 
+test('related content: workbench region uses official backlink endpoint with bounded projection (T-6814)', () => {
+    const relatedModel = readSourceText(path.join(__dirname, '..', 'src', 'related-content-model.js'));
+    assert.match(indexSource, /fillRelatedContent\(relatedBox, activeRootId, onClose\)/,
+        '零词条工作台必须挂接关联内容行（仅在有活动文档时）');
+    assert.match(indexSource, /case "\/api\/ref\/getBacklink2":/,
+        '官方反链/提及端点必须进入 fetch 白名单 switch（字面量 URL）');
+    assert.match(relatedModel, /function projectRelatedContent\(/,
+        '投影必须有界纯函数（反链优先/去重/限额/截断可解释）');
+    assert.match(relatedModel, /truncated: shown < total/,
+        '截断必须以 shown 与内核总量比较，可解释');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

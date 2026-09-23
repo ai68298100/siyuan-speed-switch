@@ -11,6 +11,7 @@ const NOTEBOOK_NAME = `${NOTEBOOK_PREFIX}-${RUN}`;
 const DOC_TITLE = `速切锚定文档${RUN}`;
 
 let notebookId = "";
+let docARootId = "";
 
 async function removeLegacyNotebooks(client) {
     // 历史运行残留清理（失败运行的 finally 可能被强杀跳过）
@@ -28,13 +29,25 @@ async function seedDocs(client) {
     // 契约：CreateNotebookData.notebook 为 Notebook 对象（含 id），不是裸字符串
     notebookId = String(created.notebook?.id || created.notebook || "");
     expect(notebookId.length).toBeGreaterThan(0);
-    for (const title of [DOC_TITLE, `速切锚定陪衬${RUN}`]) {
-        await client.postChecked("/api/filetree/createDocWithMd", {
-            notebook: notebookId,
-            path: `/${title}`,
-            markdown: `${title} 的内容`,
-        });
-    }
+    const docA = await client.postChecked("/api/filetree/createDocWithMd", {
+        notebook: notebookId,
+        path: `/${DOC_TITLE}`,
+        markdown: `${DOC_TITLE} 的内容`,
+    });
+    docARootId = String(docA || "");
+    expect(docARootId.length).toBeGreaterThan(0);
+    // 关联链路（T-6814）：文档 B 带指向 A 的块引 → A 的反链应包含 B
+    await client.postChecked("/api/filetree/createDocWithMd", {
+        notebook: notebookId,
+        path: `/速切关联${RUN}`,
+        markdown: `((${docARootId} "参见 ${DOC_TITLE}"))`,
+    });
+    // 陪衬文档：让文档结果区不止一条，避免恰好命中的偶然通过
+    await client.postChecked("/api/filetree/createDocWithMd", {
+        notebook: notebookId,
+        path: `/速切锚定陪衬${RUN}`,
+        markdown: `速切锚定陪衬${RUN} 的内容`,
+    });
 }
 
 test("真实内核：切换器搜索命中真实文档并单击打开真实页签", async ({page}) => {
@@ -66,6 +79,20 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
         await page.waitForFunction(() => {
             return document.querySelectorAll('[data-plugin-name="siyuan-speed-switch"]').length > 0;
         }, undefined, {timeout: 10000});
+
+        // T-6814 关联内容：A 处于活动状态时再开切换器（空查询工作台），
+        // 应出现指向 B（带块引指向 A）的关联 chip；点击后真实打开 B。
+        // fill("") 触发一次 applySearch：工作台随输入事件渲染。
+        await openSwitcher(page);
+        const search2 = page.locator("input.sw__search").last();
+        await search2.fill("");
+        const relatedChip = page.locator(".sw__workbench-chip", {hasText: `速切关联${RUN}`});
+        await expect(relatedChip).toHaveCount(1, {timeout: 20000});
+        await relatedChip.click();
+        await page.waitForFunction((title) => {
+            return Array.from(document.querySelectorAll(".protyle-title"))
+                .some((element) => (element.textContent || "").includes(title));
+        }, `速切关联${RUN}`, {timeout: 20000});
 
         expect(pageErrors, `真实打开链路出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
     } finally {

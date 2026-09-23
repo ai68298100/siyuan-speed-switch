@@ -70,6 +70,7 @@ import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnaps
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
+import {projectRelatedContent, isRelatedCacheHit} from "./related-content-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
@@ -2846,6 +2847,9 @@ const updatedMap: {[rootId: string]: string} = {};
                 (sortSelect?.value as SortBy) || settings.sortBy, updatedMap);
             if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                 this.applySearch(scrollElement, searchInput, closeOverlay);
+            } else {
+                // T-6807/T-6814：首次打开（空查询且无筛选）也要呈现零词条工作台
+                this.renderWorkbench(scrollElement, "", closeOverlay);
             }
         };
         const refreshQuickActions = () => {
@@ -2951,6 +2955,10 @@ const updatedMap: {[rootId: string]: string} = {};
         updatedMap: {[rootId: string]: string},
     ) {
         this.renderList(scrollElement, tabs, activeTab, listOpts, settings.sortBy, updatedMap);
+        // T-6807/T-6814：首次打开（空查询且无筛选）即呈现零词条工作台（含关联内容行）
+        if (searchInput && searchInput.value.trim() === "" && !hasDocSearchFilter.call(this, scrollElement)) {
+            this.renderWorkbench(scrollElement, "", closeOverlay);
+        }
         this.bindKeydown(scrollElement, closeOverlay);
 
         // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
@@ -4035,7 +4043,9 @@ const updatedMap: {[rootId: string]: string} = {};
         const docSets = this.getDocumentSets();
         const smartGroups = this.getSettings().favoriteSmartGroups || [];
         const savedSearches = this.getSettings().savedSearches || [];
-        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length) return;
+        const activeRootId = this.rootIdOf(this.getActiveTab());
+        // T-6814：有活动文档时关联内容行也可独立撑起工作台
+        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length && !activeRootId) return;
 
         const box = document.createElement("div");
         box.className = "sw__workbench";
@@ -4107,6 +4117,15 @@ const updatedMap: {[rootId: string]: string} = {};
             },
         })));
 
+        // T-6814 关联内容：活动文档的反链/提及（官方 getBacklink2 单次往返，
+        // 有界投影 + 60s 会话缓存 + 竞态丢弃）。无活动文档或加载失败时整行不出现。
+        if (activeRootId) {
+            const relatedBox = document.createElement("div");
+            relatedBox.className = "sw__workbench-related";
+            box.appendChild(relatedBox);
+            void this.fillRelatedContent(relatedBox, activeRootId, onClose);
+        }
+
         const docResults = scrollElement.querySelector(".sw__doc-results");
         if (docResults) scrollElement.insertBefore(box, docResults);
         else scrollElement.appendChild(box);
@@ -4158,6 +4177,68 @@ const updatedMap: {[rootId: string]: string} = {};
         if (!existing) return false;
         this.activateTab(existing, onClose);
         return true;
+    }
+
+    // T-6814 关联内容：拉取 + 填充。缓存以 rootId 绑定（60s TTL，FIFO ≤8），
+    // 面板被移除/卸载后竞态丢弃；失败静默收起该行，不给空查询工作台添噪音。
+    private relatedContentCache = new Map<string, {rootId: string; at: number; projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}}>();
+
+    private async fillRelatedContent(box: HTMLElement, rootId: string, onClose: IOverlayClose): Promise<void> {
+        const now = Date.now();
+        const cached = this.relatedContentCache.get(rootId);
+        let projection = cached && isRelatedCacheHit(cached, rootId, now) ? cached.projection : null;
+        if (!projection) {
+            // k/mk 为契约必传字段（可为空串）；块引索引在文档创建后有秒级延迟，
+            // 首查为空时有界轮询（2.5s×5 次，共约 12.5s），期间面板被移除即放弃。
+            const attempt = async (delayMs: number, retried: number): Promise<void> => {
+                if (delayMs) {
+                    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+                    // 仅重试路径提前判连：首次调用时工作台尚未插入 DOM（同步执行段）
+                    if (!box.isConnected || this.isUnloading) return;
+                }
+                const payload = await this.fetchKernelJson("/api/ref/getBacklink2", {id: rootId, k: "", mk: "", includeMentions: true});
+                if (!box.isConnected) return;
+                projection = payload ? projectRelatedContent(payload.data) : null;
+                if (!projection || projection.items.length === 0) {
+                    if (retried < 5) return void attempt(2500, retried + 1) as Promise<void>;
+                    return;
+                }
+                if (this.relatedContentCache.size >= 8) {
+                    const oldest = this.relatedContentCache.keys().next().value;
+                    if (oldest !== undefined) this.relatedContentCache.delete(oldest);
+                }
+                this.relatedContentCache.set(rootId, {rootId, at: Date.now(), projection});
+                this.renderRelatedRow(box, projection, onClose);
+            };
+            return void attempt(0, 0);
+        }
+        this.renderRelatedRow(box, projection, onClose);
+    }
+
+    private renderRelatedRow(box: HTMLElement, projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}, onClose: IOverlayClose): void {
+        if (!box.isConnected || projection.items.length === 0) return;
+        const rowLabel = document.createElement("div");
+        rowLabel.className = "sw__workbench-row-label";
+        const total = projection.counts.backlinks + projection.counts.mentions;
+        rowLabel.textContent = projection.truncated
+            ? `${this.i18n.workbenchRelated} (${projection.counts.shown}/${total})`
+            : this.i18n.workbenchRelated;
+        box.appendChild(rowLabel);
+        const row = document.createElement("div");
+        row.className = "sw__workbench-row";
+        projection.items.forEach((item) => {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "sw__workbench-chip";
+            chip.textContent = (item.source === "mention" ? "∼ " : "") + item.title;
+            chip.title = item.hPath || item.title;
+            chip.addEventListener("click", () => {
+                onClose();
+                void openDocSearchResult.call(this, item.id, null);
+            });
+            row.appendChild(chip);
+        });
+        box.appendChild(row);
     }
 
     // T-6804/T-6807：拉取一个标签智能分组的条目并以只读列表呈现
@@ -4241,6 +4322,8 @@ const updatedMap: {[rootId: string]: string} = {};
         "/api/inbox/getShorthands",
         "/api/block/getRecentUpdatedBlocks",
         "/api/asset/getMissingAssets",
+        // T-6814 关联内容（D3）：官方反链/提及一次性查询，只读。
+        "/api/ref/getBacklink2",
         "/api/storage/getRecentDocs",
         "/api/storage/getCriteria",
         // v3.8.x 数据库只读渲染（T-6330 / ADR 0058）。
@@ -4334,6 +4417,9 @@ const updatedMap: {[rootId: string]: string} = {};
                     break;
                 case "/api/asset/getMissingAssets":
                     response = await fetch("/api/asset/getMissingAssets", init);
+                    break;
+                case "/api/ref/getBacklink2":
+                    response = await fetch("/api/ref/getBacklink2", init);
                     break;
                 case "/api/storage/getRecentDocs":
                     response = await fetch("/api/storage/getRecentDocs", init);

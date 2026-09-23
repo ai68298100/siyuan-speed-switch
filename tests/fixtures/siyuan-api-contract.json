@@ -3,9 +3,9 @@
     "repo": "siyuan-note/siyuan",
     "branch": "master",
     "kernelVersion": "3.8.5",
-    "retrievedAt": "2026-09-23",
+    "retrievedAt": "2026-09-24",
     "note": "上游契约快照的有端子集；由 scripts/gen-api-contract.cjs 生成，勿手改。运行时真值以 docs/kernel-api-smoke-*.md 实测为准。",
-    "subsetSha256": "4fbf56aed8f69330327e7eb579447ba63913815549980f5f242a8f2dbbb744d2"
+    "subsetSha256": "5c367683d3675bef95a7e29dee71b2efe42e957cfa00c8834b8ab1a7aab063e0"
   },
   "nonKernel": [
     {
@@ -25,10 +25,10 @@
     {
       "path": "/api/asset/getMissingAssets",
       "usedBy": [
-        "src/index.ts:3667",
-        "src/index.ts:3759",
-        "src/index.ts:3760",
-        "src/index.ts:4473"
+        "src/index.ts:4327",
+        "src/index.ts:4421",
+        "src/index.ts:4422",
+        "src/index.ts:5138"
       ],
       "method": "POST",
       "handler": "getMissingAssets",
@@ -83,10 +83,10 @@
     {
       "path": "/api/av/getAttributeView",
       "usedBy": [
-        "src/index.ts:3674",
-        "src/index.ts:3771",
-        "src/index.ts:3772",
-        "src/index.ts:4518"
+        "src/index.ts:4336",
+        "src/index.ts:4436",
+        "src/index.ts:4437",
+        "src/index.ts:5183"
       ],
       "method": "POST",
       "handler": "getAttributeView",
@@ -187,11 +187,11 @@
     {
       "path": "/api/av/renderAttributeView",
       "usedBy": [
-        "src/index.ts:3671",
-        "src/index.ts:3768",
-        "src/index.ts:3769",
-        "src/index.ts:4514",
-        "src/index.ts:4608"
+        "src/index.ts:4333",
+        "src/index.ts:4433",
+        "src/index.ts:4434",
+        "src/index.ts:5179",
+        "src/index.ts:5273"
       ],
       "method": "POST",
       "handler": "renderAttributeView",
@@ -613,12 +613,12 @@
     {
       "path": "/api/block/appendBlock",
       "usedBy": [
-        "src/index.ts:1025",
-        "src/index.ts:1103",
-        "src/index.ts:2023",
-        "src/index.ts:3658",
-        "src/index.ts:3738",
-        "src/index.ts:3739"
+        "src/index.ts:1081",
+        "src/index.ts:1159",
+        "src/index.ts:2203",
+        "src/index.ts:4318",
+        "src/index.ts:4400",
+        "src/index.ts:4401"
       ],
       "method": "POST",
       "handler": "appendBlock",
@@ -691,10 +691,10 @@
     {
       "path": "/api/block/getRecentUpdatedBlocks",
       "usedBy": [
-        "src/index.ts:3666",
-        "src/index.ts:3756",
-        "src/index.ts:3757",
-        "src/index.ts:4463"
+        "src/index.ts:4326",
+        "src/index.ts:4418",
+        "src/index.ts:4419",
+        "src/index.ts:5128"
       ],
       "method": "POST",
       "handler": "getRecentUpdatedBlocks",
@@ -867,9 +867,9 @@
     {
       "path": "/api/block/insertBlock",
       "usedBy": [
-        "src/index.ts:3658",
-        "src/index.ts:3735",
-        "src/index.ts:3736"
+        "src/index.ts:4318",
+        "src/index.ts:4397",
+        "src/index.ts:4398"
       ],
       "method": "POST",
       "handler": "insertBlock",
@@ -949,12 +949,12 @@
     {
       "path": "/api/block/updateBlock",
       "usedBy": [
-        "src/index.ts:974",
-        "src/index.ts:1080",
-        "src/index.ts:3658",
-        "src/index.ts:3732",
-        "src/index.ts:3733",
-        "src/index.ts:4686"
+        "src/index.ts:1030",
+        "src/index.ts:1136",
+        "src/index.ts:4318",
+        "src/index.ts:4394",
+        "src/index.ts:4395",
+        "src/index.ts:5484"
       ],
       "method": "POST",
       "handler": "updateBlock",
@@ -1031,10 +1031,10 @@
     {
       "path": "/api/bookmark/getBookmark",
       "usedBy": [
-        "src/index.ts:3656",
-        "src/index.ts:3723",
-        "src/index.ts:3724",
-        "src/index.ts:3987"
+        "src/index.ts:4316",
+        "src/index.ts:4385",
+        "src/index.ts:4386",
+        "src/index.ts:4652"
       ],
       "method": "POST",
       "handler": "getBookmark",
@@ -1144,11 +1144,11 @@
     {
       "path": "/api/filetree/createDocWithMd",
       "usedBy": [
-        "src/index.ts:997",
-        "src/index.ts:1091",
-        "src/index.ts:3657",
-        "src/index.ts:3729",
-        "src/index.ts:3730"
+        "src/index.ts:1053",
+        "src/index.ts:1147",
+        "src/index.ts:4317",
+        "src/index.ts:4391",
+        "src/index.ts:4392"
       ],
       "method": "POST",
       "handler": "createDocWithMd",
@@ -1236,11 +1236,11 @@
     {
       "path": "/api/filetree/getDoc",
       "usedBy": [
-        "src/index.ts:3657",
-        "src/index.ts:3726",
-        "src/index.ts:3727",
-        "src/index.ts:5145",
-        "src/index.ts:8134"
+        "src/index.ts:4317",
+        "src/index.ts:4388",
+        "src/index.ts:4389",
+        "src/index.ts:6018",
+        "src/index.ts:9348"
       ],
       "method": "POST",
       "handler": "getDoc",
@@ -1474,10 +1474,10 @@
     {
       "path": "/api/filetree/getPinnedDocs",
       "usedBy": [
-        "src/index.ts:3664",
-        "src/index.ts:3750",
-        "src/index.ts:3751",
-        "src/index.ts:4423"
+        "src/index.ts:4324",
+        "src/index.ts:4412",
+        "src/index.ts:4413",
+        "src/index.ts:5088"
       ],
       "method": "POST",
       "handler": "getPinnedDocs",
@@ -1547,10 +1547,10 @@
     {
       "path": "/api/filetree/listDocsByPath",
       "usedBy": [
-        "src/doc-search-ui.ts:46",
-        "src/index.ts:3662",
-        "src/index.ts:3747",
-        "src/index.ts:3748",
+        "src/doc-search-ui.ts:54",
+        "src/index.ts:4322",
+        "src/index.ts:4409",
+        "src/index.ts:4410",
         "src/path-filter-model.js:29"
       ],
       "method": "POST",
@@ -1665,8 +1665,8 @@
     {
       "path": "/api/filetree/searchDocs",
       "usedBy": [
-        "src/doc-search-ui.ts:532",
-        "src/index.ts:5671"
+        "src/doc-search-ui.ts:604",
+        "src/index.ts:6544"
       ],
       "method": "POST",
       "handler": "searchDocs",
@@ -1755,10 +1755,10 @@
     {
       "path": "/api/inbox/getShorthands",
       "usedBy": [
-        "src/index.ts:3665",
-        "src/index.ts:3753",
-        "src/index.ts:3754",
-        "src/index.ts:4454"
+        "src/index.ts:4325",
+        "src/index.ts:4415",
+        "src/index.ts:4416",
+        "src/index.ts:5119"
       ],
       "method": "POST",
       "handler": "getShorthands",
@@ -1831,7 +1831,7 @@
     {
       "path": "/api/network/forwardProxy",
       "usedBy": [
-        "src/index.ts:3825"
+        "src/index.ts:4490"
       ],
       "method": "POST",
       "handler": "forwardProxy",
@@ -1945,7 +1945,7 @@
     {
       "path": "/api/notebook/lsNotebooks",
       "usedBy": [
-        "src/index.ts:1849"
+        "src/index.ts:2029"
       ],
       "method": "POST",
       "handler": "lsNotebooks",
@@ -2011,12 +2011,12 @@
     {
       "path": "/api/outline/getDocOutline",
       "usedBy": [
-        "src/index.ts:3659",
-        "src/index.ts:3741",
-        "src/index.ts:3742",
-        "src/index.ts:4381",
-        "src/index.ts:5247",
-        "src/index.ts:5313"
+        "src/index.ts:4319",
+        "src/index.ts:4403",
+        "src/index.ts:4404",
+        "src/index.ts:5046",
+        "src/index.ts:6120",
+        "src/index.ts:6186"
       ],
       "method": "POST",
       "handler": "getDocOutline",
@@ -2134,41 +2134,45 @@
     {
       "path": "/api/query/sql",
       "usedBy": [
-        "src/index.ts:967",
-        "src/index.ts:1005",
-        "src/index.ts:1074",
-        "src/index.ts:1096",
-        "src/index.ts:3656",
-        "src/index.ts:3717",
-        "src/index.ts:3718",
-        "src/index.ts:3877",
-        "src/index.ts:3913",
-        "src/index.ts:3957",
-        "src/index.ts:3960",
-        "src/index.ts:4009",
-        "src/index.ts:4032",
-        "src/index.ts:4038",
-        "src/index.ts:4075",
-        "src/index.ts:4099",
-        "src/index.ts:4140",
-        "src/index.ts:4156",
-        "src/index.ts:4172",
-        "src/index.ts:4187",
-        "src/index.ts:4205",
-        "src/index.ts:4236",
-        "src/index.ts:4324",
-        "src/index.ts:4344",
-        "src/index.ts:4361",
-        "src/index.ts:4396",
-        "src/index.ts:4433",
-        "src/index.ts:4487",
-        "src/index.ts:4549",
-        "src/index.ts:4581",
-        "src/index.ts:4679",
-        "src/index.ts:5197",
-        "src/index.ts:5297",
-        "src/index.ts:5485",
-        "src/index.ts:7345"
+        "src/index.ts:1023",
+        "src/index.ts:1061",
+        "src/index.ts:1130",
+        "src/index.ts:1152",
+        "src/index.ts:1890",
+        "src/index.ts:4251",
+        "src/index.ts:4316",
+        "src/index.ts:4379",
+        "src/index.ts:4380",
+        "src/index.ts:4542",
+        "src/index.ts:4578",
+        "src/index.ts:4622",
+        "src/index.ts:4625",
+        "src/index.ts:4674",
+        "src/index.ts:4697",
+        "src/index.ts:4703",
+        "src/index.ts:4740",
+        "src/index.ts:4764",
+        "src/index.ts:4805",
+        "src/index.ts:4821",
+        "src/index.ts:4837",
+        "src/index.ts:4852",
+        "src/index.ts:4870",
+        "src/index.ts:4901",
+        "src/index.ts:4989",
+        "src/index.ts:5009",
+        "src/index.ts:5026",
+        "src/index.ts:5061",
+        "src/index.ts:5098",
+        "src/index.ts:5152",
+        "src/index.ts:5214",
+        "src/index.ts:5246",
+        "src/index.ts:5477",
+        "src/index.ts:6070",
+        "src/index.ts:6170",
+        "src/index.ts:6358",
+        "src/index.ts:7020",
+        "src/index.ts:7486",
+        "src/index.ts:8559"
       ],
       "method": "POST",
       "handler": "SQL",
@@ -2225,13 +2229,181 @@
       }
     },
     {
+      "path": "/api/ref/getBacklink2",
+      "usedBy": [
+        "src/index.ts:4199",
+        "src/index.ts:4329",
+        "src/index.ts:4424",
+        "src/index.ts:4425"
+      ],
+      "method": "POST",
+      "handler": "getBacklink2",
+      "body": "json",
+      "request": {
+        "required": [],
+        "properties": {
+          "containChildren": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "id": {
+            "type": "string|null",
+            "required": false
+          },
+          "includeBacklinks": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "includeMentions": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "k": {
+            "type": "string",
+            "required": false
+          },
+          "knownRevision": {
+            "type": "string|null",
+            "required": false
+          },
+          "mSort": {
+            "type": "string|null",
+            "required": false
+          },
+          "mk": {
+            "type": "string",
+            "required": false
+          },
+          "notebook": {
+            "type": "string|null",
+            "required": false
+          },
+          "refDefCandidates": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "sort": {
+            "type": "string|null",
+            "required": false
+          },
+          "sourceFilter": {
+            "type": "BacklinkSourceFilterInput|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1,
+          1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "backlinks",
+            "backmentions",
+            "box",
+            "k",
+            "linkRefsCount",
+            "mentionsCount",
+            "mk",
+            "revision",
+            "unchanged"
+          ],
+          "props": {
+            "backlinks": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "blocks",
+                  "box",
+                  "children",
+                  "count",
+                  "created",
+                  "depth",
+                  "folded",
+                  "hPath",
+                  "id",
+                  "name",
+                  "nameIsHTML",
+                  "nodeType",
+                  "number",
+                  "revision",
+                  "subType",
+                  "type",
+                  "updated"
+                ]
+              }
+            },
+            "backmentions": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "blocks",
+                  "box",
+                  "children",
+                  "count",
+                  "created",
+                  "depth",
+                  "folded",
+                  "hPath",
+                  "id",
+                  "name",
+                  "nameIsHTML",
+                  "nodeType",
+                  "number",
+                  "revision",
+                  "subType",
+                  "type",
+                  "updated"
+                ]
+              }
+            },
+            "box": {
+              "kind": "string"
+            },
+            "k": {
+              "kind": "string"
+            },
+            "linkRefsCount": {
+              "kind": "integer"
+            },
+            "mentionsCount": {
+              "kind": "integer"
+            },
+            "mk": {
+              "kind": "string"
+            },
+            "revision": {
+              "kind": "string"
+            },
+            "unchanged": {
+              "kind": "boolean"
+            }
+          }
+        }
+      }
+    },
+    {
       "path": "/api/riff/getNotebookRiffDueCards",
       "usedBy": [
-        "src/index.ts:3659",
-        "src/index.ts:3744",
-        "src/index.ts:3745",
-        "src/index.ts:4091",
-        "src/index.ts:4119"
+        "src/index.ts:4319",
+        "src/index.ts:4406",
+        "src/index.ts:4407",
+        "src/index.ts:4756",
+        "src/index.ts:4784"
       ],
       "method": "POST",
       "handler": "getNotebookRiffDueCards",
@@ -2306,9 +2478,9 @@
     {
       "path": "/api/search/fullTextSearchBlock",
       "usedBy": [
-        "src/doc-search-ui.ts:635",
-        "src/doc-search-ui.ts:690",
-        "src/search-model.js:719"
+        "src/doc-search-ui.ts:706",
+        "src/doc-search-ui.ts:765",
+        "src/search-model.js:1104"
       ],
       "method": "POST",
       "handler": "fullTextSearchBlock",
@@ -2444,11 +2616,11 @@
     {
       "path": "/api/search/semanticSearchBlock",
       "usedBy": [
-        "src/doc-search-ui.ts:632",
-        "src/doc-search-ui.ts:633",
-        "src/doc-search-ui.ts:687",
-        "src/doc-search-ui.ts:688",
-        "src/search-model.js:719"
+        "src/doc-search-ui.ts:703",
+        "src/doc-search-ui.ts:704",
+        "src/doc-search-ui.ts:762",
+        "src/doc-search-ui.ts:763",
+        "src/search-model.js:1104"
       ],
       "method": "POST",
       "handler": "semanticSearchBlock",
@@ -2572,10 +2744,10 @@
     {
       "path": "/api/storage/getCriteria",
       "usedBy": [
-        "src/index.ts:3669",
-        "src/index.ts:3765",
-        "src/index.ts:3766",
-        "src/index.ts:4498"
+        "src/index.ts:4331",
+        "src/index.ts:4430",
+        "src/index.ts:4431",
+        "src/index.ts:5163"
       ],
       "method": "POST",
       "handler": "getCriteria",
@@ -2717,11 +2889,11 @@
     {
       "path": "/api/storage/getRecentDocs",
       "usedBy": [
-        "src/index.ts:3668",
-        "src/index.ts:3762",
-        "src/index.ts:3763",
-        "src/index.ts:3866",
-        "src/index.ts:6099"
+        "src/index.ts:4330",
+        "src/index.ts:4427",
+        "src/index.ts:4428",
+        "src/index.ts:4531",
+        "src/index.ts:7031"
       ],
       "method": "POST",
       "handler": "getRecentDocs",
@@ -2788,10 +2960,10 @@
     {
       "path": "/api/sync/performSync",
       "usedBy": [
-        "src/index.ts:3423",
-        "src/index.ts:3677",
-        "src/index.ts:3774",
-        "src/index.ts:3775"
+        "src/index.ts:3809",
+        "src/index.ts:4339",
+        "src/index.ts:4439",
+        "src/index.ts:4440"
       ],
       "method": "POST",
       "handler": "performSync",
@@ -2831,10 +3003,11 @@
     {
       "path": "/api/tag/getTag",
       "usedBy": [
-        "src/index.ts:3656",
-        "src/index.ts:3720",
-        "src/index.ts:3721",
-        "src/index.ts:3976"
+        "src/index.ts:4316",
+        "src/index.ts:4382",
+        "src/index.ts:4383",
+        "src/index.ts:4641",
+        "src/index.ts:7644"
       ],
       "method": "POST",
       "handler": "getTag",
@@ -2910,10 +3083,10 @@
     {
       "path": "/api/template/manage",
       "usedBy": [
-        "src/index.ts:3354",
-        "src/index.ts:3680",
-        "src/index.ts:3777",
-        "src/index.ts:3778"
+        "src/index.ts:3740",
+        "src/index.ts:4342",
+        "src/index.ts:4442",
+        "src/index.ts:4443"
       ],
       "method": "POST",
       "handler": "manageTemplateFiles",
@@ -2981,10 +3154,10 @@
     {
       "path": "/api/template/render",
       "usedBy": [
-        "src/index.ts:3402",
-        "src/index.ts:3681",
-        "src/index.ts:3780",
-        "src/index.ts:3781"
+        "src/index.ts:3788",
+        "src/index.ts:4343",
+        "src/index.ts:4445",
+        "src/index.ts:4446"
       ],
       "method": "POST",
       "handler": "renderTemplate",
