@@ -9579,14 +9579,13 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 next = flowNav && flowNeighbor(key) >= 0 ? flowNeighbor(key) : Math.max(focusIndex - colCount, 0);
             } else if (key === "Enter") {
                 event.preventDefault();
-                const target = cards[focusIndex];
-                const tabId = target?.dataset.tabId;
-                const tab = this.cardTabs.get(target) || (this.isMobile
-                    ? this.getMobileTabs().find((item) => item.id === tabId)
-                    : getAllTabs().find((item) => item.id === tabId));
-                if (tab) {
-                    this.activateTab(tab, closeOverlay);
-                }
+                this.activateCardByElement(cards[focusIndex], closeOverlay);
+                return;
+            } else if (/^[1-9]$/.test(key) && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+                // T-6820 数字直达：1-9 打开第 n 个可见卡片（与 R3 面板数字快选同构；
+                // 输入框在滚动容器外，输入数字不会误触此分支）
+                event.preventDefault();
+                this.activateCardByElement(cards[Number(key) - 1], closeOverlay);
                 return;
             } else if (key === "ContextMenu" || (key === "F10" && event.shiftKey)) {
                 // T-6461 动作面板键：键盘呼出聚焦卡片的动作菜单（Shift+F10 / ContextMenu
@@ -9600,6 +9599,11 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     const rect = target.getBoundingClientRect();
                     this.openCardMenu(tab, target, menuHandlers, rect.left + 16, rect.top + 16);
                 }
+                return;
+            } else if ((key === "ArrowLeft" || key === "ArrowRight") && event.ctrlKey && !event.altKey && !event.metaKey) {
+                // T-6820 结果类型快捷键：Ctrl+←/→ 循环过滤条（all→tabs→unified→docs）
+                event.preventDefault();
+                this.cycleSearchChip(scrollElement, key === "ArrowRight" ? 1 : -1);
                 return;
             } else if (key === "Escape") {
                 event.stopPropagation();
@@ -9615,6 +9619,35 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）
+    // T-6820：按元素激活页签卡（Enter 与数字直达共用；卡上无对应页签时静默）
+    private activateCardByElement(card: HTMLElement | undefined, closeOverlay: IOverlayClose) {
+        const tabId = card?.dataset.tabId;
+        const tab = (card && this.cardTabs.get(card)) || (this.isMobile
+            ? this.getMobileTabs().find((item) => item.id === tabId)
+            : getAllTabs().find((item) => item.id === tabId));
+        if (tab) {
+            this.activateTab(tab, closeOverlay);
+        }
+    }
+
+    // T-6820 结果类型快捷键：Ctrl+←/→ 循环过滤条（all→tabs→unified→docs）。
+    // 空查询时无过滤条，快捷键静默不生效。
+    private cycleSearchChip(scrollElement: HTMLElement, delta: number) {
+        const order = ["all", "tabs", "unified", "docs"] as const;
+        const row = scrollElement.querySelector<HTMLElement>(".sw__search-chips");
+        if (!row) return;
+        const current = this.docSearchState.chipFilters.get(scrollElement) || "all";
+        const index = order.indexOf(current as typeof order[number]);
+        const next = order[(index + delta + order.length) % order.length];
+        this.docSearchState.chipFilters.set(scrollElement, next);
+        scrollElement.dataset.swChip = next;
+        row.querySelectorAll<HTMLElement>(".sw__search-chip").forEach((el) => {
+            const active = el.dataset.chip === next;
+            el.classList.toggle("is-active", active);
+            el.setAttribute("aria-selected", String(active));
+        });
+    }
+
     private pickCardByPosition(cards: HTMLElement[], current: HTMLElement, key: string): HTMLElement | null {
         const base = current.getBoundingClientRect();
         let best: HTMLElement | null = null;

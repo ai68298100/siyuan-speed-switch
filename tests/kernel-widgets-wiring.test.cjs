@@ -460,6 +460,19 @@ test('quick capture: multi-target flow with destination preview and receipts (T-
         '活动文档解析必须是独立方法');
 });
 
+test('keyboard-first: digit direct access and chip cycling shortcuts (T-6820)', () => {
+    assert.match(indexSource, /\/\^\[1-9\]\$\/\.test\(key\) && !event\.ctrlKey && !event\.altKey && !event\.metaKey && !event\.shiftKey/,
+        '数字直达必须拒绝修饰键组合（避免遮挡未来快捷键）');
+    assert.match(indexSource, /this\.activateCardByElement\(cards\[Number\(key\) - 1\], closeOverlay\)/,
+        '数字 n 必须打开第 n 个可见卡片');
+    assert.match(indexSource, /private cycleSearchChip\(scrollElement: HTMLElement, delta: number\)/,
+        'chip 循环必须是独立方法（空查询时静默不生效）');
+    assert.match(indexSource, /this\.cycleSearchChip\(scrollElement, key === "ArrowRight" \? 1 : -1\)/,
+        'Ctrl+←/→ 绑定 chip 循环');
+    assert.match(indexSource, /private activateCardByElement\(card: HTMLElement \| undefined, closeOverlay: IOverlayClose\)/,
+        'Enter 与数字直达共用激活逻辑（单一事实来源）');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
