@@ -575,7 +575,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     columns: 0,            // 缩略图列数，0=自动
     thumbHeight: 128,      // 缂╃暐鍥鹃珮搴?px
     sortBy: "mru",         // 页签排序方式
-    excludedDocks: [],     // 涓嶆樉绀哄湪宸︿晶鍒楄〃鐨勯潰鏉跨被鍨?
+    excludedDocks: [],     // 不显示在左侧列表的面板类型
     dockDisplay: "collapsed",   // Default to the compact icon rail; users can expand it when labels are needed.
     fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
@@ -2686,7 +2686,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.refreshFavSelects();
     }
 
-    // 鍗曚釜鍒嗙粍琛岋細鍚嶇О + 鏀惰棌鏁?+ 閲嶅懡鍚嶆寜閽?+ 鍒犻櫎鎸夐挳
+    // 单个分组行：名称 + 收藏数 + 重命名按钮 + 删除按钮
     private buildFavGroupRow(name: string, count: number, render: () => void): HTMLElement {
         const row = document.createElement("div");
         row.className = "sw-setting__group-row";
@@ -2710,7 +2710,7 @@ export default class SpeedSwitchPlugin extends Plugin {
             this.replaceFavGroupRowWithRenameControls(row, name, render);
         });
 
-        // 鍒犻櫎鍒嗙粍锛氱粍鍐呮敹钘忛」绉诲嚭鍒版湭鍒嗙粍
+        // 删除分组：组内收藏项移出到未分组
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
         deleteBtn.className = "b3-button b3-button--small sw-setting__group-btn sw-setting__group-del";
@@ -2807,7 +2807,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         box.appendChild(list);
     }
 
-    // ==================== 鍒囨崲鍣?====================
+    // ==================== 切换器 ====================
 
     // 打开页签切换器
     private showSwitcher(focusSearch = false) {
@@ -2828,7 +2828,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const releaseFab = this.suspendFABForDialog();
         const switcherRelease: {fn: () => void} = {fn: releaseFab};
         const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease);
-        // 宸ュ叿鏍?鍒楄〃/鍥炲埌椤堕儴/缂╃暐鍥炬噿鍔犺浇 绛夊瓙妯″潡瑁呴厤
+        // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
         this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch);
     }
 
@@ -3003,7 +3003,7 @@ const updatedMap: {[rootId: string]: string} = {};
         this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
         this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap);
 
-        // 鏀惰棌涓嬫媺缁勪欢锛氭槦鏍囪Е鍙?+ 鍒嗙粍闈㈡澘锛堝垎缁勫彲鎶樺彔/灞曞紑锛岄」鐐瑰嚮璺宠浆锛?
+        // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
         this.setupFavDropdown(favDd, closeOverlay, refreshList);
         if (sortSelect) {
@@ -3098,7 +3098,7 @@ const updatedMap: {[rootId: string]: string} = {};
         });
     }
 
-    // 缁戝畾鍥炲埌椤堕儴鎸夐挳锛氭粴鍔ㄨ秴杩?240px 鏄剧ず锛岀偣鍑诲钩婊戝洖椤?
+    // 绑定回到顶部按钮：滚动超过 240px 显示，点击平滑回顶
     private bindSwitcherBackTop(dialog: Dialog, scrollElement: HTMLElement) {
         const backTopBtn = dialog.element.querySelector<HTMLElement>(".sw__back-top");
         if (!backTopBtn) {
@@ -3163,7 +3163,7 @@ const updatedMap: {[rootId: string]: string} = {};
         const applySortChange = (nextSort: SortBy) => {
             this.updateSettings({sortBy: nextSort});
             const scrollElement = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
-            // 寮圭獥瀛樻椿鏈熼棿椤电鍙兘宸插鍑忥紝閲嶅彇鏈€鏂板垪琛紱娌跨敤鍏变韩 updatedMap锛屽凡鍥炴簮鐨勬洿鏂版椂闂翠笉涓?
+            // 弹窗存活期间页签可能已增减，重取最新列表；沿用共享 updatedMap，已回源的更新时间不重算
             if (scrollElement) {
                 this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, nextSort, updatedMap);
             }
@@ -6869,7 +6869,7 @@ const updatedMap: {[rootId: string]: string} = {};
         try {
             const dock = this.getDockByType(type);
             if (dock) {
-                // 涓庢€濇簮 Ctrl+Tab 鍒囨崲闈㈡澘涓€鑷达細show=true 琛ㄧず鑱氱劍/灞曞紑璇ラ潰鏉?
+                // 与思源 Ctrl+Tab 切换面板一致：show=true 表示聚焦/展开该面板
                 dock.toggleModel(type, true);
             }
         } catch (e) {
@@ -6972,7 +6972,7 @@ private rootIdOf(tab: Tab): string | null {
 
     // ==================== 鏀惰棌 ====================
 
-    // 璇诲彇鏀惰棌鍒楄〃锛堟渶杩戞敹钘忓湪鍓嶏級
+    // 读取收藏列表（最近收藏在前）
     private getFavorites(): IFavoriteItem[] {
         const data = this.data[FAV_KEY];
         const result = sanitizeFavorites(data, FAVORITES_MAX);
@@ -6988,7 +6988,7 @@ private rootIdOf(tab: Tab): string | null {
         this.saveDataDebounced(FAV_KEY);
     }
 
-    // 鍒囨崲鏀惰棌鐘舵€侊紝杩斿洖鍒囨崲鍚庢槸鍚︿负宸叉敹钘?
+    // 切换收藏状态，返回切换后是否为已收藏
     private toggleFavorite(tab: Tab): boolean {
         const list = this.getFavorites();
         const rootId = this.rootIdOf(tab);
@@ -7034,7 +7034,7 @@ private rootIdOf(tab: Tab): string | null {
         if (result.changed) this.saveFavorites(result.items);
     }
 
-    // ==================== 鏀惰棌鍒嗙粍鎶樺彔鐘舵€佹寔涔呭寲 ====================
+    // ==================== 收藏分组折叠状态持久化 ====================
     // 分组折叠偏好此前是会话级的（重启即全部展开）；改为持久化，重启后保持用户上次的展开/折叠习惯
 
     // 从持久化数据初始化 favCollapsed 集合
@@ -7449,7 +7449,7 @@ private rootIdOf(tab: Tab): string | null {
     // 触发按钮（星标 + 数量徽标）+ 浮层面板（分组标题可折叠/展开，组内项点击跳转）
 
     // 初始化一个收藏下拉组件（弹窗与侧边栏各一份）
-    // onClose锛氶€夋嫨鏀惰棌椤瑰悗鐨勬敹灏撅紙寮圭獥閿€姣?/ 渚ц竟鏍忓埛鏂帮級锛岀粍浠跺唴閮ㄨ繕浼氬悓鏃舵敹璧烽潰鏉?
+    // onClose：选择收藏项后的收尾（弹窗销毁 / 侧边栏刷新），组件内部还会同时收起面板
     private setupFavDropdown(container: HTMLElement, onClose: IOverlayClose, onChanged: IOverlayClose = () => undefined) {
         container.innerHTML = `<button type="button" class="sw__fav-trigger">
     <svg><use xlink:href="#iconStar"></use></svg>
@@ -7462,7 +7462,7 @@ private rootIdOf(tab: Tab): string | null {
         const panel = container.querySelector<HTMLElement>(".sw__fav-panel");
 
         // 面板打开期间才监听 DOM 变化：容器被移除（弹窗销毁/侧边栏重渲染）时解绑全局监听；
-        // 闈㈡澘鍏抽棴鍗?disconnect锛岄伩鍏?body 绾?MutationObserver 闅忕紪杈戞搷浣滃叏灞€甯搁┗
+        // 面板关闭即 disconnect，避免 body 级 MutationObserver 随编辑操作全局常驻
         const observer = typeof MutationObserver === "function" ? new MutationObserver(() => {
             if (!container.isConnected) {
                 unbindGlobal();
@@ -7565,7 +7565,7 @@ private rootIdOf(tab: Tab): string | null {
             return;
         }
 
-        // 鎸夊垎缁勫綊绫伙紙鍒嗙粍椤哄簭 = 娉ㄥ唽琛ㄦ柊寤洪『搴忓湪鍓嶏紱娉ㄥ唽琛ㄤ腑鐨勭┖鍒嗙粍涔熷崰浣嶏紝鏁伴噺鏄剧ず 0锛?
+        // 按分组归类（分组顺序 = 注册表新建顺序在前；注册表中的空分组也占位，数量显示 0）
         const groups = groupFavoritesByGroup(favorites, groupNames);
 
         // 有分组时未分组的置底显示为「未分组」；无任何分组时平铺不显示组头
@@ -7930,7 +7930,7 @@ private rootIdOf(tab: Tab): string | null {
         this.saveDataDebounced(FAV_GROUPS_KEY);
     }
 
-    // 鍏ㄩ儴鍒嗙粍鍚嶏細娉ㄥ唽琛ㄥ湪鍓嶄繚鎸佹柊寤洪『搴忥紝鍐嶅苟鍏ユ敹钘忛」涓婂嚭鐜拌繃鐨勫垎缁勫悕锛屽幓閲?
+    // 全部分组名：注册表在前保持新建顺序，再并入收藏项上出现过的分组名，去重
     private getFavoriteGroupNames(): string[] {
         const merged: string[] = [];
         this.getFavGroupRegistry()
@@ -7953,7 +7953,7 @@ private rootIdOf(tab: Tab): string | null {
         return true;
     }
 
-    // 鍒犻櫎鍒嗙粍锛氭敞鍐岃〃绉婚櫎锛岀粍鍐呮敹钘忛」绉诲嚭鍒版湭鍒嗙粍
+    // 删除分组：注册表移除，组内收藏项移出到未分组
     private deleteFavoriteGroup(name: string) {
         this.saveFavGroupRegistry(this.getFavGroupRegistry().filter((item) => item !== name));
         const list = this.getFavorites();
@@ -8011,8 +8011,8 @@ private rootIdOf(tab: Tab): string | null {
         favoriteButton?.setAttribute("title", label);
     }
 
-    // 鏄熸爣鐐瑰嚮鑿滃崟锛氭湭鏀惰棌鏃堕€夋嫨鏀惰棌鏂瑰紡锛堝揩閫熸敹钘?/ 鏀惰棌鍒板垎缁?/ 鏂板缓鍒嗙粍鏀惰棌锛夛紝
-    // 宸叉敹钘忔椂绠＄悊鍒嗙粍锛堝垏鎹㈠垎缁?/ 绉诲嚭鍒嗙粍 / 鍙栨秷鏀惰棌锛?
+    // 星标点击菜单：未收藏时选择收藏方式（快速收藏 / 收藏到分组 / 新建分组收藏），
+    // 已收藏时管理分组（切换分组 / 移出分组 / 取消收藏）
     private openFavMenu(tab: Tab, card: HTMLElement, event: MouseEvent) {
         const key = this.pinKeyOf(tab);
         const favorite = this.getFavorites().find((item) => item.key === key);
@@ -8060,7 +8060,7 @@ private rootIdOf(tab: Tab): string | null {
         });
     }
 
-    // 宸叉敹钘忚彍鍗曪細鍒嗙粍鍒楄〃锛堝綋鍓嶅垎缁勬墦鍕撅級+ 绉诲嚭鍒嗙粍 + 鏂板缓鍒嗙粍 + 鍙栨秷鏀惰棌
+    // 已收藏菜单：分组列表（当前分组打勾）+ 移出分组 + 新建分组 + 取消收藏
     private buildFavMenuFavorited(
         menu: Menu,
         tab: Tab,
@@ -8130,7 +8130,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     // 收藏下拉项右键菜单：移动到既有分组（子菜单，当前分组勾选）/ 取消收藏。
-    // 鎿嶄綔鍚庝繚鎸侀潰鏉垮睍寮€骞跺氨鍦伴噸寤猴紝鏂逛究杩炵画澶勭悊澶氫釜鏀惰棌椤广€?
+    // 操作后保持面板展开并就地重建，方便连续处理多个收藏项。
     private openFavItemMenu(panel: HTMLElement, fav: IFavoriteItem, onPick: () => void, event: MouseEvent, onChanged: IOverlayClose = () => undefined) {
         const menu = new Menu("swFavItemMenu");
         const moveSub = [{checked: !fav.group, label: this.escapeAttr(this.i18n.ungrouped),
@@ -8409,7 +8409,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     // 按窗口分组并渲染全部页签
-    // onOverlayClose锛氭縺娲婚〉绛?鎵撳紑鏂囨。鍚庣殑鏀跺熬锛堝脊绐楅攢姣侊紱渚ц竟鏍忓埛鏂帮級
+    // onOverlayClose：激活页签/打开文档后的收尾（弹窗销毁；侧边栏刷新）
     // onTabsChanged：关闭页签后的收尾（弹窗保持打开；侧边栏刷新）
     private renderList(scrollElement: HTMLElement, tabs: Tab[], activeTab: Tab | undefined,
                        opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose},
@@ -8461,7 +8461,7 @@ private rootIdOf(tab: Tab): string | null {
         this.renderThumbnails(all, scrollElement, THUMB_BATCH);
     }
 
-    // 鍗曚竴鍒嗙粍鎺掑簭锛氱疆椤堕〉绛惧浐瀹氬湪鍓嶏紝鍏朵綑鎸?sortBy 鎺掑垪锛坮estItems 鍐呴儴 sort 璧?stable 鎺掑簭锛?
+    // 单一分组排序：置顶页签固定在前，其余按 sortBy 排列（restItems 内部 sort 走 stable 排序）
     private sortGroupItems(
         group: IGroupedTab[],
         sortBy: SortBy,
@@ -8476,7 +8476,7 @@ private rootIdOf(tab: Tab): string | null {
         });
     }
 
-    // 娓叉煋鍗曚竴鍒嗙粍锛歭abel + grid + 鍚勫崱鐗囷紱鍗＄墖鑾峰彇濮旀墭 acquireGroupCard锛涚疮绉?defaultFocusIndex
+    // 渲染单一分组：label + grid + 各卡片；卡片获取委托 acquireGroupCard；累积 defaultFocusIndex
     private renderTabGroup(
         scrollElement: HTMLElement,
         ordered: IGroupedTab[],
@@ -8947,7 +8947,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return verified;
     }
 
-    // 灏忕潯宸ュ叿锛氭壒閲忓紑/鍏抽〉绛炬椂閬垮厤绔炴€?
+    // 小驴工具：批量开/关页签时避免竞态
     private sleep(ms: number): Promise<void> {
         return new Promise((resolve) => window.setTimeout(resolve, ms));
     }
@@ -8960,7 +8960,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             showMessage(this.i18n.closeTabFailed, MESSAGE_DEFAULT_MS, "error");
             return;
         }
-        // 鍏堝彇寮曠敤鍐嶇Щ闄ゅ崱鐗囷紙remove 鍚?closest 杩斿洖 null锛?
+        // 先取引用再移除卡片（remove 后 closest 返回 null）
         const group = card.closest(".sw__group");
         const scroll = card.closest(".sw__scroll");
         card.remove();
@@ -9009,7 +9009,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         card.appendChild(this.buildCardActions(tab, card, isPinned, isFaved, handlers));
         item.card = card;
 
-        // 妗岄潰鍙抽敭 / 鎵嬫満闀挎寜锛氬潎寮瑰悓涓€鎿嶄綔鑿滃崟锛坧in / fav / 鍒嗙粍 / close锛?
+        // 桌面右键 / 手机长按：均弹同一操作菜单（pin / fav / 分组 / close）
         card.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -9076,7 +9076,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return iconBox;
     }
 
-    // 瑙掓爣鎸夐挳锛堢疆椤?+ 鏀惰棌 + 鍏抽棴锛夛紝缁熶竴杩斿洖 Fragment 渚夸簬涓€娆℃€ф彃鍏?
+    // 角标按钮（置顶 + 收藏 + 关闭），统一返回 Fragment 便于一次性插入
     private buildCardActions(
         tab: Tab,
         card: HTMLElement,
@@ -9296,7 +9296,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
     }
 
-    // ==================== 缂╃暐鍥炬覆鏌?====================
+    // ==================== 缩略图渲染 ====================
 
     // 渲染单个页签缩略图：实时 DOM 克隆 → 持久化缓存 → 内核 API 回源（带并发闸门）
     private renderThumbItem(item: IGroupedTab) {
@@ -9337,7 +9337,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 视口懒渲染：只给滚动到可视区（含 240px 预载边距）的卡片生成缩略图，
-    // 瑙嗗彛澶栦繚鎸佸姞杞藉崰浣嶃€傛墦寮€鍒囨崲鍣ㄤ粠"鍏ㄩ噺鍏嬮殕"闄嶄负"棣栧睆鍏嬮殕"锛屽ぇ鍒楄〃绉掑紑
+    // 视野外保持加载占位。打开切换器从"全量克隆"降为"首屏克隆"，大列表秒开
     private renderThumbnails(list: IGroupedTab[], scrollElement: HTMLElement, batch: number) {
         // 同一容器重复渲染时（排序切换/列表刷新）先断开旧观察器，防止泄漏与重复渲染
         // 用 WeakMap 把 IntersectionObserver 绑在元素上，替代 (el as any).__swThumbObserver 的自挂私有属性写法
