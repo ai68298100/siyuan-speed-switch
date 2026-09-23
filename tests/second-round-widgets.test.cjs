@@ -103,15 +103,16 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
     }
 });
 
-test("ADR 0074 recalibrates the raw bundle self-discipline line for the R1 absorb batch", () => {
+test("ADR 0077 recalibrates the raw bundle self-discipline line for the navigation-context batches", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
-    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 960 * 1024);
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1024 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-23 \(ADR 0074\)/);
-    const adr = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0074-raw-bundle-line-recalibration.md"), "utf8");
-    assert.match(adr, /960 KiB/);
+    assert.match(gateRaw, /2026-09-24 \(ADR 0077\)/);
+    const adr = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0077-raw-bundle-line-recalibration.md"), "utf8");
+    assert.match(adr, /1024 KiB/);
     assert.match(adr, /512 KiB/);
     const zh = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "zh-CN.json"), "utf8"));
     const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));

@@ -187,6 +187,9 @@ test('production bundle remains within the mobile performance budget when built'
     // cycle R1 landed host-command bridge, sync, template insert, unified
     // index, workspace switching, and scroll restoration. Same review-signal
     // policy; hard ceilings unchanged and the next bump requires a new audit.
+    // 2026-09-24 (ADR 0077): recalibrated to 1024 KiB after the navigation-context
+    // P0 batches (related content, restore receipts, preview open, dynamic
+    // groups, multi-target capture). Same review-signal policy.
     const budget = metrics.RAW_BUNDLE_BUDGET_BYTES;
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });

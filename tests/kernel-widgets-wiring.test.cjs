@@ -445,6 +445,21 @@ test('dynamic groups: composed conditions reach the bounded query builder (T-681
         '新增组合条件必须透传到设置持久化');
 });
 
+test('quick capture: multi-target flow with destination preview and receipts (T-6818)', () => {
+    assert.match(indexSource, /makeTargetButton\("journal", this\.i18n\.quickCaptureTargetJournal\)/,
+        '日记目标必须存在且为默认');
+    assert.match(indexSource, /if \(!this\.isMobile\) makeTargetButton\("current", this\.i18n\.quickCaptureTargetCurrent\);/,
+        '当前文档目标仅桌面提供');
+    assert.match(indexSource, /previewLine\.setAttribute\("aria-live", "polite"\);/,
+        '目的地预览行必须存在（提交前声明写到哪里）');
+    assert.match(indexSource, /const capture = this\.resolveActiveCaptureRoot\(\);\n\s*if \(!capture\) \{/,
+        '当前文档写入前必须解析活动文档（缺失即分步失败原因）');
+    assert.match(indexSource, /quickCapturePreviewCurrent\.replace\("\{x\}", capture\.title\)/,
+        '成功回执必须携带目标文档标题');
+    assert.match(indexSource, /private resolveActiveCaptureRoot\(\)/,
+        '活动文档解析必须是独立方法');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

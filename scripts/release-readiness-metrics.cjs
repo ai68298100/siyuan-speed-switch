@@ -6,7 +6,10 @@
 // cycle R1 batch (host-command bridge, sync, template insert, unified index,
 // workspace switching, scroll restoration). Dated recalibration, hard ceilings
 // unchanged; the next bump requires a new audit (ADR 0059/0062/0067 program).
-const RAW_BUNDLE_BUDGET_BYTES = 960 * 1024;
+// ADR 0077 (2026-09-24): recalibrated 960 -> 1024 KiB after the navigation-context
+// P0 batches (related content, restore receipts, preview open, dynamic groups,
+// multi-target capture). Hard ceilings unchanged.
+const RAW_BUNDLE_BUDGET_BYTES = 1024 * 1024;
 const ARCHIVE_BUDGET_BYTES = 512 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the

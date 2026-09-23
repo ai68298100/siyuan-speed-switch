@@ -2150,21 +2150,31 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 商店预览 dialog（openStoreWidgetPreview）已外迁至 home-store-ui.ts（R1，D-379）
 
+    // T-6818 快速捕获流程：输入 → 目标（今日日记/当前文档）→ 目的地预览 →
+    // 受控写入（白名单端点/既有桥）→ 回执。每步失败原因独立呈现。
     private openQuickCapture(preferredNotebook = "", initialText = "") {
         const dialog = new Dialog({
             title: this.i18n.quickCaptureTitle,
             content: '<div class="speed-switch sw-quick-capture"></div>',
             width: this.isMobile ? "min(420px, 92vw)" : "380px",
-            height: this.isMobile ? "min(280px, 60vh)" : "230px",
+            height: this.isMobile ? "min(280px, 60vh)" : "260px",
         });
         const root = dialog.element.querySelector<HTMLElement>(".sw-quick-capture");
         if (!root) return;
+        type CaptureTarget = "journal" | "current";
+        let target: CaptureTarget = "journal";
+
         const input = document.createElement("textarea");
         input.className = "b3-text-field fn__block sw-quick-capture__input";
         input.rows = 3;
         input.placeholder = this.i18n.quickCapturePlaceholder;
         input.value = initialText;
         input.setAttribute("aria-label", this.i18n.quickCaptureTitle);
+        // T-6815/T-6818 目的地预览：写到哪里、写什么副作用，提交前可见
+        const previewLine = document.createElement("p");
+        previewLine.className = "sw-quick-capture__preview";
+        previewLine.setAttribute("aria-live", "polite");
+
         const actions = document.createElement("div");
         actions.className = "sw-quick-capture__actions";
         const cancel = document.createElement("button");
@@ -2176,6 +2186,57 @@ export default class SpeedSwitchPlugin extends Plugin {
         save.type = "button";
         save.className = "b3-button b3-button--outline";
         save.textContent = this.i18n.quickCaptureSave;
+
+        const targets = document.createElement("div");
+        targets.className = "sw-quick-capture__targets";
+        targets.setAttribute("role", "tablist");
+        const targetButtons: Array<{key: CaptureTarget; el: HTMLButtonElement}> = [];
+        const makeTargetButton = (key: CaptureTarget, label: string) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--small";
+            button.textContent = label;
+            button.setAttribute("role", "tab");
+            button.addEventListener("click", () => setActiveTarget(key));
+            targetButtons.push({key, el: button});
+            targets.appendChild(button);
+        };
+        makeTargetButton("journal", this.i18n.quickCaptureTargetJournal);
+        const captureRoot = this.resolveActiveCaptureRoot();
+        if (!this.isMobile) makeTargetButton("current", this.i18n.quickCaptureTargetCurrent);
+        const setActiveTarget = (next: CaptureTarget) => {
+            target = next;
+            targetButtons.forEach(({key, el}) => {
+                el.classList.toggle("sw__target--active", key === target);
+                el.setAttribute("aria-selected", String(key === target));
+            });
+            updatePreview();
+        };
+        const updatePreview = () => {
+            if (target === "journal") {
+                save.disabled = false;
+                const today = new Date();
+                const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+                previewLine.textContent = this.i18n.quickCapturePreviewJournal.replace("{x}", ymd);
+                // 预览 enriched：笔记本名异步补齐（有界缓存清单）
+                void this.loadNotebooks().then((notebooks: Array<{id: string; name: string}>): void => {
+                    if (!previewLine.isConnected) return;
+                    const notebookId = normalizeAgentNotebookId(preferredNotebook) || normalizeAgentNotebookId(this.getSettings().journalNotebook);
+                    const found = notebooks.find((nb) => nb.id === notebookId);
+                    if (found) previewLine.textContent = this.i18n.quickCapturePreviewJournal.replace("{x}", `${found.name} · ${ymd}`);
+                }).catch((): undefined => undefined);
+                return;
+            }
+            const capture = this.resolveActiveCaptureRoot();
+            if (capture) {
+                save.disabled = false;
+                previewLine.textContent = this.i18n.quickCapturePreviewCurrent.replace("{x}", capture.title);
+            } else {
+                save.disabled = true;
+                previewLine.textContent = this.i18n.quickCaptureNoTarget;
+            }
+        };
+
         let saving = false;
         const submit = () => {
             if (saving) return;
@@ -2190,6 +2251,25 @@ export default class SpeedSwitchPlugin extends Plugin {
                 cancel.disabled = true;
                 let completed = false;
                 try {
+                    if (target === "current") {
+                        // 受控写入（当前文档）：追加到活动文档末尾（内核 appendBlock，白名单端点）
+                        const capture = this.resolveActiveCaptureRoot();
+                        if (!capture) {
+                            showMessage(this.i18n.quickCaptureNoTarget, MESSAGE_DEFAULT_MS, "error");
+                            return;
+                        }
+                        const appendJson = await this.fetchKernelJson("/api/block/appendBlock", {
+                            dataType: "markdown", data: content, parentID: capture.rootId,
+                        });
+                        if (!appendJson || appendJson.code !== 0) {
+                            showMessage(this.i18n.quickCaptureFailed, MESSAGE_DEFAULT_MS, "error");
+                            return;
+                        }
+                        completed = true;
+                        dialog.destroy();
+                        showMessage(`${this.i18n.quickCaptureDone} · ${this.i18n.quickCapturePreviewCurrent.replace("{x}", capture.title)}`);
+                        return;
+                    }
                     let notebook = normalizeAgentNotebookId(preferredNotebook) || normalizeAgentNotebookId(this.getSettings().journalNotebook);
                     if (!notebook) {
                         notebook = await this.promptJournalNotebook();
@@ -2231,11 +2311,23 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         });
         actions.append(cancel, save);
-        root.append(input, actions);
+        root.append(targets, input, previewLine, actions);
+        setActiveTarget("journal");
         window.setTimeout(() => {
             input.focus();
             input.setSelectionRange(input.value.length, input.value.length);
         }, 30);
+    }
+
+    // T-6818：活动文档捕获目标（rootId + 可见标题）；无活动编辑器时为 null
+    private resolveActiveCaptureRoot(): {rootId: string; title: string} | null {
+        const editor = this.resolveActiveHostEditor();
+        const rootId = String(editor?.protyle?.block?.parentID || "");
+        if (!editor || !rootId) return null;
+        const title = document.querySelector(".layout__wnd--active .item--focus .protyle-title")?.textContent?.trim()
+            || document.querySelector(".protyle-title")?.textContent?.trim()
+            || rootId;
+        return {rootId, title: title.slice(0, 120)};
     }
 
     private async openJournal(preferredNotebook = "") {
