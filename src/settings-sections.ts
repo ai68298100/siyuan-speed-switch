@@ -319,7 +319,7 @@ export function buildSettingsJournal(this: SettingsSectionsHost, s: ISwSettings)
         return wrapper;
     }
 
-    // ===== 璁剧疆椤?路 鏀惰棌锛氭柊寤哄垎缁勩€佸垎缁勯噸鍛藉悕/鍒犻櫎銆佽皟鏁存敹钘忛」鎵€灞炲垎缁?=====
+    // ===== 设置页 · 收藏：新建分组、分组重命名/删除、调整收藏项所属分组 =====
     // 内容随增删实时重建，故 render 回调在内部定义后传给各渲染 helper
 export function buildSettingsFavorites(this: SettingsSectionsHost, ): HTMLElement {
         const box = document.createElement("div");
@@ -342,7 +342,7 @@ export function buildSettingsFavorites(this: SettingsSectionsHost, ): HTMLElemen
         return this.settingItem(this.i18n.manageFavorites, this.i18n.manageFavoritesTip, box, true);
     }
 
-    // 鏂板缓鍒嗙粍琛岋細杈撳叆鍚嶇О鍗冲垱寤猴紙绌哄垎缁勪繚鐣欙紝鏀惰棌鏃跺彲閫夌敤锛?
+    // 新建分组行：输入名称即创建（空分组保留，收藏时可选用）
 // T-6804 智能分组配置：名称 + 标签选择（标签清单来自内核 getTag），最多 4 组。
 export function buildSettingsFavSmartGroups(this: SettingsSectionsHost, box: HTMLElement, render: () => void): void {
     const section = document.createElement("div");
@@ -465,7 +465,7 @@ export function buildSettingsFavCreateRow(this: SettingsSectionsHost, render: ()
         return createRow;
     }
 
-    // 鍒嗙粍鍒楄〃锛氭瘡琛?鍚嶇О + 鏀惰棌鏁?+ 琛屽唴閲嶅懡鍚?+ 鍒犻櫎锛堢粍鍐呮敹钘忛」绉诲嚭鍒版湭鍒嗙粍锛?
+    // 分组列表：每行 名称 + 收藏数 + 行内重命名 + 删除（组内收藏项移出到未分组）
 export function buildSettingsFavGroupList(this: SettingsSectionsHost, groupNames: string[], favorites: IFavoriteItem[], render: () => void): HTMLElement {
         const groupList = document.createElement("div");
         groupList.className = "sw-setting__group-list";
