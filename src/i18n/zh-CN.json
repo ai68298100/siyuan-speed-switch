@@ -89,6 +89,8 @@
   "quickCapturePreviewJournal": "将追加到今日日记（{x}）末尾",
   "quickCapturePreviewCurrent": "将追加到《{x}》末尾",
   "quickCaptureNoTarget": "没有可写入的活动文档",
+  "commandModeLabel": "命令",
+  "commandModeEmpty": "无匹配命令",
   "quickCaptureSave": "追加到今日日记",
   "quickCaptureEmpty": "请输入内容",
   "quickCaptureDone": "已追加到今日日记",

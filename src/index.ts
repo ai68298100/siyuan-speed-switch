@@ -3384,6 +3384,11 @@ const updatedMap: {[rootId: string]: string} = {};
         }, true);
         // T-6799 统一索引：查询时把"收藏/最近关闭/文档集"的命中分区渲染在
         // 页签卡片与全库文档结果之间；空查询时整块移除。
+        // T-6820 命令前缀：`>` 进入命令面板模式，只列可执行动作（不再搜文档）
+        if (keyword.startsWith(">")) {
+            this.renderCommandList(scrollElement, keyword.slice(1).trim(), onClose);
+            return;
+        }
         this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
         // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口。
         this.renderWorkbench(scrollElement, keyword, onClose);
@@ -3472,6 +3477,47 @@ const updatedMap: {[rootId: string]: string} = {};
     // T-6799 统一索引分区：收藏/最近关闭/文档集的查询命中。挂在页签卡片之后、
     // 全库文档结果区之前；激活语义见 activateUnifiedItem。纯过滤逻辑在
     // switcher-unified-index.js（可单元测试），本层只做装配。
+    // T-6820 命令前缀渲染：`>查询` 只列可执行动作（内建 + 宿主命令），
+    // 点击/激活走既有 executeQuickAction（回执与失败原因同管线）。
+    private renderCommandList(scrollElement: HTMLElement, query: string, onClose: IOverlayClose) {
+        scrollElement.querySelector(".sw__unified")?.remove();
+        scrollElement.querySelector(".sw__doc-results")?.remove();
+        scrollElement.querySelector(".sw__search-chips")?.remove();
+        let box = scrollElement.querySelector<HTMLElement>(".sw__command-list");
+        if (!box) {
+            box = document.createElement("div");
+            box.className = "sw__command-list sw__group";
+            scrollElement.appendChild(box);
+        }
+        box.textContent = "";
+        const label = document.createElement("div");
+        label.className = "sw__window-label";
+        label.textContent = this.i18n.commandModeLabel;
+        box.appendChild(label);
+        const catalog = [...getBuiltinQuickActions(), ...getGlobalQuickActions()]
+            .filter((action) => action.targets?.includes("desktop"));
+        const q = query.toLowerCase();
+        const matched = q ? catalog.filter((action) => (action.label || "").toLowerCase().includes(q)) : catalog;
+        if (!matched.length) {
+            const empty = document.createElement("div");
+            empty.className = "sw__doc-status sw__doc-status--empty";
+            empty.textContent = this.i18n.commandModeEmpty;
+            box.appendChild(empty);
+            return;
+        }
+        matched.slice(0, 12).forEach((action) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "sw__doc-item";
+            item.textContent = action.label || action.value || "";
+            item.addEventListener("click", () => {
+                onClose();
+                this.executeQuickAction(action as IQuickAction, null, onClose);
+            });
+            box.appendChild(item);
+        });
+    }
+
     private renderUnifiedSections(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose, parsedQuery?: {phrases: string[]; excludes: string[]; terms: string[]}) {
         const existing = scrollElement.querySelector<HTMLElement>(".sw__unified");
         if (!keyword) {

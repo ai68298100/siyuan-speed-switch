@@ -89,6 +89,8 @@
   "quickCapturePreviewJournal": "Appends to today journal ({x})",
   "quickCapturePreviewCurrent": "Appends to end of \"{x}\"",
   "quickCaptureNoTarget": "No active document to write",
+  "commandModeLabel": "Commands",
+  "commandModeEmpty": "No matching commands",
   "quickCaptureSave": "Append to today's journal",
   "quickCaptureEmpty": "Please enter something",
   "quickCaptureDone": "Appended to today's journal",

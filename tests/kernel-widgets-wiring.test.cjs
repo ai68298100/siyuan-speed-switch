@@ -542,6 +542,18 @@ test('session marks: set/jump commands with ratio restore (T-6820/R3 marks)', ()
         '文档未打开时先经打开链路聚焦再回卷');
 });
 
+test('command prefix: `>` mode lists executable actions in place of doc results (T-6820)', () => {
+    assert.match(indexSource, /if \(keyword\.startsWith\(">"\)\) \{/,
+        'applySearch 必须识别 `>` 命令前缀');
+    assert.match(indexSource, /private renderCommandList\(scrollElement: HTMLElement, query: string, onClose: IOverlayClose\)/,
+        '命令列表必须是独立渲染方法');
+    assert.match(indexSource, /getBuiltinQuickActions\(\), \.\.\.getGlobalQuickActions\(\)/,
+        '目录=内建动作+宿主命令（同一命令面板）');
+    assert.match(indexSource, /\.filter\(\(action\) => action\.targets\?\.includes\("desktop"\)\)/,
+        '命令模式仅列当前端可执行的动作');
+    assert.match(indexSource, /matched\.slice\(0, 12\)/, '命令列表有界（≤12）');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
