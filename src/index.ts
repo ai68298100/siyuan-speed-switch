@@ -519,6 +519,8 @@ declare module "./search-model" {
         degraded: boolean;
         reasons: string[];
     };
+    export function pickDocViewportAnchor(entries: Array<{key: string; top: number}>, viewportHeight: number): {key: string; offset: number} | null;
+    export function planDocViewportRestore(anchor: {key: string; offset: number} | null, entries: Array<{key: string; top: number}>, scrollTop: number): number | null;
     export function filterSearchDocuments(value: unknown[], filters?: Record<string, unknown>): unknown[];
     export function matchesSearchDocumentFilters(value: unknown, filters?: {
         notebook?: string;

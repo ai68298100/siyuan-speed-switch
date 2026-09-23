@@ -9,6 +9,8 @@ const {
     normalizeSearchResult,
     buildSearchScoreBreakdown,
     buildSearchHealthSnapshot,
+    pickDocViewportAnchor,
+    planDocViewportRestore,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
@@ -977,4 +979,52 @@ test("search diagnostics: empty and unavailable sources remain safe and serializ
     assert.deepEqual(snapshot.counts, {tabs: 0, opened: 0, global: 4});
     assert.deepEqual(snapshot.reasons, ["empty-query", "source-unavailable", "remote-error"]);
     assert.doesNotThrow(() => JSON.stringify(snapshot));
+});
+
+test("viewport anchor: pins the first doc item intersecting the viewport (T-6825)", () => {
+    const entries = [
+        {key: "a", top: -300},
+        {key: "b", top: -20},
+        {key: "c", top: 40},
+        {key: "d", top: 900},
+    ];
+    assert.deepEqual(pickDocViewportAnchor(entries, 600), {key: "c", offset: 40});
+    // 文档区不在视口内（全部在下方）→ 无锚点，不做任何钉定
+    assert.equal(pickDocViewportAnchor([{key: "z", top: 1200}], 600), null);
+    assert.equal(pickDocViewportAnchor([], 600), null);
+    assert.equal(pickDocViewportAnchor(entries, 0), null);
+    assert.equal(pickDocViewportAnchor("bad", 600), null);
+    assert.equal(pickDocViewportAnchor([{key: "", top: 10}], 600), null);
+});
+
+test("viewport restore: same item returns to its recorded viewport offset", () => {
+    // 用户视口停在 key=c 顶部 40px 处，scrollTop=1200；重渲染后 c 的 top 变为 96
+    const anchor = {key: "c", offset: 40};
+    const rebuilt = [{key: "a", top: -260}, {key: "c", top: 96}, {key: "d", top: 400}];
+    assert.equal(planDocViewportRestore(anchor, rebuilt, 1200), 1256);
+    // 结果集变化：锚点条目消失 → 保持现状不猜位置
+    assert.equal(planDocViewportRestore(anchor, [{key: "d", top: 30}], 1200), null);
+    assert.equal(planDocViewportRestore(null, rebuilt, 1200), null);
+    assert.equal(planDocViewportRestore(anchor, "bad", 1200), null);
+    assert.equal(planDocViewportRestore({key: "c", offset: Number.NaN}, rebuilt, 1200), null);
+    // 不允许负滚动位置
+    assert.equal(planDocViewportRestore({key: "c", offset: 500}, [{key: "c", top: 10}], 0), 0);
+});
+
+test("viewport anchor roundtrip: refresh keeps the reading position stable", () => {
+    const before = [
+        {key: "k1", top: -800},
+        {key: "k2", top: -140},
+        {key: "k3", top: 12},
+        {key: "k4", top: 260},
+    ];
+    const anchor = pickDocViewportAnchor(before, 600);
+    assert.ok(anchor);
+    // loading 清空导致 scrollTop 被钳制回 0，重渲染后条目整体上移
+    const after = before.map((entry) => ({key: entry.key, top: entry.top + 1052}));
+    const restored = planDocViewportRestore(anchor, after, 0);
+    assert.equal(restored, 1052);
+    // 恢复后 k3 的视口偏移与锚定前一致（12）
+    const top = after.find((entry) => entry.key === anchor.key).top;
+    assert.equal(top - (restored - 0), 12);
 });

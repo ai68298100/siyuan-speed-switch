@@ -1570,6 +1570,45 @@ function matchesParsedQuery(title, parsed) {
     return true;
 }
 
+/**
+ * T-6825 (fzf --track style): decide which doc-result item should stay pinned
+ * under the user's viewport across a re-render. Entries are DOM-order
+ * {key, top} pairs where top is measured against the scroll container's top
+ * edge. The first item intersecting the viewport wins; when the doc area is
+ * not on screen there is nothing to anchor.
+ */
+function pickDocViewportAnchor(entries, viewportHeight) {
+    if (!Array.isArray(entries)) return null;
+    const height = finiteHealthNumber(viewportHeight, 0, 0, 100000);
+    if (height <= 0) return null;
+    for (const entry of entries) {
+        if (!entry || typeof entry.key !== "string" || !entry.key) continue;
+        const top = Number(entry.top);
+        if (Number.isFinite(top) && top >= 0 && top < height) {
+            return {key: entry.key, offset: Math.round(top)};
+        }
+    }
+    return null;
+}
+
+/**
+ * Compute the scroll position that puts the anchored item back at its recorded
+ * viewport offset after a rebuild. A missing anchor or item (the result set
+ * changed under us) keeps the current scroll position instead of guessing.
+ */
+function planDocViewportRestore(anchor, entries, scrollTop) {
+    if (!anchor || typeof anchor.key !== "string" || !anchor.key) return null;
+    if (!Array.isArray(entries)) return null;
+    const base = Number(scrollTop);
+    const offset = Number(anchor.offset);
+    if (!Number.isFinite(base) || !Number.isFinite(offset)) return null;
+    const next = entries.find((entry) => entry && entry.key === anchor.key);
+    if (!next) return null;
+    const top = Number(next.top);
+    if (!Number.isFinite(top)) return null;
+    return Math.max(0, Math.round(base + top - offset));
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -1584,6 +1623,8 @@ module.exports = {
     normalizeSearchResult,
     buildSearchScoreBreakdown,
     buildSearchHealthSnapshot,
+    pickDocViewportAnchor,
+    planDocViewportRestore,
     buildUnifiedSections,
     scoreUnifiedTitle,
     normalizeUnifiedQuery,

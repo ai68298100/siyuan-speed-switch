@@ -6,7 +6,7 @@ import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, planDocResultsPage, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
@@ -748,6 +748,14 @@ export async function runFullTextSearchFallback(this: DocSearchUiHost,
         }
     }
 
+    // T-6825 视口锚定：以滚动容器上沿为原点，收集当前文档条目的稳定 key 与视口偏移
+    function captureDocItemTops(scrollElement: HTMLElement): Array<{key: string; top: number}> {
+        const containerTop = scrollElement.getBoundingClientRect().top;
+        return Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__doc-item[data-sw-doc-key]"))
+            .map((item) => ({key: item.dataset.swDocKey || "", top: item.getBoundingClientRect().top - containerTop}))
+            .filter((entry) => Boolean(entry.key));
+    }
+
 export function renderDocResults(this: DocSearchUiHost,
         scrollElement: HTMLElement,
         docs: IDocSearchResult[] | null,
@@ -755,16 +763,21 @@ export function renderDocResults(this: DocSearchUiHost,
         state: DocSearchRenderState = "results",
         expandedCount = DOC_RESULT_LIMIT,
     ) {
+        // T-6825（fzf --track 语义）：任何重建前先记录视口内首个文档条目。
+        // loading 清空期间锚点暂存，结果回来后按同一条目恢复视口位置。
+        const anchor = pickDocViewportAnchor(captureDocItemTops(scrollElement), scrollElement.clientHeight);
         const box: HTMLElement | null = ensureDocResultsBox.call(this, scrollElement, docs);
         if (!box) {
+            this.docSearchState.docAnchors.delete(scrollElement);
             return;
         }
         box.setAttribute("aria-busy", state === "loading" ? "true" : "false");
         if (state !== "results") {
+            this.docSearchState.docAnchors.set(scrollElement, anchor);
             appendDocSearchStatus.call(this, box, state);
             return;
         }
-        // 鎺掗櫎褰撳墠宸叉墦寮€鐨勬枃妗ｏ紙涓婂崐閮ㄥ垎宸叉湁瀵瑰簲鍗＄墖锛夛紱鎵嬫満绔?getAllTabs() 鎭掍负绌猴紝闇€鐢?MobileTabs 鏁版嵁婧?
+        // 排除当前已打开的文档（上半部分已有对应卡片）；手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
         const openRootIds = collectOpenRootIds.call(this);
 
         // T-6802：运算符客户端预过滤（排除项剔除 / 短语必须命中），以及
@@ -781,6 +794,7 @@ export function renderDocResults(this: DocSearchUiHost,
         const promoteId = queryKey ? this.lastPickedByQuery.get(queryKey) : undefined;
 
         if (effectiveDocs.length === 0) {
+            this.docSearchState.docAnchors.delete(scrollElement);
             appendDocResultsEmpty.call(this, box);
             return;
         }
@@ -795,6 +809,7 @@ export function renderDocResults(this: DocSearchUiHost,
             grid.appendChild(buildDocResultItem.call(this, doc, id, onClose, queryKey));
         });
         if (grid.childElementCount === 0) {
+            this.docSearchState.docAnchors.delete(scrollElement);
             appendDocResultsEmpty.call(this, box);
             return;
         }
@@ -807,6 +822,18 @@ export function renderDocResults(this: DocSearchUiHost,
             appendDocResultsLoadMore.call(this, box, scrollElement, docs, onClose, expandedCount);
         } else if (docs.length > DOC_RESULT_LIMIT) {
             appendDocResultsViewAll.call(this, box, scrollElement, onClose);
+        }
+        // T-6825：内容装配完成后按同一条目把视口钉回原位；
+        // 锚点缺失（结果集变化/文档区不在视口）时保持现状，不猜测位置。
+        const stashedAnchor = this.docSearchState.docAnchors.get(scrollElement) || null;
+        this.docSearchState.docAnchors.delete(scrollElement);
+        const restoreScrollTop = planDocViewportRestore(
+            anchor || stashedAnchor,
+            captureDocItemTops(scrollElement),
+            scrollElement.scrollTop,
+        );
+        if (restoreScrollTop !== null) {
+            scrollElement.scrollTop = restoreScrollTop;
         }
     }
 
@@ -868,7 +895,7 @@ export function collectOpenRootIds(this: DocSearchUiHost): Set<string> {
         );
     }
 
-    // 绌烘€侊細鏃犲彲鏄剧ず鐨勬悳绱㈢粨鏋?
+    // 空态：无可显示的搜索结果
 export function appendDocResultsEmpty(this: DocSearchUiHost, box: HTMLElement) {
         const empty = document.createElement("div");
         empty.className = "sw__doc-status sw__doc-status--empty";
@@ -958,6 +985,8 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         const item = document.createElement("button");
         item.type = "button";
         item.className = "sw__doc-item";
+        // T-6825 视口锚定依赖的稳定条目身份
+        item.dataset.swDocKey = id;
         const icon = document.createElement("span");
         icon.className = "sw__doc-icon";
         icon.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';

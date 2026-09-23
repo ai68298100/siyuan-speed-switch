@@ -75,3 +75,16 @@ test("load-more label ships in both locales", () => {
     assert.equal(typeof en.docSearchLoadMore, "string");
     assert.ok(zh.docSearchLoadMore.length > 0 && en.docSearchLoadMore.length > 0);
 });
+
+test("doc results rebuilds keep the viewport anchored by item identity (T-6825)", () => {
+    assert.match(docSearchUi, /item\.dataset\.swDocKey = id;/,
+        "文档条目必须携带稳定 key（视口锚定的身份依据）");
+    assert.match(docSearchUi, /const anchor = pickDocViewportAnchor\(captureDocItemTops\(scrollElement\), scrollElement\.clientHeight\)/,
+        "重建前必须先捕获视口锚点");
+    assert.match(docSearchUi, /const restoreScrollTop = planDocViewportRestore\(/,
+        "重建后必须按锚点恢复滚动位置（缺失锚点时保持现状）");
+    assert.match(searchModel, /function pickDocViewportAnchor\(/,
+        "锚点决策必须是 search-model 纯函数（可单测）");
+    assert.match(searchModel, /function planDocViewportRestore\(/,
+        "恢复计算必须是 search-model 纯函数（可单测）");
+});

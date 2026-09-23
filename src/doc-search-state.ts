@@ -23,6 +23,8 @@ export interface DocSearchState {
     chipFilters: WeakMap<HTMLElement, string>;
     /** Current diagnostic only, discarded with its surface; no search history. */
     health: WeakMap<HTMLElement, ReturnType<typeof buildSearchHealthSnapshot>>;
+    /** T-6825：文档区清空（loading）期间暂存的视口锚点，results 渲染后消费即清 */
+    docAnchors: WeakMap<HTMLElement, {key: string; offset: number} | null>;
 }
 
 /** T-6802 查询运算符解析结果：`"精确短语"` / `-排除词` / 普通词（全部 AND） */
@@ -43,5 +45,6 @@ export function createDocSearchState(): DocSearchState {
         parsedQueries: new WeakMap(),
         chipFilters: new WeakMap(),
         health: new WeakMap(),
+        docAnchors: new WeakMap(),
     };
 }
