@@ -127,6 +127,9 @@ const ALLOWED_UNUSED = [
   "openJournal",
   // T-6821：剪贴板入口命令名，同上经 addCommand langKey 动态查。
   "clipboardEntry",
+  // T-6820/R3：marks 书签命令名（setSessionMark/jumpToSessionMark），同上。
+  "setSessionMark",
+  "jumpToSessionMark",
 ];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {

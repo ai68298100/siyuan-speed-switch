@@ -966,6 +966,20 @@ export default class SpeedSwitchPlugin extends Plugin {
                 void this.openClipboardEntry();
             },
         }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
+        safeRegisterPluginCommand(this, {
+            langKey: "setSessionMark",
+            hotkey: "",
+            callback: () => {
+                this.setSessionMark();
+            },
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
+        safeRegisterPluginCommand(this, {
+            langKey: "jumpToSessionMark",
+            hotkey: "",
+            callback: () => {
+                void this.jumpToSessionMark();
+            },
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
         this.registerAgentCapabilities();
         // 受控导航动作：Agent 可把查询结果直接打开为页面（不修改任何笔记数据）
         const pluginWithAgentAction = this as unknown as {
@@ -4356,6 +4370,64 @@ const updatedMap: {[rootId: string]: string} = {};
         if (!existing) return false;
         this.activateTab(existing, onClose);
         return true;
+    }
+
+    // ==================== T-6820/R3 marks 书签（会话级） ====================
+    // 记录活动文档的滚动位置（rootId + 比例），一键跳回。会话级内存（FIFO ≤12），
+    // 不持久化——跨会话浏览位置属宿主能力，不伪造（同 T-6801 口径）。
+
+    private sessionMarks = new Map<string, number>();
+
+    private activeScrollElement(): HTMLElement | null {
+        const editor = this.resolveActiveHostEditor() as {protyle?: {element?: HTMLElement}} | null;
+        const content = editor?.protyle?.element?.querySelector?.<HTMLElement>(".protyle-content")
+            ?? document.querySelector<HTMLElement>(".layout__wnd--active .protyle-content");
+        return content;
+    }
+
+    setSessionMark(): void {
+        const scroller = this.activeScrollElement();
+        const rootId = this.rootIdOf(this.getActiveTab());
+        if (!scroller || !rootId) {
+            showMessage(this.i18n.sessionMarkNoDoc, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const ratio = computeScrollRatio(scroller.scrollTop, scroller.scrollHeight, scroller.clientHeight);
+        if (this.sessionMarks.size >= 12) {
+            const oldest = this.sessionMarks.keys().next().value;
+            if (oldest !== undefined) this.sessionMarks.delete(oldest);
+        }
+        this.sessionMarks.set(rootId, ratio);
+        showMessage(this.i18n.sessionMarkSet);
+    }
+
+    async jumpToSessionMark(): Promise<void> {
+        if (this.sessionMarks.size === 0) {
+            showMessage(this.i18n.sessionMarkNone, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        const entries = [...this.sessionMarks.entries()];
+        const [rootId, ratio] = entries[this.sessionMarks.size - 1]; // 最近一次标记
+        // 先确保目标文档处于打开并聚焦状态，再按比例回卷
+        const alreadyActive = this.rootIdOf(this.getActiveTab()) === rootId;
+        if (!alreadyActive) {
+            await openDocSearchResult.call(this, rootId, null);
+        }
+        // 有界等待渲染稳定后按比例回卷（复用 T-6801 口径）
+        for (let attempt = 0; attempt < 30; attempt++) {
+            await new Promise((resolve) => window.setTimeout(resolve, 50));
+            const scroller = this.activeScrollElement();
+            if (!scroller) continue;
+            const target = planScrollRestore(
+                {scrollTop: scroller.scrollTop, scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight},
+                ratio,
+            );
+            if (target !== null) {
+                scroller.scrollTop = target.top;
+                break;
+            }
+        }
+        showMessage(this.i18n.sessionMarkJumped);
     }
 
     // T-6814 关联内容：拉取 + 填充。缓存以 rootId 绑定（60s TTL，FIFO ≤8），

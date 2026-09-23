@@ -531,6 +531,17 @@ test('digit badges: first nine visible cards advertise digit-direct access (T-68
     assert.match(badgeScss, /content: attr\(data-sw-digit\);/, '角标由 CSS attr() 渲染（零 DOM 增量）');
 });
 
+test('session marks: set/jump commands with ratio restore (T-6820/R3 marks)', () => {
+    assert.match(indexSource, /private sessionMarks = new Map<string, number>\(\);/,
+        '会话级标记存储（内存 Map，不持久化）');
+    assert.match(indexSource, /const ratio = computeScrollRatio\(scroller\.scrollTop, scroller\.scrollHeight, scroller\.clientHeight\);/,
+        '标记必须按比例记录（复用 T-6801 工具）');
+    assert.match(indexSource, /sessionMarks\.size >= 12/,
+        '标记容量 FIFO ≤12');
+    assert.match(indexSource, /await openDocSearchResult\.call\(this, rootId, null\);/,
+        '文档未打开时先经打开链路聚焦再回卷');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);
