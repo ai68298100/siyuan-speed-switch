@@ -2041,3 +2041,28 @@
 // ==================== 手机端全局样式（直接挂载到 document.body） ====================
 
 // 悬浮按钮（FAB）：继续上移避开思源底部工具条（含编辑态加高的情况），落在单手拇指区；缩小 + 半透明
+
+// ==================== T-6820 数字直达角标 ====================
+// 前 9 个可见卡片左上角的数字徽标（CSS ::after 渲染 data-sw-digit），
+// 与键盘数字直达一一对应；纯装饰（aria-hidden 语义由 CSS 承担）。
+.sw__card[data-sw-digit] {
+  position: relative;
+
+  &::after {
+    content: attr(data-sw-digit);
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 4px;
+    background: var(--sw-accent-soft, rgba(109, 40, 217, 0.12));
+    color: var(--sw-accent, var(--b3-theme-primary));
+    font-size: 10px;
+    line-height: 14px;
+    text-align: center;
+    font-weight: 600;
+    pointer-events: none;
+  }
+}

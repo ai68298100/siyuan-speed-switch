@@ -520,6 +520,17 @@ test('mobile swipe ownership: portal root and recovery handle declare data-preve
     assert.match(fabUi, /dataset\.preventSwipe/, '标记经由 dataset 写出（即 data-prevent-swipe）');
 });
 
+test('digit badges: first nine visible cards advertise digit-direct access (T-6820)', () => {
+    assert.match(indexSource, /private updateDigitBadges\(scrollElement: HTMLElement\)/,
+        '角标刷新必须是独立方法');
+    assert.match(indexSource, /this\.updateDigitBadges\(scrollElement\);\n\s*return visible;/,
+        'filterCards 可见性变化后必须刷新角标');
+    assert.match(indexSource, /const digit = index < 9 \? String\(index \+ 1\) : "";/,
+        '只有前 9 个可见卡片携带角标（与数字直达键位一致）');
+    const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    assert.match(badgeScss, /content: attr\(data-sw-digit\);/, '角标由 CSS attr() 渲染（零 DOM 增量）');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

@@ -6842,6 +6842,8 @@ const updatedMap: {[rootId: string]: string} = {};
             const count = group.querySelectorAll(".sw__card:not(.fn__none)").length;
             group.classList.toggle("fn__none", count === 0);
         });
+        // T-6820：筛选改变可见集合后刷新数字角标
+        this.updateDigitBadges(scrollElement);
         return visible;
     }
 
@@ -8513,6 +8515,20 @@ private rootIdOf(tab: Tab): string | null {
 
         // 视口懒渲染缩略图：复用卡片跳过，新卡片滚入可视区时才生成
         this.renderThumbnails(all, scrollElement, THUMB_BATCH);
+        // T-6820 数字直达角标：渲染后刷新前 9 个可见卡片的数字标记
+        this.updateDigitBadges(scrollElement);
+    }
+
+    // T-6820 数字直达可发现性：为前 9 个可见卡片写入 1-9 角标（CSS ::after 渲染），
+    // 与 bindKeydown 的数字直达一一对应；第 9 个之后的卡片移除标记。
+    private updateDigitBadges(scrollElement: HTMLElement) {
+        const visible = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"))
+            .filter((card) => !card.classList.contains("fn__none"));
+        visible.forEach((card, index) => {
+            const digit = index < 9 ? String(index + 1) : "";
+            if (digit) card.dataset.swDigit = digit;
+            else delete card.dataset.swDigit;
+        });
     }
 
     // 单一分组排序：置顶页签固定在前，其余按 sortBy 排列（restItems 内部 sort 走 stable 排序）
