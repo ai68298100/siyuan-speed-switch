@@ -1014,10 +1014,12 @@ export function docSearchHitId(this: DocSearchUiHost, doc: IDocSearchResult, roo
         return hit ? String(hit) : null;
     }
 
-export async function openDocSearchResult(this: DocSearchUiHost, rootId: string, hitId: string | null, position?: "right"): Promise<void> {
+export async function openDocSearchResult(this: DocSearchUiHost, rootId: string, hitId: string | null, position?: "right",
+        options?: {preview?: boolean}): Promise<void> {
         // T-6830 打开策略：开启复用且该文档已打开时，聚焦既有页签而非新开（防重复页签）。
         // 命中块定位（hitId）只在打开新页签时才有意义，复用路径直接聚焦。
-        if (this.reuseOpenTabsEnabled() && this.activateTabForReuse(rootId)) {
+        // T-6816：preview 选项时跳过复用（用户明确要一个预览页签）。
+        if (!(options?.preview) && this.reuseOpenTabsEnabled() && this.activateTabForReuse(rootId)) {
             return;
         }
         if (this.isMobile) {
@@ -1033,6 +1035,7 @@ export async function openDocSearchResult(this: DocSearchUiHost, rootId: string,
             openTab,
             logger,
             ...(position ? {position} : {}),
+            ...(options?.preview ? {mode: "preview" as const} : {}),
         });
         if (!opened) showMessage(this.i18n.openDocFailed);
     }
@@ -1079,7 +1082,7 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         item.appendChild(copy);
         item.title = hPath || docTitle;
         item.setAttribute("aria-label", hPath || docTitle);
-        item.addEventListener("click", () => {
+        item.addEventListener("click", (event) => {
             // T-6802 上次选择置顶：记录"该查询 → 选中结果"，会话内重复查询时置顶
             if (query) {
                 const map = this.lastPickedByQuery;
@@ -1092,11 +1095,14 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
                 }
             }
             onClose();
-            void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id));
+            // T-6816：Alt+点击 = 预览打开（doc.mode preview，只读窥视后决定）
+            void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id), undefined,
+                {preview: event.altKey && !this.isMobile});
         });
-        // T-6810 并排打开：右键结果在右侧分屏打开（桌面）
+        // T-6810 并排打开：右键结果在右侧分屏打开（桌面）；T-6816 Alt+点击预览打开
         if (!this.isMobile) {
-            item.title = (item.title ? item.title + " · " : "") + this.i18n.docSearchSplitHint;
+            item.title = (item.title ? item.title + " · " : "") + this.i18n.docSearchSplitHint
+                + " · " + this.i18n.docSearchPreviewHint;
             item.addEventListener("contextmenu", (event) => {
                 event.preventDefault();
                 onClose();

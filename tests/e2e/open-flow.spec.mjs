@@ -51,12 +51,14 @@ async function seedDocs(client) {
 }
 
 test("真实内核：切换器搜索命中真实文档并单击打开真实页签", async ({page}) => {
+    test.slow(); // 全链路（搜索→打开→关联→预览）余量放宽，机器负载抖动不影响结论
     const client = createClient();
     await removeLegacyNotebooks(client);
     await seedDocs(client);
     try {
         const pageErrors = [];
         page.on("pageerror", (error) => pageErrors.push(String(error.message || error)));
+    page.on("console", (message) => { if (message.text().includes("[sw-dbg]")) console.log("[captured]", message.text()); });
 
         await openApp(page);
         await openSwitcher(page);
@@ -64,7 +66,7 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
         const search = page.locator("input.sw__search");
         await search.fill(DOC_TITLE);
         // 防抖 + 真实 searchDocs 往返，文档结果卡片出现
-        await page.waitForSelector(".sw__doc-item", {timeout: 20000});
+        await page.waitForSelector(".sw__doc-item", {timeout: 30000});
         const firstDoc = page.locator(".sw__doc-item", {hasText: DOC_TITLE}).first();
         await expect(firstDoc).toBeVisible({timeout: 10000});
 
@@ -93,6 +95,15 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
             return Array.from(document.querySelectorAll(".protyle-title"))
                 .some((element) => (element.textContent || "").includes(title));
         }, `速切关联${RUN}`, {timeout: 20000});
+
+        // T-6816 预览基础：Alt+点击文档结果 → 只读预览页签（doc.mode preview）
+        await openSwitcher(page);
+        // 预览对象用未打开的陪衬文档：结果区按设计排除已打开文档
+        const search3 = page.locator("input.sw__search").last();
+        await search3.fill(`速切锚定陪衬${RUN}`);
+        await page.waitForSelector(".sw__doc-item", {timeout: 30000});
+        await page.locator(".sw__doc-item", {hasText: `速切锚定陪衬${RUN}`}).first().click({modifiers: ["Alt"]});
+        await page.waitForSelector(".protyle-preview:not(.fn__none)", {timeout: 20000});
 
         expect(pageErrors, `真实打开链路出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
     } finally {

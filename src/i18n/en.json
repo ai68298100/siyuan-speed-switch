@@ -831,6 +831,7 @@
   ,"searchSavedDeleteConfirm": "Delete saved search \"{x}\"?"
   ,"searchSavedDone": "Search saved"
   ,"workbenchSmart": "Smart groups"
+  ,"docSearchPreviewHint": "Alt+click: open in preview"
   ,"docSearchSplitHint": "Right-click: open in right split"
   ,"chipsLabel": "Result type filter"
   ,"chipsAll": "All"

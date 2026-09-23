@@ -901,6 +901,7 @@
   "searchSavedDeleteConfirm": "删除保存的搜索「{x}」？",
   "searchSavedDone": "搜索已保存",
   "workbenchSmart": "智能分组",
+  "docSearchPreviewHint": "Alt+点击：预览打开",
   "docSearchSplitHint": "右键：在右侧分屏打开",
   "chipsLabel": "结果类型过滤",
   "chipsAll": "全部",

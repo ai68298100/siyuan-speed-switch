@@ -373,8 +373,8 @@ test('document set version history: overwrite stashes and settings can rollback 
 test('open strategy: search results can reuse already-open tabs (T-6830)', () => {
     const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
     const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
-    assert.match(docSearchUi, /if \(this\.reuseOpenTabsEnabled\(\) && this\.activateTabForReuse\(rootId\)\) \{/,
-        '搜索结果打开必须先走复用分支（开关关闭时保持总是新开）');
+    assert.match(docSearchUi, /this\.reuseOpenTabsEnabled\(\) && this\.activateTabForReuse\(rootId\)/,
+        '搜索结果打开必须先走复用分支（开关关闭时保持总是新开；T-6816 起预览路径跳过复用）');
     assert.match(indexSource, /findOpenTabByRootId\(rootId: string\): Tab \| null \{/,
         '复用必须按 rootId 归一查找已开页签（桌面/移动同源）');
     assert.match(settingsSections, /this\.switcher\(s\.reuseOpenTabs, \(v\) => \{/,
@@ -419,6 +419,16 @@ test('layered workspace snapshot: preset is persisted into the set and essential
     const documentSets = readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js'));
     assert.match(documentSets, /if \(!normalized\.presetId && previous\.presetId\) normalized\.presetId = previous\.presetId;/,
         '覆盖保存不得丢失上一版的场景固化');
+});
+
+test('preview open: alt+click on doc results uses doc.mode preview (T-6816)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    assert.match(docSearchUi, /\{preview: event\.altKey && !this\.isMobile\}/,
+        'Alt+点击（仅桌面）必须走预览打开');
+    assert.match(docSearchUi, /\.\.\.\(options\?\.preview \? \{mode: "preview" as const\} : \{\}\)/,
+        '预览必须经 T-6826 的 openTab doc.mode 透传（思源官方预览态）');
+    assert.match(docSearchUi, /\!\(options\?\.preview\) && this\.reuseOpenTabsEnabled\(\)/,
+        '预览打开跳过页签复用（用户明确要一个预览页签）');
 });
 
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
