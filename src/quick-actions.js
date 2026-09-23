@@ -64,16 +64,52 @@ function migrateQuickActionDefaults(stored, storedVersion) {
     return {items: getDefaultQuickActions(), migrated: true};
 }
 
+const QUICK_ACTION_PROVIDER_PROTOCOL_VERSION = 1;
+
+/**
+ * T-6819 provider 协议（D6）：第三方提供方元数据的单一事实来源。
+ * 字段白名单：version（协议版本，只读回显）；动作级 description（≤200，
+ * 展示与执行分离——描述进 picker/文档，不改变执行能力）。
+ */
+function describeProviderProtocol() {
+    return {
+        protocolVersion: QUICK_ACTION_PROVIDER_PROTOCOL_VERSION,
+        fields: {
+            id: "string (required, charset A-Za-z0-9._:-)",
+            name: "string (required, ≤80)",
+            targets: "string[] (surfaces; execution still gated by capability)",
+            version: "string (optional, ≤32)",
+            actions: [{
+                value: "string (required)",
+                label: "string",
+                icon: "string (optional svg id)",
+                description: "string (optional, ≤200, display-only)",
+            }],
+        },
+        guarantees: [
+            "display and execution remain separated",
+            "unregister restores the pre-registration state",
+            "unknown providers stay visible with kind=adapter",
+        ],
+    };
+}
+
 function normalizeProvider(provider) {
     if (!provider || typeof provider !== "object") return null;
     const id = normalizeQuickActionText(provider.id, 64).replace(/[^A-Za-z0-9._:-]/g, "");
     const name = normalizeQuickActionText(provider.name || provider.id, 80);
     if (!id || !name) return null;
+    const version = normalizeQuickActionText(provider.version, 32);
     const targets = normalizeTargets(provider.targets || provider.supportedSurfaces || provider.supportedDevices);
     const actions = Array.isArray(provider.actions) ? provider.actions
-        .map((action) => ({value: action?.value, label: action?.label, icon: action?.icon, kind: action?.kind || "adapter", providerId: id}))
+        .map((action) => {
+            const base = {value: action?.value, label: action?.label, icon: action?.icon, kind: action?.kind || "adapter", providerId: id};
+            // T-6819：动作级展示描述（≤200），可缺省
+            const description = normalizeQuickActionText(action?.description, 200);
+            return description ? {...base, description} : base;
+        })
         .filter((action) => typeof action.value === "string" && action.value.trim()) : [];
-    return {id, name, targets, actions};
+    return {id, name, ...(version ? {version} : {}), targets, actions};
 }
 
 function createQuickActionRegistry() {
@@ -281,6 +317,8 @@ function getBuiltinQuickActions() {
 module.exports = {
     getQuickActionCommandTargets,
     normalizeProvider,
+    describeProviderProtocol,
+    QUICK_ACTION_PROVIDER_PROTOCOL_VERSION,
     createQuickActionRegistry,
     sanitizeQuickActions,
     getDefaultQuickActions,
