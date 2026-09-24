@@ -543,8 +543,12 @@ test('doc-result digit direct access: search-state digits activate result rows (
         '页签卡隐藏（搜索态）时数字直达不得静默丢失');
     assert.match(indexSource, /!event\.ctrlKey && !event\.altKey && !event\.metaKey && !event\.shiftKey\) \{\s*event\.preventDefault\(\);\s*this\.activateDocItemByDigit/,
         '卡片隐藏分支的数字直达同样拒绝修饰键组合');
-    assert.match(indexSource, /if \(!target\.closest\("\.sw__doc-item"\)\s*\|\| !\/\^\[1-9\]\$\/\.test\(event\.key\)\s*\|\| event\.ctrlKey \|\| event\.altKey \|\| event\.metaKey \|\| event\.shiftKey\) \{\s*return;\s*\}/,
-        '控件守卫必须放行结果行上的数字键（Tab 聚焦后直达可用），其余控件照旧让路');
+    assert.match(indexSource, /if \(!target\.closest\("\.sw__doc-item"\) \|\| !navKey\) \{\s*return;\s*\}/,
+        '控件守卫必须放行结果行上的数字键与 ↑/↓（Tab 聚焦后键盘链路可用），其余控件照旧让路');
+    assert.match(indexSource, /private moveDocItemFocus\(scrollElement: HTMLElement, current: HTMLElement, delta: number\): boolean/,
+        '结果行 ↑/↓ 导航必须是独立方法（网格外行返回 false 不劫持原生滚动）');
+    assert.match(indexSource, /if \(this\.moveDocItemFocus\(scrollElement, target, key === "ArrowDown" \? 1 : -1\)\) \{\s*event\.preventDefault\(\);\s*\}/,
+        '行导航接管时才阻止默认滚动');
     assert.match(docSearchUi, /export function activateDocResultItem/,
         '结果行激活必须单一入口（点击与数字直达共用，单一事实来源）');
     assert.match(docSearchUi, /item\.dataset\.swDocHit = hitId \|\| "";/,

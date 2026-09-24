@@ -78,6 +78,20 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
         const digit = await firstDoc.getAttribute("data-sw-digit");
         if (digit) {
             await firstDoc.focus();
+            // T-6838：结果行 ↑/↓ 行导航——焦点行随方向键移动并跟随滚动
+            const secondDoc = page.locator(".sw__doc-grid .sw__doc-item").nth(1);
+            if (await secondDoc.count()) {
+                await page.keyboard.press("ArrowDown");
+                const movedDown = await page.evaluate(() => document.activeElement?.getAttribute("data-sw-doc-key"));
+                const secondKey = await secondDoc.getAttribute("data-sw-doc-key");
+                if (secondKey) {
+                    await expect(movedDown === secondKey, "ArrowDown 后焦点应落在第 2 行").toBe(true);
+                    await page.keyboard.press("ArrowUp");
+                    const movedUp = await page.evaluate(() => document.activeElement?.getAttribute("data-sw-doc-key"));
+                    const firstKey = await firstDoc.getAttribute("data-sw-doc-key");
+                    await expect(movedUp === firstKey, "ArrowUp 后焦点应回到第 1 行").toBe(true);
+                }
+            }
             await page.keyboard.press(digit);
         } else {
             await firstDoc.click();

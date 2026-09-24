@@ -9793,16 +9793,24 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     private bindKeydown(scrollElement: HTMLElement, closeOverlay: IOverlayClose) {
         scrollElement.addEventListener("keydown", (event) => {
             const target = event.target as HTMLElement;
+            const key = event.key;
             if (target.closest("button, input, select, textarea")) {
-                // T-6837：焦点经 Tab 落在文档结果行（button）时数字直达仍须可用；
-                // 其余控件（输入框/下拉等）照旧让路，不劫持按键
-                if (!target.closest(".sw__doc-item")
-                    || !/^[1-9]$/.test(event.key)
-                    || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+                // T-6837/T-6838：焦点经 Tab 落在文档结果行（button）时数字直达与
+                // ↑/↓ 行导航仍须可用；其余控件（输入框/下拉等）照旧让路，不劫持按键
+                const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+                const navKey = plain && (/^[1-9]$/.test(key) || key === "ArrowDown" || key === "ArrowUp");
+                if (!target.closest(".sw__doc-item") || !navKey) {
+                    return;
+                }
+                // T-6838：结果行 ↑/↓ 移动行焦点（仅全库文档网格内生效；未接管时
+                // 不 preventDefault，保留列表原生滚动）
+                if (key === "ArrowDown" || key === "ArrowUp") {
+                    if (this.moveDocItemFocus(scrollElement, target, key === "ArrowDown" ? 1 : -1)) {
+                        event.preventDefault();
+                    }
                     return;
                 }
             }
-            const key = event.key;
             const cards = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"))
                 .filter((card) => !card.closest(".fn__none"));
             if (cards.length === 0) {
@@ -9904,6 +9912,21 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const item = items[Number(key) - 1];
         if (!item) return false;
         activateDocResultItem.call(this, item, closeOverlay, {query: queryKey});
+        return true;
+    }
+
+    // T-6838 结果行 ↑/↓ 行导航：在全库文档网格的可见行间移动焦点并滚动跟随；
+    // 焦点行不在网格内（工作台/统一分区行）返回 false，按键交还原生滚动
+    private moveDocItemFocus(scrollElement: HTMLElement, current: HTMLElement, delta: number): boolean {
+        const items = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__doc-grid .sw__doc-item"))
+            .filter((element) => !element.closest(".fn__none"));
+        const at = items.indexOf(current);
+        if (at < 0) return false;
+        const next = items[Math.max(0, Math.min(items.length - 1, at + delta))];
+        if (next) {
+            next.focus();
+            this.scrollIntoView(next, scrollElement);
+        }
         return true;
     }
 
