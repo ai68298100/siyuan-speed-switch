@@ -2932,6 +2932,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 </button>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
+            <div class="sw__workbench-dock fn__none"></div>
             <div class="sw__quick-actions" role="toolbar" aria-label="${this.i18n.quickActions}"></div>
             <button type="button" class="sw__back-top b3-tooltips b3-tooltips__n" aria-label="${this.i18n.backTop}">
                 <svg><use xlink:href="#iconUp"></use></svg>
@@ -4215,9 +4216,13 @@ const updatedMap: {[rootId: string]: string} = {};
     // （Kvaesitso/Notion 的零态即工作台思想）。全部来自本地配置或按需拉取，
     // 不发任何无界请求；有查询时整块移除，避免与结果区争抢注意力。
     private renderWorkbench(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose) {
-        const existing = scrollElement.querySelector<HTMLElement>(".sw__workbench");
+        // P3：工作台停靠坞——独立于滚动流的固定区域，页签再多也常驻首屏
+        const dock = scrollElement.parentElement?.querySelector<HTMLElement>(".sw__workbench-dock");
+        if (!dock) return;
+        const existing = dock.querySelector<HTMLElement>(".sw__workbench");
         if (keyword) {
             existing?.remove();
+            dock.classList.add("fn__none");
             return;
         }
         if (existing) return;
@@ -4226,8 +4231,11 @@ const updatedMap: {[rootId: string]: string} = {};
         const smartGroups = this.getSettings().favoriteSmartGroups || [];
         const savedSearches = this.getSettings().savedSearches || [];
         const activeRootId = this.rootIdOf(this.getActiveTab());
-        // T-6814：有活动文档时关联内容行也可独立撑起工作台
-        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length && !activeRootId) return;
+        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length && !activeRootId) {
+            dock.classList.add("fn__none");
+            return;
+        }
+        dock.classList.remove("fn__none");
 
         const box = document.createElement("div");
         box.className = "sw__workbench";
@@ -4304,13 +4312,20 @@ const updatedMap: {[rootId: string]: string} = {};
         if (activeRootId) {
             const relatedBox = document.createElement("div");
             relatedBox.className = "sw__workbench-related";
+            // P2 骨架屏：等待期显示脉冲占位，数据到达后整行替换
+            const skeleton = document.createElement("div");
+            skeleton.className = "sw__workbench-row-label sw__workbench-related--loading";
+            skeleton.textContent = this.i18n.workbenchRelated;
+            skeleton.setAttribute("aria-busy", "true");
+            relatedBox.appendChild(skeleton);
             box.appendChild(relatedBox);
             void this.fillRelatedContent(relatedBox, activeRootId, onClose);
         }
 
-        const docResults = scrollElement.querySelector(".sw__doc-results");
-        if (docResults) scrollElement.insertBefore(box, docResults);
-        else scrollElement.appendChild(box);
+        // P3：工作台渲染到停靠坞（滚动流外），不随页签滚动
+        dock.textContent = "";
+        dock.appendChild(box);
+        dock.classList.remove("fn__none");
     }
 
     // T-6821 深链接/剪贴板入口：读剪贴板 → 思源块链接（siyuan://blocks/<id>）
@@ -4498,6 +4513,8 @@ const updatedMap: {[rootId: string]: string} = {};
                 projection = payload ? projectRelatedContent(payload.data) : null;
                 if (!projection || projection.items.length === 0) {
                     if (retried < 5) return void attempt(2500, retried + 1) as Promise<void>;
+                    // 终态：全部重试耗尽仍无数据 → 移除空占位框，不留空白
+                    box.remove();
                     return;
                 }
                 if (this.relatedContentCache.size >= 8) {
@@ -4514,6 +4531,7 @@ const updatedMap: {[rootId: string]: string} = {};
 
     private renderRelatedRow(box: HTMLElement, projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}, onClose: IOverlayClose): void {
         if (!box.isConnected || projection.items.length === 0) return;
+        box.textContent = "";
         const rowLabel = document.createElement("div");
         rowLabel.className = "sw__workbench-row-label";
         const total = projection.counts.backlinks + projection.counts.mentions;

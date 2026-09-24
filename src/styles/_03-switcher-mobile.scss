@@ -2066,3 +2066,15 @@
     pointer-events: none;
   }
 }
+
+// ==================== P3 工作台停靠坞 ====================
+// 独立于滚动流的固定区域：零查询时显示工作台内容，页签再多也常驻首屏。
+.sw__workbench-dock {
+  border-top: 1px solid var(--b3-border-color);
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  flex-shrink: 0;
+
+  &.fn__none { display: none; }
+}
