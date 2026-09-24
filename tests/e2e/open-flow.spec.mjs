@@ -69,6 +69,8 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
         await page.waitForSelector(".sw__doc-item", {timeout: 30000});
         const firstDoc = page.locator(".sw__doc-item", {hasText: DOC_TITLE}).first();
         await expect(firstDoc).toBeVisible({timeout: 10000});
+        // T-6834/T-6835：查询词在标题行真实渲染为 <mark> 高亮（分段装配，非 innerHTML）
+        await expect(firstDoc.locator(".sw__doc-title mark").first()).toBeVisible({timeout: 10000});
 
         await firstDoc.click();
         // 打开的是真实 protyle 编辑器页签，且加载了目标文档
