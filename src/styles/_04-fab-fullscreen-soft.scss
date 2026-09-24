@@ -1007,3 +1007,15 @@
 }
 
 // 设置页与主面板共享同一套卡片感，但保留思源设置弹窗的紧凑密度。
+
+// ==================== T-6778b/T-6780 手机端加固 ====================
+// 球体交互面禁用长按选中/系统呼出/文本选择：拖动时不再弹出 WebView
+// 的文本选择菜单，也不干扰思源长按菜单（球根子树之外不受影响）。
+.sw-fab-root.sw__fab,
+.sw-fab-root .sw-fab-trigger,
+.sw-fab-root .sw-fab-recovery,
+.sw-fab-root .sw__floating-ball-more {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}

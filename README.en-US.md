@@ -56,6 +56,19 @@ Search results keep a fixed priority:
 
 Search requests use a 180 ms debounce, bounded in-memory cache, request-version validation, and cancellation. Desktop dialog, right sidebar, and mobile each own an isolated search session, so one surface cannot cancel or overwrite another. The current worktree supports notebook, content-type, subtype, search-method, and result-order filters; notebook/path-only filters keep the title fast path, while other filters use bounded native block-level full-text requests. Workspace results fetch up to 33 entries at once and render the first 12; a "Load more" button expands the rest purely client-side (no new requests, no cache-key changes) before falling back to SiYuan's native search. Path-tree selection is still not exposed in the UI, and this remains an addition rather than a replacement for SiYuan's native search page. See [ROADMAP.md](./ROADMAP.md) for that work.
 
+### Work Context, Commands & Actions (new)
+
+- **Related content**: opening the switcher lists backlinks and mentions of the current document (official kernel endpoint, bounded projection with totals and truncation), click to jump.
+- **Saved searches**: save the current query and filters from the filter menu; replay from the zero-term workbench or filter menu, right-click to remove.
+- **Command mode**: typing `>` lists executable actions only (built-ins + SiYuan host commands); filter by text and click to run.
+- **Marks**: command palette entries "Mark current position" and "Jump to latest mark" restore the exact scroll position (session scope).
+- **Multi-target quick capture**: switch between today journal and current document, preview the destination, controlled write with per-step failure reasons.
+- **Preview open**: `Alt+click` a search result to open a read-only preview tab before committing.
+- **Digit direct access**: the first nine visible cards carry digit badges; press the matching key to open.
+- **Document set version history**: overwrites keep the last 3 versions, roll back to any of them (reversible); Essentials receipts are part of the restore summary.
+- **Migratable config pack**: export/import a versioned pack of whitelisted settings + document sets; import validates everything then applies atomically.
+- **Mobile floating-ball anti-misfire**: layered with the host `data-prevent-swipe` contract, touch-stream interception, and drag-time scroll-chain blocking; dragging the ball no longer triggers SiYuan edge swipes, while swipes elsewhere keep working.
+
 ### Panels, Journal, And Quick Actions
 
 - **Left panel rail**: open the file tree, outline, bookmarks, tags, graph, backlinks, and plugin docks. Choose a full list, icon-only rail, or complete hiding.
@@ -308,6 +321,18 @@ The current version is `v0.32.0` (pinyin matching, jump back/forward, Essentials
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
 
+### v0.33.0 (upcoming)
+
+- **Related content**: the zero-term workbench lists backlinks/mentions of the current document (official endpoint, bounded projection, explainable truncation); click to jump.
+- **Saved searches + `>` command mode**: save and replay queries and filters; `>` enters command mode listing executable actions only.
+- **Marks + digit badges**: jump back by exact scroll ratio; the first nine visible cards carry digit badges.
+- **Multi-target quick capture**: journal/current-doc targets, destination preview, controlled write with per-step failure reasons.
+- **Preview open**: Alt+click opens search results as read-only preview tabs.
+- **Document set version history & rollback**: overwrites keep the last 3 versions, any of them can be restored reversibly; restore summary includes Essentials receipts; scene presets persist into document sets.
+- **Dynamic favorite groups**: tag + notebook scope + updated-window parameterized queries.
+- **Density tier & config pack**: compact density switch; one-click export/import of a versioned config pack (atomic apply).
+- **Mobile floating-ball anti-misfire**: `data-prevent-swipe` contract + touch-stream interception + drag-time scroll-chain blocking; dragging the ball no longer triggers SiYuan edge swipes, while swipes elsewhere keep working.
+- **Real-instance E2E channel**: 6 real-kernel acceptance specs (desktop/mobile/readonly), plus ADR 0077 (1024 KiB raw line) and provider protocol metadata.
 ### v0.30.1 (2026-09-22)
 
 - **Task Horizon mobile integration**: the floating ball can discover and invoke the task manager and quick-add plugin commands, rechecking provider capabilities before execution and safely handling failures, timeouts, and unloads.
