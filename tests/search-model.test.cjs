@@ -13,6 +13,7 @@ const {
     planDocViewportRestore,
     buildKeywordHighlightSegments,
     stripSnippetMarkup,
+    buildDocPreviewSnapshot,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
@@ -1120,4 +1121,34 @@ test("snippet markup: plain text and literal angle-bracket prose stay intact (T-
     assert.equal(stripSnippetMarkup("if a < b and c > d then"), "if a < b and c > d then");
     assert.equal(stripSnippetMarkup(""), "");
     assert.equal(stripSnippetMarkup(null), "");
+});
+
+test("doc preview snapshot: outline bounded to 12 with heading level projection (T-6839)", () => {
+    const outline = Array.from({length: 16}, (_, i) => ({name: `标题${i + 1}`, type: "h2"}));
+    const snapshot = buildDocPreviewSnapshot(outline, []);
+    assert.equal(snapshot.outline.length, 12);
+    assert.equal(snapshot.outline[0].name, "标题1");
+    // 空白名跳过，不占用配额
+    const withBlank = buildDocPreviewSnapshot([{name: "  ", type: "h1"}, {name: "正文", subType: "h3"}], []);
+    assert.deepEqual(withBlank.outline, [{name: "正文", level: 3}]);
+    // 非标题层级标注（如 NodeHeading）解析不出按 1
+    const fallback = buildDocPreviewSnapshot([{name: "其他", type: "NodeHeading"}], []);
+    assert.deepEqual(fallback.outline, [{name: "其他", level: 1}]);
+});
+
+test("doc preview snapshot: excerpt bounded to 600 chars across paragraphs (T-6839)", () => {
+    const long = "字".repeat(500);
+    const snapshot = buildDocPreviewSnapshot([], [{content: long}, {content: "第二段"}, {content: "   "}]);
+    assert.equal(snapshot.excerpt.length, 504); // 500 + 空格 + 3；段落耗尽不补齐
+    assert.ok(snapshot.excerpt.startsWith("字"));
+    // 越界合并即截断（trim 去尾空格），不再吸收后续段
+    const bounded = buildDocPreviewSnapshot([], [{content: "ab"}, {content: "cd"}, {content: "ef"}], {excerptMax: 5});
+    assert.equal(bounded.excerpt, "ab cd");
+    assert.equal(snapshot.empty, false);
+});
+
+test("doc preview snapshot: empty outline and blocks yields empty flag (T-6839)", () => {
+    assert.deepEqual(buildDocPreviewSnapshot(null, null), {outline: [], excerpt: "", empty: true});
+    const blank = buildDocPreviewSnapshot([], [{content: "   "}]);
+    assert.equal(blank.empty, true);
 });

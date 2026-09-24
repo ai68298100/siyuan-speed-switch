@@ -559,6 +559,31 @@ test('doc-result digit direct access: search-state digits activate result rows (
     assert.match(badgeScss, /\.sw__doc-item\[data-sw-digit\]/, '结果行角标由 CSS attr() 渲染');
 });
 
+test('resident preview pane: focus-synced outline preview with bounded fetch (T-6839)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    const searchModel = readSourceText(path.join(__dirname, '..', 'src', 'search-model.js'));
+    const scss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    assert.match(docSearchUi, /export function mountDocPreviewPane/,
+        '预览窗格挂载必须是独立入口（随结果区重挂）');
+    assert.match(docSearchUi, /if \(this\.isMobile \|\| scrollElement\.clientWidth < DOC_PREVIEW_MIN_WIDTH\)/,
+        '手机端与窄容器必须不挂载窗格');
+    assert.match(docSearchUi, /DOC_PREVIEW_DEBOUNCE_MS = 300/,
+        '预览取数必须 debounce 300ms（快速连按方向键不级联请求）');
+    assert.match(docSearchUi, /box\.addEventListener\("focusin"/,
+        '窗格同步钩子必须是结果区 focusin 委托（行重建不丢钩子）');
+    assert.match(docSearchUi, /if \(!BLOCK_ID_RE\.test\(rootId\)\) return;/,
+        'rootId 必须经锚定正则校验后才可入 SQL 字面量');
+    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/outline\/getDocOutline"/,
+        '大纲必须走白名单端点');
+    assert.match(docSearchUi, /\(docPreviewGenerations\.get\(scrollElement\) \|\| 0\) !== generation\) return;/,
+        '过期预览回包必须丢弃（代际计数竞态防线）');
+    assert.match(searchModel, /function buildDocPreviewSnapshot\(outline, blocks, options = \{\}\)/,
+        '预览投影必须是纯模型（有界、可单测）');
+    assert.match(searchModel, /DOC_PREVIEW_OUTLINE_MAX = 12/, '大纲必须有界 12 条');
+    assert.match(searchModel, /DOC_PREVIEW_EXCERPT_MAX = 600/, '摘要必须有界 600 字');
+    assert.match(scss, /sw__doc-preview \{/, '预览窗格必须有样式定义');
+});
+
 test('session marks: set/jump commands with ratio restore (T-6820/R3 marks)', () => {
     assert.match(indexSource, /private sessionMarks = new Map<string, number>\(\);/,
         '会话级标记存储（内存 Map，不持久化）');

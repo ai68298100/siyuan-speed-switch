@@ -6,7 +6,7 @@ import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
@@ -877,6 +877,8 @@ export function renderDocResults(this: DocSearchUiHost,
             label.textContent = `${this.i18n.docSearchResults} · ${grid.childElementCount}`;
         }
         box.appendChild(grid);
+        // T-6839：常驻预览窗格随结果区重挂（桌面且容器足够宽时）
+        mountDocPreviewPane.call(this, box, scrollElement);
         if (plan.hasMore) {
             appendDocResultsLoadMore.call(this, box, scrollElement, docs, onClose, expandedCount);
         } else if (docs.length > DOC_RESULT_LIMIT) {
@@ -952,6 +954,107 @@ export function collectOpenRootIds(this: DocSearchUiHost): Set<string> {
         return new Set(
             opened.map((tab) => this.rootIdOf(tab)).filter(Boolean) as string[],
         );
+    }
+
+    // ==================== T-6839 常驻预览窗格 ====================
+    // 桌面端：文档结果区右分栏，行焦点（↑/↓/Tab）同步预览（大纲 ≤12 + 首段 ≤600 字）。
+    // 零新增端点：getDocOutline 与 /api/query/sql 均在 KERNEL_ENDPOINTS 白名单；
+    // 300ms debounce（Raycast/Spotlight 谱系共识）+ 代际计数丢弃过期回包；
+    // 仅全库文档网格行触发；手机端与窄容器（侧栏模式）不挂载。
+    // rootId 经 BLOCK_ID_RE 锚定校验（^[0-9]{14}-[0-9a-z]+$）后才可入 SQL 字面量。
+
+const DOC_PREVIEW_DEBOUNCE_MS = 300;
+const DOC_PREVIEW_MIN_WIDTH = 680;
+const docPreviewPanes = new WeakMap<HTMLElement, HTMLElement>();
+const docPreviewTimers = new WeakMap<HTMLElement, number>();
+const docPreviewGenerations = new WeakMap<HTMLElement, number>();
+
+export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scrollElement: HTMLElement): void {
+        if (this.isMobile || scrollElement.clientWidth < DOC_PREVIEW_MIN_WIDTH) {
+            return;
+        }
+        box.classList.add("sw--with-preview");
+        let pane = docPreviewPanes.get(scrollElement);
+        if (!pane) {
+            pane = document.createElement("aside");
+            pane.className = "sw__doc-preview";
+            pane.setAttribute("aria-label", this.i18n.docSearchPreview);
+            setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
+            docPreviewPanes.set(scrollElement, pane);
+        }
+        // 结果区每次渲染都会 innerHTML 重建，窗格需随之重挂
+        box.appendChild(pane);
+        if (box.dataset.swPreviewHook !== "1") {
+            box.dataset.swPreviewHook = "1";
+            box.addEventListener("focusin", (event) => {
+                const item = (event.target as HTMLElement).closest?.(".sw__doc-grid .sw__doc-item");
+                if (item) {
+                    scheduleDocPreview.call(this, scrollElement, item as HTMLElement);
+                }
+            });
+        }
+    }
+
+function setDocPreviewHint(this: DocSearchUiHost, pane: HTMLElement, text: string): void {
+        pane.textContent = "";
+        const hint = document.createElement("div");
+        hint.className = "sw__doc-preview-hint";
+        hint.setAttribute("role", "status");
+        hint.setAttribute("aria-live", "polite");
+        hint.textContent = text;
+        pane.appendChild(hint);
+    }
+
+function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
+        const rootId = String(item.dataset.swDocKey || "");
+        if (!BLOCK_ID_RE.test(rootId)) return;
+        const previous = docPreviewTimers.get(scrollElement);
+        if (previous !== undefined) window.clearTimeout(previous);
+        docPreviewTimers.set(scrollElement, window.setTimeout(() => {
+            void loadDocPreview.call(this, scrollElement, rootId);
+        }, DOC_PREVIEW_DEBOUNCE_MS));
+    }
+
+async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, rootId: string): Promise<void> {
+        const pane = docPreviewPanes.get(scrollElement);
+        if (!pane || !pane.isConnected) return;
+        const generation = (docPreviewGenerations.get(scrollElement) || 0) + 1;
+        docPreviewGenerations.set(scrollElement, generation);
+        setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewLoading);
+        // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null
+        const [outlinePayload, rowsPayload] = await Promise.all([
+            this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId}),
+            this.fetchKernelJson("/api/query/sql", {stmt:
+                "SELECT content FROM blocks WHERE root_id = '" + rootId + "' AND type = 'p' AND content <> '' ORDER BY id LIMIT 3"}),
+        ]);
+        if (!pane.isConnected) return;
+        if ((docPreviewGenerations.get(scrollElement) || 0) !== generation) return;
+        const outline = Array.isArray(outlinePayload?.data) ? outlinePayload.data : [];
+        const rows = Array.isArray(rowsPayload?.data) ? rowsPayload.data : [];
+        const snapshot = buildDocPreviewSnapshot(outline, rows);
+        pane.textContent = "";
+        if (snapshot.empty) {
+            setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
+            return;
+        }
+        if (snapshot.outline.length > 0) {
+            const list = document.createElement("div");
+            list.className = "sw__doc-preview-outline";
+            snapshot.outline.forEach((entry: {name: string; level: number}) => {
+                const line = document.createElement("div");
+                line.className = "sw__doc-preview-heading";
+                line.style.paddingLeft = `${(entry.level - 1) * 10}px`;
+                line.textContent = entry.name;
+                list.appendChild(line);
+            });
+            pane.appendChild(list);
+        }
+        if (snapshot.excerpt) {
+            const excerpt = document.createElement("p");
+            excerpt.className = "sw__doc-preview-excerpt";
+            excerpt.textContent = snapshot.excerpt;
+            pane.appendChild(excerpt);
+        }
     }
 
     // 空态：无可显示的搜索结果

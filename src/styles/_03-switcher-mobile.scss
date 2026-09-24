@@ -1021,6 +1021,60 @@
             }
         }
 
+        // ==================== T-6839 常驻预览窗格 ====================
+        // 桌面右分栏：行焦点同步预览（大纲+首段摘要）；网格右侧留白，窗格
+        // 绝对定位贴右缘、随结果区同高，内容超高时内部滚动。
+        &.sw--with-preview {
+            position: relative;
+
+            .sw__doc-grid {
+                padding-right: 272px;
+            }
+
+            .sw__doc-load-more,
+            .sw__doc-view-all {
+                max-width: calc(100% - 272px);
+            }
+
+            .sw__doc-preview {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: 260px;
+                overflow-y: auto;
+                padding: 8px 10px;
+                border-left: 1px solid var(--b3-border-color);
+                background: var(--b3-theme-surface);
+                border-radius: 0 8px 8px 0;
+
+                .sw__doc-preview-hint {
+                    color: var(--b3-theme-on-surface-light);
+                    font-size: 12px;
+                    line-height: 1.5;
+                }
+
+                .sw__doc-preview-heading {
+                    font-size: 12px;
+                    font-weight: 600;
+                    line-height: 1.9;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                .sw__doc-preview-excerpt {
+                    margin: 8px 0 0;
+                    padding-top: 8px;
+                    border-top: 1px dashed var(--b3-border-color);
+                    color: var(--b3-theme-on-surface-light);
+                    font-size: 12px;
+                    line-height: 1.6;
+                    overflow-wrap: anywhere;
+                }
+            }
+        }
+
         .sw__doc-status {
             display: flex;
             align-items: center;

@@ -1616,6 +1616,42 @@ function planDocViewportRestore(anchor, entries, scrollTop) {
     return Math.max(0, Math.round(base + top - offset));
 }
 
+// ==================== T-6839 常驻预览窗格 ====================
+// 纯投影：把大纲端点与首段 SQL 行收敛成有界快照。大纲取 name（type/subType
+// 形如 h1-h6 解析层级，解析不出按 1），段文本空白归一后按序拼接、截到
+// excerptMax；两者皆空返回 empty=true，UI 层显示空态而不是空窗格。
+const DOC_PREVIEW_OUTLINE_MAX = 12;
+const DOC_PREVIEW_EXCERPT_MAX = 600;
+function buildDocPreviewSnapshot(outline, blocks, options = {}) {
+    const outlineMax = Number.isFinite(options.outlineMax) ? options.outlineMax : DOC_PREVIEW_OUTLINE_MAX;
+    const excerptMax = Number.isFinite(options.excerptMax) ? options.excerptMax : DOC_PREVIEW_EXCERPT_MAX;
+    const outlineOut = [];
+    if (Array.isArray(outline)) {
+        for (const entry of outline) {
+            if (outlineOut.length >= outlineMax) break;
+            const name = String(entry?.name || "").replace(/\s+/g, " ").trim();
+            if (!name) continue;
+            const levelRaw = String(entry?.type || entry?.subType || "").toLowerCase();
+            const levelOk = levelRaw.length === 2 && levelRaw[0] === "h" && levelRaw[1] >= "1" && levelRaw[1] <= "6";
+            outlineOut.push({name, level: levelOk ? Number(levelRaw[1]) : 1});
+        }
+    }
+    let excerpt = "";
+    if (Array.isArray(blocks)) {
+        for (const block of blocks) {
+            const text = String(block?.content || "").replace(/\s+/g, " ").trim();
+            if (!text) continue;
+            const merged = excerpt ? excerpt + " " + text : text;
+            if (merged.length >= excerptMax) {
+                excerpt = merged.slice(0, Math.max(0, excerptMax)).trim();
+                break;
+            }
+            excerpt = merged;
+        }
+    }
+    return {outline: outlineOut, excerpt, empty: outlineOut.length === 0 && !excerpt};
+}
+
 // ==================== T-6834 搜索结果关键词高亮 ====================
 // 纯分段器：把标题按查询词条切成 {text, hit} 段，UI 层用 textContent/mark
 // 装配（零 innerHTML，无注入面）。词条复用 parseSearchTerms 的 includes
@@ -1703,4 +1739,5 @@ module.exports = {
     planDocResultsPage,
     buildKeywordHighlightSegments,
     stripSnippetMarkup,
+    buildDocPreviewSnapshot,
 };
