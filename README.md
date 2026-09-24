@@ -1,6 +1,6 @@
 # 小驴雷切（LvSpeed Switch）
 
-[![Version](https://img.shields.io/badge/version-0.34.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.35.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-%E6%80%9D%E6%BA%90%E7%AC%94%E8%AE%B0-ff5c67)](https://b3log.org/siyuan)
 
 小驴雷切是思源笔记的轻量导航工作区：以**已打开页签**为第一优先级，通过实时缩略图完成快速预览和切换；需要时再展开到**收藏夹、全库文档搜索、58 个组件的聚合面板、日记和自定义快捷入口**。桌面弹窗、右侧栏和手机端共享同一套数据与命令，但会根据空间和输入方式采用不同布局。
 
@@ -316,11 +316,17 @@ pnpm verify:release
 
 它依次执行类型检查、生产构建、双构建复现审计、完整自动测试、发布/质量/集成三套审计和四套 UI 冒烟。发布工作流还会在构建后强制检查 `package.zip` 的白名单、版本元数据、远程依赖和 512 KiB 体积上限（该上限为项目自律线）。自动门禁通过后，再在真实思源环境逐项确认（桌面弹窗、右侧栏、Android 真机、主题、生命周期），清单见 [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md)，候选状态与产物矩阵见 [docs/release-readiness.md](docs/release-readiness.md)。
 
-当前版本为 `v0.34.0`（2026-09-24 正式发布；关联内容、保存的搜索、命令模式、marks 书签、多目标快速捕获、预览打开、文档集版本历史、动态收藏组、密度档位、可迁移配置包、移动端悬浮球防误触加固等，Release 资产由 workflow 自动构建）。
+当前版本为 `v0.35.0`（2026-09-25 正式发布；搜索关键词高亮、片段净化、结果行数字直达，Release 资产由 workflow 自动构建）。
 
 ## 更新日志
 
 完整历史见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。最近版本：
+
+### v0.35.0（2026-09-25 正式发布）
+
+- **搜索 · 关键词高亮**：查询词在文档结果标题与片段行高亮（标题实底 mark、片段主色着色；分段装配零 innerHTML，排除词不高亮、大小写不敏感保留原文）。
+- **搜索 · 片段净化**：内核全文片段自带的 `<mark>` 展示标记在投影层剥离，不再以字面文本显示（只剥已知包裹标签，正文 "a < b" 类字面文本不受影响）。
+- **键盘 · 结果行数字直达**：搜索态 1-9 直达前 9 条可见文档结果（带数字角标），与点击共用同一激活入口（块级命中锚定一致）；卡片隐藏时数字键不再失效。
 
 ### v0.34.0（2026-09-24 正式发布）
 

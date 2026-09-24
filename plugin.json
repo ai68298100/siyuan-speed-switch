@@ -2,7 +2,7 @@
   "name": "siyuan-speed-switch",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-speed-switch",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "minAppVersion": "3.8.0",
   "disabledInPublish": false,
   "backends": ["all"],

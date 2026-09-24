@@ -5,6 +5,36 @@
 
 ## Changelog (full history)
 
+### v0.35.0 (2026-09-25)
+
+- **Search · keyword highlighting**: query terms highlighted in doc result titles and snippets (pure `buildKeywordHighlightSegments` segmenter: phrase hits, exclusions stay plain, case-insensitive with original casing preserved, bounded 64-hit overlap-merged ranges; segment assembly with zero innerHTML). Titles get a solid primary mark; snippets get primary tint without background.
+- **Search · snippet sanitization**: the kernel's presentational `<mark>` wrappers in full-text snippets are stripped at the projection layer (`stripSnippetMarkup` removes known wrappers only; literal prose like "a < b" is untouched) instead of rendering as literal text.
+- **Keyboard · digit direct access for result rows**: 1-9 opens the first nine visible doc results in search state (with digit badges); `activateDocResultItem` is the single activation entry shared by click and digit (block-level hit anchor persisted on the row); non-empty queries prefer result rows with card fallback; digit keys no longer die when cards hide; digit keys pass the control guard when focus rests on a result row.
+- **Engineering**: real-kernel E2E extended with highlight assertions (negative-verified) and the digit-direct open path; kernel-widgets-wiring gained the T-6837 contract (negative-verified).
+
+### v0.34.0 (2026-09-24)
+
+- **Related content**: the zero-term workbench lists backlinks/mentions of the current document (official getBacklink2, bounded projection, explainable truncation); click to jump.
+- **Saved searches + `>` command mode**: save and replay queries and filters; `>` enters command mode listing executable actions only.
+- **Marks + digit badges**: jump back by exact scroll ratio; the first nine visible cards carry digit badges.
+- **Multi-target quick capture**: journal/current-doc targets, destination preview, controlled write with per-step failure reasons.
+- **Preview open**: Alt+click opens search results as read-only preview tabs (doc.mode preview).
+- **Document set version history & rollback**: overwrites keep the last 3 versions (FIFO), any of them restorable reversibly; restore summary includes Essentials receipts; scene presets persist into document sets (presetId layering).
+- **Dynamic favorite groups**: tag + notebook scope + updated-window (7/30/90 whitelist) parameterized queries.
+- **Density tier & config pack**: compact/comfortable density switch; one-click export/import of a versioned config pack (atomic apply after whole-pack validation).
+- **Mobile floating-ball anti-misfire**: `data-prevent-swipe` official contract (L1) + capture-phase touch interception (L2) + drag-time scroll-chain blocking (L3); dragging the ball no longer triggers SiYuan edge swipes; off-edge docking and fling-up summon.
+- **History dropdown balance**: per-section top-8 with expand-all; journals no longer bury recently closed.
+- **Real-instance E2E channel**: 6 real-kernel acceptance specs; ADR 0077 (1024 KiB raw line); provider protocol metadata; GBK mojibake comment cleanup.
+
+### v0.33.0 (2026-09-24)
+
+- **Search diagnostics & sorting**: score breakdown (source weight/title score/matched fields) and health snapshot (source counts, latency, degradation reasons); fixed remote search silently dropping out on misplaced call args; async behavior locks added.
+- **Result identity anchoring**: viewport pins to item identity across async refreshes (fzf `--track` semantics).
+- **R5-A absorption batch**: openTab new options (keepCursor background restore, doc.mode preview), saved-search commands, history domain study (converged), document set version rollback, open strategy layer, breadcrumb entry.
+- **Real-instance E2E channel**: Playwright + local SiYuan kernel acceptance with the `window.siyuanSpeedSwitch` public hook.
+- **Workbench & related content**: zero-term workbench with related-content row (backlinks/mentions) and bounded polling for index latency.
+- **Surface migration**: command mode `>`, marks, multi-target capture, preview open, version history timeline, dynamic groups, density tiers, config pack, provider protocol, clipboard entry, breadcrumb button.
+
 ### v0.32.0 (2026-09-23)
 
 - **Search · Full-library pinyin completion**: pure-letter queries (e.g. cp) now also surface matches from all library titles via a lazy pinyin cache (zero standing requests).
