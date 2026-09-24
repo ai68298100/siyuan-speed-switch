@@ -904,6 +904,8 @@
   ,"floatingBallIdleOpacity": "Idle opacity"
   ,"floatingBallIdleDelay": "Idle delay"
   ,"floatingBallSeconds": "s"
+  ,"floatingBallEdgeAvoid": "Off-edge docking (mobile)"
+  ,"floatingBallEdgeAvoidTip": "Keeps the mobile ball and its drag range away from the 12px edge-swipe strip so dragging never opens the sidebar; half-hide is disabled while active."
   ,"floatingBallHalfHide": "Half-hide at the edge when idle"
   ,"floatingBallSnap": "Snap to an edge after dragging"
   ,"floatingBallSnapTip": "Turn off to place the ball freely in the visible area. Selecting an edge docks it again."

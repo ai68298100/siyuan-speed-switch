@@ -1615,6 +1615,12 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     controlLabel(this.i18n.floatingBallIdleDelay, delay, undefined, (value) => `${value / 1000} ${this.i18n.floatingBallSeconds}`);
     controlLabel(this.i18n.floatingBallHalfHide, halfHide);
     controlLabel(this.i18n.floatingBallSnap, snap, this.i18n.floatingBallSnapTip);
+    // T-6784/P6 手机端离边停靠（防侧滑误触）：仅手机端生效
+    const edgeAvoidSwitch = this.switcher(Boolean(s.floatingBall?.behavior?.edgeAvoidMobile), (v) => {
+        const current = this.getSettings().floatingBall;
+        this.updateSettings({floatingBall: {...current, behavior: {...(current.behavior || {}), edgeAvoidMobile: v}}});
+    });
+    controlLabel(this.i18n.floatingBallEdgeAvoid, edgeAvoidSwitch, this.i18n.floatingBallEdgeAvoidTip);
     controlLabel(this.i18n.floatingBallHideOnScroll, hideOnScroll);
     controlLabel(this.i18n.floatingBallHideOnFullscreen, hideOnFullscreen);
     controlLabel(this.i18n.floatingBallYieldToModals, yieldToModals);

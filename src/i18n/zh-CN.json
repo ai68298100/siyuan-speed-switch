@@ -799,6 +799,8 @@
   "floatingBallIdleOpacity": "闲置透明度",
   "floatingBallIdleDelay": "闲置延迟",
   "floatingBallSeconds": "秒",
+  "floatingBallEdgeAvoid": "手机端离边停靠",
+  "floatingBallEdgeAvoidTip": "开启后手机端悬浮球与拖动范围离开屏幕左右边缘 12px 侧滑激活条，拖球不再触发思源侧栏；半隐随之停用。",
   "floatingBallHalfHide": "闲置时边缘半隐藏",
   "floatingBallSnap": "拖动后吸附边缘",
   "floatingBallSnapTip": "关闭后可在可视区域自由放置；选择停靠边缘可重新贴边。",

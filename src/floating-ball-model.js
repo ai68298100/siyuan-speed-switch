@@ -98,6 +98,7 @@ function createDefaultFloatingBallConfig() {
             hideOnFullscreen: true,
             yieldToModals: true,
             touchSlopPx: 8,
+            edgeAvoidMobile: false,
         },
         actions,
         presets: [],
@@ -287,6 +288,8 @@ function normalizeFloatingBallConfig(input, options = {}) {
     config.behavior.hideOnScroll = bool(behavior.hideOnScroll, defaults.behavior.hideOnScroll);
     config.behavior.hideOnFullscreen = bool(behavior.hideOnFullscreen, defaults.behavior.hideOnFullscreen);
     config.behavior.yieldToModals = bool(behavior.yieldToModals, defaults.behavior.yieldToModals);
+    // T-6784/P6 手机端离边停靠：球体离开边缘 12px 侧滑激活条（默认关）
+    config.behavior.edgeAvoidMobile = bool(behavior.edgeAvoidMobile, defaults.behavior.edgeAvoidMobile === true);
     config.behavior.touchSlopPx = Math.round(clamp(behavior.touchSlopPx, 8, 12, defaults.behavior.touchSlopPx));
 
     const sourceActions = isRecord(source.actions) ? source.actions : {};

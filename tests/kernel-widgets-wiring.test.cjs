@@ -563,6 +563,22 @@ test('version timeline: rollback targets a chosen version from an inline list (T
     assert.match(readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js')), /versionIndex/,
         '模型支持指定版本回滚');
 });
+test('mobile off-edge docking: edgeAvoid insets ball away from the swipe strip (T-6784/P6)', () => {
+    const fabUi = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-ui.ts'));
+    const model = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-model.js'));
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(fabUi, /private get mobileEdgeAvoid\(\): boolean \{\s*return this\.surface === "mobile" && this\.edgeAvoidPx >= 12;/,
+        '离边停靠生效判定必须 ≥ 宿主 12px 激活条');
+    assert.match(fabUi, /bounds\.left \+ this\.effectiveMarginX \+ radius/,
+        '水平钳制必须使用离边有效边距（拖动不入激活条）');
+    assert.match(fabUi, /private get effectiveHalfHide\(\): boolean \{\s*return this\.halfHide && !this\.mobileEdgeAvoid;/,
+        '离边停靠时半隐必须停用（半隐会把球推回激活条）');
+    assert.match(model, /edgeAvoidMobile = bool\(behavior\.edgeAvoidMobile, defaults\.behavior\.edgeAvoidMobile === true\)/,
+        '模型必须归一化 edgeAvoidMobile（默认关）');
+    assert.match(settingsSections, /edgeAvoidMobile: v\}\}\}\);/,
+        '设置页必须提供手机端离边停靠开关');
+});
+
 test('skin layer wiring: body marker, unload cleanup and three registered skins', () => {
     assert.match(indexSource, /private applySkin\(\): void/);
     assert.match(indexSource, /document\.body\.dataset\.swSkin = skin;/);

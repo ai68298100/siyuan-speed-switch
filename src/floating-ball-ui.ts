@@ -51,6 +51,7 @@ export interface FloatingBallUiOptions {
     position?: FloatingBallPosition;
     touchSlopPx?: number;
     marginPx?: number;
+    edgeAvoidPx?: number;
     /** Opacity applied after the ball has been idle for idleDelayMs. */
     idleOpacity?: number;
     /** Delay before the idle presentation is applied. */
@@ -89,6 +90,7 @@ export interface FloatingBallUiPatch {
     position?: FloatingBallPosition;
     touchSlopPx?: number;
     marginPx?: number;
+    edgeAvoidPx?: number;
     idleOpacity?: number;
     idleDelayMs?: number;
     halfHide?: boolean;
@@ -197,6 +199,26 @@ export class FloatingBallUi implements FloatingBallUiController {
     private position: FloatingBallPosition;
     private touchSlop: number;
     private margin: number;
+    /** T-6784/P6：移动端离边停靠——额外从屏幕边缘内收的像素（0=关闭）。 */
+    private edgeAvoidPx: number;
+
+    /** P6：移动端离边停靠生效判定（额外内收 ≥ 宿主 12px 侧滑激活条即视为生效）。 */
+    private get mobileEdgeAvoid(): boolean {
+        return this.surface === "mobile" && this.edgeAvoidPx >= 12;
+    }
+
+    /** 离边停靠时水平钳制使用的有效边距（把球体推离宿主侧滑激活条）。 */
+    private get effectiveMarginX(): number {
+        return this.mobileEdgeAvoid ? clamp(this.margin + this.edgeAvoidPx, 0, 64) : this.margin;
+    }
+
+    /** 离边停靠时禁用半隐（半隐会把球推回边缘激活条）。 */
+    private get effectiveHalfHide(): boolean {
+        return this.halfHide && !this.mobileEdgeAvoid;
+    }
+
+    /** P6-B 上滑呼出：docked 状态下的指针轨迹采样（用于速度窗口判定）。 */
+    private flingSamples: Array<{x: number; y: number; t: number}> = [];
     private idleOpacity: number;
     private idleDelayMs: number;
     private halfHide: boolean;
@@ -240,6 +262,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         this.touchSlop = normalizeTouchSlop(options.touchSlopPx);
         this.margin = clamp(Number(options.marginPx), 0, 64);
         if (!Number.isFinite(this.margin)) this.margin = DEFAULT_MARGIN;
+        this.edgeAvoidPx = clamp(Number(options.edgeAvoidPx), 0, 32);
         this.idleOpacity = normalizeIdleOpacity(options.idleOpacity);
         this.idleDelayMs = normalizeIdleDelay(options.idleDelayMs);
         this.halfHide = options.halfHide !== false;
@@ -274,6 +297,7 @@ export class FloatingBallUi implements FloatingBallUiController {
             const margin = Number(patch.marginPx);
             this.margin = clamp(Number.isFinite(margin) ? margin : DEFAULT_MARGIN, 0, 64);
         }
+        if (patch.edgeAvoidPx !== undefined) this.edgeAvoidPx = clamp(Number(patch.edgeAvoidPx), 0, 32);
         if (patch.idleOpacity !== undefined) this.idleOpacity = normalizeIdleOpacity(patch.idleOpacity);
         if (patch.idleDelayMs !== undefined) this.idleDelayMs = normalizeIdleDelay(patch.idleDelayMs);
         if (patch.halfHide !== undefined) this.halfHide = patch.halfHide !== false;
@@ -435,7 +459,7 @@ export class FloatingBallUi implements FloatingBallUiController {
         root.dataset.surface = this.surface;
         root.dataset.state = this.state;
         root.dataset.idle = "false";
-        root.dataset.halfHide = String(this.halfHide);
+        root.dataset.halfHide = String(this.effectiveHalfHide);
         // T-6778（ADR 0071 方案 A）：思源 3.8.x 宿主以 data-prevent-swipe 整轮
         // 让出侧滑手势所有权——声明后球上的触摸不再触发宿主左/右侧栏。
         if (this.surface === "mobile") {
@@ -561,6 +585,7 @@ export class FloatingBallUi implements FloatingBallUiController {
             this.pointerStart = {x: event.clientX, y: event.clientY};
             this.positionAtPointerStart = this.getPosition();
             this.suppressClick = false;
+            if (this.surface === "mobile") this.flingSamples = [{x: event.clientX, y: event.clientY, t: Date.now()}];
             try { trigger.setPointerCapture(event.pointerId); } catch (_) { /* WebView may not support capture. */ }
         };
         const onPointerMove = (event: PointerEvent) => {
@@ -568,6 +593,11 @@ export class FloatingBallUi implements FloatingBallUiController {
             if (this.isInteractionBlocked()) {
                 this.cancelPointer(true);
                 return;
+            }
+            // P6-B 上滑呼出：仅 docked（未进入拖动）时采样轨迹
+            if (this.surface === "mobile" && this.state === "docked") {
+                this.flingSamples.push({x: event.clientX, y: event.clientY, t: Date.now()});
+                if (this.flingSamples.length > 6) this.flingSamples.shift();
             }
             const dx = event.clientX - this.pointerStart.x;
             const dy = event.clientY - this.pointerStart.y;
@@ -583,7 +613,7 @@ export class FloatingBallUi implements FloatingBallUiController {
             const anchor = this.dragAnchor;
             if (bounds && anchor) {
                 const radius = this.ballSize / 2;
-                const x = clamp(event.clientX, bounds.left + this.margin + radius, Math.max(bounds.left + this.margin + radius, bounds.right - this.margin - radius));
+                const x = clamp(event.clientX, bounds.left + this.effectiveMarginX + radius, Math.max(bounds.left + this.effectiveMarginX + radius, bounds.right - this.effectiveMarginX - radius));
                 const y = clamp(event.clientY, bounds.top + this.margin + radius, Math.max(bounds.top + this.margin + radius, bounds.bottom - this.margin - radius));
                 this.root?.style.setProperty("--sw-fab-drag-x", `${x - anchor.x}px`);
                 this.root?.style.setProperty("--sw-fab-drag-y", `${y - anchor.y}px`);
@@ -608,6 +638,24 @@ export class FloatingBallUi implements FloatingBallUiController {
         };
         const onPointerUp = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId) return;
+            // P6-B 上滑呼出：docked 状态下快速上划 = 打开更多动作面板
+            // （速度+方向双判定；触发后抑制合成 click，避免再打开切换器）
+            if (this.surface === "mobile" && this.state === "docked" && this.flingSamples.length >= 2) {
+                const first = this.flingSamples[0];
+                const last = this.flingSamples[this.flingSamples.length - 1];
+                const dy = last.y - first.y;
+                const dx = last.x - first.x;
+                const dt = Math.max(1, last.t - first.t);
+                if (dy <= -24 && Math.abs(dx) <= 12 && dy / dt <= -0.5) {
+                    this.flingSamples = [];
+                    this.suppressClick = true;
+                    this.cancelPointer(false);
+                    this.setState("more");
+                    this.options.onOpenMore?.();
+                    return;
+                }
+            }
+            this.flingSamples = [];
             if (this.isInteractionBlocked()) {
                 this.cancelPointer(true);
                 return;
@@ -865,7 +913,7 @@ export class FloatingBallUi implements FloatingBallUiController {
     private setIdle(idle: boolean): void {
         if (!this.root) return;
         this.root.dataset.idle = String(idle);
-        this.root.dataset.halfHide = String(this.halfHide && (this.snap || this.position.xRatio === undefined));
+        this.root.dataset.halfHide = String(this.effectiveHalfHide && (this.snap || this.position.xRatio === undefined));
         this.root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
     }
 
@@ -996,14 +1044,14 @@ export class FloatingBallUi implements FloatingBallUiController {
         const minCenter = bounds.top + this.margin + radius;
         const maxCenter = Math.max(minCenter, bounds.bottom - this.margin - radius);
         const center = minCenter + (maxCenter - minCenter) * yRatio;
-        const minX = bounds.left + this.margin + radius;
-        const maxX = Math.max(minX, bounds.right - this.margin - radius);
+        const minX = bounds.left + this.effectiveMarginX + radius;
+        const maxX = Math.max(minX, bounds.right - this.effectiveMarginX - radius);
         const xRatio = !this.snap && this.position.xRatio !== undefined ? this.position.xRatio : (edge === "left" ? 0 : 1);
         const x = minX + (maxX - minX) * xRatio;
         this.renderedAnchor = {x, y: center};
         this.root.style.top = `${center.toFixed(3)}px`;
         this.root.style.left = xRatio === 1 ? "auto" : `${(x - radius).toFixed(3)}px`;
-        this.root.style.right = xRatio === 1 ? `${(viewportWidth - bounds.right + this.margin).toFixed(3)}px` : "auto";
+        this.root.style.right = xRatio === 1 ? `${(viewportWidth - bounds.right + this.effectiveMarginX).toFixed(3)}px` : "auto";
         this.syncRecovery();
     }
 
