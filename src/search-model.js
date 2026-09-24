@@ -1609,6 +1609,47 @@ function planDocViewportRestore(anchor, entries, scrollTop) {
     return Math.max(0, Math.round(base + top - offset));
 }
 
+// ==================== T-6834 搜索结果关键词高亮 ====================
+// 纯分段器：把标题按查询词条切成 {text, hit} 段，UI 层用 textContent/mark
+// 装配（零 innerHTML，无注入面）。词条复用 parseSearchTerms 的 includes
+// （小写化），匹配不区分大小写；命中区间有界（每词条≤64 处），重叠合并。
+const HIGHLIGHT_MAX_TERMS = 8;
+const HIGHLIGHT_RANGE_MAX = 64;
+function buildKeywordHighlightSegments(text, query) {
+    const raw = String(text || "");
+    const {includes} = parseSearchTerms(query, HIGHLIGHT_MAX_TERMS);
+    if (!raw || !includes.length) return [{text: raw, hit: false}];
+    const lower = raw.toLowerCase();
+    const ranges = [];
+    for (const term of includes) {
+        if (!term) continue;
+        let from = 0;
+        while (ranges.length < HIGHLIGHT_RANGE_MAX) {
+            const at = lower.indexOf(term, from);
+            if (at < 0) break;
+            ranges.push([at, at + term.length]);
+            from = at + term.length;
+        }
+    }
+    if (!ranges.length) return [{text: raw, hit: false}];
+    ranges.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const merged = [ranges[0].slice()];
+    for (let i = 1; i < ranges.length; i++) {
+        const last = merged[merged.length - 1];
+        if (ranges[i][0] <= last[1]) last[1] = Math.max(last[1], ranges[i][1]);
+        else merged.push(ranges[i].slice());
+    }
+    const segments = [];
+    let cursor = 0;
+    for (const [start, end] of merged) {
+        if (cursor < start) segments.push({text: raw.slice(cursor, start), hit: false});
+        segments.push({text: raw.slice(start, end), hit: true});
+        cursor = end;
+    }
+    if (cursor < raw.length) segments.push({text: raw.slice(cursor), hit: false});
+    return segments;
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -1653,4 +1694,5 @@ module.exports = {
     buildOpenedDocumentSearchRequests,
     resolveDocSearchResultId,
     planDocResultsPage,
+    buildKeywordHighlightSegments,
 };

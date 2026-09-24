@@ -11,6 +11,7 @@ const {
     buildSearchHealthSnapshot,
     pickDocViewportAnchor,
     planDocViewportRestore,
+    buildKeywordHighlightSegments,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
@@ -1027,4 +1028,81 @@ test("viewport anchor roundtrip: refresh keeps the reading position stable", () 
     // 恢复后 k3 的视口偏移与锚定前一致（12）
     const top = after.find((entry) => entry.key === anchor.key).top;
     assert.equal(top - (restored - 0), 12);
+});
+
+test("keyword highlight: single term splits title into hit/plain segments (T-6834)", () => {
+    assert.deepEqual(buildKeywordHighlightSegments("工作日志", "工作"), [
+        {text: "工作", hit: true},
+        {text: "日志", hit: false},
+    ]);
+    // 尾部命中
+    assert.deepEqual(buildKeywordHighlightSegments("每日工作", "工作"), [
+        {text: "每日", hit: false},
+        {text: "工作", hit: true},
+    ]);
+});
+
+test("keyword highlight: case-insensitive and preserves original casing", () => {
+    assert.deepEqual(buildKeywordHighlightSegments("API Design", "api"), [
+        {text: "API", hit: true},
+        {text: " Design", hit: false},
+    ]);
+});
+
+test("keyword highlight: multiple terms merge overlapping ranges in order", () => {
+    // "思源" 与 "笔记" 相邻 → 合并为一段（视觉等价、DOM 更少）
+    const segments = buildKeywordHighlightSegments("思源笔记与笔记", "思源 笔记");
+    assert.deepEqual(segments, [
+        {text: "思源笔记", hit: true},
+        {text: "与", hit: false},
+        {text: "笔记", hit: true},
+    ]);
+    // 重叠：查询 "源笔记" 与 "笔记" 共享区间 → 合并为一段
+    assert.deepEqual(buildKeywordHighlightSegments("思源笔记", "源笔记 笔记"), [
+        {text: "思", hit: false},
+        {text: "源笔记", hit: true},
+    ]);
+});
+
+test("keyword highlight: excludes and unmatched terms produce no marks", () => {
+    assert.deepEqual(buildKeywordHighlightSegments("工作日志", "-工作"), [{text: "工作日志", hit: false}]);
+    assert.deepEqual(buildKeywordHighlightSegments("工作日志", "项目"), [{text: "工作日志", hit: false}]);
+});
+
+test("keyword highlight: quoted phrases still hit", () => {
+    assert.deepEqual(buildKeywordHighlightSegments("工作日志", "\"工作\""), [
+        {text: "工作", hit: true},
+        {text: "日志", hit: false},
+    ]);
+});
+
+test("keyword highlight: empty text or query stays a single plain segment", () => {
+    assert.deepEqual(buildKeywordHighlightSegments("", "工作"), [{text: "", hit: false}]);
+    assert.deepEqual(buildKeywordHighlightSegments("工作日志", ""), [{text: "工作日志", hit: false}]);
+    assert.deepEqual(buildKeywordHighlightSegments(null, "工作"), [{text: "", hit: false}]);
+    assert.deepEqual(buildKeywordHighlightSegments("工作日志", "   "), [{text: "工作日志", hit: false}]);
+});
+
+test("keyword highlight: segment join always reconstructs the original title", () => {
+    const samples = [
+        ["工作日志/设计/工作台", "工作 设计"],
+        ["aAbB", "ab"],
+        ["重复重复重复", "重复"],
+    ];
+    for (const [text, query] of samples) {
+        const segments = buildKeywordHighlightSegments(text, query);
+        assert.equal(segments.map((segment) => segment.text).join(""), text);
+        for (const segment of segments) {
+            assert.equal(typeof segment.hit, "boolean");
+            assert.ok(segment.text.length > 0);
+        }
+    }
+});
+
+test("keyword highlight: hit ranges are bounded to avoid pathological titles", () => {
+    const text = "ab".repeat(100); // 200 字符，"a" 命中 100 处 > 64 上限
+    const segments = buildKeywordHighlightSegments(text, "a");
+    const hits = segments.filter((segment) => segment.hit);
+    assert.equal(hits.length, 64);
+    assert.equal(segments.map((segment) => segment.text).join(""), text);
 });

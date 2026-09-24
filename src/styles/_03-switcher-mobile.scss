@@ -969,6 +969,14 @@
                 line-height: 1.45;
                 font-weight: 600;
                 overflow-wrap: anywhere;
+
+                // T-6834 关键词高亮：紧凑标记，不撑行高、不抢色
+                mark {
+                    padding: 0 1px;
+                    border-radius: 3px;
+                    background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent);
+                    color: inherit;
+                }
             }
 
             .sw__doc-source {

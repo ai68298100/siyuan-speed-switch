@@ -6,7 +6,7 @@ import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
@@ -1056,7 +1056,17 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         title.className = "sw__doc-title";
         const hPath = String(doc.hPath || "");
         const docTitle = hPath.split("/").filter(Boolean).pop() || String(doc.title || doc.name || "") || id;
-        title.textContent = docTitle;
+        // T-6834 关键词高亮：查询词条命中段包 <mark>（分段 textContent 装配，零 innerHTML）
+        for (const segment of buildKeywordHighlightSegments(docTitle, query)) {
+            if (!segment.text) continue;
+            if (segment.hit) {
+                const mark = document.createElement("mark");
+                mark.textContent = segment.text;
+                title.appendChild(mark);
+            } else {
+                title.appendChild(document.createTextNode(segment.text));
+            }
+        }
         const source = document.createElement("span");
         source.className = "sw__doc-source";
         source.textContent = doc.source === "opened"
