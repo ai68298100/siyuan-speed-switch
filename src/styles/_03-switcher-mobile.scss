@@ -1009,6 +1009,15 @@
                 font-size: 12px;
                 line-height: 1.5;
                 overflow-wrap: anywhere;
+
+                // T-6835 片段行关键词高亮：比标题更轻，仅着色不加底
+                mark {
+                    padding: 0;
+                    border-radius: 2px;
+                    background: transparent;
+                    color: var(--b3-theme-primary);
+                    font-weight: 600;
+                }
             }
         }
 

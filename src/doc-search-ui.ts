@@ -1079,7 +1079,17 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         if (snippets) {
             snippetElement = document.createElement("span");
             snippetElement.className = "sw__doc-snippet";
-            snippetElement.textContent = snippets;
+            // T-6835 片段行关键词高亮：与标题共用分段器（模型层已剥内核 <mark> 包裹）
+            for (const segment of buildKeywordHighlightSegments(snippets, query)) {
+                if (!segment.text) continue;
+                if (segment.hit) {
+                    const mark = document.createElement("mark");
+                    mark.textContent = segment.text;
+                    snippetElement.appendChild(mark);
+                } else {
+                    snippetElement.appendChild(document.createTextNode(segment.text));
+                }
+            }
         }
         const path = document.createElement("span");
         path.className = "sw__doc-path";

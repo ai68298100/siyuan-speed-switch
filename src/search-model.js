@@ -388,6 +388,13 @@ function resultSnippet(raw) {
     ]));
 }
 
+// T-6835：内核全文检索用 <mark>…</mark> 包裹命中词，那是宿主展示语义，
+// 存储投影只留纯文本。只剥已知包裹标签——宽泛的 <[^>]+> 会误食正文里
+// "a < b and c > d" 这类字面文本；遗留的 span/em 等标记与引入前行为一致。
+function stripSnippetMarkup(text) {
+    return String(text ?? "").replace(/<\/?mark(?:\s[^>]*)?>/gi, "");
+}
+
 function resultNumber(raw, keys) {
     for (const value of nestedValues(raw, keys)) {
         const number = typeof value === "number" ? value : Number(value);
@@ -420,7 +427,7 @@ function normalizeSearchResult(raw, source) {
         blockId,
         title: normalizeText(title, MAX_TITLE_LENGTH) || usableRootId,
         path: normalizeText(path, MAX_PATH_LENGTH),
-        snippet: normalizeText(snippet, MAX_SNIPPET_LENGTH),
+        snippet: normalizeText(stripSnippetMarkup(snippet), MAX_SNIPPET_LENGTH),
         updated,
         notebookId,
         type,
@@ -1695,4 +1702,5 @@ module.exports = {
     resolveDocSearchResultId,
     planDocResultsPage,
     buildKeywordHighlightSegments,
+    stripSnippetMarkup,
 };

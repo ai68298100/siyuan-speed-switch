@@ -12,6 +12,7 @@ const {
     pickDocViewportAnchor,
     planDocViewportRestore,
     buildKeywordHighlightSegments,
+    stripSnippetMarkup,
     searchResultNotebookId,
     normalizeTitleSearchDocuments,
     filterSearchDocuments,
@@ -1105,4 +1106,18 @@ test("keyword highlight: hit ranges are bounded to avoid pathological titles", (
     const hits = segments.filter((segment) => segment.hit);
     assert.equal(hits.length, 64);
     assert.equal(segments.map((segment) => segment.text).join(""), text);
+});
+
+test("snippet markup: strips kernel hit wrappers of any casing or attributes", () => {
+    assert.equal(stripSnippetMarkup("前<mark>命中</mark>后"), "前命中后");
+    assert.equal(stripSnippetMarkup("<MARK class='x'>词</MARK>"), "词");
+    assert.equal(stripSnippetMarkup("a<mark>b"), "ab"); // 截断残留的开标签
+});
+
+test("snippet markup: plain text and literal angle-bracket prose stay intact (T-6835)", () => {
+    assert.equal(stripSnippetMarkup("普通片段文本"), "普通片段文本");
+    // 负向：宽泛的 <[^>]+> 会误食这段字面比较文本，已知标签剥离不许碰它
+    assert.equal(stripSnippetMarkup("if a < b and c > d then"), "if a < b and c > d then");
+    assert.equal(stripSnippetMarkup(""), "");
+    assert.equal(stripSnippetMarkup(null), "");
 });
