@@ -10449,6 +10449,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 size: isSidebar ? undefined : config.appearance?.size,
                 snap: config.behavior?.snap,
                 marginPx: config.appearance?.marginPx,
+                edgeAvoidPx: surface === "mobile" && config.behavior?.edgeAvoidMobile ? 12 : 0,
                 ariaLabel: this.i18n.switchTabs,
                 onOpenSwitcher: () => {
                     const current: any = this.getSettings().floatingBall || {};
@@ -10492,6 +10493,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             size: isSidebar ? undefined : config.appearance?.size,
             snap: config.behavior?.snap,
             marginPx: config.appearance?.marginPx,
+            edgeAvoidPx: surface === "mobile" && config.behavior?.edgeAvoidMobile ? 12 : 0,
             ariaLabel: this.i18n.switchTabs,
         });
         controller.mount();
