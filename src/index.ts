@@ -7405,13 +7405,15 @@ private rootIdOf(tab: Tab): string | null {
         }
         let shown = 0;
 
+        // P7：每区默认展示前 8 条，保证两个分区首屏均可达
+        const HISTORY_CAP = 8;
         const appendSection = (title: string, entries: IOpenHistoryEntry[], clearLabel: string, clearAction: () => void) => {
             const visible = typeof entryFilter === "function" ? entries.filter(entryFilter) : entries;
             if (visible.length === 0) return;
             shown += visible.length;
             const heading = document.createElement("div");
             heading.className = "sw__history-section-title";
-            heading.textContent = title;
+            heading.textContent = `${title} (${visible.length})`;
             panel.appendChild(heading);
             const clear = document.createElement("button");
             clear.type = "button";
@@ -7422,20 +7424,34 @@ private rootIdOf(tab: Tab): string | null {
                 clearAction();
             });
             panel.appendChild(clear);
-            visible.forEach((entry) => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = `sw__history-item${entry.source === "closed" ? " sw__history-item--closed" : ""}`;
-            item.setAttribute("role", "menuitem");
-            item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span class="sw__history-copy"><span class="sw__history-title"></span><span class="sw__history-meta"></span></span>`;
-            item.querySelector<HTMLElement>(".sw__history-title")!.textContent = entry.title;
-            item.querySelector<HTMLElement>(".sw__history-meta")!.textContent = entry.source === "closed"
-                ? this.i18n.historyClosed
-                : openedKeys.has(entry.key) ? this.i18n.historyOpen : this.i18n.historyClosed;
-            item.title = entry.title;
-            this.bindHistoryItemActions(item, entry, onPick);
-            panel.appendChild(item);
-            });
+            const renderItem = (entry: IOpenHistoryEntry) => {
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = `sw__history-item${entry.source === "closed" ? " sw__history-item--closed" : ""}`;
+                item.setAttribute("role", "menuitem");
+                item.innerHTML = `<svg><use xlink:href="#iconFile"></use></svg><span class="sw__history-copy"><span class="sw__history-title"></span><span class="sw__history-meta"></span></span>`;
+                item.querySelector<HTMLElement>(".sw__history-title")!.textContent = entry.title;
+                item.querySelector<HTMLElement>(".sw__history-meta")!.textContent = entry.source === "closed"
+                    ? this.i18n.historyClosed
+                    : openedKeys.has(entry.key) ? this.i18n.historyOpen : this.i18n.historyClosed;
+                item.title = entry.title;
+                this.bindHistoryItemActions(item, entry, onPick);
+                panel.appendChild(item);
+            };
+            // P7：每区默认前 8 条，超出显示展开按钮
+            const cap = Math.min(visible.length, 8);
+            for (let i = 0; i < cap; i++) renderItem(visible[i]);
+            if (visible.length > cap) {
+                const expand = document.createElement("button");
+                expand.type = "button";
+                expand.className = "sw__history-expand";
+                expand.textContent = `${this.i18n.historyExpand} (${visible.length - cap})`;
+                expand.addEventListener("click", () => {
+                    expand.remove();
+                    for (let i = cap; i < visible.length; i++) renderItem(visible[i]);
+                });
+                panel.appendChild(expand);
+            }
         };
         appendSection(this.i18n.historyOpenSection, sections.open as IOpenHistoryEntry[], this.i18n.clearOpenHistory, () => {
             if (!confirm(this.i18n.clearOpenHistoryConfirm)) return;

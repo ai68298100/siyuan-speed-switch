@@ -1001,6 +1001,7 @@
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
   ,"noOpenHistory": "No recent documents"
+  ,"historyExpand": "Show all"
   ,"clearOpenHistory": "Clear history"
   ,"clearClosedHistory": "Clear recently closed"
   ,"clearOpenHistoryConfirm": "Clear all recent documents?"

@@ -1001,6 +1001,7 @@
   "mobileLayoutFailed": "切换器初始化失败，请关闭后重试",
   "openHistory": "最近打开",
   "noOpenHistory": "暂无最近打开记录",
+  "historyExpand": "展开全部",
   "clearOpenHistory": "清空记录",
   "clearClosedHistory": "清空最近关闭",
   "clearOpenHistoryConfirm": "确定清空最近打开记录吗？",
