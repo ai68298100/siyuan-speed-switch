@@ -246,7 +246,7 @@ import {
 } from "./types";
 
 declare module "./util" {
-    // 璁?TS 浠嶈兘浠?./util.js 鎷垮埌鍑芥暟绛惧悕锛涜繍琛屾椂 import.js 璧?Node CJS
+    // 使 TS 仍能从 ./util.js 拿到函数签名；运行时 import.js 走 Node CJS
     export function clampNum(value: unknown, min: number, max: number, fallback: number): number;
     export function stableSortBy<T>(arr: T[], keyFn: (item: T) => string | number): T[];
     export function normalizeSortBy(value: unknown, allowed: readonly string[], fallback: string): string;
@@ -741,7 +741,7 @@ const thumbObserverCache = new WeakMap<HTMLElement, IntersectionObserver>();
 // 收藏条目：文档页签存 rootId（关闭后仍可重开）；非文档页签仅存页签 id。
 // 收藏项永久留存直到用户主动删除；rootId 缺失时跳转/批量打开用 key 兜底（见 jumpToFavorite）
 export interface IFavoriteItem {
-    key: string;       // pinKeyOf锛歳ootId || tab.id
+    key: string;       // pinKeyOf: rootId || tab.id
     title: string;
     rootId: string | null;
     group: string;     // 分组名，空字符串表示未分组（旧数据无此字段按未分组处理）
@@ -3406,7 +3406,7 @@ const updatedMap: {[rootId: string]: string} = {};
             renderDocResults.call(this, scrollElement, null, onClose);
             return;
         }
-        // 鍛戒腑缂撳瓨鐩存帴娓叉煋锛堜紝鍚庢灉鍙?缂撳瓨缁撴灉鍙?瀹夊叏澶嶇敤锛?
+        // 命中缓存直接渲染（缓存结果可安全复用）
         const cacheKey = buildSearchCacheKey({scope: "global", query: kernelQuery, filters});
         const cached = session.cache.get(cacheKey);
         if (cached) {
@@ -6379,7 +6379,7 @@ const updatedMap: {[rootId: string]: string} = {};
 
     // 查询当前打开文档的更新时间（用于「最近编辑」排序），返回 rootID → updated 映射
     private async loadUpdatedMap(tabs: Tab[]): Promise<{[rootId: string]: string}> {
-        // 鐧藉悕鍗曞噣鍖栵細浠呬繚鐣欐爣鍑嗘枃妗?ID锛堟椂闂存埑-7浣嶏級骞跺幓閲嶏紝闈炲父瑙勫€间笉杩?SQL锛堥槻娉ㄥ叆/闃茬粨鏋勭牬鍧忥級
+        // 白名单净化：仅保留标准文档 ID（时间戳-7位）并去重，非法值不进入 SQL（防注入/阻断结构破坏）
         const ids = sanitizeDocIds(tabs.map((tab) => this.rootIdOf(tab)));
         if (ids.length === 0) {
             return {};
@@ -7167,7 +7167,7 @@ private rootIdOf(tab: Tab): string | null {
         return true;
     }
 
-    // ==================== 鏀惰棌 ====================
+    // ==================== 收藏 ====================
 
     // 读取收藏列表（最近收藏在前）
     private getFavorites(): IFavoriteItem[] {
@@ -7657,7 +7657,7 @@ private rootIdOf(tab: Tab): string | null {
         container.querySelector<HTMLElement>(".sw__history-panel")?.classList.add("fn__none");
     }
 
-    // ==================== 鏀惰棌涓嬫媺缁勪欢 ====================
+    // ==================== 收藏下拉组件 ====================
     // 原生 select 的 optgroup 无法折叠且样式简陋，改为自定义下拉：
     // 触发按钮（星标 + 数量徽标）+ 浮层面板（分组标题可折叠/展开，组内项点击跳转）
 
@@ -8090,7 +8090,7 @@ private rootIdOf(tab: Tab): string | null {
         container.querySelector<HTMLElement>(".sw__fav-panel")?.classList.add("fn__none");
     }
 
-    // 鍒锋柊鎵€鏈夋敹钘忎笅鎷夌粍浠讹紙寮圭獥涓庝晶杈规爮锛夌殑寰芥爣涓庨潰鏉?
+    // 刷新所有收藏下拉组件（弹窗与侧边栏）的角标与面板
     private refreshFavSelects() {
         document.querySelectorAll<HTMLElement>(".sw__fav-dd").forEach((container) => {
             this.refreshFavDropdown(container);
@@ -8471,7 +8471,7 @@ private rootIdOf(tab: Tab): string | null {
     // 收藏项永久留存（直到用户主动删除）：无法定位文档的历史脏条目仅提示、不自动清理，
     // 用户打开对应页签后星标操作会自动将其迁移修复
     private async jumpToFavorite(favorite: IFavoriteItem, onClose: IOverlayClose) {
-        // 鎵嬫満绔?getAllTabs() 鎭仴涓虹┖锛岄渶鐢?MobileTabs 鏁版嵁婧?
+        // 手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
         const opened = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const tab = opened.find((item) => this.pinKeyOf(item) === favorite.key);
         if (tab) {
@@ -8504,7 +8504,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     // 一键开启组内全部页签：打开未打开的收藏（rootId 校验与 jumpToFavorite 一致，
-    // 鏃犳晥鍘嗗彶鏉＄洰璺宠繃锛夛紝杩斿洖瀹為檯鎵撳紑鏁?
+    // 无效历史条目跳过），返回实际打开数
     private async openGroupTabs(items: IFavoriteItem[]): Promise<number> {
         if (this.groupOperationBusy) {
             showMessage(this.i18n.groupTabsInProgress);
@@ -8652,7 +8652,7 @@ private rootIdOf(tab: Tab): string | null {
         const focusState: {defaultFocusIndex: number} = {defaultFocusIndex: 0};
         const groupMode = settings.groupBy;
         if (groupMode === "none") {
-            // 鎸?parent锛圵nd锛夊垎鏍忓垎缁勶紝淇濇寔 getAllTabs 鐨勫竷灞€鏍戦『搴?
+            // 按 parent（Wnd）分栏分组，保持 getAllTabs 的布局树顺序
             const groups = buildTabGroupsByParent(tabs, scrollElement);
             groups.forEach((group) => {
                 const ordered = this.sortGroupItems(group, sortBy, mru, pinned, updatedMap);
@@ -9361,7 +9361,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 手机端长按（≈500ms）弹出与桌面右键一致的操作菜单；
-    // 鎷︽埅 click 蹇呴』娉ㄥ唽鍦?activate 涔嬪墠锛堢洰鏍囪妭鐐规寜娉ㄥ唽椤哄簭瑙﹀彂锛?
+    // 拦截 click 必须注册在 activate 之前（目标节点按注册顺序触发）
     private bindCardLongPress(
         card: HTMLElement,
         tab: Tab,
@@ -9484,7 +9484,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.saveDataDebounced(THUMB_CACHE_KEY);
     }
 
-    // 鍐欏叆涓€鏉＄紦瀛橈紙瀹炴椂 DOM 浼樺厛鏇存柊锛夛紝瓒呰繃涓婇檺鏃舵寜鏈€鏃ф窐姹帮紱涓嶇珛鍗冲啓鐩橈紝鐢辫皟鐢ㄦ柟鎵归噺 flush
+    // 写入一条缓存（实时 DOM 优先更新），超过上限时按最旧淘汰；不立即写盘，由调用方批量 flush
     private setThumbCache(cache: IThumbCache, rootId: string, title: string, html: string) {
         // 手机端使用更保守的缓存上限（存储/内存更紧张）
         const htmlMax = this.isMobile ? THUMB_HTML_MAX_MOBILE : THUMB_HTML_MAX;
@@ -10036,7 +10036,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     }
 
     // 手机端打开文档（思源 plugin API openTab 在移动端是空实现），返回是否成功：
-    // 1) 浼樺厛 MobileTabs.open(rootID)锛堟€濇簮 3.8+锛夛細蹇呴』淇濇寔瀹夸富瀵硅薄璋冪敤锛堟娊鎴愯８鍑芥暟璋冪敤浼氫涪 this锛?
+    // 1) 优先 MobileTabs.open(rootID)（思源 3.8+）：必须保持宿主对象调用（抽成裸函数调用会丢 this）
     //    内部 abortController/navigationEpoch 访问直接抛错），await 返回值判断结果而非固定延时轮询；
     //    open 明确返回失败（invalid/cancelled/failed）时不降级——openTab 在移动端是空实现，降级无意义；
     // 2) 仅当 MobileTabs API 不存在（思源 <3.8）才降级到 plugin.openTab 兜底通道
@@ -10203,12 +10203,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const sheet = overlay.querySelector<HTMLElement>(".sw__mobile-sheet");
         const body = overlay.querySelector<HTMLElement>(".sw__mobile-sheet-body");
         if (!sheet || !body) {
-            // 楠ㄦ灦寮傚父鏃朵笉鑳芥妸绌洪伄缃╃暀鍦?body 涓婃尅浣忔暣灞忎氦浜?
+            // 骨架异常时不能把空遮罩留在 body 上拖住全屏交互
             overlay.remove();
             return;
         }
 
-        // 娓叉煋鍒嗙粍/鍗曞垪琛?绌烘€?
+        // 渲染分组/单列列表 空态
         this.renderMobileFavSheetBody(body, favorites, groupNames, closeOverlay, onTabsChanged, overlay);
 
         // 动画：下一帧滑入
@@ -10252,7 +10252,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             }
         }
 
-        // favorites 涓虹┖锛堜粎鏈夌┖鍒嗙粍娉ㄥ唽锛夋椂杩藉姞绌烘€?
+        // favorites 为空（仅有空分组注册）时追加空态
         if (favorites.length === 0) {
             const empty = document.createElement("div");
             empty.className = "sw__mobile-sheet-empty";
@@ -10883,7 +10883,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             this.applySearch(scrollElement, searchInput, refresh);
         });
 
-        // 鏀惰棌涓嬫媺缁勪欢锛氭槦鏍囪Е鍙?+ 鍒嗙粍闈㈡澘锛堜晶杈规爮璺宠浆鍚庝粎鍒锋柊鍒楄〃锛?
+        // 收藏下拉组件：星标触发 + 分组面板（侧边栏跳转后仅刷新列表）
         const favDd = element.querySelector<HTMLElement>(".sw__fav-dd");
         this.setupFavDropdown(favDd, refresh, refresh);
 
@@ -10948,7 +10948,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
     }
 
-    // 鎵撳紑锛堟垨鑱氱劍宸叉墦寮€鐨勶級渚ц竟鏍忛潰鏉?
+    // 打开（或聚焦已打开的）侧边栏面板
     private toggleSidebar() {
         const type = this.name + SIDEBAR_DOCK_TYPE;
         try {

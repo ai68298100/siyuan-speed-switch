@@ -200,7 +200,7 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         };
         const closeOverlay = () => dialog.destroy();
 
-        // 瑁呴厤宸ュ叿鏍忎笌鍒楄〃娓叉煋
+        // 装配工具栏与列表渲染
         if (!searchInput || !sortSelect || !scrollElement) {
             showMessage(this.i18n.mobileLayoutFailed, MESSAGE_DEFAULT_MS, "error");
             dialog.destroy();
@@ -543,7 +543,7 @@ export function openMobileGroupActions(this: MobileSwitcherUiHost, groupName: st
             return;
         }
 
-        // 涓庢敹钘忓脊绐椾竴鑷寸殑涓嬫粦鏀惰捣鍔ㄧ敾
+        // 与收藏弹窗一致的下滑收起动画
         const closeSelf = () => {
             sheet.classList.remove("sw__mobile-sheet--open");
             overlay.style.opacity = "0";
@@ -592,7 +592,7 @@ if (count > 0) {
         cancel.addEventListener("click", closeSelf);
         body.appendChild(cancel);
 
-        // 鍔ㄧ敾锛氫笅涓€甯ф粦鍏?
+        // 动画：下一帧滑入
         this.scheduleAnimationFrame(() => {
             if (sheet.isConnected) sheet.classList.add("sw__mobile-sheet--open");
         });

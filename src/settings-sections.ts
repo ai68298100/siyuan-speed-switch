@@ -146,7 +146,7 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
         return wrapper;
     }
 
-    // ===== 璁剧疆椤?路 琛屼负锛氶粯璁ゆ帓搴忋€佸叏灞忔ā寮?=====
+    // ===== 设置页 · 行为：默认排序、全屏模式 =====
 export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         const sortOptions: Array<{value: SortBy, label: string}> = [
@@ -182,7 +182,7 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
         return wrapper;
     }
 
-    // ===== 璁剧疆椤?路 闈㈡澘锛氭樉绀烘柟寮忋€佷晶杈规爮甯冨眬銆佸悇 dock 闈㈡澘寮€鍏?=====
+    // ===== 设置页 · 面板：显示方式、侧边栏布局、各 dock 面板开关 =====
 export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         const dockOptions: Array<{value: DockDisplay, label: string}> = [
