@@ -268,6 +268,41 @@ async function main() {
         await command("Emulation.setPageScaleFactor",{pageScaleFactor:1});
         console.log("PASS visual viewport: real zoom shrink repositions ball within visible bounds"); assertions++;
 
+        // T-6778/T-6779 侧滑所有权验收：在页面里装一个"宿主侧滑状态机"模拟器
+        // （document bubble 监听，注册相位与 SiYuan mobile/index.ts:241-243 完全一致），
+        // 用 CDP Input.dispatchTouchEvent 走真实输入管线：
+        // ① 起点在球上的触摸 → 宿主监听收到 0 次 touchstart，12px 移动不触发侧栏（不误触）；
+        // ② 起点在普通内容的触摸 → 宿主照常收到并按 12px 阈值触发（宿主自身侧滑不受影响）。
+        await metrics(390,844); await mount({surface:"mobile",edge:"right",yRatio:0.5,snap:false}); await settle();
+        await evaluate(`window.__hostSwipe = {touchstarts:0, opened:false, x0:0};
+            document.addEventListener("touchstart", (e) => { const h=window.__hostSwipe; h.touchstarts++; h.x0=e.touches[0].clientX; }, {passive:true});
+            document.addEventListener("touchmove", (e) => { const h=window.__hostSwipe; if (Math.abs(e.touches[0].clientX - h.x0) >= 12) h.opened = true; }, {passive:true});
+            true`);
+        const ballPoint = await evaluate(`(()=>{const r=window.__current.root.querySelector(".sw-fab-trigger").getBoundingClientRect();
+            return {x: Math.round(r.left + r.width/2), y: Math.round(r.top + r.height/2), left: Math.round(r.left)};})()`);
+        // 向屏内拖动（右缘球向左 40px），避免出界钳制
+        await command("Input.dispatchTouchEvent", {type: "touchStart", touchPoints: [{x: ballPoint.x, y: ballPoint.y}]});
+        for (const dx of [8, 16, 24, 32, 40]) {
+            await command("Input.dispatchTouchEvent", {type: "touchMove", touchPoints: [{x: ballPoint.x - dx, y: ballPoint.y}]});
+        }
+        await command("Input.dispatchTouchEvent", {type: "touchEnd", touchPoints: []}); await settle();
+        let probe = await evaluate("window.__hostSwipe");
+        assert.equal(probe.touchstarts, 0, `球上起触必须对宿主 document 监听完全不可见，实际 touchstarts=${probe.touchstarts}`);
+        assert.equal(probe.opened, false, "拖动悬浮球不得触发宿主侧滑状态机");
+        const afterDrag = await evaluate(`Math.round(window.__current.root.querySelector(".sw-fab-trigger").getBoundingClientRect().left)`);
+        assert.ok(afterDrag < ballPoint.left - 20, `触摸拖动悬浮球仍须跟随手指向屏内（before ${ballPoint.left} → after ${afterDrag}）`);
+        // ② 宿主自身侧滑（球外普通内容）
+        await evaluate("window.__hostSwipe = {touchstarts:0, opened:false, x0:0}");
+        await command("Input.dispatchTouchEvent", {type: "touchStart", touchPoints: [{x: 195, y: 300}]});
+        for (const dx of [203, 211, 219]) {
+            await command("Input.dispatchTouchEvent", {type: "touchMove", touchPoints: [{x: dx, y: 300}]});
+        }
+        await command("Input.dispatchTouchEvent", {type: "touchEnd", touchPoints: []}); await settle();
+        probe = await evaluate("window.__hostSwipe");
+        assert.equal(probe.touchstarts, 1, "球外普通内容的触摸必须正常到达宿主");
+        assert.equal(probe.opened, true, "宿主模拟侧滑（12px 阈值）在普通内容上照常触发");
+        console.log("PASS touch ownership: ball touches never reach the host swipe machine; host swipes on content still work"); assertions++;
+
         if(process.argv.includes("--negative")) {
             await metrics(1024,768); await mount({surface:"desktop",six:true}); await beginDrag();
             for(const injection of [

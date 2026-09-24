@@ -440,6 +440,21 @@ export class FloatingBallUi implements FloatingBallUiController {
         // 让出侧滑手势所有权——声明后球上的触摸不再触发宿主左/右侧栏。
         if (this.surface === "mobile") {
             root.dataset.preventSwipe = "true";
+            // L2 纵深防御（T-6778b）：capture 相位吞掉球上的触摸事件流，
+            // document bubble 监听（宿主侧滑状态机，addEventListener(..., false)）
+            // 对无 marker 契约的旧宿主（3.8.0）也收不到这些触摸。
+            const swallow = (event: Event): void => { event.stopPropagation(); };
+            for (const type of ["touchstart", "touchmove", "touchend", "touchcancel"] as const) {
+                root.addEventListener(type, swallow, true);
+                this.cleanups.push(() => root.removeEventListener(type, swallow, true));
+            }
+            // L3：拖动/选态中的 touchmove preventDefault，阻断滚动链与原生平移；
+            // 其余状态放行默认行为——更多面板的竖向滚动不受影响。
+            const blockScroll = (event: TouchEvent): void => {
+                if (this.state === "dragging" || this.state === "targeting") event.preventDefault();
+            };
+            root.addEventListener("touchmove", blockScroll, {passive: false});
+            this.cleanups.push(() => root.removeEventListener("touchmove", blockScroll));
         }
         root.style.setProperty("--sw-fab-idle-opacity", String(this.idleOpacity));
         root.style.setProperty("--sw-fab-size", `${this.ballSize}px`);
