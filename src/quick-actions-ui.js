@@ -87,10 +87,19 @@ function mountQuickActionPicker(options) {
         groups.forEach((items, group) => {
             const section = document.createElement("section");
             section.className = "sw-setting__quick-picker-group";
+            const headingText = group || "\u00A0";
             if (group) {
                 const heading = document.createElement("div");
                 heading.className = "sw-setting__quick-picker-heading";
                 heading.textContent = group;
+                heading.style.cursor = "pointer";
+                heading.setAttribute("role", "button");
+                heading.setAttribute("aria-expanded", "true");
+                heading.addEventListener("click", () => {
+                    const collapsed = grid.style.display === "none";
+                    grid.style.display = collapsed ? "" : "none";
+                    heading.setAttribute("aria-expanded", String(collapsed));
+                });
                 section.appendChild(heading);
             }
             const grid = document.createElement("div");
