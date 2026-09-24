@@ -41,6 +41,7 @@ import {
     appendDocSearchStatus,
     applySavedSearchFilters,
     bindDocSearchFilter,
+    activateDocResultItem,
     buildDocResultItem,
     collectOpenRootIds,
     disposeDocSearchSession,
@@ -9791,13 +9792,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 键盘导航：方向键 / Tab 移动，Enter 切换，Esc 关闭（仅弹窗模式使用）
     private bindKeydown(scrollElement: HTMLElement, closeOverlay: IOverlayClose) {
         scrollElement.addEventListener("keydown", (event) => {
-            if ((event.target as HTMLElement).closest("button, input, select, textarea")) {
-                return;
+            const target = event.target as HTMLElement;
+            if (target.closest("button, input, select, textarea")) {
+                // T-6837：焦点经 Tab 落在文档结果行（button）时数字直达仍须可用；
+                // 其余控件（输入框/下拉等）照旧让路，不劫持按键
+                if (!target.closest(".sw__doc-item")
+                    || !/^[1-9]$/.test(event.key)
+                    || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+                    return;
+                }
             }
             const key = event.key;
             const cards = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__card"))
                 .filter((card) => !card.closest(".fn__none"));
             if (cards.length === 0) {
+                // T-6837：搜索态页签卡隐藏时，数字直达转投文档结果行（不静默丢失）
+                if (/^[1-9]$/.test(key) && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+                    event.preventDefault();
+                    this.activateDocItemByDigit(scrollElement, key, closeOverlay);
+                }
                 return;
             }
             const current = cards.findIndex((el) => el.classList.contains("sw__focused"));
@@ -9845,7 +9858,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 // T-6820 数字直达：1-9 打开第 n 个可见卡片（与 R3 面板数字快选同构；
                 // 输入框在滚动容器外，输入数字不会误触此分支）
                 event.preventDefault();
-                this.activateCardByElement(cards[Number(key) - 1], closeOverlay);
+                // T-6837：查询词非空且结果行可见时优先直达文档结果（搜索态心智）
+                if (!this.activateDocItemByDigit(scrollElement, key, closeOverlay)) {
+                    this.activateCardByElement(cards[Number(key) - 1], closeOverlay);
+                }
                 return;
             } else if (key === "ContextMenu" || (key === "F10" && event.shiftKey)) {
                 // T-6461 动作面板键：键盘呼出聚焦卡片的动作菜单（Shift+F10 / ContextMenu
@@ -9876,6 +9892,19 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 this.scrollIntoView(cards[next], scrollElement);
             }
         });
+    }
+
+    // T-6837 键序直达第二片：数字直达文档结果行——查询词非空且第 n 条可见时
+    // 优先于页签卡（搜索态用户心智在结果行）；未接管返回 false 回退卡片直达
+    private activateDocItemByDigit(scrollElement: HTMLElement, key: string, closeOverlay: IOverlayClose): boolean {
+        const queryKey = String(scrollElement.dataset.swDocSearchQuery || "").trim().toLowerCase();
+        if (!queryKey) return false;
+        const items = Array.from(scrollElement.querySelectorAll<HTMLElement>(".sw__doc-grid .sw__doc-item"))
+            .filter((element) => !element.closest(".fn__none"));
+        const item = items[Number(key) - 1];
+        if (!item) return false;
+        activateDocResultItem.call(this, item, closeOverlay, {query: queryKey});
+        return true;
     }
 
     // 流式布局下的方向键导航：按屏幕坐标就近移动（组块宽度不等，固定列数换算会跳错位）

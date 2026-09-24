@@ -423,8 +423,10 @@ test('layered workspace snapshot: preset is persisted into the set and essential
 
 test('preview open: alt+click on doc results uses doc.mode preview (T-6816)', () => {
     const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
-    assert.match(docSearchUi, /\{preview: event\.altKey && !this\.isMobile\}/,
-        'Alt+点击（仅桌面）必须走预览打开');
+    assert.match(docSearchUi, /\{query, preview: event\.altKey && !this\.isMobile\}/,
+        'Alt+点击（仅桌面）必须走预览打开（经 T-6837 单一激活入口透传）');
+    assert.match(docSearchUi, /void openDocSearchResult\.call\(this, id, item\.dataset\.swDocHit \|\| null, undefined, \{preview: Boolean\(options\.preview\)\}\)/,
+        '激活入口必须把 preview 语义传给 openDocSearchResult');
     assert.match(docSearchUi, /\.\.\.\(options\?\.preview \? \{mode: "preview" as const\} : \{\}\)/,
         '预览必须经 T-6826 的 openTab doc.mode 透传（思源官方预览态）');
     assert.match(docSearchUi, /\!\(options\?\.preview\) && this\.reuseOpenTabsEnabled\(\)/,
@@ -529,6 +531,28 @@ test('digit badges: first nine visible cards advertise digit-direct access (T-68
         '只有前 9 个可见卡片携带角标（与数字直达键位一致）');
     const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
     assert.match(badgeScss, /content: attr\(data-sw-digit\);/, '角标由 CSS attr() 渲染（零 DOM 增量）');
+});
+
+test('doc-result digit direct access: search-state digits activate result rows (T-6837)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    assert.match(indexSource, /private activateDocItemByDigit\(scrollElement: HTMLElement, key: string, closeOverlay: IOverlayClose\): boolean/,
+        '结果行数字直达必须是独立方法（可回退、可测试）');
+    assert.match(indexSource, /if \(!this\.activateDocItemByDigit\(scrollElement, key, closeOverlay\)\)/,
+        '搜索态数字直达必须优先投文档结果行，未接管才回退卡片');
+    assert.match(indexSource, /this\.activateDocItemByDigit\(scrollElement, key, closeOverlay\);\s*\}\s*return;/,
+        '页签卡隐藏（搜索态）时数字直达不得静默丢失');
+    assert.match(indexSource, /!event\.ctrlKey && !event\.altKey && !event\.metaKey && !event\.shiftKey\) \{\s*event\.preventDefault\(\);\s*this\.activateDocItemByDigit/,
+        '卡片隐藏分支的数字直达同样拒绝修饰键组合');
+    assert.match(indexSource, /if \(!target\.closest\("\.sw__doc-item"\)\s*\|\| !\/\^\[1-9\]\$\/\.test\(event\.key\)\s*\|\| event\.ctrlKey \|\| event\.altKey \|\| event\.metaKey \|\| event\.shiftKey\) \{\s*return;\s*\}/,
+        '控件守卫必须放行结果行上的数字键（Tab 聚焦后直达可用），其余控件照旧让路');
+    assert.match(docSearchUi, /export function activateDocResultItem/,
+        '结果行激活必须单一入口（点击与数字直达共用，单一事实来源）');
+    assert.match(docSearchUi, /item\.dataset\.swDocHit = hitId \|\| "";/,
+        '块级锚定必须随行持久化（数字直达与点击行为一致）');
+    assert.match(docSearchUi, /if \(index < 9\) element\.dataset\.swDigit = String\(index \+ 1\);/,
+        '前 9 条可见结果行携带角标（与数字直达键位一致）');
+    const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    assert.match(badgeScss, /\.sw__doc-item\[data-sw-digit\]/, '结果行角标由 CSS attr() 渲染');
 });
 
 test('session marks: set/jump commands with ratio restore (T-6820/R3 marks)', () => {

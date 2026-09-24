@@ -71,8 +71,17 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
         await expect(firstDoc).toBeVisible({timeout: 10000});
         // T-6834/T-6835：查询词在标题行真实渲染为 <mark> 高亮（分段装配，非 innerHTML）
         await expect(firstDoc.locator(".sw__doc-title mark").first()).toBeVisible({timeout: 10000});
+        // T-6837 键序直达第二片：结果行携带 1-9 角标；焦点落在结果行按数字键直达
+        await expect(firstDoc).toHaveAttribute("data-sw-digit", /./, {timeout: 10000});
 
-        await firstDoc.click();
+        // T-6837：数字直达路径打开（焦点落在结果行按角标数字键直达；>9 条时回退点击）
+        const digit = await firstDoc.getAttribute("data-sw-digit");
+        if (digit) {
+            await firstDoc.focus();
+            await page.keyboard.press(digit);
+        } else {
+            await firstDoc.click();
+        }
         // 打开的是真实 protyle 编辑器页签，且加载了目标文档
         await page.waitForFunction((title) => {
             return Array.from(document.querySelectorAll(".protyle-title"))

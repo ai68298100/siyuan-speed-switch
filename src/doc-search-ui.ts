@@ -860,6 +860,13 @@ export function renderDocResults(this: DocSearchUiHost,
         plan.items.forEach(({doc, id}) => {
             grid.appendChild(buildDocResultItem.call(this, doc, id, onClose, queryKey));
         });
+        // T-6837 键序直达第二片：前 9 条可见文档结果写 1-9 角标（CSS attr 渲染，
+        // 零 DOM 增量），与 bindKeydown 的搜索态数字直达一一对应
+        Array.from(grid.children).forEach((child, index) => {
+            const element = child as HTMLElement;
+            if (index < 9) element.dataset.swDigit = String(index + 1);
+            else delete element.dataset.swDigit;
+        });
         if (grid.childElementCount === 0) {
             this.docSearchState.docAnchors.delete(scrollElement);
             appendDocResultsEmpty.call(this, box);
@@ -1102,22 +1109,13 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         item.appendChild(copy);
         item.title = hPath || docTitle;
         item.setAttribute("aria-label", hPath || docTitle);
+        // T-6837 块级锚定随行持久化：点击与数字直达共用同一命中块，行为一致
+        const hitId = docSearchHitId.call(this, doc, id);
+        item.dataset.swDocHit = hitId || "";
         item.addEventListener("click", (event) => {
-            // T-6802 上次选择置顶：记录"该查询 → 选中结果"，会话内重复查询时置顶
-            if (query) {
-                const map = this.lastPickedByQuery;
-                map.delete(query);
-                map.set(query, id);
-                while (map.size > 32) {
-                    const oldest = map.keys().next().value;
-                    if (oldest === undefined) break;
-                    map.delete(oldest);
-                }
-            }
-            onClose();
-            // T-6816：Alt+点击 = 预览打开（doc.mode preview，只读窥视后决定）
-            void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id), undefined,
-                {preview: event.altKey && !this.isMobile});
+            // T-6837：激活路径单一化（点击与数字直达共用 activateDocResultItem；
+            // T-6802 上次选择置顶记账、T-6816 Alt 预览语义均在入口内）
+            activateDocResultItem.call(this, item, onClose, {query, preview: event.altKey && !this.isMobile});
         });
         // T-6810 并排打开：右键结果在右侧分屏打开（桌面）；T-6816 Alt+点击预览打开
         if (!this.isMobile) {
@@ -1126,8 +1124,29 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
             item.addEventListener("contextmenu", (event) => {
                 event.preventDefault();
                 onClose();
-                void openDocSearchResult.call(this, id, docSearchHitId.call(this, doc, id), "right");
+                void openDocSearchResult.call(this, id, hitId, "right");
             });
         }
         return item;
     }
+
+// T-6837 键序直达第二片：文档结果行激活的单一入口（点击/数字直达共用）。
+// 行身份取 data-sw-doc-key（rootId），块级锚定取 data-sw-doc-hit（命中块）；
+// T-6802 上次选择置顶记账（该查询 → 选中结果，会话内 FIFO ≤32）内置于此。
+export function activateDocResultItem(this: DocSearchUiHost, item: HTMLElement | undefined, onClose: IOverlayClose, options: {query?: string; preview?: boolean} = {}): void {
+    const id = String(item?.dataset.swDocKey || "");
+    if (!item || !id) return;
+    const query = String(options.query || "");
+    if (query) {
+        const map = this.lastPickedByQuery;
+        map.delete(query);
+        map.set(query, id);
+        while (map.size > 32) {
+            const oldest = map.keys().next().value;
+            if (oldest === undefined) break;
+            map.delete(oldest);
+        }
+    }
+    onClose();
+    void openDocSearchResult.call(this, id, item.dataset.swDocHit || null, undefined, {preview: Boolean(options.preview)});
+}

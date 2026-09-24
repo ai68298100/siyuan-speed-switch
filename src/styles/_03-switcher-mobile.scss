@@ -2086,6 +2086,32 @@
   }
 }
 
+// T-6837 文档结果行数字角标：与卡片角标同款语义（前 9 条可见行 1-9，
+// 右上角实色底反色字；行是紧凑列表项，徽标缩小一号避免压标题）
+.sw__doc-item[data-sw-digit] {
+  position: relative;
+
+  &::after {
+    content: attr(data-sw-digit);
+    position: absolute;
+    top: -5px;
+    right: 2px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    border-radius: 7px;
+    background: var(--b3-theme-primary);
+    color: var(--b3-theme-on-primary);
+    font-size: 9px;
+    line-height: 14px;
+    text-align: center;
+    font-weight: 600;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+    z-index: 1;
+  }
+}
+
 // ==================== P3 工作台停靠坞 ====================
 // 独立于滚动流的固定区域：零查询时显示工作台内容，页签再多也常驻首屏。
 .sw__workbench-dock {
