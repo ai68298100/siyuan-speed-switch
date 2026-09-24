@@ -3578,6 +3578,11 @@ const updatedMap: {[rootId: string]: string} = {};
                 const button = document.createElement("button");
                 button.type = "button";
                 button.className = "sw__doc-item";
+                // T-6799 布局修复：补齐 32px 图标列——统一分区条目此前缺少
+                // .sw__doc-icon 导致 .sw__doc-copy 被放入 32px 列，文字压成 2 字宽
+                const icon = document.createElement("span");
+                icon.className = "sw__doc-icon";
+                icon.innerHTML = '<svg aria-hidden="true"><use xlink:href="#iconFile"></use></svg>';
                 const copy = document.createElement("span");
                 copy.className = "sw__doc-copy";
                 const title = document.createElement("span");
@@ -3589,7 +3594,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 metaEl.className = "sw__doc-path";
                 if (meta) metaEl.textContent = meta;
                 copy.append(title, metaEl);
-                button.appendChild(copy);
+                button.append(icon, copy);
                 button.addEventListener("click", () => this.activateUnifiedItem(item, onClose));
                 // T-6810 并排打开：右键在右侧分屏打开（桌面）
                 if (!this.isMobile && (item.kind === "favorite" || item.kind === "closed")) {
