@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.35.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.36.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -315,11 +315,16 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.35.0` (2026-09-25; search keyword highlighting, snippet sanitization, digit direct access for result rows; related content, saved searches, command mode, marks, multi-target capture, preview open, document set version history, dynamic groups, density tier, config pack, mobile anti-misfire; pinyin matching, jump back/forward, Essentials layer, filter chips, workbench, icon catalog and skin layer; Release assets are built automatically by the workflow).
+The current version is `v0.36.0` (2026-09-25; arrow-key row navigation, resident preview pane; search keyword highlighting, snippet sanitization, digit direct access for result rows; related content, saved searches, command mode, marks, multi-target capture, preview open, document set version history, dynamic groups, density tier, config pack, mobile anti-misfire; pinyin matching, jump back/forward, Essentials layer, filter chips, workbench, icon catalog and skin layer; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.36.0 (2026-09-25)
+
+- **Keyboard · arrow-key row navigation**: after Tab focuses a search result row, ↑/↓ moves through rows with scroll follow; rows outside the doc grid keep native scrolling. The keyboard-first loop is complete: Tab into results → arrows to scan → 1-9 direct open or Enter to activate.
+- **Search · resident preview pane**: on desktop, a right-hand pane live-previews the focused document's outline (≤12 entries) and first-paragraph excerpt (≤600 chars); synced to row focus with 300ms debounce and stale-packet discard; zero new kernel endpoints.
 
 ### v0.35.0 (2026-09-25)
 

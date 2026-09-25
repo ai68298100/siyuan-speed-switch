@@ -5,6 +5,12 @@
 
 ## Changelog (full history)
 
+### v0.36.0 (2026-09-25)
+
+- **Keyboard · arrow-key row navigation**: after Tab focuses a search result row, ↑/↓ steps through rows (`moveDocItemFocus` with scrollIntoView follow); focus on workbench/unified rows returns false so native scrolling is preserved; the control guard now admits digits plus Up/Down on result rows. The keyboard-first loop is complete: Tab into results → arrows to scan → 1-9 direct open or Enter to activate → Alt preview / `>` command mode.
+- **Search · resident preview pane**: on desktop the doc-results section gains a right-hand pane (260px; skipped under 680px width and on mobile) that live-previews the focused document's outline (≤12 entries with h1-h6 indent) and first-paragraph excerpt (≤600 chars bounded). 300ms debounce (Raycast/Spotlight consensus) plus generation-based stale-packet discard; zero new endpoints (getDocOutline + SQL, both whitelisted; rootId BLOCK_ID_RE-validated before the literal); pure-model projection `buildDocPreviewSnapshot` is unit-testable.
+- **Engineering**: real-kernel E2E extended with row-navigation assertions (ArrowDown/Up focus equality) and a preview-pane outline rendering assertion (companion doc seeded with heading + paragraph markdown); T-6838/T-6839 contracts include negative verification.
+
 ### v0.35.0 (2026-09-25)
 
 - **Search · keyword highlighting**: query terms highlighted in doc result titles and snippets (pure `buildKeywordHighlightSegments` segmenter: phrase hits, exclusions stay plain, case-insensitive with original casing preserved, bounded 64-hit overlap-merged ranges; segment assembly with zero innerHTML). Titles get a solid primary mark; snippets get primary tint without background.
