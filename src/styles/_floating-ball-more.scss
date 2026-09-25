@@ -34,6 +34,33 @@
         min-width: 0;
     }
 
+    // T-6884（T-6857）：数字直达芯片——桌面端前 9 个可见行由 JS 写 data-digit，
+    // CSS attr() 渲染（移动端无键盘不写标记）；数据由 refreshDigitHints 维护。
+    .sw__floating-ball-more-row[data-digit] {
+        position: relative;
+
+        &::before {
+            content: attr(data-digit);
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            transform: translateY(-50%);
+            min-width: 14px;
+            height: 14px;
+            padding: 0 3px;
+            border: 1px solid var(--b3-border-color);
+            border-radius: 4px;
+            background: var(--b3-theme-surface);
+            color: var(--b3-theme-on-surface-light);
+            font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
+            font-size: 9px;
+            font-weight: 600;
+            line-height: 12px;
+            text-align: center;
+            pointer-events: none;
+        }
+    }
+
     .sw__floating-ball-action.is-more-item {
         display: grid;
         grid-template-columns: 20px minmax(0, 1fr);

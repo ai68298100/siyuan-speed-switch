@@ -1207,3 +1207,33 @@ test('card updated-time badge: setting, ctx threading and meta rendering (T-6883
     assert.match(zh, /"cardUpdatedBadgeLabel": "页签卡更新时间"/);
     assert.match(en, /"cardUpdatedBadgeLabel": "Card updated time"/);
 });
+
+test('ball panel digit direct access: keydown lifecycle, hints and mobile guard (T-6884/T-6857)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const panelSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-panel.js'));
+    const moreScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_floating-ball-more.scss'));
+    // 键盘监听生命周期：mount 挂载、destroy 解绑。
+    assert.match(panelSource, /documentRef\.addEventListener\?\.\("keydown", onMorePanelKeydown\);/,
+        'the digit keydown listener must attach on mount');
+    assert.match(panelSource, /documentRef\.removeEventListener\?\.\("keydown", onMorePanelKeydown\);/,
+        'destroy must remove the digit keydown listener');
+    // 直达语义：仅面板打开时生效；搜索框聚焦让路；修饰键组合不劫持；1-9 有界。
+    assert.match(panelSource, /if \(!open \|\| disposed\) return;\s*\n\s*if \(documentRef\.activeElement === searchInput\) return;/,
+        'digits only apply while the panel is open and search is not focused');
+    assert.match(panelSource, /if \(event\.ctrlKey \|\| event\.altKey \|\| event\.metaKey\) return;/,
+        'modifier combos must not be hijacked');
+    assert.match(panelSource, /if \(!Number\.isInteger\(index\) \|\| index < 1 \|\| index > 9\) return;/,
+        'digit direct access is bounded to 1-9');
+    assert.match(panelSource, /\.filter\(\(row\) => !row\.hidden\);\s*\n\s*const row = visibleRows\[index - 1\];/,
+        'only visible rows participate in digit direct access');
+    // 数字芯片提示：桌面标注、移动端不标注；hidden 行不占号。
+    assert.match(panelSource, /if \(surface !== "mobile" && index < 9\) row\.dataset\.digit = String\(index \+ 1\);/,
+        'digit hints are desktop-only and capped at 9');
+    const filterSlice = panelSource.slice(panelSource.indexOf('function filterRows'), panelSource.indexOf('function refreshDigitHints'));
+    assert.match(filterSlice, /refreshDigitHints\(\);/, 'filterRows must refresh the digit hints');
+    // CSS：attr() 渲染芯片（零 DOM）且不挡交互（嵌套 SCSS 用展开后完整选择器）。
+    assert.ok(declaresIn(moreScss, '.sw-fab-root.sw__fab .sw__floating-ball-more .sw__floating-ball-more-row[data-digit]::before', /content:\s*attr\(data-digit\)/),
+        'the digit chip must render via attr()');
+    assert.ok(declaresIn(moreScss, '.sw-fab-root.sw__fab .sw__floating-ball-more .sw__floating-ball-more-row[data-digit]::before', /pointer-events:\s*none/),
+        'the digit chip must not intercept pointer interactions');
+});

@@ -346,6 +346,37 @@ function createFloatingBallPanelController(options = {}) {
             emptyHost.hidden = visible > 0;
             emptyHost.textContent = query ? labels.noResults : labels.empty;
         }
+        refreshDigitHints();
+    }
+
+    // T-6884（T-6857）：数字直达提示——桌面端前 9 个可见行标注 1-9（hidden 行
+    // 不占号）；移动端无键盘不标注。行 DOM 重建/过滤后都重算。
+    function refreshDigitHints() {
+        if (!listHost) return;
+        const visibleRows = Array.from(listHost.querySelectorAll(".sw__floating-ball-more-row"))
+            .filter((row) => !row.hidden);
+        visibleRows.forEach((row, index) => {
+            if (surface !== "mobile" && index < 9) row.dataset.digit = String(index + 1);
+            else delete row.dataset.digit;
+        });
+    }
+
+    // T-6884（T-6857）：面板打开时按 1-9 直达第 n 个可见动作行（与数字芯片一致）。
+    // 搜索框聚焦时让路（数字是合法查询）；修饰键组合不劫持。
+    function onMorePanelKeydown(event) {
+        if (!open || disposed) return;
+        if (documentRef.activeElement === searchInput) return;
+        if (event.ctrlKey || event.altKey || event.metaKey) return;
+        const index = Number(event.key);
+        if (!Number.isInteger(index) || index < 1 || index > 9) return;
+        const visibleRows = Array.from(listHost?.querySelectorAll(".sw__floating-ball-more-row") || [])
+            .filter((row) => !row.hidden);
+        const row = visibleRows[index - 1];
+        if (!row) return;
+        const button = row.querySelector("button");
+        if (!button) return;
+        event.preventDefault();
+        button.click();
     }
 
     function positionMore() {
@@ -582,6 +613,8 @@ function createFloatingBallPanelController(options = {}) {
         documentRef.defaultView?.addEventListener("resize", positionMore);
         documentRef.defaultView?.visualViewport?.addEventListener("resize", positionMore);
         documentRef.defaultView?.visualViewport?.addEventListener("scroll", positionMore);
+        // T-6884（T-6857）：数字直达键盘监听（面板打开时才生效；销毁时解绑）
+        documentRef.addEventListener?.("keydown", onMorePanelKeydown);
         render();
         return root;
     }
@@ -643,6 +676,7 @@ function createFloatingBallPanelController(options = {}) {
             ? lastFocusedElement : container.querySelector?.(".sw-fab-trigger");
         disposed = true;
         open = false;
+        documentRef.removeEventListener?.("keydown", onMorePanelKeydown);
         documentRef.defaultView?.removeEventListener("resize", positionMore);
         documentRef.defaultView?.visualViewport?.removeEventListener("resize", positionMore);
         documentRef.defaultView?.visualViewport?.removeEventListener("scroll", positionMore);
