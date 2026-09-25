@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.36.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.37.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -315,11 +315,19 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.36.0` (2026-09-25; arrow-key row navigation, resident preview pane; search keyword highlighting, snippet sanitization, digit direct access for result rows; related content, saved searches, command mode, marks, multi-target capture, preview open, document set version history, dynamic groups, density tier, config pack, mobile anti-misfire; pinyin matching, jump back/forward, Essentials layer, filter chips, workbench, icon catalog and skin layer; Release assets are built automatically by the workflow).
+The current version is `v0.37.0` (2026-09-26; fullscreen by default for the three surfaces, unified platform UI, the floating ball restores the last used surface, snippet studio absorbing its original layout; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.37.0 (2026-09-26)
+
+- **Platform · fullscreen by default**: the switcher, workbench and snippet studio open fullscreen by default (adaptive/custom sizes remain selectable; users who changed settings are unaffected). Opened tabs render as a 4-column large-card grid; workbench widgets render with full content.
+- **Platform · unified route context & ball restore**: singleton guards for the switcher/workbench dialogs (rapid clicks no longer stack windows); the floating ball restores the last used surface with a safe switcher fallback; workbench layout-editing state survives surface navigation.
+- **UI · unified platform language (six RZ batches)**: settings group cards with eight enums as segmented controls; keyboard hints as kbd chips; six-state status badges; kbd-skinned digit badges; workbench edit banner; store pill actions; quick-capture segmented targets with a primary pill save; stacked mobile bottom bar (44px targets). Contrast sampling fixed host warning/error colors failing 3:1 as badge small text.
+- **Snippet studio · original layout absorbed**: preview hero + properties:editor row + AI rail + catalog as an overlay picker; opens fullscreen.
+- **Engineering**: ADR 0079/0080; 26-screen full-plugin UI prototype; baseline 6201 tests.
 
 ### v0.36.0 (2026-09-25)
 
