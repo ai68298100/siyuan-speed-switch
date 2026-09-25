@@ -86,7 +86,7 @@ import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
-import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption} from "./platform-surface-model";
+import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption, projectSnippetObjects} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
@@ -713,6 +713,7 @@ declare module "./snippet-studio-ui" {
         store?: {read: () => Promise<unknown>; mutate: (baseline: unknown, action: string, draft?: unknown) => Promise<unknown>; dispose: () => void};
         ai?: {generate: (options?: Record<string, unknown>) => Promise<unknown>; cancel: () => void; dispose: () => void};
         session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null};
+        objectId?: string;
         onBack?: () => void;
         platform?: {
             labels: PlatformSurfaceLabels;
@@ -964,6 +965,9 @@ export default class SpeedSwitchPlugin extends Plugin {
     private workbenchDialog: Dialog | null = null;
     // 仅当工作台经表面导航离开时记录编辑现场；普通打开与 X 关闭保持查看态。
     private workbenchResumeEditing = false;
+    // T-6878（P2）：片段对象投影的会话缓存（60s TTL）与竞态代际。
+    private snippetObjectsCache: {items: Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>; at: number} | null = null;
+    private snippetObjectsGeneration = 0;
     // 文档搜索链路状态宿主（R5a，D-381）：6 个实例级状态收拢为单一状态对象，
     // WeakMap/Set 语义与代际竞态保护不变；生命周期（含卸载清理）由原消费点继续驱动。
     private docSearchState = createDocSearchState();
@@ -3266,6 +3270,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 i18n: this.i18n as unknown as Record<string, string>,
                 getConfig: () => (window as {siyuan?: {config?: unknown}}).siyuan?.config || {},
                 session: this.snippetStudioSession,
+                objectId: context?.objectId || "",
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),
                     available: ["switcher", "workbench", "studio"],
@@ -4684,7 +4689,9 @@ const updatedMap: {[rootId: string]: string} = {};
         const smartGroups = this.getSettings().favoriteSmartGroups || [];
         const savedSearches = this.getSettings().savedSearches || [];
         const activeRootId = this.rootIdOf(this.getActiveTab());
-        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length && !activeRootId) {
+        const snippetCache = this.snippetObjectsCache;
+        const snippetCacheFresh = Boolean(snippetCache && snippetCache.items.length && Date.now() - snippetCache.at < 60000);
+        if (!presets.length && !docSets.length && !smartGroups.length && !savedSearches.length && !activeRootId && !snippetCacheFresh) {
             dock.classList.add("fn__none");
             return;
         }
@@ -4775,10 +4782,73 @@ const updatedMap: {[rootId: string]: string} = {};
             void this.fillRelatedContent(relatedBox, activeRootId, onClose);
         }
 
+        // T-6878（P2 跨表面对象第一批）：片段实验室对象行——原生片段投影为有界
+        // 对象 chips（惰性 getSnippet + 60s 会话缓存 + 竞态丢弃）。单击携带
+        // objectId 打开片段实验室并定位该片段；空清单/失败时整行不出现。
+        if (!this.isMobile) {
+            const snippetBox = document.createElement("div");
+            snippetBox.className = "sw__workbench-snippets";
+            const snippetSkeleton = document.createElement("div");
+            snippetSkeleton.className = "sw__workbench-row-label sw__workbench-snippets--loading";
+            snippetSkeleton.textContent = this.i18n.workbenchSnippets;
+            snippetSkeleton.setAttribute("aria-busy", "true");
+            snippetBox.appendChild(snippetSkeleton);
+            box.appendChild(snippetBox);
+            this.fillSnippetObjects(snippetBox);
+        }
+
         // P3：工作台渲染到停靠坞（滚动流外），不随页签滚动
         dock.textContent = "";
         dock.appendChild(box);
         dock.classList.remove("fn__none");
+    }
+
+    // T-6878（P2）：片段对象行填充——60s 会话缓存 + 代际竞态丢弃；
+    // 空清单/失败时整行移除（可选增强行，不产生错误回执）。
+    private fillSnippetObjects(snippetBox: HTMLElement) {
+        const generation = ++this.snippetObjectsGeneration;
+        const cached = this.snippetObjectsCache;
+        if (cached && Date.now() - cached.at < 60000) {
+            this.renderSnippetObjects(snippetBox, cached.items);
+            return;
+        }
+        void this.fetchKernelJson("/api/snippet/getSnippet", {type: "all", enabled: 2}, 8000).then((payload) => {
+            if (!snippetBox.isConnected || generation !== this.snippetObjectsGeneration) return;
+            const items = projectSnippetObjects(payload, {limit: 6});
+            this.snippetObjectsCache = {items, at: Date.now()};
+            this.renderSnippetObjects(snippetBox, items);
+        }).catch((error) => {
+            logger.warn("snippet objects load fail", error);
+            snippetBox.remove();
+        });
+    }
+
+    private renderSnippetObjects(snippetBox: HTMLElement, items: Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>) {
+        if (!items.length) {
+            snippetBox.remove();
+            return;
+        }
+        snippetBox.textContent = "";
+        const label = document.createElement("div");
+        label.className = "sw__workbench-row-label";
+        label.textContent = this.i18n.workbenchSnippets;
+        snippetBox.appendChild(label);
+        const row = document.createElement("div");
+        row.className = "sw__workbench-row";
+        items.forEach((item) => {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "sw__workbench-chip";
+            chip.textContent = item.name;
+            chip.title = `${item.type.toUpperCase()} · ${item.lines} ${this.i18n.unitLines}${item.enabled ? " · " + this.i18n.snippetEnabledShort : ""}`;
+            // 跨表面对象动作：携带 objectId 打开片段实验室并定位该片段
+            // （安全导航动作，sideEffect=navigation；无写入）。
+            chip.addEventListener("click", () => {
+                this.openPlatformSurface("studio", "switcher", {entry: "toolbar", objectId: item.id});
+            });
+            row.appendChild(chip);
+        });
+        snippetBox.appendChild(row);
     }
 
     // T-6821 深链接/剪贴板入口：读剪贴板 → 思源块链接（siyuan://blocks/<id>）
@@ -5146,6 +5216,8 @@ const updatedMap: {[rootId: string]: string} = {};
         // 写入光标处；render 的 path 校验（必须在 <data>/templates/ 内）由内核负责。
         "/api/template/manage",
         "/api/template/render",
+        // T-6878 跨表面对象第一批：原生片段清单只读查询（零态工作台的片段对象投影）。
+        "/api/snippet/getSnippet",
     ]);
 
     /**
@@ -5249,6 +5321,9 @@ const updatedMap: {[rootId: string]: string} = {};
                     break;
                 case "/api/template/render":
                     response = await fetch("/api/template/render", init);
+                    break;
+                case "/api/snippet/getSnippet":
+                    response = await fetch("/api/snippet/getSnippet", init);
                     break;
                 default:
                     logger.warn("blocked non-whitelisted kernel endpoint", url);

@@ -4,7 +4,7 @@ const {createSnippetPreview} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
 
 /** Experimental singleton view; native snippets remain the only saved copy. */
-function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}} = {}) {
+function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}, objectId = ""} = {}) {
     const doc = root.ownerDocument;
     const win = doc.defaultView;
     // Keep the locale surface statically discoverable by the repository i18n
@@ -692,6 +692,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     syncFields();
     renderPreview();
     const ready = load();
+    // T-6878（P2）：跨表面打开携带 objectId——清单就绪后定位对应片段
+    // （id 精确匹配、名称回退；仅导航语义，无写入）。
+    if (objectId) {
+        void ready.then(() => {
+            if (disposed) return;
+            const target = snippets.find((item) => item && item.id === objectId)
+                || snippets.find((item) => item && item.name === objectId);
+            if (target && canDiscard()) choose(target, target);
+        }).catch(() => undefined);
+    }
     // The platform helper is supplied by the host entry so the lazy studio
     // chunk does not create a second shared webpack chunk.  The studio keeps
     // its own dirty guard; only a discard-safe navigation reaches the host.

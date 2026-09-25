@@ -1034,3 +1034,41 @@ test('surfaces default to fullscreen with optional sizes (T-6877, ADR 0080)', ()
     assert.match(secondPanelSource, /mode === "fullscreen" \|\| \(mode === "follow" && settings\.panelSizeMode === "fullscreen"\)/,
         'the workbench keeps its follow/adaptive/custom/fullscreen options');
 });
+
+test('cross-surface snippet objects: workbench row and studio objectId selection (T-6878)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    // 端点白名单 + 字面量分发双登记（安全扫描要求）。
+    assert.match(indexSource, /"\/api\/snippet\/getSnippet",/,
+        'getSnippet must be registered in the kernel endpoint whitelist');
+    assert.match(indexSource, /case "\/api\/snippet\/getSnippet":\s*response = await fetch\("\/api\/snippet\/getSnippet", init\);/,
+        'getSnippet must have a literal fetch dispatch case');
+    assert.match(indexSource, /import \{[^}]*projectSnippetObjects[^}]*} from "\.\/platform-surface-model"/,
+        'index.ts must import the snippet object projection');
+    // 零态工作台片段行：骨架占位 + 惰性填充 + 会话缓存与竞态丢弃。
+    assert.match(indexSource, /snippetBox\.className = "sw__workbench-snippets";/,
+        'the workbench snippet row must exist');
+    assert.match(indexSource, /this\.fillSnippetObjects\(snippetBox\);/,
+        'the snippet row must be filled asynchronously');
+    const fill = indexSource.slice(indexSource.indexOf('private fillSnippetObjects'), indexSource.indexOf('private renderSnippetObjects'));
+    assert.match(fill, /Date\.now\(\) - cached\.at < 60000/, 'the snippet cache must have a 60s TTL');
+    assert.match(fill, /generation !== this\.snippetObjectsGeneration/, 'stale generations must be discarded');
+    assert.match(fill, /projectSnippetObjects\(payload, \{limit: 6\}\)/, 'the projection must be bounded to 6');
+    // 跨表面动作：chip 携带 objectId 打开工作室定位片段（导航语义）。
+    assert.match(indexSource, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
+        'snippet chips must open the studio carrying the objectId');
+    assert.match(indexSource, /objectId: context\?\.objectId \|\| "",/,
+        'the studio mount must receive the objectId');
+    assert.match(indexSource, /objectId\?: string;/, 'the studio ambient module must declare objectId');
+    // 工作室消费：就绪后 id 精确匹配、名称回退，且经脏稿守卫。
+    assert.match(studioUi, /objectId = ""/, 'the studio mount must accept an objectId');
+    assert.match(studioUi, /snippets\.find\(\(item\) => item && item\.id === objectId\)\s*\|\|\s*snippets\.find\(\(item\) => item && item\.name === objectId\)/,
+        'the objectId must match by id with a name fallback');
+    assert.match(studioUi, /if \(target && canDiscard\(\)\) choose\(target, target\);/,
+        'the selection must respect the dirty guard');
+    // i18n 双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"workbenchSnippets": "片段实验室"/);
+    assert.match(en, /"workbenchSnippets": "Snippet lab"/);
+});

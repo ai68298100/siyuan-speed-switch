@@ -5,10 +5,12 @@ const assert = require("node:assert/strict");
 const {
     PLATFORM_SURFACE_IDS,
     PLATFORM_SURFACE_ENTRIES,
+    PLATFORM_OBJECT_KINDS,
     normalizeSurfaceId,
     normalizeSurfaceContext,
     resolveSurfaceReturnTarget,
     buildSurfaceContextCaption,
+    projectSnippetObjects,
 } = require("../src/platform-surface-model.js");
 
 test("surface ids: canonical whitelist is frozen and normalize falls back (T-6869)", () => {
@@ -80,4 +82,42 @@ test("surface caption: object stays the surface name; hint shows live query when
     const missing = buildSurfaceContextCaption({surface: "studio"});
     assert.equal(missing.object, "studio", "缺 labels 时回落表面 id，不抛错");
     assert.equal(missing.hint, "");
+});
+
+test("snippet objects: bounded projection from the native getSnippet payload (T-6878)", () => {
+    const payload = {
+        code: 0,
+        data: {snippets: [
+            {id: "20260901120000-aaaaaaa", name: "卡片悬浮阴影", type: "css", enabled: true, content: "a\nb\nc"},
+            {id: "20260901120001-bbbbbbb", name: "快捷导出助手", type: "js", enabled: false, content: "x"},
+            {id: "", name: "无 id", type: "css", enabled: true, content: "z"},
+            {id: "20260901120002-ccccccc", name: "", type: "css", enabled: true, content: "z"},
+            {id: "20260901120003-ddddddd", name: "怪类型", type: "ts", enabled: true, content: "z"},
+            {id: "20260901120000-aaaaaaa", name: "重复 id", type: "css", enabled: false, content: "y"},
+        ]},
+    };
+    const items = projectSnippetObjects(payload, {limit: 6});
+    assert.equal(items.length, 2, "无 id/无名/怪类型/重复 id 一律不投影");
+    assert.deepEqual(items[0], {id: "20260901120000-aaaaaaa", name: "卡片悬浮阴影", type: "css", enabled: true, lines: 3});
+    assert.equal(items[1].enabled, false);
+});
+
+test("snippet objects: query filter, limit clamp and malformed payloads", () => {
+    const snippets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => ({
+        id: "id-" + n, name: "片段" + n, type: n % 2 ? "css" : "js", enabled: true, content: "",
+    }));
+    const payload = {code: 0, data: {snippets}};
+    assert.equal(projectSnippetObjects(payload).length, 6, "默认上限 6");
+    assert.equal(projectSnippetObjects(payload, {limit: 99}).length, 8, "硬上限 8");
+    const filtered = projectSnippetObjects(payload, {query: "片段1"});
+    assert.equal(filtered.length, 2, "名称子串过滤命中 片段1/片段10");
+    assert.equal(projectSnippetObjects(payload, {query: "js"})[0].type, "js", "类型可作过滤词");
+    assert.deepEqual(projectSnippetObjects({code: 1}, {}), [], "非 0 响应返回空");
+    assert.deepEqual(projectSnippetObjects(null, {}), [], "空载荷返回空");
+    assert.deepEqual(projectSnippetObjects({code: 0, data: {}}, {}), [], "缺 snippets 返回空");
+});
+
+test("snippet objects: kinds whitelist is frozen (T-6878)", () => {
+    assert.deepEqual([...PLATFORM_OBJECT_KINDS], ["content", "action", "workspace", "widget", "snippet"]);
+    assert.equal(Object.isFrozen(PLATFORM_OBJECT_KINDS), true);
 });

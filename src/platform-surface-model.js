@@ -65,9 +65,48 @@ function buildSurfaceContextCaption({surface, context, labels} = {}) {
     return {object, hint, hasQuery: Boolean(query)};
 }
 
+// T-6878（P2 跨表面对象第一批，ADR 0079 §6）：统一对象种类白名单——
+// 片段/内容/动作/工作现场/组件；未知种类不投影（诚实呈现，不猜种类）。
+const PLATFORM_OBJECT_KINDS = Object.freeze(["content", "action", "workspace", "widget", "snippet"]);
+const SNIPPET_OBJECT_MAX = 8;
+const SNIPPET_ID_MAX = 64;
+const SNIPPET_NAME_MAX = 120;
+
+/**
+ * 把 /api/snippet/getSnippet 的响应投影为有界的片段对象摘要（跨表面打开的目标）。
+ * 只保留 id/name/type 合法且非空的条目（type 仅 css|js），按 id 去重，数量有界
+ * （默认 6，上限 8）；query 非空时按名称（大小写不敏感）与类型过滤。
+ * code !== 0 或载荷畸形返回 []——调用方按"无对象"处理，不抛错。
+ */
+function projectSnippetObjects(response, options = {}) {
+    const limit = Number.isFinite(options.limit) && options.limit > 0
+        ? Math.min(Math.floor(options.limit), SNIPPET_OBJECT_MAX)
+        : 6;
+    const safe = response && typeof response === "object" ? response : {};
+    if (safe.code !== 0 || !safe.data || typeof safe.data !== "object") return [];
+    const list = Array.isArray(safe.data.snippets) ? safe.data.snippets : [];
+    const query = cleanSurfaceText(options.query, SURFACE_QUERY_MAX).toLowerCase();
+    const out = [];
+    const seen = new Set();
+    for (const raw of list) {
+        if (out.length >= limit) break;
+        if (!raw || typeof raw !== "object") continue;
+        const id = cleanSurfaceText(raw.id, SNIPPET_ID_MAX);
+        const name = cleanSurfaceText(raw.name, SNIPPET_NAME_MAX);
+        const type = raw.type === "js" ? "js" : raw.type === "css" ? "css" : "";
+        if (!id || !name || !type || seen.has(id)) continue;
+        if (query && !name.toLowerCase().includes(query) && !type.includes(query)) continue;
+        seen.add(id);
+        const content = typeof raw.content === "string" ? raw.content : "";
+        out.push({id, name, type, enabled: raw.enabled === true, lines: content ? content.split("\n").length : 0});
+    }
+    return out;
+}
+
 module.exports = {
     PLATFORM_SURFACE_IDS,
     PLATFORM_SURFACE_ENTRIES,
+    PLATFORM_OBJECT_KINDS,
     DEFAULT_SURFACE,
     SURFACE_QUERY_MAX,
     SURFACE_OBJECT_ID_MAX,
@@ -75,4 +114,5 @@ module.exports = {
     normalizeSurfaceContext,
     resolveSurfaceReturnTarget,
     buildSurfaceContextCaption,
+    projectSnippetObjects,
 };
