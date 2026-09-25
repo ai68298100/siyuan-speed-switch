@@ -934,3 +934,42 @@ test('switcher polish: kbd-skinned digit badges and preview status badge (T-6873
     assert.match(en, /"docSearchPreviewStatusLoading": "Loading"/);
     assert.match(en, /"docSearchPreviewStatusReady": "Ready"/);
 });
+
+test('workbench edit banner and store pill actions (T-6874 RZ-4)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const homeWidgetsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss'));
+    const storeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_06-widgets-store.scss'));
+    // 编辑横幅：仅编辑态插入（renderPanel 首个 if (editing) 分支），提示文案走 i18n，完成按钮退回查看态。
+    // 注意 readSourceText 会剥注释，锚点只能落真实代码。
+    const bannerWindow = secondPanelSource.slice(secondPanelSource.indexOf('if (editing) {'), secondPanelSource.indexOf('if (editing) {') + 700);
+    assert.match(bannerWindow, /banner\.className = "sw-home__edit-banner";/,
+        'the edit-mode branch must mount the banner');
+    assert.match(secondPanelSource, /banner\.className = "sw-home__edit-banner";/,
+        'the banner must use its dedicated class');
+    assert.match(secondPanelSource, /bannerHint\.textContent = this\.i18n\.homeEditingHint;/,
+        'the banner hint must come from i18n');
+    assert.match(secondPanelSource, /editing = false;\s*\n\s*renderPanel\(\);/,
+        'the banner done button must exit edit mode and re-render');
+    // i18n 双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"homeEditingHint": "正在编辑布局/, 'zh must carry the editing hint');
+    assert.match(en, /"homeEditingHint": "Editing layout/, 'en must carry the editing hint');
+    // 横幅样式：主色软底卡片。
+    assert.ok(declaresIn(homeWidgetsScss, '.sw-home__edit-banner', /border-radius:\s*10px/),
+        'the banner must be a rounded card');
+    assert.ok(declaresIn(homeWidgetsScss, '.sw-home__edit-banner', /background:\s*color-mix\(in srgb, var\(--b3-theme-primary\) 9%, transparent\)/),
+        'the banner must use the accent-soft wash');
+    // 商店动作胶囊：添加=主色实底，配置=主色软底；既有契约（min-width/字重/焦点环/nowrap）不动。
+    assert.ok(declaresIn(storeScss, '.sw-home-store__add', /border-radius:\s*var\(--sw-platform-radius-pill, 999px\)/),
+        'store add must be a pill');
+    assert.ok(declaresIn(storeScss, '.sw-home-store__add', /background:\s*var\(--b3-theme-primary\)/),
+        'store add must be filled with the accent');
+    assert.ok(declaresIn(storeScss, '.sw-home-store__add', /min-width: 88px/),
+        'store add keeps its minimum width contract');
+    assert.ok(declaresIn(storeScss, '.sw-home-store__configure', /background:\s*color-mix\(in srgb, var\(--b3-theme-primary\) 12%, transparent\)/),
+        'store configure must use the soft accent pill');
+    assert.ok(declaresIn(storeScss, '.sw-home-store__configure', /border-radius:\s*var\(--sw-platform-radius-pill, 999px\)/),
+        'store configure must be a pill');
+});

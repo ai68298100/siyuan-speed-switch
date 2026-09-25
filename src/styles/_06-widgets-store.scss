@@ -682,6 +682,17 @@
     white-space: nowrap;
     touch-action: manipulation;
 
+    // T-6874（RZ-4）：添加=主色实底胶囊（设计原型 21）；既有契约
+    // （min-width/字重/焦点环/nowrap/touch-action）全部保留。
+    border: 1px solid var(--b3-theme-primary);
+    border-radius: var(--sw-platform-radius-pill, 999px);
+    background: var(--b3-theme-primary);
+    color: var(--b3-theme-on-primary, #fff);
+
+    &:hover {
+        background: color-mix(in srgb, var(--b3-theme-primary) 88%, #000);
+    }
+
     &:focus-visible { box-shadow: var(--sw-focus-ring); }
 }
 
@@ -690,6 +701,12 @@
     padding-inline: 8px;
     white-space: nowrap;
     touch-action: manipulation;
+
+    // T-6874（RZ-4）：配置=主色软底胶囊（次动作语言）。
+    border: 1px solid transparent;
+    border-radius: var(--sw-platform-radius-pill, 999px);
+    background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+    color: var(--b3-theme-primary);
 }
 
 .sw-home-store__remove {

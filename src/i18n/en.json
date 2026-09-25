@@ -50,6 +50,7 @@
   "settingsShort": "Settings",
   "homeEditLayout": "Edit layout",
   "homeDone": "Done",
+  "homeEditingHint": "Editing layout — drag cards to rearrange; changes save instantly",
   "homeEmpty": "The second panel is empty. Use 'Add module' to place recents, favorites, journal, document sets, or plugin modules.",
   "homeEmptyOpenStore": "Open widget store",
   "homeNoMoreModules": "No more modules to add",

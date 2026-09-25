@@ -507,6 +507,29 @@
     align-items: start;
 }
 
+// T-6874（RZ-4）：编辑横幅——编辑态现场可感知（拖动提示+完成按钮），
+// 主色软底+主色边界与平台动作语言一致；reduced-motion 由全局令牌接管。
+.sw-home__edit-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 7px 12px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 26%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 9%, transparent);
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    flex: none;
+
+    .sw-home__edit-done {
+        flex: none;
+        margin-left: auto;
+        white-space: nowrap;
+        touch-action: manipulation;
+    }
+}
+
 .sw-home__cell {
     grid-column: span min(var(--sw-home-span, 6), 12);
     display: flex;

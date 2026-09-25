@@ -250,6 +250,24 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 bar.appendChild(addButton);
             }
             mountFragment.appendChild(bar);
+            if (editing) {
+                // T-6874（RZ-4）：编辑横幅——编辑态现场可感知（拖动提示+完成按钮），
+                // 完成按钮直接退出编辑态并重渲染，与工具栏开关同一状态源。
+                const banner = document.createElement("div");
+                banner.className = "sw-home__edit-banner";
+                const bannerHint = document.createElement("span");
+                bannerHint.textContent = this.i18n.homeEditingHint;
+                const bannerDone = document.createElement("button");
+                bannerDone.type = "button";
+                bannerDone.className = "b3-button b3-button--text sw-home__edit-done";
+                bannerDone.textContent = this.i18n.homeDone;
+                bannerDone.addEventListener("click", () => {
+                    editing = false;
+                    renderPanel();
+                });
+                banner.append(bannerHint, bannerDone);
+                mountFragment.appendChild(banner);
+            }
 
             // 时间感知问候头：让面板更有"个人主页"温度
             const now = new Date();

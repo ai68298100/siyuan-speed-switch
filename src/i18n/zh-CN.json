@@ -50,6 +50,7 @@
   "settingsShort": "设置",
   "homeEditLayout": "编辑布局",
   "homeDone": "完成",
+  "homeEditingHint": "正在编辑布局 —— 拖动卡片调整位置，改动实时保存",
   "homeEmpty": "第二面板还是空的，点击「添加模块」放置最近打开、收藏、日记、文档集或插件模块。",
   "homeEmptyOpenStore": "打开组件商店",
   "homeNoMoreModules": "没有更多可添加的模块",
