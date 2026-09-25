@@ -57,7 +57,7 @@ test("quick actions: empty labels receive an accessible fallback", () => {
 test("quick actions: optional built-ins remain available without becoming defaults", () => {
     assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["search", "journal", "settings"]);
     assert.deepEqual(getBuiltinQuickActions().map((item) => item.value),
-        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset", "throw-window", "hide-keyboard", "jump-back", "jump-forward"]);
+        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset", "throw-window", "hide-keyboard", "jump-back", "jump-forward", "mark-set", "mark-jump", "clipboard", "close-tab"]);
     assert.equal(resolveQuickActionSupport("builtin", "journal", "sidebar"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "home", "mobile"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "sync-now", "mobile"), "supported",
@@ -198,8 +198,8 @@ test("quick actions: append normalizes external labels and icons", () => {
 
 test("host commands: catalog carries source-verified surface declarations", () => {
     const globals = getGlobalQuickActions();
-    assert.equal(globals.length, 9);
-    assert.equal(new Set(globals.map((item) => item.value)).size, 9, "command keys stay unique");
+    assert.equal(globals.length, 12);
+    assert.equal(new Set(globals.map((item) => item.value)).size, 12, "command keys stay unique");
     globals.forEach((item) => {
         assert.equal(item.kind, "global");
         assert.ok(Array.isArray(item.targets) && item.targets.length > 0, `${item.value} declares targets`);
@@ -229,4 +229,49 @@ test("host commands: support follows declarations and sanitizing keeps the kind"
     ]);
     assert.equal(result.items[0].kind, "global", "the global kind survives storage sanitizing");
     assert.deepEqual(result.items[0].targets, ["desktop", "mobile"]);
+});
+
+test("quick actions catalog: wave-3 expansion and label i18n resolution (T-6856/T-6845)", () => {
+    // 目录规模：22 内建 + 12 宿主命令 = 34 项
+    assert.equal(getBuiltinQuickActions().length, 22);
+    assert.equal(getGlobalQuickActions().length, 12);
+    // 新内建动作声明三端 targets 且带 langKey
+    for (const value of ["mark-set", "mark-jump", "clipboard", "close-tab"]) {
+        const entry = getBuiltinQuickActions().find((item) => item.value === value);
+        assert.ok(entry, `${value} must exist in the builtin catalog`);
+        assert.ok(entry.langKey, `${value} must carry a langKey`);
+        assert.ok(entry.targets.length >= 1);
+    }
+    assert.deepEqual(getBuiltinQuickActions().find((item) => item.value === "close-tab").targets, ["desktop", "sidebar"]);
+    // 新宿主命令（源码 global.ts 双分支核对）
+    for (const value of ["fileTree", "mainMenu", "globalSearch"]) {
+        const entry = getGlobalQuickActions().find((item) => item.value === value);
+        assert.ok(entry && entry.langKey, `${value} must exist with langKey`);
+    }
+    // 标签解析：i18n 命中 > catalog 中文兜底；langKey 不进持久化也能解析（按 id 回查）
+    const {resolveQuickActionLabel} = require("../src/quick-actions.js");
+    const action = {id: "mark-jump", kind: "builtin", value: "mark-jump", label: "跳回标记"};
+    assert.equal(resolveQuickActionLabel(action, {actionMarkJump: "Jump to mark"}), "Jump to mark");
+    assert.equal(resolveQuickActionLabel(action, null), "跳回标记");
+    assert.equal(resolveQuickActionLabel(action, {}), "跳回标记");
+    // global 目录同样按 id 回查
+    const globalAction = {id: "global-file-tree", kind: "global", value: "fileTree", label: "文档树"};
+    assert.equal(resolveQuickActionLabel(globalAction, {actionFileTree: "File tree"}), "File tree");
+    // 未知动作原样返回 label
+    assert.equal(resolveQuickActionLabel({id: "x", kind: "dock", value: "x", label: "Dock"}, {anything: "y"}), "Dock");
+});
+
+test("quick actions catalog: every langKey resolves in both language files (T-6845)", () => {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const zh = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "zh-CN.json"), "utf8"));
+    const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));
+    const keys = [...getBuiltinQuickActions(), ...getGlobalQuickActions()]
+        .map((item) => item.langKey)
+        .filter(Boolean);
+    assert.equal(keys.length, 34, "catalog entries must all carry langKey");
+    for (const key of keys) {
+        assert.ok(zh[key] && zh[key].length > 0, `${key} must exist in zh-CN.json`);
+        assert.ok(en[key] && en[key].length > 0, `${key} must exist in en.json`);
+    }
 });

@@ -258,6 +258,30 @@ async function executeFloatingBallAction(action, options = {}) {
                 invokeClose(options);
                 return success(await callback(action));
             }
+            case "mark-set": {
+                const callback = callbackOf(options, "onMarkSet");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "mark-jump": {
+                const callback = callbackOf(options, "onMarkJump");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "clipboard": {
+                const callback = callbackOf(options, "onClipboard");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
+            case "close-tab": {
+                const callback = callbackOf(options, "onCloseTab");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
             default:
                 return unavailable();
         }

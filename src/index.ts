@@ -23,6 +23,7 @@ import {
     migrateQuickActionDefaults,
     QUICK_ACTION_DEFAULTS_VERSION,
     createQuickActionRegistry,
+    resolveQuickActionLabel,
 } from "./quick-actions";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {createHomeRuntime} from "./home-runtime";
@@ -3505,8 +3506,10 @@ const updatedMap: {[rootId: string]: string} = {};
         label.className = "sw__window-label";
         label.textContent = this.i18n.commandModeLabel;
         box.appendChild(label);
+        // T-6845：命令模式标签同走宿主 i18n（P-F 中英混排收口）
         const catalog = [...getBuiltinQuickActions(), ...getGlobalQuickActions()]
-            .filter((action) => action.targets?.includes("desktop"));
+            .filter((action) => action.targets?.includes("desktop"))
+            .map((action) => ({...action, label: resolveQuickActionLabel(action, this.i18n)}));
         const q = query.toLowerCase();
         const matched = q ? catalog.filter((action) => (action.label || "").toLowerCase().includes(q)) : catalog;
         if (!matched.length) {
@@ -4218,6 +4221,12 @@ const updatedMap: {[rootId: string]: string} = {};
             onJumpForward: () => this.jumpForward().then((ok) => {
                 if (!ok) showMessage(this.i18n.jumpStackEmpty, MESSAGE_DEFAULT_MS, "error");
             }),
+            // T-6856 目录扩充：marks/剪贴板/关闭页签复用既有命令实现
+            onMarkSet: () => this.setSessionMark(),
+            onMarkJump: () => this.jumpToSessionMark(),
+            onClipboard: () => this.openClipboardEntry(),
+            onCloseTab: () => this.closeActiveTabForAction()
+                ? undefined : {ok: false, reason: "unavailable"},
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });
@@ -9193,8 +9202,20 @@ private rootIdOf(tab: Tab): string | null {
 
     // 按双端适配关闭单个页签（仅关闭动作本身，不含卡片移除/列表刷新等收尾）；
     // 返回是否真正关闭成功，供批量关闭准确计数
-    private async closeTabQuietly(tab: Tab): Promise<boolean> {
-        if (this.isMobile) {
+    // T-6856 close-tab 动作：关闭活动页签。无活动页签或关闭失败时给出明确
+    // 回执（返回 false → executor 报 unavailable）；手机端复用 MobileTabs 分支。
+    private async closeActiveTabForAction(): Promise<boolean> {
+        const active = this.getActiveTab();
+        if (!active) {
+            showMessage(this.i18n.sessionMarkNoDoc, MESSAGE_DEFAULT_MS, "error");
+            return false;
+        }
+        const closed = await this.closeTabQuietly(active);
+        if (!closed) showMessage(this.i18n.closeTabFailed, MESSAGE_DEFAULT_MS, "error");
+        return closed;
+    }
+
+    private async closeTabQuietly(tab: Tab): Promise<boolean> {        if (this.isMobile) {
             // 手机端：MobileTabs.close 关闭页签；必须保持宿主对象调用（裸调用丢 this），
             // await 返回值以便批量关闭时串行等待，完成后给状态一小段沉降时间
             try {
@@ -10472,13 +10493,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     private getFloatingBallActions(): IQuickAction[] {
         const saved = this.getQuickActions();
         const seen = new Set(saved.map((action) => `${action.kind}:${action.value}`));
-        const result = saved.map((action) => ({...action}));
+        // T-6845：标签经宿主 i18n 解析（catalog 中文兜底），球面板与底栏同语言
+        const result = saved.map((action) => ({...action, label: resolveQuickActionLabel(action, this.i18n)}));
         this.getQuickActionPickerCandidates(saved).forEach((candidate) => {
             const action = candidate.action;
             const key = `${action.kind}:${action.value}`;
             if (seen.has(key)) return;
             seen.add(key);
-            result.push({...action});
+            result.push({...action, label: resolveQuickActionLabel(action, this.i18n)});
         });
         const providers = this.quickActionRegistry.snapshot();
         return result.map((action) => {
@@ -10553,6 +10575,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             onJumpForward: () => this.jumpForward().then((ok) => {
                 if (!ok) showMessage(this.i18n.jumpStackEmpty, MESSAGE_DEFAULT_MS, "error");
             }),
+            // T-6856 目录扩充：marks/剪贴板/关闭页签复用既有命令实现
+            onMarkSet: () => this.setSessionMark(),
+            onMarkJump: () => this.jumpToSessionMark(),
+            onClipboard: () => this.openClipboardEntry(),
+            onCloseTab: () => this.closeActiveTabForAction()
+                ? undefined : {ok: false, reason: "unavailable"},
             onGlobalCommand: (action: {value: string}) => this.runHostCommand(action.value)
                 ? undefined : {ok: false, reason: "unavailable"},
         });

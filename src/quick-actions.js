@@ -7,44 +7,52 @@ const BUILTIN_VALUES = new Set([
     "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom",
     "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset",
     "throw-window", "hide-keyboard", "jump-back", "jump-forward",
+    "mark-set", "mark-jump", "clipboard", "close-tab",
 ]);
 // T-6789/T-6790（§8.0.11）：宿主命令动作目录。targets 按思源源码证据声明：
 // global.ts 的 MOBILE 分支（v3.8.1+ 源码核对）仅支持 fileTree/outline/bookmark/
 // tag/inbox/backlinks/mainMenu/globalSearch/recentDocs；riffCard/recentClosed/
 // editReadonly 只在桌面分支。能力检测（globalCommand 是否存在）由宿主层负责。
 const GLOBAL_QUICK_ACTIONS = [
-    {id: "global-outline", label: "大纲", icon: "iconList", kind: "global", value: "outline", targets: ["desktop", "mobile"], order: 10, enabled: true},
-    {id: "global-bookmark", label: "书签", icon: "iconBookmark", kind: "global", value: "bookmark", targets: ["desktop", "mobile"], order: 20, enabled: true},
-    {id: "global-tag", label: "标签", icon: "iconTags", kind: "global", value: "tag", targets: ["desktop", "mobile"], order: 30, enabled: true},
-    {id: "global-inbox", label: "收集箱", icon: "iconInbox", kind: "global", value: "inbox", targets: ["desktop", "mobile"], order: 40, enabled: true},
-    {id: "global-backlinks", label: "反链", icon: "iconBacklink", kind: "global", value: "backlinks", targets: ["desktop", "mobile"], order: 50, enabled: true},
-    {id: "global-recent-docs", label: "最近文档", icon: "iconHistory", kind: "global", value: "recentDocs", targets: ["desktop", "mobile"], order: 60, enabled: true},
-    {id: "global-recent-closed", label: "最近关闭", icon: "iconClose", kind: "global", value: "recentClosed", targets: ["desktop"], order: 70, enabled: true},
-    {id: "global-riff-card", label: "闪卡复习", icon: "iconRiff", kind: "global", value: "riffCard", targets: ["desktop"], order: 80, enabled: true},
-    {id: "global-edit-readonly", label: "编辑只读", icon: "iconLock", kind: "global", value: "editReadonly", targets: ["desktop"], order: 90, enabled: true},
+    {id: "global-outline", label: "大纲", langKey: "actionOutline", icon: "iconList", kind: "global", value: "outline", targets: ["desktop", "mobile"], order: 10, enabled: true},
+    {id: "global-bookmark", label: "书签", langKey: "actionBookmark", icon: "iconBookmark", kind: "global", value: "bookmark", targets: ["desktop", "mobile"], order: 20, enabled: true},
+    {id: "global-tag", label: "标签", langKey: "actionTag", icon: "iconTags", kind: "global", value: "tag", targets: ["desktop", "mobile"], order: 30, enabled: true},
+    {id: "global-inbox", label: "收集箱", langKey: "actionInbox", icon: "iconInbox", kind: "global", value: "inbox", targets: ["desktop", "mobile"], order: 40, enabled: true},
+    {id: "global-backlinks", label: "反链", langKey: "actionBacklinks", icon: "iconBacklink", kind: "global", value: "backlinks", targets: ["desktop", "mobile"], order: 50, enabled: true},
+    {id: "global-recent-docs", label: "最近文档", langKey: "actionRecentDocs", icon: "iconHistory", kind: "global", value: "recentDocs", targets: ["desktop", "mobile"], order: 60, enabled: true},
+    {id: "global-recent-closed", label: "最近关闭", langKey: "actionRecentClosed", icon: "iconClose", kind: "global", value: "recentClosed", targets: ["desktop"], order: 70, enabled: true},
+    {id: "global-riff-card", label: "闪卡复习", langKey: "actionRiffCard", icon: "iconRiff", kind: "global", value: "riffCard", targets: ["desktop"], order: 80, enabled: true},
+    {id: "global-edit-readonly", label: "编辑只读", langKey: "actionEditReadonly", icon: "iconLock", kind: "global", value: "editReadonly", targets: ["desktop"], order: 90, enabled: true},
+    {id: "global-file-tree", label: "文档树", langKey: "actionFileTree", icon: "iconFiles", kind: "global", value: "fileTree", targets: ["desktop", "mobile"], order: 100, enabled: true},
+    {id: "global-main-menu", label: "主菜单", langKey: "actionMainMenu", icon: "iconMenu", kind: "global", value: "mainMenu", targets: ["desktop", "mobile"], order: 110, enabled: true},
+    {id: "global-search", label: "全局搜索", langKey: "actionGlobalSearch", icon: "iconSearch", kind: "global", value: "globalSearch", targets: ["desktop", "mobile"], order: 120, enabled: true},
 ];
 function getGlobalQuickActions() {
     return GLOBAL_QUICK_ACTIONS.map((item) => ({...item}));
 }
 const BUILTIN_QUICK_ACTIONS = [
-    {id: "switcher", label: "切换", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
-    {id: "search", label: "搜索", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
-    {id: "journal", label: "日记", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
-    {id: "settings", label: "设置", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
-    {id: "home", label: "组件面板", icon: "iconLayoutHome", kind: "builtin", value: "home", targets: ["desktop", "sidebar", "mobile"], order: 30, enabled: true},
-    {id: "quick-capture", label: "快速记录", icon: "iconAdd", kind: "builtin", value: "quick-capture", targets: ["desktop", "sidebar", "mobile"], order: 40, enabled: true, mobileSafe: true},
-    {id: "previous-tab", label: "上一个页签", icon: "iconLeft", kind: "builtin", value: "previous-tab", targets: ["desktop", "sidebar", "mobile"], order: 50, enabled: true, mobileSafe: true},
-    {id: "next-tab", label: "下一个页签", icon: "iconRight", kind: "builtin", value: "next-tab", targets: ["desktop", "sidebar", "mobile"], order: 60, enabled: true, mobileSafe: true},
-    {id: "scroll-top", label: "滚动到顶部", icon: "iconUp", kind: "builtin", value: "scroll-top", targets: ["desktop", "sidebar", "mobile"], order: 70, enabled: true, mobileSafe: true},
-    {id: "scroll-bottom", label: "滚动到底部", icon: "iconDown", kind: "builtin", value: "scroll-bottom", targets: ["desktop", "sidebar", "mobile"], order: 80, enabled: true, mobileSafe: true},
-    {id: "sync-now", label: "同步", icon: "iconSync", kind: "builtin", value: "sync-now", targets: ["desktop", "sidebar", "mobile"], order: 90, enabled: true, mobileSafe: true},
-    {id: "insert-template", label: "插入模板", icon: "iconMarkdown", kind: "builtin", value: "insert-template", targets: ["desktop", "mobile"], order: 100, enabled: true, mobileSafe: true},
-    {id: "cycle-doc-set", label: "切换文档集", icon: "iconRefresh", kind: "builtin", value: "cycle-doc-set", targets: ["desktop", "mobile"], order: 110, enabled: true, mobileSafe: true},
-    {id: "cycle-ball-preset", label: "切换球预设", icon: "iconComposition", kind: "builtin", value: "cycle-ball-preset", targets: ["desktop", "mobile"], order: 120, enabled: true, mobileSafe: true},
-    {id: "throw-window", label: "抛独立窗口", icon: "iconOpen", kind: "builtin", value: "throw-window", targets: ["desktop"], order: 130, enabled: true},
-    {id: "hide-keyboard", label: "收起键盘", icon: "iconDown", kind: "builtin", value: "hide-keyboard", targets: ["mobile"], order: 140, enabled: true, mobileSafe: true},
-    {id: "jump-back", label: "跳转后退", icon: "iconLeft", kind: "builtin", value: "jump-back", targets: ["desktop", "mobile"], order: 150, enabled: true, mobileSafe: true},
-    {id: "jump-forward", label: "跳转前进", icon: "iconRight", kind: "builtin", value: "jump-forward", targets: ["desktop", "mobile"], order: 160, enabled: true, mobileSafe: true},
+    {id: "switcher", label: "切换", langKey: "actionSwitcher", icon: "iconLayout", kind: "builtin", value: "switcher", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
+    {id: "search", label: "搜索", langKey: "actionSearch", icon: "iconSearch", kind: "builtin", value: "search", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
+    {id: "journal", label: "日记", langKey: "actionJournal", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
+    {id: "settings", label: "设置", langKey: "actionSettings", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
+    {id: "home", label: "组件面板", langKey: "actionHome", icon: "iconLayoutHome", kind: "builtin", value: "home", targets: ["desktop", "sidebar", "mobile"], order: 30, enabled: true},
+    {id: "quick-capture", label: "快速记录", langKey: "actionQuickCapture", icon: "iconAdd", kind: "builtin", value: "quick-capture", targets: ["desktop", "sidebar", "mobile"], order: 40, enabled: true, mobileSafe: true},
+    {id: "previous-tab", label: "上一个页签", langKey: "actionPreviousTab", icon: "iconLeft", kind: "builtin", value: "previous-tab", targets: ["desktop", "sidebar", "mobile"], order: 50, enabled: true, mobileSafe: true},
+    {id: "next-tab", label: "下一个页签", langKey: "actionNextTab", icon: "iconRight", kind: "builtin", value: "next-tab", targets: ["desktop", "sidebar", "mobile"], order: 60, enabled: true, mobileSafe: true},
+    {id: "scroll-top", label: "滚动到顶部", langKey: "actionScrollTop", icon: "iconUp", kind: "builtin", value: "scroll-top", targets: ["desktop", "sidebar", "mobile"], order: 70, enabled: true, mobileSafe: true},
+    {id: "scroll-bottom", label: "滚动到底部", langKey: "actionScrollBottom", icon: "iconDown", kind: "builtin", value: "scroll-bottom", targets: ["desktop", "sidebar", "mobile"], order: 80, enabled: true, mobileSafe: true},
+    {id: "sync-now", label: "同步", langKey: "actionSyncNow", icon: "iconSync", kind: "builtin", value: "sync-now", targets: ["desktop", "sidebar", "mobile"], order: 90, enabled: true, mobileSafe: true},
+    {id: "insert-template", label: "插入模板", langKey: "actionInsertTemplate", icon: "iconMarkdown", kind: "builtin", value: "insert-template", targets: ["desktop", "mobile"], order: 100, enabled: true, mobileSafe: true},
+    {id: "cycle-doc-set", label: "切换文档集", langKey: "actionCycleDocSet", icon: "iconRefresh", kind: "builtin", value: "cycle-doc-set", targets: ["desktop", "mobile"], order: 110, enabled: true, mobileSafe: true},
+    {id: "cycle-ball-preset", label: "切换球预设", langKey: "actionCycleBallPreset", icon: "iconComposition", kind: "builtin", value: "cycle-ball-preset", targets: ["desktop", "mobile"], order: 120, enabled: true, mobileSafe: true},
+    {id: "throw-window", label: "抛独立窗口", langKey: "actionThrowWindow", icon: "iconOpen", kind: "builtin", value: "throw-window", targets: ["desktop"], order: 130, enabled: true},
+    {id: "hide-keyboard", label: "收起键盘", langKey: "actionHideKeyboard", icon: "iconDown", kind: "builtin", value: "hide-keyboard", targets: ["mobile"], order: 140, enabled: true, mobileSafe: true},
+    {id: "jump-back", label: "跳转后退", langKey: "actionJumpBack", icon: "iconLeft", kind: "builtin", value: "jump-back", targets: ["desktop", "mobile"], order: 150, enabled: true, mobileSafe: true},
+    {id: "jump-forward", label: "跳转前进", langKey: "actionJumpForward", icon: "iconRight", kind: "builtin", value: "jump-forward", targets: ["desktop", "mobile"], order: 160, enabled: true, mobileSafe: true},
+    {id: "mark-set", label: "标记位置", langKey: "actionMarkSet", icon: "iconBookmark", kind: "builtin", value: "mark-set", targets: ["desktop", "mobile"], order: 170, enabled: true, mobileSafe: true},
+    {id: "mark-jump", label: "跳回标记", langKey: "actionMarkJump", icon: "iconHandbook", kind: "builtin", value: "mark-jump", targets: ["desktop", "mobile"], order: 180, enabled: true, mobileSafe: true},
+    {id: "clipboard", label: "剪贴板入口", langKey: "actionClipboard", icon: "iconCopy", kind: "builtin", value: "clipboard", targets: ["desktop", "mobile"], order: 190, enabled: true, mobileSafe: true},
+    {id: "close-tab", label: "关闭当前页签", langKey: "actionCloseTab", icon: "iconClose", kind: "builtin", value: "close-tab", targets: ["desktop", "sidebar"], order: 200, enabled: true},
 ];
 // Keep a deliberately small first-run workspace. External providers remain
 // available from “Add action” and must never occupy the bar automatically.
@@ -286,9 +294,14 @@ function sanitizeQuickActions(value, max = 12) {
         seen.add(id);
         const targets = Array.isArray(raw.targets) ? normalizeTargets(raw.targets) : ["desktop"];
         const label = normalizeLabel(raw.label) || normalizeLabel(valueId);
+        // T-6845：langKey 是受控字段（i18n 键名），合法则随条目持久化保留——
+        // 剥离会破坏 sanitize 不动点（默认目录带 langKey，二遍清洗恒 changed）
+        const langKey = typeof raw.langKey === "string" && /^[A-Za-z0-9_]{1,64}$/.test(raw.langKey)
+            ? raw.langKey : "";
         const item = {
             id,
             label,
+            ...(langKey ? {langKey} : {}),
             icon: normalizeIcon(raw.icon, kind === "dock" ? "iconDock" : (kind === "command" || kind === "adapter" ? "iconPlugin" : "iconLayout")),
             kind,
             value: valueId,
@@ -299,7 +312,8 @@ function sanitizeQuickActions(value, max = 12) {
             order: Number.isFinite(raw.order) ? raw.order : (index + 1) * 10,
             enabled: raw.enabled !== false,
         };
-        if (graphemeLength(String(raw.label ?? "")) > 4 || JSON.stringify(item) !== JSON.stringify(raw)) changed = true;
+        const rawHasLangKey = typeof raw.langKey === "string" && raw.langKey !== "";
+        if (graphemeLength(String(raw.label ?? "")) > 4 || rawHasLangKey !== Boolean(langKey) || JSON.stringify(item) !== JSON.stringify(raw)) changed = true;
         items.push(item);
     });
     if (items.length === 0 && value.length > 0) changed = true;
@@ -314,6 +328,22 @@ function getBuiltinQuickActions() {
     return BUILTIN_QUICK_ACTIONS.map((item) => ({...item, targets: [...item.targets]}));
 }
 
+// T-6845：目录标签 i18n 解析。catalog 里的 label 是中文兜底（sanitize 持久化
+// 只留 id/value 等核心字段，langKey 不进存储）；展示时按 id 回查目录拿 langKey，
+// 经宿主 i18n 翻译，缺键回退 catalog 中文——三端消费面（底栏/球面板/命令模式）
+// 全部经此函数出标签，界面语言与宿主设置一致。
+function resolveQuickActionLabel(action, translations) {
+    if (!action || typeof action !== "object") return "";
+    if (typeof translations !== "object" || !translations) return action.label || "";
+    const catalog = action.kind === "global" ? GLOBAL_QUICK_ACTIONS : BUILTIN_QUICK_ACTIONS;
+    const entry = catalog.find((item) => item.id === action.id && item.kind === action.kind);
+    const langKey = entry?.langKey || action.langKey;
+    if (langKey && typeof translations[langKey] === "string" && translations[langKey]) {
+        return translations[langKey];
+    }
+    return action.label || "";
+}
+
 module.exports = {
     getQuickActionCommandTargets,
     normalizeProvider,
@@ -324,6 +354,7 @@ module.exports = {
     getDefaultQuickActions,
     getBuiltinQuickActions,
     getGlobalQuickActions,
+    resolveQuickActionLabel,
     getDefaultQuickActionTargets,
     resolveQuickActionSupport,
     shouldRenderQuickAction,

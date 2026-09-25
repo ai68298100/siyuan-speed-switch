@@ -130,6 +130,43 @@ const ALLOWED_UNUSED = [
   // T-6820/R3：marks 书签命令名（setSessionMark/jumpToSessionMark），同上。
   "setSessionMark",
   "jumpToSessionMark",
+  // T-6845/T-6856：快捷动作目录标签（quick-actions.js 的 langKey 字段）经
+  // resolveQuickActionLabel 动态查表，源码无 .i18n.actionXxx 字面引用。
+  // 覆盖性由 quick-actions.test.cjs 的"目录 langKey 必须双语存在"校验保证。
+  "actionSwitcher",
+  "actionSearch",
+  "actionJournal",
+  "actionSettings",
+  "actionHome",
+  "actionQuickCapture",
+  "actionPreviousTab",
+  "actionNextTab",
+  "actionScrollTop",
+  "actionScrollBottom",
+  "actionSyncNow",
+  "actionInsertTemplate",
+  "actionCycleDocSet",
+  "actionCycleBallPreset",
+  "actionThrowWindow",
+  "actionHideKeyboard",
+  "actionJumpBack",
+  "actionJumpForward",
+  "actionMarkSet",
+  "actionMarkJump",
+  "actionClipboard",
+  "actionCloseTab",
+  "actionOutline",
+  "actionBookmark",
+  "actionTag",
+  "actionInbox",
+  "actionBacklinks",
+  "actionRecentDocs",
+  "actionRecentClosed",
+  "actionRiffCard",
+  "actionEditReadonly",
+  "actionFileTree",
+  "actionMainMenu",
+  "actionGlobalSearch",
 ];
 
 test("i18n: 语言文件中不允许存在源码未引用的死 key", (t) => {

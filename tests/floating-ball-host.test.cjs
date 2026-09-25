@@ -7,7 +7,7 @@ const {readSourceFile} = require("./source-scan.cjs");
 const {createDefaultFloatingBallConfig, selectFloatingBallFirstLayer, resolveFloatingBallClickAction} = require("../src/floating-ball-model.js");
 const {createFloatingBallActionExecutor} = require("../src/floating-ball-actions.js");
 const {selectFloatingBallMoreActions, createFloatingBallPanelController: createRealPanel} = require("../src/floating-ball-panel.js");
-const {createQuickActionRegistry, resolveQuickActionSupport} = require("../src/quick-actions.js");
+const {createQuickActionRegistry, resolveQuickActionSupport, resolveQuickActionLabel} = require("../src/quick-actions.js");
 const i18n = require("../src/i18n/zh-CN.json");
 
 // Run the actual host methods, keeping imports for unrelated plugin features out
@@ -76,7 +76,7 @@ function mount(t, options = {}) {
     };
     const dependencies = {
         window: dom.window, document, createFloatingBallUi, createFloatingBallPanelController, createFloatingBallActionExecutor,
-        resolveFloatingBallClickAction,
+        resolveFloatingBallClickAction, resolveQuickActionLabel,
         openSecondPanel() { calls.home.push(this); },
         showMessage: (...args) => calls.messages.push(args),
         MESSAGE_DEFAULT_MS: 2500,

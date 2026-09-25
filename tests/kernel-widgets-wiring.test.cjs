@@ -457,6 +457,31 @@ test('wave-2: preview hover trigger, sticky pane, synthetic dedupe, essentials r
         '设置页必须提供 Markdown 导出按钮');
 });
 
+test('wave-3: action catalog expansion with i18n labels (T-6856/T-6845)', () => {
+    const quickActions = readSourceText(path.join(__dirname, '..', 'src', 'quick-actions.js'));
+    const floatingActions = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-actions.js'));
+    assert.match(quickActions, /"mark-set", "mark-jump", "clipboard", "close-tab",/,
+        'BUILTIN_VALUES 必须登记四个新内建动作值');
+    assert.match(quickActions, /langKey: "actionMarkJump"/, '新动作必须携带 langKey');
+    assert.match(quickActions, /function resolveQuickActionLabel\(action, translations\)/,
+        '标签解析必须是导出的纯函数（i18n 命中/中文兜底）');
+    assert.equal((quickActions.match(/langKey:/g) || []).length, 34,
+        '全部 22 内建 + 12 宿主命令条目必须携带 langKey');
+    assert.match(floatingActions, /case "mark-jump":/, 'executor 必须分发 mark-jump');
+    assert.match(floatingActions, /case "clipboard"/, 'executor 必须分发 clipboard');
+    assert.match(floatingActions, /case "close-tab"/, 'executor 必须分发 close-tab');
+    assert.match(indexSource, /onMarkSet: \(\) => this\.setSessionMark\(\)/,
+        'index 必须接线 mark-set（marks 复用既有命令）');
+    assert.match(indexSource, /onClipboard: \(\) => this\.openClipboardEntry\(\)/,
+        'index 必须接线 clipboard（剪贴板入口复用既有命令）');
+    assert.match(indexSource, /private async closeActiveTabForAction\(\): Promise<boolean>/,
+        'close-tab 必须有独立方法（无活动页签/失败给明确回执）');
+    assert.match(indexSource, /label: resolveQuickActionLabel\(action, this\.i18n\)/g,
+        '球面板目录标签必须经宿主 i18n 解析');
+    assert.match(indexSource, /\.\.\.action, label: resolveQuickActionLabel\(action, this\.i18n\)\}\);/,
+        '命令模式目录标签必须经宿主 i18n 解析（P-F 收口）');
+});
+
 test('layered workspace snapshot: preset is persisted into the set and essentials produce receipts (T-6815)', () => {
     // 恢复链：场景按 presetId 优先固化，Essentials 带回执打开并并入统一摘要
     assert.match(indexSource, /presets\.find\(\(preset: \{id: string\}\) => preset\.id === item\.presetId\)/,
