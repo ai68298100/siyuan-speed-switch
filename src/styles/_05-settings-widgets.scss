@@ -507,6 +507,26 @@
     align-items: start;
 }
 
+// T-6879（T-6874b）：底部回执条——组件健康聚合（ok/total 正常 · 失败 n），
+// 由 refresh 包装器写回 data-sw-health 后实时更新。
+.sw-home__receipt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+    min-height: 32px;
+    padding: 6px 18px;
+    border-top: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
+
+// 失败单元：错误色描边一眼可辨（内容区错误态仍由模块自身渲染）。
+.sw-home__cell[data-sw-health="failed"] {
+    border-color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 45%, transparent);
+}
+
 // T-6874（RZ-4）：编辑横幅——编辑态现场可感知（拖动提示+完成按钮），
 // 主色软底+主色边界与平台动作语言一致；reduced-motion 由全局令牌接管。
 .sw-home__edit-banner {

@@ -1072,3 +1072,37 @@ test('cross-surface snippet objects: workbench row and studio objectId selection
     assert.match(zh, /"workbenchSnippets": "片段实验室"/);
     assert.match(en, /"workbenchSnippets": "Snippet lab"/);
 });
+
+test('workbench health receipt: per-cell health markers and aggregate receipt bar (T-6879/T-6874b)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const homeWidgetsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss'));
+    // 健康记录：refresh 包装器把结果 ok 写回单元 data-sw-health 并触发聚合。
+    assert.match(secondPanelSource, /cell\.dataset\.swHealth = result\?\.ok === true \? "ok" : "failed";/,
+        'the refresh wrapper must record per-cell health from the result');
+    assert.match(secondPanelSource, /updateWorkbenchReceipt\(\);/,
+        'the wrapper must refresh the receipt after each refresh');
+    // 回执条：存在专用类、按 DOM 聚合、无单元时移除、i18n 模板插值。
+    assert.match(secondPanelSource, /receipt\.className = "sw-home__receipt";/,
+        'the receipt bar must exist');
+    assert.match(secondPanelSource, /root\.querySelector<HTMLElement>\("\.sw-home__receipt"\)/,
+        'the aggregator must read the receipt from the panel root');
+    assert.match(secondPanelSource, /if \(cells\.length === 0\) \{\s*receipt\.remove\(\);/,
+        'an empty panel must remove the receipt');
+    assert.match(secondPanelSource, /homeReceiptSummary/,
+        'the summary must come from i18n');
+    assert.match(secondPanelSource, /homeReceiptFailed/,
+        'the failed count must come from i18n');
+    // SCSS：回执条与失败单元描边（块级断言）。
+    assert.ok(declaresIn(homeWidgetsScss, '.sw-home__receipt', /border-top:\s*1px solid var\(--b3-border-color\)/),
+        'the receipt bar must carry its own top hairline');
+    assert.ok(declaresIn(homeWidgetsScss, '.sw-home__cell\[data-sw-health="failed"\]', /border-color:\s*color-mix\(in srgb, var\(--b3-theme-error, #d23f31\) 45%, transparent\)/),
+        'failed cells must carry an error-tinted border');
+    // i18n 双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"homeReceiptSummary": "\{ok\}\/\{total\} 组件正常"/);
+    assert.match(zh, /"homeReceiptFailed": "失败 \{x\}"/);
+    assert.match(en, /"homeReceiptSummary": "\{ok\}\/\{total\} widgets healthy"/);
+    assert.match(en, /"homeReceiptFailed": "\{x\} failed"/);
+});

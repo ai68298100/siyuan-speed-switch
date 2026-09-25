@@ -979,6 +979,8 @@
   "docSearchPreviewStatusReady": "已就绪",
   "snippetEnabledShort": "已启用",
   "unitLines": "行",
+  "homeReceiptSummary": "{ok}/{total} 组件正常",
+  "homeReceiptFailed": "失败 {x}",
   "docSearchSplitHint": "右键：在右侧分屏打开",
   "chipsLabel": "结果类型过滤",
   "chipsAll": "全部",

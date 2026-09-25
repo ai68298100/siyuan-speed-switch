@@ -148,6 +148,23 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             homeRefreshBatchController?.abort();
             homeRefreshBatchController = null;
             homeControllers.splice(0).forEach((entry) => entry.dispose());
+            // T-6879（T-6874b）：回执条聚合——ok/total 正常 + 失败计数；
+            // 单元健康由 refresh 包装器写回 data-sw-health，此处只读 DOM 聚合。
+            const updateWorkbenchReceipt = () => {
+                const receipt = root.querySelector<HTMLElement>(".sw-home__receipt");
+                if (!receipt) return;
+                const cells = Array.from(root.querySelectorAll<HTMLElement>(".sw-home__cell"));
+                if (cells.length === 0) {
+                    receipt.remove();
+                    return;
+                }
+                const ok = cells.filter((c) => c.dataset.swHealth === "ok").length;
+                const failed = cells.filter((c) => c.dataset.swHealth === "failed").length;
+                receipt.textContent = this.i18n.homeReceiptSummary
+                    .replace("{ok}", String(ok))
+                    .replace("{total}", String(cells.length))
+                    + (failed > 0 ? " · " + this.i18n.homeReceiptFailed.replace("{x}", String(failed)) : "");
+            };
             panelEventCleanup?.();
             panelEventCleanup = null;
             clearDeferredRefreshes();
@@ -413,7 +430,14 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 if (!controller) return;
                 controllers.push({
                     moduleId: inst.moduleId,
-                    refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => controller.refresh(config, readOptions),
+                    // T-6879（T-6874b）：刷新结果回写单元健康标记（data-sw-health），
+                    // 回执条据此聚合"ok/total 正常 · 失败 n"；失败单元描红边。
+                    refresh: async (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => {
+                        const result = await controller.refresh(config, readOptions);
+                        cell.dataset.swHealth = result?.ok === true ? "ok" : "failed";
+                        updateWorkbenchReceipt();
+                        return result;
+                    },
                     dispose: () => controller.dispose(),
                     cell,
                     clockSeconds: inst.moduleId === "external-local-time" && (inst.config as Record<string, unknown> | undefined)?.showSeconds === "是",
@@ -721,6 +745,12 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             root.appendChild(quickHost);
             this.renderQuickActions(dialog.element, this.isMobile ? "mobile" : "desktop", null, () => dialog.destroy(), ".sw-home__quick-actions");
             quickHost.classList.add("sw__quick-actions--icons");
+            // T-6879（T-6874b）：底部回执条（ok/total 正常 · 失败 n），随刷新实时聚合
+            const receipt = document.createElement("div");
+            receipt.className = "sw-home__receipt";
+            receipt.setAttribute("role", "status");
+            root.appendChild(receipt);
+            updateWorkbenchReceipt();
         };
 
         const handleModuleChange = () => {

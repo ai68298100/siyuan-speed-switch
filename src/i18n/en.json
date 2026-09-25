@@ -907,6 +907,8 @@
   ,"docSearchPreviewStatusReady": "Ready"
   ,"snippetEnabledShort": "enabled"
   ,"unitLines": "lines"
+  ,"homeReceiptSummary": "{ok}/{total} widgets healthy"
+  ,"homeReceiptFailed": "{x} failed"
   ,"docSearchSplitHint": "Right-click: open in right split"
   ,"chipsLabel": "Result type filter"
   ,"chipsAll": "All"
