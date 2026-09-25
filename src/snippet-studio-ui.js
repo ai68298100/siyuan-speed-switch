@@ -700,6 +700,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             surface: "studio",
             labels: platform.labels,
             available: platform.available,
+            context: platform.context || null,
             onNavigate: (surface) => {
                 if (!canDiscard()) return;
                 platform.onNavigate?.(surface);

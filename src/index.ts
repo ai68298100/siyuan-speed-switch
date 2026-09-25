@@ -86,6 +86,7 @@ import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
+import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption} from "./platform-surface-model";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -579,6 +580,8 @@ declare module "./search-model" {
 // snippet chunk receives this adapter as a callback, so it does not create a
 // second webpack shared chunk while the three surfaces use one DOM contract.
 export type PlatformSurface = "switcher" | "workbench" | "studio";
+// T-6869：一次跨表面打开的上下文（entry/objectId/query 有界，见 platform-surface-model）。
+export type PlatformSurfaceContext = {entry: string; objectId?: string; query?: string};
 export interface PlatformSurfaceLabels {
     platformName: string;
     contextLabel: string;
@@ -589,10 +592,11 @@ export interface PlatformSurfaceChromeOptions {
     surface: PlatformSurface;
     labels: PlatformSurfaceLabels;
     available?: readonly PlatformSurface[];
+    context?: PlatformSurfaceContext | null;
     onNavigate?: (surface: PlatformSurface) => void;
 }
 
-const PLATFORM_SURFACES: readonly PlatformSurface[] = ["switcher", "workbench", "studio"];
+const PLATFORM_SURFACES: readonly PlatformSurface[] = PLATFORM_SURFACE_IDS as readonly PlatformSurface[];
 
 function normalizePlatformText(value: unknown, fallback: string): string {
     const normalized = typeof value === "string" ? value.trim() : "";
@@ -677,10 +681,12 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
     separator.textContent = "›";
     const object = doc.createElement("strong");
     object.className = "sw-platform-context__object";
-    object.textContent = options.labels.surfaces[options.surface];
+    const caption = buildSurfaceContextCaption({surface: options.surface, context: options.context, labels: options.labels});
+    object.textContent = caption.object;
     const hint = doc.createElement("span");
     hint.className = "sw-platform-context__hint";
-    hint.textContent = options.labels.hints[options.surface];
+    hint.textContent = caption.hint;
+    if (caption.hasQuery) hint.title = caption.hint;
     context.append(trail, separator, object, hint);
 
     chrome.append(header, context);
@@ -699,10 +705,12 @@ declare module "./snippet-studio-ui" {
         platform?: {
             labels: PlatformSurfaceLabels;
             available?: readonly PlatformSurface[];
+            context?: PlatformSurfaceContext | null;
             mount: (root: HTMLElement, options: {
                 surface: PlatformSurface;
                 labels: PlatformSurfaceLabels;
                 available?: readonly PlatformSurface[];
+                context?: PlatformSurfaceContext | null;
                 onNavigate?: (surface: PlatformSurface) => void;
             }) => HTMLElement;
             onNavigate?: (surface: PlatformSurface) => void;
@@ -935,6 +943,15 @@ export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private snippetStudioDialog: Dialog | null = null;
     private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null} = {draft: null, baseline: null};
+    // T-6869（P1-c）：平台会话级路由状态——最近表面供悬浮球恢复（无持久化，
+    // 新会话回落切换器），三个表面 Dialog 各自单例守卫，防止热键/悬浮球连点叠窗。
+    private lastPlatformSurface: PlatformSurface = "switcher";
+    private lastPlatformContext: PlatformSurfaceContext | null = null;
+    private platformSwitcherDialog: Dialog | null = null;
+    private mobileSwitcherDialog: Dialog | null = null;
+    private workbenchDialog: Dialog | null = null;
+    // 仅当工作台经表面导航离开时记录编辑现场；普通打开与 X 关闭保持查看态。
+    private workbenchResumeEditing = false;
     // 文档搜索链路状态宿主（R5a，D-381）：6 个实例级状态收拢为单一状态对象，
     // WeakMap/Set 语义与代际竞态保护不变；生命周期（含卸载清理）由原消费点继续驱动。
     private docSearchState = createDocSearchState();
@@ -3038,19 +3055,46 @@ export default class SpeedSwitchPlugin extends Plugin {
      * modules close their current Dialog before calling this method, so the
      * existing FAB suspension and destroy callbacks remain serialized.
      */
-    public openPlatformSurface(surface: PlatformSurface, returnTo: PlatformSurface = "switcher") {
+    public openPlatformSurface(surface: PlatformSurface, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         if (this.isUnloading) return;
+        this.notePlatformSurface(surface, context);
         if (surface === "switcher") {
-            this.showSwitcher(false, returnTo);
+            this.showSwitcher(false, returnTo, context);
             return;
         }
         if (surface === "workbench") {
-            openSecondPanel.call(this);
+            openSecondPanel.call(this, context);
             return;
         }
         if (surface === "studio") {
-            this.openSnippetStudio(returnTo);
+            this.openSnippetStudio(returnTo, context);
         }
+    }
+
+    // T-6869：平台表面打开时的会话级记录（悬浮球"恢复上次表面"的数据来源）。
+    private notePlatformSurface(surface: PlatformSurface, context?: PlatformSurfaceContext | null) {
+        this.lastPlatformSurface = normalizeSurfaceId(surface, "switcher");
+        this.lastPlatformContext = normalizeSurfaceContext(context);
+    }
+
+    // 表面装配模块（second-panel-ui 等）经 host 钩子记录工作台打开；开放给 this 参数模式。
+    public notePlatformSurfaceOpened(surface: PlatformSurface, context?: PlatformSurfaceContext | null) {
+        this.notePlatformSurface(surface, context);
+    }
+
+    // 当前端的可用表面清单：片段实验室仍是桌面专属（ADR 0078），移动端只有切换器/工作台。
+    public getAvailablePlatformSurfaces(): PlatformSurface[] {
+        return this.isMobile ? ["switcher", "workbench"] : [...PLATFORM_SURFACES];
+    }
+
+    // T-6869（ADR 0079 §7）：悬浮球轻触=打开平台并恢复上次表面；上次表面在当前端
+    // 不可用（如移动端的桌面专属片段实验室）或会话外非法值时，安全回退切换器。
+    private openPlatformFromBall() {
+        this.openPlatformSurface(
+            resolveSurfaceReturnTarget(this.lastPlatformSurface, this.getAvailablePlatformSurfaces()),
+            "switcher",
+            {entry: "fab"},
+        );
     }
 
     public getPlatformSurfaceLabels(): PlatformSurfaceLabels {
@@ -3074,10 +3118,11 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     // 打开页签切换器
-    private showSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher") {
+    private showSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
+        this.notePlatformSurface("switcher", context);
         // 手机端走独立适配
         if (this.isMobile) {
-            this.showMobileSwitcher(focusSearch, returnTo);
+            this.showMobileSwitcher(focusSearch, returnTo, context);
             return;
         }
 
@@ -3087,35 +3132,46 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 全屏模式：切换器铺满整个窗口（Esc 退出由思源 Dialog 默认行为提供）
         const fullscreen = settings.fullscreen;
 
+        // T-6869 单例守卫：热键/悬浮球/表面导航连点不再叠出多个切换器，
+        // 先销毁旧实例（其 destroyCallback 串行释放 FAB 挂起），再开新实例。
+        if (this.platformSwitcherDialog?.element.isConnected) this.platformSwitcherDialog.destroy();
+
         // T-6481：Dialog 的 destroyCallback 必须在构造时就成型，而资源是在后续装配方法里
         // 创建的，故用一个可变 holder 把两者接起来（宿主只认构造参数）。
         const releaseFab = this.suspendFABForDialog();
         const switcherRelease: {fn: () => void} = {fn: releaseFab};
-        const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo);
+        const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo, context);
         // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
         this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo);
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
-    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean, release: {fn: () => void}, returnTo: PlatformSurface = "switcher"): Dialog {
+    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean, release: {fn: () => void}, returnTo: PlatformSurface = "switcher", context: PlatformSurfaceContext | null = null): Dialog {
         const size = this.resolvePanelDialogSize(settings, fullscreen);
+        const holder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
             title: "",
             content: this.buildSwitcherHtml(fullscreen),
             width: `${size.width}px`,
             height: `${size.height}px`,
-            destroyCallback: () => release.fn(),
+            destroyCallback: () => {
+                if (this.platformSwitcherDialog === holder.dialog) this.platformSwitcherDialog = null;
+                release.fn();
+            },
         });
+        holder.dialog = dialog;
+        this.platformSwitcherDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
         const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
         if (surfaceRoot) {
             mountPlatformChrome(surfaceRoot, {
                 surface: "switcher",
                 labels: this.getPlatformSurfaceLabels(),
+                context,
                 onNavigate: (surface) => {
                     if (this.isUnloading || !dialog.element.isConnected) return;
                     dialog.destroy();
-                    this.openPlatformSurface(surface, returnTo);
+                    this.openPlatformSurface(surface, returnTo, {entry: "surface-nav"});
                 },
             });
         }
@@ -3125,9 +3181,10 @@ export default class SpeedSwitchPlugin extends Plugin {
     // Experimental desktop-only studio. It is deliberately reachable from
     // the tab panel toolbar so it does not become a second global command or
     // a mobile surface before the wide layout has real device evidence.
-    private openSnippetStudio(returnTo: PlatformSurface = "switcher") {
+    private openSnippetStudio(returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         if (this.isMobile) return;
         if (this.snippetStudioDialog?.element.isConnected) return;
+        this.notePlatformSurface("studio", context);
         const holder: {dialog: Dialog | null; controller: SnippetStudioController | null} = {dialog: null, controller: null};
         const releaseFab = this.suspendFABForDialog();
         const width = Math.min(1600, Math.max(760, Math.round(window.innerWidth * 0.92)));
@@ -3163,17 +3220,18 @@ export default class SpeedSwitchPlugin extends Plugin {
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),
                     available: ["switcher", "workbench", "studio"],
+                    context: context || null,
                     mount: mountPlatformChrome,
                     onNavigate: (surface) => {
                         if (this.isUnloading || !dialog.element.isConnected) return;
                         dialog.destroy();
-                        this.openPlatformSurface(surface, returnTo);
+                        this.openPlatformSurface(surface, returnTo, {entry: "surface-nav"});
                     },
                 },
                 onBack: () => {
                     if (holder.controller && !holder.controller.canClose()) return;
                     dialog.destroy();
-                    if (!this.isUnloading) this.openPlatformSurface(returnTo);
+                    if (!this.isUnloading) this.openPlatformSurface(returnTo, "switcher", {entry: "back"});
                 },
             });
             void holder.controller.ready.catch((error) => logger.warn("snippet studio load failed", error));
@@ -3511,7 +3569,7 @@ const updatedMap: {[rootId: string]: string} = {};
         });
         dialog.element.querySelector(".sw__snippet-studio-btn")?.addEventListener("click", () => {
             dialog.destroy();
-            this.openSnippetStudio(returnTo);
+            this.openSnippetStudio(returnTo, {entry: "toolbar"});
         });
         // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
@@ -10534,21 +10592,28 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作。
     // （T-6679：minAppVersion 已抬到 3.8.0，"旧版无 MobileTabs API 需提示升级"的
     // 运行时门成为死代码，随 ADR 0064 首批兼容层简化移除）
-    private showMobileSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher") {
+    private showMobileSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         const tabs = this.getMobileTabs();
-        openMobileSwitcherDialog.call(this, tabs, focusSearch, returnTo);
+        openMobileSwitcherDialog.call(this, tabs, focusSearch, returnTo, context);
     }
 
     // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
     private createMobileSwitcherDialog(release: {fn: () => void}): Dialog {
-        return new Dialog({
+        const holder: {dialog: Dialog | null} = {dialog: null};
+        const dialog = new Dialog({
             title: "",
             content: this.buildMobileSwitcherHtml(),
             width: "92vw",
             height: "85vh",
             disableAnimation: true,
-            destroyCallback: () => release.fn(),
+            destroyCallback: () => {
+                if (this.mobileSwitcherDialog === holder.dialog) this.mobileSwitcherDialog = null;
+                release.fn();
+            },
         });
+        holder.dialog = dialog;
+        this.mobileSwitcherDialog = dialog;
+        return dialog;
     }
 
     // 手机端弹窗骨架。
@@ -10878,7 +10943,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             plugins: (this.app as unknown as {plugins?: IQuickActionPluginLike[]}).plugins,
             getDockByType: (type: string) => this.getDockByType(type),
             close: () => panel?.closeMore({restoreFocus: false}),
-            onSwitcher: () => this.showSwitcher(),
+            // T-6869（ADR 0079 §7）：悬浮球=全局触发器，轻触恢复上次表面；失效回退切换器。
+            onSwitcher: () => this.openPlatformFromBall(),
             onSearch: () => {
                 if (surface === "sidebar") {
                     this.sidebarElement?.querySelector<HTMLInputElement>(".sw__search")?.focus();

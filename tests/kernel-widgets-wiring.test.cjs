@@ -740,3 +740,60 @@ test('operator query guards use raw keyword while kernel calls use cleaned query
     assert.match(docSearchUi, /\{k: fetchText\}/,
         'the kernel title search request carries the cleaned query');
 });
+
+test('platform surface context: singleton dialogs, FAB restore and workbench edit resume (T-6869)', () => {
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));
+    // 纯模型模块必须进入生产入口（表面白名单与恢复回退的唯一决策点）。
+    assert.match(indexSource, /from "\.\/platform-surface-model"/,
+        'index.ts must import the platform surface model');
+    // 会话级最近表面记录：openPlatformSurface 与 openSnippetStudio 都要落记录。
+    assert.match(indexSource, /private notePlatformSurface\(surface: PlatformSurface, context\?: PlatformSurfaceContext \| null\)/,
+        'session-level last-surface recorder must exist');
+    assert.match(indexSource, /this\.notePlatformSurface\(surface, context\);\s*\n\s*if \(surface === "switcher"\)/,
+        'openPlatformSurface must record the surface before dispatching');
+    assert.match(indexSource, /this\.notePlatformSurface\("studio", context\);/,
+        'studio open must record the surface too');
+    assert.match(secondPanelSource, /this\.notePlatformSurfaceOpened\?\.\("workbench", context\);/,
+        'workbench open must record via the host hook');
+    // 三个表面的 Dialog 单例守卫：重复入口先销毁旧实例，不再叠窗。
+    assert.match(indexSource, /if \(this\.platformSwitcherDialog\?\.element\.isConnected\) this\.platformSwitcherDialog\.destroy\(\);/,
+        'desktop switcher singleton guard');
+    assert.match(indexSource, /if \(this\.platformSwitcherDialog === holder\.dialog\) this\.platformSwitcherDialog = null;/,
+        'desktop switcher must clear its field on destroy');
+    assert.match(mobileSwitcherSource, /if \(this\.mobileSwitcherDialog\?\.element\.isConnected\) this\.mobileSwitcherDialog\.destroy\(\);/,
+        'mobile switcher singleton guard');
+    assert.match(indexSource, /if \(this\.mobileSwitcherDialog === holder\.dialog\) this\.mobileSwitcherDialog = null;/,
+        'mobile switcher must clear its field on destroy');
+    assert.match(secondPanelSource, /if \(this\.workbenchDialog\?\.element\.isConnected\) this\.workbenchDialog\.destroy\(\);/,
+        'workbench singleton guard');
+    assert.match(secondPanelSource, /if \(this\.workbenchDialog === dialogHolder\.dialog\) this\.workbenchDialog = null;/,
+        'workbench must clear its field on destroy');
+    // 悬浮球恢复上次表面：恢复决策必须经 resolveSurfaceReturnTarget，回退入口为切换器。
+    assert.match(indexSource, /private openPlatformFromBall\(\)/,
+        'FAB restore helper must exist');
+    const ballHelper = indexSource.slice(indexSource.indexOf('private openPlatformFromBall'));
+    assert.match(ballHelper, /resolveSurfaceReturnTarget\(this\.lastPlatformSurface, this\.getAvailablePlatformSurfaces\(\)\)/,
+        'restore decision must go through resolveSurfaceReturnTarget');
+    assert.match(ballHelper, /entry: "fab"/, 'FAB open must carry the fab entry');
+    assert.match(indexSource, /onSwitcher: \(\) => this\.openPlatformFromBall\(\),/,
+        'the floating-ball executor onSwitcher must restore the last surface');
+    // 工作台编辑现场：表面导航离开时记录、重开时恢复且焦点回到布局开关。
+    assert.match(secondPanelSource, /this\.workbenchResumeEditing = editing;\s*\n\s*dialog\.destroy\(\);/,
+        'leaving the workbench via surface nav must record the editing state');
+    assert.match(secondPanelSource, /let editing = this\.workbenchResumeEditing === true;\s*\n\s*this\.workbenchResumeEditing = false;/,
+        'reopening must consume the resume flag exactly once');
+    assert.match(secondPanelSource, /root\.querySelector<HTMLElement>\("\.sw-home__bar button"\)\?\.focus\(\{preventScroll: true\}\);/,
+        'resume must move focus back to the layout toggle');
+    // ContextBar 投影与上下文透传：chrome 挂载接受 context，表面导航带 entry。
+    assert.match(indexSource, /const caption = buildSurfaceContextCaption\(\{surface: options\.surface, context: options\.context, labels: options\.labels\}\);/,
+        'chrome mount must render through the caption builder');
+    assert.match(indexSource, /this\.openPlatformSurface\(surface, returnTo, \{entry: "surface-nav"\}\);/,
+        'desktop chrome nav must carry the surface-nav entry');
+    assert.match(secondPanelSource, /this\.openPlatformSurface\?\.\(surface, "workbench", \{entry: "surface-nav"\}\);/,
+        'workbench chrome nav must carry the surface-nav entry');
+    assert.match(mobileSwitcherSource, /this\.openPlatformSurface\?\.\(surface, returnTo, \{entry: "surface-nav"\}\);/,
+        'mobile chrome nav must carry the surface-nav entry');
+    assert.match(indexSource, /this\.openPlatformSurface\(returnTo, "switcher", \{entry: "back"\}\);/,
+        'studio Back must carry the back entry');
+});

@@ -1,0 +1,78 @@
+"use strict";
+
+// T-6869 统一平台 SurfaceContext（P1-c，ADR 0079）
+// 平台外壳的路由上下文纯模型：表面 ID 白名单、跨表面上下文归一化、
+// 悬浮球"恢复上次表面"的安全回退决策，以及 ContextBar 文案投影。
+// 只做纯数据投影：不触碰 DOM、不持有会话状态；会话状态由宿主（index.ts）持有。
+
+const PLATFORM_SURFACE_IDS = Object.freeze(["switcher", "workbench", "studio"]);
+const DEFAULT_SURFACE = "switcher";
+
+// 入口白名单：记录平台表面从哪里被打开（P3 跨表面对象/焦点恢复的元数据基础）。
+const PLATFORM_SURFACE_ENTRIES = Object.freeze([
+    "toolbar", "surface-nav", "fab", "back", "command", "breadcrumb", "external", "unknown",
+]);
+
+// 与 savedSearches 查询上限（120）一致；objectId 对齐文档集当前集 id 的清洗口径并放宽到 128。
+const SURFACE_QUERY_MAX = 120;
+const SURFACE_OBJECT_ID_MAX = 128;
+
+function cleanSurfaceText(value, max) {
+    return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
+}
+
+/** 表面 ID 白名单校验：非法值回落 fallback（传空串可探测"完全非法"）。 */
+function normalizeSurfaceId(value, fallback = DEFAULT_SURFACE) {
+    return PLATFORM_SURFACE_IDS.includes(value) ? value : fallback;
+}
+
+/**
+ * 归一化一次跨表面打开的上下文：entry 不在白名单时归 unknown，
+ * objectId/query 有界清洗；没有任何有效字段时返回 null（调用方不必挂空上下文）。
+ */
+function normalizeSurfaceContext(input) {
+    if (!input || typeof input !== "object") return null;
+    const entry = PLATFORM_SURFACE_ENTRIES.includes(input.entry) ? input.entry : "unknown";
+    const objectId = cleanSurfaceText(input.objectId, SURFACE_OBJECT_ID_MAX);
+    const query = cleanSurfaceText(input.query, SURFACE_QUERY_MAX);
+    if (entry === "unknown" && !objectId && !query) return null;
+    return {entry, objectId, query};
+}
+
+/**
+ * 悬浮球"恢复上次表面"的唯一决策点：上次表面仍在当前端可用清单内才恢复，
+ * 否则回退 fallback（默认切换器）。覆盖两类失效：桌面开过片段实验室后到手机端、
+ * 以及会话外的非法值——可用清单缺失时同样走切换器，不猜表面。
+ */
+function resolveSurfaceReturnTarget(lastSurface, available, fallback = DEFAULT_SURFACE) {
+    const candidate = normalizeSurfaceId(lastSurface, "");
+    if (!candidate) return fallback;
+    const pool = Array.isArray(available) && available.length > 0 ? available : [fallback];
+    return pool.includes(candidate) ? candidate : fallback;
+}
+
+/** ContextBar 文案投影：对象位恒为表面名；提示位有查询现场时显示查询，否则用表面固定提示。 */
+function buildSurfaceContextCaption({surface, context, labels} = {}) {
+    const safeSurface = normalizeSurfaceId(surface);
+    const safeLabels = labels && typeof labels === "object" ? labels : {};
+    const surfaceLabels = safeLabels.surfaces && typeof safeLabels.surfaces === "object" ? safeLabels.surfaces : {};
+    const hintLabels = safeLabels.hints && typeof safeLabels.hints === "object" ? safeLabels.hints : {};
+    const surfaceName = surfaceLabels[safeSurface];
+    const object = typeof surfaceName === "string" && surfaceName ? surfaceName : safeSurface;
+    const query = context && typeof context === "object" ? cleanSurfaceText(context.query, SURFACE_QUERY_MAX) : "";
+    const surfaceHint = hintLabels[safeSurface];
+    const hint = query || (typeof surfaceHint === "string" ? surfaceHint : "");
+    return {object, hint, hasQuery: Boolean(query)};
+}
+
+module.exports = {
+    PLATFORM_SURFACE_IDS,
+    PLATFORM_SURFACE_ENTRIES,
+    DEFAULT_SURFACE,
+    SURFACE_QUERY_MAX,
+    SURFACE_OBJECT_ID_MAX,
+    normalizeSurfaceId,
+    normalizeSurfaceContext,
+    resolveSurfaceReturnTarget,
+    buildSurfaceContextCaption,
+};

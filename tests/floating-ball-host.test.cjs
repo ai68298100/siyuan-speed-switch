@@ -20,6 +20,9 @@ const methodNames = [
     "createFloatingBallSurface", "destroyFloatingBallSurface", "persistFloatingBallPosition",
     "suspendFABForDialog", "updateFloatingBallVisibility", "executeFloatingBallSurfaceAction", "getFloatingBallActions",
     "refreshFloatingBallPanels",
+    // T-6869：悬浮球 onSwitcher 恢复链依赖的平台路由方法（openPlatformFromBall →
+    // openPlatformSurface → notePlatformSurface / getAvailablePlatformSurfaces）。
+    "openPlatformFromBall", "openPlatformSurface", "notePlatformSurface", "getAvailablePlatformSurfaces",
 ];
 const methods = methodNames.map((name) => {
     const matches = pluginClass.members.filter((node) => ts.isMethodDeclaration(node) && node.name?.getText(sourceFile) === name);
@@ -77,6 +80,10 @@ function mount(t, options = {}) {
     const dependencies = {
         window: dom.window, document, createFloatingBallUi, createFloatingBallPanelController, createFloatingBallActionExecutor,
         resolveFloatingBallClickAction, resolveQuickActionLabel,
+        // T-6869：openPlatformSurface/notePlatformSurface/getAvailablePlatformSurfaces
+        // 提取自生产类，其引用的平台模型导入与模块常量需在桩作用域提供。
+        ...require("../src/platform-surface-model.js"),
+        PLATFORM_SURFACES: ["switcher", "workbench", "studio"],
         openSecondPanel() { calls.home.push(this); },
         showMessage: (...args) => calls.messages.push(args),
         MESSAGE_DEFAULT_MS: 2500,

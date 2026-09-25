@@ -59,6 +59,10 @@ const WIRED_SANITY_MODULES = [
     // T-6759/B2：悬浮球动作执行器与首层/更多动作面板进入生产图。
     'floating-ball-actions',
     'floating-ball-panel',
+    // T-6869（P1-c，ADR 0079）：平台 SurfaceContext 纯模型（表面白名单/上下文归一化/
+    // 悬浮球恢复回退/ContextBar 文案投影）进入生产图；闭包 66→67 已复核，
+    // 包体复核见 release-readiness 快照（raw 1024 KiB 自律线、zip 硬上限独立审查）。
+    'platform-surface-model',
 ];
 
 function resolveModule(fromFile, spec) {
@@ -134,8 +138,10 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // T-6764/B7：有界 floating-ball-layout 几何入图，实测 63；审计上限 64，见 ADR 0068。
     // T-6814（R5-A）：related-content-model 只读关联投影入图，实测 65；上限按
     // ADR 0076 口径随实测增量校准 64→66（数量类门禁仅作观测护栏，不阻挡合理功能）。
+    // T-6869（P1-c，ADR 0079）：platform-surface-model 平台路由上下文纯模型入图，
+    // 实测 67；上限按同口径校准 66→67（先例 T-6814），包体余量另行复核。
     // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 66, `production graph grew to ${graph.size} modules; audited ceiling is 66`);
+    assert.ok(graph.size <= 67, `production graph grew to ${graph.size} modules; audited ceiling is 67`);
 });

@@ -16,7 +16,7 @@ import {openHomeWidgetStore} from "./home-store-ui";
 import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-model";
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
-import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceLabels} from "./index";
+import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels} from "./index";
 
 export interface SecondPanelUiHost {
     i18n: Record<string, string>;
@@ -36,9 +36,13 @@ export interface SecondPanelUiHost {
     handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void): void;
     migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string;
     openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): void;
-    openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface): void;
+    openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
+    // T-6869：工作台单例守卫字段 + 跨表面导航的编辑现场 + 会话级表面记录钩子
+    workbenchDialog: Dialog | null;
+    workbenchResumeEditing: boolean;
+    notePlatformSurfaceOpened?(surface: PlatformSurface, context?: PlatformSurfaceContext | null): void;
     removeHomeInstance(instanceId: string): void;
     renderQuickActions(container: HTMLElement, surface: "desktop" | "sidebar" | "mobile",
         searchInput: HTMLInputElement | null, close: () => void, selector?: string): void;
@@ -47,8 +51,17 @@ export interface SecondPanelUiHost {
     toggleHomeTaskBlock(item: { value?: string; done?: boolean }): Promise<boolean>;
 }
 
-export function openSecondPanel(this: SecondPanelUiHost) {
+export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfaceContext | null) {
         const settings = this.getSettings();
+        // T-6869 单例守卫：工具栏/悬浮球/表面导航等重复入口不再叠出多个工作台，
+        // 先销毁旧实例（其 destroyCallback 串行释放组件心跳与 FAB 挂起），再开新实例。
+        if (this.workbenchDialog?.element.isConnected) this.workbenchDialog.destroy();
+        // T-6869：会话级最近表面记录（悬浮球"恢复上次表面"数据来源）；钩子缺失时静默跳过。
+        this.notePlatformSurfaceOpened?.("workbench", context);
+        // T-6869 编辑现场：仅当上次经表面导航离开时是编辑态才恢复，普通打开保持查看态。
+        let editing = this.workbenchResumeEditing === true;
+        this.workbenchResumeEditing = false;
+        const resumeEditToggleFocus = editing;
         const viewport = {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX};
         // 组件面板独立尺寸模式：follow=跟随第一面板；adaptive=独立 90% 自适应；custom=固定尺寸；fullscreen=全屏
         const mode: HomeSizeMode = settings.homeSizeMode || "follow";
@@ -62,13 +75,19 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         const fullscreenMode = mode === "fullscreen" || (mode === "follow" && settings.panelSizeMode === "fullscreen");
         // T-6481：面板资源释放挂宿主 destroyCallback（构造与装配同函数，用可变 holder 前置声明）。
         let releasePanel: () => void = () => undefined;
+        const dialogHolder: {dialog: Dialog | null} = {dialog: null};
         const dialog = new Dialog({
             title: this.i18n.secondPanel,
             content: '<div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
-            destroyCallback: () => releasePanel(),
+            destroyCallback: () => {
+                if (this.workbenchDialog === dialogHolder.dialog) this.workbenchDialog = null;
+                releasePanel();
+            },
         });
+        dialogHolder.dialog = dialog;
+        this.workbenchDialog = dialog;
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--workbench");
         if (fullscreenMode) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
@@ -80,8 +99,10 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         const navigatePlatformSurface = this.openPlatformSurface
             ? (surface: PlatformSurface) => {
                 if (!dialog.element.isConnected) return;
+                // T-6869 编辑现场：经表面导航离开时记录编辑态，返回工作台时恢复。
+                this.workbenchResumeEditing = editing;
                 dialog.destroy();
-                this.openPlatformSurface?.(surface, "workbench");
+                this.openPlatformSurface?.(surface, "workbench", {entry: "surface-nav"});
             }
             : undefined;
         let iconClampFrame = 0;
@@ -99,7 +120,6 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         // 手机端强制单列堆叠（12 列网格在窄屏会把小组件压成窄条）
         if (this.isMobile) root.classList.add("sw-home--mobile");
         const device = this.isMobile ? "mobile" : "desktop";
-        let editing = false;
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
         const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement; clockSeconds?: boolean }> = [];
         const homeRefreshTimers: number[] = [];
@@ -136,6 +156,7 @@ export function openSecondPanel(this: SecondPanelUiHost) {
                 surface: "workbench",
                 labels: platformLabels,
                 available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
+                context: context || null,
                 onNavigate: navigatePlatformSurface,
             });
             const defs = new Map<string, any>();
@@ -705,4 +726,9 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         };
         renderPanel();
         scheduleIconClamp();
+        if (resumeEditToggleFocus) {
+            // T-6869 编辑现场恢复：焦点放回工具栏"编辑布局/完成"开关（首控件），
+            // 键盘用户可立即感知现场已恢复；preventScroll 避免面板跳动。
+            root.querySelector<HTMLElement>(".sw-home__bar button")?.focus({preventScroll: true});
+        }
 }

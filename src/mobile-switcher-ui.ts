@@ -14,7 +14,7 @@ import {groupTabsByMode} from "./util";
 import {resolveSearchNotebookId} from "./search-model";
 import {FAB_HIDE_DELAY_MS, THUMB_BATCH_MOBILE} from "./constants";
 import type {
-    IFavoriteItem, IGroupedTab, IOverlayClose, ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceLabels,
+    IFavoriteItem, IGroupedTab, IOverlayClose, ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels,
     ITabGroupRenderCtx, SortBy,
 } from "./index";
 
@@ -43,7 +43,7 @@ export interface MobileSwitcherUiHost {
     loadUpdatedMap(tabs: Tab[]): Promise<{[rootId: string]: string}>;
     openGroupTabs(items: IFavoriteItem[]): Promise<number>;
     openJournal(preferredNotebook?: string): Promise<void>;
-    openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface): void;
+    openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
     openSetting(initialPanel?: string): void;
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
@@ -64,16 +64,20 @@ export interface MobileSwitcherUiHost {
     suspendFABForDialog(onDestroy?: () => void): () => void;
     updateSettings(patch: Partial<ISwSettings>): void;
     fabElement: HTMLElement | null;
+    mobileSwitcherDialog: Dialog | null;
     notebookListCache: Array<{id: string; name: string}> | null;
     createdByIdCache: {[rootId: string]: string};
 }
 
-export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[], focusSearch = false, returnTo: PlatformSurface = "switcher") {
+export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[], focusSearch = false, returnTo: PlatformSurface = "switcher", context?: PlatformSurfaceContext | null) {
         const settings = this.getSettings();
         // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
         const activeTab: Tab | undefined = this.isMobile
             ? ({id: this.getMobileActiveTabId()} as Tab)
             : this.getActiveTab();
+
+        // T-6869 单例守卫：连点入口不再叠出多个移动切换器，先销毁旧实例再开新。
+        if (this.mobileSwitcherDialog?.element.isConnected) this.mobileSwitcherDialog.destroy();
 
         // T-6481：destroyCallback 在构造期就要成型，而资源在后面才创建，故用 holder 传递；
         // FAB 恢复并入同一个释放入口，不再覆写 dialog.destroy。
@@ -87,13 +91,14 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
                 ? (surface: PlatformSurface) => {
                     if (!dialog.element.isConnected) return;
                     dialog.destroy();
-                    this.openPlatformSurface?.(surface, returnTo);
+                    this.openPlatformSurface?.(surface, returnTo, {entry: "surface-nav"});
                 }
                 : undefined;
             this.mountPlatformChrome(mobileBody, {
                 surface: "switcher",
                 labels: this.getPlatformSurfaceLabels(),
                 available: ["switcher", "workbench"],
+                context: context || null,
                 onNavigate: navigatePlatformSurface,
             });
         }

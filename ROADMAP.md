@@ -1,5 +1,5 @@
 # 小驴雷切整体开发路线
-> 基线：`v0.36.0` 已发布（键盘优先收口：结果行方向键导航 + 常驻预览窗格）；最后更新：2026-09-26（当前工作树 6184 项测试，254 测试文件）
+> 基线：`v0.36.0` 已发布（键盘优先收口：结果行方向键导航 + 常驻预览窗格）；最后更新：2026-09-26（当前工作树 6189 项测试，255 测试文件）
 >
 > 当前状态：v0.36.0 已发布；搜索体验批完整落地（标题/片段关键词高亮、片段净化、结果行数字直达与 ↑/↓ 行导航、常驻预览窗格——Tab/方向键/数字直达/Enter/Alt 预览/`>` 命令模式键盘链路闭环）；此前关联内容、保存的搜索、命令模式、marks 书签、多目标快速捕获、预览打开、文档集版本历史、动态收藏组、密度档位、可迁移配置包、provider 协议元数据、移动侧滑所有权与悬浮球三层防误触、真实例 E2E 验收通道（桌面/移动/只读 6 条）均已接入，代码与自动化验收完成，真实 Android 证据仍按 B-004/B-005 后置。主线按 [ADR 0076](docs/adr/0076-navigation-context-roadmap.md) 转入维护基调：等待真机反馈与生态回应；剩余 P2 受控智能（T-6832 评估池，已补充内核 /mcp 上游事实）、关联内容锚文本排序（等 3.8.6 stable）等候补随反馈立项；不引入第二套搜索/动作架构。
 ## 1. 产品定位
@@ -743,6 +743,7 @@ R5 三路机制层调研完成（Obsidian+Notion/Craft、启动器/浏览器/编
 | T-6866 | 统一平台 UI、功能与交互设计 | ✅ 完成（设计） | `docs/design-unified-platform-ui-2026-09-25.md` + ADR 0079；定义 `切换器/工作台/片段实验室` 三表面和“悬浮球=全局触发器”，补齐共享外壳、token、状态、对象/动作、路由栈、跨表面回执、片段安全边界和端侧策略；本轮无生产代码变更 |
 | T-6867 | P1 统一视觉基础层与表面标记 | ✅ 完成（P1-a） | 新增 `src/styles/_platform-shell.scss` 与 `--sw-platform-*` token/状态/动作/预览原语；切换器、工作台、片段实验室和对应 Dialog 增加静态 surface/platform 标记，保留现有业务 DOM、动态 chunk、脏稿守卫和悬浮球生命周期；`pnpm exec tsc --noEmit`、Sass、完整测试 **6184/6184**、生产构建和 quality audit 50/50 通过 | P1-b 已在 T-6868 接入 |
 | T-6868 | P1-b 统一 SurfaceNav、ContextBar 与表面入口动作 | ✅ 完成 | `src/index.ts` 提供共享平台文案、外壳挂载和 `openPlatformSurface(surface, returnTo)`；桌面/移动切换器、工作台、片段实验室和侧栏使用同一表面导航，导航先销毁当前 Dialog；片段实验室保留 `canClose()` 脏稿守卫并在自身生命周期挂起/恢复悬浮球；移动端只开放切换器/工作台。修正 `returnTo` 贯穿桌面/移动切换器，工作台→切换器→片段实验室返回链保持上下文；完整测试 **6184/6184**、构建、`quality:audit` 50/50、`repro:audit` 3/3、release-check、生产图 66/66、四套 Chromium/浮球冒烟通过 | P1-c 统一对象/状态回执与更完整路由上下文；悬浮球恢复上次表面仍后置，真实桌面/Android 按 B-004/B-005 |
+| T-6869 | P1-c 统一平台路由上下文（SurfaceContext）、表面 Dialog 单例保护与悬浮球恢复上次表面 | ✅ 完成 | 新增 `src/platform-surface-model.js` 纯模型（表面白名单、`normalizeSurfaceContext` 有界上下文、`resolveSurfaceReturnTarget` 恢复回退、`buildSurfaceContextCaption` ContextBar 投影），生产图 66→67 按先例校准；`index.ts` 增加会话级 `lastPlatformSurface` 记录与 `openPlatformSurface(surface, returnTo, context)` 上下文透传（surface-nav/fab/back/toolbar entry），ContextBar 经 caption 投影渲染；桌面/移动切换器与工作台三个 Dialog 增加单例守卫（destroy-before-open，重复热键/悬浮球连点不再叠窗），片段实验室既有守卫与 `canClose()` 脏稿守卫不变；悬浮球轻触改为恢复上次表面（`resolveSurfaceReturnTarget`，移动端桌面专属实验室安全回退切换器）；工作台编辑现场经表面导航离开时记录、重开时恢复且焦点回到布局开关。新 `tests/platform-surface-model.test.cjs` 4 项 + wiring 契约 22 断言，负向验证 5 注入（FAB 恢复接线/工作台单例守卫/编辑现场记录/生产图上限回退/模型回退失效）均精确红后字节还原；`pnpm exec tsc --noEmit`、完整测试 **6189/6189**、构建（index.js 1028649 B，raw 线内余 ~19.9 KiB）、`quality:audit` 50/50、`integration:audit` 50/50、`repro:audit` 3/3、release-check、四套冒烟与 `verify:release` 全链通过 | P1 收口；下一批=P2 跨表面对象/动作（统一对象描述、片段结果"在实验室打开"）与 objectId 级焦点恢复；真实桌面/Android 按 B-004/B-005 |
 
 边界：原生片段是启用状态唯一来源；预览不写生产文档；导入保持禁用；JS 关闭不能撤销既有副作用；无社区服务端时只生成本地未审核投稿包；不读取模型密钥、不自动请求付费模型。工作室代码使用动态 chunk，保持主入口包体在线内；完整门禁、生产构建和浏览器截图仍是本方向退出条件。
 
