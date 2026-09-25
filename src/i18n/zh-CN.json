@@ -973,6 +973,8 @@
   "docSearchPreview": "大纲预览",
   "docSearchPreviewLoading": "预览加载中…",
   "docSearchPreviewEmpty": "用 ↑/↓ 聚焦结果行，此处预览大纲与摘要",
+  "docSearchPreviewStatusLoading": "加载中",
+  "docSearchPreviewStatusReady": "已就绪",
   "docSearchSplitHint": "右键：在右侧分屏打开",
   "chipsLabel": "结果类型过滤",
   "chipsAll": "全部",

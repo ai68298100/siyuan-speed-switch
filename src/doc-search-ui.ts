@@ -10,6 +10,7 @@ import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequ
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {logger} from "./logger";
+import {createPlatformStatus} from "./platform-dom";
 import type {DocSearchState} from "./doc-search-state";
 import type {IDocSearchFilters, IDocSearchResult, ISearchSession, DocSearchRenderState, IOverlayClose} from "./index";
 
@@ -1026,6 +1027,17 @@ function setDocPreviewHint(this: DocSearchUiHost, pane: HTMLElement, text: strin
         body.appendChild(hint);
     }
 
+// T-6873（RZ-3）：预览窗格头部状态徽标（loading→ready，六态徽标语言）。
+// 每次整体替换徽标元素——状态只有两个且由调用方按序推进，无需 diff。
+function setDocPreviewStatus(pane: HTMLElement, state: "loading" | "ready", label: string): void {
+        const header = pane.querySelector<HTMLElement>(".sw__doc-preview-header");
+        if (!header) return;
+        header.querySelector(".sw-platform-status")?.remove();
+        const badge = createPlatformStatus(header.ownerDocument || document, state, label);
+        badge.classList.add("sw__doc-preview-status");
+        header.appendChild(badge);
+    }
+
 function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
         const rootId = String(item.dataset.swDocKey || "");
         if (!BLOCK_ID_RE.test(rootId)) return;
@@ -1042,6 +1054,7 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
         const generation = (docPreviewGenerations.get(scrollElement) || 0) + 1;
         docPreviewGenerations.set(scrollElement, generation);
         setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewLoading);
+        setDocPreviewStatus(pane, "loading", this.i18n.docSearchPreviewStatusLoading);
         // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null
         const [outlinePayload, rowsPayload] = await Promise.all([
             // 审查轮 P-D 实证：preview:false 恒返回空，true 才携带嵌套大纲树
@@ -1051,6 +1064,8 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
         ]);
         if (!pane.isConnected) return;
         if ((docPreviewGenerations.get(scrollElement) || 0) !== generation) return;
+        // 代际校验通过=本次取数结果有效，徽标推进为已就绪（空内容交给提示行解释）
+        setDocPreviewStatus(pane, "ready", this.i18n.docSearchPreviewStatusReady);
         const outline = Array.isArray(outlinePayload?.data) ? outlinePayload.data : [];
         const rows = Array.isArray(rowsPayload?.data) ? rowsPayload.data : [];
         const snapshot = buildDocPreviewSnapshot(outline, rows);

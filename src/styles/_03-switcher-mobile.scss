@@ -1107,13 +1107,25 @@
                 border-radius: 0 8px 8px 0;
 
                 // 审查轮 P-C：常驻头部与内容区分离，轮换不清掉标题
+                // T-6873（RZ-3）：头部改 flex，右侧挂六态状态徽标（loading→ready）
                 .sw__doc-preview-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
                     margin-bottom: 6px;
                     padding-bottom: 6px;
                     border-bottom: 1px solid var(--b3-border-color);
                     color: var(--b3-theme-on-surface-light);
                     font-size: 11px;
                     letter-spacing: 0.05em;
+
+                    .sw__doc-preview-status {
+                        flex: none;
+                        margin-left: auto;
+                        min-height: 20px;
+                        padding: 2px 7px;
+                        font-size: 10px;
+                    }
                 }
 
                 .sw__doc-preview-hint {
@@ -2183,7 +2195,8 @@
 
 // ==================== T-6820 数字直达角标 ====================
 // 前 9 个可见卡片右上角的数字徽标（CSS ::after 渲染 data-sw-digit），
-// 与键盘数字直达一一对应；实色底反色字确保任意预览内容上清晰可辨。
+// 与键盘数字直达一一对应；T-6873（RZ-3）改为 kbd 芯片皮肤——不透明 surface 底
+// +边框+代码字体（设计原型 01），预览图上依旧清晰（不透明底），与键位提示同语言。
 .sw__card[data-sw-digit] {
   position: relative;
 
@@ -2195,21 +2208,22 @@
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
-    border-radius: 8px;
-    background: var(--b3-theme-primary);
-    color: var(--b3-theme-on-primary);
+    border: 1px solid var(--b3-border-color);
+    border-radius: 5px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
     font-size: 10px;
-    line-height: 16px;
+    line-height: 14px;
     text-align: center;
     font-weight: 600;
     pointer-events: none;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
     z-index: 1;
   }
 }
 
-// T-6837 文档结果行数字角标：与卡片角标同款语义（前 9 条可见行 1-9，
-// 右上角实色底反色字；行是紧凑列表项，徽标缩小一号避免压标题）
+// T-6837 文档结果行数字角标：与卡片角标同款语义（前 9 条可见行 1-9，kbd 芯片皮肤）
 .sw__doc-item[data-sw-digit] {
   position: relative;
 
@@ -2221,15 +2235,17 @@
     min-width: 14px;
     height: 14px;
     padding: 0 3px;
-    border-radius: 7px;
-    background: var(--b3-theme-primary);
-    color: var(--b3-theme-on-primary);
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
     font-size: 9px;
-    line-height: 14px;
+    line-height: 12px;
     text-align: center;
     font-weight: 600;
     pointer-events: none;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
     z-index: 1;
   }
 }

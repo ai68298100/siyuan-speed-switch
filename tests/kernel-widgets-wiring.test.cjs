@@ -900,3 +900,37 @@ test('settings group cards and segmented enums (T-6872 RZ-2)', () => {
     assert.doesNotMatch(zh, /"densityCompactLabel"/, 'zh must drop the replaced density label key');
     assert.doesNotMatch(en, /"densityCompactLabel"/, 'en must drop the replaced density label key');
 });
+
+test('switcher polish: kbd-skinned digit badges and preview status badge (T-6873 RZ-3)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    // 数字角标 kbd 化：attr() 渲染机制不变，皮肤改为不透明 surface 底+边框+代码字体。
+    for (const [selector, scope] of [['.sw__card[data-sw-digit]::after', badgeScss], ['.sw__doc-item[data-sw-digit]::after', badgeScss]]) {
+        assert.ok(declaresIn(scope, selector, /content:\s*attr\(data-sw-digit\)/), `${selector} must keep attr() rendering`);
+        assert.ok(declaresIn(scope, selector, /background:\s*var\(--b3-theme-surface\)/), `${selector} must use the opaque surface chip`);
+        assert.ok(declaresIn(scope, selector, /border: 1px solid var\(--b3-border-color\)/), `${selector} must carry a hairline border`);
+        assert.ok(declaresIn(scope, selector, /font-family:\s*var\(--b3-font-family-code/), `${selector} must use the code font`);
+    }
+    // 预览窗格状态徽标：loading→ready 两态推进，经平台六态徽标原语产出。
+    assert.match(docSearchUi, /import \{createPlatformStatus\} from "\.\/platform-dom"/,
+        'doc-search-ui must import the platform status primitive');
+    assert.match(docSearchUi, /function setDocPreviewStatus\(pane: HTMLElement, state: "loading" \| "ready", label: string\): void/,
+        'preview status must be a dedicated helper');
+    assert.match(docSearchUi, /setDocPreviewStatus\(pane, "loading", this\.i18n\.docSearchPreviewStatusLoading\);/,
+        'fetch start must switch the badge to loading');
+    assert.match(docSearchUi, /setDocPreviewStatus\(pane, "ready", this\.i18n\.docSearchPreviewStatusReady\);/,
+        'after the generation guard the badge must advance to ready');
+    // 头部 flex 与徽标右置（嵌套 SCSS 用展开后的完整选择器）。
+    assert.ok(declaresIn(badgeScss, '.speed-switch .sw__doc-results.sw--with-preview .sw__doc-preview .sw__doc-preview-header', /display:\s*flex/),
+        'preview header must be a flex row');
+    assert.ok(declaresIn(badgeScss, '.speed-switch .sw__doc-results.sw--with-preview .sw__doc-preview .sw__doc-preview-header .sw__doc-preview-status', /margin-left:\s*auto/),
+        'preview badge must right-align in the header');
+    // i18n 双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"docSearchPreviewStatusLoading": "加载中"/);
+    assert.match(zh, /"docSearchPreviewStatusReady": "已就绪"/);
+    assert.match(en, /"docSearchPreviewStatusLoading": "Loading"/);
+    assert.match(en, /"docSearchPreviewStatusReady": "Ready"/);
+});

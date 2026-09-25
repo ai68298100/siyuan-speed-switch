@@ -901,6 +901,8 @@
   ,"docSearchPreview": "Outline preview"
   ,"docSearchPreviewLoading": "Loading preview…"
   ,"docSearchPreviewEmpty": "Focus a row with ↑/↓ to preview its outline and excerpt"
+  ,"docSearchPreviewStatusLoading": "Loading"
+  ,"docSearchPreviewStatusReady": "Ready"
   ,"docSearchSplitHint": "Right-click: open in right split"
   ,"chipsLabel": "Result type filter"
   ,"chipsAll": "All"
