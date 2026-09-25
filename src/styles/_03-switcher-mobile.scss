@@ -1625,9 +1625,26 @@
         }
 
         .sw__quick-action {
+            // T-6876（RZ-6）：移动底栏改图标在上、标签在下的堆叠布局
+            // （移动端标准底部导航模式；44px 命中区不降级）。
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
             min-width: 52px;
-            height: 32px;
-            padding: 0 6px;
+            min-height: 44px;
+            height: auto;
+            padding: 4px 8px;
+
+            .sw__quick-action-label {
+                font-size: 10px;
+            }
+
+            .sw__quick-action-icon,
+            .sw__quick-action-icon svg,
+            .sw__quick-action-icon .sw__quick-action-icon-image {
+                width: 18px;
+                height: 18px;
+            }
 
             &--add {
                 color: var(--b3-theme-primary);

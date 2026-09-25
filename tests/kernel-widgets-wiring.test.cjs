@@ -1000,3 +1000,21 @@ test('quick capture segmented targets, pill save and honest kbd hints (T-6875 RZ
     assert.ok(declaresIn(captureScss, '.sw-quick-capture__kbd-hints', /margin-right:\s*auto/),
         'the hints must left-align against the action buttons');
 });
+
+test('mobile stacked quick-action bar and converged sheet language (T-6876 RZ-6)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    // 移动底栏：图标在上、标签在下的堆叠布局 + 44px 命中区（仅 .sw__mobile 作用域）。
+    const mobileBar = badgeScss.slice(badgeScss.indexOf('&.sw__mobile {'));
+    assert.ok(mobileBar.length > 0, 'the mobile scope block must exist');
+    assert.ok(/flex-direction:\s*column/.test(mobileBar.slice(0, mobileBar.indexOf('缩略图网格'))),
+        'mobile quick actions must stack icon over label');
+    const stacked = mobileBar.slice(mobileBar.indexOf('flex-direction: column') - 200, mobileBar.indexOf('flex-direction: column') + 700);
+    assert.match(stacked, /min-height:\s*44px/, 'stacked buttons must keep the 44px touch target');
+    assert.match(stacked, /font-size:\s*10px/, 'stacked labels must shrink to the caption scale');
+    // 收敛项：移动 sheet 的抓手/顶圆角/安全区与移动图标边界既有实现已覆盖，锁定防回退。
+    assert.ok(declaresIn(readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss')),
+        '.sw__mobile-sheet', /border-radius:\s*16px 16px 0 0/), 'sheets keep the 16px top radius');
+    assert.ok(declaresIn(readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss')),
+        '.sw__mobile-sheet .sw__mobile-sheet-handle', /width:\s*36px/), 'sheets keep the grabber handle');
+});
