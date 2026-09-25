@@ -56,7 +56,11 @@ module.exports = (env, argv) => {
         plugins.push(
             new webpack.BannerPlugin({
                 banner: () => {
-                    return fs.readFileSync("LICENSE").toString();
+                    // T-6847 实录：LICENSE 仓库内是 CRLF，checkout 平台决定进入
+                    // bundle 的行尾——Windows 与 Ubuntu 构建出 ±百字节差，破坏
+                    // 跨平台可复现。复制边界统一归一为 LF（与 CopyPlugin 的文档
+                    // transform 同一策略）。
+                    return fs.readFileSync("LICENSE").toString().replace(/\r\n?/g, "\n");
                 },
             }),
         );
