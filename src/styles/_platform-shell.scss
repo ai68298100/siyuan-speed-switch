@@ -67,6 +67,66 @@
     }
 }
 
+// Shared chrome -------------------------------------------------------------
+// The chrome is mounted inside the existing surface root.  Keeping it as a
+// fixed-size sibling means surface-specific body layouts and their focus
+// contracts do not need to know about the platform header.
+.sw-platform-chrome {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    min-width: 0;
+    color: var(--sw-platform-text);
+    background: var(--sw-platform-bg);
+}
+
+.sw-platform-header__brand-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw-platform-context__separator {
+    flex: 0 0 auto;
+    color: var(--sw-platform-text-muted);
+}
+
+.sw-platform-context__hint {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--sw-platform-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw-platform-surface-nav__item[aria-current="page"] { cursor: default; }
+.sw-platform-surface-nav__item:not(button) { user-select: none; }
+
+// A sidebar has less horizontal room and already exposes the host identity;
+// the shared nav keeps its labels but gives the body more room for content.
+.sw--sidebar > .sw-platform-chrome .sw-platform-header {
+    min-height: 40px;
+    padding: 4px 8px;
+}
+
+.sw--sidebar > .sw-platform-chrome .sw-platform-header__brand { display: none; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-context { display: none; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav { width: 100%; }
+.sw--sidebar > .sw-platform-chrome .sw-platform-surface-nav__item { flex: 1 1 auto; min-width: 0; padding-inline: 7px; }
+
+.sw__mobile > .sw-platform-chrome .sw-platform-header {
+    min-height: 44px;
+    padding-inline: 10px;
+}
+
+.sw__mobile > .sw-platform-chrome .sw-platform-context {
+    min-height: 32px;
+    padding-inline: 10px;
+}
+
+.sw__mobile > .sw-platform-chrome .sw-platform-header__brand { flex-basis: auto; }
+.sw__mobile > .sw-platform-chrome .sw-platform-surface-nav__item { min-height: 40px; }
+
 // Header and surface navigation --------------------------------------------
 .sw-platform-header {
     display: flex;

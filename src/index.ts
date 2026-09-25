@@ -575,6 +575,119 @@ declare module "./search-model" {
     export function isSemanticEmbeddingConfigured(config: unknown): boolean;
 }
 
+// T-6867/T-6868: keep the shared surface chrome in the main entry. The lazy
+// snippet chunk receives this adapter as a callback, so it does not create a
+// second webpack shared chunk while the three surfaces use one DOM contract.
+export type PlatformSurface = "switcher" | "workbench" | "studio";
+export interface PlatformSurfaceLabels {
+    platformName: string;
+    contextLabel: string;
+    surfaces: Record<PlatformSurface, string>;
+    hints: Record<PlatformSurface, string>;
+}
+export interface PlatformSurfaceChromeOptions {
+    surface: PlatformSurface;
+    labels: PlatformSurfaceLabels;
+    available?: readonly PlatformSurface[];
+    onNavigate?: (surface: PlatformSurface) => void;
+}
+
+const PLATFORM_SURFACES: readonly PlatformSurface[] = ["switcher", "workbench", "studio"];
+
+function normalizePlatformText(value: unknown, fallback: string): string {
+    const normalized = typeof value === "string" ? value.trim() : "";
+    return normalized || fallback;
+}
+
+export function resolvePlatformSurfaceLabels(i18n: Record<string, string> = {}): PlatformSurfaceLabels {
+    return {
+        platformName: normalizePlatformText(i18n.platformName, "小驴雷切"),
+        contextLabel: normalizePlatformText(i18n.platformContext, "工作上下文"),
+        surfaces: {
+            switcher: normalizePlatformText(i18n.platformSwitcher, normalizePlatformText(i18n.switchTabs, "切换器")),
+            workbench: normalizePlatformText(i18n.platformWorkbench, normalizePlatformText(i18n.secondPanel, "工作台")),
+            studio: normalizePlatformText(i18n.platformStudio, normalizePlatformText(i18n.snippetStudioTitle, "片段实验室")),
+        },
+        hints: {
+            switcher: normalizePlatformText(i18n.platformSwitcherHint, "查找、预览和打开内容"),
+            workbench: normalizePlatformText(i18n.platformWorkbenchHint, "编排信息组件和工作现场"),
+            studio: normalizePlatformText(i18n.platformStudioHint, "安全编辑、预览和管理代码片段"),
+        },
+    };
+}
+
+function removePlatformChrome(root: HTMLElement) {
+    Array.from(root.children).forEach((child) => {
+        if (child.classList.contains("sw-platform-chrome")) child.remove();
+    });
+}
+
+export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement {
+    removePlatformChrome(root);
+    const doc = root.ownerDocument || document;
+    const available = new Set(options.available || PLATFORM_SURFACES);
+    const chrome = doc.createElement("div");
+    chrome.className = "sw-platform-chrome sw-platform-shell";
+    chrome.dataset.platformSurface = options.surface;
+
+    const header = doc.createElement("header");
+    header.className = "sw-platform-header";
+    header.setAttribute("aria-label", options.labels.platformName);
+    const brand = doc.createElement("div");
+    brand.className = "sw-platform-header__brand";
+    const brandName = doc.createElement("strong");
+    brandName.className = "sw-platform-header__brand-name";
+    brandName.textContent = options.labels.platformName;
+    brand.appendChild(brandName);
+
+    const nav = doc.createElement("nav");
+    nav.className = "sw-platform-surface-nav";
+    nav.setAttribute("aria-label", options.labels.contextLabel);
+    PLATFORM_SURFACES.forEach((surface) => {
+        if (!available.has(surface)) return;
+        const navigable = surface !== options.surface && typeof options.onNavigate === "function";
+        const control = doc.createElement(navigable ? "button" : "span");
+        control.className = "sw-platform-surface-nav__item";
+        control.dataset.surface = surface;
+        control.textContent = options.labels.surfaces[surface];
+        if (surface === options.surface) {
+            control.classList.add("is-active");
+            control.setAttribute("aria-current", "page");
+        }
+        if (navigable) {
+            (control as HTMLButtonElement).type = "button";
+            control.addEventListener("click", () => options.onNavigate?.(surface));
+        }
+        nav.appendChild(control);
+    });
+    const actions = doc.createElement("div");
+    actions.className = "sw-platform-header__actions";
+    header.append(brand, nav, actions);
+
+    const context = doc.createElement("div");
+    context.className = "sw-platform-context";
+    context.setAttribute("role", "group");
+    context.setAttribute("aria-label", options.labels.contextLabel);
+    const trail = doc.createElement("span");
+    trail.className = "sw-platform-context__trail";
+    trail.textContent = options.labels.contextLabel;
+    const separator = doc.createElement("span");
+    separator.className = "sw-platform-context__separator";
+    separator.setAttribute("aria-hidden", "true");
+    separator.textContent = "›";
+    const object = doc.createElement("strong");
+    object.className = "sw-platform-context__object";
+    object.textContent = options.labels.surfaces[options.surface];
+    const hint = doc.createElement("span");
+    hint.className = "sw-platform-context__hint";
+    hint.textContent = options.labels.hints[options.surface];
+    context.append(trail, separator, object, hint);
+
+    chrome.append(header, context);
+    root.prepend(chrome);
+    return chrome;
+}
+
 declare module "./snippet-studio-ui" {
     export function mountSnippetStudio(root: HTMLElement, options?: {
         i18n?: Record<string, string>;
@@ -583,6 +696,17 @@ declare module "./snippet-studio-ui" {
         ai?: {generate: (options?: Record<string, unknown>) => Promise<unknown>; cancel: () => void; dispose: () => void};
         session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null};
         onBack?: () => void;
+        platform?: {
+            labels: PlatformSurfaceLabels;
+            available?: readonly PlatformSurface[];
+            mount: (root: HTMLElement, options: {
+                surface: PlatformSurface;
+                labels: PlatformSurfaceLabels;
+                available?: readonly PlatformSurface[];
+                onNavigate?: (surface: PlatformSurface) => void;
+            }) => HTMLElement;
+            onNavigate?: (surface: PlatformSurface) => void;
+        };
     }): {ready: Promise<unknown>; canClose: () => boolean; dispose: () => void};
 }
 
@@ -2909,11 +3033,51 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // ==================== 切换器 ====================
 
+    /**
+     * Single host adapter for the shared surface navigation.  The surface
+     * modules close their current Dialog before calling this method, so the
+     * existing FAB suspension and destroy callbacks remain serialized.
+     */
+    public openPlatformSurface(surface: PlatformSurface, returnTo: PlatformSurface = "switcher") {
+        if (this.isUnloading) return;
+        if (surface === "switcher") {
+            this.showSwitcher(false, returnTo);
+            return;
+        }
+        if (surface === "workbench") {
+            openSecondPanel.call(this);
+            return;
+        }
+        if (surface === "studio") {
+            this.openSnippetStudio(returnTo);
+        }
+    }
+
+    public getPlatformSurfaceLabels(): PlatformSurfaceLabels {
+        return resolvePlatformSurfaceLabels({
+            platformName: this.i18n.platformName,
+            platformContext: this.i18n.platformContext,
+            platformSwitcher: this.i18n.platformSwitcher,
+            platformWorkbench: this.i18n.platformWorkbench,
+            platformStudio: this.i18n.platformStudio,
+            platformSwitcherHint: this.i18n.platformSwitcherHint,
+            platformWorkbenchHint: this.i18n.platformWorkbenchHint,
+            platformStudioHint: this.i18n.platformStudioHint,
+            switchTabs: this.i18n.switchTabs,
+            secondPanel: this.i18n.secondPanel,
+            snippetStudioTitle: this.i18n.snippetStudioTitle,
+        });
+    }
+
+    public mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement {
+        return mountPlatformChrome(root, options);
+    }
+
     // 打开页签切换器
-    private showSwitcher(focusSearch = false) {
+    private showSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher") {
         // 手机端走独立适配
         if (this.isMobile) {
-            this.showMobileSwitcher(focusSearch);
+            this.showMobileSwitcher(focusSearch, returnTo);
             return;
         }
 
@@ -2927,13 +3091,13 @@ export default class SpeedSwitchPlugin extends Plugin {
         // 创建的，故用一个可变 holder 把两者接起来（宿主只认构造参数）。
         const releaseFab = this.suspendFABForDialog();
         const switcherRelease: {fn: () => void} = {fn: releaseFab};
-        const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease);
+        const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo);
         // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
         this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch);
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
-    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean, release: {fn: () => void}): Dialog {
+    private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean, release: {fn: () => void}, returnTo: PlatformSurface = "switcher"): Dialog {
         const size = this.resolvePanelDialogSize(settings, fullscreen);
         const dialog = new Dialog({
             title: "",
@@ -2943,16 +3107,29 @@ export default class SpeedSwitchPlugin extends Plugin {
             destroyCallback: () => release.fn(),
         });
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
+        const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
+        if (surfaceRoot) {
+            mountPlatformChrome(surfaceRoot, {
+                surface: "switcher",
+                labels: this.getPlatformSurfaceLabels(),
+                onNavigate: (surface) => {
+                    if (this.isUnloading || !dialog.element.isConnected) return;
+                    dialog.destroy();
+                    this.openPlatformSurface(surface, returnTo);
+                },
+            });
+        }
         return dialog;
     }
 
     // Experimental desktop-only studio. It is deliberately reachable from
     // the tab panel toolbar so it does not become a second global command or
     // a mobile surface before the wide layout has real device evidence.
-    private openSnippetStudio() {
+    private openSnippetStudio(returnTo: PlatformSurface = "switcher") {
         if (this.isMobile) return;
         if (this.snippetStudioDialog?.element.isConnected) return;
         const holder: {dialog: Dialog | null; controller: SnippetStudioController | null} = {dialog: null, controller: null};
+        const releaseFab = this.suspendFABForDialog();
         const width = Math.min(1600, Math.max(760, Math.round(window.innerWidth * 0.92)));
         const height = Math.min(960, Math.max(560, Math.round(window.innerHeight * 0.88)));
         const dialog = new Dialog({
@@ -2965,6 +3142,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 holder.controller?.dispose();
                 holder.controller = null;
                 if (this.snippetStudioDialog === holder.dialog) this.snippetStudioDialog = null;
+                releaseFab();
             },
         });
         holder.dialog = dialog;
@@ -2982,10 +3160,20 @@ export default class SpeedSwitchPlugin extends Plugin {
                 i18n: this.i18n as unknown as Record<string, string>,
                 getConfig: () => (window as {siyuan?: {config?: unknown}}).siyuan?.config || {},
                 session: this.snippetStudioSession,
+                platform: {
+                    labels: this.getPlatformSurfaceLabels(),
+                    available: ["switcher", "workbench", "studio"],
+                    mount: mountPlatformChrome,
+                    onNavigate: (surface) => {
+                        if (this.isUnloading || !dialog.element.isConnected) return;
+                        dialog.destroy();
+                        this.openPlatformSurface(surface, returnTo);
+                    },
+                },
                 onBack: () => {
                     if (holder.controller && !holder.controller.canClose()) return;
                     dialog.destroy();
-                    if (!this.isUnloading) this.showSwitcher();
+                    if (!this.isUnloading) this.openPlatformSurface(returnTo);
                 },
             });
             void holder.controller.ready.catch((error) => logger.warn("snippet studio load failed", error));
@@ -2999,7 +3187,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 dialog.destroy();
                 if (!this.isUnloading) {
                     showMessage(this.i18n.snippetFailed);
-                    this.showSwitcher();
+                    this.showSwitcher(false, returnTo);
                 }
             }
         });
@@ -10344,9 +10532,9 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 手机端切换器：全屏覆盖弹窗，简化工具栏，单列/双列卡片，纯触摸操作。
     // （T-6679：minAppVersion 已抬到 3.8.0，"旧版无 MobileTabs API 需提示升级"的
     // 运行时门成为死代码，随 ADR 0064 首批兼容层简化移除）
-    private showMobileSwitcher(focusSearch = false) {
+    private showMobileSwitcher(focusSearch = false, returnTo: PlatformSurface = "switcher") {
         const tabs = this.getMobileTabs();
-        openMobileSwitcherDialog.call(this, tabs, focusSearch);
+        openMobileSwitcherDialog.call(this, tabs, focusSearch, returnTo);
     }
 
     // 打开手机端切换器 Dialog：装配顶栏、列表、搜索、FAB 隐藏等
@@ -11049,6 +11237,15 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         // 侧边栏缩略图布局：enlarge（默认）放大填满栏宽；columns 按宽度自动增加列数
         element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");
         element.innerHTML = this.buildSidebarHtml();
+        mountPlatformChrome(element, {
+            surface: "switcher",
+            labels: this.getPlatformSurfaceLabels(),
+            available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
+            onNavigate: (surface) => {
+                if (this.isUnloading || !element.isConnected) return;
+                this.openPlatformSurface(surface, "switcher");
+            },
+        });
         // T-6758: the sidebar host is created/replaced by SiYuan lazily.  Run
         // reconciliation after the host's own markup is ready so mounting the
         // portal cannot be lost to this render's innerHTML replacement.

@@ -16,7 +16,7 @@ import {openHomeWidgetStore} from "./home-store-ui";
 import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-model";
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
-import type {ISwSettings} from "./index";
+import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceLabels} from "./index";
 
 export interface SecondPanelUiHost {
     i18n: Record<string, string>;
@@ -36,6 +36,9 @@ export interface SecondPanelUiHost {
     handleHomeItemAction(item: { label?: string; value?: string; href?: string; command?: string }, close: () => void): void;
     migrateHomeLayoutSize(entry: {w?: number; h?: number; size?: string}, sizes: string[]): string;
     openHomeSizeMenu(anchor: HTMLElement, supported: string[], current: string, onPick: (size: string) => void): void;
+    openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface): void;
+    getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
+    mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
     removeHomeInstance(instanceId: string): void;
     renderQuickActions(container: HTMLElement, surface: "desktop" | "sidebar" | "mobile",
         searchInput: HTMLInputElement | null, close: () => void, selector?: string): void;
@@ -73,6 +76,14 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
         root.dataset.swSurface = "workbench";
+        const platformLabels = this.getPlatformSurfaceLabels?.();
+        const navigatePlatformSurface = this.openPlatformSurface
+            ? (surface: PlatformSurface) => {
+                if (!dialog.element.isConnected) return;
+                dialog.destroy();
+                this.openPlatformSurface?.(surface, "workbench");
+            }
+            : undefined;
         let iconClampFrame = 0;
         const scheduleIconClamp = () => {
             if (iconClampFrame || !root.isConnected) return;
@@ -121,6 +132,12 @@ export function openSecondPanel(this: SecondPanelUiHost) {
             panelEventCleanup = null;
             clearDeferredRefreshes();
             root.innerHTML = "";
+            if (this.mountPlatformChrome && platformLabels) this.mountPlatformChrome(root, {
+                surface: "workbench",
+                labels: platformLabels,
+                available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
+                onNavigate: navigatePlatformSurface,
+            });
             const defs = new Map<string, any>();
             this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))
                 .concat(this.homeRuntime.listModules("sidebar"))

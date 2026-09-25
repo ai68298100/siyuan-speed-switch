@@ -14,7 +14,7 @@ import {groupTabsByMode} from "./util";
 import {resolveSearchNotebookId} from "./search-model";
 import {FAB_HIDE_DELAY_MS, THUMB_BATCH_MOBILE} from "./constants";
 import type {
-    IFavoriteItem, IGroupedTab, IOverlayClose, ISwSettings,
+    IFavoriteItem, IGroupedTab, IOverlayClose, ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceLabels,
     ITabGroupRenderCtx, SortBy,
 } from "./index";
 
@@ -43,7 +43,10 @@ export interface MobileSwitcherUiHost {
     loadUpdatedMap(tabs: Tab[]): Promise<{[rootId: string]: string}>;
     openGroupTabs(items: IFavoriteItem[]): Promise<number>;
     openJournal(preferredNotebook?: string): Promise<void>;
+    openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface): void;
     openSetting(initialPanel?: string): void;
+    getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
+    mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
     pinKeyOf(tab: Tab): string;
     pruneThumbCache(tabs: Tab[]): void;
     registerSwitcherRefresh(callback: () => void): () => void;
@@ -65,7 +68,7 @@ export interface MobileSwitcherUiHost {
     createdByIdCache: {[rootId: string]: string};
 }
 
-export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[], focusSearch = false) {
+export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[], focusSearch = false, returnTo: PlatformSurface = "switcher") {
         const settings = this.getSettings();
         // 手机端当前页签高亮：MobileTabs 的 activeTabID（renderMobileList 仅读取其 id）
         const activeTab: Tab | undefined = this.isMobile
@@ -79,6 +82,21 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
         const releaseFab = this.suspendFABForDialog();
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-mobile-switcher-dialog");
         const mobileBody = dialog.element.querySelector<HTMLElement>(".sw__mobile");
+        if (mobileBody && this.mountPlatformChrome && this.getPlatformSurfaceLabels) {
+            const navigatePlatformSurface = this.openPlatformSurface
+                ? (surface: PlatformSurface) => {
+                    if (!dialog.element.isConnected) return;
+                    dialog.destroy();
+                    this.openPlatformSurface?.(surface, returnTo);
+                }
+                : undefined;
+            this.mountPlatformChrome(mobileBody, {
+                surface: "switcher",
+                labels: this.getPlatformSurfaceLabels(),
+                available: ["switcher", "workbench"],
+                onNavigate: navigatePlatformSurface,
+            });
+        }
         let readyFrame: number | null = null;
         let readyFrameCancel: (() => void) | null = null;
         let revealCancelled = false;

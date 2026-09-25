@@ -4,7 +4,7 @@ const {createSnippetPreview} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
 
 /** Experimental singleton view; native snippets remain the only saved copy. */
-function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, onBack = () => {}} = {}) {
+function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}} = {}) {
     const doc = root.ownerDocument;
     const win = doc.defaultView;
     // Keep the locale surface statically discoverable by the repository i18n
@@ -692,6 +692,20 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     syncFields();
     renderPreview();
     const ready = load();
+    // The platform helper is supplied by the host entry so the lazy studio
+    // chunk does not create a second shared webpack chunk.  The studio keeps
+    // its own dirty guard; only a discard-safe navigation reaches the host.
+    if (platform?.mount && platform.labels) {
+        platform.mount(root, {
+            surface: "studio",
+            labels: platform.labels,
+            available: platform.available,
+            onNavigate: (surface) => {
+                if (!canDiscard()) return;
+                platform.onNavigate?.(surface);
+            },
+        });
+    }
     return {
         ready,
         canClose: canDiscard,
