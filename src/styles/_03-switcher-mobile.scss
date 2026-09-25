@@ -816,7 +816,7 @@
 
     // 过滤条可见性语义：按选中类型隐藏非命中分区（纯展示层，不改搜索）
     &[data-sw-chip="tabs"] {
-        .sw__unified, .sw__doc-results { display: none; }
+        .sw__unified, .sw__snippet-results, .sw__doc-results { display: none; }
     }
 
     &[data-sw-chip="unified"] {
@@ -824,7 +824,16 @@
     }
 
     &[data-sw-chip="docs"] {
-        .sw__group, .sw__unified { display: none; }
+        .sw__group, .sw__unified, .sw__snippet-results { display: none; }
+    }
+
+    // T-6881（P2 第三批）：查询态片段分区容器——与统一分区同族布局
+    .sw__snippet-results {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 16px;
+        min-width: 0;
     }
 
     // ==================== 零词条工作台（T-6807） ====================

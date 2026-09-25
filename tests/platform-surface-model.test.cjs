@@ -11,6 +11,7 @@ const {
     resolveSurfaceReturnTarget,
     buildSurfaceContextCaption,
     projectSnippetObjects,
+    filterSnippetObjects,
 } = require("../src/platform-surface-model.js");
 
 test("surface ids: canonical whitelist is frozen and normalize falls back (T-6869)", () => {
@@ -120,4 +121,20 @@ test("snippet objects: query filter, limit clamp and malformed payloads", () => 
 test("snippet objects: kinds whitelist is frozen (T-6878)", () => {
     assert.deepEqual([...PLATFORM_OBJECT_KINDS], ["content", "action", "workspace", "widget", "snippet"]);
     assert.equal(Object.isFrozen(PLATFORM_OBJECT_KINDS), true);
+});
+
+test("snippet objects: filterSnippetObjects re-filters projected summaries (T-6881)", () => {
+    const projected = [
+        {id: "a", name: "卡片悬浮阴影", type: "css", enabled: true, lines: 3},
+        {id: "b", name: "快捷导出助手", type: "js", enabled: false, lines: 22},
+        {id: "c", name: "文档树加宽", type: "css", enabled: false, lines: 8},
+    ];
+    assert.equal(filterSnippetObjects(projected, "悬浮").length, 1, "名称子串命中");
+    assert.equal(filterSnippetObjects(projected, "js")[0].id, "b", "类型命中");
+    assert.equal(filterSnippetObjects(projected, "").length, 3, "空查询全保留");
+    assert.equal(filterSnippetObjects(projected, "无", 2).length, 0, "无命中返回空");
+    const many = filterSnippetObjects(projected.concat(projected), "", 2);
+    assert.equal(many.length, 2, "limit 生效且按 id 去重");
+    assert.equal(many[0].lines, 3, "二次过滤保留既有行数（content 缺失不丢 lines）");
+    assert.equal(filterSnippetObjects(projected, "CSS")[0].type, "css", "查询大小写不敏感");
 });

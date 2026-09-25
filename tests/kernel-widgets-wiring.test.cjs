@@ -1051,9 +1051,14 @@ test('cross-surface snippet objects: workbench row and studio objectId selection
     assert.match(indexSource, /this\.fillSnippetObjects\(snippetBox\);/,
         'the snippet row must be filled asynchronously');
     const fill = indexSource.slice(indexSource.indexOf('private fillSnippetObjects'), indexSource.indexOf('private renderSnippetObjects'));
-    assert.match(fill, /Date\.now\(\) - cached\.at < 60000/, 'the snippet cache must have a 60s TTL');
-    assert.match(fill, /generation !== this\.snippetObjectsGeneration/, 'stale generations must be discarded');
-    assert.match(fill, /projectSnippetObjects\(payload, \{limit: 6\}\)/, 'the projection must be bounded to 6');
+    assert.match(fill, /this\.ensureSnippetObjects\(\)\.then\(\(items\) => \{\s*\n\s*if \(snippetBox\.isConnected\) this\.renderSnippetObjects\(snippetBox, items\);/,
+        'the workbench row must render through the shared single-flight loader');
+    // T-6881 起取数本体收敛到 ensureSnippetObjects（fill 只负责渲染）。
+    const ensure = indexSource.slice(indexSource.indexOf('private ensureSnippetObjects'), indexSource.indexOf('private renderSnippetObjects'));
+    assert.match(ensure, /Date\.now\(\) - cached\.at < 60000/, 'the snippet cache must have a 60s TTL');
+    assert.match(ensure, /generation !== this\.snippetObjectsGeneration/, 'stale generations must be discarded');
+    assert.match(ensure, /projectSnippetObjects\(payload, \{limit: 6\}\)/, 'the projection must be bounded to 6');
+    assert.match(ensure, /snippetObjectsInFlight/, 'concurrent callers must share one in-flight fetch');
     // 跨表面动作：chip 携带 objectId 打开工作室定位片段（导航语义）。
     assert.match(indexSource, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
         'snippet chips must open the studio carrying the objectId');
@@ -1135,4 +1140,34 @@ test('widget object descriptors and two-channel failure marking (T-6880)', () =>
     assert.match(en, /"homeHealthFailed": "Failed"/);
     assert.match(en, /"homeHealthOk": "OK"/);
     assert.match(en, /"homeObjectTitle": "Widget"/);
+});
+
+test('query-time snippet section: cached single-flight projection into search results (T-6881)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const model = require('../src/platform-surface-model.js');
+    // applySearch 挂点：命令模式先行清理；非命令模式渲染查询态片段分区。
+    assert.match(indexSource, /if \(keyword\.startsWith\(">"\)\) \{\s*\n\s*scrollElement\.querySelector\("\.sw__snippet-results"\)\?\.remove\(\);/,
+        'command mode must remove the snippet section');
+    assert.match(indexSource, /this\.renderSnippetSearchSection\(scrollElement, keyword\);[\s\S]{0,200}?this\.renderWorkbench\(scrollElement, keyword, onClose\);/,
+        'applySearch must render the snippet section before the workbench toggle');
+    // 渲染器：骨架清理 + 关键词陈旧守卫 + 有界过滤 + 注入点在 doc-results 之前。
+    const section = indexSource.slice(indexSource.indexOf('private renderSnippetSearchSection'), indexSource.indexOf('private renderSnippetObjects'));
+    assert.match(section, /scrollElement\.dataset\.swDocSearchQuery !== keyword/,
+        'stale keywords must discard the pending render');
+    assert.match(section, /filterSnippetObjects\(this\.snippetObjectsCache\?\.items \|\| \[\], keyword, 6\)/,
+        'the section must filter the cached projections (no refetch per keystroke)');
+    assert.match(section, /scrollElement\.insertBefore\(box, docResults\);/,
+        'the section must be inserted before the doc results');
+    assert.match(section, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
+        'search chips share the workbench cross-surface action');
+    // 过滤条可见性语义：tabs/docs 选中时片段分区隐藏，unified 保留。
+    const chipsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    assert.match(chipsScss, /\[data-sw-chip="tabs"\]\s*\{\s*\.sw__unified, \.sw__snippet-results, \.sw__doc-results/,
+        'tabs chip must hide the snippet section');
+    assert.match(chipsScss, /\[data-sw-chip="docs"\]\s*\{\s*\.sw__group, \.sw__unified, \.sw__snippet-results/,
+        'docs chip must hide the snippet section');
+    // 模型：filterSnippetObjects 供查询态二次过滤（行数保留）。
+    assert.equal(typeof model.filterSnippetObjects, 'function');
+    const refiltered = model.filterSnippetObjects([{id: 'a', name: '卡片', type: 'css', enabled: true, lines: 5}], '卡片');
+    assert.equal(refiltered[0].lines, 5, 're-filtering preserves the line count');
 });

@@ -86,7 +86,7 @@ import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
-import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption, projectSnippetObjects} from "./platform-surface-model";
+import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
@@ -968,6 +968,7 @@ export default class SpeedSwitchPlugin extends Plugin {
     // T-6878（P2）：片段对象投影的会话缓存（60s TTL）与竞态代际。
     private snippetObjectsCache: {items: Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>; at: number} | null = null;
     private snippetObjectsGeneration = 0;
+    private snippetObjectsInFlight: Promise<Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>> | null = null;
     // 文档搜索链路状态宿主（R5a，D-381）：6 个实例级状态收拢为单一状态对象，
     // WeakMap/Set 语义与代际竞态保护不变；生命周期（含卸载清理）由原消费点继续驱动。
     private docSearchState = createDocSearchState();
@@ -3820,10 +3821,13 @@ const updatedMap: {[rootId: string]: string} = {};
         // 页签卡片与全库文档结果之间；空查询时整块移除。
         // T-6820 命令前缀：`>` 进入命令面板模式，只列可执行动作（不再搜文档）
         if (keyword.startsWith(">")) {
+            scrollElement.querySelector(".sw__snippet-results")?.remove();
             this.renderCommandList(scrollElement, keyword.slice(1).trim(), onClose);
             return;
         }
         this.renderUnifiedSections(scrollElement, keyword, onClose, parsedQuery);
+        // T-6881 查询态片段分区：关键词命中原生片段时呈现"片段实验室"分区
+        this.renderSnippetSearchSection(scrollElement, keyword);
         // T-6807 零词条工作台：空查询时直接呈现"场景预设/文档集/智能分组"入口。
         this.renderWorkbench(scrollElement, keyword, onClose);
         // T-6809 过滤条：查询时在结果区顶部提供类型收窄 chips（纯展示层可见性）。
@@ -4803,23 +4807,102 @@ const updatedMap: {[rootId: string]: string} = {};
         dock.classList.remove("fn__none");
     }
 
-    // T-6878（P2）：片段对象行填充——60s 会话缓存 + 代际竞态丢弃；
-    // 空清单/失败时整行移除（可选增强行，不产生错误回执）。
+    // T-6878（P2）：片段对象行填充——骨架占位由调用方先行挂载，取数完成后
+    // 就地渲染或整行移除；取数本体走 ensureSnippetObjects（60s 缓存 + 单飞）。
     private fillSnippetObjects(snippetBox: HTMLElement) {
-        const generation = ++this.snippetObjectsGeneration;
-        const cached = this.snippetObjectsCache;
-        if (cached && Date.now() - cached.at < 60000) {
-            this.renderSnippetObjects(snippetBox, cached.items);
-            return;
-        }
-        void this.fetchKernelJson("/api/snippet/getSnippet", {type: "all", enabled: 2}, 8000).then((payload) => {
-            if (!snippetBox.isConnected || generation !== this.snippetObjectsGeneration) return;
-            const items = projectSnippetObjects(payload, {limit: 6});
-            this.snippetObjectsCache = {items, at: Date.now()};
-            this.renderSnippetObjects(snippetBox, items);
+        void this.ensureSnippetObjects().then((items) => {
+            if (snippetBox.isConnected) this.renderSnippetObjects(snippetBox, items);
         }).catch((error) => {
             logger.warn("snippet objects load fail", error);
             snippetBox.remove();
+        });
+    }
+
+    // T-6878/T-6881：片段对象取数唯一入口——60s 会话缓存命中直接返回；
+    // 未命中走单飞取数（并发调用共享同一 Promise），代际不匹配时丢弃迟到回包。
+    private ensureSnippetObjects(): Promise<Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>> {
+        const cached = this.snippetObjectsCache;
+        if (cached && Date.now() - cached.at < 60000) return Promise.resolve(cached.items);
+        if (this.snippetObjectsInFlight) return this.snippetObjectsInFlight;
+        const generation = ++this.snippetObjectsGeneration;
+        const request = this.fetchKernelJson("/api/snippet/getSnippet", {type: "all", enabled: 2}, 8000).then((payload) => {
+            if (generation !== this.snippetObjectsGeneration) {
+                return this.snippetObjectsCache ? this.snippetObjectsCache.items : [];
+            }
+            const items = projectSnippetObjects(payload, {limit: 6});
+            this.snippetObjectsCache = {items, at: Date.now()};
+            return items;
+        }).catch((error) => {
+            logger.warn("snippet objects load fail", error);
+            return [] as Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>;
+        }).then((items) => {
+            this.snippetObjectsInFlight = null;
+            return items;
+        });
+        this.snippetObjectsInFlight = request;
+        return request;
+    }
+
+    // T-6881（P2 第三批）：查询态片段分区——关键词命中原生片段名/类型时，
+    // 在统一分区之后渲染"片段实验室"分区；单击行为与工作台 chips 一致
+    // （携带 objectId 打开工作室定位片段）。关键词已变时丢弃本次渲染；
+    // 空查询/无命中不占位。
+    private renderSnippetSearchSection(scrollElement: HTMLElement, keyword: string) {
+        const existing = scrollElement.querySelector<HTMLElement>(".sw__snippet-results");
+        if (!keyword) {
+            existing?.remove();
+            return;
+        }
+        void this.ensureSnippetObjects().then((items) => {
+        if (!scrollElement.isConnected) return;
+        // 输入已前进：放弃旧关键词的渲染（本次取数已入缓存，下一次 applySearch 受益）
+        if (scrollElement.dataset.swDocSearchQuery !== keyword) {
+            existing?.remove();
+            return;
+        }
+            const matched = filterSnippetObjects(this.snippetObjectsCache?.items || [], keyword, 6);
+            if (!matched.length) {
+                existing?.remove();
+                return;
+            }
+            let box = existing;
+            if (!box) {
+                box = document.createElement("div");
+                box.className = "sw__snippet-results";
+                const docResults = scrollElement.querySelector(".sw__doc-results");
+                if (docResults) scrollElement.insertBefore(box, docResults);
+                else scrollElement.appendChild(box);
+            }
+            box.textContent = "";
+            const label = document.createElement("div");
+            label.className = "sw__window-label";
+            label.textContent = `${this.i18n.workbenchSnippets} · ${matched.length}`;
+            box.appendChild(label);
+            const grid = document.createElement("div");
+            grid.className = "sw__doc-grid";
+            matched.forEach((item) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "sw__doc-item";
+                const icon = document.createElement("span");
+                icon.className = "sw__doc-icon";
+                icon.textContent = item.type.toUpperCase();
+                const copy = document.createElement("span");
+                copy.className = "sw__doc-copy";
+                const title = document.createElement("span");
+                title.className = "sw__doc-title";
+                title.textContent = item.name;
+                const meta = document.createElement("span");
+                meta.className = "sw__doc-path";
+                meta.textContent = `${item.type.toUpperCase()} · ${item.lines} ${this.i18n.unitLines}${item.enabled ? " · " + this.i18n.snippetEnabledShort : ""}`;
+                copy.append(title, meta);
+                button.append(icon, copy);
+                button.addEventListener("click", () => {
+                    this.openPlatformSurface("studio", "switcher", {entry: "toolbar", objectId: item.id});
+                });
+                grid.appendChild(button);
+            });
+            box.appendChild(grid);
         });
     }
 
