@@ -295,9 +295,24 @@ declare module "./util" {
 }
 
 declare module "./quick-actions" {
+    // T-6856：目录原始条目形状（JS 侧字面量推断为宽化的 string，与
+    // IQuickAction 的 union 字段天然不兼容——TS2394 CI 实录；重载按真话声明，
+    // 消费侧需要强类型时经 sanitizeQuickActions→IQuickAction 走归一化管线）
+    export type IQuickActionRaw = {
+        id: string;
+        label: string;
+        langKey?: string;
+        mobileSafe?: boolean;
+        icon: string;
+        kind: string;
+        value: string;
+        targets: string[];
+        order: number;
+        enabled: boolean;
+    };
     export function sanitizeQuickActions(values: unknown, max?: number): {items: IQuickAction[], changed: boolean};
-    export function getDefaultQuickActions(): IQuickAction[];
-    export function getBuiltinQuickActions(): IQuickAction[];
+    export function getDefaultQuickActions(): IQuickActionRaw[];
+    export function getBuiltinQuickActions(): IQuickActionRaw[];
     export function getDefaultQuickActionTargets(kind: string, value: string, declaredTargets?: string[]): string[];
     export function resolveQuickActionSupport(kind: string, value: string, target: string, declaredTargets?: string[]): "supported" | "unsupported" | "unknown";
     export function shouldRenderQuickAction(action: IQuickAction, surface: string, context?: string, declaredTargets?: string[]): boolean;
@@ -680,6 +695,10 @@ export type QuickActionSupport = "supported" | "unsupported" | "unknown";
 export interface IQuickAction {
     id: string;
     label: string;
+    /** T-6845：i18n 标签键（sanitize 受控保留；展示经 resolveQuickActionLabel 解析） */
+    langKey?: string;
+    /** 移动端安全标记（目录声明；桌面端无意义） */
+    mobileSafe?: boolean;
     icon: string;
     kind: QuickActionKind;
     value: string;
