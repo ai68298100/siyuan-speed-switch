@@ -3093,7 +3093,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const switcherRelease: {fn: () => void} = {fn: releaseFab};
         const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo);
         // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
-        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch);
+        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo);
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
@@ -3267,6 +3267,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         activeTab: Tab | undefined,
         release: {fn: () => void},
         focusSearch = false,
+        returnTo: PlatformSurface = "switcher",
     ) {
         const releaseFab = release.fn;
         this.prepareSwitcherChrome(dialog, fullscreen);
@@ -3354,7 +3355,7 @@ const updatedMap: {[rootId: string]: string} = {};
         };
 
         this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
-        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap);
+        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo);
 
         // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
@@ -3502,6 +3503,7 @@ const updatedMap: {[rootId: string]: string} = {};
         listOpts: {onOverlayClose: () => void, onTabsChanged: () => void},
         closeOverlay: () => void,
         updatedMap: {[rootId: string]: string},
+        returnTo: PlatformSurface = "switcher",
     ) {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -3509,7 +3511,7 @@ const updatedMap: {[rootId: string]: string} = {};
         });
         dialog.element.querySelector(".sw__snippet-studio-btn")?.addEventListener("click", () => {
             dialog.destroy();
-            this.openSnippetStudio();
+            this.openSnippetStudio(returnTo);
         });
         // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
