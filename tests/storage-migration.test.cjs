@@ -46,6 +46,7 @@ test('healthy payloads pass through as kept without changes', () => {
         'sw_thumb_cache': {},
         'sw_schema_version': STORAGE_SCHEMA_VERSION,
         'sw_rss_read': {version: 1, seen: {}},
+        'sw_related_swr': {version: 1, entries: []},
     };
     const result = runStorageMigration(payloads);
     for (const entry of result.report.keys) {
@@ -159,11 +160,11 @@ test('inspected object keys are classified but never emitted into data', () => {
     assert.deepEqual(result.data['sw_thumb_cache'], {['20240101120000-abcdefg']: {title: 't', html: '<div></div>', ts: 1}});
 });
 
-test('key classification cannot drift: totals stay 15 with no duplicate or unfiled key', () => {
+test('key classification cannot drift: totals stay 16 with no duplicate or unfiled key', () => {
     // 总数是**字面量**断言：report.keys.length === KEY_ORDER.length 是自指恒真式，
-    // 无法发现「同一 key 同时出现在两个分类集里」导致的重复。14 与
-    // agent-capabilities 的只读快照上限同源（buildAgentStorageHealth 钳制到 15）。
-    assert.equal(KEY_ORDER.length, 15, 'storage key total is the contract other modules clamp against');
+    // 无法发现「同一 key 同时出现在两个分类集里」导致的重复。16 与
+    // agent-capabilities 的只读快照上限同源（buildAgentStorageHealth 钳制到 16）。
+    assert.equal(KEY_ORDER.length, 16, 'storage key total is the contract other modules clamp against');
     assert.equal(new Set(KEY_ORDER).size, KEY_ORDER.length, 'KEY_ORDER must not contain duplicates');
     assert.equal(KEY_ORDER.length, HANDLED_KEYS.length + INSPECTED_KEYS.length + META_KEYS.length,
         'every key is filed in exactly one classification set');
@@ -499,9 +500,10 @@ test('v0.23.5-era payload set (13 keys, no stamp) drills into the current schema
     const rss = result.report.keys.find((e) => e.key === 'sw_rss_read');
     assert.equal(stamp.status, 'missing', 'v0.23.5 payloads carry no schema stamp; onload writes it');
     assert.equal(rss.status, 'missing', 'rss read-state did not exist before v0.24.0');
-    assert.equal(result.report.totals.missing, 2);
+    // T-6840 后新 key 同样缺席历史载荷：missing = 版本戳 + rss + related_swr
+    assert.equal(result.report.totals.missing, 3);
     for (const entry of result.report.keys) {
-        if (entry.key === 'sw_schema_version' || entry.key === 'sw_rss_read') continue;
+        if (entry.key === 'sw_schema_version' || entry.key === 'sw_rss_read' || entry.key === 'sw_related_swr') continue;
         assert.ok(['kept', 'inspect'].includes(entry.status),
             entry.key + ' healthy legacy data must survive the upgrade unchanged, got ' + entry.status + ': ' + entry.note);
     }

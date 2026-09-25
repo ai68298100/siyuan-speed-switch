@@ -53,13 +53,13 @@ test('documented key list equals the code registry in both directions', () => {
     let match;
     while ((match = re.exec(constantsSource)) !== null) codeKeys.set(match[1], match[2]);
     // 审计面非空自检：空集合会让下面的比对恒真（gate-audit-checklist 模式 ④）
-    assert.equal(codeKeys.size, 15, 'constants.ts must define exactly 15 storage keys');
-    assert.equal(KEY_ORDER.length, 15, 'storage-migration KEY_ORDER must stay at 15');
+    assert.equal(codeKeys.size, 16, 'constants.ts must define exactly 16 storage keys');
+    assert.equal(KEY_ORDER.length, 16, 'storage-migration KEY_ORDER must stay at 16');
 
     const documented = new Set();
     const docRe = /`(sw_[a-z_]+)`/g;
     while ((match = docRe.exec(documentSource())) !== null) documented.add(match[1]);
-    assert.ok(documented.size >= 15, `the document must enumerate every key by literal, found ${documented.size}`);
+    assert.ok(documented.size >= 16, `the document must enumerate every key by literal, found ${documented.size}`);
 
     const codeValues = new Set(codeKeys.values());
     assert.deepEqual([...codeValues].filter((key) => !documented.has(key)), [], 'every registered key must appear in the audit document');

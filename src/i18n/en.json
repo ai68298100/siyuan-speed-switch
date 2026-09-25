@@ -854,6 +854,7 @@
   ,"workbenchPresets": "Scenes"
   ,"workbenchDocSets": "Sets"
   ,"workbenchRelated": "Related to current doc"
+  ,"workbenchRelatedCached": "cached"
   ,"workbenchSaved": "Saved searches"
   ,"searchSaveCurrent": "Save current search"
   ,"searchSavedDeleteConfirm": "Delete saved search \"{x}\"?"

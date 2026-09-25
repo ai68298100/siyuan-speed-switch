@@ -21,6 +21,7 @@ const {normalizeClosedEntries} = require("./recent-closed.js");
 const {sanitizeQuickActions, migrateQuickActionDefaults, QUICK_ACTION_DEFAULTS_VERSION} = require("./quick-actions.js");
 const {normalizeDocumentSets} = require("./document-sets.js");
 const {normalizeRssReadState} = require("./rss-model.js");
+const {normalizeRelatedSwrStore} = require("./related-content-model.js");
 
 // 与 constants.ts 的上限保持一致（一致性由 storage-migration 契约测试锁定）。
 const DEFAULT_LIMITS = Object.freeze({
@@ -51,6 +52,7 @@ const HANDLED_KEYS = Object.freeze([
     "sw_document_sets",
     "sw_thumb_cache",
     "sw_rss_read",
+    "sw_related_swr",
 ]);
 
 const INSPECTED_KEYS = Object.freeze([
@@ -179,6 +181,15 @@ const HANDLERS = {
         // T-6685 已读状态：委托 rss-model 归一化（有界 200 条、键 ≤128、时间戳合法）
         const state = normalizeRssReadState(value);
         return {value: state, status: state.changed ? "cleaned" : "kept", kept: Object.keys(state.seen).length, removed: 0, note: state.changed ? boundNote("read state bounded and normalized") : ""};
+    },
+    "sw_related_swr": (value) => {
+        // T-6840 关联 SWR：委托 related-content-model 归一化（版本戳/7 天年龄/
+        // rootId 去重/有界 8 条）；未知版本与畸形输入整体重置为空 store。
+        const store = normalizeRelatedSwrStore(value);
+        const inputEntries = value && typeof value === "object" && Array.isArray(value.entries) ? value.entries.length : 0;
+        const changed = inputEntries !== store.entries.length
+            || (value && typeof value === "object" && value.version !== store.version);
+        return {value: store, status: changed ? "cleaned" : "kept", kept: store.entries.length, removed: 0, note: changed ? boundNote("related swr entries bounded, deduped or expired") : ""};
     },
     "sw_thumb_cache": (value, limits) => {
         // 读取侧归一化（D-392）：清洗规则全部由 normalizeThumbCache 提供，与宿主

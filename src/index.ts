@@ -71,7 +71,7 @@ import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnaps
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
-import {projectRelatedContent, isRelatedCacheHit} from "./related-content-model";
+import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -197,6 +197,7 @@ import {
     FAV_GROUPS_KEY,
     SETTINGS_KEY,
     THUMB_CACHE_KEY,
+    RELATED_SWR_KEY,
     FAV_COLLAPSED_KEY,
     QUICK_ACTIONS_KEY,
     QUICK_ACTIONS_DEFAULTS_KEY,
@@ -1325,6 +1326,14 @@ export default class SpeedSwitchPlugin extends Plugin {
         if (thumbCache.changed) {
             this.data[THUMB_CACHE_KEY] = thumbCache.cache;
             this.saveDataDebounced(THUMB_CACHE_KEY);
+        }
+        // 关联内容 SWR 持久缓存（T-6840）：重启后工作台"当前文档相关"冷启动消除。
+        // 载入侧归一化（版本/年龄/有界/去重）；显示语义=先显缓存标注"缓存"再后台刷新。
+        const relatedSwr = normalizeRelatedSwrStore(this.data[RELATED_SWR_KEY]);
+        this.relatedSwrStore = new Map(relatedSwr.entries.map((entry) => [entry.rootId, entry]));
+        if (relatedSwr.entries.length > 0 && JSON.stringify(this.data[RELATED_SWR_KEY]) !== JSON.stringify(relatedSwr)) {
+            this.data[RELATED_SWR_KEY] = relatedSwr;
+            this.saveDataDebounced(RELATED_SWR_KEY);
         }
     }
 
@@ -4513,11 +4522,26 @@ const updatedMap: {[rootId: string]: string} = {};
     // 面板被移除/卸载后竞态丢弃；失败静默收起该行，不给空查询工作台添噪音。
     private relatedContentCache = new Map<string, {rootId: string; at: number; projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}}>();
 
+    // T-6840 SWR 持久层：sw_related_swr 落盘（≤8 条、7 天年龄上界，归一化在模型层）。
+    // 命中时先显"缓存"标注的投影再后台刷新，重启冷启动消除；60s 会话 TTL 语义不变。
+    private relatedSwrStore = new Map<string, {rootId: string; at: number; projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}}>();
+
+    private persistRelatedSwr(): void {
+        this.data[RELATED_SWR_KEY] = buildRelatedSwrStore([...this.relatedSwrStore.values()]);
+        this.saveDataDebounced(RELATED_SWR_KEY);
+    }
+
     private async fillRelatedContent(box: HTMLElement, rootId: string, onClose: IOverlayClose): Promise<void> {
         const now = Date.now();
         const cached = this.relatedContentCache.get(rootId);
         let projection = cached && isRelatedCacheHit(cached, rootId, now) ? cached.projection : null;
         if (!projection) {
+            // T-6840 SWR：持久层命中先显"缓存"标注的投影（不管 60s TTL），
+            // 后台刷新照常进行——数据到达后整行替换为新鲜内容。
+            const persisted = this.relatedSwrStore.get(rootId);
+            if (persisted) {
+                this.renderRelatedRow(box, persisted.projection, onClose, {cached: true});
+            }
             // k/mk 为契约必传字段（可为空串）；块引索引在文档创建后有秒级延迟，
             // 首查为空时有界轮询（2.5s×5 次，共约 12.5s），期间面板被移除即放弃。
             const attempt = async (delayMs: number, retried: number): Promise<void> => {
@@ -4531,9 +4555,9 @@ const updatedMap: {[rootId: string]: string} = {};
                 projection = payload ? projectRelatedContent(payload.data) : null;
                 if (!projection || projection.items.length === 0) {
                     if (retried < 5) {
-                        // 审查轮 P-E：首轮为空即把骨架换成"暂无关联"弱提示（继续轮询），
-                        // 避免块引索引延迟期间 ~12s 的纯 spinner 观感
-                        if (retried === 0) {
+                        // 审查轮 P-E：首轮为空且尚无缓存内容时才把骨架换成"暂无关联"
+                        // 弱提示（继续轮询），避免块引索引延迟期间 ~12s 的纯 spinner 观感
+                        if (retried === 0 && !persisted) {
                             const skeleton = box.firstElementChild;
                             if (skeleton?.classList.contains("sw__workbench-related--loading")) {
                                 skeleton.classList.remove("sw__workbench-related--loading");
@@ -4542,8 +4566,11 @@ const updatedMap: {[rootId: string]: string} = {};
                         }
                         return void attempt(2500, retried + 1) as Promise<void>;
                     }
-                    // 终态：全部重试耗尽仍无数据 → 移除空占位框，不留空白
-                    box.remove();
+                    // 终态：重试耗尽仍无数据 → 已有缓存内容时保留（SWR 语义），
+                    // 否则移除空占位框，不留空白
+                    if (!persisted && box.dataset.swRelatedRendered !== "1") {
+                        box.remove();
+                    }
                     return;
                 }
                 if (this.relatedContentCache.size >= 8) {
@@ -4551,6 +4578,13 @@ const updatedMap: {[rootId: string]: string} = {};
                     if (oldest !== undefined) this.relatedContentCache.delete(oldest);
                 }
                 this.relatedContentCache.set(rootId, {rootId, at: Date.now(), projection});
+                // T-6840：成功取数后同步持久层（FIFO ≤8）并落盘
+                if (this.relatedSwrStore.size >= 8) {
+                    const oldest = this.relatedSwrStore.keys().next().value;
+                    if (oldest !== undefined) this.relatedSwrStore.delete(oldest);
+                }
+                this.relatedSwrStore.set(rootId, {rootId, at: Date.now(), projection});
+                this.persistRelatedSwr();
                 this.renderRelatedRow(box, projection, onClose);
             };
             return void attempt(0, 0);
@@ -4558,15 +4592,19 @@ const updatedMap: {[rootId: string]: string} = {};
         this.renderRelatedRow(box, projection, onClose);
     }
 
-    private renderRelatedRow(box: HTMLElement, projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}, onClose: IOverlayClose): void {
+    private renderRelatedRow(box: HTMLElement, projection: {items: Array<{id: string; source: string; title: string; hPath: string}>; counts: {backlinks: number; mentions: number; shown: number}; truncated: boolean}, onClose: IOverlayClose, options: {cached?: boolean} = {}): void {
         if (!box.isConnected || projection.items.length === 0) return;
         box.textContent = "";
+        // T-6840：SWR 命中渲染过的行带标记——后台刷新失败时不被终态清理误删
+        box.dataset.swRelatedRendered = "1";
         const rowLabel = document.createElement("div");
         rowLabel.className = "sw__workbench-row-label";
         const total = projection.counts.backlinks + projection.counts.mentions;
-        rowLabel.textContent = projection.truncated
+        // T-6840：持久层命中（stale-while-revalidate 的 stale 半程）标注"缓存"
+        const cachedSuffix = options.cached ? ` · ${this.i18n.workbenchRelatedCached}` : "";
+        rowLabel.textContent = (projection.truncated
             ? `${this.i18n.workbenchRelated} (${projection.counts.shown}/${total})`
-            : this.i18n.workbenchRelated;
+            : this.i18n.workbenchRelated) + cachedSuffix;
         box.appendChild(rowLabel);
         const row = document.createElement("div");
         row.className = "sw__workbench-row";

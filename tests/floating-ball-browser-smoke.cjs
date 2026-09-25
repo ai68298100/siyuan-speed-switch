@@ -303,6 +303,61 @@ async function main() {
         assert.equal(probe.opened, true, "宿主模拟侧滑（12px 阈值）在普通内容上照常触发");
         console.log("PASS touch ownership: ball touches never reach the host swipe machine; host swipes on content still work"); assertions++;
 
+        // T-6855 泄漏审计夹具（§8.0.19 支柱三护栏）：监听器计数 + 首帧耗时。
+        // 口径=持久节点（window/document/root 容器）的净增监听——面板每轮重建的
+        // 行元素随分离 DOM 被 GC，其监听不计（不是泄漏）；面板级清理缺漏
+        // （document/window/容器上累积注册）必然在这里显形。反复开关 10 轮：
+        // 持久节点净增必须为 0；openMore 同步装配+强制布局单轮耗时设预算。
+        await metrics(390,844); await mount({surface:"mobile",edge:"right",yRatio:0.5}); await settle();
+        await evaluate(`(() => {
+            if (!window.__leakPatched) {
+                window.__leakPatched = true;
+                window.__leakNet = new WeakMap();
+                const bump = (target, delta) => {
+                    if (!target || typeof target !== "object" && typeof target !== "function") return;
+                    window.__leakNet.set(target, (window.__leakNet.get(target) || 0) + delta);
+                };
+                const origAdd = EventTarget.prototype.addEventListener;
+                const origRemove = EventTarget.prototype.removeEventListener;
+                EventTarget.prototype.addEventListener = function(...args) { bump(this, 1); return origAdd.apply(this, args); };
+                EventTarget.prototype.removeEventListener = function(...args) { bump(this, -1); return origRemove.apply(this, args); };
+            }
+            window.__leakAudit = async (cycles) => {
+                const panel = window.__current.panel;
+                const root = window.__current.root;
+                let maxOpenMs = 0;
+                for (let i = 0; i < cycles; i++) {
+                    const t0 = performance.now();
+                    panel.openMore();
+                    const drawer = root.querySelector('.sw__floating-ball-more');
+                    if (drawer) drawer.getBoundingClientRect(); // 强制布局：装配+样式计算全走完
+                    maxOpenMs = Math.max(maxOpenMs, performance.now() - t0);
+                    panel.closeMore({restoreFocus: false});
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
+                }
+                const netOf = (target) => window.__leakNet.get(target) || 0;
+                return {window: netOf(window), document: netOf(document), root: netOf(root), maxOpenMs};
+            };
+            return true;
+        })()`);
+        const leakAudit = await evaluate("window.__leakAudit(10)");
+        assert.equal(leakAudit.window, 0, `window 净增监听必须为 0，实际 ${leakAudit.window}`);
+        assert.equal(leakAudit.document, 0, `document 净增监听必须为 0，实际 ${leakAudit.document}`);
+        assert.equal(leakAudit.root, 0, `root 容器净增监听必须为 0，实际 ${leakAudit.root}`);
+        assert.ok(leakAudit.maxOpenMs < 30, `面板首帧装配 ${leakAudit.maxOpenMs.toFixed(1)}ms 超出 30ms 预算`);
+        console.log(`PASS leak audit: 10 open/close cycles persistent listeners net 0; first-frame ${leakAudit.maxOpenMs.toFixed(1)}ms < 30ms`); assertions++;
+
+        if(process.argv.includes("--negative")) {
+            // 负向：给 document 注入一只孤儿监听，审计必须报出净增 1（探测器灵敏性）
+            await evaluate("window.__orphan = () => {}; document.addEventListener('sw-negative-leak', window.__orphan)");
+            const poisoned = await evaluate("window.__leakAudit(3)");
+            assert.equal(poisoned.document, 1, `注入孤儿监听后 document 净增必须为 1，实际 ${poisoned.document}`);
+            await evaluate("document.removeEventListener('sw-negative-leak', window.__orphan)");
+            const healed = await evaluate("window.__leakAudit(3)");
+            assert.equal(healed.document, 0, "移除孤儿监听后 document 净增必须回到 0");
+            console.log("PASS NEGATIVE leak detector: injected orphan listener reports net 1, removal restores 0"); assertions++;
+        }
+
         if(process.argv.includes("--negative")) {
             await metrics(1024,768); await mount({surface:"desktop",six:true}); await beginDrag();
             for(const injection of [

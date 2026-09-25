@@ -406,6 +406,29 @@ test('related content: workbench region uses official backlink endpoint with bou
         '截断必须以 shown 与内核总量比较，可解释');
 });
 
+test('related content SWR persistence: cold-start cache with stale-while-revalidate semantics (T-6840)', () => {
+    const relatedModel = readSourceText(path.join(__dirname, '..', 'src', 'related-content-model.js'));
+    const constants = readSourceText(path.join(__dirname, '..', 'src', 'constants.ts'));
+    assert.match(relatedModel, /function normalizeRelatedSwrStore\(value, options = \{\}\)/,
+        '持久层归一化必须是纯函数（版本/年龄/去重/有界）');
+    assert.match(relatedModel, /RELATED_SWR_MAX_AGE_MS = 7 \* 24 \* 60 \* 60 \* 1000/,
+        '持久条目必须有 7 天硬年龄上界（不把陈旧数据伪装成缓存）');
+    assert.match(relatedModel, /RELATED_SWR_MAX_ENTRIES = 8/,
+        '持久条目必须有界 8 条');
+    assert.match(constants, /RELATED_SWR_KEY = "sw_related_swr"/,
+        '持久缓存必须有注册过的存储 key（D-401 体系）');
+    assert.match(indexSource, /const relatedSwr = normalizeRelatedSwrStore\(this\.data\[RELATED_SWR_KEY\]\);/,
+        'onload 必须经归一化载入持久层（无降级直读）');
+    assert.match(indexSource, /this\.renderRelatedRow\(box, persisted\.projection, onClose, \{cached: true\}\)/,
+        '持久命中必须先渲染并标注"缓存"（stale 半程）');
+    assert.match(indexSource, /if \(!persisted && box\.dataset\.swRelatedRendered !== "1"\) \{\s*box\.remove\(\);/,
+        '终态清理必须保留已渲染的缓存行（SWR 不误删 stale 内容）');
+    assert.match(indexSource, /private persistRelatedSwr\(\): void \{\s*this\.data\[RELATED_SWR_KEY\] = buildRelatedSwrStore/,
+        '成功取数后必须经 buildRelatedSwrStore 序列化落盘');
+    assert.match(indexSource, /workbenchRelatedCached/,
+        '缓存标注必须有 i18n 键（双语）');
+});
+
 test('layered workspace snapshot: preset is persisted into the set and essentials produce receipts (T-6815)', () => {
     // 恢复链：场景按 presetId 优先固化，Essentials 带回执打开并并入统一摘要
     assert.match(indexSource, /presets\.find\(\(preset: \{id: string\}\) => preset\.id === item\.presetId\)/,

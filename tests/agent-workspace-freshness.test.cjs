@@ -182,13 +182,13 @@ test('storage health clamps counts, version, and text lengths (bounded output)',
     const report = {version: 99999, totals: {kept: 99, cleaned: -5, migrated: 1.9, reset: 'x', inspect: null, missing: undefined}, keys};
     const health = buildAgentWorkspaceContext({storageHealth: report}).storageHealth;
     assert.equal(health.version, 9999, 'version caps at 9999');
-    assert.equal(health.totals.kept, 15, 'kept clamps to key-count ceiling');
+    assert.equal(health.totals.kept, 16, 'kept clamps to key-count ceiling');
     assert.equal(health.totals.cleaned, 0, 'negative counts clamp to zero');
     assert.equal(health.totals.migrated, 1, 'fractional counts truncate');
     assert.equal(health.totals.reset, 0, 'non-numeric counts degrade to zero');
     assert.equal(health.totals.inspect, 0);
     assert.equal(health.totals.missing, 0);
-    assert.equal(health.anomalies.length, 15, 'anomalies cap at 15 entries');
+    assert.equal(health.anomalies.length, 16, 'anomalies cap at 16 entries');
     assert.ok(health.anomalies.every((entry) => entry.key.length <= 32), 'anomaly keys stay bounded');
 });
 
