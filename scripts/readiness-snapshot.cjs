@@ -8,9 +8,15 @@
 // 用法：先 pnpm run build，再 node scripts/readiness-snapshot.cjs
 const fs = require("fs");
 const path = require("path");
+const {
+    RAW_BUNDLE_BUDGET_BYTES,
+    ARCHIVE_BUDGET_BYTES,
+    COMPRESSED_ENTRY_BUDGET_BYTES,
+} = require("./release-readiness-metrics.cjs");
 
 const root = path.resolve(__dirname, "..");
 const distIndex = path.join(root, "dist", "index.js");
+const distCss = path.join(root, "dist", "index.css");
 const distZip = path.join(root, "package.zip");
 const readiness = path.join(root, "docs", "release-readiness.md");
 
@@ -34,11 +40,12 @@ function zipCompressedEntrySize(zipPath, entryName) {
     throw new Error(`zip entry not found: ${entryName}`);
 }
 
-const RAW_BUNDLE_BUDGET = 896 * 1024;   // ADR 0067
-const ARCHIVE_BUDGET = 512 * 1024;      // 归档硬上限
-const COMPRESSED_ENTRY_BUDGET = 256 * 1024; // ADR 0065
+const RAW_BUNDLE_BUDGET = RAW_BUNDLE_BUDGET_BYTES;
+const ARCHIVE_BUDGET = ARCHIVE_BUDGET_BYTES;
+const COMPRESSED_ENTRY_BUDGET = COMPRESSED_ENTRY_BUDGET_BYTES;
 
 const size = fs.statSync(distIndex).size;
+const css = fs.statSync(distCss).size;
 const zip = fs.statSync(distZip).size;
 const compressed = zipCompressedEntrySize(distZip, "index.js");
 
@@ -46,19 +53,19 @@ let doc = fs.readFileSync(readiness, "utf8");
 const before = doc;
 
 // 1) HTML 注释快照与 Current build 行
-doc = doc.replace(/dist\/index\.js \d+ bytes; dist\/index\.css (\d+) bytes; package\.zip \d+ bytes/,
-    `dist/index.js ${size} bytes; dist/index.css $1 bytes; package.zip ${zip} bytes`);
-doc = doc.replace(/`dist\/index\.js` \d+ bytes; `dist\/index\.css` (\d+) bytes; `package\.zip` (\d+) bytes/g,
-    `\`dist/index.js\` ${size} bytes; \`dist/index.css\` $1 bytes; \`package.zip\` ${zip} bytes`);
+doc = doc.replace(/dist\/index\.js \d+ bytes; dist\/index\.css \d+ bytes; package\.zip \d+ bytes/,
+    `dist/index.js ${size} bytes; dist/index.css ${css} bytes; package.zip ${zip} bytes`);
+doc = doc.replace(/`dist\/index\.js` \d+ bytes; `dist\/index\.css` \d+ bytes; `package\.zip` \d+ bytes/g,
+    `\`dist/index.js\` ${size} bytes; \`dist/index.css\` ${css} bytes; \`package.zip\` ${zip} bytes`);
 
 // 2) 生产产物表行：三类数字与余量
-doc = doc.replace(/`dist\/index\.js` \d+ bytes（(?:832|896) KiB 自律线内，余量 -?\d+ bytes，ADR 00(?:62|67)）/,
-    `\`dist/index.js\` ${size} bytes（896 KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR 0067）`);
+doc = doc.replace(/`dist\/index\.js` \d+ bytes（(?:832|896|960|1024) KiB 自律线内，余量 -?\d+ bytes，ADR 00(?:62|67|74|77)）/,
+    `\`dist/index.js\` ${size} bytes（1024 KiB 自律线内，余量 ${RAW_BUNDLE_BUDGET - size} bytes，ADR 0077）`);
 doc = doc.replace(/`package\.zip` \d+ bytes（512 KiB 硬上限余量 \d+ bytes）/,
     `\`package.zip\` ${zip} bytes（512 KiB 硬上限余量 ${ARCHIVE_BUDGET - zip} bytes）`);
 doc = doc.replace(/当前 `index\.js` 压缩后 \d+ bytes，余量 \d+ bytes）/,
     `当前 \`index.js\` 压缩后 ${compressed} bytes，余量 ${COMPRESSED_ENTRY_BUDGET - compressed} bytes）`);
 
 fs.writeFileSync(readiness, doc, "utf8");
-console.log(`readiness snapshot updated: index.js ${size} / zip ${zip} / compressed ${compressed}`);
+console.log(`readiness snapshot updated: index.js ${size} / css ${css} / zip ${zip} / compressed ${compressed}`);
 console.log(`changed: ${before !== doc}`);

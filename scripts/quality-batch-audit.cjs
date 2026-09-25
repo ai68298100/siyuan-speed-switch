@@ -58,7 +58,7 @@ add('plugin icon exists', exists('icon.png'));
 add('plugin preview exists', exists('preview.png'));
 add('widget protocol ADR references exist', exists('docs/adr/0057-widget-source-and-store-grouping.md'));
 add('schema ADR references exist', exists('docs/adr/0034-quick-action-schema-version.md'));
-add('release readiness references current raw-line ADR', read('docs/release-readiness.md').includes('ADR 0067'));
+add('release readiness references current raw-line ADR', read('docs/release-readiness.md').includes('ADR 0077'));
 add('roadmap has current section', read('ROADMAP.md').includes('8.0.4 2026-09-19'));
 add('blockers says no current blockers', read('BLOCKERS.md').includes('当前无阻塞'));
 add('dev plan has next batch', read('docs/dev-plan-2026-09-19.md').includes('T-6552'));

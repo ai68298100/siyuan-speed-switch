@@ -1,6 +1,19 @@
 import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, showMessage} from "siyuan";
 import type {IMenu, TEventBus, TPluginDataChangeReason} from "siyuan";
 import "./index.scss";
+
+// Webpack's automatic public path is derived from the source entry path. The
+// production build writes that entry under dist/ and the release archive
+// flattens it to the plugin root, so set the runtime base from the actual
+// script URL before a lazy chunk can be requested.
+declare let __webpack_public_path__: string;
+if (typeof document !== "undefined") {
+    const currentScript = document.currentScript as HTMLScriptElement | null;
+    const scriptUrl = typeof currentScript?.src === "string" ? currentScript.src : "";
+    if (scriptUrl) {
+        __webpack_public_path__ = scriptUrl.replace(/[^/]*$/, "");
+    }
+}
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
@@ -562,6 +575,19 @@ declare module "./search-model" {
     export function isSemanticEmbeddingConfigured(config: unknown): boolean;
 }
 
+declare module "./snippet-studio-ui" {
+    export function mountSnippetStudio(root: HTMLElement, options?: {
+        i18n?: Record<string, string>;
+        getConfig?: () => unknown;
+        store?: {read: () => Promise<unknown>; mutate: (baseline: unknown, action: string, draft?: unknown) => Promise<unknown>; dispose: () => void};
+        ai?: {generate: (options?: Record<string, unknown>) => Promise<unknown>; cancel: () => void; dispose: () => void};
+        session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null};
+        onBack?: () => void;
+    }): {ready: Promise<unknown>; canClose: () => boolean; dispose: () => void};
+}
+
+type SnippetStudioController = {ready: Promise<unknown>; canClose: () => boolean; dispose: () => void};
+
 export type DocSearchRenderState = "results" | "loading" | "error";
 
 // IMobileTabEntry / IMobileTabsState 已迁移至 ./types.ts（思源全局对象的相关结构）
@@ -783,6 +809,8 @@ interface IOpenHistoryEntry {
 
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
+    private snippetStudioDialog: Dialog | null = null;
+    private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null} = {draft: null, baseline: null};
     // 文档搜索链路状态宿主（R5a，D-381）：6 个实例级状态收拢为单一状态对象，
     // WeakMap/Set 语义与代际竞态保护不变；生命周期（含卸载清理）由原消费点继续驱动。
     private docSearchState = createDocSearchState();
@@ -1662,6 +1690,8 @@ export default class SpeedSwitchPlugin extends Plugin {
     async onunload() {
         this.isUnloading = true;
         this.lifecycleGeneration += 1;
+        this.snippetStudioDialog?.destroy();
+        this.snippetStudioDialog = null;
         // T-6831：面包屑入口随生命周期拆除
         this.teardownBreadcrumbEntry();
         // T-6823：密度档位标记随生命周期移除
@@ -2914,6 +2944,65 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
     }
 
+    // Experimental desktop-only studio. It is deliberately reachable from
+    // the tab panel toolbar so it does not become a second global command or
+    // a mobile surface before the wide layout has real device evidence.
+    private openSnippetStudio() {
+        if (this.isMobile) return;
+        if (this.snippetStudioDialog?.element.isConnected) return;
+        const holder: {dialog: Dialog | null; controller: SnippetStudioController | null} = {dialog: null, controller: null};
+        const width = Math.min(1600, Math.max(760, Math.round(window.innerWidth * 0.92)));
+        const height = Math.min(960, Math.max(560, Math.round(window.innerHeight * 0.88)));
+        const dialog = new Dialog({
+            title: this.i18n.snippetStudioTitle,
+            content: '<div class="sw-snippet-studio-host"></div>',
+            width: `${width}px`,
+            height: `${height}px`,
+            disableClose: true,
+            destroyCallback: () => {
+                holder.controller?.dispose();
+                holder.controller = null;
+                if (this.snippetStudioDialog === holder.dialog) this.snippetStudioDialog = null;
+            },
+        });
+        holder.dialog = dialog;
+        this.snippetStudioDialog = dialog;
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio");
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
+        const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
+        if (!root) {
+            dialog.destroy();
+            return;
+        }
+        void import("./snippet-studio-ui").then(({mountSnippetStudio}) => {
+            if (!dialog.element.isConnected || this.snippetStudioDialog !== dialog) return;
+            holder.controller = mountSnippetStudio(root, {
+                i18n: this.i18n as unknown as Record<string, string>,
+                getConfig: () => (window as {siyuan?: {config?: unknown}}).siyuan?.config || {},
+                session: this.snippetStudioSession,
+                onBack: () => {
+                    if (holder.controller && !holder.controller.canClose()) return;
+                    dialog.destroy();
+                    if (!this.isUnloading) this.showSwitcher();
+                },
+            });
+            void holder.controller.ready.catch((error) => logger.warn("snippet studio load failed", error));
+        }).catch((error) => {
+            logger.warn("snippet studio import failed", error);
+            // The Dialog is intentionally non-dismissible while the studio is
+            // mounted so its own Back action can protect unsaved drafts. If
+            // the lazy chunk cannot load, restore the switcher instead of
+            // leaving an empty modal with no recovery path.
+            if (this.snippetStudioDialog === dialog) {
+                dialog.destroy();
+                if (!this.isUnloading) {
+                    showMessage(this.i18n.snippetFailed);
+                    this.showSwitcher();
+                }
+            }
+        });
+    }
+
     // Shared sizing for the desktop switcher and second-panel dialogs:
     // fullscreen fills the viewport, adaptive follows the configured screen
     // ratio, custom uses the fixed pixel settings.
@@ -2962,6 +3051,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 </button>
                 <button type="button" class="b3-button b3-button--text sw__icon-btn sw__settings-btn" aria-label="${this.i18n.settings}" title="${this.i18n.settings}">
                     <svg width="16" height="16"><use xlink:href="#iconSettings"></use></svg>
+                </button>
+                <button type="button" class="b3-button b3-button--text sw__icon-btn sw__snippet-studio-btn" aria-label="${this.i18n.snippetStudioOpen}" title="${this.i18n.snippetStudioOpen}">
+                    <svg width="16" height="16"><use xlink:href="#iconCode"></use></svg>
                 </button>
             </div>
             <div class="sw__scroll" tabindex="0"></div>
@@ -3224,6 +3316,10 @@ const updatedMap: {[rootId: string]: string} = {};
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.openSetting();
+        });
+        dialog.element.querySelector(".sw__snippet-studio-btn")?.addEventListener("click", () => {
+            dialog.destroy();
+            this.openSnippetStudio();
         });
         // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {

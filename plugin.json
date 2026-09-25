@@ -28,7 +28,8 @@
       "docs/agent-document-context-m2.md",
       "docs/architecture.svg",
       "docs/component-store-guide.md",
-      "docs/interface-map.svg"
+      "docs/interface-map.svg",
+      "dist/snippet-studio.js"
     ]
   },
   "keywords": [

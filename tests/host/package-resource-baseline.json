@@ -5,14 +5,15 @@
   "docs/architecture.svg": 1897,
   "docs/component-store-guide.md": 3250,
   "docs/interface-map.svg": 1805,
-  "i18n/en.json": 15453,
-  "i18n/zh-CN.json": 16863,
+  "i18n/en.json": 18042,
+  "i18n/zh-CN.json": 19740,
   "icon.png": 18386,
-  "index.css": 27012,
-  "index.js": 263314,
-  "plugin.json": 771,
+  "index.css": 29007,
+  "index.js": 280252,
+  "plugin.json": 787,
   "preview.png": 50389,
-  "README.en-US.md": 15889,
-  "README.md": 17087
+  "README.en-US.md": 17468,
+  "README.md": 18667,
+  "dist/snippet-studio.js": 13154
  }
 }

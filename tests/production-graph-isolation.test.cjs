@@ -134,7 +134,7 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // T-6764/B7：有界 floating-ball-layout 几何入图，实测 63；审计上限 64，见 ADR 0068。
     // T-6814（R5-A）：related-content-model 只读关联投影入图，实测 65；上限按
     // ADR 0076 口径随实测增量校准 64→66（数量类门禁仅作观测护栏，不阻挡合理功能）。
-    // 包体复核：raw 896 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
+    // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
     assert.ok(graph.size <= 66, `production graph grew to ${graph.size} modules; audited ceiling is 66`);

@@ -78,6 +78,15 @@ export function installPlugin(workspace, repoRoot) {
     fs.rmSync(target, {recursive: true, force: true});
     fs.mkdirSync(target, {recursive: true});
     fs.cpSync(dist, target, {recursive: true, force: true});
+    // The release archive keeps the lazy studio chunk under dist/ so the
+    // runtime URL remains explicit. Mirror that layout in the E2E plugin
+    // directory after flattening the build output.
+    const lazyChunk = path.join(target, "snippet-studio.js");
+    if (fs.existsSync(lazyChunk)) {
+        const lazyDir = path.join(target, "dist");
+        fs.mkdirSync(lazyDir, {recursive: true});
+        fs.renameSync(lazyChunk, path.join(lazyDir, "snippet-studio.js"));
+    }
     return {target, version: manifest.version};
 }
 

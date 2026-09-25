@@ -3,9 +3,9 @@
     "repo": "siyuan-note/siyuan",
     "branch": "master",
     "kernelVersion": "3.8.5",
-    "retrievedAt": "2026-09-24",
+    "retrievedAt": "2026-09-25",
     "note": "上游契约快照的有端子集；由 scripts/gen-api-contract.cjs 生成，勿手改。运行时真值以 docs/kernel-api-smoke-*.md 实测为准。",
-    "subsetSha256": "5c367683d3675bef95a7e29dee71b2efe42e957cfa00c8834b8ab1a7aab063e0"
+    "subsetSha256": "080167ba4d17636eee99e02de3e36c83eade51b75e689e2191efd5165150363b"
   },
   "nonKernel": [
     {
@@ -23,12 +23,53 @@
   ],
   "endpoints": [
     {
+      "path": "/api/ai/editor/chat",
+      "usedBy": [
+        "src/snippet-studio-ai.js:95"
+      ],
+      "method": "POST",
+      "handler": "aiEditorChat",
+      "body": "structJSON",
+      "request": {
+        "required": [],
+        "properties": {
+          "action": {
+            "type": "string|null",
+            "required": false
+          },
+          "history": {
+            "type": "array<AIEditorMessageInput>|null",
+            "required": false
+          },
+          "ids": {
+            "type": "array<string>|null",
+            "required": false
+          },
+          "input": {
+            "type": "string|null",
+            "required": false
+          },
+          "taskID": {
+            "type": "string|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [],
+        "successTopFields": [],
+        "errorCodes": [
+          -1
+        ]
+      }
+    },
+    {
       "path": "/api/asset/getMissingAssets",
       "usedBy": [
-        "src/index.ts:4327",
-        "src/index.ts:4421",
-        "src/index.ts:4422",
-        "src/index.ts:5138"
+        "src/index.ts:4807",
+        "src/index.ts:4901",
+        "src/index.ts:4902",
+        "src/index.ts:5618"
       ],
       "method": "POST",
       "handler": "getMissingAssets",
@@ -83,10 +124,11 @@
     {
       "path": "/api/av/getAttributeView",
       "usedBy": [
-        "src/index.ts:4336",
-        "src/index.ts:4436",
-        "src/index.ts:4437",
-        "src/index.ts:5183"
+        "src/index.ts:4816",
+        "src/index.ts:4916",
+        "src/index.ts:4917",
+        "src/index.ts:5637",
+        "src/index.ts:5686"
       ],
       "method": "POST",
       "handler": "getAttributeView",
@@ -187,11 +229,12 @@
     {
       "path": "/api/av/renderAttributeView",
       "usedBy": [
-        "src/index.ts:4333",
-        "src/index.ts:4433",
-        "src/index.ts:4434",
-        "src/index.ts:5179",
-        "src/index.ts:5273"
+        "src/index.ts:4813",
+        "src/index.ts:4913",
+        "src/index.ts:4914",
+        "src/index.ts:5633",
+        "src/index.ts:5682",
+        "src/index.ts:5776"
       ],
       "method": "POST",
       "handler": "renderAttributeView",
@@ -613,12 +656,13 @@
     {
       "path": "/api/block/appendBlock",
       "usedBy": [
-        "src/index.ts:1081",
-        "src/index.ts:1159",
-        "src/index.ts:2203",
-        "src/index.ts:4318",
-        "src/index.ts:4400",
-        "src/index.ts:4401"
+        "src/index.ts:1147",
+        "src/index.ts:1225",
+        "src/index.ts:2355",
+        "src/index.ts:2377",
+        "src/index.ts:4798",
+        "src/index.ts:4880",
+        "src/index.ts:4881"
       ],
       "method": "POST",
       "handler": "appendBlock",
@@ -691,10 +735,10 @@
     {
       "path": "/api/block/getRecentUpdatedBlocks",
       "usedBy": [
-        "src/index.ts:4326",
-        "src/index.ts:4418",
-        "src/index.ts:4419",
-        "src/index.ts:5128"
+        "src/index.ts:4806",
+        "src/index.ts:4898",
+        "src/index.ts:4899",
+        "src/index.ts:5608"
       ],
       "method": "POST",
       "handler": "getRecentUpdatedBlocks",
@@ -867,9 +911,9 @@
     {
       "path": "/api/block/insertBlock",
       "usedBy": [
-        "src/index.ts:4318",
-        "src/index.ts:4397",
-        "src/index.ts:4398"
+        "src/index.ts:4798",
+        "src/index.ts:4877",
+        "src/index.ts:4878"
       ],
       "method": "POST",
       "handler": "insertBlock",
@@ -949,12 +993,12 @@
     {
       "path": "/api/block/updateBlock",
       "usedBy": [
-        "src/index.ts:1030",
-        "src/index.ts:1136",
-        "src/index.ts:4318",
-        "src/index.ts:4394",
-        "src/index.ts:4395",
-        "src/index.ts:5484"
+        "src/index.ts:1096",
+        "src/index.ts:1202",
+        "src/index.ts:4798",
+        "src/index.ts:4874",
+        "src/index.ts:4875",
+        "src/index.ts:5997"
       ],
       "method": "POST",
       "handler": "updateBlock",
@@ -1031,10 +1075,10 @@
     {
       "path": "/api/bookmark/getBookmark",
       "usedBy": [
-        "src/index.ts:4316",
-        "src/index.ts:4385",
-        "src/index.ts:4386",
-        "src/index.ts:4652"
+        "src/index.ts:4796",
+        "src/index.ts:4865",
+        "src/index.ts:4866",
+        "src/index.ts:5132"
       ],
       "method": "POST",
       "handler": "getBookmark",
@@ -1144,11 +1188,11 @@
     {
       "path": "/api/filetree/createDocWithMd",
       "usedBy": [
-        "src/index.ts:1053",
-        "src/index.ts:1147",
-        "src/index.ts:4317",
-        "src/index.ts:4391",
-        "src/index.ts:4392"
+        "src/index.ts:1119",
+        "src/index.ts:1213",
+        "src/index.ts:4797",
+        "src/index.ts:4871",
+        "src/index.ts:4872"
       ],
       "method": "POST",
       "handler": "createDocWithMd",
@@ -1236,11 +1280,11 @@
     {
       "path": "/api/filetree/getDoc",
       "usedBy": [
-        "src/index.ts:4317",
-        "src/index.ts:4388",
-        "src/index.ts:4389",
-        "src/index.ts:6018",
-        "src/index.ts:9348"
+        "src/index.ts:4797",
+        "src/index.ts:4868",
+        "src/index.ts:4869",
+        "src/index.ts:6531",
+        "src/index.ts:9932"
       ],
       "method": "POST",
       "handler": "getDoc",
@@ -1474,10 +1518,10 @@
     {
       "path": "/api/filetree/getPinnedDocs",
       "usedBy": [
-        "src/index.ts:4324",
-        "src/index.ts:4412",
-        "src/index.ts:4413",
-        "src/index.ts:5088"
+        "src/index.ts:4804",
+        "src/index.ts:4892",
+        "src/index.ts:4893",
+        "src/index.ts:5568"
       ],
       "method": "POST",
       "handler": "getPinnedDocs",
@@ -1548,9 +1592,9 @@
       "path": "/api/filetree/listDocsByPath",
       "usedBy": [
         "src/doc-search-ui.ts:54",
-        "src/index.ts:4322",
-        "src/index.ts:4409",
-        "src/index.ts:4410",
+        "src/index.ts:4802",
+        "src/index.ts:4889",
+        "src/index.ts:4890",
         "src/path-filter-model.js:29"
       ],
       "method": "POST",
@@ -1666,7 +1710,7 @@
       "path": "/api/filetree/searchDocs",
       "usedBy": [
         "src/doc-search-ui.ts:604",
-        "src/index.ts:6544"
+        "src/index.ts:7057"
       ],
       "method": "POST",
       "handler": "searchDocs",
@@ -1755,10 +1799,10 @@
     {
       "path": "/api/inbox/getShorthands",
       "usedBy": [
-        "src/index.ts:4325",
-        "src/index.ts:4415",
-        "src/index.ts:4416",
-        "src/index.ts:5119"
+        "src/index.ts:4805",
+        "src/index.ts:4895",
+        "src/index.ts:4896",
+        "src/index.ts:5599"
       ],
       "method": "POST",
       "handler": "getShorthands",
@@ -1831,7 +1875,7 @@
     {
       "path": "/api/network/forwardProxy",
       "usedBy": [
-        "src/index.ts:4490"
+        "src/index.ts:4970"
       ],
       "method": "POST",
       "handler": "forwardProxy",
@@ -1945,7 +1989,7 @@
     {
       "path": "/api/notebook/lsNotebooks",
       "usedBy": [
-        "src/index.ts:2029"
+        "src/index.ts:2123"
       ],
       "method": "POST",
       "handler": "lsNotebooks",
@@ -2011,12 +2055,13 @@
     {
       "path": "/api/outline/getDocOutline",
       "usedBy": [
-        "src/index.ts:4319",
-        "src/index.ts:4403",
-        "src/index.ts:4404",
-        "src/index.ts:5046",
-        "src/index.ts:6120",
-        "src/index.ts:6186"
+        "src/doc-search-ui.ts:1048",
+        "src/index.ts:4799",
+        "src/index.ts:4883",
+        "src/index.ts:4884",
+        "src/index.ts:5526",
+        "src/index.ts:6633",
+        "src/index.ts:6699"
       ],
       "method": "POST",
       "handler": "getDocOutline",
@@ -2134,45 +2179,46 @@
     {
       "path": "/api/query/sql",
       "usedBy": [
-        "src/index.ts:1023",
-        "src/index.ts:1061",
-        "src/index.ts:1130",
-        "src/index.ts:1152",
-        "src/index.ts:1890",
-        "src/index.ts:4251",
-        "src/index.ts:4316",
-        "src/index.ts:4379",
-        "src/index.ts:4380",
-        "src/index.ts:4542",
-        "src/index.ts:4578",
-        "src/index.ts:4622",
-        "src/index.ts:4625",
-        "src/index.ts:4674",
-        "src/index.ts:4697",
-        "src/index.ts:4703",
-        "src/index.ts:4740",
-        "src/index.ts:4764",
-        "src/index.ts:4805",
-        "src/index.ts:4821",
-        "src/index.ts:4837",
-        "src/index.ts:4852",
-        "src/index.ts:4870",
-        "src/index.ts:4901",
-        "src/index.ts:4989",
-        "src/index.ts:5009",
-        "src/index.ts:5026",
-        "src/index.ts:5061",
-        "src/index.ts:5098",
-        "src/index.ts:5152",
-        "src/index.ts:5214",
-        "src/index.ts:5246",
-        "src/index.ts:5477",
-        "src/index.ts:6070",
-        "src/index.ts:6170",
-        "src/index.ts:6358",
-        "src/index.ts:7020",
-        "src/index.ts:7486",
-        "src/index.ts:8559"
+        "src/doc-search-ui.ts:1049",
+        "src/index.ts:1089",
+        "src/index.ts:1127",
+        "src/index.ts:1196",
+        "src/index.ts:1218",
+        "src/index.ts:1973",
+        "src/index.ts:4731",
+        "src/index.ts:4796",
+        "src/index.ts:4859",
+        "src/index.ts:4860",
+        "src/index.ts:5022",
+        "src/index.ts:5058",
+        "src/index.ts:5102",
+        "src/index.ts:5105",
+        "src/index.ts:5154",
+        "src/index.ts:5177",
+        "src/index.ts:5183",
+        "src/index.ts:5220",
+        "src/index.ts:5244",
+        "src/index.ts:5285",
+        "src/index.ts:5301",
+        "src/index.ts:5317",
+        "src/index.ts:5332",
+        "src/index.ts:5350",
+        "src/index.ts:5381",
+        "src/index.ts:5469",
+        "src/index.ts:5489",
+        "src/index.ts:5506",
+        "src/index.ts:5541",
+        "src/index.ts:5578",
+        "src/index.ts:5655",
+        "src/index.ts:5717",
+        "src/index.ts:5749",
+        "src/index.ts:5990",
+        "src/index.ts:6583",
+        "src/index.ts:6683",
+        "src/index.ts:6871",
+        "src/index.ts:7535",
+        "src/index.ts:8017",
+        "src/index.ts:9131"
       ],
       "method": "POST",
       "handler": "SQL",
@@ -2231,10 +2277,10 @@
     {
       "path": "/api/ref/getBacklink2",
       "usedBy": [
-        "src/index.ts:4199",
-        "src/index.ts:4329",
-        "src/index.ts:4424",
-        "src/index.ts:4425"
+        "src/index.ts:4654",
+        "src/index.ts:4809",
+        "src/index.ts:4904",
+        "src/index.ts:4905"
       ],
       "method": "POST",
       "handler": "getBacklink2",
@@ -2399,11 +2445,11 @@
     {
       "path": "/api/riff/getNotebookRiffDueCards",
       "usedBy": [
-        "src/index.ts:4319",
-        "src/index.ts:4406",
-        "src/index.ts:4407",
-        "src/index.ts:4756",
-        "src/index.ts:4784"
+        "src/index.ts:4799",
+        "src/index.ts:4886",
+        "src/index.ts:4887",
+        "src/index.ts:5236",
+        "src/index.ts:5264"
       ],
       "method": "POST",
       "handler": "getNotebookRiffDueCards",
@@ -2480,7 +2526,7 @@
       "usedBy": [
         "src/doc-search-ui.ts:706",
         "src/doc-search-ui.ts:765",
-        "src/search-model.js:1104"
+        "src/search-model.js:1111"
       ],
       "method": "POST",
       "handler": "fullTextSearchBlock",
@@ -2620,7 +2666,7 @@
         "src/doc-search-ui.ts:704",
         "src/doc-search-ui.ts:762",
         "src/doc-search-ui.ts:763",
-        "src/search-model.js:1104"
+        "src/search-model.js:1111"
       ],
       "method": "POST",
       "handler": "semanticSearchBlock",
@@ -2742,12 +2788,169 @@
       }
     },
     {
+      "path": "/api/setting/setSnippet",
+      "usedBy": [
+        "src/snippet-studio-host.js:57"
+      ],
+      "method": "POST",
+      "handler": "setConfSnippet",
+      "body": "json",
+      "request": {
+        "required": [],
+        "properties": {
+          "enabledCSS": {
+            "type": "boolean|null",
+            "required": false
+          },
+          "enabledJS": {
+            "type": "boolean|null",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "enabledCSS",
+            "enabledJS"
+          ],
+          "props": {
+            "enabledCSS": {
+              "kind": "boolean"
+            },
+            "enabledJS": {
+              "kind": "boolean"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/snippet/getSnippet",
+      "usedBy": [
+        "src/snippet-studio-host.js:42"
+      ],
+      "method": "POST",
+      "handler": "getSnippet",
+      "body": "json",
+      "request": {
+        "required": [
+          "enabled",
+          "type"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "number",
+            "required": true
+          },
+          "keyword": {
+            "type": "string|null",
+            "required": false
+          },
+          "type": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "object",
+          "fields": [
+            "snippets"
+          ],
+          "props": {
+            "snippets": {
+              "kind": "array",
+              "item": {
+                "kind": "object",
+                "fields": [
+                  "content",
+                  "disabledInPublish",
+                  "enabled",
+                  "id",
+                  "name",
+                  "type"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "/api/snippet/setSnippet",
+      "usedBy": [
+        "src/snippet-studio-host.js:21",
+        "src/snippet-studio-host.js:54"
+      ],
+      "method": "POST",
+      "handler": "setSnippet",
+      "body": "json",
+      "request": {
+        "required": [
+          "snippets"
+        ],
+        "properties": {
+          "snippets": {
+            "type": "array<SnippetInput>",
+            "required": true
+          }
+        }
+      },
+      "response": {
+        "successRequired": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "successTopFields": [
+          "code",
+          "data",
+          "msg"
+        ],
+        "errorCodes": [
+          -1
+        ],
+        "data": {
+          "kind": "null"
+        }
+      }
+    },
+    {
       "path": "/api/storage/getCriteria",
       "usedBy": [
-        "src/index.ts:4331",
-        "src/index.ts:4430",
-        "src/index.ts:4431",
-        "src/index.ts:5163"
+        "src/index.ts:4811",
+        "src/index.ts:4910",
+        "src/index.ts:4911",
+        "src/index.ts:5666"
       ],
       "method": "POST",
       "handler": "getCriteria",
@@ -2889,11 +3092,11 @@
     {
       "path": "/api/storage/getRecentDocs",
       "usedBy": [
-        "src/index.ts:4330",
-        "src/index.ts:4427",
-        "src/index.ts:4428",
-        "src/index.ts:4531",
-        "src/index.ts:7031"
+        "src/index.ts:4810",
+        "src/index.ts:4907",
+        "src/index.ts:4908",
+        "src/index.ts:5011",
+        "src/index.ts:7546"
       ],
       "method": "POST",
       "handler": "getRecentDocs",
@@ -2960,10 +3163,10 @@
     {
       "path": "/api/sync/performSync",
       "usedBy": [
-        "src/index.ts:3809",
-        "src/index.ts:4339",
-        "src/index.ts:4439",
-        "src/index.ts:4440"
+        "src/index.ts:4114",
+        "src/index.ts:4819",
+        "src/index.ts:4919",
+        "src/index.ts:4920"
       ],
       "method": "POST",
       "handler": "performSync",
@@ -3003,11 +3206,11 @@
     {
       "path": "/api/tag/getTag",
       "usedBy": [
-        "src/index.ts:4316",
-        "src/index.ts:4382",
-        "src/index.ts:4383",
-        "src/index.ts:4641",
-        "src/index.ts:7644"
+        "src/index.ts:4796",
+        "src/index.ts:4862",
+        "src/index.ts:4863",
+        "src/index.ts:5121",
+        "src/index.ts:8196"
       ],
       "method": "POST",
       "handler": "getTag",
@@ -3083,10 +3286,10 @@
     {
       "path": "/api/template/manage",
       "usedBy": [
-        "src/index.ts:3740",
-        "src/index.ts:4342",
-        "src/index.ts:4442",
-        "src/index.ts:4443"
+        "src/index.ts:4045",
+        "src/index.ts:4822",
+        "src/index.ts:4922",
+        "src/index.ts:4923"
       ],
       "method": "POST",
       "handler": "manageTemplateFiles",
@@ -3154,10 +3357,10 @@
     {
       "path": "/api/template/render",
       "usedBy": [
-        "src/index.ts:3788",
-        "src/index.ts:4343",
-        "src/index.ts:4445",
-        "src/index.ts:4446"
+        "src/index.ts:4093",
+        "src/index.ts:4823",
+        "src/index.ts:4925",
+        "src/index.ts:4926"
       ],
       "method": "POST",
       "handler": "renderTemplate",

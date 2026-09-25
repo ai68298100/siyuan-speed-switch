@@ -32,6 +32,27 @@ function resolveReleaseZipMtime() {
 }
 const RELEASE_ZIP_MTIME = resolveReleaseZipMtime();
 
+// output.path is the repository root because the release archive is assembled
+// from dist/* while keeping package.zip at the root. Webpack's clean:true would
+// therefore be too broad; remove only generated JavaScript chunks before a
+// production build so a renamed/removed lazy chunk cannot leak into package.zip.
+function cleanGeneratedChunks() {
+    const distDir = path.resolve(__dirname, "dist");
+    if (!fs.existsSync(distDir)) return;
+    for (const name of fs.readdirSync(distDir)) {
+        if (name.endsWith(".js") && name !== "index.js") {
+            fs.rmSync(path.join(distDir, name), {force: true});
+        }
+    }
+}
+
+class CleanGeneratedChunksPlugin {
+    apply(compiler) {
+        compiler.hooks.beforeRun.tap("CleanGeneratedChunksPlugin", cleanGeneratedChunks);
+        compiler.hooks.watchRun.tap("CleanGeneratedChunksPlugin", cleanGeneratedChunks);
+    }
+}
+
 const packageImagePatterns = [
     ["icon", "icon.png"],
     ["preview", "preview.png"],
@@ -43,6 +64,7 @@ const packageImagePatterns = [
 module.exports = (env, argv) => {
     const production = argv.mode === "production";
     const plugins = [
+        ...(production ? [new CleanGeneratedChunksPlugin()] : []),
         new webpack.DefinePlugin({
             // 构建时注入日志开关：开发构建开启；生产构建默认关闭（配合 logger 死代码消除实现量产静音），
             // 真机排查时可 SW_LOG=1 显式打开生产日志
@@ -98,6 +120,7 @@ module.exports = (env, argv) => {
                 },
                 include: [/dist/],
                 pathMapper: (assetPath) => {
+                    if (assetPath === "dist/snippet-studio.js") return assetPath;
                     return assetPath.replace("dist/", "");
                 },
             }),
@@ -119,6 +142,11 @@ module.exports = (env, argv) => {
         devtool: production ? false : "eval-source-map",
         output: {
             filename: "[name].js",
+            // T-6861：工作室按需加载，但 chunk 名称必须稳定，才能被
+            // plugin.json 的发布资源契约精确登记并参与包体审计。这个 chunk
+            // 保留在发布包的 dist/ 子路径，运行时基址由 index.ts 从当前脚本 URL
+            // 设置，因此请求路径和 E2E/发布包的真实布局一致。
+            chunkFilename: "dist/snippet-studio.js",
             path: path.resolve(__dirname),
             libraryTarget: "commonjs2",
             library: {

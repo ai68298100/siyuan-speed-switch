@@ -36,7 +36,7 @@ test('package.zip, when present, contains only release files', (t) => {
     assert.ok(bytes <= budget, `package.zip is ${bytes} bytes; budget is ${budget}; headroom is ${remaining} bytes`);
     // D-219: ROADMAP.md left the release archive (repo-only dev doc);
     // re-adding it must go through a new budget decision.
-    const allowed = /^(index\.js|index\.css|icon\.png|preview\.png|README(?:\.en-US)?\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg|docs\/(?:component-store-guide|agent-document-context-m2)\.md)$/;
+    const allowed = /^(index\.js|index\.css|dist\/snippet-studio\.js|icon\.png|preview\.png|README(?:\.en-US)?\.md|plugin\.json|i18n\/(?:en|zh-CN)\.json|docs\/(?:architecture|interface-map)\.svg|docs\/(?:component-store-guide|agent-document-context-m2)\.md)$/;
     const files = filesInZip(zip);
     assert.ok(files.length > 0);
     assert.equal(new Set(files).size, files.length, 'package.zip must not contain duplicate entries');
