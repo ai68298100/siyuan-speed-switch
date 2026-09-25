@@ -1617,25 +1617,37 @@ function planDocViewportRestore(anchor, entries, scrollTop) {
 }
 
 // ==================== T-6839 常驻预览窗格 ====================
-// 纯投影：把大纲端点与首段 SQL 行收敛成有界快照。大纲取 name（type/subType
-// 形如 h1-h6 解析层级，解析不出按 1），段文本空白归一后按序拼接、截到
-// excerptMax；两者皆空返回 empty=true，UI 层显示空态而不是空窗格。
+// 纯投影：把大纲端点与首段 SQL 行收敛成有界快照。端点须 preview:true（false
+// 恒空），返回嵌套树：顶层项文本在 name（含合成的文档名项），blocks/children
+// 内子项文本在 content——两处都取；层级优先 depth+1，回退 type/subType 的
+// h1-h6 解析。段文本空白归一后按序拼接、截到 excerptMax；两者皆空返回
+// empty=true，UI 层显示空态而不是空窗格。
 const DOC_PREVIEW_OUTLINE_MAX = 12;
 const DOC_PREVIEW_EXCERPT_MAX = 600;
+function flattenPreviewOutline(nodes, depth, out, limit) {
+    if (!Array.isArray(nodes) || out.length >= limit) return;
+    for (const node of nodes) {
+        if (out.length >= limit) break;
+        if (!node || typeof node !== "object") continue;
+        const name = String(node.name || node.content || "").replace(/\s+/g, " ").trim();
+        if (name) {
+            let level = Number.isFinite(node.depth) ? Math.trunc(node.depth) + 1 : 0;
+            if (level < 1 || level > 6) {
+                const shape = String(node.nodeType || node.type || node.subType || "").toLowerCase();
+                level = shape === "h1" || shape === "h2" || shape === "h3" || shape === "h4" || shape === "h5" || shape === "h6"
+                    ? Number(shape[1])
+                    : Math.min(6, Math.max(1, depth + 1));
+            }
+            out.push({name, level});
+        }
+        flattenPreviewOutline(node.blocks || node.children, depth + 1, out, limit);
+    }
+}
 function buildDocPreviewSnapshot(outline, blocks, options = {}) {
     const outlineMax = Number.isFinite(options.outlineMax) ? options.outlineMax : DOC_PREVIEW_OUTLINE_MAX;
     const excerptMax = Number.isFinite(options.excerptMax) ? options.excerptMax : DOC_PREVIEW_EXCERPT_MAX;
     const outlineOut = [];
-    if (Array.isArray(outline)) {
-        for (const entry of outline) {
-            if (outlineOut.length >= outlineMax) break;
-            const name = String(entry?.name || "").replace(/\s+/g, " ").trim();
-            if (!name) continue;
-            const levelRaw = String(entry?.type || entry?.subType || "").toLowerCase();
-            const levelOk = levelRaw.length === 2 && levelRaw[0] === "h" && levelRaw[1] >= "1" && levelRaw[1] <= "6";
-            outlineOut.push({name, level: levelOk ? Number(levelRaw[1]) : 1});
-        }
-    }
+    flattenPreviewOutline(outline, 0, outlineOut, outlineMax);
     let excerpt = "";
     if (Array.isArray(blocks)) {
         for (const block of blocks) {

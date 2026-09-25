@@ -932,6 +932,7 @@
   "searchSavedDone": "搜索已保存",
   "workbenchSmart": "智能分组",
   "docSearchPreviewHint": "Alt+点击：预览打开",
+  "workbenchRelatedEmpty": "暂无关联内容",
   "docSearchPreview": "大纲预览",
   "docSearchPreviewLoading": "预览加载中…",
   "docSearchPreviewEmpty": "用 ↑/↓ 聚焦结果行，此处预览大纲与摘要",

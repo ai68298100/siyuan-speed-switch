@@ -1152,3 +1152,34 @@ test("doc preview snapshot: empty outline and blocks yields empty flag (T-6839)"
     const blank = buildDocPreviewSnapshot([], [{content: "   "}]);
     assert.equal(blank.empty, true);
 });
+
+test("doc preview snapshot: nested outline trees flatten with depth levels (T-6839)", () => {
+    // getDocOutline 实际返回嵌套树（子标题在 blocks/children）
+    const tree = [
+        {name: "根标题", blocks: [{name: "子节", blocks: [{name: "孙节"}]}]},
+        {name: "兄弟"},
+    ];
+    assert.deepEqual(buildDocPreviewSnapshot(tree, []).outline, [
+        {name: "根标题", level: 1},
+        {name: "子节", level: 2},
+        {name: "孙节", level: 3},
+        {name: "兄弟", level: 1},
+    ]);
+});
+
+test("doc preview snapshot: kernel shape — child text lives in content, synthetic title first (T-6839)", () => {
+    // 真机实证（审查轮探针）：preview:true 顶层首项=合成文档名项（name，type:"outline"），
+    // blocks 内子项标题文本在 content 字段、层级 depth；nodeType 形如 NodeHeading
+    const kernel = [
+        {id: "doc1", name: "大纲探针文档", type: "outline", depth: 0, blocks: [
+            {id: "h1", content: "根标题", type: "NodeHeading", subType: "h1", depth: 0, blocks: [
+                {id: "h2", content: "背景与目标", type: "NodeHeading", subType: "h2", depth: 1},
+            ]},
+        ]},
+    ];
+    assert.deepEqual(buildDocPreviewSnapshot(kernel, []).outline, [
+        {name: "大纲探针文档", level: 1},
+        {name: "根标题", level: 1},
+        {name: "背景与目标", level: 2},
+    ]);
+});

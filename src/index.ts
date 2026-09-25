@@ -3508,10 +3508,22 @@ const updatedMap: {[rootId: string]: string} = {};
             return;
         }
         matched.slice(0, 12).forEach((action) => {
+            // 审查轮 P-A：命令项重做为 quick pick 式行（左图标 + 左对齐标签 + 右激活提示），
+            // 之前复用 .sw__doc-item 类但处在 .sw__command-list 作用域外，退化为裸按钮
             const item = document.createElement("button");
             item.type = "button";
-            item.className = "sw__doc-item";
-            item.textContent = action.label || action.value || "";
+            item.className = "sw__command-item";
+            const icon = document.createElement("span");
+            icon.className = "sw__command-icon";
+            icon.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${this.escapeAttr(action.icon || "iconTerminal")}"></use></svg>`;
+            const label = document.createElement("span");
+            label.className = "sw__command-label";
+            label.textContent = action.label || action.value || "";
+            const hint = document.createElement("span");
+            hint.className = "sw__command-kind";
+            hint.textContent = "↵";
+            hint.title = this.i18n.commandModeLabel;
+            item.append(icon, label, hint);
             item.addEventListener("click", () => {
                 onClose();
                 this.executeQuickAction(action as IQuickAction, null, onClose);
@@ -4518,7 +4530,18 @@ const updatedMap: {[rootId: string]: string} = {};
                 if (!box.isConnected) return;
                 projection = payload ? projectRelatedContent(payload.data) : null;
                 if (!projection || projection.items.length === 0) {
-                    if (retried < 5) return void attempt(2500, retried + 1) as Promise<void>;
+                    if (retried < 5) {
+                        // 审查轮 P-E：首轮为空即把骨架换成"暂无关联"弱提示（继续轮询），
+                        // 避免块引索引延迟期间 ~12s 的纯 spinner 观感
+                        if (retried === 0) {
+                            const skeleton = box.firstElementChild;
+                            if (skeleton?.classList.contains("sw__workbench-related--loading")) {
+                                skeleton.classList.remove("sw__workbench-related--loading");
+                                skeleton.textContent = this.i18n.workbenchRelatedEmpty;
+                            }
+                        }
+                        return void attempt(2500, retried + 1) as Promise<void>;
+                    }
                     // 终态：全部重试耗尽仍无数据 → 移除空占位框，不留空白
                     box.remove();
                     return;

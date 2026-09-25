@@ -882,6 +882,59 @@
         .sw__unified-section { margin-top: 0; }
     }
 
+    // ==================== 审查轮 P-A：命令模式列表（quick pick 式） ====================
+    .sw__command-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 16px;
+        min-width: 0;
+
+        .sw__command-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            min-height: 40px;
+            padding: 8px 12px;
+            border: 1px solid var(--b3-border-color);
+            border-radius: 8px;
+            background: var(--b3-theme-surface);
+            color: var(--b3-theme-on-background);
+            font-size: 13px;
+            text-align: left;
+            cursor: pointer;
+
+            &:hover {
+                border-color: color-mix(in srgb, var(--b3-theme-primary) 36%, var(--b3-border-color));
+                color: var(--b3-theme-primary);
+            }
+
+            .sw__command-icon {
+                display: inline-flex;
+                flex-shrink: 0;
+                color: var(--b3-theme-on-surface-light);
+
+                svg { width: 16px; height: 16px; fill: currentColor; }
+            }
+
+            .sw__command-label {
+                flex: 1;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .sw__command-kind {
+                flex-shrink: 0;
+                color: var(--b3-theme-on-surface-light);
+                font-size: 11px;
+                opacity: .8;
+            }
+        }
+    }
+
     .sw__doc-results,
     .sw__unified-section {
         margin-top: 16px;
@@ -970,12 +1023,13 @@
                 font-weight: 600;
                 overflow-wrap: anywhere;
 
-                // T-6834 关键词高亮：紧凑标记，不撑行高、不抢色
+                // T-6834 关键词高亮：审查轮 P-B 加强对比——主色底 30% + 命中字着主色，
+                // 小字号下也一眼可辨（对齐搜索引擎/VS Code 命中强度）
                 mark {
                     padding: 0 1px;
                     border-radius: 3px;
-                    background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent);
-                    color: inherit;
+                    background: color-mix(in srgb, var(--b3-theme-primary) 30%, transparent);
+                    color: var(--b3-theme-primary);
                 }
             }
 
@@ -1042,11 +1096,22 @@
                 right: 0;
                 bottom: 0;
                 width: 260px;
+                min-height: 200px;
                 overflow-y: auto;
                 padding: 8px 10px;
                 border-left: 1px solid var(--b3-border-color);
                 background: var(--b3-theme-surface);
                 border-radius: 0 8px 8px 0;
+
+                // 审查轮 P-C：常驻头部与内容区分离，轮换不清掉标题
+                .sw__doc-preview-header {
+                    margin-bottom: 6px;
+                    padding-bottom: 6px;
+                    border-bottom: 1px solid var(--b3-border-color);
+                    color: var(--b3-theme-on-surface-light);
+                    font-size: 11px;
+                    letter-spacing: 0.05em;
+                }
 
                 .sw__doc-preview-hint {
                     color: var(--b3-theme-on-surface-light);

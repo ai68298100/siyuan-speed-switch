@@ -976,9 +976,16 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
         box.classList.add("sw--with-preview");
         let pane = docPreviewPanes.get(scrollElement);
         if (!pane) {
+            // 审查轮 P-C：常驻标题头 + 独立 body（内容轮换不清掉头部），min-height 防碎片感
             pane = document.createElement("aside");
             pane.className = "sw__doc-preview";
             pane.setAttribute("aria-label", this.i18n.docSearchPreview);
+            const header = document.createElement("div");
+            header.className = "sw__doc-preview-header";
+            header.textContent = this.i18n.docSearchPreview;
+            const body = document.createElement("div");
+            body.className = "sw__doc-preview-body";
+            pane.append(header, body);
             setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
             docPreviewPanes.set(scrollElement, pane);
         }
@@ -995,14 +1002,19 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
         }
     }
 
+function previewBodyOf(pane: HTMLElement): HTMLElement {
+        return pane.querySelector<HTMLElement>(".sw__doc-preview-body") || pane;
+    }
+
 function setDocPreviewHint(this: DocSearchUiHost, pane: HTMLElement, text: string): void {
-        pane.textContent = "";
+        const body = previewBodyOf(pane);
+        body.textContent = "";
         const hint = document.createElement("div");
         hint.className = "sw__doc-preview-hint";
         hint.setAttribute("role", "status");
         hint.setAttribute("aria-live", "polite");
         hint.textContent = text;
-        pane.appendChild(hint);
+        body.appendChild(hint);
     }
 
 function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
@@ -1023,7 +1035,8 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
         setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewLoading);
         // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null
         const [outlinePayload, rowsPayload] = await Promise.all([
-            this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId}),
+            // 审查轮 P-D 实证：preview:false 恒返回空，true 才携带嵌套大纲树
+            this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: true}),
             this.fetchKernelJson("/api/query/sql", {stmt:
                 "SELECT content FROM blocks WHERE root_id = '" + rootId + "' AND type = 'p' AND content <> '' ORDER BY id LIMIT 3"}),
         ]);
@@ -1032,7 +1045,8 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
         const outline = Array.isArray(outlinePayload?.data) ? outlinePayload.data : [];
         const rows = Array.isArray(rowsPayload?.data) ? rowsPayload.data : [];
         const snapshot = buildDocPreviewSnapshot(outline, rows);
-        pane.textContent = "";
+        const body = previewBodyOf(pane);
+        body.textContent = "";
         if (snapshot.empty) {
             setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
             return;
@@ -1047,13 +1061,13 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
                 line.textContent = entry.name;
                 list.appendChild(line);
             });
-            pane.appendChild(list);
+            body.appendChild(list);
         }
         if (snapshot.excerpt) {
             const excerpt = document.createElement("p");
             excerpt.className = "sw__doc-preview-excerpt";
             excerpt.textContent = snapshot.excerpt;
-            pane.appendChild(excerpt);
+            body.appendChild(excerpt);
         }
     }
 

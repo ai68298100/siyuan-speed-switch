@@ -860,6 +860,7 @@
   ,"searchSavedDone": "Search saved"
   ,"workbenchSmart": "Smart groups"
   ,"docSearchPreviewHint": "Alt+click: open in preview"
+  ,"workbenchRelatedEmpty": "No related content yet"
   ,"docSearchPreview": "Outline preview"
   ,"docSearchPreviewLoading": "Loading preview…"
   ,"docSearchPreviewEmpty": "Focus a row with ↑/↓ to preview its outline and excerpt"

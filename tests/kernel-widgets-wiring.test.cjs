@@ -573,8 +573,8 @@ test('resident preview pane: focus-synced outline preview with bounded fetch (T-
         '窗格同步钩子必须是结果区 focusin 委托（行重建不丢钩子）');
     assert.match(docSearchUi, /if \(!BLOCK_ID_RE\.test\(rootId\)\) return;/,
         'rootId 必须经锚定正则校验后才可入 SQL 字面量');
-    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/outline\/getDocOutline"/,
-        '大纲必须走白名单端点');
+    assert.match(docSearchUi, /this\.fetchKernelJson\("\/api\/outline\/getDocOutline", \{id: rootId, preview: true\}\)/,
+        '大纲必须走白名单端点且 preview:true（审查轮实证：false 恒返回空）');
     assert.match(docSearchUi, /\(docPreviewGenerations\.get\(scrollElement\) \|\| 0\) !== generation\) return;/,
         '过期预览回包必须丢弃（代际计数竞态防线）');
     assert.match(searchModel, /function buildDocPreviewSnapshot\(outline, blocks, options = \{\}\)/,
