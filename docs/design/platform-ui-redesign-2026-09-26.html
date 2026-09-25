@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="zh-CN" data-theme-mode="light">
+<head>
+<meta charset="utf-8">
+<title>小驴雷切 · 全插件统一 UI 原型（T-6870，2026-09-26）</title>
+<link rel="stylesheet" href="../../tests/fixtures/siyuan-mobile-base.css">
+<link rel="stylesheet" href="../../dist/index.css">
+<style>
+/* ==================== 原型页布局（非生产样式） ==================== */
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 32px 56px; background: #e7e9f0; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+.proto-header { max-width: 1720px; margin: 0 auto 10px; }
+.proto-header h1 { font-size: 21px; margin: 0 0 8px; color: #23252c; }
+.proto-header p { margin: 0 0 4px; font-size: 13px; color: #565a68; line-height: 1.75; }
+.proto-header code { background: rgba(0,0,0,.06); padding: 1px 6px; border-radius: 5px; }
+.proto-toc { max-width: 1720px; margin: 0 auto 22px; font-size: 12px; color: #565a68; line-height: 1.9; }
+.proto-toc a { color: #5b48d6; text-decoration: none; margin-right: 14px; }
+.gallery { display: flex; flex-wrap: wrap; gap: 30px; max-width: 1720px; margin: 0 auto; align-items: flex-start; }
+.shot { display: flex; flex-direction: column; }
+.shot-caption { display: flex; align-items: baseline; gap: 10px; padding: 0 2px 8px; }
+.shot-caption .no { font-size: 11px; font-weight: 800; color: #7a7f92; letter-spacing: .06em; }
+.shot-caption .name { font-size: 14px; font-weight: 700; color: #23252c; }
+.shot-caption .note { font-size: 11.5px; color: #6d7180; }
+.stage { padding: 18px; border-radius: 18px; background:
+  repeating-conic-gradient(#dde0ea 0% 25%, #e7e9f0 0% 50%) 0 0 / 22px 22px;
+  display: flex; justify-content: center; }
+.screen { background: var(--b3-theme-background, #fff); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 2px 6px rgba(20,24,40,.10), 0 18px 44px rgba(20,24,40,.12); position: relative; }
+.screen.frameless { border-radius: 14px; }
+
+/* 暗色演示环境（仅原型）：作用域内重定义 --b3-*（与皮肤机制同款） */
+.rz-dark {
+  --b3-theme-background: #12141c; --b3-theme-surface: #191c26; --b3-theme-surface-lighter: #232735;
+  --b3-theme-primary: #8b7ff5; --b3-theme-on-primary: #ffffff; --b3-theme-on-background: #e8eaf4;
+  --b3-theme-on-surface: #c3c6d6; --b3-theme-on-surface-light: #8b8fa5;
+  --b3-border-color: rgba(255,255,255,.09); --b3-theme-error: #ff7a76; color-scheme: dark;
+}
+
+/* ==================== 提案层（RZ = redesign 2026-09-26） ====================
+   仅存在于原型：演示"整体细节优化"落地后的目标形态。
+   全部基于 --b3-* 宿主变量，实现时映射进 _platform-shell.scss / 各切片。 */
+.shot--proposal .screen { font-size: 13px; }
+
+/* --- 1. 统一状态徽标（ready/loading/stale/dirty/blocked/error） --- */
+.rz-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  line-height: 1; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--b3-border-color);
+  color: var(--b3-theme-on-surface); background: var(--b3-theme-surface); white-space: nowrap; }
+.rz-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
+.rz-badge--ready   { color: #1f7a4d; border-color: color-mix(in srgb, #1f7a4d 26%, transparent); background: color-mix(in srgb, #1f7a4d 9%, transparent); }
+.rz-badge--loading { color: var(--b3-theme-primary); border-color: color-mix(in srgb, var(--b3-theme-primary) 30%, transparent); background: color-mix(in srgb, var(--b3-theme-primary) 9%, transparent); }
+.rz-badge--stale   { color: #8a6116; border-color: color-mix(in srgb, #d1901f 30%, transparent); background: color-mix(in srgb, #d1901f 10%, transparent); }
+.rz-badge--dirty   { color: #a04e12; border-color: color-mix(in srgb, #c9651d 30%, transparent); background: color-mix(in srgb, #c9651d 10%, transparent); }
+.rz-badge--blocked { color: var(--b3-theme-on-surface); background: var(--b3-theme-surface-lighter); }
+.rz-badge--error   { color: #b3261e; border-color: color-mix(in srgb, #b3261e 30%, transparent); background: color-mix(in srgb, #b3261e 9%, transparent); }
+.rz-dark .rz-badge--ready { color: #57c99a; } .rz-dark .rz-badge--stale { color: #e8b45a; }
+.rz-dark .rz-badge--dirty { color: #eda06a; } .rz-dark .rz-badge--error { color: #ff8f8a; }
+
+/* --- 2. 键位提示 chip --- */
+.rz-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 5px; border: 1px solid var(--b3-border-color);
+  background: var(--b3-theme-surface); color: var(--b3-theme-on-surface-light);
+  font: 600 10.5px/1 ui-monospace, Consolas, monospace; }
+
+/* --- 3. 分段控件（枚举型设置的目标形态） --- */
+.rz-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px;
+  background: var(--b3-theme-surface-lighter); border: 1px solid var(--b3-border-color); }
+.rz-seg button { border: 0; background: transparent; color: var(--b3-theme-on-surface);
+  font: 500 12px/1 inherit; font-family: inherit; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.rz-seg button.is-active { background: var(--b3-theme-background); color: var(--b3-theme-on-background);
+  font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* --- 4. 设置页：分组卡片 + 行（标题+描述+右控件） --- */
+.rz-settings-body { display: flex; flex-direction: column; gap: 16px; padding: 16px 18px 20px; }
+.rz-group-title { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--b3-theme-on-surface-light); margin: 2px 2px -6px; }
+.rz-group-card { background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  border-radius: 12px; box-shadow: 0 1px 2px rgba(15,20,40,.04); overflow: hidden; }
+.rz-group-card .sw-settings__item { border-radius: 0; border-bottom: 1px solid var(--b3-border-color); }
+.rz-group-card .sw-settings__item:last-child { border-bottom: 0; }
+.rz-group-card .sw-settings__item:hover { background: color-mix(in srgb, var(--b3-theme-primary) 4%, transparent); }
+
+/* --- 5. 切换器：结果行图标容器 / 数字 kbd 化 / 路径单行 --- */
+.shot--proposal .sw__doc-item { border-radius: 10px; }
+.shot--proposal .sw__doc-item .rz-row-icon { width: 28px; height: 28px; border-radius: 8px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--b3-theme-surface-lighter); color: var(--b3-theme-on-surface); }
+.shot--proposal .rz-digit { position: static; transform: none; }
+
+/* --- 6. 工作台/商店：卡片统一 12px + hover 浮起；安装主按钮胶囊 --- */
+.shot--proposal .sw-home__cell, .shot--proposal .sw-home-store__card { border-radius: 12px;
+  transition: box-shadow 160ms cubic-bezier(.32,.72,0,1), transform 160ms cubic-bezier(.32,.72,0,1); }
+.shot--proposal .sw-home__cell:hover, .shot--proposal .sw-home-store__card:hover {
+  box-shadow: 0 2px 4px rgba(15,20,40,.06), 0 14px 30px rgba(15,20,40,.12); transform: translateY(-1px); }
+.rz-pill-btn { display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer;
+  border-radius: 999px; padding: 6px 14px; font: 600 12px/1 inherit; font-family: inherit;
+  background: var(--b3-theme-primary); color: var(--b3-theme-on-primary); }
+.rz-pill-btn--soft { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+
+/* --- 7. 编辑横幅 / 空态 / 页脚回执 --- */
+.rz-edit-banner { display: flex; align-items: center; gap: 10px; margin: 0 14px 10px; padding: 8px 12px;
+  border-radius: 10px; font-size: 12.5px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 26%, transparent); color: var(--b3-theme-on-background); }
+.rz-edit-banner .spacer { flex: 1; }
+.rz-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 16px; text-align: center; }
+.rz-empty strong { font-size: 13.5px; } .rz-empty span { font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.rz-receipt { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 12px;
+  color: var(--b3-theme-on-surface-light); border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-surface); }
+
+/* --- 8. 移动端 sheet 抓手与底部安全区 --- */
+.rz-grabber { width: 36px; height: 4px; border-radius: 999px; background: var(--b3-border-color); margin: 8px auto 2px; }
+
+/* --- 9. 对话框体（原型中模拟思源 Dialog 容器） --- */
+.rz-dialog { width: 100%; height: 100%; display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="iconSearch" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconClose" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconFilter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconSettings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconClock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="iconStar" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="iconRefresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconLayout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M9.5 9.5V19.5" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="iconLayoutHome" viewBox="0 0 24 24"><path d="M4 11.5L12 4l8 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5V20h11v-9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="iconCheck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconDown" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconCalendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M8 2.8V6M16 2.8V6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconCode" viewBox="0 0 24 24"><path d="M8.5 7L4 12l4.5 5M15.5 7L20 12l-4.5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconSparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="iconDrag" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
+</svg>
+
+<div class="proto-header">
+  <h1>小驴雷切 · 全插件统一 UI 原型（T-6870 · 2026-09-26）</h1>
+  <p>范围：<b>全部页面</b> —— 平台三表面（切换器/工作台/片段实验室）、悬浮球、设置页 11 个标签、6 组对话框/浮层、移动端 3 屏。每屏使用<b>真实生产 DOM 类名 + dist/index.css</b> 渲染，叠加一层"提案层"（RZ）演示整体细节优化的目标形态；提案层全部基于 <code>--b3-*</code> 宿主变量，实现时映射进生产 SCSS，不建立第二套视觉系统。</p>
+  <p>参考系：Raycast / Linear（键盘优先与命令面板、设置分组搜索）、Things 3 / Craft（卡片层级与留白）、macOS System Settings（分段控件与行分组）、Vercel Geist / shadcn（状态徽标与中性色阶）。原则不变：思源主题变量是唯一颜色来源；44px 触控、焦点环、reduced-motion 不降级。</p>
+</div>
+<div class="proto-toc">
+  <a href="#g-a">A 平台表面（1-4）</a><a href="#g-b">B 设置页逐标签（5-15）</a><a href="#g-c">C 对话框与浮层（16-21）</a><a href="#g-d">D 移动端（22-24）</a><a href="#g-e">E 明暗对照（25-26）</a>
+</div>
+
+<div class="gallery" id="g-a">
+  <!-- ============ 1. 切换器（桌面） ============ -->
+  <section class="shot shot--proposal" data-shot="01-switcher" style="width: 960px;">
+    <div class="shot-caption"><span class="no">01</span><span class="name">切换器 · 桌面弹窗</span><span class="note">平台头部 + 搜索首焦点 + 分区结果 + 常驻预览窗格</span></div>
+    <div class="stage"><div class="screen" style="width: 920px; height: 620px; display: flex; flex-direction: column;">
+      <div class="speed-switch sw__body sw-platform-surface sw-platform-surface--switcher" data-sw-surface="switcher" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="switcher" style="padding: 12px 16px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:14px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <nav class="sw-platform-surface-nav" style="display:flex; gap:4px;">
+              <span class="sw-platform-surface-nav__item is-active" aria-current="page" data-surface="switcher">切换器</span>
+              <button class="sw-platform-surface-nav__item" data-surface="workbench" type="button">工作台</button>
+              <button class="sw-platform-surface-nav__item" data-surface="studio" type="button">片段实验室</button>
+            </nav>
+            <div class="sw-platform-header__actions" style="margin-left:auto; display:flex; gap:6px;">
+              <span class="rz-badge rz-badge--ready">内核 已连接</span>
+            </div>
+          </header>
+          <div class="sw-platform-context" role="group" style="display:flex; align-items:center; gap:8px; padding:6px 1px 2px;">
+            <span class="sw-platform-context__trail">工作上下文</span>
+            <span class="sw-platform-context__separator">›</span>
+            <strong class="sw-platform-context__object">切换器</strong>
+            <span class="sw-platform-context__hint">查找、预览和打开内容</span>
+            <span style="flex:1"></span>
+            <span class="rz-kbd">Tab</span><span class="rz-kbd">1-9</span><span class="rz-kbd">Enter</span><span class="rz-kbd">Alt 预览</span>
+          </div>
+        </div>
+        <div class="sw__main" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+          <div class="sw__content" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+            <div class="sw__toolbar" style="display:flex; gap:8px; align-items:center; padding: 10px 16px;">
+              <div class="sw__search-wrap" style="flex:1; display:flex; align-items:center; gap:8px; border:1px solid var(--b3-border-color); border-radius:10px; padding:0 10px; height:38px; background:var(--b3-theme-surface);">
+                <svg class="sw__search-icon" width="14" height="14"><use href="#iconSearch"/></svg>
+                <input class="b3-text-field sw__search" value="路线" placeholder="搜索页签、收藏、最近与全库文档" aria-label="搜索" style="border:0; background:transparent; box-shadow:none; flex:1; height:100%;">
+                <button type="button" class="sw__search-filter-btn" aria-label="筛选" title="筛选" style="border:0; background:transparent; cursor:pointer; color:var(--b3-theme-on-surface); display:flex;"><svg width="14" height="14"><use href="#iconFilter"/></svg></button>
+              </div>
+              <div class="sw__history-dd"></div>
+              <button type="button" class="sw__sort-trigger b3-button b3-button--text" style="font-size:12px;">笔记本 · 最近使用 <svg width="10" height="10"><use href="#iconDown"/></svg></button>
+              <button type="button" class="sw__journal-btn b3-button b3-button--text" aria-label="今日日记" title="今日日记" style="display:flex;"><svg width="14" height="14"><use href="#iconCalendar"/></svg></button>
+              <button type="button" class="sw__snippet-studio-btn b3-button b3-button--text" aria-label="片段实验室" title="片段实验室" style="display:flex;"><svg width="14" height="14"><use href="#iconCode"/></svg></button>
+              <button type="button" class="sw__settings-btn b3-button b3-button--text" aria-label="设置" title="设置" style="display:flex;"><svg width="14" height="14"><use href="#iconSettings"/></svg></button>
+            </div>
+            <div class="sw__scroll" style="flex:1; min-height:0; overflow:auto; padding: 0 16px 14px; display:grid; grid-template-columns: 1fr 258px; gap: 12px; align-items:start;">
+              <div style="display:flex; flex-direction:column; gap:12px; min-width:0;">
+                <div class="sw__group">
+                  <div class="sw__window-label" style="display:flex; align-items:center; gap:8px;">已打开 · 测试工作区 <span style="flex:1"></span><span style="opacity:.6">3</span></div>
+                  <div class="sw__grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+                    <div class="sw__card" style="position:relative;">
+                      <span data-sw-digit="1" class="rz-digit" style="position:absolute; top:6px; right:6px; z-index:2;"><span class="rz-kbd">1</span></span>
+                      <div class="sw__thumb" style="height:76px; border-radius:10px 10px 0 0; background:linear-gradient(140deg, color-mix(in srgb,var(--b3-theme-primary) 22%, transparent), color-mix(in srgb,#5ab0a8 18%, transparent));"></div>
+                      <div class="sw__meta" style="display:flex; gap:8px; padding:8px 10px; align-items:center;"><span class="sw__icon">产</span><span class="sw__title">产品路线图（2026 H2）</span></div>
+                    </div>
+                    <div class="sw__card" style="position:relative;">
+                      <span data-sw-digit="2" style="position:absolute; top:6px; right:6px; z-index:2;"><span class="rz-kbd">2</span></span>
+                      <div class="sw__thumb" style="height:76px; border-radius:10px 10px 0 0; background:linear-gradient(140deg, color-mix(in srgb,#5ab0a8 20%, transparent), color-mix(in srgb,#d1901f 14%, transparent));"></div>
+                      <div class="sw__meta" style="display:flex; gap:8px; padding:8px 10px; align-items:center;"><span class="sw__icon">评</span><span class="sw__title">Q3 路线评审纪要</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="sw__unified">
+                  <div class="sw__window-label">收藏 · 最近</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                    <button type="button" class="sw__doc-item" style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; background:transparent; border:0; cursor:pointer; border-radius:10px;">
+                      <span class="rz-row-icon"><svg width="13" height="13"><use href="#iconStar"/></svg></span>
+                      <span class="sw__doc-copy" style="flex:1; min-width:0; display:flex; flex-direction:column;"><span class="sw__doc-title" style="font-size:13px;">每日工作台</span><span class="sw__doc-path" style="font-size:11px; color:var(--b3-theme-on-surface-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">/日记/每日工作台 · 收藏</span></span>
+                      <span class="rz-kbd">3</span>
+                    </button>
+                    <button type="button" class="sw__doc-item" style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; background:transparent; border:0; cursor:pointer; border-radius:10px;">
+                      <span class="rz-row-icon"><svg width="13" height="13"><use href="#iconClock"/></svg></span>
+                      <span class="sw__doc-copy" style="flex:1; min-width:0; display:flex; flex-direction:column;"><span class="sw__doc-title" style="font-size:13px;">面试题库整理</span><span class="sw__doc-path" style="font-size:11px; color:var(--b3-theme-on-surface-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">/收集/面试题库整理 · 昨日关闭</span></span>
+                      <span class="rz-kbd">4</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="sw__doc-results sw--with-preview">
+                  <div class="sw__group">
+                    <div class="sw__window-label">全库文档 · 2 条命中「路线」</div>
+                    <div class="sw__doc-grid" style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+                      <button type="button" class="sw__doc-item" style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); cursor:pointer;">
+                        <span class="rz-row-icon"><svg width="13" height="13"><use href="#i-doc"/></svg></span>
+                        <span class="sw__doc-copy" style="flex:1; min-width:0; display:flex; flex-direction:column;"><span class="sw__doc-title" style="font-size:13px;">产品<mark style="background:color-mix(in srgb,var(--b3-theme-primary) 26%, transparent); color:inherit; border-radius:3px; padding:0 1px;">路线</mark>图（2026 H2）</span><span class="sw__doc-snippet" style="font-size:11px; color:var(--b3-theme-on-surface-light);">…下半年 <mark style="color:var(--b3-theme-primary); font-weight:600;">路线</mark>围绕统一切换平台推进…</span></span>
+                        <span class="rz-kbd">5</span>
+                      </button>
+                      <button type="button" class="sw__doc-item" style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); cursor:pointer;">
+                        <span class="rz-row-icon"><svg width="13" height="13"><use href="#i-doc"/></svg></span>
+                        <span class="sw__doc-copy" style="flex:1; min-width:0; display:flex; flex-direction:column;"><span class="sw__doc-title" style="font-size:13px;">学习<mark style="background:color-mix(in srgb,var(--b3-theme-primary) 26%, transparent); color:inherit; border-radius:3px; padding:0 1px;">路线</mark></span><span class="sw__doc-path" style="font-size:11px; color:var(--b3-theme-on-surface-light);">/规划/学习路线</span></span>
+                        <span class="rz-kbd">6</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <aside class="sw__doc-preview" style="position:sticky; top:0; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px;"><strong style="font-size:12.5px;">预览</strong><span class="rz-badge rz-badge--ready">已就绪</span><span style="flex:1"></span><span class="rz-kbd">Alt</span></div>
+                <strong class="sw__doc-preview-heading" style="font-size:13.5px;">产品路线图（2026 H2）</strong>
+                <div class="sw__doc-preview-body" style="font-size:12px; color:var(--b3-theme-on-surface); line-height:1.7;">下半年围绕统一切换平台推进：第一面板键盘优先收口，第二面板组件健康回执，片段实验室安全边界…</div>
+                <div style="border-top:1px solid var(--b3-border-color); padding-top:8px; display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--b3-theme-on-surface);">
+                  <span style="opacity:.6; font-size:10.5px; font-weight:700; letter-spacing:.07em;">大纲</span>
+                  <span>▪ 背景与定位</span><span>▪ 统一平台路线</span><span style="color:var(--b3-theme-primary); font-weight:600;">▪ 下半年关键结果</span><span>▪ 风险与依赖</span>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============ 2. 工作台 ============ -->
+  <section class="shot shot--proposal" data-shot="02-workbench" style="width: 960px;">
+    <div class="shot-caption"><span class="no">02</span><span class="name">工作台 · 桌面弹窗（编辑态）</span><span class="note">查看/编辑分段切换 + 编辑横幅 + 组件健康徽标</span></div>
+    <div class="stage"><div class="screen" style="width: 920px; height: 560px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="workbench" style="padding: 12px 16px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:14px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <nav class="sw-platform-surface-nav" style="display:flex; gap:4px;">
+              <button class="sw-platform-surface-nav__item" data-surface="switcher" type="button">切换器</button>
+              <span class="sw-platform-surface-nav__item is-active" aria-current="page" data-surface="workbench">工作台</span>
+              <button class="sw-platform-surface-nav__item" data-surface="studio" type="button">片段实验室</button>
+            </nav>
+            <div class="sw-platform-header__actions" style="margin-left:auto;"></div>
+          </header>
+          <div class="sw-platform-context" role="group" style="display:flex; align-items:center; gap:8px; padding:6px 1px 2px;">
+            <span class="sw-platform-context__trail">工作上下文</span><span class="sw-platform-context__separator">›</span>
+            <strong class="sw-platform-context__object">工作台</strong>
+            <span class="sw-platform-context__hint">编排信息组件和工作现场</span>
+          </div>
+        </div>
+        <div class="sw-home__bar" style="display:flex; align-items:center; gap:10px; padding:10px 16px 6px;">
+          <div class="rz-seg"><button class="is-active" type="button">查看</button><button type="button">编辑布局</button></div>
+          <span class="rz-badge rz-badge--stale">缓存 · 3 分钟前</span>
+          <span style="flex:1"></span>
+          <button type="button" class="b3-button b3-button--text sw-home__refresh" style="display:flex; align-items:center; gap:6px;"><svg width="13" height="13"><use href="#iconRefresh"/></svg><span>刷新全部</span></button>
+          <div class="rz-seg"><button class="is-active" type="button">跟随</button><button type="button">自适应</button><button type="button">全屏</button></div>
+        </div>
+        <div class="rz-edit-banner">
+          <svg width="14" height="14"><use href="#iconDrag"/></svg>
+          正在编辑布局 —— 拖动卡片调整位置，改动实时保存
+          <span class="spacer"></span>
+          <button type="button" class="b3-button b3-button--text" style="font-size:12px;">恢复默认</button>
+          <button type="button" class="rz-pill-btn rz-pill-btn--soft" style="padding:5px 12px;">完成</button>
+        </div>
+        <div class="sw-home__grid" style="flex:1; min-height:0; overflow:auto; padding: 4px 16px 14px; display:grid; grid-template-columns:repeat(12, 1fr); gap:12px; align-content:start;">
+          <section class="sw-home__cell" data-size="medium" style="grid-column: span 4; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:9px 11px 0;"><span class="rz-row-icon" style="width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="11" height="11"><use href="#iconClock"/></svg></span><strong style="font-size:12.5px;">最近文档</strong><span class="rz-badge rz-badge--ready">已更新</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 11px 11px; font-size:12px; display:flex; flex-direction:column; gap:6px;">
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span>产品路线图（2026 H2）</span><span style="color:var(--b3-theme-on-surface-light);">12:20</span></span>
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span>Q3 路线评审纪要</span><span style="color:var(--b3-theme-on-surface-light);">11:05</span></span>
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span>面试题库整理</span><span style="color:var(--b3-theme-on-surface-light);">昨天</span></span>
+            </div>
+          </section>
+          <section class="sw-home__cell" data-size="medium" style="grid-column: span 4; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:9px 11px 0;"><span class="rz-row-icon" style="width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="11" height="11"><use href="#iconStar"/></svg></span><strong style="font-size:12.5px;">收藏</strong><span class="rz-badge rz-badge--ready">4 项</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 11px 11px; font-size:12px; display:flex; flex-direction:column; gap:6px;">
+              <span>每日工作台</span><span>团队周会模板</span><span>读书笔记索引</span><span>产品路线图（2026 H2）</span>
+            </div>
+          </section>
+          <section class="sw-home__cell" data-size="medium" style="grid-column: span 4; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); position:relative; outline:2px dashed color-mix(in srgb, var(--b3-theme-primary) 45%, transparent); outline-offset:-2px;">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:9px 11px 0;"><span class="rz-row-icon" style="width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="11" height="11"><use href="#iconCalendar"/></svg></span><strong style="font-size:12.5px;">日历</strong><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-primary);"><use href="#iconDrag"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 11px 11px; font-size:12px; color:var(--b3-theme-on-surface-light);">拖动调整位置 · 右键更多操作</div>
+          </section>
+          <section class="sw-home__cell" data-size="medium" style="grid-column: span 6; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:9px 11px 0;"><span class="rz-row-icon" style="width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="11" height="11"><use href="#i-doc"/></svg></span><strong style="font-size:12.5px;">当前文档相关</strong><span class="rz-badge rz-badge--loading">刷新中</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 11px 11px; display:flex; flex-wrap:wrap; gap:6px; font-size:12px;">
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 10px;">↩ Q3 评审纪要</span>
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 10px;">~ 团队 OKR</span>
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 10px;">~ 组件协议</span>
+            </div>
+          </section>
+          <section class="sw-home__cell" data-size="medium" style="grid-column: span 6; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:9px 11px 0;"><span class="rz-row-icon" style="width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="11" height="11"><use href="#i-doc"/></svg></span><strong style="font-size:12.5px;">数据库 · 迭代任务</strong><span class="rz-badge rz-badge--ready">31 行</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 11px 11px;">
+              <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+                <thead><tr style="color:var(--b3-theme-on-surface-light); text-align:left;"><th style="font-weight:600; padding:3px 6px;">任务</th><th style="font-weight:600; padding:3px 6px;">状态</th><th style="font-weight:600; padding:3px 6px;">负责人</th></tr></thead>
+                <tbody>
+                  <tr><td style="padding:3px 6px;">悬浮球外拨手势</td><td style="padding:3px 6px;">进行中</td><td style="padding:3px 6px;">小飞驴</td></tr>
+                  <tr><td style="padding:3px 6px;">预览窗格 sticky</td><td style="padding:3px 6px;">已完成</td><td style="padding:3px 6px;">小飞驴</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <div class="rz-receipt"><span class="rz-badge rz-badge--ready">11/11 组件正常</span><span>上次刷新 12:20 · 失败 0 · 跳过 0</span><span style="flex:1"></span><span>组件面板 · 测试工作区</span></div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<div class="gallery" style="margin-top:30px;">
+  <!-- ============ 3. 片段实验室 ============ -->
+  <section class="shot shot--proposal" data-shot="03-studio" style="width: 1240px;">
+    <div class="shot-caption"><span class="no">03</span><span class="name">片段实验室 · 宽屏工作室</span><span class="note">目录 / 代码编辑 / 预览·AI·属性 右栏 + 状态徽标</span></div>
+    <div class="stage"><div class="screen" style="width: 1200px; height: 640px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw-studio sw-platform-surface sw-platform-surface--studio" data-sw-surface="studio" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="studio" style="padding: 12px 16px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:14px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <nav class="sw-platform-surface-nav" style="display:flex; gap:4px;">
+              <button class="sw-platform-surface-nav__item" data-surface="switcher" type="button">切换器</button>
+              <button class="sw-platform-surface-nav__item" data-surface="workbench" type="button">工作台</button>
+              <span class="sw-platform-surface-nav__item is-active" aria-current="page" data-surface="studio">片段实验室</span>
+            </nav>
+            <div class="sw-platform-header__actions" style="margin-left:auto; display:flex; gap:6px;"><span class="rz-badge rz-badge--ready">原生片段 · 已同步</span></div>
+          </header>
+          <div class="sw-platform-context" role="group" style="display:flex; align-items:center; gap:8px; padding:6px 1px 2px;">
+            <span class="sw-platform-context__trail">工作上下文</span><span class="sw-platform-context__separator">›</span>
+            <strong class="sw-platform-context__object">片段实验室</strong>
+            <span class="sw-platform-context__hint">安全编辑、预览和管理代码片段</span>
+          </div>
+        </div>
+        <div class="sw-studio__layout" style="flex:1; min-height:0; display:grid; grid-template-columns: 240px 1fr 320px; gap:12px; padding:12px 16px 14px;">
+          <aside style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column; overflow:hidden;">
+            <div style="padding:10px 11px 8px; display:flex; gap:6px; align-items:center; border-bottom:1px solid var(--b3-border-color);">
+              <input class="b3-text-field" placeholder="搜索片段" style="flex:1; height:28px; font-size:12px; border-radius:8px;">
+              <button type="button" class="rz-pill-btn" style="padding:6px 10px; flex:none;">＋</button>
+            </div>
+            <div style="display:flex; gap:4px; padding:8px 10px; flex-wrap:wrap;">
+              <span class="rz-badge rz-badge--ready">CSS 12</span><span class="rz-badge rz-badge--blocked">JS 3</span><span class="rz-badge rz-badge--dirty">草稿 1</span>
+            </div>
+            <div style="flex:1; overflow:auto; padding:4px 6px 8px; display:flex; flex-direction:column; gap:3px;">
+              <button type="button" style="text-align:left; border:1px solid color-mix(in srgb,var(--b3-theme-primary) 34%, transparent); background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:9px; padding:7px 9px; cursor:pointer; font-family:inherit;">
+                <span style="display:block; font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">卡片悬浮阴影</span>
+                <span style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; color:var(--b3-theme-on-surface-light);"><span>CSS</span>·<span>16 行</span><span style="color:#1f7a4d;">● 已启用</span></span>
+              </button>
+              <button type="button" style="text-align:left; border:1px solid transparent; background:transparent; border-radius:9px; padding:7px 9px; cursor:pointer; font-family:inherit;">
+                <span style="display:block; font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">文档树加宽</span>
+                <span style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; color:var(--b3-theme-on-surface-light);"><span>CSS</span>·<span>8 行</span><span>○ 停用</span></span>
+              </button>
+              <button type="button" style="text-align:left; border:1px solid transparent; background:transparent; border-radius:9px; padding:7px 9px; cursor:pointer; font-family:inherit;">
+                <span style="display:block; font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">快捷导出助手</span>
+                <span style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; color:var(--b3-theme-on-surface-light);"><span>JS</span>·<span>22 行</span><span style="color:#8a6116;">◐ 发布禁用</span></span>
+              </button>
+            </div>
+          </aside>
+          <main style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:9px; padding:9px 12px; border-bottom:1px solid var(--b3-border-color);">
+              <input class="b3-text-field" value="卡片悬浮阴影" style="width:200px; height:28px; font-size:12.5px; font-weight:600; border-radius:8px;">
+              <span class="rz-badge rz-badge--dirty">未保存更改</span>
+              <span style="flex:1"></span>
+              <button type="button" class="b3-button b3-button--text" style="font-size:12px;">比较</button>
+              <button type="button" class="rz-pill-btn" style="padding:6px 14px;">保存</button>
+            </div>
+            <div style="flex:1; overflow:auto; padding:10px 12px; font:12px/1.8 ui-monospace, Consolas, monospace; color:var(--b3-theme-on-background); background:var(--b3-theme-background);">
+              <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">1  </span><span style="color:var(--b3-theme-on-surface-light);">/* 悬浮时加深阴影并轻微上浮 */</span></div>
+              <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">2  </span><span style="color:var(--b3-theme-primary);">.protyle-wysiwyg</span> <span style="color:var(--b3-theme-on-surface);">[data-node-id]</span> {</div>
+              <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">3  </span>  transition: box-shadow .16s, transform .16s;</div>
+              <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">4  </span>}</div>
+              <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">5  </span><span style="color:var(--b3-theme-primary);">.protyle-wysiwyg</span> <span style="color:var(--b3-theme-on-surface);">[data-node-id]:hover</span> {</div>
+              <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">6  </span>  box-shadow: 0 6px 18px <span style="color:#8a6116;">rgba(0,0,0,.12)</span>;</div>
+              <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">7  </span>  transform: translateY(-1px);</div>
+              <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">8  </span>}</div>
+            </div>
+          </main>
+          <aside style="display:flex; flex-direction:column; gap:10px; min-height:0;">
+            <div class="rz-seg" style="align-self:flex-start;"><button class="is-active" type="button">预览</button><button type="button">AI</button><button type="button">属性</button></div>
+            <div style="flex:1; min-height:0; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-background); overflow:hidden; display:flex; flex-direction:column;">
+              <div style="display:flex; align-items:center; gap:7px; padding:8px 11px; border-bottom:1px solid var(--b3-border-color); background:var(--b3-theme-surface); font-size:12px;"><span class="rz-badge rz-badge--ready">预览就绪</span><span style="color:var(--b3-theme-on-surface-light);">CSS 隔离沙箱</span></div>
+              <div style="flex:1; padding:12px; background:#fff; color:#333;">
+                <div style="border:1px solid #e6e6ea; border-radius:10px; padding:12px; font-size:12.5px; transition: box-shadow .16s, transform .16s;">
+                  <strong>块引用卡片</strong>
+                  <div style="color:#8a8f9d; margin-top:3px; font-size:11.5px;">hover 预览：阴影加深并上浮</div>
+                </div>
+                <div style="margin-top:10px; border:1px solid #e6e6ea; border-radius:10px; padding:12px; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.12); transform:translateY(-1px); outline:2px solid color-mix(in srgb,#8b7ff5 45%, transparent); outline-offset:-2px;">
+                  <strong>块引用卡片（hover）</strong>
+                  <div style="color:#8a8f9d; margin-top:3px; font-size:11.5px;">沙箱内实时生效</div>
+                </div>
+              </div>
+              <div class="rz-receipt">沙箱样式不写入生产文档 · 与原生片段一致</div>
+            </div>
+          </aside>
+        </div>
+        <div class="rz-receipt"><span class="rz-badge rz-badge--dirty">未保存</span><span>已保存 · 已启用 · 发布时禁用</span><span style="flex:1"></span><span>保存 ⌘S · 另存为 · 导出 · 投稿包</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============ 4. 悬浮球 ============ -->
+  <section class="shot shot--proposal" data-shot="04-floating-ball" style="width: 560px;">
+    <div class="shot-caption"><span class="no">04</span><span class="name">悬浮球 · 首层与更多面板</span><span class="note">半环首层 + 分组搜索的更多面板</span></div>
+    <div class="stage"><div class="screen" style="width: 520px; height: 420px; background:
+      radial-gradient(120% 100% at 20% 0%, color-mix(in srgb,var(--b3-theme-primary) 8%, transparent), transparent 55%), var(--b3-theme-background);">
+      <div class="speed-switch" style="height:100%; position:relative;">
+        <div class="sw-fab-root sw__fab" data-surface="desktop" data-state="targeting" style="position:absolute; right:36px; top:180px; width:48px; height:48px;">
+          <button type="button" class="sw-fab-trigger" aria-label="悬浮球" style="width:48px; height:48px; border-radius:50%; border:0; cursor:pointer; background:var(--b3-theme-primary); color:var(--b3-theme-on-primary); box-shadow:0 4px 16px color-mix(in srgb,var(--b3-theme-primary) 42%, transparent); display:flex; align-items:center; justify-content:center;"><svg width="20" height="20"><use href="#i-dots"/></svg></button>
+          <div class="sw__floating-ball-panel">
+            <div class="sw__floating-ball-first-layer" style="position:absolute; right:60px; top:-4px; display:flex; gap:8px;">
+              <button class="sw__floating-ball-action" style="display:inline-flex; flex-direction:column; align-items:center; gap:3px; width:52px; padding:8px 0; border:1px solid var(--b3-border-color); border-radius:14px; background:var(--b3-theme-surface); cursor:pointer; font-family:inherit; font-size:10.5px; color:var(--b3-theme-on-surface);"><svg width="17" height="17"><use href="#iconSearch"/></svg>切换</button>
+              <button class="sw__floating-ball-action" style="display:inline-flex; flex-direction:column; align-items:center; gap:3px; width:52px; padding:8px 0; border:1px solid var(--b3-border-color); border-radius:14px; background:var(--b3-theme-surface); cursor:pointer; font-family:inherit; font-size:10.5px; color:var(--b3-theme-on-surface);"><svg width="17" height="17"><use href="#iconCalendar"/></svg>捕获</button>
+              <button class="sw__floating-ball-action" style="display:inline-flex; flex-direction:column; align-items:center; gap:3px; width:52px; padding:8px 0; border:1px solid var(--b3-border-color); border-radius:14px; background:var(--b3-theme-surface); cursor:pointer; font-family:inherit; font-size:10.5px; color:var(--b3-theme-on-surface);"><svg width="17" height="17"><use href="#iconLayoutHome"/></svg>工作台</button>
+              <button class="sw__floating-ball-action" style="display:inline-flex; flex-direction:column; align-items:center; gap:3px; width:52px; padding:8px 0; border:1px solid var(--b3-border-color); border-radius:14px; background:var(--b3-theme-surface); cursor:pointer; font-family:inherit; font-size:10.5px; color:var(--b3-theme-on-surface);"><svg width="17" height="17"><use href="#i-dots"/></svg>更多</button>
+            </div>
+          </div>
+        </div>
+        <div class="sw__floating-ball-more" style="position:absolute; right:36px; top:250px; width:264px; border:1px solid var(--b3-border-color); border-radius:14px; background:var(--b3-theme-surface); box-shadow:0 10px 30px rgba(15,20,40,.16); overflow:hidden;">
+          <div style="padding:9px 11px; border-bottom:1px solid var(--b3-border-color); display:flex; gap:7px; align-items:center;">
+            <svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#iconSearch"/></svg>
+            <input placeholder="搜索动作" style="border:0; background:transparent; outline:none; flex:1; font-size:12.5px; font-family:inherit; color:var(--b3-theme-on-background);">
+            <span class="rz-kbd">/</span>
+          </div>
+          <div style="padding:6px;">
+            <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:4px 7px;">表面</div>
+            <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconLayout"/></svg>打开切换器<span style="flex:1"></span><span class="rz-kbd">1</span></button>
+            <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconLayoutHome"/></svg>打开工作台<span style="flex:1"></span><span class="rz-kbd">2</span></button>
+            <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:5px 7px 3px;">思源命令</div>
+            <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconRefresh"/></svg>一键同步<span style="flex:1"></span><span class="rz-badge rz-badge--ready">就绪</span></button>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<div class="gallery" id="g-b" style="margin-top:34px;">
+  <!-- ============ B 组：设置页逐标签（5-15） ============ -->
+  <template id="rz-settings-rail">
+    <div class="sw-settings__tabs" role="tablist" aria-label="设置" style="width:148px; flex:none; border-right:1px solid var(--b3-border-color); padding:10px 6px; display:flex; flex-direction:column; gap:2px; background:var(--b3-theme-surface);">
+      <button class="sw-settings__tab" data-panel="appearance" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">外观</button>
+      <button class="sw-settings__tab" data-panel="behavior" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">行为</button>
+      <button class="sw-settings__tab" data-panel="panels" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">面板</button>
+      <button class="sw-settings__tab" data-panel="favorites" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">收藏</button>
+      <button class="sw-settings__tab" data-panel="quickActions" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">快速动作</button>
+      <button class="sw-settings__tab" data-panel="floatingBall" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">悬浮球</button>
+      <button class="sw-settings__tab" data-panel="documentSets" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">文档集</button>
+      <button class="sw-settings__tab" data-panel="journal" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">日记</button>
+      <button class="sw-settings__tab" data-panel="mobile" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">移动端</button>
+      <button class="sw-settings__tab" data-panel="homePanel" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">组件面板</button>
+      <button class="sw-settings__tab" data-panel="storage" role="tab" style="text-align:left; border:0; background:transparent; padding:7px 10px; border-radius:8px; font-size:12.5px; font-family:inherit; cursor:pointer; color:var(--b3-theme-on-surface);">存储</button>
+    </div>
+  </template>
+
+  <!-- 5. 外观 -->
+  <section class="shot shot--proposal" data-shot="05-settings-appearance" style="width: 700px;">
+    <div class="shot-caption"><span class="no">05</span><span class="name">设置 · 外观</span><span class="note">分组卡片行 + 枚举改分段控件</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 520px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="appearance"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">主题与皮肤</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">皮肤</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">默认与思源主题融合；独立皮肤仅重定义速切容器内的变量</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">融合</button><button type="button">液态玻璃</button><button type="button">暗夜玻璃</button><button type="button">暖纸墨水</button></div></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">列表密度</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">紧凑档收窄卡片内边距与行高，触控目标不缩小</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">舒适</button><button type="button">紧凑</button></div></div>
+            </div>
+          </div>
+          <div class="rz-group-title">缩略图</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">缩略图高度</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">影响页签卡与文档卡的预览图高度</div></div>
+              <div class="sw-settings__item-action" style="display:flex; align-items:center; gap:8px;"><input type="range" min="80" max="220" value="128" style="accent-color:var(--b3-theme-primary);"><span class="rz-kbd" style="min-width:38px;">128px</span></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">列数</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">自动=按弹窗宽度自适应列数</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">自动</button><button type="button">3</button><button type="button">4</button><button type="button">5</button></div></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">侧栏缩略图布局</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">放大填满栏宽，或按宽度自动加列</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">放大</button><button type="button">多列</button></div></div>
+            </div>
+          </div>
+          <div class="rz-group-title">组件卡片</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">组件强调色</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">自动多彩 / 柔和 / 单色，只影响第二面板卡片</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">自动</button><button type="button">柔和</button><button type="button">单色</button></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 6. 行为 -->
+  <section class="shot shot--proposal" data-shot="06-settings-behavior" style="width: 700px;">
+    <div class="shot-caption"><span class="no">06</span><span class="name">设置 · 行为</span><span class="note">开关行统一带描述文案</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 460px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="behavior"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">打开策略</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">搜索命中已打开文档时复用页签</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">聚焦已有页签而不是新开，避免重复页签堆积</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">记住文档滚动位置</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">重开最近关闭的文档时回卷到关闭前位置（会话内）</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+          <div class="rz-group-title">搜索</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">拼音辅助匹配</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">支持首字母与全拼（如 cpin → 产品路线图）；纯本地计算</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">同查询词置顶上次选择</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">同一查询里上次打开的结果优先显示（会话内记忆）</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+          <div class="rz-group-title">悬浮球联动</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">滚动时隐藏悬浮球</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">页面滚动时球体淡出，停止后恢复</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 7. 面板 -->
+  <section class="shot shot--proposal" data-shot="07-settings-panels" style="width: 700px;">
+    <div class="shot-caption"><span class="no">07</span><span class="name">设置 · 面板</span><span class="note">尺寸模式分段 + 数值行内胶囊</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 470px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="panels"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">切换器窗口</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">尺寸模式</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">自适应按屏幕比例，固定使用下方宽高</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">自适应</button><button type="button">固定</button><button type="button">全屏</button></div></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">自适应比例</div></div>
+              <div class="sw-settings__item-action" style="display:flex; align-items:center; gap:8px;"><input type="range" min="40" max="100" value="80" style="accent-color:var(--b3-theme-primary);"><span class="rz-kbd" style="min-width:38px;">80%</span></div>
+            </div>
+          </div>
+          <div class="rz-group-title">工作台窗口</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">尺寸模式</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">跟随=使用切换器当前尺寸</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">跟随</button><button type="button">自适应</button><button type="button">固定</button><button type="button">全屏</button></div></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">固定尺寸（宽 × 高）</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:6px; align-items:center;"><input class="b3-text-field" value="960" style="width:72px; height:28px; border-radius:8px; font-size:12px;"><span style="color:var(--b3-theme-on-surface-light);">×</span><input class="b3-text-field" value="720" style="width:72px; height:28px; border-radius:8px; font-size:12px;"><span class="rz-kbd">px</span></div>
+            </div>
+          </div>
+          <div class="rz-group-title">快捷键</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">全局快捷键</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">在思源「设置 → 快捷键」中修改插件命令绑定</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:4px;"><span class="rz-kbd">Ctrl</span><span class="rz-kbd">J</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 8. 收藏 -->
+  <section class="shot shot--proposal" data-shot="08-settings-favorites" style="width: 700px;">
+    <div class="shot-caption"><span class="no">08</span><span class="name">设置 · 收藏</span><span class="note">分组管理 + 标签智能分组组合条件</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 480px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="favorites"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">收藏分组</div>
+          <div class="rz-group-card">
+            <div class="sw-setting__fav-row" style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--b3-border-color);">
+              <span class="sw-setting__fav-name" style="flex:1; font-size:12.5px;" title="产品路线图（2026 H2）">产品路线图（2026 H2）</span>
+              <select class="b3-select" style="height:28px; font-size:12px; border-radius:8px;"><option>产品</option><option>未分组</option></select>
+              <button type="button" class="b3-button b3-button--text" aria-label="移除" style="display:flex; color:var(--b3-theme-on-surface-light);"><svg width="13" height="13"><use href="#iconClose"/></svg></button>
+            </div>
+            <div class="sw-setting__fav-row" style="display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--b3-border-color);">
+              <span class="sw-setting__fav-name" style="flex:1; font-size:12.5px;">每日工作台</span>
+              <select class="b3-select" style="height:28px; font-size:12px; border-radius:8px;"><option selected>日记</option><option>未分组</option></select>
+              <button type="button" class="b3-button b3-button--text" aria-label="移除" style="display:flex; color:var(--b3-theme-on-surface-light);"><svg width="13" height="13"><use href="#iconClose"/></svg></button>
+            </div>
+            <div class="sw-setting__fav-create" style="display:flex; gap:8px; padding:10px 14px; align-items:center;">
+              <input class="b3-text-field" placeholder="输入页签或文档名添加收藏" style="flex:1; height:30px; border-radius:8px; font-size:12px;">
+              <button type="button" class="rz-pill-btn" style="padding:7px 14px;">添加</button>
+            </div>
+          </div>
+          <div class="rz-group-title">标签智能分组</div>
+          <div class="rz-group-card">
+            <div style="padding:10px 14px; border-bottom:1px solid var(--b3-border-color);">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="font-size:12.5px;">进行中的项目</strong>
+                <span style="font-size:11px; color:var(--b3-theme-on-surface-light); font-family:ui-monospace,monospace;">#项目 AND box=202509... AND updated ≥ 7d</span>
+                <span style="flex:1"></span>
+                <span class="rz-badge rz-badge--ready">6 条</span>
+              </div>
+              <div style="display:flex; gap:6px; margin-top:8px;">
+                <select class="b3-select" style="height:28px; font-size:12px; border-radius:8px;"><option selected># 项目</option><option># 待办</option></select>
+                <select class="b3-select" style="height:28px; font-size:12px; border-radius:8px;"><option selected>笔记本：测试工作区</option><option>任意</option></select>
+                <select class="b3-select" style="height:28px; font-size:12px; border-radius:8px;"><option selected>7 天内</option><option>30 天内</option><option>90 天内</option><option>任意</option></select>
+                <span style="flex:1"></span>
+                <button type="button" class="b3-button b3-button--text" style="color:var(--b3-theme-on-surface-light);"><svg width="13" height="13"><use href="#iconClose"/></svg></button>
+              </div>
+            </div>
+            <div style="padding:10px 14px; display:flex; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--b3-theme-on-surface-light);">组合条件由插件参数化构造，不开放任意 SQL</span>
+              <span style="flex:1"></span>
+              <button type="button" class="rz-pill-btn rz-pill-btn--soft" style="padding:6px 12px;">新建分组</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 9. 快速动作 -->
+  <section class="shot shot--proposal" data-shot="09-settings-quick-actions" style="width: 700px;">
+    <div class="shot-caption"><span class="no">09</span><span class="name">设置 · 快速动作</span><span class="note">目录选择器（三级分组）+ 端侧显示</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 500px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="quickActions"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">端侧显示</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">桌面显示方式</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">完整</button><button type="button">仅图标</button><button type="button">隐藏</button></div></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">右栏停靠</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">动作条显示在滚动区右侧</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
+            </div>
+          </div>
+          <div class="rz-group-title">添加动作（目录选择器）</div>
+          <div class="rz-group-card" style="padding:8px;">
+            <div style="display:flex; align-items:center; gap:8px; padding:4px 6px 8px; border-bottom:1px solid var(--b3-border-color);">
+              <input class="b3-text-field" placeholder="搜索 34 个内建动作、思源命令与第三方动作" style="flex:1; height:30px; border-radius:8px; font-size:12px;">
+              <span class="rz-kbd">/</span>
+            </div>
+            <div style="max-height:196px; overflow:auto; padding:6px 4px;">
+              <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:5px 8px 3px; display:flex; align-items:center;">内建动作<span style="flex:1"></span>22 ▾</div>
+              <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconClock"/></svg>跳回标记<span style="flex:1"></span><span style="font-size:11px; color:var(--b3-theme-on-surface-light);">桌面 · 移动</span></button>
+              <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconLayoutHome"/></svg>组件面板<span style="flex:1"></span><span style="font-size:11px; color:var(--b3-theme-on-surface-light);">桌面 · 移动</span></button>
+              <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:6px 8px 3px;">思源命令<span style="flex:1"></span>12 ▾</div>
+              <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconSearch"/></svg>全局搜索<span style="flex:1"></span><span style="font-size:11px; color:var(--b3-theme-on-surface-light);">桌面 · 移动</span></button>
+              <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:6px 8px 3px;">第三方 · 小驴打卡<span style="flex:1"></span>3 ▾</div>
+              <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background);"><svg width="14" height="14"><use href="#iconCheck"/></svg>打开打卡面板<span style="flex:1"></span><span class="rz-badge rz-badge--blocked">未验证</span></button>
+            </div>
+          </div>
+          <div class="rz-group-title">导入 / 导出</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">版本化配置传输</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">导出 JSON，导入时校验版本与容量（≤512 KiB）</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:6px;"><button type="button" class="rz-pill-btn rz-pill-btn--soft" style="padding:6px 12px;">导出</button><button type="button" class="rz-pill-btn rz-pill-btn--soft" style="padding:6px 12px;">导入</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 10. 悬浮球 -->
+  <section class="shot shot--proposal" data-shot="10-settings-floating-ball" style="width: 700px;">
+    <div class="shot-caption"><span class="no">10</span><span class="name">设置 · 悬浮球</span><span class="note">保留 T-6782 卡片语言，补预览舞台实时状态徽标</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 560px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="floatingBall"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">端侧与主点击</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">显示悬浮球</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:14px; align-items:center;"><span style="font-size:12px;">桌面</span><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label><span style="font-size:12px;">手机</span><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">轻触动作</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">默认打开平台并恢复上次表面；失效时自动回退切换器</div></div>
+              <div class="sw-settings__item-action"><select class="b3-select" style="height:30px; font-size:12px; border-radius:8px;"><option selected>打开平台（推荐）</option><option>打开切换器</option><option>更多动作面板</option></select></div>
+            </div>
+          </div>
+          <div class="rz-group-title">预览</div>
+          <div class="rz-group-card" style="padding:12px 14px; display:flex; gap:14px; align-items:center;">
+            <div style="flex:1; height:108px; border-radius:10px; background:
+              radial-gradient(120% 100% at 18% 0%, color-mix(in srgb,var(--b3-theme-primary) 10%, transparent), transparent 55%), var(--b3-theme-background);
+              border:1px solid var(--b3-border-color); position:relative; overflow:hidden;">
+              <span style="position:absolute; left:10px; top:8px; font-size:10.5px; color:var(--b3-theme-on-surface-light);">左缘感应</span>
+              <span style="position:absolute; right:10px; top:8px; font-size:10.5px; color:var(--b3-theme-on-surface-light);">右缘感应</span>
+              <span style="position:absolute; left:50%; top:52%; transform:translateX(-50%); width:44px; height:44px; border-radius:50%; background:var(--b3-theme-primary); color:var(--b3-theme-on-primary); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px color-mix(in srgb,var(--b3-theme-primary) 40%, transparent);"><svg width="18" height="18"><use href="#i-dots"/></svg></span>
+              <span class="rz-badge rz-badge--ready" style="position:absolute; left:10px; bottom:8px;">桌面 · 实时预览</span>
+            </div>
+          </div>
+          <div class="rz-group-title">外观与行为</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">大小 / 边距</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:12px; align-items:center;"><span class="rz-kbd" style="min-width:38px;">44px</span><input type="range" min="0" max="24" value="12" style="accent-color:var(--b3-theme-primary);"><span class="rz-kbd" style="min-width:38px;">12px</span></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">吸附边缘</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">关闭后可在可视区自由停放</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">闲置降透明度</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:8px; align-items:center;"><input type="range" min="20" max="100" value="55" style="accent-color:var(--b3-theme-primary);"><span class="rz-kbd" style="min-width:38px;">55%</span></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">弹层让位</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">思源弹窗出现时球体自动隐藏</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+          <div class="rz-group-title">场景预设</div>
+          <div class="rz-group-card">
+            <div style="padding:10px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--b3-border-color);">
+              <strong style="font-size:12.5px;">写作模式</strong><span class="rz-badge rz-badge--ready">当前</span><span style="font-size:11px; color:var(--b3-theme-on-surface-light);">主点击=平台 · 首层=捕获/日记/同步</span>
+              <span style="flex:1"></span>
+              <button type="button" class="b3-button b3-button--text" style="font-size:12px;">应用</button>
+            </div>
+            <div style="padding:10px 14px; display:flex; gap:8px; align-items:center;">
+              <input class="b3-text-field" placeholder="保存当前配置为新场景" style="flex:1; height:30px; border-radius:8px; font-size:12px;">
+              <button type="button" class="rz-pill-btn" style="padding:7px 14px;">保存场景</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 11. 文档集 -->
+  <section class="shot shot--proposal" data-shot="11-settings-document-sets" style="width: 700px;">
+    <div class="shot-caption"><span class="no">11</span><span class="name">设置 · 文档集</span><span class="note">集合行 + 版本时间轴 + 恢复回执导出</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 470px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="documentSets"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">我的文档集</div>
+          <div class="rz-group-card">
+            <div class="sw-setting__document-set" style="padding:11px 14px; border-bottom:1px solid var(--b3-border-color);">
+              <div style="display:flex; align-items:center; gap:9px;">
+                <strong style="font-size:13px;">每日工作台</strong>
+                <span class="rz-badge rz-badge--ready">5 篇 · 常驻 2</span>
+                <span class="rz-badge rz-badge--stale">场景：写作模式</span>
+                <span style="flex:1"></span>
+                <button type="button" class="b3-button b3-button--text" style="font-size:12px;">恢复</button>
+                <button type="button" class="b3-button b3-button--text" style="font-size:12px;">导出 MD</button>
+                <button type="button" class="b3-button b3-button--text" style="font-size:12px; display:flex;"><svg width="13" height="13"><use href="#i-dots"/></svg></button>
+              </div>
+              <div class="sw-setting__doc-set-versions" style="margin-top:8px; border:1px solid var(--b3-border-color); border-radius:9px; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:11.5px; background:var(--b3-theme-surface-lighter);">↩ 版本历史<span style="flex:1"></span>3 版</div>
+                <button style="display:flex; width:100%; align-items:center; gap:8px; padding:6px 10px; border:0; background:transparent; font-family:inherit; font-size:11.5px; color:var(--b3-theme-on-background); cursor:pointer; text-align:left;"><span>↩ 2026-09-25 18:04</span><span style="color:var(--b3-theme-on-surface-light);">5 项</span><span style="flex:1"></span><span class="rz-badge rz-badge--stale">上一版</span></button>
+                <button style="display:flex; width:100%; align-items:center; gap:8px; padding:6px 10px; border:0; background:transparent; font-family:inherit; font-size:11.5px; color:var(--b3-theme-on-background); cursor:pointer; text-align:left;"><span>↩ 2026-09-24 09:31</span><span style="color:var(--b3-theme-on-surface-light);">4 项</span></button>
+              </div>
+            </div>
+            <div class="sw-setting__document-set" style="padding:11px 14px; display:flex; align-items:center; gap:9px;">
+              <strong style="font-size:13px;">面试准备</strong>
+              <span class="rz-badge rz-badge--ready">3 篇</span>
+              <span style="flex:1"></span>
+              <button type="button" class="b3-button b3-button--text" style="font-size:12px;">恢复</button>
+              <button type="button" class="b3-button b3-button--text" style="font-size:12px; display:flex;"><svg width="13" height="13"><use href="#i-dots"/></svg></button>
+            </div>
+          </div>
+          <div class="rz-group-title">恢复行为</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">离开时自动快照当前现场</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">切换文档集前把当前打开页签写回当前集</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">恢复后回执</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">区分 restored / skipped / failed 计数，可导出 JSON/Markdown 报告</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 12-15（紧凑面板） -->
+  <section class="shot shot--proposal" data-shot="12-settings-journal" style="width: 700px;">
+    <div class="shot-caption"><span class="no">12</span><span class="name">设置 · 日记</span><span class="note">默认日记本与打开行为</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 300px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="journal"></div>
+        <div class="rz-settings-body" style="flex:1;">
+          <div class="rz-group-title">今日日记</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">默认日记本</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">未设置时首次点击会引导选择</div></div>
+              <div class="sw-settings__item-action"><select class="b3-select" style="height:30px; font-size:12px; border-radius:8px;"><option selected>测试工作区</option></select></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">日记不存在时</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">自动创建当日日记并打开</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="shot shot--proposal" data-shot="13-settings-mobile" style="width: 700px;">
+    <div class="shot-caption"><span class="no">13</span><span class="name">设置 · 移动端</span><span class="note">列数与触控</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 330px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="mobile"></div>
+        <div class="rz-settings-body" style="flex:1;">
+          <div class="rz-group-title">移动切换器</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">卡片列数</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">自动=竖屏单列、横屏双列</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">自动</button><button type="button">单列</button><button type="button">双列</button></div></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">缩略图高度</div></div>
+              <div class="sw-settings__item-action" style="display:flex; align-items:center; gap:8px;"><input type="range" min="60" max="140" value="80" style="accent-color:var(--b3-theme-primary);"><span class="rz-kbd" style="min-width:38px;">80px</span></div>
+            </div>
+          </div>
+          <div class="rz-group-title">兼容</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">旧版悬浮按钮（fab）</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">被新悬浮球取代，仅为旧配置保留</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="shot shot--proposal" data-shot="14-settings-home-panel" style="width: 700px;">
+    <div class="shot-caption"><span class="no">14</span><span class="name">设置 · 组件面板</span><span class="note">记忆用户的面板视图状态</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 330px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="homePanel"></div>
+        <div class="rz-settings-body" style="flex:1;">
+          <div class="rz-group-title">跨会话记忆</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">记住面板状态</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">密度、视图模式、排序与分组折叠跨会话保留</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">默认视图模式</div></div>
+              <div class="sw-settings__item-action"><div class="rz-seg"><button class="is-active" type="button">网格</button><button type="button">列表</button></div></div>
+            </div>
+          </div>
+          <div class="rz-group-title">刷新</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">组件失败重试</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">失败卡片内联重试，不依赖"刷新全部"</div></div>
+              <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="shot shot--proposal" data-shot="15-settings-storage" style="width: 700px;">
+    <div class="shot-caption"><span class="no">15</span><span class="name">设置 · 存储</span><span class="note">分节用量 + 配置包 + 版本戳</span></div>
+    <div class="stage"><div class="screen" style="width: 660px; height: 400px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="storage"></div>
+        <div class="rz-settings-body" style="flex:1; overflow:auto;">
+          <div class="rz-group-title">存储用量</div>
+          <div class="rz-group-card" style="padding:12px 14px; display:flex; flex-direction:column; gap:9px;">
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;"><span style="width:130px;">收藏与分组</span><span style="flex:1; height:6px; border-radius:999px; background:var(--b3-theme-surface-lighter); overflow:hidden;"><span style="display:block; width:38%; height:100%; background:var(--b3-theme-primary); opacity:.75;"></span></span><span class="rz-kbd" style="min-width:44px;">18 KB</span></div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;"><span style="width:130px;">文档集</span><span style="flex:1; height:6px; border-radius:999px; background:var(--b3-theme-surface-lighter); overflow:hidden;"><span style="display:block; width:22%; height:100%; background:var(--b3-theme-primary); opacity:.75;"></span></span><span class="rz-kbd" style="min-width:44px;">9 KB</span></div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;"><span style="width:130px;">悬浮球配置</span><span style="flex:1; height:6px; border-radius:999px; background:var(--b3-theme-surface-lighter); overflow:hidden;"><span style="display:block; width:30%; height:100%; background:var(--b3-theme-primary); opacity:.75;"></span></span><span class="rz-kbd" style="min-width:44px;">12 KB</span></div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px;"><span style="width:130px;">关联缓存</span><span style="flex:1; height:6px; border-radius:999px; background:var(--b3-theme-surface-lighter); overflow:hidden;"><span style="display:block; width:10%; height:100%; background:var(--b3-theme-primary); opacity:.6;"></span></span><span class="rz-kbd" style="min-width:44px;">4 KB</span></div>
+            <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--b3-theme-on-surface-light);"><span class="rz-badge rz-badge--ready">schema v14</span>全部 key 带版本戳与迁移函数，损坏数据自动降级清理</div>
+          </div>
+          <div class="rz-group-title">配置包</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">导出 / 导入全部配置</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">版本化 JSON；导入前整体校验，任一失败零写入</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:6px;"><button type="button" class="rz-pill-btn rz-pill-btn--soft" style="padding:6px 12px;">导出</button><button type="button" class="rz-pill-btn rz-pill-btn--soft" style="padding:6px 12px;">导入</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<div class="gallery" id="g-c" style="margin-top:34px;">
+  <!-- 16. 快速捕获 -->
+  <section class="shot shot--proposal" data-shot="16-dialog-quick-capture" style="width: 440px;">
+    <div class="shot-caption"><span class="no">16</span><span class="name">对话框 · 快速捕获</span><span class="note">目标段选 + 目的地预览 + 回执</span></div>
+    <div class="stage"><div class="screen" style="width: 400px; height: 268px;">
+      <div class="speed-switch sw-quick-capture" style="height:100%; display:flex; flex-direction:column; padding:12px 14px; gap:9px;">
+        <div class="sw-quick-capture__targets" role="tablist" style="display:flex; gap:6px;">
+          <div class="rz-seg" style="flex:1;"><button class="is-active" type="button" role="tab" aria-selected="true">今日日记</button><button type="button" role="tab">当前文档</button></div>
+        </div>
+        <textarea class="b3-text-field fn__block sw-quick-capture__input" rows="3" placeholder="记录一句…（Enter 保存）" style="flex:1; resize:none; border-radius:10px; font-size:13px; padding:9px 11px;"></textarea>
+        <p class="sw-quick-capture__preview" aria-live="polite" style="margin:0; font-size:11.5px; color:var(--b3-theme-on-surface-light); display:flex; align-items:center; gap:6px;"><svg width="12" height="12"><use href="#iconCalendar"/></svg>写入：日记 · 测试工作区 / 2026-09-26</p>
+        <div class="sw-quick-capture__actions" style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; color:var(--b3-theme-on-surface-light);"><span class="rz-kbd">Enter</span> 保存 · <span class="rz-kbd">Esc</span> 取消</span>
+          <span style="flex:1"></span>
+          <button type="button" class="b3-button b3-button--text" style="font-size:12px;">取消</button>
+          <button type="button" class="rz-pill-btn" style="padding:7px 16px;">保存</button>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 17. 历史下拉 -->
+  <section class="shot shot--proposal" data-shot="17-dialog-history" style="width: 380px;">
+    <div class="shot-caption"><span class="no">17</span><span class="name">浮层 · 历史下拉</span><span class="note">打开/关闭分区 + 只看有改动</span></div>
+    <div class="stage"><div class="screen" style="width: 340px; height: 380px; display:flex; flex-direction:column;">
+      <div class="speed-switch" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw__history-trigger" style="display:flex; align-items:center; gap:8px; margin:10px 12px 6px; padding:7px 10px; border:1px solid var(--b3-border-color); border-radius:9px; font-size:12px; color:var(--b3-theme-on-surface);"><svg width="13" height="13"><use href="#iconClock"/></svg>最近打开<span style="flex:1"></span><span class="rz-kbd">6</span></div>
+        <div class="sw__history-panel" role="menu" style="margin:0 10px 10px; flex:1; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column; overflow:hidden;">
+          <div style="display:flex; gap:6px; padding:8px 10px; border-bottom:1px solid var(--b3-border-color); align-items:center;">
+            <div class="rz-seg"><button class="is-active" type="button">打开 4</button><button type="button">关闭 11</button></div>
+            <span style="flex:1"></span>
+            <button type="button" aria-pressed="true" style="border:1px solid color-mix(in srgb,var(--b3-theme-primary) 34%, transparent); background:color-mix(in srgb,var(--b3-theme-primary) 9%, transparent); color:var(--b3-theme-primary); border-radius:999px; padding:4px 10px; font-size:11px; cursor:pointer; font-family:inherit; font-weight:600;">只看有改动</button>
+          </div>
+          <div style="flex:1; overflow:auto; padding:5px;">
+            <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:5px 8px 3px;">仍打开</div>
+            <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; text-align:left;"><span class="rz-row-icon" style="width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="12" height="12"><use href="#i-doc"/></svg></span><span style="flex:1; min-width:0;"><span style="display:block; font-size:12.5px; color:var(--b3-theme-on-background);">产品路线图（2026 H2）</span><span style="display:block; font-size:10.5px; color:var(--b3-theme-on-surface-light);">/规划 · 今天 12:20</span></span><span class="rz-badge rz-badge--stale">有改动</span></button>
+            <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; text-align:left;"><span class="rz-row-icon" style="width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="12" height="12"><use href="#i-doc"/></svg></span><span style="flex:1; min-width:0;"><span style="display:block; font-size:12.5px; color:var(--b3-theme-on-background);">2026-09-26 日记</span><span style="display:block; font-size:10.5px; color:var(--b3-theme-on-surface-light);">/日记 · 今天 08:02</span></span></button>
+            <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); padding:6px 8px 3px;">已关闭</div>
+            <button style="display:flex; width:100%; align-items:center; gap:9px; padding:7px 9px; border:0; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; text-align:left;"><span class="rz-row-icon" style="width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="12" height="12"><use href="#i-doc"/></svg></span><span style="flex:1; min-width:0;"><span style="display:block; font-size:12.5px; color:var(--b3-theme-on-background);">面试题库整理</span><span style="display:block; font-size:10.5px; color:var(--b3-theme-on-surface-light);">/收集 · 昨天 21:47 关闭</span></span><span class="rz-badge rz-badge--stale">有改动</span></button>
+          </div>
+          <div class="rz-receipt">右键条目：打开 / 移除记录</div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 18. 筛选菜单 -->
+  <section class="shot shot--proposal" data-shot="18-dialog-filters" style="width: 380px;">
+    <div class="shot-caption"><span class="no">18</span><span class="name">浮层 · 筛选菜单</span><span class="note">条件分组 + 保存的搜索 chips</span></div>
+    <div class="stage"><div class="screen" style="width: 340px; height: 400px; display:flex; flex-direction:column;">
+      <div class="speed-switch" style="height:100%; display:flex; flex-direction:column;">
+        <div style="margin:10px; flex:1; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:10px 12px; border-bottom:1px solid var(--b3-border-color); display:flex; align-items:center; gap:8px;"><strong style="font-size:12.5px;">筛选</strong><span class="rz-badge rz-badge--loading">2 项生效</span><span style="flex:1"></span><button style="border:0; background:transparent; color:var(--b3-theme-primary); font-size:11.5px; cursor:pointer; font-family:inherit;">重置</button></div>
+          <div style="flex:1; overflow:auto; padding:10px 12px; display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); margin-bottom:6px;">笔记本</div>
+              <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                <span style="border:1px solid color-mix(in srgb,var(--b3-theme-primary) 34%, transparent); background:color-mix(in srgb,var(--b3-theme-primary) 9%, transparent); color:var(--b3-theme-primary); border-radius:999px; padding:4px 11px; font-size:11.5px; font-weight:600;">测试工作区 ✓</span>
+                <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 11px; font-size:11.5px;">日记</span>
+                <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 11px; font-size:11.5px;">收集箱</span>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); margin-bottom:6px;">类型 · 排序 · 方式</div>
+              <div style="display:flex; flex-direction:column; gap:7px;">
+                <div style="display:flex; align-items:center; gap:8px;"><span style="width:52px; font-size:11.5px; color:var(--b3-theme-on-surface);">类型</span><div class="rz-seg"><button class="is-active" type="button">文档</button><button type="button">标题</button><button type="button">全文</button></div></div>
+                <div style="display:flex; align-items:center; gap:8px;"><span style="width:52px; font-size:11.5px; color:var(--b3-theme-on-surface);">方式</span><div class="rz-seg"><button class="is-active" type="button">关键词</button><button type="button">查询语法</button><button type="button">语义</button></div></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light); margin-bottom:6px;">保存的搜索</div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <button style="display:flex; width:100%; align-items:center; gap:8px; padding:7px 9px; border:1px solid var(--b3-border-color); background:transparent; border-radius:9px; cursor:pointer; font-family:inherit; font-size:12px; color:var(--b3-theme-on-background); text-align:left;"><svg width="12" height="12"><use href="#iconSearch"/></svg>路线图相关<span style="flex:1"></span><span style="font-size:10.5px; color:var(--b3-theme-on-surface-light);">路线 笔记本:测试</span></button>
+                <button style="display:flex; width:100%; align-items:center; gap:8px; padding:7px 9px; border:1px solid var(--b3-border-color); background:transparent; border-radius:9px; cursor:pointer; font-family:inherit; font-size:12px; color:var(--b3-theme-on-background); text-align:left;"><svg width="12" height="12"><use href="#iconSearch"/></svg>本周改动<span style="flex:1"></span><span style="font-size:10.5px; color:var(--b3-theme-on-surface-light);">"评估" -草稿</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="rz-receipt"><span style="flex:1"></span><button type="button" class="rz-pill-btn" style="padding:6px 14px;">保存当前搜索</button></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 19. 排序菜单 -->
+  <section class="shot shot--proposal" data-shot="19-dialog-sort" style="width: 320px;">
+    <div class="shot-caption"><span class="no">19</span><span class="name">浮层 · 分组与排序</span><span class="note">两段单选 + 当前项勾选</span></div>
+    <div class="stage"><div class="screen" style="width: 280px; height: 330px;">
+      <div class="speed-switch">
+        <div class="sw__sort-menu" style="margin:10px; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); overflow:hidden;">
+          <div style="padding:9px 12px 3px; font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light);">分组方式</div>
+          <button style="display:flex; width:100%; align-items:center; gap:9px; padding:8px 12px; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background); text-align:left;"><span style="width:14px; color:var(--b3-theme-primary);"><svg width="13" height="13"><use href="#iconCheck"/></svg></span>按笔记本</button>
+          <button style="display:flex; width:100%; align-items:center; gap:9px; padding:8px 12px; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background); text-align:left;"><span style="width:14px;"></span>按收藏</button>
+          <button style="display:flex; width:100%; align-items:center; gap:9px; padding:8px 12px; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background); text-align:left;"><span style="width:14px;"></span>按路径</button>
+          <div style="border-top:1px solid var(--b3-border-color); margin-top:4px; padding:9px 12px 3px; font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--b3-theme-on-surface-light);">组内排序</div>
+          <button style="display:flex; width:100%; align-items:center; gap:9px; padding:8px 12px; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background); text-align:left;"><span style="width:14px; color:var(--b3-theme-primary);"><svg width="13" height="13"><use href="#iconCheck"/></svg></span>最近使用</button>
+          <button style="display:flex; width:100%; align-items:center; gap:9px; padding:8px 12px; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background); text-align:left;"><span style="width:14px;"></span>最近编辑</button>
+          <button style="display:flex; width:100%; align-items:center; gap:9px; padding:8px 12px; border:0; background:transparent; cursor:pointer; font-family:inherit; font-size:12.5px; color:var(--b3-theme-on-background); text-align:left;"><span style="width:14px;"></span>标题升序</button>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 20. 组件配置表单 -->
+  <section class="shot shot--proposal" data-shot="20-dialog-widget-config" style="width: 470px;">
+    <div class="shot-caption"><span class="no">20</span><span class="name">对话框 · 组件配置</span><span class="note">schema 表单 + 变化回执</span></div>
+    <div class="stage"><div class="screen" style="width: 430px; height: 330px; display:flex; flex-direction:column;">
+      <div class="speed-switch" style="height:100%; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:9px; padding:12px 14px; border-bottom:1px solid var(--b3-border-color);">
+          <strong style="font-size:13px;">配置 · 近期天气</strong>
+          <span class="rz-badge rz-badge--ready">已连接</span>
+          <span style="flex:1"></span>
+          <button style="border:0; background:transparent; cursor:pointer; color:var(--b3-theme-on-surface-light);"><svg width="14" height="14"><use href="#iconClose"/></svg></button>
+        </div>
+        <div style="flex:1; overflow:auto; padding:12px 14px; display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px;"><span style="width:88px; font-size:12px; color:var(--b3-theme-on-surface);">城市</span><input class="b3-text-field" value="北京" style="flex:1; height:30px; border-radius:8px; font-size:12.5px;"></div>
+          <div style="display:flex; align-items:center; gap:12px;"><span style="width:88px; font-size:12px; color:var(--b3-theme-on-surface);">单位</span><div class="rz-seg"><button class="is-active" type="button">°C</button><button type="button">°F</button></div></div>
+          <div style="display:flex; align-items:center; gap:12px;"><span style="width:88px; font-size:12px; color:var(--b3-theme-on-surface);">刷新间隔</span><div class="rz-seg"><button type="button">15 分</button><button class="is-active" type="button">30 分</button><button type="button">1 时</button></div></div>
+          <div style="font-size:11px; color:var(--b3-theme-on-surface-light); display:flex; gap:6px; align-items:center;"><svg width="12" height="12"><use href="#i-doc"/></svg>数据来源 Open-Meteo · 未配置城市时不联网</div>
+        </div>
+        <div class="rz-receipt"><span class="rz-badge rz-badge--dirty">2 项修改</span><span style="flex:1"></span><button style="border:0; background:transparent; font-size:12px; cursor:pointer; font-family:inherit; color:var(--b3-theme-on-surface);">取消</button><button type="button" class="rz-pill-btn" style="padding:6px 16px; margin-left:8px;">应用</button></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 21. 组件商店 -->
+  <section class="shot shot--proposal" data-shot="21-store" style="width: 900px;">
+    <div class="shot-caption"><span class="no">21</span><span class="name">工作台 · 组件商店</span><span class="note">来源分组 + 计数徽标 + 安装胶囊</span></div>
+    <div class="stage"><div class="screen" style="width: 860px; height: 520px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw-home" style="height:100%; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:10px; padding:12px 16px 8px;">
+          <strong style="font-size:14px;">组件商店</strong>
+          <span class="rz-badge rz-badge--ready">58 组件</span>
+          <span style="flex:1"></span>
+          <div style="display:flex; align-items:center; gap:8px; border:1px solid var(--b3-border-color); border-radius:10px; padding:0 10px; height:32px; width:240px; background:var(--b3-theme-surface);">
+            <svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#iconSearch"/></svg>
+            <input placeholder="搜索组件" style="border:0; background:transparent; outline:none; flex:1; font-size:12.5px; font-family:inherit; color:var(--b3-theme-on-background);">
+          </div>
+          <div class="rz-seg"><button class="is-active" type="button">网格</button><button type="button">列表</button></div>
+        </div>
+        <div style="display:flex; gap:6px; padding:0 16px 10px; flex-wrap:wrap;">
+          <span style="border:1px solid color-mix(in srgb,var(--b3-theme-primary) 34%, transparent); background:color-mix(in srgb,var(--b3-theme-primary) 9%, transparent); color:var(--b3-theme-primary); border-radius:999px; padding:4px 12px; font-size:11.5px; font-weight:600;">全部 58</span>
+          <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 12px; font-size:11.5px;">内置 22</span>
+          <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 12px; font-size:11.5px;">外部服务 14</span>
+          <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 12px; font-size:11.5px;">本机服务 3</span>
+          <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:4px 12px; font-size:11.5px;">第三方桥接 7</span>
+          <span style="flex:1"></span>
+          <span style="font-size:11px; color:var(--b3-theme-on-surface-light); align-self:center;">排序：推荐</span>
+        </div>
+        <div class="sw-home-store__grid" style="flex:1; overflow:auto; padding: 2px 16px 14px; display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; align-content:start;">
+          <div class="sw-home-store__card" style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); padding:12px; display:flex; flex-direction:column; gap:9px;">
+            <div class="sw-home-store__card-head" style="display:flex; gap:10px; align-items:center;">
+              <span style="width:38px; height:38px; border-radius:10px; background:linear-gradient(140deg,#6ea8fe,#8b7ff5); display:inline-flex; align-items:center; justify-content:center; color:#fff;"><svg width="17" height="17"><use href="#iconCalendar"/></svg></span>
+              <span style="min-width:0;"><strong style="display:block; font-size:12.5px;">日历</strong><span style="font-size:10.5px; color:var(--b3-theme-on-surface-light);">内置 · 日记与节日标记</span></span>
+              <span style="flex:1"></span><span class="rz-badge rz-badge--ready">已添加</span>
+            </div>
+            <div style="font-size:11.5px; color:var(--b3-theme-on-surface); line-height:1.6;">按月浏览，标记日记、节日与打卡强度；离线可用。</div>
+            <div style="display:flex; align-items:center; gap:6px;"><span class="rz-badge rz-badge--blocked">离线</span><span style="flex:1"></span><button class="rz-pill-btn rz-pill-btn--soft" style="padding:5px 12px;">配置</button></div>
+          </div>
+          <div class="sw-home-store__card" style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); padding:12px; display:flex; flex-direction:column; gap:9px;">
+            <div class="sw-home-store__card-head" style="display:flex; gap:10px; align-items:center;">
+              <span style="width:38px; height:38px; border-radius:10px; background:linear-gradient(140deg,#5ab0a8,#4a90d9); display:inline-flex; align-items:center; justify-content:center; color:#fff;"><svg width="17" height="17"><use href="#i-dots"/></svg></span>
+              <span style="min-width:0;"><strong style="display:block; font-size:12.5px;">RSS 订阅</strong><span style="font-size:10.5px; color:var(--b3-theme-on-surface-light);">外部 · 零凭据</span></span>
+              <span style="flex:1"></span><button class="rz-pill-btn" style="padding:5px 14px;">添加</button>
+            </div>
+            <div style="font-size:11.5px; color:var(--b3-theme-on-surface); line-height:1.6;">通用 RSS/Atom 订阅，支持已读状态与自建端点。</div>
+            <div style="display:flex; align-items:center; gap:6px;"><span class="rz-badge rz-badge--loading">联网</span><span style="flex:1"></span><span style="font-size:10.5px; color:var(--b3-theme-on-surface-light);">15 分钟缓存</span></div>
+          </div>
+          <div class="sw-home-store__card sw-home-store__card--unavailable" style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); padding:12px; display:flex; flex-direction:column; gap:9px; opacity:.82;">
+            <div class="sw-home-store__card-head" style="display:flex; gap:10px; align-items:center;">
+              <span style="width:38px; height:38px; border-radius:10px; background:linear-gradient(140deg,#b8b0e8,#9aa4c8); display:inline-flex; align-items:center; justify-content:center; color:#fff;"><svg width="17" height="17"><use href="#iconRefresh"/></svg></span>
+              <span style="min-width:0;"><strong style="display:block; font-size:12.5px;">ActivityWatch</strong><span style="font-size:10.5px; color:var(--b3-theme-on-surface-light);">本机服务 · 回环地址</span></span>
+              <span style="flex:1"></span><span class="rz-badge rz-badge--blocked">未检测到</span>
+            </div>
+            <div style="font-size:11.5px; color:var(--b3-theme-on-surface); line-height:1.6;">设备与专注时长聚合；需要本机运行 ActivityWatch（5600 端口）。</div>
+            <div style="display:flex; align-items:center; gap:6px;"><span style="flex:1"></span><span class="rz-badge rz-badge--blocked">服务不可用</span></div>
+          </div>
+        </div>
+        <div class="rz-receipt"><span>58 组件 · 4 组</span><span style="flex:1"></span><span>分组状态与密度跨会话记忆</span></div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<div class="gallery" id="g-d" style="margin-top:34px;">
+  <!-- 22. 移动切换器 -->
+  <section class="shot shot--proposal" data-shot="22-mobile-switcher" style="width: 430px;">
+    <div class="shot-caption"><span class="no">22</span><span class="name">移动端 · 切换器</span><span class="note">横向表面标签 + 单列卡 + 底部快捷条</span></div>
+    <div class="stage"><div class="screen" style="width: 390px; height: 720px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw__body sw__mobile sw-platform-surface sw-platform-surface--switcher" data-sw-surface="switcher" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="switcher" style="padding: 14px 14px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:10px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <div class="sw-platform-header__actions" style="margin-left:auto;"></div>
+          </header>
+          <nav class="sw-platform-surface-nav" style="display:flex; gap:4px; padding:8px 0 2px; overflow-x:auto;">
+            <span class="sw-platform-surface-nav__item is-active" aria-current="page" data-surface="switcher">切换器</span>
+            <button class="sw-platform-surface-nav__item" data-surface="workbench" type="button">工作台</button>
+          </nav>
+          <div class="sw-platform-context" role="group" style="display:flex; align-items:center; gap:8px; padding:4px 1px 0;">
+            <span class="sw-platform-context__trail">工作上下文</span><span class="sw-platform-context__separator">›</span>
+            <strong class="sw-platform-context__object">切换器</strong>
+          </div>
+        </div>
+        <div class="sw__toolbar sw__mobile-toolbar" style="display:flex; flex-direction:column; gap:8px; padding:10px 14px 6px; flex:none;">
+          <div class="sw__search-wrap" style="display:flex; align-items:center; gap:8px; border:1px solid var(--b3-border-color); border-radius:11px; padding:0 10px; flex:none; width:100%; box-sizing:border-box; height:40px; background:var(--b3-theme-surface);">
+            <svg class="sw__search-icon" width="14" height="14"><use href="#iconSearch"/></svg>
+            <input class="b3-text-field sw__search" placeholder="搜索页签与文档" aria-label="搜索" style="border:0; background:transparent; box-shadow:none; flex:1; min-width:0; height:36px;">
+            <button type="button" class="sw__search-filter-btn" aria-label="筛选" style="border:0; background:transparent; cursor:pointer; color:var(--b3-theme-on-surface); display:flex; flex:none;"><svg width="15" height="15"><use href="#iconFilter"/></svg></button>
+          </div>
+          <div class="sw__toolbar-row2" style="display:flex; gap:8px; align-items:center; width:100%; box-sizing:border-box;">
+            <button type="button" class="b3-button b3-button--text sw__mobile-fav-btn" style="display:flex; align-items:center; gap:5px; font-size:12px;"><svg width="14" height="14"><use href="#iconStar"/></svg><span class="sw__mobile-chip-label">收藏</span></button>
+            <div class="sw__history-dd"></div>
+            <span style="flex:1"></span>
+            <button type="button" class="b3-button b3-button--text sw__settings-btn" style="display:flex; align-items:center; gap:5px; font-size:12px;"><svg width="14" height="14"><use href="#iconSettings"/></svg><span class="sw__mobile-chip-label">设置</span></button>
+          </div>
+        </div>
+        <div class="sw__scroll" style="flex:1; min-height:0; overflow:auto; padding: 4px 14px 12px; display:flex; flex-direction:column; gap:10px;">
+          <div class="sw__group">
+            <div class="sw__window-label" style="display:flex; align-items:center;">已打开 · 测试工作区<span style="flex:1"></span><span style="opacity:.6">2</span></div>
+            <div class="sw__grid sw__mobile-grid" style="display:grid; grid-template-columns:1fr; gap:8px; margin-top:6px;">
+              <div class="sw__card sw__mobile-card" style="border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                <div class="sw__thumb" style="height:110px; background:linear-gradient(140deg, color-mix(in srgb,var(--b3-theme-primary) 22%, transparent), color-mix(in srgb,#5ab0a8 16%, transparent));"></div>
+                <div class="sw__meta" style="display:flex; gap:8px; padding:9px 11px; align-items:center;"><span class="sw__icon">产</span><span class="sw__title" style="font-size:13px;">产品路线图（2026 H2）</span></div>
+              </div>
+              <div class="sw__card sw__mobile-card" style="border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                <div class="sw__thumb" style="height:110px; background:linear-gradient(140deg, color-mix(in srgb,#5ab0a8 18%, transparent), color-mix(in srgb,#d1901f 14%, transparent));"></div>
+                <div class="sw__meta" style="display:flex; gap:8px; padding:9px 11px; align-items:center;"><span class="sw__icon">评</span><span class="sw__title" style="font-size:13px;">Q3 路线评审纪要</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="sw__doc-results">
+            <div class="sw__window-label">全库文档 · 「路线」</div>
+            <div class="sw__doc-grid" style="display:flex; flex-direction:column; gap:5px; margin-top:6px;">
+              <button type="button" class="sw__doc-item" style="display:flex; gap:10px; align-items:center; text-align:left; padding:9px 10px; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); cursor:pointer;">
+                <span class="rz-row-icon"><svg width="13" height="13"><use href="#i-doc"/></svg></span>
+                <span class="sw__doc-copy" style="flex:1; min-width:0; display:flex; flex-direction:column;"><span class="sw__doc-title" style="font-size:13px;">学习路线</span><span class="sw__doc-path" style="font-size:11px; color:var(--b3-theme-on-surface-light);">/规划/学习路线</span></span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="sw__quick-actions" role="toolbar" aria-label="快捷动作" style="display:flex; justify-content:space-around; padding:9px 12px calc(9px + env(safe-area-inset-bottom)); border-top:1px solid var(--b3-border-color); background:var(--b3-theme-surface);">
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#iconSearch"/></svg>切换</button>
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#iconCalendar"/></svg>日记</button>
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#iconLayoutHome"/></svg>工作台</button>
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#i-dots"/></svg>更多</button>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 23. 移动工作台 -->
+  <section class="shot shot--proposal" data-shot="23-mobile-workbench" style="width: 430px;">
+    <div class="shot-caption"><span class="no">23</span><span class="name">移动端 · 工作台</span><span class="note">单列堆叠 + 上移/下移按钮编辑</span></div>
+    <div class="stage"><div class="screen" style="width: 390px; height: 720px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw-home sw-home--mobile sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="workbench" style="padding: 14px 14px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:10px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <div class="sw-platform-header__actions" style="margin-left:auto;"></div>
+          </header>
+          <nav class="sw-platform-surface-nav" style="display:flex; gap:4px; padding:8px 0 2px; overflow-x:auto;">
+            <button class="sw-platform-surface-nav__item" data-surface="switcher" type="button">切换器</button>
+            <span class="sw-platform-surface-nav__item is-active" aria-current="page" data-surface="workbench">工作台</span>
+          </nav>
+        </div>
+        <div class="sw-home__bar" style="display:flex; align-items:center; gap:8px; padding:10px 14px 6px;">
+          <div class="rz-seg"><button class="is-active" type="button">查看</button><button type="button">编辑</button></div>
+          <span style="flex:1"></span>
+          <button type="button" class="b3-button b3-button--text" style="display:flex; align-items:center; gap:5px; font-size:12px;"><svg width="13" height="13"><use href="#iconRefresh"/></svg>刷新</button>
+        </div>
+        <div style="flex:1; min-height:0; overflow:auto; padding: 4px 14px 12px; display:flex; flex-direction:column; gap:10px;">
+          <section class="sw-home__cell" style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:10px 12px 0;"><strong style="font-size:12.5px;">今日日记</strong><span class="rz-badge rz-badge--ready">已写入</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 12px 12px; font-size:12.5px; color:var(--b3-theme-on-surface); line-height:1.7;">09:02 完成晨间回顾；下午聚焦 T-6869 平台路由…</div>
+          </section>
+          <section class="sw-home__cell" style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:10px 12px 0;"><strong style="font-size:12.5px;">最近文档</strong><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div class="sw-home__cell-body" style="padding:8px 12px 12px; display:flex; flex-direction:column; gap:7px; font-size:12.5px;">
+              <span style="display:flex; justify-content:space-between;"><span>产品路线图（2026 H2）</span><span style="color:var(--b3-theme-on-surface-light); font-size:11px;">12:20</span></span>
+              <span style="display:flex; justify-content:space-between;"><span>Q3 路线评审纪要</span><span style="color:var(--b3-theme-on-surface-light); font-size:11px;">11:05</span></span>
+            </div>
+          </section>
+          <section class="sw-home__cell" style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface);">
+            <div class="sw-home__cell-head" style="display:flex; align-items:center; gap:7px; padding:10px 12px 0;"><strong style="font-size:12.5px;">当前文档相关</strong><span class="rz-badge rz-badge--loading">刷新中</span><span style="flex:1"></span></div>
+            <div class="sw-home__cell-body" style="padding:8px 12px 12px; display:flex; flex-wrap:wrap; gap:6px; font-size:12px;">
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:5px 12px;">↩ Q3 评审纪要</span>
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:5px 12px;">~ 团队 OKR</span>
+            </div>
+          </section>
+        </div>
+        <div style="display:flex; justify-content:space-around; padding:9px 12px calc(9px + env(safe-area-inset-bottom)); border-top:1px solid var(--b3-border-color); background:var(--b3-theme-surface);">
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#iconSearch"/></svg>切换器</button>
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#iconCalendar"/></svg>日记</button>
+          <button style="display:flex; flex-direction:column; align-items:center; gap:3px; border:0; background:transparent; font-size:10px; font-family:inherit; color:var(--b3-theme-on-surface); cursor:pointer;"><svg width="18" height="18"><use href="#i-dots"/></svg>更多</button>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 24. 收藏 sheet -->
+  <section class="shot shot--proposal" data-shot="24-mobile-fav-sheet" style="width: 430px;">
+    <div class="shot-caption"><span class="no">24</span><span class="name">移动端 · 收藏 Sheet</span><span class="note">底部抽屉 + 抓手 + 分区</span></div>
+    <div class="stage"><div class="screen" style="width: 390px; height: 460px; background:var(--b3-theme-background); display:flex; flex-direction:column; justify-content:flex-end;">
+      <div style="height:120px; background:linear-gradient(140deg, color-mix(in srgb,var(--b3-theme-primary) 10%, transparent), transparent); opacity:.6;"></div>
+      <div style="border-top:1px solid var(--b3-border-color); border-radius:18px 18px 0 0; background:var(--b3-theme-surface); box-shadow:0 -12px 36px rgba(15,20,40,.18);">
+        <div class="rz-grabber"></div>
+        <div style="display:flex; align-items:center; gap:8px; padding:6px 16px 8px;"><strong style="font-size:14px;">收藏</strong><span class="rz-badge rz-badge--ready">6</span><span style="flex:1"></span><button style="border:0; background:transparent; color:var(--b3-theme-on-surface-light);"><svg width="15" height="15"><use href="#iconClose"/></svg></button></div>
+        <div style="max-height:300px; overflow:auto; padding:0 8px 10px;">
+          <button style="display:flex; width:100%; align-items:center; gap:10px; padding:10px 10px; border:0; background:transparent; border-radius:10px; cursor:pointer; font-family:inherit; text-align:left;"><span class="rz-row-icon" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="13" height="13"><use href="#i-doc"/></svg></span><span style="flex:1; min-width:0;"><span style="display:block; font-size:13px; color:var(--b3-theme-on-background);">每日工作台</span><span style="display:block; font-size:10.5px; color:var(--b3-theme-on-surface-light);">/日记 · 日记</span></span><svg width="14" height="14" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></button>
+          <button style="display:flex; width:100%; align-items:center; gap:10px; padding:10px 10px; border:0; background:transparent; border-radius:10px; cursor:pointer; font-family:inherit; text-align:left;"><span class="rz-row-icon" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="13" height="13"><use href="#i-doc"/></svg></span><span style="flex:1; min-width:0;"><span style="display:block; font-size:13px; color:var(--b3-theme-on-background);">产品路线图（2026 H2）</span><span style="display:block; font-size:10.5px; color:var(--b3-theme-on-surface-light);">/规划 · 产品</span></span><svg width="14" height="14" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></button>
+          <button style="display:flex; width:100%; align-items:center; gap:10px; padding:10px 10px; border:0; background:transparent; border-radius:10px; cursor:pointer; font-family:inherit; text-align:left;"><span class="rz-row-icon" style="width:30px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="13" height="13"><use href="#i-doc"/></svg></span><span style="flex:1; min-width:0;"><span style="display:block; font-size:13px; color:var(--b3-theme-on-background);">团队周会模板</span><span style="display:block; font-size:10.5px; color:var(--b3-theme-on-surface-light);">/模板 · 未分组</span></span><svg width="14" height="14" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></button>
+        </div>
+        <div style="padding: 0 12px calc(10px + env(safe-area-inset-bottom));"><button type="button" class="rz-pill-btn" style="width:100%; justify-content:center; padding:11px 0;">打开收藏面板</button></div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<div class="gallery" id="g-e" style="margin-top:34px;">
+  <!-- 25. 暗色切换器（紧凑） -->
+  <section class="shot shot--proposal" data-shot="25-dark-switcher" style="width: 700px;">
+    <div class="shot-caption"><span class="no">25</span><span class="name">暗色 · 切换器（紧凑变体）</span><span class="note">提案层全部走 --b3-* 变量，暗色自动成立</span></div>
+    <div class="stage"><div class="screen rz-dark" style="width: 660px; height: 380px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw__body" style="height:100%; display:flex; flex-direction:column;">
+        <div style="padding:12px 16px 8px; display:flex; gap:8px;">
+          <div style="flex:1; display:flex; align-items:center; gap:8px; border:1px solid var(--b3-border-color); border-radius:10px; padding:0 10px; height:38px; background:var(--b3-theme-surface);">
+            <svg width="14" height="14"><use href="#iconSearch"/></svg>
+            <input value="路线" placeholder="搜索页签、收藏、最近与全库文档" style="border:0; background:transparent; outline:none; flex:1; font-size:13px; font-family:inherit; color:var(--b3-theme-on-background);">
+            <span class="rz-kbd">Ctrl J</span>
+          </div>
+        </div>
+        <div style="flex:1; overflow:auto; padding: 0 16px 14px; display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <div class="sw__window-label">已打开 · 测试工作区</div>
+            <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+              <button style="display:flex; gap:10px; align-items:center; text-align:left; padding:8px 9px; border:1px solid color-mix(in srgb,var(--b3-theme-primary) 30%, transparent); background:color-mix(in srgb,var(--b3-theme-primary) 7%, transparent); border-radius:10px; cursor:pointer; font-family:inherit;">
+                <span class="rz-row-icon" style="width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="13" height="13"><use href="#i-doc"/></svg></span>
+                <span style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font-size:13px; color:var(--b3-theme-on-background);">产品<mark style="background:color-mix(in srgb,var(--b3-theme-primary) 30%, transparent); color:inherit; border-radius:3px; padding:0 1px;">路线</mark>图（2026 H2）</span><span style="font-size:11px; color:var(--b3-theme-on-surface-light);">/规划 · 12:20</span></span>
+                <span class="rz-kbd">1</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <div class="sw__window-label">收藏 · 最近</div>
+            <div style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
+              <button style="display:flex; gap:10px; align-items:center; text-align:left; padding:8px 9px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:10px; cursor:pointer; font-family:inherit;">
+                <span class="rz-row-icon" style="width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:var(--b3-theme-surface-lighter);"><svg width="13" height="13"><use href="#iconStar"/></svg></span>
+                <span style="flex:1; min-width:0; display:flex; flex-direction:column;"><span style="font-size:13px; color:var(--b3-theme-on-background);">每日工作台</span><span style="font-size:11px; color:var(--b3-theme-on-surface-light);">/日记 · 收藏</span></span>
+                <span class="rz-kbd">2</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="rz-receipt"><span>空查询时：最近 / 固定 / 当前现场优先</span><span style="flex:1"></span><span class="rz-kbd">↑↓</span><span class="rz-kbd">Enter</span><span class="rz-kbd">Alt</span></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 26. 暗色设置（悬浮球） -->
+  <section class="shot shot--proposal" data-shot="26-dark-settings-fab" style="width: 700px;">
+    <div class="shot-caption"><span class="no">26</span><span class="name">暗色 · 设置（悬浮球标签）</span><span class="note">分组卡片在暗色下的层级</span></div>
+    <div class="stage"><div class="screen rz-dark" style="width: 660px; height: 340px;">
+      <div class="speed-switch sw-settings" style="height:100%; display:flex;">
+        <div class="sw-settings__tabs" data-active="floatingBall"></div>
+        <div class="rz-settings-body" style="flex:1;">
+          <div class="rz-group-title">端侧与主点击</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">显示悬浮球</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:14px; align-items:center;"><span style="font-size:12px;">桌面</span><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label><span style="font-size:12px;">手机</span><label class="b3-switch sw-switch"><input type="checkbox" checked><span></span></label></div>
+            </div>
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">轻触动作</div><div class="sw-settings__item-desc" style="font-size:12px; color:var(--b3-theme-on-surface-light);">默认打开平台并恢复上次表面</div></div>
+              <div class="sw-settings__item-action"><select class="b3-select" style="height:30px; font-size:12px; border-radius:8px;"><option selected>打开平台（推荐）</option></select></div>
+            </div>
+          </div>
+          <div class="rz-group-title">外观</div>
+          <div class="rz-group-card">
+            <div class="sw-settings__item" style="padding:10px 14px; display:flex; align-items:center; gap:12px;">
+              <div class="sw-settings__item-main" style="flex:1;"><div class="sw-settings__item-title" style="font-size:13px; font-weight:600;">大小 / 闲置透明度</div></div>
+              <div class="sw-settings__item-action" style="display:flex; gap:12px; align-items:center;"><span class="rz-kbd" style="min-width:38px;">44px</span><input type="range" min="20" max="100" value="55" style="accent-color:var(--b3-theme-primary);"><span class="rz-kbd" style="min-width:38px;">55%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+</div>
+
+<script>
+// 原型辅助：把左侧标签栏克隆进每个设置屏，并标记当前激活标签（纯原型装配，非生产代码）
+(function () {
+  var tpl = document.getElementById("rz-settings-rail");
+  document.querySelectorAll(".sw-settings__tabs[data-active]").forEach(function (host) {
+    var active = host.getAttribute("data-active");
+    var frag = tpl.content.cloneNode(true);
+    frag.querySelectorAll(".sw-settings__tab").forEach(function (tab) {
+      var on = tab.getAttribute("data-panel") === active;
+      tab.classList.toggle("is-active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      if (on) { tab.style.background = "color-mix(in srgb, var(--b3-theme-primary) 12%, transparent)"; tab.style.color = "var(--b3-theme-primary)"; tab.style.fontWeight = "600"; }
+    });
+    host.setAttribute("role", "tablist");
+    host.appendChild(frag);
+  });
+})();
+</script>
+</body>
+</html>
+
