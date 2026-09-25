@@ -33,8 +33,30 @@ function normalizeSkin(value) {
     return SKIN_IDS.includes(value) ? value : "fusion";
 }
 
-function normalizeSettings(saved, options = {}) {
-    const defaults = options.defaults && typeof options.defaults === "object" ? options.defaults : {};
+// T-6851：组件商店视图状态清洗——密度/视图模式白名单、排序白名单、折叠分组
+// 名称有界（≤32 条、每条 ≤48 字符、去重）。只保留有值字段，空对象=无状态。
+function normalizeHomeStoreState(value) {
+    const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const cleaned = {};
+    if (raw.density === "compact" || raw.density === "comfortable") cleaned.density = raw.density;
+    if (raw.viewMode === "grid" || raw.viewMode === "list") cleaned.viewMode = raw.viewMode;
+    if (typeof raw.sort === "string" && ["relevance", "title", "status", "category"].includes(raw.sort)) {
+        cleaned.sort = raw.sort;
+    }
+    const collapsedGroups = [];
+    if (Array.isArray(raw.collapsedGroups)) {
+        for (const name of raw.collapsedGroups) {
+            if (collapsedGroups.length >= 32) break;
+            if (typeof name !== "string") continue;
+            const bounded = name.trim().slice(0, 48);
+            if (bounded && !collapsedGroups.includes(bounded)) collapsedGroups.push(bounded);
+        }
+    }
+    if (collapsedGroups.length > 0) cleaned.collapsedGroups = collapsedGroups;
+    return cleaned;
+}
+
+function normalizeSettings(saved, options = {}) {    const defaults = options.defaults && typeof options.defaults === "object" ? options.defaults : {};
     const source = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
     const clamp = typeof options.clamp === "function" ? options.clamp : (value, _min, _max, fallback) => value ?? fallback;
     const normalizeEnum = typeof options.normalizeEnum === "function" ? options.normalizeEnum : (value, _allowed, fallback) => value ?? fallback;
@@ -141,6 +163,9 @@ function normalizeSettings(saved, options = {}) {
         pinyinMatch: source.pinyinMatch === undefined ? true : source.pinyinMatch === true,
         // T-6823 密度档位：comfortable（默认现状）| compact（紧凑），白名单外回落
         density: source.density === "compact" ? "compact" : "comfortable",
+        // T-6851 组件商店视图状态跨会话记忆（密度/视图模式/排序/折叠分组，均有界；
+        // 空对象=无状态，各字段缺省时商店 UI 走自己的默认值）
+        homeStore: normalizeHomeStoreState(source.homeStore),
         // T-6830 打开策略：开启后搜索结果命中已开页签时聚焦而非新开（防重复页签），默认关
         reuseOpenTabs: source.reuseOpenTabs === undefined ? false : source.reuseOpenTabs === true,
         // T-6810 Essentials 常驻层：跨文档集自动打开的必需文档 rootId（≤10，形态校验）

@@ -35,7 +35,7 @@ test('store rerender restores sort control', () => assert.match(storeUiSource, /
 test('store rerender focuses without jumping scroll', () => assert.match(storeUiSource, /target\.focus\(\{preventScroll: true\}\)/));
 test('empty store path restores view state', () => assert.match(storeUiSource, /root\.textContent = this\.i18n\.homeNoMoreModules;\s*restoreStoreView\(\);/));
 test('normal store path restores view state', () => assert.match(storeUiSource, /applyFilter\(\);\s*restoreStoreView\(\);/));
-test('sort changes rerender the store', () => assert.match(storeUiSource, /sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); renderStore\(\); \}\)/));
+test('sort changes rerender the store', () => assert.match(storeUiSource, /sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
 test('module changes rerender the store', () => { const i = storeUiSource.indexOf('const handleModuleChange = () => {'); assert.ok(i >= 0, 'missing handleModuleChange'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender on module change'); });
 test('provider rescan rerenders the store', () => { const i = storeUiSource.indexOf('window.setTimeout(() => {'); assert.ok(i >= 0, 'missing rescan timer'); const body = storeUiSource.slice(i, i + 300); assert.ok(body.includes('renderStore();'), 'rerender after rescan'); });
 test('focus descriptor starts in a neutral state', () => assert.match(storeUiSource, /let focusKind = "none"/));

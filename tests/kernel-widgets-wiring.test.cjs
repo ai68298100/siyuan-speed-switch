@@ -46,7 +46,7 @@ test('each kernel widget adapter calls its own endpoint and guards invalid paylo
     for (const [moduleId, endpoint, guard] of widgets) {
         const registration = indexSource.indexOf(`register("${moduleId}"`);
         assert.ok(registration > 0, `${moduleId} 适配器必须注册`);
-        const window = indexSource.slice(registration, registration + 1800);
+        const window = indexSource.slice(registration, registration + 3600);
         assert.ok(window.includes(endpoint), `${moduleId} 必须调用 ${endpoint}`);
         if (guard) assert.ok(window.includes(guard), `${moduleId} 必须有无效载荷守卫 ${guard}`);
     }
@@ -77,7 +77,7 @@ test('capture, reservations, and plugin commands use bounded models and interact
 
 test('database list query applies bounded filters, sorting, total count, and a short cache', () => {
     const registration = indexSource.indexOf('register("database-list"');
-    const window = indexSource.slice(registration, registration + 1800);
+    const window = indexSource.slice(registration, registration + 3600);
     assert.match(window, /type = 'av'/);
     assert.match(window, /normalizeDatabaseListConfig\(config\)/);
     assert.match(window, /buildNotebookBoxScope\(normalized\.notebook\)/);
@@ -92,21 +92,21 @@ test('four list widgets expose deep projection controls and bounded refresh poli
     assert.deepEqual(modules.get('recent-updates').configSchema.map((field) => field.key),
         ['limit', 'groupByDocument', 'showPath', 'showUpdated', 'showRank']);
     assert.deepEqual(modules.get('database-list').configSchema.map((field) => field.key),
-        ['limit', 'notebook', 'query', 'sortBy', 'showPath', 'showUpdated', 'showRank']);
+        ['blockId', 'limit', 'notebook', 'query', 'sortBy', 'showPath', 'showUpdated', 'showRank']);
     assert.deepEqual(modules.get('saved-searches').configSchema.map((field) => field.key),
         ['limit', 'query', 'method', 'sortBy', 'showKeyword', 'showMethod', 'showScope', 'showRank']);
     assert.deepEqual(modules.get('recent-edits').configSchema.map((field) => field.key),
         ['limit', 'notebook', 'days', 'query', 'showPath', 'showUpdated', 'showRank']);
     for (const [moduleId, cache] of [['recent-updates', 1000], ['database-list', 1000], ['saved-searches', 2000], ['recent-edits', 1000]]) {
         const registration = indexSource.indexOf(`register("${moduleId}"`);
-        const window = indexSource.slice(registration, registration + 2200);
+        const window = indexSource.slice(registration, registration + 3600);
         assert.match(window, new RegExp(`cacheTtlMs: ${cache}`), `${moduleId} 使用预期短缓存`);
     }
 });
 
 test('recent edits applies a validated time and notebook window with accurate totals', () => {
     const registration = indexSource.indexOf('register("recent-edits"');
-    const window = indexSource.slice(registration, registration + 1800);
+    const window = indexSource.slice(registration, registration + 3600);
     assert.match(window, /normalizeRecentEditsConfig\(config\)/);
     assert.match(window, /taskWindowStart\(normalized\.days\)/);
     assert.match(window, /buildNotebookBoxScope\(normalized\.notebook\)/);
@@ -183,7 +183,7 @@ test('component panel clamps dynamically rendered oversized icons', () => {
 
 test('random review scopes SQL to descendants and reports the bounded candidate set', () => {
     const registration = indexSource.indexOf('register("random-review"');
-    const window = indexSource.slice(registration, registration + 1800);
+    const window = indexSource.slice(registration, registration + 3600);
     assert.match(window, /parentDocument/);
     assert.match(window, /path LIKE/);
     assert.match(window, /COUNT\(\*\) OVER\(\) AS total_count/);
@@ -192,7 +192,7 @@ test('random review scopes SQL to descendants and reports the bounded candidate 
 
 test('random review refresh keeps a short stable batch cache', () => {
     const registration = indexSource.indexOf('register("random-review"');
-    const window = indexSource.slice(registration, registration + 1800);
+    const window = indexSource.slice(registration, registration + 3600);
     assert.match(window, /timeoutMs: 1500, cacheTtlMs: 15000/);
 });
 

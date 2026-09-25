@@ -49,7 +49,7 @@ test("widget store previews refresh real data and separate size selection from c
     assert.match(storeUiSource, /homeStoreNoResults/);
     assert.match(storeUiSource, /let storeQuery = ""/);
     assert.match(storeUiSource, /let storeTab = "all"/);
-    assert.match(storeUiSource, /let storeSort = "relevance"/);
+    assert.match(storeUiSource, /let storeSort = persistedStoreState.sort || "relevance"/);
     assert.match(storeUiSource,/homeStoreSortLabel/);
     assert.match(source, /sortHomeStoreCards/);
     assert.match(source, /matchesHomeStoreTokens/);

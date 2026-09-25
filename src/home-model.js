@@ -384,6 +384,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "database-list", title: "数据库", icon: "iconDatabase", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
+        {key: "blockId", label: "绑定单个数据库（表格形态）", type: "database", defaults: ""},
         {key: "limit", label: "显示条数", type: "number", min: 1, max: 12, defaults: 8},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "query", label: "名称或路径过滤", type: "text", defaults: ""},

@@ -695,9 +695,9 @@ test('store aborts safely when root is missing', () => assert.match(storeSource,
 test('store root uses region role', () => assert.match(storeSource,/root\.setAttribute\("role", "region"\)/));
 test('store root uses localized accessible label', () => assert.match(storeSource,/root\.setAttribute\("aria-label", this\.i18n\.homeStoreTitle\)/));
 test('store root records target device', () => assert.match(storeSource,/root\.dataset\.device = device/));
-test('store state starts from query tab and sort defaults', () => assert.match(storeSource,/let storeQuery = "";\s*let storeTab = "all";\s*let storeSort = "relevance"/));
+test('store state starts from query tab and sort defaults', () => assert.match(storeSource,/let storeQuery = "";\s*let storeTab = "all";[\s\S]*?let storeSort = persistedStoreState\.sort \|\| "relevance"/));
 test('store render metadata starts idle at version zero', () => assert.match(storeSource,/root\.dataset\.renderVersion = "0";\s*root\.setAttribute\("aria-busy", "false"\)/));
-test('store collapsed groups use local set state', () => assert.match(storeSource,/const collapsedGroups = new Set<string>\(\)/));
+test('store collapsed groups use local set state', () => assert.match(storeSource,/const collapsedGroups = new Set<string>\(Array\.isArray\(persistedStoreState\.collapsedGroups\) \? persistedStoreState\.collapsedGroups : \[\]\)/));
 test('store render announces busy before rebuilding', () => assert.match(storeSource,/const renderStore = \(\) => \{\s*root\.setAttribute\("aria-busy", "true"\)/));
 test('store render increments version monotonically', () => assert.match(storeSource,/String\(Number\(root\.dataset\.renderVersion \|\| "0"\) \+ 1\)/));
 test('store render captures active element', () => assert.match(storeSource,/const activeElement = document\.activeElement instanceof HTMLElement \? document\.activeElement : null/));
@@ -730,7 +730,7 @@ test('store sort offers relevance title status and category', () => { const i = 
 test('store sort value is normalized before display', () => assert.match(storeSource,/sortSelect\.value = normalizeHomeStoreSort\(storeSort\)/));
 test('store sort records current mode', () => assert.match(storeSource,/sortSelect\.dataset\.sort = storeSort/));
 test('store sort controls result summary', () => assert.match(storeSource,/sortSelect\.setAttribute\("aria-controls", "sw-home-store-result-summary"\)/));
-test('store sort change normalizes and rerenders', () => assert.match(storeSource,/sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); renderStore\(\); \}\)/));
+test('store sort change normalizes, persists, and rerenders', () => assert.match(storeSource,/sortSelect\.addEventListener\("change", \(\) => \{ storeSort = normalizeHomeStoreSort\(sortSelect\.value\); persistStoreState\(\); renderStore\(\); \}\)/));
 test('store restore clamps scroll to rebuilt height', () => assert.match(storeSource,/root\.scrollTop = Math\.min\(previousScrollTop, root\.scrollHeight\)/));
 test('store restore finds card by module identity', () => assert.match(storeSource,/find\(\(card\) => card\.dataset\.moduleId === focusValue && !card\.classList\.contains\("fn__none"\)\)/));
 test('store restore focuses target without scrolling', () => assert.match(storeSource,/if \(target\) target\.focus\(\{preventScroll: true\}\)/));

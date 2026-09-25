@@ -408,7 +408,11 @@ function buildHostRecentDocsSnapshot(payload, config, labels = {}, now = Date.no
 // ---------- T-6328 数据库导航（/api/query/sql，type='av'） ----------
 function normalizeDatabaseListConfig(value) {
     const source = value && typeof value === "object" ? value : {};
+    // T-6850/P8：绑定 blockId 时组件切换为该库的表格形态投影（复用 database-table
+    // 的 AV 两级取数管线）；未绑定保持全库清单形态
+    const blockId = boundedText(source.blockId, 64);
     return {
+        blockId: /^\d{14}-[0-9a-z]+$/i.test(blockId) ? blockId : "",
         limit: clampLimit(source.limit, 8),
         notebook: boundedText(source.notebook, 64),
         query: boundedText(source.query, 64).replace(/[%_']/g, ""),

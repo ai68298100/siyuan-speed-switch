@@ -47,6 +47,8 @@ import {buildHomeStoreProviderGroups, buildHomeStoreSourceGroups, buildHomeStore
 export interface HomeStoreUiHost {
     i18n: Record<string, string>;
     isMobile: boolean;
+    getSettings(): {homeStore?: {density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]}};
+    updateSettings(patch: Record<string, unknown>): void;
     homeRuntime: {
         registerAdapter(options: Record<string, unknown>): {registered: boolean; unregister: () => boolean | void};
         listModules(device?: string): unknown[];
@@ -204,16 +206,28 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
         root.dataset.device = device;
         let storeQuery = "";
         let storeTab = "all";
-        let storeSort = "relevance";
-        let storeDensity: "comfortable" | "compact" = "comfortable";
-        let storeViewMode = "grid";
+        // T-6851：视图状态自设置载入（跨会话记忆）；变更即回写
+        const persistedStoreState = this.getSettings().homeStore || {};
+        let storeSort = persistedStoreState.sort || "relevance";
+        let storeDensity: "comfortable" | "compact" = persistedStoreState.density === "compact" ? "compact" : "comfortable";
+        let storeViewMode = persistedStoreState.viewMode === "list" ? "list" : persistedStoreState.viewMode === "compact" ? "compact" : "grid";
         let selectedStoreModules: string[] = [];
             root.dataset.activeTab = storeTab;
             root.dataset.density = storeDensity;
             root.dataset.viewMode = storeViewMode;
         root.dataset.renderVersion = "0";
         root.setAttribute("aria-busy", "false");
-        const collapsedGroups = new Set<string>();
+        const collapsedGroups = new Set<string>(Array.isArray(persistedStoreState.collapsedGroups) ? persistedStoreState.collapsedGroups : []);
+
+        // T-6851：密度/视图模式/排序/折叠分组任一变化即落设置（normalize 侧有界清洗）
+        const persistStoreState = () => {
+            this.updateSettings({homeStore: {
+                sort: storeSort,
+                density: storeDensity,
+                viewMode: storeViewMode,
+                collapsedGroups: [...collapsedGroups],
+            }});
+        };
 
         const renderStore = () => {
             root.setAttribute("aria-busy", "true");
@@ -309,7 +323,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             sortSelect.value = normalizeHomeStoreSort(storeSort);
             sortSelect.dataset.sort = storeSort;
             sortSelect.setAttribute("aria-controls", "sw-home-store-result-summary");
-            sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); renderStore(); });
+            sortSelect.addEventListener("change", () => { storeSort = normalizeHomeStoreSort(sortSelect.value); persistStoreState(); renderStore(); });
             searchBar.appendChild(sortSelect);
             const densityButton = document.createElement("button");
             densityButton.type = "button";
@@ -320,7 +334,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             densityButton.setAttribute("aria-label", `${this.i18n.homeStoreDensity} · ${densityLabel}`);
             densityButton.title = densityButton.getAttribute("aria-label") || "";
             densityButton.setAttribute("aria-pressed", String(storeDensity === "compact"));
-            densityButton.addEventListener("click", () => { storeDensity = storeDensity === "compact" ? "comfortable" : "compact"; renderStore(); });
+            densityButton.addEventListener("click", () => { storeDensity = storeDensity === "compact" ? "comfortable" : "compact"; persistStoreState(); renderStore(); });
             searchBar.appendChild(densityButton);
             const viewButton = document.createElement("button");
             viewButton.type = "button";
@@ -333,6 +347,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             viewButton.addEventListener("click", () => {
                 storeViewMode = normalizeHomeStoreViewMode(storeViewMode === "grid" ? "list" : storeViewMode === "list" ? "compact" : "grid");
                 root.dataset.viewMode = storeViewMode;
+                persistStoreState();
                 renderStore();
             });
             searchBar.appendChild(viewButton);
@@ -353,7 +368,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
             resetViewButton.textContent = this.i18n.homeStoreResetView;
             resetViewButton.setAttribute("aria-label", this.i18n.homeStoreResetView);
             resetViewButton.title = this.i18n.homeStoreResetView;
-            resetViewButton.addEventListener("click", () => { storeQuery = ""; storeTab = "all"; storeSort = "relevance"; storeDensity = "comfortable"; storeViewMode = "grid"; selectedStoreModules = []; collapsedGroups.clear(); renderStore(); });
+            resetViewButton.addEventListener("click", () => { storeQuery = ""; storeTab = "all"; storeSort = "relevance"; storeDensity = "comfortable"; storeViewMode = "grid"; selectedStoreModules = []; collapsedGroups.clear(); persistStoreState(); renderStore(); });
             searchBar.appendChild(resetViewButton);
             const guideButton = document.createElement("button");
             guideButton.type = "button";
@@ -1039,7 +1054,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 groupToggle.setAttribute("aria-expanded", String(!collapsedGroups.has(label)));
                 groupToggle.dataset.group = label;
                 groupToggle.title = groupToggle.getAttribute("aria-label") || "";
-                groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); renderStore(); };
+                groupToggle.onclick = () => { if (collapsedGroups.has(label)) collapsedGroups.delete(label); else collapsedGroups.add(label); persistStoreState(); renderStore(); };
                 const sourceMeta = readyGroupSources.get(label);
                 // 来源组的组内顺序由纯模型决定（source.order 升序）。映射结果与组内
                 // 数量不一致时回退原顺序：不同来源可能撞同一个展示名（label 键相同），

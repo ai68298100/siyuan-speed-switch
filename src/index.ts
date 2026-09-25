@@ -623,6 +623,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     density: "comfortable", // T-6823 密度默认舒适
     reuseOpenTabs: false, // T-6830 打开策略默认总是新开
     documentSetEssentials: [], // T-6810 Essentials 常驻文档
+    homeStore: {}, // T-6851 组件商店视图状态（空=全默认）
 };
 
 // 左侧面板显示方式
@@ -673,6 +674,8 @@ export interface ISwSettings {
     skin: PanelSkin; // T-6796 界面皮肤：fusion=跟随思源主题（默认）
     pinyinMatch: boolean; // T-6805 拼音辅助匹配（全拼/首字母），默认开
     density: "comfortable" | "compact"; // T-6823 密度档位（默认 comfortable）
+    /** T-6851 组件商店视图状态（密度/视图模式/排序/折叠分组，normalize 有界清洗） */
+    homeStore: {density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]};
     reuseOpenTabs: boolean; // T-6830 打开策略：命中已开页签时聚焦复用（默认关=总是新开）
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
 }
@@ -5552,6 +5555,29 @@ const updatedMap: {[rootId: string]: string} = {};
         }, {timeoutMs: 1200, cacheTtlMs: 1000});
         register("database-list", this.i18n.homeDatabaseList, "iconDatabase", this.i18n.homeDescDatabaseList, ["loaded-protyle", "destroy-protyle"], async (config) => {
             const normalized = normalizeDatabaseListConfig(config);
+            // T-6850/P8：绑定了具体数据库 → 按数据形态（当前视图的列+行）投影，
+            // 复用 database-table 的两级取数管线（块 ID 0 行 → getAttributeView 解析库 ID 重试）；
+            // 未绑定保持"全库清单"形态。库不可用或无列时回退清单，不渲染空卡。
+            if (normalized.blockId) {
+                const fetchView = (id: string, extra: Record<string, unknown> = {}) =>
+                    this.fetchKernelJson("/api/av/renderAttributeView", {id, pageSize: 100, ...extra});
+                let json = await fetchView(normalized.blockId);
+                if (!json?.data?.view?.rows?.length) {
+                    try {
+                        const full = await this.fetchKernelJson("/api/av/getAttributeView", {id: normalized.blockId});
+                        const dbId = full?.data?.av?.id;
+                        const viewID = full?.data?.av?.viewID;
+                        if (typeof dbId === "string" && dbId && dbId !== normalized.blockId && typeof viewID === "string" && viewID) {
+                            json = await fetchView(dbId, {viewID});
+                        }
+                    } catch (_) { /* 保持首呼结果 */ }
+                }
+                const tableSnapshot = buildAvTableSnapshot(json, normalized, {
+                    title: this.i18n.homeDatabaseList, empty: this.i18n.homeAvTableEmpty,
+                    stat: this.i18n.homeAvTableRows,
+                });
+                if (tableSnapshot) return tableSnapshot;
+            }
             const notebookScope = buildNotebookBoxScope(normalized.notebook);
             const keywordScope = normalized.query ? ` AND (content LIKE '%${normalized.query}%' OR hpath LIKE '%${normalized.query}%')` : "";
             const orderBy = normalized.sortBy === "名称" ? "content COLLATE NOCASE, updated DESC"

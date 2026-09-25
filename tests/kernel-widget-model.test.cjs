@@ -673,3 +673,32 @@ test('activitywatch bucket selection drives query, cache key, and buckets projec
     assert.equal(life.normalizeActivityWatchConfig({bucketId: 'x"y'}).bucketId, '', 'bucket ids with quotes are rejected');
     assert.match(life.buildActivityWatchBucketsUrl({endpoint: 'http://127.0.0.1:5600'}), /\/api\/0\/buckets$/);
 });
+
+test("database list config: bound blockId passes ID validation for table projection (T-6850)", () => {
+    const model = require("../src/kernel-widget-model.js");
+    assert.equal(model.normalizeDatabaseListConfig({blockId: "20260925090000-abcdef"}).blockId, "20260925090000-abcdef");
+    assert.equal(model.normalizeDatabaseListConfig({blockId: "not-an-id"}).blockId, "");
+    assert.equal(model.normalizeDatabaseListConfig({}).blockId, "");
+});
+
+test("home store state: bounded normalization for cross-session view memory (T-6851)", () => {
+    const settings = require("../src/settings-model.js");
+    const normalized = settings.normalizeSettings({homeStore: {
+        density: "compact",
+        viewMode: "list",
+        sort: "title",
+        collapsedGroups: ["生活  ", "生活", "写作", 42, null, "  "],
+    }}, {defaults: {}}).homeStore;
+    assert.deepEqual(normalized, {
+        density: "compact",
+        viewMode: "list",
+        sort: "title",
+        collapsedGroups: ["生活", "写作"],
+    });
+    // 白名单外值剔除、无值字段缺省
+    const strict = settings.normalizeSettings({homeStore: {density: "huge", viewMode: "x", sort: "nope"}}, {defaults: {}}).homeStore;
+    assert.deepEqual(strict, {});
+    // 非对象输入 → 空状态
+    assert.deepEqual(settings.normalizeSettings({homeStore: "bad"}, {defaults: {}}).homeStore, {});
+    assert.deepEqual(settings.normalizeSettings({}, {defaults: {}}).homeStore, {});
+});

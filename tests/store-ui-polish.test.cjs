@@ -40,7 +40,7 @@ test('mobile sort control expands', () => assert.match(css, /\.sw-home-store__so
 test('mobile guide button expands', () => assert.match(css, /\.sw-home-store__guide \{ flex: 1 1 46%; min-height: 32px; \}/));
 test('mobile cards disable hover lift', () => assert.match(css, /\.sw-home-store__card:hover \{ transform: none; \}/));
 test('mobile tabs preserve horizontal overscroll', () => assert.match(css, /overscroll-behavior-x: contain/));
-test('sort state is stored in store dialog', () => assert.match(storeUiSource, /let storeSort = "relevance"/));
+test('sort state is stored in store dialog', () => assert.match(storeUiSource, /let storeSort = persistedStoreState\.sort \|\| "relevance"/));
 test('sort select uses localized label', () => assert.match(storeUiSource, /homeStoreSortLabel/));
 test('sort select normalizes values', () => assert.match(storeUiSource, /normalizeHomeStoreSort\(sortSelect\.value\)/));
 test('store render uses sort model', () => assert.match(storeUiSource, /sortHomeStoreCards\(/));
