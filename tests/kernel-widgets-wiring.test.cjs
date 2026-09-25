@@ -429,6 +429,34 @@ test('related content SWR persistence: cold-start cache with stale-while-revalid
         '缓存标注必须有 i18n 键（双语）');
 });
 
+test('wave-2: preview hover trigger, sticky pane, synthetic dedupe, essentials receipts (T-6842~T-6844)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    const searchModel = readSourceText(path.join(__dirname, '..', 'src', 'search-model.js'));
+    const documentSets = readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js'));
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    const scss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    // T-6843 悬停触发与行焦点同一管线
+    assert.match(docSearchUi, /box\.addEventListener\("mouseover"/,
+        '预览窗格必须响应行悬停（与 focusin 共用 debounce 管线）');
+    // T-6842 sticky 吸顶：grid 列布局 + sticky，旧 absolute 覆盖退场
+    assert.match(scss, /\.sw--with-preview \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) 260px;/,
+        '预览布局必须转为网格两列（窗格独立成列）');
+    assert.match(scss, /position: sticky;\s*top: 0;/, '窗格必须 sticky 吸顶（长列表滚动时仍在场）');
+    assert.doesNotMatch(scss, /padding-right: 272px/, '旧 absolute 覆盖层的网格留白必须移除');
+    // T-6844 合成名去重
+    assert.match(searchModel, /function dedupeSyntheticOutlineHeading\(outline\)/,
+        '合成文档名项与文档自带同名 h1 必须去重');
+    // T-6841 Essentials 回执进报告 + Markdown 导出
+    assert.match(documentSets, /function documentSetRestoreReportToMarkdown\(report\)/,
+        '报告必须提供 Markdown 渲染纯函数');
+    assert.match(documentSets, /normalizeEssentialsOutcome\(options\.essentials\)/,
+        '报告必须并入 Essentials 回执明细');
+    assert.match(settingsSections, /this\.openDocumentSetEssentials\(\)/,
+        '设置页恢复路径必须执行 Essentials 常驻层（对齐 T-6810 语义）');
+    assert.match(settingsSections, /documentSetRestoreReportToMarkdown\(lastRestoreReport\)/,
+        '设置页必须提供 Markdown 导出按钮');
+});
+
 test('layered workspace snapshot: preset is persisted into the set and essentials produce receipts (T-6815)', () => {
     // 恢复链：场景按 presetId 优先固化，Essentials 带回执打开并并入统一摘要
     assert.match(indexSource, /presets\.find\(\(preset: \{id: string\}\) => preset\.id === item\.presetId\)/,

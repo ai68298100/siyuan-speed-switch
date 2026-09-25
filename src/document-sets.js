@@ -311,7 +311,81 @@ function buildDocumentSetRestoreReport(plan, probe, execution = {}, options = {}
         setName: set ? set.name : "",
         counts: summarizeDocumentSetRestore(safePlan, probe, safeExecution),
         entries,
+        // T-6841：Essentials 常驻层回执明细（T-6815 只回了计数并入 toast，
+        // 报告里补逐项 rootId+status，失败排查不再靠回忆）。无回执时缺省该段，
+        // 旧版报告消费方（结构化 JSON）不受影响。
+        ...(normalizeEssentialsOutcome(options.essentials)
+            ? {essentials: normalizeEssentialsOutcome(options.essentials)}
+            : {}),
     };
+}
+
+// T-6841：Essentials 回执归一化——results 逐项 {rootId, status}，status 取
+// restored/failed/skipped；非法条目剔除、rootId 形态校验、有界 10（常驻层上限）。
+function normalizeEssentialsOutcome(value) {
+    if (!value || typeof value !== "object" || !Array.isArray(value.results) || value.results.length === 0) return null;
+    const entries = [];
+    for (const raw of value.results) {
+        if (entries.length >= DOCUMENT_SET_ENTRY_MAX) break;
+        if (!raw || typeof raw !== "object") continue;
+        const rootId = normalizeRootId(raw.rootId);
+        if (!rootId) continue;
+        const status = raw.status === "restored" || raw.status === "failed" || raw.status === "skipped" ? raw.status : "";
+        if (!status) continue;
+        const record = {rootId, status};
+        if (status === "failed" && typeof raw.error === "string" && raw.error) {
+            record.error = cleanText(raw.error, DOCUMENT_SET_REPORT_ERROR_MAX);
+        }
+        entries.push(record);
+    }
+    if (entries.length === 0) return null;
+    return {
+        counts: {
+            opened: entries.filter((entry) => entry.status === "restored").length,
+            failed: entries.filter((entry) => entry.status === "failed").length,
+            skipped: entries.filter((entry) => entry.status === "skipped").length,
+        },
+        entries,
+    };
+}
+
+// T-6841：报告 → Markdown（纯函数，导出即所见）。逐项一行：状态/标题/rootId，
+// 失败项附原因码（清洗后的 error 文本）；Essentials 段仅在存在时输出。
+function documentSetRestoreReportToMarkdown(report) {
+    const safe = report && typeof report === "object" ? report : {};
+    const statusText = {
+        opened: "opened", restored: "restored", failed: "failed", missing: "missing", pending: "pending",
+    };
+    const lines = [];
+    lines.push(`# 小驴雷切 恢复报告`);
+    lines.push("");
+    lines.push(`- setId: \`${safe.setId || ""}\``);
+    lines.push(`- setName: ${safe.setName || ""}`);
+    lines.push(`- generatedAt: ${safe.generatedAt ? new Date(safe.generatedAt).toISOString() : ""}`);
+    const counts = safe.counts && typeof safe.counts === "object" ? safe.counts : {};
+    lines.push(`- counts: restored ${counts.succeeded || 0} / failed ${counts.failed || 0} / skipped ${counts.skipped || 0} / missing ${counts.missing || 0}${counts.cancelled ? " (cancelled)" : ""}`);
+    lines.push("");
+    lines.push("## Entries");
+    lines.push("");
+    for (const entry of Array.isArray(safe.entries) ? safe.entries : []) {
+        const status = statusText[entry.status] || entry.status;
+        const error = entry.error ? ` — error: ${entry.error}` : "";
+        lines.push(`- ${status} | ${entry.title || ""} | \`${entry.rootId || ""}\`${error}`);
+    }
+    if (safe.essentials && Array.isArray(safe.essentials.entries) && safe.essentials.entries.length > 0) {
+        lines.push("");
+        lines.push("## Essentials");
+        lines.push("");
+        const ec = safe.essentials.counts || {};
+        lines.push(`opened ${ec.opened || 0} / failed ${ec.failed || 0} / skipped ${ec.skipped || 0}`);
+        lines.push("");
+        for (const entry of safe.essentials.entries) {
+            const error = entry.error ? ` — error: ${entry.error}` : "";
+            lines.push(`- ${entry.status} | \`${entry.rootId || ""}\`${error}`);
+        }
+    }
+    lines.push("");
+    return lines.join("\n");
 }
 
 // T-6800 工作区切换：循环切换目标选取。仅有一个集合或空列表时返回 null
@@ -340,5 +414,6 @@ module.exports = {
     summarizeDocumentSetRestore,
     runDocumentSetRestore,
     buildDocumentSetRestoreReport,
+    documentSetRestoreReportToMarkdown,
     pickNextDocumentSet,
 };

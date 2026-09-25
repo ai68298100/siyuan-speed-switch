@@ -7968,21 +7968,34 @@ private rootIdOf(tab: Tab): string | null {
         });
     }
 
-    private async openDocumentSetEssentials(): Promise<{opened: number; failed: number; skipped: number}> {
+    // T-6841：设置页恢复路径同样调用（对齐 T-6810"每次恢复"语义），故公开
+    public async openDocumentSetEssentials(): Promise<{opened: number; failed: number; skipped: number; results: Array<{rootId: string; status: "restored" | "failed" | "skipped"; error?: string}>}> {
         const essentials = this.getSettings().documentSetEssentials || [];
         const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
-        // T-6815：带回执打开——opened=本次成功、failed=尝试失败、skipped=已打开跳过
-        const outcome = {opened: 0, failed: 0, skipped: 0};
+        // T-6815：带回执打开——opened=本次成功、failed=尝试失败、skipped=已打开跳过。
+        // T-6841：逐项明细随回执返回（rootId+status+失败原因），并入恢复报告导出。
+        const outcome = {opened: 0, failed: 0, skipped: 0, results: [] as Array<{rootId: string; status: "restored" | "failed" | "skipped"; error?: string}>};
         for (const rootId of essentials) {
             if (opened.has(rootId)) {
                 outcome.skipped += 1;
+                outcome.results.push({rootId, status: "skipped"});
                 continue;
             }
-            const ok = this.isMobile ? await this.mobileOpenDoc(rootId)
-                // T-6826：常驻层同样不抢焦点（跟随恢复链语义）
-                : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
-            if (ok) outcome.opened += 1;
-            else outcome.failed += 1;
+            try {
+                const ok = this.isMobile ? await this.mobileOpenDoc(rootId)
+                    // T-6826：常驻层同样不抢焦点（跟随恢复链语义）
+                    : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
+                if (ok) {
+                    outcome.opened += 1;
+                    outcome.results.push({rootId, status: "restored"});
+                } else {
+                    outcome.failed += 1;
+                    outcome.results.push({rootId, status: "failed", error: "open returned false"});
+                }
+            } catch (error) {
+                outcome.failed += 1;
+                outcome.results.push({rootId, status: "failed", error: error instanceof Error ? error.message : String(error)});
+            }
         }
         return outcome;
     }

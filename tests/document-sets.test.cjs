@@ -270,3 +270,49 @@ test("document sets: rollback targets a specific version index (T-6824 timeline)
     const clamped = sets.rollbackDocumentSet(state, "set-t", {now: 5000, versionIndex: 9});
     assert.equal(clamped.item.versions.length, 2);
 });
+
+test("document set restore report: essentials receipts embedded with counts and entries (T-6841)", () => {
+    const value = {setId: "project", name: "Project", entries: [{rootId: "doc-a", title: "A"}]};
+    const plan = sets.planDocumentSetRestore(value, new Set(), null);
+    const report = sets.buildDocumentSetRestoreReport(plan, {missing: []}, {results: []}, {
+        now: 1000,
+        essentials: {results: [
+            {rootId: "ess-1", status: "restored"},
+            {rootId: "ess-2", status: "failed", error: "open returned false"},
+            {rootId: "ess-3", status: "skipped"},
+            {rootId: "bad id", status: "restored"}, // 含空白 → normalizeRootId 剔除
+            {rootId: "ess-4", status: "bogus"},     // 非法 status 剔除
+        ]},
+    });
+    assert.deepEqual(report.essentials.counts, {opened: 1, failed: 1, skipped: 1});
+    assert.deepEqual(report.essentials.entries.map((entry) => [entry.rootId, entry.status]), [
+        ["ess-1", "restored"], ["ess-2", "failed"], ["ess-3", "skipped"],
+    ]);
+    assert.equal(report.essentials.entries[1].error, "open returned false");
+    // 无回执时缺省该段（旧消费方不受影响）
+    const plain = sets.buildDocumentSetRestoreReport(plan, {missing: []}, {results: []}, {now: 1000});
+    assert.equal("essentials" in plain, false);
+});
+
+test("document set restore report: markdown export lists entries and failure reasons (T-6841)", () => {
+    const value = {setId: "project", name: "Project", entries: [
+        {rootId: "doc-a", title: "A"},
+        {rootId: "doc-b", title: "B"},
+    ]};
+    const plan = sets.planDocumentSetRestore(value, new Set(), null);
+    const execution = {succeeded: 1, failed: 1, results: [{rootId: "doc-a", ok: true}, {rootId: "doc-b", ok: false, error: "timeout after 2500ms"}]};
+    const report = sets.buildDocumentSetRestoreReport(plan, {missing: []}, execution, {
+        now: 1769000000000,
+        essentials: {results: [{rootId: "ess-1", status: "restored"}, {rootId: "ess-2", status: "failed", error: "open returned false"}]},
+    });
+    const markdown = sets.documentSetRestoreReportToMarkdown(report);
+    assert.ok(markdown.startsWith("# 小驴雷切 恢复报告"));
+    assert.ok(markdown.includes("## Entries"));
+    assert.ok(markdown.includes("restored | A | `doc-a`"));
+    assert.ok(markdown.includes("failed | B | `doc-b` — error: timeout after 2500ms"));
+    assert.ok(markdown.includes("## Essentials"));
+    assert.ok(markdown.includes("opened 1 / failed 1 / skipped 0"));
+    assert.ok(markdown.includes("- failed | `ess-2` — error: open returned false"));
+    // 空报告不抛异常
+    assert.ok(sets.documentSetRestoreReportToMarkdown(null).startsWith("# "));
+});

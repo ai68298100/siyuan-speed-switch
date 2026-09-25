@@ -8,7 +8,7 @@ import {getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
-import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport} from "./document-sets";
+import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
@@ -40,7 +40,8 @@ declare module "./document-sets" {
         counts: {succeeded: number; failed: number; skipped: number; missing: number; unknown: number; available: number; cancelled: boolean; attempted: number};
         entries: DocumentSetRestoreReportEntry[];
     }
-    export function buildDocumentSetRestoreReport(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean; results?: Array<{rootId: string; ok: boolean; error?: string}>}, options?: {now?: number}): DocumentSetRestoreReport;
+    export function buildDocumentSetRestoreReport(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean; results?: Array<{rootId: string; ok: boolean; error?: string}>}, options?: {now?: number; essentials?: {results: Array<{rootId: string; status: "restored" | "failed" | "skipped"; error?: string}>} | null}): DocumentSetRestoreReport;
+    export function documentSetRestoreReportToMarkdown(report: unknown): string;
 }
 
 declare module "./quick-actions-ui" {
@@ -85,6 +86,7 @@ export interface SettingsSectionsHost {
     getFavoriteTagOptions(): Promise<Array<{name: string; count: string | number}>>;
     getDocumentSetEssentials(): string[];
     addDocumentSetEssentialsFromCurrentTabs(): number;
+    openDocumentSetEssentials(): Promise<{opened: number; failed: number; skipped: number; results: Array<{rootId: string; status: "restored" | "failed" | "skipped"; error?: string}>}>;
     removeDocumentSetEssential(rootId: string): void;
     buildDocumentSetEssentialsManager(): HTMLElement;
     createFavoriteGroup(name: string): boolean;
@@ -1153,6 +1155,29 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     window.setTimeout(() => URL.revokeObjectURL(url), 0);
                     showMessage(this.i18n.documentSetRestoreReportExported);
                 });
+                // T-6841：Markdown 导出——人类可读格式，失败项附原因码，便于粘贴到
+                // issue/笔记；与 JSON 导出同源（同一份 lastRestoreReport 渲染）。
+                const exportReportMd = document.createElement("button");
+                exportReportMd.type = "button";
+                exportReportMd.className = "b3-button b3-button--text";
+                exportReportMd.textContent = this.i18n.documentSetRestoreReportMd;
+                exportReportMd.disabled = true;
+                exportReportMd.addEventListener("click", () => {
+                    if (!lastRestoreReport) {
+                        showMessage(this.i18n.documentSetRestoreReportNone);
+                        return;
+                    }
+                    const blob = new Blob([documentSetRestoreReportToMarkdown(lastRestoreReport)], {type: "text/markdown"});
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `siyuan-speed-switch-restore-report-${lastRestoreReport.setId || "set"}.md`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                    showMessage(this.i18n.documentSetRestoreReportExported);
+                });
                 const restore = document.createElement("button");
                 restore.type = "button";
                 restore.className = "b3-button b3-button--text";
@@ -1226,12 +1251,26 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     restore.disabled = false;
                     restore.removeAttribute("aria-busy");
                     const counts = summarizeDocumentSetRestore(plan, probe, {succeeded: execution.succeeded, failed: execution.failed, cancelled});
+                    // T-6841：设置页恢复同样执行 Essentials 常驻层（对齐 T-6810
+                    // "每次恢复"语义与切换器路径），回执逐项并入报告。
+                    let essentialsOutcome: Awaited<ReturnType<SettingsSectionsHost["openDocumentSetEssentials"]>> | null = null;
+                    if (!cancelled && execution.attempted > 0) {
+                        try {
+                            essentialsOutcome = await this.openDocumentSetEssentials();
+                        } catch (error) {
+                            logger.warn("restore essentials fail", error);
+                        }
+                    }
                     // 与 showMessage 同源：计数与逐项明细取自同一次执行结果，不会互相矛盾。
                     // 取消/中断同样产出报告——那正是最需要复核"哪些没走完"的场景。
-                    lastRestoreReport = buildDocumentSetRestoreReport(plan, probe, {...execution, cancelled}, {now: Date.now()});
+                    lastRestoreReport = buildDocumentSetRestoreReport(plan, probe, {...execution, cancelled}, {now: Date.now(), essentials: essentialsOutcome ?? undefined});
                     exportReport.disabled = false;
+                    if (exportReportMd) exportReportMd.disabled = false;
                     const summary = `${this.i18n.documentSetRestoreDone}: ${counts.succeeded}, ${this.i18n.documentSetRestoreFailed}: ${counts.failed}, `
-                        + `${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}, ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`;
+                        + `${this.i18n.documentSetRestoreSkipped}: ${counts.skipped}, ${this.i18n.documentSetRestoreMissing}: ${counts.missing}`
+                        + (essentialsOutcome && essentialsOutcome.opened + essentialsOutcome.failed > 0
+                            ? ` · ${this.i18n.documentSetEssentialsApplied}: +${essentialsOutcome.opened}`
+                            : "");
                     showMessage(counts.cancelled ? `${this.i18n.documentSetRestoreCancelled}: ${summary}` : summary);
                 });
                 const preview = document.createElement("button");
@@ -1289,7 +1328,7 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     });
                     versionList.appendChild(versionRow);
                 });
-                actions.append(rename, restore, exportReport, preview, rollback, remove);
+                actions.append(rename, restore, exportReport, exportReportMd, preview, rollback, remove);
                 row.append(copy, actions, versionList);
                 list.appendChild(row);
             });

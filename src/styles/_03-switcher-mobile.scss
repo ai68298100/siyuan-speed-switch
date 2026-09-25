@@ -1075,27 +1075,30 @@
             }
         }
 
-        // ==================== T-6839 常驻预览窗格 ====================
-        // 桌面右分栏：行焦点同步预览（大纲+首段摘要）；网格右侧留白，窗格
-        // 绝对定位贴右缘、随结果区同高，内容超高时内部滚动。
+        // ==================== T-6839/T-6842 常驻预览窗格 ====================
+        // 桌面右分栏：行焦点/悬停同步预览（大纲+首段摘要）。
+        // T-6842：box 转网格布局（标签行/结果列/窗格列），窗格 sticky 吸附
+        // 滚动视口顶部——长列表滚到"加载更多"时预览仍在场（旧 absolute 覆盖
+        // 层会随内容滚走）。
         &.sw--with-preview {
-            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 260px;
+            align-items: start;
 
-            .sw__doc-grid {
-                padding-right: 272px;
+            .sw__window-label {
+                grid-column: 1 / -1;
             }
 
             .sw__doc-load-more,
             .sw__doc-view-all {
-                max-width: calc(100% - 272px);
+                grid-column: 1;
             }
 
             .sw__doc-preview {
-                position: absolute;
+                grid-column: 2;
+                grid-row: 2 / span 2;
+                position: sticky;
                 top: 0;
-                right: 0;
-                bottom: 0;
-                width: 260px;
                 min-height: 200px;
                 overflow-y: auto;
                 padding: 8px 10px;

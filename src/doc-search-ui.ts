@@ -999,6 +999,15 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
                     scheduleDocPreview.call(this, scrollElement, item as HTMLElement);
                 }
             });
+            // T-6843 悬停触发：与行焦点同一 debounce 管线（同一次扫掠的多次
+            // mouseover 由 300ms debounce 合并取末行）；触屏的 tap 会先发
+            // mouseover 再 click——预览先行一步无害（点击随后打开文档）
+            box.addEventListener("mouseover", (event) => {
+                const item = (event.target as HTMLElement).closest?.(".sw__doc-grid .sw__doc-item");
+                if (item) {
+                    scheduleDocPreview.call(this, scrollElement, item as HTMLElement);
+                }
+            });
         }
     }
 

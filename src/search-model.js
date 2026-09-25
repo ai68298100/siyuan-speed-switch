@@ -1648,6 +1648,7 @@ function buildDocPreviewSnapshot(outline, blocks, options = {}) {
     const excerptMax = Number.isFinite(options.excerptMax) ? options.excerptMax : DOC_PREVIEW_EXCERPT_MAX;
     const outlineOut = [];
     flattenPreviewOutline(outline, 0, outlineOut, outlineMax);
+    const outlineEntries = dedupeSyntheticOutlineHeading(outlineOut);
     let excerpt = "";
     if (Array.isArray(blocks)) {
         for (const block of blocks) {
@@ -1661,7 +1662,18 @@ function buildDocPreviewSnapshot(outline, blocks, options = {}) {
             excerpt = merged;
         }
     }
-    return {outline: outlineOut, excerpt, empty: outlineOut.length === 0 && !excerpt};
+    return {outline: outlineEntries, excerpt, empty: outlineEntries.length === 0 && !excerpt};
+}
+
+// T-6844 合成名去重：内核大纲顶层首项是合成的文档名项（name=文档名），
+// 当文档自带 h1 与文档名同名时会渲染出两行重复——跳过首个合成项。
+// 只在相邻前两项同名时触发，不改写层级结构。
+function dedupeSyntheticOutlineHeading(outline) {
+    if (Array.isArray(outline) && outline.length >= 2
+        && outline[0].name === outline[1].name) {
+        return outline.slice(1);
+    }
+    return outline;
 }
 
 // ==================== T-6834 搜索结果关键词高亮 ====================

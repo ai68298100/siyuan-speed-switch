@@ -1183,3 +1183,26 @@ test("doc preview snapshot: kernel shape — child text lives in content, synthe
         {name: "背景与目标", level: 2},
     ]);
 });
+
+test("doc preview snapshot: synthetic title dedupes when doc h1 repeats the name (T-6844)", () => {
+    // 文档名="复盘纪要" 且文档自带同名 h1 → 合成项与 h1 相邻重复 → 跳过合成项
+    const kernel = [
+        {id: "doc1", name: "复盘纪要", type: "outline", depth: 0, blocks: [
+            {id: "h1", content: "复盘纪要", type: "NodeHeading", subType: "h1", depth: 0, blocks: [
+                {id: "h2", content: "背景", type: "NodeHeading", subType: "h2", depth: 1},
+            ]},
+        ]},
+    ];
+    assert.deepEqual(buildDocPreviewSnapshot(kernel, []).outline, [
+        {name: "复盘纪要", level: 1},
+        {name: "背景", level: 2},
+    ]);
+    // 异名（常见情形）不去重
+    const distinct = [
+        {id: "doc1", name: "文档名", type: "outline", depth: 0, blocks: [
+            {id: "h1", content: "根标题", type: "NodeHeading", subType: "h1", depth: 0},
+        ]},
+    ];
+    assert.equal(buildDocPreviewSnapshot(distinct, []).outline.length, 2);
+    // 中间隔层级的不同名（首两项不同名）不动
+});
