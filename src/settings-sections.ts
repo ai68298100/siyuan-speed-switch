@@ -70,6 +70,10 @@ export interface SettingsSectionsHost {
     num(value: number, min: number, max: number, step: number, unit: string, onChange: (v: number) => void, label?: string): HTMLElement;
     notebookSelect(current: string, onPick: (id: string) => void): HTMLElement;
     switcher(checked: boolean, onChange: (v: boolean) => void): HTMLElement;
+    // T-6872（RZ-2）：分组卡片与分段控件设置行
+    settingGroupTitle(text: string): HTMLElement;
+    settingGroupCard(...children: HTMLElement[]): HTMLElement;
+    settingSegmented(title: string, description: string | undefined, items: Array<{value: string, label: string}>, current: string, onChange: (value: string) => void): HTMLElement;
     // 行为与数据访问（宿主方法）
     clampNum(value: any, min: number, max: number, fallback: number): number;
     updateSettings(patch: Partial<ISwSettings>): void;
@@ -121,29 +125,37 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
             {value: "custom", label: this.i18n.panelSizeModeCustom},
             {value: "fullscreen", label: this.i18n.panelSizeModeFullscreen},
         ];
+        // T-6872（RZ-2）：标签页内按语义分组为多张卡片；2~4 个互斥取值改分段控件
         wrapper.append(
             // T-6796 皮肤：fusion=融合思源主题（默认），其余为独立皮肤
-            this.settingItem(this.i18n.skinLabel, this.i18n.skinTip,
-                this.select([
+            this.settingGroupTitle(this.i18n.settingsGroupTheme),
+            this.settingGroupCard(
+                this.settingSegmented(this.i18n.skinLabel, this.i18n.skinTip, [
                     {value: "fusion", label: this.i18n.skinFusion},
                     {value: "apple", label: this.i18n.skinApple},
                     {value: "midnight", label: this.i18n.skinMidnight},
                     {value: "paper", label: this.i18n.skinPaper},
-                ], s.skin || "fusion", (v) => this.updateSettings({skin: v as ISwSettings["skin"]}))),
-            this.settingItem(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip,
-                this.select(sizeModeOptions, s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode}))),
-            this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,
-                this.num(s.panelScale, PANEL_SCALE_MIN, PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({panelScale: v}), this.i18n.panelScale)),
-            this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
-                this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
-            this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
-                this.num(s.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
-            this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
-                this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
-                    [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
-                ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
-            this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
-                this.num(s.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
+                ], s.skin || "fusion", (v) => this.updateSettings({skin: v as ISwSettings["skin"]})),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupWindow),
+            this.settingGroupCard(
+                this.settingSegmented(this.i18n.panelSizeMode, this.i18n.panelSizeModeTip, sizeModeOptions, s.panelSizeMode, (v) => this.updateSettings({panelSizeMode: v as PanelSizeMode})),
+                this.settingItem(this.i18n.panelScale, this.i18n.panelScaleTip,
+                    this.num(s.panelScale, PANEL_SCALE_MIN, PANEL_SCALE_MAX, 5, "%", (v) => this.updateSettings({panelScale: v}), this.i18n.panelScale)),
+                this.settingItem(this.i18n.setWidth, this.i18n.setWidthTip,
+                    this.num(s.dialogWidth, DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogWidth: v}), this.i18n.setWidth)),
+                this.settingItem(this.i18n.setHeight, this.i18n.setHeightTip,
+                    this.num(s.dialogHeight, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, 40, this.i18n.unitPx, (v) => this.updateSettings({dialogHeight: v}), this.i18n.setHeight)),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupThumbnails),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
+                    this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
+                        [2, 3, 4, 5, 6, 7, 8].map((n) => ({value: String(n), label: String(n)})),
+                    ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
+                this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
+                    this.num(s.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
+            ),
         );
         return wrapper;
     }
@@ -159,28 +171,41 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
             {value: "titleAsc", label: this.i18n.sortTitleAsc},
             {value: "titleDesc", label: this.i18n.sortTitleDesc},
         ];
-        wrapper.append(this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
-            this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))));
-        // T-6692b Agent 受控动作灰度开关：关闭后受控写入/批量动作与执行链一并停用
-        wrapper.append(this.settingItem(this.i18n.agentActionsEnabled, this.i18n.agentActionsEnabledTip,
-            this.switcher(s.agentActionsEnabled, (v) => {
-                this.updateSettings({agentActionsEnabled: v});
-            })));
-        // T-6805 拼音辅助匹配：全拼/首字母匹配文档标题
-        wrapper.append(this.settingItem(this.i18n.pinyinMatchLabel, this.i18n.pinyinMatchTip,
-            this.switcher(s.pinyinMatch, (v) => {
-                this.updateSettings({pinyinMatch: v});
-            })));
-        // T-6823 密度档位：紧凑（compact）开关，关闭即舒适（comfortable）
-        wrapper.append(this.settingItem(this.i18n.densityCompactLabel, this.i18n.densityCompactTip,
-            this.switcher(s.density === "compact", (v) => {
-                this.updateSettings({density: v ? "compact" : "comfortable"});
-            })));
-        // T-6830 打开策略：搜索结果命中已开页签时聚焦复用
-        wrapper.append(this.settingItem(this.i18n.reuseTabsLabel, this.i18n.reuseTabsTip,
-            this.switcher(s.reuseOpenTabs, (v) => {
-                this.updateSettings({reuseOpenTabs: v});
-            })));
+        // T-6872（RZ-2）：分组卡片；密度开关升级为 舒适/紧凑 分段（语义不变）
+        wrapper.append(
+            this.settingGroupTitle(this.i18n.settingsGroupSortDensity),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
+                    this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))),
+                this.settingSegmented(this.i18n.densityLabel, this.i18n.densityCompactTip, [
+                    {value: "comfortable", label: this.i18n.densityComfortable},
+                    {value: "compact", label: this.i18n.densityCompact},
+                ], s.density === "compact" ? "compact" : "comfortable", (v) => {
+                    this.updateSettings({density: v === "compact" ? "compact" : "comfortable"});
+                }),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupSearchOpen),
+            this.settingGroupCard(
+                // T-6805 拼音辅助匹配：全拼/首字母匹配文档标题
+                this.settingItem(this.i18n.pinyinMatchLabel, this.i18n.pinyinMatchTip,
+                    this.switcher(s.pinyinMatch, (v) => {
+                        this.updateSettings({pinyinMatch: v});
+                    })),
+                // T-6830 打开策略：搜索结果命中已开页签时聚焦复用
+                this.settingItem(this.i18n.reuseTabsLabel, this.i18n.reuseTabsTip,
+                    this.switcher(s.reuseOpenTabs, (v) => {
+                        this.updateSettings({reuseOpenTabs: v});
+                    })),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupAgent),
+            this.settingGroupCard(
+                // T-6692b Agent 受控动作灰度开关：关闭后受控写入/批量动作与执行链一并停用
+                this.settingItem(this.i18n.agentActionsEnabled, this.i18n.agentActionsEnabledTip,
+                    this.switcher(s.agentActionsEnabled, (v) => {
+                        this.updateSettings({agentActionsEnabled: v});
+                    })),
+            ),
+        );
         return wrapper;
     }
 
@@ -196,15 +221,20 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
             {value: "enlarge", label: this.i18n.sidebarEnlarge},
             {value: "columns", label: this.i18n.sidebarColumnsAuto},
         ];
+        // T-6872（RZ-2）：分组卡片；枚举改分段控件
         wrapper.append(
-            this.settingItem(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip,
-                this.select(dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay}))),
-            // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
-            this.settingItem(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip,
-                this.select(sidebarOptions, s.sidebarLayout, (v) => {
+            this.settingGroupTitle(this.i18n.settingsGroupListSidebar),
+            this.settingGroupCard(
+                this.settingSegmented(this.i18n.setDockDisplay, this.i18n.setDockDisplayTip, dockOptions, s.dockDisplay, (v) => this.updateSettings({dockDisplay: v as DockDisplay})),
+                // 侧边栏缩略图布局：拉伸放大填满栏宽，或按宽度自动增加列数
+                this.settingSegmented(this.i18n.sidebarLayout, this.i18n.sidebarLayoutTip, sidebarOptions, s.sidebarLayout, (v) => {
                     this.updateSettings({sidebarLayout: v as SidebarLayout});
-                })),
-            this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, buildSettingsDockToggles.call(this, s), true),
+                }),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupDocks),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, buildSettingsDockToggles.call(this, s), true),
+            ),
         );
         return wrapper;
     }
@@ -257,23 +287,32 @@ export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSetting
             {value: "soft", label: this.i18n.setHomePaletteSoft},
             {value: "mono", label: this.i18n.setHomePaletteMono},
         ];
-        const paletteRow = this.settingItem(this.i18n.setHomePalette, this.i18n.setHomePaletteTip,
-            this.select(paletteOptions, s.homePalette, (v) => this.updateSettings({homePalette: v as HomePalette})));
         const modeOptions: Array<{value: HomeSizeMode, label: string}> = [
             {value: "follow", label: this.i18n.setHomeSizeModeFollow},
             {value: "adaptive", label: this.i18n.setHomeSizeModeAdaptive},
             {value: "custom", label: this.i18n.setHomeSizeModeCustom},
             {value: "fullscreen", label: this.i18n.setHomeSizeModeFullscreen},
         ];
-        const modeRow = this.settingItem(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip,
-            this.select(modeOptions, s.homeSizeMode, (v) => this.updateSettings({homeSizeMode: v as HomeSizeMode})));
-        const widthRow = this.settingItem(this.i18n.setHomeWidth, this.i18n.setHomeWidthTip,
-            this.num(s.homeWidth, 480, 1920, 20, this.i18n.unitPx, (v) => this.updateSettings({homeWidth: v}), this.i18n.setHomeWidth));
-        const heightRow = this.settingItem(this.i18n.setHomeHeight, this.i18n.setHomeHeightTip,
-            this.num(s.homeHeight, 360, 1280, 20, this.i18n.unitPx, (v) => this.updateSettings({homeHeight: v}), this.i18n.setHomeHeight));
-        wrapper.append(paletteRow, modeRow);
+        // T-6872（RZ-2）：分组卡片；枚举改分段控件
+        wrapper.append(
+            this.settingGroupTitle(this.i18n.settingsGroupComponents),
+            this.settingGroupCard(
+                this.settingSegmented(this.i18n.setHomePalette, this.i18n.setHomePaletteTip, paletteOptions, s.homePalette, (v) => this.updateSettings({homePalette: v as HomePalette})),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupWorkbenchWindow),
+            this.settingGroupCard(
+                this.settingSegmented(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip, modeOptions, s.homeSizeMode, (v) => this.updateSettings({homeSizeMode: v as HomeSizeMode})),
+            ),
+        );
         if (s.homeSizeMode === "custom") {
-            wrapper.append(widthRow, heightRow);
+            wrapper.append(
+                this.settingGroupCard(
+                    this.settingItem(this.i18n.setHomeWidth, this.i18n.setHomeWidthTip,
+                        this.num(s.homeWidth, 480, 1920, 20, this.i18n.unitPx, (v) => this.updateSettings({homeWidth: v}), this.i18n.setHomeWidth)),
+                    this.settingItem(this.i18n.setHomeHeight, this.i18n.setHomeHeightTip,
+                        this.num(s.homeHeight, 360, 1280, 20, this.i18n.unitPx, (v) => this.updateSettings({homeHeight: v}), this.i18n.setHomeHeight)),
+                ),
+            );
         }
         return wrapper;
     }
@@ -284,29 +323,35 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
         panelNote.className = "sw-settings__tip sw-settings__mobile-home-note";
         panelNote.textContent = this.i18n.mobileHomePanelFixed;
         panelNote.setAttribute("role", "note");
+        // T-6872（RZ-2）：分组卡片；列数枚举改分段（自动=竖屏单列、横屏双列）
         wrapper.append(
             panelNote,
-            this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
-                this.switcher(s.floatingBall?.enabled?.mobile ?? s.fabEnabled, (v) => {
-                    const floatingBall = this.getSettings().floatingBall || {};
-                    this.updateSettings({
-                        fabEnabled: v,
-                        floatingBall: {
-                            ...floatingBall,
-                            enabled: {
-                                ...(floatingBall.enabled || {}),
-                                mobile: v,
-                            },
-                        },
-                    });
-                    this.updateFABVisibility();
-                })),
-            this.settingItem(this.i18n.mobileLayout, this.i18n.mobileLayoutTip,
-                this.select([
+            this.settingGroupTitle(this.i18n.settingsGroupMobileLayout),
+            this.settingGroupCard(
+                this.settingSegmented(this.i18n.mobileLayout, this.i18n.mobileLayoutTip, [
+                    {value: String(MOBILE_COLUMNS_AUTO), label: this.i18n.mobileAuto},
                     {value: String(MOBILE_COLUMNS_SINGLE), label: this.i18n.mobileSingle},
                     {value: String(MOBILE_COLUMNS_DOUBLE), label: this.i18n.mobileDouble},
-                    {value: String(MOBILE_COLUMNS_AUTO), label: this.i18n.mobileAuto},
-                ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)}))),
+                ], String(s.mobileColumns), (v) => this.updateSettings({mobileColumns: parseInt(v, 10)})),
+            ),
+            this.settingGroupTitle(this.i18n.settingsGroupCompatibility),
+            this.settingGroupCard(
+                this.settingItem(this.i18n.fabEnabled, this.i18n.fabEnabledTip,
+                    this.switcher(s.floatingBall?.enabled?.mobile ?? s.fabEnabled, (v) => {
+                        const floatingBall = this.getSettings().floatingBall || {};
+                        this.updateSettings({
+                            fabEnabled: v,
+                            floatingBall: {
+                                ...floatingBall,
+                                enabled: {
+                                    ...(floatingBall.enabled || {}),
+                                    mobile: v,
+                                },
+                            },
+                        });
+                        this.updateFABVisibility();
+                    })),
+            ),
         );
         return wrapper;
     }

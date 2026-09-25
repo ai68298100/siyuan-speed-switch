@@ -327,6 +327,32 @@
         }
     }
 
+    // T-6872（RZ-2）：标签页内分组卡片——组标题（小号大写字距弱化）+ 组卡片
+    // （组内行的 hairline 分隔与 hover 提亮沿用条目自身规则，只收敛内边距到卡片内）。
+    .sw-settings__group-title {
+        margin: 14px 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--b3-theme-on-surface-light);
+
+        &:first-child {
+            margin-top: 2px;
+        }
+    }
+
+    .sw-settings__group-card {
+        border: 1px solid var(--b3-border-color);
+        border-radius: 10px;
+
+        > .sw-settings__item {
+            margin-inline: 0;
+            padding-inline: 12px;
+            border-radius: 0;
+        }
+    }
+
     // 设置条目：默认横排（左侧标题+描述，右侧控件），条目间用 surface-lighter 分隔
     .sw-settings__item {
         display: flex;

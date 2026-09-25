@@ -87,7 +87,7 @@ import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLif
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
 import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption} from "./platform-surface-model";
-import {createPlatformKbd} from "./platform-dom";
+import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -2248,6 +2248,28 @@ export default class SpeedSwitchPlugin extends Plugin {
         label.appendChild(input);
         label.appendChild(document.createElement("span"));
         return label;
+    }
+
+    // T-6872（RZ-2）：设置分组标题——组卡片的上一级说明（小号大写字距弱化）
+    private settingGroupTitle(text: string): HTMLElement {
+        const el = document.createElement("div");
+        el.className = "sw-settings__group-title";
+        el.textContent = text;
+        return el;
+    }
+
+    // T-6872（RZ-2）：分组卡片容器——组内行共享一张卡（hairline 分隔 + hover 提亮）
+    private settingGroupCard(...children: HTMLElement[]): HTMLElement {
+        const card = document.createElement("div");
+        card.className = "sw-settings__group-card";
+        card.append(...children);
+        return card;
+    }
+
+    // T-6872（RZ-2）：分段控件设置行——2~4 个互斥取值用分段而非下拉（取值可见、一次切换）
+    private settingSegmented(title: string, description: string | undefined, items: Array<{value: string, label: string}>, current: string, onChange: (value: string) => void): HTMLElement {
+        const control = createPlatformSegmented(document, {items, active: current, onChange, ariaLabel: title});
+        return this.settingItem(title, description, control);
     }
 
     // 设置条目：左侧标题+可选描述，右侧控件；column 时控件占满整行

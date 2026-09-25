@@ -570,8 +570,11 @@ test('density wiring: body marker mounted on load, toggled from settings, remove
     assert.match(indexSource, /document\.body\.dataset\.swDensity = "compact";/);
     assert.match(indexSource, /delete document\.body\.dataset\.swDensity;/, 'unload must remove the density marker');
     assert.match(indexSource, /this\.applyDensity\(\);/, 'onload must apply the density');
-    assert.match(settingsSections, /this\.updateSettings\(\{density: v \? "compact" : "comfortable"\}\)/,
-        '行为页必须提供密度开关');
+    // T-6872（RZ-2）：密度从开关行升级为 舒适/紧凑 分段控件（语义与 body 标记不变）。
+    assert.match(settingsSections, /this\.settingSegmented\(this\.i18n\.densityLabel, this\.i18n\.densityCompactTip/,
+        '行为页必须提供密度分段控件');
+    assert.match(settingsSections, /this\.updateSettings\(\{density: v === "compact" \? "compact" : "comfortable"\}\)/,
+        '密度分段必须写回 compact/comfortable 设置');
     const skins = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_10-skins.scss'));
     assert.match(skins, /body\[data-sw-density="compact"\]/, '紧凑密度必须以 body 标记作用域生效');
 });
@@ -802,8 +805,8 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
     const {declaresIn} = require('./css-block-scan.cjs');
     const shell = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_platform-shell.scss'));
     // 纯模型 DOM 助手进入生产入口（kbd 提示组的唯一产出方）。
-    assert.match(indexSource, /import \{createPlatformKbd\} from "\.\/platform-dom"/,
-        'index.ts must import the platform DOM helper');
+    assert.match(indexSource, /import \{createPlatformKbd, createPlatformSegmented\} from "\.\/platform-dom"/,
+        'index.ts must import the platform DOM helpers');
     // chrome 挂载接受 kbdHints 并渲染为 kbd 芯片组（空芯片与空组都不落 DOM）。
     assert.match(indexSource, /kbdHints\?: readonly string\[\];/, 'chrome options must declare kbdHints');
     const chromeMount = indexSource.slice(indexSource.indexOf('export function mountPlatformChrome'), indexSource.indexOf('declare module "./snippet-studio-ui"'));
@@ -846,4 +849,54 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
     const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
     assert.match(zh, /"platformKbdPreview": "Alt 预览"/);
     assert.match(en, /"platformKbdPreview": "Alt Preview"/);
+});
+
+test('settings group cards and segmented enums (T-6872 RZ-2)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    const settingsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_02-settings.scss'));
+    // 宿主装配：分段行必须经 createPlatformSegmented（平台原语唯一产出方），分组卡与组标题方法存在。
+    assert.match(indexSource, /createPlatformSegmented\(document, \{items, active: current, onChange, ariaLabel: title\}\)/,
+        'settingSegmented must build on the platform segmented primitive');
+    assert.match(indexSource, /private settingGroupTitle\(text: string\): HTMLElement/,
+        'group title helper must exist');
+    assert.match(indexSource, /private settingGroupCard\(\.\.\.children: HTMLElement\[\]\): HTMLElement/,
+        'group card helper must exist');
+    assert.match(settingsSections, /settingGroupTitle\(text: string\): HTMLElement;/,
+        'host interface must declare the group helpers');
+    // 枚举（2~4 个互斥取值）必须改分段控件；columns(9)/sortBy(6) 保留 select。
+    for (const label of ['skinLabel', 'panelSizeMode', 'setDockDisplay', 'sidebarLayout', 'setHomePalette', 'setHomeSizeMode', 'mobileLayout', 'densityLabel']) {
+        assert.match(settingsSections, new RegExp(`this\\.settingSegmented\\(this\\.i18n\\.${label}[,)]`),
+            `the ${label} row must use the segmented control`);
+    }
+    assert.match(settingsSections, /this\.i18n\.densityComfortable/, 'density segmented needs the comfortable label');
+    assert.match(settingsSections, /s\.density === "compact" \? "compact" : "comfortable"/,
+        'density segmented must derive the active value from settings');
+    // 分组卡片：五个标签各以组标题+组卡装配。
+    for (const groupKey of ['settingsGroupTheme', 'settingsGroupWindow', 'settingsGroupSortDensity', 'settingsGroupListSidebar', 'settingsGroupComponents', 'settingsGroupWorkbenchWindow', 'settingsGroupMobileLayout', 'settingsGroupCompatibility']) {
+        assert.match(settingsSections, new RegExp(`this\\.settingGroupTitle\\(this\\.i18n\\.${groupKey}\\)`),
+            `settings sections must use the ${groupKey} group title`);
+    }
+    // 旧密度开关行已被替换（标签不复用，避免残留歧义文案）。
+    assert.doesNotMatch(settingsSections, /densityCompactLabel/,
+        'the old compact-density switch label must be gone from the builders');
+    // SCSS：块级断言（组标题弱化大写 + 组卡片边界 + 卡内行收敛内边距）。
+    // 选择器用展开后的形态（_02-settings.scss 在 .sw-settings 作用域内嵌套）。
+    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-title', /text-transform:\s*uppercase/),
+        'group titles must render as small caps labels');
+    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-title', /color:\s*var\(--b3-theme-on-surface-light\)/),
+        'group titles must use the muted text color');
+    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card', /border-radius:\s*10px/),
+        'group cards must have their own rounded boundary');
+    assert.ok(declaresIn(settingsScss, '.sw-settings .sw-settings__group-card > .sw-settings__item', /margin-inline:\s*0/),
+        'rows inside a group card must drop their negative gutters');
+    // i18n 双语：新键双语齐备，旧键删除。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    for (const key of ['densityLabel', 'densityComfortable', 'densityCompact', 'settingsGroupTheme', 'settingsGroupWindow', 'settingsGroupThumbnails', 'settingsGroupSortDensity', 'settingsGroupSearchOpen', 'settingsGroupAgent', 'settingsGroupListSidebar', 'settingsGroupDocks', 'settingsGroupComponents', 'settingsGroupWorkbenchWindow', 'settingsGroupMobileLayout', 'settingsGroupCompatibility']) {
+        assert.match(zh, new RegExp(`"${key}": "`), `zh-CN must carry ${key}`);
+        assert.match(en, new RegExp(`"${key}": "`), `en must carry ${key}`);
+    }
+    assert.doesNotMatch(zh, /"densityCompactLabel"/, 'zh must drop the replaced density label key');
+    assert.doesNotMatch(en, /"densityCompactLabel"/, 'en must drop the replaced density label key');
 });
