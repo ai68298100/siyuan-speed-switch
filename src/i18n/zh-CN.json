@@ -984,6 +984,8 @@
   "homeHealthFailed": "失败",
   "homeHealthOk": "正常",
   "homeObjectTitle": "组件",
+  "cardUpdatedBadgeLabel": "页签卡更新时间",
+  "cardUpdatedBadgeTip": "在页签卡上显示最后编辑时间（今天显示时刻，其余显示日期）",
   "docSearchSplitHint": "右键：在右侧分屏打开",
   "chipsLabel": "结果类型过滤",
   "chipsAll": "全部",

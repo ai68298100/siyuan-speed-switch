@@ -19,7 +19,7 @@ import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sor
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
-import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
@@ -451,6 +451,8 @@ export interface ITabGroupRenderCtx {
     favorites: Set<string>;
     mru: string[];
     settings: ISwSettings;
+    // T-6883：最近编辑映射（rootId → 14 位时间串），供卡片更新时间徽标消费
+    updatedMap: {[rootId: string]: string};
     opts: {onOverlayClose: IOverlayClose, onTabsChanged: IOverlayClose};
 }
 
@@ -767,7 +769,8 @@ const DEFAULT_SETTINGS: ISwSettings = {
     sortBy: "mru",         // 页签排序方式
     excludedDocks: [],     // 不显示在左侧列表的面板类型
     dockDisplay: "collapsed",   // Default to the compact icon rail; users can expand it when labels are needed.
-    fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出
+    fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出（由 panelSizeMode 派生）
+    showCardUpdatedBadge: false, // T-6883 页签卡更新时间徽标（默认关；开启后今天显示时刻、其余显示日期）
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
     fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
     floatingBall: createDefaultFloatingBallConfig(), // T-6757 版本化悬浮球配置（旧 fabEnabled 仍兼容）
@@ -848,6 +851,7 @@ export interface ISwSettings {
     /** T-6851 组件商店视图状态（密度/视图模式/排序/折叠分组，normalize 有界清洗） */
     homeStore: {density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]};
     reuseOpenTabs: boolean; // T-6830 打开策略：命中已开页签时聚焦复用（默认关=总是新开）
+    showCardUpdatedBadge: boolean; // T-6883 页签卡更新时间徽标（默认关）
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
 }
 
@@ -9328,7 +9332,7 @@ private rootIdOf(tab: Tab): string | null {
         const pinned = new Set(this.getPinned());
         const favorites = new Set(this.getFavorites().map((item) => item.key));
 
-        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
+        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, updatedMap, opts};
 
         const all: IGroupedTab[] = [];
         const focusState: {defaultFocusIndex: number} = {defaultFocusIndex: 0};
@@ -9692,7 +9696,7 @@ private rootIdOf(tab: Tab): string | null {
             this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
             ctx.reusable.delete(item.tab.id);
         } else {
-            card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, {
+            card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, ctx, {
                 onActivate: (tab) => this.activateTab(tab, ctx.opts.onOverlayClose),
                 onTogglePin: (tab, cardEl) => this.handleTogglePin(tab, cardEl),
                 onToggleFav: (tab, cardEl) => this.handleToggleFav(tab, cardEl),
@@ -9906,6 +9910,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
 
     // 构建一张页签卡片（缩略图区域 + 底部信息 + 置顶/收藏/关闭按钮 + 右键菜单）
     private createCard(item: IGroupedTab, isActive: boolean, isPinned: boolean, isFaved: boolean,
+                       ctx: ITabGroupRenderCtx,
                        handlers: {
                            onActivate: (tab: Tab) => void,
                            onTogglePin: (tab: Tab, card: HTMLElement) => void,
@@ -9926,7 +9931,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         card.dataset.searchPath = buildOpenedDocumentScope(tab as unknown)?.path || "";
 
         card.appendChild(this.buildCardThumb());
-        card.appendChild(this.buildCardMeta(tab));
+        card.appendChild(this.buildCardMeta(tab, ctx));
         card.appendChild(this.buildCardActions(tab, card, isPinned, isFaved, handlers));
         item.card = card;
 
@@ -9960,8 +9965,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return thumb;
     }
 
-    // 底部：图标 + 标题；图标复用页签头已渲染好的内容，保证与真实页签一致
-    private buildCardMeta(tab: Tab): HTMLElement {
+    // 底部：图标 + 标题（+ T-6883 可选更新时间徽标）；图标复用页签头已渲染好的内容，保证与真实页签一致
+    private buildCardMeta(tab: Tab, ctx?: ITabGroupRenderCtx): HTMLElement {
         const meta = document.createElement("div");
         meta.className = "sw__meta";
         meta.appendChild(this.buildCardIcon(tab));
@@ -9969,6 +9974,20 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         titleEl.className = "sw__title";
         titleEl.textContent = this.titleOf(tab);
         meta.appendChild(titleEl);
+        // T-6883（T-6848）：更新时间徽标——设置开启且映射命中时显示
+        // （今天=时刻加主色，其余=日期）；无映射/非法时间不显示，不猜测。
+        if (ctx?.settings.showCardUpdatedBadge === true) {
+            const rootId = this.rootIdOf(tab);
+            const updated = rootId ? ctx.updatedMap[rootId] : undefined;
+            const badge = formatUpdatedBadge(updated, Date.now());
+            if (badge) {
+                const badgeEl = document.createElement("span");
+                badgeEl.className = "sw__updated-badge" + (badge.fresh ? " is-fresh" : "");
+                badgeEl.textContent = badge.text;
+                badgeEl.setAttribute("aria-hidden", "true");
+                meta.appendChild(badgeEl);
+            }
+        }
         return meta;
     }
 

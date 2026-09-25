@@ -912,6 +912,8 @@
   ,"homeHealthFailed": "Failed"
   ,"homeHealthOk": "OK"
   ,"homeObjectTitle": "Widget"
+  ,"cardUpdatedBadgeLabel": "Card updated time"
+  ,"cardUpdatedBadgeTip": "Show the last edit time on tab cards (time for today, date otherwise)"
   ,"docSearchSplitHint": "Right-click: open in right split"
   ,"chipsLabel": "Result type filter"
   ,"chipsAll": "All"

@@ -155,6 +155,11 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
                     ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
                 this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
                     this.num(s.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
+                // T-6883（T-6848）：页签卡更新时间徽标
+                this.settingItem(this.i18n.cardUpdatedBadgeLabel, this.i18n.cardUpdatedBadgeTip,
+                    this.switcher(s.showCardUpdatedBadge === true, (v) => {
+                        this.updateSettings({showCardUpdatedBadge: v});
+                    })),
             ),
         );
         return wrapper;

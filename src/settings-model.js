@@ -168,6 +168,8 @@ function normalizeSettings(saved, options = {}) {    const defaults = options.de
         homeStore: normalizeHomeStoreState(source.homeStore),
         // T-6830 打开策略：开启后搜索结果命中已开页签时聚焦而非新开（防重复页签），默认关
         reuseOpenTabs: source.reuseOpenTabs === undefined ? false : source.reuseOpenTabs === true,
+        // T-6883 页签卡更新时间徽标：开启后在卡片上显示最后编辑时刻/日期，默认关
+        showCardUpdatedBadge: source.showCardUpdatedBadge === undefined ? false : source.showCardUpdatedBadge === true,
         // T-6810 Essentials 常驻层：跨文档集自动打开的必需文档 rootId（≤10，形态校验）
         documentSetEssentials: normalizeEssentials(source.documentSetEssentials),
         mobileColumns: clamp(source.mobileColumns, ...range("mobileColumns"), defaults.mobileColumns),

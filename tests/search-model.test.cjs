@@ -1206,3 +1206,19 @@ test("doc preview snapshot: synthetic title dedupes when doc h1 repeats the name
     assert.equal(buildDocPreviewSnapshot(distinct, []).outline.length, 2);
     // 中间隔层级的不同名（首两项不同名）不动
 });
+
+// ---------- T-6883 页签卡更新时间徽标 ----------
+test("formatUpdatedBadge: 14-digit stamps map to compact badge text (T-6883)", () => {
+    const {formatUpdatedBadge} = require("../src/search-model.js");
+    const now = new Date(2026, 8, 26, 15, 0); // 本地 2026-09-26 15:00
+    const today = new Date(now); today.setHours(9, 5);
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const stamp = (d) => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+    const fresh = formatUpdatedBadge(stamp(today), now.getTime());
+    assert.deepEqual(fresh, {text: "09:05", fresh: true}, "今天显示时刻且 fresh");
+    const thisMonth = new Date(now); thisMonth.setDate(10);
+    assert.deepEqual(formatUpdatedBadge(stamp(thisMonth), now.getTime()), {text: "09-10", fresh: false}, "今年显示 MM-DD");
+    assert.equal(formatUpdatedBadge(stamp(new Date(2025, 0, 5)), now.getTime()).text, "2025-01-05", "跨年显示完整日期");
+    assert.equal(formatUpdatedBadge("not-a-stamp", now.getTime()), null, "非法串返回 null");
+    assert.equal(formatUpdatedBadge("20261340000000", now.getTime()), null, "非法月/日返回 null");
+});

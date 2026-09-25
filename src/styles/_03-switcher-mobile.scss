@@ -1794,6 +1794,20 @@
         color: var(--b3-theme-on-background);
         min-width: 0;
 
+        // T-6883（T-6848）：更新时间徽标——今天显示时刻（主色 fresh），其余显示日期
+        .sw__updated-badge {
+            flex: none;
+            margin-left: auto;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--b3-theme-on-surface-light);
+            white-space: nowrap;
+
+            &.is-fresh {
+                color: var(--b3-theme-primary);
+            }
+        }
+
         .sw__icon {
             flex: none;
             display: flex;

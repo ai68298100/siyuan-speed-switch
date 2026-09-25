@@ -1717,6 +1717,26 @@ function buildKeywordHighlightSegments(text, query) {
     return segments;
 }
 
+// T-6883（T-6848 页签卡更新时间徽标）：14 位 "yyyyMMddHHmmss" → 紧凑徽标文本。
+// 今天=时刻（fresh，主色），今年=MM-DD，跨年=YYYY-MM-DD；非法/未来时间返回 null
+// （不猜测，不显示假时间）。零 i18n——纯数字/符号文本。
+function formatUpdatedBadge(updated, nowMs) {
+    if (typeof updated !== "string" || !/^\d{14}$/.test(updated)) return null;
+    const year = Number(updated.slice(0, 4));
+    const month = Number(updated.slice(4, 6));
+    const day = Number(updated.slice(6, 8));
+    if (!(year > 2000 && year < 3000 && month >= 1 && month <= 12 && day >= 1 && day <= 31)) return null;
+    const hh = updated.slice(8, 10);
+    const mm = updated.slice(10, 12);
+    const now = typeof nowMs === "number" && Number.isFinite(nowMs) ? new Date(nowMs) : new Date();
+    const pad2 = (value) => String(value).padStart(2, "0");
+    const sameDay = now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day;
+    const mmdd = `${pad2(month)}-${pad2(day)}`;
+    if (sameDay) return {text: `${hh}:${mm}`, fresh: true};
+    if (now.getFullYear() === year) return {text: mmdd, fresh: false};
+    return {text: `${year}-${mmdd}`, fresh: false};
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -1764,4 +1784,5 @@ module.exports = {
     buildKeywordHighlightSegments,
     stripSnippetMarkup,
     buildDocPreviewSnapshot,
+    formatUpdatedBadge,
 };

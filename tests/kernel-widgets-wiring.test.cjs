@@ -1171,3 +1171,39 @@ test('query-time snippet section: cached single-flight projection into search re
     const refiltered = model.filterSnippetObjects([{id: 'a', name: '卡片', type: 'css', enabled: true, lines: 5}], '卡片');
     assert.equal(refiltered[0].lines, 5, 're-filtering preserves the line count');
 });
+
+test('card updated-time badge: setting, ctx threading and meta rendering (T-6883/T-6848)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const settingsModel = readSourceText(path.join(__dirname, '..', 'src', 'settings-model.js'));
+    const sectionsSource = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));
+    const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    // 设置键：默认关、布尔清洗、外观分组卡片行。
+    assert.match(indexSource, /showCardUpdatedBadge: false,/, "production default must be off");
+    assert.match(settingsModel, /showCardUpdatedBadge: source\.showCardUpdatedBadge === undefined \? false : source\.showCardUpdatedBadge === true,/,
+        'normalize must whitelist the boolean');
+    assert.match(sectionsSource, /this\.settingItem\(this\.i18n\.cardUpdatedBadgeLabel, this\.i18n\.cardUpdatedBadgeTip,\s*\n\s*this\.switcher\(s\.showCardUpdatedBadge === true, \(v\) => \{\s*\n\s*this\.updateSettings\(\{showCardUpdatedBadge: v\}\);/,
+        'the appearance group card must carry the badge switch');
+    // 渲染接线：updatedMap 进 ctx、徽标仅在设置开启且映射命中时渲染。
+    assert.match(indexSource, /const ctx: ITabGroupRenderCtx = \{reusable, activeTabId, pinned, favorites, mru, settings, updatedMap, opts\};/,
+        'renderList must thread updatedMap through the render ctx');
+    assert.match(mobileSwitcherSource, /settings, updatedMap, opts\};/,
+        'the mobile ctx must thread updatedMap too');
+    assert.match(indexSource, /if \(ctx\?\.settings\.showCardUpdatedBadge === true\) \{/,
+        'the badge is gated on the setting');
+    assert.match(indexSource, /const badge = formatUpdatedBadge\(updated, Date\.now\(\)\);\s*\n\s*if \(badge\) \{/,
+        'invalid stamps render nothing');
+    assert.match(indexSource, /badgeEl\.className = "sw__updated-badge" \+ \(badge\.fresh \? " is-fresh" : ""\);/,
+        'the badge must carry the fresh tier class');
+    // CSS：徽标右对齐 + fresh 主色（嵌套 SCSS 用展开后完整选择器）。
+    assert.ok(declaresIn(badgeScss, '.speed-switch .sw__meta .sw__updated-badge', /margin-left:\s*auto/),
+        'the badge must right-align in the card meta');
+    assert.ok(declaresIn(badgeScss, '.speed-switch .sw__meta .sw__updated-badge.is-fresh', /color:\s*var\(--b3-theme-primary\)/),
+        'fresh badges use the accent color');
+    // i18n 双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"cardUpdatedBadgeLabel": "页签卡更新时间"/);
+    assert.match(en, /"cardUpdatedBadgeLabel": "Card updated time"/);
+});
