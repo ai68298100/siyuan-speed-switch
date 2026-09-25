@@ -523,8 +523,26 @@
 }
 
 // 失败单元：错误色描边一眼可辨（内容区错误态仍由模块自身渲染）。
+// T-6880（P2 第二批）：失败两通道——文字 chip（attr() 渲染）补足颜色通道之外的第二通道。
 .sw-home__cell[data-sw-health="failed"] {
+    position: relative;
     border-color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 45%, transparent);
+
+    &::after {
+        content: attr(data-sw-health-text);
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        z-index: 1;
+        padding: 2px 7px;
+        border: 1px solid color-mix(in srgb, var(--b3-theme-error, #d23f31) 40%, transparent);
+        border-radius: 6px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-error, #d23f31);
+        font-size: 10px;
+        font-weight: 600;
+        pointer-events: none;
+    }
 }
 
 // T-6874（RZ-4）：编辑横幅——编辑态现场可感知（拖动提示+完成按钮），

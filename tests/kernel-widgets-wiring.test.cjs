@@ -1078,7 +1078,8 @@ test('workbench health receipt: per-cell health markers and aggregate receipt ba
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const homeWidgetsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss'));
     // 健康记录：refresh 包装器把结果 ok 写回单元 data-sw-health 并触发聚合。
-    assert.match(secondPanelSource, /cell\.dataset\.swHealth = result\?\.ok === true \? "ok" : "failed";/,
+    // T-6880 起判定提升为 const ok = result?.ok === true（供对象描述复用）。
+    assert.match(secondPanelSource, /const ok = result\?\.ok === true;\s*\n\s*cell\.dataset\.swHealth = ok \? "ok" : "failed";/,
         'the refresh wrapper must record per-cell health from the result');
     assert.match(secondPanelSource, /updateWorkbenchReceipt\(\);/,
         'the wrapper must refresh the receipt after each refresh');
@@ -1105,4 +1106,33 @@ test('workbench health receipt: per-cell health markers and aggregate receipt ba
     assert.match(zh, /"homeReceiptFailed": "失败 \{x\}"/);
     assert.match(en, /"homeReceiptSummary": "\{ok\}\/\{total\} widgets healthy"/);
     assert.match(en, /"homeReceiptFailed": "\{x\} failed"/);
+});
+
+test('widget object descriptors and two-channel failure marking (T-6880)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const homeWidgetsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss'));
+    // 对象描述：kind/title/健康 三段 aria 语义，随健康变化重写。
+    assert.match(secondPanelSource, /cell\.setAttribute\("aria-label", describeCellObject\(\)\);/,
+        'each cell must carry its object descriptor as aria semantics');
+    assert.match(secondPanelSource, /describeCellObject = \(\) =>\s*\n\s*\`\$\{this\.i18n\.homeObjectTitle\} · \$\{def\.title \|\| inst\.moduleId\} · /,
+        'the descriptor must compose kind, module title and health');
+    // 失败两通道：颜色边框之外补 attr() 文字 chip（OK 态清空标记）。
+    assert.match(secondPanelSource, /cell\.dataset\.swHealthText = this\.i18n\.homeHealthFailed;/,
+        'failed cells must set the chip text attribute');
+    assert.match(secondPanelSource, /delete cell\.dataset\.swHealthText;/,
+        'healthy cells must clear the chip text attribute');
+    assert.ok(declaresIn(homeWidgetsScss, '.sw-home__cell[data-sw-health="failed"]::after', /content:\s*attr\(data-sw-health-text\)/),
+        'the failure chip must render via attr() (zero DOM)');
+    assert.ok(declaresIn(homeWidgetsScss, '.sw-home__cell[data-sw-health="failed"]::after', /pointer-events:\s*none/),
+        'the chip must not intercept pointer interactions');
+    // i18n 双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"homeHealthFailed": "失败"/);
+    assert.match(zh, /"homeHealthOk": "正常"/);
+    assert.match(zh, /"homeObjectTitle": "组件"/);
+    assert.match(en, /"homeHealthFailed": "Failed"/);
+    assert.match(en, /"homeHealthOk": "OK"/);
+    assert.match(en, /"homeObjectTitle": "Widget"/);
 });

@@ -352,6 +352,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const body = document.createElement("div");
                 body.className = "sw-home__cell-body";
                 cell.appendChild(body);
+                // T-6880（P2 第二批）：单元对象描述（kind/title/健康三段 aria 语义）。
+                const describeCellObject = () =>
+                    `${this.i18n.homeObjectTitle} · ${def.title || inst.moduleId} · ${cell.dataset.swHealth === "failed" ? this.i18n.homeHealthFailed : this.i18n.homeHealthOk}`;
+                cell.setAttribute("aria-label", describeCellObject());
 
                 const controller = createHomeModuleController({
                     document: window.document,
@@ -432,9 +436,18 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     moduleId: inst.moduleId,
                     // T-6879（T-6874b）：刷新结果回写单元健康标记（data-sw-health），
                     // 回执条据此聚合"ok/total 正常 · 失败 n"；失败单元描红边。
+                    // T-6880（P2 第二批）：失败两通道——错误色边框（颜色）+ 文字 chip
+                    // （attr() 渲染），并维护对象描述 aria 语义。
                     refresh: async (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => {
                         const result = await controller.refresh(config, readOptions);
-                        cell.dataset.swHealth = result?.ok === true ? "ok" : "failed";
+                        const ok = result?.ok === true;
+                        cell.dataset.swHealth = ok ? "ok" : "failed";
+                        if (ok) {
+                            delete cell.dataset.swHealthText;
+                        } else {
+                            cell.dataset.swHealthText = this.i18n.homeHealthFailed;
+                        }
+                        cell.setAttribute("aria-label", describeCellObject());
                         updateWorkbenchReceipt();
                         return result;
                     },
