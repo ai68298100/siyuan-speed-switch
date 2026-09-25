@@ -243,10 +243,25 @@
     white-space: nowrap;
 }
 
+// T-6871（RZ-1）：状态徽标的语义色点——颜色/文字之外的第二通道（§5.2 视觉刻度：
+// 状态至少两种通道同时呈现）；中性徽标同样带点，保持所有徽标基线一致。
+.sw-platform-status::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--sw-platform-radius-pill);
+    background: currentColor;
+    opacity: .85;
+}
+
+// T-6871（RZ-1）：徽标文字用语义色与正文色混合——宿主主题的 warning/error 原色
+// 直接做小字号文字时对比度可能不足 3:1（Chromium 采样实测 light-stale 2.9 /
+// dark-error 2.99），混入正文色保住色相的同时把对比度拉回徽章线以上。
 .sw-platform-status[data-state="ready"],
 .sw-platform-status.is-ready {
     border-color: color-mix(in srgb, var(--sw-platform-success) 24%, transparent);
-    color: var(--sw-platform-success);
+    color: color-mix(in srgb, var(--sw-platform-success) 72%, var(--sw-platform-text));
     background: color-mix(in srgb, var(--sw-platform-success) 12%, transparent);
 }
 
@@ -262,7 +277,7 @@
 .sw-platform-status.is-stale,
 .sw-platform-status.is-dirty {
     border-color: color-mix(in srgb, var(--sw-platform-warning) 28%, transparent);
-    color: var(--sw-platform-warning);
+    color: color-mix(in srgb, var(--sw-platform-warning) 68%, var(--sw-platform-text));
     background: color-mix(in srgb, var(--sw-platform-warning) 12%, transparent);
 }
 
@@ -271,7 +286,7 @@
 .sw-platform-status.is-blocked,
 .sw-platform-status.is-error {
     border-color: color-mix(in srgb, var(--sw-platform-error) 30%, transparent);
-    color: var(--sw-platform-error);
+    color: color-mix(in srgb, var(--sw-platform-error) 68%, var(--sw-platform-text));
     background: color-mix(in srgb, var(--sw-platform-error) 12%, transparent);
 }
 
@@ -316,6 +331,85 @@
 .sw-platform-action--quiet { border-color: transparent; color: var(--sw-platform-text-muted); background: transparent; }
 .sw-platform-action--danger { color: var(--sw-platform-error); }
 
+// T-6871（RZ-1）：胶囊主动作与主色软底次动作——设计规格 §1 模式 6
+// （每屏唯一主色胶囊主动作；次动作用软底胶囊）。
+.sw-platform-action--pill { border-radius: var(--sw-platform-radius-pill); }
+.sw-platform-action--soft { border-color: transparent; color: var(--sw-platform-accent); background: var(--sw-platform-accent-soft); }
+.sw-platform-action--soft:hover { border-color: color-mix(in srgb, var(--sw-platform-accent) 40%, transparent); color: var(--sw-platform-accent); }
+
+// Keyboard hints (RZ-1/T-6871) -------------------------------------------------
+// 键位提示芯片：把快捷键常驻在界面上（Raycast/Linear 惯例），而非只写在文档里。
+.sw-platform-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border: 1px solid var(--sw-platform-line);
+    border-radius: 5px;
+    color: var(--sw-platform-text-muted);
+    background: var(--sw-platform-surface);
+    font-family: var(--b3-font-family-code, ui-monospace, Consolas, monospace);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.sw-platform-context__kbd-hints {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+// Segmented control (RZ-1/T-6871) ----------------------------------------------
+// 分段控件：2~4 个互斥取值的设置项用它替代下拉（取值一眼可见、一次点击切换）。
+.sw-platform-seg {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 2px;
+    max-width: 100%;
+    padding: 3px;
+    border: 1px solid var(--sw-platform-line);
+    border-radius: 9px;
+    background: var(--sw-platform-surface-muted);
+}
+
+.sw-platform-seg__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 26px;
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 6px;
+    color: var(--sw-platform-text);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+    transition: color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease, box-shadow $sw-dur-fast $sw-ease;
+}
+
+.sw-platform-seg__item:hover { color: var(--sw-platform-text); background: var(--sw-platform-accent-soft); }
+
+.sw-platform-seg__item.is-active {
+    color: var(--sw-platform-text);
+    background: var(--sw-platform-bg);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgb(51 58 83 / 14%);
+}
+
+.sw-platform-seg__item:disabled { opacity: .52; cursor: default; }
+
 // Preview --------------------------------------------------------------------
 .sw-platform-preview {
     position: relative;
@@ -353,6 +447,8 @@
 @media (pointer: coarse) {
     .sw-platform-surface-nav__item,
     .sw-platform-action { min-height: 44px; }
+    // 分段项本体 38px + 容器上下 padding 3px = 44px 命中区（触控不降级）。
+    .sw-platform-seg__item { min-height: 38px; }
 }
 
 @media (max-width: 640px) {

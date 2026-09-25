@@ -1046,6 +1046,7 @@
   "platformSwitcherHint": "查找、预览和打开内容",
   "platformWorkbenchHint": "编排信息组件和工作现场",
   "platformStudioHint": "安全编辑、预览和管理代码片段",
+  "platformKbdPreview": "Alt 预览",
   "mobileLayoutFailed": "切换器初始化失败，请关闭后重试",
   "openHistory": "最近打开",
   "noOpenHistory": "暂无最近打开记录",

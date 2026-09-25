@@ -797,3 +797,53 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
     assert.match(indexSource, /this\.openPlatformSurface\(returnTo, "switcher", \{entry: "back"\}\);/,
         'studio Back must carry the back entry');
 });
+
+test('platform primitives: badge dot, kbd chip, segmented control, pill actions (T-6871 RZ-1)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const shell = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_platform-shell.scss'));
+    // 纯模型 DOM 助手进入生产入口（kbd 提示组的唯一产出方）。
+    assert.match(indexSource, /import \{createPlatformKbd\} from "\.\/platform-dom"/,
+        'index.ts must import the platform DOM helper');
+    // chrome 挂载接受 kbdHints 并渲染为 kbd 芯片组（空芯片与空组都不落 DOM）。
+    assert.match(indexSource, /kbdHints\?: readonly string\[\];/, 'chrome options must declare kbdHints');
+    const chromeMount = indexSource.slice(indexSource.indexOf('export function mountPlatformChrome'), indexSource.indexOf('declare module "./snippet-studio-ui"'));
+    assert.match(chromeMount, /if \(options\.kbdHints && options\.kbdHints\.length > 0\)/,
+        'mountPlatformChrome must guard empty kbdHints');
+    assert.match(chromeMount, /kbdHints\.className = "sw-platform-context__kbd-hints"/,
+        'kbd hints must render into the context actions slot');
+    assert.match(chromeMount, /kbdHints\.appendChild\(createPlatformKbd\(doc, trimmed\)\)/,
+        'each non-empty hint must become a platform kbd chip');
+    // 切换器是首个消费点：上下文栏常驻 Tab/1-9/Enter/Alt 预览。
+    assert.match(indexSource, /kbdHints: \["Tab", "1-9", "Enter", this\.i18n\.platformKbdPreview\]/,
+        'desktop switcher chrome must pass the keyboard hints');
+    assert.match(indexSource, /platformKbdPreview/, 'the Alt-preview hint must come from i18n');
+    // SCSS 原语：块级断言（选择器块内声明了关键属性，非文件级共现）。
+    assert.ok(declaresIn(shell, '.sw-platform-status::before', /content:\s*""/),
+        'status badge must render the semantic color dot');
+    assert.ok(declaresIn(shell, '.sw-platform-kbd', /font-family:\s*var\(--b3-font-family-code/),
+        'kbd chip must use the host code font');
+    assert.ok(declaresIn(shell, '.sw-platform-context__kbd-hints', /margin-left:\s*auto/),
+        'kbd hints slot must right-align in the context bar');
+    assert.ok(declaresIn(shell, '.sw-platform-seg', /border-radius:\s*9px/),
+        'segmented control container must exist');
+    assert.ok(declaresIn(shell, '.sw-platform-seg__item.is-active', /font-weight:\s*600/),
+        'segmented active item must be styled');
+    assert.ok(declaresIn(shell, '.sw-platform-action--pill', /border-radius:\s*var\(--sw-platform-radius-pill\)/),
+        'pill action modifier must exist');
+    assert.ok(declaresIn(shell, '.sw-platform-action--soft', /background:\s*var\(--sw-platform-accent-soft\)/),
+        'soft pill modifier must exist');
+    // 徽标语义色与正文色混合（宿主 warning/error 原色做小字不达 3:1，采样实证）。
+    assert.ok(declaresIn(shell, '.sw-platform-status[data-state="stale"]', /color:\s*color-mix\(in srgb,\s*var\(--sw-platform-warning\) 68%,\s*var\(--sw-platform-text\)\)/),
+        'stale badge text must blend warning with the text color');
+    assert.ok(declaresIn(shell, '.sw-platform-status[data-state="error"]', /color:\s*color-mix\(in srgb,\s*var\(--sw-platform-error\) 68%,\s*var\(--sw-platform-text\)\)/),
+        'error badge text must blend error with the text color');
+    // 触控：coarse 指针下分段项 38px + 容器 6px padding = 44px 命中区。
+    const coarse = shell.slice(shell.indexOf('@media (pointer: coarse)'));
+    assert.match(coarse, /\.sw-platform-seg__item \{ min-height: 38px; \}/,
+        'coarse pointer must raise segmented hit area to 44px total');
+    // i18n 双语键。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    assert.match(zh, /"platformKbdPreview": "Alt 预览"/);
+    assert.match(en, /"platformKbdPreview": "Alt Preview"/);
+});

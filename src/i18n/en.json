@@ -1046,6 +1046,7 @@
   ,"platformSwitcherHint": "Find, preview and open content"
   ,"platformWorkbenchHint": "Arrange widgets and the current workspace"
   ,"platformStudioHint": "Edit, preview and manage snippets safely"
+  ,"platformKbdPreview": "Alt Preview"
   ,"mobileLayoutFailed": "The switcher failed to initialize. Close it and try again."
   ,"openHistory": "Recent"
   ,"noOpenHistory": "No recent documents"

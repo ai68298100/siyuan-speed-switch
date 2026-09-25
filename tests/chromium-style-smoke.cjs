@@ -79,6 +79,13 @@ ${links}
   <div class="sw-settings__item-main"><div class="sw-settings__item-title">Setting</div></div>
   <div class="sw-settings__item-action"><label class="b3-switch sw-switch"><input type="checkbox"><span></span></label></div>
 </div></div>
+<div class="speed-switch sw-platform-shell" id="platform-primitives">
+  <span class="sw-platform-status" data-state="ready">Kernel ready</span>
+  <span class="sw-platform-status" data-state="stale">Cached · 3 min</span>
+  <span class="sw-platform-status" data-state="error">Sync failed</span>
+  <span class="sw-platform-kbd">Tab</span>
+  <div class="sw-platform-seg" role="radiogroup" aria-label="View"><button type="button" class="sw-platform-seg__item is-active" aria-checked="true">Grid</button><button type="button" class="sw-platform-seg__item" aria-checked="false">List</button></div>
+</div>
 <div class="sw-home"><section class="sw-home__cell" data-size="large" data-module-id="journal-calendar"><div class="sw-home__cell-body">
   <section class="sw__home-module" data-module-id="journal-calendar">
     <div class="sw__home-module-body">
@@ -154,6 +161,14 @@ window.addEventListener('load', () => {
     contrast: (() => {
       const parseColor = (value) => {
         if (typeof value !== "string") return null;
+        // T-6871：Chromium 对 color-mix() 的计算值返回 color(srgb r g b / a)（0~1 通道），
+        // 旧解析只认 rgb()/rgba()，导致平台徽标采样恒 0。两种格式都必须支持。
+        // 注意：本脚本文本位于模板字面量内，正则反斜杠必须写成 \\ 才能落到页面。
+        const srgb = value.match(/^color\\(srgb\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)(?:\\s*\\/\\s*([\\d.]+))?\\)$/);
+        if (srgb) {
+          const rgb = [Number(srgb[1]), Number(srgb[2]), Number(srgb[3])].map((v) => Math.round(v * 255));
+          return {r: rgb[0], g: rgb[1], b: rgb[2], a: srgb[4] !== undefined ? Number(srgb[4]) : 1};
+        }
         const open = value.indexOf("(");
         const close = value.indexOf(")");
         if (open < 0 || close < open) return null;
@@ -206,6 +221,12 @@ window.addEventListener('load', () => {
         calendarHead: '.sw__home-calendar-head',
         mediaTitle: '[data-module-id="external-anime-bangumi"] .sw__home-media-title',
         statValue: '.sw__home-stat-value',
+        // T-6871/RZ-1：平台原语（六态徽标、kbd 芯片、分段控件激活项）
+        platformStatusReady: '.sw-platform-status[data-state="ready"]',
+        platformStatusStale: '.sw-platform-status[data-state="stale"]',
+        platformStatusError: '.sw-platform-status[data-state="error"]',
+        platformKbd: '.sw-platform-kbd',
+        platformSegActive: '.sw-platform-seg__item.is-active',
       };
       const ratios = {};
       for (const [name, selector] of Object.entries(samples)) {
@@ -316,8 +337,12 @@ try {
         // T-6697b：普通文本一组 ≥4.5；节假日日历/过期徽章按次要与大字号线 ≥3 归入聚合
         const normalTextOk = ["moduleTitle", "itemLabel", "docTitle", "settingsTitle", "calendarPeriod", "docPath", "mediaSecondary", "windowLabel", "calendarHead", "mediaTitle"].every((name) => (result.contrast[name] || 0) >= 4.5);
         const badgeTextOk = ["calendarHoliday", "sourceHealthStale"].every((name) => (result.contrast[name] || 0) >= 3);
-        console.log("[" + pass.name + "] " + (normalTextOk && badgeTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
-        if (!(normalTextOk && badgeTextOk)) contrastAllOk = false;
+        // T-6871/RZ-1：平台原语——六态徽标沿用徽章线 ≥3（与 sourceHealthStale 同约定）；
+        // kbd 芯片与分段激活项是常规小字，须达普通文本线 ≥4.5。
+        const platformBadgeOk = ["platformStatusReady", "platformStatusStale", "platformStatusError"].every((name) => (result.contrast[name] || 0) >= 3);
+        const platformTextOk = ["platformKbd", "platformSegActive"].every((name) => (result.contrast[name] || 0) >= 4.5);
+        console.log("[" + pass.name + "] " + (normalTextOk && badgeTextOk && platformBadgeOk && platformTextOk ? "PASS" : "FAIL") + " contrast ratios meet WCAG AA on the sampled surfaces");
+        if (!(normalTextOk && badgeTextOk && platformBadgeOk && platformTextOk)) contrastAllOk = false;
         console.log(JSON.stringify(result, null, 2));
         console.log("[" + pass.name + "] " + (actionOk ? 'PASS' : 'FAIL') + " Chromium mobile card actions");
         console.log("[" + pass.name + "] " + (switchOk ? 'PASS' : 'FAIL') + " Chromium settings switch");

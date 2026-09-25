@@ -87,6 +87,7 @@ import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLif
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
 import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption} from "./platform-surface-model";
+import {createPlatformKbd} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
@@ -593,6 +594,8 @@ export interface PlatformSurfaceChromeOptions {
     labels: PlatformSurfaceLabels;
     available?: readonly PlatformSurface[];
     context?: PlatformSurfaceContext | null;
+    // T-6871（RZ-1）：键位提示芯片组（如 Tab/1-9/Enter），渲染在上下文栏尾部。
+    kbdHints?: readonly string[];
     onNavigate?: (surface: PlatformSurface) => void;
 }
 
@@ -688,7 +691,16 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
     hint.textContent = caption.hint;
     if (caption.hasQuery) hint.title = caption.hint;
     context.append(trail, separator, object, hint);
-
+    // T-6871（RZ-1）：键位提示芯片组常驻上下文栏尾部（键盘可见性，Raycast/Linear 惯例）。
+    if (options.kbdHints && options.kbdHints.length > 0) {
+        const kbdHints = doc.createElement("span");
+        kbdHints.className = "sw-platform-context__kbd-hints";
+        options.kbdHints.forEach((text) => {
+            const trimmed = typeof text === "string" ? text.trim() : "";
+            if (trimmed) kbdHints.appendChild(createPlatformKbd(doc, trimmed));
+        });
+        if (kbdHints.childElementCount > 0) context.appendChild(kbdHints);
+    }
     chrome.append(header, context);
     root.prepend(chrome);
     return chrome;
@@ -3168,6 +3180,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 surface: "switcher",
                 labels: this.getPlatformSurfaceLabels(),
                 context,
+                kbdHints: ["Tab", "1-9", "Enter", this.i18n.platformKbdPreview],
                 onNavigate: (surface) => {
                     if (this.isUnloading || !dialog.element.isConnected) return;
                     dialog.destroy();

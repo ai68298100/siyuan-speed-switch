@@ -311,8 +311,10 @@
         font-weight: 750;
     }
 
+    // T-6871：节假日红与平台徽标同款处理——宿主 error 原色在暗色背景下不足 3:1
+    // （对比度采样修正背景解析后实测 2.91），混入正文色保住色相并回到徽章线以上。
     &.is-holiday:not(.is-today) .sw__home-calendar-primary {
-        color: var(--b3-theme-error, #d23f31);
+        color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 68%, var(--b3-theme-on-background));
         font-weight: 720;
     }
 
@@ -320,7 +322,7 @@
         color: color-mix(in srgb, var(--b3-theme-on-background) 68%, var(--b3-theme-primary));
     }
 
-    &.is-holiday .sw__home-calendar-secondary { color: var(--b3-theme-error, #d23f31); opacity: 0.88; }
+    &.is-holiday .sw__home-calendar-secondary { color: color-mix(in srgb, var(--b3-theme-error, #d23f31) 68%, var(--b3-theme-on-background)); }
     &.is-workday .sw__home-calendar-secondary { color: var(--b3-theme-primary); opacity: 0.88; }
 
     &.has-journal {
