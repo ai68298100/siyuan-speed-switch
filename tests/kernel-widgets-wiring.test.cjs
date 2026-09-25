@@ -973,3 +973,30 @@ test('workbench edit banner and store pill actions (T-6874 RZ-4)', () => {
     assert.ok(declaresIn(storeScss, '.sw-home-store__configure', /border-radius:\s*var\(--sw-platform-radius-pill, 999px\)/),
         'store configure must be a pill');
 });
+
+test('quick capture segmented targets, pill save and honest kbd hints (T-6875 RZ-5)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const captureScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_08-home-store-cards.scss'));
+    // 目标段选：sw__target--active 的类切换机制不变（T-6818 契约），但必须有激活样式
+    // （修复真实缺陷：该类此前从无任何 CSS 规则，激活目标不可辨识）。
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets', /border-radius:\s*9px/),
+        'targets container must render as a segmented control');
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__targets .sw__target--active', /font-weight:\s*600/),
+        'the active target must be visually distinct');
+    // 保存按钮：专用类承载主色胶囊皮肤（保留既有 T-6818 结构锚点）。
+    assert.match(indexSource, /save\.className = "b3-button b3-button--outline sw-quick-capture__save";/,
+        'the save button must carry its dedicated skin class');
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__save', /border-radius:\s*var\(--sw-platform-radius-pill, 999px\)/),
+        'the save button must be a pill');
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__save:disabled', /opacity:\s*\.52/),
+        'the disabled save state must stay visibly dimmed');
+    // 键位提示必须诚实：只出现真实绑定 Ctrl+Enter（keydown 处理器既有锚点）与 Esc。
+    assert.match(indexSource, /event\.key === "Enter" && \(event\.ctrlKey \|\| event\.metaKey\)/,
+        'the Ctrl/Cmd+Enter binding must actually exist');
+    assert.match(indexSource, /createPlatformKbd\(document, "Ctrl\+Enter"\)/,
+        'the hint chip must say Ctrl+Enter');
+    assert.match(indexSource, /kbdHints\.className = "sw-quick-capture__kbd-hints";/,
+        'the hints must live in their own slot');
+    assert.ok(declaresIn(captureScss, '.sw-quick-capture__kbd-hints', /margin-right:\s*auto/),
+        'the hints must left-align against the action buttons');
+});

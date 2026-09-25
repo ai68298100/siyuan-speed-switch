@@ -2466,8 +2466,21 @@ export default class SpeedSwitchPlugin extends Plugin {
         cancel.addEventListener("click", () => dialog.destroy());
         const save = document.createElement("button");
         save.type = "button";
-        save.className = "b3-button b3-button--outline";
+        save.className = "b3-button b3-button--outline sw-quick-capture__save";
         save.textContent = this.i18n.quickCaptureSave;
+        // T-6875（RZ-5）：键位提示芯片——只陈述真实绑定（保存=Ctrl/Cmd+Enter，Esc=宿主关闭）
+        const kbdHints = document.createElement("span");
+        kbdHints.className = "sw-quick-capture__kbd-hints";
+        const saveHint = document.createElement("span");
+        saveHint.textContent = this.i18n.quickCaptureSave;
+        const cancelHint = document.createElement("span");
+        cancelHint.textContent = this.i18n.quickCaptureCancel;
+        kbdHints.append(
+            createPlatformKbd(document, "Ctrl+Enter"),
+            saveHint,
+            createPlatformKbd(document, "Esc"),
+            cancelHint,
+        );
 
         const targets = document.createElement("div");
         targets.className = "sw-quick-capture__targets";
@@ -2592,7 +2605,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 submit();
             }
         });
-        actions.append(cancel, save);
+        actions.append(kbdHints, cancel, save);
         root.append(targets, input, previewLine, actions);
         setActiveTarget("journal");
         window.setTimeout(() => {

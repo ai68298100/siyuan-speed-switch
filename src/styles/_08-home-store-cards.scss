@@ -17,9 +17,73 @@
         min-height: 64px;
     }
 
+    // T-6875（RZ-5）：目标段选升级为分段控件外观——此前 sw__target--active
+    // 只有类切换、从无样式规则（真实视觉缺陷），激活目标不可辨识。
+    &__targets {
+        display: inline-flex;
+        align-items: stretch;
+        gap: 2px;
+        align-self: flex-start;
+        max-width: 100%;
+        padding: 3px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 9px;
+        background: var(--b3-theme-surface-lighter, transparent);
+
+        .b3-button {
+            flex: 1 1 auto;
+            min-width: 0;
+            padding: 4px 14px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            box-shadow: none;
+            color: var(--b3-theme-on-surface);
+            font-size: 12px;
+        }
+
+        .sw__target--active {
+            background: var(--b3-theme-background);
+            color: var(--b3-theme-on-background);
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(35, 42, 75, .14);
+        }
+    }
+
+    // 保存=主色胶囊（覆盖 b3-button--outline 的描边语言）
+    &__save {
+        border: 1px solid var(--b3-theme-primary);
+        border-radius: var(--sw-platform-radius-pill, 999px);
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary, #fff);
+        padding-inline: 16px;
+
+        &:hover {
+            background: color-mix(in srgb, var(--b3-theme-primary) 88%, #000);
+            color: var(--b3-theme-on-primary, #fff);
+        }
+
+        &:disabled {
+            opacity: .52;
+            background: var(--b3-theme-primary);
+            color: var(--b3-theme-on-primary, #fff);
+        }
+    }
+
+    // 键位提示芯片组（只陈述真实绑定：Ctrl/Cmd+Enter 保存、Esc 关闭）
+    &__kbd-hints {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-right: auto;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+    }
+
     &__actions {
         display: flex;
         justify-content: flex-end;
+        align-items: center;
         gap: 8px;
     }
 }
