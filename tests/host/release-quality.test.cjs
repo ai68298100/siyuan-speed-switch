@@ -191,6 +191,10 @@ test('production bundle remains within the mobile performance budget when built'
     // P0 batches (related content, restore receipts, preview open, dynamic
     // groups, multi-target capture). Same review-signal policy.
     const budget = metrics.RAW_BUNDLE_BUDGET_BYTES;
+    // 2026-09-26 (ADR 0081): recalibrated to 1088 KiB after the unified platform
+    // campaign (platform P1, snippet studio, six RZ unified-UI batches, default
+    // fullscreen, cross-surface objects). Reduction audit found no meaningful
+    // dead weight on the raw line; hard ceilings unchanged.
     assert.ok(bytes <= budget, `dist/index.js is ${bytes} bytes; budget is ${budget}`);
 });
 

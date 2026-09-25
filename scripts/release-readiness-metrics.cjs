@@ -9,7 +9,13 @@
 // ADR 0077 (2026-09-24): recalibrated 960 -> 1024 KiB after the navigation-context
 // P0 batches (related content, restore receipts, preview open, dynamic groups,
 // multi-target capture). Hard ceilings unchanged.
-const RAW_BUNDLE_BUDGET_BYTES = 1024 * 1024;
+// ADR 0081 (2026-09-26): recalibrated 1024 -> 1088 KiB after the unified platform
+// campaign (platform P1, snippet studio, six RZ unified-UI batches, default
+// fullscreen, cross-surface object batches). Reduction audit found no
+// meaningful dead weight (CSS is not on the raw line; tree-shaking covers JS);
+// hard ceilings unchanged and the compressed-entry line (288 KiB) needs its
+// own audit when crossed.
+const RAW_BUNDLE_BUDGET_BYTES = 1088 * 1024;
 const ARCHIVE_BUDGET_BYTES = 512 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
