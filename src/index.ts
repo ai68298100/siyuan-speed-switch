@@ -2935,13 +2935,15 @@ export default class SpeedSwitchPlugin extends Plugin {
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
     private createSwitcherDialog(settings: ISwSettings, fullscreen: boolean, release: {fn: () => void}): Dialog {
         const size = this.resolvePanelDialogSize(settings, fullscreen);
-        return new Dialog({
+        const dialog = new Dialog({
             title: "",
             content: this.buildSwitcherHtml(fullscreen),
             width: `${size.width}px`,
             height: `${size.height}px`,
             destroyCallback: () => release.fn(),
         });
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--switcher");
+        return dialog;
     }
 
     // Experimental desktop-only studio. It is deliberately reachable from
@@ -2967,7 +2969,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         holder.dialog = dialog;
         this.snippetStudioDialog = dialog;
-        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio");
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
         if (!root) {
@@ -3015,7 +3017,7 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 切换器主体 HTML 字符串（结构：顶栏搜索/收藏下拉/排序/全屏按钮 + 滚动区 + 回到顶部）
     private buildSwitcherHtml(fullscreen: boolean): string {
-        return `<div class="speed-switch sw__body${fullscreen ? " sw--fullscreen" : ""}">
+        return `<div class="speed-switch sw__body sw-platform-surface sw-platform-surface--switcher${fullscreen ? " sw--fullscreen" : ""}" data-sw-surface="switcher">
     <div class="sw__main">
         <div class="sw__dock fn__none"></div>
         <div class="sw__content">
@@ -10368,7 +10370,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 注意：HTML 属性优先级低于任何作者样式，CSS 就绪后仍由 .sw__search-icon 等
     // 规则接管，正常路径视觉零变化。
     private buildMobileSwitcherHtml(): string {
-        return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing" style="visibility:hidden;opacity:0;pointer-events:none">
+        return `<div class="speed-switch sw__body sw__mobile sw__mobile--initializing sw-platform-surface sw-platform-surface--switcher" data-sw-surface="switcher" style="visibility:hidden;opacity:0;pointer-events:none">
     <div class="sw__toolbar sw__mobile-toolbar">
         <div class="sw__search-wrap">
             <svg class="sw__search-icon" width="14" height="14"><use xlink:href="#iconSearch"></use></svg>
@@ -11041,7 +11043,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.sidebarSearchFilterDispose?.();
         this.sidebarSearchFilterDispose = null;
         this.sidebarElement = element;
-        element.classList.add("speed-switch", "sw__body", "sw--sidebar");
+        element.classList.add("speed-switch", "sw__body", "sw--sidebar", "sw-platform-surface", "sw-platform-surface--switcher");
+        element.dataset.swSurface = "switcher";
         this.setSyncPresentation(this.syncing);
         // 侧边栏缩略图布局：enlarge（默认）放大填满栏宽；columns 按宽度自动增加列数
         element.classList.toggle("sw--sidebar-columns", this.getSettings().sidebarLayout === "columns");

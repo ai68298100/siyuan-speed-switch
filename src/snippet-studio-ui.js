@@ -158,7 +158,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let pickerRelease = () => {};
     let pickerScrollTop = {root: 0, layout: 0};
     let aiHistory = [];
-    root.classList.add("sw-studio");
+    root.classList.add("sw-studio", "sw-platform-surface", "sw-platform-surface--studio");
+    root.dataset.swSurface = "studio";
     const node = (tag, className = "", text = "") => {
         const element = doc.createElement(tag);
         element.className = className;

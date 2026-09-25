@@ -1,0 +1,318 @@
+// T-6866: shared visual contract for the three platform surfaces.
+//
+// This layer ships after the current surface styles.  It only adds
+// namespaced tokens and opt-in primitives; no existing surface selector is
+// restyled until its DOM opts into a `sw-platform-*` class.  The aliases keep
+// SiYuan's theme variables as the source of truth while allowing the switcher,
+// workbench and snippet studio to converge one surface at a time.
+@use "00-tokens" as *;
+
+// The aliases are also exposed on today's roots so an adapter can be added
+// without introducing a second color or spacing system.  Existing roots do
+// not consume these aliases yet, so this block is behavior-neutral.
+:is(.sw-platform-shell, .sw-platform-surface, .speed-switch, .sw-home, .sw-studio, .sw-fab-root) {
+    --sw-platform-accent: var(--b3-theme-primary, var(--sw-accent-fallback, #8576e8));
+    --sw-platform-accent-soft: var(--sw-accent-soft, color-mix(in srgb, var(--sw-platform-accent) 12%, transparent));
+    --sw-platform-accent-pressed: var(--sw-accent-pressed, color-mix(in srgb, var(--sw-platform-accent) 20%, transparent));
+
+    --sw-platform-bg: var(--sw-page-bg, var(--b3-theme-background, #ffffff));
+    --sw-platform-surface: var(--b3-theme-surface, var(--sw-platform-bg));
+    --sw-platform-surface-muted: var(--sw-surface-muted, var(--b3-theme-surface-lighter, var(--sw-platform-surface)));
+    --sw-platform-surface-raised: color-mix(in srgb, var(--sw-platform-surface) 92%, var(--sw-platform-accent-soft));
+    --sw-platform-line: var(--b3-border-color, color-mix(in srgb, var(--sw-platform-text) 18%, transparent));
+
+    --sw-platform-text: var(--b3-theme-on-background, var(--b3-theme-on-surface, #273043));
+    --sw-platform-text-muted: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface, #687286));
+    --sw-platform-text-on-accent: var(--b3-theme-on-primary, #ffffff);
+    --sw-platform-success: var(--b3-theme-success, #2d9865);
+    --sw-platform-warning: var(--b3-theme-warning, #b7761d);
+    --sw-platform-error: var(--b3-theme-error, var(--b3-card-error-color, #b84040));
+
+    --sw-platform-radius-sm: var(--sw-radius-control, 8px);
+    --sw-platform-radius-md: var(--sw-radius-card, 12px);
+    --sw-platform-radius-lg: var(--sw-radius-panel, 16px);
+    --sw-platform-radius-pill: 999px;
+
+    --sw-platform-space-1: 4px;
+    --sw-platform-space-2: 8px;
+    --sw-platform-space-3: 12px;
+    --sw-platform-space-4: 16px;
+    --sw-platform-space-5: 24px;
+
+    --sw-platform-shadow-card: var(--sw-card-shadow, 0 1px 2px rgb(51 58 83 / 5%), 0 8px 24px rgb(75 85 120 / 8%));
+    --sw-platform-shadow-floating: var(--sw-float-shadow, 0 14px 36px rgb(55 65 100 / 15%), 0 3px 10px rgb(55 65 100 / 8%));
+    --sw-platform-focus: var(--sw-focus-ring, 0 0 0 3px color-mix(in srgb, var(--sw-platform-accent) 24%, transparent));
+    --sw-platform-header-height: 52px;
+}
+
+// PlatformShell -------------------------------------------------------------
+// The shell is deliberately dimension-neutral.  Dialogs and mobile sheets
+// continue to own their size; this primitive only supplies the shared theme,
+// focus and box model once a surface opts in.
+.sw-platform-shell {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    color: var(--sw-platform-text);
+    background: var(--sw-platform-bg);
+    font-family: var(--b3-font-family, inherit);
+
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    :where(button, [role="button"], input, select, textarea):focus-visible {
+        outline: 2px solid var(--sw-platform-accent);
+        outline-offset: 2px;
+        box-shadow: var(--sw-platform-focus);
+    }
+}
+
+// Header and surface navigation --------------------------------------------
+.sw-platform-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sw-platform-space-3);
+    min-width: 0;
+    min-height: var(--sw-platform-header-height);
+    padding: var(--sw-platform-space-2) var(--sw-platform-space-4);
+    border-bottom: 1px solid var(--sw-platform-line);
+    background: color-mix(in srgb, var(--sw-platform-bg) 88%, var(--sw-platform-surface));
+}
+
+.sw-platform-header__brand,
+.sw-platform-header__context,
+.sw-platform-header__actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--sw-platform-space-2);
+}
+
+.sw-platform-header__brand { flex: 0 0 auto; font-weight: 700; }
+.sw-platform-header__context { flex: 1 1 auto; color: var(--sw-platform-text-muted); font-size: 12px; overflow: hidden; }
+.sw-platform-header__context > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-platform-header__actions { flex: 0 0 auto; justify-content: flex-end; }
+
+.sw-platform-surface-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.sw-platform-surface-nav::-webkit-scrollbar { display: none; }
+
+.sw-platform-surface-nav__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 6px 11px;
+    border: 1px solid transparent;
+    border-radius: var(--sw-platform-radius-sm);
+    color: var(--sw-platform-text-muted);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    white-space: nowrap;
+    transition: color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease;
+}
+
+.sw-platform-surface-nav__item:hover,
+.sw-platform-surface-nav__item:focus-visible {
+    color: var(--sw-platform-text);
+    background: var(--sw-platform-accent-soft);
+}
+
+.sw-platform-surface-nav__item[aria-current="page"],
+.sw-platform-surface-nav__item.is-active {
+    border-color: color-mix(in srgb, var(--sw-platform-accent) 24%, var(--sw-platform-line));
+    color: var(--sw-platform-accent);
+    background: var(--sw-platform-accent-soft);
+    box-shadow: inset 0 -2px 0 var(--sw-platform-accent);
+}
+
+// Context and state ----------------------------------------------------------
+.sw-platform-context {
+    display: flex;
+    align-items: center;
+    gap: var(--sw-platform-space-2);
+    min-width: 0;
+    min-height: 36px;
+    padding: 6px var(--sw-platform-space-4);
+    border-bottom: 1px solid color-mix(in srgb, var(--sw-platform-line) 72%, transparent);
+    color: var(--sw-platform-text-muted);
+    background: color-mix(in srgb, var(--sw-platform-surface) 64%, var(--sw-platform-bg));
+    font-size: 11px;
+}
+
+.sw-platform-context__trail,
+.sw-platform-context__object,
+.sw-platform-context__actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--sw-platform-space-1);
+}
+
+.sw-platform-context__trail,
+.sw-platform-context__object { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-platform-context__object { color: var(--sw-platform-text); font-weight: 600; }
+.sw-platform-context__actions { margin-left: auto; flex: 0 0 auto; }
+
+.sw-platform-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 24px;
+    padding: 3px 8px;
+    border: 1px solid transparent;
+    border-radius: var(--sw-platform-radius-pill);
+    color: var(--sw-platform-text-muted);
+    background: var(--sw-platform-surface-muted);
+    font-size: 11px;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sw-platform-status[data-state="ready"],
+.sw-platform-status.is-ready {
+    border-color: color-mix(in srgb, var(--sw-platform-success) 24%, transparent);
+    color: var(--sw-platform-success);
+    background: color-mix(in srgb, var(--sw-platform-success) 12%, transparent);
+}
+
+.sw-platform-status[data-state="loading"],
+.sw-platform-status.is-loading {
+    border-color: color-mix(in srgb, var(--sw-platform-accent) 24%, transparent);
+    color: var(--sw-platform-accent);
+    background: var(--sw-platform-accent-soft);
+}
+
+.sw-platform-status[data-state="stale"],
+.sw-platform-status[data-state="dirty"],
+.sw-platform-status.is-stale,
+.sw-platform-status.is-dirty {
+    border-color: color-mix(in srgb, var(--sw-platform-warning) 28%, transparent);
+    color: var(--sw-platform-warning);
+    background: color-mix(in srgb, var(--sw-platform-warning) 12%, transparent);
+}
+
+.sw-platform-status[data-state="blocked"],
+.sw-platform-status[data-state="error"],
+.sw-platform-status.is-blocked,
+.sw-platform-status.is-error {
+    border-color: color-mix(in srgb, var(--sw-platform-error) 30%, transparent);
+    color: var(--sw-platform-error);
+    background: color-mix(in srgb, var(--sw-platform-error) 12%, transparent);
+}
+
+// Actions --------------------------------------------------------------------
+.sw-platform-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sw-platform-space-2);
+    min-width: 0;
+}
+
+.sw-platform-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 6px 11px;
+    border: 1px solid var(--sw-platform-line);
+    border-radius: var(--sw-platform-radius-sm);
+    color: var(--sw-platform-text);
+    background: var(--sw-platform-surface);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1.3;
+    touch-action: manipulation;
+    transition: color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease, border-color $sw-dur-fast $sw-ease, transform $sw-dur-fast $sw-ease;
+}
+
+.sw-platform-action:hover,
+.sw-platform-action[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--sw-platform-accent) 48%, var(--sw-platform-line));
+    color: var(--sw-platform-accent);
+    background: var(--sw-platform-accent-soft);
+}
+
+.sw-platform-action:active { transform: translateY(1px); }
+.sw-platform-action:disabled { opacity: .52; cursor: default; transform: none; }
+.sw-platform-action--primary { border-color: var(--sw-platform-accent); color: var(--sw-platform-text-on-accent); background: var(--sw-platform-accent); }
+.sw-platform-action--primary:hover { border-color: var(--sw-platform-accent); color: var(--sw-platform-text-on-accent); background: color-mix(in srgb, var(--sw-platform-accent) 88%, #000); }
+.sw-platform-action--quiet { border-color: transparent; color: var(--sw-platform-text-muted); background: transparent; }
+.sw-platform-action--danger { color: var(--sw-platform-error); }
+
+// Preview --------------------------------------------------------------------
+.sw-platform-preview {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 140px;
+    overflow: hidden;
+    border: 1px solid var(--sw-platform-line);
+    border-radius: var(--sw-platform-radius-md);
+    background: var(--sw-platform-surface);
+    box-shadow: var(--sw-platform-shadow-card);
+}
+
+.sw-platform-preview__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sw-platform-space-2);
+    min-height: 36px;
+    padding: 6px var(--sw-platform-space-3);
+    border-bottom: 1px solid color-mix(in srgb, var(--sw-platform-line) 72%, transparent);
+    color: var(--sw-platform-text-muted);
+    font-size: 11px;
+}
+
+.sw-platform-preview__canvas { position: relative; flex: 1; min-width: 0; min-height: 104px; overflow: auto; }
+.sw-platform-preview__canvas > iframe,
+.sw-platform-preview__canvas > img,
+.sw-platform-preview__canvas > canvas { display: block; width: 100%; height: 100%; border: 0; object-fit: contain; }
+.sw-platform-preview__loading,
+.sw-platform-preview__empty { display: grid; place-items: center; min-height: 104px; padding: var(--sw-platform-space-4); color: var(--sw-platform-text-muted); font-size: 11px; text-align: center; }
+.sw-platform-preview__loading { position: absolute; inset: 0; background: color-mix(in srgb, var(--sw-platform-surface) 84%, transparent); }
+
+@media (pointer: coarse) {
+    .sw-platform-surface-nav__item,
+    .sw-platform-action { min-height: 44px; }
+}
+
+@media (max-width: 640px) {
+    .sw-platform-header { align-items: flex-start; flex-wrap: wrap; }
+    .sw-platform-header__context { order: 3; flex-basis: 100%; }
+    .sw-platform-header__actions { margin-left: auto; }
+    .sw-platform-context { align-items: flex-start; flex-wrap: wrap; }
+    .sw-platform-context__actions { margin-left: 0; flex-basis: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw-platform-shell *,
+    .sw-platform-shell *::before,
+    .sw-platform-shell *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+
+@media (prefers-contrast: more) {
+    :is(.sw-platform-shell, .sw-platform-surface, .speed-switch, .sw-home, .sw-studio, .sw-fab-root) {
+        --sw-platform-line: var(--b3-border-color, currentColor);
+        --sw-platform-focus: 0 0 0 3px var(--sw-platform-accent);
+    }
+
+}

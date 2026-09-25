@@ -6,6 +6,7 @@
 //   05 设置页视觉、减动效、分组排序、第二面板起步  06 手机顶栏芯片、排序浮层、小组件画布、商店画廊
 //   07 侧栏工具栏、组件面板、商店分区  08 首页问候、快速记录、商店卡片
 //   09 商店实时预览、面板交互打磨、周打卡、高对比
+//   平台 统一 token、状态、动作和预览原语（T-6866，表面逐步接入）
 @use "styles/00-tokens" as *;
 @use "styles/01-base-controls" as *;
 @use "styles/02-settings" as *;
@@ -20,3 +21,5 @@
 //   10 可选独立皮肤层（ADR 0073）：变量作用域限速切根容器，宿主零影响
 @use "styles/10-skins" as *;
 @use "styles/snippet-studio" as *;
+// T-6866 平台公共原语放在现有表面之后，允许后续表面逐步迁移到同一合同。
+@use "styles/platform-shell" as *;

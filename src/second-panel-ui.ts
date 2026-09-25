@@ -61,16 +61,18 @@ export function openSecondPanel(this: SecondPanelUiHost) {
         let releasePanel: () => void = () => undefined;
         const dialog = new Dialog({
             title: this.i18n.secondPanel,
-            content: '<div class="speed-switch sw-home"></div>',
+            content: '<div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench"></div>',
             width: `${size.width}px`,
             height: `${size.height}px`,
             destroyCallback: () => releasePanel(),
         });
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-platform-dialog", "sw-platform-dialog--workbench");
         if (fullscreenMode) {
             dialog.element.querySelector(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen");
         }
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
+        root.dataset.swSurface = "workbench";
         let iconClampFrame = 0;
         const scheduleIconClamp = () => {
             if (iconClampFrame || !root.isConnected) return;
