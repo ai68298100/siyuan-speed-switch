@@ -19,7 +19,7 @@ function buildSnippetPreviewDocument({type = "css", content = "", dark = false, 
 </style>${css}</head><body><div class="studio-demo-bar"><span>SiYuan</span><span>${text("sample", "演示文档 · 不读取个人笔记")}</span></div><div class="protyle"><div class="protyle-wysiwyg protyle-wysiwyg--attr" spellcheck="false"><div class="h1" data-type="NodeHeading" data-subtype="h1"><div contenteditable="true">${text("title", "让灵感有自己的样子")}</div></div><div class="p" data-type="NodeParagraph"><div contenteditable="true">${text("paragraph", "中文与 English 混排，1234567890。预览标题、正文与代码，观察你的样式如何改变阅读体验。")}</div></div><div class="bq" data-type="NodeBlockquote"><div contenteditable="true">${text("quote", "先看效果，再决定是否启用。每一次调整都从可恢复的草稿开始。")}</div></div><div class="h2" data-type="NodeHeading" data-subtype="h2"><div contenteditable="true">${text("section", "一份清晰的工作记录")}</div></div><div class="p" data-type="NodeParagraph"><div contenteditable="true">${text("codeLabel", "行内代码")} <span data-type="code">const idea = "hello";</span></div></div><div class="table" data-type="NodeTable"><table><thead><tr><th>${text("item", "项目")}</th><th>${text("state", "状态")}</th><th>${text("progress", "进度")}</th></tr></thead><tbody><tr><td>${text("reading", "阅读")}</td><td>${text("ready", "就绪")}</td><td>80%</td></tr><tr><td>${text("writing", "写作")}</td><td>${text("draft", "草稿")}</td><td>40%</td></tr></tbody></table></div><div class="code-block" data-type="NodeCodeBlock"><div class="hljs">function greet(name) {\n  return 'Hello, ' + name;\n}</div></div><div class="p" data-type="NodeParagraph"><button id="demo-button" type="button">${text("button", "交互测试按钮")}</button> <span id="demo-output"></span></div></div></div>${script}</body></html>`;
 }
 
-function createSnippetPreview(container, {title, labels, onError = () => {}} = {}) {
+function createSnippetPreview(container, {title, labels, onError = () => {}, onReady = () => {}} = {}) {
     const doc = container.ownerDocument;
     const win = doc.defaultView;
     let frame = null;
@@ -34,7 +34,11 @@ function createSnippetPreview(container, {title, labels, onError = () => {}} = {
         render(options) {
             if (disposed) return;
             frame?.remove();
-            frame = doc.createElement("iframe");
+            const nextFrame = doc.createElement("iframe");
+            nextFrame.addEventListener("load", () => {
+                if (!disposed && frame === nextFrame) onReady();
+            }, {once: true});
+            frame = nextFrame;
             token = `${Date.now()}-${Math.random()}`;
             frame.title = title || "Snippet preview";
             frame.referrerPolicy = "no-referrer";

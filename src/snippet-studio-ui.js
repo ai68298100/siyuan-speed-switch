@@ -25,6 +25,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetAIGenerating: locale.i18n.snippetAIGenerating,
         snippetAIHint: locale.i18n.snippetAIHint,
         snippetAIIdle: locale.i18n.snippetAIIdle,
+        snippetAIReady: locale.i18n.snippetAIReady,
+        snippetAIConsentRequired: locale.i18n.snippetAIConsentRequired,
+        snippetAIGenerateHint: locale.i18n.snippetAIGenerateHint,
+        snippetAIOptimizeHint: locale.i18n.snippetAIOptimizeHint,
+        snippetAIExplainHint: locale.i18n.snippetAIExplainHint,
+        snippetAIIterateHint: locale.i18n.snippetAIIterateHint,
+        snippetAIResultHint: locale.i18n.snippetAIResultHint,
         snippetAIIterate: locale.i18n.snippetAIIterate,
         snippetAIMode: locale.i18n.snippetAIMode,
         snippetAIOptimize: locale.i18n.snippetAIOptimize,
@@ -57,7 +64,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetChoose: locale.i18n.snippetChoose,
         snippetClose: locale.i18n.snippetClose,
         snippetCode: locale.i18n.snippetCode,
+        snippetBytes: locale.i18n.snippetBytes,
         snippetCompare: locale.i18n.snippetCompare,
+        snippetCompareUnavailable: locale.i18n.snippetCompareUnavailable,
         snippetConfirmDelete: locale.i18n.snippetConfirmDelete,
         snippetConfirmJS: locale.i18n.snippetConfirmJS,
         snippetConflict: locale.i18n.snippetConflict,
@@ -91,6 +100,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetPreview: locale.i18n.snippetPreview,
         snippetPreviewError: locale.i18n.snippetPreviewError,
         snippetPreviewHint: locale.i18n.snippetPreviewHint,
+        snippetPreviewLoading: locale.i18n.snippetPreviewLoading,
+        snippetPreviewReady: locale.i18n.snippetPreviewReady,
         snippetPreviewLang: locale.i18n.snippetPreviewLang,
         snippetRefresh: locale.i18n.snippetRefresh,
         snippetResetPreview: locale.i18n.snippetResetPreview,
@@ -119,9 +130,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetStudioTitle: locale.i18n.snippetStudioTitle,
         snippetSubmission: locale.i18n.snippetSubmission,
         snippetSubmissionHint: locale.i18n.snippetSubmissionHint,
+        snippetLines: locale.i18n.snippetLines,
         snippetTimeout: locale.i18n.snippetTimeout,
         snippetTooLarge: locale.i18n.snippetTooLarge,
         snippetType: locale.i18n.snippetType,
+        snippetTypeLocked: locale.i18n.snippetTypeLocked,
         snippetUnavailable: locale.i18n.snippetUnavailable,
     };
     const t = (key) => translations[key] || key;
@@ -132,6 +145,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let snippets = [];
     let draft = session.draft ? {...session.draft} : {id: "", name: "", type: "css", content: "", enabled: false};
     let baseline = session.baseline ? {...session.baseline} : null;
+    let selectedSource = baseline ? "native" : "draft";
     let original = draft.content;
     let revision = 0;
     let aiGeneration = 0;
@@ -142,6 +156,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let candidate = null;
     let picker = null;
     let pickerRelease = () => {};
+    let pickerScrollTop = {root: 0, layout: 0};
     let aiHistory = [];
     root.classList.add("sw-studio");
     const node = (tag, className = "", text = "") => {
@@ -163,13 +178,24 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         return input;
     };
     const header = node("header", "sw-studio__header");
-    const heading = node("div");
-    heading.append(node("strong", "sw-studio__title", t("snippetStudioTitle")), node("span", "sw-studio__badge", t("snippetExperimental")));
-    header.append(heading, action("snippetBack", onBack));
+    const heading = node("div", "sw-studio__header-copy");
+    const titleLine = node("div", "sw-studio__header-title-line");
+    titleLine.append(node("strong", "sw-studio__title", t("snippetStudioTitle")), node("span", "sw-studio__badge", t("snippetExperimental")));
+    const headerContext = node("span", "sw-studio__header-context");
+    const headerState = node("span", "sw-studio__state-badge");
+    heading.append(titleLine, headerContext);
+    const headerActions = node("div", "sw-studio__header-actions");
+    headerActions.append(headerState, action("snippetBack", onBack));
+    header.append(heading, headerActions);
     const layout = node("div", "sw-studio__layout");
     const main = node("main", "sw-studio__main");
     const previewSection = node("section", "sw-studio__preview-section");
     const previewToolbar = node("div", "sw-studio__section-bar");
+    const previewLead = node("div", "sw-studio__section-lead");
+    const previewTitle = node("h2", "sw-studio__section-title", t("snippetPreview"));
+    const previewType = node("span", "sw-studio__tag");
+    const previewState = node("span", "sw-studio__state-badge is-loading", t("snippetPreviewLoading"));
+    previewLead.append(previewTitle, previewType, previewState);
     const compareButton = action("snippetCompare", () => { showOriginal = !showOriginal; compareButton.setAttribute("aria-pressed", String(showOriginal)); renderPreview(); });
     compareButton.setAttribute("aria-pressed", "false");
     const themeButton = action("snippetDarkPreview", () => { dark = !dark; themeButton.setAttribute("aria-pressed", String(dark)); renderPreview(); });
@@ -177,12 +203,26 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const runButton = action("snippetRunJS", () => { status.textContent = t("snippetJSPreviewUnavailable"); });
     runButton.disabled = true;
     const stopButton = action("snippetResetPreview", () => renderPreview(false));
-    previewToolbar.append(node("strong", "", t("snippetPreview")), compareButton, themeButton, runButton, stopButton);
-    const previewContainer = node("div", "sw-studio__preview");
+    runButton.title = t("snippetJSPreviewUnavailable");
+    previewToolbar.append(previewLead, compareButton, themeButton, runButton, stopButton);
+    const previewShell = node("div", "sw-studio__preview");
+    const previewContainer = node("div", "sw-studio__preview-canvas");
+    const previewLoading = node("div", "sw-studio__preview-loading");
+    previewLoading.append(node("span", "sw-studio__spinner"), node("span", "", t("snippetPreviewLoading")));
+    previewShell.append(previewContainer, previewLoading);
     const previewHint = node("p", "sw-studio__hint", t("snippetPreviewHint"));
-    previewSection.append(previewToolbar, previewContainer, previewHint);
+    previewSection.append(previewToolbar, previewShell, previewHint);
     const lower = node("div", "sw-studio__lower");
     const details = node("section", "sw-studio__details");
+    const detailsTitle = node("h2", "sw-studio__section-title", t("snippetAbout"));
+    const selection = node("div", "sw-studio__selection");
+    const selectionTop = node("div", "sw-studio__selection-top");
+    const selectionName = node("strong", "sw-studio__selection-name");
+    const selectionType = node("span", "sw-studio__catalog-kind");
+    const selectionStatus = node("span", "sw-studio__state-badge");
+    const selectionMeta = node("span", "sw-studio__selection-meta");
+    selectionTop.append(selectionName, selectionType, selectionStatus);
+    selection.append(selectionTop, selectionMeta);
     const description = node("p", "sw-studio__description", t("snippetDescription"));
     const nameLabel = node("label", "sw-studio__field", t("snippetName"));
     const nameInput = node("input", "sw-studio__input");
@@ -190,25 +230,31 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     nameInput.setAttribute("aria-label", t("snippetName"));
     nameLabel.appendChild(nameInput);
     const typeSelect = select("snippetType", [["css", "snippetCSS"], ["js", "snippetJS"]]);
+    const typeNote = node("p", "sw-studio__hint", t("snippetTypeLocked"));
+    typeNote.hidden = true;
     const state = node("div", "sw-studio__state");
     const saveButton = action("snippetSaveDisabled", () => void mutate("save"), "is-primary");
-    const toggleButton = action("snippetEnable", () => void mutate("toggle"));
-    const deleteButton = action("snippetDelete", () => void mutate("delete"));
-    const exportButton = action("snippetExport", () => download(`${draft.name || "snippet"}.${draft.type}`, draft.content, "text/plain"));
+    const toggleButton = action("snippetEnable", () => void mutate("toggle"), "is-secondary");
+    const deleteButton = action("snippetDelete", () => void mutate("delete"), "is-danger");
+    const exportButton = action("snippetExport", () => download(`${draft.name || "snippet"}.${draft.type}`, draft.content, "text/plain"), "is-quiet");
     const submissionButton = action("snippetSubmission", () => {
         const packet = {schemaVersion: 1, status: "unreviewed", name: draft.name, type: draft.type, content: draft.content, description: "", author: "", license: "", testedWith: "", effects: [], enabled: false};
         download("snippet-submission.json", JSON.stringify(packet, null, 2), "application/json");
         status.textContent = t("snippetSubmissionHint");
-    });
+    }, "is-quiet");
     const commands = node("div", "sw-studio__commands");
     commands.append(saveButton, toggleButton, deleteButton, exportButton, submissionButton);
-    details.append(node("strong", "", t("snippetAbout")), description, nameLabel, typeSelect, state, commands);
+    details.append(detailsTitle, selection, description, nameLabel, typeSelect, typeNote, state, commands);
     const editorSection = node("section", "sw-studio__editor-section");
     const editorBar = node("div", "sw-studio__section-bar");
+    const editorLead = node("div", "sw-studio__section-lead");
+    const editorTitle = node("h2", "sw-studio__section-title", t("snippetCode"));
+    const editorMeta = node("span", "sw-studio__editor-meta");
+    editorLead.append(editorTitle, editorMeta);
     const chooseButton = action("snippetChoose", () => openPicker());
     const importButton = action("snippetImport", () => fileInput.click());
     const newButton = action("snippetNew", () => { if (canDiscard()) choose({name: "", type: "css", content: ""}, null); });
-    editorBar.append(chooseButton, importButton, newButton);
+    editorBar.append(editorLead, chooseButton, importButton, newButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.spellcheck = false;
     editor.setAttribute("aria-label", t("snippetCode"));
@@ -222,8 +268,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     main.append(previewSection, lower);
     const aside = node("aside", "sw-studio__ai");
     aside.setAttribute("aria-label", t("snippetAI"));
+    const aiHeader = node("div", "sw-studio__ai-header");
+    const aiTitle = node("h2", "sw-studio__ai-title", t("snippetAI"));
+    const aiProvider = node("span", "sw-studio__state-badge", t("snippetAIIdle"));
+    aiHeader.append(aiTitle, aiProvider);
     const aiNote = node("p", "sw-studio__hint", t("snippetAIHint"));
     const modeSelect = select("snippetAIMode", [["generate", "snippetAIGenerate"], ["optimize", "snippetAIOptimize"], ["explain", "snippetAIExplain"], ["iterate", "snippetAIIterate"]]);
+    const modeField = node("label", "sw-studio__ai-field", t("snippetAIMode"));
+    modeField.appendChild(modeSelect);
+    const modeHint = node("p", "sw-studio__hint sw-studio__ai-mode-hint", t("snippetAIGenerateHint"));
     const prompt = node("textarea", "sw-studio__prompt");
     prompt.maxLength = 4000;
     prompt.placeholder = t("snippetAIPrompt");
@@ -232,17 +285,26 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const aiConsentInput = node("input");
     aiConsentInput.type = "checkbox";
     aiConsent.append(aiConsentInput, doc.createTextNode(t("snippetAIConsent")));
-    const aiButton = action("snippetAISend", () => void generate());
-    const cancelAIButton = action("snippetAICancel", () => { aiGeneration += 1; ai.cancel(); aiButton.disabled = !aiConsentInput.checked; aiStatus.textContent = t("snippetCancelled"); cancelAIButton.disabled = true; });
+    const aiActions = node("div", "sw-studio__ai-actions");
+    const aiButton = action("snippetAISend", () => void generate(), "is-primary");
+    const cancelAIButton = action("snippetAICancel", () => { aiGeneration += 1; ai.cancel(); setAIStatus(t("snippetCancelled")); updateAIActions(); cancelAIButton.disabled = true; });
     cancelAIButton.disabled = true;
     aiButton.disabled = true;
-    aiConsentInput.addEventListener("change", () => { if (cancelAIButton.disabled) aiButton.disabled = !aiConsentInput.checked; });
+    aiActions.append(aiButton, cancelAIButton);
     const aiStatus = node("p", "sw-studio__hint", t("snippetAIIdle"));
     aiStatus.setAttribute("role", "status");
+    const aiResultPanel = node("div", "sw-studio__ai-result-panel");
+    const aiResultHeader = node("div", "sw-studio__ai-result-header");
+    const aiResultTitle = node("strong", "", t("snippetAICandidate"));
+    const aiResultMeta = node("span", "sw-studio__editor-meta");
+    aiResultHeader.append(aiResultTitle, aiResultMeta);
+    aiResultHeader.hidden = true;
+    const aiEmpty = node("div", "sw-studio__ai-empty", t("snippetAIResultHint"));
     const aiResult = node("textarea", "sw-studio__ai-result");
     aiResult.readOnly = true;
     aiResult.setAttribute("aria-label", t("snippetAICandidate"));
     aiResult.hidden = true;
+    aiResultPanel.append(aiResultHeader, aiEmpty, aiResult);
     const acceptButton = action("snippetAIAccept", () => {
         if (!candidate || candidate.mode === "explain" || busy) return;
         if (candidate.revision !== revision && !win.confirm(t("snippetAIStale"))) return;
@@ -256,13 +318,35 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         status.textContent = t("snippetAIAccepted");
     }, "is-primary");
     acceptButton.disabled = true;
-    modeSelect.addEventListener("change", () => {
+    const modeHints = {
+        generate: "snippetAIGenerateHint",
+        optimize: "snippetAIOptimizeHint",
+        explain: "snippetAIExplainHint",
+        iterate: "snippetAIIterateHint",
+    };
+    const setAIStatus = (value, ready = false) => {
+        aiStatus.textContent = value;
+        aiProvider.textContent = value;
+        aiProvider.className = `sw-studio__state-badge${ready ? " is-ready" : ""}`;
+    };
+    const updateAIActions = () => {
+        if (cancelAIButton.disabled) aiButton.disabled = busy || !aiConsentInput.checked || !prompt.value.trim();
+        aiProvider.textContent = aiConsentInput.checked ? t("snippetAIReady") : t("snippetAIIdle");
+        aiProvider.className = `sw-studio__state-badge${aiConsentInput.checked ? " is-ready" : ""}`;
+    };
+    const updateAIMode = () => {
+        modeHint.textContent = t(modeHints[modeSelect.value] || modeHints.generate);
         const explanation = modeSelect.value === "explain";
         acceptButton.hidden = explanation;
         if (explanation) acceptButton.disabled = true;
         else if (candidate?.mode !== "explain") acceptButton.disabled = !candidate;
+    };
+    modeSelect.addEventListener("change", () => {
+        updateAIMode();
     });
-    aside.append(node("strong", "sw-studio__ai-title", t("snippetAI")), aiNote, modeSelect, prompt, aiConsent, aiButton, cancelAIButton, aiStatus, aiResult, acceptButton);
+    aiConsentInput.addEventListener("change", updateAIActions);
+    prompt.addEventListener("input", updateAIActions);
+    aside.append(aiHeader, aiNote, modeField, modeHint, prompt, aiConsent, aiActions, aiStatus, aiResultPanel, acceptButton);
     layout.append(main, aside);
     const status = node("footer", "sw-studio__status", t("snippetLoading"));
     status.setAttribute("role", "status");
@@ -274,7 +358,20 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const preview = createSnippetPreview(previewContainer, {
         title: t("snippetPreview"),
         labels: {lang: t("snippetPreviewLang"), sample: t("snippetSample"), title: t("snippetSampleTitle"), paragraph: t("snippetSampleParagraph"), quote: t("snippetSampleQuote"), section: t("snippetSampleSection"), codeLabel: t("snippetSampleCode"), item: t("snippetSampleItem"), state: t("snippetSampleState"), progress: t("snippetSampleProgress"), reading: t("snippetSampleReading"), ready: t("snippetSampleReady"), writing: t("snippetSampleWriting"), draft: t("snippetSampleDraft"), button: t("snippetSampleButton")},
-        onError: (message) => { if (!disposed) status.textContent = `${t("snippetPreviewError")} ${message}`; },
+        onReady: () => {
+            if (disposed) return;
+            previewShell.dataset.state = "ready";
+            previewLoading.hidden = true;
+            previewState.textContent = t("snippetPreviewReady");
+            previewState.className = "sw-studio__state-badge is-ready";
+        },
+        onError: (message) => {
+            if (!disposed) {
+                status.textContent = `${t("snippetPreviewError")} ${message}`;
+                previewState.textContent = t("snippetPreviewError");
+                previewState.className = "sw-studio__state-badge is-error";
+            }
+        },
     });
     const errorText = (error) => {
         const code = String(error?.message || error?.code || "");
@@ -286,18 +383,45 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         if (/invalid|malformed|truncat/i.test(code)) return t("snippetInvalid");
         return t("snippetFailed");
     };
+    const byteLength = (content) => new TextEncoder().encode(String(content || "")).byteLength;
+    const lineLength = (content) => content ? String(content).split(/\r\n|\r|\n/).length : 0;
+    const formatBytes = (bytes) => bytes < 1024 ? `${bytes} ${t("snippetBytes")}` : `${(bytes / 1024).toFixed(1)} KiB`;
+    const sourceLabel = () => t(selectedSource === "native" ? "snippetMine" : selectedSource === "builtin" ? "snippetBuiltins" : "snippetDraft");
     function syncFields() {
         nameInput.value = draft.name;
         typeSelect.value = draft.type;
         editor.value = draft.content;
         session.draft = {...draft};
         session.baseline = baseline ? {...baseline} : null;
+        const bytes = byteLength(draft.content);
+        const lines = lineLength(draft.content);
+        const shortName = draft.name.trim() || t("snippetNew");
+        const savedState = baseline ? baseline.enabled ? t("snippetEnabled") : t("snippetDisabled") : t("snippetDraft");
+        const stateClass = baseline ? baseline.enabled ? "is-ready" : "is-muted" : "is-draft";
+        selectionName.textContent = shortName;
+        selectionType.textContent = draft.type.toUpperCase();
+        selectionStatus.textContent = savedState;
+        selectionStatus.className = `sw-studio__state-badge ${stateClass}`;
+        selectionMeta.textContent = `${sourceLabel()} · ${formatBytes(bytes)} · ${lines} ${t("snippetLines")}`;
+        headerContext.textContent = `${shortName} · ${draft.type.toUpperCase()}`;
+        headerState.textContent = savedState;
+        headerState.className = `sw-studio__state-badge ${stateClass}`;
+        editorMeta.textContent = `${formatBytes(bytes)} · ${lines} ${t("snippetLines")}`;
+        previewType.textContent = draft.type.toUpperCase();
         runButton.hidden = draft.type !== "js";
         // A synchronous user script can freeze the host WebView even inside a
         // sandboxed iframe. Keep JS preview visible as a planned affordance,
         // but do not execute it until a terminable worker-based runner exists.
         runButton.disabled = true;
+        runButton.title = t("snippetJSPreviewUnavailable");
+        compareButton.disabled = busy || !baseline;
+        compareButton.title = baseline ? t("snippetCompare") : t("snippetCompareUnavailable");
+        if (!baseline) {
+            showOriginal = false;
+            compareButton.setAttribute("aria-pressed", "false");
+        }
         typeSelect.disabled = Boolean(baseline) || busy;
+        typeNote.hidden = !baseline;
         saveButton.textContent = t(baseline ? "snippetSave" : "snippetSaveDisabled");
         toggleButton.textContent = t(baseline?.enabled ? "snippetDisable" : "snippetEnable");
         state.textContent = t(baseline ? baseline.enabled ? "snippetEnabled" : "snippetDisabled" : "snippetDraft");
@@ -314,12 +438,20 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         refresh.disabled = busy || loading;
         nameInput.disabled = busy;
         editor.disabled = busy;
+        layout.setAttribute("aria-busy", String(loading || busy));
+        updateAIActions();
+        updateAIMode();
     }
     function renderPreview(runJS = false) {
         clearTimeout(previewTimer);
         if (disposed) return;
         const content = showOriginal ? original : draft.content;
-        if (new TextEncoder().encode(content).byteLength > SNIPPET_CODE_MAX) { status.textContent = t("snippetTooLarge"); return; }
+        if (byteLength(content) > SNIPPET_CODE_MAX) { status.textContent = t("snippetTooLarge"); return; }
+        previewShell.dataset.state = "loading";
+        previewLoading.hidden = false;
+        previewState.textContent = t("snippetPreviewLoading");
+        previewState.className = "sw-studio__state-badge is-loading";
+        previewHint.textContent = draft.type === "js" ? `${t("snippetPreviewHint")} ${t("snippetJSPreviewUnavailable")}` : t("snippetPreviewHint");
         // Compare uses the selected saved code, not a second unscoped host style.
         preview.render({type: draft.type, content, dark, runJS: !showOriginal && runJS});
     }
@@ -338,14 +470,20 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     function choose(value, native) {
         aiGeneration += 1;
         ai.cancel();
-        aiButton.disabled = !aiConsentInput.checked;
+        aiButton.disabled = true;
         cancelAIButton.disabled = true;
         candidate = null;
         aiHistory = [];
         acceptButton.disabled = true;
         acceptButton.hidden = modeSelect.value === "explain";
         aiResult.hidden = true;
+        aiResultHeader.hidden = true;
+        aiEmpty.hidden = false;
+        aiResult.value = "";
+        aiResultMeta.textContent = "";
+        setAIStatus(t("snippetAIIdle"));
         baseline = native ? {...native} : null;
+        selectedSource = native ? "native" : value.source || "draft";
         draft = {id: native?.id || "", name: value.name || "", type: value.type || "css", content: value.content || "", enabled: native?.enabled === true};
         original = native?.content || "";
         description.textContent = value.description || t("snippetDescription");
@@ -447,8 +585,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiButton.disabled = true;
         cancelAIButton.disabled = false;
         aiResult.hidden = false;
+        aiResultHeader.hidden = false;
+        aiEmpty.hidden = true;
         aiResult.value = "";
-        aiStatus.textContent = t("snippetAIGenerating");
+        aiResultMeta.textContent = "";
+        setAIStatus(t("snippetAIGenerating"));
         try {
             const result = await ai.generate({type: captured.type, content: sourceContent, instruction, mode, history,
                 onToken: (token) => { if (!disposed && generation === aiGeneration) aiResult.value += token; },
@@ -456,24 +597,28 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             if (disposed || generation !== aiGeneration) return;
             candidate = {...result, mode, revision: startedRevision};
             aiResult.value = result.content;
+            aiResultMeta.textContent = `${formatBytes(byteLength(result.content))} · ${lineLength(result.content)} ${t("snippetLines")}`;
             aiHistory = [...history, {role: "user", content: instruction}, {role: "assistant", content: result.content}].slice(-8);
             acceptButton.disabled = mode === "explain";
-            aiStatus.textContent = t("snippetAIDone");
-        } catch (error) { if (!disposed && generation === aiGeneration) aiStatus.textContent = errorText(error); }
-        finally { if (!disposed && generation === aiGeneration) { aiButton.disabled = !aiConsentInput.checked; cancelAIButton.disabled = true; } }
+            setAIStatus(t("snippetAIDone"), true);
+        } catch (error) { if (!disposed && generation === aiGeneration) setAIStatus(errorText(error)); }
+        finally { if (!disposed && generation === aiGeneration) { cancelAIButton.disabled = true; updateAIActions(); } }
     }
     function closePicker() {
         pickerRelease();
         pickerRelease = () => {};
         picker?.remove();
         picker = null;
-        // At phone widths the workbench is a vertical scroller. Restoring
+        // At narrow widths the workbench is a vertical scroller. Restoring
         // focus must not scroll the hidden editor into view underneath the
         // picker that just closed.
         chooseButton.focus({preventScroll: true});
+        root.scrollTop = pickerScrollTop.root;
+        layout.scrollTop = pickerScrollTop.layout;
     }
     function openPicker() {
         if (picker || busy) return;
+        pickerScrollTop = {root: root.scrollTop, layout: layout.scrollTop};
         picker = node("div", "sw-studio__picker");
         picker.setAttribute("role", "dialog");
         picker.setAttribute("aria-modal", "true");
@@ -499,12 +644,18 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             list.replaceChildren();
             if (!found.length) list.append(node("p", "sw-studio__hint", t("snippetNoResults")));
             for (const item of found.slice(0, limit)) {
+                const isCurrent = item.source === "native"
+                    ? item.id === baseline?.id
+                    : !baseline && item.type === draft.type && item.name === draft.name && item.content === draft.content;
                 const button = action("snippetSelect", () => {
                     if (!canDiscard()) return;
                     choose(item, item.source === "native" ? snippets.find((entry) => entry.id === item.id) : null);
                     closePicker();
                 });
                 button.className = "sw-studio__catalog-item";
+                button.setAttribute("aria-pressed", String(isCurrent));
+                button.setAttribute("aria-label", `${item.name} · ${item.type.toUpperCase()}`);
+                if (isCurrent) button.classList.add("is-current");
                 button.replaceChildren(node("span", "sw-studio__catalog-kind", item.type.toUpperCase()), node("strong", "", item.name), node("span", "sw-studio__hint", item.description || t("snippetDescription")), node("span", "sw-studio__tag", t(item.source === "builtin" ? "snippetBuiltins" : item.enabled ? "snippetEnabled" : "snippetDisabled")));
                 list.appendChild(button);
             }
@@ -516,6 +667,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         root.appendChild(picker);
         const keydown = (event) => {
             if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closePicker(); }
+            if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) && doc.activeElement?.classList.contains("sw-studio__catalog-item")) {
+                const controls = Array.from(list.querySelectorAll(".sw-studio__catalog-item"));
+                const index = controls.indexOf(doc.activeElement);
+                if (index >= 0) {
+                    event.preventDefault();
+                    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? controls.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + controls.length) % controls.length;
+                    controls[nextIndex]?.focus();
+                }
+            }
             if (event.key === "Tab") {
                 const controls = Array.from(sheet.querySelectorAll("button, input, select")).filter((el) => !el.hidden && !el.disabled);
                 const first = controls[0]; const last = controls[controls.length - 1];
