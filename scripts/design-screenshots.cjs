@@ -7,8 +7,10 @@ const {pathToFileURL} = require("node:url");
 const {chromium} = require("@playwright/test");
 
 const root = path.resolve(__dirname, "..");
-const htmlPath = path.join(root, "docs", "design", "platform-ui-redesign-2026-09-26.html");
-const outDir = path.join(root, "docs", "design", "redesign-2026-09-26");
+const htmlName = process.argv[2] || "platform-ui-redesign-2026-09-26.html";
+const outName = process.argv[3] || "redesign-2026-09-26";
+const htmlPath = path.join(root, "docs", "design", htmlName);
+const outDir = path.join(root, "docs", "design", outName);
 
 async function main() {
     if (!fs.existsSync(htmlPath)) throw new Error(`prototype html missing: ${htmlPath}`);
@@ -18,7 +20,7 @@ async function main() {
     await page.goto(pathToFileURL(htmlPath).href, {waitUntil: "networkidle"});
     await page.waitForTimeout(400);
     const shots = await page.$$eval("[data-shot]", (nodes) => nodes.map((n) => n.getAttribute("data-shot")));
-    if (shots.length < 20) throw new Error(`expected >=20 screens, found ${shots.length}`);
+    if (shots.length < 1) throw new Error(`no screens found: ${shots.length}`);
     for (const id of shots) {
         const el = await page.$(`[data-shot="${id}"]`);
         await el.screenshot({path: path.join(outDir, `${id}.png`)});

@@ -1018,3 +1018,19 @@ test('mobile stacked quick-action bar and converged sheet language (T-6876 RZ-6)
     assert.ok(declaresIn(readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss')),
         '.sw__mobile-sheet .sw__mobile-sheet-handle', /width:\s*36px/), 'sheets keep the grabber handle');
 });
+
+test('surfaces default to fullscreen with optional sizes (T-6877, ADR 0080)', () => {
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const defaults = indexSource.slice(indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {'), indexSource.indexOf('const DEFAULT_SETTINGS: ISwSettings = {') + 900);
+    // 切换器与工作台默认全屏（fullscreen 布尔由 panelSizeMode 派生，语义不变）。
+    assert.match(defaults, /panelSizeMode: "fullscreen"/, 'the switcher must default to fullscreen');
+    assert.match(defaults, /homeSizeMode: "fullscreen"/, 'the workbench must default to fullscreen');
+    // 片段实验室：打开即视口全屏，并叠加 fullscreen 容器类。
+    assert.match(indexSource, /const width = window\.innerWidth;\s*\n\s*const height = window\.innerHeight;/,
+        'the studio must open at viewport size');
+    assert.match(indexSource, /classList\.add\("sw-dialog--fullscreen", "sw-dialog--snippet-studio"/,
+        'the studio dialog must carry the fullscreen container class');
+    // 尺寸可选项全部保留（用户可改回）：三表面设置行仍在。
+    assert.match(secondPanelSource, /mode === "fullscreen" \|\| \(mode === "follow" && settings\.panelSizeMode === "fullscreen"\)/,
+        'the workbench keeps its follow/adaptive/custom/fullscreen options');
+});

@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="zh-CN" data-theme-mode="light">
+<head>
+<meta charset="utf-8">
+<title>小驴雷切 · 三表面原型迭代 R2（T-6877，2026-09-26）</title>
+<link rel="stylesheet" href="../../tests/fixtures/siyuan-mobile-base.css">
+<link rel="stylesheet" href="../../dist/index.css">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 32px 56px; background: #e7e9f0; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+.proto-header { max-width: 1760px; margin: 0 auto 22px; }
+.proto-header h1 { font-size: 21px; margin: 0 0 8px; color: #23252c; }
+.proto-header p { margin: 0 0 4px; font-size: 13px; color: #565a68; line-height: 1.75; }
+.gallery { display: flex; flex-direction: column; gap: 34px; max-width: 1760px; margin: 0 auto; }
+.shot { display: flex; flex-direction: column; }
+.shot-caption { display: flex; align-items: baseline; gap: 10px; padding: 0 2px 8px; }
+.shot-caption .no { font-size: 11px; font-weight: 800; color: #7a7f92; letter-spacing: .06em; }
+.shot-caption .name { font-size: 14px; font-weight: 700; color: #23252c; }
+.shot-caption .note { font-size: 11.5px; color: #6d7180; }
+.stage { padding: 18px; border-radius: 18px;
+  background: repeating-conic-gradient(#dde0ea 0% 25%, #e7e9f0 0% 50%) 0 0 / 22px 22px;
+  display: flex; justify-content: center; }
+.screen { background: var(--b3-theme-background, #fff); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 2px 6px rgba(20,24,40,.10), 0 18px 44px rgba(20,24,40,.12); }
+
+/* ---- 对齐与层级刻度（R2 细节抛光，全部映射进生产 token） ---- */
+.rz-h1 { font-size: 13px; font-weight: 700; color: var(--b3-theme-on-background); }
+.rz-label { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--b3-theme-on-surface-light); display: flex; align-items: center; gap: 8px; }
+.rz-meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.rz-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  line-height: 1; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--b3-border-color);
+  color: var(--b3-theme-on-surface); background: var(--b3-theme-surface); white-space: nowrap; }
+.rz-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
+.rz-badge--ready   { color: color-mix(in srgb, var(--b3-theme-success, #2d9865) 72%, var(--b3-theme-on-background)); border-color: color-mix(in srgb, var(--b3-theme-success, #2d9865) 26%, transparent); background: color-mix(in srgb, var(--b3-theme-success, #2d9865) 9%, transparent); }
+.rz-badge--loading { color: var(--b3-theme-primary); border-color: color-mix(in srgb, var(--b3-theme-primary) 30%, transparent); background: color-mix(in srgb, var(--b3-theme-primary) 9%, transparent); }
+.rz-badge--stale   { color: color-mix(in srgb, var(--b3-theme-warning, #d97917) 68%, var(--b3-theme-on-background)); border-color: color-mix(in srgb, var(--b3-theme-warning, #d97917) 28%, transparent); background: color-mix(in srgb, var(--b3-theme-warning, #d97917) 10%, transparent); }
+.rz-badge--dirty   { color: #a04e12; border-color: color-mix(in srgb, #c9651d 30%, transparent); background: color-mix(in srgb, #c9651d 10%, transparent); }
+.rz-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 5px; border: 1px solid var(--b3-border-color);
+  background: var(--b3-theme-surface); color: var(--b3-theme-on-surface-light);
+  font: 600 10.5px/1 ui-monospace, Consolas, monospace; }
+.rz-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px;
+  background: var(--b3-theme-surface-lighter); border: 1px solid var(--b3-border-color); }
+.rz-seg button { border: 0; background: transparent; color: var(--b3-theme-on-surface);
+  font: 500 12px/1 inherit; font-family: inherit; padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+.rz-seg button.is-active { background: var(--b3-theme-background); color: var(--b3-theme-on-background);
+  font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.rz-pill { display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer;
+  border-radius: 999px; padding: 6px 14px; font: 600 12px/1 inherit; font-family: inherit;
+  background: var(--b3-theme-primary); color: var(--b3-theme-on-primary); }
+.rz-pill--soft { background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.rz-row-icon { width: 26px; height: 26px; border-radius: 8px; flex: none; display: inline-flex;
+  align-items: center; justify-content: center; background: var(--b3-theme-surface-lighter);
+  color: var(--b3-theme-on-surface); }
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="iconSearch" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconClose" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconFilter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconSettings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconClock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="iconStar" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="iconRefresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconLayout" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M9.5 9.5V19.5" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="iconLayoutHome" viewBox="0 0 24 24"><path d="M4 11.5L12 4l8 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 10.5V20h11v-9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="iconCalendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 9.5h17M8 2.8V6M16 2.8V6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="iconCode" viewBox="0 0 24 24"><path d="M8.5 7L4 12l4.5 5M15.5 7L20 12l-4.5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconCheck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="iconDown" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
+</svg>
+
+<div class="proto-header">
+  <h1>小驴雷切 · 三表面原型迭代 R2（T-6877 · 用户反馈驱动）</h1>
+  <p>① <b>切换器</b>：默认全屏（ADR 0080），已开页签扩至 4 列大卡占据主视野，收藏/最近与全库结果压缩保留；② <b>工作台</b>：默认全屏，已添加组件以完整内容渲染占据主视野，商店入口压缩为页内条目；③ <b>片段实验室</b>：吸收原始开发框架——<b>预览为主区（4fr）+ 下排 属性:编辑器（2fr:3fr）+ AI 右栏（1fr）+ 片段目录为浮层选择器</b>，替代 R1 原型的三等分栏。细节：控件高度统一 28px、分节标签统一小写大写刻度、主/次按钮层级收敛。</p>
+</div>
+
+<div class="gallery">
+  <!-- ============ 01R 切换器 · 全屏 ============ -->
+  <section class="shot" data-shot="r2-01-switcher" style="width: 1500px;">
+    <div class="shot-caption"><span class="no">01R</span><span class="name">切换器 · 全屏（新默认）</span><span class="note">已开页签 4 列大卡占主视野 · 收藏/最近压缩为行 · 全库保留 · 预览常驻</span></div>
+    <div class="stage"><div class="screen" style="width: 1460px; height: 840px; display: flex; flex-direction: column;">
+      <div class="speed-switch sw__body sw--fullscreen sw-platform-surface sw-platform-surface--switcher" data-sw-surface="switcher" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="switcher" style="padding: 12px 18px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:14px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <nav class="sw-platform-surface-nav" style="display:flex; gap:4px;">
+              <span class="sw-platform-surface-nav__item is-active" aria-current="page">切换器</span>
+              <button class="sw-platform-surface-nav__item" type="button">工作台</button>
+              <button class="sw-platform-surface-nav__item" type="button">片段实验室</button>
+            </nav>
+            <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+              <div class="rz-seg"><button class="is-active" type="button">全屏</button><button type="button">自适应</button><button type="button">固定</button></div>
+              <span class="rz-badge rz-badge--ready">内核 已连接</span>
+            </div>
+          </header>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 1px 2px;">
+            <span class="rz-meta">工作上下文</span><span class="rz-meta">›</span>
+            <strong class="rz-h1">切换器</strong>
+            <span class="rz-meta">查找、预览和打开内容</span>
+            <span style="flex:1"></span>
+            <span class="rz-kbd">Tab</span><span class="rz-kbd">1-9</span><span class="rz-kbd">Enter</span><span class="rz-kbd">Alt 预览</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; padding: 10px 18px;">
+          <div style="flex:1; display:flex; align-items:center; gap:8px; border:1px solid var(--b3-border-color); border-radius:10px; padding:0 12px; height:38px; background:var(--b3-theme-surface);">
+            <svg width="14" height="14" style="color:var(--b3-theme-on-surface-light);"><use href="#iconSearch"/></svg>
+            <input placeholder="搜索页签、收藏、最近与全库文档" style="border:0; background:transparent; outline:none; flex:1; height:100%; font-size:13px; font-family:inherit; color:var(--b3-theme-on-background);">
+            <button type="button" style="border:0; background:transparent; cursor:pointer; color:var(--b3-theme-on-surface); display:flex;"><svg width="14" height="14"><use href="#iconFilter"/></svg></button>
+          </div>
+          <button type="button" class="rz-pill rz-pill--soft">最近打开</button>
+          <button type="button" class="rz-pill rz-pill--soft">笔记本 · 最近使用</button>
+          <button type="button" style="border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:8px; height:28px; width:30px; cursor:pointer; color:var(--b3-theme-on-surface); display:flex; align-items:center; justify-content:center;"><svg width="14" height="14"><use href="#iconCalendar"/></svg></button>
+          <button type="button" style="border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:8px; height:28px; width:30px; cursor:pointer; color:var(--b3-theme-on-surface); display:flex; align-items:center; justify-content:center;"><svg width="14" height="14"><use href="#iconCode"/></svg></button>
+          <button type="button" style="border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:8px; height:28px; width:30px; cursor:pointer; color:var(--b3-theme-on-surface); display:flex; align-items:center; justify-content:center;"><svg width="14" height="14"><use href="#iconSettings"/></svg></button>
+        </div>
+        <div style="flex:1; min-height:0; overflow:auto; padding: 0 18px 14px; display:grid; grid-template-columns: 1fr 262px; gap: 14px; align-items:start;">
+          <div style="display:flex; flex-direction:column; gap:14px; min-width:0;">
+            <div>
+              <div class="rz-label">已打开 · 测试工作区<span style="flex:1"></span><span style="opacity:.6">8</span></div>
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:8px;">
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">1</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,var(--b3-theme-primary) 24%, transparent), color-mix(in srgb,#5ab0a8 16%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">产</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">产品路线图（2026 H2）</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">2</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#5ab0a8 20%, transparent), color-mix(in srgb,#d1901f 14%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">评</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">Q3 路线评审纪要</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">3</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#8b7ff5 20%, transparent), color-mix(in srgb,#6ea8fe 16%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">日</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">2026-09-26 日记</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">4</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#e8a3b8 20%, transparent), color-mix(in srgb,#b8b0e8 16%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">面</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">面试题库整理</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">5</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#57c99a 18%, transparent), color-mix(in srgb,#5ab0a8 14%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">组</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">组件协议 v2.4</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">6</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#d1901f 16%, transparent), color-mix(in srgb,#c9651d 12%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">学</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">学习路线</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">7</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,var(--b3-theme-primary) 16%, transparent), color-mix(in srgb,#8b7ff5 12%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">周</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">团队周会模板</span></div>
+                </div>
+                <div style="position:relative; border:1px solid var(--b3-border-color); border-radius:12px; overflow:hidden; background:var(--b3-theme-surface);">
+                  <span class="rz-kbd" style="position:absolute; top:6px; right:6px; z-index:2;">8</span>
+                  <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#5ab0a8 16%, transparent), color-mix(in srgb,var(--b3-theme-primary) 14%, transparent));"></div>
+                  <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rz-row-icon" style="width:24px;height:24px;">读</span><span style="font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">读书笔记索引</span></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="rz-label">收藏 · 最近<span style="flex:1"></span><span style="opacity:.6">4</span></div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; margin-top:8px;">
+                <button style="display:flex; gap:9px; align-items:center; text-align:left; padding:6px 8px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:9px; cursor:pointer; font-family:inherit;">
+                  <span class="rz-row-icon"><svg width="12" height="12"><use href="#iconStar"/></svg></span>
+                  <span style="flex:1; min-width:0;"><span style="display:block; font-size:12px; color:var(--b3-theme-on-background);">每日工作台</span><span class="rz-meta" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">/日记 · 收藏</span></span>
+                  <span class="rz-kbd">1</span>
+                </button>
+                <button style="display:flex; gap:9px; align-items:center; text-align:left; padding:6px 8px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:9px; cursor:pointer; font-family:inherit;">
+                  <span class="rz-row-icon"><svg width="12" height="12"><use href="#iconClock"/></svg></span>
+                  <span style="flex:1; min-width:0;"><span style="display:block; font-size:12px; color:var(--b3-theme-on-background);">迭代任务库</span><span class="rz-meta" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;">/项目 · 昨日关闭</span></span>
+                  <span class="rz-kbd">2</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <div class="rz-label">全库文档 · 2 条命中「路线」<span style="flex:1"></span><button style="border:0; background:transparent; color:var(--b3-theme-primary); font-size:11px; cursor:pointer; font-family:inherit;">查看全部 →</button></div>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+                <button style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); border-radius:10px; cursor:pointer; font-family:inherit; width:100%;">
+                  <span class="rz-row-icon"><svg width="12" height="12"><use href="#i-doc"/></svg></span>
+                  <span style="flex:1; min-width:0;"><span style="display:block; font-size:12.5px; color:var(--b3-theme-on-background);">产品<mark style="background:color-mix(in srgb,var(--b3-theme-primary) 26%, transparent); color:inherit; border-radius:3px; padding:0 1px;">路线</mark>图（2026 H2）</span><span class="rz-meta">…下半年 <mark style="color:var(--b3-theme-primary); font-weight:600;">路线</mark>围绕统一切换平台推进…</span></span>
+                  <span class="rz-kbd">3</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <aside style="position:sticky; top:0; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px;"><strong class="rz-h1" style="font-size:12.5px;">预览</strong><span class="rz-badge rz-badge--ready">已就绪</span><span style="flex:1"></span><span class="rz-kbd">Alt</span></div>
+            <strong style="font-size:13.5px; color:var(--b3-theme-on-background);">产品路线图（2026 H2）</strong>
+            <div style="font-size:12px; color:var(--b3-theme-on-surface); line-height:1.7;">下半年围绕统一切换平台推进：第一面板键盘优先收口，第二面板组件健康回执，片段实验室安全边界…</div>
+            <div style="border-top:1px solid var(--b3-border-color); padding-top:8px; display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--b3-theme-on-surface);">
+              <span class="rz-label" style="font-size:10.5px;">大纲</span>
+              <span>▪ 背景与定位</span><span>▪ 统一平台路线</span><span style="color:var(--b3-theme-primary); font-weight:600;">▪ 下半年关键结果</span><span>▪ 风险与依赖</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============ 02R 工作台 · 全屏 ============ -->
+  <section class="shot" data-shot="r2-02-workbench" style="width: 1500px;">
+    <div class="shot-caption"><span class="no">02R</span><span class="name">工作台 · 全屏（新默认，查看态）</span><span class="note">已添加组件完整渲染占据主视野 · 商店压缩为页内入口 · 回执条常驻</span></div>
+    <div class="stage"><div class="screen" style="width: 1460px; height: 840px; display:flex; flex-direction:column;">
+      <div class="speed-switch sw-home sw-platform-surface sw-platform-surface--workbench" data-sw-surface="workbench" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="workbench" style="padding: 12px 18px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:14px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <nav class="sw-platform-surface-nav" style="display:flex; gap:4px;">
+              <button class="sw-platform-surface-nav__item" type="button">切换器</button>
+              <span class="sw-platform-surface-nav__item is-active" aria-current="page">工作台</span>
+              <button class="sw-platform-surface-nav__item" type="button">片段实验室</button>
+            </nav>
+            <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+              <div class="rz-seg"><button class="is-active" type="button">全屏</button><button type="button">跟随</button><button type="button">自适应</button></div>
+            </div>
+          </header>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 1px 2px;">
+            <span class="rz-meta">工作上下文</span><span class="rz-meta">›</span>
+            <strong class="rz-h1">工作台</strong>
+            <span class="rz-meta">编排信息组件和工作现场</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 18px 8px;">
+          <div class="rz-seg"><button class="is-active" type="button">查看</button><button type="button">编辑布局</button></div>
+          <span class="rz-badge rz-badge--stale">缓存 · 3 分钟前</span>
+          <span style="flex:1"></span>
+          <button type="button" class="rz-pill rz-pill--soft"><svg width="12" height="12"><use href="#iconRefresh"/></svg> 刷新全部</button>
+        </div>
+        <div style="flex:1; min-height:0; overflow:auto; padding: 4px 18px 14px; display:grid; grid-template-columns:repeat(12, 1fr); gap:14px; align-content:start;">
+          <section style="grid-column: span 4; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong class="rz-h1" style="font-size:12.5px;">最近文档</strong><span class="rz-badge rz-badge--ready">已更新</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div style="padding:9px 12px 12px; display:flex; flex-direction:column; gap:8px; font-size:12.5px;">
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span style="color:var(--b3-theme-on-background);">产品路线图（2026 H2）</span><span class="rz-meta">12:20</span></span>
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span style="color:var(--b3-theme-on-background);">Q3 路线评审纪要</span><span class="rz-meta">11:05</span></span>
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span style="color:var(--b3-theme-on-background);">面试题库整理</span><span class="rz-meta">昨天</span></span>
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span style="color:var(--b3-theme-on-background);">组件协议 v2.4</span><span class="rz-meta">前天</span></span>
+              <span style="display:flex; justify-content:space-between; gap:8px;"><span style="color:var(--b3-theme-on-background);">读书笔记索引</span><span class="rz-meta">3 天前</span></span>
+            </div>
+          </section>
+          <section style="grid-column: span 4; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong class="rz-h1" style="font-size:12.5px;">日历</strong><span class="rz-badge rz-badge--ready">9 月</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div style="padding:9px 12px 12px;">
+              <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px; font-size:11px; text-align:center;">
+                <span class="rz-meta">一</span><span class="rz-meta">二</span><span class="rz-meta">三</span><span class="rz-meta">四</span><span class="rz-meta">五</span><span class="rz-meta">六</span><span class="rz-meta">日</span>
+                <span style="padding:3px 0; color:var(--b3-theme-on-surface-light);">31</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">1</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">2</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">3</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">4</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">5</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">6</span>
+                <span style="padding:3px 0; color:var(--b3-theme-on-background);">7</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">8</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">9</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">10</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">11</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">12</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">13</span>
+                <span style="padding:3px 0; color:var(--b3-theme-on-background);">14</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">15</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">16</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">17</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">18</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">19</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">20</span>
+                <span style="padding:3px 0; border-radius:6px; background:color-mix(in srgb,var(--b3-theme-primary) 16%, transparent); color:var(--b3-theme-primary); font-weight:700;">26</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">27</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">28</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">29</span><span style="padding:3px 0; color:var(--b3-theme-on-background);">30</span><span style="color:var(--b3-theme-on-surface-light); padding:3px 0;">1</span><span style="color:var(--b3-theme-on-surface-light); padding:3px 0;">2</span>
+              </div>
+            </div>
+          </section>
+          <section style="grid-column: span 4; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong class="rz-h1" style="font-size:12.5px;">近期天气</strong><span class="rz-badge rz-badge--ready">北京 · 已更新</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div style="padding:9px 12px 12px;">
+              <div style="display:flex; align-items:baseline; gap:8px;"><strong style="font-size:28px; color:var(--b3-theme-on-background);">21°</strong><span style="font-size:12px; color:var(--b3-theme-on-surface);">⛅ 多云</span></div>
+              <div style="display:flex; gap:10px; margin-top:8px; font-size:11.5px; color:var(--b3-theme-on-surface);">
+                <span>周五 18/27°</span><span>周六 19/26°</span><span>周日 20/25°</span>
+              </div>
+            </div>
+          </section>
+          <section style="grid-column: span 6; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong class="rz-h1" style="font-size:12.5px;">数据库 · 迭代任务</strong><span class="rz-badge rz-badge--ready">31 行</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div style="padding:9px 12px 12px;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="color:var(--b3-theme-on-surface-light); text-align:left;"><th style="font-weight:600; padding:4px 8px;">任务</th><th style="font-weight:600; padding:4px 8px;">状态</th><th style="font-weight:600; padding:4px 8px;">负责人</th></tr></thead>
+                <tbody>
+                  <tr><td style="padding:4px 8px; color:var(--b3-theme-on-background);">悬浮球外拨手势</td><td style="padding:4px 8px;"><span class="rz-badge rz-badge--loading">进行中</span></td><td style="padding:4px 8px; color:var(--b3-theme-on-surface);">小飞驴</td></tr>
+                  <tr><td style="padding:4px 8px; color:var(--b3-theme-on-background);">预览窗格 sticky</td><td style="padding:4px 8px;"><span class="rz-badge rz-badge--ready">已完成</span></td><td style="padding:4px 8px; color:var(--b3-theme-on-surface);">小飞驴</td></tr>
+                  <tr><td style="padding:4px 8px; color:var(--b3-theme-on-background);">统一路由上下文</td><td style="padding:4px 8px;"><span class="rz-badge rz-badge--ready">已完成</span></td><td style="padding:4px 8px; color:var(--b3-theme-on-surface);">小飞驴</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section style="grid-column: span 6; border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong class="rz-h1" style="font-size:12.5px;">当前文档相关</strong><span class="rz-badge rz-badge--ready">4 条</span><span style="flex:1"></span><svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#i-dots"/></svg></div>
+            <div style="padding:9px 12px 12px; display:flex; flex-wrap:wrap; gap:7px; font-size:12px;">
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:5px 12px; color:var(--b3-theme-on-background);">↩ Q3 评审纪要</span>
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:5px 12px; color:var(--b3-theme-on-background);">↩ 组件协议 v2.4</span>
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:5px 12px; color:var(--b3-theme-on-background);">~ 团队 OKR</span>
+              <span style="border:1px solid var(--b3-border-color); border-radius:999px; padding:5px 12px; color:var(--b3-theme-on-background);">~ 平台路线图</span>
+            </div>
+          </section>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:9px 18px; border-top:1px solid var(--b3-border-color); background:var(--b3-theme-surface); font-size:12px; color:var(--b3-theme-on-surface-light);">
+          <span class="rz-badge rz-badge--ready">11/11 组件正常</span>
+          <span>上次刷新 12:20 · 失败 0 · 跳过 0</span>
+          <span style="flex:1"></span>
+          <span>组件商店 · 58 组件 →</span>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============ 03R 片段实验室 · 吸收原框架 ============ -->
+  <section class="shot" data-shot="r2-03-studio" style="width: 1500px;">
+    <div class="shot-caption"><span class="no">03R</span><span class="name">片段实验室 · 全屏（吸收原始框架）</span><span class="note">预览为主区（4fr）+ 下排 属性:编辑器（2fr:3fr）+ AI 右栏 + 目录浮层选择器</span></div>
+    <div class="stage"><div class="screen" style="width: 1460px; height: 840px; display:flex; flex-direction:column; position:relative;">
+      <div class="speed-switch sw-studio sw-platform-surface sw-platform-surface--studio" data-sw-surface="studio" style="height:100%; display:flex; flex-direction:column;">
+        <div class="sw-platform-chrome sw-platform-shell" data-platform-surface="studio" style="padding: 12px 18px 0;">
+          <header class="sw-platform-header" style="display:flex; align-items:center; gap:14px;">
+            <div class="sw-platform-header__brand"><strong class="sw-platform-header__brand-name">小驴雷切</strong></div>
+            <nav class="sw-platform-surface-nav" style="display:flex; gap:4px;">
+              <button class="sw-platform-surface-nav__item" type="button">切换器</button>
+              <button class="sw-platform-surface-nav__item" type="button">工作台</button>
+              <span class="sw-platform-surface-nav__item is-active" aria-current="page">片段实验室</span>
+            </nav>
+            <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+              <span class="rz-badge rz-badge--ready">原生片段 · 已同步</span>
+              <span class="rz-badge rz-badge--ready">全屏</span>
+            </div>
+          </header>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 1px 2px;">
+            <span class="rz-meta">工作上下文</span><span class="rz-meta">›</span>
+            <strong class="rz-h1">片段实验室</strong>
+            <span class="rz-meta">安全编辑、预览和管理代码片段</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:9px; padding:10px 18px 8px;">
+          <button type="button" class="rz-pill rz-pill--soft"><svg width="12" height="12"><use href="#iconSearch"/></svg> 片段目录</button>
+          <input value="卡片悬浮阴影" style="width:200px; height:28px; font-size:12.5px; font-weight:600; border-radius:8px; border:1px solid var(--b3-border-color); background:var(--b3-theme-surface); color:var(--b3-theme-on-background); font-family:inherit; padding:0 9px;">
+          <span class="rz-badge rz-badge--dirty">未保存更改</span>
+          <span style="flex:1"></span>
+          <button type="button" class="rz-pill rz-pill--soft">比较</button>
+          <button type="button" class="rz-pill">保存</button>
+        </div>
+        <div style="flex:1; min-height:0; display:grid; grid-template-columns: minmax(0, 4fr) minmax(240px, 1fr); gap:14px; padding: 4px 18px 14px;">
+          <div style="display:grid; grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); gap:14px; min-height:0;">
+            <section style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column; overflow:hidden; min-height:0;">
+              <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--b3-border-color);">
+                <strong class="rz-h1" style="font-size:12.5px;">预览</strong>
+                <span style="border:1px solid var(--b3-border-color); border-radius:6px; padding:2px 7px; font-size:10.5px; color:var(--b3-theme-on-surface-light);">CSS</span>
+                <span class="rz-badge rz-badge--ready">预览就绪</span>
+                <span style="flex:1"></span>
+                <button type="button" class="rz-pill rz-pill--soft" style="padding:4px 11px;">比较原稿</button>
+                <button type="button" class="rz-pill rz-pill--soft" style="padding:4px 11px;">暗色预览</button>
+              </div>
+              <div style="flex:1; padding:14px; background:var(--b3-theme-background); display:flex; gap:16px; align-items:center; justify-content:center;">
+                <div style="width:220px; border:1px solid var(--b3-border-color); border-radius:10px; padding:14px; background:#fff; color:#333; font-size:12.5px;">
+                  <strong>块引用卡片</strong>
+                  <div style="color:#8a8f9d; margin-top:3px; font-size:11.5px;">默认态</div>
+                </div>
+                <div style="width:220px; border:1px solid var(--b3-border-color); border-radius:10px; padding:14px; background:#fff; color:#333; font-size:12.5px; box-shadow:0 6px 18px rgba(0,0,0,.12); transform:translateY(-1px); outline:2px solid color-mix(in srgb,#8b7ff5 45%, transparent); outline-offset:-2px;">
+                  <strong>块引用卡片（hover）</strong>
+                  <div style="color:#8a8f9d; margin-top:3px; font-size:11.5px;">阴影加深并上浮</div>
+                </div>
+              </div>
+              <div style="padding:6px 12px; border-top:1px solid var(--b3-border-color); font-size:11px; color:var(--b3-theme-on-surface-light);">CSS 隔离沙箱 · 不写入生产文档 · 与原生片段一致</div>
+            </section>
+            <div style="display:grid; grid-template-columns: minmax(200px, 2fr) minmax(0, 3fr); gap:14px; min-height:0;">
+              <section style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); padding:11px 12px; display:flex; flex-direction:column; gap:9px; overflow:auto;">
+                <strong class="rz-h1" style="font-size:12.5px;">属性</strong>
+                <div style="display:flex; align-items:center; gap:8px;"><span class="rz-meta" style="width:60px;">名称</span><input value="卡片悬浮阴影" style="flex:1; height:26px; font-size:12px; border-radius:7px; border:1px solid var(--b3-border-color); background:var(--b3-theme-background); color:var(--b3-theme-on-background); font-family:inherit; padding:0 8px;"></div>
+                <div style="display:flex; align-items:center; gap:8px;"><span class="rz-meta" style="width:60px;">类型</span><div class="rz-seg"><button class="is-active" type="button">CSS</button><button type="button">JS</button></div></div>
+                <div style="display:flex; align-items:center; gap:8px;"><span class="rz-meta" style="width:60px;">启用</span><label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--b3-theme-on-surface);"><input type="checkbox" checked> 已启用</label></div>
+                <div style="display:flex; align-items:center; gap:8px;"><span class="rz-meta" style="width:60px;">发布</span><label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--b3-theme-on-surface);"><input type="checkbox" checked> 发布时禁用</label></div>
+                <div style="font-size:11px; color:var(--b3-theme-on-surface-light);">已保存 · 已启用 · 发布时禁用 · 16 行</div>
+              </section>
+              <section style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-background); overflow:auto; font:12px/1.8 ui-monospace, Consolas, monospace; padding:10px 12px; color:var(--b3-theme-on-background);">
+                <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">1  </span><span style="color:var(--b3-theme-on-surface-light);">/* 悬浮时加深阴影并轻微上浮 */</span></div>
+                <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">2  </span><span style="color:var(--b3-theme-primary);">.protyle-wysiwyg</span> <span style="color:var(--b3-theme-on-surface);">[data-node-id]</span> {</div>
+                <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">3  </span>  transition: box-shadow .16s, transform .16s;</div>
+                <div><span style="color:var(--b3-theme-on-surface-light); user-select:none;">4  </span>}</div>
+                <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">5  </span><span style="color:var(--b3-theme-primary);">.protyle-wysiwyg</span> <span style="color:var(--b3-theme-on-surface);">[data-node-id]:hover</span> {</div>
+                <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">6  </span>  box-shadow: 0 6px 18px rgba(0,0,0,.12);</div>
+                <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">7  </span>  transform: translateY(-1px);</div>
+                <div style="background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:4px;"><span style="color:var(--b3-theme-on-surface-light); user-select:none;">8  </span>}</div>
+              </section>
+            </div>
+          </div>
+          <aside style="border:1px solid var(--b3-border-color); border-radius:12px; background:var(--b3-theme-surface); display:flex; flex-direction:column; overflow:hidden; min-height:0;">
+            <div style="display:flex; align-items:center; gap:7px; padding:9px 11px; border-bottom:1px solid var(--b3-border-color);">
+              <strong class="rz-h1" style="font-size:12.5px;">AI 助手</strong>
+              <span class="rz-badge rz-badge--blocked">待审核草稿</span>
+              <span style="flex:1"></span>
+            </div>
+            <div style="padding:9px 11px; display:flex; flex-direction:column; gap:7px; border-bottom:1px solid var(--b3-border-color);">
+              <div class="rz-seg" style="align-self:stretch;"><button class="is-active" type="button">优化</button><button type="button">解释</button><button type="button">迭代</button></div>
+              <textarea placeholder="描述优化目标…" rows="2" style="resize:none; border:1px solid var(--b3-border-color); border-radius:8px; font-size:12px; font-family:inherit; padding:7px 9px; background:var(--b3-theme-background); color:var(--b3-theme-on-background);"></textarea>
+              <button type="button" class="rz-pill" style="justify-content:center;">生成建议</button>
+            </div>
+            <div style="flex:1; overflow:auto; padding:9px 11px; font-size:11.5px; color:var(--b3-theme-on-surface); line-height:1.7;">
+              上一次生成：建议为阴影增加 <span style="font-family:ui-monospace;">prefers-reduced-motion</span> 降级…<br>
+              <span class="rz-meta">接受前不写入草稿 · 需手动审核</span>
+            </div>
+          </aside>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:8px 18px; border-top:1px solid var(--b3-border-color); background:var(--b3-theme-surface); font-size:11.5px; color:var(--b3-theme-on-surface-light);">
+          <span class="rz-badge rz-badge--dirty">未保存</span>
+          <span>已保存 · 已启用 · 发布时禁用</span>
+          <span style="flex:1"></span>
+          <span>另存为 · 导出 · 投稿包</span>
+        </div>
+      </div>
+      <!-- 目录浮层选择器（吸收原始框架：目录为浮层，而非常驻栏） -->
+      <div style="position:absolute; inset:0; background:rgba(15,20,30,.36); backdrop-filter:blur(2px); display:grid; place-items:start center; padding-top:120px; z-index:10;">
+        <div style="width:460px; max-height:560px; border:1px solid var(--b3-border-color); border-radius:14px; background:var(--b3-theme-surface); box-shadow:0 18px 48px rgba(15,20,40,.3); display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:10px 12px; border-bottom:1px solid var(--b3-border-color); display:flex; gap:7px; align-items:center;">
+            <svg width="13" height="13" style="color:var(--b3-theme-on-surface-light);"><use href="#iconSearch"/></svg>
+            <input placeholder="搜索片段" style="border:0; background:transparent; outline:none; flex:1; font-size:12.5px; font-family:inherit; color:var(--b3-theme-on-background);">
+            <span class="rz-kbd">Esc</span>
+          </div>
+          <div style="display:flex; gap:4px; padding:8px 10px; flex-wrap:wrap; border-bottom:1px solid var(--b3-border-color);">
+            <span class="rz-badge rz-badge--ready">CSS 12</span><span class="rz-badge rz-badge--blocked">JS 3</span><span class="rz-badge rz-badge--dirty">草稿 1</span>
+          </div>
+          <div style="overflow:auto; padding:5px; display:flex; flex-direction:column; gap:3px;">
+            <button style="text-align:left; border:1px solid color-mix(in srgb,var(--b3-theme-primary) 34%, transparent); background:color-mix(in srgb,var(--b3-theme-primary) 8%, transparent); border-radius:9px; padding:8px 10px; cursor:pointer; font-family:inherit;">
+              <span style="display:block; font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">卡片悬浮阴影</span>
+              <span style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; color:var(--b3-theme-on-surface-light);"><span>CSS</span>·<span>16 行</span><span style="color:var(--b3-theme-success, #2d9865);">● 已启用</span></span>
+            </button>
+            <button style="text-align:left; border:1px solid transparent; background:transparent; border-radius:9px; padding:8px 10px; cursor:pointer; font-family:inherit;">
+              <span style="display:block; font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">文档树加宽</span>
+              <span style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; color:var(--b3-theme-on-surface-light);"><span>CSS</span>·<span>8 行</span><span>○ 停用</span></span>
+            </button>
+            <button style="text-align:left; border:1px solid transparent; background:transparent; border-radius:9px; padding:8px 10px; cursor:pointer; font-family:inherit;">
+              <span style="display:block; font-size:12.5px; font-weight:600; color:var(--b3-theme-on-background);">快捷导出助手</span>
+              <span style="display:flex; gap:6px; margin-top:3px; font-size:10.5px; color:var(--b3-theme-on-surface-light);"><span>JS</span>·<span>22 行</span><span style="color:var(--b3-theme-warning, #d97917);">◐ 发布禁用</span></span>
+            </button>
+          </div>
+          <div style="padding:8px 12px; border-top:1px solid var(--b3-border-color); display:flex; gap:8px; align-items:center;">
+            <span class="rz-meta">16 个片段</span><span style="flex:1"></span>
+            <button type="button" class="rz-pill" style="padding:6px 14px;">＋ 新建片段</button>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+</div>
+</body>
+</html>

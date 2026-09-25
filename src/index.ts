@@ -754,10 +754,10 @@ export type IOverlayClose = () => void;
 const DEFAULT_SETTINGS: ISwSettings = {
     dialogWidth: 880,      // 固定尺寸模式的宽度 px
     dialogHeight: 600,     // 固定尺寸模式的高度 px
-    panelSizeMode: "adaptive", // 面板尺寸模式：adaptive=屏幕比例自适应（默认）/ custom=固定尺寸 / fullscreen=全屏
+    panelSizeMode: "fullscreen", // 面板尺寸模式：fullscreen=全屏（ADR 0080 默认，三表面内容优先）/ adaptive=屏幕比例自适应 / custom=固定尺寸
     panelScale: PANEL_SCALE_DEFAULT, // 自适应比例（百分比，相对当前可视区宽高）
     groupBy: TAB_GROUP_MODE_DEFAULT, // 列表分组：默认按笔记本
-    homeSizeMode: "follow", // 组件面板尺寸模式：跟随第一面板
+    homeSizeMode: "fullscreen", // 组件面板尺寸模式：全屏（ADR 0080 默认，组件内容充分展示）
     homePalette: "auto",     // 组件卡片强调色：自动多彩 / 柔和 / 单色
     homeWidth: 960,          // 组件面板固定宽度
     homeHeight: 720,         // 组件面板固定高度
@@ -3235,8 +3235,9 @@ export default class SpeedSwitchPlugin extends Plugin {
         this.notePlatformSurface("studio", context);
         const holder: {dialog: Dialog | null; controller: SnippetStudioController | null} = {dialog: null, controller: null};
         const releaseFab = this.suspendFABForDialog();
-        const width = Math.min(1600, Math.max(760, Math.round(window.innerWidth * 0.92)));
-        const height = Math.min(960, Math.max(560, Math.round(window.innerHeight * 0.88)));
+        // ADR 0080：工作室默认全屏（编辑/预览/AI 三栏内容优先），不再用 92vw 折算尺寸
+        const width = window.innerWidth;
+        const height = window.innerHeight;
         const dialog = new Dialog({
             title: this.i18n.snippetStudioTitle,
             content: '<div class="sw-snippet-studio-host"></div>',
@@ -3252,7 +3253,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         });
         holder.dialog = dialog;
         this.snippetStudioDialog = dialog;
-        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("sw-dialog--fullscreen", "sw-dialog--snippet-studio", "sw-platform-dialog", "sw-platform-dialog--studio");
         dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("sw-scroll-locked");
         const root = dialog.element.querySelector<HTMLElement>(".sw-snippet-studio-host");
         if (!root) {
