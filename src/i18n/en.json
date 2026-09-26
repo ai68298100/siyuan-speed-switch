@@ -1119,6 +1119,7 @@
   ,"snippetDiffFindings": "{n} review findings"
   ,"snippetDiffHunkToggle": "Toggle whether this hunk is applied"
   ,"snippetDiffMore": "{n} more lines not shown"
+  ,"snippetDiffRoundBase": "This round's changes vs the previous candidate"
   ,"snippetDiffDegraded": "Snippet too long for a line diff; applying replaces the whole block."
   ,"snippetPreview": "Preview"
   ,"snippetPreviewHint": "Preview runs in an isolated document and never changes your notes."

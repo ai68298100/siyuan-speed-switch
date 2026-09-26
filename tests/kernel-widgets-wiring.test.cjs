@@ -1286,8 +1286,6 @@ test('AI candidate renders a local summary and line diff before acceptance (T-69
     const diffModule = require('../src/snippet-diff.js');
     assert.equal(typeof diffModule.buildSnippetDiff, 'function', 'the diff builder must come from a dedicated pure module');
     assert.equal(typeof diffModule.summarizeDiff, 'function', 'the local summary must come from the same module');
-    assert.match(studioUi, /renderAIDiff\(draft\.content\);/,
-        'completion must render the diff against the current draft');
     assert.match(studioUi, /const summary = summarizeDiff\(baselineText, candidate\.content, diff\);/,
         'the change summary must be computed locally from the diff, never parsed from model output');
     assert.match(studioUi, /if \(!candidate \|\| candidate\.mode === "explain"\) \{\s*\n\s*hideAIDiffPanel\(\);/,
@@ -1328,6 +1326,16 @@ test('AI candidates lint deterministically and accept per hunk (T-6916)', () => 
         'warnings must use the warning token');
     assert.match(studioScss, /&__diff-hunk-head\[aria-pressed="false"\] \{ color: var\(--studio-error\)/,
         'rejected hunk heads must use the error token');
+});
+
+test('iterate rounds label their diff against the previous candidate (T-6917)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    assert.match(studioUi, /const iterateFromCandidate = mode === "iterate" && candidate\?\.mode !== "explain" && candidate\?\.type === captured\.type;/,
+        'iterate rounds must detect when the AI input was the previous candidate');
+    assert.match(studioUi, /renderAIDiff\(iterateFromCandidate \? sourceContent : draft\.content, iterateFromCandidate\);/,
+        'the diff baseline must follow the generation source and say so');
+    assert.match(studioUi, /summaryText = relativeToRound \? `\$\{t\("snippetDiffRoundBase"\)\} · ` : "";/,
+        'round-relative diffs must carry the base label');
 });
 
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {

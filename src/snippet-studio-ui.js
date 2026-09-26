@@ -87,6 +87,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetDiffFindings: locale.i18n.snippetDiffFindings,
         snippetDiffHunkToggle: locale.i18n.snippetDiffHunkToggle,
         snippetDiffMore: locale.i18n.snippetDiffMore,
+        snippetDiffRoundBase: locale.i18n.snippetDiffRoundBase,
         snippetDiffSummary: locale.i18n.snippetDiffSummary,
         snippetDisable: locale.i18n.snippetDisable,
         snippetDisabled: locale.i18n.snippetDisabled,
@@ -398,7 +399,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiDiffNote.hidden = true;
         aiDiffScroll.replaceChildren();
     };
-    function renderAIDiff(baselineText) {
+    function renderAIDiff(baselineText, relativeToRound = false) {
         if (!candidate || candidate.mode === "explain") {
             hideAIDiffPanel();
             return;
@@ -408,7 +409,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         activeDiff = diff;
         activeHunkAccepted = diff.hunks.map(() => true);
         const summary = summarizeDiff(baselineText, candidate.content, diff);
-        let summaryText = t("snippetDiffSummary")
+        let summaryText = relativeToRound ? `${t("snippetDiffRoundBase")} · ` : "";
+        summaryText += t("snippetDiffSummary")
             .replace("{hunks}", String(summary.hunks))
             .replace("{added}", String(summary.added))
             .replace("{removed}", String(summary.removed));
@@ -733,8 +735,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const captured = {...draft};
         const mode = modeSelect.value;
         const instruction = prompt.value.trim();
-        const sourceContent = mode === "iterate" && candidate?.mode !== "explain" && candidate?.type === captured.type
-            ? candidate.content : captured.content;
+        // T-6917（ADR 0083 D3）：迭代模式以上一轮候选为 AI 输入源时，diff 基准也改为
+        // 上一轮候选，面板如实标注"本轮改动相对上一轮"，让用户只审本轮引入的变化。
+        const iterateFromCandidate = mode === "iterate" && candidate?.mode !== "explain" && candidate?.type === captured.type;
+        const sourceContent = iterateFromCandidate ? candidate.content : captured.content;
         const history = mode === "iterate" ? aiHistory.slice(-6).map((item) => ({...item})) : [];
         candidate = null;
         acceptButton.disabled = true;
@@ -759,8 +763,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             aiHistory = [...history, {role: "user", content: instruction}, {role: "assistant", content: result.content}].slice(-8);
             acceptButton.disabled = mode === "explain";
             setAIStatus(t("snippetAIDone"), true);
-            // 摘要与 diff 基于当前草稿（接受是整候选替换，面板如实展示替换差量）。
-            renderAIDiff(draft.content);
+            // 摘要与 diff 如实展示替换差量；迭代轮以"相对上一轮"为基准。
+            renderAIDiff(iterateFromCandidate ? sourceContent : draft.content, iterateFromCandidate);
         } catch (error) { if (!disposed && generation === aiGeneration) setAIStatus(errorText(error), false, "error"); }
         finally { if (!disposed && generation === aiGeneration) { cancelAIButton.disabled = true; updateAIActions(); } }
     }

@@ -1119,6 +1119,7 @@
   "snippetDiffFindings": "审查发现 {n} 处",
   "snippetDiffHunkToggle": "切换是否应用这组改动",
   "snippetDiffMore": "其余 {n} 行未显示",
+  "snippetDiffRoundBase": "本轮改动相对上一轮候选",
   "snippetDiffDegraded": "片段过长，接受后整块替换（不逐行对比）",
   "snippetPreview": "效果预览",
   "snippetPreviewHint": "预览运行在隔离文档中，不会修改你的笔记。",
