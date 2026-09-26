@@ -1069,7 +1069,7 @@
   "documentSetDeleteConfirm": "确定删除这个文档集吗？",
   "documentSetSaved": "文档集已保存",
   "documentSetNoTabs": "当前没有可保存的已打开文档",
-  "documentSetPending": "待打开",
+  "documentSetVisitor": "集合外 · 保持打开",
   "documentSetOpened": "已打开",
   "documentSetsGuideTitle": "文档集是什么？",
   "documentSetsGuidePurpose": "文档集是一份“工作现场快照”：把当前已经打开的文档保存成一个命名集合，之后可以按原顺序重新打开，适合在不同项目或任务之间切换。",

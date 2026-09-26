@@ -36,6 +36,9 @@ function normalizeEntry(value, index = 0) {
         title: cleanText(value.title, DOCUMENT_SET_TITLE_MAX) || rootId,
         group: cleanText(layout.group ?? value.group, DOCUMENT_SET_GROUP_MAX),
         index: normalizeIndex(layout.index ?? value.index, index),
+        // T-6921（工作区恢复 2.0）：捕获时的活动文档标记；恢复回放中该条目
+        // 排到最后且不豁免焦点，使其在恢复完成后成为当前文档。
+        ...(value.active === true ? {active: true} : {}),
     };
 }
 
@@ -416,4 +419,15 @@ module.exports = {
     buildDocumentSetRestoreReport,
     documentSetRestoreReportToMarkdown,
     pickNextDocumentSet,
+    orderDocumentSetRestoreEntries,
 };
+
+// T-6921（工作区恢复 2.0 第一批）：布局维度恢复回放——带 active 标记的条目
+// 稳定排到最后（宿主对其豁免 keepCursor，恢复完成时聚焦该文档）；无标记或
+// 全部标记则原序返回，恢复集合与数量不变。
+function orderDocumentSetRestoreEntries(candidates) {
+    const list = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
+    const active = list.filter((entry) => entry && entry.active === true);
+    if (!active.length || active.length === list.length) return list;
+    return [...list.filter((entry) => !(entry && entry.active === true)), ...active];
+}

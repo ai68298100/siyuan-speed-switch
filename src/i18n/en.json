@@ -1069,7 +1069,7 @@
   ,"documentSetDeleteConfirm": "Delete this document set?"
   ,"documentSetSaved": "Document set saved"
   ,"documentSetNoTabs": "No opened documents can be saved"
-  ,"documentSetPending": "pending"
+  ,"documentSetVisitor": "outside set · kept open"
   ,"documentSetOpened": "opened"
   ,"documentSetsGuideTitle": "What is a document set?"
   ,"documentSetsGuidePurpose": "A document set is a named snapshot of the documents currently open. Restore it later in the saved order when switching between projects or tasks."

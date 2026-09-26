@@ -8,7 +8,7 @@ import {getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
-import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown} from "./document-sets";
+import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT, FLOATING_BALL_DIGIT_SLOT_COUNT} from "./floating-ball-model";
@@ -19,6 +19,7 @@ import type {ISwSettings, IFavoriteItem, IQuickAction, IQuickActionPickerCandida
 declare module "./document-sets" {
     export function normalizeDocumentSets(value: unknown, max?: number): {schemaVersion: number; sets: unknown[]; changed: boolean};
     export function createDocumentSet(name: string, entries: unknown[], options?: Record<string, unknown>): any;
+    export function orderDocumentSetRestoreEntries(value: unknown): any;
     export function upsertDocumentSet(value: unknown, candidate: unknown, options?: Record<string, unknown>): any;
     export function removeDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): any;
     export function rollbackDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): {state: unknown; changed: boolean; item: any};
@@ -1283,7 +1284,7 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                         restore.removeAttribute("aria-busy");
                         return;
                     }
-                    const execution = await runDocumentSetRestore(candidates, async (rootId) => {
+                    const execution = await runDocumentSetRestore(orderDocumentSetRestoreEntries(candidates), async (rootId, entry) => {
                         if (this.isUnloading || !restore.isConnected) return false;
                         return this.isMobile
                             ? await this.mobileOpenDoc(rootId)
@@ -1328,10 +1329,39 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                 preview.type = "button";
                 preview.className = "b3-button b3-button--text";
                 preview.textContent = this.i18n.documentSetPreview;
+                // T-6922（工作区恢复 2.0 第二批）：预览从 toast 升级为内联三段列表——
+                // 待恢复 / 已打开跳过 / 集合外 visitor（暗色，"保持打开"语义）。
+                const previewList = document.createElement("div");
+                previewList.className = "sw-setting__doc-set-preview";
+                previewList.hidden = true;
+                row.append(previewList);
                 preview.addEventListener("click", () => {
-                    const opened = new Set(this.currentDocumentSetEntries().map((entry) => entry.rootId));
+                    previewList.hidden = !previewList.hidden;
+                    if (previewList.hidden) return;
+                    const currentEntries = this.currentDocumentSetEntries();
+                    const opened = new Set(currentEntries.map((entry) => entry.rootId));
                     const plan = planDocumentSetRestore(item, opened, null);
-                    showMessage(`${this.i18n.documentSetPreview}: ${plan.pending.length} ${this.i18n.documentSetPending}, ${plan.opened.length} ${this.i18n.documentSetOpened}`);
+                    const setRootIds = new Set((item.entries || []).map((entry: {rootId?: string}) => String(entry?.rootId || "")));
+                    const buildRow = (title: string, tone: "" | "is-muted" | "is-visitor") => {
+                        const entryRow = document.createElement("div");
+                        entryRow.className = `sw-setting__doc-set-preview-row${tone ? ` ${tone}` : ""}`;
+                        entryRow.textContent = title;
+                        previewList.appendChild(entryRow);
+                    };
+                    previewList.replaceChildren();
+                    const pendingIds = new Set(plan.pending.map((entry: {rootId: string}) => entry.rootId));
+                    (item.entries || []).forEach((entry: {rootId: string; title?: string}) => {
+                        if (!pendingIds.has(entry.rootId)) return;
+                        buildRow(entry.title || entry.rootId, "");
+                    });
+                    plan.opened.forEach((entry: {rootId: string; title?: string}) => {
+                        buildRow(`${this.i18n.documentSetOpened} · ${entry.title || entry.rootId}`, "is-muted");
+                    });
+                    currentEntries.forEach((entry) => {
+                        if (setRootIds.has(entry.rootId)) return;
+                        buildRow(`${this.i18n.documentSetVisitor} · ${entry.title}`, "is-visitor");
+                    });
+                    if (!previewList.childElementCount) buildRow(this.i18n.documentSetNoTabs, "is-muted");
                 });
                 const remove = document.createElement("button");
                 remove.type = "button";

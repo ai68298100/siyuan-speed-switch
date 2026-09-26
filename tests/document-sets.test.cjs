@@ -316,3 +316,26 @@ test("document set restore report: markdown export lists entries and failure rea
     // 空报告不抛异常
     assert.ok(sets.documentSetRestoreReportToMarkdown(null).startsWith("# "));
 });
+
+
+test("document set restore ordering: active entries replay last and focus (T-6921)", () => {
+    const {orderDocumentSetRestoreEntries} = sets;
+    const a = {rootId: "doc-a", active: true};
+    const b = {rootId: "doc-b"};
+    const c = {rootId: "doc-c"};
+    // 无标记：原序返回（同一数组内容）。
+    assert.deepEqual(orderDocumentSetRestoreEntries([b, c]), [b, c]);
+    // 单个活动条目：稳定排到最后（恢复回放最后打开、豁免 keepCursor 获得焦点）。
+    assert.deepEqual(orderDocumentSetRestoreEntries([a, b, c]), [b, c, a]);
+    // 多个活动条目（导入的脏数据）：全部后置且相对顺序稳定。
+    assert.deepEqual(orderDocumentSetRestoreEntries([a, b, {rootId: "doc-d", active: true}, c]), [b, c, a, {rootId: "doc-d", active: true}]);
+    // 全部活动：原序。
+    assert.deepEqual(orderDocumentSetRestoreEntries([a, {rootId: "doc-x", active: true}]), [a, {rootId: "doc-x", active: true}]);
+    // 非数组/空：安全返回。
+    assert.deepEqual(orderDocumentSetRestoreEntries(null), []);
+    assert.deepEqual(orderDocumentSetRestoreEntries([]), []);
+    // normalizeEntry 保留 active 标记（版本快照同一清洗规则）。
+    const state = sets.normalizeDocumentSets([{setId: "s1", name: "S1", entries: [{rootId: "doc-a", active: true}, {rootId: "doc-b"}]}]);
+    assert.equal(state.sets[0].entries[0].active, true);
+    assert.equal(state.sets[0].entries[1].active, undefined);
+});

@@ -733,6 +733,31 @@
         align-items: center;
         gap: 8px;
     }
+    // T-6922（工作区恢复 2.0 第二批）：文档集恢复预览三段列表——visitor 暗色。
+    &__doc-set-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 6px 0 2px;
+        padding: 8px 10px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+        max-height: 220px;
+        overflow: auto;
+    }
+    &__doc-set-preview-row {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--b3-theme-on-background);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    &__doc-set-preview-row.is-muted { color: var(--b3-theme-on-surface-light); }
+    &__doc-set-preview-row.is-visitor {
+        color: var(--b3-theme-on-surface-light);
+        opacity: .6;
+    }
     &__control {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;

@@ -795,6 +795,15 @@ v0.38.0 已证明三表面模型、统一平台路由和悬浮球基础链路可
 | T-6919 | 模型层：`behavior.doubleTapAction/longPressAction` 归一化（≤48 有界清洗，默认空=未绑定）；`isLongPressGesture/isDoubleTapGesture` 纯函数（550ms/300ms 阈值，不达标不猜）；UI 指针生命周期接线（长按武装/拖动拆除/合成 click 抑制/双击判别窗）；宿主 `executeFloatingBallBoundGesture` 统一路由（""/more/动作 id/不可用回执） | ✅ 完成（本批） |
 | T-6920 | 设置页三手势可视化绑定（复用 T-6887 快滑面板模式：单击/双击/长按逐端绑定、label 走 clickActionLabel、persist 归一化+预算检查） | ✅ 完成（手势卡片双击/长按两行绑定，提示前置告知判别窗代价；§8.0.22 两批收口，随 v0.40.0 攒版） |
 
+### 8.0.23 2026-09-27 工作区恢复 2.0：文档集布局维度与 visitor 态（现行，用户指令立项；R8 §1.1/§1.2 吸收）
+
+取证结论：宿主无 pane-split/窗口布局的公开 API，条目级 `index`（顺序）早已存在；诚实 v1 布局维度=**活动文档标记 + 顺序回放聚焦**，真布局等上游开放能力。集合外 visitor 态落在文档集恢复预览（Spaces 式"保持打开"语义）。
+
+| 任务 | 内容 | 状态 |
+| --- | --- | --- |
+| T-6921 | 快照活动维度：捕获时桌面端经 `getActiveTab` 标记 `active`（手机端诚实缺省）；条目归一化透传 `active`（版本快照同规则）；`orderDocumentSetRestoreEntries` 纯函数（active 稳定排最后）；两条恢复链回放排序 + 活动条目豁免 keepCursor（恢复完成时聚焦） | ✅ 完成 |
+| T-6922 | 恢复预览三段内联列表（待恢复/已打开跳过/**集合外 visitor 暗色·保持打开**），替换原 toast 预览；`documentSetVisitor` 双语；死 key `documentSetPending` 被 i18n 门禁抓出并清理 | ✅ 完成 |
+
 ### 8.0.9 2026-09-22 思源 3.8.5 侧滑与悬浮球输入边界复核（研究完成，暂不开发）
 
 用户反馈思源手机端 3.8.5 更新左右滑后，左右边缘悬浮球容易触发侧栏。源码复核已完成（`docs/mobile-swipe-floating-ball-research-2026-09-22.md`、[ADR 0071](docs/adr/0071-mobile-swipe-ownership-for-floating-ball.md)）：3.8.5 在 `touch.ts` 中把普通页面侧滑方向激活距离设为 12 px，并按屏宽三分之一或 32 px+快速甩动提交；document 级 touch listeners 会继续看到悬浮球触摸。现有 `touch-action:none`、Pointer Capture 和 8~12 px plugin slop 不能表达对宿主 JavaScript 手势的所有权。思源已有 `data-prevent-swipe` 整轮手势契约，悬浮球当前 portal 尚未声明它。

@@ -87,7 +87,7 @@ import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, s
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
-import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet} from "./document-sets";
+import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
 import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
@@ -427,6 +427,7 @@ declare module "./settings-model" {
 declare module "./document-sets" {
     export function normalizeDocumentSets(value: unknown, max?: number): {schemaVersion: number; sets: unknown[]; changed: boolean};
     export function createDocumentSet(name: string, entries: unknown[], options?: Record<string, unknown>): any;
+    export function orderDocumentSetRestoreEntries(value: unknown): Array<{rootId: string; title?: string; index?: number; active?: boolean}>;
     export function upsertDocumentSet(value: unknown, candidate: unknown, options?: Record<string, unknown>): any;
     export function removeDocumentSet(value: unknown, setId: string, options?: Record<string, unknown>): any;
     export function mergeDocumentSets(value: unknown, incoming: unknown, options?: Record<string, unknown>): any;
@@ -6437,12 +6438,14 @@ const updatedMap: {[rootId: string]: string} = {};
         if (probe.unknown.length > 0) confirmations.push(`${this.i18n.documentSetUnknownConfirm} (${probe.unknown.length})`);
         const confirmation = confirmations.length > 0 ? confirmations.join("\n") : this.i18n.documentSetRestoreConfirm;
         if (!confirm(confirmation)) return;
-        const execution = await runDocumentSetRestore(candidates, async (rootId) => {
+        const execution = await runDocumentSetRestore(orderDocumentSetRestoreEntries(candidates), async (rootId, entry) => {
             if (this.isUnloading) return false;
             // T-6826 keepCursor：恢复链批量打开不抢焦点（思源 3.8.5 openTab 官方
             // 选项，旧版宿主自动忽略），现场就位由当前页签保持，不逐个跳转。
+            // T-6921：布局维度——活动条目排到最后且豁免 keepCursor，恢复完成时聚焦它。
+            const focusOnRestore = (entry as {active?: boolean} | undefined)?.active === true;
             return this.isMobile ? await this.mobileOpenDoc(rootId)
-                : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: true});
+                : await openDocumentOnDesktop({rootId, app: this.app, openTab, logger, keepCursor: !focusOnRestore});
         });
         const summary = summarizeDocumentSetRestore(plan, probe, execution);
         let essentialsOutcome: {opened: number; failed: number; skipped: number} | null = null;
@@ -7123,12 +7126,21 @@ const updatedMap: {[rootId: string]: string} = {};
     private currentDocumentSetEntries() {
         const tabs = this.isMobile ? this.getMobileTabs() : getAllTabs();
         const seen = new Set<string>();
+        // T-6921（工作区恢复 2.0）：桌面端记录当前活动文档（快照的布局维度 v1）；
+        // 手机端无可靠活动页签语义，诚实缺省不标。
+        let activeRootId = "";
+        if (!this.isMobile) {
+            try {
+                const activeTab = this.getActiveTab();
+                activeRootId = activeTab ? (this.rootIdOf(activeTab) || "") : "";
+            } catch (_) { activeRootId = ""; }
+        }
         return tabs.map((tab, index) => {
             const rootId = this.rootIdOf(tab);
             if (!rootId || !BLOCK_ID_RE.test(rootId) || seen.has(rootId)) return null;
             seen.add(rootId);
-            return {rootId, title: this.titleOf(tab) || rootId, index};
-        }).filter((item): item is {rootId: string; title: string; index: number} => Boolean(item));
+            return {rootId, title: this.titleOf(tab) || rootId, index, ...(rootId === activeRootId && activeRootId ? {active: true} : {})};
+        }).filter((item): item is {rootId: string; title: string; index: number; active?: boolean} => Boolean(item));
     }
 
     private saveDocumentSet(candidate: unknown) {

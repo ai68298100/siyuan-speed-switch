@@ -1366,6 +1366,34 @@ test('floating ball gestures: double-tap and long-press bind, classify and dispa
         'the gesture panel must reuse the ball settings card language');
 });
 
+test('document sets capture an active doc and preview visitors (T-6921/T-6922)', () => {
+    const indexDocSets = readSourceText(path.join(__dirname, '..', 'src', 'index.ts'));
+    const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'document-sets.js'));
+    const settingsSource = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    const settingsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_02-settings.scss'));
+    const model = require('../src/document-sets.js');
+    assert.equal(typeof model.orderDocumentSetRestoreEntries, 'function',
+        'the restore ordering must be a pure model function');
+    assert.match(modelSource, /\.\.\.\(value\.active === true \? \{active: true\} : \{\}\),/,
+        'the active flag must survive entry normalization and versions');
+    assert.match(indexDocSets, /rootId === activeRootId && activeRootId \? \{active: true\} : \{\}/,
+        'capture must mark the active desktop tab in the snapshot');
+    assert.match(indexDocSets, /runDocumentSetRestore\(orderDocumentSetRestoreEntries\(candidates\)/,
+        'restore must replay through the active-last ordering');
+    assert.match(indexDocSets, /const focusOnRestore = \(entry as \{active\?: boolean\} \| undefined\)\?\.active === true;/,
+        'the active entry must be detected per entry');
+    assert.match(indexDocSets, /keepCursor: !focusOnRestore/,
+        'the active entry must be exempt from keepCursor so it gains focus');
+    assert.match(settingsSource, /runDocumentSetRestore\(orderDocumentSetRestoreEntries\(candidates\)/,
+        'the settings restore path must share the active-last ordering');
+    assert.match(settingsSource, /sw-setting__doc-set-preview/,
+        'the preview must render as an inline list');
+    assert.match(settingsSource, /this\.i18n\.documentSetVisitor/,
+        'visitor rows must carry the kept-open semantics');
+    assert.match(settingsScss, /&__doc-set-preview-row\.is-visitor \{[^}]*opacity: \.6/,
+        'visitor rows must render dimmed');
+});
+
 test('iterate rounds label their diff against the previous candidate (T-6917)', () => {
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
     assert.match(studioUi, /const iterateFromCandidate = mode === "iterate" && candidate\?\.mode !== "explain" && candidate\?\.type === captured\.type;/,
