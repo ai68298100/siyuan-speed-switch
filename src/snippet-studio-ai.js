@@ -1,6 +1,7 @@
 "use strict";
 
 // 宿主 3.8.5 的编辑 AI 只返回内容，不启动 Agent 工具会话或自动应用片段。
+const {SNIPPET_AI_POLICY_VERSION, getSnippetAIPolicy} = require("./snippet-ai-policy.js");
 const SNIPPET_AI_MAX_BYTES = 64 * 1024;
 const SNIPPET_AI_TIMEOUT_MS = 90000;
 const MAX_EVENT_BYTES = SNIPPET_AI_MAX_BYTES * 8;
@@ -46,24 +47,25 @@ function normalizeSnippetAIHistory(history) {
 
 function snippetAIAction(type, mode) {
     const language = type === "css" ? "CSS" : "JavaScript";
+    const policy = `${getSnippetAIPolicy(type)} Policy version: ${SNIPPET_AI_POLICY_VERSION}. `;
     if (mode === "explain") {
-        return "Explain the selected " + language + " snippet for a user reviewing it. "
+        return policy + "Explain the selected " + language + " snippet for a user reviewing it. "
             + "Return concise plain text only: describe its purpose, important behavior, risks, and likely side effects. "
             + "Do not return a code block, HTML wrapper, alternative implementation, or a claim that it was tested.";
     }
     if (mode === "iterate") {
-        return "Continue the iterative optimization of the selected " + language + " snippet using the prior conversation as review context. "
+        return policy + "Continue the iterative optimization of the selected " + language + " snippet using the prior conversation as review context. "
             + "Return exactly one complete " + language + " snippet as plain code, or one fenced code block. "
             + "No explanations, HTML wrappers, alternatives, or partial changes. Preserve existing behavior unless the request changes it. "
             + "Use SiYuan theme variables where applicable. The result is a draft for manual review, so do not claim it has been applied or tested.";
     }
     if (mode === "optimize") {
-        return "Optimize the selected " + language + " snippet according to the request. "
+        return policy + "Optimize the selected " + language + " snippet according to the request. "
             + "Return exactly one complete " + language + " snippet as plain code, or one fenced code block. "
             + "No explanations, HTML wrappers, alternatives, or partial changes. Preserve existing behavior unless the request changes it. "
             + "Use SiYuan theme variables where applicable. The result is a draft for manual review, so do not claim it has been applied or tested.";
     }
-    return "Create a complete " + language + " code snippet according to the request. "
+    return policy + "Create a complete " + language + " code snippet according to the request. "
         + "Return exactly one complete " + language + " snippet as plain code, or one fenced code block. "
         + "No explanations, HTML wrappers, alternatives, or partial changes. Use SiYuan theme variables where applicable. "
         + "The result is a draft for manual review, so do not claim it has been applied or tested.";
@@ -82,7 +84,7 @@ function buildSnippetAIRequest({type, content = "", instruction, mode = "generat
         taskID: taskID.trim(),
         ids: [],
         history: normalizedHistory,
-        input: JSON.stringify({mode, language: type, instruction: instruction.trim(), currentCode: content}),
+        input: JSON.stringify({policyVersion: SNIPPET_AI_POLICY_VERSION, mode, language: type, instruction: instruction.trim(), currentCode: content}),
         action: snippetAIAction(type, mode),
     };
 }
@@ -263,6 +265,6 @@ function createSnippetAIClient({fetchImpl = globalThis.fetch} = {}) {
 
 module.exports = {
     SNIPPET_AI_MAX_BYTES, SNIPPET_AI_TIMEOUT_MS, SNIPPET_AI_HISTORY_MAX_MESSAGES,
-    SNIPPET_AI_HISTORY_MAX_BYTES, SNIPPET_AI_MODES, buildSnippetAIRequest,
+    SNIPPET_AI_HISTORY_MAX_BYTES, SNIPPET_AI_MODES, SNIPPET_AI_POLICY_VERSION, buildSnippetAIRequest,
     normalizeSnippetAIHistory, parseSnippetAIExplanation, parseSnippetAIOutput, createSnippetAIClient,
 };

@@ -1,10 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-    SNIPPET_AI_MAX_BYTES, SNIPPET_AI_TIMEOUT_MS,
+    SNIPPET_AI_MAX_BYTES, SNIPPET_AI_TIMEOUT_MS, SNIPPET_AI_POLICY_VERSION,
     SNIPPET_AI_HISTORY_MAX_MESSAGES, SNIPPET_AI_HISTORY_MAX_BYTES,
     buildSnippetAIRequest, parseSnippetAIOutput, createSnippetAIClient,
 } = require("../src/snippet-studio-ai.js");
+const {SNIPPET_AI_POLICIES, getSnippetAIPolicy} = require("../src/snippet-ai-policy.js");
 
 const options = {type: "css", instruction: "Increase line spacing"};
 const encoder = new TextEncoder();
@@ -28,8 +29,9 @@ test("snippet AI request supplies only selected source and no document IDs, hist
     assert.match(request.taskID, /\S/);
     assert.deepEqual(request.ids, []);
     assert.deepEqual(request.history, []);
-    assert.deepEqual(JSON.parse(request.input), {mode: "optimize", language: "css", instruction: options.instruction, currentCode: ".old {}"});
+    assert.deepEqual(JSON.parse(request.input), {policyVersion: SNIPPET_AI_POLICY_VERSION, mode: "optimize", language: "css", instruction: options.instruction, currentCode: ".old {}"});
     assert.match(request.action, /one complete CSS snippet/);
+    assert.match(request.action, /existing SiYuan and platform custom properties/);
     assert.equal(JSON.stringify(request).includes("secret"), false);
     assert.throws(() => buildSnippetAIRequest({...options, taskID: " "}), code("invalid_output"));
 });
@@ -37,7 +39,7 @@ test("snippet AI request supplies only selected source and no document IDs, hist
 test("snippet AI explains text and carries bounded iterative review history through the native editor contract", () => {
     const explanation = buildSnippetAIRequest({type: "css", content: ".old {}", instruction: "What does this do?", mode: "explain"});
     assert.deepEqual(JSON.parse(explanation.input), {
-        mode: "explain", language: "css", instruction: "What does this do?", currentCode: ".old {}",
+        policyVersion: SNIPPET_AI_POLICY_VERSION, mode: "explain", language: "css", instruction: "What does this do?", currentCode: ".old {}",
     });
     assert.deepEqual(explanation.history, []);
     assert.match(explanation.action, /plain text only/);
@@ -64,6 +66,20 @@ test("snippet AI explains text and carries bounded iterative review history thro
     assert.throws(() => buildSnippetAIRequest({
         ...options, content: ".old {}", mode: "iterate", history: [{role: "user", content: "x".repeat(SNIPPET_AI_HISTORY_MAX_BYTES)}],
     }), code("invalid_output"));
+});
+
+test("snippet AI policy is language-specific and versioned without becoming a tool claim", () => {
+    assert.equal(SNIPPET_AI_POLICY_VERSION, "2026-09-26.1");
+    assert.equal(getSnippetAIPolicy("css"), SNIPPET_AI_POLICIES.css);
+    assert.equal(getSnippetAIPolicy("js"), SNIPPET_AI_POLICIES.js);
+    assert.match(SNIPPET_AI_POLICIES.css, /scoped selectors/);
+    assert.match(SNIPPET_AI_POLICIES.css, /external @import rules/);
+    assert.match(SNIPPET_AI_POLICIES.js, /eval/);
+    assert.match(SNIPPET_AI_POLICIES.js, /Do not execute or auto-enable/);
+    assert.equal(getSnippetAIPolicy("html"), "");
+    const jsRequest = buildSnippetAIRequest({type: "js", content: "console.log(1);", instruction: "Explain the risk", mode: "explain"});
+    assert.match(jsRequest.action, /Never add credentials or document IDs/);
+    assert.match(jsRequest.action, /Policy version: 2026-09-26\.1/);
 });
 
 test("snippet AI parses one language-matched fence or bare code and rejects ambiguous output", () => {
