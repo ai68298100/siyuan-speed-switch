@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.37.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.38.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
 
@@ -315,11 +315,19 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.37.0` (2026-09-26; fullscreen by default for the three surfaces, unified platform UI, the floating ball restores the last used surface, snippet studio absorbing its original layout; Release assets are built automatically by the workflow).
+The current version is `v0.38.0` (2026-09-26; cross-surface snippet and widget objects, four-way floating-ball flicks and fixed digit slots, optional tab-change badges; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.38.0 (2026-09-26)
+
+- **Cross-surface objects**: native snippets appear in the switcher's empty-query work area and search results; opening one locates it by object ID in Snippet Studio while protecting unsaved drafts. Workbench widget cards now describe their source, purpose, capabilities, and health; returning from another surface restores focus and scroll position by widget instance ID.
+- **Workbench health receipts**: widget refreshes report the number of healthy and failed widgets; failed cards provide both visible feedback and screen-reader descriptions. The stray prefix before the Favorites widget's empty message is gone.
+- **Floating-ball flicks and digit slots**: up, down, left, and right flicks can be bound to actions in Settings. The More panel's fixed 1–9 slots can be bound per surface to an action or a saved search. Saved searches replay their existing query and filters; an unavailable target keeps its slot number and shows feedback.
+- **Tab-change hints**: optionally show the last-updated time and a “Changed” badge for changes in the past seven days. Tab cards in the switcher, sidebar, and mobile view refresh when updated metadata arrives. This option is off by default.
+- **Validation boundary**: this batch passed automated tests and real-kernel E2E against a backup workspace; real Android and desktop host acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.37.0 (2026-09-26)
 

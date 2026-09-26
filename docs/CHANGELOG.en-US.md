@@ -5,6 +5,14 @@
 
 ## Changelog (full history)
 
+### v0.38.0 (2026-09-26)
+
+- **Cross-surface objects (T-6878~T-6881, T-6890)**: snippet objects now appear in the switcher's empty-query workspace and query section; chips carry `objectId` into the snippet studio for exact ID selection with a name fallback; fetches share a 60-second cache, single-flight requests, and stale-generation discard. Widget objects now expose type, instance, source, description, capabilities, and health; leaving and returning to the workbench restores focus and scroll by instance ID, while display descriptors remain separate from execution handlers.
+- **Workbench health receipts (T-6879~T-6880)**: refresh writes per-cell `ok/failed` health markers and aggregates a bottom receipt; failed cells get border and text-chip feedback, `aria` object descriptions track health, and cells stay mounted after failures.
+- **Floating-ball shortcuts (T-6884, T-6886~T-6887, T-6891)**: the More panel supports 1-9 direct access; four-way flicks default to More, Quick Capture, previous tab, and next tab, with per-direction settings. The 1-9 slots persist separately per device and store only action IDs or saved-search IDs, fill empty slots from visible rows, and preserve invalid slots with unavailable feedback. Saved searches remain first-class objects, are looked up by ID and replayed on execution, and are never registered as global actions.
+- **Tab-card metadata and audit fixes (T-6883, T-6888~T-6889, T-6892)**: the updated-time badge now includes a Changed marker for edits within seven days, reusing the recent-list predicate and updating in place across desktop, sidebar, and mobile; removed the extra favorites empty-state prefix (audit F4); and tightened quick-capture hints, English greeting punctuation, and audit screenshot stability.
+- **Engineering and verification (T-6882, T-6885)**: the raw `dist/index.js` budget was recalibrated to 1088 KiB under ADR 0081 while the 512 KiB zip ceiling remains; real-kernel first-open timing stayed below 300 ms, so no skeleton was added. Full suite **6238/6238**; real-kernel E2E **7 passed / 1 skipped**; real Android/desktop interaction remains deferred under B-004/B-005.
+
 ### v0.37.0 (2026-09-26)
 
 - **Platform · fullscreen by default (ADR 0080)**: the switcher `panelSizeMode` and workbench `homeSizeMode` now default to fullscreen and the snippet studio opens at viewport size with the fullscreen container class; because `updateSettings` persists the whole object, only fresh installs see the new defaults and every size option remains selectable; mobile sizing is untouched.
