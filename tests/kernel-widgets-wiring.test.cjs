@@ -1237,3 +1237,29 @@ test('ball panel digit direct access: keydown lifecycle, hints and mobile guard 
     assert.ok(declaresIn(moreScss, '.sw-fab-root.sw__fab .sw__floating-ball-more .sw__floating-ball-more-row[data-digit]::before', /pointer-events:\s*none/),
         'the digit chip must not intercept pointer interactions');
 });
+
+test('flick radial actions: direction classifier, host dispatch and config defaults (T-6886/T-6858 batch 1)', () => {
+    const uiSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-ui.ts'));
+    const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-model.js'));
+    // 手势：分类必须走模型纯函数（速度+方向双判定），上方向保留 P6 更多面板语义。
+    assert.match(uiSource, /import \{classifyFlickDirection\} from "\.\/floating-ball-model\.js"/,
+        'the ui must classify flicks via the model pure function');
+    assert.match(uiSource, /const direction = classifyFlickDirection\(last\.x - first\.x, last\.y - first\.y, dt\);/,
+        'the flick judgment must use the classifier');
+    assert.match(uiSource, /if \(direction === "up"\) \{\s*\n\s*this\.setState\("more"\);/,
+        'up keeps the P6 more-panel semantics');
+    assert.match(uiSource, /this\.options\.onFlickAction\?\.\(direction\);/,
+        'down/left/right must dispatch via onFlickAction');
+    // 宿主分发：绑定值 more=更多面板；目录查找失败给不可用回执。
+    assert.match(indexSource, /onFlickAction: \(direction: "down" \| "left" \| "right"\) => \{/,
+        'the host must wire onFlickAction');
+    const flickHandler = indexSource.slice(indexSource.indexOf('onFlickAction: (direction:'), indexSource.indexOf('onBeforeTargeting: () => this.refreshFloatingBallPanels()'));
+    assert.match(flickHandler, /if \(bound === "more"\) \{/, 'more binding opens the panel');
+    assert.match(flickHandler, /this\.executeFloatingBallSurfaceAction\(surface, action\);/,
+        'bound actions go through the shared executor');
+    assert.match(flickHandler, /quickActionUnavailable/, 'unknown bindings surface an unavailable receipt');
+    // 模型：flickActions 归一化默认与有界清洗；分类器导出。
+    assert.match(modelSource, /flickActions: \{up: "more", down: "quick-capture", left: "previous-tab", right: "next-tab"\},/,
+        'defaults must be more/quick-capture/previous-tab/next-tab');
+    assert.match(modelSource, /classifyFlickDirection,/, 'classifier must be exported');
+});

@@ -11290,6 +11290,24 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     this.refreshFloatingBallPanels();
                     this.floatingBallPanels.get(surface)?.openMore();
                 },
+                // T-6886（T-6858 第一批）：四向快滑动作分发——按方向读取绑定值
+                // （more=更多面板；其余按动作值在目录中查找后走既有执行器）。
+                onFlickAction: (direction: "down" | "left" | "right") => {
+                    const current: any = this.getSettings().floatingBall || {};
+                    const bound = current.behavior?.flickActions?.[direction];
+                    if (!bound) return;
+                    if (bound === "more") {
+                        this.refreshFloatingBallPanels();
+                        this.floatingBallPanels.get(surface)?.openMore();
+                        return;
+                    }
+                    const action = (this.getFloatingBallActions() as IQuickAction[]).find((item) => item.value === bound);
+                    if (!action) {
+                        showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+                        return;
+                    }
+                    this.executeFloatingBallSurfaceAction(surface, action);
+                },
                 onBeforeTargeting: () => this.refreshFloatingBallPanels(),
                 onDismissOverlays: () => this.floatingBallPanels.get(surface)?.closeMore({restoreFocus: false}),
                 onActionTarget: (target) => {

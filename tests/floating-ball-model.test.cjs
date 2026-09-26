@@ -10,6 +10,7 @@ const {
     clampFloatingBallPosition,
     snapFloatingBallPosition,
     resolveFloatingBallPosition,
+    classifyFlickDirection,
     selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
 } = require("../src/floating-ball-model.js");
@@ -232,4 +233,28 @@ test("floating ball presets: normalize caps at eight and drops garbage", () => {
     assert.equal(normalizeFloatingBallPresets([{id: "", name: "broken"}, null, "x"]).length, 0);
     const kept = normalizeFloatingBallPresets(nine).every((preset) => preset.actions.desktop.length === 0);
     assert.equal(kept, true);
+});
+
+test("T-6886 (T-6858 batch 1) classifyFlickDirection: four-direction classification with speed window", () => {
+    assert.equal(classifyFlickDirection(0, -30, 40), "up", "上滑");
+    assert.equal(classifyFlickDirection(0, 30, 40), "down", "下滑");
+    assert.equal(classifyFlickDirection(-30, 0, 40), "left", "左滑");
+    assert.equal(classifyFlickDirection(30, 0, 40), "right", "右滑");
+    assert.equal(classifyFlickDirection(0, -30, 200), "", "慢速上滑不构成 flick");
+    assert.equal(classifyFlickDirection(-30, -30, 40), "", "斜向不分类（主轴不严格占优）");
+    assert.equal(classifyFlickDirection(0, -30, -5), "", "非法时间不崩且返回空");
+});
+
+test("T-6886 (T-6858 batch 1) flickActions: normalize defaults and bounded strings", () => {
+    const normalized = normalizeFloatingBallConfig({});
+    assert.deepEqual(normalized.behavior.flickActions, {
+        up: "more", down: "quick-capture", left: "previous-tab", right: "next-tab",
+    }, "默认绑定=更多面板/快速捕获/上一页签/下一页签");
+    const dirty = normalizeFloatingBallConfig({behavior: {flickActions: {
+        up: "x\u0000y", down: 42, left: "y".repeat(200), right: "next-tab",
+    }}});
+    assert.equal(dirty.behavior.flickActions.up.includes("\u0000"), false, "控制字符被清洗");
+    assert.equal(dirty.behavior.flickActions.left.length <= 48, true, "超长值被钳制");
+    assert.equal(dirty.behavior.flickActions.down, "quick-capture", "非字符串回落默认");
+    assert.equal(dirty.behavior.flickActions.right, "next-tab");
 });

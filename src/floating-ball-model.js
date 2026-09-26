@@ -99,6 +99,8 @@ function createDefaultFloatingBallConfig() {
             yieldToModals: true,
             touchSlopPx: 8,
             edgeAvoidMobile: false,
+            // T-6886（T-6858 第一批）：四向快滑动作绑定（上=更多面板保留 P6 语义）
+            flickActions: {up: "more", down: "quick-capture", left: "previous-tab", right: "next-tab"},
         },
         actions,
         presets: [],
@@ -291,6 +293,17 @@ function normalizeFloatingBallConfig(input, options = {}) {
     // T-6784/P6 手机端离边停靠：球体离开边缘 12px 侧滑激活条（默认关）
     config.behavior.edgeAvoidMobile = bool(behavior.edgeAvoidMobile, defaults.behavior.edgeAvoidMobile === true);
     config.behavior.touchSlopPx = Math.round(clamp(behavior.touchSlopPx, 8, 12, defaults.behavior.touchSlopPx));
+    // T-6886（T-6858 第一批）：四向快滑动作绑定归一化——每方向有界字符串（≤48），
+    // 缺失回落默认；未知动作值留待执行时按不可用处理（目录是动态的，归一化不猜）。
+    const flickSource = isRecord(behavior.flickActions) ? behavior.flickActions : {};
+    const flickDefaults = defaults.behavior && defaults.behavior.flickActions ? defaults.behavior.flickActions : {};
+    config.behavior.flickActions = ["up", "down", "left", "right"].reduce((acc, direction) => {
+        const raw = flickSource[direction];
+        acc[direction] = typeof raw === "string"
+            ? raw.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 48)
+            : String(flickDefaults[direction] || "");
+        return acc;
+    }, {up: "", down: "", left: "", right: ""});
 
     const sourceActions = isRecord(source.actions) ? source.actions : {};
     FLOATING_BALL_SURFACES.forEach((surface) => {
@@ -519,6 +532,28 @@ function resolveFloatingBallClickAction(requested, availableActions = [], surfac
     return {action: makeFloatingBallSwitcherAction(), fallback: true, reason: "safe-switcher"};
 }
 
+// T-6886（T-6858 第一批）：四向快滑方向分类——主轴位移 ≥24px 且严格大于横轴、
+// 横轴 ≤12px、主轴速度 ≥0.5px/ms；不满足返回 ""（不够格不猜方向）。
+// 上方向即 P6 上滑呼出的既有判定（dy≤-24、|dx|≤12、dy/dt≤-0.5 的超集等价）。
+function classifyFlickDirection(dx, dy, dt) {
+    const time = Number(dt);
+    if (!Number.isFinite(time) || time <= 0) return "";
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return "";
+    if (Math.abs(dy) >= 24 && Math.abs(dy) > Math.abs(dx)) {
+        const speed = dy / time;
+        if (speed <= -0.5) return "up";
+        if (speed >= 0.5) return "down";
+        return "";
+    }
+    if (Math.abs(dx) >= 24 && Math.abs(dx) > Math.abs(dy)) {
+        const speed = dx / time;
+        if (speed <= -0.5) return "left";
+        if (speed >= 0.5) return "right";
+        return "";
+    }
+    return "";
+}
+
 module.exports = {
     FLOATING_BALL_SCHEMA_VERSION,
     FLOATING_BALL_SURFACES,
@@ -550,6 +585,7 @@ module.exports = {
     selectFloatingBallFirstLayer,
     selectFirstLayerActions: selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
+    classifyFlickDirection,
     resolveFloatingBallAction: resolveFloatingBallClickAction,
     normalizeFloatingBallPresets,
     saveFloatingBallPreset,
