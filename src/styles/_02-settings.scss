@@ -695,6 +695,25 @@
     }
     &__controls-panel > .sw-settings__hint { margin: 0; }
     &__controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    // T-6887（T-6858 第二批）：四向快滑绑定卡片（复用面板卡片语言 + 2 列网格）。
+    &__flick-panel {
+        @extend %sw-fb-panel;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+    &__flick-panel > strong {
+        @extend %sw-fb-heading;
+    }
+    &__flick-panel > .sw-settings__hint { margin: 0; }
+    &__flick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    &__flick-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+    }
     &__control {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;

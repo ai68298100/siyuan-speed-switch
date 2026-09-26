@@ -1263,3 +1263,39 @@ test('flick radial actions: direction classifier, host dispatch and config defau
         'defaults must be more/quick-capture/previous-tab/next-tab');
     assert.match(modelSource, /classifyFlickDirection,/, 'classifier must be exported');
 });
+
+
+test('flick actions settings: visual binding card with per-direction selects (T-6887/T-6858 batch 2)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const sectionsSource = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    const settingsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_02-settings.scss'));
+    // 绑定卡片：四向 select 挂 data-flick-direction，变更写回 flickActions 并走 persist 归一化。
+    assert.match(sectionsSource, /select\.dataset\.flickDirection = direction;/,
+        'each direction select must be marked');
+    assert.match(sectionsSource, /next\.behavior\.flickActions\[direction\] = select\.value;/,
+        'select changes must write the bound action back');
+    assert.match(sectionsSource, /persist\(next\);/,
+        'flick binding changes must persist through the budget-checked path');
+    // 选项来源：无操作 + 更多面板 + 目录（mobile 支持过滤）。
+    assert.match(sectionsSource, /\{value: "", label: this\.i18n\.floatingBallFlickNone\}/,
+        'the none option must exist');
+    assert.match(sectionsSource, /\{value: "more", label: this\.i18n\.floatingBallFlickMore\}/,
+        'the more option must exist');
+    assert.match(sectionsSource, /getQuickActionSupport\(action, "mobile" as QuickActionTarget\) === "unsupported"\) return;/,
+        'catalog options must be mobile-support filtered');
+    // 刷新：sw-floating-ball-refresh 事件重读绑定值。
+    assert.match(sectionsSource, /wrapper\.addEventListener\("sw-floating-ball-refresh", \(\) => renderFlickOptions\(\)\);/,
+        'the refresh event must re-render the flick binds');
+    // i18n 八键双语。
+    const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
+    const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
+    for (const key of ['floatingBallFlickTitle', 'floatingBallFlickTip', 'floatingBallFlickUp', 'floatingBallFlickDown', 'floatingBallFlickLeft', 'floatingBallFlickRight', 'floatingBallFlickNone', 'floatingBallFlickMore']) {
+        assert.match(zh, new RegExp('"' + key + '": '), `zh must carry ${key}`);
+        assert.match(en, new RegExp('"' + key + '": '), `en must carry ${key}`);
+    }
+    // SCSS：绑定卡片与 2 列网格（块级断言，展开后选择器——该块不在 .sw-settings 嵌套内）。
+    assert.ok(declaresIn(settingsScss, '.sw-floating-ball-settings__flick-panel', /flex-direction:\s*column/),
+        'the flick panel must be a card column');
+    assert.ok(declaresIn(settingsScss, '.sw-floating-ball-settings__flick-grid', /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/),
+        'the flick grid must be two columns');
+});

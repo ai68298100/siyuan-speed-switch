@@ -1604,6 +1604,75 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     clickActionRow.append(clickActionTitle, clickActionSelect, clickActionHint);
     wrapper.appendChild(clickActionRow);
 
+    // T-6887（T-6858 第二批）：四向快滑动作可视化绑定——手机端快滑上/下/左/右
+    // 分别执行绑定的动作（上=更多面板为默认）；目录复用轻触动作清单。
+    const flickSection = document.createElement("section");
+    flickSection.className = "sw-floating-ball-settings__flick-panel";
+    const flickHeading = document.createElement("strong");
+    flickHeading.textContent = this.i18n.floatingBallFlickTitle;
+    flickSection.appendChild(flickHeading);
+    const flickHint = document.createElement("p");
+    flickHint.className = "sw-settings__hint";
+    flickHint.textContent = this.i18n.floatingBallFlickTip;
+    flickSection.appendChild(flickHint);
+    const flickGrid = document.createElement("div");
+    flickGrid.className = "sw-floating-ball-settings__flick-grid";
+    flickSection.appendChild(flickGrid);
+    type FlickDirection = "up" | "down" | "left" | "right";
+    const flickDirections: FlickDirection[] = ["up", "down", "left", "right"];
+    const flickLabels: Record<FlickDirection, string> = {
+        up: this.i18n.floatingBallFlickUp,
+        down: this.i18n.floatingBallFlickDown,
+        left: this.i18n.floatingBallFlickLeft,
+        right: this.i18n.floatingBallFlickRight,
+    };
+    const flickSelects: Array<{direction: FlickDirection; select: HTMLSelectElement}> = [];
+    flickDirections.forEach((direction) => {
+        const row = document.createElement("div");
+        row.className = "sw-floating-ball-settings__flick-row";
+        const label = document.createElement("span");
+        label.className = "sw-settings__item-title";
+        label.textContent = flickLabels[direction];
+        const select = document.createElement("select");
+        select.className = "b3-select";
+        select.dataset.flickDirection = direction;
+        select.setAttribute("aria-label", `${this.i18n.floatingBallFlickTitle} · ${flickLabels[direction]}`);
+        select.addEventListener("change", () => {
+            const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+            next.behavior.flickActions[direction] = select.value;
+            persist(next);
+        });
+        flickGrid.append(row);
+        row.append(label, select);
+        flickSelects.push({direction, select});
+    });
+    const renderFlickOptions = () => {
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        flickSelects.forEach(({direction, select}) => {
+            const current = config.behavior?.flickActions?.[direction] || "";
+            const options: Array<{value: string; label: string}> = [
+                {value: "", label: this.i18n.floatingBallFlickNone},
+                {value: "more", label: this.i18n.floatingBallFlickMore},
+            ];
+            const seen = new Set(options.map((option) => option.value));
+            catalog.forEach((action: any) => {
+                if (!action?.id || seen.has(action.id)) return;
+                if (this.getQuickActionSupport(action, "mobile" as QuickActionTarget) === "unsupported") return;
+                seen.add(action.id);
+                options.push({value: action.id, label: clickActionLabel(action, config, "mobile")});
+            });
+            if (current && !seen.has(current)) {
+                options.push({value: current, label: current});
+            }
+            select.innerHTML = "";
+            options.forEach((option) => select.appendChild(new Option(option.label, option.value)));
+            select.value = current;
+        });
+    };
+    wrapper.appendChild(flickSection);
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderFlickOptions());
+
     const controlsSection = document.createElement("section");
     controlsSection.className = "sw-floating-ball-settings__controls-panel";
     const controlsHeading = document.createElement("strong");
