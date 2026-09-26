@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.38.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.39.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -330,11 +330,19 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.38.0` (released 2026-09-26; cross-surface snippet and widget objects, four-way floating-ball flicks and fixed digit slots, optional tab-change badges; Release assets are built automatically by the workflow).
+The current version is `v0.39.0` (released 2026-09-27; snippet studio entries with visible capability boundaries, the AI draft summary + diff + per-hunk acceptance review pipeline, grouped command mode and usercss interop; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.39.0 (2026-09-27)
+
+- **Snippet studio productization**: the studio can be reached from the switcher navigation, workbench object actions, the floating-ball More panel, and a public command; mobile surfaces show "available on desktop" instead of disappearing silently, and a failed chunk load falls back to the switcher with a clear receipt. First focus, the top-right close button, dirty-draft guarding, footer receipts, and AI receipt states are all in place; five safety boundaries (sandboxed CSS preview, disabled JS execution, draft-only AI, AI sees only this snippet, native snippets as the only saved source) are permanently visible.
+- **AI draft review pipeline**: when an AI candidate completes, the panel shows a locally computed change summary and a line diff; each hunk can be toggled ✔/✗ before applying the selection (rejecting a deletion keeps the original line). A deterministic versioned rule reviewer marks findings inline; iterate rounds diff against the previous candidate and say so. CSS snippet exports carry a usercss metadata header that Stylus can install directly.
+- **Command mode and catalog**: the `>` command mode groups built-in actions and SiYuan host commands under collapsible, keyboard-operable heads; the snippet catalog ranks your own snippets before the built-in samples.
+- **Preview and receipts**: opened tabs and the empty-query view share the switcher preview pane; a dead document ID (non-zero code response) yields a failed receipt instead of a blank pane.
+- **Validation boundary**: this batch passed the complete automated suite and real-kernel E2E; real Android and desktop host acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.38.0 (2026-09-26)
 
