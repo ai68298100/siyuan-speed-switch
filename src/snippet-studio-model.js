@@ -98,16 +98,26 @@ function parseSnippetImport(filename, text) {
     if (!extension) fail("snippet-import-type");
     const name = basename.slice(0, -extension[0].length).trim();
     if (!name || /[\u0000-\u001f\u007f]/.test(name)) fail("snippet-import-name");
-    // T-6912：导入去 usercss 头，防止"导出带头 → 再导入 → 头累积"的往返膨胀。
-    const content = stripUsercssHeader(text);
+    // T-6912/T-6923：普通样式去头防往返累积；含 @var/@advanced 变量的样式保留
+    // 头部并按默认值代入占位符（变量数随导入回执披露）。
+    let content;
+    let varsResolved = 0;
+    const headerMatch = text.match(/^\uFEFF?(\/\* ==UserStyle==[\s\S]*?==\/UserStyle== \*\/)/);
+    if (headerMatch && /@(?:var|advanced)\b/i.test(headerMatch[1])) {
+        const resolved = resolveUsercssVariables(text);
+        content = resolved.text;
+        varsResolved = resolved.resolved;
+    } else {
+        content = stripUsercssHeader(text);
+    }
     assertDraftCode(content);
-    return {name, type: extension[1].toLowerCase(), content, enabled: false};
+    return {name, type: extension[1].toLowerCase(), content, enabled: false, ...(varsResolved > 0 ? {varsResolved} : {})};
 }
 
 const USERCSS_HEADER_RE = /\/\* ==UserStyle==[\s\S]*?==\/UserStyle== \*\//;
 
 /**
- * T-6912（R8-A4）：Stylus/usercss 生态互通头。只有展示用元数据（名称/命名空间/版本），
+ * T-6912（R8-A4）：usercss 生态互通头。只有展示用元数据（名称/命名空间/版本），
  * 不替用户声明许可证或作者；仅 CSS 导出加头，导入侧无条件去头防累积。
  */
 function buildUsercssHeader(name) {
@@ -117,6 +127,51 @@ function buildUsercssHeader(name) {
 
 function stripUsercssHeader(content) {
     return String(content || "").replace(USERCSS_HEADER_RE, "").replace(/^\uFEFF/, "").replace(/^\s+/, "");
+}
+
+function hasUsercssHeader(content) {
+    return USERCSS_HEADER_RE.test(String(content || ""));
+}
+
+/**
+ * T-6923（R10 吸收）：usercss 变量默认值代入。@var/@advanced 定义的变量在正文
+ * 中以 CSS 注释包裹的 [[名称]] 占位符出现；导入含变量的样式时保留头部并按
+ * 默认值代入（从 userstyles.world 下载即可直接预览与启用）。只解析 color/
+ * text/number/select/checkbox 五种基础类型；dropdown/image 等高级 UI 不猜，
+ * 占位符原样保留。
+ */
+function resolveUsercssVariables(text) {
+    const source = String(text || "");
+    const headerMatch = source.match(USERCSS_HEADER_RE);
+    if (!headerMatch) return {text: source, resolved: 0};
+    const defaults = new Map();
+    for (const line of headerMatch[0].split(/\r\n|\r|\n/)) {
+        const varMatch = line.match(/^[ \t]*@(?:var|advanced)\s+[a-z]+\s+([\w-]+)\s+(.+?)\s*$/i);
+        if (!varMatch) continue;
+        const name = varMatch[1];
+        const rest = varMatch[2];
+        let value = null;
+        const doubleQuoted = rest.match(/^"((?:[^"\\]|\\.)*)"/);
+        const singleQuoted = doubleQuoted ? null : rest.match(/^'((?:[^'\\]|\\.)*)'/);
+        if (doubleQuoted) value = doubleQuoted[1];
+        else if (singleQuoted) value = singleQuoted[1];
+        else {
+            const bare = rest.match(/^[^\s",]+/);
+            if (bare) value = bare[0].split(",")[0].trim();
+        }
+        if (value !== null && value !== "" && !defaults.has(name)) defaults.set(name, value);
+    }
+    if (!defaults.size) return {text: source, resolved: 0};
+    let resolved = 0;
+    let output = source;
+    for (const [name, value] of defaults) {
+        const placeholder = new RegExp("/\\*\\[\\[" + name + "\\]\\]\\*/", "g");
+        if (placeholder.test(output)) {
+            resolved++;
+            output = output.replace(placeholder, () => value);
+        }
+    }
+    return {text: output, resolved};
 }
 
 /** Object-key order is not an external edit; unknown-field changes are. */
@@ -239,4 +294,6 @@ module.exports = {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
     BUILTIN_SNIPPETS, filterSnippetCatalog, buildUsercssHeader, stripUsercssHeader,
+    hasUsercssHeader, resolveUsercssVariables,
+    USERCSS_HEADER_RE,
 };

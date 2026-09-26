@@ -1,4 +1,4 @@
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader} = require("./snippet-studio-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
@@ -151,6 +151,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetType: locale.i18n.snippetType,
         snippetTypeLocked: locale.i18n.snippetTypeLocked,
         snippetUnavailable: locale.i18n.snippetUnavailable,
+        snippetUsercssVars: locale.i18n.snippetUsercssVars,
     };
     const t = (key) => translations[key] || key;
     let disposed = false;
@@ -264,8 +265,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const toggleButton = action("snippetEnable", () => void mutate("toggle"), "is-secondary");
     const deleteButton = action("snippetDelete", () => void mutate("delete"), "is-danger");
     const exportButton = action("snippetExport", () => {
-        // T-6912：CSS 导出加 usercss 互通头（Stylus 可直接安装）；JS 导出保持原样。
-        const payload = draft.type === "css" ? `${buildUsercssHeader(draft.name)}\n\n${draft.content}` : draft.content;
+        // T-6912/T-6923：CSS 导出加 usercss 互通头（Stylus 可直接安装）；
+        // 已带变量头的样式不叠加第二份头。JS 导出保持原样。
+        const needsHeader = draft.type === "css" && !hasUsercssHeader(draft.content);
+        const payload = needsHeader ? `${buildUsercssHeader(draft.name)}\n\n${draft.content}` : draft.content;
         download(`${draft.name || "snippet"}.${draft.type}`, payload, "text/plain");
     }, "is-quiet");
     const submissionButton = action("snippetSubmission", () => {
@@ -725,7 +728,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             const imported = parseSnippetImport(file.name, await file.text());
             if (disposed) return;
             choose(imported, null);
-            setStatus(t("snippetImported"), "ready");
+            setStatus(imported.varsResolved
+                ? `${t("snippetImported")} · ${t("snippetUsercssVars").replace("{n}", String(imported.varsResolved))}`
+                : t("snippetImported"), "ready");
         } catch (error) { if (!disposed) setStatus(errorText(error), "error"); }
     });
     async function generate() {

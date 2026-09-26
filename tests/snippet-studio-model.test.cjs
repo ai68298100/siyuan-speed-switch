@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetListForWire, BUILTIN_SNIPPETS, filterSnippetCatalog,
-    buildUsercssHeader, stripUsercssHeader,
+    buildUsercssHeader, stripUsercssHeader, hasUsercssHeader, resolveUsercssVariables,
 } = require("../src/snippet-studio-model.js");
 
 const native = (suffix = "aaaaaaa", overrides = {}) => ({
@@ -213,4 +213,57 @@ test("snippet catalog: native entries sort before builtin samples, stable within
     assert.deepEqual(singleGroup.map((item) => item.id), [BUILTIN_SNIPPETS[0].id, BUILTIN_SNIPPETS[1].id]);
     // source 精确过滤不受排序影响。
     assert.deepEqual(filterSnippetCatalog(catalog, {source: "native"}).map((item) => item.name), ["AAA", "BBB"]);
+});
+
+test("usercss variables: defaults resolve into body placeholders and the header is kept (T-6923)", () => {
+    const NL = String.fromCharCode(10);
+    const style = [
+        "/* ==UserStyle==",
+        '@var color accent "#00acc1" "Accent color"',
+        '@var text font "Arial" "Font family"',
+        '@var number size 14, 10, 24, 1 "Base size"',
+        '@var select theme "dark" ["dark" "Dark", "light" "Light"]',
+        '@var checkbox rounded 1 "Rounded"',
+        "==/UserStyle== */",
+        "a { color: /*[[accent]]*/; }",
+        "body { font-family: /*[[font]]*/; font-size: /*[[size]]*/px; }",
+        "pre { display: /*[[theme]]*/; }",
+        "div { border-radius: /*[[rounded]]*/px; }",
+        "code { color: /*[[unknown]]*/; }"
+    ].join(NL);
+    const resolved = resolveUsercssVariables(style);
+    assert.equal(resolved.resolved, 5, "five defined variables resolve");
+    assert.ok(resolved.text.includes("color: #00acc1"), "color default substituted");
+    assert.ok(resolved.text.includes("font-family: Arial"), "text default substituted");
+    assert.ok(resolved.text.includes("font-size: 14px"), "number default keeps first value of the range triple");
+    assert.ok(resolved.text.includes("display: dark"), "select default substituted");
+    assert.ok(resolved.text.includes("border-radius: 1px"), "checkbox default substituted");
+    assert.ok(resolved.text.includes("==/UserStyle== */"), "header must be preserved for round trips");
+    // 未定义变量的占位符原样保留（dropdown/image 等高级 UI 不猜）。
+    assert.ok(resolved.text.includes("/*[[unknown]]*/"));
+    const untouched = resolveUsercssVariables("p { color: red; }");
+    assert.equal(untouched.resolved, 0);
+    assert.equal(untouched.text, "p { color: red; }");
+});
+
+test("usercss variables: imports keep var headers, resolve defaults and report the count (T-6923)", () => {
+    const NL = String.fromCharCode(10);
+    const style = [
+        "/* ==UserStyle==",
+        '@var color accent "#00acc1" "Accent"',
+        "==/UserStyle== */",
+        "a { color: /*[[accent]]*/; }"
+    ].join(NL);
+    const imported = parseSnippetImport("styled.user.css", style);
+    assert.equal(imported.enabled, false, "imported files can never enable themselves");
+    assert.equal(imported.varsResolved, 1, "the import receipt must know the variable count");
+    assert.ok(imported.content.includes("/* ==UserStyle=="), "variable headers must be kept");
+    assert.ok(imported.content.includes("color: #00acc1"), "placeholders must be resolved");
+    // 普通（无变量）样式维持去头行为。
+    const plain = parseSnippetImport("plain.css", "/* ==UserStyle== @name x ==/UserStyle== */ p {}");
+    assert.equal(plain.content, "p {}");
+    assert.equal(plain.varsResolved, undefined);
+    // 导出防叠头：已含头的正文不再叠加。
+    assert.equal(hasUsercssHeader(style), true);
+    assert.equal(hasUsercssHeader("p {}"), false);
 });

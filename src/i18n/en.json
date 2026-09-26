@@ -1196,6 +1196,7 @@
   ,"snippetConfirmJS": "Enabling JavaScript can have lasting side effects. Continue?"
   ,"snippetConflict": "The native list changed elsewhere. Reload and review it before saving."
   ,"snippetUnavailable": "This SiYuan host does not provide the snippet endpoint."
+  ,"snippetUsercssVars": "{n} variable defaults applied"
   ,"snippetCancelled": "Cancelled"
   ,"snippetTimeout": "The AI request timed out."
   ,"snippetTooLarge": "The snippet exceeds the 64 KiB limit."

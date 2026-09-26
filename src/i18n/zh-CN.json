@@ -1196,6 +1196,7 @@
   "snippetConfirmJS": "启用 JavaScript 可能产生持续副作用。继续吗？",
   "snippetConflict": "原生列表已在其他地方变化。请重新加载并检查后再保存。",
   "snippetUnavailable": "当前思源宿主没有提供片段端点。",
+  "snippetUsercssVars": "已代入 {n} 个变量默认值",
   "snippetCancelled": "已取消",
   "snippetTimeout": "AI 请求超时。",
   "snippetTooLarge": "片段超过 64 KiB 限制。",

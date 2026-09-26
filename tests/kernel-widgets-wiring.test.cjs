@@ -1261,17 +1261,25 @@ test('command mode groups built-in and host commands with collapsible heads (T-6
         'the caret must reflect the collapsed state');
 });
 
-test('snippet studio export interops with usercss headers (T-6912)', () => {
+test('snippet studio export interops with usercss headers (T-6912/T-6923)', () => {
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
     const model = require('../src/snippet-studio-model.js');
-    assert.match(studioUi, /const payload = draft\.type === "css" \? `\$\{buildUsercssHeader\(draft\.name\)\}/,
+    assert.match(studioUi, /const needsHeader = draft\.type === "css" && !hasUsercssHeader\(draft\.content\);/,
+        'CSS exports must add the header only when one is not already present (T-6923)');
+    assert.match(studioUi, /const payload = needsHeader \? `\$\{buildUsercssHeader\(draft\.name\)\}/,
         'CSS exports must carry the usercss interop header');
-    assert.match(studioUi, /: draft\.content;(?=[\s\S]{0,40}download\()/s, 'JS exports must stay header-free');
+    assert.match(studioUi, /t\("snippetUsercssVars"\)/,
+        'the import receipt must disclose how many variable defaults were applied');
     assert.equal(typeof model.buildUsercssHeader, 'function', 'the header builder must be exported');
     assert.equal(typeof model.stripUsercssHeader, 'function', 'the header stripper must be exported');
+    assert.equal(typeof model.hasUsercssHeader, 'function', 'the header detector must be exported');
+    assert.equal(typeof model.resolveUsercssVariables, 'function', 'the variable resolver must be exported');
     assert.match(readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-model.js')),
-        /const content = stripUsercssHeader\(text\);/,
-        'imports must strip usercss headers so round trips do not accumulate them');
+        /const resolved = resolveUsercssVariables\(text\);/,
+        'imports with variables must resolve defaults instead of stripping the header (T-6923)');
+    assert.match(readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-model.js')),
+        /\.\.\.\(varsResolved > 0 \? \{varsResolved\} : \{\}\)/,
+        'the import result must carry the resolved variable count');
 });
 
 test('snippet catalog ranks native entries before builtin samples (T-6913)', () => {
@@ -1390,7 +1398,7 @@ test('document sets capture an active doc and preview visitors (T-6921/T-6922)',
         'the preview must render as an inline list');
     assert.match(settingsSource, /this\.i18n\.documentSetVisitor/,
         'visitor rows must carry the kept-open semantics');
-    assert.match(settingsScss, /&__doc-set-preview-row\.is-visitor \{[^}]*opacity: \.6/,
+    assert.match(settingsScss, /\.sw-setting__doc-set-preview-row\.is-visitor \{[^}]*opacity: \.6/,
         'visitor rows must render dimmed');
 });
 
