@@ -459,7 +459,7 @@ export function renderMobileList(this: MobileSwitcherUiHost, scrollElement: HTML
         const favorites = new Set(this.getFavorites().map((item) => item.key));
 
         // 手机端不分窗口分组，全部扁平化
-        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, opts};
+        const ctx: ITabGroupRenderCtx = {reusable, activeTabId, pinned, favorites, mru, settings, updatedMap, opts};
         const all: IGroupedTab[] = [];
         const groupMode = settings.groupBy;
 
