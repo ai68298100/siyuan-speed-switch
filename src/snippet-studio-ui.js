@@ -1,4 +1,5 @@
 const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader} = require("./snippet-studio-model.js");
+const {buildSnippetDiff, summarizeDiff} = require("./snippet-diff.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
 const {createSnippetPreview} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
@@ -80,6 +81,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetDarkPreview: locale.i18n.snippetDarkPreview,
         snippetDelete: locale.i18n.snippetDelete,
         snippetDescription: locale.i18n.snippetDescription,
+        snippetDiffDegraded: locale.i18n.snippetDiffDegraded,
+        snippetDiffMore: locale.i18n.snippetDiffMore,
+        snippetDiffSummary: locale.i18n.snippetDiffSummary,
         snippetDisable: locale.i18n.snippetDisable,
         snippetDisabled: locale.i18n.snippetDisabled,
         snippetDiscard: locale.i18n.snippetDiscard,
@@ -326,7 +330,16 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     aiResult.readOnly = true;
     aiResult.setAttribute("aria-label", t("snippetAICandidate"));
     aiResult.hidden = true;
-    aiResultPanel.append(aiResultHeader, aiEmpty, aiResult);
+    // T-6915（ADR 0083 D1）：代码候选以"本地摘要 + 行级 diff"呈现；explain 保持纯文本。
+    const aiDiffSummary = node("p", "sw-studio__hint sw-studio__diff-summary");
+    aiDiffSummary.hidden = true;
+    const aiDiffScroll = node("div", "sw-studio__diff-scroll");
+    const aiDiffNote = node("p", "sw-studio__hint sw-studio__diff-note");
+    aiDiffNote.hidden = true;
+    const aiDiffPanel = node("div", "sw-studio__diff");
+    aiDiffPanel.append(aiDiffScroll, aiDiffNote);
+    aiDiffPanel.hidden = true;
+    aiResultPanel.append(aiResultHeader, aiDiffSummary, aiEmpty, aiResult, aiDiffPanel);
     const acceptButton = action("snippetAIAccept", () => {
         if (!candidate || candidate.mode === "explain" || busy) return;
         if (candidate.revision !== revision && !win.confirm(t("snippetAIStale"))) return;
@@ -346,6 +359,55 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         explain: "snippetAIExplainHint",
         iterate: "snippetAIIterateHint",
     };
+    // 渲染行数上限：diff 模型已在 1200 行/侧降级，此处再防极端 hunk 铺满面板。
+    const DIFF_RENDER_ROW_MAX = 1500;
+    const hideAIDiffPanel = () => {
+        aiDiffPanel.hidden = true;
+        aiDiffSummary.hidden = true;
+        aiDiffNote.hidden = true;
+        aiDiffScroll.replaceChildren();
+    };
+    function renderAIDiff(baselineText) {
+        if (!candidate || candidate.mode === "explain") {
+            hideAIDiffPanel();
+            return;
+        }
+        const diff = buildSnippetDiff(baselineText, candidate.content);
+        const summary = summarizeDiff(baselineText, candidate.content, diff);
+        aiDiffSummary.hidden = false;
+        aiDiffSummary.textContent = t("snippetDiffSummary")
+            .replace("{hunks}", String(summary.hunks))
+            .replace("{added}", String(summary.added))
+            .replace("{removed}", String(summary.removed));
+        aiDiffScroll.replaceChildren();
+        let shown = 0;
+        if (diff.degraded) {
+            aiDiffNote.hidden = false;
+            aiDiffNote.textContent = t("snippetDiffDegraded");
+        } else {
+            for (const hunk of diff.hunks) {
+                const block = node("div", "sw-studio__diff-hunk");
+                for (const row of hunk.rows) {
+                    if (shown >= DIFF_RENDER_ROW_MAX) break;
+                    const line = node("div", `sw-studio__diff-row is-${row.type}`);
+                    const aCell = node("span", "sw-studio__diff-ln", row.aLine ? String(row.aLine) : "");
+                    const bCell = node("span", "sw-studio__diff-ln", row.bLine ? String(row.bLine) : "");
+                    const text = node("span", "sw-studio__diff-text", row.text.length ? row.text : "\u00a0");
+                    line.append(aCell, bCell, text);
+                    block.appendChild(line);
+                    shown++;
+                }
+                aiDiffScroll.appendChild(block);
+                if (shown >= DIFF_RENDER_ROW_MAX) break;
+            }
+            const hiddenRows = diff.rows.length - shown;
+            aiDiffNote.hidden = hiddenRows <= 0;
+            if (hiddenRows > 0) aiDiffNote.textContent = t("snippetDiffMore").replace("{n}", String(hiddenRows));
+        }
+        // 流式原文让位给结构化 diff；接受按钮语义不变（应用整个候选）。
+        aiResult.hidden = true;
+        aiDiffPanel.hidden = false;
+    }
     const setAIStatus = (value, ready = false, state = "") => {
         aiStatus.textContent = value;
         aiStatus.dataset.state = state || (ready ? "ready" : "idle");
@@ -511,6 +573,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiEmpty.hidden = false;
         aiResult.value = "";
         aiResultMeta.textContent = "";
+        hideAIDiffPanel();
         setAIStatus(t("snippetAIIdle"));
         baseline = native ? {...native} : null;
         selectedSource = native ? "native" : value.source || "draft";
@@ -621,6 +684,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiEmpty.hidden = true;
         aiResult.value = "";
         aiResultMeta.textContent = "";
+        hideAIDiffPanel();
         setAIStatus(t("snippetAIGenerating"), false, "loading");
         try {
             const result = await ai.generate({type: captured.type, content: sourceContent, instruction, mode, history,
@@ -633,6 +697,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             aiHistory = [...history, {role: "user", content: instruction}, {role: "assistant", content: result.content}].slice(-8);
             acceptButton.disabled = mode === "explain";
             setAIStatus(t("snippetAIDone"), true);
+            // 摘要与 diff 基于当前草稿（接受是整候选替换，面板如实展示替换差量）。
+            renderAIDiff(draft.content);
         } catch (error) { if (!disposed && generation === aiGeneration) setAIStatus(errorText(error), false, "error"); }
         finally { if (!disposed && generation === aiGeneration) { cancelAIButton.disabled = true; updateAIActions(); } }
     }

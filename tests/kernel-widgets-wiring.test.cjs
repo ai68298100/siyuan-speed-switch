@@ -1280,6 +1280,30 @@ test('snippet catalog ranks native entries before builtin samples (T-6913)', () 
         'the filtered catalog must rank native snippets before builtin samples');
 });
 
+test('AI candidate renders a local summary and line diff before acceptance (T-6915)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    const studioScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_snippet-studio.scss'));
+    const diffModule = require('../src/snippet-diff.js');
+    assert.equal(typeof diffModule.buildSnippetDiff, 'function', 'the diff builder must come from a dedicated pure module');
+    assert.equal(typeof diffModule.summarizeDiff, 'function', 'the local summary must come from the same module');
+    assert.match(studioUi, /renderAIDiff\(draft\.content\);/,
+        'completion must render the diff against the current draft');
+    assert.match(studioUi, /const summary = summarizeDiff\(baselineText, candidate\.content, diff\);/,
+        'the change summary must be computed locally from the diff, never parsed from model output');
+    assert.match(studioUi, /if \(!candidate \|\| candidate\.mode === "explain"\) \{\s*\n\s*hideAIDiffPanel\(\);/,
+        'explain candidates must keep the plain text panel');
+    assert.match(studioUi, /hideAIDiffPanel\(\);\s*\n\s*setAIStatus\(t\("snippetAIGenerating"\), false, "loading"\);/,
+        'streaming must fall back to the raw text view');
+    assert.match(studioUi, /aiDiffNote\.textContent = t\("snippetDiffDegraded"\);/,
+        'oversized candidates must disclose whole-block replacement');
+    assert.match(studioUi, /if \(shown >= DIFF_RENDER_ROW_MAX\) break;/,
+        'diff rendering must be row-capped');
+    assert.match(studioScss, /&__diff-row\.is-del \{ background: color-mix\(in srgb, var\(--studio-error\) 13%, transparent\); \}/,
+        'deleted lines must use the error token');
+    assert.match(studioScss, /&__diff-row\.is-ins \{ background: color-mix\(in srgb, var\(--studio-success\) 13%, transparent\); \}/,
+        'inserted lines must use the success token');
+});
+
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));

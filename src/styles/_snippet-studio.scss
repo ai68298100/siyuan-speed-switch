@@ -126,6 +126,16 @@
     &__ai-result-panel { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; }
     &__ai-empty { padding: 13px; border: 1px dashed var(--studio-line); border-radius: 10px; color: var(--studio-on-surface); font-size: 11px; line-height: 1.55; }
     &__ai-result { width: 100%; min-height: 160px; flex: 1; background: var(--b3-theme-background); }
+    // T-6915（ADR 0083 D1）：候选 diff 面板——本地摘要行 + 行级对比。
+    &__diff { display: flex; flex-direction: column; gap: 6px; min-height: 0; flex: 1; }
+    &__diff-summary { margin: 0; color: var(--studio-on-surface); font-size: 11px; }
+    &__diff-scroll { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--studio-line); border-radius: 10px; background: var(--b3-theme-background); padding: 6px 0; }
+    &__diff-hunk + &__diff-hunk { border-top: 1px dashed var(--studio-line); margin-top: 6px; padding-top: 6px; }
+    &__diff-row { display: grid; grid-template-columns: 38px 38px minmax(0, 1fr); gap: 6px; padding: 0 8px; font-family: var(--b3-font-family-code, monospace); tab-size: 2; font-size: 11px; line-height: 1.5; white-space: pre; overflow-wrap: normal; }
+    &__diff-ln { color: var(--studio-on-surface); text-align: right; opacity: .7; user-select: none; }
+    &__diff-row.is-del { background: color-mix(in srgb, var(--studio-error) 13%, transparent); }
+    &__diff-row.is-ins { background: color-mix(in srgb, var(--studio-success) 13%, transparent); }
+    &__diff-note { margin: 0; color: var(--studio-on-surface); font-size: 11px; }
     &__footer { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; min-height: 48px; padding: 7px 16px; border-top: 1px solid var(--studio-line); background: var(--studio-surface-strong); position: relative; z-index: 3; }
     &__status { flex: 1; min-width: 0; font-size: 11px; line-height: 1.5; color: var(--studio-on-surface); }
     &__status[data-state="loading"], &__status[data-state="busy"] { color: var(--studio-accent); }
