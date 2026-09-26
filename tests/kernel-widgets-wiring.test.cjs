@@ -1167,6 +1167,20 @@ test('widget object descriptors and two-channel failure marking (T-6880)', () =>
     assert.match(en, /"homeObjectTitle": "Widget"/);
 });
 
+test('snippet studio consumes platform theme aliases during token migration (T-6903)', () => {
+    const studioScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_snippet-studio.scss'));
+    assert.match(studioScss, /--studio-accent: var\(--sw-platform-accent,/,
+        'studio accent must inherit the shared platform token');
+    assert.match(studioScss, /--studio-accent-soft: var\(--sw-platform-accent-soft,/,
+        'studio accent wash must inherit the shared platform token');
+    assert.match(studioScss, /--studio-line: var\(--sw-platform-line,/,
+        'studio borders must inherit the shared platform token');
+    assert.match(studioScss, /--studio-surface: var\(--sw-platform-surface,/,
+        'studio surfaces must inherit the shared platform token');
+    assert.match(studioScss, /--studio-on-surface: var\(--sw-platform-text-muted,/,
+        'studio muted text must inherit the shared platform token');
+});
+
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));

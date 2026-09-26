@@ -2,12 +2,14 @@
 @use "00-tokens" as *;
 
 .sw-studio {
-    --studio-accent: var(--b3-theme-primary, #7c68d5);
-    --studio-accent-soft: color-mix(in srgb, var(--studio-accent) 11%, transparent);
-    --studio-line: var(--b3-border-color, #dce1ea);
-    --studio-surface: var(--b3-theme-surface, #f5f6fa);
+    // Transitional aliases: the platform tokens remain the single theme source;
+    // existing studio selectors keep their names until the lazy surface is fully migrated.
+    --studio-accent: var(--sw-platform-accent, var(--b3-theme-primary, #7c68d5));
+    --studio-accent-soft: var(--sw-platform-accent-soft, color-mix(in srgb, var(--studio-accent) 11%, transparent));
+    --studio-line: var(--sw-platform-line, var(--b3-border-color, #dce1ea));
+    --studio-surface: var(--sw-platform-surface, var(--b3-theme-surface, #f5f6fa));
     --studio-surface-strong: color-mix(in srgb, var(--studio-surface) 78%, var(--b3-theme-background));
-    --studio-on-surface: var(--b3-theme-on-surface, #637083);
+    --studio-on-surface: var(--sw-platform-text-muted, var(--b3-theme-on-surface, #637083));
     box-sizing: border-box;
     color: var(--b3-theme-on-background);
     background: radial-gradient(circle at 0 0, var(--studio-accent-soft), transparent 34%), var(--b3-theme-background);
