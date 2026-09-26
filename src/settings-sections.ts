@@ -11,7 +11,7 @@ import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
-import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT, FLOATING_BALL_DIGIT_SLOT_COUNT} from "./floating-ball-model";
 import {selectFloatingBallMoreActions} from "./floating-ball-panel";
 import {FLOATING_BALL_SETTINGS_MAX_BYTES, buildFloatingBallSettingsRows, updateFloatingBallAction, moveFloatingBallAction, removeFloatingBallAction, restoreFloatingBallDefaults, serializeFloatingBallSettings, importFloatingBallSettings, checkFloatingBallSettingsBudget} from "./floating-ball-settings-model";
 import type {PanelSizeMode, HomeSizeMode} from "./constants";
@@ -102,6 +102,7 @@ export interface SettingsSectionsHost {
     setFavoriteGroup(key: string, group: string): void;
     updateFABVisibility(): void;
     getQuickActions(): IQuickAction[];
+    getSavedSearches?: () => Array<{id: string; name: string; query: string; notebook?: string}>;
     saveQuickActions(actions: IQuickAction[]): void;
     getFloatingBallActions(): IQuickAction[];
     getQuickActionSupport(action: IQuickAction, target: QuickActionTarget): QuickActionSupport;
@@ -155,7 +156,7 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
                     ), String(s.columns), (v) => this.updateSettings({columns: this.clampNum(v, 0, 8, s.columns)}))),
                 this.settingItem(this.i18n.setThumbHeight, this.i18n.setThumbHeightTip,
                     this.num(s.thumbHeight, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, 8, this.i18n.unitPx, (v) => this.updateSettings({thumbHeight: v}), this.i18n.setThumbHeight)),
-                // T-6883（T-6848）：页签卡更新时间徽标
+                // T-6848：页签卡更新时间与近 7 天改动标记共用显示开关
                 this.settingItem(this.i18n.cardUpdatedBadgeLabel, this.i18n.cardUpdatedBadgeTip,
                     this.switcher(s.showCardUpdatedBadge === true, (v) => {
                         this.updateSettings({showCardUpdatedBadge: v});
@@ -1673,6 +1674,95 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     wrapper.appendChild(flickSection);
     wrapper.addEventListener("sw-floating-ball-refresh", () => renderFlickOptions());
 
+    // T-6891（T-6857 余项）：数字 1–9 固定槽位。槽位只保存动作 ID 或
+    // 保存搜索 ID；保存搜索仍是独立对象，不写入快捷动作目录。空槽由悬浮球
+    // 面板按当前可见行继续使用动态回退，因此设置不会改变旧配置的默认行为。
+    const digitSlotSection = document.createElement("section");
+    digitSlotSection.className = "sw-floating-ball-settings__digit-slots";
+    const digitSlotHeading = document.createElement("strong");
+    digitSlotHeading.textContent = this.i18n.floatingBallDigitSlots;
+    digitSlotSection.appendChild(digitSlotHeading);
+    const digitSlotHint = document.createElement("p");
+    digitSlotHint.className = "sw-settings__hint";
+    digitSlotHint.textContent = this.i18n.floatingBallDigitSlotsTip;
+    digitSlotSection.appendChild(digitSlotHint);
+    const digitSlotGrid = document.createElement("div");
+    digitSlotGrid.className = "sw-floating-ball-settings__digit-slot-grid";
+    digitSlotSection.appendChild(digitSlotGrid);
+    const savedSearchesOf = () => {
+        const provided = this.getSavedSearches?.();
+        if (Array.isArray(provided)) return provided;
+        const fallback = (this.getSettings() as any).savedSearches;
+        return Array.isArray(fallback) ? fallback : [];
+    };
+    const actionIdOf = (action: any) => typeof action?.id === "string" && action.id.trim()
+        ? action.id.trim()
+        : typeof action?.actionId === "string" && action.actionId.trim()
+            ? action.actionId.trim() : typeof action?.value === "string" ? action.value.trim() : "";
+    const renderDigitSlots = () => {
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const surface = surfaceSelect.value as "desktop" | "sidebar" | "mobile";
+        const catalog = this.getFloatingBallActions();
+        const savedSearches = savedSearchesOf();
+        const actionOptions = catalog
+            .map((action: any) => ({action, id: actionIdOf(action)}))
+            .filter(({action, id}) => id && this.getQuickActionSupport(action, surface as QuickActionTarget) !== "unsupported");
+        digitSlotGrid.innerHTML = "";
+        for (let index = 0; index < FLOATING_BALL_DIGIT_SLOT_COUNT; index += 1) {
+            const row = document.createElement("label");
+            row.className = "sw-floating-ball-settings__digit-slot";
+            const title = document.createElement("span");
+            title.className = "sw-settings__item-title";
+            title.textContent = `${this.i18n.floatingBallDigitSlot} ${index + 1}`;
+            const select = document.createElement("select");
+            select.className = "b3-select";
+            select.dataset.digitSlot = String(index);
+            select.setAttribute("aria-label", title.textContent);
+            select.appendChild(new Option(this.i18n.floatingBallDigitSlotNone, ""));
+            const actionGroup = document.createElement("optgroup");
+            actionGroup.label = this.i18n.floatingBallDigitSlotAction;
+            actionOptions.forEach(({action, id}) => {
+                actionGroup.appendChild(new Option(clickActionLabel(action, config, surface), `action:${id}`));
+            });
+            select.appendChild(actionGroup);
+            const searchGroup = document.createElement("optgroup");
+            searchGroup.label = this.i18n.floatingBallDigitSlotSearch;
+            savedSearches.forEach((saved: any) => {
+                const id = typeof saved?.id === "string" ? saved.id.trim() : "";
+                if (!id) return;
+                const name = typeof saved?.name === "string" && saved.name.trim() ? saved.name.trim() : saved.query;
+                const query = typeof saved?.query === "string" ? saved.query.trim() : "";
+                searchGroup.appendChild(new Option(query ? `${name} · ${query}` : name, `saved-search:${id}`));
+            });
+            select.appendChild(searchGroup);
+            const current = config.digitSlots?.[surface]?.[index] || null;
+            let value = "";
+            if (current?.kind === "action" && current.actionId) value = `action:${current.actionId}`;
+            if (current?.kind === "saved-search" && current.searchId) value = `saved-search:${current.searchId}`;
+            if (value && !Array.from(select.options).some((option) => option.value === value)) {
+                const unavailable = current.kind === "saved-search"
+                    ? this.i18n.floatingBallDigitSlotUnavailable
+                    : this.i18n.floatingBallDigitSlotUnavailable;
+                select.appendChild(new Option(`${unavailable}: ${current.kind === "saved-search" ? current.searchId : current.actionId}`, value));
+            }
+            select.value = value;
+            select.addEventListener("change", () => {
+                const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+                const raw = select.value;
+                next.digitSlots[surface][index] = raw.startsWith("action:")
+                    ? {kind: "action", actionId: raw.slice("action:".length)}
+                    : raw.startsWith("saved-search:")
+                        ? {kind: "saved-search", searchId: raw.slice("saved-search:".length)} : null;
+                persist(next);
+                renderDigitSlots();
+            });
+            row.append(title, select);
+            digitSlotGrid.appendChild(row);
+        }
+    };
+    wrapper.appendChild(digitSlotSection);
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderDigitSlots());
+
     const controlsSection = document.createElement("section");
     controlsSection.className = "sw-floating-ball-settings__controls-panel";
     const controlsHeading = document.createElement("strong");
@@ -2288,10 +2378,11 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
         yieldToModals.checked = config.behavior.yieldToModals;
         renderControlValues();
     };
-    surfaceSelect.addEventListener("change", () => { renderControls(); renderActions(); });
-    wrapper.addEventListener("sw-floating-ball-refresh", () => { renderControls(); renderActions(); });
+    surfaceSelect.addEventListener("change", () => { renderControls(); renderActions(); renderDigitSlots(); });
+    wrapper.addEventListener("sw-floating-ball-refresh", () => { renderControls(); renderActions(); renderDigitSlots(); });
     renderControls();
     renderActions();
+    renderDigitSlots();
     renderPresets();
 
     const footer = document.createElement("div");

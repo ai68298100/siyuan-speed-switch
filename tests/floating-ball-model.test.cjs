@@ -7,6 +7,9 @@ const {
     sanitizeFloatingBallConfig,
     normalizeFloatingBallActionList,
     FLOATING_BALL_ACTION_LIMIT,
+    FLOATING_BALL_DIGIT_SLOT_COUNT,
+    normalizeFloatingBallDigitSlot,
+    setFloatingBallDigitSlot,
     clampFloatingBallPosition,
     snapFloatingBallPosition,
     resolveFloatingBallPosition,
@@ -93,6 +96,33 @@ test("floating ball config: explicit empty action lists survive normalization", 
     assert.equal(sanitizeFloatingBallConfig({fabEnabled: true}).migrated, true);
     assert.deepEqual(normalizeFloatingBallActionList(undefined).map((entry) => entry.actionId), ["journal", "search", "home", "settings"]);
     assert.equal(normalizeFloatingBallActionList(Array.from({length: FLOATING_BALL_ACTION_LIMIT + 5}, (_, index) => ({actionId: `a-${index}`}))).length, FLOATING_BALL_ACTION_LIMIT);
+});
+
+test("T-6891 digit slots keep bounded action/search references per surface", () => {
+    const defaults = createDefaultFloatingBallConfig();
+    assert.equal(defaults.digitSlots.desktop.length, FLOATING_BALL_DIGIT_SLOT_COUNT);
+    assert.deepEqual(defaults.digitSlots.mobile, Array(9).fill(null));
+    const changed = setFloatingBallDigitSlot(defaults, "desktop", 0, {kind: "action", actionId: "  search  ", handler: "discard"});
+    assert.deepEqual(changed.digitSlots.desktop[0], {kind: "action", actionId: "search"});
+    assert.equal(defaults.digitSlots.desktop[0], null, "editing returns a detached config");
+    const search = setFloatingBallDigitSlot(changed, "mobile", 8, {kind: "saved-search", searchId: "saved-1"});
+    assert.deepEqual(search.digitSlots.mobile[8], {kind: "saved-search", searchId: "saved-1"});
+    assert.deepEqual(search.digitSlots.sidebar, Array(9).fill(null));
+    assert.deepEqual(setFloatingBallDigitSlot(search, "mobile", 9, {kind: "action", actionId: "bad"}), search);
+    assert.deepEqual(setFloatingBallDigitSlot(search, "mobile", 1.5, {kind: "action", actionId: "bad"}), search);
+    assert.deepEqual(setFloatingBallDigitSlot(search, "tablet", 0, {kind: "action", actionId: "bad"}), search);
+    assert.equal(normalizeFloatingBallDigitSlot({kind: "saved-search", searchId: "\u0000"}), null);
+    assert.equal(normalizeFloatingBallDigitSlot({kind: "widget", objectId: "x"}), null);
+    const dirty = normalizeFloatingBallConfig({digitSlots: {desktop: [
+        {kind: "action", actionId: "x".repeat(200)},
+        {kind: "widget", objectId: "not-allowed"},
+        {kind: "saved-search", searchId: "  saved-2  ", arbitrary: true},
+    ], tablet: [{kind: "action", actionId: "leak"}]}});
+    assert.equal(dirty.digitSlots.desktop[0].actionId.length, 128);
+    assert.equal(dirty.digitSlots.desktop[1], null);
+    assert.deepEqual(dirty.digitSlots.desktop[2], {kind: "saved-search", searchId: "saved-2"});
+    assert.equal(dirty.digitSlots.desktop.length, 9);
+    assert.equal(Object.hasOwn(dirty.digitSlots, "tablet"), false);
 });
 
 test("floating ball geometry clamps ratio and pointer y into safe viewport", () => {

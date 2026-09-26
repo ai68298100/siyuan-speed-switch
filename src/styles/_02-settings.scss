@@ -866,6 +866,34 @@
     &__click-action .sw-settings__hint { margin: 0; grid-column: 1 / -1; }
     &__click-action .b3-select { min-width: 0; max-width: 100%; min-height: 44px; }
 
+    &__digit-slots {
+        @extend %sw-fb-panel;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+
+        > strong { @extend %sw-fb-heading; }
+        > .sw-settings__hint { margin: 0; }
+    }
+
+    &__digit-slot-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 8px;
+    }
+
+    &__digit-slot {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+        padding: 8px;
+        border-radius: 8px;
+        background: var(--b3-theme-background-light);
+
+        > .b3-select { width: 100%; min-width: 0; }
+    }
+
     &__actions {
         @extend %sw-fb-panel;
         padding: 12px;

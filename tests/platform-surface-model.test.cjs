@@ -12,6 +12,7 @@ const {
     buildSurfaceContextCaption,
     projectSnippetObjects,
     filterSnippetObjects,
+    projectWidgetObject,
 } = require("../src/platform-surface-model.js");
 
 test("surface ids: canonical whitelist is frozen and normalize falls back (T-6869)", () => {
@@ -33,6 +34,8 @@ test("surface context: normalizes entry/objectId/query with bounds", () => {
     assert.equal(normalizeSurfaceContext({}), null, "全空上下文返回 null（调用方不必挂空对象）");
     assert.equal(normalizeSurfaceContext({entry: "fab", query: "x".repeat(500)}).query.length, 120, "查询词钳制 120");
     assert.equal(normalizeSurfaceContext({objectId: "id".repeat(200)}).objectId.length, 128, "对象 id 钳制 128");
+    assert.equal(normalizeSurfaceContext({entry: "back", objectKind: "widget", objectId: "card-1"}).objectKind, "widget", "回跳保留对象种类");
+    assert.equal(normalizeSurfaceContext({entry: "back", objectKind: "unknown", objectId: "card-1"}).objectKind, undefined, "未知种类不进入路由");
     assert.equal(
         normalizeSurfaceContext({query: "a\u0000b"}).query,
         "a b",
@@ -137,4 +140,32 @@ test("snippet objects: filterSnippetObjects re-filters projected summaries (T-68
     assert.equal(many.length, 2, "limit 生效且按 id 去重");
     assert.equal(many[0].lines, 3, "二次过滤保留既有行数（content 缺失不丢 lines）");
     assert.equal(filterSnippetObjects(projected, "CSS")[0].type, "css", "查询大小写不敏感");
+});
+
+test("widget objects: instance identity, source and health are bounded (T-6890)", () => {
+    const instance = {instanceId: "card-2", moduleId: "favorites"};
+    const definition = {
+        title: "收藏", description: "项目常用文档", category: "siyuan",
+        configSchema: [{key: "group"}], clickCommand: "plugin::open",
+    };
+    const loading = projectWidgetObject(instance, definition);
+    assert.deepEqual(loading, {
+        id: "card-2", kind: "widget", title: "收藏", subtitle: "项目常用文档", source: "siyuan",
+        status: "loading", capabilities: ["refresh", "configure", "open"],
+        sideEffect: "none", surfaces: ["workbench"],
+    });
+    assert.equal(projectWidgetObject(instance, definition, "ok").status, "ready");
+    assert.equal(projectWidgetObject(instance, definition, "failed").status, "error");
+    const provider = projectWidgetObject(
+        {instanceId: "card-3", moduleId: "external-widget"},
+        {title: "", source: {pluginId: "example-provider"}},
+        "ok",
+    );
+    assert.equal(provider.title, "external-widget", "缺标题时保留组件型号");
+    assert.equal(provider.source, "example-provider", "来源名称缺失不隐藏对象");
+    assert.ok(projectWidgetObject({instanceId: "card-3", moduleId: "external-widget"}, {title: "外部组件"}, "ok", true).capabilities.includes("open"),
+        "宿主提供打开回调时声明打开能力");
+    assert.equal(projectWidgetObject({instanceId: "", moduleId: "favorites"}, definition), null);
+    assert.equal(projectWidgetObject({instanceId: "card-1", moduleId: ""}, definition), null);
+    assert.equal(projectWidgetObject({instanceId: "x".repeat(200), moduleId: "m"}, definition).id.length, 128);
 });

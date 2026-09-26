@@ -157,12 +157,6 @@
     svg { width: 12px; height: 12px; }
 }
 
-// 空状态淡色前缀
-.sw-home__cell .sw__home-module-status--empty::before {
-    content: "◦ ";
-    opacity: 0.5;
-}
-
 // 日历采用固定 6 周月视图，视觉结构接近系统日历小组件。
 .sw__home-module[data-module-id="journal-calendar"] {
     display: flex;

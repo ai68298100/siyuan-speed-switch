@@ -578,6 +578,11 @@
     border-radius: var(--sw-radius-card, 14px);
     background: var(--b3-theme-surface);
     box-shadow: var(--sw-card-shadow, none);
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+    }
 }
 
 .sw-home__cell-body {

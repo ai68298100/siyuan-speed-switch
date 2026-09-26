@@ -174,8 +174,8 @@ test("recent entries: recording an open item moves it to the front and clears cl
     assert.equal(result.changed, true);
 });
 
-test("recent changed filter: window formatting and per-entry predicate", () => {
-    const {formatChangedWindowStart, entryChangedWithin} = require("../src/recent-closed.js");
+test("recent changed filter and card marker share the same updated predicate", () => {
+    const {formatChangedWindowStart, updatedChangedWithin, entryChangedWithin} = require("../src/recent-closed.js");
     // 固定时刻：2026-09-23 12:00:00 本地时间 → 7 天前窗口起点
     const now = new Date(2026, 8, 23, 12, 0, 0).getTime();
     const windowStart = formatChangedWindowStart(now, 7);
@@ -196,6 +196,14 @@ test("recent changed filter: window formatting and per-entry predicate", () => {
         "stale and unprovable entries drop out when the filter is on");
     assert.equal(entryChangedWithin(entries[0], updatedById, ""), true,
         "an empty window keeps everything (filter disabled)");
+    assert.equal(updatedChangedWithin("20260916120000", windowStart), true, "the 7-day boundary is inclusive");
+    assert.equal(updatedChangedWithin("20260916115959", windowStart), false, "earlier changes are stale");
+    assert.equal(updatedChangedWithin(undefined, windowStart), false, "missing timestamps never claim a change");
+    for (const entry of entries) {
+        assert.equal(entryChangedWithin(entry, updatedById, windowStart),
+            updatedChangedWithin(updatedById.get(entry.rootId), windowStart),
+            "recent filter and card marker must agree for the same blocks.updated value");
+    }
 });
 
 test("reopen scroll memory: ratio computation clamps and rejects garbage", () => {

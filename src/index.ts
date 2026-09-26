@@ -17,7 +17,7 @@ if (typeof document !== "undefined") {
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
+import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
@@ -93,7 +93,7 @@ import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
 import {ensureTodayJournal as ensureTodayJournalAction} from "./journal-actions";
 import {removeFavoriteEntry, setFavoriteEntryGroup, migrateFavoriteEntry, normalizeFavoriteSmartGroups, buildTagSmartGroupQuery, projectTagSmartGroupEntries} from "./favorite-actions";
 import {normalizeSettings, resolvePanelSize, normalizeEssentials} from "./settings-model";
-import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
+import {createDefaultFloatingBallConfig, resolveFloatingBallClickAction, resolveFloatingActionAvailability, normalizeFloatingBallConfig, applyFloatingBallPreset, pickNextFloatingBallPreset} from "./floating-ball-model";
 import {createFloatingBallUi} from "./floating-ball-ui";
 import {createFloatingBallActionExecutor} from "./floating-ball-actions";
 import {selectAdjacentTab, scrollSurfaceTo} from "./floating-ball-generic-actions";
@@ -584,7 +584,7 @@ declare module "./search-model" {
 // second webpack shared chunk while the three surfaces use one DOM contract.
 export type PlatformSurface = "switcher" | "workbench" | "studio";
 // T-6869：一次跨表面打开的上下文（entry/objectId/query 有界，见 platform-surface-model）。
-export type PlatformSurfaceContext = {entry: string; objectId?: string; query?: string};
+export type PlatformSurfaceContext = {entry: string; objectKind?: string; objectId?: string; query?: string};
 export interface PlatformSurfaceLabels {
     platformName: string;
     contextLabel: string;
@@ -770,7 +770,7 @@ const DEFAULT_SETTINGS: ISwSettings = {
     excludedDocks: [],     // 不显示在左侧列表的面板类型
     dockDisplay: "collapsed",   // Default to the compact icon rail; users can expand it when labels are needed.
     fullscreen: false,     // 全屏模式：切换器铺满整个窗口，按 Esc 退出（由 panelSizeMode 派生）
-    showCardUpdatedBadge: false, // T-6883 页签卡更新时间徽标（默认关；开启后今天显示时刻、其余显示日期）
+    showCardUpdatedBadge: false, // T-6848 页签卡更新时间与近 7 天改动标记（默认关）
     sidebarLayout: "enlarge", // 侧边栏缩略图布局：enlarge 放大填满栏宽（默认）/ columns 按宽度自动加列
     fabEnabled: false,     // 手机端悬浮按钮默认关闭，需要的用户在设置中打开
     floatingBall: createDefaultFloatingBallConfig(), // T-6757 版本化悬浮球配置（旧 fabEnabled 仍兼容）
@@ -851,7 +851,7 @@ export interface ISwSettings {
     /** T-6851 组件商店视图状态（密度/视图模式/排序/折叠分组，normalize 有界清洗） */
     homeStore: {density?: string; viewMode?: string; sort?: string; collapsedGroups?: string[]};
     reuseOpenTabs: boolean; // T-6830 打开策略：命中已开页签时聚焦复用（默认关=总是新开）
-    showCardUpdatedBadge: boolean; // T-6883 页签卡更新时间徽标（默认关）
+    showCardUpdatedBadge: boolean; // T-6848 页签卡更新时间与改动标记（默认关）
     documentSetEssentials: string[]; // T-6810 Essentials：每次文档集恢复后自动打开的必需文档
 }
 
@@ -2128,6 +2128,13 @@ export default class SpeedSwitchPlugin extends Plugin {
                     ?.dispatchEvent(new Event("sw-floating-ball-refresh"));
             }
         }
+        if (Object.prototype.hasOwnProperty.call(patch, "savedSearches")) {
+            this.refreshFloatingBallPanels();
+            if (typeof document === "object") {
+                document.querySelector<HTMLElement>(".sw-floating-ball-settings")
+                    ?.dispatchEvent(new Event("sw-floating-ball-refresh"));
+            }
+        }
     }
 
     // T-6796 皮肤层应用：body 上只放标记属性；变量覆盖在 CSS 内限定于速切
@@ -3191,7 +3198,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const switcherRelease: {fn: () => void} = {fn: releaseFab};
         const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo, context);
         // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
-        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo);
+        this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo, context);
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
@@ -3221,7 +3228,9 @@ export default class SpeedSwitchPlugin extends Plugin {
                 onNavigate: (surface) => {
                     if (this.isUnloading || !dialog.element.isConnected) return;
                     dialog.destroy();
-                    this.openPlatformSurface(surface, returnTo, {entry: "surface-nav"});
+                    this.openPlatformSurface(surface, returnTo, {
+                        entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
+                    });
                 },
             });
         }
@@ -3268,7 +3277,7 @@ export default class SpeedSwitchPlugin extends Plugin {
                 i18n: this.i18n as unknown as Record<string, string>,
                 getConfig: () => (window as {siyuan?: {config?: unknown}}).siyuan?.config || {},
                 session: this.snippetStudioSession,
-                objectId: context?.objectId || "",
+                objectId: !context?.objectKind || context.objectKind === "snippet" ? context.objectId || "" : "",
                 platform: {
                     labels: this.getPlatformSurfaceLabels(),
                     available: ["switcher", "workbench", "studio"],
@@ -3277,13 +3286,17 @@ export default class SpeedSwitchPlugin extends Plugin {
                     onNavigate: (surface) => {
                         if (this.isUnloading || !dialog.element.isConnected) return;
                         dialog.destroy();
-                        this.openPlatformSurface(surface, returnTo, {entry: "surface-nav"});
+                        this.openPlatformSurface(surface, returnTo, {
+                            entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
+                        });
                     },
                 },
                 onBack: () => {
                     if (holder.controller && !holder.controller.canClose()) return;
                     dialog.destroy();
-                    if (!this.isUnloading) this.openPlatformSurface(returnTo, "switcher", {entry: "back"});
+                    if (!this.isUnloading) this.openPlatformSurface(returnTo, "switcher", {
+                        entry: "back", objectKind: context?.objectKind, objectId: context?.objectId, query: context?.query,
+                    });
                 },
             });
             void holder.controller.ready.catch((error) => logger.warn("snippet studio load failed", error));
@@ -3378,6 +3391,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         release: {fn: () => void},
         focusSearch = false,
         returnTo: PlatformSurface = "switcher",
+        context?: PlatformSurfaceContext | null,
     ) {
         const releaseFab = release.fn;
         this.prepareSwitcherChrome(dialog, fullscreen);
@@ -3465,7 +3479,7 @@ const updatedMap: {[rootId: string]: string} = {};
         };
 
         this.bindSwitcherFullscreenToggle(dialog, settings, fullscreen);
-        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo);
+        this.bindSwitcherToolbarActions(dialog, searchInput, sortSelect, listOpts, closeOverlay, updatedMap, returnTo, context);
 
         // 收藏下拉组件：星标触发 + 分组面板（分组可折叠/展开，项点击跳转）
         const favDd = dialog.element.querySelector<HTMLElement>(".sw__fav-dd");
@@ -3524,12 +3538,14 @@ const updatedMap: {[rootId: string]: string} = {};
         }
         this.bindKeydown(scrollElement, closeOverlay);
 
-        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
+        // 最近编辑排序和可选卡片改动信息共用 blocks.updated；非排序模式仅更新卡片 meta。
         this.loadUpdatedMap(tabs).then((map) => {
             Object.assign(updatedMap, map);
-            if (dialog.element.isConnected && sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
-                // 弹窗存活期间页签可能已增减，重取最新列表
+            if (!dialog.element.isConnected) return;
+            if (sortSelect?.value === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
                 this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+            } else if (this.getSettings().showCardUpdatedBadge === true) {
+                this.refreshCardUpdatedBadges(scrollElement, updatedMap);
             }
         });
 
@@ -3614,6 +3630,7 @@ const updatedMap: {[rootId: string]: string} = {};
         closeOverlay: () => void,
         updatedMap: {[rootId: string]: string},
         returnTo: PlatformSurface = "switcher",
+        context?: PlatformSurfaceContext | null,
     ) {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
@@ -3621,7 +3638,9 @@ const updatedMap: {[rootId: string]: string} = {};
         });
         dialog.element.querySelector(".sw__snippet-studio-btn")?.addEventListener("click", () => {
             dialog.destroy();
-            this.openSnippetStudio(returnTo, {entry: "toolbar"});
+            this.openSnippetStudio(returnTo, {
+                entry: "toolbar", objectKind: context?.objectKind, objectId: context?.objectId,
+            });
         });
         // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
         dialog.element.querySelector(".sw__journal-btn")?.addEventListener("click", () => {
@@ -3643,6 +3662,9 @@ const updatedMap: {[rootId: string]: string} = {};
                     if (el) {
                         this.renderList(el, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
                     }
+                } else if (dialog.element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                    const el = dialog.element.querySelector<HTMLDivElement>(".sw__scroll");
+                    if (el) this.refreshCardUpdatedBadges(el, updatedMap);
                 }
             });
             if (searchInput) {
@@ -4115,7 +4137,8 @@ const updatedMap: {[rootId: string]: string} = {};
         if (this.floatingBallPanels.size === 0) return;
         const config = this.getSettings().floatingBall || {};
         const actions = this.getFloatingBallActions();
-        this.floatingBallPanels.forEach((panel) => panel?.update({config, actions}));
+        const savedSearches = this.getSavedSearches();
+        this.floatingBallPanels.forEach((panel) => panel?.update({config, actions, savedSearches}));
     }
 
     /**
@@ -5015,6 +5038,39 @@ const updatedMap: {[rootId: string]: string} = {};
         const searchInput = (root || scrollElement.ownerDocument).querySelector<HTMLInputElement>(".sw__search");
         if (!searchInput) return;
         applySavedSearchFilters.call(this, scrollElement, searchInput, saved, onClose);
+    }
+
+    // T-6891（T-6857 余项）：固定数字槽保存搜索回放。槽位只保存 searchId，
+    // 执行时重新从当前设置解析对象，删除或损坏后只报告不可用，不把数字静默
+    // 改指向另一条搜索。桌面/手机使用各自切换器实例，侧栏复用常驻 DOM。
+    private executeFloatingBallSavedSearch(surface: FloatingBallSurface, reference: unknown): {ok: boolean; reason?: string} {
+        const searchId = typeof (reference as {searchId?: unknown})?.searchId === "string"
+            ? String((reference as {searchId: string}).searchId).trim() : "";
+        const saved = searchId ? this.getSavedSearches().find((item) => item?.id === searchId) : undefined;
+        if (!saved?.query) {
+            showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+            return {ok: false, reason: "unavailable"};
+        }
+
+        let root: HTMLElement | null = null;
+        let onClose: IOverlayClose = () => undefined;
+        if (surface === "sidebar") {
+            root = this.sidebarElement?.isConnected ? this.sidebarElement : null;
+            onClose = () => this.refreshSidebar();
+        } else {
+            this.showSwitcher(true);
+            const dialog = this.isMobile ? this.mobileSwitcherDialog : this.platformSwitcherDialog;
+            root = dialog?.element?.isConnected ? dialog.element : null;
+            onClose = () => dialog?.destroy();
+        }
+        const scrollElement = root?.querySelector<HTMLElement>(".sw__scroll");
+        const searchInput = root?.querySelector<HTMLInputElement>(".sw__search");
+        if (!scrollElement || !searchInput) {
+            showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+            return {ok: false, reason: "unavailable"};
+        }
+        applySavedSearchFilters.call(this, scrollElement, searchInput, saved, onClose);
+        return {ok: true};
     }
 
     // T-6830 打开策略：按 rootId 找已打开页签；桌面/移动共用 rootIdOf 归一
@@ -9686,7 +9742,7 @@ private rootIdOf(tab: Tab): string | null {
         const isFaved = ctx.favorites.has(this.pinKeyOf(item.tab));
         let card = ctx.reusable.get(item.tab.id);
         if (card) {
-            this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved);
+            this.syncCardState(card, item.tab, item.tab.id === ctx.activeTabId, isPinned, isFaved, ctx);
             ctx.reusable.delete(item.tab.id);
         } else {
             card = this.createCard(item, item.tab.id === ctx.activeTabId, isPinned, isFaved, ctx, {
@@ -9714,7 +9770,7 @@ private rootIdOf(tab: Tab): string | null {
     }
 
     // 复用旧卡片时同步状态：置顶/收藏/激活类名与图标、标题文本
-    private syncCardState(card: HTMLElement, tab: Tab, isActive: boolean, isPinned: boolean, isFaved: boolean) {
+    private syncCardState(card: HTMLElement, tab: Tab, isActive: boolean, isPinned: boolean, isFaved: boolean, ctx: ITabGroupRenderCtx) {
         this.cardTabs.set(card, tab);
         // Keep surface-specific modifiers when a card is reused during a
         // mobile list refresh.  `renderMobileList` deliberately reuses DOM
@@ -9736,11 +9792,7 @@ private rootIdOf(tab: Tab): string | null {
         card.dataset.rootId = rootId;
         card.dataset.notebookId = resolveSearchNotebookId(tab as unknown);
         card.dataset.searchPath = buildOpenedDocumentScope(tab as unknown)?.path || "";
-        card.querySelector<HTMLElement>(".sw__title")!.textContent = title;
-        const icon = card.querySelector<HTMLElement>(".sw__icon");
-        if (icon) {
-            icon.replaceWith(this.buildCardIcon(tab));
-        }
+        card.querySelector<HTMLElement>(".sw__meta")?.replaceWith(this.buildCardMeta(tab, ctx));
         if (previousRootId !== rootId) {
             card.querySelector<HTMLElement>(".sw__thumb")?.replaceWith(this.buildCardThumb());
         }
@@ -9958,8 +10010,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         return thumb;
     }
 
-    // 底部：图标 + 标题（+ T-6883 可选更新时间徽标）；图标复用页签头已渲染好的内容，保证与真实页签一致
-    private buildCardMeta(tab: Tab, ctx?: ITabGroupRenderCtx): HTMLElement {
+    // 底部：图标 + 标题 + 可选改动信息；图标复用真实页签头内容。
+    private buildCardMeta(tab: Tab, ctx?: Pick<ITabGroupRenderCtx, "settings" | "updatedMap">): HTMLElement {
         const meta = document.createElement("div");
         meta.className = "sw__meta";
         meta.appendChild(this.buildCardIcon(tab));
@@ -9967,8 +10019,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         titleEl.className = "sw__title";
         titleEl.textContent = this.titleOf(tab);
         meta.appendChild(titleEl);
-        // T-6883（T-6848）：更新时间徽标——设置开启且映射命中时显示
-        // （今天=时刻加主色，其余=日期）；无映射/非法时间不显示，不猜测。
+        // T-6848：更新时间和改动标记只消费内核 blocks.updated，同最近列表的 7 天判定。
         if (ctx?.settings.showCardUpdatedBadge === true) {
             const rootId = this.rootIdOf(tab);
             const updated = rootId ? ctx.updatedMap[rootId] : undefined;
@@ -9979,9 +10030,24 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 badgeEl.textContent = badge.text;
                 badgeEl.setAttribute("aria-hidden", "true");
                 meta.appendChild(badgeEl);
+                if (updatedChangedWithin(updated, formatChangedWindowStart(Date.now()))) {
+                    const changedEl = document.createElement("span");
+                    changedEl.className = "sw__changed-badge";
+                    changedEl.textContent = this.i18n.cardChangedBadge;
+                    changedEl.title = this.i18n.cardChangedBadgeTip;
+                    meta.appendChild(changedEl);
+                }
             }
         }
         return meta;
+    }
+
+    private refreshCardUpdatedBadges(scrollElement: HTMLElement, updatedMap: {[rootId: string]: string}) {
+        const ctx = {settings: this.getSettings(), updatedMap};
+        scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
+            const tab = this.cardTabs.get(card);
+            if (tab) card.querySelector<HTMLElement>(".sw__meta")?.replaceWith(this.buildCardMeta(tab, ctx));
+        });
     }
 
     // 卡片图标：思源 svg sprite > emoji 字符 > tab.icon 兜底
@@ -10903,7 +10969,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 {id: this.getMobileActiveTabId()} as Tab, listOpts, sortSelect.value as SortBy, updatedMap);
         };
         refreshMobileList();
-        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序则重排
+        // 移动端沿用同一更新时间映射；非排序模式只刷新卡片信息，保留查询与滚动。
         const mergedMap = updatedMap;
         this.loadUpdatedMap(this.getMobileTabs()).then((map) => {
             Object.assign(mergedMap, map);
@@ -10913,6 +10979,8 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 if (searchInput && (searchInput.value.trim() !== "" || hasDocSearchFilter.call(this, scrollElement))) {
                     this.applySearch(scrollElement, searchInput, () => dialog.destroy());
                 }
+            } else if (dialog.element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                this.refreshCardUpdatedBadges(scrollElement, mergedMap);
             }
         });
         return {renderMobileList: refreshMobileList};
@@ -11149,6 +11217,26 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         });
     }
 
+    private executeFloatingBallBoundAction(surface: FloatingBallSurface, reference: unknown) {
+        const ref = reference as {actionId?: unknown; id?: unknown} | null;
+        const actionId = [ref?.actionId, ref?.id].find((value) => typeof value === "string" && value.trim());
+        const id = typeof actionId === "string" ? actionId.trim() : "";
+        const candidate = id ? this.getFloatingBallActions().find((item) =>
+            [(item as IQuickAction & {actionId?: string}).actionId, item.id].some((value) => value === id)) : null;
+        const descriptor = this.getSettings().floatingBall?.actions?.[surface]
+            ?.find((entry: {actionId?: string}) => entry.actionId === id);
+        const action = candidate && descriptor?.mobileOverride === true
+            ? {...candidate, mobileOverride: true} : candidate;
+        const availability = resolveFloatingActionAvailability(action, surface, {
+            resolveSupport: (item: IQuickAction, target: QuickActionTarget) => this.getQuickActionSupport(item, target),
+        });
+        if (descriptor?.enabled === false || availability.status !== "supported") {
+            showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        this.executeFloatingBallSurfaceAction(surface, action);
+    }
+
     private executeFloatingBallSurfaceAction(surface: FloatingBallSurface, action: unknown) {
         const controller = this.floatingBallUis.get(surface);
         const panel = this.floatingBallPanels.get(surface);
@@ -11334,6 +11422,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 surface,
                 config,
                 actions: this.getFloatingBallActions(),
+                savedSearches: this.getSavedSearches(),
                 includeBuiltins: false,
                 labels: {
                     more: this.i18n.floatingBallMore,
@@ -11352,6 +11441,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                     disabled: this.i18n.floatingBallActionDisabled,
                     enabled: this.i18n.floatingBallEnabled,
                     manage: this.i18n.floatingBallManageActions,
+                    savedSearches: this.i18n.floatingBallSavedSearches,
+                    savedSearch: this.i18n.floatingBallDigitSlotSearch,
+                    savedSearchUnavailable: this.i18n.floatingBallDigitSlotUnavailable,
+                    configureDigitSlot: this.i18n.floatingBallConfigureDigitSlot,
                     toggleFailed: this.i18n.quickActionFailed,
                     builtins: {
                         switcher: this.i18n.switchTabs, search: this.i18n.quickBuiltinSearch,
@@ -11359,7 +11452,28 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                         home: this.i18n.secondPanel,
                     },
                 },
-                onAction: (action: unknown) => this.executeFloatingBallSurfaceAction(surface, action),
+                onAction: (action: unknown) => (action as {digitSlotBound?: boolean})?.digitSlotBound
+                    ? this.executeFloatingBallBoundAction(surface, action)
+                    : this.executeFloatingBallSurfaceAction(surface, action),
+                onSavedSearch: (saved: unknown) => this.executeFloatingBallSavedSearch(surface, saved),
+                onConfigureDigitSlot: (index: number | null, _reference: unknown, targetSurface: FloatingBallSurface) => {
+                    this.openSetting("floatingBall");
+                    const settings = Array.from(document.querySelectorAll<HTMLElement>(
+                        ".sw-settings-dialog .sw-floating-ball-settings",
+                    )).pop();
+                    if (!settings) return;
+                    const surfaceSelect = settings.querySelector<HTMLSelectElement>(".sw-floating-ball-settings__surface select");
+                    if (surfaceSelect && Array.from(surfaceSelect.options).some((item) => item.value === targetSurface)) {
+                        surfaceSelect.value = targetSurface;
+                        surfaceSelect.dispatchEvent(new window.Event("change", {bubbles: true}));
+                    }
+                    const slots = Array.from(settings.querySelectorAll<HTMLSelectElement>("[data-digit-slot]"));
+                    const slot = Number.isInteger(index) && index !== null && index >= 0 && index < slots.length
+                        ? slots[index] : slots.find((item) => !item.value) || slots[0];
+                    slot?.scrollIntoView?.({block: "center"});
+                    slot?.focus({preventScroll: true});
+                },
+                onUnavailable: () => showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error"),
                 resolveSupport: (action: IQuickAction, target: QuickActionTarget) => this.getQuickActionSupport(action, target),
                 onManageSettings: () => this.openSetting("floatingBall"),
                 onToggleAction: (actionId: string, enabled: boolean) => {
@@ -11572,12 +11686,14 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
         this.renderList(scrollElement, tabs, activeTab, listOpts, this.getSettings().sortBy, updatedMap);
 
-        // 「最近编辑」排序需要文档更新时间：后台查询一次，完成后若仍处于该排序且未搜索则重排
+        // 侧栏共用 blocks.updated；非排序模式只刷新卡片信息，避免破坏搜索过滤。
         this.loadUpdatedMap(tabs).then((map) => {
             Object.assign(updatedMap, map);
             const searchInput = element.querySelector<HTMLInputElement>(".sw__search");
             if (element.isConnected && this.getSettings().sortBy === "updatedDesc" && searchInput && searchInput.value.trim() === "") {
                 this.renderList(scrollElement, getAllTabs(), this.getActiveTab(), listOpts, "updatedDesc", updatedMap);
+            } else if (element.isConnected && this.getSettings().showCardUpdatedBadge === true) {
+                this.refreshCardUpdatedBadges(scrollElement, updatedMap);
             }
         });
 

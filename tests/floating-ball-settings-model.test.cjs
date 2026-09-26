@@ -15,6 +15,7 @@ const {
 } = require("../src/floating-ball-settings-model.js");
 const {
     createDefaultFloatingBallConfig,
+    FLOATING_BALL_DIGIT_SLOT_COUNT,
 } = require("../src/floating-ball-model.js");
 
 function configWithActions() {
@@ -64,6 +65,102 @@ test("floating-ball settings serialization round-trips through the versioned env
         "positions come from the active device, never from an import");
     assert.deepEqual(imported.config.enabled, configWithActions().enabled);
     assert.deepEqual(imported.quickActions.map((item) => item.id), ["search", "journal"]);
+});
+
+test("floating-ball settings export and import preserve action and saved-search digit slots", () => {
+    const config = createDefaultFloatingBallConfig();
+    config.digitSlots.desktop[0] = {kind: "action", actionId: "search"};
+    config.digitSlots.desktop[1] = {kind: "saved-search", searchId: "criteria-1"};
+    config.digitSlots.mobile[8] = {kind: "action", actionId: "global::outline"};
+
+    const exported = exportFloatingBallSettings(config, []);
+    assert.deepEqual(exported.floatingBall.digitSlots, config.digitSlots);
+    assert.notStrictEqual(exported.floatingBall.digitSlots, config.digitSlots);
+    assert.notStrictEqual(exported.floatingBall.digitSlots.desktop, config.digitSlots.desktop);
+
+    const imported = importFloatingBallSettings(exported, createDefaultFloatingBallConfig(), []);
+    assert.equal(imported.ok, true);
+    assert.equal(imported.reason, "imported");
+    assert.deepEqual(imported.config.digitSlots, config.digitSlots);
+    assert.equal(imported.config.digitSlots.desktop.length, FLOATING_BALL_DIGIT_SLOT_COUNT);
+    assert.equal(imported.config.digitSlots.mobile[8].actionId, "global::outline");
+
+    exported.floatingBall.digitSlots.desktop[0].actionId = "mutated";
+    assert.equal(config.digitSlots.desktop[0].actionId, "search", "export is detached from live config");
+});
+
+test("partial digit-slot imports replace one surface while preserving the others", () => {
+    const current = configWithActions();
+    current.digitSlots.desktop[0] = {kind: "action", actionId: "search"};
+    current.digitSlots.sidebar[0] = {kind: "saved-search", searchId: "sidebar-search"};
+    current.digitSlots.mobile[0] = {kind: "action", actionId: "journal"};
+    const beforeDesktop = JSON.parse(JSON.stringify(current.digitSlots.desktop));
+    const beforeSidebar = JSON.parse(JSON.stringify(current.digitSlots.sidebar));
+
+    const result = importFloatingBallSettings({
+        schemaVersion: 1,
+        floatingBall: {
+            digitSlots: {
+                mobile: [{kind: "saved-search", searchId: "mobile-search"}],
+                hologram: [{kind: "action", actionId: "must-not-leak"}],
+            },
+        },
+    }, current, []);
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.config.digitSlots.desktop, beforeDesktop);
+    assert.deepEqual(result.config.digitSlots.sidebar, beforeSidebar);
+    assert.equal(result.config.digitSlots.mobile[0].searchId, "mobile-search");
+    assert.equal(result.config.digitSlots.mobile.length, FLOATING_BALL_DIGIT_SLOT_COUNT);
+    assert.equal(result.config.digitSlots.mobile.slice(1).every((slot) => slot === null), true);
+    assert.equal(Object.hasOwn(result.config.digitSlots, "hologram"), false);
+
+    const cleared = importFloatingBallSettings({
+        schemaVersion: 1,
+        floatingBall: {digitSlots: {mobile: []}},
+    }, result.config, []);
+    assert.equal(cleared.ok, true);
+    assert.deepEqual(cleared.config.digitSlots.mobile, Array(FLOATING_BALL_DIGIT_SLOT_COUNT).fill(null));
+    assert.deepEqual(cleared.config.digitSlots.desktop, beforeDesktop);
+
+    const oldEnvelope = importFloatingBallSettings({
+        schemaVersion: 1,
+        floatingBall: {enabled: {desktop: false}},
+    }, current, []);
+    assert.equal(oldEnvelope.ok, true);
+    assert.deepEqual(oldEnvelope.config.digitSlots, current.digitSlots,
+        "older exports without digitSlots preserve local bindings");
+    assert.deepEqual(current.digitSlots.desktop, beforeDesktop,
+        "successful imports leave their source config untouched");
+});
+
+test("malformed digit-slot imports fail atomically while null slots remain valid", () => {
+    const current = configWithActions();
+    current.digitSlots.desktop[0] = {kind: "action", actionId: "search"};
+    const before = JSON.parse(JSON.stringify(current));
+    const invalid = [
+        [],
+        {desktop: {}},
+        {desktop: [{kind: "unknown", actionId: "search"}]},
+        {desktop: [{kind: "action"}]},
+        {desktop: [{kind: "action", actionId: "search"}, {kind: "saved-search"}]},
+        {desktop: [false]},
+    ];
+    invalid.forEach((digitSlots) => {
+        const result = importFloatingBallSettings({
+            schemaVersion: 1,
+            floatingBall: {digitSlots},
+        }, current, []);
+        assert.equal(result.ok, false);
+        assert.equal(result.reason, "invalid-floating-ball");
+        assert.deepEqual(result.config, before);
+    });
+
+    const cleared = importFloatingBallSettings({
+        schemaVersion: 1,
+        floatingBall: {digitSlots: {desktop: [null]}},
+    }, current, []);
+    assert.equal(cleared.ok, true);
+    assert.deepEqual(cleared.config.digitSlots.desktop, Array(FLOATING_BALL_DIGIT_SLOT_COUNT).fill(null));
 });
 
 test("import preserves current positions and rejects oversize payloads atomically", () => {

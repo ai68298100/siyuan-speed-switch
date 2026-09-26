@@ -10,6 +10,7 @@ const {
     createDefaultFloatingBallConfig,
     normalizeFloatingBallConfig,
     normalizeFloatingBallActionList,
+    normalizeFloatingBallDigitSlot,
     resolveFloatingActionAvailability,
 } = require("./floating-ball-model.js");
 const {sanitizeQuickActions, getDefaultQuickActions} = require("./quick-actions.js");
@@ -180,6 +181,7 @@ function exportFloatingBallSettings(config, quickActions = []) {
             appearance: clone(normalized.appearance),
             clickAction: clone(normalized.clickAction),
             behavior: clone(normalized.behavior),
+            digitSlots: clone(normalized.digitSlots),
             actions: clone(normalized.actions),
         },
     };
@@ -241,16 +243,28 @@ function parseSchemaVersion(value, max = FLOATING_BALL_SETTINGS_SCHEMA_VERSION) 
 function hasFloatingBallPayload(value) {
     if (!isRecord(value)) return false;
     const defaults = createDefaultFloatingBallConfig();
-    return ["enabled", "appearance", "clickAction", "behavior", "actions"].some((section) => isRecord(value[section])
+    return ["enabled", "appearance", "clickAction", "behavior", "digitSlots", "actions"].some((section) => isRecord(value[section])
         && Object.keys(defaults[section]).some((key) => Object.prototype.hasOwnProperty.call(value[section], key)));
 }
 
 function validFloatingBallSections(value) {
     const defaults = createDefaultFloatingBallConfig();
-    return ["enabled", "appearance", "clickAction", "behavior", "actions"].every((section) => {
+    return ["enabled", "appearance", "clickAction", "behavior", "digitSlots", "actions"].every((section) => {
         if (!Object.prototype.hasOwnProperty.call(value, section)) return true;
         const supplied = value[section];
         if (!isRecord(supplied)) return false;
+        if (section === "digitSlots") {
+            // A slot array is a bounded positional list. Null explicitly
+            // clears a slot; every non-null entry must be a descriptor the
+            // model can retain. Reject malformed entries before normalization
+            // so a bad import cannot silently erase a neighboring binding.
+            return Object.keys(supplied).every((surface) => {
+                if (!Object.prototype.hasOwnProperty.call(defaults.digitSlots, surface)) return true;
+                const slots = supplied[surface];
+                if (!Array.isArray(slots)) return false;
+                return slots.every((slot) => slot === null || normalizeFloatingBallDigitSlot(slot));
+            });
+        }
         return Object.keys(defaults[section]).every((key) => {
             if (!Object.prototype.hasOwnProperty.call(supplied, key)) return true;
             if (section === "actions") {
@@ -332,7 +346,7 @@ function importFloatingBallSettings(input, currentConfig, currentQuickActions = 
     // when its key is present. Normalization still strips unknown keys/clamps.
     const merge = {...current.config};
     if (importedBall) {
-        ["enabled", "appearance", "clickAction", "behavior", "actions"].forEach((section) => {
+        ["enabled", "appearance", "clickAction", "behavior", "digitSlots", "actions"].forEach((section) => {
             merge[section] = {...current.config[section], ...importedBall[section]};
         });
     }

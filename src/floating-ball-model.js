@@ -14,6 +14,7 @@ const FLOATING_BALL_UI_SURFACES = ["desktop", "mobile"];
 const FLOATING_BALL_EDGES = ["left", "right"];
 const FLOATING_BALL_FIRST_LAYER_LIMIT = 6;
 const FLOATING_BALL_ACTION_LIMIT = 64;
+const FLOATING_BALL_DIGIT_SLOT_COUNT = 9;
 const FLOATING_BALL_MORE_ACTION_ID = "__floating-ball-more__";
 const FLOATING_BALL_SWITCHER_ACTION_ID = "switcher";
 const FLOATING_BALL_SETTINGS_ACTION_ID = "settings";
@@ -64,6 +65,43 @@ function normalizeActionId(value) {
     return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 128);
 }
 
+function normalizeFloatingBallDigitSlot(value) {
+    if (!isRecord(value)) return null;
+    const kind = value.kind === "saved-search" ? "saved-search" : value.kind === "action" ? "action" : "";
+    if (kind === "action") {
+        const actionId = normalizeActionId(value.actionId);
+        return actionId ? {kind, actionId} : null;
+    }
+    if (kind === "saved-search") {
+        const searchId = normalizeActionId(value.searchId);
+        return searchId ? {kind, searchId} : null;
+    }
+    return null;
+}
+
+function normalizeFloatingBallDigitSlots(value, fallback = {}) {
+    const source = isRecord(value) ? value : {};
+    const base = isRecord(fallback) ? fallback : {};
+    return Object.fromEntries(FLOATING_BALL_SURFACES.map((surface) => {
+        const incoming = Array.isArray(source[surface]) ? source[surface] : null;
+        const defaults = Array.isArray(base[surface]) ? base[surface] : [];
+        const slots = Array.from({length: FLOATING_BALL_DIGIT_SLOT_COUNT}, (_, index) => {
+            const raw = incoming ? incoming[index] : defaults[index];
+            return normalizeFloatingBallDigitSlot(raw);
+        });
+        return [surface, slots];
+    }));
+}
+
+function setFloatingBallDigitSlot(config, surface, index, value) {
+    const normalized = normalizeFloatingBallConfig(config);
+    if (!FLOATING_BALL_SURFACES.includes(surface)) return normalized;
+    const slot = Number(index);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= FLOATING_BALL_DIGIT_SLOT_COUNT) return normalized;
+    normalized.digitSlots[surface][slot] = normalizeFloatingBallDigitSlot(value);
+    return normalized;
+}
+
 function createDefaultFloatingBallActions() {
     return DEFAULT_ACTION_IDS.map((actionId, index) => ({
         actionId,
@@ -102,6 +140,8 @@ function createDefaultFloatingBallConfig() {
             // T-6886（T-6858 第一批）：四向快滑动作绑定（上=更多面板保留 P6 语义）
             flickActions: {up: "more", down: "quick-capture", left: "previous-tab", right: "next-tab"},
         },
+        digitSlots: Object.fromEntries(FLOATING_BALL_SURFACES.map((surface) => [surface,
+            Array.from({length: FLOATING_BALL_DIGIT_SLOT_COUNT}, () => null)])),
         actions,
         presets: [],
         currentPresetId: "",
@@ -241,6 +281,7 @@ function normalizeFloatingBallConfig(input, options = {}) {
         appearance: {},
         clickAction: {},
         behavior: {},
+        digitSlots: {},
         actions: {},
         presets: [],
         currentPresetId: "",
@@ -314,6 +355,7 @@ function normalizeFloatingBallConfig(input, options = {}) {
             defaults.actions[surface],
         );
     });
+    config.digitSlots = normalizeFloatingBallDigitSlots(source.digitSlots, defaults.digitSlots);
     // T-6803 场景预设：命名保存的动作布局快照（含端侧主点击）。有界、
     // 可选字段；旧版本读到此字段会安全忽略，新版本对旧数据补空数组。
     config.presets = normalizeFloatingBallPresets(source.presets);
@@ -570,6 +612,7 @@ module.exports = {
     FLOATING_BALL_MORE_ACTION_ID,
     FLOATING_BALL_SWITCHER_ACTION_ID,
     FLOATING_BALL_SETTINGS_ACTION_ID,
+    FLOATING_BALL_DIGIT_SLOT_COUNT,
     DEFAULT_ACTION_IDS,
     createDefaultFloatingBallConfig,
     getDefaultFloatingBallConfig: createDefaultFloatingBallConfig,
@@ -578,6 +621,9 @@ module.exports = {
     migrateFloatingBallConfig,
     normalizeFloatingBallPosition,
     normalizeFloatingBallActionList,
+    normalizeFloatingBallDigitSlot,
+    normalizeFloatingBallDigitSlots,
+    setFloatingBallDigitSlot,
     clampFloatingBallPosition,
     snapFloatingBallPosition,
     resolveFloatingBallPosition,

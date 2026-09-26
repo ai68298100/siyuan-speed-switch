@@ -91,7 +91,9 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
                 ? (surface: PlatformSurface) => {
                     if (!dialog.element.isConnected) return;
                     dialog.destroy();
-                    this.openPlatformSurface?.(surface, returnTo, {entry: "surface-nav"});
+                    this.openPlatformSurface?.(surface, returnTo, {
+                        entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
+                    });
                 }
                 : undefined;
             this.mountPlatformChrome(mobileBody, {

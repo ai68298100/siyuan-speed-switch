@@ -205,12 +205,17 @@ function formatChangedWindowStart(now, days = 7) {
 
 // 无更新信息的条目（内核查不到/未取回）在过滤开启时被隐藏——它们无法证明
 // 自己在窗口期内有过改动，这与"只看有改动"的语义一致而不是缺陷。
+function updatedChangedWithin(updated, windowStart) {
+    if (!windowStart) return true;
+    return typeof updated === "string" && updated.length > 0 && updated >= windowStart;
+}
+
 function entryChangedWithin(entry, updatedById, windowStart) {
     if (!windowStart) return true;
     const rootId = typeof entry?.rootId === "string" ? entry.rootId : "";
     if (!rootId) return false;
     const updated = updatedById instanceof Map ? updatedById.get(rootId) : undefined;
-    return typeof updated === "string" && updated.length > 0 && updated >= windowStart;
+    return updatedChangedWithin(updated, windowStart);
 }
 
 // ==================== T-6801 重开现场（会话级滚动记忆） ====================
@@ -236,4 +241,4 @@ function planScrollRestore(metrics, ratio) {
     return {top: Math.min(max, Math.max(0, Math.round(Math.min(1, Math.max(0, bounded)) * max)))};
 }
 
-module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, entryChangedWithin, computeScrollRatio, planScrollRestore};
+module.exports = {normalizeClosedEntries, planClosedRecovery, mergeRecentDocumentRecords, buildRecentHistorySections, runRecoveryPlan, runRecoveryPlanBounded, applyRecentEvent, buildRecentRefreshNotice, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore};

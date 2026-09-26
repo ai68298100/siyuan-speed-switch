@@ -39,7 +39,8 @@ function mount(t, options = {}) {
     const confirmations = [];
     const iconPickers = [];
     const defaults = createDefaultFloatingBallConfig();
-    let state = {floatingBall: options.config || defaults, fabEnabled: false};
+    let state = {floatingBall: options.config || defaults, fabEnabled: false,
+        savedSearches: options.savedSearches || []};
     let currentQuickActions = options.quickActions || getBuiltinQuickActions();
     const catalog = options.catalog || getBuiltinQuickActions();
     const controls = {
@@ -81,6 +82,7 @@ function mount(t, options = {}) {
         updateSettings(patch) { patches.push(patch); state = {...state, ...patch}; },
         updateFABVisibility() {},
         getQuickActions: () => currentQuickActions,
+        getSavedSearches: () => state.savedSearches,
         saveQuickActions(actions) { saves.push(actions); currentQuickActions = actions; },
         getFloatingBallActions: () => catalog,
         getQuickActionSupport: (action, surface) => resolveQuickActionSupport(action.kind, action.value, surface,
@@ -174,6 +176,41 @@ function assertClickActionSettings(t, options = {}) {
 
 test("floating settings primary click selector persists each surface independently", (t) => {
     assertClickActionSettings(t);
+});
+
+function assertDigitSlotSettings(t, options = {}) {
+    const savedSearches = [{id: "saved-1", name: "今日日记", query: "daily", notebook: "nb-1"}];
+    const ui = mount(t, {...options, savedSearches});
+    const getSlot = (index) => ui.root.querySelector(`[data-digit-slot="${index}"]`);
+    assert.equal(ui.root.querySelectorAll("[data-digit-slot]").length, 9,
+        "current surface shows nine fixed slot selectors");
+    const first = getSlot(0);
+    assert.ok([...first.options].some((option) => option.value === "saved-search:saved-1"),
+        "saved searches are offered as separate object references");
+    assert.ok([...first.options].some((option) => option.value === "action:search"),
+        "action catalog entries are offered by ID");
+    first.value = "saved-search:saved-1";
+    first.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.deepEqual(ui.state.floatingBall.digitSlots.desktop[0], {kind: "saved-search", searchId: "saved-1"});
+    assert.deepEqual(ui.state.floatingBall.actions.desktop, createDefaultFloatingBallConfig().actions.desktop,
+        "binding a saved search must not register it as a quick action");
+    assert.equal(ui.saves.length, 0);
+    selectSurface(ui, "mobile");
+    assert.equal(getSlot(0).value, "", "mobile slots have independent bindings");
+    const second = getSlot(1);
+    second.value = "action:search";
+    second.dispatchEvent(new ui.window.Event("change", {bubbles: true}));
+    assert.deepEqual(ui.state.floatingBall.digitSlots.mobile[1], {kind: "action", actionId: "search"});
+    selectSurface(ui, "desktop");
+    assert.equal(getSlot(0).value, "saved-search:saved-1");
+    ui.state = {...ui.state, savedSearches: []};
+    ui.root.dispatchEvent(new ui.window.Event("sw-floating-ball-refresh"));
+    assert.equal(getSlot(0).value, "saved-search:saved-1", "deleted references remain visible");
+    assert.match(getSlot(0).selectedOptions[0].textContent, /不可用/);
+}
+
+test("T-6891 floating settings bind action and saved-search digit slots independently", (t) => {
+    assertDigitSlotSettings(t);
 });
 
 function assertPresentationSettings(t, options = {}) {

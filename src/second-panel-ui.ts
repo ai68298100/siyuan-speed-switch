@@ -14,6 +14,7 @@ import {createHomeRuntime} from "./home-runtime";
 import {openHomeConfigForm} from "./home-config-form";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-model";
+import {projectWidgetObject} from "./platform-surface-model";
 import {resolvePanelSize} from "./settings-model";
 import {clampOversizedIcons} from "./util";
 import type {ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels} from "./index";
@@ -95,6 +96,14 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         const root = dialog.element.querySelector<HTMLElement>(".sw-home");
         if (!root) return;
         root.dataset.swSurface = "workbench";
+        // 记录最后交互的组件实例。点击 SurfaceNav 后焦点已移到导航按钮，
+        // 因此回跳目标必须在组件内部获得焦点时记住，不能在导航点击时读 activeElement。
+        let lastFocusedWidgetId = context?.objectKind === "widget" ? context.objectId || "" : "";
+        root.addEventListener("focusin", (event) => {
+            const target = event.target as HTMLElement | null;
+            const cell = target?.closest<HTMLElement>(".sw-home__cell");
+            if (cell && root.contains(cell)) lastFocusedWidgetId = cell.dataset.swObjectId || "";
+        });
         const platformLabels = this.getPlatformSurfaceLabels?.();
         const navigatePlatformSurface = this.openPlatformSurface
             ? (surface: PlatformSurface) => {
@@ -102,7 +111,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 // T-6869 编辑现场：经表面导航离开时记录编辑态，返回工作台时恢复。
                 this.workbenchResumeEditing = editing;
                 dialog.destroy();
-                this.openPlatformSurface?.(surface, "workbench", {entry: "surface-nav"});
+                this.openPlatformSurface?.(surface, "workbench", {
+                    entry: "surface-nav",
+                    ...(lastFocusedWidgetId ? {objectKind: "widget", objectId: lastFocusedWidgetId} : {}),
+                });
             }
             : undefined;
         let iconClampFrame = 0;
@@ -341,8 +353,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
                 const cell = document.createElement("section");
                 cell.className = "sw-home__cell";
+                cell.tabIndex = 0;
                 cell.dataset.size = sizeKey;
                 cell.dataset.moduleId = inst.moduleId;
+                cell.dataset.swObjectId = inst.instanceId;
                 cell.style.gridColumn = this.isMobile ? "1 / -1" : `span ${Math.min(12, preset.w)}`;
                 cell.style.gridRow = this.isMobile ? "auto" : `span ${Math.max(1, preset.h)}`;
                 // 强调色：按 moduleId 稳定散列到调色板，iPad 小组件的多彩感
@@ -352,10 +366,27 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 const body = document.createElement("div");
                 body.className = "sw-home__cell-body";
                 cell.appendChild(body);
-                // T-6880（P2 第二批）：单元对象描述（kind/title/健康三段 aria 语义）。
-                const describeCellObject = () =>
-                    `${this.i18n.homeObjectTitle} · ${def.title || inst.moduleId} · ${cell.dataset.swHealth === "failed" ? this.i18n.homeHealthFailed : this.i18n.homeHealthOk}`;
-                cell.setAttribute("aria-label", describeCellObject());
+                // T-6890：对象描述携带实例 id、来源、说明、能力和实时健康。
+                // 描述只供展示；刷新/配置/打开仍由原组件控制器执行。
+                const updateCellDescription = () => {
+                    const descriptor = projectWidgetObject(inst, def, cell.dataset.swHealth, this.homeModuleOpens.has(inst.moduleId));
+                    if (!descriptor) return;
+                    cell.dataset.swObjectStatus = descriptor.status;
+                    const healthLabel = descriptor.status === "error" ? this.i18n.homeHealthFailed
+                        : descriptor.status === "ready" ? this.i18n.homeHealthOk : this.i18n.homeLoading;
+                    cell.setAttribute("aria-label", `${this.i18n.homeObjectTitle} · ${descriptor.title} · ${healthLabel}`);
+                    const source = descriptor.source === "siyuan" ? this.i18n.homeStoreBuiltInSource
+                        : descriptor.source === "plugin" ? this.i18n.homeStoreTabPlugin
+                            : this.i18n.homeStorePluginSource.replace("{source}", descriptor.source);
+                    const capabilities = [
+                        descriptor.capabilities.includes("configure") ? this.i18n.homeConfig : "",
+                        descriptor.capabilities.includes("open") ? this.i18n.homeOpenPlugin : "",
+                    ].filter(Boolean);
+                    const detail = [source, descriptor.subtitle, ...capabilities].filter(Boolean).join(" · ");
+                    cell.setAttribute("aria-description", detail);
+                    cell.title = detail;
+                };
+                updateCellDescription();
 
                 const controller = createHomeModuleController({
                     document: window.document,
@@ -447,7 +478,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         } else {
                             cell.dataset.swHealthText = this.i18n.homeHealthFailed;
                         }
-                        cell.setAttribute("aria-label", describeCellObject());
+                        updateCellDescription();
                         updateWorkbenchReceipt();
                         return result;
                     },
@@ -787,9 +818,15 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         };
         renderPanel();
         scheduleIconClamp();
-        if (resumeEditToggleFocus) {
-            // T-6869 编辑现场恢复：焦点放回工具栏"编辑布局/完成"开关（首控件），
-            // 键盘用户可立即感知现场已恢复；preventScroll 避免面板跳动。
+        const targetWidget = context?.objectKind === "widget" && context.objectId
+            ? Array.from(root.querySelectorAll<HTMLElement>(".sw-home__cell"))
+                .find((cell) => cell.dataset.swObjectId === context.objectId)
+            : null;
+        if (targetWidget) {
+            targetWidget.focus({preventScroll: true});
+            targetWidget.scrollIntoView?.({block: "nearest"});
+        } else if (resumeEditToggleFocus || context?.entry === "back") {
+            // 对象被删或布局变化时回退到工作台工具栏；编辑现场仍优先恢复。
             root.querySelector<HTMLElement>(".sw-home__bar button")?.focus({preventScroll: true});
         }
 }

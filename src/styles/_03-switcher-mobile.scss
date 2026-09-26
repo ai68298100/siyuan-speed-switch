@@ -1808,6 +1808,17 @@
             }
         }
 
+        .sw__changed-badge {
+            flex: none;
+            padding: 1px 5px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--b3-theme-primary) 12%, var(--b3-theme-surface));
+            color: var(--b3-theme-primary);
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .sw__icon {
             flex: none;
             display: flex;
@@ -2211,6 +2222,17 @@
                     padding: 4px 114px 4px 8px;
                     font-size: 12px;
                     gap: 4px;
+
+                    // 手机窄卡保留改动语义，用色点避免与底栏三枚操作键争宽。
+                    .sw__changed-badge {
+                        width: 7px;
+                        height: 7px;
+                        padding: 0;
+                        border-radius: 50%;
+                        background: var(--b3-theme-primary);
+                        font-size: 0;
+                        overflow: hidden;
+                    }
 
                     .sw__icon svg {
                         width: 12px;

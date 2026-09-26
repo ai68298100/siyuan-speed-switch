@@ -791,13 +791,13 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
     // ContextBar 投影与上下文透传：chrome 挂载接受 context，表面导航带 entry。
     assert.match(indexSource, /const caption = buildSurfaceContextCaption\(\{surface: options\.surface, context: options\.context, labels: options\.labels\}\);/,
         'chrome mount must render through the caption builder');
-    assert.match(indexSource, /this\.openPlatformSurface\(surface, returnTo, \{entry: "surface-nav"\}\);/,
+    assert.match(indexSource, /this\.openPlatformSurface\(surface, returnTo, \{\s*\n\s*entry: "surface-nav",/,
         'desktop chrome nav must carry the surface-nav entry');
-    assert.match(secondPanelSource, /this\.openPlatformSurface\?\.\(surface, "workbench", \{entry: "surface-nav"\}\);/,
+    assert.match(secondPanelSource, /this\.openPlatformSurface\?\.\(surface, "workbench", \{\s*\n\s*entry: "surface-nav",/,
         'workbench chrome nav must carry the surface-nav entry');
-    assert.match(mobileSwitcherSource, /this\.openPlatformSurface\?\.\(surface, returnTo, \{entry: "surface-nav"\}\);/,
+    assert.match(mobileSwitcherSource, /this\.openPlatformSurface\?\.\(surface, returnTo, \{\s*\n\s*entry: "surface-nav",/,
         'mobile chrome nav must carry the surface-nav entry');
-    assert.match(indexSource, /this\.openPlatformSurface\(returnTo, "switcher", \{entry: "back"\}\);/,
+    assert.match(indexSource, /this\.openPlatformSurface\(returnTo, "switcher", \{\s*\n\s*entry: "back",/,
         'studio Back must carry the back entry');
 });
 
@@ -1062,8 +1062,8 @@ test('cross-surface snippet objects: workbench row and studio objectId selection
     // 跨表面动作：chip 携带 objectId 打开工作室定位片段（导航语义）。
     assert.match(indexSource, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
         'snippet chips must open the studio carrying the objectId');
-    assert.match(indexSource, /objectId: context\?\.objectId \|\| "",/,
-        'the studio mount must receive the objectId');
+    assert.match(indexSource, /objectId: !context\?\.objectKind \|\| context\.objectKind === "snippet" \? context\.objectId \|\| "" : "",/,
+        'the studio mount must receive snippet ids without mistaking a widget return id for a snippet');
     assert.match(indexSource, /objectId\?: string;/, 'the studio ambient module must declare objectId');
     // 工作室消费：就绪后 id 精确匹配、名称回退，且经脏稿守卫。
     assert.match(studioUi, /objectId = ""/, 'the studio mount must accept an objectId');
@@ -1118,10 +1118,14 @@ test('widget object descriptors and two-channel failure marking (T-6880)', () =>
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const homeWidgetsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss'));
     // 对象描述：kind/title/健康 三段 aria 语义，随健康变化重写。
-    assert.match(secondPanelSource, /cell\.setAttribute\("aria-label", describeCellObject\(\)\);/,
+    assert.match(secondPanelSource, /cell\.setAttribute\("aria-label", \`\$\{this\.i18n\.homeObjectTitle\} · \$\{descriptor\.title\} · \$\{healthLabel\}\`\);/,
         'each cell must carry its object descriptor as aria semantics');
-    assert.match(secondPanelSource, /describeCellObject = \(\) =>\s*\n\s*\`\$\{this\.i18n\.homeObjectTitle\} · \$\{def\.title \|\| inst\.moduleId\} · /,
-        'the descriptor must compose kind, module title and health');
+    assert.match(secondPanelSource, /const descriptor = projectWidgetObject\(inst, def, cell\.dataset\.swHealth, this\.homeModuleOpens\.has\(inst\.moduleId\)\);/,
+        'the descriptor must project the current instance and health');
+    assert.match(secondPanelSource, /cell\.setAttribute\("aria-description", detail\);/,
+        'the descriptor must expose source and capability detail');
+    assert.match(secondPanelSource, /updateCellDescription\(\);\s*\n\s*updateWorkbenchReceipt\(\);/,
+        'the descriptor must update before each health receipt');
     // 失败两通道：颜色边框之外补 attr() 文字 chip（OK 态清空标记）。
     assert.match(secondPanelSource, /cell\.dataset\.swHealthText = this\.i18n\.homeHealthFailed;/,
         'failed cells must set the chip text attribute');
@@ -1140,6 +1144,29 @@ test('widget object descriptors and two-channel failure marking (T-6880)', () =>
     assert.match(en, /"homeHealthFailed": "Failed"/);
     assert.match(en, /"homeHealthOk": "OK"/);
     assert.match(en, /"homeObjectTitle": "Widget"/);
+});
+
+test('workbench widget objectId returns to the exact instance (T-6890)', () => {
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));
+    assert.match(secondPanelSource, /cell\.dataset\.swObjectId = inst\.instanceId;/,
+        'the return target must use the instance id, not the module id');
+    assert.match(secondPanelSource, /cell\.tabIndex = 0;/,
+        'widget cards must be reachable by keyboard before their focus can be remembered');
+    assert.match(secondPanelSource, /lastFocusedWidgetId = cell\.dataset\.swObjectId \|\| "";/,
+        'focus within a widget must remember the instance before navigation moves focus');
+    assert.match(secondPanelSource, /objectKind: "widget", objectId: lastFocusedWidgetId/,
+        'workbench surface navigation must carry the selected widget');
+    assert.match(secondPanelSource, /cell\.dataset\.swObjectId === context\.objectId/,
+        'return must find the exact widget instance');
+    assert.match(secondPanelSource, /targetWidget\.focus\(\{preventScroll: true\}\);/,
+        'return must restore focus to the matched card');
+    assert.match(indexSource, /entry: "back", objectKind: context\?\.objectKind, objectId: context\?\.objectId/,
+        'studio Back must preserve the widget return context');
+    assert.match(indexSource, /entry: "surface-nav", objectKind: context\?\.objectKind, objectId: context\?\.objectId/,
+        'desktop switcher navigation must preserve the widget return context');
+    assert.match(mobileSwitcherSource, /entry: "surface-nav", objectKind: context\?\.objectKind, objectId: context\?\.objectId/,
+        'mobile switcher navigation must preserve the widget return context');
 });
 
 test('query-time snippet section: cached single-flight projection into search results (T-6881)', () => {
@@ -1204,8 +1231,44 @@ test('card updated-time badge: setting, ctx threading and meta rendering (T-6883
     // i18n 双语。
     const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
     const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
-    assert.match(zh, /"cardUpdatedBadgeLabel": "页签卡更新时间"/);
-    assert.match(en, /"cardUpdatedBadgeLabel": "Card updated time"/);
+    assert.match(zh, /"cardUpdatedBadgeLabel": "页签卡改动信息"/);
+    assert.match(en, /"cardUpdatedBadgeLabel": "Tab card changes"/);
+});
+
+test('card change marker shares the recent 7-day predicate and refreshes all tab surfaces (T-6892/T-6848)', () => {
+    const {declaresIn} = require('./css-block-scan.cjs');
+    const recent = readSourceText(path.join(__dirname, '..', 'src', 'recent-closed.js'));
+    const scss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    const zh = JSON.parse(require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'), 'utf8'));
+    const en = JSON.parse(require('node:fs').readFileSync(path.join(__dirname, '..', 'src', 'i18n', 'en.json'), 'utf8'));
+    const cardMeta = indexSource.slice(indexSource.indexOf('private buildCardMeta('), indexSource.indexOf('private buildCardIcon('));
+    const desktop = indexSource.slice(indexSource.indexOf('private bindSwitcherListArea('), indexSource.indexOf('private bindSearchInputComposition('));
+    const mobile = indexSource.slice(indexSource.indexOf('private renderMobileSwitcherList('), indexSource.indexOf('private buildMobileGroupGrid('));
+    const sidebar = indexSource.slice(indexSource.indexOf('private renderSidebarPanel('), indexSource.indexOf('private buildSidebarHtml('));
+    assert.ok(cardMeta.length > 600 && desktop.length > 600 && mobile.length > 300 && sidebar.length > 300,
+        'each scoped production method must be present before checking wiring');
+    assert.match(recent, /return updatedChangedWithin\(updated, windowStart\);/,
+        'recent changed-only filter must use the shared predicate');
+    assert.match(cardMeta, /if \(updatedChangedWithin\(updated, formatChangedWindowStart\(Date\.now\(\)\)\)\) \{/,
+        'card marker must use the same 7-day predicate and the same blocks.updated value');
+    assert.match(cardMeta, /changedEl\.className = "sw__changed-badge";\s*changedEl\.textContent = this\.i18n\.cardChangedBadge;/,
+        'the marker must render visible localized text');
+    assert.match(indexSource, /this\.syncCardState\(card, item\.tab, item\.tab\.id === ctx\.activeTabId, isPinned, isFaved, ctx\);/,
+        'reused cards must receive the current updated map');
+    assert.match(indexSource, /card\.querySelector<HTMLElement>\("\.sw__meta"\)\?\.replaceWith\(this\.buildCardMeta\(tab, ctx\)\);/,
+        'reused card meta must be rebuilt from current data');
+    for (const [surface, source] of [['desktop', desktop], ['mobile', mobile], ['sidebar', sidebar]]) {
+        assert.match(source, /this\.loadUpdatedMap\(/, `${surface} must request blocks.updated`);
+        assert.match(source, /this\.refreshCardUpdatedBadges\(/, `${surface} must refresh cards without a sort change`);
+    }
+    assert.ok(declaresIn(scss, '.speed-switch .sw__meta .sw__changed-badge', /color:\s*var\(--b3-theme-primary\)/, {topLevel: true}),
+        'the visible change chip needs a theme color');
+    assert.ok(declaresIn(scss, '.speed-switch.sw__mobile .sw__mobile-card .sw__meta .sw__changed-badge', /width:\s*7px/, {topLevel: true}),
+        'the mobile change marker stays compact beside the action rail');
+    assert.equal(zh.cardChangedBadge, '有改动');
+    assert.equal(en.cardChangedBadge, 'Changed');
+    assert.ok(zh.cardChangedBadgeTip.includes('7 天') && en.cardChangedBadgeTip.includes('7 days'),
+        'the precise seven-day meaning must be available on hover in both languages');
 });
 
 test('ball panel digit direct access: keydown lifecycle, hints and mobile guard (T-6884/T-6857)', () => {
@@ -1217,18 +1280,24 @@ test('ball panel digit direct access: keydown lifecycle, hints and mobile guard 
         'the digit keydown listener must attach on mount');
     assert.match(panelSource, /documentRef\.removeEventListener\?\.\("keydown", onMorePanelKeydown\);/,
         'destroy must remove the digit keydown listener');
-    // 直达语义：仅面板打开时生效；搜索框聚焦让路；修饰键组合不劫持；1-9 有界。
-    assert.match(panelSource, /if \(!open \|\| disposed\) return;\s*\n\s*if \(documentRef\.activeElement === searchInput\) return;/,
-        'digits only apply while the panel is open and search is not focused');
-    assert.match(panelSource, /if \(event\.ctrlKey \|\| event\.altKey \|\| event\.metaKey\) return;/,
+    // 直达语义：提示与键位共用解析结果，且可编辑目标保留数字输入。
+    const keySlice = panelSource.slice(panelSource.indexOf('function onMorePanelKeydown'), panelSource.indexOf('function positionMore'));
+    const hintSlice = panelSource.slice(panelSource.indexOf('function refreshDigitHints'), panelSource.indexOf('function onMorePanelKeydown'));
+    assert.ok(keySlice.length > 200 && hintSlice.length > 200, 'digit handler and hint resolver must both exist');
+    assert.match(keySlice, /if \(!open \|\| disposed\) return;/, 'digits only apply while the panel is open');
+    assert.match(keySlice, /isEditableTarget\(event\.target\) \|\| isEditableTarget\(documentRef\.activeElement\)/,
+        'editable targets must retain digit input');
+    assert.match(keySlice, /event\.ctrlKey \|\| event\.altKey \|\| event\.metaKey \|\| event\.shiftKey/,
         'modifier combos must not be hijacked');
-    assert.match(panelSource, /if \(!Number\.isInteger\(index\) \|\| index < 1 \|\| index > 9\) return;/,
-        'digit direct access is bounded to 1-9');
-    assert.match(panelSource, /\.filter\(\(row\) => !row\.hidden\);\s*\n\s*const row = visibleRows\[index - 1\];/,
-        'only visible rows participate in digit direct access');
-    // 数字芯片提示：桌面标注、移动端不标注；hidden 行不占号。
-    assert.match(panelSource, /if \(surface !== "mobile" && index < 9\) row\.dataset\.digit = String\(index \+ 1\);/,
-        'digit hints are desktop-only and capped at 9');
+    assert.match(keySlice, /\/\^\[1-9\]\$\/\.test\(event\.key\)/, 'digit direct access is bounded to 1-9');
+    assert.match(keySlice, /const target = digitTargets\[Number\(event\.key\) - 1\];/,
+        'the keydown path must consume the resolved digit target');
+    assert.match(hintSlice, /digitTargets = resolveFloatingBallDigitTargets\(config, surface, rows\.map/,
+        'the hint path must use the same resolver');
+    assert.match(hintSlice, /visible: !row\.hidden, enabled: !button\.disabled/,
+        'hidden and disabled rows must not become digit targets');
+    assert.match(hintSlice, /if \(surface !== "mobile" && candidate\) candidate\.row\.dataset\.digit = String\(index \+ 1\);/,
+        'digit hints are desktop-only and follow the resolved slot');
     const filterSlice = panelSource.slice(panelSource.indexOf('function filterRows'), panelSource.indexOf('function refreshDigitHints'));
     assert.match(filterSlice, /refreshDigitHints\(\);/, 'filterRows must refresh the digit hints');
     // CSS：attr() 渲染芯片（零 DOM）且不挡交互（嵌套 SCSS 用展开后完整选择器）。
@@ -1236,6 +1305,31 @@ test('ball panel digit direct access: keydown lifecycle, hints and mobile guard 
         'the digit chip must render via attr()');
     assert.ok(declaresIn(moreScss, '.sw-fab-root.sw__fab .sw__floating-ball-more .sw__floating-ball-more-row[data-digit]::before', /pointer-events:\s*none/),
         'the digit chip must not intercept pointer interactions');
+});
+
+test('ball fixed digit slots: live action catalog, saved-search identity and configuration gestures (T-6891)', () => {
+    const panelSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-panel.js'));
+    const resolver = panelSource.slice(panelSource.indexOf('function resolveFloatingBallDigitTargets'), panelSource.indexOf('function safeIconId'));
+    const render = panelSource.slice(panelSource.indexOf('function render()'), panelSource.indexOf('function focusMoreEntry'));
+    const keydown = panelSource.slice(panelSource.indexOf('function onMorePanelKeydown'), panelSource.indexOf('function positionMore'));
+    const gesture = panelSource.slice(panelSource.indexOf('function attachConfigurationGesture'), panelSource.indexOf('function syncFirstLayerVisibility'));
+    const configure = panelSource.slice(panelSource.indexOf('function configureDigitSlot'), panelSource.indexOf('function attachConfigurationGesture'));
+    assert.ok(resolver.length > 400 && render.length > 400 && keydown.length > 200 && gesture.length > 200,
+        'fixed-slot implementation slices must exist');
+    assert.match(resolver, /if \(target\.fixed\) return;/, 'only empty slots may receive dynamic fallback');
+    assert.match(render, /availableActions\.find\(\(item\) => actionIdOf\(item\) === reference\.actionId\)/,
+        'fixed actions must resolve against the current catalog, even if absent from config.actions');
+    assert.match(render, /const savedSearches = collectSavedSearches\(options\.savedSearches\);/,
+        'saved searches must remain a separate panel data source');
+    assert.match(panelSource, /options\.onSavedSearch\?\.\(\{searchId: saved\.id\}, surface\);/,
+        'saved-search execution must send only an id for host revalidation');
+    assert.match(keydown, /options\.onUnavailable\?\.\(target\.reference, surface\);/,
+        'a stale fixed slot must report unavailability instead of falling through');
+    assert.match(render, /digitSlotBound: true/, 'fixed action activation must request a host capability recheck');
+    assert.equal((gesture.match(/configureDigitSlot\(reference\);/g) || []).length, 2,
+        'context menu and long press must invoke the same configuration path');
+    assert.match(configure, /options\.onConfigureDigitSlot\(index, reference, surface\);/,
+        'the configuration path must delegate the slot and reference to the host');
 });
 
 test('flick radial actions: direction classifier, host dispatch and config defaults (T-6886/T-6858 batch 1)', () => {

@@ -4,7 +4,8 @@
 // portal and pointer gestures; this module owns only action selection and the
 // small first-layer/more-actions DOM subtree.  Keeping the two boundaries
 // independent makes the panel usable by desktop, sidebar and mobile hosts.
-const {FLOATING_BALL_MORE_ACTION_ID, FLOATING_BALL_FIRST_LAYER_LIMIT} = require("./floating-ball-model.js");
+const {FLOATING_BALL_MORE_ACTION_ID, FLOATING_BALL_FIRST_LAYER_LIMIT,
+    normalizeFloatingBallDigitSlots} = require("./floating-ball-model.js");
 const {getBuiltinQuickActions, createQuickActionRegistry} = require("./quick-actions.js");
 const {
     normalizeFloatingBallConfig,
@@ -33,6 +34,8 @@ const DEFAULT_LABELS = Object.freeze({
     enabled: "启用",
     manage: "管理快捷动作",
     toggleFailed: "未能保存，请重试",
+    savedSearches: "保存的搜索",
+    configureDigitSlot: "长按或右键配置数字槽",
 });
 
 function actionIdOf(action) {
@@ -168,6 +171,61 @@ function selectFloatingBallMoreActions(config, surface, availableActions = [], o
     return result;
 }
 
+function collectSavedSearches(value) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const searches = [];
+    for (const raw of value) {
+        if (searches.length >= 16) break;
+        if (!raw || typeof raw !== "object") continue;
+        const id = typeof raw.id === "string" ? raw.id.trim().slice(0, 64) : "";
+        const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 40) : "";
+        const query = typeof raw.query === "string" ? raw.query.trim().slice(0, 120) : "";
+        if (!id || !name || !query || seen.has(id)) continue;
+        seen.add(id);
+        searches.push({id, name, query,
+            ...(typeof raw.notebook === "string" && raw.notebook.trim()
+                ? {notebook: raw.notebook.trim().slice(0, 64)} : {})});
+    }
+    return searches;
+}
+
+function digitReferenceKey(reference) {
+    if (reference?.kind === "action" && typeof reference.actionId === "string" && reference.actionId) {
+        return `action:${reference.actionId}`;
+    }
+    if (reference?.kind === "saved-search" && typeof reference.searchId === "string" && reference.searchId) {
+        return `saved-search:${reference.searchId}`;
+    }
+    return "";
+}
+
+/** Fixed bindings reserve their digit even when the target disappeared, is disabled, or is filtered out. */
+function resolveFloatingBallDigitTargets(config, surface, candidates = []) {
+    const slots = normalizeFloatingBallDigitSlots(config?.digitSlots)[surface] || [];
+    const available = (Array.isArray(candidates) ? candidates : [])
+        .filter((candidate) => candidate?.visible !== false && candidate?.enabled !== false
+            && digitReferenceKey(candidate.reference));
+    const byKey = new Map(available.map((candidate) => [digitReferenceKey(candidate.reference), candidate]));
+    const used = new Set();
+    const targets = slots.map((reference) => {
+        const key = digitReferenceKey(reference);
+        if (!key) return {reference: null, candidate: null, fixed: false};
+        const candidate = used.has(key) ? null : (byKey.get(key) || null);
+        if (candidate) used.add(key);
+        return {reference, candidate, fixed: true};
+    });
+    let cursor = 0;
+    targets.forEach((target, index) => {
+        if (target.fixed) return;
+        while (cursor < available.length && used.has(digitReferenceKey(available[cursor].reference))) cursor += 1;
+        const candidate = available[cursor++] || null;
+        if (candidate) used.add(digitReferenceKey(candidate.reference));
+        targets[index] = {reference: candidate?.reference || null, candidate, fixed: false};
+    });
+    return targets;
+}
+
 function safeIconId(raw, fallback = "iconPlugin") {
     const value = typeof raw === "string" ? raw.trim() : "";
     return /^[A-Za-z][A-Za-z0-9_-]*$/.test(value) ? value : fallback;
@@ -268,6 +326,45 @@ function makeActionButton(documentRef, action, onActivate, labels, extraClass = 
     return button;
 }
 
+function makeSavedSearchButton(documentRef, saved, onActivate, labels, enabled) {
+    const button = documentRef.createElement("button");
+    button.type = "button";
+    button.className = "sw__floating-ball-action is-more-item";
+    button.dataset.savedSearchId = saved.id;
+    button.setAttribute("aria-label", `${saved.name} · ${labels.savedSearches} · ${saved.query}`);
+    button.title = `${saved.name} · ${saved.query}`;
+    const icon = documentRef.createElement("span");
+    icon.className = "sw__floating-ball-action-icon";
+    appendActionIcon(documentRef, icon, {icon: "iconSearch"});
+    const label = documentRef.createElement("span");
+    label.className = "sw__floating-ball-action-label";
+    label.textContent = saved.name;
+    const details = documentRef.createElement("span");
+    details.className = "sw__floating-ball-action-details";
+    details.textContent = saved.query;
+    button.append(icon, label, details);
+    if (enabled) button.addEventListener("click", () => onActivate(saved));
+    else {
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
+        button.classList.add("is-unavailable");
+    }
+    return button;
+}
+
+function isEditableTarget(target) {
+    let element = target?.nodeType === 1 ? target : target?.parentElement;
+    while (element) {
+        const tag = element.tagName?.toLowerCase();
+        if (["input", "textarea", "select"].includes(tag) || element.isContentEditable === true
+            || element.getAttribute?.("role") === "textbox") return true;
+        const editable = element.getAttribute?.("contenteditable");
+        if (editable !== null && editable !== "false") return true;
+        element = element.parentElement || element.getRootNode?.()?.host || null;
+    }
+    return false;
+}
+
 /**
  * Mount a first-layer strip and an expandable more-actions drawer.
  *
@@ -292,6 +389,8 @@ function createFloatingBallPanelController(options = {}) {
     let manageButton = null;
     let searchQuery = "";
     let rows = [];
+    let digitTargets = [];
+    let configureTimer = null;
     let lastFocusedElement = null;
     let lastFocusedActionId = null;
     let config = options.config;
@@ -323,6 +422,83 @@ function createFloatingBallPanelController(options = {}) {
         options.onAction?.(item);
     }
 
+    function activateSavedSearch(saved) {
+        closeMore({restoreFocus: false});
+        options.onSavedSearch?.({searchId: saved.id}, surface);
+    }
+
+    function clearConfigureTimer() {
+        if (configureTimer !== null) clearTimeout(configureTimer);
+        configureTimer = null;
+    }
+
+    function configuredSlotIndex(reference) {
+        const key = digitReferenceKey(reference);
+        if (!key) return null;
+        const slots = normalizeFloatingBallDigitSlots(config?.digitSlots)[surface] || [];
+        const index = slots.findIndex((slot) => digitReferenceKey(slot) === key);
+        return index < 0 ? null : index;
+    }
+
+    function configureDigitSlot(reference) {
+        if (typeof options.onConfigureDigitSlot !== "function") return;
+        const index = configuredSlotIndex(reference);
+        closeMore({restoreFocus: false});
+        options.onConfigureDigitSlot(index, reference, surface);
+    }
+
+    function attachConfigurationGesture(row, button, reference) {
+        if (typeof options.onConfigureDigitSlot !== "function") return;
+        button.title = [button.title, labels.configureDigitSlot].filter(Boolean).join(" · ");
+        button.setAttribute("aria-description", labels.configureDigitSlot);
+        let suppressClick = false;
+        let longPressAt = 0;
+        let start = null;
+        row.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            clearConfigureTimer();
+            if (Date.now() - longPressAt < 1200) return;
+            configureDigitSlot(reference);
+        });
+        row.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 || !button.contains(event.target)) return;
+            clearConfigureTimer();
+            suppressClick = false;
+            longPressAt = 0;
+            start = {x: event.clientX, y: event.clientY};
+            configureTimer = setTimeout(() => {
+                configureTimer = null;
+                if (!open || disposed || !row.isConnected) return;
+                suppressClick = true;
+                longPressAt = Date.now();
+                configureDigitSlot(reference);
+            }, 550);
+        });
+        row.addEventListener("pointermove", (event) => {
+            if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) {
+                start = null;
+                clearConfigureTimer();
+            }
+        });
+        row.addEventListener("pointerleave", () => {
+            start = null;
+            clearConfigureTimer();
+        });
+        const endPointer = () => {
+            start = null;
+            clearConfigureTimer();
+            if (suppressClick) setTimeout(() => { suppressClick = false; }, 0);
+        };
+        row.addEventListener("pointerup", endPointer);
+        row.addEventListener("pointercancel", endPointer);
+        row.addEventListener("click", (event) => {
+            if (!suppressClick) return;
+            suppressClick = false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
+    }
+
     function syncFirstLayerVisibility() {
         if (!firstLayerHost) return;
         firstLayerHost.hidden = open;
@@ -349,32 +525,34 @@ function createFloatingBallPanelController(options = {}) {
         refreshDigitHints();
     }
 
-    // T-6884（T-6857）：数字直达提示——桌面端前 9 个可见行标注 1-9（hidden 行
-    // 不占号）；移动端无键盘不标注。行 DOM 重建/过滤后都重算。
+    // Fixed bindings and empty-slot fallback share one resolved mapping for
+    // key dispatch and desktop hints. Hidden/disabled rows never receive a hint.
     function refreshDigitHints() {
         if (!listHost) return;
-        const visibleRows = Array.from(listHost.querySelectorAll(".sw__floating-ball-more-row"))
-            .filter((row) => !row.hidden);
-        visibleRows.forEach((row, index) => {
-            if (surface !== "mobile" && index < 9) row.dataset.digit = String(index + 1);
-            else delete row.dataset.digit;
+        digitTargets = resolveFloatingBallDigitTargets(config, surface, rows.map(({row, button, reference}) => ({
+            row, button, reference, visible: !row.hidden, enabled: !button.disabled,
+        })));
+        rows.forEach(({row}) => { delete row.dataset.digit; });
+        digitTargets.forEach(({candidate}, index) => {
+            if (surface !== "mobile" && candidate) candidate.row.dataset.digit = String(index + 1);
         });
     }
 
-    // T-6884（T-6857）：面板打开时按 1-9 直达第 n 个可见动作行（与数字芯片一致）。
-    // 搜索框聚焦时让路（数字是合法查询）；修饰键组合不劫持。
+    // Fixed slots and visible-row fallback use the same resolver as the hints.
+    // Editable targets, including hosts outside the drawer, keep their digits.
     function onMorePanelKeydown(event) {
         if (!open || disposed) return;
-        if (documentRef.activeElement === searchInput) return;
-        if (event.ctrlKey || event.altKey || event.metaKey) return;
-        const index = Number(event.key);
-        if (!Number.isInteger(index) || index < 1 || index > 9) return;
-        const visibleRows = Array.from(listHost?.querySelectorAll(".sw__floating-ball-more-row") || [])
-            .filter((row) => !row.hidden);
-        const row = visibleRows[index - 1];
-        if (!row) return;
-        const button = row.querySelector("button");
-        if (!button) return;
+        if (isEditableTarget(event.target) || isEditableTarget(documentRef.activeElement)) return;
+        if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || event.isComposing) return;
+        if (!/^[1-9]$/.test(event.key)) return;
+        const target = digitTargets[Number(event.key) - 1];
+        if (target?.fixed && !target.candidate) {
+            event.preventDefault();
+            options.onUnavailable?.(target.reference, surface);
+            return;
+        }
+        const button = target?.candidate?.button;
+        if (!button?.isConnected || button.disabled) return;
         event.preventDefault();
         button.click();
     }
@@ -436,8 +614,10 @@ function createFloatingBallPanelController(options = {}) {
 
     function render() {
         if (disposed || !root || !firstLayerHost || !moreHost) return;
+        clearConfigureTimer();
         const active = documentRef.activeElement;
         const focusedId = active?.getAttribute?.("data-action-id");
+        const focusedSearchId = active?.getAttribute?.("data-saved-search-id");
         const focusedToggleId = active?.getAttribute?.("data-toggle-action-id");
         const ownedFocus = root.contains(active);
         const scrollTop = moreHost.scrollTop;
@@ -478,10 +658,31 @@ function createFloatingBallPanelController(options = {}) {
         selectFloatingBallMoreActions(config, surface, availableActions, {...options, labels}).forEach((action) => {
             if (!drawerActions.has(action.actionId)) drawerActions.set(action.actionId, {...action, canToggle: true});
         });
+        // A fixed slot may point at any current catalog action, including one
+        // not placed in config.actions. Resolve it live and show a recoverable
+        // disabled row when its provider or surface capability disappeared.
+        (normalizeFloatingBallDigitSlots(config?.digitSlots)[surface] || []).forEach((reference) => {
+            if (reference?.kind !== "action" || drawerActions.has(reference.actionId)) return;
+            const raw = availableActions.find((item) => actionIdOf(item) === reference.actionId);
+            const descriptor = descriptors.find((item) => item.actionId === reference.actionId);
+            const presented = raw ? applyFloatingBallActionPresentation(raw, descriptor) : {
+                id: reference.actionId, actionId: reference.actionId, value: reference.actionId,
+                label: reference.actionId, icon: "iconPlugin", kind: "adapter", providerMissing: true,
+            };
+            let availability = raw
+                ? resolveFloatingActionAvailability(presented, surface, options)
+                : {status: "unknown", reason: "provider-missing"};
+            if (availability.status === "unsupported") availability = {status: "unavailable", reason: "unsupported"};
+            if (descriptor?.enabled === false) availability = {status: "unavailable", reason: "disabled"};
+            drawerActions.set(reference.actionId, {...localizeAction(presented, labels, options),
+                availability, configuredEnabled: descriptor?.enabled !== false, canToggle: Boolean(descriptor)});
+        });
         const moreActions = [...drawerActions.values()];
+        const savedSearches = collectSavedSearches(options.savedSearches);
         rows = [];
-        ["builtin", "component", "plugin", "other"].forEach((groupName) => {
-            const groupActions = moreActions.filter((action) => actionGroup(action) === groupName);
+        ["builtin", "component", "plugin", "savedSearches", "other"].forEach((groupName) => {
+            const groupActions = groupName === "savedSearches" ? savedSearches
+                : moreActions.filter((action) => actionGroup(action) === groupName);
             if (!groupActions.length) return;
             const group = documentRef.createElement("section");
             group.className = "sw__floating-ball-more-group";
@@ -494,7 +695,25 @@ function createFloatingBallPanelController(options = {}) {
             groupActions.forEach((action) => {
                 const row = documentRef.createElement("div");
                 row.className = "sw__floating-ball-more-row";
-                row.appendChild(makeActionButton(documentRef, action, activateAction, labels, "is-more-item"));
+                if (groupName === "savedSearches") {
+                    const saved = action;
+                    const button = makeSavedSearchButton(documentRef, saved, activateSavedSearch, labels,
+                        typeof options.onSavedSearch === "function");
+                    const reference = {kind: "saved-search", searchId: saved.id};
+                    row.appendChild(button);
+                    attachConfigurationGesture(row, button, reference);
+                    group.appendChild(row);
+                    rows.push({row, button, reference,
+                        search: [saved.name, saved.id, saved.query, saved.notebook]
+                            .filter(Boolean).join(" ").toLocaleLowerCase()});
+                    return;
+                }
+                const reference = {kind: "action", actionId: action.actionId};
+                const button = makeActionButton(documentRef, action, (item) => activateAction(
+                    configuredSlotIndex(reference) === null ? item : {...item, digitSlotBound: true}),
+                labels, "is-more-item");
+                row.appendChild(button);
+                attachConfigurationGesture(row, button, reference);
                 if (typeof options.onToggleAction === "function" && action.canToggle) {
                     const toggleLabel = documentRef.createElement("label");
                     toggleLabel.className = "sw__floating-ball-more-toggle";
@@ -524,7 +743,7 @@ function createFloatingBallPanelController(options = {}) {
                     row.appendChild(toggleLabel);
                 }
                 group.appendChild(row);
-                rows.push({row, search: [action.label, action.actionId, action.value,
+                rows.push({row, button, reference, search: [action.label, action.actionId, action.value,
                     action.providerId, action.providerName, actionSource(action, labels)]
                     .filter(Boolean).join(" ").toLocaleLowerCase()});
             });
@@ -545,8 +764,9 @@ function createFloatingBallPanelController(options = {}) {
         moreButton?.setAttribute("aria-expanded", String(open));
         moreHost.scrollTop = scrollTop;
         if (ownedFocus && active !== searchInput && !active?.isConnected) {
-            const key = focusedToggleId ? "data-toggle-action-id" : "data-action-id";
-            const id = focusedToggleId || focusedId;
+            const key = focusedToggleId ? "data-toggle-action-id"
+                : focusedSearchId ? "data-saved-search-id" : "data-action-id";
+            const id = focusedToggleId || focusedSearchId || focusedId;
             const target = id ? [...root.querySelectorAll(`[${key}]`)]
                 .find((item) => item.getAttribute(key) === id && canFocus(item)) : null;
             if (canFocus(target)) target.focus({preventScroll: true});
@@ -636,6 +856,7 @@ function createFloatingBallPanelController(options = {}) {
 
     function closeMore(closeOptions = {}) {
         if (disposed || !open) return;
+        clearConfigureTimer();
         const restore = lastFocusedElement;
         const shouldRestore = closeOptions.restoreFocus !== false && moreHost?.contains(documentRef.activeElement);
         open = false;
@@ -671,6 +892,7 @@ function createFloatingBallPanelController(options = {}) {
 
     function destroy() {
         if (disposed) return;
+        clearConfigureTimer();
         const activeInside = root?.contains(documentRef.activeElement);
         const fallback = canFocus(lastFocusedElement) && !root?.contains(lastFocusedElement)
             ? lastFocusedElement : container.querySelector?.(".sw-fab-trigger");
@@ -691,6 +913,7 @@ function createFloatingBallPanelController(options = {}) {
         emptyHost = null;
         manageButton = null;
         rows = [];
+        digitTargets = [];
         mounted = false;
     }
 
@@ -735,6 +958,7 @@ function createFloatingBallPanelController(options = {}) {
 module.exports = {
     DEFAULT_LABELS,
     collectFloatingBallActions,
+    resolveFloatingBallDigitTargets,
     selectFloatingBallMoreActions,
     createFloatingBallPanelController,
     makeFloatingBallMoreAction,

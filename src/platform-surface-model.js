@@ -34,9 +34,10 @@ function normalizeSurfaceContext(input) {
     if (!input || typeof input !== "object") return null;
     const entry = PLATFORM_SURFACE_ENTRIES.includes(input.entry) ? input.entry : "unknown";
     const objectId = cleanSurfaceText(input.objectId, SURFACE_OBJECT_ID_MAX);
+    const objectKind = PLATFORM_OBJECT_KINDS.includes(input.objectKind) ? input.objectKind : "";
     const query = cleanSurfaceText(input.query, SURFACE_QUERY_MAX);
     if (entry === "unknown" && !objectId && !query) return null;
-    return {entry, objectId, query};
+    return {...(objectKind ? {objectKind} : {}), entry, objectId, query};
 }
 
 /**
@@ -112,6 +113,30 @@ function projectSnippetObjects(response, options = {}) {
     return filterSnippetObjects(list, cleanSurfaceText(options.query, SURFACE_QUERY_MAX), limit);
 }
 
+/**
+ * 工作台实例的展示描述。instanceId 是回跳目标，moduleId 是组件型号；
+ * 两者不能混用，否则同一型号添加两张卡片时会定位到错误实例。
+ * 这里只描述对象和可用能力，执行仍归宿主组件控制器。
+ */
+function projectWidgetObject(instance, definition, health = "loading", hasOpen = false) {
+    const id = cleanSurfaceText(instance?.instanceId, SURFACE_OBJECT_ID_MAX);
+    const moduleId = cleanSurfaceText(instance?.moduleId, SNIPPET_ID_MAX);
+    if (!id || !moduleId || !definition || typeof definition !== "object") return null;
+    const title = cleanSurfaceText(definition.title, SNIPPET_NAME_MAX) || moduleId;
+    const subtitle = cleanSurfaceText(definition.description, 160);
+    const source = cleanSurfaceText(definition.source?.name, 64)
+        || cleanSurfaceText(definition.source?.pluginId, 64)
+        || (definition.category === "siyuan" ? "siyuan" : "plugin");
+    const capabilities = ["refresh"];
+    if (Array.isArray(definition.configSchema) && definition.configSchema.length > 0) capabilities.push("configure");
+    if (hasOpen === true || (typeof definition.clickCommand === "string" && definition.clickCommand.trim())) capabilities.push("open");
+    return {
+        id, kind: "widget", title, subtitle, source,
+        status: health === "failed" ? "error" : health === "ok" ? "ready" : "loading",
+        capabilities, sideEffect: "none", surfaces: ["workbench"],
+    };
+}
+
 module.exports = {
     PLATFORM_SURFACE_IDS,
     PLATFORM_SURFACE_ENTRIES,
@@ -125,4 +150,5 @@ module.exports = {
     buildSurfaceContextCaption,
     projectSnippetObjects,
     filterSnippetObjects,
+    projectWidgetObject,
 };

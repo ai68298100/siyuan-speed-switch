@@ -19,7 +19,7 @@ assert.ok(pluginClass, "production plugin class must be found");
 const methodNames = [
     "createFloatingBallSurface", "destroyFloatingBallSurface", "persistFloatingBallPosition",
     "suspendFABForDialog", "updateFloatingBallVisibility", "executeFloatingBallSurfaceAction", "getFloatingBallActions",
-    "refreshFloatingBallPanels",
+    "refreshFloatingBallPanels", "executeFloatingBallSavedSearch", "executeFloatingBallBoundAction",
     // T-6869：悬浮球 onSwitcher 恢复链依赖的平台路由方法（openPlatformFromBall →
     // openPlatformSurface → notePlatformSurface / getAvailablePlatformSurfaces）。
     "openPlatformFromBall", "openPlatformSurface", "notePlatformSurface", "getAvailablePlatformSurfaces",
@@ -37,11 +37,11 @@ function compileHost(transform = (source) => source) {
 }
 
 function mount(t, options = {}) {
-    const dom = new JSDOM("<!doctype html><body><aside><input class='sw__search'></aside></body>");
+    const dom = new JSDOM("<!doctype html><body><aside class='speed-switch'><input class='sw__search'><div class='sw__scroll'></div></aside></body>");
     const {document} = dom.window;
     t.after(() => dom.window.close());
-    const calls = {created: [], panels: [], switcher: [], settings: [], home: [], messages: [], warnings: []};
-    let settings = {floatingBall: options.config || createDefaultFloatingBallConfig()};
+    const calls = {created: [], panels: [], switcher: [], settings: [], home: [], messages: [], warnings: [], savedSearch: []};
+    let settings = {floatingBall: options.config || createDefaultFloatingBallConfig(), savedSearches: options.savedSearches || []};
     const createFloatingBallUi = (config) => {
         const root = document.createElement("div");
         root.dataset.surface = config.surface;
@@ -79,7 +79,12 @@ function mount(t, options = {}) {
     };
     const dependencies = {
         window: dom.window, document, createFloatingBallUi, createFloatingBallPanelController, createFloatingBallActionExecutor,
-        resolveFloatingBallClickAction, resolveQuickActionLabel,
+        resolveFloatingBallClickAction, resolveFloatingActionAvailability: require("../src/floating-ball-model.js").resolveFloatingActionAvailability,
+        resolveQuickActionLabel,
+        applySavedSearchFilters(scroll, input, saved) {
+            calls.savedSearch.push({scroll, input, saved});
+            input.value = saved.query;
+        },
         // T-6869：openPlatformSurface/notePlatformSurface/getAvailablePlatformSurfaces
         // 提取自生产类，其引用的平台模型导入与模块常量需在桩作用域提供。
         ...require("../src/platform-surface-model.js"),
@@ -99,6 +104,7 @@ function mount(t, options = {}) {
         app: {plugins: []}, quickActionAdapters: new Map(), quickActionRegistry: null,
         i18n: {...i18n, switchTabs: "Switcher", floatingBallMore: "More", close: "Close", quickActionUnavailable: "Unavailable", quickActionFailed: "Failed"},
         getSettings: () => settings,
+        getSavedSearches: () => settings.savedSearches,
         updateSettings(patch) { settings = {...settings, ...patch}; },
         getFloatingBallActions: () => [], getQuickActionSupport: () => "supported", getQuickActionDeclaredTargets: () => undefined,
         getDockByType: () => null, openJournal() {},
@@ -134,6 +140,136 @@ function assertConfiguredClickRouting(t, options = {}) {
 
 test("floating ball host primary click uses each surface selection and live changes", (t) => {
     assertConfiguredClickRouting(t);
+});
+
+function assertSavedSearchPlayback(t, options = {}) {
+    const savedSearches = [{id: "saved-1", name: "Daily", query: "daily", notebook: "nb-1"}];
+    const {host, calls, document} = mount(t, {...options, savedSearches});
+    host.showSwitcher = () => {
+        calls.switcher.push("open");
+        const root = document.createElement("section");
+        root.className = "speed-switch";
+        root.innerHTML = "<input class='sw__search'><div class='sw__scroll'></div>";
+        document.body.appendChild(root);
+        const dialog = {element: root, destroy: () => root.remove()};
+        if (host.isMobile) host.mobileSwitcherDialog = dialog;
+        else host.platformSwitcherDialog = dialog;
+    };
+    const stale = host.executeFloatingBallSavedSearch("desktop", {searchId: "deleted-id"});
+    assert.deepEqual(stale, {ok: false, reason: "unavailable"});
+    assert.equal(calls.switcher.length, 0, "a deleted binding must not open or replay a different search");
+    assert.equal(calls.messages.length, 1, "a deleted binding reports unavailable feedback");
+    const result = host.executeFloatingBallSavedSearch("desktop", {searchId: "saved-1"});
+    assert.deepEqual(result, {ok: true});
+    assert.equal(calls.switcher.length, 1);
+    assert.equal(calls.savedSearch[0].saved.query, "daily", "playback uses the current saved query");
+    assert.equal(calls.savedSearch[0].saved.notebook, "nb-1");
+    assert.equal(calls.savedSearch[0].input.value, "daily");
+    const sidebar = host.executeFloatingBallSavedSearch("sidebar", {searchId: "saved-1"});
+    assert.deepEqual(sidebar, {ok: true});
+    assert.equal(calls.savedSearch[1].scroll, host.sidebarElement.querySelector(".sw__scroll"),
+        "sidebar playback reuses its mounted search surface");
+    assert.equal(calls.switcher.length, 1, "sidebar does not open a second switcher");
+    host.isMobile = true;
+    const mobile = host.executeFloatingBallSavedSearch("mobile", {searchId: "saved-1"});
+    assert.deepEqual(mobile, {ok: true});
+    assert.equal(calls.switcher.length, 2);
+    assert.equal(calls.savedSearch[2].input.value, "daily", "mobile playback uses its own switcher");
+}
+
+test("T-6891 floating ball host resolves saved-search IDs at playback time", (t) => {
+    assertSavedSearchPlayback(t);
+});
+
+test("T-6891 saved-search host contract detects stale-ID fallback", (t) => {
+    const original = methods.join("\n");
+    const target = "this.getSavedSearches().find((item) => item?.id === searchId)";
+    assert.equal(original.split(target).length - 1, 1);
+    assert.throws(() => assertSavedSearchPlayback(t, {transformSource: (source) => source.replace(target,
+        "this.getSavedSearches()[0]")}),
+    (error) => error instanceof assert.AssertionError && error.actual?.ok === true && error.expected?.ok === false);
+});
+
+function assertBoundActionLiveCheck(t, options = {}) {
+    const {host, config, calls} = mount(t, options);
+    const executed = [];
+    const action = {id: "external", kind: "command", value: "provider::open", targets: ["desktop"], enabled: true, available: true};
+    const collision = {id: "wrong", kind: "adapter", value: "external", targets: ["desktop"], enabled: true, available: true};
+    host.getFloatingBallActions = () => [collision, action];
+    host.getQuickActionSupport = () => "supported";
+    host.executeFloatingBallSurfaceAction = (surface, resolved) => executed.push([surface, resolved.id]);
+    config.actions.desktop = [];
+    host.createFloatingBallSurface("desktop");
+    const panel = calls.panels[0];
+    panel.config.onAction({id: "external", digitSlotBound: true});
+    assert.deepEqual(executed, [["desktop", "external"]], "unconfigured catalog action is executable by fixed slot");
+    action.available = false;
+    panel.config.onAction({id: "external", digitSlotBound: true});
+    assert.equal(executed.length, 1, "provider loss between render and click must prevent execution");
+    action.available = true;
+    host.getQuickActionSupport = () => "unsupported";
+    panel.config.onAction({id: "external", digitSlotBound: true});
+    assert.equal(executed.length, 1, "current surface capability must be rechecked");
+    host.getQuickActionSupport = () => "supported";
+    config.actions.desktop = [{actionId: "external", enabled: false, firstLayer: false, order: 10}];
+    panel.config.onAction({id: "external", digitSlotBound: true});
+    assert.equal(executed.length, 1, "a disabled descriptor must not be bypassed by a digit slot");
+    assert.equal(calls.messages.length, 3, "each unavailable attempt reports feedback");
+}
+
+test("T-6891 bound actions recheck the current catalog and surface capability", (t) => {
+    assertBoundActionLiveCheck(t);
+});
+
+test("T-6891 bound-action host contract detects blind stale execution", (t) => {
+    const original = methods.join("\n");
+    const target = 'descriptor?.enabled === false || availability.status !== "supported"';
+    assert.equal(original.split(target).length - 1, 1);
+    assert.throws(() => assertBoundActionLiveCheck(t, {transformSource: (source) => source.replace(target, "false")}),
+        (error) => error instanceof assert.AssertionError && error.message.includes("provider loss"));
+});
+
+test("T-6891 floating ball panel callbacks route search references and unavailable feedback", (t) => {
+    const {host, calls, document} = mount(t, {savedSearches: [{id: "saved-1", name: "Daily", query: "daily"}]});
+    host.showSwitcher = () => {
+        const root = host.sidebarElement.ownerDocument.createElement("section");
+        root.className = "speed-switch";
+        root.innerHTML = "<input class='sw__search'><div class='sw__scroll'></div>";
+        root.ownerDocument.body.appendChild(root);
+        host.platformSwitcherDialog = {element: root, destroy: () => root.remove()};
+    };
+    host.createFloatingBallSurface("desktop");
+    const callbacks = calls.panels[0].config;
+    callbacks.onSavedSearch({searchId: "saved-1"});
+    assert.equal(calls.savedSearch[0].saved.id, "saved-1");
+    callbacks.onUnavailable({kind: "saved-search", searchId: "deleted"});
+    assert.equal(calls.messages.length, 1);
+    const settingsDialog = document.createElement("div");
+    settingsDialog.className = "sw-settings-dialog";
+    const settings = settingsDialog.appendChild(document.createElement("div"));
+    settings.className = "sw-floating-ball-settings";
+    const surfaceRow = settings.appendChild(document.createElement("div"));
+    surfaceRow.className = "sw-floating-ball-settings__surface";
+    const surfaceSelect = surfaceRow.appendChild(document.createElement("select"));
+    for (const value of ["desktop", "mobile"]) {
+        const option = surfaceSelect.appendChild(document.createElement("option"));
+        option.value = value;
+        option.textContent = value;
+    }
+    const slots = Array.from({length: 9}, (_, index) => {
+        const select = settings.appendChild(document.createElement("select"));
+        select.dataset.digitSlot = String(index);
+        select.appendChild(document.createElement("option")).value = "";
+        return select;
+    });
+    document.body.appendChild(settingsDialog);
+    let changed = 0;
+    surfaceSelect.addEventListener("change", () => { changed += 1; });
+    callbacks.onConfigureDigitSlot(2, {kind: "saved-search", searchId: "saved-1"}, "mobile");
+    assert.deepEqual(calls.settings, [["floatingBall"]]);
+    assert.equal(surfaceSelect.value, "mobile", "configuration opens on the source surface");
+    assert.equal(changed, 1, "surface-specific slot values are rendered before focusing");
+    assert.equal(document.activeElement, slots[2], "configuration focuses the bound digit slot");
 });
 
 test("floating ball host primary click falls back for missing, disabled and unavailable actions", (t) => {
