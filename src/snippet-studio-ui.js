@@ -54,6 +54,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetBuiltinTypographyDescription: locale.i18n.snippetBuiltinTypographyDescription,
         snippetBuiltinTypographyName: locale.i18n.snippetBuiltinTypographyName,
         snippetCancelled: locale.i18n.snippetCancelled,
+        snippetCapabilities: locale.i18n.snippetCapabilities,
+        snippetCapabilityAI: locale.i18n.snippetCapabilityAI,
+        snippetCapabilityCSS: locale.i18n.snippetCapabilityCSS,
+        snippetCapabilityJS: locale.i18n.snippetCapabilityJS,
         snippetCategory: locale.i18n.snippetCategory,
         snippetCategoryCode: locale.i18n.snippetCategoryCode,
         snippetCategoryCustom: locale.i18n.snippetCategoryCustom,
@@ -226,6 +230,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     selectionTop.append(selectionName, selectionType, selectionStatus);
     selection.append(selectionTop, selectionMeta);
     const description = node("p", "sw-studio__description", t("snippetDescription"));
+    // T-6908：三条安全边界必须始终可见，而不是散落在按钮 title 或选中 JS 后才出现的提示里。
+    const capabilities = node("ul", "sw-studio__capabilities");
+    capabilities.setAttribute("aria-label", t("snippetCapabilities"));
+    for (const [capability, label] of [["css", "snippetCapabilityCSS"], ["js", "snippetCapabilityJS"], ["ai", "snippetCapabilityAI"]]) {
+        const item = node("li", "sw-studio__capability", t(label));
+        item.dataset.capability = capability;
+        capabilities.appendChild(item);
+    }
     const nameLabel = node("label", "sw-studio__field", t("snippetName"));
     const nameInput = node("input", "sw-studio__input");
     nameInput.maxLength = 120;
@@ -246,7 +258,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     }, "is-quiet");
     const commands = node("div", "sw-studio__commands");
     commands.append(saveButton, toggleButton, deleteButton, exportButton, submissionButton);
-    details.append(detailsTitle, selection, description, nameLabel, typeSelect, typeNote, state, commands);
+    details.append(detailsTitle, selection, description, capabilities, nameLabel, typeSelect, typeNote, state, commands);
     const editorSection = node("section", "sw-studio__editor-section");
     const editorBar = node("div", "sw-studio__section-bar");
     const editorLead = node("div", "sw-studio__section-lead");

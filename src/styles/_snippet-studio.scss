@@ -88,6 +88,9 @@
     &__lower { display: grid; grid-template-columns: minmax(230px, 2fr) minmax(0, 3fr); gap: 14px; min-height: 0; }
     &__details, &__editor-section { overflow: auto; padding: 14px; }
     &__description { line-height: 1.55; margin: 10px 0; color: var(--studio-on-surface); }
+    &__capabilities { display: grid; gap: 6px; margin: 10px 0; padding: 10px 12px; border: 1px dashed var(--studio-line); border-radius: 10px; }
+    &__capability { position: relative; padding-left: 15px; color: var(--studio-on-surface); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    &__capability::before { content: ""; position: absolute; left: 2px; top: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--studio-accent); }
     &__selection { display: grid; gap: 6px; padding: 10px 11px; border: 1px solid color-mix(in srgb, var(--studio-accent) 24%, var(--studio-line)); border-radius: 11px; background: var(--studio-accent-soft); }
     &__selection-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
     &__selection-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

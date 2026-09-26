@@ -1217,6 +1217,25 @@ test('snippet studio AI receipt distinguishes loading, success, and failure (T-6
     assert.match(studioUi, /setAIStatus\(t\("snippetAIDone"\), true\)/, 'completed AI generation must expose ready state');
 });
 
+test('snippet studio keeps safety boundaries visible as capability notes (T-6908)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    const studioScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_snippet-studio.scss'));
+    assert.match(studioUi, /const capabilities = node\("ul", "sw-studio__capabilities"\);/,
+        'the capability notes must be one always-visible list');
+    assert.match(studioUi, /capabilities\.setAttribute\("aria-label", t\("snippetCapabilities"\)\);/,
+        'the capability list must be labelled for assistive tech');
+    assert.match(studioUi, /\["css", "snippetCapabilityCSS"\], \["js", "snippetCapabilityJS"\], \["ai", "snippetCapabilityAI"\]/,
+        'all three safety boundaries must be stated: sandboxed CSS preview, disabled JS execution, draft-only AI');
+    assert.match(studioUi, /item\.dataset\.capability = capability;/,
+        'each capability note must expose a stable data hook');
+    assert.match(studioUi, /details\.append\(detailsTitle, selection, description, capabilities,/,
+        'capability notes must render inside the always-visible details panel');
+    assert.match(studioScss, /&__capabilities \{ display: grid;[^}]*border: 1px dashed var\(--studio-line\)/,
+        'the capability list must use the shared platform line token');
+    assert.match(studioScss, /&__capability \{ position: relative;[^}]*color: var\(--studio-on-surface\)/,
+        'capability notes must use the shared muted text token');
+});
+
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));
