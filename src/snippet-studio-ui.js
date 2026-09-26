@@ -186,7 +186,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const headerState = node("span", "sw-studio__state-badge");
     heading.append(titleLine, headerContext);
     const headerActions = node("div", "sw-studio__header-actions");
-    headerActions.append(headerState, action("snippetBack", onBack));
+    const backButton = action("snippetBack", onBack);
+    headerActions.append(headerState, backButton);
     header.append(heading, headerActions);
     const layout = node("div", "sw-studio__layout");
     const main = node("main", "sw-studio__main");
@@ -721,6 +722,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             closeLabel: locale.i18n.close || "Close",
         });
     }
+    // 首焦点落到平台关闭按钮；独立装配或旧宿主没有平台头部时回退到返回按钮。
+    // 这样全屏工作室打开后，键盘用户立即知道如何退出，且不会把焦点送入编辑器造成误输入。
+    const initialFocus = root.querySelector(".sw-platform-header__close") || backButton;
+    win.setTimeout(() => {
+        if (!disposed && root.isConnected && typeof initialFocus.focus === "function") {
+            initialFocus.focus({preventScroll: true});
+        }
+    }, 0);
     return {
         ready,
         canClose: canDiscard,

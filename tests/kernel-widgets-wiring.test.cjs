@@ -1088,6 +1088,10 @@ test('cross-surface snippet objects: workbench row and studio objectId selection
         'the objectId must match by id with a name fallback');
     assert.match(studioUi, /if \(target && canDiscard\(\)\) choose\(target, target\);/,
         'the selection must respect the dirty guard');
+    assert.match(studioUi, /const initialFocus = root\.querySelector\("\.sw-platform-header__close"\) \|\| backButton;/,
+        'studio must prefer the platform close button for first focus');
+    assert.match(studioUi, /initialFocus\.focus\(\{preventScroll: true\}\)/,
+        'studio first focus must avoid scrolling the full-screen surface');
     // i18n 双语。
     const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
     const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));
