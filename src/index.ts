@@ -1185,6 +1185,13 @@ export default class SpeedSwitchPlugin extends Plugin {
             },
         }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
         safeRegisterPluginCommand(this, {
+            langKey: "snippetStudioOpen",
+            hotkey: "",
+            callback: () => {
+                this.openPlatformSurface("studio", "switcher", {entry: "plugin-command"});
+            },
+        }, (langKey, error) => logger.warn(`register plugin command ${langKey} fail`, error));
+        safeRegisterPluginCommand(this, {
             langKey: "clipboardEntry",
             hotkey: "",
             callback: () => {

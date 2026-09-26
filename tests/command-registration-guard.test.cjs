@@ -116,7 +116,7 @@ const indexSource = readSourceText(path.join(__dirname, '..', 'src', 'index.ts')
 
 test('both plugin commands register through the safe guard', () => {
     const guarded = indexSource.match(/safeRegisterPluginCommand\(this,/g) || [];
-    assert.equal(guarded.length, 7, "switchTabs/secondPanel/openSettings/openJournal/clipboardEntry/setSessionMark/jumpToSessionMark 七处都必须走 safeRegisterPluginCommand（T-6821/T-6820）");
+    assert.equal(guarded.length, 8, "switchTabs/secondPanel/openSettings/openJournal/snippetStudioOpen/clipboardEntry/setSessionMark/jumpToSessionMark 八处都必须走 safeRegisterPluginCommand（T-6821/T-6820/T-6894）");
 });
 
 test('no bare this.addCommand call remains in index.ts', () => {
