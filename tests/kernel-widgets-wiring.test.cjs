@@ -499,10 +499,11 @@ test('layered workspace snapshot: preset is persisted into the set and essential
 
 test('preview open: alt+click on doc results uses doc.mode preview (T-6816)', () => {
     const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
-    assert.match(docSearchUi, /\{query, preview: event\.altKey && !this\.isMobile\}/,
+    // T-6924 起入口选项扩为多行（新增 split），preview 语义保持原样。
+    assert.match(docSearchUi, /preview: event\.altKey && !this\.isMobile,/,
         'Alt+点击（仅桌面）必须走预览打开（经 T-6837 单一激活入口透传）');
-    assert.match(docSearchUi, /void openDocSearchResult\.call\(this, id, item\.dataset\.swDocHit \|\| null, undefined, \{preview: Boolean\(options\.preview\)\}\)/,
-        '激活入口必须把 preview 语义传给 openDocSearchResult');
+    assert.match(docSearchUi, /void openDocSearchResult\.call\(this, id, item\.dataset\.swDocHit \|\| null,\s*\n\s*options\.split \? "right" : undefined, \{preview: Boolean\(options\.preview\)\}\)/,
+        '激活入口必须把 preview 语义传给 openDocSearchResult（T-6924 起带分屏位参数）');
     assert.match(docSearchUi, /\.\.\.\(options\?\.preview \? \{mode: "preview" as const\} : \{\}\)/,
         '预览必须经 T-6826 的 openTab doc.mode 透传（思源官方预览态）');
     assert.match(docSearchUi, /\!\(options\?\.preview\) && this\.reuseOpenTabsEnabled\(\)/,
@@ -636,6 +637,20 @@ test('doc-result digit direct access: search-state digits activate result rows (
         '前 9 条可见结果行携带角标（与数字直达键位一致）');
     const badgeScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
     assert.match(badgeScss, /\.sw__doc-item\[data-sw-digit\]/, '结果行角标由 CSS attr() 渲染');
+});
+
+test('doc-result split-open gains a keyboard equivalent (T-6924, R11)', () => {
+    const docSearchUi = readSourceText(path.join(__dirname, '..', 'src', 'doc-search-ui.ts'));
+    assert.match(docSearchUi, /split: event\.ctrlKey && !this\.isMobile && !event\.altKey,/,
+        'Ctrl+click/Ctrl+Enter must request the right split (Alt keeps preview priority)');
+    assert.match(docSearchUi, /options: \{query\?: string; preview\?: boolean; split\?: boolean\} = \{\}/,
+        'the single activation entry must carry the split option');
+    assert.match(docSearchUi, /options\.split \? "right" : undefined, \{preview: Boolean\(options\.preview\)\}\)/,
+        'split activation must flow through openDocSearchResult as the right position');
+    assert.match(docSearchUi, /event\.ctrlKey && !this\.isMobile && !event\.altKey,/,
+        'mobile surfaces must not bind the split modifier');
+    assert.match(readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json')), /Ctrl\+点击：在右侧分屏打开/,
+        'the row hint must advertise the keyboard equivalent');
 });
 
 test('resident preview pane: focus-synced outline preview with bounded fetch (T-6839)', () => {

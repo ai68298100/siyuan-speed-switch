@@ -930,7 +930,7 @@
   ,"cardUpdatedBadgeTip": "Show the last edit time and a marker for changes in the past 7 days (time for today, date otherwise)"
   ,"cardChangedBadge": "Changed"
   ,"cardChangedBadgeTip": "Content changed in the past 7 days"
-  ,"docSearchSplitHint": "Right-click: open in right split"
+  ,"docSearchSplitHint": "Right-click or Ctrl+click: open in right split"
   ,"chipsLabel": "Result type filter"
   ,"chipsAll": "All"
   ,"chipsTabs": "Tabs"

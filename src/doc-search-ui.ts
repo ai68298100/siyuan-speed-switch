@@ -1285,8 +1285,14 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
         item.dataset.swDocHit = hitId || "";
         item.addEventListener("click", (event) => {
             // T-6837：激活路径单一化（点击与数字直达共用 activateDocResultItem；
-            // T-6802 上次选择置顶记账、T-6816 Alt 预览语义均在入口内）
-            activateDocResultItem.call(this, item, onClose, {query, preview: event.altKey && !this.isMobile});
+            // T-6802 上次选择置顶记账、T-6816 Alt 预览语义均在入口内；
+            // T-6924：Ctrl+点击/Ctrl+Enter（按钮原生 click 携带修饰键）= 右侧分屏，
+            // 给 T-6810 的右键分屏补键盘等价物）。
+            activateDocResultItem.call(this, item, onClose, {
+                query,
+                preview: event.altKey && !this.isMobile,
+                split: event.ctrlKey && !this.isMobile && !event.altKey,
+            });
         });
         // T-6810 并排打开：右键结果在右侧分屏打开（桌面）；T-6816 Alt+点击预览打开
         if (!this.isMobile) {
@@ -1303,8 +1309,9 @@ export function buildDocResultItem(this: DocSearchUiHost, doc: IDocSearchResult,
 
 // T-6837 键序直达第二片：文档结果行激活的单一入口（点击/数字直达共用）。
 // 行身份取 data-sw-doc-key（rootId），块级锚定取 data-sw-doc-hit（命中块）；
-// T-6802 上次选择置顶记账（该查询 → 选中结果，会话内 FIFO ≤32）内置于此。
-export function activateDocResultItem(this: DocSearchUiHost, item: HTMLElement | undefined, onClose: IOverlayClose, options: {query?: string; preview?: boolean} = {}): void {
+// T-6802 上次选择置顶记账（该查询 → 选中结果，会话内 FIFO ≤32）内置于此；
+// T-6924：split 选项走 openDocSearchResult 的右侧分屏位。
+export function activateDocResultItem(this: DocSearchUiHost, item: HTMLElement | undefined, onClose: IOverlayClose, options: {query?: string; preview?: boolean; split?: boolean} = {}): void {
     const id = String(item?.dataset.swDocKey || "");
     if (!item || !id) return;
     const query = String(options.query || "");
@@ -1319,5 +1326,6 @@ export function activateDocResultItem(this: DocSearchUiHost, item: HTMLElement |
         }
     }
     onClose();
-    void openDocSearchResult.call(this, id, item.dataset.swDocHit || null, undefined, {preview: Boolean(options.preview)});
+    void openDocSearchResult.call(this, id, item.dataset.swDocHit || null,
+        options.split ? "right" : undefined, {preview: Boolean(options.preview)});
 }

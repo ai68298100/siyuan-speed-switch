@@ -1011,7 +1011,7 @@
   "cardUpdatedBadgeTip": "显示最后编辑时间及近 7 天有改动标记；今天显示时刻，其余显示日期",
   "cardChangedBadge": "有改动",
   "cardChangedBadgeTip": "近 7 天有内容改动",
-  "docSearchSplitHint": "右键：在右侧分屏打开",
+  "docSearchSplitHint": "右键或 Ctrl+点击：在右侧分屏打开",
   "chipsLabel": "结果类型过滤",
   "chipsAll": "全部",
   "chipsTabs": "页签",
