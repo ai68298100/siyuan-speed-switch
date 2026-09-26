@@ -296,7 +296,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 : this.i18n.homeGreetingEvening;
             const greetingEl = document.createElement("div");
             greetingEl.className = "sw-home__greeting";
-            greetingEl.textContent = `${greeting}，${this.i18n.homeGreetingSuffix}`;
+            greetingEl.textContent = `${greeting} · ${this.i18n.homeGreetingSuffix}`;
             mountFragment.appendChild(greetingEl);
 
             const body = document.createElement("div");

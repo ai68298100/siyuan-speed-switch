@@ -83,5 +83,95 @@ test("UI 审查截图集", async ({page}) => {
     }
     await mobilePage.close();
 
-    console.log(`[audit] screenshots written to ${outDir}`);
+    // T-6888 审查扩展：统一 UI 战役新表面。每步独立 try/catch（单步失败不阻断其余截图）；
+    // 思源设置弹窗关闭按钮为 fn__none，统一用 Esc 关闭（工作室为 disableClose，用 destroy）。
+    const step = async (name, fn) => {
+        try {
+            await fn();
+        } catch (error) {
+            console.log(`[audit] step ${name} skipped: ${String(error.message || error).slice(0, 120)}`);
+            await page.keyboard.press("Escape").catch(() => undefined);
+            await page.waitForTimeout(300);
+        }
+    };
+    const closeLastDialog = () => page.evaluate(() => {
+        const dialogs = document.querySelectorAll(".b3-dialog__close");
+        dialogs[dialogs.length - 1]?.click();
+    });
+
+    // 设置页：外观（分组卡片）+ 悬浮球（快滑绑定卡片）——思源设置用 Esc 关闭。
+    await step("09/10 settings", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.openSetting();
+        });
+        await page.waitForSelector(".sw-settings__tabs", {timeout: 10000});
+        await page.locator('.sw-settings__tab[data-panel="appearance"]').click();
+        await page.waitForTimeout(700);
+        await shot("09-settings-appearance");
+        await page.locator('.sw-settings__tab[data-panel="floatingBall"]').click();
+        await page.waitForTimeout(700);
+        await shot("10-settings-floating-ball");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(500);
+    });
+
+    // 工作台（回执条 + 组件卡）。
+    await step("11 workbench", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            const command = (plugin.commands || []).find((item) => item?.langKey === "secondPanel");
+            if (command?.callback) command.callback();
+            else plugin.openSecondPanel?.();
+        });
+        await page.waitForSelector(".sw-home__cell, .sw-home__receipt", {timeout: 10000});
+        await page.waitForTimeout(1200);
+        await shot("11-workbench");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(400);
+    });
+
+    // 快速捕获。
+    await step("12 quick capture", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.openQuickCapture();
+        });
+        await page.waitForSelector(".sw-quick-capture", {timeout: 10000});
+        await page.waitForTimeout(400);
+        await shot("12-quick-capture");
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(300);
+    });
+
+    // 片段实验室（全屏工作室，disableClose：截图后直接 destroy）。
+    await step("13 snippet studio", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.openSnippetStudio();
+        });
+        await page.waitForSelector(".sw-studio__layout, .sw-studio", {timeout: 30000});
+        await page.waitForTimeout(1500);
+        await shot("13-snippet-studio");
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.snippetStudioDialog?.destroy();
+        });
+        await page.waitForTimeout(400);
+    });
+
+    // 查询态片段分区（需工作区已有片段数据，无则整步跳过）。
+    await step("14 query snippet section", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.snippetObjectsCache = null;
+        });
+        await openSwitcher(page);
+        await page.waitForTimeout(500);
+        await search.fill("阴影");
+        await page.waitForTimeout(1200);
+        if (await page.locator(".sw__snippet-results").count()) await shot("14-query-snippet-section");
+    });
+
+console.log(`[audit] screenshots written to ${outDir}`);
 });

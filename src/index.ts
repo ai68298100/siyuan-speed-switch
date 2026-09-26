@@ -2478,18 +2478,11 @@ export default class SpeedSwitchPlugin extends Plugin {
         save.className = "b3-button b3-button--outline sw-quick-capture__save";
         save.textContent = this.i18n.quickCaptureSave;
         // T-6875（RZ-5）：键位提示芯片——只陈述真实绑定（保存=Ctrl/Cmd+Enter，Esc=宿主关闭）
+        // T-6888 审查修复：提示只保留真实绑定芯片（Ctrl+Enter）——此前附带
+        // 保存/取消文字与按钮文本重复且在窄弹窗内竖排溢出。
         const kbdHints = document.createElement("span");
         kbdHints.className = "sw-quick-capture__kbd-hints";
-        const saveHint = document.createElement("span");
-        saveHint.textContent = this.i18n.quickCaptureSave;
-        const cancelHint = document.createElement("span");
-        cancelHint.textContent = this.i18n.quickCaptureCancel;
-        kbdHints.append(
-            createPlatformKbd(document, "Ctrl+Enter"),
-            saveHint,
-            createPlatformKbd(document, "Esc"),
-            cancelHint,
-        );
+        kbdHints.append(createPlatformKbd(document, "Ctrl+Enter"));
 
         const targets = document.createElement("div");
         targets.className = "sw-quick-capture__targets";
