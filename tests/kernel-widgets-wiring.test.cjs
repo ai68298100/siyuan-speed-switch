@@ -1189,6 +1189,22 @@ test('snippet studio consumes platform theme aliases during token migration (T-6
         'studio card shadow must inherit the shared platform token');
 });
 
+test('snippet studio footer exposes a shared receipt state contract (T-6904)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    const studioScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_snippet-studio.scss'));
+    assert.match(studioUi, /status\.setAttribute\("role", "status"\);/, 'the footer receipt must remain a live status region');
+    assert.match(studioUi, /status\.setAttribute\("aria-atomic", "true"\);/, 'receipt updates must be announced atomically');
+    assert.match(studioUi, /status\.dataset\.state = "loading";/, 'the initial receipt must expose loading state');
+    assert.match(studioUi, /const setStatus = \(message, state = "ready"\) => \{\s*\n\s*status\.textContent = message;\s*\n\s*status\.dataset\.state = state;/,
+        'footer text and state must be updated through one helper');
+    assert.match(studioUi, /setStatus\(errorText\(error\), "error"\)/, 'load and mutation failures must expose error state');
+    assert.match(studioUi, /setStatus\(t\("snippetSaveFirst"\), "blocked"\)/, 'unsafe toggle attempts must expose blocked state');
+    assert.match(studioScss, /&__status\[data-state="loading"\], &__status\[data-state="busy"\]/, 'busy receipts must use the accent token');
+    assert.match(studioScss, /&__status\[data-state="ready"\].*var\(--studio-success\)/s, 'ready receipts must use the success token');
+    assert.match(studioScss, /&__status\[data-state="blocked"\].*var\(--studio-warning\)/s, 'blocked receipts must use the warning token');
+    assert.match(studioScss, /&__status\[data-state="error"\].*var\(--studio-error\)/s, 'error receipts must use the error token');
+});
+
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));

@@ -202,7 +202,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     compareButton.setAttribute("aria-pressed", "false");
     const themeButton = action("snippetDarkPreview", () => { dark = !dark; themeButton.setAttribute("aria-pressed", String(dark)); renderPreview(); });
     themeButton.setAttribute("aria-pressed", String(dark));
-    const runButton = action("snippetRunJS", () => { status.textContent = t("snippetJSPreviewUnavailable"); });
+    const runButton = action("snippetRunJS", () => { setStatus(t("snippetJSPreviewUnavailable"), "blocked"); });
     runButton.disabled = true;
     const stopButton = action("snippetResetPreview", () => renderPreview(false));
     runButton.title = t("snippetJSPreviewUnavailable");
@@ -242,7 +242,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const submissionButton = action("snippetSubmission", () => {
         const packet = {schemaVersion: 1, status: "unreviewed", name: draft.name, type: draft.type, content: draft.content, description: "", author: "", license: "", testedWith: "", effects: [], enabled: false};
         download("snippet-submission.json", JSON.stringify(packet, null, 2), "application/json");
-        status.textContent = t("snippetSubmissionHint");
+        setStatus(t("snippetSubmissionHint"), "ready");
     }, "is-quiet");
     const commands = node("div", "sw-studio__commands");
     commands.append(saveButton, toggleButton, deleteButton, exportButton, submissionButton);
@@ -317,7 +317,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         acceptButton.disabled = true;
         syncFields();
         renderPreview();
-        status.textContent = t("snippetAIAccepted");
+        setStatus(t("snippetAIAccepted"), "ready");
     }, "is-primary");
     acceptButton.disabled = true;
     const modeHints = {
@@ -353,6 +353,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const status = node("footer", "sw-studio__status", t("snippetLoading"));
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
+    status.setAttribute("aria-atomic", "true");
+    status.dataset.state = "loading";
+    const setStatus = (message, state = "ready") => {
+        status.textContent = message;
+        status.dataset.state = state;
+    };
     const refresh = action("snippetRefresh", () => { if (canDiscard()) void load(true); });
     const footer = node("div", "sw-studio__footer");
     footer.append(status, refresh);
@@ -369,7 +375,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         },
         onError: (message) => {
             if (!disposed) {
-                status.textContent = `${t("snippetPreviewError")} ${message}`;
+                setStatus(`${t("snippetPreviewError")} ${message}`, "error");
                 previewState.textContent = t("snippetPreviewError");
                 previewState.className = "sw-studio__state-badge is-error";
             }
@@ -448,7 +454,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         clearTimeout(previewTimer);
         if (disposed) return;
         const content = showOriginal ? original : draft.content;
-        if (byteLength(content) > SNIPPET_CODE_MAX) { status.textContent = t("snippetTooLarge"); return; }
+        if (byteLength(content) > SNIPPET_CODE_MAX) { setStatus(t("snippetTooLarge"), "error"); return; }
         previewShell.dataset.state = "loading";
         previewLoading.hidden = false;
         previewState.textContent = t("snippetPreviewLoading");
@@ -498,6 +504,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     async function load(reselect = false) {
         const requestGeneration = ++loadGeneration;
         loading = true;
+        setStatus(t("snippetLoading"), "loading");
         syncFields();
         try {
             const result = await store.read();
@@ -508,11 +515,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 const current = snippets.find((item) => item.id === baseline.id);
                 choose(current || {name: "", type: "css", content: ""}, current || null);
             }
-            status.textContent = `${t("snippetLoaded")} ${snippets.length}`;
+            setStatus(`${t("snippetLoaded")} ${snippets.length}`, "ready");
         } catch (error) {
             if (disposed || requestGeneration !== loadGeneration) return;
             loadFailed = true;
-            status.textContent = errorText(error);
+            setStatus(errorText(error), "error");
         } finally {
             if (requestGeneration === loadGeneration) {
                 loading = false;
@@ -531,11 +538,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     async function mutate(actionName) {
         if (busy || loading || loadFailed || disposed) return;
         if (actionName === "delete" && !win.confirm(t("snippetConfirmDelete"))) return;
-        if (actionName === "toggle" && dirty()) { status.textContent = t("snippetSaveFirst"); return; }
+        if (actionName === "toggle" && dirty()) { setStatus(t("snippetSaveFirst"), "blocked"); return; }
         if (draft.type === "js" && (actionName === "toggle" && !baseline?.enabled || actionName === "save" && baseline?.enabled)) {
             if (!win.confirm(t("snippetConfirmJS"))) return;
         }
         busy = true;
+        setStatus(status.textContent, "busy");
         syncFields();
         const previous = baseline ? {...baseline} : null;
         const input = {...draft, id: baseline?.id || newId(), enabled: actionName === "toggle" ? !baseline?.enabled : baseline?.enabled === true};
@@ -545,8 +553,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             snippets = next;
             const saved = next.find((item) => item.id === input.id) || null;
             choose(saved || {name: "", type: "css", content: ""}, saved);
-            status.textContent = t(input.type === "js" ? "snippetJSReload" : "snippetSaved");
-        } catch (error) { if (!disposed) status.textContent = errorText(error); }
+            setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved"), "ready");
+        } catch (error) { if (!disposed) setStatus(errorText(error), "error"); }
         finally { busy = false; if (!disposed) syncFields(); }
     }
     function download(filename, content, type) {
@@ -568,8 +576,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             const imported = parseSnippetImport(file.name, await file.text());
             if (disposed) return;
             choose(imported, null);
-            status.textContent = t("snippetImported");
-        } catch (error) { if (!disposed) status.textContent = errorText(error); }
+            setStatus(t("snippetImported"), "ready");
+        } catch (error) { if (!disposed) setStatus(errorText(error), "error"); }
     });
     async function generate() {
         if (!aiConsentInput.checked || !prompt.value.trim() || disposed) return;

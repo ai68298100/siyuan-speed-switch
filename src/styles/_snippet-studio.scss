@@ -125,6 +125,10 @@
     &__ai-result { width: 100%; min-height: 160px; flex: 1; background: var(--b3-theme-background); }
     &__footer { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; min-height: 48px; padding: 7px 16px; border-top: 1px solid var(--studio-line); background: var(--studio-surface-strong); position: relative; z-index: 3; }
     &__status { flex: 1; min-width: 0; font-size: 11px; line-height: 1.5; color: var(--studio-on-surface); }
+    &__status[data-state="loading"], &__status[data-state="busy"] { color: var(--studio-accent); }
+    &__status[data-state="ready"] { color: var(--studio-success); }
+    &__status[data-state="blocked"] { color: var(--studio-warning); }
+    &__status[data-state="error"] { color: var(--studio-error); }
     &__picker { position: absolute; inset: 0; background: rgb(15 20 30 / 36%); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 10; padding: 20px; }
     &__picker-sheet { width: min(900px, 100%); max-height: calc(100% - 4px); overflow: hidden; display: flex; flex-direction: column; padding: 18px; background: var(--b3-theme-background); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-lg); box-shadow: var(--studio-shadow-card); }
     &__filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
