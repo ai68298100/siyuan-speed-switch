@@ -1179,6 +1179,14 @@ test('snippet studio consumes platform theme aliases during token migration (T-6
         'studio surfaces must inherit the shared platform token');
     assert.match(studioScss, /--studio-on-surface: var\(--sw-platform-text-muted,/,
         'studio muted text must inherit the shared platform token');
+    assert.match(studioScss, /--studio-success: var\(--sw-platform-success,/,
+        'studio success state must inherit the shared platform token');
+    assert.match(studioScss, /--studio-error: var\(--sw-platform-error,/,
+        'studio error state must inherit the shared platform token');
+    assert.match(studioScss, /--studio-radius-lg: var\(--sw-platform-radius-lg,/,
+        'studio large radius must inherit the shared platform token');
+    assert.match(studioScss, /--studio-shadow-card: var\(--sw-platform-shadow-card,/,
+        'studio card shadow must inherit the shared platform token');
 });
 
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
