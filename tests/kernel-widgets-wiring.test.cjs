@@ -799,6 +799,12 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
         'mobile chrome nav must carry the surface-nav entry');
     assert.match(indexSource, /this\.openPlatformSurface\(returnTo, "switcher", \{\s*\n\s*entry: "back",/,
         'studio Back must carry the back entry');
+    assert.match(indexSource, /void import\("\.\/snippet-studio-ui"\)\.then\(/,
+        'studio must load the editor through the published lazy chunk');
+    assert.match(indexSource, /snippet studio import failed/,
+        'studio lazy chunk failures must be logged at the host boundary');
+    assert.match(indexSource, /showMessage\(this\.i18n\.snippetFailed\);\s*\n\s*this\.showSwitcher\(false, returnTo\);/,
+        'studio lazy chunk failure must restore the switcher with a user-visible receipt');
 });
 
 test('platform primitives: badge dot, kbd chip, segmented control, pill actions (T-6871 RZ-1)', () => {
