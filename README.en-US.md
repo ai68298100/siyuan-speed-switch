@@ -2,7 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-0.38.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
-LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tabs** always come first, with live thumbnails for rapid preview and switching; when needed it expands to **favorites, workspace-wide document search, an aggregate panel of 58 widgets, journals, and customizable quick actions**. The desktop dialog, right sidebar, and mobile share one data and command model while adapting their layouts to screen space and input method.
+LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
 <p align="center"><img src="preview.png" width="720" alt="LvSpeed Switch preview"/></p>
 
@@ -24,6 +24,19 @@ LvSpeed Switch is a lightweight navigation workspace for SiYuan Note: **open tab
 - [Release Checklist](#release-checklist)
 - [Changelog](#changelog)
 - [License](#license)
+
+## Four Entrances, One Work Path
+
+| Entrance | What it helps you do | Availability |
+| --- | --- | --- |
+| **Switcher** (surface 1) | Search tabs, favorites, recents, full-library documents, and snippets; preview, open, locate, or execute | Desktop, sidebar, mobile; the right preview stays on wide desktop and degrades on narrow screens |
+| **Workbench** (surface 2) | View, refresh, and arrange widgets, read health receipts, and restore the layout context | Desktop, sidebar, mobile |
+| **Snippet Lab** (surface 3) | Manage native snippets, edit drafts, preview in isolation, and manually review AI output before saving | Desktop only; enter from the switcher surface navigation or a snippet object action; mobile shows the capability boundary |
+| **Floating ball** (global trigger) | Open the platform, restore the last surface, run actions, and use 1–9 fixed slots from anywhere | Desktop main window and mobile; not mounted in the sidebar |
+
+All four entrances share the platform header, context bar, status badges, action panel, and return semantics. The surfaces keep their distinct work modes: search and preview in the switcher, grid and layout in the workbench, editing and safety boundaries in the snippet lab, and fast touch-safe triggering in the floating ball.
+
+The snippet lab needs desktop width for its editor, preview, and properties areas, so mobile does not present a pretend editing screen. The switcher's right preview remains available in the wide desktop results area; expanding it to empty-query and opened-tab work contexts is tracked in roadmap task T-6895.
 
 ## Core Capabilities
 
@@ -100,7 +113,7 @@ On mobile, the first frame waits for the WebView to reach a stable size before c
 
 ## Widget Panel: 58 Out-Of-The-Box Widgets
 
-The second panel (top-bar button or `Alt+Shift+P`) is the widget panel: 58 read-only widgets freely composed on a 12-column grid, with independent layouts for desktop / right sidebar / mobile. Every widget has completed a full depth pass against the eight-dimension scorecard: settings discoverability, data correctness, information hierarchy, size fitness, interaction feedback, state recovery, performance lifecycle, and three-surface/a11y/privacy.
+The Workbench (surface entry or `Alt+Shift+P`) is the widget panel: 58 read-only widgets freely composed on a 12-column grid, with independent layouts for desktop / right sidebar / mobile. Cards expose source, capabilities, update time, and health; failures keep the card mounted and provide visible and screen-reader receipts. Every widget has completed a full depth pass against the eight-dimension scorecard: settings discoverability, data correctness, information hierarchy, size fitness, interaction feedback, state recovery, performance lifecycle, and three-surface/a11y/privacy.
 
 | Group | Widgets |
 | --- | --- |
@@ -142,16 +155,18 @@ Read-only capabilities declare `localRead` and never declare write, egress, or e
 3. **Manage**: pin with the pin button, favorite with the star (group menu pops up); close tabs with × on the card, or right-click for the full menu (long-press on mobile).
 4. **Search**: use one field to see matching open tabs first and workspace document-title cards second.
 5. **Dock it**: hit the "Sidebar mode" toolbar button to pin the switcher to the right dock.
-6. **Second panel**: the top-bar second-panel button or `Alt+Shift+P` opens the aggregate page (recently opened + favorites); a fixed entry also lives in the bottom action bar.
-7. **Customize**: use `+` in the bottom/right action area to add Docks, plugin commands, or change per-surface visibility.
-8. **Sizing**: desktop panels open at an adaptive screen ratio by default; the in-dialog fullscreen button still toggles a temporary fullscreen, restore with the button or `Esc`.
+6. **Workbench**: use the Workbench surface entry or `Alt+Shift+P` to open the widget workbench; cards expose source, capabilities, and health.
+7. **Snippet Lab**: choose “Snippet Lab” in the switcher's platform header, or use a snippet object's “Open in lab” action. It is desktop-only; mobile shows the capability boundary.
+8. **Floating ball**: tap to restore the last surface; bind up/down/left/right flicks and More actions in Settings, with per-device 1–9 slots for actions or saved searches.
+9. **Customize**: use `+` in the bottom/right action area to add Docks, plugin commands, or change per-surface visibility.
+10. **Sizing**: desktop surfaces open fullscreen by default; adaptive and fixed sizes remain selectable in Settings.
 
 ## Shortcuts
 
 | Key | Action |
 | --- | --- |
 | `Alt+Shift+S` | Toggle the switcher (global, configurable) |
-| `Alt+Shift+P` | Open the second panel (default, configurable; bind "global" in Settings → Keymap to trigger while SiYuan is unfocused) |
+| `Alt+Shift+P` | Open the Workbench (default, configurable; bind "global" in Settings → Keymap to trigger while SiYuan is unfocused) |
 | `↑` `↓` `←` `→` | Move selection across the grid |
 | `Tab` / `Shift+Tab` | Next / previous |
 | `Enter` | Switch to the selected tab |
