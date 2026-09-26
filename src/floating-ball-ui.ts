@@ -9,7 +9,7 @@
  */
 
 import {layoutFloatingBallActions, hitTestFloatingBallActions} from "./floating-ball-layout.js";
-import {classifyFlickDirection} from "./floating-ball-model.js";
+import {classifyFlickDirection, FLOATING_BALL_DOUBLE_TAP_MS, FLOATING_BALL_LONG_PRESS_MS, isDoubleTapGesture} from "./floating-ball-model.js";
 
 export type FloatingBallSurface = "desktop" | "sidebar" | "mobile";
 
@@ -81,6 +81,11 @@ export interface FloatingBallUiOptions {
     onOpenMore?: () => void;
     /** T-6886（T-6858 第一批）：四向快滑（移动端 docked 状态）非上方向的动作分发。 */
     onFlickAction?: (direction: "down" | "left" | "right") => void;
+    /** T-6919：双击/长按绑定探针（实时读取）与分发回调；双击绑定后单击延迟判别。 */
+    isDoubleTapBound?: () => boolean;
+    isLongPressBound?: () => boolean;
+    onDoubleTap?: () => void;
+    onLongPress?: () => void;
     onBeforeTargeting?: () => void;
     /** Hide transient panels whenever a lifecycle reason blocks the ball. */
     onDismissOverlays?: () => void;
@@ -249,6 +254,12 @@ export class FloatingBallUi implements FloatingBallUiController {
     private suppressClick = false;
     private busyTimer: number | null = null;
     private executionVersion = 0;
+    // T-6919：双击/长按时序状态。pressTimer=长按武装定时器；pendingTapTimer=
+    // 单击延迟判别定时器；longPressFired 抑制长按后合成 click 的重复触发。
+    private pressTimer: number | null = null;
+    private longPressFired = false;
+    private pendingTapTimer: number | null = null;
+    private lastTapAt = 0;
     private dragBounds: FloatingBallBounds | null = null;
     private dragAnchor: {x: number; y: number} | null = null;
     private dragTargets: Array<{x: number; y: number; size: number; index: number}> = [];
@@ -423,6 +434,9 @@ export class FloatingBallUi implements FloatingBallUiController {
         if (this.disposed) return;
         this.disposed = true;
         this.cancelPointer(true);
+        this.clearPressTimer();
+        this.clearPendingTapTimer();
+        this.longPressFired = false;
         this.clearIdleTimer();
         if (this.busyTimer !== null) this.doc?.defaultView?.clearTimeout(this.busyTimer);
         this.busyTimer = null;
@@ -588,6 +602,14 @@ export class FloatingBallUi implements FloatingBallUiController {
             this.pointerStart = {x: event.clientX, y: event.clientY};
             this.positionAtPointerStart = this.getPosition();
             this.suppressClick = false;
+            // T-6919：长按武装——绑定长按动作后，按住超阈值且未拖动即触发；
+            // 拖动/抬起/取消都会拆除定时器。
+            if (this.options.isLongPressBound?.()) {
+                const view = this.doc.defaultView;
+                this.pressTimer = view
+                    ? view.setTimeout(() => this.fireLongPress(), FLOATING_BALL_LONG_PRESS_MS)
+                    : setTimeout(() => this.fireLongPress(), FLOATING_BALL_LONG_PRESS_MS) as unknown as number;
+            }
             if (this.surface === "mobile") this.flingSamples = [{x: event.clientX, y: event.clientY, t: Date.now()}];
             try { trigger.setPointerCapture(event.pointerId); } catch (_) { /* WebView may not support capture. */ }
         };
@@ -606,6 +628,7 @@ export class FloatingBallUi implements FloatingBallUiController {
             const dy = event.clientY - this.pointerStart.y;
             if (this.state !== "dragging" && this.state !== "targeting" && Math.hypot(dx, dy) > this.touchSlop) {
                 this.suppressClick = true;
+                this.clearPressTimer();
                 this.prepareDragTargets();
                 this.setState("dragging");
             }
@@ -684,7 +707,9 @@ export class FloatingBallUi implements FloatingBallUiController {
             // A drag's pointerup can still be followed by the synthetic
             // button click.  Keep the guard alive until that click handler
             // consumes it; pointercancel/blur clear it immediately.
-            this.suppressClick = wasDragging;
+            // T-6919：长按已触发时同样抑制合成 click（长按动作已分发，单击不再重复）。
+            this.suppressClick = wasDragging || this.longPressFired;
+            this.longPressFired = false;
         };
         const onPointerCancel = (event: PointerEvent) => {
             if (this.activePointerId !== event.pointerId) return;
@@ -698,6 +723,25 @@ export class FloatingBallUi implements FloatingBallUiController {
                 return;
             }
             if (this.isInteractionBlocked()) return;
+            // T-6919：双击绑定后单击进入 300ms 判别窗——窗口内第二击触发双击动作
+            // 并撤销挂起的单击；未绑定时单击保持零延迟直发（老用户零回归）。
+            if (this.options.isDoubleTapBound?.()) {
+                const now = Date.now();
+                if (this.lastTapAt > 0 && isDoubleTapGesture(now - this.lastTapAt)) {
+                    this.clearPendingTapTimer();
+                    this.lastTapAt = 0;
+                    this.options.onDoubleTap?.();
+                    return;
+                }
+                this.lastTapAt = now;
+                if (this.pendingTapTimer === null) {
+                    const view = this.doc.defaultView;
+                    this.pendingTapTimer = view
+                        ? view.setTimeout(() => this.firePendingTap(), FLOATING_BALL_DOUBLE_TAP_MS)
+                        : setTimeout(() => this.firePendingTap(), FLOATING_BALL_DOUBLE_TAP_MS) as unknown as number;
+                }
+                return;
+            }
             this.options.onOpenSwitcher?.();
         };
         const onContextMenu = (event: MouseEvent) => {
@@ -951,8 +995,44 @@ export class FloatingBallUi implements FloatingBallUiController {
             : setTimeout(timeout, this.idleDelayMs) as unknown as number;
     }
 
+    // T-6919：长按定时器到点——仅 docked 且指针仍在球上按住时成立；
+    // 拖动/取消路径已提前拆除定时器。触发后抑制合成 click 防止单击重复。
+    private fireLongPress(): void {
+        this.pressTimer = null;
+        if (this.state !== "docked" || this.activePointerId === null) return;
+        this.longPressFired = true;
+        this.suppressClick = true;
+        this.markActive();
+        this.options.onLongPress?.();
+    }
+
+    private firePendingTap(): void {
+        this.pendingTapTimer = null;
+        this.lastTapAt = 0;
+        this.options.onOpenSwitcher?.();
+    }
+
+    private clearPressTimer(): void {
+        const view = this.doc.defaultView;
+        if (this.pressTimer !== null) {
+            if (view) view.clearTimeout(this.pressTimer);
+            else clearTimeout(this.pressTimer);
+            this.pressTimer = null;
+        }
+    }
+
+    private clearPendingTapTimer(): void {
+        const view = this.doc.defaultView;
+        if (this.pendingTapTimer !== null) {
+            if (view) view.clearTimeout(this.pendingTapTimer);
+            else clearTimeout(this.pendingTapTimer);
+            this.pendingTapTimer = null;
+        }
+    }
+
     private cancelPointer(restore: boolean): void {
         const preserveClickSuppression = !restore && this.suppressClick;
+        this.clearPressTimer();
         if (restore && this.positionAtPointerStart) {
             this.position = this.positionAtPointerStart;
             this.applyPosition();

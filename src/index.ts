@@ -11340,6 +11340,25 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.executeFloatingBallSurfaceAction(surface, action);
     }
 
+    // T-6919（悬浮球手势纵深第一批）：双击/长按绑定值的统一路由——词汇表与四向
+    // 快滑一致（""=未绑定静默返回，"more"=更多面板，动作 id 查目录后走执行器，
+    // 未知值不可用回执）。不并入 onFlickAction 以保持 T-6886 契约切片稳定。
+    private executeFloatingBallBoundGesture(surface: FloatingBallSurface, bound: unknown): void {
+        const actionId = typeof bound === "string" ? bound.trim() : "";
+        if (!actionId) return;
+        if (actionId === "more") {
+            this.refreshFloatingBallPanels();
+            this.floatingBallPanels.get(surface)?.openMore();
+            return;
+        }
+        const action = (this.getFloatingBallActions() as IQuickAction[]).find((item) => item.value === actionId);
+        if (!action) {
+            showMessage(this.i18n.quickActionUnavailable, MESSAGE_DEFAULT_MS, "error");
+            return;
+        }
+        this.executeFloatingBallSurfaceAction(surface, action);
+    }
+
     private executeFloatingBallSurfaceAction(surface: FloatingBallSurface, action: unknown) {
         const controller = this.floatingBallUis.get(surface);
         const panel = this.floatingBallPanels.get(surface);
@@ -11495,6 +11514,12 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 },
                 onBeforeTargeting: () => this.refreshFloatingBallPanels(),
                 onDismissOverlays: () => this.floatingBallPanels.get(surface)?.closeMore({restoreFocus: false}),
+                // T-6919（悬浮球手势纵深第一批）：双击/长按——绑定实时读取，路由走
+                // executeFloatingBallBoundGesture（""=未绑定，UI 侧也不会触发回调）。
+                isDoubleTapBound: () => !!this.getSettings().floatingBall?.behavior?.doubleTapAction,
+                isLongPressBound: () => !!this.getSettings().floatingBall?.behavior?.longPressAction,
+                onDoubleTap: () => this.executeFloatingBallBoundGesture(surface, this.getSettings().floatingBall?.behavior?.doubleTapAction),
+                onLongPress: () => this.executeFloatingBallBoundGesture(surface, this.getSettings().floatingBall?.behavior?.longPressAction),
                 onActionTarget: (target) => {
                     const actionButton = target.closest("[data-action-id]") as HTMLElement | null;
                     actionButton?.click();

@@ -1328,6 +1328,34 @@ test('AI candidates lint deterministically and accept per hunk (T-6916)', () => 
         'rejected hunk heads must use the error token');
 });
 
+test('floating ball gestures: double-tap and long-press bind, classify and dispatch (T-6919)', () => {
+    const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-model.js'));
+    const uiSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-ui.ts'));
+    const indexModel = require('../src/floating-ball-model.js');
+    assert.match(modelSource, /doubleTapAction: "",/,
+        'double-tap must default to unbound so single taps stay zero-latency');
+    assert.match(modelSource, /config\.behavior\.doubleTapAction = typeof behavior\.doubleTapAction === "string"/,
+        'double-tap binding must normalize through bounded cleaning');
+    assert.match(modelSource, /config\.behavior\.longPressAction = typeof behavior\.longPressAction === "string"/,
+        'long-press binding must normalize through bounded cleaning');
+    assert.equal(typeof indexModel.isLongPressGesture, 'function', 'the long-press classifier must be pure and exported');
+    assert.equal(typeof indexModel.isDoubleTapGesture, 'function', 'the double-tap classifier must be pure and exported');
+    assert.match(uiSource, /this\.suppressClick = wasDragging \|\| this\.longPressFired;/,
+        'a fired long-press must suppress the synthetic click');
+    assert.match(uiSource, /if \(this\.options\.isDoubleTapBound\?\.\(\)\) \{/,
+        'single taps must enter the delayed window only when double-tap is bound');
+    assert.match(uiSource, /this\.options\.onDoubleTap\?\.\(\);/, 'double taps must dispatch');
+    assert.match(uiSource, /this\.options\.onLongPress\?\.\(\);/, 'long presses must dispatch');
+    assert.match(uiSource, /destroy\(\): void \{[\s\S]{0,200}this\.clearPendingTapTimer\(\);/,
+        'gesture timers must be torn down with the controller');
+    assert.match(indexSource, /isDoubleTapBound: \(\) => !!this\.getSettings\(\)\.floatingBall\?\.behavior\?\.doubleTapAction,/,
+        'the host must expose the live double-tap binding');
+    assert.match(indexSource, /onLongPress: \(\) => this\.executeFloatingBallBoundGesture\(surface, this\.getSettings\(\)\.floatingBall\?\.behavior\?\.longPressAction\),/,
+        'the host must route long presses through the shared bound-gesture executor');
+    assert.match(indexSource, /private executeFloatingBallBoundGesture\(surface: FloatingBallSurface, bound: unknown\): void \{[^}]*actionId === "more"/,
+        'the bound-gesture executor must keep the more-panel route');
+});
+
 test('iterate rounds label their diff against the previous candidate (T-6917)', () => {
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
     assert.match(studioUi, /const iterateFromCandidate = mode === "iterate" && candidate\?\.mode !== "explain" && candidate\?\.type === captured\.type;/,
@@ -1528,7 +1556,8 @@ test('flick radial actions: direction classifier, host dispatch and config defau
     const uiSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-ui.ts'));
     const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'floating-ball-model.js'));
     // 手势：分类必须走模型纯函数（速度+方向双判定），上方向保留 P6 更多面板语义。
-    assert.match(uiSource, /import \{classifyFlickDirection\} from "\.\/floating-ball-model\.js"/,
+    // T-6917 契约演进：import 扩展为多符号（新增双击/长按时序判定），仍自同一纯函数模块。
+    assert.match(uiSource, /import \{classifyFlickDirection, FLOATING_BALL_DOUBLE_TAP_MS, FLOATING_BALL_LONG_PRESS_MS, isDoubleTapGesture\} from "\.\/floating-ball-model\.js"/,
         'the ui must classify flicks via the model pure function');
     assert.match(uiSource, /const direction = classifyFlickDirection\(last\.x - first\.x, last\.y - first\.y, dt\);/,
         'the flick judgment must use the classifier');

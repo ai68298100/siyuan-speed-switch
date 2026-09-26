@@ -786,6 +786,15 @@ v0.38.0 已证明三表面模型、统一平台路由和悬浮球基础链路可
 
 边界：原生片段是启用状态唯一来源；预览不写生产文档；导入保持禁用；JS 关闭不能撤销既有副作用；无社区服务端时只生成本地未审核投稿包；不读取模型密钥、不自动请求付费模型。工作室代码使用动态 chunk，保持主入口包体在线内；完整门禁、生产构建和浏览器截图仍是本方向退出条件。
 
+### 8.0.22 2026-09-27 悬浮球手势纵深（现行，用户指令立项；R9 调研 `docs/research-cycle-r9-2026-09-27.md`）
+
+用户指令：版本本地完成并维护好后，不等本机与其他事项，直接进入下一个大开发计划。按 §8.0.12 引擎与 §8.0.8 P2 既定路线，立项**单击/双击/长按三手势独立映射**（Floatify 式范式；复用四向快滑 T-6886/T-6887 的"分类器+绑定+设置可视化"模式）。约束：双击未绑定时单击保持零延迟直发（老用户零回归）；长按仅在绑定后武装定时器；拖动/侧滑/取消路径全部拆除手势定时器；真机触控照例 B-004 后置。
+
+| 任务 | 内容 | 状态 |
+| --- | --- | --- |
+| T-6919 | 模型层：`behavior.doubleTapAction/longPressAction` 归一化（≤48 有界清洗，默认空=未绑定）；`isLongPressGesture/isDoubleTapGesture` 纯函数（550ms/300ms 阈值，不达标不猜）；UI 指针生命周期接线（长按武装/拖动拆除/合成 click 抑制/双击判别窗）；宿主 `executeFloatingBallBoundGesture` 统一路由（""/more/动作 id/不可用回执） | ✅ 完成（本批） |
+| T-6920 | 设置页三手势可视化绑定（复用 T-6887 快滑面板模式：单击/双击/长按逐端绑定、label 走 clickActionLabel、persist 归一化+预算检查） | 待开工 |
+
 ### 8.0.9 2026-09-22 思源 3.8.5 侧滑与悬浮球输入边界复核（研究完成，暂不开发）
 
 用户反馈思源手机端 3.8.5 更新左右滑后，左右边缘悬浮球容易触发侧栏。源码复核已完成（`docs/mobile-swipe-floating-ball-research-2026-09-22.md`、[ADR 0071](docs/adr/0071-mobile-swipe-ownership-for-floating-ball.md)）：3.8.5 在 `touch.ts` 中把普通页面侧滑方向激活距离设为 12 px，并按屏宽三分之一或 32 px+快速甩动提交；document 级 touch listeners 会继续看到悬浮球触摸。现有 `touch-action:none`、Pointer Capture 和 8~12 px plugin slop 不能表达对宿主 JavaScript 手势的所有权。思源已有 `data-prevent-swipe` 整轮手势契约，悬浮球当前 portal 尚未声明它。

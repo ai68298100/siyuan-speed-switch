@@ -139,6 +139,10 @@ function createDefaultFloatingBallConfig() {
             edgeAvoidMobile: false,
             // T-6886（T-6858 第一批）：四向快滑动作绑定（上=更多面板保留 P6 语义）
             flickActions: {up: "more", down: "quick-capture", left: "previous-tab", right: "next-tab"},
+            // T-6919（悬浮球手势纵深第一批）：双击/长按动作绑定，默认空=未绑定
+            // （单击保持零延迟直发，老用户零回归；值词汇=动作 id / "more"）。
+            doubleTapAction: "",
+            longPressAction: "",
         },
         digitSlots: Object.fromEntries(FLOATING_BALL_SURFACES.map((surface) => [surface,
             Array.from({length: FLOATING_BALL_DIGIT_SLOT_COUNT}, () => null)])),
@@ -345,6 +349,14 @@ function normalizeFloatingBallConfig(input, options = {}) {
             : String(flickDefaults[direction] || "");
         return acc;
     }, {up: "", down: "", left: "", right: ""});
+    // T-6919：双击/长按绑定归一化——与 flickActions 同款有界清洗；空串=未绑定。
+    // 执行时宿主实时读取，归一化不猜目录可用性（未知动作值按不可用回执处理）。
+    config.behavior.doubleTapAction = typeof behavior.doubleTapAction === "string"
+        ? behavior.doubleTapAction.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 48)
+        : "";
+    config.behavior.longPressAction = typeof behavior.longPressAction === "string"
+        ? behavior.longPressAction.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 48)
+        : "";
 
     const sourceActions = isRecord(source.actions) ? source.actions : {};
     FLOATING_BALL_SURFACES.forEach((surface) => {
@@ -596,6 +608,23 @@ function classifyFlickDirection(dx, dy, dt) {
     return "";
 }
 
+// T-6919（悬浮球手势纵深第一批）：手势时序判定纯函数。长按=按住 ≥550ms 且
+// 未超出触摸斜坡（moved 由调用方按 touchSlop 判定后传入）；双击=两次抬起间隔
+// ≤300ms；不达标一律 false 不猜（与 classifyFlickDirection 同一纪律）。
+const FLOATING_BALL_LONG_PRESS_MS = 550;
+const FLOATING_BALL_DOUBLE_TAP_MS = 300;
+
+function isLongPressGesture(holdMs, moved) {
+    const time = Number(holdMs);
+    if (!Number.isFinite(time) || time <= 0) return false;
+    return time >= FLOATING_BALL_LONG_PRESS_MS && moved !== true;
+}
+
+function isDoubleTapGesture(gapMs) {
+    const time = Number(gapMs);
+    return Number.isFinite(time) && time > 0 && time <= FLOATING_BALL_DOUBLE_TAP_MS;
+}
+
 module.exports = {
     FLOATING_BALL_SCHEMA_VERSION,
     FLOATING_BALL_SURFACES,
@@ -632,6 +661,10 @@ module.exports = {
     selectFirstLayerActions: selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
     classifyFlickDirection,
+    isLongPressGesture,
+    isDoubleTapGesture,
+    FLOATING_BALL_LONG_PRESS_MS,
+    FLOATING_BALL_DOUBLE_TAP_MS,
     resolveFloatingBallAction: resolveFloatingBallClickAction,
     normalizeFloatingBallPresets,
     saveFloatingBallPreset,

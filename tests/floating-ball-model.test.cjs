@@ -14,6 +14,10 @@ const {
     snapFloatingBallPosition,
     resolveFloatingBallPosition,
     classifyFlickDirection,
+    isLongPressGesture,
+    isDoubleTapGesture,
+    FLOATING_BALL_LONG_PRESS_MS,
+    FLOATING_BALL_DOUBLE_TAP_MS,
     selectFloatingBallFirstLayer,
     resolveFloatingBallClickAction,
 } = require("../src/floating-ball-model.js");
@@ -287,4 +291,31 @@ test("T-6886 (T-6858 batch 1) flickActions: normalize defaults and bounded strin
     assert.equal(dirty.behavior.flickActions.left.length <= 48, true, "超长值被钳制");
     assert.equal(dirty.behavior.flickActions.down, "quick-capture", "非字符串回落默认");
     assert.equal(dirty.behavior.flickActions.right, "next-tab");
+});
+
+
+test("floating ball gestures: long-press and double-tap timing classifiers stay strict (T-6919)", () => {
+    assert.equal(FLOATING_BALL_LONG_PRESS_MS, 550);
+    assert.equal(FLOATING_BALL_DOUBLE_TAP_MS, 300);
+    assert.equal(isLongPressGesture(550, false), true, "达到阈值且未拖动才算长按");
+    assert.equal(isLongPressGesture(549, false), false, "不足阈值不猜长按");
+    assert.equal(isLongPressGesture(2000, true), false, "拖动过的不算长按");
+    assert.equal(isLongPressGesture(NaN, false), false);
+    assert.equal(isDoubleTapGesture(1), true);
+    assert.equal(isDoubleTapGesture(300), true);
+    assert.equal(isDoubleTapGesture(301), false, "超出窗口不算双击");
+    assert.equal(isDoubleTapGesture(0), false);
+    assert.equal(isDoubleTapGesture(Number.NaN), false);
+});
+
+test("floating ball config: double-tap and long-press bindings normalize to bounded strings (T-6919)", () => {
+    const config = createDefaultFloatingBallConfig();
+    assert.equal(config.behavior.doubleTapAction, "", "默认未绑定：单击保持零延迟直发");
+    assert.equal(config.behavior.longPressAction, "");
+    const dirty = normalizeFloatingBallConfig({behavior: {doubleTapAction: " clipboard-entry  x", longPressAction: 42}});
+    assert.equal(dirty.behavior.doubleTapAction, "clipboard-entry  x", "控制字符清洗为空格且保留有效动作 id（与 flickActions 同语义，不折叠）");
+    assert.equal(dirty.behavior.longPressAction, "", "非字符串回落未绑定");
+    const roundTrip = normalizeFloatingBallConfig({behavior: {doubleTapAction: "more", longPressAction: "scroll-top"}});
+    assert.equal(roundTrip.behavior.doubleTapAction, "more");
+    assert.equal(roundTrip.behavior.longPressAction, "scroll-top");
 });
