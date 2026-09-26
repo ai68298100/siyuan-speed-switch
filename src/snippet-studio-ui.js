@@ -295,6 +295,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     aiActions.append(aiButton, cancelAIButton);
     const aiStatus = node("p", "sw-studio__hint", t("snippetAIIdle"));
     aiStatus.setAttribute("role", "status");
+    aiStatus.setAttribute("aria-live", "polite");
+    aiStatus.setAttribute("aria-atomic", "true");
     const aiResultPanel = node("div", "sw-studio__ai-result-panel");
     const aiResultHeader = node("div", "sw-studio__ai-result-header");
     const aiResultTitle = node("strong", "", t("snippetAICandidate"));
@@ -326,10 +328,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         explain: "snippetAIExplainHint",
         iterate: "snippetAIIterateHint",
     };
-    const setAIStatus = (value, ready = false) => {
+    const setAIStatus = (value, ready = false, state = "") => {
         aiStatus.textContent = value;
+        aiStatus.dataset.state = state || (ready ? "ready" : "idle");
         aiProvider.textContent = value;
-        aiProvider.className = `sw-studio__state-badge${ready ? " is-ready" : ""}`;
+        const stateClass = state === "error" ? " is-error" : state === "loading" ? " is-loading" : ready ? " is-ready" : "";
+        aiProvider.className = `sw-studio__state-badge${stateClass}`;
     };
     const updateAIActions = () => {
         if (cancelAIButton.disabled) aiButton.disabled = busy || !aiConsentInput.checked || !prompt.value.trim();
@@ -599,7 +603,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiEmpty.hidden = true;
         aiResult.value = "";
         aiResultMeta.textContent = "";
-        setAIStatus(t("snippetAIGenerating"));
+        setAIStatus(t("snippetAIGenerating"), false, "loading");
         try {
             const result = await ai.generate({type: captured.type, content: sourceContent, instruction, mode, history,
                 onToken: (token) => { if (!disposed && generation === aiGeneration) aiResult.value += token; },
@@ -611,7 +615,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             aiHistory = [...history, {role: "user", content: instruction}, {role: "assistant", content: result.content}].slice(-8);
             acceptButton.disabled = mode === "explain";
             setAIStatus(t("snippetAIDone"), true);
-        } catch (error) { if (!disposed && generation === aiGeneration) setAIStatus(errorText(error)); }
+        } catch (error) { if (!disposed && generation === aiGeneration) setAIStatus(errorText(error), false, "error"); }
         finally { if (!disposed && generation === aiGeneration) { cancelAIButton.disabled = true; updateAIActions(); } }
     }
     function closePicker() {

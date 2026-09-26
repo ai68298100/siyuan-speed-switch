@@ -1205,6 +1205,18 @@ test('snippet studio footer exposes a shared receipt state contract (T-6904)', (
     assert.match(studioScss, /&__status\[data-state="error"\].*var\(--studio-error\)/s, 'error receipts must use the error token');
 });
 
+test('snippet studio AI receipt distinguishes loading, success, and failure (T-6905)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    assert.match(studioUi, /aiStatus\.setAttribute\("aria-live", "polite"\);/, 'AI status must be announced as a live region');
+    assert.match(studioUi, /aiStatus\.setAttribute\("aria-atomic", "true"\);/, 'AI status updates must be announced atomically');
+    assert.match(studioUi, /const setAIStatus = \(value, ready = false, state = ""\) => \{/, 'AI status must use one state helper');
+    assert.match(studioUi, /aiStatus\.dataset\.state = state \|\| \(ready \? "ready" : "idle"\);/, 'AI status must expose a stable state value');
+    assert.match(studioUi, /state === "error" \? " is-error" : state === "loading" \? " is-loading" : ready \? " is-ready"/, 'AI provider badge must style loading, error, and ready states');
+    assert.match(studioUi, /setAIStatus\(t\("snippetAIGenerating"\), false, "loading"\)/, 'AI generation must expose loading state');
+    assert.match(studioUi, /setAIStatus\(errorText\(error\), false, "error"\)/, 'AI failures must expose error state');
+    assert.match(studioUi, /setAIStatus\(t\("snippetAIDone"\), true\)/, 'completed AI generation must expose ready state');
+});
+
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));
