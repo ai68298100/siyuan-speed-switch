@@ -815,6 +815,7 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
         'index.ts must import the platform DOM helpers');
     // chrome 挂载接受 kbdHints 并渲染为 kbd 芯片组（空芯片与空组都不落 DOM）。
     assert.match(indexSource, /kbdHints\?: readonly string\[\];/, 'chrome options must declare kbdHints');
+    assert.match(indexSource, /onClose\?: \(\) => void;/, 'chrome options must expose a close action');
     const chromeMount = indexSource.slice(indexSource.indexOf('export function mountPlatformChrome'), indexSource.indexOf('declare module "./snippet-studio-ui"'));
     assert.match(chromeMount, /if \(options\.kbdHints && options\.kbdHints\.length > 0\)/,
         'mountPlatformChrome must guard empty kbdHints');
@@ -822,10 +823,20 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
         'kbd hints must render into the context actions slot');
     assert.match(chromeMount, /kbdHints\.appendChild\(createPlatformKbd\(doc, trimmed\)\)/,
         'each non-empty hint must become a platform kbd chip');
+    assert.match(chromeMount, /close\.className = "b3-button b3-button--text sw-platform-header__close";/, 'chrome must render a top-right close button');
+    assert.match(chromeMount, /close\.addEventListener\("click", \(\) => options\.onClose\?\.\(\)\)/,
+        'close button must invoke the supplied surface close action');
     // 切换器是首个消费点：上下文栏常驻 Tab/1-9/Enter/Alt 预览。
     assert.match(indexSource, /kbdHints: \["Tab", "1-9", "Enter", this\.i18n\.platformKbdPreview\]/,
         'desktop switcher chrome must pass the keyboard hints');
     assert.match(indexSource, /platformKbdPreview/, 'the Alt-preview hint must come from i18n');
+    assert.match(indexSource, /onClose: \(\) => dialog\.destroy\(\)/,
+        'switcher and workbench dialogs must wire close to destroy');
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    assert.match(studioUi, /onClose: \(\) => \{\s*if \(canDiscard\(\)\) platform\.onClose\?\.\(\);\s*\}/,
+        'studio close must check the dirty draft once');
+    assert.match(indexSource, /onClose: \(\) => \{\s*dialog\.destroy\(\);\s*\},\s*closeLabel: this\.i18n\.close/,
+        'studio host must destroy only after the studio dirty guard succeeds');
     // SCSS 原语：块级断言（选择器块内声明了关键属性，非文件级共现）。
     assert.ok(declaresIn(shell, '.sw-platform-status::before', /content:\s*""/),
         'status badge must render the semantic color dot');
@@ -921,12 +932,12 @@ test('switcher polish: kbd-skinned digit badges and preview status badge (T-6873
     // 预览窗格状态徽标：loading→ready 两态推进，经平台六态徽标原语产出。
     assert.match(docSearchUi, /import \{createPlatformStatus\} from "\.\/platform-dom"/,
         'doc-search-ui must import the platform status primitive');
-    assert.match(docSearchUi, /function setDocPreviewStatus\(pane: HTMLElement, state: "loading" \| "ready", label: string\): void/,
+    assert.match(docSearchUi, /function setDocPreviewStatus\(pane: HTMLElement, state: "loading" \| "ready" \| "error" \| "blocked", label: string\): void/,
         'preview status must be a dedicated helper');
     assert.match(docSearchUi, /setDocPreviewStatus\(pane, "loading", this\.i18n\.docSearchPreviewStatusLoading\);/,
         'fetch start must switch the badge to loading');
-    assert.match(docSearchUi, /setDocPreviewStatus\(pane, "ready", this\.i18n\.docSearchPreviewStatusReady\);/,
-        'after the generation guard the badge must advance to ready');
+    assert.match(docSearchUi, /setDocPreviewStatus\(pane, failed \? "error" : "ready", failed/,
+        'after the generation guard the badge must reflect request failures');
     // 头部 flex 与徽标右置（嵌套 SCSS 用展开后的完整选择器）。
     assert.ok(declaresIn(badgeScss, '.speed-switch .sw__doc-results.sw--with-preview .sw__doc-preview .sw__doc-preview-header', /display:\s*flex/),
         'preview header must be a flex row');

@@ -153,6 +153,19 @@
 .sw-platform-header__context > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-platform-header__actions { flex: 0 0 auto; justify-content: flex-end; }
 
+.sw-platform-header__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    border-radius: var(--b3-border-radius);
+}
+
+.sw-platform-header__close svg { width: 18px; height: 18px; }
+
 .sw-platform-surface-nav {
     display: flex;
     align-items: center;

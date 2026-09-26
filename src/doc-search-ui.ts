@@ -522,6 +522,7 @@ export function updateDocSearchHealth(this: DocSearchUiHost, scrollElement: HTML
 }
 
 export function disposeDocSearchSession(this: DocSearchUiHost, scrollElement: HTMLElement) {
+        cancelDocPreview(scrollElement);
         this.docSearchState.health.delete(scrollElement);
         delete scrollElement.dataset.swSearchState;
         delete scrollElement.dataset.swSearchReasons;
@@ -928,6 +929,7 @@ export function appendDocResultsLoadMore(this: DocSearchUiHost,
 
     // 复用现有 .sw__doc-results 容器；docs===null 时直接移除并返回 null
 export function ensureDocResultsBox(this: DocSearchUiHost, scrollElement: HTMLElement, docs: IDocSearchResult[] | null): HTMLElement | null {
+        cancelDocPreview(scrollElement);
         let box = scrollElement.querySelector<HTMLElement>(".sw__doc-results");
         if (docs === null) {
             box?.remove();
@@ -961,7 +963,7 @@ export function collectOpenRootIds(this: DocSearchUiHost): Set<string> {
     // 桌面端：文档结果区右分栏，行焦点（↑/↓/Tab）同步预览（大纲 ≤12 + 首段 ≤600 字）。
     // 零新增端点：getDocOutline 与 /api/query/sql 均在 KERNEL_ENDPOINTS 白名单；
     // 300ms debounce（Raycast/Spotlight 谱系共识）+ 代际计数丢弃过期回包；
-    // 仅全库文档网格行触发；手机端与窄容器（侧栏模式）不挂载。
+    // 全库结果与已开页签共用窗格；手机端与窄容器不挂载。
     // rootId 经 BLOCK_ID_RE 锚定校验（^[0-9]{14}-[0-9a-z]+$）后才可入 SQL 字面量。
 
 const DOC_PREVIEW_DEBOUNCE_MS = 300;
@@ -974,7 +976,6 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
         if (this.isMobile || scrollElement.clientWidth < DOC_PREVIEW_MIN_WIDTH) {
             return;
         }
-        box.classList.add("sw--with-preview");
         let pane = docPreviewPanes.get(scrollElement);
         if (!pane) {
             // 审查轮 P-C：常驻标题头 + 独立 body（内容轮换不清掉头部），min-height 防碎片感
@@ -991,24 +992,42 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
             docPreviewPanes.set(scrollElement, pane);
         }
         // 结果区每次渲染都会 innerHTML 重建，窗格需随之重挂
+        pane.parentElement?.classList.remove("sw--with-preview");
+        box.classList.add("sw--with-preview");
         box.appendChild(pane);
         if (box.dataset.swPreviewHook !== "1") {
             box.dataset.swPreviewHook = "1";
             box.addEventListener("focusin", (event) => {
-                const item = (event.target as HTMLElement).closest?.(".sw__doc-grid .sw__doc-item");
+                const item = (event.target as HTMLElement).closest?.(".sw__doc-grid .sw__doc-item, .sw__tab-content .sw__card");
                 if (item) {
-                    scheduleDocPreview.call(this, scrollElement, item as HTMLElement);
+                    previewTabOrDoc.call(this, scrollElement, item as HTMLElement);
                 }
             });
             // T-6843 悬停触发：与行焦点同一 debounce 管线（同一次扫掠的多次
             // mouseover 由 300ms debounce 合并取末行）；触屏的 tap 会先发
             // mouseover 再 click——预览先行一步无害（点击随后打开文档）
             box.addEventListener("mouseover", (event) => {
-                const item = (event.target as HTMLElement).closest?.(".sw__doc-grid .sw__doc-item");
+                const item = (event.target as HTMLElement).closest?.(".sw__doc-grid .sw__doc-item, .sw__tab-content .sw__card");
                 if (item) {
-                    scheduleDocPreview.call(this, scrollElement, item as HTMLElement);
+                    previewTabOrDoc.call(this, scrollElement, item as HTMLElement);
                 }
             });
+        }
+    }
+
+export function previewTabOrDoc(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
+        const box = item.closest<HTMLElement>(".sw__tab-preview, .sw__doc-results");
+        if (box) mountDocPreviewPane.call(this, box, scrollElement);
+        const rootId = item.dataset.swDocKey || item.dataset.rootId || "";
+        if (BLOCK_ID_RE.test(rootId)) {
+            scheduleDocPreview.call(this, scrollElement, item);
+            return;
+        }
+        cancelDocPreview(scrollElement);
+        const pane = docPreviewPanes.get(scrollElement);
+        if (pane?.isConnected) {
+            setDocPreviewStatus(pane, "blocked", this.i18n.docSearchPreviewUnavailable);
+            setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewUnavailable);
         }
     }
 
@@ -1029,7 +1048,7 @@ function setDocPreviewHint(this: DocSearchUiHost, pane: HTMLElement, text: strin
 
 // T-6873（RZ-3）：预览窗格头部状态徽标（loading→ready，六态徽标语言）。
 // 每次整体替换徽标元素——状态只有两个且由调用方按序推进，无需 diff。
-function setDocPreviewStatus(pane: HTMLElement, state: "loading" | "ready", label: string): void {
+function setDocPreviewStatus(pane: HTMLElement, state: "loading" | "ready" | "error" | "blocked", label: string): void {
         const header = pane.querySelector<HTMLElement>(".sw__doc-preview-header");
         if (!header) return;
         header.querySelector(".sw-platform-status")?.remove();
@@ -1038,21 +1057,29 @@ function setDocPreviewStatus(pane: HTMLElement, state: "loading" | "ready", labe
         header.appendChild(badge);
     }
 
-function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
-        const rootId = String(item.dataset.swDocKey || "");
-        if (!BLOCK_ID_RE.test(rootId)) return;
+export function cancelDocPreview(scrollElement: HTMLElement): number {
         const previous = docPreviewTimers.get(scrollElement);
         if (previous !== undefined) window.clearTimeout(previous);
+        docPreviewTimers.delete(scrollElement);
+        const generation = (docPreviewGenerations.get(scrollElement) || 0) + 1;
+        docPreviewGenerations.set(scrollElement, generation);
+        return generation;
+    }
+
+function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
+        const rootId = String(item.dataset.swDocKey || item.dataset.rootId || "");
+        if (!BLOCK_ID_RE.test(rootId)) return;
+        const generation = cancelDocPreview(scrollElement);
         docPreviewTimers.set(scrollElement, window.setTimeout(() => {
-            void loadDocPreview.call(this, scrollElement, rootId);
+            docPreviewTimers.delete(scrollElement);
+            if (!item.isConnected) return;
+            void loadDocPreview.call(this, scrollElement, rootId, generation);
         }, DOC_PREVIEW_DEBOUNCE_MS));
     }
 
-async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, rootId: string): Promise<void> {
+async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, rootId: string, generation: number): Promise<void> {
         const pane = docPreviewPanes.get(scrollElement);
         if (!pane || !pane.isConnected) return;
-        const generation = (docPreviewGenerations.get(scrollElement) || 0) + 1;
-        docPreviewGenerations.set(scrollElement, generation);
         setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewLoading);
         setDocPreviewStatus(pane, "loading", this.i18n.docSearchPreviewStatusLoading);
         // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null
@@ -1061,18 +1088,21 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
             this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: true}),
             this.fetchKernelJson("/api/query/sql", {stmt:
                 "SELECT content FROM blocks WHERE root_id = '" + rootId + "' AND type = 'p' AND content <> '' ORDER BY id LIMIT 3"}),
-        ]);
+        ].map((request: Promise<any>): Promise<any> => request.catch((): null => null)));
         if (!pane.isConnected) return;
         if ((docPreviewGenerations.get(scrollElement) || 0) !== generation) return;
-        // 代际校验通过=本次取数结果有效，徽标推进为已就绪（空内容交给提示行解释）
-        setDocPreviewStatus(pane, "ready", this.i18n.docSearchPreviewStatusReady);
+        const failed = [outlinePayload, rowsPayload].some(payload =>
+            !payload || payload.code !== 0 || !Array.isArray(payload.data));
+        setDocPreviewStatus(pane, failed ? "error" : "ready", failed
+            ? this.i18n.docSearchPreviewFailed : this.i18n.docSearchPreviewStatusReady);
         const outline = Array.isArray(outlinePayload?.data) ? outlinePayload.data : [];
         const rows = Array.isArray(rowsPayload?.data) ? rowsPayload.data : [];
         const snapshot = buildDocPreviewSnapshot(outline, rows);
         const body = previewBodyOf(pane);
         body.textContent = "";
         if (snapshot.empty) {
-            setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
+            setDocPreviewHint.call(this, pane, failed
+                ? this.i18n.docSearchPreviewFailed : this.i18n.docSearchPreviewNoContent);
             return;
         }
         if (snapshot.outline.length > 0) {

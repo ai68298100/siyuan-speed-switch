@@ -944,6 +944,7 @@
         }
     }
 
+    .sw__tab-preview,
     .sw__doc-results,
     .sw__unified-section {
         margin-top: 16px;
@@ -1103,6 +1104,8 @@
                 grid-column: 1;
             }
 
+            .sw__tab-content { grid-column: 1; min-width: 0; }
+
             .sw__doc-preview {
                 grid-column: 2;
                 grid-row: 2 / span 2;
@@ -1219,6 +1222,8 @@
             }
         }
     }
+
+    .sw__tab-preview.sw--with-preview .sw__doc-preview { grid-row: 1; }
 
     // Opt-in home/second-panel module surface. The renderer owns semantics;
     // this layer only gives it a compact, theme-native visual treatment.

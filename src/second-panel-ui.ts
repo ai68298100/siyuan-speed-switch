@@ -187,6 +187,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
                 context: context || null,
                 onNavigate: navigatePlatformSurface,
+                onClose: () => dialog.destroy(),
+                closeLabel: this.i18n.close,
             });
             const defs = new Map<string, any>();
             this.homeRuntime.listModules("desktop").concat(this.homeRuntime.listModules("mobile"))

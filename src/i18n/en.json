@@ -1232,4 +1232,7 @@
   ,"snippetBuiltinCodeDescription": "A border, padding, and readable code line height."
   ,"snippetBuiltinFontName": "Serif reading mix"
   ,"snippetBuiltinFontDescription": "A conservative serif stack for prose and a system stack for code."
+,"docSearchPreviewFailed": "Preview incomplete. Focus the item again to retry."
+,"docSearchPreviewNoContent": "No outline or excerpt available"
+,"docSearchPreviewUnavailable": "Preview available for documents only"
 }

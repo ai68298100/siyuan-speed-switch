@@ -715,6 +715,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 if (!canDiscard()) return;
                 platform.onNavigate?.(surface);
             },
+            onClose: () => {
+                if (canDiscard()) platform.onClose?.();
+            },
+            closeLabel: locale.i18n.close || "Close",
         });
     }
     return {

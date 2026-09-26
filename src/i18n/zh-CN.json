@@ -1232,4 +1232,7 @@
   "snippetBuiltinCodeDescription": "边框、内边距和易读的代码行高。",
   "snippetBuiltinFontName": "衬线阅读组合",
   "snippetBuiltinFontDescription": "正文使用保守的衬线栈，代码使用系统等宽栈。"
+,"docSearchPreviewFailed": "预览未完整加载，请重新聚焦重试"
+,"docSearchPreviewNoContent": "暂无大纲或摘要"
+,"docSearchPreviewUnavailable": "仅文档支持大纲预览"
 }

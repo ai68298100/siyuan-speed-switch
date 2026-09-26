@@ -58,6 +58,7 @@ import {
     activateDocResultItem,
     buildDocResultItem,
     collectOpenRootIds,
+    cancelDocPreview,
     disposeDocSearchSession,
     docSearchHitId,
     docSearchResultId,
@@ -69,6 +70,8 @@ import {
     hasDocSearchFilter,
     loadDocSearchPathChildren,
     openDocSearchResult,
+    mountDocPreviewPane,
+    previewTabOrDoc,
     renderDocResults,
     runDocSearchFetch,
     runFullTextSearchFallback,
@@ -599,6 +602,8 @@ export interface PlatformSurfaceChromeOptions {
     // T-6871（RZ-1）：键位提示芯片组（如 Tab/1-9/Enter），渲染在上下文栏尾部。
     kbdHints?: readonly string[];
     onNavigate?: (surface: PlatformSurface) => void;
+    onClose?: () => void;
+    closeLabel?: string;
 }
 
 const PLATFORM_SURFACES: readonly PlatformSurface[] = PLATFORM_SURFACE_IDS as readonly PlatformSurface[];
@@ -671,6 +676,16 @@ export function mountPlatformChrome(root: HTMLElement, options: PlatformSurfaceC
     });
     const actions = doc.createElement("div");
     actions.className = "sw-platform-header__actions";
+    if (options.onClose) {
+        const close = doc.createElement("button");
+        close.type = "button";
+        close.className = "b3-button b3-button--text sw-platform-header__close";
+        close.setAttribute("aria-label", options.closeLabel || "Close");
+        close.title = options.closeLabel || "Close";
+        close.innerHTML = '<svg><use xlink:href="#iconClose"></use></svg>';
+        close.addEventListener("click", () => options.onClose?.());
+        actions.appendChild(close);
+    }
     header.append(brand, nav, actions);
 
     const context = doc.createElement("div");
@@ -727,6 +742,8 @@ declare module "./snippet-studio-ui" {
                 available?: readonly PlatformSurface[];
                 context?: PlatformSurfaceContext | null;
                 onNavigate?: (surface: PlatformSurface) => void;
+                onClose?: () => void;
+                closeLabel?: string;
             }) => HTMLElement;
             onNavigate?: (surface: PlatformSurface) => void;
         };
@@ -3242,6 +3259,8 @@ export default class SpeedSwitchPlugin extends Plugin {
                 labels: this.getPlatformSurfaceLabels(),
                 context,
                 kbdHints: ["Tab", "1-9", "Enter", this.i18n.platformKbdPreview],
+                onClose: () => dialog.destroy(),
+                closeLabel: this.i18n.close,
                 onNavigate: (surface) => {
                     if (this.isUnloading || !dialog.element.isConnected) return;
                     dialog.destroy();
@@ -3307,6 +3326,10 @@ export default class SpeedSwitchPlugin extends Plugin {
                             entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
                         });
                     },
+                    onClose: () => {
+                        dialog.destroy();
+                    },
+                    closeLabel: this.i18n.close,
                 },
                 onBack: () => {
                     if (holder.controller && !holder.controller.canClose()) return;
@@ -3877,6 +3900,8 @@ const updatedMap: {[rootId: string]: string} = {};
         if (keyword === "" || kernelQuery === "") {
             // 空查询，或只剩排除项（没有正向词可交给内核）时不发请求
             renderDocResults.call(this, scrollElement, null, onClose);
+            const tabLayout = scrollElement.querySelector<HTMLElement>(".sw__tab-preview");
+            if (tabLayout) mountDocPreviewPane.call(this, tabLayout, scrollElement);
             return;
         }
         // 命中缓存直接渲染（缓存结果可安全复用）
@@ -9383,6 +9408,7 @@ private rootIdOf(tab: Tab): string | null {
                        sortBy: SortBy, updatedMap: {[rootId: string]: string} = {}) {
         // 清空前收集旧卡片：排序切换/列表刷新时同页签卡片直接复用（移动 DOM 而非重建），
         // 已渲染的缩略图原样保留，重排瞬时完成
+        cancelDocPreview(scrollElement);
         const reusable = new Map<string, HTMLElement>();
         scrollElement.querySelectorAll<HTMLElement>(".sw__card").forEach((card) => {
             if (card.dataset.tabId) {
@@ -9419,6 +9445,18 @@ private rootIdOf(tab: Tab): string | null {
         if (all.length === 0) {
             scrollElement.appendChild(this.buildEmptyState());
             return;
+        }
+
+        // 页签区与文档结果区共用一个预览窗格；移动端/窄容器降级。
+        if (!this.isMobile && !scrollElement.closest(".sw--sidebar") && scrollElement.clientWidth >= 680) {
+            const layout = document.createElement("div");
+            layout.className = "sw__tab-preview";
+            const content = document.createElement("div");
+            content.className = "sw__tab-content";
+            while (scrollElement.firstChild) content.appendChild(scrollElement.firstChild);
+            layout.appendChild(content);
+            scrollElement.appendChild(layout);
+            mountDocPreviewPane.call(this, layout, scrollElement);
         }
 
         // 初始焦点
@@ -10798,6 +10836,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         }
         card.classList.add("sw__focused");
         card.setAttribute("aria-current", "true");
+        const scrollElement = card.closest<HTMLElement>(".sw__scroll");
+        if (scrollElement?.querySelector(".sw__tab-preview")) {
+            previewTabOrDoc.call(this, scrollElement, card);
+        }
     }
 
     private scrollIntoView(card: HTMLElement, container: HTMLElement) {
