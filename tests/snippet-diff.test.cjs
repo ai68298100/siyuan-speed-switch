@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {buildSnippetDiff, summarizeDiff, DIFF_MAX_LINES} = require("../src/snippet-diff.js");
+const {buildSnippetDiff, summarizeDiff, applyDiffHunks, DIFF_MAX_LINES} = require("../src/snippet-diff.js");
 
 const rowsOf = (diff, type) => diff.rows.filter((row) => row.type === type).map((row) => row.text);
 
@@ -94,4 +94,42 @@ test("snippet diff: summary reports hunks, line delta and byte delta", () => {
     assert.equal(summary.removed, 1);
     assert.equal(summary.byteDelta, Buffer.byteLength(after) - Buffer.byteLength(before));
     assert.equal(summarizeDiff(before, before, buildSnippetDiff(before, before)).byteDelta, 0);
+});
+
+test("diff hunks: applying all hunks reproduces the candidate", () => {
+    const before = "a\nb\nc";
+    const after = "a\nB\nc\nd";
+    const diff = buildSnippetDiff(before, after);
+    assert.equal(applyDiffHunks(diff, diff.hunks.map(() => true)), after);
+    assert.equal(applyDiffHunks(diff, diff.hunks.map(() => false)), before, "rejecting everything restores the baseline");
+});
+
+test("diff hunks: rejecting a deletion keeps the original line", () => {
+    const before = "keep\nremove-me\nkeep-too";
+    const after = "keep\nreplacement\nkeep-too";
+    const diff = buildSnippetDiff(before, after);
+    assert.equal(diff.hunks.length, 1);
+    const rejected = applyDiffHunks(diff, [false]);
+    assert.equal(rejected, before, "rejected del rows must survive, rejected ins rows must drop");
+    const accepted = applyDiffHunks(diff, [true]);
+    assert.equal(accepted, after);
+});
+
+test("diff hunks: mixed acceptance applies only the selected hunks", () => {
+    const before = ["one", "two", ...Array.from({length: 9}, (_, i) => `mid-${i}`), "nine", "ten"].join("\n");
+    const after = before.replace("two", "TWO").replace("nine", "NINE");
+    const diff = buildSnippetDiff(before, after);
+    assert.equal(diff.hunks.length, 2, "changes beyond context distance must form two hunks");
+    const merged = applyDiffHunks(diff, [true, false]);
+    assert.ok(merged.includes("TWO"), "accepted hunk applies");
+    assert.ok(merged.includes("nine"), "rejected hunk keeps its original line");
+    assert.ok(!merged.includes("NINE"), "rejected hunk drops its insertion");
+});
+
+test("diff hunks: degraded diffs and arity mismatches refuse partial application", () => {
+    const big = Array.from({length: DIFF_MAX_LINES + 1}, (_, i) => `l${i}`).join("\n");
+    assert.equal(applyDiffHunks(buildSnippetDiff("s", big), [true]), null);
+    const diff = buildSnippetDiff("a\nb", "a\nB");
+    assert.equal(applyDiffHunks(diff, []), null);
+    assert.equal(applyDiffHunks(null, [true]), null);
 });

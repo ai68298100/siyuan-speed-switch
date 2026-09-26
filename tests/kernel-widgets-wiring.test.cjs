@@ -1304,6 +1304,32 @@ test('AI candidate renders a local summary and line diff before acceptance (T-69
         'inserted lines must use the success token');
 });
 
+test('AI candidates lint deterministically and accept per hunk (T-6916)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    const studioScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_snippet-studio.scss'));
+    const lint = require('../src/snippet-lint.js');
+    const diffModule = require('../src/snippet-diff.js');
+    assert.equal(typeof lint.lintSnippet, 'function', 'the deterministic linter must be a dedicated module');
+    assert.equal(typeof lint.LINT_RULES_VERSION, 'number', 'the rule set must be versioned');
+    assert.equal(typeof diffModule.applyDiffHunks, 'function', 'hunk application must be a pure diff operation');
+    assert.match(studioUi, /const lint = lintSnippet\(candidate\.type, candidate\.content\);/,
+        'candidates must be linted for the panel');
+    assert.match(studioUi, /activeHunkAccepted = diff\.hunks\.map\(\(\) => true\);/,
+        'hunks must default to accepted');
+    assert.match(studioUi, /head\.setAttribute\("aria-pressed", String\(activeHunkAccepted\[h\]\)\);/,
+        'each hunk must expose an accept toggle');
+    assert.match(studioUi, /applied = applyDiffHunks\(activeDiff, activeHunkAccepted\);/,
+        'partial acceptance must merge through the pure hunk application');
+    assert.match(studioUi, /setAIStatus\(t\("snippetAIDiscarded"\)\);/,
+        'rejecting every hunk must discard the candidate without touching the draft');
+    assert.match(studioUi, /line\.classList\.add\("has-finding", rowFindings\.some\(\(f\) => f\.severity === "warn"\) \? "finding-warn" : "finding-info"\);/,
+        'lint findings must be marked inline on their diff rows');
+    assert.match(studioScss, /&__diff-row\.finding-warn \{ box-shadow: inset 3px 0 0 var\(--studio-warning\); \}/,
+        'warnings must use the warning token');
+    assert.match(studioScss, /&__diff-hunk-head\[aria-pressed="false"\] \{ color: var\(--studio-error\)/,
+        'rejected hunk heads must use the error token');
+});
+
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {
     const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
     const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));

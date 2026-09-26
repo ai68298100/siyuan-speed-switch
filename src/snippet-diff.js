@@ -91,4 +91,24 @@ function summarizeDiff(before, after, diff) {
     return {hunks: diff.hunks.length, added: diff.added, removed: diff.removed, byteDelta};
 }
 
-module.exports = {buildSnippetDiff, summarizeDiff, DIFF_MAX_LINES, DIFF_CONTEXT};
+// T-6916（ADR 0083 D2）：逐 hunk 应用。拒绝一组改动 = 保留该组基准行、丢弃其新增行；
+// hunk 之外的行都是 context，原样保留。返回合并文本；degraded diff 不可逐 hunk 应用。
+function applyDiffHunks(diff, accepted) {
+    if (!diff || diff.degraded || !Array.isArray(accepted) || accepted.length !== diff.hunks.length) return null;
+    const hunkOfRow = new Int32Array(diff.rows.length).fill(-1);
+    diff.hunks.forEach((hunk, h) => {
+        for (let i = hunk.from; i <= hunk.to; i++) hunkOfRow[i] = h;
+    });
+    const out = [];
+    diff.rows.forEach((row, index) => {
+        const hunk = hunkOfRow[index];
+        const rejected = hunk >= 0 && accepted[hunk] === false;
+        if (row.type === "context") out.push(row.text);
+        else if (row.type === "del") {
+            if (rejected) out.push(row.text);
+        } else if (!rejected) out.push(row.text);
+    });
+    return out.join("\n");
+}
+
+module.exports = {buildSnippetDiff, summarizeDiff, applyDiffHunks, DIFF_MAX_LINES, DIFF_CONTEXT};

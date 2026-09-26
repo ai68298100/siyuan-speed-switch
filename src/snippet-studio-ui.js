@@ -1,5 +1,6 @@
 const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader} = require("./snippet-studio-model.js");
-const {buildSnippetDiff, summarizeDiff} = require("./snippet-diff.js");
+const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
+const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
 const {createSnippetPreview} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
@@ -21,6 +22,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetAICandidate: locale.i18n.snippetAICandidate,
         snippetAIConsent: locale.i18n.snippetAIConsent,
         snippetAIDone: locale.i18n.snippetAIDone,
+        snippetAIDiscarded: locale.i18n.snippetAIDiscarded,
         snippetAIExplain: locale.i18n.snippetAIExplain,
         snippetAIGenerate: locale.i18n.snippetAIGenerate,
         snippetAIGenerating: locale.i18n.snippetAIGenerating,
@@ -82,6 +84,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetDelete: locale.i18n.snippetDelete,
         snippetDescription: locale.i18n.snippetDescription,
         snippetDiffDegraded: locale.i18n.snippetDiffDegraded,
+        snippetDiffFindings: locale.i18n.snippetDiffFindings,
+        snippetDiffHunkToggle: locale.i18n.snippetDiffHunkToggle,
         snippetDiffMore: locale.i18n.snippetDiffMore,
         snippetDiffSummary: locale.i18n.snippetDiffSummary,
         snippetDisable: locale.i18n.snippetDisable,
@@ -164,6 +168,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let dark = doc.documentElement.dataset.themeMode === "dark";
     let showOriginal = false;
     let candidate = null;
+    let activeDiff = null;
+    let activeHunkAccepted = [];
     let picker = null;
     let pickerRelease = () => {};
     let pickerScrollTop = {root: 0, layout: 0};
@@ -343,11 +349,36 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const acceptButton = action("snippetAIAccept", () => {
         if (!candidate || candidate.mode === "explain" || busy) return;
         if (candidate.revision !== revision && !win.confirm(t("snippetAIStale"))) return;
-        draft.content = candidate.content;
+        let applied = candidate.content;
+        if (activeDiff && !activeDiff.degraded) {
+            const anyAccepted = activeHunkAccepted.some(Boolean);
+            if (!anyAccepted) {
+                // 全部 ✗ = 放弃候选（ADR 0083 §6）；草稿保持不变。
+                candidate = null;
+                activeDiff = null;
+                acceptButton.disabled = true;
+                aiResultHeader.hidden = true;
+                aiResult.hidden = true;
+                aiEmpty.hidden = false;
+                hideAIDiffPanel();
+                setAIStatus(t("snippetAIDiscarded"));
+                return;
+            }
+            if (!activeHunkAccepted.every(Boolean)) {
+                // 部分应用经行级合并（片段内容统一为 \n 行尾）。
+                applied = applyDiffHunks(activeDiff, activeHunkAccepted);
+            }
+        }
+        draft.content = applied;
         draft.type = candidate.type;
         revision += 1;
         candidate = null;
+        activeDiff = null;
         acceptButton.disabled = true;
+        hideAIDiffPanel();
+        aiResultHeader.hidden = true;
+        aiResult.hidden = true;
+        aiEmpty.hidden = false;
         syncFields();
         renderPreview();
         setStatus(t("snippetAIAccepted"), "ready");
@@ -373,30 +404,59 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             return;
         }
         const diff = buildSnippetDiff(baselineText, candidate.content);
+        const lint = lintSnippet(candidate.type, candidate.content);
+        activeDiff = diff;
+        activeHunkAccepted = diff.hunks.map(() => true);
         const summary = summarizeDiff(baselineText, candidate.content, diff);
-        aiDiffSummary.hidden = false;
-        aiDiffSummary.textContent = t("snippetDiffSummary")
+        let summaryText = t("snippetDiffSummary")
             .replace("{hunks}", String(summary.hunks))
             .replace("{added}", String(summary.added))
             .replace("{removed}", String(summary.removed));
+        if (lint.findings.length) summaryText += " · " + t("snippetDiffFindings").replace("{n}", String(lint.findings.length));
+        aiDiffSummary.hidden = false;
+        aiDiffSummary.textContent = summaryText;
+        const findingLines = new Map();
+        for (const finding of lint.findings) {
+            const list = findingLines.get(finding.line) || [];
+            list.push(finding);
+            findingLines.set(finding.line, list);
+        }
         aiDiffScroll.replaceChildren();
         let shown = 0;
         if (diff.degraded) {
             aiDiffNote.hidden = false;
             aiDiffNote.textContent = t("snippetDiffDegraded");
         } else {
-            for (const hunk of diff.hunks) {
+            for (const [h, hunk] of diff.hunks.entries()) {
                 const block = node("div", "sw-studio__diff-hunk");
+                const head = node("button", "sw-studio__diff-hunk-head", activeHunkAccepted[h] ? "\u2713" : "\u2717");
+                head.type = "button";
+                head.title = `${t("snippetDiffHunkToggle")} · ${h + 1}`;
+                head.setAttribute("aria-label", head.title);
+                head.setAttribute("aria-pressed", "true");
+                head.addEventListener("click", () => {
+                    activeHunkAccepted[h] = !activeHunkAccepted[h];
+                    head.textContent = activeHunkAccepted[h] ? "\u2713" : "\u2717";
+                    head.setAttribute("aria-pressed", String(activeHunkAccepted[h]));
+                    block.classList.toggle("is-rejected", !activeHunkAccepted[h]);
+                });
+                const bodyRows = node("div", "sw-studio__diff-hunk-body");
                 for (const row of hunk.rows) {
                     if (shown >= DIFF_RENDER_ROW_MAX) break;
                     const line = node("div", `sw-studio__diff-row is-${row.type}`);
                     const aCell = node("span", "sw-studio__diff-ln", row.aLine ? String(row.aLine) : "");
                     const bCell = node("span", "sw-studio__diff-ln", row.bLine ? String(row.bLine) : "");
                     const text = node("span", "sw-studio__diff-text", row.text.length ? row.text : "\u00a0");
+                    if (row.bLine && findingLines.has(row.bLine)) {
+                        const rowFindings = findingLines.get(row.bLine);
+                        line.classList.add("has-finding", rowFindings.some((f) => f.severity === "warn") ? "finding-warn" : "finding-info");
+                        line.title = rowFindings.map((f) => f.rule).join(", ");
+                    }
                     line.append(aCell, bCell, text);
-                    block.appendChild(line);
+                    bodyRows.appendChild(line);
                     shown++;
                 }
+                block.append(head, bodyRows);
                 aiDiffScroll.appendChild(block);
                 if (shown >= DIFF_RENDER_ROW_MAX) break;
             }
@@ -404,7 +464,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             aiDiffNote.hidden = hiddenRows <= 0;
             if (hiddenRows > 0) aiDiffNote.textContent = t("snippetDiffMore").replace("{n}", String(hiddenRows));
         }
-        // 流式原文让位给结构化 diff；接受按钮语义不变（应用整个候选）。
+        // 流式原文让位给结构化 diff；接受按钮语义=应用所选 hunk（默认全选）。
         aiResult.hidden = true;
         aiDiffPanel.hidden = false;
     }
@@ -573,6 +633,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiEmpty.hidden = false;
         aiResult.value = "";
         aiResultMeta.textContent = "";
+        activeDiff = null;
+        activeHunkAccepted = [];
         hideAIDiffPanel();
         setAIStatus(t("snippetAIIdle"));
         baseline = native ? {...native} : null;
