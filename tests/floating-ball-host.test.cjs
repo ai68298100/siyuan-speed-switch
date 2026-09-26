@@ -40,7 +40,7 @@ function mount(t, options = {}) {
     const dom = new JSDOM("<!doctype html><body><aside class='speed-switch'><input class='sw__search'><div class='sw__scroll'></div></aside></body>");
     const {document} = dom.window;
     t.after(() => dom.window.close());
-    const calls = {created: [], panels: [], switcher: [], settings: [], home: [], messages: [], warnings: [], savedSearch: []};
+    const calls = {created: [], panels: [], switcher: [], settings: [], home: [], studio: [], messages: [], warnings: [], savedSearch: []};
     let settings = {floatingBall: options.config || createDefaultFloatingBallConfig(), savedSearches: options.savedSearches || []};
     const createFloatingBallUi = (config) => {
         const root = document.createElement("div");
@@ -90,6 +90,7 @@ function mount(t, options = {}) {
         ...require("../src/platform-surface-model.js"),
         PLATFORM_SURFACES: ["switcher", "workbench", "studio"],
         openSecondPanel() { calls.home.push(this); },
+        openPlatformSurface(...args) { calls.studio.push(args); },
         showMessage: (...args) => calls.messages.push(args),
         MESSAGE_DEFAULT_MS: 2500,
         logger: {warn: (...args) => calls.warnings.push(args)},
@@ -500,6 +501,17 @@ test("floating ball host executes Home through the shared executor and restores 
     assert.equal(controller.executionCount, 1);
     assert.equal(controller.restoreCount, 1);
     assert.ok(calls.panels[0].closeCount > 0);
+    assert.deepEqual(calls.messages, []);
+});
+
+test("floating ball host opens the snippet lab through the shared executor", async (t) => {
+    const {host, calls} = mount(t);
+    const controller = host.createFloatingBallSurface("desktop");
+    host.openPlatformSurface = (...args) => calls.studio.push(args);
+    host.executeFloatingBallSurfaceAction("desktop", {id: "snippet-studio", kind: "builtin", value: "snippet-studio"});
+    await settleAction();
+    assert.deepEqual(calls.studio, [["studio", "switcher", {entry: "floating-ball"}]]);
+    assert.equal(controller.restoreCount, 1);
     assert.deepEqual(calls.messages, []);
 });
 

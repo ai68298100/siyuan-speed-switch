@@ -465,8 +465,8 @@ test('wave-3: action catalog expansion with i18n labels (T-6856/T-6845)', () => 
     assert.match(quickActions, /langKey: "actionMarkJump"/, '新动作必须携带 langKey');
     assert.match(quickActions, /function resolveQuickActionLabel\(action, translations\)/,
         '标签解析必须是导出的纯函数（i18n 命中/中文兜底）');
-    assert.equal((quickActions.match(/langKey:/g) || []).length, 34,
-        '全部 22 内建 + 12 宿主命令条目必须携带 langKey');
+    assert.equal((quickActions.match(/langKey:/g) || []).length, 35,
+        '全部 23 内建 + 12 宿主命令条目必须携带 langKey');
     assert.match(floatingActions, /case "mark-jump":/, 'executor 必须分发 mark-jump');
     assert.match(floatingActions, /case "clipboard"/, 'executor 必须分发 clipboard');
     assert.match(floatingActions, /case "close-tab"/, 'executor 必须分发 close-tab');

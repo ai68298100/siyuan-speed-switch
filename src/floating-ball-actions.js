@@ -180,6 +180,12 @@ async function executeFloatingBallAction(action, options = {}) {
                 invokeClose(options);
                 return success(await callback(action));
             }
+            case "snippet-studio": {
+                const callback = callbackOf(options, "onSnippetStudio");
+                if (!callback) return unavailable();
+                invokeClose(options);
+                return success(await callback(action));
+            }
             case "quick-capture": {
                 const callback = callbackOf(options, "onQuickCapture");
                 if (!callback) return unavailable();

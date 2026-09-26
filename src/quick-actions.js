@@ -4,6 +4,7 @@ const QUICK_ACTION_KINDS = new Set(["builtin", "dock", "adapter", "command", "gl
 const QUICK_ACTION_TARGETS = ["desktop", "sidebar", "mobile"];
 const BUILTIN_VALUES = new Set([
     "switcher", "search", "journal", "settings", "home",
+    "snippet-studio",
     "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom",
     "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset",
     "throw-window", "hide-keyboard", "jump-back", "jump-forward",
@@ -36,6 +37,7 @@ const BUILTIN_QUICK_ACTIONS = [
     {id: "journal", label: "日记", langKey: "actionJournal", icon: "iconCalendar", kind: "builtin", value: "journal", targets: ["desktop", "sidebar", "mobile"], order: 10, enabled: true},
     {id: "settings", label: "设置", langKey: "actionSettings", icon: "iconSettings", kind: "builtin", value: "settings", targets: ["desktop", "sidebar", "mobile"], order: 20, enabled: true},
     {id: "home", label: "组件面板", langKey: "actionHome", icon: "iconLayoutHome", kind: "builtin", value: "home", targets: ["desktop", "sidebar", "mobile"], order: 30, enabled: true},
+    {id: "snippet-studio", label: "片段实验室", langKey: "platformStudio", icon: "iconCode", kind: "builtin", value: "snippet-studio", targets: ["desktop"], order: 35, enabled: true},
     {id: "quick-capture", label: "快速记录", langKey: "actionQuickCapture", icon: "iconAdd", kind: "builtin", value: "quick-capture", targets: ["desktop", "sidebar", "mobile"], order: 40, enabled: true, mobileSafe: true},
     {id: "previous-tab", label: "上一个页签", langKey: "actionPreviousTab", icon: "iconLeft", kind: "builtin", value: "previous-tab", targets: ["desktop", "sidebar", "mobile"], order: 50, enabled: true, mobileSafe: true},
     {id: "next-tab", label: "下一个页签", langKey: "actionNextTab", icon: "iconRight", kind: "builtin", value: "next-tab", targets: ["desktop", "sidebar", "mobile"], order: 60, enabled: true, mobileSafe: true},

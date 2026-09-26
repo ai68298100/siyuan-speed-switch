@@ -57,7 +57,7 @@ test("quick actions: empty labels receive an accessible fallback", () => {
 test("quick actions: optional built-ins remain available without becoming defaults", () => {
     assert.deepEqual(getDefaultQuickActions().map((item) => item.value), ["search", "journal", "settings"]);
     assert.deepEqual(getBuiltinQuickActions().map((item) => item.value),
-        ["switcher", "search", "journal", "settings", "home", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset", "throw-window", "hide-keyboard", "jump-back", "jump-forward", "mark-set", "mark-jump", "clipboard", "close-tab"]);
+        ["switcher", "search", "journal", "settings", "home", "snippet-studio", "quick-capture", "previous-tab", "next-tab", "scroll-top", "scroll-bottom", "sync-now", "insert-template", "cycle-doc-set", "cycle-ball-preset", "throw-window", "hide-keyboard", "jump-back", "jump-forward", "mark-set", "mark-jump", "clipboard", "close-tab"]);
     assert.equal(resolveQuickActionSupport("builtin", "journal", "sidebar"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "home", "mobile"), "supported");
     assert.equal(resolveQuickActionSupport("builtin", "sync-now", "mobile"), "supported",
@@ -232,8 +232,8 @@ test("host commands: support follows declarations and sanitizing keeps the kind"
 });
 
 test("quick actions catalog: wave-3 expansion and label i18n resolution (T-6856/T-6845)", () => {
-    // 目录规模：22 内建 + 12 宿主命令 = 34 项
-    assert.equal(getBuiltinQuickActions().length, 22);
+    // 目录规模：23 内建 + 12 宿主命令 = 35 项
+    assert.equal(getBuiltinQuickActions().length, 23);
     assert.equal(getGlobalQuickActions().length, 12);
     // 新内建动作声明三端 targets 且带 langKey
     for (const value of ["mark-set", "mark-jump", "clipboard", "close-tab"]) {
@@ -269,7 +269,7 @@ test("quick actions catalog: every langKey resolves in both language files (T-68
     const keys = [...getBuiltinQuickActions(), ...getGlobalQuickActions()]
         .map((item) => item.langKey)
         .filter(Boolean);
-    assert.equal(keys.length, 34, "catalog entries must all carry langKey");
+    assert.equal(keys.length, 35, "catalog entries must all carry langKey");
     for (const key of keys) {
         assert.ok(zh[key] && zh[key].length > 0, `${key} must exist in zh-CN.json`);
         assert.ok(en[key] && en[key].length > 0, `${key} must exist in en.json`);
