@@ -1082,6 +1082,11 @@ export default class SpeedSwitchPlugin extends Plugin {
                     label: this.i18n.secondPanel,
                     click: () => openSecondPanel.call(this),
                 });
+                menu.addItem({
+                    icon: "iconCode",
+                    label: this.i18n.platformStudio,
+                    click: () => this.openPlatformSurface("studio", "switcher", {entry: "topbar-context-menu"}),
+                });
             },
             callback: () => {
                 this.showSwitcher();
@@ -1106,6 +1111,11 @@ export default class SpeedSwitchPlugin extends Plugin {
                     click: () => {
                         this.showSwitcher();
                     },
+                });
+                menu.addItem({
+                    icon: "iconCode",
+                    label: this.i18n.platformStudio,
+                    click: () => this.openPlatformSurface("studio", "workbench", {entry: "topbar-context-menu"}),
                 });
             },
             callback: () => {
