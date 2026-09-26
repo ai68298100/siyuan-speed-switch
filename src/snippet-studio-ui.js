@@ -1,4 +1,4 @@
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog} = require("./snippet-studio-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader} = require("./snippet-studio-model.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
 const {createSnippetPreview} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
@@ -252,7 +252,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const saveButton = action("snippetSaveDisabled", () => void mutate("save"), "is-primary");
     const toggleButton = action("snippetEnable", () => void mutate("toggle"), "is-secondary");
     const deleteButton = action("snippetDelete", () => void mutate("delete"), "is-danger");
-    const exportButton = action("snippetExport", () => download(`${draft.name || "snippet"}.${draft.type}`, draft.content, "text/plain"), "is-quiet");
+    const exportButton = action("snippetExport", () => {
+        // T-6912：CSS 导出加 usercss 互通头（Stylus 可直接安装）；JS 导出保持原样。
+        const payload = draft.type === "css" ? `${buildUsercssHeader(draft.name)}\n\n${draft.content}` : draft.content;
+        download(`${draft.name || "snippet"}.${draft.type}`, payload, "text/plain");
+    }, "is-quiet");
     const submissionButton = action("snippetSubmission", () => {
         const packet = {schemaVersion: 1, status: "unreviewed", name: draft.name, type: draft.type, content: draft.content, description: "", author: "", license: "", testedWith: "", effects: [], enabled: false};
         download("snippet-submission.json", JSON.stringify(packet, null, 2), "application/json");

@@ -98,9 +98,25 @@ function parseSnippetImport(filename, text) {
     if (!extension) fail("snippet-import-type");
     const name = basename.slice(0, -extension[0].length).trim();
     if (!name || /[\u0000-\u001f\u007f]/.test(name)) fail("snippet-import-name");
-    const content = text.replace(/^\uFEFF/, "");
+    // T-6912：导入去 usercss 头，防止"导出带头 → 再导入 → 头累积"的往返膨胀。
+    const content = stripUsercssHeader(text);
     assertDraftCode(content);
     return {name, type: extension[1].toLowerCase(), content, enabled: false};
+}
+
+const USERCSS_HEADER_RE = /\/\* ==UserStyle==[\s\S]*?==\/UserStyle== \*\//;
+
+/**
+ * T-6912（R8-A4）：Stylus/usercss 生态互通头。只有展示用元数据（名称/命名空间/版本），
+ * 不替用户声明许可证或作者；仅 CSS 导出加头，导入侧无条件去头防累积。
+ */
+function buildUsercssHeader(name) {
+    const safe = String(name || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 120) || "snippet";
+    return `/* ==UserStyle==\n@name ${safe}\n@namespace siyuan-speed-switch\n@version 1.0.0\n==/UserStyle== */`;
+}
+
+function stripUsercssHeader(content) {
+    return String(content || "").replace(USERCSS_HEADER_RE, "").replace(/^\uFEFF/, "").replace(/^\s+/, "");
 }
 
 /** Object-key order is not an external edit; unknown-field changes are. */
@@ -204,7 +220,7 @@ function filterSnippetCatalog(catalog, filters = {}) {
     if (!Array.isArray(catalog)) return [];
     const options = isRecord(filters) ? filters : {};
     const query = typeof options.query === "string" ? options.query.trim().toLocaleLowerCase() : "";
-    return catalog.filter((entry) => {
+    const found = catalog.filter((entry) => {
         if (!isRecord(entry)) return false;
         for (const key of ["type", "category", "source"]) {
             if (options[key] && options[key] !== "all" && entry[key] !== options[key]) return false;
@@ -213,10 +229,14 @@ function filterSnippetCatalog(catalog, filters = {}) {
         return [entry.id, entry.name, entry.description, entry.nameKey, entry.descriptionKey, entry.category, entry.content]
             .filter((value) => typeof value === "string").join("\n").toLocaleLowerCase().includes(query);
     });
+    // T-6913（R8-A6 变体）：宿主 getSnippet 契约没有更新时间字段（仅
+    // id/name/type/content/enabled/disabledInPublish），无法按更新时间排序。
+    // 以"自有片段优先于内建示例"防内建样本霸榜；组内保持宿主返回序（≈创建序）。
+    return found.sort((a, b) => (a?.source === "native" ? 0 : 1) - (b?.source === "native" ? 0 : 1));
 }
 
 module.exports = {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
-    BUILTIN_SNIPPETS, filterSnippetCatalog,
+    BUILTIN_SNIPPETS, filterSnippetCatalog, buildUsercssHeader, stripUsercssHeader,
 };

@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetListForWire, BUILTIN_SNIPPETS, filterSnippetCatalog,
+    buildUsercssHeader, stripUsercssHeader,
 } = require("../src/snippet-studio-model.js");
 
 const native = (suffix = "aaaaaaa", overrides = {}) => ({
@@ -178,4 +179,38 @@ test("snippet catalog: combines localized keyword, source, type and category fil
     assert.equal(filterSnippetCatalog(catalog, {query: "unfindable"}).length, 0);
     assert.equal(filterSnippetCatalog(catalog, {source: "all", type: "all", category: "all"}).length, 6);
     assert.deepEqual(filterSnippetCatalog(null), []);
+});
+
+test("usercss interop: export header builds sanitized metadata and import strips it (T-6912)", () => {
+    const header = buildUsercssHeader("My focus style");
+    assert.ok(header.startsWith("/* ==UserStyle=="), "header must open with the usercss marker");
+    assert.ok(header.includes("@name My focus style"));
+    assert.ok(header.includes("@namespace siyuan-speed-switch"));
+    assert.ok(header.endsWith("==/UserStyle== */"), "header must close with the usercss marker");
+    // 控制字符与换行不得进入 @name 行（usercss 解析器按行读元数据）。
+    const nameLine = buildUsercssHeader("bad\nname\rvalue").split("\n").find((line) => line.startsWith("@name"));
+    assert.equal(nameLine, "@name bad name value");
+    assert.ok(buildUsercssHeader("").includes("@name snippet"), "empty names must not produce an empty @name");
+    // 往返：导出（头 + 正文）再导入去头，正文逐字节还原。
+    const content = "p { color: red; }";
+    const exported = `${buildUsercssHeader("round trip")}\n\n${content}`;
+    assert.equal(stripUsercssHeader(exported), content);
+    assert.equal(stripUsercssHeader(`\uFEFF${header}\n\nbody{}`), "body{}");
+    assert.equal(stripUsercssHeader("p { color: blue; }"), "p { color: blue; }", "plain css must pass through unchanged");
+    const imported = parseSnippetImport("wrapped.css", `${header}\n\n${content}`);
+    assert.equal(imported.content, content);
+    assert.equal(imported.enabled, false, "imported files can never enable themselves");
+});
+
+test("snippet catalog: native entries sort before builtin samples, stable within groups (T-6913)", () => {
+    const nativeA = {...native("aaaaaaa"), source: "native", name: "AAA"};
+    const nativeB = {...native("bbbbbbb"), source: "native", name: "BBB"};
+    const catalog = [BUILTIN_SNIPPETS[0], nativeA, BUILTIN_SNIPPETS[1], nativeB];
+    const ordered = filterSnippetCatalog(catalog).map((item) => item.source === "native" ? item.name : "builtin");
+    assert.deepEqual(ordered, ["AAA", "BBB", "builtin", "builtin"], "native entries must precede builtin samples");
+    // 源内相对顺序稳定：AAA 仍在 BBB 前（宿主返回序 ≈ 创建序）。
+    const singleGroup = filterSnippetCatalog([BUILTIN_SNIPPETS[0], BUILTIN_SNIPPETS[1]]);
+    assert.deepEqual(singleGroup.map((item) => item.id), [BUILTIN_SNIPPETS[0].id, BUILTIN_SNIPPETS[1].id]);
+    // source 精确过滤不受排序影响。
+    assert.deepEqual(filterSnippetCatalog(catalog, {source: "native"}).map((item) => item.name), ["AAA", "BBB"]);
 });

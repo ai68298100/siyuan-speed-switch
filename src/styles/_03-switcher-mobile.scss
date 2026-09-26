@@ -944,6 +944,54 @@
         }
     }
 
+    // ==================== T-6911：命令模式分组与折叠组头（T-6846） ====================
+    .sw__command-group {
+        margin-top: 12px;
+        min-width: 0;
+    }
+
+    .sw__command-group-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+        border-radius: 6px;
+        min-height: 28px;
+
+        &::before {
+            content: "";
+            width: 0;
+            height: 0;
+            border-left: 5px solid currentColor;
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            transition: transform $sw-dur-fast $sw-ease;
+        }
+
+        &[aria-expanded="false"]::before {
+            transform: rotate(90deg);
+        }
+
+        &:hover { color: var(--b3-theme-primary); }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+    }
+
+    .sw__command-group-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 6px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sw__command-group-toggle::before { transition: none; }
+    }
+
     .sw__tab-preview,
     .sw__doc-results,
     .sw__unified-section {

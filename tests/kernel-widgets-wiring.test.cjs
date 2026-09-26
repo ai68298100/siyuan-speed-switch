@@ -683,7 +683,11 @@ test('command prefix: `>` mode lists executable actions in place of doc results 
         '目录=内建动作+宿主命令（同一命令面板）');
     assert.match(indexSource, /\.filter\(\(action\) => action\.targets\?\.includes\("desktop"\)\)/,
         '命令模式仅列当前端可执行的动作');
-    assert.match(indexSource, /matched\.slice\(0, 12\)/, '命令列表有界（≤12）');
+    // T-6911 契约演进：≤12 截断由分组折叠替代；命令项只经分组容器渲染，目录仍受固定注册表有界。
+    assert.match(indexSource, /commandGroupList\.appendChild\(item\);/,
+        '命令项必须经分组容器渲染（分组折叠替代 ≤12 截断，T-6911）');
+    assert.doesNotMatch(indexSource, /matched\.slice\(0, 12\)/,
+        '整体截断必须移除，由组头折叠承担列表长度（T-6911）');
 });
 
 test('version timeline: rollback targets a chosen version from an inline list (T-6824)', () => {
@@ -1234,6 +1238,46 @@ test('snippet studio keeps safety boundaries visible as capability notes (T-6908
         'the capability list must use the shared platform line token');
     assert.match(studioScss, /&__capability \{ position: relative;[^}]*color: var\(--studio-on-surface\)/,
         'capability notes must use the shared muted text token');
+});
+
+test('command mode groups built-in and host commands with collapsible heads (T-6911)', () => {
+    const indexSource = readSourceText(path.join(__dirname, '..', 'src', 'index.ts'));
+    const switcherScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
+    assert.match(indexSource, /commandCollapsedGroups = new Set<string>\(\);/,
+        'collapse state must be remembered for the session across re-renders');
+    assert.match(indexSource, /matched\.filter\(\(action\) => action\.kind !== "global"\)/,
+        'built-in actions must form their own group');
+    assert.match(indexSource, /matched\.filter\(\(action\) => action\.kind === "global"\)/,
+        'host commands must form their own group');
+    assert.match(indexSource, /this\.i18n\.commandGroupBuiltin/, 'the built-in group must use an i18n label');
+    assert.match(indexSource, /this\.i18n\.commandGroupGlobal/, 'the host command group must use an i18n label');
+    assert.match(indexSource, /heading\.setAttribute\("aria-expanded", String\(!collapsed\)\);/,
+        'group heads must expose their expanded state');
+    assert.match(indexSource, /heading\.addEventListener\("keydown", \(event\) => \{\s*\n\s*if \(event\.key === "Enter" \|\| event\.key === " "\)/,
+        'group heads must be collapsible from the keyboard');
+    assert.match(switcherScss, /\.sw__command-group-toggle \{[^}]*cursor: pointer/,
+        'the group head must be styled as an interactive toggle');
+    assert.match(switcherScss, /\.sw__command-group-toggle \{[\s\S]*?\[aria-expanded="false"\]::before \{[^}]*transform: rotate/,
+        'the caret must reflect the collapsed state');
+});
+
+test('snippet studio export interops with usercss headers (T-6912)', () => {
+    const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
+    const model = require('../src/snippet-studio-model.js');
+    assert.match(studioUi, /const payload = draft\.type === "css" \? `\$\{buildUsercssHeader\(draft\.name\)\}/,
+        'CSS exports must carry the usercss interop header');
+    assert.match(studioUi, /: draft\.content;(?=[\s\S]{0,40}download\()/s, 'JS exports must stay header-free');
+    assert.equal(typeof model.buildUsercssHeader, 'function', 'the header builder must be exported');
+    assert.equal(typeof model.stripUsercssHeader, 'function', 'the header stripper must be exported');
+    assert.match(readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-model.js')),
+        /const content = stripUsercssHeader\(text\);/,
+        'imports must strip usercss headers so round trips do not accumulate them');
+});
+
+test('snippet catalog ranks native entries before builtin samples (T-6913)', () => {
+    const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-model.js'));
+    assert.match(modelSource, /return found\.sort\(\(a, b\) => \(a\?\.source === "native" \? 0 : 1\) - \(b\?\.source === "native" \? 0 : 1\)\);/,
+        'the filtered catalog must rank native snippets before builtin samples');
 });
 
 test('workbench widget objectId returns to the exact instance (T-6890)', () => {

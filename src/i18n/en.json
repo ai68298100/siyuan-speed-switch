@@ -91,6 +91,8 @@
   "quickCapturePreviewCurrent": "Appends to end of \"{x}\"",
   "quickCaptureNoTarget": "No active document to write",
   "commandModeLabel": "Commands",
+  "commandGroupBuiltin": "Built-in actions",
+  "commandGroupGlobal": "SiYuan commands",
   "commandModeEmpty": "No matching commands",
   "quickCaptureSave": "Append to today's journal",
   "quickCaptureEmpty": "Please enter something",

@@ -3978,6 +3978,9 @@ const updatedMap: {[rootId: string]: string} = {};
     // switcher-unified-index.js（可单元测试），本层只做装配。
     // T-6820 命令前缀渲染：`>查询` 只列可执行动作（内建 + 宿主命令），
     // 点击/激活走既有 executeQuickAction（回执与失败原因同管线）。
+    // T-6911（T-6846 落地）：命令模式分组折叠状态，插件会话内记忆，跨键盘输入重渲染保持。
+    private commandCollapsedGroups = new Set<string>();
+
     private renderCommandList(scrollElement: HTMLElement, query: string, onClose: IOverlayClose) {
         scrollElement.querySelector(".sw__unified")?.remove();
         scrollElement.querySelector(".sw__doc-results")?.remove();
@@ -4006,29 +4009,68 @@ const updatedMap: {[rootId: string]: string} = {};
             box.appendChild(empty);
             return;
         }
-        matched.slice(0, 12).forEach((action) => {
-            // 审查轮 P-A：命令项重做为 quick pick 式行（左图标 + 左对齐标签 + 右激活提示），
-            // 之前复用 .sw__doc-item 类但处在 .sw__command-list 作用域外，退化为裸按钮
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "sw__command-item";
-            const icon = document.createElement("span");
-            icon.className = "sw__command-icon";
-            icon.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${this.escapeAttr(action.icon || "iconTerminal")}"></use></svg>`;
-            const label = document.createElement("span");
-            label.className = "sw__command-label";
-            label.textContent = action.label || action.value || "";
-            const hint = document.createElement("span");
-            hint.className = "sw__command-kind";
-            hint.textContent = "↵";
-            hint.title = this.i18n.commandModeLabel;
-            item.append(icon, label, hint);
-            item.addEventListener("click", () => {
-                onClose();
-                this.executeQuickAction(action as IQuickAction, null, onClose);
+        // T-6911：内建动作与思源宿主命令分两组展示；组头可折叠（P5 选择器同款交互 +
+        // 键盘等价），注册表本身有界（内建 22 + 宿主 12），不再做整体截断。
+        const groups: Array<{key: "builtin" | "global"; label: string; actions: typeof matched}> = [
+            {key: "builtin", label: this.i18n.commandGroupBuiltin, actions: matched.filter((action) => action.kind !== "global")},
+            {key: "global", label: this.i18n.commandGroupGlobal, actions: matched.filter((action) => action.kind === "global")},
+        ];
+        for (const group of groups) {
+            if (!group.actions.length) continue;
+            const section = document.createElement("div");
+            section.className = "sw__command-group";
+            const heading = document.createElement("div");
+            heading.className = "sw__window-label sw__command-group-toggle";
+            heading.textContent = `${group.label} · ${group.actions.length}`;
+            heading.setAttribute("role", "button");
+            heading.tabIndex = 0;
+            const commandGroupList = document.createElement("div");
+            commandGroupList.className = "sw__command-group-list";
+            const applyCollapsed = () => {
+                const collapsed = this.commandCollapsedGroups.has(group.key);
+                commandGroupList.style.display = collapsed ? "none" : "";
+                heading.setAttribute("aria-expanded", String(!collapsed));
+            };
+            const toggleCollapsed = () => {
+                if (this.commandCollapsedGroups.has(group.key)) this.commandCollapsedGroups.delete(group.key);
+                else this.commandCollapsedGroups.add(group.key);
+                applyCollapsed();
+            };
+            heading.addEventListener("click", toggleCollapsed);
+            heading.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    toggleCollapsed();
+                }
             });
-            box.appendChild(item);
-        });
+            section.appendChild(heading);
+            group.actions.forEach((action) => {
+                // 审查轮 P-A：命令项重做为 quick pick 式行（左图标 + 左对齐标签 + 右激活提示），
+                // 之前复用 .sw__doc-item 类但处在 .sw__command-list 作用域外，退化为裸按钮
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "sw__command-item";
+                const icon = document.createElement("span");
+                icon.className = "sw__command-icon";
+                icon.innerHTML = `<svg aria-hidden="true"><use xlink:href="#${this.escapeAttr(action.icon || "iconTerminal")}"></use></svg>`;
+                const label = document.createElement("span");
+                label.className = "sw__command-label";
+                label.textContent = action.label || action.value || "";
+                const hint = document.createElement("span");
+                hint.className = "sw__command-kind";
+                hint.textContent = "↵";
+                hint.title = this.i18n.commandModeLabel;
+                item.append(icon, label, hint);
+                item.addEventListener("click", () => {
+                    onClose();
+                    this.executeQuickAction(action as IQuickAction, null, onClose);
+                });
+                commandGroupList.appendChild(item);
+            });
+            section.appendChild(commandGroupList);
+            applyCollapsed();
+            box.appendChild(section);
+        }
     }
 
     private renderUnifiedSections(scrollElement: HTMLElement, keyword: string, onClose: IOverlayClose, parsedQuery?: {phrases: string[]; excludes: string[]; terms: string[]}) {
