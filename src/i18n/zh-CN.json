@@ -1164,6 +1164,8 @@
   "snippetCapabilities": "能力与安全边界",
   "snippetCapabilityCSS": "CSS 预览始终运行在隔离沙箱文档中，绝不写入你的笔记。",
   "snippetCapabilityJS": "JS 片段仅支持管理与导出；在脚本可以被安全终止之前，预览执行保持禁用。",
+  "snippetCapabilityScope": "AI 只看到当前片段与你的指令，不会读取或理解你的整个库。",
+  "snippetCapabilityStorage": "已保存的片段只存在于思源原生片段存储；工作室只保留会话内草稿，不建第二份持久副本。",
   "snippetCapabilityAI": "AI 结果始终只是草稿，需要你手动接受，不会自动保存或启用。",
   "snippetCategoryTypography": "排版",
   "snippetCategoryTable": "表格",

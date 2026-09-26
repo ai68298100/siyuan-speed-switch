@@ -45,10 +45,11 @@ test('preview invalidates old responses as soon as a new target is scheduled', a
     } finally {f.dom.window.close();}
 });
 test('preview distinguishes empty success, partial failure, malformed and rejected responses', async () => {
-    for (const mode of ['empty', 'partial', 'malformed', 'rejected']) {
+    for (const mode of ['empty', 'partial', 'malformed', 'deleted', 'rejected']) {
         const f = fixture(url => {
             if (mode === 'rejected') return Promise.reject(new Error('offline'));
             if (mode === 'malformed') return Promise.resolve({code: 0, data: {}});
+            if (mode === 'deleted') return Promise.resolve({code: -1, msg: 'block not found'});
             if (mode === 'partial') return Promise.resolve(url.includes('Outline') ? null : {code: 0, data: [{content: 'Available excerpt'}]});
             return Promise.resolve({code: 0, data: []});
         });

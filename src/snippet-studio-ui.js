@@ -58,6 +58,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetCapabilityAI: locale.i18n.snippetCapabilityAI,
         snippetCapabilityCSS: locale.i18n.snippetCapabilityCSS,
         snippetCapabilityJS: locale.i18n.snippetCapabilityJS,
+        snippetCapabilityScope: locale.i18n.snippetCapabilityScope,
+        snippetCapabilityStorage: locale.i18n.snippetCapabilityStorage,
         snippetCategory: locale.i18n.snippetCategory,
         snippetCategoryCode: locale.i18n.snippetCategoryCode,
         snippetCategoryCustom: locale.i18n.snippetCategoryCustom,
@@ -233,7 +235,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // T-6908：三条安全边界必须始终可见，而不是散落在按钮 title 或选中 JS 后才出现的提示里。
     const capabilities = node("ul", "sw-studio__capabilities");
     capabilities.setAttribute("aria-label", t("snippetCapabilities"));
-    for (const [capability, label] of [["css", "snippetCapabilityCSS"], ["js", "snippetCapabilityJS"], ["ai", "snippetCapabilityAI"]]) {
+    for (const [capability, label] of [["css", "snippetCapabilityCSS"], ["js", "snippetCapabilityJS"], ["ai", "snippetCapabilityAI"], ["scope", "snippetCapabilityScope"], ["storage", "snippetCapabilityStorage"]]) {
         const item = node("li", "sw-studio__capability", t(label));
         item.dataset.capability = capability;
         capabilities.appendChild(item);

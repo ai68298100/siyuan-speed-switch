@@ -1164,6 +1164,8 @@
   ,"snippetCapabilities": "Capabilities and safety boundaries"
   ,"snippetCapabilityCSS": "CSS preview always runs in an isolated sandbox document and never writes to your notes."
   ,"snippetCapabilityJS": "JS snippets support management and export only; preview execution stays disabled until scripts can be terminated safely."
+  ,"snippetCapabilityScope": "AI sees only the current snippet and your instruction; it never reads or understands your whole vault."
+  ,"snippetCapabilityStorage": "Saved snippets live only in SiYuan's native snippet storage; the studio keeps session drafts and no second persistent copy."
   ,"snippetCapabilityAI": "AI results are always drafts that need your manual acceptance and are never saved or enabled automatically."
   ,"snippetCategoryTypography": "Typography"
   ,"snippetCategoryTable": "Tables"

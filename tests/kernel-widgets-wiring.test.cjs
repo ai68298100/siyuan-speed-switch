@@ -1224,8 +1224,8 @@ test('snippet studio keeps safety boundaries visible as capability notes (T-6908
         'the capability notes must be one always-visible list');
     assert.match(studioUi, /capabilities\.setAttribute\("aria-label", t\("snippetCapabilities"\)\);/,
         'the capability list must be labelled for assistive tech');
-    assert.match(studioUi, /\["css", "snippetCapabilityCSS"\], \["js", "snippetCapabilityJS"\], \["ai", "snippetCapabilityAI"\]/,
-        'all three safety boundaries must be stated: sandboxed CSS preview, disabled JS execution, draft-only AI');
+    assert.match(studioUi, /\["css", "snippetCapabilityCSS"\], \["js", "snippetCapabilityJS"\], \["ai", "snippetCapabilityAI"\], \["scope", "snippetCapabilityScope"\], \["storage", "snippetCapabilityStorage"\]/,
+        'all five boundaries must be stated: sandboxed CSS preview, disabled JS execution, draft-only AI, AI context scope, native-only storage');
     assert.match(studioUi, /item\.dataset\.capability = capability;/,
         'each capability note must expose a stable data hook');
     assert.match(studioUi, /details\.append\(detailsTitle, selection, description, capabilities,/,
