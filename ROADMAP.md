@@ -793,7 +793,7 @@ v0.38.0 已证明三表面模型、统一平台路由和悬浮球基础链路可
 | 任务 | 内容 | 状态 |
 | --- | --- | --- |
 | T-6919 | 模型层：`behavior.doubleTapAction/longPressAction` 归一化（≤48 有界清洗，默认空=未绑定）；`isLongPressGesture/isDoubleTapGesture` 纯函数（550ms/300ms 阈值，不达标不猜）；UI 指针生命周期接线（长按武装/拖动拆除/合成 click 抑制/双击判别窗）；宿主 `executeFloatingBallBoundGesture` 统一路由（""/more/动作 id/不可用回执） | ✅ 完成（本批） |
-| T-6920 | 设置页三手势可视化绑定（复用 T-6887 快滑面板模式：单击/双击/长按逐端绑定、label 走 clickActionLabel、persist 归一化+预算检查） | 待开工 |
+| T-6920 | 设置页三手势可视化绑定（复用 T-6887 快滑面板模式：单击/双击/长按逐端绑定、label 走 clickActionLabel、persist 归一化+预算检查） | ✅ 完成（手势卡片双击/长按两行绑定，提示前置告知判别窗代价；§8.0.22 两批收口，随 v0.40.0 攒版） |
 
 ### 8.0.9 2026-09-22 思源 3.8.5 侧滑与悬浮球输入边界复核（研究完成，暂不开发）
 

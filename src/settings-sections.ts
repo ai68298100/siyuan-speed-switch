@@ -1674,6 +1674,66 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     wrapper.appendChild(flickSection);
     wrapper.addEventListener("sw-floating-ball-refresh", () => renderFlickOptions());
 
+    // T-6920（悬浮球手势纵深第二批）：双击/长按动作可视化绑定——与快滑面板同款
+    // 选项词汇（无操作/更多面板/动作目录）；双击绑定后单击进入 300ms 判别窗
+    //（提示文案说明），未绑定时单击保持零延迟直发。
+    const gestureSection = document.createElement("section");
+    gestureSection.className = "sw-floating-ball-settings__gesture-panel";
+    const gestureHeading = document.createElement("strong");
+    gestureHeading.textContent = this.i18n.floatingBallGestureTitle;
+    gestureSection.appendChild(gestureHeading);
+    const gestureHint = document.createElement("p");
+    gestureHint.className = "sw-settings__hint";
+    gestureHint.textContent = this.i18n.floatingBallGestureTip;
+    gestureSection.appendChild(gestureHint);
+    const gestureGrid = document.createElement("div");
+    gestureGrid.className = "sw-floating-ball-settings__gesture-grid";
+    gestureSection.appendChild(gestureGrid);
+    const gestureRows: Array<{key: "doubleTapAction" | "longPressAction"; select: HTMLSelectElement}> = [];
+    ([["doubleTapAction", this.i18n.floatingBallGestureDouble], ["longPressAction", this.i18n.floatingBallGestureLong]] as const).forEach(([key, label]) => {
+        const row = document.createElement("div");
+        row.className = "sw-floating-ball-settings__gesture-row";
+        const rowLabel = document.createElement("span");
+        rowLabel.className = "sw-settings__item-title";
+        rowLabel.textContent = label;
+        const select = document.createElement("select");
+        select.className = "b3-select";
+        select.dataset.gestureBinding = key;
+        select.setAttribute("aria-label", `${this.i18n.floatingBallGestureTitle} · ${label}`);
+        select.addEventListener("change", () => {
+            const next: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+            next.behavior[key] = select.value;
+            persist(next);
+        });
+        gestureGrid.append(row);
+        row.append(rowLabel, select);
+        gestureRows.push({key, select});
+    });
+    const renderGestureOptions = () => {
+        const config: any = normalizeFloatingBallConfig(this.getSettings().floatingBall);
+        const catalog = this.getFloatingBallActions();
+        gestureRows.forEach(({key, select}) => {
+            const current = config.behavior?.[key] || "";
+            const options: Array<{value: string; label: string}> = [
+                {value: "", label: this.i18n.floatingBallFlickNone},
+                {value: "more", label: this.i18n.floatingBallFlickMore},
+            ];
+            const seen = new Set(options.map((option) => option.value));
+            catalog.forEach((action: any) => {
+                if (!action?.id || seen.has(action.id)) return;
+                if (this.getQuickActionSupport(action, "mobile" as QuickActionTarget) === "unsupported") return;
+                seen.add(action.id);
+                options.push({value: action.id, label: clickActionLabel(action, config, "mobile")});
+            });
+            if (current && !seen.has(current)) options.push({value: current, label: current});
+            select.innerHTML = "";
+            options.forEach((option) => select.appendChild(new Option(option.label, option.value)));
+            select.value = current;
+        });
+    };
+    wrapper.appendChild(gestureSection);
+    wrapper.addEventListener("sw-floating-ball-refresh", () => renderGestureOptions());
+
     // T-6891（T-6857 余项）：数字 1–9 固定槽位。槽位只保存动作 ID 或
     // 保存搜索 ID；保存搜索仍是独立对象，不写入快捷动作目录。空槽由悬浮球
     // 面板按当前可见行继续使用动态回退，因此设置不会改变旧配置的默认行为。

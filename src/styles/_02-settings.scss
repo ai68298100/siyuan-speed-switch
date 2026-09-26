@@ -714,6 +714,25 @@
         align-items: center;
         gap: 8px;
     }
+    // T-6920（悬浮球手势纵深第二批）：双击/长按绑定卡片（复用快滑面板卡片语言）。
+    &__gesture-panel {
+        @extend %sw-fb-panel;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+    }
+    &__gesture-panel > strong {
+        @extend %sw-fb-heading;
+    }
+    &__gesture-panel > .sw-settings__hint { margin: 0; }
+    &__gesture-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    &__gesture-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+    }
     &__control {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;

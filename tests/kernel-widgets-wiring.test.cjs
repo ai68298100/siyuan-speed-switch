@@ -1354,6 +1354,16 @@ test('floating ball gestures: double-tap and long-press bind, classify and dispa
         'the host must route long presses through the shared bound-gesture executor');
     assert.match(indexSource, /private executeFloatingBallBoundGesture\(surface: FloatingBallSurface, bound: unknown\): void \{[^}]*actionId === "more"/,
         'the bound-gesture executor must keep the more-panel route');
+    // T-6920：设置页手势绑定卡片（复用快滑面板模式）。
+    const settingsSource = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
+    assert.match(settingsSource, /select\.dataset\.gestureBinding = key;/,
+        'gesture selects must expose their binding key');
+    assert.match(settingsSource, /next\.behavior\[key\] = select\.value;/,
+        'gesture changes must persist through config normalization');
+    assert.match(settingsSource, /wrapper\.addEventListener\("sw-floating-ball-refresh", \(\) => renderGestureOptions\(\)\);/,
+        'gesture selects must re-render on ball refresh');
+    assert.match(readSourceText(path.join(__dirname, '..', 'src', 'styles', '_02-settings.scss')), /&__gesture-panel \{/,
+        'the gesture panel must reuse the ball settings card language');
 });
 
 test('iterate rounds label their diff against the previous candidate (T-6917)', () => {
