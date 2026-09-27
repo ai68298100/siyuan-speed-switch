@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次⑥列表流家族（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-m { grid-column: span 6; grid-row: span 2; }
+.lf-row { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b3-border-color); font-size: 12px; }
+.lf-row:last-child { border-bottom: none; }
+.lf-row .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.lf-row .m { font-size: 10.5px; color: var(--b3-theme-on-surface-light); flex: none; }
+.lf-row .rank { flex: none; font-size: 11px; font-weight: 700; color: var(--b3-theme-primary); width: 16px; text-align: center; }
+.spec-card { border: 1px solid var(--b3-border-color); border-radius: 16px; background: var(--b3-theme-background);
+  margin: 0 auto 18px; max-width: 1180px; overflow: hidden; }
+.spec-card h3 { font-size: 13px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--b3-border-color); font-weight: 700; }
+.spec-card h3 .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.spec-grid > div { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--b3-border-color); }
+.spec-grid .k { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.spec-grid .v b { font-weight: 700; }
+@media (max-width: 800px) { .spec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次⑥列表流家族</h1>
+  <span class="meta">T-6971 · 2026-09-28 · RSS 订阅 / Miniflux 未读 / 热搜事件 / 实时资讯 / Hacker News 热门（共享行规范）</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>列表流家族通用规范（五组件共享，一次定清）</h2>
+  <ol>
+    <li><b>材质/档位</b>：一律 <b>plain · wide(8×3) 默认</b>（已在 HOME_TILE_DEFAULT_SIZES 登记）；行流组件不做 accent/dark/vibrant（大面积彩底伤可读性）；声明档位均为 M/W/L。</li>
+    <li><b>行解剖</b>：标题（有界省略，单行）+ 来源·时间 meta（右侧 10.5px muted）；行 hairline 分隔；条目上限首屏 ≤5，加载更多沿用既有语义。</li>
+    <li><b>安全红线</b>：远端标题/摘要一律文本节点渲染，<b>绝不作 HTML 插入</b>；外链跳转需用户点击；来源名清洗截断。</li>
+    <li><b>状态</b>：loading 骨架 / ready / empty（窗口内无条目）/ error + 重试 + 保留旧值（stale chip「N 前」）。</li>
+    <li><b>刷新</b>：15 分钟心跳族 + 可见性/连接性双重门控（既有纪律）；请求有界缓存，不并发打爆。</li>
+  </ol>
+</section>
+
+<!-- ============ 瓦片演示 ============ -->
+<section class="screen">
+  <h2>瓦片演示 <span>三例：RSS 订阅 / Hacker News 热门 / 热搜事件（wide 档）</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="tile d-m">
+        <div class="theader">RSS 订阅<span class="sp"></span><span class="tchip">3 源 · 12 未读</span></div>
+        <div class="lf-row"><span class="t">思源笔记 3.8.6 发布：数据库视图增强</span><span class="m">链滴 · 2h</span></div>
+        <div class="lf-row"><span class="t">CSS color-mix() 在主题适配中的实践</span><span class="m">博客 · 5h</span></div>
+        <div class="lf-row"><span class="t">本地优先软件的同步策略观察</span><span class="m">周刊 · 1d</span></div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">Hacker News 热门<span class="sp"></span><span class="tchip">Top 10</span></div>
+        <div class="lf-row"><span class="rank">1</span><span class="t">Show HN: I built a local-first notes app</span><span class="m">241 分</span></div>
+        <div class="lf-row"><span class="rank">2</span><span class="t">The anatomy of a fast text editor</span><span class="m">156 分</span></div>
+        <div class="lf-row"><span class="rank">3</span><span class="t">SQLite is all you need</span><span class="m">98 分</span></div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">热搜事件<span class="sp"></span><span class="tchip">实时</span></div>
+        <div class="lf-row"><span class="rank">1</span><span class="t">某地发布新型产业支持政策</span><span class="m">热 86 万</span></div>
+        <div class="lf-row"><span class="rank">2</span><span class="t">全国秋粮收获进度过半</span><span class="m">热 52 万</span></div>
+        <div class="lf-row"><span class="rank">3</span><span class="t">新一轮冷空气将影响中东部</span><span class="m">热 41 万</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 规格卡 ============ -->
+
+<section class="spec-card">
+  <h3>共享行规范（列表流家族）<span class="tag">plain · wide(8×3) 默认，声明档位 M/W/L</span></h3>
+  <div class="spec-grid">
+    <div class="k">行解剖</div><div class="v">标题（单行省略）+ 来源·时间 meta；条目上限首屏 ≤5（L 档 ≤8）；行 hairline 分隔；悬停/聚焦提亮</div>
+    <div class="k">状态</div><div class="v">loading 骨架 / ready / empty（窗口内无条目）/ error + 重试 + 保留旧值 stale chip</div>
+    <div class="k">安全</div><div class="v">远端文本一律文本节点渲染（防 HTML 注入）；外链新页打开需点击；来源名清洗 ≤20 字</div>
+    <div class="k">刷新</div><div class="v">15 分钟心跳族 + 可见性门控；有界内存缓存；请求失败不清空既有列表</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>RSS 订阅 <span class="tag">plain · wide(8×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId</div><div class="v">external-rss-subscription · sizes = [medium, wide, large]</div>
+    <div class="k">家族差异</div><div class="v">多源自选聚合 + <b>已读记忆</b>（T-6685）+ 来源标注行 meta；已读/未读在行 meta 与计数 chip 表达</div>
+    <div class="k">验收要点</div><div class="v">已读状态跨会话保留；源增删后列表即时重建；条目上限有界</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>未读文章（Miniflux）<span class="tag">plain · wide(8×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId</div><div class="v">external-rss-miniflux · sizes = [medium, wide, large]</div>
+    <div class="k">家族差异</div><div class="v">Miniflux 自建服务（配置表单鉴权通道）；未读数 chip；分类发现（T-6466）</div>
+    <div class="k">验收要点</div><div class="v">凭据走配置表单鉴权通道不入日志；服务不可达 = error + 保留旧值</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>热搜事件 <span class="tag">plain · wide(8×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId</div><div class="v">external-hot-news-dailyhot · sizes = [medium, wide, large]</div>
+    <div class="k">家族差异</div><div class="v">排名数字列 + 热度值 meta；多平台路由选择器（T-6686 基址+路由）</div>
+    <div class="k">验收要点</div><div class="v">排名连续不跳号；平台切换后列表重建且缓存隔离</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>实时资讯 <span class="tag">plain · wide(8×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId</div><div class="v">external-news-newsnow · sizes = [medium, wide, large]</div>
+    <div class="k">家族差异</div><div class="v">多源实时聚合；来源标注；更新频率与来源健康标注沿用既有纪律</div>
+    <div class="k">验收要点</div><div class="v">同标题跨源去重；时间渲染本地时区</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>Hacker News 热门 <span class="tag">plain · wide(8×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId</div><div class="v">external-news-hackernews · sizes = [medium, wide, large]</div>
+    <div class="k">家族差异</div><div class="v">固定端点（零凭据零实例，T-6466 类）；分数 meta；评论数不上屏（保持行轻）</div>
+    <div class="k">验收要点</div><div class="v">分数 tabular-nums；标题清洗截断；失败保留旧值</div>
+  </div>
+</section>
+
+<!-- ============ 批次⑥总表 ============ -->
+<section class="screen">
+  <h2>批次⑥规格总表 <span>实现对照：resolveHomeTileMaterial 目录 + HOME_TILE_DEFAULT_SIZES 默认档</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>支持档</th><th>家族差异</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">RSS 订阅（external-rss-subscription）</td><td>plain</td><td class="num">wide</td><td class="num">M/W/L</td><td>已读记忆；多源自选</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">未读文章（external-rss-miniflux）</td><td>plain</td><td class="num">wide</td><td class="num">M/W/L</td><td>Miniflux 鉴权通道；分类发现</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">热搜事件（external-hot-news-dailyhot）</td><td>plain</td><td class="num">wide</td><td class="num">M/W/L</td><td>排名列；多平台路由</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">实时资讯（external-news-newsnow）</td><td>plain</td><td class="num">wide</td><td class="num">M/W/L</td><td>多源聚合；跨源去重</td></tr>
+        <tr><td style="padding:8px 14px;">Hacker News 热门（external-news-hackernews）</td><td>plain</td><td class="num">wide</td><td class="num">M/W/L</td><td>固定端点；分数 meta</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
