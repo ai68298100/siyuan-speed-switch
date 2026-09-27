@@ -526,6 +526,10 @@ export function updateDocSearchHealth(this: DocSearchUiHost, scrollElement: HTML
 
 export function disposeDocSearchSession(this: DocSearchUiHost, scrollElement: HTMLElement) {
         cancelDocPreview(scrollElement);
+        // T-6949：会话销毁释放固定状态（WeakMap 键本会随元素回收，这里显式清理长生命周期滚动容器）
+        docPreviewPins.delete(scrollElement);
+        docPreviewPinnedCurrent.delete(scrollElement);
+        docPreviewLastItems.delete(scrollElement);
         this.docSearchState.health.delete(scrollElement);
         delete scrollElement.dataset.swSearchState;
         delete scrollElement.dataset.swSearchReasons;
@@ -980,6 +984,63 @@ const DOC_PREVIEW_MIN_WIDTH = 680;
 const docPreviewPanes = new WeakMap<HTMLElement, HTMLElement>();
 const docPreviewTimers = new WeakMap<HTMLElement, number>();
 const docPreviewGenerations = new WeakMap<HTMLElement, number>();
+// T-6949：会话级固定预览。以 scrollElement 为键——界面会话销毁即随 WeakMap 释放；
+// 窄容器只隐藏窗格不销毁会话，同一会话恢复显示时固定对象仍在。
+const docPreviewPins = new WeakMap<HTMLElement, {rootId: string; title: string}>();
+const docPreviewPinnedCurrent = new WeakMap<HTMLElement, {rootId: string; title: string}>();
+const docPreviewLastItems = new WeakMap<HTMLElement, HTMLElement>();
+
+function docPreviewItemTitle(item: HTMLElement): string {
+        return item.querySelector<HTMLElement>(".sw__doc-title, .sw__title")?.textContent?.trim() || "";
+    }
+
+function docPreviewPinButtonOf(pane: HTMLElement): HTMLButtonElement | null {
+        return pane.querySelector<HTMLButtonElement>(".sw__doc-preview-pin");
+    }
+
+// 按会话状态同步固定按钮与头部标签（固定中显示「已固定 · 文档名」）；窗格重建后也走这里恢复。
+function syncDocPreviewPin(this: DocSearchUiHost, scrollElement: HTMLElement): void {
+        const pane = docPreviewPanes.get(scrollElement);
+        const pin = pane ? docPreviewPinButtonOf(pane) : null;
+        const label = pane?.querySelector<HTMLElement>(".sw__doc-preview-header-label");
+        if (!pin || !label) return;
+        const pinned = docPreviewPins.get(scrollElement);
+        const current = docPreviewPinnedCurrent.get(scrollElement);
+        pin.disabled = !pinned && !current;
+        pin.setAttribute("aria-pressed", String(Boolean(pinned)));
+        pin.textContent = pinned ? this.i18n.docSearchPreviewUnpin : this.i18n.docSearchPreviewPin;
+        const pinTitle = pinned
+            ? `${this.i18n.docSearchPreviewUnpin}${pinned.title ? ` · ${pinned.title}` : ""}`
+            : this.i18n.docSearchPreviewPin;
+        pin.title = pinTitle;
+        pin.setAttribute("aria-label", pinTitle);
+        label.textContent = pinned
+            ? this.i18n.docSearchPreviewPinned.replace("{x}", pinned.title || this.i18n.docSearchPreview)
+            : this.i18n.docSearchPreview;
+    }
+
+// 固定捕获「当前预览对象」（无对象时按钮已禁用）；解除后回随最后悬停/聚焦的有效对象，
+// 元素已断开则回到空态提示。固定只改变呈现跟随，不新增取数、不持久化任何内容。
+function toggleDocPreviewPin(this: DocSearchUiHost, scrollElement: HTMLElement): void {
+        const pane = docPreviewPanes.get(scrollElement);
+        if (!pane?.isConnected) return;
+        if (docPreviewPins.has(scrollElement)) {
+            docPreviewPins.delete(scrollElement);
+            syncDocPreviewPin.call(this, scrollElement);
+            const last = docPreviewLastItems.get(scrollElement);
+            if (last?.isConnected) {
+                previewTabOrDoc.call(this, scrollElement, last);
+            } else {
+                pane.querySelector(".sw-platform-status")?.remove();
+                setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
+            }
+            return;
+        }
+        const current = docPreviewPinnedCurrent.get(scrollElement);
+        if (!current) return;
+        docPreviewPins.set(scrollElement, {...current});
+        syncDocPreviewPin.call(this, scrollElement);
+    }
 
 export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scrollElement: HTMLElement): void {
         if (this.isMobile || scrollElement.clientWidth < DOC_PREVIEW_MIN_WIDTH) {
@@ -993,7 +1054,18 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
             pane.setAttribute("aria-label", this.i18n.docSearchPreview);
             const header = document.createElement("div");
             header.className = "sw__doc-preview-header";
-            header.textContent = this.i18n.docSearchPreview;
+            const label = document.createElement("span");
+            label.className = "sw__doc-preview-header-label";
+            label.textContent = this.i18n.docSearchPreview;
+            // T-6949：会话级固定开关；状态由 syncDocPreviewPin 统一同步
+            const pin = document.createElement("button");
+            pin.type = "button";
+            pin.className = "sw__doc-preview-pin";
+            pin.setAttribute("aria-pressed", "false");
+            pin.addEventListener("click", () => {
+                toggleDocPreviewPin.call(this, scrollElement);
+            });
+            header.append(label, pin);
             const body = document.createElement("div");
             body.className = "sw__doc-preview-body";
             body.tabIndex = 0;
@@ -1001,6 +1073,7 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
             setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
             docPreviewPanes.set(scrollElement, pane);
         }
+        syncDocPreviewPin.call(this, scrollElement);
         // 结果区每次渲染都会 innerHTML 重建，窗格需随之重挂
         pane.parentElement?.classList.remove("sw--with-preview");
         box.classList.add("sw--with-preview");
@@ -1028,11 +1101,21 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
 export function previewTabOrDoc(this: DocSearchUiHost, scrollElement: HTMLElement, item: HTMLElement): void {
         const box = item.closest<HTMLElement>(".sw__tab-preview, .sw__doc-results");
         if (box) mountDocPreviewPane.call(this, box, scrollElement);
+        // 记住最后目标，解除固定时回随它（元素已断开则回空态）
+        docPreviewLastItems.set(scrollElement, item);
+        if (docPreviewPins.has(scrollElement)) {
+            // T-6949：固定中不跟随悬停/焦点/列表重建；窗格已随 mount 挂回，正文保持固定对象
+            return;
+        }
         const rootId = item.dataset.swDocKey || item.dataset.rootId || "";
         if (BLOCK_ID_RE.test(rootId)) {
+            docPreviewPinnedCurrent.set(scrollElement, {rootId, title: docPreviewItemTitle(item)});
+            syncDocPreviewPin.call(this, scrollElement);
             scheduleDocPreview.call(this, scrollElement, item);
             return;
         }
+        docPreviewPinnedCurrent.delete(scrollElement);
+        syncDocPreviewPin.call(this, scrollElement);
         cancelDocPreview(scrollElement);
         const pane = docPreviewPanes.get(scrollElement);
         if (pane?.isConnected) {
@@ -1108,7 +1191,7 @@ function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, i
         docPreviewTimers.set(scrollElement, window.setTimeout(() => {
             docPreviewTimers.delete(scrollElement);
             if (!item.isConnected) return;
-            const title = item.querySelector<HTMLElement>(".sw__doc-title, .sw__title")?.textContent?.trim() || "";
+            const title = docPreviewItemTitle(item);
             void loadDocPreview.call(this, scrollElement, rootId, generation, title);
         }, DOC_PREVIEW_DEBOUNCE_MS));
     }

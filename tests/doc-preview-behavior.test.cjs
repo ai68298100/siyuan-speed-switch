@@ -7,7 +7,7 @@ const {buildDocPreviewSnapshot} = require('../src/search-model.js');
 const {createPlatformStatus} = require('../src/platform-dom.js');
 const source = readSourceFile('src/doc-search-ui.ts');
 const ast = ts.createSourceFile('preview.ts', source, ts.ScriptTarget.Latest, true);
-const names = new Set(['mountDocPreviewPane', 'previewTabOrDoc', 'previewBodyOf', 'extractDocPreviewBlocks', 'setDocPreviewHint', 'setDocPreviewStatus', 'cancelDocPreview', 'scheduleDocPreview', 'loadDocPreview', 'ensureDocResultsBox', 'disposeDocSearchSession']);
+const names = new Set(['mountDocPreviewPane', 'previewTabOrDoc', 'previewBodyOf', 'extractDocPreviewBlocks', 'setDocPreviewHint', 'setDocPreviewStatus', 'cancelDocPreview', 'scheduleDocPreview', 'loadDocPreview', 'ensureDocResultsBox', 'disposeDocSearchSession', 'docPreviewItemTitle', 'docPreviewPinButtonOf', 'syncDocPreviewPin', 'toggleDocPreviewPin', 'appendDocSearchHealthBadge']);
 const pieces = ast.statements.filter(n => ts.isFunctionDeclaration(n) ? names.has(n.name?.text) : ts.isVariableStatement(n) && n.declarationList.declarations.some(d => /^(docPreview|DOC_PREVIEW)/.test(d.name.getText(ast))));
 assert.equal(pieces.filter(ts.isFunctionDeclaration).length, names.size);
 const compiled = ts.transpileModule(pieces.map(n => n.getText(ast).replace(/^export\s+/, '')).join('\n'), {compilerOptions: {target: ts.ScriptTarget.ES2020}}).outputText;
@@ -18,13 +18,14 @@ function fixture(fetchKernelJson) {
     let id = 0;
     const window = {setTimeout: fn => (timers.set(++id, fn), id), clearTimeout: id => timers.delete(id)};
     const api = new Function('document', 'window', 'BLOCK_ID_RE', 'buildDocPreviewSnapshot', 'createPlatformStatus', 'disposeSearchSession', compiled + '\nreturn {mountDocPreviewPane, previewTabOrDoc, scheduleDocPreview, ensureDocResultsBox, disposeDocSearchSession};')(document, window, /^\d{14}-[0-9a-z]+$/, buildDocPreviewSnapshot, createPlatformStatus, () => {});
-    const host = {isMobile: false, fetchKernelJson, i18n: {docSearchPreview: 'Preview', docSearchPreviewContent: 'Excerpt', docSearchPreviewOutline: 'Outline', docSearchPreviewEmpty: 'Select', docSearchPreviewLoading: 'Loading', docSearchPreviewStatusLoading: 'Loading', docSearchPreviewStatusReady: 'Ready', docSearchPreviewFailed: 'Failed', docSearchPreviewNoContent: 'Empty', docSearchPreviewUnavailable: 'Documents only'}, docSearchState: {health: new Map(), sessions: new Map(), filters: new Map(), notebookNames: new Map()}};
+    const host = {isMobile: false, fetchKernelJson, i18n: {docSearchPreview: 'Preview', docSearchPreviewContent: 'Excerpt', docSearchPreviewOutline: 'Outline', docSearchPreviewEmpty: 'Select', docSearchPreviewLoading: 'Loading', docSearchPreviewStatusLoading: 'Loading', docSearchPreviewStatusReady: 'Ready', docSearchPreviewFailed: 'Failed', docSearchPreviewNoContent: 'Empty', docSearchPreviewUnavailable: 'Documents only', docSearchPreviewPin: 'Pin', docSearchPreviewUnpin: 'Unpin', docSearchPreviewPinned: 'Pinned · {x}'}, docSearchState: {health: new Map(), sessions: new Map(), filters: new Map(), notebookNames: new Map()}};
     const scroll = document.getElementById('scroll');
     Object.defineProperty(scroll, 'clientWidth', {value: 900});
     const box = document.getElementById('box');
     api.mountDocPreviewPane.call(host, box, scroll);
     const item = box.querySelector('button');
-    const schedule = () => api.scheduleDocPreview.call(host, scroll, item);
+    // T-6949 起固定状态在 previewTabOrDoc 入口登记，测试必须走生产入口而非绕过的 scheduleDocPreview
+    const schedule = () => api.previewTabOrDoc.call(host, scroll, item);
     const flush = async () => {const pending = [...timers.values()]; timers.clear(); pending.forEach(fn => fn()); await new Promise(resolve => setImmediate(resolve));};
     return {api, host, scroll, box, item, schedule, flush, timers, dom};
 }
@@ -136,5 +137,81 @@ test('one preview pane follows opened tabs and search results, and non-document 
         assert.ok(layout.textContent.includes('Documents only'));
         await f.flush();
         assert.equal(requests.length, 2);
+    } finally {f.dom.window.close();}
+});
+// T-6949：会话级固定预览——固定后悬停/非文档目标/列表重建均不覆盖正文；解除后回随最后目标。
+test('preview pin freezes the pane against hover and non-document targets, unpin resumes following', async () => {
+    let calls = 0;
+    const f = fixture(url => { calls++; return Promise.resolve(url.includes('Outline') ? {code: 0, data: []} : docResponse('PINNED CONTENT')); });
+    try {
+        f.schedule(); await f.flush();
+        const pane = f.box.querySelector('.sw__doc-preview');
+        const pin = pane.querySelector('.sw__doc-preview-pin');
+        assert.equal(pin.disabled, false);
+        assert.equal(pin.getAttribute('aria-pressed'), 'false');
+        pin.click();
+        assert.equal(pin.getAttribute('aria-pressed'), 'true');
+        assert.ok(pane.querySelector('.sw__doc-preview-header-label').textContent.includes('Pinned · Preview document'),
+            '固定状态必须带文档名');
+        const callsAtPin = calls;
+        // 悬停另一个文档：固定中不得发起新取数、不得覆盖正文
+        f.item.dataset.swDocKey = '20260926000000-bbbbbbb';
+        f.api.previewTabOrDoc.call(f.host, f.scroll, f.item);
+        await f.flush();
+        assert.equal(calls, callsAtPin, '固定中悬停其他文档不应取数');
+        assert.ok(f.box.textContent.includes('PINNED CONTENT'));
+        // 非文档对象：固定中不得改写为 blocked 回执
+        delete f.item.dataset.swDocKey;
+        f.api.previewTabOrDoc.call(f.host, f.scroll, f.item);
+        assert.ok(!f.box.textContent.includes('Documents only'), '固定中非文档目标不得覆盖正文');
+        assert.ok(f.box.textContent.includes('PINNED CONTENT'));
+        // 解除固定：回随最后目标（此刻是非文档行且仍连接）→ 恢复跟随语义（blocked 回执）
+        pin.click();
+        assert.equal(pin.getAttribute('aria-pressed'), 'false');
+        assert.ok(f.box.textContent.includes('Documents only'), '解除后应回随最后悬停对象');
+        assert.ok(!f.box.textContent.includes('Pinned ·'));
+        // 结果区重建（查询变化）下固定：重新固定有效对象后重建，固定保留、不重取数
+        f.item.dataset.swDocKey = '20260926000000-bbbbbbb';
+        f.api.previewTabOrDoc.call(f.host, f.scroll, f.item);
+        await f.flush();
+        const callsBeforeRebuild = calls;
+        pin.click();
+        f.api.ensureDocResultsBox.call(f.host, f.scroll, []);
+        f.api.mountDocPreviewPane.call(f.host, f.box, f.scroll);
+        assert.ok(f.box.querySelector('.sw__doc-preview').isConnected);
+        assert.ok(f.box.querySelector('.sw__doc-preview-header-label').textContent.includes('Pinned'));
+        assert.ok(f.box.textContent.includes('PINNED CONTENT'));
+        assert.equal(calls, callsBeforeRebuild, '重建后固定对象不应重新取数');
+    } finally {f.dom.window.close();}
+});
+test('preview pin button disables without a current object and session dispose releases the pin', async () => {
+    const f = fixture(() => Promise.resolve({code: 0, data: []}));
+    try {
+        const pane = f.box.querySelector('.sw__doc-preview');
+        const pin = pane.querySelector('.sw__doc-preview-pin');
+        assert.equal(pin.disabled, true, '无当前预览对象时固定按钮应禁用');
+        f.item.remove();
+        delete f.item.dataset.swDocKey;
+        f.api.previewTabOrDoc.call(f.host, f.scroll, f.item);
+        assert.equal(pin.disabled, true, '非文档目标不算可固定对象');
+        // 解除固定且最后目标已断开：回空态提示，不留状态徽标
+        f.item.dataset.swDocKey = '20260926000000-ccccccc';
+        f.box.appendChild(f.item);
+        f.api.previewTabOrDoc.call(f.host, f.scroll, f.item);
+        await f.flush();
+        pin.click();
+        f.item.remove();
+        pin.click();
+        assert.ok(f.box.textContent.includes('Select'), '解除固定且无有效目标时回空态提示');
+        assert.equal(pane.querySelector('.sw-platform-status'), null, '空态不留陈旧状态徽标');
+        // 会话销毁释放固定：重新挂载后按钮禁用、标签复原
+        pin.click();
+        assert.equal(pin.getAttribute('aria-pressed'), 'true');
+        f.api.disposeDocSearchSession.call(f.host, f.scroll);
+        f.api.mountDocPreviewPane.call(f.host, f.box, f.scroll);
+        const pinAfter = f.box.querySelector('.sw__doc-preview-pin');
+        assert.equal(pinAfter.getAttribute('aria-pressed'), 'false', '会话销毁必须释放固定');
+        assert.equal(pinAfter.disabled, true);
+        assert.equal(f.box.querySelector('.sw__doc-preview-header-label').textContent, 'Preview');
     } finally {f.dom.window.close();}
 });

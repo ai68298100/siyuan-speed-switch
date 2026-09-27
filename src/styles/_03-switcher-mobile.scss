@@ -1217,6 +1217,38 @@
                         padding: 2px 7px;
                         font-size: 10px;
                     }
+
+                    // T-6949：固定预览开关——头部最右（order 使其排在状态徽标之后）；
+                    // 固定态主色软底 + 主色文字；禁用（无当前对象）降透明。
+                    .sw__doc-preview-pin {
+                        flex: none;
+                        order: 1;
+                        min-height: 20px;
+                        padding: 1px 8px;
+                        border: 1px solid var(--b3-border-color);
+                        border-radius: 6px;
+                        background: transparent;
+                        color: var(--b3-theme-on-surface-light);
+                        font-size: 10px;
+                        line-height: 1.5;
+                        cursor: pointer;
+
+                        &[aria-pressed="true"] {
+                            border-color: color-mix(in srgb, var(--b3-theme-primary) 34%, transparent);
+                            background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+                            color: var(--b3-theme-primary);
+                        }
+
+                        &:disabled {
+                            opacity: .45;
+                            cursor: default;
+                        }
+
+                        &:focus-visible {
+                            outline: 2px solid var(--b3-theme-primary);
+                            outline-offset: 1px;
+                        }
+                    }
                 }
 
                 .sw__doc-preview-hint {

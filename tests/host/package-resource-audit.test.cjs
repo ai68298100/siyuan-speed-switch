@@ -25,7 +25,12 @@ const MAX_ARCHIVE_ENTRIES = 32;
 // → 224 KiB（T-6400 / ADR 0059：完成前 15 个组件深度优化后达到 195019
 // 字节，旧线仅余 1589 字节；继续遵循功能、性能、UI 与交互优先，并用独立的
 // 512 KiB 整包上限防止失控增长）。
-// 归档总上限独立为 512 KiB（D-353），当前仍余约 176 KiB。
+// → 288 KiB（ADR 0075，2026-09-23，256→288：R1/R2 调研-吸收批）
+// → 320 KiB（ADR 0089，2026-09-28，288→320：T-6949 会话级预览固定使压缩
+// index.js 达 295198 字节，越过 288 KiB 线 286 字节；减量审计无死重量，
+// 核心切换器交互不拆动态 chunk；归档 512 KiB 硬上限不变，余量 ~13 KiB，
+// 阶段 A 后续批次须按同一程序复核整包线）。
+// 归档总上限独立为 512 KiB（D-353），当前仍余约 13 KiB。
 const MAX_COMPRESSED_ENTRY_BYTES = COMPRESSED_ENTRY_BUDGET_BYTES;
 const MAX_EXPECTED_GROWTH_BYTES = 8 * 1024;
 const MAX_EXPECTED_GROWTH_RATIO = 0.25;

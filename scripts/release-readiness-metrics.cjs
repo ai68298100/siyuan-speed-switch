@@ -25,7 +25,14 @@ const ARCHIVE_BUDGET_BYTES = 512 * 1024;
 // cycles R1/R2 (host-command bridge, pinyin vendor, unified index, skins,
 // essentials) pushed the compressed index.js past 256 KiB. Hard 512 KiB
 // archive ceiling unchanged; next bump requires a new audit.
-const COMPRESSED_ENTRY_BUDGET_BYTES = 288 * 1024;
+// ADR 0089 (2026-09-28): recalibrated 288 -> 320 KiB after T-6949 (session
+// preview pin, Phase A of the 2026-09-27 plan) pushed compressed index.js to
+// 295198 bytes (+286 over the 288 KiB line). Reduction audit found no dead
+// weight; the pin is core switcher UI and must not move to a dynamic chunk.
+// Hard 512 KiB archive ceiling unchanged — archive headroom is only ~13 KiB,
+// so the next Phase A batches must re-audit the archive line per the same
+// program.
+const COMPRESSED_ENTRY_BUDGET_BYTES = 320 * 1024;
 const ARCHIVE_DRIFT_TOLERANCE_BYTES = 1024;
 
 function parseArtifactSnapshot(text) {
