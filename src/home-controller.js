@@ -1,6 +1,109 @@
 "use strict";
 
-const {buildHomeModuleView, renderHomeModuleView} = require("./home-view.js");
+const {buildHomeModuleView, renderHomeModuleView, formatUpdatedAt} = require("./home-view.js");
+
+const HOME_CLOCK_MODULE_IDS = new Set(["external-local-time", "external-world-clock", "external-quote-daily"]);
+const CLOCK_PATCH_FIELDS = ["label", "href", "command", "secondary", "done", "weekend", "outside", "holiday", "count", "level", "rank"];
+
+function sameClockStatShape(previous, next) {
+    const previousVisible = Boolean(previous && previous.value);
+    const nextVisible = Boolean(next && next.value);
+    if (previousVisible !== nextVisible) return false;
+    if (!previousVisible) return true;
+    if (previous.label !== next.label || previous.emphasis !== next.emphasis) return false;
+    const previousProgress = Number.isFinite(previous.progress);
+    const nextProgress = Number.isFinite(next.progress);
+    if (previousProgress !== nextProgress) return false;
+    const previousArc = previous.arc && typeof previous.arc === "object";
+    const nextArc = next.arc && typeof next.arc === "object";
+    if (previousArc !== nextArc) return false;
+    if (previousArc && previous.arc.max !== next.arc.max) return false;
+    return true;
+}
+
+function sameClockRowShape(previous, next) {
+    if (!previous || !next) return false;
+    if (Boolean(previous.value) !== Boolean(next.value)) return false;
+    return CLOCK_PATCH_FIELDS.every((field) => previous[field] === next[field]);
+}
+
+function clockPatchLabels(labels = {}) {
+    return {
+        cached: labels.cached || "缓存",
+        updated: labels.updated || "更新",
+        sourceFresh: labels.sourceFresh || "实时",
+        sourceCached: labels.sourceCached || "缓存源",
+        sourceStale: labels.sourceStale || "过期缓存",
+    };
+}
+
+function buildClockPatchPlan(root, previous, next) {
+    if (!root || !previous || !next || !HOME_CLOCK_MODULE_IDS.has(next.moduleId)) return null;
+    if (previous.moduleId !== next.moduleId || previous.status !== "ready" || next.status !== "ready") return null;
+    if (previous.viewType || next.viewType || previous.collapsed !== next.collapsed) return null;
+    if (!sameClockStatShape(previous.stat, next.stat)) return null;
+    const previousItems = Array.isArray(previous.items) ? previous.items : [];
+    const nextItems = Array.isArray(next.items) ? next.items : [];
+    if (previousItems.length !== nextItems.length) return null;
+    if (root.dataset.moduleId !== next.moduleId || root.dataset.status !== "ready") return null;
+    const rows = Array.from(root.querySelectorAll("[data-sw-row]"));
+    if (rows.length !== nextItems.length) return null;
+    for (let index = 0; index < nextItems.length; index += 1) {
+        const row = rows[index];
+        const label = row.querySelector(".sw__home-module-item-label");
+        const value = row.querySelector("[data-sw-row-value]");
+        const rendersValue = Boolean(nextItems[index].label && nextItems[index].value);
+        if (!label || !sameClockRowShape(previousItems[index], nextItems[index])
+            || label.textContent !== (previousItems[index].label || previousItems[index].value || previousItems[index].href || "")
+            || Boolean(value) !== rendersValue) return null;
+    }
+    const previousMeta = Boolean(previous.cached || formatUpdatedAt(previous.updatedAt));
+    const nextMeta = Boolean(next.cached || formatUpdatedAt(next.updatedAt));
+    if (previousMeta !== nextMeta) return null;
+    if (previousMeta && !root.querySelector(".sw__home-module-meta")) return null;
+    const previousHealth = Boolean(previous.sourceHealth);
+    const nextHealth = Boolean(next.sourceHealth);
+    if (previousHealth !== nextHealth) return null;
+    if (previousHealth && !root.querySelector(".sw__home-source-health")) return null;
+    return {rows, nextItems, hasStat: Boolean(next.stat && next.stat.value), hasMeta: nextMeta, hasHealth: nextHealth};
+}
+
+function patchClockView(root, previous, next, labels) {
+    const plan = buildClockPatchPlan(root, previous, next);
+    if (!plan) return false;
+    const patchLabels = clockPatchLabels(labels);
+    if (plan.hasStat) {
+        const statValue = root.querySelector(".sw__home-stat-value");
+        if (statValue) statValue.textContent = next.stat.value;
+    }
+    plan.rows.forEach((row, index) => {
+        const item = plan.nextItems[index];
+        const button = row.querySelector(".sw__home-module-item-action");
+        const value = row.querySelector("[data-sw-row-value]");
+        if (button) {
+            button.dataset.value = item.value || "";
+            button.setAttribute("aria-label", [item.label || item.value || item.href || "", item.label && item.value ? item.value : "", item.secondary].filter(Boolean).join(" · "));
+        }
+        if (value) value.textContent = item.value;
+    });
+    if (plan.hasMeta) {
+        const meta = root.querySelector(".sw__home-module-meta");
+        const updatedAt = formatUpdatedAt(next.updatedAt);
+        const metaText = [next.cached ? patchLabels.cached : "", updatedAt].filter(Boolean).join(" · ");
+        meta.textContent = metaText;
+        meta.setAttribute("title", `${patchLabels.updated} ${metaText}`);
+    }
+    if (plan.hasHealth) {
+        const health = root.querySelector(".sw__home-source-health");
+        health.classList.remove("is-fresh", "is-cached", "is-stale");
+        health.classList.add(`is-${next.sourceHealth}`);
+        health.dataset.health = next.sourceHealth;
+        health.textContent = next.sourceHealth === "fresh" ? patchLabels.sourceFresh : next.sourceHealth === "cached" ? patchLabels.sourceCached : patchLabels.sourceStale;
+    }
+    root.dataset.status = next.status;
+    root.setAttribute("aria-busy", next.ariaBusy === true ? "true" : "false");
+    return true;
+}
 
 function createHomeModuleController(options = {}) {
     const documentRef = options.document;
@@ -32,6 +135,13 @@ function createHomeModuleController(options = {}) {
 
     function render(view) {
         if (disposed || !view) return null;
+        const existing = container.firstElementChild;
+        if (patchClockView(existing, currentView, view, options.labels)) {
+            currentView = view;
+            pendingFocusKey = null;
+            pendingScrollTop = null;
+            return existing;
+        }
         const active = documentRef.activeElement;
         if (Number.isFinite(container.scrollTop) && container.scrollTop > 0) {
             pendingScrollTop = container.scrollTop;

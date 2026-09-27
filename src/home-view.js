@@ -127,7 +127,11 @@ function normalizeHomeViewResult(value, options = {}) {
         return entry;
     }).filter((item) => options.keepEmptyItems === true || item.label || item.value || item.href);
     const explicitStatus = STATUSES.has(source.status) ? source.status : "";
-    const status = explicitStatus || (source.loading === true ? "loading" : source.ok === false ? "error" : items.length ? "ready" : "empty");
+    // 统计卡可以只有 stat（例如关闭日期行的本地时钟）；它仍是有内容的 ready
+    // 状态，不能因列表为空而退化成 empty 并失去时钟的局部刷新语义。
+    const hasStat = rawSnapshot.stat && typeof rawSnapshot.stat === "object"
+        && Boolean(text(rawSnapshot.stat.value, 32));
+    const status = explicitStatus || (source.loading === true ? "loading" : source.ok === false ? "error" : items.length || hasStat ? "ready" : "empty");
     return {
         status,
         cached: source.cached === true,
@@ -555,6 +559,7 @@ function renderHomeModuleView(doc, view, options = {}) {
         const list = doc.createElement("ul");
         list.className = "sw__home-module-list";
         list.setAttribute("role", "list");
+        const showRowValues = ["external-local-time", "external-world-clock", "external-quote-daily"].includes(view.moduleId);
         const focusKeys = new Map();
         const usedFocusKeys = new Set();
         const canToggle = typeof options.onToggleItem === "function";
@@ -563,10 +568,16 @@ function renderHomeModuleView(doc, view, options = {}) {
         (Array.isArray(view.items) ? view.items : []).forEach((item) => {
             const row = doc.createElement("li");
             row.className = "sw__home-module-item";
+            // 时钟心跳使用稳定行标记做局部补丁；普通组件也保留标记，避免
+            // 后续新增本地只读组件时必须重新设计选择器。
+            row.dataset.swRow = String(list.children.length);
             const button = doc.createElement("button");
             button.type = "button";
             button.className = "sw__home-module-item-action";
-            const focusBase = item.value || item.label || item.href || "item";
+            // 时钟的 value 每分钟/每秒都会变，焦点身份应绑定城市/标签而不是时间文本。
+            const focusBase = showRowValues
+                ? (item.label || item.value || item.href || "item")
+                : (item.value || item.label || item.href || "item");
             let focusIndex = focusKeys.get(focusBase) || 0;
             let focusKey = focusIndex ? `${focusBase}-${focusIndex}` : focusBase;
             while (usedFocusKeys.has(focusKey)) {
@@ -591,13 +602,21 @@ function renderHomeModuleView(doc, view, options = {}) {
             itemLabel.className = "sw__home-module-item-label";
             itemLabel.textContent = item.label || item.value || item.href || "";
             button.appendChild(itemLabel);
+            let itemValue = null;
+            if (showRowValues && item.label && item.value) {
+                itemValue = doc.createElement("span");
+                itemValue.className = "sw__home-module-item-value";
+                itemValue.dataset.swRowValue = "true";
+                itemValue.textContent = item.value;
+                button.appendChild(itemValue);
+            }
             if (item.secondary) {
                 const secondary = doc.createElement("small");
                 secondary.className = "sw__home-module-item-secondary";
                 secondary.textContent = item.secondary;
                 button.appendChild(secondary);
             }
-            const itemDescription = [itemLabel.textContent, item.secondary].filter(Boolean).join(" · ");
+            const itemDescription = [itemLabel.textContent, itemValue?.textContent, item.secondary].filter(Boolean).join(" · ");
             if (itemDescription) {
                 button.setAttribute("aria-label", itemDescription);
                 // Desktop hover and supported touch long-press surfaces expose the exact bucket value.

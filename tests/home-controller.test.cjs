@@ -77,6 +77,100 @@ test("home controller keeps ready content during a refresh", async () => {
     assert.equal(container.querySelector(".sw__home-module-refreshing"), null);
     controller.dispose();
 });
+
+test("home clock refresh patches values in place and preserves focus and listeners", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let reads = 0;
+    let resolveRefresh;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-world-clock", title: "World clock"},
+        read: () => {
+            reads += 1;
+            if (reads === 1) return Promise.resolve({ok: true, snapshot: {
+                stat: {value: "09:00", label: "World clock"},
+                items: [{label: "Shanghai", value: "09:00 CST"}, {label: "UTC", value: "01:00 UTC"}],
+            }});
+            return new Promise((resolve) => { resolveRefresh = resolve; });
+        },
+    });
+    await controller.refresh();
+    const root = container.firstElementChild;
+    const row = container.querySelector("[data-sw-row='0']");
+    const button = row.querySelector(".sw__home-module-item-action");
+    const value = row.querySelector("[data-sw-row-value]");
+    let clicks = 0;
+    button.addEventListener("click", () => { clicks += 1; });
+    button.focus();
+
+    const pending = controller.refresh();
+    resolveRefresh({ok: true, snapshot: {
+        stat: {value: "09:01", label: "World clock"},
+        items: [{label: "Shanghai", value: "09:01 CST"}, {label: "UTC", value: "01:01 UTC"}],
+    }});
+    await pending;
+
+    assert.equal(container.firstElementChild, root, "clock heartbeat should retain the module node");
+    assert.equal(container.querySelector("[data-sw-row='0']"), row, "clock heartbeat should retain the row node");
+    assert.equal(row.querySelector(".sw__home-module-item-action"), button, "clock heartbeat should retain the action node");
+    assert.equal(value.textContent, "09:01 CST", "clock heartbeat should update the visible value node");
+    assert.equal(container.querySelector(".sw__home-stat-value").textContent, "09:01");
+    assert.equal(dom.window.document.activeElement, button, "focus should remain on the retained row");
+    button.click();
+    assert.equal(clicks, 1, "listeners attached to a clock row should survive the patch");
+    controller.dispose();
+});
+
+test("local clock stat-only refresh patches without requiring rows", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let reads = 0;
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-local-time", title: "Local time"},
+        read: async () => ({ok: true, snapshot: {
+            stat: {value: reads++ === 0 ? "09:00:00" : "09:00:01", label: "Local"},
+            items: [],
+        }}),
+    });
+    await controller.refresh();
+    const root = container.firstElementChild;
+    await controller.refresh();
+    assert.equal(container.firstElementChild, root, "stat-only local clock updates should retain the module node");
+    assert.equal(container.querySelector(".sw__home-stat-value").textContent, "09:00:01");
+    controller.dispose();
+});
+
+test("home clock refresh rebuilds when labels or row count change", async () => {
+    const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
+    const container = dom.window.document.querySelector("#mount");
+    let phase = 0;
+    const snapshots = [
+        {stat: {value: "09:00", label: "World clock"}, items: [{label: "Shanghai", value: "09:00 CST"}]},
+        {stat: {value: "09:01", label: "World clock"}, items: [{label: "Tokyo", value: "10:01 JST"}]},
+        {stat: {value: "09:02", label: "World clock"}, items: [{label: "Tokyo", value: "10:02 JST"}, {label: "UTC", value: "01:02 UTC"}]},
+    ];
+    const controller = createHomeModuleController({
+        document: dom.window.document,
+        container,
+        module: {moduleId: "external-world-clock", title: "World clock"},
+        read: async () => ({ok: true, snapshot: snapshots[phase]}),
+    });
+    await controller.refresh();
+    const firstRoot = container.firstElementChild;
+    phase = 1;
+    await controller.refresh();
+    const secondRoot = container.firstElementChild;
+    assert.notEqual(secondRoot, firstRoot, "a label change must fall back to a full render");
+    phase = 2;
+    await controller.refresh();
+    assert.notEqual(container.firstElementChild, secondRoot, "a row-count change must fall back to a full render");
+    controller.dispose();
+});
+
 test("home controller keeps the newest request when an older read resolves later", async () => {
     const dom = new JSDOM("<!doctype html><body><div id='mount'></div></body>");
     const container = dom.window.document.querySelector("#mount");

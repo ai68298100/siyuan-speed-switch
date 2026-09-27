@@ -741,6 +741,13 @@
             outline: none;
         }
     }
+
+    // 本地/世界时钟的标签与时间同处一行；数值由心跳局部更新，避免整卡闪动。
+    .sw__home-module-item-value {
+        margin-left: .45em;
+        color: var(--b3-theme-on-surface-light);
+        font-variant-numeric: tabular-nums;
+    }
 }
 
 .sw__home-module-status {
