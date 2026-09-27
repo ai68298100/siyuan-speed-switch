@@ -267,3 +267,45 @@
     justify-content: flex-end;
     gap: 8px;
 }
+
+// ==================== T-6959：编辑区查找条 ====================
+.sw-studio__find {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-surface);
+
+    &[hidden] { display: none; }
+
+    .sw-studio__find-query,
+    .sw-studio__find-replace {
+        flex: 1 1 120px;
+        min-width: 0;
+        height: 26px;
+        padding: 0 8px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        background: var(--b3-theme-background);
+        color: var(--b3-theme-on-background);
+        font-size: 12px;
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 1px;
+        }
+    }
+
+    .sw-studio__find-count {
+        flex: none;
+        min-width: 36px;
+        text-align: center;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+    }
+}

@@ -100,6 +100,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetLeaveSaveFailed: locale.i18n.snippetLeaveSaveFailed,
         snippetUndo: locale.i18n.snippetUndo,
         snippetRedo: locale.i18n.snippetRedo,
+        snippetFindBar: locale.i18n.snippetFindBar,
+        snippetFindQuery: locale.i18n.snippetFindQuery,
+        snippetFindReplaceTo: locale.i18n.snippetFindReplaceTo,
+        snippetFindPrev: locale.i18n.snippetFindPrev,
+        snippetFindNext: locale.i18n.snippetFindNext,
+        snippetFindReplaceAll: locale.i18n.snippetFindReplaceAll,
+        snippetFindConfirm: locale.i18n.snippetFindConfirm,
+        snippetFindNone: locale.i18n.snippetFindNone,
+        snippetFindDone: locale.i18n.snippetFindDone,
         snippetConflictTitle: locale.i18n.snippetConflictTitle,
         snippetConflictMessage: locale.i18n.snippetConflictMessage,
         snippetConflictContinue: locale.i18n.snippetConflictContinue,
@@ -300,6 +309,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     commands.append(toggleButton, deleteButton, exportButton, submissionButton);
     details.append(detailsTitle, selection, nameLabel, typeSelect, typeNote, state, commands, description, capabilities);
     const editorSection = node("section", "sw-studio__editor-section");
+    // T-6959：查找条状态（声明须先于 DOM 构建；逻辑函数声明提升，见后）
+    let findBar = null;
+    let findQueryInput = null;
+    let findReplaceInput = null;
+    let findCountLabel = null;
+    let findMatches = [];
+    let findCursor = -1;
+    let replaceArmed = false;
     const editorBar = node("div", "sw-studio__section-bar");
     const editorLead = node("div", "sw-studio__section-lead");
     const editorTitle = node("h2", "sw-studio__section-title", t("snippetCode"));
@@ -308,10 +325,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     // T-6957：编辑区局部撤销/重做（可用态在 syncFields 按草稿历史同步）
     const draftUndoButton = action("snippetUndo", () => undoDraft());
     const draftRedoButton = action("snippetRedo", () => redoDraft());
+    // T-6959：编辑区查找条开关（按需展开）
+    const findToggleButton = action("snippetFindBar", () => toggleFindBar());
     const chooseButton = action("snippetChoose", () => openPicker());
     const importButton = action("snippetImport", () => fileInput.click());
     const newButton = action("snippetNew", () => { guardLeave(() => choose({name: "", type: "css", content: ""}, null)); });
-    editorBar.append(editorLead, draftUndoButton, draftRedoButton, chooseButton, importButton, newButton);
+    editorBar.append(editorLead, draftUndoButton, draftRedoButton, findToggleButton, chooseButton, importButton, newButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.spellcheck = false;
     editor.setAttribute("aria-label", t("snippetCode"));
@@ -320,7 +339,57 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     fileInput.type = "file";
     fileInput.accept = ".css,.js";
     fileInput.hidden = true;
-    editorSection.append(editorBar, editor, fileInput);
+    // T-6959：查找条（隐藏起步）——查找 + 替换为 + 计数 + 上/下一处 + 替换全部（两步确认）
+    findBar = node("div", "sw-studio__find");
+    findBar.hidden = true;
+    findQueryInput = node("input", "sw-studio__find-query b3-text-field");
+    findQueryInput.placeholder = t("snippetFindQuery");
+    findQueryInput.setAttribute("aria-label", t("snippetFindQuery"));
+    findReplaceInput = node("input", "sw-studio__find-replace b3-text-field");
+    findReplaceInput.placeholder = t("snippetFindReplaceTo");
+    findReplaceInput.setAttribute("aria-label", t("snippetFindReplaceTo"));
+    findCountLabel = node("span", "sw-studio__find-count");
+    findCountLabel.setAttribute("aria-live", "polite");
+    const findPrevButton = node("button", "b3-button b3-button--text", "‹");
+    findPrevButton.setAttribute("aria-label", t("snippetFindPrev"));
+    findPrevButton.addEventListener("click", () => moveFindCursor(-1));
+    const findNextButton = node("button", "b3-button b3-button--text", "›");
+    findNextButton.setAttribute("aria-label", t("snippetFindNext"));
+    findNextButton.addEventListener("click", () => moveFindCursor(1));
+    const replaceAllButton = node("button", "b3-button b3-button--text", t("snippetFindReplaceAll"));
+    replaceAllButton.addEventListener("click", () => applyReplaceAll(replaceAllButton));
+    const findCloseButton = node("button", "b3-button b3-button--text", "✕");
+    findCloseButton.setAttribute("aria-label", t("cancel"));
+    findCloseButton.addEventListener("click", () => {
+        findBar.hidden = true;
+        findToggleButton.setAttribute("aria-expanded", "false");
+        findMatches = [];
+        findCursor = -1;
+        replaceArmed = false;
+        replaceAllButton.textContent = t("snippetFindReplaceAll");
+        findCountLabel.textContent = "";
+        try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); }
+    });
+    findQueryInput.addEventListener("input", () => {
+        replaceArmed = false;
+        replaceAllButton.textContent = t("snippetFindReplaceAll");
+        refreshFindMatches();
+    });
+    findReplaceInput.addEventListener("input", () => {
+        replaceArmed = false;
+        replaceAllButton.textContent = t("snippetFindReplaceAll");
+    });
+    findQueryInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            moveFindCursor(event.shiftKey ? -1 : 1);
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            findCloseButton.click();
+        }
+    });
+    findBar.append(findQueryInput, findCountLabel, findPrevButton, findNextButton, findReplaceInput, replaceAllButton, findCloseButton);
+    editorSection.append(editorBar, findBar, editor, fileInput);
     lower.append(details, editorSection);
     main.append(previewSection, lower);
     const aside = node("aside", "sw-studio__ai");
@@ -618,6 +687,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         chooseButton.disabled = busy;
         importButton.disabled = busy;
         newButton.disabled = busy;
+        // T-6959：busy 期间查找/替换控件跟随禁用
+        if (findQueryInput) findQueryInput.disabled = busy;
+        if (findReplaceInput) findReplaceInput.disabled = busy;
         // T-6957：撤销/重做可用态跟随草稿历史
         draftUndoButton.disabled = busy || !canUndoDraftHistory(draftHistory);
         draftRedoButton.disabled = busy || !canRedoDraftHistory(draftHistory);
@@ -727,6 +799,65 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         changed();
         suppressDraftHistory = false;
     };
+    // T-6959：查找条逻辑——字面命中、选区导航、两步替换全部（单事务落账）。
+    function toggleFindBar() {
+        if (!findBar) return;
+        findBar.hidden = !findBar.hidden;
+        findToggleButton.setAttribute("aria-expanded", String(!findBar.hidden));
+        if (!findBar.hidden) {
+            refreshFindMatches();
+            try { findQueryInput.focus({preventScroll: true}); } catch (_) { findQueryInput.focus(); }
+        } else {
+            findMatches = [];
+            findCursor = -1;
+            replaceArmed = false;
+        }
+    }
+    function refreshFindMatches() {
+        findMatches = findDraftMatches(editor.value, findQueryInput ? findQueryInput.value : "");
+        findCursor = findMatches.length > 0 ? 0 : -1;
+        if (findCountLabel) {
+            findCountLabel.textContent = findMatches.length > 0
+                ? `${findCursor + 1}/${findMatches.length}`
+                : (findQueryInput && findQueryInput.value ? t("snippetFindNone") : "");
+        }
+        if (findMatches.length > 0) selectFindMatch(findMatches[0]);
+    }
+    function selectFindMatch(match) {
+        if (!match) return;
+        try {
+            editor.focus({preventScroll: true});
+            editor.setSelectionRange(match.start, match.end);
+        } catch (_) { /* 极端宿主无选区能力时静默 */ }
+    }
+    function moveFindCursor(delta) {
+        if (findMatches.length === 0) return;
+        findCursor = (findCursor + delta + findMatches.length) % findMatches.length;
+        if (findCountLabel) findCountLabel.textContent = `${findCursor + 1}/${findMatches.length}`;
+        selectFindMatch(findMatches[findCursor]);
+    }
+    function applyReplaceAll(replaceAllButton) {
+        const query = findQueryInput ? findQueryInput.value : "";
+        const matches = findDraftMatches(editor.value, query);
+        if (matches.length === 0) return;
+        if (!replaceArmed) {
+            // 两步确认：先展示数量，再次点击才修改草稿
+            replaceArmed = true;
+            replaceAllButton.textContent = t("snippetFindConfirm").replace("{x}", String(matches.length));
+            return;
+        }
+        replaceArmed = false;
+        replaceAllButton.textContent = t("snippetFindReplaceAll");
+        commitDraftHistory();
+        const result = replaceDraftMatches(editor.value, query, findReplaceInput ? findReplaceInput.value : "");
+        suppressDraftHistory = true;
+        editor.value = result.content;
+        changed();
+        suppressDraftHistory = false;
+        commitDraftHistory();
+        setStatus(t("snippetFindDone").replace("{x}", String(result.count)), "ready");
+        refreshFindMatches();
+    }
     // T-6956：脏稿不再同步 confirm 强制放弃，改三选一待执行意图：
     // 保存并继续（成功才导航一次）/ 放弃（零写入放行）/ 取消（默认聚焦，零写入）。
     const leave = createLeaveIntentCoordinator();

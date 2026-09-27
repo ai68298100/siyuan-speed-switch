@@ -432,6 +432,40 @@ function buildConflictCopyEntry(latestList, draft, newId) {
     };
 }
 
+// T-6959：草稿内纯文本查找与替换。字面匹配（无正则）、不区分大小写、
+// 左起不重叠顺序命中；命中数封顶 1000 防超大文本刷屏；替换逐段拼装，
+// 绝不使用字符串替换的正则形态。
+const DRAFT_FIND_MATCH_CAP = 1000;
+
+function findDraftMatches(content, query) {
+    if (typeof content !== "string" || typeof query !== "string" || query === "") return [];
+    const haystack = content.toLocaleLowerCase();
+    const needle = query.toLocaleLowerCase();
+    if (needle.length === 0 || needle.length > haystack.length) return [];
+    const matches = [];
+    let pos = haystack.indexOf(needle);
+    while (pos >= 0 && matches.length < DRAFT_FIND_MATCH_CAP) {
+        matches.push({start: pos, end: pos + needle.length});
+        pos = haystack.indexOf(needle, pos + needle.length);
+    }
+    return matches;
+}
+
+function replaceDraftMatches(content, query, replacement) {
+    const source = typeof content === "string" ? content : "";
+    const safeReplacement = typeof replacement === "string" ? replacement : "";
+    const matches = findDraftMatches(source, query);
+    if (matches.length === 0) return {content: source, count: 0};
+    let out = "";
+    let cursor = 0;
+    for (const match of matches) {
+        out += source.slice(cursor, match.start) + safeReplacement;
+        cursor = match.end;
+    }
+    out += source.slice(cursor);
+    return {content: out, count: matches.length};
+}
+
 module.exports = {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
@@ -450,4 +484,7 @@ module.exports = {
     CONFLICT_COPY_NAME_MAX,
     nextConflictCopyName,
     buildConflictCopyEntry,
+    DRAFT_FIND_MATCH_CAP,
+    findDraftMatches,
+    replaceDraftMatches,
 };
