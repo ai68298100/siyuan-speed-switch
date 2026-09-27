@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 设计令牌与组件画廊 v1.0（T-6928，2026-09-27）</title>
+<style>
+/* ============================================================
+ * 画廊自身宿主变量：模拟思源明/暗主题（生产环境中这些 --b3-* 由宿主注入，
+ * 插件只引用、不定义）。本文件自包含以便离线评审。
+ * ========================================================== */
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --gallery-stage: #e7e9f0;
+  --gallery-stage-cell-a: #dde0ea;
+  --gallery-stage-cell-b: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --gallery-stage: #14161c;
+  --gallery-stage-cell-a: #191c23;
+  --gallery-stage-cell-b: #14161c;
+  color-scheme: dark;
+}
+
+/* ---- 平台令牌别名（与 src/styles/_platform-shell.scss 对应） ---- */
+:root {
+  --sw-platform-accent: var(--b3-theme-primary);
+  --sw-platform-accent-soft: color-mix(in srgb, var(--sw-platform-accent) 12%, transparent);
+  --sw-platform-accent-pressed: color-mix(in srgb, var(--sw-platform-accent) 20%, transparent);
+  --sw-platform-bg: var(--b3-theme-background);
+  --sw-platform-surface: var(--b3-theme-surface);
+  --sw-platform-surface-muted: var(--b3-theme-surface-lighter);
+  --sw-platform-surface-raised: color-mix(in srgb, var(--sw-platform-surface) 92%, var(--sw-platform-accent-soft));
+  --sw-platform-line: var(--b3-border-color);
+  --sw-platform-text: var(--b3-theme-on-background);
+  --sw-platform-text-muted: var(--b3-theme-on-surface-light);
+  --sw-platform-text-on-accent: var(--b3-theme-on-primary);
+  --sw-platform-success: var(--b3-theme-success);
+  --sw-platform-warning: var(--b3-theme-warning);
+  --sw-platform-error: var(--b3-theme-error);
+  --sw-platform-radius-sm: 8px;
+  --sw-platform-radius-md: 12px;
+  --sw-platform-radius-lg: 16px;
+  --sw-platform-radius-pill: 999px;
+  --sw-platform-space-1: 4px; --sw-platform-space-2: 8px; --sw-platform-space-3: 12px;
+  --sw-platform-space-4: 16px; --sw-platform-space-5: 24px;
+  --sw-platform-shadow-card: 0 1px 2px rgb(51 58 83 / 5%), 0 8px 24px rgb(75 85 120 / 8%);
+  --sw-platform-shadow-floating: 0 14px 36px rgb(55 65 100 / 15%), 0 3px 10px rgb(55 65 100 / 8%);
+  --sw-platform-focus: 0 0 0 3px color-mix(in srgb, var(--sw-platform-accent) 24%, transparent);
+}
+:root[data-theme="dark"] {
+  --sw-platform-shadow-card: 0 1px 2px rgb(0 0 0 / 25%), 0 8px 24px rgb(0 0 0 / 30%);
+  --sw-platform-shadow-floating: 0 14px 36px rgb(0 0 0 / 45%), 0 3px 10px rgb(0 0 0 / 30%);
+}
+
+/* ---- 画廊骨架 ---- */
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 28px 32px 64px;
+  background: repeating-conic-gradient(var(--gallery-stage-cell-a) 0% 25%, var(--gallery-stage-cell-b) 0% 50%) 0 0 / 22px 22px;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: var(--sw-platform-text);
+  transition: background-color 160ms, color 160ms;
+}
+.gallery { max-width: 1480px; margin: 0 auto; display: flex; flex-direction: column; gap: 30px; }
+.g-head h1 { font-size: 20px; margin: 0 0 6px; }
+.g-head p { margin: 0 0 4px; font-size: 12.5px; color: var(--sw-platform-text-muted); line-height: 1.75; max-width: 1100px; }
+.g-head code, .spec code { font: 600 11px/1.5 ui-monospace, Consolas, monospace; background: var(--sw-platform-surface-muted); border-radius: 4px; padding: 1px 5px; color: var(--sw-platform-text); }
+.g-section > h2 { font-size: 13px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--sw-platform-text-muted); margin: 0 0 10px; display: flex; align-items: center; gap: 10px; }
+.g-section > h2::after { content: ""; flex: 1; height: 1px; background: var(--sw-platform-line); }
+.panel { background: var(--sw-platform-bg); border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-lg); padding: 18px; }
+.spec { font-size: 11.5px; color: var(--sw-platform-text-muted); margin-top: 10px; line-height: 1.8; }
+.grid { display: grid; gap: 12px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* ============================================================
+ * 组件原语（与生产 sw-platform-* 对应的画廊实现）
+ * ========================================================== */
+
+/* 按钮族 */
+.btn { display: inline-flex; align-items: center; gap: 5px; border: 0; cursor: pointer; border-radius: var(--sw-platform-radius-pill);
+  padding: 6px 14px; font: 600 12px/1.4 inherit; font-family: inherit; transition: all 120ms cubic-bezier(0.32,0.72,0,1); }
+.btn:active { transform: scale(.97); }
+.btn--primary { background: var(--sw-platform-accent); color: var(--sw-platform-text-on-accent); }
+.btn--primary:hover { filter: brightness(1.06); }
+.btn--soft { background: var(--sw-platform-accent-soft); color: var(--sw-platform-accent); }
+.btn--soft:hover { background: var(--sw-platform-accent-pressed); }
+.btn--quiet { background: transparent; color: var(--b3-theme-on-surface); }
+.btn--quiet:hover { background: var(--sw-platform-surface-muted); }
+.btn--pill { background: var(--sw-platform-surface); color: var(--b3-theme-on-surface); border: 1px solid var(--sw-platform-line); }
+.btn--pill:hover { border-color: color-mix(in srgb, var(--sw-platform-accent) 40%, var(--sw-platform-line)); color: var(--sw-platform-accent); }
+.btn--danger { background: color-mix(in srgb, var(--sw-platform-error) 12%, transparent); color: var(--sw-platform-error); }
+.btn--danger:hover { background: color-mix(in srgb, var(--sw-platform-error) 20%, transparent); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; transform: none; }
+.btn .spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; animation: spin 800ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.iconbtn { width: 28px; height: 28px; border-radius: var(--sw-platform-radius-sm); border: 1px solid var(--sw-platform-line);
+  background: var(--sw-platform-surface); color: var(--b3-theme-on-surface); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: all 120ms; font-family: inherit; }
+.iconbtn:hover { color: var(--sw-platform-accent); border-color: color-mix(in srgb, var(--sw-platform-accent) 40%, var(--sw-platform-line)); }
+
+/* 状态徽标 */
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; line-height: 1;
+  padding: 4px 8px; border-radius: var(--sw-platform-radius-pill); border: 1px solid var(--sw-platform-line);
+  color: var(--b3-theme-on-surface); background: var(--sw-platform-surface); white-space: nowrap; }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
+.badge--count::before { display: none; }
+.badge--ready   { color: color-mix(in srgb, var(--sw-platform-success) 72%, var(--sw-platform-text)); border-color: color-mix(in srgb, var(--sw-platform-success) 26%, transparent); background: color-mix(in srgb, var(--sw-platform-success) 9%, transparent); }
+.badge--loading { color: var(--sw-platform-accent); border-color: color-mix(in srgb, var(--sw-platform-accent) 30%, transparent); background: color-mix(in srgb, var(--sw-platform-accent) 9%, transparent); }
+.badge--stale   { color: color-mix(in srgb, var(--sw-platform-warning) 68%, var(--sw-platform-text)); border-color: color-mix(in srgb, var(--sw-platform-warning) 28%, transparent); background: color-mix(in srgb, var(--sw-platform-warning) 10%, transparent); }
+.badge--dirty   { color: color-mix(in srgb, #c9651d 80%, var(--sw-platform-text)); border-color: color-mix(in srgb, #c9651d 30%, transparent); background: color-mix(in srgb, #c9651d 10%, transparent); }
+.badge--blocked { color: var(--sw-platform-text-muted); border-style: dashed; background: transparent; }
+.badge--error   { color: var(--sw-platform-error); border-color: color-mix(in srgb, var(--sw-platform-error) 30%, transparent); background: color-mix(in srgb, var(--sw-platform-error) 9%, transparent); }
+
+/* kbd */
+.kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 5px; border: 1px solid var(--sw-platform-line);
+  background: var(--sw-platform-surface); color: var(--sw-platform-text-muted);
+  font: 600 10.5px/1 ui-monospace, Consolas, monospace; }
+
+/* 分段控件 */
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px;
+  background: var(--sw-platform-surface-muted); border: 1px solid var(--sw-platform-line); }
+.seg button { border: 0; background: transparent; color: var(--b3-theme-on-surface);
+  font: 500 12px/1 inherit; font-family: inherit; padding: 6px 12px; border-radius: 7px; cursor: pointer; transition: all 120ms; }
+.seg button.is-active { background: var(--sw-platform-bg); color: var(--sw-platform-text); font-weight: 600; box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+
+/* 输入族 */
+.searchbox { display: flex; align-items: center; gap: 8px; border: 1px solid var(--sw-platform-line); border-radius: 10px;
+  padding: 0 12px; height: 38px; background: var(--sw-platform-surface); transition: border-color 120ms, box-shadow 120ms; }
+.searchbox:focus-within { border-color: var(--sw-platform-accent); box-shadow: var(--sw-platform-focus); }
+.searchbox input { border: 0; background: transparent; outline: none; flex: 1; height: 100%; font-size: 13px; font-family: inherit; color: var(--sw-platform-text); }
+.input { height: 28px; font-size: 12.5px; border-radius: var(--sw-platform-radius-sm); border: 1px solid var(--sw-platform-line);
+  background: var(--sw-platform-surface); color: var(--sw-platform-text); font-family: inherit; padding: 0 9px; transition: border-color 120ms, box-shadow 120ms; }
+.input:focus { outline: none; border-color: var(--sw-platform-accent); box-shadow: var(--sw-platform-focus); }
+.textarea { border: 1px solid var(--sw-platform-line); border-radius: 10px; font-size: 12px; font-family: inherit; padding: 7px 9px;
+  background: var(--sw-platform-surface); color: var(--sw-platform-text); resize: none; }
+.textarea:focus { outline: none; border-color: var(--sw-platform-accent); box-shadow: var(--sw-platform-focus); }
+.valuecap { display: inline-flex; align-items: center; border-radius: var(--sw-platform-radius-pill); padding: 3px 9px;
+  font: 600 11px/1.4 ui-monospace, Consolas, monospace; background: var(--sw-platform-accent-soft); color: var(--sw-platform-accent); white-space: nowrap; }
+input[type="range"] { accent-color: var(--sw-platform-accent); }
+input[type="checkbox"] { accent-color: var(--sw-platform-accent); width: 14px; height: 14px; }
+
+/* 卡片族 */
+.card { border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-md); background: var(--sw-platform-surface);
+  transition: transform 160ms cubic-bezier(0.32,0.72,0,1), box-shadow 160ms, border-color 120ms; }
+.card--hoverable:hover { transform: translateY(-1px); box-shadow: var(--sw-platform-shadow-card); }
+.card--selected { border-color: color-mix(in srgb, var(--sw-platform-accent) 34%, transparent); background: color-mix(in srgb, var(--sw-platform-accent) 8%, transparent); }
+.card--disabled { opacity: .5; }
+.rowicon { width: 26px; height: 26px; border-radius: var(--sw-platform-radius-sm); flex: none; display: inline-flex;
+  align-items: center; justify-content: center; background: var(--sw-platform-surface-muted); color: var(--b3-theme-on-surface); font-size: 12px; }
+.h1 { font-size: 13px; font-weight: 700; color: var(--sw-platform-text); }
+.cardtitle { font-size: 12.5px; font-weight: 600; color: var(--sw-platform-text); }
+.meta { font-size: 11px; color: var(--sw-platform-text-muted); }
+.grouplabel { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--sw-platform-text-muted); display: flex; align-items: center; gap: 8px; }
+
+/* 设置组卡与设置行 */
+.setgroup { border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-md); background: var(--sw-platform-surface); overflow: hidden; }
+.setrow { display: flex; align-items: center; gap: 14px; padding: 11px 14px; transition: background 120ms; }
+.setrow + .setrow { border-top: 1px solid var(--sw-platform-line); }
+.setrow:hover { background: color-mix(in srgb, var(--sw-platform-accent) 4%, transparent); }
+.setrow .t { font-size: 13px; font-weight: 600; color: var(--sw-platform-text); }
+.setrow .d { font-size: 12px; color: var(--sw-platform-text-muted); margin-top: 2px; line-height: 1.5; }
+.setrow .ctl { margin-left: auto; flex: none; }
+
+/* 弹层 */
+.overlay-demo { position: relative; border: 1px dashed var(--sw-platform-line); border-radius: var(--sw-platform-radius-md);
+  background: repeating-conic-gradient(color-mix(in srgb, var(--sw-platform-surface-muted) 55%, transparent) 0% 25%, transparent 0% 50%) 0 0 / 18px 18px;
+  min-height: 220px; display: grid; place-items: center; padding: 18px; }
+.dialog { width: 380px; border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-lg);
+  background: var(--sw-platform-bg); box-shadow: var(--sw-platform-shadow-floating); overflow: hidden; }
+.menu { width: 240px; border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-md);
+  background: var(--sw-platform-bg); box-shadow: var(--sw-platform-shadow-floating); padding: 5px; }
+.menuitem { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent;
+  padding: 7px 9px; border-radius: 7px; cursor: pointer; font: 400 12px/1.3 inherit; font-family: inherit; color: var(--sw-platform-text); }
+.menuitem:hover { background: var(--sw-platform-surface-muted); }
+.menuitem.is-on { color: var(--sw-platform-accent); font-weight: 600; }
+.menu-sep { height: 1px; background: var(--sw-platform-line); margin: 5px 4px; }
+
+/* 骨架 */
+.skel { border-radius: 6px; background: linear-gradient(100deg, var(--sw-platform-surface-muted) 40%, color-mix(in srgb, var(--sw-platform-surface-muted) 40%, var(--sw-platform-bg)) 50%, var(--sw-platform-surface-muted) 60%);
+  background-size: 200% 100%; animation: shimmer 1400ms linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* 回执条 */
+.receipt { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--sw-platform-line);
+  background: var(--sw-platform-surface); font-size: 11.5px; color: var(--sw-platform-text-muted); border-radius: 0 0 var(--sw-platform-radius-md) var(--sw-platform-radius-md); }
+
+/* 令牌展示件 */
+.swatch { border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-md); overflow: hidden; background: var(--sw-platform-surface); }
+.swatch .c { height: 52px; border-bottom: 1px solid var(--sw-platform-line); }
+.swatch .n { padding: 7px 10px; font: 600 10.5px/1.5 ui-monospace, Consolas, monospace; color: var(--b3-theme-on-surface); }
+.swatch .u { padding: 0 10px 8px; font-size: 10.5px; color: var(--sw-platform-text-muted); }
+.spacebar { display: flex; align-items: center; gap: 10px; font: 600 11px/1 ui-monospace, Consolas, monospace; color: var(--b3-theme-on-surface); }
+.spacebar .bar { height: 18px; border-radius: 4px; background: var(--sw-platform-accent-soft); border: 1px solid color-mix(in srgb, var(--sw-platform-accent) 30%, transparent); }
+.radiusbox { display: flex; flex-direction: column; align-items: center; gap: 7px; font: 600 11px/1 ui-monospace, Consolas, monospace; color: var(--b3-theme-on-surface); }
+.radiusbox .box { width: 64px; height: 44px; background: var(--sw-platform-surface-muted); border: 1.5px solid color-mix(in srgb, var(--sw-platform-accent) 45%, transparent); }
+.motionchip { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-md);
+  background: var(--sw-platform-surface); padding: 12px; cursor: pointer; }
+.motionchip .track { height: 4px; border-radius: 2px; background: var(--sw-platform-surface-muted); position: relative; overflow: hidden; }
+.motionchip .dot { position: absolute; top: -3px; left: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--sw-platform-accent); }
+.motionchip:hover .dot { left: calc(100% - 10px); }
+
+/* 组合示例 */
+.demo-shell { border: 1px solid var(--sw-platform-line); border-radius: var(--sw-platform-radius-lg); background: var(--sw-platform-bg); overflow: hidden; }
+.demo-chrome { padding: 12px 16px 0; }
+.demo-navitem { border: 0; background: transparent; font: 500 12.5px/1 inherit; font-family: inherit; color: var(--b3-theme-on-surface);
+  padding: 7px 12px; border-radius: 8px; cursor: pointer; }
+.demo-navitem.is-active { background: var(--sw-platform-accent-soft); color: var(--sw-platform-accent); font-weight: 700; }
+mark { background: color-mix(in srgb, var(--sw-platform-accent) 26%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+.theme-lock { position: sticky; top: 14px; z-index: 5; display: flex; justify-content: flex-end; }
+</style>
+</head>
+<body>
+<div class="gallery">
+
+  <div class="g-head">
+    <h1>小驴雷切 · 设计令牌与组件画廊 v1.0</h1>
+    <p>T-6928 · 2026-09-27 · 配套规范文档 <code>docs/design-system-v1-2026-09-27.md</code>（ADR 0084）。本页自包含渲染：<code>--b3-*</code> 变量在此模拟思源明/暗主题，生产环境由宿主注入，插件只引用不定义。所有组件类名对应生产 <code>sw-platform-*</code> 原语；逐屏高保真原型另见 <code>platform-ui-redesign-r2-2026-09-26.html</code>。</p>
+  </div>
+
+  <div class="theme-lock">
+    <div class="seg" id="themeSeg">
+      <button class="is-active" data-theme="light" type="button">浅色主题</button>
+      <button data-theme="dark" type="button">深色主题</button>
+    </div>
+  </div>
+
+  <!-- ============ 1 色彩令牌 ============ -->
+  <section class="g-section">
+    <h2>1 · 色彩令牌 — 宿主变量为唯一色源</h2>
+    <div class="panel">
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));">
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-accent);"></div><div class="n">--sw-platform-accent</div><div class="u">主色 · 主动作/激活/焦点</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-accent-soft);"></div><div class="n">accent-soft 12%</div><div class="u">激活底色 · 徽标/导航</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-accent-pressed);"></div><div class="n">accent-pressed 20%</div><div class="u">按下态</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-bg);"></div><div class="n">--sw-platform-bg</div><div class="u">页面底</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-surface);"></div><div class="n">surface</div><div class="u">卡片/控件底</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-surface-muted);"></div><div class="n">surface-muted</div><div class="u">分段槽/图标容器</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-surface-raised);"></div><div class="n">surface-raised</div><div class="u">轻微抬升面</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-line);"></div><div class="n">line</div><div class="u">边框 / hairline</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-text);"></div><div class="n">text</div><div class="u">正文/标题</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-text-muted);"></div><div class="n">text-muted</div><div class="u">元信息/描述</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-success);"></div><div class="n">success</div><div class="u">ready 态</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-warning);"></div><div class="n">warning</div><div class="u">stale/警示</div></div>
+        <div class="swatch"><div class="c" style="background: var(--sw-platform-error);"></div><div class="n">error</div><div class="u">error/危险</div></div>
+      </div>
+      <div class="spec">纪律：颜色一律 <code>var(--b3-*)</code> 派生；同色系层次用 <code>color-mix()</code>（9% 底 / 26~30% 边 / 68~72% 文字）。禁止硬编码色值 —— 暗色与皮肤（ADR 0073）零额外适配即成立。切换右上角主题可验证。</div>
+    </div>
+  </section>
+
+  <!-- ============ 2 文字刻度 ============ -->
+  <section class="g-section">
+    <h2>2 · 文字刻度</h2>
+    <div class="panel">
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start;">
+        <div>
+          <div class="h1">屏标题 H1 · 13px / 700</div>
+          <div class="cardtitle" style="margin-top:10px;">卡片标题 · 12.5px / 600</div>
+          <div style="font-size:12.5px; margin-top:10px; color: var(--b3-theme-on-surface);">正文 · 12~12.5px / 400，摘要行高 1.7。</div>
+          <div class="meta" style="margin-top:10px;">元信息 meta · 11px / 400 muted —— 路径、时间、描述、计数</div>
+        </div>
+        <div>
+          <div class="grouplabel">分节标签 · 11/700 大写字距</div>
+          <div style="margin-top:10px;"><span class="kbd">Tab</span> <span class="kbd">Enter</span> <span class="kbd">Alt 预览</span> <span class="meta">kbd · 10.5/600 mono · 18px 高</span></div>
+          <div style="margin-top:12px; font-size:13px; font-weight:600;">设置行标题 13/600<div style="font-size:12px; font-weight:400; color: var(--sw-platform-text-muted); margin-top:2px;">设置行描述 12/400 muted —— 说明行为、副作用与默认值</div></div>
+        </div>
+      </div>
+      <div class="spec">层级只用「字号 × 字重 × text/text-muted」三变量表达；字体族沿用宿主 <code>var(--b3-font-family)</code>，等宽 <code>ui-monospace</code> 用于 kbd/代码/数值胶囊。</div>
+    </div>
+  </section>
+
+  <!-- ============ 3 间距 · 圆角 · 阴影 ============ -->
+  <section class="g-section">
+    <h2>3 · 间距 / 圆角 / 层级与阴影</h2>
+    <div class="panel grid" style="grid-template-columns: 1.2fr 1fr 1fr;">
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div class="grouplabel">间距刻度 space-1..5</div>
+        <div class="spacebar"><span class="bar" style="width:4px"></span>4 — 控件内部</div>
+        <div class="spacebar"><span class="bar" style="width:8px"></span>8 — 图标与文字</div>
+        <div class="spacebar"><span class="bar" style="width:12px"></span>12 — 卡片内边距</div>
+        <div class="spacebar"><span class="bar" style="width:16px"></span>16 — 区块间距</div>
+        <div class="spacebar"><span class="bar" style="width:24px"></span>24 — 外壳边距</div>
+      </div>
+      <div class="row" style="align-items:flex-start; gap:14px;">
+        <div class="radiusbox"><div class="box" style="border-radius:8px;"></div>sm 8 · 控件</div>
+        <div class="radiusbox"><div class="box" style="border-radius:12px;"></div>md 12 · 卡片</div>
+        <div class="radiusbox"><div class="box" style="border-radius:16px;"></div>lg 16 · 面板</div>
+        <div class="radiusbox"><div class="box" style="border-radius:999px;"></div>pill 999</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="grouplabel">层级：line → surface → elevated</div>
+        <div class="card" style="padding:10px 12px; font-size:12px;">常态卡片：1px 边框，无阴影</div>
+        <div class="card card--hoverable" style="padding:10px 12px; font-size:12px;">hover 我：translateY(-1px) + shadow-card</div>
+        <div class="card" style="padding:10px 12px; font-size:12px; box-shadow: var(--sw-platform-shadow-floating);">浮层专用：shadow-floating（菜单/Dialog）</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4 动效 ============ -->
+  <section class="g-section">
+    <h2>4 · 动效刻度（悬停色条预览）</h2>
+    <div class="panel">
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="motionchip"><div style="display:flex; justify-content:space-between;"><strong style="font-size:12px;">fast · 120ms</strong><span class="meta">hover/focus/颜色</span></div><div class="track"><div class="dot" style="transition: left 120ms cubic-bezier(0.32,0.72,0,1);"></div></div></div>
+        <div class="motionchip"><div style="display:flex; justify-content:space-between;"><strong style="font-size:12px;">base · 160ms</strong><span class="meta">阴影/小位移</span></div><div class="track"><div class="dot" style="transition: left 160ms cubic-bezier(0.32,0.72,0,1);"></div></div></div>
+        <div class="motionchip"><div style="display:flex; justify-content:space-between;"><strong style="font-size:12px;">slow · 200ms</strong><span class="meta">大位移/层级</span></div><div class="track"><div class="dot" style="transition: left 200ms cubic-bezier(0.32,0.72,0,1);"></div></div></div>
+        <div class="motionchip"><div style="display:flex; justify-content:space-between;"><strong style="font-size:12px;">panel · 260ms</strong><span class="meta">面板/抽屉</span></div><div class="track"><div class="dot" style="transition: left 260ms cubic-bezier(0.32,0.72,0,1);"></div></div></div>
+      </div>
+      <div class="spec">曲线默认 <code>cubic-bezier(0.32, 0.72, 0, 1)</code>（快速启动、平滑停止 = 即时响应）；对称场景用 <code>cubic-bezier(0.65, 0, 0.35, 1)</code>；<code>linear</code> 仅旋转加载。<code>prefers-reduced-motion</code> 全量降级。编译期 SCSS 常量，不走运行时变量。</div>
+    </div>
+  </section>
+
+  <!-- ============ 5 按钮族 ============ -->
+  <section class="g-section">
+    <h2>5 · 按钮族 sw-platform-action</h2>
+    <div class="panel" style="display:flex; flex-direction:column; gap:14px;">
+      <div class="row">
+        <button class="btn btn--primary" type="button">保存</button>
+        <button class="btn btn--soft" type="button">刷新全部</button>
+        <button class="btn btn--quiet" type="button">查看缓存</button>
+        <button class="btn btn--pill" type="button">最近打开</button>
+        <button class="btn btn--danger" type="button">删除片段</button>
+        <button class="iconbtn" type="button">⚙</button>
+        <button class="iconbtn" type="button">✕</button>
+      </div>
+      <div class="row">
+        <button class="btn btn--primary" type="button"><span class="spin"></span>生成中…</button>
+        <button class="btn btn--primary" disabled type="button">应用（disabled）</button>
+        <button class="btn btn--soft" disabled type="button">已添加</button>
+      </div>
+      <div class="spec">主动作每屏唯一（primary）；soft = 次动作；quiet = 行内第三级；pill = 过滤/出口；danger 必须配副作用说明。胶囊高 26~28px、padding 6/14、12px/600；active 压缩 .97；disabled 50% 透明。</div>
+    </div>
+  </section>
+
+  <!-- ============ 6 状态徽标 / kbd / 分段 ============ -->
+  <section class="g-section">
+    <h2>6 · 状态徽标 / kbd / 分段控件</h2>
+    <div class="panel" style="display:flex; flex-direction:column; gap:14px;">
+      <div class="row">
+        <span class="badge badge--ready">已就绪</span>
+        <span class="badge badge--loading">加载中</span>
+        <span class="badge badge--stale">缓存 · 3 分钟前</span>
+        <span class="badge badge--dirty">未保存更改</span>
+        <span class="badge badge--blocked">受安全边界限制</span>
+        <span class="badge badge--error">加载失败</span>
+        <span class="badge badge--count">58</span>
+      </div>
+      <div class="row">
+        <span class="kbd">1</span><span class="kbd">Tab</span><span class="kbd">Enter</span><span class="kbd">Esc</span><span class="kbd">Alt</span><span class="kbd">Shift+F10</span><span class="kbd">/</span>
+        <span class="meta">多键组合用多个 kbd 并排，不用 "+" 拼接</span>
+      </div>
+      <div class="row">
+        <div class="seg"><button class="is-active" type="button">查看</button><button type="button">编辑布局</button></div>
+        <div class="seg"><button class="is-active" type="button">全屏</button><button type="button">自适应</button><button type="button">固定</button></div>
+        <div class="seg"><button type="button">列表</button><button class="is-active" type="button">日历</button><button type="button">周视图</button><button type="button">热力图</button></div>
+      </div>
+      <div class="spec">徽标六态：ready / loading / stale / dirty / blocked / error —— 色点 + 文字双通道，9~10% 同色系底。分段控件用于 2~4 互斥取值，超出用下拉；槽 9px 圆角、选项 7px。</div>
+    </div>
+  </section>
+
+  <!-- ============ 7 输入族 ============ -->
+  <section class="g-section">
+    <h2>7 · 输入族</h2>
+    <div class="panel" style="display:flex; flex-direction:column; gap:14px;">
+      <div class="searchbox" style="max-width:520px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" style="color:var(--sw-platform-text-muted);"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input placeholder="搜索页签、收藏、最近与全库文档（38px · 首焦点 · focus 环）">
+        <span class="kbd">></span>
+      </div>
+      <div class="row">
+        <input class="input" style="width:200px;" value="卡片悬浮阴影">
+        <input class="input" style="width:120px;" placeholder="宽度 px">
+        <span class="meta">文本输入 28px / 圆角 8</span>
+      </div>
+      <div class="row" style="align-items:flex-start;">
+        <textarea class="textarea" rows="2" style="width:300px;" placeholder="描述优化目标…"></textarea>
+        <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:220px;">
+          <input type="range" value="60" style="flex:1;">
+          <span class="valuecap">96 px</span>
+        </div>
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--b3-theme-on-surface);"><input type="checkbox" checked> 已启用</label>
+      </div>
+      <div class="spec">统一焦点环：2px accent outline + 3px 24% 光晕（<code>--sw-platform-focus</code>）。slider 主题化 accent + 主色值胶囊；checkbox 走 accent-color。</div>
+    </div>
+  </section>
+
+  <!-- ============ 8 卡片族 ============ -->
+  <section class="g-section">
+    <h2>8 · 卡片族（default / hover / selected / disabled）</h2>
+    <div class="panel" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="card card--hoverable" style="overflow:hidden; position:relative;">
+          <span class="kbd" style="position:absolute; top:6px; right:6px; z-index:2;">1</span>
+          <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,var(--sw-platform-accent) 24%, transparent), color-mix(in srgb,#5ab0a8 16%, transparent));"></div>
+          <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">产</span><span class="cardtitle">产品路线图（2026 H2）</span></div>
+        </div>
+        <div class="card card--hoverable card--selected" style="overflow:hidden; position:relative;">
+          <span class="kbd" style="position:absolute; top:6px; right:6px; z-index:2;">2</span>
+          <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#5ab0a8 20%, transparent), color-mix(in srgb,#d1901f 14%, transparent));"></div>
+          <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">评</span><span class="cardtitle">Q3 路线评审纪要（选中）</span></div>
+        </div>
+        <div class="card card--hoverable" style="overflow:hidden; position:relative;">
+          <span class="kbd" style="position:absolute; top:6px; right:6px; z-index:2;">3</span>
+          <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#8b7ff5 20%, transparent), color-mix(in srgb,#6ea8fe 16%, transparent));"></div>
+          <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">日</span><span class="cardtitle">2026-09-27 日记</span></div>
+        </div>
+        <div class="card card--disabled" style="overflow:hidden; position:relative;">
+          <div style="height:96px; background:var(--sw-platform-surface-muted);"></div>
+          <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">档</span><span class="cardtitle">已归档（disabled）</span></div>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <button class="card card--hoverable" style="display:flex; gap:9px; align-items:center; text-align:left; padding:6px 8px; cursor:pointer; font-family:inherit; border-radius:9px;">
+          <span class="rowicon">★</span>
+          <span style="flex:1; min-width:0;"><span style="display:block; font-size:12px; color:var(--sw-platform-text);">每日工作台</span><span class="meta" style="display:block;">/日记 · 收藏</span></span>
+          <span class="kbd">1</span>
+        </button>
+        <button class="card card--hoverable" style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; cursor:pointer; font-family:inherit; border-radius:10px;">
+          <span class="rowicon">文</span>
+          <span style="flex:1; min-width:0;"><span style="display:block; font-size:12.5px; color:var(--sw-platform-text);">产品<mark>路线</mark>图（2026 H2）</span><span class="meta">…下半年 <mark>路线</mark>围绕统一切换平台推进…</span></span>
+          <span class="kbd">3</span>
+        </button>
+      </div>
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <section class="card" style="display:flex; flex-direction:column;">
+          <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong class="cardtitle">组件卡 · 最近文档</strong><span class="badge badge--ready">已更新</span><span style="flex:1"></span><span class="meta">⋯</span></div>
+          <div style="padding:9px 12px 12px; display:flex; flex-direction:column; gap:8px; font-size:12.5px;">
+            <span style="display:flex; justify-content:space-between;"><span>产品路线图（2026 H2）</span><span class="meta">12:20</span></span>
+            <span style="display:flex; justify-content:space-between;"><span>Q3 路线评审纪要</span><span class="meta">11:05</span></span>
+            <span style="display:flex; justify-content:space-between;"><span>面试题库整理</span><span class="meta">昨天</span></span>
+          </div>
+        </section>
+        <section class="card" style="display:flex; flex-direction:column;">
+          <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;">
+            <span style="width:38px; height:38px; border-radius:10px; flex:none; background:linear-gradient(140deg, color-mix(in srgb,var(--sw-platform-accent) 30%, transparent), color-mix(in srgb,#5ab0a8 20%, transparent));"></span>
+            <span style="min-width:0;"><span class="cardtitle" style="display:block;">商店卡 · 周打卡</span><span class="meta">官方组件 · 生活信息</span></span>
+            <span style="flex:1"></span><span class="badge badge--ready">可用</span>
+          </div>
+          <div style="padding:8px 12px 12px; font-size:12px; color:var(--b3-theme-on-surface);">GitHub 风格贡献格点热力图，支持周日对齐占位与周汇总。</div>
+          <div style="padding:0 12px 12px; display:flex; gap:8px;"><button class="btn btn--primary" style="padding:5px 12px;" type="button">添加</button><button class="btn btn--quiet" style="padding:5px 10px;" type="button">配置</button></div>
+        </section>
+      </div>
+      <div class="spec">卡片只承载真实对象（页签/文档/组件/设置组）。通用态：default 1px 边框无阴影 → hover 浮起 → selected 主色 34% 边 + 8% 底 → disabled 50% 透明。</div>
+    </div>
+  </section>
+
+  <!-- ============ 9 设置组卡 ============ -->
+  <section class="g-section">
+    <h2>9 · 设置组卡与设置行三元组</h2>
+    <div class="panel">
+      <div class="grouplabel" style="margin-bottom:8px;">外观 · 布局</div>
+      <div class="setgroup">
+        <div class="setrow">
+          <div><div class="t">界面密度</div><div class="d">控制列表与卡片的纵向密度；紧凑模式适合大库与窄侧栏。</div></div>
+          <div class="ctl"><div class="seg"><button type="button">紧凑</button><button class="is-active" type="button">标准</button><button type="button">宽松</button></div></div>
+        </div>
+        <div class="setrow">
+          <div><div class="t">页签列数</div><div class="d">全屏默认 4 列大卡；自适应按宽度 2~6 列收缩。</div></div>
+          <div class="ctl"><div class="seg"><button class="is-active" type="button">自动</button><button type="button">3</button><button type="button">4</button><button type="button">6</button></div></div>
+        </div>
+        <div class="setrow">
+          <div><div class="t">缩略图高度</div><div class="d">已开页签卡片的预览区高度，过小会影响可辨识度。</div></div>
+          <div class="ctl" style="display:flex; align-items:center; gap:10px; width:220px;"><input type="range" value="60" style="flex:1;"><span class="valuecap">96 px</span></div>
+        </div>
+        <div class="setrow">
+          <div><div class="t">拖动后吸附边缘</div><div class="d">关闭后悬浮球可在可视区域自由停放，位置按比例持久化。</div></div>
+          <div class="ctl"><label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--b3-theme-on-surface);"><input type="checkbox" checked> 开启</label></div>
+        </div>
+      </div>
+      <div class="spec">组卡 = 12px 圆角 + 边框 + hairline 分隔 + hover 提亮；行 = 标题 13/600 + 描述 12 muted + 右侧控件；2~4 互斥取值一律分段控件，连续数值 slider + 值胶囊。</div>
+    </div>
+  </section>
+
+  <!-- ============ 10 弹层族 ============ -->
+  <section class="g-section">
+    <h2>10 · 弹层族（Dialog / 菜单 / Action Panel）</h2>
+    <div class="panel grid" style="grid-template-columns: 1.4fr 1fr;">
+      <div class="overlay-demo">
+        <div class="dialog">
+          <div style="display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--sw-platform-line);">
+            <strong class="cardtitle">快速捕获</strong>
+            <div class="seg" style="margin-left:auto;"><button class="is-active" type="button">今日日记</button><button type="button">当前文档</button></div>
+          </div>
+          <div style="padding:12px 14px; display:flex; flex-direction:column; gap:9px;">
+            <textarea class="textarea" rows="3" placeholder="记录此刻的想法…"></textarea>
+            <div style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--b3-theme-on-surface);"><span class="rowicon" style="width:22px;height:22px;">日</span>保存到 /日记/2026-09-27</div>
+          </div>
+          <div class="receipt" style="border-radius:0;">
+            <span class="kbd">Enter</span><span>保存</span><span class="kbd">Esc</span><span>取消</span>
+            <span style="flex:1"></span>
+            <button class="btn btn--primary" style="padding:5px 14px;" type="button">保存</button>
+          </div>
+        </div>
+      </div>
+      <div class="overlay-demo">
+        <div class="menu">
+          <button class="menuitem is-on" type="button"><span class="rowicon" style="width:20px;height:20px;">✓</span>按窗口分组<span style="flex:1"></span></button>
+          <button class="menuitem" type="button"><span class="rowicon" style="width:20px;height:20px;">笔</span>按笔记本分组</button>
+          <div class="menu-sep"></div>
+          <button class="menuitem is-on" type="button">最近使用优先<span style="flex:1"></span><span class="badge badge--count">默认</span></button>
+          <button class="menuitem" type="button">按标题排序</button>
+          <div class="menu-sep"></div>
+          <button class="menuitem" type="button">更多动作<span style="flex:1"></span><span class="kbd">Shift+F10</span></button>
+        </div>
+      </div>
+      <div class="spec" style="grid-column: 1 / -1;">Dialog = radius-lg + shadow-floating + 遮罩（rgba(15,20,30,.36) + 2px blur）；菜单项 = 图标 + 文案 + 行尾 kbd/勾选，hairline 分组；Esc 分层关闭：浮层 → 路由 → 面板（脏稿先确认）。</div>
+    </div>
+  </section>
+
+  <!-- ============ 11 预览框 / 空错载态 / 回执条 ============ -->
+  <section class="g-section">
+    <h2>11 · 预览框 / 空·加载·错误态 / 回执条</h2>
+    <div class="panel" style="padding:0; overflow:hidden;">
+      <div style="display:grid; grid-template-columns: 1fr 262px; gap:14px; padding:16px; align-items:start;">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="grouplabel">加载 = 局部骨架，不用全屏 spinner</div>
+          <div class="card" style="padding:12px; display:flex; flex-direction:column; gap:8px;">
+            <div class="skel" style="height:14px; width:45%;"></div>
+            <div class="skel" style="height:11px; width:88%;"></div>
+            <div class="skel" style="height:11px; width:70%;"></div>
+          </div>
+          <div class="card" style="padding:14px; display:flex; align-items:center; gap:10px;">
+            <span class="badge badge--error">加载失败</span>
+            <span style="font-size:12px;">内核请求超时（5s），已保留上次缓存。</span>
+            <span style="flex:1"></span>
+            <button class="btn btn--soft" style="padding:4px 12px;" type="button">重试</button>
+            <button class="btn btn--quiet" style="padding:4px 10px;" type="button">复制诊断</button>
+          </div>
+          <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:20px;">🗂</div>
+            <div class="cardtitle" style="margin-top:6px;">还没有收藏</div>
+            <div class="meta" style="margin-top:4px;">在页签卡上用 <span class="kbd">Shift+F10</span> 把常用文档加入收藏。</div>
+          </div>
+        </div>
+        <aside class="card" style="padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;"><strong class="cardtitle">预览</strong><span class="badge badge--ready">已就绪</span><span style="flex:1"></span><span class="kbd">Alt</span></div>
+          <strong style="font-size:13.5px;">产品路线图（2026 H2）</strong>
+          <div style="font-size:12px; color:var(--b3-theme-on-surface); line-height:1.7;">下半年围绕统一切换平台推进：键盘优先收口、组件健康回执、片段安全边界…</div>
+          <div style="border-top:1px solid var(--sw-platform-line); padding-top:8px; display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--b3-theme-on-surface);">
+            <span class="grouplabel" style="font-size:10.5px;">大纲</span>
+            <span>▪ 背景与定位</span><span style="color:var(--sw-platform-accent); font-weight:600;">▪ 下半年关键结果</span><span>▪ 风险与依赖</span>
+          </div>
+        </aside>
+      </div>
+      <div class="receipt">
+        <span class="badge badge--ready">11/11 组件正常</span>
+        <span>上次刷新 12:20 · 失败 0 · 跳过 0</span>
+        <span style="flex:1"></span>
+        <span>组件商店 · 58 组件 →</span>
+      </div>
+      <div class="spec" style="padding:0 16px 14px;">错误不清空已有内容（stale 保留 + error 徽标）；与对象相关的失败留在产生它的卡片/回执条，不用全局 toast 取代上下文。</div>
+    </div>
+  </section>
+
+  <!-- ============ 12 组合示例：切换器主区 ============ -->
+  <section class="g-section">
+    <h2>12 · 组合示例 — 切换器主区（默认全屏，ADR 0080）</h2>
+    <div class="demo-shell">
+      <div class="demo-chrome">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <strong style="font-size:13.5px;">小驴雷切</strong>
+          <nav style="display:flex; gap:4px;">
+            <span class="demo-navitem is-active">切换器</span>
+            <button class="demo-navitem" type="button">工作台</button>
+            <button class="demo-navitem" type="button">片段实验室</button>
+          </nav>
+          <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+            <div class="seg"><button class="is-active" type="button">全屏</button><button type="button">自适应</button><button type="button">固定</button></div>
+            <span class="badge badge--ready">内核 已连接</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding:7px 1px 2px;">
+          <span class="meta">工作上下文</span><span class="meta">›</span>
+          <strong class="h1">切换器</strong>
+          <span class="meta">查找、预览和打开内容</span>
+          <span style="flex:1"></span>
+          <span class="kbd">Tab</span><span class="kbd">1-9</span><span class="kbd">Enter</span><span class="kbd">Alt 预览</span>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; padding:10px 16px;">
+        <div class="searchbox" style="flex:1;">
+          <svg width="14" height="14" viewBox="0 0 24 24" style="color:var(--sw-platform-text-muted);"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input value="路线">
+          <button class="iconbtn" style="border:0; width:24px; height:24px;" type="button">⧉</button>
+        </div>
+        <button class="btn btn--pill" type="button">最近打开</button>
+        <button class="iconbtn" type="button">📅</button>
+        <button class="iconbtn" type="button">⚙</button>
+      </div>
+      <div style="padding:0 16px 6px; display:flex; gap:6px;" role="tablist">
+        <span class="badge" style="border-color: color-mix(in srgb, var(--sw-platform-accent) 30%, transparent); background: var(--sw-platform-accent-soft); color: var(--sw-platform-accent);" aria-selected="true">✓ 全部</span>
+        <span class="badge badge--count">页签 2</span>
+        <span class="badge badge--count">收藏·最近 1</span>
+        <span class="badge badge--count">文档 2</span>
+      </div>
+      <div style="padding:4px 16px 16px; display:grid; grid-template-columns: 1fr 262px; gap:14px; align-items:start;">
+        <div style="display:flex; flex-direction:column; gap:14px; min-width:0;">
+          <div>
+            <div class="grouplabel">已打开 · 测试工作区<span style="flex:1"></span><span style="opacity:.6">2</span></div>
+            <div class="grid" style="grid-template-columns:repeat(4, 1fr); gap:10px; margin-top:8px;">
+              <div class="card card--hoverable" style="overflow:hidden; position:relative;">
+                <span class="kbd" style="position:absolute; top:6px; right:6px;">1</span>
+                <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,var(--sw-platform-accent) 24%, transparent), color-mix(in srgb,#5ab0a8 16%, transparent));"></div>
+                <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">产</span><span class="cardtitle">产品<mark>路线</mark>图（2026 H2）</span></div>
+              </div>
+              <div class="card card--hoverable" style="overflow:hidden; position:relative;">
+                <span class="kbd" style="position:absolute; top:6px; right:6px;">2</span>
+                <div style="height:96px; background:linear-gradient(140deg, color-mix(in srgb,#5ab0a8 20%, transparent), color-mix(in srgb,#d1901f 14%, transparent));"></div>
+                <div style="display:flex; gap:8px; padding:9px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">评</span><span class="cardtitle">Q3 <mark>路线</mark>评审纪要</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="grouplabel">全库文档 · 2 条命中「路线」<span style="flex:1"></span><button class="btn btn--quiet" style="padding:2px 8px; font-size:11px; color:var(--sw-platform-accent);" type="button">查看全部 →</button></div>
+            <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+              <button class="card card--hoverable" style="display:flex; gap:10px; align-items:center; text-align:left; padding:7px 9px; cursor:pointer; font-family:inherit; border-radius:10px; width:100%;">
+                <span class="rowicon">文</span>
+                <span style="flex:1; min-width:0;"><span style="display:block; font-size:12.5px; color:var(--sw-platform-text);">平台<mark>路线</mark>评审材料</span><span class="meta">/项目/评审 · …<mark>路线</mark>收口节奏与发布窗口…</span></span>
+                <span class="kbd">3</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <aside class="card" style="padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px;"><strong class="cardtitle">预览</strong><span class="badge badge--ready">已就绪</span><span style="flex:1"></span><span class="kbd">Alt</span></div>
+          <strong style="font-size:13.5px;">产品路线图（2026 H2）</strong>
+          <div style="font-size:12px; color:var(--b3-theme-on-surface); line-height:1.7;">下半年围绕统一切换平台推进：第一面板键盘优先收口，第二面板组件健康回执…</div>
+          <div style="border-top:1px solid var(--sw-platform-line); padding-top:8px; display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--b3-theme-on-surface);">
+            <span class="grouplabel" style="font-size:10.5px;">大纲</span>
+            <span>▪ 背景与定位</span><span>▪ 统一平台路线</span><span style="color:var(--sw-platform-accent); font-weight:600;">▪ 下半年关键结果</span>
+          </div>
+        </aside>
+      </div>
+      <div class="receipt">
+        <span>2 页签 · 1 收藏 · 2 全库命中</span>
+        <span style="flex:1"></span>
+        <span><span class="kbd">Ctrl</span> 分屏 · <span class="kbd">Alt</span> 预览 · <span class="kbd">Shift+F10</span> 动作</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="g-head" style="margin-top:6px;">
+    <p>实现对照：平台原语 <code>src/styles/_platform-shell.scss</code>；动效常量 <code>_00-tokens.scss</code>；逐屏原型 <code>platform-ui-redesign-r2-2026-09-26.html</code>；规范文档 <code>docs/design-system-v1-2026-09-27.md</code>。新增组件前必读规范 §11 扩展性指南。</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var seg = document.getElementById('themeSeg');
+  seg.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-theme]');
+    if (!btn) return;
+    document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+  });
+  // 画廊内演示用分段控件的本地切换（不影响规范语义）
+  document.querySelectorAll('.seg').forEach(function (s) {
+    if (s.id === 'themeSeg') return;
+    s.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      s.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

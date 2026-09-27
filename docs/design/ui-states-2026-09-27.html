@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 异常与边界状态屏幕包 v1.0（T-6930，2026-09-27）</title>
+<style>
+/* ============================================================
+ * 自包含宿主变量（模拟思源明/暗主题）；生产由宿主注入 --b3-*，
+ * 插件只引用不定义。本文件是「状态屏包」：补齐 T-6929 审查报告中
+ * 缺失的异常态与边界态视觉规格（S4/W1/W2/L2/L3/M2 等）。
+ * ========================================================== */
+:root[data-theme="light"] {
+  --b3-theme-primary:#4285f4; --b3-theme-on-primary:#fff;
+  --b3-theme-background:#fff; --b3-theme-surface:#f6f7f9; --b3-theme-surface-lighter:#eef0f4;
+  --b3-theme-on-background:#23252c; --b3-theme-on-surface:#3c4048; --b3-theme-on-surface-light:#767b8a;
+  --b3-border-color:#e2e4ea; --b3-theme-success:#2d9865; --b3-theme-warning:#d97917; --b3-theme-error:#c04545;
+  --stage-a:#dde0ea; --stage-b:#e7e9f0; color-scheme:light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary:#6b9bf5; --b3-theme-on-primary:#10131c;
+  --b3-theme-background:#1c1f26; --b3-theme-surface:#252932; --b3-theme-surface-lighter:#2e333e;
+  --b3-theme-on-background:#e4e6ec; --b3-theme-on-surface:#c6cad4; --b3-theme-on-surface-light:#8b90a0;
+  --b3-border-color:#383d49; --b3-theme-success:#4cb887; --b3-theme-warning:#e09943; --b3-theme-error:#dd6b6b;
+  --stage-a:#191c23; --stage-b:#14161c; color-scheme:dark;
+}
+:root {
+  --acc:var(--b3-theme-primary); --acc-soft:color-mix(in srgb,var(--acc) 12%,transparent);
+  --acc-pressed:color-mix(in srgb,var(--acc) 20%,transparent);
+  --txt:var(--b3-theme-on-background); --txt-2:var(--b3-theme-on-surface); --muted:var(--b3-theme-on-surface-light);
+  --line:var(--b3-border-color); --surface:var(--b3-theme-surface); --bg:var(--b3-theme-background);
+  --ok:var(--b3-theme-success); --warn:var(--b3-theme-warning); --err:var(--b3-theme-error);
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-pill:999px;
+  --shadow-card:0 1px 2px rgb(51 58 83/5%), 0 8px 24px rgb(75 85 120/8%);
+  --shadow-float:0 14px 36px rgb(55 65 100/15%), 0 3px 10px rgb(55 65 100/8%);
+  --focus:0 0 0 3px color-mix(in srgb,var(--acc) 24%,transparent);
+}
+:root[data-theme="dark"] { --shadow-card:0 1px 2px rgb(0 0 0/25%),0 8px 24px rgb(0 0 0/30%); --shadow-float:0 14px 36px rgb(0 0 0/45%),0 3px 10px rgb(0 0 0/30%); }
+
+* { box-sizing:border-box; }
+body { margin:0; padding:26px 30px 60px; font:400 12.5px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  color:var(--txt); background:repeating-conic-gradient(var(--stage-a) 0% 25%, var(--stage-b) 0% 50%) 0 0/22px 22px; }
+.wrap { max-width:1400px; margin:0 auto; display:flex; flex-direction:column; gap:26px; }
+.head h1 { font-size:20px; margin:0 0 8px; }
+.head p { margin:0 0 4px; font-size:12.5px; color:var(--muted); line-height:1.75; max-width:1080px; }
+.head code { font:600 11px/1.5 ui-monospace,Consolas,monospace; background:var(--b3-theme-surface-lighter); border-radius:4px; padding:1px 5px; }
+.theme-lock { position:sticky; top:12px; z-index:9; display:flex; justify-content:flex-end; }
+
+/* ---- 组件原语（与 docs/design-system-gallery-2026-09-27.html 同源） ---- */
+.seg { display:inline-flex; padding:3px; gap:2px; border-radius:9px; background:var(--b3-theme-surface-lighter); border:1px solid var(--line); }
+.seg button { border:0; background:transparent; color:var(--txt-2); font:500 12px/1 inherit; font-family:inherit; padding:6px 12px; border-radius:7px; cursor:pointer; }
+.seg button.is-active { background:var(--bg); color:var(--txt); font-weight:600; box-shadow:0 1px 3px rgb(0 0 0/.12); }
+.btn { display:inline-flex; align-items:center; gap:5px; border:0; cursor:pointer; border-radius:var(--r-pill); padding:6px 14px; font:600 12px/1.4 inherit; font-family:inherit; }
+.btn--primary { background:var(--acc); color:var(--b3-theme-on-primary); }
+.btn--soft { background:var(--acc-soft); color:var(--acc); }
+.btn--quiet { background:transparent; color:var(--txt-2); }
+.btn--pill { background:var(--surface); color:var(--txt-2); border:1px solid var(--line); }
+.btn--danger { background:color-mix(in srgb,var(--err) 12%,transparent); color:var(--err); }
+.btn[disabled] { opacity:.5; cursor:not-allowed; }
+.iconbtn { width:28px; height:28px; border-radius:var(--r-sm); border:1px solid var(--line); background:var(--surface); color:var(--txt-2); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-family:inherit; }
+.badge { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; line-height:1; padding:4px 8px;
+  border-radius:var(--r-pill); border:1px solid var(--line); color:var(--txt-2); background:var(--surface); white-space:nowrap; }
+.badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.85; }
+.badge--count::before { display:none; }
+.badge--ready { color:color-mix(in srgb,var(--ok) 72%,var(--txt)); border-color:color-mix(in srgb,var(--ok) 26%,transparent); background:color-mix(in srgb,var(--ok) 9%,transparent); }
+.badge--loading { color:var(--acc); border-color:color-mix(in srgb,var(--acc) 30%,transparent); background:color-mix(in srgb,var(--acc) 9%,transparent); }
+.badge--stale { color:color-mix(in srgb,var(--warn) 68%,var(--txt)); border-color:color-mix(in srgb,var(--warn) 28%,transparent); background:color-mix(in srgb,var(--warn) 10%,transparent); }
+.badge--dirty { color:#a04e12; border-color:color-mix(in srgb,#c9651d 30%,transparent); background:color-mix(in srgb,#c9651d 10%,transparent); }
+:root[data-theme="dark"] .badge--dirty { color:#eda06a; border-color:color-mix(in srgb,#eda06a 34%,transparent); background:color-mix(in srgb,#eda06a 12%,transparent); }
+.badge--blocked { color:var(--muted); border-style:dashed; background:transparent; }
+.badge--error { color:var(--err); border-color:color-mix(in srgb,var(--err) 30%,transparent); background:color-mix(in srgb,var(--err) 9%,transparent); }
+.kbd { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:5px;
+  border:1px solid var(--line); background:var(--surface); color:var(--muted); font:600 10.5px/1 ui-monospace,Consolas,monospace; }
+.card { border:1px solid var(--line); border-radius:var(--r-md); background:var(--surface); }
+.rowicon { width:26px; height:26px; border-radius:var(--r-sm); flex:none; display:inline-flex; align-items:center; justify-content:center; background:var(--b3-theme-surface-lighter); color:var(--txt-2); font-size:12px; }
+.label { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:8px; }
+.h1 { font-size:13px; font-weight:700; color:var(--txt); }
+.meta { font-size:11px; color:var(--muted); }
+.receipt { display:flex; align-items:center; gap:10px; padding:9px 14px; border-top:1px solid var(--line); background:var(--surface); font-size:11.5px; color:var(--muted); }
+.skel { border-radius:6px; background:linear-gradient(100deg,var(--b3-theme-surface-lighter) 40%, color-mix(in srgb,var(--b3-theme-surface-lighter) 40%,var(--bg)) 50%, var(--b3-theme-surface-lighter) 60%); background-size:200% 100%; animation:shimmer 1400ms linear infinite; }
+@keyframes shimmer { to { background-position:-200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation:none; } .spin { animation:none; } }
+.spin { width:11px; height:11px; border-radius:50%; border:2px solid currentColor; border-top-color:transparent; display:inline-block; animation:spin 800ms linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+/* 状态屏通用外壳 */
+.shot-caption { display:flex; align-items:baseline; gap:10px; padding:0 2px 8px; }
+.shot-caption .no { font-size:11px; font-weight:800; color:var(--muted); letter-spacing:.06em; }
+.shot-caption .name { font-size:13.5px; font-weight:700; }
+.shot-caption .tag { font-size:11px; font-weight:600; padding:2px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+.shot-caption .note { font-size:11.5px; color:var(--muted); }
+.screen { background:var(--bg); border:1px solid var(--line); border-radius:var(--r-lg); overflow:hidden; display:flex; flex-direction:column; }
+.overlay { position:relative; min-height:220px; padding:18px; display:grid; place-items:center;
+  background:repeating-conic-gradient(color-mix(in srgb,var(--b3-theme-surface-lighter) 55%,transparent) 0% 25%, transparent 0% 50%) 0 0/18px 18px; }
+.dialog { width:400px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--bg); box-shadow:var(--shadow-float); overflow:hidden; }
+.pane-inner { padding:16px; }
+.empty { text-align:center; padding:34px 20px; }
+.empty .g { font-size:26px; line-height:1; }
+.hint-strip { display:flex; align-items:center; gap:9px; padding:8px 14px; border-radius:var(--r-sm); font-size:12px; }
+.hint-strip--warn { background:color-mix(in srgb,var(--warn) 10%,transparent); border:1px solid color-mix(in srgb,var(--warn) 28%,transparent); color:color-mix(in srgb,var(--warn) 70%,var(--txt)); }
+.hint-strip--error { background:color-mix(in srgb,var(--err) 9%,transparent); border:1px solid color-mix(in srgb,var(--err) 28%,transparent); color:var(--err); }
+.grid2 { display:grid; grid-template-columns:1fr 262px; gap:14px; align-items:start; }
+.phone { width:340px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--bg); overflow:hidden; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="theme-lock">
+    <div class="seg" id="themeSeg"><button class="is-active" data-theme="light" type="button">浅色主题</button><button data-theme="dark" type="button">深色主题</button></div>
+  </div>
+
+  <div class="head">
+    <h1>小驴雷切 · 异常与边界状态屏幕包 v1.0</h1>
+    <p>T-6930 · 2026-09-27 · 依据 <code>docs/design-review-2026-09-27.md</code>（T-6929）中"异常与边界缺失"的高优项补齐：<b>S4</b> 切换器四态 / <b>W1</b> 空工作台 / <b>W2</b> 组件失败卡 / <b>L2</b> 脏稿守卫 / <b>L3</b> JS 预览 blocked / <b>M2</b> 移动端三态，并顺带给出恢复预览与导入确认两类副作用确认屏。组件与令牌以 <code>docs/design-system-v1-2026-09-27.md</code> 为准，本文件只补"这些态长什么样、说什么话"。</p>
+    <p>通用规则：错误不清空已有内容（stale 保留 + error 徽标）；与对象相关的失败留在产生它的卡片/回执条；有副作用的操作必须前置说明后果与恢复路径；弱化:. 仅 top-level 骨架用 shimmer，reduced-motion 下停动画。</p>
+  </div>
+
+  <!-- ===== S4-1 搜索无结果 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">S4-1</span><span class="name">切换器 · 三层全空（无结果）</span><span class="tag">S4</span><span class="note">保留上层结果 + 给出口，不留空白也不自责式写"什么都找不到"</span></div>
+    <div class="screen">
+      <div style="display:flex; gap:8px; align-items:center; padding:12px 16px;">
+        <div style="flex:1; display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:10px; padding:0 12px; height:38px; background:var(--surface);">
+          <span class="meta">🔍</span><span value="">zzz-不存在的关键词</span><span style="flex:1"></span><span class="kbd">Esc</span>
+        </div>
+        <span class="badge badge--count">全部</span><span class="badge badge--count">页签 0</span>
+      </div>
+      <div class="grid2" style="padding:6px 16px 16px;">
+        <div class="card" style="padding:0;">
+          <div class="label" style="padding:12px 14px 8px;">已打开 · 0 命中</div>
+          <div class="empty">
+            <div class="g">🗂</div>
+            <div class="h1" style="margin-top:8px;">已打开的页签里没有匹配项</div>
+            <div class="meta" style="margin-top:6px;">换个关键词，或按 <span class="kbd">Esc</span> 清空看看全部 8 个页签</div>
+            <div style="margin-top:12px;"><span class="btn btn--quiet" style="cursor:default;">清空条件</span></div>
+          </div>
+          <div class="label" style="padding:12px 14px 8px; border-top:1px solid var(--line);">全库文档 · 0 命中</div>
+          <div style="padding:0 14px 16px;">
+            <div class="hint-strip hint-strip--warn" style="margin-bottom:10px;">
+              <span class="badge badge--stale">全库未命中</span>
+              <span>内核已返回 0 条（已尝试标题匹配，未走兜底全文）。</span>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <span class="btn btn--soft" style="cursor:default;">用思源原生搜索继续 →</span>
+              <span class="btn btn--quiet" style="cursor:default;">放宽筛选范围</span>
+            </div>
+          </div>
+        </div>
+        <aside class="card" style="padding:12px 14px;">
+          <div style="display:flex; align-items:center; gap:8px;"><strong class="h1" style="font-size:12.5px;">预览</strong><span class="badge badge--blocked">无选中对象</span></div>
+          <div class="meta" style="margin-top:8px;">选中一个结果后再看预览；页签、文档与片段都可预览。</div>
+        </aside>
+      </div>
+      <div class="receipt"><span class="badge badge--count">0 命中</span><span>已尝试：页签标题 · 全库标题</span><span style="flex:1"></span><span><span class="kbd">Esc</span> 关闭</span></div>
+    </div>
+  </section>
+
+  <!-- ===== S4-2 内核断开 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">S4-2</span><span class="name">切换器 · 内核断开降级</span><span class="tag">S4</span><span class="note">本地页签照常可用，远程层降级并说明"什么不能用了"</span></div>
+    <div class="screen">
+      <div style="padding:12px 16px 0;"><div class="hint-strip hint-strip--error">
+        <span class="badge badge--error">内核未连接</span>
+        <span>已打开页签仍可正常过滤、预览与打开；全库搜索、日记创建与最近列表暂不可用。</span>
+        <span style="flex:1"></span><span class="btn btn--soft" style="cursor:default; padding:4px 12px;">重试连接</span>
+      </div></div>
+      <div class="grid2" style="padding:12px 16px 16px;">
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0;">
+          <div>
+            <div class="label">已打开 · 本地可用<span style="flex:1"></span><span style="opacity:.6">3</span></div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:8px;">
+              <div class="card" style="overflow:hidden; position:relative;"><span class="kbd" style="position:absolute; top:6px; right:6px;">1</span><div style="height:76px; background:linear-gradient(140deg,color-mix(in srgb,var(--acc) 24%,transparent),color-mix(in srgb,#5ab0a8 16%,transparent));"></div><div style="display:flex; gap:8px; padding:8px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">产</span><span style="font-size:12.5px; font-weight:600;">产品路线图</span></div></div>
+              <div class="card" style="overflow:hidden; position:relative;"><span class="kbd" style="position:absolute; top:6px; right:6px;">2</span><div style="height:76px; background:linear-gradient(140deg,color-mix(in srgb,#5ab0a8 20%,transparent),color-mix(in srgb,#d1901f 14%,transparent));"></div><div style="display:flex; gap:8px; padding:8px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">评</span><span style="font-size:12.5px; font-weight:600;">Q3 评审纪要</span></div></div>
+              <div class="card" style="overflow:hidden; position:relative;"><span class="kbd" style="position:absolute; top:6px; right:6px;">3</span><div style="height:76px; background:linear-gradient(140deg,color-mix(in srgb,#8b7ff5 20%,transparent),color-mix(in srgb,#6ea8fe 16%,transparent));"></div><div style="display:flex; gap:8px; padding:8px 10px; align-items:center;"><span class="rowicon" style="width:24px;height:24px;">日</span><span style="font-size:12.5px; font-weight:600;">今日日记</span></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="label">收藏 · 最近<span style="flex:1"></span><span class="badge badge--blocked">需内核</span></div>
+            <div class="card" style="margin-top:8px; padding:14px;">
+              <div class="meta">最近列表来自内核；连接恢复后自动加载（无需手动刷新）</div>
+              <div style="display:flex; gap:8px; margin-top:10px;"><span class="btn btn--quiet" style="cursor:default;">连接恢复后自动重试</span></div>
+            </div>
+          </div>
+        </div>
+        <aside class="card" style="padding:12px 14px;">
+          <div style="display:flex; align-items:center; gap:8px;"><strong class="h1" style="font-size:12.5px;">预览</strong><span class="badge badge--stale">本地摘要</span></div>
+          <div class="meta" style="margin-top:8px;">大纲与正文摘要需内核；当前显示页签标题与本地已知的更新时间。</div>
+        </aside>
+      </div>
+      <div class="receipt"><span class="badge badge--error">内核未连接</span><span>本地 3 项可用 · 远程能力已降级</span><span style="flex:1"></span><span>上次成功连接 09:12</span></div>
+    </div>
+  </section>
+
+  <!-- ===== S4-3 加载骨架 + 失败 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">S4-3</span><span class="name">切换器 · 全库加载骨架 / 加载失败</span><span class="tag">S4</span><span class="note">骨架只在远程层出现；失败保留上层结果</span></div>
+    <div class="grid2" style="gap:16px;">
+      <div class="screen">
+        <div style="padding:12px 16px;"><div class="label">全库文档 · 查询中</div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;" class="card" style="padding:12px;">
+            <div class="skel" style="height:14px; width:46%;"></div>
+            <div class="skel" style="height:11px; width:88%;"></div>
+            <div class="skel" style="height:11px; width:72%;"></div>
+            <div class="skel" style="height:14px; width:52%; margin-top:6px;"></div>
+            <div class="skel" style="height:11px; width:80%;"></div>
+          </div>
+        </div>
+        <div class="receipt"><span class="badge badge--loading">加载中</span><span>标题搜索 · 180ms 防抖后发出</span><span style="flex:1"></span><span class="btn btn--quiet" style="cursor:default; padding:2px 10px;">取消</span></div>
+      </div>
+      <div class="screen">
+        <div style="padding:12px 16px;"><div class="label">全库文档 · 请求失败</div>
+          <div style="margin-top:10px;" class="card" style="padding:14px;">
+            <div class="hint-strip hint-strip--error"><span class="badge badge--error">加载失败</span><span>内核请求超时（5s）——已打开页签结果保留不变</span></div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <span class="btn btn--soft" style="cursor:default;">重试</span>
+              <span class="btn btn--quiet" style="cursor:default;">复制诊断</span>
+              <span class="btn btn--quiet" style="cursor:default;">用原生搜索继续</span>
+            </div>
+          </div>
+        </div>
+        <div class="receipt"><span class="badge badge--error">全库层失败</span><span>页签层 3 项正常显示</span><span style="flex:1"></span><span>失败不影响上层结果</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S4-4 预览边界 + 大量页签 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">S4-4</span><span class="name">切换器 · 预览 blocked / 100+ 页签折叠</span><span class="tag">S4/S6/S7</span><span class="note">非文档对象与超大页签集的两种降级</span></div>
+    <div class="grid2" style="gap:16px;">
+      <aside class="card" style="padding:14px; width:340px;">
+        <div style="display:flex; align-items:center; gap:8px;"><strong class="h1" style="font-size:12.5px;">预览</strong><span class="badge badge--blocked">不支持预览</span><span style="flex:1"></span><span class="kbd">Alt</span></div>
+        <strong style="font-size:13.5px; display:block; margin-top:10px;">设置 · 悬浮球</strong>
+        <div class="hint-strip hint-strip--warn" style="margin-top:10px;"><span>插件面板类页签没有文档大纲与正文摘要</span></div>
+        <div style="margin-top:10px; display:flex; gap:8px;"><span class="btn btn--quiet" style="cursor:default;">直接打开</span><span class="btn btn--quiet" style="cursor:default;">回切换器</span></div>
+      </aside>
+      <div class="card" style="padding:14px;">
+        <div class="label">已打开 · 12 个窗口 · 108 个页签<span style="flex:1"></span><span style="opacity:.6">108</span></div>
+        <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:8px;"><span class="badge badge--count">窗口 A</span><span class="meta">9 个页签</span><span style="flex:1"></span><span class="btn btn--quiet" style="cursor:default; padding:2px 10px;">展开</span></div>
+          <div style="display:flex; align-items:center; gap:8px;"><span class="badge badge--count">窗口 B</span><span class="meta">已展开（默认）</span><span style="flex:1"></span><span class="badge badge--loading">渲染 12 / 24</span></div>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+            <div style="height:58px; border-radius:var(--r-sm); background:color-mix(in srgb,var(--acc) 18%,transparent);"></div>
+            <div style="height:58px; border-radius:var(--r-sm); background:color-mix(in srgb,#5ab0a8 16%,transparent);"></div>
+            <div style="height:58px; border-radius:var(--r-sm); background:color-mix(in srgb,#8b7ff5 16%,transparent);"></div>
+            <div style="height:58px; border-radius:var(--r-sm); background:var(--b3-theme-surface-lighter);"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;"><span class="btn btn--soft" style="cursor:default;">展开全部 108 个 →</span><span class="meta">超过 50 个时默认折叠后续分组，拖拽滚动不阻塞</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== S2 空查询 + 空收藏 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">S2</span><span class="name">切换器 · 空查询与空收藏</span><span class="tag">S2</span><span class="note">空查询不出现全库区块；收藏为空时给出入口而非空白</span></div>
+    <div class="screen">
+      <div class="grid2" style="padding:14px 16px 16px;">
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0;">
+          <div class="label">已打开 · 测试工作区<span style="flex:1"></span><span style="opacity:.6">8</span></div>
+          <div class="label">收藏 · 最近<span style="flex:1"></span><span style="opacity:.6">6</span></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 10px;">
+            <div class="card" style="display:flex; gap:9px; align-items:center; padding:6px 8px;"><span class="rowicon">★</span><span><span style="display:block; font-size:12px;">每日工作台</span><span class="meta">/日记 · 收藏</span></span></div>
+            <div class="card" style="display:flex; gap:9px; align-items:center; padding:6px 8px;"><span class="rowicon">🕘</span><span><span style="display:block; font-size:12px;">迭代任务库</span><span class="meta">/项目 · 昨日关闭</span></span></div>
+            <div class="card" style="display:flex; gap:9px; align-items:center; padding:6px 8px;"><span class="rowicon">★</span><span><span style="display:block; font-size:12px;">组件协议 v2.4</span><span class="meta">/文档 · 收藏</span></span></div>
+            <div class="card" style="display:flex; gap:9px; align-items:center; padding:6px 8px;"><span class="rowicon">🕘</span><span><span style="display:block; font-size:12px;">读书笔记索引</span><span class="meta">/笔记 · 2 小时前</span></span></div>
+          </div>
+          <div style="padding:10px 12px; border:1px dashed var(--line); border-radius:var(--r-md);" class="meta">（空查询时不渲染"全库文档"区块——不请求、不占位，符合渐进展示约束）</div>
+        </div>
+        <aside class="card" style="padding:0;">
+          <div class="label" style="padding:12px 14px 8px;">收藏为空时</div>
+          <div class="empty" style="padding:22px 16px;">
+            <div class="g">⭐</div>
+            <div class="h1" style="margin-top:8px;">还没有收藏</div>
+            <div class="meta" style="margin-top:6px;">在页签卡上按 <span class="kbd">Shift+F10</span> 加入收藏</div>
+            <div style="margin-top:12px;"><span class="btn btn--soft" style="cursor:default;">去设置管理收藏 →</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== W1 空工作台 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">W1</span><span class="name">工作台 · 空态（首次使用）</span><span class="tag">W1</span><span class="note">空态即商店最佳入口位</span></div>
+    <div class="screen">
+      <div class="grid2" style="grid-template-columns:1fr; padding:14px 16px 16px; text-align:center;">
+        <div class="empty" style="padding:40px 20px;">
+          <div class="g">🧩</div>
+          <div class="h1" style="margin-top:10px;">工作台还没有组件</div>
+          <div class="meta" style="margin-top:6px;">组件把最近文档、日历、任务与天气放在一处，按 12 列网格自由编排。</div>
+          <div style="margin-top:14px; display:flex; gap:8px; justify-content:center;">
+            <span class="btn btn--primary" style="cursor:default;">打开组件商店（58 组件）</span>
+            <span class="btn btn--quiet" style="cursor:default;">恢复默认布局</span>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; text-align:left;">
+          <div class="card" style="padding:12px;"><strong style="font-size:12.5px;">最近文档</strong><div class="meta" style="margin-top:4px;">看最近编辑的 10 篇</div></div>
+          <div class="card" style="padding:12px;"><strong style="font-size:12.5px;">今日日程</strong><div class="meta" style="margin-top:4px;">日历 + 周视图</div></div>
+          <div class="card" style="padding:12px;"><strong style="font-size:12.5px;">近期天气</strong><div class="meta" style="margin-top:4px;">三日预报（需联网）</div></div>
+        </div>
+      </div>
+      <div class="receipt"><span class="badge badge--count">0/0 组件</span><span>从组件商店开始 →</span><span style="flex:1"></span><span>编辑布局后可拖动编排</span></div>
+    </div>
+  </section>
+
+  <!-- ===== W2 组件失败 + 刷新中 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">W2</span><span class="name">工作台 · 组件刷新中 / 组件失败（含内联重试）</span><span class="tag">W2</span><span class="note">失败回执留在卡片本身，不用全局 toast</span></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;">
+      <section class="card" style="display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong style="font-size:12.5px;">近期天气</strong><span class="badge badge--loading">刷新中</span><span style="flex:1"></span><span class="meta">⋯</span></div>
+        <div style="padding:9px 12px 12px; display:flex; flex-direction:column; gap:8px;">
+          <div class="skel" style="height:20px; width:60%;"></div>
+          <div class="skel" style="height:11px; width:80%;"></div>
+        </div>
+      </section>
+      <section class="card" style="display:flex; flex-direction:column; border-color:color-mix(in srgb,var(--err) 30%,transparent);">
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong style="font-size:12.5px;">数据库 · 迭代任务</strong><span class="badge badge--error">加载失败</span><span style="flex:1"></span><span class="meta">⋯</span></div>
+        <div style="padding:9px 12px 12px;">
+          <div class="meta">内核返回 401（API token 失效）；上次可用数据为 12:20 的缓存。</div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="btn btn--soft" style="cursor:default;">重试</span>
+            <span class="btn btn--quiet" style="cursor:default;">查看缓存</span>
+            <span class="btn btn--quiet" style="cursor:default;">复制诊断</span>
+          </div>
+        </div>
+      </section>
+      <section class="card" style="display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 12px 0;"><strong style="font-size:12.5px;">第三方 · Anki 复习</strong><span class="badge badge--blocked">组件未安装</span><span style="flex:1"></span><span class="meta">⋯</span></div>
+        <div style="padding:9px 12px 12px;">
+          <div class="meta">提供方插件未安装或未启用；在组件商店查看安装状态。</div>
+          <div style="margin-top:10px;"><span class="btn btn--quit btn--quiet" style="cursor:default;">查看原因</span></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ===== W6 编辑横幅 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">W6</span><span class="name">工作台 · 编辑布局态（补齐 R2 缺失的横幅与落点）</span><span class="tag">W6</span><span class="note">明确"正在编辑"+ 恢复默认 + 完成</span></div>
+    <div class="screen">
+      <div style="padding:10px 16px; background:var(--acc-soft); border-bottom:1px solid color-mix(in srgb,var(--acc) 26%,transparent); display:flex; align-items:center; gap:10px; font-size:12px;">
+        <span class="badge badge--loading">正在编辑布局</span>
+        <span>拖动卡片调整位置，边缘可改变宽度；改动即时保存为草稿。</span>
+        <span style="flex:1"></span>
+        <span class="btn btn--quiet" style="cursor:default;">恢复默认</span>
+        <span class="btn btn--primary" style="cursor:default;">完成</span>
+      </div>
+      <div style="padding:12px 16px 16px; display:grid; grid-template-columns:repeat(12,1fr); gap:12px;">
+        <section class="card" style="grid-column:span 6; padding:12px; outline:2px dashed color-mix(in srgb,var(--acc) 50%,transparent); outline-offset:-2px;"><strong style="font-size:12.5px;">最近文档</strong><div class="meta" style="margin-top:4px;">拖动中 · 落点预览位</div></section>
+        <section class="card" style="grid-column:span 6; padding:12px; opacity:.6;"><strong style="font-size:12.5px;">日历</strong><div class="meta" style="margin-top:4px;">让位动画中</div></section>
+      </div>
+      <div class="receipt"><span class="badge badge--dirty">布局草稿</span><span>2 处移动 · 1 处宽度调整</span><span style="flex:1"></span><span><span class="kbd">Esc</span> 放弃改动 · <span class="kbd">Enter</span> 完成</span></div>
+    </div>
+  </section>
+
+  <!-- ===== L2 脏稿守卫 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">L2</span><span class="name">片段实验室 · 脏稿守卫确认</span><span class="tag">L2</span><span class="note">切换片段/关闭面板/切表面前的统一对话，默认聚焦"取消"</span></div>
+    <div class="overlay">
+      <div class="dialog">
+        <div style="display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--line);">
+          <strong class="h1">未保存的更改</strong><span class="badge badge--dirty">草稿未保存</span>
+        </div>
+        <div style="padding:14px;">
+          <div class="meta" style="font-size:12px; color:var(--txt-2);">片段「卡片悬浮阴影」有 3 处修改尚未保存到思源原生片段。<b style="color:var(--txt);">保存后才会对笔记生效</b>，放弃则回到上次保存的版本。</div>
+          <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:9px; align-items:center; padding:9px 11px; border:1px solid var(--line); border-radius:var(--r-sm);">
+              <span class="badge badge--count">1</span><span style="font-size:12px;"><b>保存并继续</b> —— 写入原生片段，然后打开目标片段</span>
+            </div>
+            <div style="display:flex; gap:9px; align-items:center; padding:9px 11px; border:1px solid var(--line); border-radius:var(--r-sm);">
+              <span class="badge badge--count">2</span><span style="font-size:12px;"><b>放弃更改</b> —— 草稿丢失，无法撤销</span>
+            </div>
+            <div style="display:flex; gap:9px; align-items:center; padding:9px 11px; border:1px solid var(--line); border-radius:var(--r-sm);">
+              <span class="badge badge--count">3</span><span style="font-size:12px;"><b>取消</b> —— 留在当前片段（默认）</span>
+            </div>
+          </div>
+        </div>
+        <div class="receipt" style="border-radius:0;"><span class="kbd">⌘S</span><span>保存</span><span style="flex:1"></span><span class="btn btn--primary" style="cursor:default;">保存并继续</span><span class="btn btn--quiet" style="cursor:default;">取消</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== L3 JS 预览 blocked ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">L3</span><span class="name">片段实验室 · JS 片段预览 blocked</span><span class="tag">L3</span><span class="note">安全边界要在预览区当场可见，不藏在说明里</span></div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line);">
+        <strong class="h1" style="font-size:12.5px;">预览</strong><span class="badge badge--count">JS</span><span class="badge badge--blocked">不执行预览</span>
+        <span style="flex:1"></span><span class="btn btn--pill" style="cursor:default; padding:4px 11px;">导出</span>
+      </div>
+      <div class="empty" style="padding:30px 20px;">
+        <div class="g">🛡</div>
+        <div class="h1" style="margin-top:8px;">JS 片段不在预览中执行</div>
+        <div class="meta" style="margin-top:6px;">为保护你的笔记数据，实验室只提供<b>管理、编辑与导出</b>；需要验证效果请在思源原生片段中启用后自行观察。</div>
+        <div style="margin-top:12px; display:flex; gap:8px; justify-content:center;">
+          <span class="btn btn--soft" style="cursor:default;">导出 .js</span>
+          <span class="btn btn--quiet" style="cursor:default;">查看安全边界说明</span>
+        </div>
+      </div>
+      <div class="receipt"><span class="badge badge--blocked">仅管理/导出可用</span><span>此限制不可关闭</span><span style="flex:1"></span><span>ADR 0078 · 片段边界</span></div>
+    </div>
+  </section>
+
+  <!-- ===== L6 冲突 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">L6</span><span class="name">片段实验室 · 保存冲突</span><span class="tag">L6</span><span class="note">外部版本与本地草稿并存，不用 toast 覆盖正在编辑的内容</span></div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:10px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;">
+        <strong class="h1" style="font-size:12.5px;">保存冲突</strong><span class="badge badge--error">外部已改动</span>
+        <span style="flex:1"></span><span class="meta">检测到 2 处差异</span>
+      </div>
+      <div style="padding:12px; font:12px/1.8 ui-monospace,Consolas,monospace;">
+        <div style="color:var(--txt-2);">外部版本（10:42 由同步写入）</div>
+        <div style="background:color-mix(in srgb,var(--err) 10%,transparent); border-radius:4px;">- box-shadow: 0 4px 12px rgba(0,0,0,.10);</div>
+        <div style="margin-top:8px; color:var(--txt-2);">本地草稿（未保存）</div>
+        <div style="background:color-mix(in srgb,var(--ok) 10%,transparent); border-radius:4px;">+ box-shadow: 0 6px 18px rgba(0,0,0,.12);</div>
+      </div>
+      <div class="receipt"><span class="badge badge--dirty">草稿保留</span><span>两边都不会自动丢弃</span><span style="flex:1"></span>
+        <span class="btn btn--soft" style="cursor:default;">另存为新片段</span><span class="btn btn--danger" style="cursor:default;">用我的版本覆盖</span></div>
+    </div>
+  </section>
+
+  <!-- ===== F4 悬浮球执行失败 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">F4</span><span class="name">悬浮球 · 更多面板：执行失败 / 能力不可用</span><span class="tag">F4</span><span class="note">失败不关闭面板，便于换动作或重试</span></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+      <div class="card" style="width:300px; padding:6px; box-shadow:var(--shadow-float);">
+        <div style="padding:8px 10px; border-bottom:1px solid var(--line); display:flex; gap:7px; align-items:center;"><span class="meta">🔍</span><span style="flex:1; font-size:12.5px;">搜索动作</span><span class="kbd">/</span></div>
+        <div style="padding:6px; display:flex; flex-direction:column; gap:2px;">
+          <div style="padding:7px 9px; border-radius:7px; background:color-mix(in srgb,var(--err) 9%,transparent); display:flex; align-items:center; gap:8px;">
+            <span class="rowicon" style="width:22px;height:22px;">☁</span><span style="flex:1; font-size:12px;">一键同步</span><span class="badge badge--error">失败</span>
+          </div>
+          <div class="meta" style="padding:4px 9px;">同步中断：内核返回只读模式。60s 超时未收到响应。</div>
+          <div style="padding:4px 9px; display:flex; gap:8px;"><span class="btn btn--soft" style="cursor:default; padding:4px 12px;">重试</span><span class="btn btn--quiet" style="cursor:default; padding:4px 10px;">复制诊断</span></div>
+          <div style="height:1px; background:var(--line); margin:5px 4px;"></div>
+          <div style="padding:7px 9px; display:flex; align-items:center; gap:8px;">
+            <span class="rowicon" style="width:22px;height:22px;">⚡</span><span style="flex:1; font-size:12px;">第三方 · 导出 PDF</span><span class="badge badge--blocked">未安装</span>
+          </div>
+        </div>
+        <div class="receipt" style="border-radius:0 0 var(--r-md) var(--r-md);"><span class="badge badge--error">1 项失败</span><span>面板保持展开</span><span style="flex:1"></span><span class="kbd">Esc</span></div>
+      </div>
+      <div class="card" style="padding:12px;">
+        <div class="label">动作行状态约定</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+          <div style="display:flex; gap:9px; align-items:center;"><span class="badge badge--ready">可用</span><span class="meta">正常执行，成功后回来源表面</span></div>
+          <div style="display:flex; gap:9px; align-items:center;"><span class="badge badge--loading">执行中</span><span class="meta">行内旋转指示，按钮禁用</span></div>
+          <div style="display:flex; gap:9px; align-items:center;"><span class="badge badge--blocked">不可用</span><span class="meta">端侧/能力/依赖缺失，悬浮说明原因</span></div>
+          <div style="display:flex; gap:9px; align-items:center;"><span class="badge badge--error">失败</span><span class="meta">面板不关闭，给重试/回退/诊断</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== P4 / D2 副作用确认 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">P4/D2</span><span class="name">文档集恢复预览 + 配置包导入确认</span><span class="tag">P4/D2</span><span class="note">有副作用动作一律前置说明后果与恢复路径</span></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="overlay" style="min-height:280px;">
+        <div class="dialog">
+          <div style="padding:12px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;">
+            <strong class="h1">恢复文档集</strong><span class="badge badge--count">写作模式</span>
+          </div>
+          <div style="padding:14px; display:flex; flex-direction:column; gap:9px;">
+            <div class="meta" style="font-size:12px; color:var(--txt-2);">将关闭当前 5 个页签并打开文档集中的 8 篇文档。<b style="color:var(--txt);">当前未保存的编辑不会被关闭，请先自行保存。</b></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <span class="badge badge--ready">就绪 6</span><span class="badge badge--stale">需重新封面加载 1</span><span class="badge badge--error">不可用 1</span>
+            </div>
+            <div class="meta">不可用：已删除文档「2025 总结」（不影响其余 7 篇）</div>
+          </div>
+          <div class="receipt" style="border-radius:0;"><span class="badge badge--count">耗时约 2s</span><span style="flex:1"></span><span class="btn btn--primary" style="cursor:default;">确认恢复</span><span class="btn btn--quiet" style="cursor:default;">取消</span></div>
+        </div>
+      </div>
+      <div class="overlay" style="min-height:280px;">
+        <div class="dialog">
+          <div style="padding:12px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;">
+            <strong class="h1">导入配置包</strong><span class="badge badge--count">v0.40.0</span>
+          </div>
+          <div style="padding:14px; display:flex; flex-direction:column; gap:9px;">
+            <div class="meta" style="font-size:12px; color:var(--txt-2);">来源 device-A · 导出于 2026-09-20。下列设置将被<b style="color:var(--txt);;">覆盖</b>，未列出的保持不变。</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; gap:8px; align-items:center;"><span class="badge badge--count">✓</span><span style="font-size:12px;">悬浮球设置（含 3 个手势绑定）</span></div>
+              <div style="display:flex; gap:8px; align-items:center;"><span class="badge badge--count">✓</span><span style="font-size:12px;">快捷动作目录（12 项）</span></div>
+              <div style="display:flex; gap:8px; align-items:center;"><span class="badge badge--count">✓</span><span style="font-size:12px;">文档集 2 个（合并，不删除现有）</span></div>
+            </div>
+            <div class="meta">任一失败则本次导入零写入；失败清单在完成后列出。</div>
+          </div>
+          <div class="receipt" style="border-radius:0;"><span class="badge badge--stale">覆盖 3 类</span><span style="flex:1"></span><span class="btn btn--primary" style="cursor:default;">确认导入</span><span class="btn btn--quiet" style="cursor:default;">取消</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== M2 移动端 ===== -->
+  <section>
+    <div class="shot-caption"><span class="no">M2</span><span class="name">移动端 · 无结果 / 加载骨架 / 空收藏 sheet</span><span class="tag">M2</span><span class="note">移动端异常态感知最强，三态必补</span></div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+      <div class="phone">
+        <div style="padding:10px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;"><strong style="font-size:12.5px;">切换器</strong><span style="flex:1"></span><span class="kbd">Esc</span></div>
+        <div style="padding:10px 12px;">
+          <div style="height:40px; border:1px solid var(--line); border-radius:10px; background:var(--surface); display:flex; align-items:center; padding:0 12px; gap:8px; font-size:12.5px; color:var(--muted);">🔍 zzz</div>
+        </div>
+        <div style="padding:34px 20px; text-align:center;">
+          <div style="font-size:24px;">🗂</div>
+          <div style="font-size:12.5px; font-weight:600; margin-top:8px;">没有找到匹配内容</div>
+          <div class="meta" style="margin-top:6px;">试试更短的关键词，或到原生搜索里继续找</div>
+          <div style="margin-top:14px;"><span class="btn btn--soft" style="cursor:default;">用原生搜索继续 →</span></div>
+        </div>
+        <div style="border-top:1px solid var(--line); display:flex; justify-content:space-around; padding:10px 0 14px; font-size:10px; color:var(--muted);"><span>切换器</span><span>日记</span><span>工作台</span><span>更多</span></div>
+      </div>
+      <div class="phone">
+        <div style="padding:10px 12px; border-bottom:1px solid var(--line);"><strong style="font-size:12.5px;">切换器 · 全库加载中</strong></div>
+        <div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+          <div class="skel" style="height:14px; width:60%;"></div>
+          <div class="skel" style="height:11px; width:90%;"></div>
+          <div class="skel" style="height:96px; border-radius:10px;"></div>
+          <div class="skel" style="height:96px; border-radius:10px;"></div>
+        </div>
+        <div style="border-top:1px solid var(--line); padding:9px 12px;" class="meta">远程层加载中，本地页签已可用</div>
+        <div style="border-top:1px solid var(--line); display:flex; justify-content:space-around; padding:10px 0 14px; font-size:10px; color:var(--muted);"><span>切换器</span><span>日记</span><span>工作台</span><span>更多</span></div>
+      </div>
+      <div class="phone">
+        <div style="padding:12px; background:var(--b3-theme-surface-lighter); display:flex; align-items:center; gap:8px;"><strong style="font-size:12.5px;">收藏（空）</strong><span style="flex:1"></span><span class="badge badge--count">0</span></div>
+        <div style="padding:30px 20px; text-align:center;">
+          <div style="font-size:24px;">⭐</div>
+          <div style="font-size:12.5px; font-weight:600; margin-top:8px;">还没有收藏</div>
+          <div class="meta" style="margin-top:6px;">长按页签卡片 → 加入收藏</div>
+          <div style="margin-top:14px;"><span class="btn btn--primary" style="cursor:default;">管理收藏分组</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="head">
+    <p>配套：令牌与组件画廊 <code>docs/design/design-system-gallery-2026-09-27.html</code>（零件）｜三表面逐屏原型 <code>docs/design/platform-ui-redesign-r2-2026-09-26.html</code>（整机）｜规范 <code>docs/design-system-v1-2026-09-27.md</code>（事实源）。本屏包补充的每一项都对应审查报告中的编号，实现合入时请同步更新 §10 落实追踪表。</p>
+  </div>
+</div>
+<script>
+(function () {
+  var seg = document.getElementById('themeSeg');
+  seg.addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-theme]');
+    if (!btn) return;
+    document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+  });
+})();
+</script>
+</body>
+</html>

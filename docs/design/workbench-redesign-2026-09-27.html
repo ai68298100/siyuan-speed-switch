@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 工作台现代化重构原型（T-6968，2026-09-27）</title>
+<style>
+/* ============================================================
+ * 宿主变量模拟（生产环境 --b3-* 由思源注入，插件只引用不定义）。
+ * 令牌与 design-system-gallery-2026-09-27.html 一致，语义见
+ * docs/design-system-v1-2026-09-27.md（ADR 0084）。提案层 rz-wb-*。
+ * ========================================================== */
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+:root {
+  --sw-accent: var(--b3-theme-primary);
+  --sw-accent-soft: color-mix(in srgb, var(--sw-accent) 12%, transparent);
+  --sw-bg: var(--b3-theme-background);
+  --sw-surface: var(--b3-theme-surface);
+  --sw-muted: var(--b3-theme-surface-lighter);
+  --sw-line: var(--b3-border-color);
+  --sw-text: var(--b3-theme-on-background);
+  --sw-text-sub: var(--b3-theme-on-surface-light);
+  --sw-on-accent: var(--b3-theme-on-primary);
+  --sw-ok: var(--b3-theme-success);
+  --sw-warn: var(--b3-theme-warning);
+  --sw-err: var(--b3-theme-error);
+  --r-tile: 18px;
+  --shadow-tile: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%);
+  --shadow-tile-hover: 0 2px 4px rgb(51 58 83 / 8%), 0 16px 40px rgb(75 85 120 / 16%);
+}
+:root[data-theme="dark"] {
+  --shadow-tile: 0 1px 2px rgb(0 0 0 / 30%), 0 10px 28px rgb(0 0 0 / 35%);
+  --shadow-tile-hover: 0 2px 4px rgb(0 0 0 / 35%), 0 16px 40px rgb(0 0 0 / 45%);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 28px 20px 64px;
+  background: var(--stage); color: var(--sw-text);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  transition: background .2s;
+}
+.num { font-variant-numeric: tabular-nums; }
+/* ---------- 页头与设计说明 ---------- */
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--sw-text-sub); }
+.proto-top button {
+  margin-left: auto; border: 1px solid var(--sw-line); background: var(--sw-surface);
+  color: var(--sw-text); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px;
+}
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--sw-bg); border: 1px solid var(--sw-line);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--sw-text-sub); }
+.note li { margin: 3px 0; }
+.note b { color: var(--sw-text); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--sw-text-sub); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--sw-bg); border: 1px solid var(--sw-line); border-radius: 16px; box-shadow: var(--shadow-tile); overflow: hidden; }
+/* 平台头 52px + 上下文栏 */
+.phead { display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 18px; border-bottom: 1px solid var(--sw-line); }
+.phead .brand { font-weight: 700; font-size: 13px; }
+.pnav { display: flex; gap: 4px; }
+.pnav a { padding: 4px 12px; border-radius: 999px; font-size: 12px; color: var(--sw-text-sub); text-decoration: none; }
+.pnav a[aria-current="page"] { background: var(--sw-accent-soft); color: var(--sw-text); font-weight: 600; }
+.phead .spacer { flex: 1; }
+.phead .dot { width: 26px; height: 26px; border: 1px solid var(--sw-line); border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--sw-text-sub); font-size: 12px; }
+.ctxbar { display: flex; align-items: center; gap: 10px; padding: 7px 18px; border-bottom: 1px solid var(--sw-line); font-size: 11.5px; color: var(--sw-text-sub); }
+.ctxbar .path { color: var(--sw-text); }
+kbd.k { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
+  border: 1px solid var(--sw-line); border-radius: 5px; background: var(--sw-surface);
+  font: 600 10.5px/1 ui-monospace, Consolas, monospace; color: var(--sw-text-sub); }
+.kbd-group { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+/* 工具行：查看/编辑 seg + 刷新 */
+.wbbar { display: flex; align-items: center; gap: 12px; padding: 10px 18px; }
+.seg { display: inline-flex; background: var(--sw-muted); border: 1px solid var(--sw-line); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg span { padding: 3px 12px; border-radius: 7px; font-size: 12px; color: var(--sw-text-sub); }
+.seg .on { background: var(--sw-bg); color: var(--sw-text); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 28px; padding: 0 14px;
+  border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--sw-line); background: var(--sw-bg); color: var(--sw-text); }
+.btn.soft { background: var(--sw-accent-soft); border-color: transparent; color: var(--sw-accent); }
+.btn.primary { background: var(--sw-accent); border-color: var(--sw-accent); color: var(--sw-on-accent); }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--sw-text-sub); font-weight: 500; }
+/* ---------- 网格与尺寸档位（S=3×2 · M=6×2 · L=6×4 · XL=12×3） ---------- */
+.wb-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 86px; grid-auto-flow: dense; gap: 14px; padding: 4px 18px 18px; }
+.tile { position: relative; border-radius: var(--r-tile); padding: 14px 16px; overflow: hidden;
+  box-shadow: var(--shadow-tile); transition: transform .16s cubic-bezier(.32,.72,0,1), box-shadow .16s; cursor: pointer; }
+.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-tile-hover); }
+.sz-s { grid-column: span 3; grid-row: span 2; }
+.sz-m { grid-column: span 6; grid-row: span 2; }
+.sz-l { grid-column: span 6; grid-row: span 4; }
+.sz-xl { grid-column: span 12; grid-row: span 3; }
+/* 微标头：查看态唯一的 chrome（iOS 式无标题，仅 10px 识别行） */
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; gap: 4px; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+/* ---------- 材质系统 ---------- */
+.mat-plain { background: var(--sw-surface); border: 1px solid var(--sw-line); }
+.mat-dark { background: linear-gradient(160deg, #2a303c, #14171f); color: #e8eaf2; border: 1px solid rgb(255 255 255 / 7%); }
+.mat-dark .theader { color: rgb(232 234 242 / 66%); }
+.mat-dark .sub { color: rgb(232 234 242 / 55%); }
+.mat-accent { background: linear-gradient(135deg, var(--sw-accent), color-mix(in srgb, var(--sw-accent) 58%, #101426)); color: var(--sw-on-accent); border: none; }
+.mat-accent .theader { color: color-mix(in srgb, var(--sw-on-accent) 72%, transparent); }
+.mat-accent .sub { color: color-mix(in srgb, var(--sw-on-accent) 72%, transparent); }
+.mat-vibrant { background: linear-gradient(165deg, #3f74d4 0%, #5f96e0 55%, #8fc3ee 100%); color: #ffffff; border: none; }
+.mat-vibrant .theader { color: rgb(255 255 255 / 78%); }
+.mat-vibrant .sub { color: rgb(255 255 255 / 72%); }
+/* ---------- 各组件内容 mock ---------- */
+.hero-date { font-size: 12px; font-weight: 600; opacity: .8; margin-top: 10px; }
+.hero-time { font-size: 58px; font-weight: 700; letter-spacing: -.01em; line-height: 1.05; margin: 6px 0 2px; }
+.hero-time .sec { font-size: 24px; font-weight: 600; opacity: .55; margin-left: 6px; }
+.hero-cities { display: flex; gap: 18px; margin-top: 10px; }
+.city { font-size: 11px; }
+.city .cn { opacity: .6; }
+.city .ct { font-size: 14px; font-weight: 700; margin-top: 1px; }
+.city .cdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+.cal-head { display: flex; align-items: baseline; gap: 8px; margin: 8px 2px 6px; }
+.cal-head .m { font-size: 16px; font-weight: 700; }
+.cal-head .y { font-size: 11px; color: var(--sw-text-sub); }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal .wd { font-size: 9.5px; color: var(--sw-text-sub); text-align: center; padding: 3px 0; }
+.cal .d { position: relative; aspect-ratio: 1.25; display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; border-radius: 8px; color: var(--sw-text); }
+.cal .d.out { color: var(--sw-text-sub); opacity: .45; }
+.cal .d.today { background: var(--sw-accent); color: var(--sw-on-accent); font-weight: 700; }
+.cal .d.ev::after { content: ""; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--sw-accent); }
+.gh-wrap { margin-top: 10px; }
+.gh-grid { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 3px; }
+.gh-grid i { width: 11px; height: 11px; border-radius: 3px; background: var(--sw-muted); }
+.gh-stats { display: flex; gap: 18px; margin-top: 10px; }
+.gh-stats .gs .n { font-size: 18px; font-weight: 700; }
+.gh-stats .gs .t { font-size: 10.5px; color: var(--sw-text-sub); }
+.w-now { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.w-now .deg { font-size: 40px; font-weight: 700; }
+.w-now .cond { font-size: 12px; }
+.w-days { display: flex; gap: 10px; margin-top: 12px; }
+.w-days .d { flex: 1; text-align: center; background: rgb(255 255 255 / 16%); border-radius: 10px; padding: 7px 0 5px; }
+.w-days .d .dd { font-size: 10px; opacity: .8; }
+.w-days .d .di { font-size: 15px; display: block; margin: 2px 0; }
+.w-days .d .dh { font-size: 11px; font-weight: 700; }
+.list3 { margin-top: 8px; display: flex; flex-direction: column; }
+.list3 .li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--sw-line); font-size: 12px; }
+.list3 .li:last-child { border-bottom: none; }
+.list3 .li .t { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.list3 .li .m { font-size: 10.5px; color: var(--sw-text-sub); flex: none; }
+.bignum { font-size: 44px; font-weight: 700; line-height: 1.1; margin-top: 8px; }
+.bignum small { font-size: 16px; font-weight: 600; opacity: .75; margin-left: 2px; }
+.dots7 { display: flex; gap: 5px; margin-top: 10px; }
+.dots7 i { flex: 1; height: 22px; border-radius: 7px; background: rgb(255 255 255 / 22%); }
+.dots7 i.hit { background: rgb(255 255 255 / 88%); }
+.sub { font-size: 11px; }
+.bar { height: 6px; border-radius: 3px; background: var(--sw-muted); margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; background: var(--sw-accent); }
+.quote-txt { font-size: 14.5px; line-height: 1.65; font-weight: 500; margin-top: 10px; }
+.quote-by { font-size: 10.5px; margin-top: 8px; opacity: .6; }
+.batt { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.batt .case { width: 52px; height: 26px; border: 2px solid currentColor; border-radius: 8px; padding: 3px; opacity: .9; }
+.batt .case i { display: block; height: 100%; width: 82%; border-radius: 4px; background: var(--sw-ok); }
+.batt .p { font-size: 20px; font-weight: 700; }
+/* ---------- 编辑态（抖动模式） ---------- */
+.tile.editing { cursor: grab; animation: wiggle 320ms ease-in-out infinite; border: 1.5px dashed color-mix(in srgb, var(--sw-accent) 45%, transparent); }
+.tile.editing.mat-plain, .tile.editing.mat-dark, .tile.editing.mat-accent, .tile.editing.mat-vibrant { border-style: dashed; }
+@keyframes wiggle { 0%,100% { transform: rotate(-.35deg); } 50% { transform: rotate(.35deg); } }
+@media (prefers-reduced-motion: reduce) { .tile.editing { animation: none; } }
+.sizechip { position: absolute; left: 10px; bottom: 10px; display: inline-flex; background: rgb(20 23 31 / 78%);
+  border-radius: 8px; padding: 2px; gap: 1px; backdrop-filter: blur(4px); }
+.sizechip span { color: rgb(255 255 255 / 72%); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px; }
+.sizechip span.on { background: rgb(255 255 255 / 92%); color: #14171f; }
+.rmbtn { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
+  background: rgb(20 23 31 / 78%); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+.dropzone { border: 1.5px dashed color-mix(in srgb, var(--sw-accent) 45%, transparent); border-radius: var(--r-tile);
+  display: flex; align-items: center; justify-content: center; color: var(--sw-text-sub); font-size: 11.5px; }
+.editfoot { display: flex; align-items: center; gap: 10px; padding: 10px 18px 16px; font-size: 11.5px; color: var(--sw-text-sub); }
+.editfoot .sp { flex: 1; }
+/* 失败 tile 内联重试 */
+.tile.failed { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sw-err) 45%, transparent), var(--shadow-tile); }
+.retryline { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 11.5px; color: var(--sw-text-sub); }
+/* ---------- 底部回执条 ---------- */
+.wbfoot { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-top: 1px solid var(--sw-line); font-size: 11.5px; color: var(--sw-text-sub); }
+.wbfoot .sp { flex: 1; }
+.badge { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; border: 1px solid; }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--bd, var(--sw-text-sub)); }
+.badge.ready { --bd: var(--sw-ok); color: color-mix(in srgb, var(--sw-ok) 72%, var(--sw-text)); border-color: color-mix(in srgb, var(--sw-ok) 26%, transparent); background: color-mix(in srgb, var(--sw-ok) 9%, transparent); }
+.badge.error { --bd: var(--sw-err); color: color-mix(in srgb, var(--sw-err) 72%, var(--sw-text)); border-color: color-mix(in srgb, var(--sw-err) 26%, transparent); background: color-mix(in srgb, var(--sw-err) 9%, transparent); }
+/* ---------- 侧栏 / 移动端 / 规格板 ---------- */
+.duo { display: grid; grid-template-columns: 400px 1fr; gap: 18px; align-items: start; }
+.sb-frame { background: var(--sw-bg); border: 1px solid var(--sw-line); border-radius: 16px; overflow: hidden; }
+.sb-head { padding: 10px 14px; border-bottom: 1px solid var(--sw-line); font-size: 11.5px; color: var(--sw-text-sub); display: flex; gap: 8px; align-items: center; }
+.sb-grid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 74px; gap: 10px; padding: 12px 14px 16px; }
+.sb-grid .tile { padding: 10px 12px; }
+.sb-s2 { grid-column: span 2; grid-row: span 2; }
+.sb-s1 { grid-column: span 1; grid-row: span 2; }
+.phone { width: 375px; margin: 0 auto; border: 1px solid var(--sw-line); border-radius: 30px; background: var(--sw-bg);
+  box-shadow: var(--shadow-tile); overflow: hidden; }
+.pstatus { display: flex; justify-content: space-between; padding: 10px 18px 4px; font-size: 11px; color: var(--sw-text-sub); }
+.pbar { display: flex; align-items: center; gap: 10px; padding: 6px 14px 10px; }
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 82px; gap: 12px; padding: 2px 14px 16px; }
+.pgrid .tile { padding: 12px 14px; }
+.p-m { grid-column: span 2; grid-row: span 2; }
+.p-s { grid-column: span 1; grid-row: span 2; }
+.spec { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.speccard { border: 1px solid var(--sw-line); border-radius: 16px; background: var(--sw-bg); overflow: hidden; }
+.speccard h3 { font-size: 12px; margin: 0; padding: 9px 14px; border-bottom: 1px solid var(--sw-line); font-weight: 600; }
+.speccard .bd { padding: 12px 14px; font-size: 11.5px; color: var(--sw-text-sub); }
+.speccard .bd b { color: var(--sw-text); }
+.matsample { height: 64px; border-radius: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+.szrow { display: flex; align-items: center; gap: 10px; margin: 7px 0; }
+.szrow .box { border: 1.5px solid var(--sw-accent); background: var(--sw-accent-soft); border-radius: 6px; flex: none; }
+.szrow .lb { font-size: 11.5px; }
+.szrow .lb b { font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>工作台现代化重构原型</h1>
+  <span class="meta">T-6968 · 2026-09-27 · 材质 × 尺寸双轴 · 参考 iOS/iPadOS 小组件 · 提案层 rz-wb-*</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>重构决策</h2>
+  <ol>
+    <li><b>尺寸档位</b>（iOS S/M/L 语义）：S=3×2 一览型 · M=6×2 流式 · L=6×4 富内容 · XL=12×3 英雄位——映射到既有 12 列网格的跨度组合，不新增布局引擎；「最适合的尺寸」由组件类型声明默认档，用户在编辑态改档。</li>
+    <li><b>材质系统</b>（iOS 深色/彩色小组件）：plain 常规面 / accent 主色渐变 / dark 深色舞台 / vibrant 内容驱动渐变（天气=天空）。每个组件按内容属性选定材质——时钟配 dark 舞台、打卡配 accent、天气配 vibrant，各模式组件都有适合自己的展示底色。材质经皮肤层（ADR 0073）作用域派生，不改组件选择器。</li>
+    <li><b>查看态去 chrome</b>：卡片头（名称+徽标+更多点）→ 10px 微标头（识别名 + 状态 chip 悬浮显现），内容即卡片，信息密度让给内容本身。</li>
+    <li><b>编辑态 = 抖动模式</b>：查看/编辑两态彻底分离——编辑态全 chrome（虚线框 + 摇摆 + 尺寸角标 S/M/L/X + 删除钮 + 落点虚影），与 iOS jiggle mode 心智一致；尺寸切换从「拖边缘」升级为「点档位」，移动端同一交互不再需要上移/下移特化。</li>
+    <li><b>现代层次</b>：连续大圆角 18px（大面积极小数会显廉价）、双层柔影、hover 浮起 2px；数字全部 tabular-nums；动效只动 transform/opacity，时钟秒数沿用 T-6935 局部补丁通道。</li>
+    <li><b>失败与新鲜度</b>：状态收进微标头 chip（stale「15 分钟前」）与失败 tile 描边 + 内联重试（延续 T-6879/T-6880 语义），不新增全局 toast。</li>
+  </ol>
+</section>
+
+<!-- ============ 屏① 桌面查看态 ============ -->
+<section class="screen">
+  <h2>① 桌面全屏 · 查看态 <span>XL 英雄时钟 + L 富内容 + M 流式 + S 一览，四种材质混排</span></h2>
+  <div class="frame">
+    <div class="phead">
+      <span class="brand">小驴雷切</span>
+      <nav class="pnav"><a href="#">切换器</a><a href="#" aria-current="page">工作台</a><a href="#">片段实验室</a></nav>
+      <span class="spacer"></span><span class="dot">⋯</span><span class="dot">✕</span>
+    </div>
+    <div class="ctxbar"><span class="path">工作台</span><span>查看、刷新和编排信息组件</span>
+      <span class="kbd-group"><kbd class="k">Alt+Shift+P</kbd> 打开 <kbd class="k">F5</kbd> 刷新</span>
+    </div>
+    <div class="wbbar">
+      <span class="seg"><span class="on">查看</span><span>编辑布局</span></span>
+      <span class="badge ready" style="margin-left:2px;">11/12 正常</span>
+      <span style="flex:1"></span>
+      <button class="btn soft">↻ 刷新全部</button>
+    </div>
+    <div class="wb-grid">
+      <!-- XL 英雄：世界时钟（dark 舞台） -->
+      <div class="tile sz-xl mat-dark">
+        <div class="theader">世界时钟<span class="sp"></span><span class="tchip">4 城市</span></div>
+        <div class="hero-date num">9 月 27 日 星期日 · 晴</div>
+        <div class="hero-time num">21:36<span class="sec num">48</span></div>
+        <div class="hero-cities num">
+          <span class="city"><span class="cdot" style="background:#f6c945"></span><span class="cn">伦敦</span><br><span class="ct">14:36</span></span>
+          <span class="city"><span class="cdot" style="background:#f6c945"></span><span class="cn">纽约</span><br><span class="ct">09:36</span></span>
+          <span class="city"><span class="cdot" style="background:#8a93a8"></span><span class="cn">东京</span><br><span class="ct">22:36</span></span>
+          <span class="city"><span class="cdot" style="background:#3d5afe"></span><span class="cn">悉尼</span><br><span class="ct">23:36</span></span>
+        </div>
+      </div>
+      <!-- L：日历月视图（plain） -->
+      <div class="tile sz-l mat-plain">
+        <div class="theader">日历月视图<span class="sp"></span><span class="tchip">2 事件</span></div>
+        <div class="cal-head"><span class="m">九月</span><span class="y num">2026</span></div>
+        <div class="cal">
+          <span class="wd">一</span><span class="wd">二</span><span class="wd">三</span><span class="wd">四</span><span class="wd">五</span><span class="wd">六</span><span class="wd">日</span>
+          <span class="d out num">31</span><span class="d num">1</span><span class="d num">2</span><span class="d num">3</span><span class="d num">4</span><span class="d ev num">5</span><span class="d num">6</span>
+          <span class="d num">7</span><span class="d num">8</span><span class="d num">9</span><span class="d num">10</span><span class="d num">11</span><span class="d num">12</span><span class="d num">13</span>
+          <span class="d num">14</span><span class="d num">15</span><span class="d num">16</span><span class="d num">17</span><span class="d num">18</span><span class="d ev num">19</span><span class="d num">20</span>
+          <span class="d num">21</span><span class="d num">22</span><span class="d num">23</span><span class="d num">24</span><span class="d num">25</span><span class="d num">26</span><span class="d today num">27</span>
+          <span class="d num">28</span><span class="d num">29</span><span class="d num">30</span><span class="d out num">1</span><span class="d out num">2</span><span class="d out num">3</span><span class="d out num">4</span>
+        </div>
+      </div>
+      <!-- M：天气（vibrant） -->
+      <div class="tile sz-m mat-vibrant">
+        <div class="theader">近期天气<span class="sp"></span><span class="tchip">15 分钟前</span></div>
+        <div class="w-now"><span class="deg num">23°</span><span class="cond">多云转晴<br><span class="sub">湿度 62% · 东南风 2 级</span></span></div>
+        <div class="w-days num">
+          <span class="d"><span class="dd">周一</span><span class="di">☀️</span><span class="dh">26°</span></span>
+          <span class="d"><span class="dd">周二</span><span class="di">⛅</span><span class="dh">24°</span></span>
+          <span class="d"><span class="dd">周三</span><span class="di">🌧</span><span class="dh">21°</span></span>
+          <span class="d"><span class="dd">周四</span><span class="di">⛅</span><span class="dh">23°</span></span>
+          <span class="d"><span class="dd">周五</span><span class="di">☀️</span><span class="dh">25°</span></span>
+        </div>
+      </div>
+      <!-- M：RSS（plain） -->
+      <div class="tile sz-m mat-plain">
+        <div class="theader">RSS 订阅<span class="sp"></span><span class="tchip">3 源 · 12 未读</span></div>
+        <div class="list3">
+          <div class="li"><span class="t">思源笔记 3.8.6 发布：数据库视图增强</span><span class="m">链滴 · 2h</span></div>
+          <div class="li"><span class="t">CSS color-mix() 在主题适配中的实践</span><span class="m">博客 · 5h</span></div>
+          <div class="li"><span class="t">本地优先软件的同步策略观察</span><span class="m">周刊 · 1d</span></div>
+        </div>
+      </div>
+      <!-- L：GitHub 贡献（plain） -->
+      <div class="tile sz-l mat-plain">
+        <div class="theader">GitHub 贡献<span class="sp"></span><span class="tchip">近 14 周</span></div>
+        <div class="gh-wrap"><div class="gh-grid" id="gh"></div></div>
+        <div class="gh-stats num">
+          <span class="gs"><span class="n">486</span><br><span class="t">今年贡献</span></span>
+          <span class="gs"><span class="n">14</span><br><span class="t">最长连续</span></span>
+          <span class="gs"><span class="n">6</span><br><span class="t">本周</span></span>
+        </div>
+      </div>
+      <!-- S：倒数日（accent） -->
+      <div class="tile sz-s mat-accent">
+        <div class="theader">倒数日</div>
+        <div class="bignum num">3<small>天</small></div>
+        <div class="sub num">距离 v0.41 发布</div>
+      </div>
+      <!-- S：年度进度（plain） -->
+      <div class="tile sz-s mat-plain">
+        <div class="theader">年度进度</div>
+        <div class="bignum num" style="color:var(--sw-text)">73<small>%</small></div>
+        <div class="bar"><i style="width:73%"></i></div>
+        <div class="sub" style="color:var(--sw-text-sub)">2026 · 剩 99 天</div>
+      </div>
+      <!-- M：打卡（accent） -->
+      <div class="tile sz-m mat-accent">
+        <div class="theader">连续记录<span class="sp"></span><span class="tchip">今日已打卡</span></div>
+        <div class="bignum num">14<small>天连续</small></div>
+        <div class="dots7"><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="hit"></i><i></i></div>
+        <div class="sub num" style="margin-top:8px">本月 22/30 · 需安装小驴打卡</div>
+      </div>
+      <!-- S：每日引言（dark） -->
+      <div class="tile sz-s mat-dark">
+        <div class="theader">每日引言</div>
+        <div class="quote-txt">简单是可靠的最高境界。</div>
+        <div class="quote-by">— Joe Armstrong</div>
+      </div>
+      <!-- S：设备电量（plain） -->
+      <div class="tile sz-s mat-plain">
+        <div class="theader">设备电量</div>
+        <div class="batt"><span class="case"><i></i></span><span class="p num">82%</span></div>
+        <div class="sub" style="color:var(--sw-text-sub);margin-top:8px">约 5 小时 20 分</div>
+      </div>
+      <!-- S：时间与日期（dark） -->
+      <div class="tile sz-s mat-dark">
+        <div class="theader">时间与日期</div>
+        <div class="bignum num" style="font-size:34px">21:36</div>
+        <div class="sub num">9/27 周日 · 农历八月十七</div>
+      </div>
+      <!-- S：存储用量（plain） -->
+      <div class="tile sz-s mat-plain">
+        <div class="theader">存储用量</div>
+        <div class="bignum num" style="color:var(--sw-text)">1.8<small>GB</small></div>
+        <div class="bar"><i style="width:46%"></i></div>
+        <div class="sub" style="color:var(--sw-text-sub)">14 个笔记本 · 46%</div>
+      </div>
+    </div>
+    <div class="wbfoot">
+      <span class="badge ready">11/12 组件正常</span>
+      <span>1 个失败 · 上次刷新 21:35 · 缓存 3 项</span>
+      <span class="sp"></span>
+      <span class="kbd-group"><kbd class="k">Ctrl</kbd>+<kbd class="k">B</kbd> 编辑布局</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 屏② 编辑态（抖动模式） ============ -->
+<section class="screen">
+  <h2>② 编辑态 · 抖动模式 <span>全 chrome：虚线框 + 摇摆 + 尺寸角标 + 删除钮 + 落点虚影 + 失败 tile 内联重试</span></h2>
+  <div class="frame">
+    <div class="wbbar" style="border-bottom:1px solid var(--sw-line);">
+      <span class="seg"><span>查看</span><span class="on">编辑布局</span></span>
+      <span style="color:var(--sw-text-sub);font-size:11.5px;">拖动排列 · 点卡片左下角标切换尺寸 · 点 ✕ 移除</span>
+      <span style="flex:1"></span>
+      <button class="btn quiet">恢复默认</button>
+      <button class="btn primary">完成</button>
+    </div>
+    <div class="wb-grid" style="grid-auto-rows:82px;">
+      <div class="tile sz-xl mat-dark editing">
+        <div class="theader">世界时钟</div>
+        <div class="hero-time num" style="font-size:44px">21:36</div>
+        <div class="rmbtn">✕</div>
+        <div class="sizechip"><span class="on">S</span><span>M</span><span>L</span><span>X</span></div>
+      </div>
+      <div class="tile sz-l mat-plain editing">
+        <div class="theader">日历月视图</div>
+        <div class="rmbtn">✕</div>
+        <div class="sizechip"><span>S</span><span>M</span><span class="on">L</span><span>X</span></div>
+      </div>
+      <div class="tile sz-m mat-vibrant editing">
+        <div class="theader">近期天气</div>
+        <div class="w-now"><span class="deg num" style="font-size:32px">23°</span><span class="cond">多云转晴</span></div>
+        <div class="rmbtn">✕</div>
+        <div class="sizechip"><span>S</span><span class="on">M</span><span>L</span><span>X</span></div>
+      </div>
+      <div class="tile sz-s mat-plain failed editing">
+        <div class="theader">数据健康</div>
+        <div class="sub" style="color:var(--sw-text-sub);margin-top:10px">请求超时 · 显示上次结果</div>
+        <div class="retryline"><button class="btn soft" style="height:24px;padding:0 12px;">↻ 重试</button><span>第 2 次</span></div>
+        <div class="rmbtn">✕</div>
+        <div class="sizechip"><span class="on">S</span><span>M</span><span>L</span><span>X</span></div>
+      </div>
+      <div class="dropzone sz-s" style="grid-row:span 2;">松开落到此处</div>
+      <div class="tile sz-s mat-accent editing">
+        <div class="theader">倒数日</div>
+        <div class="bignum num" style="font-size:34px">3<small>天</small></div>
+        <div class="rmbtn">✕</div>
+        <div class="sizechip"><span class="on">S</span><span>M</span><span>L</span><span>X</span></div>
+      </div>
+    </div>
+    <div class="editfoot">
+      <span>尺寸档位：S 一览 · M 流式 · L 富内容 · X 通栏英雄</span>
+      <span class="sp"></span>
+      <span class="kbd-group"><kbd class="k">Esc</kbd> 完成编辑</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 屏③ 侧栏与移动端 ============ -->
+<section class="screen">
+  <h2>③ 侧栏与移动端 <span>同一材质/尺寸语言按宽度收缩：侧栏 2 列 · 手机 2 列（M 通栏）</span></h2>
+  <div class="duo">
+    <div class="sb-frame">
+      <div class="sb-head"><b style="color:var(--sw-text);font-size:12px;">工作台</b><span>侧栏 · 紧凑</span></div>
+      <div class="sb-grid">
+        <div class="tile sb-s1 mat-dark">
+          <div class="theader">时钟</div>
+          <div class="bignum num" style="font-size:26px;margin-top:6px;">21:36</div>
+          <div class="sub num">9/27 周日</div>
+        </div>
+        <div class="tile sb-s1 mat-accent">
+          <div class="theader">倒数日</div>
+          <div class="bignum num" style="font-size:26px;margin-top:6px;">3<small>天</small></div>
+          <div class="sub">v0.41</div>
+        </div>
+        <div class="tile sb-s2 mat-vibrant">
+          <div class="theader">近期天气<span class="sp"></span><span class="tchip">15 分钟前</span></div>
+          <div class="w-now"><span class="deg num" style="font-size:28px">23°</span><span class="cond" style="font-size:11px;">多云转晴 · 62%</span></div>
+        </div>
+        <div class="tile sb-s2 mat-plain">
+          <div class="theader">RSS 订阅<span class="sp"></span><span class="tchip">12 未读</span></div>
+          <div class="list3">
+            <div class="li" style="padding:4px 0;"><span class="t" style="font-size:11px;">思源笔记 3.8.6 发布</span><span class="m">2h</span></div>
+            <div class="li" style="padding:4px 0;"><span class="t" style="font-size:11px;">color-mix() 主题适配实践</span><span class="m">5h</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone">
+      <div class="pstatus"><span>21:36</span><span>●●●</span></div>
+      <div class="pbar">
+        <span class="seg"><span class="on">查看</span><span>编辑</span></span>
+        <span style="flex:1"></span>
+        <button class="btn soft" style="height:26px;">↻</button>
+      </div>
+      <div class="pgrid">
+        <div class="tile p-m mat-dark">
+          <div class="theader">世界时钟</div>
+          <div class="hero-time num" style="font-size:44px;margin:4px 0;">21:36</div>
+          <div class="sub num">北京 · 东京 22:36 · 伦敦 14:36</div>
+        </div>
+        <div class="tile p-s mat-accent">
+          <div class="theader">倒数日</div>
+          <div class="bignum num" style="font-size:28px;margin-top:4px;">3<small>天</small></div>
+        </div>
+        <div class="tile p-s mat-plain">
+          <div class="theader">年度进度</div>
+          <div class="bignum num" style="font-size:28px;margin-top:4px;color:var(--sw-text)">73<small>%</small></div>
+          <div class="bar"><i style="width:73%"></i></div>
+        </div>
+        <div class="tile p-m mat-vibrant">
+          <div class="theader">近期天气<span class="sp"></span><span class="tchip">15 分钟前</span></div>
+          <div class="w-now"><span class="deg num" style="font-size:30px">23°</span><span class="cond" style="font-size:11px;">多云转晴</span></div>
+        </div>
+      </div>
+      <div style="height:14px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 屏④ 材质与尺寸规格板 ============ -->
+<section class="screen">
+  <h2>④ 材质与尺寸规格 <span>实现映射：材质=组件类型声明 · 尺寸=12 列网格跨度组合</span></h2>
+  <div class="spec">
+    <div class="speccard">
+      <h3>plain · 常规面</h3>
+      <div class="bd">
+        <div class="matsample mat-plain" style="border:1px solid var(--sw-line);">日历 · 热力图 · 列表</div>
+        surface 底 + hairline 边框。信息型组件默认材质，阅读对比度最高。
+      </div>
+    </div>
+    <div class="speccard">
+      <h3>accent · 主色渐变</h3>
+      <div class="bd">
+        <div class="matsample mat-accent">打卡 · 倒数日 · 目标</div>
+        主色 135° 渐变 + on-primary 文字。强情绪、强状态的数值型组件。
+      </div>
+    </div>
+    <div class="speccard">
+      <h3>dark · 深色舞台</h3>
+      <div class="bd">
+        <div class="matsample mat-dark">时钟 · 引言</div>
+        固定深色渐变（StandBy 风），明暗主题下恒定；大数字与夜晚语义组件。
+      </div>
+    </div>
+    <div class="speccard">
+      <h3>vibrant · 内容渐变</h3>
+      <div class="bd">
+        <div class="matsample mat-vibrant">天气 · 空气质量</div>
+        内容驱动的语义渐变（天气=天空）。仅限组件显式声明的预设渐变，不自动取色。
+      </div>
+    </div>
+  </div>
+  <div class="frame" style="margin-top:14px;">
+    <div class="bd" style="padding:12px 16px;">
+      <div class="szrow"><span class="box" style="width:26px;height:26px;"></span><span class="lb"><b>S · 3×2</b>　一览型——单个大数字/短语（倒数日、年度进度、电量、引言、时间日期）</span></div>
+      <div class="szrow"><span class="box" style="width:54px;height:26px;"></span><span class="lb"><b>M · 6×2</b>　流式——横向预测/短列表（天气、RSS、打卡连续、热搜）</span></div>
+      <div class="szrow"><span class="box" style="width:54px;height:54px;"></span><span class="lb"><b>L · 6×4</b>　富内容——整月日历、热力图、周报型统计</span></div>
+      <div class="szrow"><span class="box" style="width:110px;height:26px;"></span><span class="lb"><b>X · 12×3</b>　英雄位——通栏舞台（世界时钟、写作年度回顾）；每面板至多 1 个，置于网格首行</span></div>
+      <div style="font-size:11px;color:var(--sw-text-sub);margin-top:8px;">组件目录按类型声明默认材质与默认档位；用户改档后持久化（沿用既有尺寸模式语义）。侧栏收缩为 2 列（S=1、M/L=2），手机 2 列（S=1、M=2、L/X 降级为 M）。</div>
+    </div>
+  </div>
+</section>
+
+<script>
+// GitHub 热力图格子生成（原型示意数据）
+(function () {
+  var gh = document.getElementById("gh");
+  if (!gh) return;
+  var seed = 7;
+  function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  var acc = getComputedStyle(document.documentElement).getPropertyValue("--sw-accent");
+  for (var i = 0; i < 7 * 14; i++) {
+    var el = document.createElement("i");
+    var v = rnd();
+    if (v > 0.72) el.style.background = "color-mix(in srgb, " + acc + " " + (40 + Math.floor(v * 60)) + "%, var(--sw-muted))";
+    else if (v > 0.5) el.style.background = "color-mix(in srgb, " + acc + " 22%, var(--sw-muted))";
+    gh.appendChild(el);
+  }
+})();
+</script>
+</body>
+</html>

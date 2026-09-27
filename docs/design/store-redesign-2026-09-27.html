@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件商店重构原型（T-6966，2026-09-27）</title>
+<style>
+/* ============================================================
+ * 宿主变量模拟（生产环境 --b3-* 由思源注入，插件只引用不定义）。
+ * 令牌值与 docs/design/design-system-gallery-2026-09-27.html 保持一致，
+ * 令牌语义见 docs/design-system-v1-2026-09-27.md（ADR 0084）。
+ * 提案层类名一律 rz-store-*，实现时映射进生产命名，不进生产包。
+ * ========================================================== */
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+:root {
+  --sw-accent: var(--b3-theme-primary);
+  --sw-accent-soft: color-mix(in srgb, var(--sw-accent) 12%, transparent);
+  --sw-bg: var(--b3-theme-background);
+  --sw-surface: var(--b3-theme-surface);
+  --sw-muted: var(--b3-theme-surface-lighter);
+  --sw-line: var(--b3-border-color);
+  --sw-text: var(--b3-theme-on-background);
+  --sw-text-sub: var(--b3-theme-on-surface-light);
+  --sw-on-accent: var(--b3-theme-on-primary);
+  --sw-ok: var(--b3-theme-success);
+  --sw-warn: var(--b3-theme-warning);
+  --sw-err: var(--b3-theme-error);
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(51 58 83 / 5%), 0 8px 24px rgb(75 85 120 / 8%);
+  --shadow-float: 0 14px 36px rgb(55 65 100 / 15%), 0 3px 10px rgb(55 65 100 / 8%);
+}
+:root[data-theme="dark"] {
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 25%), 0 8px 24px rgb(0 0 0 / 30%);
+  --shadow-float: 0 14px 36px rgb(0 0 0 / 45%), 0 3px 10px rgb(0 0 0 / 30%);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 28px 20px 64px;
+  background: var(--stage);
+  color: var(--sw-text);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  transition: background .2s;
+}
+/* ---------- 页头与设计说明 ---------- */
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--sw-text-sub); }
+.proto-top button {
+  margin-left: auto; border: 1px solid var(--sw-line); background: var(--sw-surface);
+  color: var(--sw-text); border-radius: var(--r-pill); padding: 5px 14px; cursor: pointer; font-size: 12px;
+}
+.note {
+  max-width: 1180px; margin: 0 auto 26px; background: var(--sw-bg);
+  border: 1px solid var(--sw-line); border-radius: var(--r-lg); padding: 16px 20px;
+}
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--sw-text-sub); }
+.note li { margin: 3px 0; }
+.note b { color: var(--sw-text); font-weight: 600; }
+/* ---------- 屏幕骨架 ---------- */
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; color: var(--sw-text); }
+.screen > h2 span { color: var(--sw-text-sub); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame {
+  background: var(--sw-bg); border: 1px solid var(--sw-line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card); overflow: hidden;
+}
+/* 平台头 52px */
+.phead { display: flex; align-items: center; gap: 14px; height: 52px; padding: 0 18px; border-bottom: 1px solid var(--sw-line); }
+.phead .brand { font-weight: 700; font-size: 13px; }
+.pnav { display: flex; gap: 4px; }
+.pnav a {
+  padding: 4px 12px; border-radius: var(--r-pill); font-size: 12px; color: var(--sw-text-sub);
+  text-decoration: none;
+}
+.pnav a[aria-current="page"] { background: var(--sw-accent-soft); color: var(--sw-text); font-weight: 600; }
+.phead .spacer { flex: 1; }
+.phead .dot { width: 26px; height: 26px; border: 1px solid var(--sw-line); border-radius: var(--r-sm);
+  display: inline-flex; align-items: center; justify-content: center; color: var(--sw-text-sub); font-size: 12px; }
+/* 上下文栏 */
+.ctxbar { display: flex; align-items: center; gap: 10px; padding: 7px 18px; border-bottom: 1px solid var(--sw-line);
+  font-size: 11.5px; color: var(--sw-text-sub); }
+.ctxbar .path { color: var(--sw-text); }
+kbd.k {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  padding: 0 5px; border: 1px solid var(--sw-line); border-radius: 5px; background: var(--sw-surface);
+  font: 600 10.5px/1 ui-monospace, Consolas, monospace; color: var(--sw-text-sub);
+}
+.kbd-group { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+/* ---------- 商店主从布局 ---------- */
+.store { display: grid; grid-template-columns: 400px 1fr; min-height: 560px; }
+/* 左：目录 */
+.catalog { border-right: 1px solid var(--sw-line); display: flex; flex-direction: column; }
+.filters { padding: 12px 14px 10px; border-bottom: 1px solid var(--sw-line); }
+.search {
+  height: 38px; border: 1px solid var(--sw-line); border-radius: 10px; background: var(--sw-surface);
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--sw-text-sub); font-size: 12.5px;
+}
+.chips { display: flex; gap: 6px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px;
+  border: 1px solid var(--sw-line); border-radius: var(--r-pill); font-size: 11.5px; color: var(--sw-text-sub);
+  background: var(--sw-bg);
+}
+.chip .n { font: 600 10.5px/1 ui-monospace, Consolas, monospace; color: var(--sw-text-sub); }
+.chip[aria-selected="true"] { background: var(--sw-accent-soft); border-color: color-mix(in srgb, var(--sw-accent) 34%, transparent); color: var(--sw-text); font-weight: 600; }
+.chip.sort { margin-left: auto; }
+.rows { overflow: auto; padding: 4px 8px 12px; flex: 1; }
+.glabel {
+  font: 700 11px/1 inherit; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--sw-text-sub); padding: 14px 8px 6px;
+}
+.row {
+  display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: var(--r-sm);
+  border: 1px solid transparent; cursor: pointer;
+}
+.row:hover { background: var(--sw-surface); }
+.row[aria-selected="true"] { background: var(--sw-accent-soft); border-color: color-mix(in srgb, var(--sw-accent) 34%, transparent); }
+.ic {
+  width: 28px; height: 28px; border-radius: var(--r-sm); flex: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sw-accent) 14%, var(--sw-surface)), var(--sw-muted));
+  border: 1px solid var(--sw-line);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.rmain { min-width: 0; flex: 1; }
+.rname { font-size: 12.5px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rdesc { font-size: 11px; color: var(--sw-text-sub); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rside { flex: none; display: flex; align-items: center; gap: 6px; }
+/* 六态徽标 */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px;
+  border-radius: var(--r-pill); font-size: 11px; font-weight: 600; border: 1px solid;
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--bd, var(--sw-text-sub)); }
+.badge.ready    { --bd: var(--sw-ok);   color: color-mix(in srgb, var(--sw-ok) 72%, var(--sw-text));   border-color: color-mix(in srgb, var(--sw-ok) 26%, transparent);   background: color-mix(in srgb, var(--sw-ok) 9%, transparent); }
+.badge.warn     { --bd: var(--sw-warn); color: color-mix(in srgb, var(--sw-warn) 72%, var(--sw-text)); border-color: color-mix(in srgb, var(--sw-warn) 26%, transparent); background: color-mix(in srgb, var(--sw-warn) 9%, transparent); }
+.badge.error    { --bd: var(--sw-err);  color: color-mix(in srgb, var(--sw-err) 72%, var(--sw-text));  border-color: color-mix(in srgb, var(--sw-err) 26%, transparent);  background: color-mix(in srgb, var(--sw-err) 9%, transparent); }
+.badge.neutral  { --bd: var(--sw-text-sub); color: var(--sw-text-sub); border-color: var(--sw-line); background: var(--sw-surface); }
+.badge.plain::before { display: none; }
+/* 中性能力 chip（G6 修正：能力≠进行态） */
+.cap {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
+  border: 1px solid var(--sw-line); border-radius: var(--r-pill);
+  font-size: 11px; color: var(--sw-text-sub); background: var(--sw-surface);
+}
+.added-mark { font-size: 11px; color: var(--sw-text-sub); display: inline-flex; align-items: center; gap: 4px; }
+.added-mark::before { content: "✓"; color: var(--sw-ok); font-weight: 700; }
+/* 右：详情预览窗格 */
+.detail { display: flex; flex-direction: column; min-width: 0; }
+.dhead { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px 12px; }
+.dicon {
+  width: 40px; height: 40px; border-radius: var(--r-md); flex: none; font-size: 20px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sw-accent) 18%, var(--sw-surface)), var(--sw-muted));
+  border: 1px solid var(--sw-line); display: inline-flex; align-items: center; justify-content: center;
+}
+.dtitle { min-width: 0; flex: 1; }
+.dtitle .t { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.dtitle .s { font-size: 11.5px; color: var(--sw-text-sub); margin-top: 2px; }
+.dactions { display: flex; gap: 8px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 28px; padding: 0 14px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 600; border: 1px solid var(--sw-line); background: var(--sw-bg); color: var(--sw-text);
+}
+.btn.primary { background: var(--sw-accent); border-color: var(--sw-accent); color: var(--sw-on-accent); }
+.btn.soft { background: var(--sw-accent-soft); border-color: transparent; color: var(--sw-accent); }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--sw-text-sub); font-weight: 500; }
+.btn.danger-quiet { background: transparent; border-color: transparent; color: var(--sw-err); font-weight: 500; }
+/* 预览画布 */
+.dcanvas { margin: 0 18px; border: 1px solid var(--sw-line); border-radius: var(--r-md); background: var(--sw-surface); overflow: hidden; }
+.dbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--sw-line); }
+.dbar .cap-t { font-size: 12px; font-weight: 600; }
+.seg { display: inline-flex; background: var(--sw-muted); border: 1px solid var(--sw-line); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg span { padding: 3px 12px; border-radius: 7px; font-size: 12px; color: var(--sw-text-sub); }
+.seg .on { background: var(--sw-bg); color: var(--sw-text); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+.dbody { padding: 18px; display: flex; justify-content: center; }
+/* 组件预览 mock：近期天气 */
+.widget { width: 340px; background: var(--sw-bg); border: 1px solid var(--sw-line); border-radius: var(--r-md); box-shadow: var(--shadow-card); overflow: hidden; }
+.whead { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 12px; font-weight: 600; }
+.whead .spacer { flex: 1; }
+.wbody { padding: 4px 14px 14px; }
+.wnow { display: flex; align-items: baseline; gap: 10px; }
+.wnow .deg { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+.wnow .cond { font-size: 12.5px; color: var(--sw-text-sub); }
+.wdays { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 12px; }
+.wday { text-align: center; padding: 8px 0 6px; border-radius: var(--r-sm); background: var(--sw-surface); }
+.wday .d { font-size: 10.5px; color: var(--sw-text-sub); }
+.wday .i { font-size: 16px; display: block; margin: 3px 0; }
+.wday .h { font-size: 11px; font-weight: 600; }
+.wday .l { font-size: 10.5px; color: var(--sw-text-sub); }
+.dmeta { padding: 12px 18px 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; }
+.mrow { display: flex; gap: 8px; font-size: 11.5px; }
+.mrow .k2 { color: var(--sw-text-sub); flex: none; width: 58px; }
+.mrow .v { color: var(--sw-text); }
+.dcaps { padding: 10px 18px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.dfoot {
+  margin-top: auto; display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px; border-top: 1px solid var(--sw-line); font-size: 11.5px; color: var(--sw-text-sub);
+}
+.dfoot .spacer { flex: 1; }
+/* ---------- 状态四宫格 ---------- */
+.states { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.stile { border: 1px solid var(--sw-line); border-radius: var(--r-lg); background: var(--sw-bg); overflow: hidden; }
+.stile h3 { font-size: 12px; margin: 0; padding: 9px 14px; border-bottom: 1px solid var(--sw-line); font-weight: 600; }
+.stile .inner { padding: 14px; min-height: 150px; }
+.skl { border-radius: 6px; background: linear-gradient(90deg, var(--sw-muted) 25%, var(--sw-surface) 45%, var(--sw-muted) 65%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skl { animation: none; } }
+.empty { text-align: center; padding: 18px 0 6px; color: var(--sw-text-sub); font-size: 12px; }
+.empty .big { font-size: 22px; display: block; margin-bottom: 6px; }
+/* 批量底栏 */
+.batchbar {
+  display: flex; align-items: center; gap: 10px; margin-top: 12px;
+  border: 1px solid color-mix(in srgb, var(--sw-accent) 34%, transparent);
+  background: var(--sw-accent-soft); border-radius: var(--r-md); padding: 8px 12px; font-size: 12px;
+}
+/* ---------- 移动端 ---------- */
+.phone {
+  width: 375px; margin: 0 auto; border: 1px solid var(--sw-line); border-radius: 30px;
+  background: var(--sw-bg); box-shadow: var(--shadow-card); overflow: hidden; position: relative;
+}
+.pstatus { display: flex; justify-content: space-between; padding: 10px 18px 4px; font-size: 11px; color: var(--sw-text-sub); }
+.psearch { margin: 6px 14px; height: 40px; border: 1px solid var(--sw-line); border-radius: 10px; background: var(--sw-surface);
+  display: flex; align-items: center; padding: 0 12px; gap: 8px; color: var(--sw-text-sub); font-size: 12.5px; }
+.pchips { display: flex; gap: 6px; padding: 2px 14px 10px; overflow: hidden; }
+.prow { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--sw-line); }
+.psheet {
+  position: absolute; left: 0; right: 0; bottom: 0; background: var(--sw-bg);
+  border-radius: 18px 18px 0 0; border-top: 1px solid var(--sw-line); box-shadow: var(--shadow-float);
+  padding: 8px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.psheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--sw-line); margin: 0 auto 10px; }
+.psheet .st { display: flex; align-items: center; gap: 10px; }
+.psheet .wmini { margin: 12px 0; }
+.psafe { height: 18px; display: flex; justify-content: center; }
+.psafe::before { content: ""; width: 120px; height: 4px; border-radius: 2px; background: var(--sw-line); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件商店重构原型</h1>
+  <span class="meta">T-6966 · 2026-09-27 · 提案层 rz-store-*，实现时映射生产命名</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>重构决策（对照设计审查 2026-09-27 的问题项）</h2>
+  <ol>
+    <li><b>主从结构</b>：满屏密集卡片网格 → 左目录（400px）+ 右详情预览窗格。与切换器「结果列 + 预览」同构，复用 sw-platform-preview 原语；行内只留 <b>图标 + 名称 + 一句描述 + 状态</b>，信息噪音收敛。</li>
+    <li><b>每屏唯一主色</b>（修复 G3）：「添加组件」主色胶囊只出现在详情窗格；列表行零按钮，已添加行仅显示 ✓。</li>
+    <li><b>徽标语义修正</b>（修复 G6）：需要联网 / 完全离线 / 本机服务 / 隐私说明一律为<b>中性能力 chip</b>；六态徽标只表进行态与数据新鲜度。</li>
+    <li><b>筛选一条化</b>：搜索框 + 单行来源 chips（带计数，沿用现有 tab 语义）；砍掉独立视图模式 / 密度分段；排序收入 chips 行尾菜单。</li>
+    <li><b>前置依赖显性</b>（呼应 W4）：需安装组件行内 warn 色点 + 「需安装」徽标，详情窗格给完整前置说明。</li>
+    <li><b>异常态全覆盖</b>（补审查缺口）：加载骨架 / 空搜索 / 目录失败重试 / 批量模式底栏，见屏②；移动端为列表 + 底部 sheet 详情，见屏③。</li>
+  </ol>
+</section>
+
+<!-- ============ 屏① 桌面全屏主屏 ============ -->
+<section class="screen">
+  <h2>① 桌面全屏 · 主屏 <span>工作台 › 组件商店 · 选中「近期天气」</span></h2>
+  <div class="frame">
+    <div class="phead">
+      <span class="brand">小驴雷切</span>
+      <nav class="pnav">
+        <a href="#">切换器</a><a href="#" aria-current="page">工作台</a><a href="#">片段实验室</a>
+      </nav>
+      <span class="spacer"></span>
+      <span class="dot">⋯</span><span class="dot">✕</span>
+    </div>
+    <div class="ctxbar">
+      <span class="path">工作台 › 组件商店</span>
+      <span>浏览、预览并添加信息组件</span>
+      <span class="kbd-group"><kbd class="k">↑↓</kbd> 选择 <kbd class="k">/</kbd> 搜索 <kbd class="k">Esc</kbd> 返回工作台</span>
+    </div>
+    <div class="store">
+      <aside class="catalog">
+        <div class="filters">
+          <div class="search">🔍 搜索组件…</div>
+          <div class="chips">
+            <span class="chip" aria-selected="true">全部 <span class="n">58</span></span>
+            <span class="chip">内置 <span class="n">44</span></span>
+            <span class="chip">外部 API <span class="n">9</span></span>
+            <span class="chip">本机服务 <span class="n">2</span></span>
+            <span class="chip">需安装 <span class="n">3</span></span>
+            <span class="chip">已添加 <span class="n">12</span></span>
+            <span class="chip sort">↕ 名称</span>
+          </div>
+        </div>
+        <div class="rows">
+          <div class="glabel">内置 · 时间与信息</div>
+          <div class="row"><span class="ic">🕰</span><span class="rmain"><span class="rname">时间与日期</span><br><span class="rdesc">本地日期、时钟与农历</span></span><span class="rside"><span class="added-mark">已添加</span></span></div>
+          <div class="row"><span class="ic">🌐</span><span class="rmain"><span class="rname">世界时钟</span><br><span class="rdesc">多城市时间与昼夜标记</span></span><span class="rside"><span class="added-mark">已添加</span></span></div>
+          <div class="row"><span class="ic">⏳</span><span class="rmain"><span class="rname">倒数日</span><br><span class="rdesc">目标日倒计时，双模式</span></span></div>
+          <div class="row"><span class="ic">📈</span><span class="rmain"><span class="rname">年度进度</span><br><span class="rdesc">年 / 月 / 周进度条</span></span><span class="rside"><span class="added-mark">已添加</span></span></div>
+          <div class="glabel">内置 · 笔记与写作</div>
+          <div class="row"><span class="ic">✍️</span><span class="rmain"><span class="rname">今日写作</span><br><span class="rdesc">今日字数与写作时长</span></span><span class="rside"><span class="added-mark">已添加</span></span></div>
+          <div class="row"><span class="ic">📚</span><span class="rmain"><span class="rname">笔记统计</span><br><span class="rdesc">笔记本、块数与习惯强度</span></span></div>
+          <div class="glabel">外部 API · 订阅与外部</div>
+          <div class="row" aria-selected="true"><span class="ic">☁️</span><span class="rmain"><span class="rname">近期天气</span><br><span class="rdesc">多日预报，Open-Meteo</span></span><span class="rside"><span class="cap">联网</span></span></div>
+          <div class="row"><span class="ic">🌫</span><span class="rmain"><span class="rname">空气质量</span><br><span class="rdesc">AQI 与首要污染物</span></span><span class="rside"><span class="cap">联网</span></span></div>
+          <div class="row"><span class="ic">🔥</span><span class="rmain"><span class="rname">GitHub 贡献</span><br><span class="rdesc">贡献热力图，按用户名</span></span><span class="rside"><span class="added-mark">已添加</span></span></div>
+          <div class="row"><span class="ic">📰</span><span class="rmain"><span class="rname">RSS 订阅</span><br><span class="rdesc">自选源聚合，已读记忆</span></span><span class="rside"><span class="cap">联网</span></span></div>
+          <div class="glabel">插件 · 打卡桥接</div>
+          <div class="row"><span class="ic">✅</span><span class="rmain"><span class="rname">今日打卡</span><br><span class="rdesc">与小驴打卡只读桥接</span></span><span class="rside"><span class="badge warn">需安装</span></span></div>
+          <div class="row"><span class="ic">🗓</span><span class="rmain"><span class="rname">打卡热力图</span><br><span class="rdesc">打卡连续度可视化</span></span><span class="rside"><span class="badge warn">需安装</span></span></div>
+        </div>
+      </aside>
+      <section class="detail">
+        <div class="dhead">
+          <span class="dicon">☁️</span>
+          <div class="dtitle">
+            <div class="t">近期天气</div>
+            <div class="s">思源内置 · 订阅与外部</div>
+          </div>
+          <div class="dactions">
+            <button class="btn quiet">使用说明</button>
+            <button class="btn primary">添加组件</button>
+          </div>
+        </div>
+        <div class="dcanvas">
+          <div class="dbar">
+            <span class="cap-t">预览效果</span>
+            <span class="badge ready">示例数据</span>
+            <span style="flex:1"></span>
+            <span class="seg"><span class="on">主面板</span><span>侧栏</span><span>移动端</span></span>
+          </div>
+          <div class="dbody">
+            <div class="widget">
+              <div class="whead">☁️ 近期天气 <span class="spacer"></span><span class="badge plain neutral">15 分钟前</span></div>
+              <div class="wbody">
+                <div class="wnow"><span class="deg">23°</span><span class="cond">多云转晴 · 湿度 62%</span></div>
+                <div class="wdays">
+                  <div class="wday"><span class="d">周一</span><span class="i">☀️</span><span class="h">26°</span> <span class="l">17°</span></div>
+                  <div class="wday"><span class="d">周二</span><span class="i">⛅</span><span class="h">24°</span> <span class="l">16°</span></div>
+                  <div class="wday"><span class="d">周三</span><span class="i">🌧</span><span class="h">21°</span> <span class="l">15°</span></div>
+                  <div class="wday"><span class="d">周四</span><span class="i">⛅</span><span class="h">23°</span> <span class="l">16°</span></div>
+                  <div class="wday"><span class="d">周五</span><span class="i">☀️</span><span class="h">25°</span> <span class="l">17°</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="dcaps">
+          <span class="cap">需要联网</span><span class="cap">仅发送所填城市</span>
+          <span class="cap">主面板 · 侧栏 · 移动端</span><span class="cap">可配置</span>
+        </div>
+        <div class="dmeta">
+          <div class="mrow"><span class="k2">数据来源</span><span class="v">Open-Meteo（可自建端点）</span></div>
+          <div class="mrow"><span class="k2">刷新</span><span class="v">15 分钟心跳 · 失败保留上次结果</span></div>
+          <div class="mrow"><span class="k2">隐私</span><span class="v">不发送笔记内容</span></div>
+          <div class="mrow"><span class="k2">缓存</span><span class="v">有界内存缓存，离线可读旧值</span></div>
+        </div>
+        <div class="dfoot">
+          <span>添加后进入工作台「编辑布局」，可调整尺寸与位置。</span>
+          <span class="spacer"></span>
+          <kbd class="k">Enter</kbd> 添加
+        </div>
+      </section>
+    </div>
+    <div class="dfoot" style="margin-top:0;border-top:none;border-bottom:none;">
+      <span class="badge ready">58 组件 · 12 已添加</span>
+      <span>目录就绪 · 上次同步今天 14:02</span>
+      <span class="spacer"></span>
+      <span class="kbd-group"><kbd class="k">Enter</kbd> 添加 <kbd class="k">Ctrl</kbd>+<kbd class="k">B</kbd> 批量模式</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 屏② 状态变体 ============ -->
+<section class="screen">
+  <h2>② 状态覆盖 <span>骨架 / 空搜索 / 目录失败 / 批量模式（底栏示意）</span></h2>
+  <div class="states">
+    <div class="stile">
+      <h3>加载骨架（首屏与切换筛选时）</h3>
+      <div class="inner">
+        <div class="skl" style="height:32px;margin-bottom:10px;"></div>
+        <div class="skl" style="height:20px;width:70%;margin-bottom:8px;"></div>
+        <div class="skl" style="height:20px;width:85%;margin-bottom:8px;"></div>
+        <div class="skl" style="height:20px;width:60%;"></div>
+      </div>
+    </div>
+    <div class="stile">
+      <h3>空搜索结果</h3>
+      <div class="inner">
+        <div class="empty"><span class="big">🔍</span>没有匹配「wether」的组件<br>试试「天气」或清空筛选</div>
+        <div style="text-align:center;margin-top:10px;"><button class="btn soft">清空搜索与筛选</button></div>
+      </div>
+    </div>
+    <div class="stile">
+      <h3>目录加载失败（保留已添加列表）</h3>
+      <div class="inner">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span class="badge error">目录加载失败</span><span style="font-size:11.5px;color:var(--sw-text-sub);">已添加的 12 个组件不受影响</span>
+        </div>
+        <div class="skl" style="height:20px;width:75%;margin-bottom:8px;animation:none;opacity:.5;"></div>
+        <div class="skl" style="height:20px;width:55%;animation:none;opacity:.5;"></div>
+        <div style="margin-top:12px;"><button class="btn soft">重试</button></div>
+      </div>
+    </div>
+    <div class="stile">
+      <h3>批量模式（Ctrl+B 进入，底栏常驻）</h3>
+      <div class="inner">
+        <div style="font-size:11.5px;color:var(--sw-text-sub);margin-bottom:6px;">列表行左移出复选框；点击行 = 选中 / 取消。</div>
+        <div class="row" style="border:1px solid var(--sw-line);margin-bottom:6px;"><span class="ic">⏳</span><span class="rmain"><span class="rname">倒数日</span></span><span class="rside"><span class="cap">已选</span></span></div>
+        <div class="row" style="border:1px solid var(--sw-line);"><span class="ic">🌫</span><span class="rmain"><span class="rname">空气质量</span></span><span class="rside"><span class="cap">已选</span></span></div>
+        <div class="batchbar">
+          <b>已选 2</b><span style="color:var(--sw-text-sub);">含 1 个需联网</span>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn quiet">取消</button>
+          <button class="btn primary">批量添加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 屏③ 移动端 ============ -->
+<section class="screen">
+  <h2>③ 移动端 <span>单列列表 + 底部 sheet 详情 · 44px 命中区</span></h2>
+  <div class="phone">
+    <div class="pstatus"><span>9:41</span><span>●●●</span></div>
+    <div class="psearch">🔍 搜索组件…</div>
+    <div class="pchips">
+      <span class="chip" aria-selected="true">全部 58</span><span class="chip">外部 API</span><span class="chip">需安装 3</span><span class="chip">已添加 12</span>
+    </div>
+    <div class="prow"><span class="ic">☁️</span><span class="rmain"><span class="rname">近期天气</span><br><span class="rdesc">多日预报 · 联网</span></span></div>
+    <div class="prow"><span class="ic">🕰</span><span class="rmain"><span class="rname">时间与日期</span><br><span class="rdesc">已添加</span></span></div>
+    <div class="prow"><span class="ic">🔥</span><span class="rmain"><span class="rname">GitHub 贡献</span><br><span class="rdesc">已添加 · 联网</span></span></div>
+    <div class="prow" style="border-bottom:none;"><span class="ic">✅</span><span class="rmain"><span class="rname">今日打卡</span><br><span class="rdesc">需安装小驴打卡</span></span></div>
+    <div style="height:250px;"></div>
+    <div class="psheet">
+      <div class="grab"></div>
+      <div class="st">
+        <span class="dicon" style="width:34px;height:34px;font-size:17px;">☁️</span>
+        <div class="dtitle"><div class="t" style="font-size:13px;">近期天气</div><div class="s" style="font-size:11px;">思源内置 · 需要联网</div></div>
+        <button class="btn primary">添加组件</button>
+      </div>
+      <div class="widget wmini" style="width:100%;">
+        <div class="wbody" style="padding:12px 14px;">
+          <div class="wnow"><span class="deg" style="font-size:26px;">23°</span><span class="cond">多云转晴</span></div>
+          <div class="wdays" style="grid-template-columns:repeat(5,1fr);gap:4px;">
+            <div class="wday"><span class="d">周一</span><span class="i" style="font-size:13px;">☀️</span><span class="h">26°</span></div>
+            <div class="wday"><span class="d">周二</span><span class="i" style="font-size:13px;">⛅</span><span class="h">24°</span></div>
+            <div class="wday"><span class="d">周三</span><span class="i" style="font-size:13px;">🌧</span><span class="h">21°</span></div>
+            <div class="wday"><span class="d">周四</span><span class="i" style="font-size:13px;">⛅</span><span class="h">23°</span></div>
+            <div class="wday"><span class="d">周五</span><span class="i" style="font-size:13px;">☀️</span><span class="h">25°</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <span class="cap">仅发送所填城市</span><span class="cap">可配置</span><span class="cap">支持移动端</span>
+      </div>
+      <div class="psafe"></div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
