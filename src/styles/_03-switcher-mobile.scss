@@ -1218,9 +1218,10 @@
                         font-size: 10px;
                     }
 
-                    // T-6949：固定预览开关——头部最右（order 使其排在状态徽标之后）；
+                    // T-6949/T-6950：固定与查找开关——头部最右（order 使其排在状态徽标之后）；
                     // 固定态主色软底 + 主色文字；禁用（无当前对象）降透明。
-                    .sw__doc-preview-pin {
+                    .sw__doc-preview-pin,
+                    .sw__doc-preview-find-toggle {
                         flex: none;
                         order: 1;
                         min-height: 20px;
@@ -1233,6 +1234,18 @@
                         line-height: 1.5;
                         cursor: pointer;
 
+                        &:hover {
+                            background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
+                            color: var(--b3-theme-on-background);
+                        }
+
+                        &:focus-visible {
+                            outline: 2px solid var(--b3-theme-primary);
+                            outline-offset: 1px;
+                        }
+                    }
+
+                    .sw__doc-preview-pin {
                         &[aria-pressed="true"] {
                             border-color: color-mix(in srgb, var(--b3-theme-primary) 34%, transparent);
                             background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
@@ -1243,6 +1256,73 @@
                             opacity: .45;
                             cursor: default;
                         }
+                    }
+
+                    .sw__doc-preview-find-toggle[aria-expanded="true"] {
+                        border-color: color-mix(in srgb, var(--b3-theme-primary) 34%, transparent);
+                        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+                        color: var(--b3-theme-primary);
+                    }
+                }
+
+                .sw__doc-preview-hint {
+                    color: var(--b3-theme-on-surface-light);
+                    font-size: 12px;
+                    line-height: 1.5;
+                }
+
+                // T-6950：预览内查找条——按需展开；计数 tabular；命中主色软底、当前命中加深
+                .sw__doc-preview-find {
+                    flex: none;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin-bottom: 10px;
+
+                    &[hidden] { display: none; }
+
+                    .sw__doc-preview-find-input {
+                        flex: 1;
+                        min-width: 0;
+                        height: 26px;
+                        padding: 0 8px;
+                        border: 1px solid var(--b3-border-color);
+                        border-radius: 6px;
+                        background: var(--b3-theme-background);
+                        color: var(--b3-theme-on-background);
+                        font-size: 12px;
+
+                        &:focus-visible {
+                            outline: 2px solid var(--b3-theme-primary);
+                            outline-offset: 1px;
+                        }
+                    }
+
+                    .sw__doc-preview-find-count {
+                        flex: none;
+                        min-width: 36px;
+                        text-align: center;
+                        color: var(--b3-theme-on-surface-light);
+                        font-size: 11px;
+                        font-variant-numeric: tabular-nums;
+                    }
+
+                    button {
+                        flex: none;
+                        min-height: 24px;
+                        padding: 1px 8px;
+                        border: 1px solid var(--b3-border-color);
+                        border-radius: 6px;
+                        background: transparent;
+                        color: var(--b3-theme-on-surface-light);
+                        font-size: 11px;
+                        line-height: 1.5;
+                        cursor: pointer;
+
+                        &:hover {
+                            background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
+                            color: var(--b3-theme-on-background);
+                        }
 
                         &:focus-visible {
                             outline: 2px solid var(--b3-theme-primary);
@@ -1251,10 +1331,14 @@
                     }
                 }
 
-                .sw__doc-preview-hint {
-                    color: var(--b3-theme-on-surface-light);
-                    font-size: 12px;
-                    line-height: 1.5;
+                .sw__doc-preview-body mark.sw__doc-preview-hit {
+                    border-radius: 2px;
+                    background: color-mix(in srgb, var(--b3-theme-primary) 22%, transparent);
+                    color: inherit;
+
+                    &.is-current {
+                        background: color-mix(in srgb, var(--b3-theme-primary) 48%, transparent);
+                    }
                 }
 
                 .sw__doc-preview-title {

@@ -9,6 +9,7 @@ import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./se
 import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
+import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
 import {logger} from "./logger";
 import {createPlatformStatus} from "./platform-dom";
 import type {DocSearchState} from "./doc-search-state";
@@ -989,6 +990,156 @@ const docPreviewGenerations = new WeakMap<HTMLElement, number>();
 const docPreviewPins = new WeakMap<HTMLElement, {rootId: string; title: string}>();
 const docPreviewPinnedCurrent = new WeakMap<HTMLElement, {rootId: string; title: string}>();
 const docPreviewLastItems = new WeakMap<HTMLElement, HTMLElement>();
+// T-6950：窗格内查找状态（键=pane，与窗格同生命周期）；open/query 跨内容轮换保留，
+// total/current 随每次渲染或查询重算。
+const docPreviewFindStates = new WeakMap<HTMLElement, {open: boolean; query: string; total: number; current: number}>();
+
+function createDocPreviewBody(): HTMLElement {
+        const body = document.createElement("div");
+        body.className = "sw__doc-preview-body";
+        body.tabIndex = 0;
+        return body;
+    }
+
+// T-6950：查找条（输入 + 计数 + 上一处/下一处/关闭）；hidden 起步，由头部查找开关展开。
+// Ctrl/Cmd+F 仅在焦点位于本窗格时接管，不抢占宿主全局查找快捷键。
+function buildDocPreviewFindBar(this: DocSearchUiHost, pane: HTMLElement): HTMLElement {
+        const doc = pane.ownerDocument || document;
+        const bar = doc.createElement("div");
+        bar.className = "sw__doc-preview-find";
+        bar.hidden = true;
+        const input = doc.createElement("input");
+        input.type = "text";
+        input.className = "sw__doc-preview-find-input";
+        input.placeholder = `${this.i18n.docSearchPreviewFind} · ${this.i18n.docSearchPreviewFindScope}`;
+        input.setAttribute("aria-label", `${this.i18n.docSearchPreviewFind} · ${this.i18n.docSearchPreviewFindScope}`);
+        const count = doc.createElement("span");
+        count.className = "sw__doc-preview-find-count";
+        count.setAttribute("aria-live", "polite");
+        const prev = doc.createElement("button");
+        prev.type = "button";
+        prev.className = "sw__doc-preview-find-prev";
+        prev.textContent = "‹";
+        prev.setAttribute("aria-label", this.i18n.docSearchPreviewFindPrevious);
+        prev.addEventListener("click", () => moveDocPreviewHit.call(this, pane, -1));
+        const next = doc.createElement("button");
+        next.type = "button";
+        next.className = "sw__doc-preview-find-next";
+        next.textContent = "›";
+        next.setAttribute("aria-label", this.i18n.docSearchPreviewFindNext);
+        next.addEventListener("click", () => moveDocPreviewHit.call(this, pane, 1));
+        const close = doc.createElement("button");
+        close.type = "button";
+        close.className = "sw__doc-preview-find-close";
+        close.textContent = "✕";
+        close.setAttribute("aria-label", this.i18n.docSearchPreviewFindClose);
+        close.addEventListener("click", () => setDocPreviewFindOpen.call(this, pane, false));
+        input.addEventListener("input", () => runDocPreviewFind.call(this, pane));
+        input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                moveDocPreviewHit.call(this, pane, event.shiftKey ? -1 : 1);
+            } else if (event.key === "Escape") {
+                event.preventDefault();
+                setDocPreviewFindOpen.call(this, pane, false);
+            }
+        });
+        bar.append(input, count, prev, next, close);
+        pane.addEventListener("keydown", (event) => {
+            if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === "f") {
+                event.preventDefault();
+                setDocPreviewFindOpen.call(this, pane, true);
+            }
+        });
+        return bar;
+    }
+
+function docPreviewFindToggleOf(pane: HTMLElement): HTMLButtonElement | null {
+        return pane.querySelector<HTMLButtonElement>(".sw__doc-preview-find-toggle");
+    }
+
+function setDocPreviewFindOpen(this: DocSearchUiHost, pane: HTMLElement, open: boolean): void {
+        const state = docPreviewFindStates.get(pane) || {open: false, query: "", total: 0, current: 0};
+        state.open = open;
+        docPreviewFindStates.set(pane, state);
+        const bar = pane.querySelector<HTMLElement>(".sw__doc-preview-find");
+        const toggle = docPreviewFindToggleOf(pane);
+        if (!bar) return;
+        bar.hidden = !open;
+        toggle?.setAttribute("aria-expanded", String(open));
+        const input = bar.querySelector<HTMLInputElement>(".sw__doc-preview-find-input");
+        if (!open) {
+            clearPreviewFind(previewBodyOf(pane));
+            state.total = 0;
+            state.current = 0;
+            updateDocPreviewFindCount.call(this, pane);
+            if (toggle?.isConnected) {
+                try {
+                    toggle.focus({preventScroll: true});
+                } catch (_) {
+                    toggle.focus();
+                }
+            }
+            return;
+        }
+        if (input) {
+            if (state.query) input.value = state.query;
+            input.focus({preventScroll: true});
+        }
+        runDocPreviewFind.call(this, pane);
+    }
+
+function runDocPreviewFind(this: DocSearchUiHost, pane: HTMLElement): void {
+        const state = docPreviewFindStates.get(pane);
+        const input = pane.querySelector<HTMLInputElement>(".sw__doc-preview-find-input");
+        if (!state || !input) return;
+        state.query = input.value;
+        state.total = applyPreviewFind(previewBodyOf(pane), state.query);
+        state.current = 0;
+        updateDocPreviewFindCount.call(this, pane);
+        focusDocPreviewHit(previewBodyOf(pane), state.current, state.total > 0);
+    }
+
+function moveDocPreviewHit(this: DocSearchUiHost, pane: HTMLElement, delta: number): void {
+        const state = docPreviewFindStates.get(pane);
+        if (!state || state.total <= 0) return;
+        state.current = nextHitIndex(state.total, state.current, delta);
+        updateDocPreviewFindCount.call(this, pane);
+        focusDocPreviewHit(previewBodyOf(pane), state.current, true);
+    }
+
+function updateDocPreviewFindCount(this: DocSearchUiHost, pane: HTMLElement): void {
+        const state = docPreviewFindStates.get(pane);
+        const count = pane.querySelector<HTMLElement>(".sw__doc-preview-find-count");
+        if (!state || !count) return;
+        count.textContent = !state.query.trim() ? ""
+            : state.total > 0 ? `${state.current + 1}/${state.total}`
+            : this.i18n.docSearchPreviewFindNoResults;
+    }
+
+// 当前命中滚入正文视口：手动改 body.scrollTop（居中夹取），避免 scrollIntoView
+// 连带滚动祖先结果列表（T-6950 验收红线）。
+function focusDocPreviewHit(body: HTMLElement, index: number, markCurrent: boolean): void {
+        const marks = body.querySelectorAll(`mark.${HIT_CLASS}`);
+        if (markCurrent) marks.forEach((mark, i) => mark.classList.toggle("is-current", i === index));
+        const el = marks[index] as HTMLElement | undefined;
+        if (!el) return;
+        const bodyRect = body.getBoundingClientRect();
+        const markRect = el.getBoundingClientRect();
+        const target = body.scrollTop + (markRect.top - bodyRect.top) - bodyRect.height / 2 + markRect.height / 2;
+        body.scrollTop = clampScrollTop(target, body.scrollHeight - body.clientHeight);
+    }
+
+// 复位查找（内容轮换/目标切换后调用）：清除标记与计数；rerunIfOpen 时按原查询对新内容重跑。
+function resetDocPreviewFind(this: DocSearchUiHost, pane: HTMLElement, rerunIfOpen = false): void {
+        const state = docPreviewFindStates.get(pane);
+        if (!state) return;
+        state.total = 0;
+        state.current = 0;
+        clearPreviewFind(previewBodyOf(pane));
+        updateDocPreviewFindCount.call(this, pane);
+        if (rerunIfOpen && state.open && state.query.trim()) runDocPreviewFind.call(this, pane);
+    }
 
 function docPreviewItemTitle(item: HTMLElement): string {
         return item.querySelector<HTMLElement>(".sw__doc-title, .sw__title")?.textContent?.trim() || "";
@@ -1065,11 +1216,18 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
             pin.addEventListener("click", () => {
                 toggleDocPreviewPin.call(this, scrollElement);
             });
-            header.append(label, pin);
-            const body = document.createElement("div");
-            body.className = "sw__doc-preview-body";
-            body.tabIndex = 0;
-            pane.append(header, body);
+            // T-6950：窗格内查找开关（按需展开查找条；Ctrl/Cmd+F 仅在窗格内接管）
+            const findToggle = document.createElement("button");
+            findToggle.type = "button";
+            findToggle.className = "sw__doc-preview-find-toggle";
+            findToggle.textContent = this.i18n.docSearchPreviewFind;
+            findToggle.setAttribute("aria-expanded", "false");
+            findToggle.setAttribute("aria-label", `${this.i18n.docSearchPreviewFind} · ${this.i18n.docSearchPreviewFindScope}`);
+            findToggle.addEventListener("click", () => {
+                setDocPreviewFindOpen.call(this, pane, docPreviewFindStates.get(pane)?.open !== true);
+            });
+            header.append(label, pin, findToggle);
+            pane.append(header, buildDocPreviewFindBar.call(this, pane), createDocPreviewBody());
             setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
             docPreviewPanes.set(scrollElement, pane);
         }
@@ -1156,6 +1314,8 @@ function extractDocPreviewBlocks(html: unknown): Array<{content: string; kind: s
 function setDocPreviewHint(this: DocSearchUiHost, pane: HTMLElement, text: string): void {
         const body = previewBodyOf(pane);
         body.textContent = "";
+        // 提示态即正文轮换：查找标记与计数一并复位（T-6950）
+        resetDocPreviewFind.call(this, pane);
         const hint = document.createElement("div");
         hint.className = "sw__doc-preview-hint";
         hint.setAttribute("role", "status");
@@ -1277,6 +1437,8 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
             section.append(label, list);
             body.appendChild(section);
         }
+        // 内容渲染完成：若查找条展开且带查询，对新内容重跑（T-6950 目标切换约定）
+        resetDocPreviewFind.call(this, pane, true);
     }
 
 function appendDocStatusCopy(status: HTMLElement, titleText: string, hintText: string): void {

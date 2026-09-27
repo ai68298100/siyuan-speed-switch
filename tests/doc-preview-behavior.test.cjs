@@ -7,7 +7,8 @@ const {buildDocPreviewSnapshot} = require('../src/search-model.js');
 const {createPlatformStatus} = require('../src/platform-dom.js');
 const source = readSourceFile('src/doc-search-ui.ts');
 const ast = ts.createSourceFile('preview.ts', source, ts.ScriptTarget.Latest, true);
-const names = new Set(['mountDocPreviewPane', 'previewTabOrDoc', 'previewBodyOf', 'extractDocPreviewBlocks', 'setDocPreviewHint', 'setDocPreviewStatus', 'cancelDocPreview', 'scheduleDocPreview', 'loadDocPreview', 'ensureDocResultsBox', 'disposeDocSearchSession', 'docPreviewItemTitle', 'docPreviewPinButtonOf', 'syncDocPreviewPin', 'toggleDocPreviewPin', 'appendDocSearchHealthBadge']);
+const names = new Set(['mountDocPreviewPane', 'previewTabOrDoc', 'previewBodyOf', 'extractDocPreviewBlocks', 'setDocPreviewHint', 'setDocPreviewStatus', 'cancelDocPreview', 'scheduleDocPreview', 'loadDocPreview', 'ensureDocResultsBox', 'disposeDocSearchSession', 'docPreviewItemTitle', 'docPreviewPinButtonOf', 'syncDocPreviewPin', 'toggleDocPreviewPin', 'appendDocSearchHealthBadge', 'createDocPreviewBody', 'buildDocPreviewFindBar', 'docPreviewFindToggleOf', 'setDocPreviewFindOpen', 'runDocPreviewFind', 'moveDocPreviewHit', 'updateDocPreviewFindCount', 'focusDocPreviewHit', 'resetDocPreviewFind']);
+const findModule = require('../src/doc-preview-find.js');
 const pieces = ast.statements.filter(n => ts.isFunctionDeclaration(n) ? names.has(n.name?.text) : ts.isVariableStatement(n) && n.declarationList.declarations.some(d => /^(docPreview|DOC_PREVIEW)/.test(d.name.getText(ast))));
 assert.equal(pieces.filter(ts.isFunctionDeclaration).length, names.size);
 const compiled = ts.transpileModule(pieces.map(n => n.getText(ast).replace(/^export\s+/, '')).join('\n'), {compilerOptions: {target: ts.ScriptTarget.ES2020}}).outputText;
@@ -17,8 +18,8 @@ function fixture(fetchKernelJson) {
     const timers = new Map();
     let id = 0;
     const window = {setTimeout: fn => (timers.set(++id, fn), id), clearTimeout: id => timers.delete(id)};
-    const api = new Function('document', 'window', 'BLOCK_ID_RE', 'buildDocPreviewSnapshot', 'createPlatformStatus', 'disposeSearchSession', compiled + '\nreturn {mountDocPreviewPane, previewTabOrDoc, scheduleDocPreview, ensureDocResultsBox, disposeDocSearchSession};')(document, window, /^\d{14}-[0-9a-z]+$/, buildDocPreviewSnapshot, createPlatformStatus, () => {});
-    const host = {isMobile: false, fetchKernelJson, i18n: {docSearchPreview: 'Preview', docSearchPreviewContent: 'Excerpt', docSearchPreviewOutline: 'Outline', docSearchPreviewEmpty: 'Select', docSearchPreviewLoading: 'Loading', docSearchPreviewStatusLoading: 'Loading', docSearchPreviewStatusReady: 'Ready', docSearchPreviewFailed: 'Failed', docSearchPreviewNoContent: 'Empty', docSearchPreviewUnavailable: 'Documents only', docSearchPreviewPin: 'Pin', docSearchPreviewUnpin: 'Unpin', docSearchPreviewPinned: 'Pinned · {x}'}, docSearchState: {health: new Map(), sessions: new Map(), filters: new Map(), notebookNames: new Map()}};
+    const api = new Function('document', 'window', 'BLOCK_ID_RE', 'buildDocPreviewSnapshot', 'createPlatformStatus', 'disposeSearchSession', 'applyPreviewFind', 'clampScrollTop', 'clearPreviewFind', 'HIT_CLASS', 'nextHitIndex', compiled + '\nreturn {mountDocPreviewPane, previewTabOrDoc, scheduleDocPreview, ensureDocResultsBox, disposeDocSearchSession};')(document, window, /^\d{14}-[0-9a-z]+$/, buildDocPreviewSnapshot, createPlatformStatus, () => {}, findModule.applyPreviewFind, findModule.clampScrollTop, findModule.clearPreviewFind, findModule.HIT_CLASS, findModule.nextHitIndex);
+    const host = {isMobile: false, fetchKernelJson, i18n: {docSearchPreview: 'Preview', docSearchPreviewContent: 'Excerpt', docSearchPreviewOutline: 'Outline', docSearchPreviewEmpty: 'Select', docSearchPreviewLoading: 'Loading', docSearchPreviewStatusLoading: 'Loading', docSearchPreviewStatusReady: 'Ready', docSearchPreviewFailed: 'Failed', docSearchPreviewNoContent: 'Empty', docSearchPreviewUnavailable: 'Documents only', docSearchPreviewPin: 'Pin', docSearchPreviewUnpin: 'Unpin', docSearchPreviewPinned: 'Pinned · {x}', docSearchPreviewFind: 'Find', docSearchPreviewFindScope: 'this preview only', docSearchPreviewFindNext: 'Next match', docSearchPreviewFindPrevious: 'Previous match', docSearchPreviewFindClose: 'Close find', docSearchPreviewFindNoResults: 'No matches'}, docSearchState: {health: new Map(), sessions: new Map(), filters: new Map(), notebookNames: new Map()}};
     const scroll = document.getElementById('scroll');
     Object.defineProperty(scroll, 'clientWidth', {value: 900});
     const box = document.getElementById('box');
@@ -213,5 +214,63 @@ test('preview pin button disables without a current object and session dispose r
         assert.equal(pinAfter.getAttribute('aria-pressed'), 'false', '会话销毁必须释放固定');
         assert.equal(pinAfter.disabled, true);
         assert.equal(f.box.querySelector('.sw__doc-preview-header-label').textContent, 'Preview');
+    } finally {f.dom.window.close();}
+});
+// T-6950：预览内查找——计数、循环导航、无结果/空词、清除复原、目标切换重跑、Esc/Ctrl+F。
+test('preview find counts and navigates matches, restores structure on close, re-applies across target switch', async () => {
+    const f = fixture(url => Promise.resolve(url.includes('Outline')
+        ? {code: 0, data: []}
+        : docResponse('First paragraph alpha', 'Second paragraph beta')));
+    try {
+        f.schedule(); await f.flush();
+        const pane = f.box.querySelector('.sw__doc-preview');
+        const toggle = pane.querySelector('.sw__doc-preview-find-toggle');
+        const bar = pane.querySelector('.sw__doc-preview-find');
+        const input = bar.querySelector('.sw__doc-preview-find-input');
+        const count = bar.querySelector('.sw__doc-preview-find-count');
+        assert.equal(bar.hidden, true, '查找条默认隐藏');
+        toggle.click();
+        assert.equal(bar.hidden, false);
+        assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+        input.value = 'paragraph';
+        input.dispatchEvent(new f.dom.window.Event('input', {bubbles: true}));
+        assert.equal(count.textContent, '1/2');
+        let marks = pane.querySelectorAll('mark.sw__doc-preview-hit');
+        assert.equal(marks.length, 2);
+        assert.ok(marks[0].classList.contains('is-current'), '当前命中带加深标记');
+        bar.querySelector('.sw__doc-preview-find-next').click();
+        assert.equal(count.textContent, '2/2');
+        bar.querySelector('.sw__doc-preview-find-next').click();
+        assert.equal(count.textContent, '1/2', '下一处越界回绕');
+        bar.querySelector('.sw__doc-preview-find-prev').click();
+        assert.equal(count.textContent, '2/2', '上一处反向回绕');
+        input.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+        assert.equal(count.textContent, '1/2', 'Enter 循环到下一处');
+        input.value = '不存在的词';
+        input.dispatchEvent(new f.dom.window.Event('input', {bubbles: true}));
+        assert.equal(count.textContent, 'No matches');
+        assert.equal(pane.querySelectorAll('mark.sw__doc-preview-hit').length, 0);
+        input.value = '';
+        input.dispatchEvent(new f.dom.window.Event('input', {bubbles: true}));
+        assert.equal(count.textContent, '', '空查询计数清空');
+        input.value = 'paragraph';
+        input.dispatchEvent(new f.dom.window.Event('input', {bubbles: true}));
+        assert.equal(count.textContent, '1/2');
+        // 目标切换：查找条保持展开，按原查询对新内容重跑
+        f.item.dataset.swDocKey = '20260926000000-bbbbbbb';
+        f.api.previewTabOrDoc.call(f.host, f.scroll, f.item);
+        await f.flush();
+        assert.equal(count.textContent, '1/2', '目标切换后按原查询重跑');
+        assert.equal(pane.querySelectorAll('mark.sw__doc-preview-hit').length, 2);
+        // Esc 关闭：标记清除、展开态复位（计数条已隐藏，其内容无意义）
+        input.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+        assert.equal(bar.hidden, true);
+        assert.equal(pane.querySelectorAll('mark.sw__doc-preview-hit').length, 0);
+        assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+        // Ctrl+F 仅在窗格内接管，重新展开并按原查询重新计数
+        pane.dispatchEvent(new f.dom.window.KeyboardEvent('keydown', {key: 'f', ctrlKey: true, bubbles: true}));
+        assert.equal(bar.hidden, false);
+        assert.equal(pane.querySelector('.sw__doc-preview-find-input').value, 'paragraph', '重开恢复原查询');
+        assert.equal(count.textContent, '1/2', '重开后对新内容重新计数');
     } finally {f.dom.window.close();}
 });
