@@ -290,10 +290,69 @@ function filterSnippetCatalog(catalog, filters = {}) {
     return found.sort((a, b) => (a?.source === "native" ? 0 : 1) - (b?.source === "native" ? 0 : 1));
 }
 
+// T-6956：脏稿三选一的待执行意图协调器。宿主 canClose 保持同步阻止（返回 false
+// 并打开三选一），保存/放弃得到明确结果后再执行待执行意图——绝不把 Promise 当
+// 布尔用。语义：干净直接放行；保存成功才导航一次（失败/冲突/异常停在草稿）；
+// 放弃零写入直接放行；取消清空意图；saving 期间拒绝重复提交（连续点击不重复
+// 写入、不执行两个导航）。
+function createLeaveIntentCoordinator() {
+    let pending = null;
+    let saving = false;
+    return {
+        requestLeave(dirty, busy, run) {
+            if (busy || saving) return {action: "reject"};
+            if (!dirty) {
+                if (typeof run === "function") run();
+                return {action: "run"};
+            }
+            pending = {run};
+            return {action: "confirm"};
+        },
+        async confirmSave(save) {
+            if (!pending || saving) return {saved: false, navigated: false};
+            saving = true;
+            try {
+                const ok = await save();
+                saving = false;
+                if (ok !== true) {
+                    pending = null;
+                    return {saved: false, navigated: false};
+                }
+                const run = pending ? pending.run : null;
+                pending = null;
+                if (typeof run === "function") run();
+                return {saved: true, navigated: true};
+            } catch (_) {
+                saving = false;
+                pending = null;
+                return {saved: false, navigated: false};
+            }
+        },
+        confirmDiscard() {
+            const run = pending ? pending.run : null;
+            pending = null;
+            saving = false;
+            if (typeof run === "function") {
+                run();
+                return {navigated: true};
+            }
+            return {navigated: false};
+        },
+        cancel() {
+            pending = null;
+            saving = false;
+            return {pending: false};
+        },
+        hasPending: () => Boolean(pending),
+        isSaving: () => saving,
+    };
+}
+
 module.exports = {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
     BUILTIN_SNIPPETS, filterSnippetCatalog, buildUsercssHeader, stripUsercssHeader,
     hasUsercssHeader, resolveUsercssVariables,
     USERCSS_HEADER_RE,
+    createLeaveIntentCoordinator,
 };

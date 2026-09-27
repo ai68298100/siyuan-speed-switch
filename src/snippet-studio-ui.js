@@ -1,4 +1,5 @@
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader} = require("./snippet-studio-model.js");
+const {Dialog} = require("siyuan");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
@@ -92,6 +93,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetDisable: locale.i18n.snippetDisable,
         snippetDisabled: locale.i18n.snippetDisabled,
         snippetDiscard: locale.i18n.snippetDiscard,
+        snippetLeaveTitle: locale.i18n.snippetLeaveTitle,
+        snippetLeaveMessage: locale.i18n.snippetLeaveMessage,
+        snippetLeaveSave: locale.i18n.snippetLeaveSave,
+        snippetLeaveDiscard: locale.i18n.snippetLeaveDiscard,
+        snippetLeaveSaveFailed: locale.i18n.snippetLeaveSaveFailed,
         snippetDraft: locale.i18n.snippetDraft,
         snippetUnsaved: locale.i18n.snippetUnsaved,
         snippetEnable: locale.i18n.snippetEnable,
@@ -291,7 +297,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     editorLead.append(editorTitle, editorMeta);
     const chooseButton = action("snippetChoose", () => openPicker());
     const importButton = action("snippetImport", () => fileInput.click());
-    const newButton = action("snippetNew", () => { if (canDiscard()) choose({name: "", type: "css", content: ""}, null); });
+    const newButton = action("snippetNew", () => { guardLeave(() => choose({name: "", type: "css", content: ""}, null)); });
     editorBar.append(editorLead, chooseButton, importButton, newButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.spellcheck = false;
@@ -512,7 +518,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         status.textContent = message;
         status.dataset.state = state;
     };
-    const refresh = action("snippetRefresh", () => { if (canDiscard()) void load(true); });
+    const refresh = action("snippetRefresh", () => { guardLeave(() => void load(true)); });
     const footer = node("div", "sw-studio__footer");
     footer.append(status, saveButton, refresh);
     root.replaceChildren(header, layout, footer);
@@ -628,7 +634,53 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     typeSelect.addEventListener("change", changed);
     editor.addEventListener("input", changed);
     const dirty = () => baseline ? draft.name !== baseline.name || draft.type !== baseline.type || draft.content !== baseline.content : Boolean(draft.name || draft.content);
-    const canDiscard = () => !busy && (!dirty() || win.confirm(t("snippetDiscard")));
+    // T-6956：脏稿不再同步 confirm 强制放弃，改三选一待执行意图：
+    // 保存并继续（成功才导航一次）/ 放弃（零写入放行）/ 取消（默认聚焦，零写入）。
+    const leave = createLeaveIntentCoordinator();
+    const guardLeave = (run) => {
+        const verdict = leave.requestLeave(dirty(), busy, run);
+        if (verdict.action === "confirm") openLeaveDialog();
+        return verdict.action === "run";
+    };
+    function openLeaveDialog() {
+        if (leave.isSaving()) return;
+        const dialog = new Dialog({
+            title: t("snippetLeaveTitle"),
+            content: '<div class="sw-studio__leave"></div>',
+            width: "min(440px, 92vw)",
+        });
+        const box = dialog.element.querySelector(".sw-studio__leave");
+        if (!box) { dialog.destroy(); return; }
+        const message = node("p", "sw-studio__leave-message", t("snippetLeaveMessage"));
+        const actions = node("div", "sw-studio__leave-actions");
+        const saveChoice = node("button", "b3-button b3-button--text", t("snippetLeaveSave"));
+        const discardChoice = node("button", "b3-button b3-button--cancel", t("snippetLeaveDiscard"));
+        const cancelChoice = node("button", "b3-button b3-button--text", t("cancel"));
+        saveChoice.addEventListener("click", () => {
+            saveChoice.disabled = true;
+            discardChoice.disabled = true;
+            void leave.confirmSave(async () => (await mutate("save")) === true).then((result) => {
+                dialog.destroy();
+                if (!result.saved) {
+                    setStatus(t("snippetLeaveSaveFailed"), "error");
+                    try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); }
+                }
+            });
+        });
+        discardChoice.addEventListener("click", () => {
+            leave.confirmDiscard();
+            dialog.destroy();
+        });
+        cancelChoice.addEventListener("click", () => {
+            leave.cancel();
+            dialog.destroy();
+            try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); }
+        });
+        actions.append(saveChoice, discardChoice, cancelChoice);
+        box.append(message, actions);
+        // 默认聚焦取消——三选一里最安全的动作
+        cancelChoice.focus({preventScroll: true});
+    }
     function choose(value, native) {
         aiGeneration += 1;
         ai.cancel();
@@ -693,11 +745,11 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         return `${stamp}-${Array.from(bytes, (byte) => (byte % 36).toString(36)).join("")}`;
     }
     async function mutate(actionName) {
-        if (busy || loading || loadFailed || disposed) return;
-        if (actionName === "delete" && !win.confirm(t("snippetConfirmDelete"))) return;
-        if (actionName === "toggle" && dirty()) { setStatus(t("snippetSaveFirst"), "blocked"); return; }
+        if (busy || loading || loadFailed || disposed) return false;
+        if (actionName === "delete" && !win.confirm(t("snippetConfirmDelete"))) return false;
+        if (actionName === "toggle" && dirty()) { setStatus(t("snippetSaveFirst"), "blocked"); return false; }
         if (draft.type === "js" && (actionName === "toggle" && !baseline?.enabled || actionName === "save" && baseline?.enabled)) {
-            if (!win.confirm(t("snippetConfirmJS"))) return;
+            if (!win.confirm(t("snippetConfirmJS"))) return false;
         }
         busy = true;
         setStatus(status.textContent, "busy");
@@ -706,12 +758,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const input = {...draft, id: baseline?.id || newId(), enabled: actionName === "toggle" ? !baseline?.enabled : baseline?.enabled === true};
         try {
             const next = await store.mutate(previous, actionName, input);
-            if (disposed) return;
+            if (disposed) return false;
             snippets = next;
             const saved = next.find((item) => item.id === input.id) || null;
             choose(saved || {name: "", type: "css", content: ""}, saved);
             setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved"), "ready");
-        } catch (error) { if (!disposed) setStatus(errorText(error), "error"); }
+            return true;
+            return true;
+        } catch (error) { if (!disposed) setStatus(errorText(error), "error"); return false; }
         finally { busy = false; if (!disposed) syncFields(); }
     }
     function download(filename, content, type) {
@@ -724,10 +778,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         anchor.remove();
         win.setTimeout(() => win.URL.revokeObjectURL(url), 1000);
     }
-    fileInput.addEventListener("change", async () => {
+    fileInput.addEventListener("change", () => {
         const file = fileInput.files?.[0];
         fileInput.value = "";
-        if (!file || !canDiscard()) return;
+        if (!file) return;
+        guardLeave(() => { void importFile(file); });
+    });
+    async function importFile(file) {
         try {
             if (file.size > SNIPPET_CODE_MAX) throw new Error("size_limit");
             const imported = parseSnippetImport(file.name, await file.text());
@@ -737,7 +794,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                 ? `${t("snippetImported")} · ${t("snippetUsercssVars").replace("{n}", String(imported.varsResolved))}`
                 : t("snippetImported"), "ready");
         } catch (error) { if (!disposed) setStatus(errorText(error), "error"); }
-    });
+    }
     async function generate() {
         if (!aiConsentInput.checked || !prompt.value.trim() || disposed) return;
         const generation = ++aiGeneration;
@@ -822,9 +879,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
                     ? item.id === baseline?.id
                     : !baseline && item.type === draft.type && item.name === draft.name && item.content === draft.content;
                 const button = action("snippetSelect", () => {
-                    if (!canDiscard()) return;
-                    choose(item, item.source === "native" ? snippets.find((entry) => entry.id === item.id) : null);
-                    closePicker();
+                    guardLeave(() => {
+                        choose(item, item.source === "native" ? snippets.find((entry) => entry.id === item.id) : null);
+                        closePicker();
+                    });
                 });
                 button.className = "sw-studio__catalog-item";
                 button.setAttribute("aria-pressed", String(isCurrent));
@@ -872,7 +930,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             if (disposed) return;
             const target = snippets.find((item) => item && item.id === objectId)
                 || snippets.find((item) => item && item.name === objectId);
-            if (target && canDiscard()) choose(target, target);
+            if (target) guardLeave(() => choose(target, target));
         }).catch(() => undefined);
     }
     // The platform helper is supplied by the host entry so the lazy studio
@@ -885,11 +943,10 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             available: platform.available,
             context: platform.context || null,
             onNavigate: (surface) => {
-                if (!canDiscard()) return;
-                platform.onNavigate?.(surface);
+                guardLeave(() => platform.onNavigate?.(surface));
             },
             onClose: () => {
-                if (canDiscard()) platform.onClose?.();
+                guardLeave(() => platform.onClose?.());
             },
             closeLabel: locale.i18n.close || "Close",
         });
@@ -904,7 +961,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     }, 0);
     return {
         ready,
-        canClose: canDiscard,
+        canClose: () => {
+            // T-6956：宿主发起的关闭先同步阻止；脏稿经三选一，得到明确结果后由
+            // 待执行意图继续（platform.onClose 会再次触发宿主关闭）。干净则放行。
+            if (busy) return false;
+            if (!dirty()) return true;
+            const verdict = leave.requestLeave(true, busy, () => platform.onClose?.());
+            if (verdict.action === "confirm") openLeaveDialog();
+            return false;
+        },
         dispose() {
             disposed = true;
             aiGeneration += 1;

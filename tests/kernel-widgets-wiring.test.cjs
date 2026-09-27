@@ -854,8 +854,8 @@ test('platform primitives: badge dot, kbd chip, segmented control, pill actions 
     assert.match(indexSource, /onClose: \(\) => dialog\.destroy\(\)/,
         'switcher and workbench dialogs must wire close to destroy');
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
-    assert.match(studioUi, /onClose: \(\) => \{\s*if \(canDiscard\(\)\) platform\.onClose\?\.\(\);\s*\}/,
-        'studio close must check the dirty draft once');
+    assert.match(studioUi, /onClose: \(\) => \{\s*guardLeave\(\(\) => platform\.onClose\?\.\(\)\);\s*\}/,
+        'studio close must go through the leave-intent dirty guard (T-6956)');
     assert.match(indexSource, /onClose: \(\) => \{\s*dialog\.destroy\(\);\s*\},\s*closeLabel: this\.i18n\.close/,
         'studio host must destroy only after the studio dirty guard succeeds');
     // SCSS 原语：块级断言（选择器块内声明了关键属性，非文件级共现）。
@@ -1107,8 +1107,8 @@ test('cross-surface snippet objects: workbench row and studio objectId selection
     assert.match(studioUi, /objectId = ""/, 'the studio mount must accept an objectId');
     assert.match(studioUi, /snippets\.find\(\(item\) => item && item\.id === objectId\)\s*\|\|\s*snippets\.find\(\(item\) => item && item\.name === objectId\)/,
         'the objectId must match by id with a name fallback');
-    assert.match(studioUi, /if \(target && canDiscard\(\)\) choose\(target, target\);/,
-        'the selection must respect the dirty guard');
+    assert.match(studioUi, /if \(target\) guardLeave\(\(\) => choose\(target, target\)\);/,
+        'the selection must respect the leave-intent dirty guard (T-6956)');
     assert.match(studioUi, /const initialFocus = root\.querySelector\("\.sw-platform-header__close"\) \|\| backButton;/,
         'studio must prefer the platform close button for first focus');
     assert.match(studioUi, /initialFocus\.focus\(\{preventScroll: true\}\)/,
