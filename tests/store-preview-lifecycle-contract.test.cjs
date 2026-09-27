@@ -74,7 +74,7 @@ test('size controls expose pressed state', () => assert.match(storeUiSource, /ti
 test('size controls point at action button', () => assert.match(storeUiSource, /tile\.setAttribute\("aria-controls", actionId\)/));
 test('add button is explicit action', () => assert.match(storeUiSource, /addButton\.dataset\.action = added \? "apply-size" : "add"/));
 test('add button carries module id', () => assert.match(storeUiSource, /addButton\.dataset\.moduleId = moduleId/));
-test('add button tracks selected size', () => assert.match(storeUiSource, /addButton\.dataset\.selectedSize = selectedTile\?\.dataset\.size \|\| supported\[0\]/));
+test('add button tracks selected size via the module preset (T-6969 slice 2)', () => assert.match(storeUiSource, /addButton.dataset.selectedSize = selectedTile?.dataset.size || preferredSize/));
 test('add button describes size label', () => assert.match(storeUiSource,/addButton\.setAttribute\("aria-describedby", sizeLabel\.id\)/));
 test('add action persists home state', () => assert.match(storeUiSource, /this\.saveHomeState\(next\)/));
 test('add action rerenders store', () => assert.match(storeUiSource, /this\.saveHomeState\(next\);\s*if \(!added && def\.availability === "conditional"\)/));

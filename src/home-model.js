@@ -457,6 +457,34 @@ const HOME_TILE_MATERIALS = {
     'writing-streak': 'accent',
 };
 
+// T-6969 Slice 2：每模块默认档位——添加组件时商店默认选中的档位（键 = 既有
+// HOME_WIDGET_SIZES 七档词汇，且必须在该模块 sizes 白名单内，否则回退）。
+const HOME_TILE_DEFAULT_SIZES = {
+    'external-world-clock': 'full',
+    'external-weather-open-meteo': 'wide',
+    'external-air-quality': 'small',
+    'external-quote-daily': 'small',
+    'external-local-time': 'small',
+    'external-rss-subscription': 'wide',
+    'external-rss-miniflux': 'wide',
+    'external-news-dailyhot': 'wide',
+    'external-news-newsnow': 'wide',
+    'external-news-hackernews': 'wide',
+    'external-github-contrib': 'large',
+    'external-activitywatch-time': 'large',
+};
+
+// 解析默认档位：显式声明且在 supported 内 → 用之；否则 supported 含 medium → medium；
+// 否则 supported 首个。保证任何模块都有合法默认档。
+function resolveHomeTileDefaultSize(moduleId, supported, fallback) {
+    const sizes = Array.isArray(supported) && supported.length > 0 ? supported : [];
+    const preferred = HOME_TILE_DEFAULT_SIZES[String(moduleId || '')];
+    if (preferred && sizes.includes(preferred)) return preferred;
+    const fb = String(fallback || 'medium');
+    if (sizes.includes(fb)) return fb;
+    return sizes[0] || '';
+}
+
 const HOME_TILE_MATERIAL_FALLBACK = 'plain';
 
 function resolveHomeTileMaterial(moduleId) {
@@ -802,4 +830,4 @@ function buildPluginCommandsSnapshot(commands, config, labels = {}) {
     };
 }
 
-module.exports = {HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

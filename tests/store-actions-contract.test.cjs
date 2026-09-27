@@ -15,7 +15,7 @@ const base={topLevel: true};
 
 test('store size controls use a labelled group', () => assert.match(storeUiSource, /tiles\.setAttribute\("role", "group"\)/));
 test('store size controls keep their module id', () => assert.match(storeUiSource, /tiles\.dataset\.moduleId = moduleId/));
-test('store size controls expose selected size', () => assert.match(storeUiSource, /tiles\.dataset\.selectedSize = added\?\.size \|\| supported\[0\]/));
+test('store size controls expose selected size via the module preset (T-6969 slice 2)', () => assert.match(storeUiSource, /tiles.dataset.selectedSize = added?.size || preferredSize/));
 test('store size label has a stable id', () => assert.match(storeUiSource, /sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}`/));
 test('store size group references its label', () => assert.match(storeUiSource, /tiles\.setAttribute\("aria-labelledby", sizeLabel\.id\)/));
 test('store size buttons declare button type', () => assert.match(storeUiSource, /const tile = document\.createElement\("button"\);\s*tile\.type = "button"/));

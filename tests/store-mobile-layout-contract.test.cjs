@@ -459,7 +459,7 @@ test('preview size rail is presentational', () => assert.match(storeSource,/size
 test('preview size boxes record size', () => assert.match(storeSource,/box\.dataset\.size = sizeKey/));
 test('preview size boxes expose title', () => assert.match(storeSource,/box\.title = HOME_WIDGET_SIZE_LABELS/));
 test('size group has stable module id', () => assert.match(storeSource,/tiles\.dataset\.moduleId = moduleId/));
-test('size group has selected size state', () => assert.match(storeSource,/tiles\.dataset\.selectedSize = added\?\.size \|\| supported\[0\]/));
+test('size group has selected size state', () => assert.match(storeSource,/tiles\.dataset\.selectedSize = added\?\.size \|\| preferredSize/));
 test('size label has stable id', () => assert.match(storeSource,/sizeLabel\.id = `sw-home-store-size-label-\$\{moduleId\}`/));
 test('size group references its label', () => assert.match(storeSource,/tiles\.setAttribute\("aria-labelledby", sizeLabel\.id\)/));
 test('size button has accessible hint', () => assert.match(storeSource,/tile\.setAttribute\("aria-label", this\.i18n\.homeStoreSizeHint/));

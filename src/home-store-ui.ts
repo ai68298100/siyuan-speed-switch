@@ -36,7 +36,7 @@ import {
     toggleHomeStoreSelection,
 } from "./home-store-model";
 import {createHomeModuleController} from "./home-controller";
-import {resolveMobileHomeSize} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileDefaultSize} from "./home-model";
 import {HOME_WIDGET_SIZES, HOME_WIDGET_SIZE_LABELS} from "./constants";
 import type {HomeWidgetSize} from "./constants";
 import {openHomeConfigForm} from "./home-config-form";
@@ -858,7 +858,8 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 tiles.setAttribute("role", "group");
                 tiles.setAttribute("aria-orientation", "horizontal");
                 tiles.dataset.moduleId = moduleId;
-                tiles.dataset.selectedSize = added?.size || supported[0];
+                const preferredSize = resolveHomeTileDefaultSize(moduleId, supported, "medium");
+                tiles.dataset.selectedSize = added?.size || preferredSize;
                 const actionId = `sw-home-store-action-${moduleId}`;
                 const sizeLabel = document.createElement("span");
                 sizeLabel.className = "sw-home-store__choose-size";
@@ -872,12 +873,12 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                     tile.type = "button";
                     tile.className = "sw-home-store__size";
                     tile.dataset.size = sizeKey;
-                    tile.dataset.selected = String(sizeKey === (added?.size || supported[0]));
+                    tile.dataset.selected = String(sizeKey === (added?.size || preferredSize));
                     tile.textContent = HOME_WIDGET_SIZE_LABELS[sizeKey as HomeWidgetSize] || sizeKey;
                     tile.setAttribute("aria-label", this.i18n.homeStoreSizeHint.replace("{size}", tile.textContent || ""));
                     tile.setAttribute("aria-controls", actionId);
                     tile.title = tile.getAttribute("aria-label") || "";
-                    if (sizeKey === (added?.size || supported[0])) {
+                    if (sizeKey === (added?.size || preferredSize)) {
                         selectedTile = tile;
                         tile.classList.add("is-selected");
                     }
@@ -912,7 +913,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 addButton.id = actionId;
                 addButton.dataset.action = added ? "apply-size" : "add";
                 addButton.dataset.moduleId = moduleId;
-                addButton.dataset.selectedSize = selectedTile?.dataset.size || supported[0];
+                addButton.dataset.selectedSize = selectedTile?.dataset.size || preferredSize;
                 addButton.textContent = added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd;
                 if (!added && def.availability === "external") {
                     addButton.textContent = resolveHomeStorePrimaryActionLabel(card.dataset, {guide: this.i18n.homeStoreGuide || "查看说明"});
@@ -921,7 +922,7 @@ export function openHomeWidgetStore(this: HomeStoreUiHost, device: "desktop" | "
                 const stateSummary = buildHomeStoreCardStateSummary(card.dataset, {conditional: this.i18n.homeStoreAvailabilityConditional, external: this.i18n.homeStoreAvailabilityExternal});
                 addButton.dataset.stateSummary = stateSummary.text;
                 addButton.setAttribute("aria-describedby", sizeLabel.id);
-                addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${selectedTile?.textContent || supported[0]}`);
+                addButton.setAttribute("aria-label", `${added ? this.i18n.homeStoreApplySize : this.i18n.homeStoreAdd} · ${def.title || moduleId} · ${selectedTile?.textContent || preferredSize}`);
                 addButton.title = addButton.getAttribute("aria-label") || "";
                 addButton.dataset.installability = installability;
                 if (!added && !canHomeStoreInstall(card.dataset, {installability})) {
