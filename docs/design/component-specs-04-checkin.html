@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次④打卡桥接系列（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.sub { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-l { grid-column: span 6; grid-row: span 4; }
+.d-m { grid-column: span 6; grid-row: span 2; }
+.d-s { grid-column: span 4; grid-row: span 3; }
+.checkin-tile { background: linear-gradient(135deg, var(--b3-theme-primary), color-mix(in srgb, var(--b3-theme-primary) 58%, #101426));
+  color: var(--b3-theme-on-primary); border: none; }
+.checkin-tile .theader { color: color-mix(in srgb, var(--b3-theme-on-primary) 72%, transparent); }
+.checkin-tile .sub { color: color-mix(in srgb, var(--b3-theme-on-primary) 72%, transparent); }
+.bignum { font-size: 34px; font-weight: 700; line-height: 1.15; margin-top: 6px; }
+.bignum small { font-size: 14px; font-weight: 600; opacity: .75; margin-left: 2px; }
+.dots7 { display: flex; gap: 5px; margin-top: 10px; }
+.dots7 i { flex: 1; height: 22px; border-radius: 7px; background: rgb(255 255 255 / 22%); }
+.dots7 i.hit { background: rgb(255 255 255 / 88%); }
+.wk { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
+.wk .wd { text-align: center; padding: 6px 0 4px; border-radius: 8px; background: rgb(127 127 127 / 10%); font-size: 10.5px; }
+.wk .wd .dd { display: block; font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.wk .wd .st { display: block; font-size: 10px; color: var(--b3-theme-on-surface-light); }
+.wk .wd.hit { background: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent); }
+.wk .wd.hit .dd { color: var(--b3-theme-primary); }
+.heat { display: grid; grid-template-rows: repeat(5, 1fr); grid-auto-flow: column; gap: 3px; margin-top: 10px; }
+.heat i { width: 100%; aspect-ratio: 1; border-radius: 3px; background: var(--b3-theme-surface-lighter); }
+.list3 { margin-top: 8px; }
+.list3 .li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b3-border-color); font-size: 12px; }
+.list3 .li:last-child { border-bottom: none; }
+.list3 .li .t { flex: 1; font-weight: 500; }
+.list3 .li .m { font-size: 10.5px; color: var(--b3-theme-on-surface-light); flex: none; }
+.spec-card { border: 1px solid var(--b3-border-color); border-radius: 16px; background: var(--b3-theme-background);
+  margin: 0 auto 18px; max-width: 1180px; overflow: hidden; }
+.spec-card h3 { font-size: 13px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--b3-border-color); font-weight: 700; }
+.spec-card h3 .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.spec-grid > div { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--b3-border-color); }
+.spec-grid .k { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.spec-grid .v b { font-weight: 700; }
+@media (max-width: 800px) { .spec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次④打卡桥接系列</h1>
+  <span class="meta">T-6971 · 2026-09-28 · 今日打卡 / 连续记录 / 本周打卡 / 本月打卡 / 打卡热力图 / 近期事项（均只读桥接小驴打卡）</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>本批规格要点（打卡桥接全家桶通用约束）</h2>
+  <ol>
+    <li><b>只读桥接</b>（ADR 0057）：六个组件全部只读展示小驴打卡数据——<b>打卡/补签等写操作一律不在本插件内发生</b>，界面动作只有「打开小驴打卡」指引。</li>
+    <li><b>提供方未安装 = blocked</b>：单元显示 blocked 占位 + 「需安装小驴打卡」说明（延续既有 availability 语义），不运行不存在的组件、不轮询。</li>
+    <li><b>材质</b>：状态/连续类 = <b>accent</b>（今日打卡/连续记录/本周打卡）；统计/列表类 = <b>plain</b>（热力图/本月/近期事项）。批次建议扩展 HOME_TILE_MATERIALS：checkin-today、checkin-weekly → accent。</li>
+    <li><b>默认档位</b>（本批提议，落格时登记 HOME_TILE_DEFAULT_SIZES）：今日打卡 S / 连续记录 wide / 本周打卡 medium / 本月打卡 medium / 热力图 large / 近期事项 medium。</li>
+    <li><b>验收基线</b>：accent 白字对比度单独采样；提供方卸载→blocked 占位→重装后自动恢复全链路单测覆盖。</li>
+  </ol>
+</section>
+
+<!-- ============ 瓦片演示 ============ -->
+<section class="screen">
+  <h2>瓦片演示 <span>默认档位 × 默认材质（连续记录 wide / 今日打卡 S / 本周打卡 medium / 热力图 large）</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="tile d-m checkin-tile">
+        <div class="theader">连续记录<span class="sp"></span><span class="tchip">今日已打卡</span></div>
+        <div class="bignum num">14<small>天连续</small></div>
+        <div class="dots7"><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="hit"></i><i class="hit"></i><i></i></div>
+        <div class="sub num" style="margin-top:8px">本月 22/30</div>
+      </div>
+      <div class="tile d-s checkin-tile">
+        <div class="theader">今日打卡</div>
+        <div class="bignum num" style="font-size:28px;margin-top:6px;">✓</div>
+        <div class="sub">已打卡 · 08:15</div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">本周打卡<span class="sp"></span><span class="tchip">5/7</span></div>
+        <div class="wk num">
+          <span class="wd hit">一<span class="dd">✓</span><span class="st">打卡</span></span>
+          <span class="wd hit">二<span class="dd">✓</span><span class="st">打卡</span></span>
+          <span class="wd hit">三<span class="dd">✓</span><span class="st">打卡</span></span>
+          <span class="wd hit">四<span class="dd">✓</span><span class="st">打卡</span></span>
+          <span class="wd">五<span class="dd">—</span><span class="st">未到</span></span>
+          <span class="wd">六<span class="dd">—</span><span class="st">未到</span></span>
+          <span class="wd">日<span class="dd">—</span><span class="st">未到</span></span>
+        </div>
+      </div>
+      <div class="tile d-l">
+        <div class="theader">打卡热力图<span class="sp"></span><span class="tchip">近 12 周</span></div>
+        <div class="heat" id="heat"></div>
+        <div class="sub num" style="margin-top:10px">全年 286 次 · 最长连续 41 天 · 本月 22 次</div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">近期事项<span class="sp"></span><span class="tchip">3 条</span></div>
+        <div class="list3">
+          <div class="li"><span class="t">晨跑 3 公里</span><span class="m num">今天 07:20</span></div>
+          <div class="li"><span class="t">阅读 30 分钟</span><span class="m num">昨天 21:40</span></div>
+          <div class="li"><span class="t">背单词 50 个</span><span class="m num">昨天 20:10</span></div>
+        </div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">本月打卡<span class="sp"></span><span class="tchip">22/30</span></div>
+        <div class="list3">
+          <div class="li"><span class="t">打卡率</span><span class="m num">73%</span></div>
+          <div class="li"><span class="t">最长连续（本月）</span><span class="m num">9 天</span></div>
+          <div class="li"><span class="t">漏卡补记</span><span class="m num">1 次</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 规格卡 ============ -->
+
+<section class="spec-card">
+  <h3>今日打卡 <span class="tag">accent · S(4×3)，声明档位 S/M/T/W/L</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">checkin-today · sizes = [small, medium, tall, wide, large]（availability: external，只读桥接）</div>
+    <div class="k">内容布局（S 默认）</div><div class="v">微标头（识别名）→ 打卡态大字（✓ 已打卡 08:15 / 未打卡）→ 指引行「打卡请前往小驴打卡」</div>
+    <div class="k">状态呈现</div><div class="v">已打卡 = ready；未打卡 = warn；提供方未安装 = blocked 占位 + 安装说明；读取失败 = error + 重试</div>
+    <div class="k">材质/事务</div><div class="v">accent；状态随打卡插件事件刷新，无独立轮询</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（S）；侧栏/手机同款</div>
+    <div class="k">验收要点</div><div class="v">跨日零点状态翻转正确；accent 白字对比度采样；只读边界——不得出现任何写打卡数据的入口</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>连续记录 <span class="tag">accent · wide(8×3)，声明档位 S/M/W</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">checkin-streak · sizes = [small, medium, wide]（材质已登记 accent）</div>
+    <div class="k">内容布局（wide 默认）</div><div class="v">微标头（识别名 + 今日态 chip）→ 连续天数大数字 → 7/14 日点阵 → 本月 x/y 行</div>
+    <div class="k">内容布局（各档位）</div><div class="v">small：连续天数 + 今日态（无点阵）；medium：天数 + 7 日点阵；wide（默认）：14 日点阵 + 本月统计</div>
+    <div class="k">状态呈现</div><div class="v">今日已打卡 = ready chip；未打卡 = warn chip「今日待打卡」；中断 = 天数重算如实显示</div>
+    <div class="k">三端收缩</div><div class="v">三端一致；手机点阵 7 列压缩不换行</div>
+    <div class="k">验收要点</div><div class="v">连续天数计算跨月/跨年正确；点阵当日之后必须为空（不得预填）；accent 白字对比度采样</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>本周打卡 <span class="tag">accent · medium(4×4)，声明档位 S/M/W</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">checkin-weekly · sizes = [small, medium, wide]</div>
+    <div class="k">内容布局（medium 默认）</div><div class="v">微标头（识别名 + x/7 chip）→ 周一~周日七列（完成 ✓ / 缺卡 — / 未到 —）→ 本周合计行</div>
+    <div class="k">内容布局（各档位）</div><div class="v">small：仅完成计数（x/7）；wide：加单日事项数</div>
+    <div class="k">状态呈现</div><div class="v">完成列 = 主色 14% 底 + ✓；缺卡列 = 灰；未到期列 = muted；不单靠颜色（有 ✓/— 字形）</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（medium）；手机双列配置下占整行</div>
+    <div class="k">验收要点</div><div class="v">周起点按用户设置的周起始日；跨周边界（周日→周一）列重置正确</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>本月打卡 <span class="tag">plain · medium(4×4)，声明档位 S/M/W</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">checkin-monthly · sizes = [small, medium, wide]</div>
+    <div class="k">内容布局（medium 默认）</div><div class="v">微标头（识别名 + x/30 chip）→ 三行统计：打卡率 / 最长连续 / 补记次数</div>
+    <div class="k">状态呈现</div><div class="v">数据缺失（当月无记录）= 状态区「暂无记录」；提供方未安装 = blocked 占位</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（medium）</div>
+    <div class="k">验收要点</div><div class="v">打卡率分母按自然月天数；百分比 tabular-nums；除零（月初）显示 0% 不 NaN</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>打卡热力图 <span class="tag">plain · large(8×5)，声明档位 M/W/L/X</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">checkin-year-heatmap · sizes = [medium, wide, large, full]（viewType: heatmap）</div>
+    <div class="k">内容布局（large 默认）</div><div class="v">微标头（识别名 + 周期 chip）→ 热力网格（列=周，行= weekday，5 级色阶）→ 三统计（总次数/最长连续/本期）</div>
+    <div class="k">内容布局（full）</div><div class="v">通栏扩至 24~26 周 + 图例；每面板至多 1 个 X 约束同样适用（此处为 L/X 语义，非 ADR 0091 的 X 档）</div>
+    <div class="k">状态呈现</div><div class="v">loading 骨架；ready；empty（无打卡记录）状态区；error + 重试</div>
+    <div class="k">三端收缩</div><div class="v">侧栏/手机降级 M（近 8 周摘要）；色阶格子最小 8px 保可点/可读</div>
+    <div class="k">验收要点</div><div class="v">5 级色阶每级文字图例（色盲替代）；格子渲染数量有界；暗色下空格与满格区分度采样</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>近期事项 <span class="tag">plain · medium(4×4)，声明档位 S/M/T</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">checkin-occasions · sizes = [small, medium, tall]</div>
+    <div class="k">内容布局（medium 默认）</div><div class="v">微标头（识别名 + 条数 chip）→ 事项行 ≤5（事项名 + 最近打卡时间），hairline 分隔</div>
+    <div class="k">状态呈现</div><div class="v">ready / empty（暂无事项）/ error + 重试；提供方未安装 = blocked 占位</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（medium）；长事项名单行省略</div>
+    <div class="k">验收要点</div><div class="v">事项名来自打卡插件数据，展示前清洗（控制字符/超长截断）；时间渲染本地时区</div>
+  </div>
+</section>
+
+<!-- ============ 批次④总表 ============ -->
+<section class="screen">
+  <h2>批次④规格总表 <span>实现对照：材质扩展登记 + HOME_TILE_DEFAULT_SIZES 默认档（本批提议值）</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>支持档（现有）</th><th>事务/性能</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">今日打卡（checkin-today）</td><td>accent（提议扩展）</td><td class="num">small</td><td class="num">S/M/T/W/L</td><td>打卡插件事件刷新</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">连续记录（checkin-streak）</td><td>accent（已登记）</td><td class="num">wide</td><td class="num">S/M/W</td><td>事件刷新</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">本周打卡（checkin-weekly）</td><td>accent（提议扩展）</td><td class="num">medium</td><td class="num">S/M/W</td><td>事件刷新</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">本月打卡（checkin-monthly）</td><td>plain</td><td class="num">medium</td><td class="num">S/M/W</td><td>事件刷新</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">打卡热力图（checkin-year-heatmap）</td><td>plain</td><td class="num">large</td><td class="num">M/W/L/X</td><td>格子渲染数量有界</td></tr>
+        <tr><td style="padding:8px 14px;">近期事项（checkin-occasions）</td><td>plain</td><td class="num">medium</td><td class="num">S/M/T</td><td>事项名清洗；时间本地时区</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+// 打卡热力图格子生成（原型示意数据）：5 级色阶 = 主色按比例混入底色
+(function () {
+  const heat = document.getElementById('heat');
+  if (!heat) return;
+  let seed = 11;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const level = (v) => {
+    if (v > 0.78) return 95; if (v > 0.58) return 75; if (v > 0.4) return 55; if (v > 0.2) return 30; return 12;
+  };
+  for (let i = 0; i < 5 * 16; i++) {
+    const cell = document.createElement('i');
+    const v = rnd();
+    cell.style.background = 'color-mix(in srgb, var(--b3-theme-primary) ' + level(v) + '%, var(--b3-theme-surface-lighter))';
+    heat.appendChild(cell);
+  }
+})();
+</script></body>
+</html>
