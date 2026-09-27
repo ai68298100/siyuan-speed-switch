@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次⑨终批：数据库检索与长尾（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.family { margin-bottom: 22px; }
+.family > h3 { font-size: 12.5px; margin: 0 0 10px; color: var(--b3-theme-on-background); }
+.family > h3 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11px; margin-left: 8px; }
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.mini { border: 1px solid var(--b3-border-color); border-radius: 12px; background: var(--b3-theme-background); padding: 12px 14px; }
+.mini h4 { font-size: 12.5px; margin: 0 0 6px; font-weight: 700; }
+.mini h4 .tag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 9.5px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); font-weight: 600; }
+.mini p { margin: 3px 0; font-size: 11.5px; color: var(--b3-theme-on-surface-light); }
+.mini p b { color: var(--b3-theme-on-background); font-weight: 600; }
+@media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次⑨终批：数据库检索与长尾</h1>
+  <span class="meta">T-6971 · 2026-09-28 · 23 组件 · 收口后 58 组件规格全覆盖</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>终批说明</h2>
+  <ol>
+    <li><b>覆盖收口</b>：本批覆盖其余 23 个组件，58 组件规格<b>全部闭环</b>；每卡 = 默认材质 + 默认档 + 布局与验收要点（家族共享部分引用批次①~⑥既定规范，不重复）。</li>
+    <li><b>材质</b>：终批组件全部 <b>plain</b>（数据/列表/检索型，阅读对比度优先）；accent/dark/vibrant 仅限前几批已声明的组件。</li>
+    <li><b>默认档位</b>：以「组件内容天然形态」为准（列表=wide、统计=medium/small、一览=small）；落格时仍须校验该模块 def.sizes 白名单，不在白名单内回退 medium/首个支持档。</li>
+    <li><b>通用验收</b>：本地 SQL 有界聚合（T-6478）；点击跳转幂等；失效条目「已失效」占位；明暗采样 ≥ AA；空数据状态区文案。</li>
+  </ol>
+</section>
+
+<!-- ============ A 数据库与检索 ============ -->
+<section class="screen">
+  <h2>A · 数据库与检索 <span>8 组件</span></h2>
+  <div class="cards">
+    <div class="mini">
+      <h4>数据库 <span class="tag">plain · medium</span></h4>
+      <p><b>moduleId</b>：database-list</p>
+      <p><b>布局</b>：数据库行 ≤5（图标 + 名称 + 条目数）；点击跳转数据库。</p>
+      <p><b>验收</b>：av 端点结构化取数，无 SQL 拼接面（P8 语义）。</p>
+    </div>
+    <div class="mini">
+      <h4>数据库表格 <span class="tag">plain · wide</span></h4>
+      <p><b>moduleId</b>：database-table</p>
+      <p><b>布局</b>：有界表格（列白名单 + 行上限），其他视图降级 + 视图名标注。</p>
+      <p><b>验收</b>：溢出可读；行点击跳源库（P8 已交付语义）。</p>
+    </div>
+    <div class="mini">
+      <h4>已存筛选 <span class="tag">plain · medium</span></h4>
+      <p><b>moduleId</b>：saved-searches</p>
+      <p><b>布局</b>：筛选行 ≤5（名称 + 条件摘要）；点击回放筛选。</p>
+      <p><b>验收</b>：回放复用既有过滤模型；删除后数字槽不静默改指向。</p>
+    </div>
+    <div class="mini">
+      <h4>数据健康 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：data-health</p>
+      <p><b>布局</b>：健康摘要行（引用/附件异常计数）+ 重试。</p>
+      <p><b>验收</b>：不编造未知状态；异常计数有界。</p>
+    </div>
+    <div class="mini">
+      <h4>最近更新 <span class="tag">plain · wide</span></h4>
+      <p><b>moduleId</b>：recent-updates</p>
+      <p><b>布局</b>：更新行 ≤5（文档 + 时间）；点击打开。</p>
+      <p><b>验收</b>：按内核更新事件；SQL 有界。</p>
+    </div>
+    <div class="mini">
+      <h4>近期编辑 <span class="tag">plain · wide</span></h4>
+      <p><b>moduleId</b>：recent-edits</p>
+      <p><b>布局</b>：编辑行 ≤5（文档 + 编辑时间）。</p>
+      <p><b>验收</b>：与最近更新语义区分（编辑=内容变更）。</p>
+    </div>
+    <div class="mini">
+      <h4>随机回顾 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：random-review</p>
+      <p><b>布局</b>：单卡随机文档（标题 + 摘要 ≤2 行）+ 换一篇。</p>
+      <p><b>验收</b>：随机种子会话内去重；范围限用户可读文档。</p>
+    </div>
+    <div class="mini">
+      <h4>插件命令 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：plugin-commands</p>
+      <p><b>布局</b>：命令行 ≤5（名称 + 提供方）；点击执行（走受控命令管线）。</p>
+      <p><b>验收</b>：能力检测缺失 = 不显示；执行走既有受控语义。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B 日记与任务 ============ -->
+<section class="screen">
+  <h2>B · 日记与任务 <span>7 组件</span></h2>
+  <div class="cards">
+    <div class="mini">
+      <h4>今日日记 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：today-journal</p>
+      <p><b>布局</b>：今日日记入口卡（日期 + 字数 + 打开）；未创建 = 创建指引（不自动创建）。</p>
+      <p><b>验收</b>：跨日翻转正确；创建走受控写入。</p>
+    </div>
+    <div class="mini">
+      <h4>本月日记 <span class="tag">plain · medium</span></h4>
+      <p><b>moduleId</b>：journal-monthly</p>
+      <p><b>布局</b>：月统计行（篇数 / 字数 / 连续）。</p>
+      <p><b>验收</b>：跨月边界正确；SQL 有界。</p>
+    </div>
+    <div class="mini">
+      <h4>近期日记 <span class="tag">plain · wide</span></h4>
+      <p><b>moduleId</b>：recent-daily-notes</p>
+      <p><b>布局</b>：日记行 ≤5（日期 + 字数摘要）；点击打开。</p>
+      <p><b>验收</b>：排除未来日期；路径过滤沿用配置。</p>
+    </div>
+    <div class="mini">
+      <h4>往年今日 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：on-this-day</p>
+      <p><b>布局</b>：往年今日条目 ≤3（年份 + 标题）；点击打开。</p>
+      <p><b>验收</b>：无历史 = 空态；年份倒序。</p>
+    </div>
+    <div class="mini">
+      <h4>今日待办 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：today-tasks</p>
+      <p><b>布局</b>：待办行 ≤5（勾选 + 标题）；勾选走受控写（既有 update-task 语义）。</p>
+      <p><b>验收</b>：勾选写入受控确认；失败回执不假成功。</p>
+    </div>
+    <div class="mini">
+      <h4>近期预约 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：today-reservations</p>
+      <p><b>布局</b>：预约行 ≤4（日期 + 事项）。</p>
+      <p><b>验收</b>：按日期升序；过期预约不展示。</p>
+    </div>
+    <div class="mini">
+      <h4>闪卡待复习 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：flashcard-due</p>
+      <p><b>布局</b>：待复习计数 + 进入复习指引（复习在思源闪卡内完成）。</p>
+      <p><b>验收</b>：计数来源 flashcard 统计接口；未启用闪卡 = 空态。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C 收集与速记 ============ -->
+<section class="screen">
+  <h2>C · 收集与速记 <span>3 组件</span></h2>
+  <div class="cards">
+    <div class="mini">
+      <h4>收集箱 <span class="tag">plain · medium</span></h4>
+      <p><b>moduleId</b>：inbox-shorthands</p>
+      <p><b>布局</b>：速记行 ≤5（内容摘要 + 来源）；点击打开来源。</p>
+      <p><b>验收</b>：摘要清洗截断；快捷动作前缀语义沿用（QUICK_CAPTURE_ACTION_PREFIX）。</p>
+    </div>
+    <div class="mini">
+      <h4>快速记录 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：quick-capture</p>
+      <p><b>布局</b>：快速记录入口 + 最近一条预览（目的地预览行）。</p>
+      <p><b>验收</b>：多目标（日记/当前文档）语义沿用；受控写入 + 失败回执。</p>
+    </div>
+    <div class="mini">
+      <h4>剪藏未读 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：clipped-unread</p>
+      <p><b>布局</b>：未读行 ≤4（标题 + 来源时间）；点击打开剪藏。</p>
+      <p><b>验收</b>：与思源剪藏插件数据同源；无插件 = blocked 占位。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ D 外部与补遗 ============ -->
+<section class="screen">
+  <h2>D · 外部尾部与补遗 <span>6 组件</span></h2>
+  <div class="cards">
+    <div class="mini">
+      <h4>每日放送 <span class="tag">plain · medium</span></h4>
+      <p><b>moduleId</b>：external-anime-bangumi</p>
+      <p><b>布局</b>：放送行 ≤5（封面缩略 + 标题 + 集数）；点击跳 Bangumi 条目。</p>
+      <p><b>验收</b>：api.bgm.tv 超时降级（B-006）；封面懒加载。</p>
+    </div>
+    <div class="mini">
+      <h4>汇率参考 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：external-fx-frankfurter</p>
+      <p><b>布局</b>：基准货币大数字 + 常用币对行 ≤3。</p>
+      <p><b>验收</b>：Frankfurter 端点（零凭据）；失败保留旧值。</p>
+    </div>
+    <div class="mini">
+      <h4>服务状态 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：external-status-uptimekuma</p>
+      <p><b>布局</b>：服务行 ≤4（名称 + 状态点 + 在线率）。</p>
+      <p><b>验收</b>：Uptime Kuma 自建端点；状态点配文字（不单靠颜色）。</p>
+    </div>
+    <div class="mini">
+      <h4>设备电量 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：external-device-battery</p>
+      <p><b>布局</b>：电量环/条 + 百分比 + 预估时长。</p>
+      <p><b>验收</b>：Battery API 不可达 = blocked；不虚构数值。</p>
+    </div>
+    <div class="mini">
+      <h4>打卡摘要 <span class="tag">accent · medium</span></h4>
+      <p><b>moduleId</b>：checkin-summary</p>
+      <p><b>布局</b>：连续 + 完成率 + 今日态三行摘要（打卡族收口组件）。</p>
+      <p><b>验收</b>：只读桥接边界沿用；未安装 = blocked。</p>
+    </div>
+    <div class="mini">
+      <h4>剪藏未读 <span class="tag">plain · small</span></h4>
+      <p><b>moduleId</b>：clipped-unread</p>
+      <p><b>布局</b>：未读行 ≤4（标题 + 来源时间）；点击打开剪藏。</p>
+      <p><b>验收</b>：与思源剪藏插件数据同源；无插件 = blocked 占位。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 覆盖收口 ============ -->
+<section class="screen">
+  <h2>覆盖收口 <span>批次①~⑨ 全部落地后，58 组件规格闭环</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">批次</th><th>家族</th><th>组件数</th><th>材质分布</th><th>记录</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>①</td><td>时钟类</td><td class="num">5</td><td>dark ×3 · accent ×1 · plain ×1</td><td>41906d2</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>②</td><td>日历与日程</td><td class="num">2</td><td>plain ×2</td><td>4a73c54</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>③</td><td>天气与空气</td><td class="num">2</td><td>vibrant ×2</td><td>bfe82e3</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>④</td><td>打卡桥接系列</td><td class="num">6</td><td>accent ×3 · plain ×3</td><td>eebf271</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>⑤</td><td>统计洞察类</td><td class="num">2</td><td>plain ×2</td><td>a52b238</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>⑥</td><td>列表流家族</td><td class="num">5</td><td>plain ×5</td><td>63585e9</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>⑦</td><td>写作统计类</td><td class="num">4</td><td>accent ×2 · plain ×2</td><td>e1dcefc</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td>⑧</td><td>导航与历史类</td><td class="num">9</td><td>plain ×9</td><td>fdeab4a</td></tr>
+        <tr><td>⑨</td><td>数据库检索与长尾（终批）</td><td class="num">23</td><td>plain ×23</td><td>本批</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
