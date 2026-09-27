@@ -474,6 +474,21 @@ const HOME_TILE_DEFAULT_SIZES = {
     'external-activitywatch-time': 'large',
 };
 
+// T-6969 Slice 3（ADR 0091）：X 英雄位约束——每面板至多 1 个 full 档；超出者
+// 降级为 large（8×5）。纯函数：返回降级数量，调用方决定是否落盘。
+function enforceHomeHeroConstraint(list) {
+    const entries = Array.isArray(list) ? list : [];
+    let seen = false;
+    let demoted = 0;
+    const next = entries.map((entry) => {
+        if (!entry || entry.size !== 'full') return entry;
+        if (!seen) { seen = true; return entry; }
+        demoted += 1;
+        return { ...entry, size: 'large', w: 8, h: 5 };
+    });
+    return { list: next, demoted };
+}
+
 // 解析默认档位：显式声明且在 supported 内 → 用之；否则 supported 含 medium → medium；
 // 否则 supported 首个。保证任何模块都有合法默认档。
 function resolveHomeTileDefaultSize(moduleId, supported, fallback) {
@@ -830,4 +845,4 @@ function buildPluginCommandsSnapshot(commands, config, labels = {}) {
     };
 }
 
-module.exports = {HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_TILE_DEFAULT_SIZES, resolveHomeTileDefaultSize, enforceHomeHeroConstraint, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

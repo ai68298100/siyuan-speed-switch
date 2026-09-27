@@ -1093,3 +1093,22 @@
 .sw-home__cell.mat-vibrant[data-sw-health="failed"] {
     box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--b3-theme-error) 60%, transparent);
 }
+
+// ==================== T-6969 Slice 3：编辑态抖动 chrome ====================
+// 编辑态网格：单元虚线描边 + 轻微摇摆（iOS 抖动模式心智）；reduced-motion 降级。
+.sw-home__grid--editing .sw-home__cell {
+    outline: 2px dashed color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
+    outline-offset: 2px;
+    animation: sw-home-wiggle 320ms ease-in-out infinite;
+}
+
+@keyframes sw-home-wiggle {
+    0%, 100% { transform: rotate(-0.3deg); }
+    50% { transform: rotate(0.3deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sw-home__grid--editing .sw-home__cell {
+        animation: none;
+    }
+}

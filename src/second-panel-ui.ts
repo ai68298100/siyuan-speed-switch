@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize, resolveHomeTileMaterial} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial, enforceHomeHeroConstraint} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -210,6 +210,12 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             });
             const state = this.getHomeState();
             const layoutList = (state.layouts[device] || []) as Array<any>;
+            // T-6969 Slice 3：X 英雄位约束——每面板至多 1 个 full 档，超出降级 large
+            const heroCheck = enforceHomeHeroConstraint(layoutList);
+            if (heroCheck.demoted > 0) {
+                state.layouts[device] = heroCheck.list;
+                this.saveHomeState(state);
+            }
             const byId = new Map(state.instances.map((inst: any) => [inst.instanceId, inst]));
             const cells: Array<{ inst: any; layout: any }> = [];
             layoutList.forEach((entry) => {
@@ -376,6 +382,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             body.className = "sw-home__body";
             const grid = document.createElement("div");
             grid.className = "sw-home__grid";
+            // T-6969 Slice 3：编辑态抖动 chrome 的作用域类
+            grid.classList.toggle("sw-home__grid--editing", editing);
             if (cells.length === 0) {
                 const empty = document.createElement("div");
                 empty.className = "sw-home__empty";
