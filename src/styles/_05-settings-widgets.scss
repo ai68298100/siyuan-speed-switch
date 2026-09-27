@@ -1141,3 +1141,9 @@
 .sw-home__cell[data-sw-health="loading"] .sw__home-module-status {
     opacity: 1;
 }
+
+// ==================== T-6971 批次①时钟家族施工：数字排版 ====================
+// 规格卡验收：时刻/天数/计数等数字全部 tabular-nums（秒数跳动不抖动版面）。
+.sw-home__cell :is(.sw__home-stat-value, .sw__home-module-item-value, .sw__home-module-meta, [data-sw-row-value]) {
+    font-variant-numeric: tabular-nums;
+}
