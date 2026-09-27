@@ -109,6 +109,15 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetFindConfirm: locale.i18n.snippetFindConfirm,
         snippetFindNone: locale.i18n.snippetFindNone,
         snippetFindDone: locale.i18n.snippetFindDone,
+        snippetScene: locale.i18n.snippetScene,
+        snippetSceneReading: locale.i18n.snippetSceneReading,
+        snippetSceneTable: locale.i18n.snippetSceneTable,
+        snippetSceneControls: locale.i18n.snippetSceneControls,
+        snippetPreviewWidth: locale.i18n.snippetPreviewWidth,
+        snippetWidthAuto: locale.i18n.snippetWidthAuto,
+        snippetWidthNarrow: locale.i18n.snippetWidthNarrow,
+        snippetWidthMedium: locale.i18n.snippetWidthMedium,
+        snippetWidthWide: locale.i18n.snippetWidthWide,
         snippetConflictTitle: locale.i18n.snippetConflictTitle,
         snippetConflictMessage: locale.i18n.snippetConflictMessage,
         snippetConflictContinue: locale.i18n.snippetConflictContinue,
@@ -195,6 +204,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     let previewTimer = 0;
     let dark = doc.documentElement.dataset.themeMode === "dark";
     let showOriginal = false;
+    // T-6960：预览场景与宽度档位（会话级，切换不触及草稿）
+    let previewScene = "reading";
+    let previewWidth = "auto";
     let candidate = null;
     let activeDiff = null;
     let activeHunkAccepted = [];
@@ -253,7 +265,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     runButton.disabled = true;
     const stopButton = action("snippetResetPreview", () => renderPreview(false));
     runButton.title = t("snippetJSPreviewUnavailable");
-    previewToolbar.append(previewLead, compareButton, themeButton, runButton, stopButton);
+    // T-6960：场景与宽度选择——固定白名单场景 + 有限宽度档位，宽度不足回退单视图
+    const sceneSelect = select("snippetScene", [["reading", "snippetSceneReading"], ["table", "snippetSceneTable"], ["controls", "snippetSceneControls"]]);
+    sceneSelect.addEventListener("change", () => { previewScene = sceneSelect.value; renderPreview(); });
+    const widthSelect = select("snippetPreviewWidth", [["auto", "snippetWidthAuto"], ["narrow", "snippetWidthNarrow"], ["medium", "snippetWidthMedium"], ["wide", "snippetWidthWide"]]);
+    widthSelect.addEventListener("change", () => { previewWidth = widthSelect.value; renderPreview(); });
+    previewToolbar.append(previewLead, compareButton, themeButton, sceneSelect, widthSelect, runButton, stopButton);
     const previewShell = node("div", "sw-studio__preview");
     const previewContainer = node("div", "sw-studio__preview-canvas");
     const previewLoading = node("div", "sw-studio__preview-loading");
@@ -711,7 +728,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         previewState.className = "sw-studio__state-badge is-loading";
         previewHint.textContent = draft.type === "js" ? `${t("snippetPreviewHint")} ${t("snippetJSPreviewUnavailable")}` : t("snippetPreviewHint");
         // Compare uses the selected saved code, not a second unscoped host style.
-        preview.render({type: draft.type, content, dark, runJS: !showOriginal && runJS});
+        preview.render({type: draft.type, content, dark, runJS: !showOriginal && runJS, scene: previewScene, width: previewWidth});
     }
     function changed() {
         revision += 1;
