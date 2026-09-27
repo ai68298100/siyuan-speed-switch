@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.39.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.40.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -330,11 +330,20 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.39.0` (released 2026-09-27; snippet studio entries with visible capability boundaries, the AI draft summary + diff + per-hunk acceptance review pipeline, grouped command mode and usercss interop; Release assets are built automatically by the workflow).
+The current version is `v0.40.0` (released 2026-09-27; floating-ball double-click/long-press gestures, document-set active-doc restore with visitor preview, usercss variable resolution, split-open keyboard parity and real-device feedback fixes; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.40.0 (2026-09-27)
+
+- **Floating-ball gesture depth**: single click, double click, and long press can each be bound to their own action; once a double-click action is bound, a single click waits briefly for disambiguation, and unbound gestures keep the zero-latency single click. A gesture binding card is available in settings.
+- **Workspace restore 2.0**: document sets remember the active document at save time and refocus it after restore; the restore preview became an inline three-section list with outside-set documents dimmed as "kept open".
+- **Snippet studio interop**: importing a usercss with variables resolves the placeholders against their defaults and keeps the metadata header (the receipt reports how many); exports carry a header that Stylus installs directly.
+- **Split-open keyboard parity**: `Ctrl+click / Ctrl+Enter` on a search result opens the document in the right split, matching the existing right-click gesture.
+- **Real-device feedback fixes**: closing a tab from the switcher on mobile stays in the plugin instead of jumping to SiYuan's native tab overview; workbench module headers no longer render duplicated titles; the workbench quick-action bar got a solid bottom-bar treatment; duplicate close buttons were consolidated.
+- **Validation boundary**: this batch passed the complete automated suite and 9 real-kernel E2E specs; real Android and desktop host acceptance remains tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.39.0 (2026-09-27)
 
