@@ -9986,6 +9986,10 @@ private rootIdOf(tab: Tab): string | null {
                     logger.warn("mobile close tab non-success result", result);
                 }
                 await this.sleep(TAB_SETTLE_MS);
+                // T-6925（真机反馈）：宿主 close 的副作用会把我们的切换器压到原生
+                // 浮层之下（关非活动页签弹页签总览、关活动页签走 closeModel），
+                // 统一在沉降后恢复前置。
+                this.restoreMobileSwitcherAboveHostPanels();
                 return isSuccessfulMobileTabsResult(result);
             } catch (e) {
                 logger.warn("mobile close tab fail", e);
@@ -10031,6 +10035,27 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
     // 小驴工具：批量开/关页签时避免竞态
     private sleep(ms: number): Promise<void> {
         return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    // T-6925（真机反馈修复）：手机端宿主 MobileTabs.close 的副作用会把我们的切换器
+    // 压到原生浮层之下——关非活动页签后宿主 openOverview 弹出页签总览（openModel 给
+    // #model 分配递增 zIndex 顶层），关活动页签走 closeModel。此处按用户等价操作点
+    // 宿主自己的 #modelClose 关掉总览，并把仍连接的切换器弹窗重新置顶，
+    // 使"在插件里关页签"继续停留在插件内（弹窗本身从不主动关闭）。
+    private restoreMobileSwitcherAboveHostPanels() {
+        const dialog = this.mobileSwitcherDialog;
+        if (!dialog?.element.isConnected) return;
+        const model = document.getElementById("model");
+        if (model && model.style.transform === "translateX(0px)" && model.querySelector(".mobile-tabs")) {
+            // #modelClose 非 HTMLElement（无 .click()），须以事件触发宿主自己的关闭路径
+            (model.querySelector("#modelClose") as Element | null)
+                ?.dispatchEvent(new MouseEvent("click", {bubbles: true}));
+        }
+        const siyuan = getSiyuan() as {zIndex?: number} | null;
+        if (siyuan && Number.isFinite(Number(siyuan.zIndex))) {
+            siyuan.zIndex = Number(siyuan.zIndex) + 1;
+            dialog.element.style.zIndex = String(siyuan.zIndex);
+        }
     }
 
     // 关闭页签：移除页签与卡片；侧边栏模式下整列表刷新（弹窗保持打开）

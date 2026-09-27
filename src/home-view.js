@@ -175,9 +175,10 @@ function buildHomeModuleView(module, result, options = {}) {
         keepEmptyItems: isCalendar || isHeatmap,
         maxItems: isHeatmap ? HEATMAP_MAX_ITEMS : isCalendar ? CALENDAR_MAX_ITEMS : MAX_ITEMS,
     });
+    const title = text(definition.title, 64) || moduleId;
     return {
         moduleId,
-        title: text(definition.title, 64) || moduleId,
+        title,
         icon: text(definition.icon, 64) || "iconFile",
         category: text(definition.category, 32) || "custom",
         configurable: Array.isArray(definition.configSchema) && definition.configSchema.length > 0,
@@ -190,7 +191,9 @@ function buildHomeModuleView(module, result, options = {}) {
         sourceHealth: normalized.sourceHealth,
         items: normalized.items,
         ...(normalized.calendarWeekdays.length === 7 ? {calendarWeekdays: normalized.calendarWeekdays} : {}),
-        ...(normalized.title ? {contextTitle: normalized.title} : {}),
+        // T-6925（真机反馈）：快照数据标题与定义标题相同时不再重复渲染——手机端
+        // 窄头部里标题列被挤成首字、旁挂完整同文案的"叠字"即源于此。
+        ...(normalized.title && normalized.title !== title ? {contextTitle: normalized.title} : {}),
         ...(normalized.emptyHint ? {emptyHint: normalized.emptyHint} : {}),
         collapsed: options.collapsed === true,
         role: "region",

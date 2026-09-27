@@ -173,5 +173,49 @@ test("UI 审查截图集", async ({page}) => {
         if (await page.locator(".sw__snippet-results").count()) await shot("14-query-snippet-section");
     });
 
+    // T-6920 悬浮球手势绑定卡片（滚动入视口单独截）。
+    await step("15 fb gesture card", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.openSetting();
+        });
+        await page.waitForSelector(".sw-settings__tabs", {timeout: 10000});
+        await page.locator('.sw-settings__tab[data-panel="floatingBall"]').click();
+        await page.waitForTimeout(700);
+        const gestureCard = page.locator(".sw-floating-ball-settings__gesture-panel");
+        if (await gestureCard.count()) {
+            await gestureCard.scrollIntoViewIfNeeded();
+            await page.waitForTimeout(300);
+            await gestureCard.screenshot({path: path.join(outDir, "15-fb-gesture-card.png")});
+        }
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(400);
+    });
+
+    // T-6922 文档集恢复预览三段列表（含集合外 visitor 暗色行；无文档集则跳过）。
+    await step("16 doc-set visitor preview", async () => {
+        await page.evaluate(() => {
+            const plugin = window.siyuan.ws.app.plugins.find((item) => item?.name === "siyuan-speed-switch");
+            plugin.openSetting();
+        });
+        await page.waitForSelector(".sw-settings__tabs", {timeout: 10000});
+        await page.locator('.sw-settings__tab[data-panel="documentSets"]').click();
+        await page.waitForTimeout(700);
+        const previewButton = page.locator(".b3-button", {hasText: /预览恢复|Preview restore/}).first();
+        if (await previewButton.count()) {
+            await previewButton.scrollIntoViewIfNeeded();
+            await previewButton.click();
+            await page.waitForTimeout(400);
+            const previewList = page.locator(".sw-setting__doc-set-preview").first();
+            if (await previewList.count()) {
+                await previewList.scrollIntoViewIfNeeded();
+                await page.waitForTimeout(200);
+                await previewList.screenshot({path: path.join(outDir, "16-doc-set-visitor-preview.png")});
+            }
+        }
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(400);
+    });
+
 console.log(`[audit] screenshots written to ${outDir}`);
 });

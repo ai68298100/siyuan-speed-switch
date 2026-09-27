@@ -475,6 +475,22 @@
     margin-top: 10px;
 }
 
+// T-6925（真机反馈）：工作台底部快捷条此前视觉上与组件内容混在一起——
+// 透明底 + 浅边框贴在白底卡片旁不可辨，看起来像"悬浮遮挡"。
+// 移动端补齐底栏形态：通栏、实底、上边框与安全区高度。
+.sw-home--mobile .sw-home__quick-actions {
+    margin: 10px -16px -12px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+}
+
+// T-6925：移动端工作台已提供平台头部关闭按钮（T-6899），外层 Dialog 自带的
+// 关闭 ✕ 与之重复且分居两处，收敛为单一关闭入口。
+.b3-dialog__container:has(.sw-home--mobile) .b3-dialog__close {
+    display: none;
+}
+
 // 全屏模式：网格限宽居中，避免超宽屏下拉列表过宽
 .b3-dialog__container.sw-dialog--fullscreen .sw-home__grid {
     max-width: 1600px;
