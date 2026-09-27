@@ -830,7 +830,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
             // 联网生活组件采用独立低频心跳；天气最多每 15 分钟、每日放送最多每 30 分钟更新一次，切回前台时
             // 先经过 adapter/cache 判定，隐藏页面不会产生后台请求。
-            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter", "external-rss-miniflux"]);
+            const lifeModuleIds = new Set(["external-weather-open-meteo", "external-air-quality", "external-anime-bangumi", "external-hot-news-dailyhot", "external-news-newsnow", "external-news-hackernews", "external-activitywatch-time", "external-status-uptimekuma", "external-fx-frankfurter", "external-rss-miniflux"]);
             if (controllers.some((entry) => lifeModuleIds.has(entry.moduleId))) {
                 const refreshLife = (force = false) => controllers.filter((entry) => lifeModuleIds.has(entry.moduleId))
                     .forEach((entry) => { void entry.refresh(undefined, force ? {force: true} : {}); });
