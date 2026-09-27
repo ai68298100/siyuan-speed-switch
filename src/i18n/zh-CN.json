@@ -1263,6 +1263,8 @@
   "snippetLeaveSave": "保存并继续",
   "snippetLeaveDiscard": "放弃更改",
   "snippetLeaveSaveFailed": "保存未完成，已停留在当前草稿",
+  "snippetUndo": "撤销",
+  "snippetRedo": "重做",
   "snippetConfirmDelete": "删除这个原生片段吗？",
   "snippetConfirmJS": "启用 JavaScript 可能产生持续副作用。继续吗？",
   "snippetConflict": "原生列表已在其他地方变化。请重新加载并检查后再保存。",

@@ -1263,6 +1263,8 @@
   ,"snippetLeaveSave": "Save and continue"
   ,"snippetLeaveDiscard": "Discard changes"
   ,"snippetLeaveSaveFailed": "Save did not complete; staying on the draft"
+  ,"snippetUndo": "Undo"
+  ,"snippetRedo": "Redo"
   ,"snippetConfirmDelete": "Delete this native snippet?"
   ,"snippetConfirmJS": "Enabling JavaScript can have lasting side effects. Continue?"
   ,"snippetConflict": "The native list changed elsewhere. Reload and review it before saving."

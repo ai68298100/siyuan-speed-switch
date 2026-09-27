@@ -1,5 +1,5 @@
 const {Dialog} = require("siyuan");
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator} = require("./snippet-studio-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
@@ -98,6 +98,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetLeaveSave: locale.i18n.snippetLeaveSave,
         snippetLeaveDiscard: locale.i18n.snippetLeaveDiscard,
         snippetLeaveSaveFailed: locale.i18n.snippetLeaveSaveFailed,
+        snippetUndo: locale.i18n.snippetUndo,
+        snippetRedo: locale.i18n.snippetRedo,
         snippetDraft: locale.i18n.snippetDraft,
         snippetUnsaved: locale.i18n.snippetUnsaved,
         snippetEnable: locale.i18n.snippetEnable,
@@ -295,10 +297,13 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     const editorTitle = node("h2", "sw-studio__section-title", t("snippetCode"));
     const editorMeta = node("span", "sw-studio__editor-meta");
     editorLead.append(editorTitle, editorMeta);
+    // T-6957：编辑区局部撤销/重做（可用态在 syncFields 按草稿历史同步）
+    const draftUndoButton = action("snippetUndo", () => undoDraft());
+    const draftRedoButton = action("snippetRedo", () => redoDraft());
     const chooseButton = action("snippetChoose", () => openPicker());
     const importButton = action("snippetImport", () => fileInput.click());
     const newButton = action("snippetNew", () => { guardLeave(() => choose({name: "", type: "css", content: ""}, null)); });
-    editorBar.append(editorLead, chooseButton, importButton, newButton);
+    editorBar.append(editorLead, draftUndoButton, draftRedoButton, chooseButton, importButton, newButton);
     const editor = node("textarea", "sw-studio__editor");
     editor.spellcheck = false;
     editor.setAttribute("aria-label", t("snippetCode"));
@@ -394,6 +399,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         aiResult.hidden = true;
         aiEmpty.hidden = false;
         syncFields();
+        // T-6957：AI 接受（整段/逐 hunk 合并）作为一个明确事务落账
+        commitDraftHistory();
         renderPreview();
         setStatus(t("snippetAIAccepted"), "ready");
     }, "is-primary");
@@ -603,6 +610,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         chooseButton.disabled = busy;
         importButton.disabled = busy;
         newButton.disabled = busy;
+        // T-6957：撤销/重做可用态跟随草稿历史
+        draftUndoButton.disabled = busy || !canUndoDraftHistory(draftHistory);
+        draftRedoButton.disabled = busy || !canRedoDraftHistory(draftHistory);
         refresh.disabled = busy || loading;
         nameInput.disabled = busy;
         editor.disabled = busy;
@@ -627,13 +637,88 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         revision += 1;
         draft = {...draft, name: nameInput.value, type: typeSelect.value, content: editor.value};
         syncFields();
+        scheduleDraftHistoryCommit();
         clearTimeout(previewTimer);
         previewTimer = win.setTimeout(() => renderPreview(), 250);
     }
     nameInput.addEventListener("input", changed);
-    typeSelect.addEventListener("change", changed);
+    typeSelect.addEventListener("change", () => {
+        changed();
+        // T-6957：类型切换是离散事务，立即落账不等待合并窗口
+        commitDraftHistory();
+    });
     editor.addEventListener("input", changed);
+    // T-6957：输入法组合期内不落账（组合提交后才结算事务）；编辑器聚焦时接管
+    // 原生撤销快捷键，走统一草稿历史。
+    [nameInput, editor].forEach((field) => {
+        field.addEventListener("compositionstart", () => { composing = true; });
+        field.addEventListener("compositionend", () => {
+            composing = false;
+            commitDraftHistory();
+        });
+        field.addEventListener("blur", () => {
+            if (!composing) commitDraftHistory();
+        });
+        field.addEventListener("keydown", (event) => {
+            if (!(event.ctrlKey || event.metaKey) || String(event.key).toLowerCase() !== "z" || composing) return;
+            event.preventDefault();
+            if (event.shiftKey) redoDraft();
+            else undoDraft();
+        });
+    });
     const dirty = () => baseline ? draft.name !== baseline.name || draft.type !== baseline.type || draft.content !== baseline.content : Boolean(draft.name || draft.content);
+    // T-6957：统一草稿历史（名称/类型/正文事务）——50 步 + 512 KiB 字节预算；
+    // 切片（choose 身份变化）重置、保存（同 id choose）保留；IME 组合期内不落账；
+    // 撤销/重做把状态写回真实控件后经 changed() 同步，dirty 相对新 baseline 重算。
+    let draftHistory = createDraftHistory({name: "", type: "css", content: ""});
+    let draftHistorySignature = "";
+    let historyTimer = 0;
+    let composing = false;
+    let suppressDraftHistory = false;
+    const DRAFT_HISTORY_SETTLE_MS = 600;
+    const historyState = () => ({name: nameInput.value, type: typeSelect.value, content: editor.value});
+    const commitDraftHistory = () => {
+        if (suppressDraftHistory) return;
+        if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+        draftHistory = pushDraftHistory(draftHistory, historyState());
+    };
+    const scheduleDraftHistoryCommit = () => {
+        if (suppressDraftHistory || composing) return;
+        if (historyTimer) clearTimeout(historyTimer);
+        historyTimer = win.setTimeout(commitDraftHistory, DRAFT_HISTORY_SETTLE_MS);
+    };
+    const resetDraftHistory = (signature) => {
+        if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+        composing = false;
+        draftHistorySignature = signature;
+        draftHistory = createDraftHistory(historyState());
+    };
+    const undoDraft = () => {
+        if (composing) return;
+        commitDraftHistory();
+        const result = undoDraftHistory(draftHistory);
+        if (!result.state) return;
+        draftHistory = result.history;
+        suppressDraftHistory = true;
+        nameInput.value = result.state.name;
+        typeSelect.value = result.state.type;
+        editor.value = result.state.content;
+        changed();
+        suppressDraftHistory = false;
+    };
+    const redoDraft = () => {
+        if (composing) return;
+        commitDraftHistory();
+        const result = redoDraftHistory(draftHistory);
+        if (!result.state) return;
+        draftHistory = result.history;
+        suppressDraftHistory = true;
+        nameInput.value = result.state.name;
+        typeSelect.value = result.state.type;
+        editor.value = result.state.content;
+        changed();
+        suppressDraftHistory = false;
+    };
     // T-6956：脏稿不再同步 confirm 强制放弃，改三选一待执行意图：
     // 保存并继续（成功才导航一次）/ 放弃（零写入放行）/ 取消（默认聚焦，零写入）。
     const leave = createLeaveIntentCoordinator();
@@ -702,6 +787,12 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         baseline = native ? {...native} : null;
         selectedSource = native ? "native" : value.source || "draft";
         draft = {id: native?.id || "", name: value.name || "", type: value.type || "css", content: value.content || "", enabled: native?.enabled === true};
+        // T-6957：仅身份变化时重置草稿历史——保存（同 id choose）保留历史，
+        // 撤销到保存前内容时 dirty 相对新 baseline 真实变化。
+        const identity = native?.id || `draft:${value.source || "draft"}:${value.name}:${value.type}`;
+        if (identity !== draftHistorySignature) {
+            resetDraftHistory(identity);
+        }
         original = native?.content || "";
         description.textContent = value.description || t("snippetDescription");
         revision += 1;

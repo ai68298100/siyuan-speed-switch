@@ -348,6 +348,60 @@ function createLeaveIntentCoordinator() {
     };
 }
 
+// T-6957：统一草稿历史（名称/类型/正文事务）——快照策略：SNIPPET_CODE_MAX=64 KiB
+// 时 50 步全量快照最坏 ~3.2 MB，故设 512 KiB 总字节预算，超限从最旧端丢弃（至少
+// 保留当前态）；不新建持久化片段副本，历史只存活于编辑会话。
+const DRAFT_HISTORY_MAX_STEPS = 50;
+const DRAFT_HISTORY_MAX_BYTES = 512 * 1024;
+
+function estimateDraftStateBytes(state) {
+    if (!state || typeof state !== "object") return 8;
+    return (String(state.name || "").length) + (String(state.content || "").length) + 8;
+}
+
+function createDraftHistory(state, options) {
+    const opts = options || {};
+    const entry = {state: {...(state || {name: "", type: "css", content: ""})}, bytes: estimateDraftStateBytes(state)};
+    return {stack: [entry], index: 0, max: opts.max || DRAFT_HISTORY_MAX_STEPS, maxBytes: opts.maxBytes || DRAFT_HISTORY_MAX_BYTES};
+}
+
+function pushDraftHistory(history, state) {
+    const top = history.stack[history.index];
+    if (top && JSON.stringify(top.state) === JSON.stringify(state)) return history;
+    const stack = history.stack.slice(0, history.index + 1);
+    stack.push({state: {...state}, bytes: estimateDraftStateBytes(state)});
+    let index = stack.length - 1;
+    while (stack.length > 1 && (stack.length > history.max || totalDraftBytes(stack) > history.maxBytes)) {
+        stack.shift();
+        index = Math.min(index, stack.length - 1);
+    }
+    return {stack, index, max: history.max, maxBytes: history.maxBytes};
+}
+
+function totalDraftBytes(stack) {
+    return stack.reduce((sum, entry) => sum + entry.bytes, 0);
+}
+
+function canUndoDraftHistory(history) {
+    return history.index > 0;
+}
+
+function canRedoDraftHistory(history) {
+    return history.index < history.stack.length - 1;
+}
+
+function undoDraftHistory(history) {
+    if (!canUndoDraftHistory(history)) return {history, state: null};
+    const index = history.index - 1;
+    return {history: {...history, index}, state: {...history.stack[index].state}};
+}
+
+function redoDraftHistory(history) {
+    if (!canRedoDraftHistory(history)) return {history, state: null};
+    const index = history.index + 1;
+    return {history: {...history, index}, state: {...history.stack[index].state}};
+}
+
 module.exports = {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
@@ -355,4 +409,12 @@ module.exports = {
     hasUsercssHeader, resolveUsercssVariables,
     USERCSS_HEADER_RE,
     createLeaveIntentCoordinator,
+    DRAFT_HISTORY_MAX_STEPS,
+    DRAFT_HISTORY_MAX_BYTES,
+    createDraftHistory,
+    pushDraftHistory,
+    undoDraftHistory,
+    redoDraftHistory,
+    canUndoDraftHistory,
+    canRedoDraftHistory,
 };
