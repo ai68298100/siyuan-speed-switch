@@ -1112,3 +1112,32 @@
         animation: none;
     }
 }
+
+// ==================== T-6969 Slice 4：查看态微标头 ====================
+// 已批准原型（ADR 0091）：查看态卡片头弱化为 10px 识别行；状态 chip 默认隐藏，
+// 悬停/聚焦显现；失败与加载态恒显（重要状态不靠悬停发现）。
+.sw-home__grid .sw-home__cell .sw__home-module-header {
+    margin-bottom: 6px;
+
+    .sw__home-module-title {
+        font-size: 10.5px;
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--b3-theme-on-surface-light);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sw__home-module-status {
+        opacity: 0;
+        transition: opacity $sw-dur-fast $sw-ease;
+    }
+}
+
+.sw-home__cell:hover .sw__home-module-status,
+.sw-home__cell:focus-within .sw__home-module-status,
+.sw-home__cell[data-sw-health="failed"] .sw__home-module-status,
+.sw-home__cell[data-sw-health="loading"] .sw__home-module-status {
+    opacity: 1;
+}
