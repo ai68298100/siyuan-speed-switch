@@ -444,6 +444,26 @@ function normalizeLayout(value) {
     return {x: number("x", 0, 99), y: number("y", 0, 999), w: Math.max(1, number("w", 1, 12)), h: Math.max(1, number("h", 1, 12)), collapsed: source.collapsed === true, size};
 }
 
+// T-6969（ADR 0091）：工作台材质目录——纯展示声明，只影响呈现层底色与文字色，
+// 不触及组件读取/刷新/配置。显式声明优先，未声明的 moduleId 回退 plain。
+// vibrant 仅授予内容自带语义配色的组件（天气=天空），其余组件不得自动取色。
+const HOME_TILE_MATERIALS = {
+    'external-local-time': 'dark',
+    'external-world-clock': 'dark',
+    'external-quote-daily': 'dark',
+    'external-weather-open-meteo': 'vibrant',
+    'external-air-quality': 'vibrant',
+    'checkin-streak': 'accent',
+    'writing-streak': 'accent',
+};
+
+const HOME_TILE_MATERIAL_FALLBACK = 'plain';
+
+function resolveHomeTileMaterial(moduleId) {
+    const material = HOME_TILE_MATERIALS[String(moduleId || '')];
+    return material === 'dark' || material === 'accent' || material === 'vibrant' ? material : HOME_TILE_MATERIAL_FALLBACK;
+}
+
 function resolveMobileHomeSize(value) {
     const sizes = Array.isArray(value) ? value : [];
     return sizes.includes(MOBILE_HOME_SIZE) ? MOBILE_HOME_SIZE : (sizes[0] || MOBILE_HOME_SIZE);
@@ -782,4 +802,4 @@ function buildPluginCommandsSnapshot(commands, config, labels = {}) {
     };
 }
 
-module.exports = {HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};
+module.exports = {HOME_TILE_MATERIALS, HOME_TILE_MATERIAL_FALLBACK, resolveHomeTileMaterial, HOME_SCHEMA_VERSION, DEVICES, DEFAULT_MODULES, AVAILABILITY_LEVELS, MOBILE_HOME_SIZE, resolveMobileHomeSize, normalizeMobileLayout, normalizeProtocolVersion, normalizeClickCommand, normalizeHomepage, normalizeRefreshOn, normalizeIsoDate, normalizeConfigSchema, normalizeModuleDefinition, registerModules, modulesForDevice, getModuleDefinition, normalizeInstances, normalizeLayout, normalizeHomeState, migrateHomeState, resolveLayoutConflicts, QUICK_CAPTURE_ACTION_PREFIX, normalizeQuickCaptureConfig, buildQuickCaptureAction, parseQuickCaptureAction, buildQuickCaptureInitialText, normalizePluginCommandsConfig, buildPluginCommandsSnapshot};

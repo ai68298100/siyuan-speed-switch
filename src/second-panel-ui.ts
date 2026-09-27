@@ -9,7 +9,7 @@ import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
-import {resolveMobileHomeSize} from "./home-model";
+import {resolveMobileHomeSize, resolveHomeTileMaterial} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
@@ -414,6 +414,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
                 const cell = document.createElement("section");
                 cell.className = "sw-home__cell";
+                // T-6969（ADR 0091）：材质底色——目录声明的展示层属性，只换底色与文字色
+                cell.classList.add(`mat-${resolveHomeTileMaterial(inst.moduleId)}`);
                 cell.tabIndex = 0;
                 cell.dataset.size = sizeKey;
                 cell.dataset.moduleId = inst.moduleId;
