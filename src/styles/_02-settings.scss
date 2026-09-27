@@ -1245,3 +1245,47 @@
     color: var(--b3-theme-on-surface-light);
     opacity: .6;
 }
+
+// ==================== T-6955：文档集版本差异预览 ====================
+.sw-doc-set-diff {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 2px 8px;
+}
+
+.sw-doc-set-diff__meta {
+    margin: 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11.5px;
+}
+
+.sw-doc-set-diff__group {
+    margin: 4px 2px 4px;
+    padding-left: 10px;
+    border-left: 3px solid var(--b3-border-color);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--b3-theme-on-surface-light);
+
+    &--restore { border-left-color: var(--b3-theme-success); }
+    &--remove { border-left-color: var(--b3-theme-error); }
+    &--changed { border-left-color: var(--b3-theme-warning); }
+}
+
+.sw-doc-set-diff__line {
+    padding: 5px 9px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.sw-doc-set-diff__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 6px;
+}

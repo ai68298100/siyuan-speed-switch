@@ -168,6 +168,56 @@ function rollbackDocumentSet(value, setId, options = {}) {
     return {state: bounded, changed: true, item: bounded.sets[index] || next};
 }
 
+// T-6955：历史版本差异预览——只读比较「某历史版本 vs 当前集合」，仅用现有快照
+// 字段（rootId/标题/顺序/活动标记），不采集正文、不承诺恢复滚动位置。输入两侧
+// 都经 normalizeEntry 防御清洗（畸形条目丢弃、重复 rootId 去重、缺标题回落 rootId）。
+// 分组语义（以回滚方向叙述）：restore=仅版本有（回滚将恢复）、remove=仅当前有
+//（回滚将移除）、changed=两侧都有但标题/顺序/活动标记有差异；完全一致的条目只计数。
+function diffDocumentSetVersion(currentEntries, versionEntries) {
+    const normalizeSide = (raw) => {
+        const entries = [];
+        const seen = new Set();
+        (Array.isArray(raw) ? raw : []).forEach((rawEntry) => {
+            const entry = normalizeEntry(rawEntry, entries.length);
+            if (!entry || seen.has(entry.rootId)) return;
+            seen.add(entry.rootId);
+            entries.push(entry);
+        });
+        return entries;
+    };
+    const current = normalizeSide(currentEntries);
+    const version = normalizeSide(versionEntries);
+    const currentById = new Map(current.map((entry) => [entry.rootId, entry]));
+    const versionById = new Map(version.map((entry) => [entry.rootId, entry]));
+    const restore = version.filter((entry) => !currentById.has(entry.rootId));
+    const remove = current.filter((entry) => !versionById.has(entry.rootId));
+    const changed = [];
+    let unchangedCount = 0;
+    current.forEach((entry) => {
+        const counterpart = versionById.get(entry.rootId);
+        if (!counterpart) return;
+        const titleChanged = entry.title !== counterpart.title;
+        const orderChanged = entry.index !== counterpart.index;
+        const activeChanged = (entry.active === true) !== (counterpart.active === true);
+        if (!titleChanged && !orderChanged && !activeChanged) {
+            unchangedCount += 1;
+            return;
+        }
+        changed.push({
+            rootId: entry.rootId,
+            currentTitle: entry.title,
+            versionTitle: counterpart.title,
+            titleChanged,
+            currentIndex: entry.index,
+            versionIndex: counterpart.index,
+            orderChanged,
+            activeChanged,
+        });
+    });
+    changed.sort((left, right) => left.currentIndex - right.currentIndex);
+    return {restore, remove, changed, unchangedCount};
+}
+
 function removeDocumentSet(value, setId, options = {}) {
     const normalized = normalizeDocumentSets(value, options.max);
     const id = cleanText(setId, 96);
@@ -418,6 +468,7 @@ module.exports = {
     runDocumentSetRestore,
     buildDocumentSetRestoreReport,
     documentSetRestoreReportToMarkdown,
+    diffDocumentSetVersion,
     pickNextDocumentSet,
     orderDocumentSetRestoreEntries,
 };

@@ -4,11 +4,11 @@
 // DOM 构建器（settingItem/select/num 等）与数据访问方法，签名见 SettingsSectionsHost。
 // 分节内的相互调用改为同模块直接调用（.call(this)），不再绕道宿主。
 // ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
-import {getAllTabs, openTab, showMessage} from "siyuan";
+import {Dialog, getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
-import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries} from "./document-sets";
+import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries, diffDocumentSetVersion} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
 import {createDefaultFloatingBallConfig, normalizeFloatingBallConfig, selectFloatingBallFirstLayer, applyFloatingBallPreset, saveFloatingBallPreset, removeFloatingBallPreset, FLOATING_BALL_UI_SURFACES, FLOATING_BALL_ACTION_LIMIT, FLOATING_BALL_FIRST_LAYER_LIMIT, FLOATING_BALL_DIGIT_SLOT_COUNT} from "./floating-ball-model";
@@ -43,6 +43,7 @@ declare module "./document-sets" {
     }
     export function buildDocumentSetRestoreReport(plan: unknown, probe: unknown, execution?: {succeeded?: number; failed?: number; cancelled?: boolean; results?: Array<{rootId: string; ok: boolean; error?: string}>}, options?: {now?: number; essentials?: {results: Array<{rootId: string; status: "restored" | "failed" | "skipped"; error?: string}>} | null}): DocumentSetRestoreReport;
     export function documentSetRestoreReportToMarkdown(report: unknown): string;
+    export function diffDocumentSetVersion(currentEntries: unknown, versionEntries: unknown): {restore: any[]; remove: any[]; changed: Array<any>; unchangedCount: number};
 }
 
 declare module "./quick-actions-ui" {
@@ -1390,6 +1391,15 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
                     versionList.hidden = !versionList.hidden;
                 });
                 (item.versions || []).forEach((version: {savedAt: number; entries: unknown[]}, vIndex: number) => {
+                    // T-6955：查看差异——只读预览该版本与当前集合的差异，回滚仍需显式确认
+                    const diffButton = document.createElement("button");
+                    diffButton.type = "button";
+                    diffButton.className = "b3-button b3-button--text sw-setting__doc-set-diff";
+                    diffButton.textContent = this.i18n.documentSetDiff;
+                    diffButton.addEventListener("click", () => {
+                        openDocumentSetDiffDialog.call(this, item, vIndex, () => render());
+                    });
+                    versionList.appendChild(diffButton);
                     const versionRow = document.createElement("button");
                     versionRow.type = "button";
                     versionRow.className = "b3-button b3-button--text sw-setting__doc-set-version";
@@ -2490,4 +2500,94 @@ export function buildSettingsFloatingBall(this: SettingsSectionsHost, s: ISwSett
     footer.append(restore, buildQuickActionsTransferControls.call(this, () => { renderControls(); renderActions(); }, true));
     wrapper.appendChild(footer);
     return wrapper;
+}
+
+// T-6955：文档集历史版本差异预览——只读比较该版本与当前集合（新增/移除/顺序/
+// 标题/活动标记），缺失的历史时间标为「未记录」；确认后才调用既有回滚入口
+//（保持可逆语义），取消零写入。
+function openDocumentSetDiffDialog(this: SettingsSectionsHost, item: any, versionIndex: number, onDone: () => void) {
+    const versions = Array.isArray(item?.versions) ? item.versions : [];
+    const version = versions[versionIndex];
+    if (!version) return;
+    const diff = diffDocumentSetVersion(item.entries || [], version.entries || []);
+    const dialog = new Dialog({
+        title: `${this.i18n.documentSetDiffTitle} · ${String(item.name || "")}`,
+        content: '<div class="sw-doc-set-diff"></div>',
+        width: this.isMobile ? "min(560px, 94vw)" : "520px",
+    });
+    const root = dialog.element.querySelector<HTMLElement>(".sw-doc-set-diff");
+    if (!root) return;
+    const meta = document.createElement("p");
+    meta.className = "sw-doc-set-diff__meta";
+    meta.textContent = `${this.i18n.documentSetDiffTitle} · ${version.savedAt > 0 ? new Date(version.savedAt).toLocaleString() : this.i18n.documentSetDiffUnrecorded}`;
+    root.appendChild(meta);
+    const buildGroup = (label: string, rows: any[], format: (row: any) => string) => {
+        if (rows.length === 0) return;
+        const title = document.createElement("h4");
+        title.className = `sw-doc-set-diff__group sw-doc-set-diff__group--${label === this.i18n.documentSetDiffRestore ? "restore" : "remove"}`;
+        title.textContent = `${label} · ${rows.length}`;
+        root.appendChild(title);
+        rows.forEach((row) => {
+            const line = document.createElement("div");
+            line.className = "sw-doc-set-diff__line";
+            line.textContent = format(row);
+            root.appendChild(line);
+        });
+    };
+    buildGroup(this.i18n.documentSetDiffRestore, diff.restore, (entry) => entry.title);
+    buildGroup(this.i18n.documentSetDiffRemove, diff.remove, (entry) => entry.title);
+    if (diff.changed.length > 0) {
+        const title = document.createElement("h4");
+        title.className = "sw-doc-set-diff__group sw-doc-set-diff__group--changed";
+        title.textContent = `${this.i18n.documentSetDiffChanged} · ${diff.changed.length}`;
+        root.appendChild(title);
+        diff.changed.forEach((row: any) => {
+            const line = document.createElement("div");
+            line.className = "sw-doc-set-diff__line";
+            const bits: string[] = [row.rootId];
+            if (row.titleChanged) bits.push(`${this.i18n.documentSetDiffTitleChange}: ${row.currentTitle} → ${row.versionTitle}`);
+            if (row.orderChanged) bits.push(`${this.i18n.documentSetDiffOrder}: ${row.currentIndex + 1} → ${row.versionIndex + 1}`);
+            if (row.activeChanged) bits.push(this.i18n.documentSetDiffActive);
+            line.textContent = bits.join(" · ");
+            root.appendChild(line);
+        });
+    }
+    if (diff.restore.length === 0 && diff.remove.length === 0 && diff.changed.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "sw-doc-set-diff__meta";
+        empty.textContent = this.i18n.documentSetDiffEmpty;
+        root.appendChild(empty);
+    }
+    if (diff.unchangedCount > 0) {
+        const note = document.createElement("p");
+        note.className = "sw-doc-set-diff__meta";
+        note.textContent = this.i18n.documentSetDiffUnchanged.replace("{x}", String(diff.unchangedCount));
+        root.appendChild(note);
+    }
+    const actions = document.createElement("div");
+    actions.className = "sw-doc-set-diff__actions";
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "b3-button b3-button--cancel";
+    cancelBtn.textContent = this.i18n.cancel;
+    cancelBtn.addEventListener("click", () => dialog.destroy());
+    const rollbackBtn = document.createElement("button");
+    rollbackBtn.type = "button";
+    rollbackBtn.className = "b3-button b3-button--text";
+    rollbackBtn.textContent = this.i18n.documentSetRollbackTo;
+    rollbackBtn.addEventListener("click", () => {
+        const result = rollbackDocumentSet(this.data[DOCUMENT_SETS_KEY], item.setId, {now: Date.now(), versionIndex});
+        if (!result.changed) {
+            showMessage(this.i18n.documentSetRollbackNone);
+            dialog.destroy();
+            return;
+        }
+        this.data[DOCUMENT_SETS_KEY] = result.state;
+        this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        showMessage(this.i18n.documentSetRollbackDone.replace("{x}", String(item.name || "")));
+        dialog.destroy();
+        onDone();
+    });
+    actions.append(cancelBtn, rollbackBtn);
+    root.appendChild(actions);
 }
