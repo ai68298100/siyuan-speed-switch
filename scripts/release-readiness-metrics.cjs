@@ -16,7 +16,15 @@
 // hard ceilings unchanged and the compressed-entry line (288 KiB) needs its
 // own audit when crossed.
 const RAW_BUNDLE_BUDGET_BYTES = 1088 * 1024;
-const ARCHIVE_BUDGET_BYTES = 512 * 1024;
+// ADR 0090 (2026-09-28): recalibrated the archive ceiling 512 -> 544 KiB after
+// the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
+// preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout
+// undo/redo, T-6954 health details, T-6955 set diff, T-6956 leave guard,
+// T-6957 draft undo/redo) drove package.zip past the old line. Reduction
+// audit: icon/preview/i18n/README are market-required; the 4 packaged docs are
+// the F7 store-facing declaration (T-6707); snippet studio already ships as a
+// dynamic chunk. Per-entry compressed line (320 KiB, ADR 0089) unchanged.
+const ARCHIVE_BUDGET_BYTES = 544 * 1024;
 // ADR 0065 (2026-09-20): compressed-entry review line recalibrated from
 // 224 KiB to 256 KiB after the execution-chain modules (T-6680) and the
 // writing-streak second wave (T-6681) shrank headroom to 11780 bytes. Same

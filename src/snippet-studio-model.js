@@ -402,6 +402,36 @@ function redoDraftHistory(history) {
     return {history: {...history, index}, state: {...history.stack[index].state}};
 }
 
+// T-6958：冲突副本——把本地草稿保留为「禁用的新片段」：新 id、enabled=false、
+// 名称在最新清单内唯一（冲突副本/序号递增，长度 40 上限）；原清单与冲突原件
+// 完全不动。最新清单不可得时返回 null（调用方禁用副本出口并给回执）。
+const CONFLICT_COPY_NAME_MAX = 40;
+
+function nextConflictCopyName(existingNames, baseName) {
+    const clean = String(baseName || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 30) || "snippet";
+    const names = new Set((Array.isArray(existingNames) ? existingNames : []).map((value) => String(value || "").trim()));
+    const base = `${clean} (冲突副本)`;
+    if (!names.has(base)) return base.slice(0, CONFLICT_COPY_NAME_MAX);
+    for (let index = 2; index < 100; index += 1) {
+        const candidate = `${clean.slice(0, 24)} (冲突副本 ${index})`;
+        if (!names.has(candidate)) return candidate.slice(0, CONFLICT_COPY_NAME_MAX);
+    }
+    return `${base.slice(0, 34)}-${Date.now().toString(36).slice(-4)}`;
+}
+
+function buildConflictCopyEntry(latestList, draft, newId) {
+    if (!Array.isArray(latestList)) return null;
+    if (!draft || typeof draft !== "object" || typeof draft.content !== "string" || !draft.content.trim()) return null;
+    const existingNames = latestList.map((snippet) => (snippet && typeof snippet.name === "string" ? snippet.name : ""));
+    return {
+        id: String(newId || ""),
+        name: nextConflictCopyName(existingNames, draft.name),
+        type: draft.type === "js" ? "js" : "css",
+        content: draft.content,
+        enabled: false,
+    };
+}
+
 module.exports = {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetForWire, projectSnippetListForWire,
@@ -417,4 +447,7 @@ module.exports = {
     redoDraftHistory,
     canUndoDraftHistory,
     canRedoDraftHistory,
+    CONFLICT_COPY_NAME_MAX,
+    nextConflictCopyName,
+    buildConflictCopyEntry,
 };

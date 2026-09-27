@@ -1,5 +1,5 @@
 const {Dialog} = require("siyuan");
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory} = require("./snippet-studio-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, nextConflictCopyName, buildConflictCopyEntry} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
@@ -100,6 +100,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetLeaveSaveFailed: locale.i18n.snippetLeaveSaveFailed,
         snippetUndo: locale.i18n.snippetUndo,
         snippetRedo: locale.i18n.snippetRedo,
+        snippetConflictTitle: locale.i18n.snippetConflictTitle,
+        snippetConflictMessage: locale.i18n.snippetConflictMessage,
+        snippetConflictContinue: locale.i18n.snippetConflictContinue,
+        snippetConflictCopy: locale.i18n.snippetConflictCopy,
+        snippetConflictReload: locale.i18n.snippetConflictReload,
+        snippetConflictGone: locale.i18n.snippetConflictGone,
+        snippetConflictAdded: locale.i18n.snippetConflictAdded,
+        snippetConflictRemoved: locale.i18n.snippetConflictRemoved,
         snippetDraft: locale.i18n.snippetDraft,
         snippetUnsaved: locale.i18n.snippetUnsaved,
         snippetEnable: locale.i18n.snippetEnable,
@@ -766,6 +774,77 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         // 默认聚焦取消——三选一里最安全的动作
         cancelChoice.focus({preventScroll: true});
     }
+
+    // T-6958：保存冲突界面——编辑基线/本地草稿/最新读取版本的差异预览与四出口；
+    // 继续编辑与取消零写入，保留禁用副本不改冲突原件，放弃并重载走只读重取。
+    async function openConflictDialog() {
+        let latest = null;
+        try { latest = await store.read(); } catch (_) { latest = null; }
+        if (disposed) return;
+        const latestEntry = latest ? latest.find((item) => item.id === baseline?.id) || null : null;
+        const dialog = new Dialog({
+            title: t("snippetConflictTitle"),
+            content: '<div class="sw-studio__conflict"></div>',
+            width: "min(560px, 94vw)",
+        });
+        const box = dialog.element.querySelector(".sw-studio__conflict");
+        if (!box) { dialog.destroy(); return; }
+        const message = node("p", "sw-studio__conflict-message", t("snippetConflictMessage"));
+        const diffBox = node("div", "sw-studio__conflict-diff");
+        if (latestEntry) {
+            const diff = buildSnippetDiff(latestEntry.content || "", draft.content || "");
+            const summary = summarizeDiff(latestEntry.content || "", draft.content || "", diff);
+            const head = node("p", "sw-studio__conflict-summary", t("snippetConflictAdded").replace("{x}", String(summary.added))
+                + " · " + t("snippetConflictRemoved").replace("{x}", String(summary.removed))
+                + (diff.degraded ? " · " + t("snippetDiffDegraded") : ""));
+            diffBox.append(head);
+            const cap = Math.min(diff.rows.length, 60);
+            for (let i = 0; i < cap; i++) {
+                const row = diff.rows[i];
+                const line = node("div", "sw-studio__conflict-row is-" + row.type, (row.type === "ins" ? "+ " : row.type === "del" ? "- " : "  ") + row.text);
+                diffBox.appendChild(line);
+            }
+            if (diff.rows.length > cap) diffBox.append(node("p", "sw-studio__conflict-more", t("snippetDiffMore").replace("{x}", String(diff.rows.length - cap))));
+        } else {
+            diffBox.append(node("p", "sw-studio__conflict-message", t("snippetConflictGone")));
+        }
+        const actions = node("div", "sw-studio__conflict-actions");
+        const continueButton = node("button", "b3-button b3-button--text", t("snippetConflictContinue"));
+        continueButton.addEventListener("click", () => { dialog.destroy(); try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); } });
+        const cancelButton = node("button", "b3-button b3-button--text", t("cancel"));
+        cancelButton.addEventListener("click", () => { dialog.destroy(); try { editor.focus({preventScroll: true}); } catch (_) { editor.focus(); } });
+        const copyButton = node("button", "b3-button b3-button--text", t("snippetConflictCopy"));
+        copyButton.addEventListener("click", async () => {
+            copyButton.disabled = true;
+            const copyId = newId();
+            const input = buildConflictCopyEntry(latest, {name: draft.name, type: draft.type, content: draft.content}, copyId)
+                || {id: copyId, name: nextConflictCopyName([], draft.name), type: draft.type, content: draft.content, enabled: false};
+            busy = true;
+            try {
+                const next = await store.mutate(null, "save", input);
+                if (disposed) return;
+                snippets = next;
+                setStatus(t("snippetSaved"), "ready");
+                dialog.destroy();
+                render();
+            } catch (error) {
+                copyButton.disabled = false;
+                if (!disposed) setStatus(errorText(error), "error");
+            } finally { busy = false; if (!disposed) syncFields(); }
+        });
+        const reloadButton = node("button", "b3-button b3-button--cancel", t("snippetConflictReload"));
+        reloadButton.addEventListener("click", () => {
+            dialog.destroy();
+            if (latestEntry) {
+                choose(latestEntry, latestEntry);
+            } else {
+                void load(true);
+            }
+        });
+        actions.append(continueButton, copyButton, reloadButton, cancelButton);
+        box.append(message, diffBox, actions);
+        cancelButton.focus({preventScroll: true});
+    }
     function choose(value, native) {
         aiGeneration += 1;
         ai.cancel();
@@ -856,7 +935,14 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             setStatus(t(input.type === "js" ? "snippetJSReload" : "snippetSaved"), "ready");
             return true;
             return true;
-        } catch (error) { if (!disposed) setStatus(errorText(error), "error"); return false; }
+        } catch (error) {
+            if (!disposed) {
+                setStatus(errorText(error), "error");
+                // T-6958：写前比对或写后确认发现冲突——打开可决策冲突界面
+                if (String(error?.message || "") === "snippet-conflict") void openConflictDialog();
+            }
+            return false;
+        }
         finally { busy = false; if (!disposed) syncFields(); }
     }
     function download(filename, content, type) {
