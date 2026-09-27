@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次①时钟类（T-6971，2026-09-28）</title>
+<style>
+/* 令牌与画廊/工作台原型一致；语义见 docs/design-system-v1-2026-09-27.md（ADR 0084） */
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+/* 材质（ADR 0091） */
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.mat-plain { background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color); }
+.mat-dark { background: linear-gradient(160deg, #2a303c, #14171f); color: #e8eaf2; border: 1px solid rgb(255 255 255 / 7%); }
+.mat-accent { background: linear-gradient(135deg, var(--b3-theme-primary), color-mix(in srgb, var(--b3-theme-primary) 58%, #101426));
+  color: var(--b3-theme-on-primary); border: none; }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.sub { font-size: 11px; opacity: .68; }
+.bignum { font-size: 34px; font-weight: 700; line-height: 1.15; margin-top: 6px; }
+.bignum small { font-size: 14px; font-weight: 600; opacity: .75; margin-left: 2px; }
+.bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 22%); margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; background: var(--b3-theme-primary); }
+/* 演示网格：档位跨度 = ADR 0091（S 3×2 / M 6×2 / L 6×4 / X 12×3） */
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden; box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.d-xl { grid-column: span 12; grid-row: span 3; }
+.d-m { grid-column: span 6; grid-row: span 2; }
+.d-s { grid-column: span 3; grid-row: span 2; }
+.hero-date { font-size: 12px; font-weight: 600; opacity: .8; margin-top: 10px; }
+.hero-time { font-size: 56px; font-weight: 700; letter-spacing: -.01em; line-height: 1.05; margin: 6px 0 2px; }
+.hero-time .sec { font-size: 24px; font-weight: 600; opacity: .55; margin-left: 6px; }
+.hero-cities { display: flex; gap: 20px; margin-top: 12px; }
+.city { font-size: 11px; }
+.city .cn { opacity: .6; }
+.city .ct { font-size: 14px; font-weight: 700; margin-top: 1px; }
+.city .cdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+.quote-txt { font-size: 14px; line-height: 1.65; font-weight: 500; margin-top: 10px; }
+.quote-by { font-size: 10.5px; margin-top: 8px; opacity: .6; }
+.dots7 { display: flex; gap: 5px; margin-top: 10px; }
+.dots7 i { flex: 1; height: 22px; border-radius: 7px; background: rgb(255 255 255 / 22%); }
+.dots7 i.hit { background: rgb(255 255 255 / 88%); }
+/* 规格表 */
+.spec-card { border: 1px solid var(--b3-border-color); border-radius: 16px; background: var(--b3-theme-background);
+  margin: 0 auto 18px; max-width: 1180px; overflow: hidden; }
+.spec-card h3 { font-size: 13px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--b3-border-color); font-weight: 700; }
+.spec-card h3 .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.spec-grid > div { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--b3-border-color); }
+.spec-grid .k { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.spec-grid .v b { font-weight: 700; }
+@media (max-width: 800px) { .spec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次①时钟类</h1>
+  <span class="meta">T-6971 · 2026-09-28 · 时间与日期 / 世界时钟 / 每日引言 / 倒数日 / 年度进度</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>本批规格要点</h2>
+  <ol>
+    <li><b>材质</b>（ADR 0091）：时钟/引言 = <b>dark</b> 深色舞台（明暗主题恒定）；倒数日 = <b>accent</b> 主色渐变；年度进度 = <b>plain</b>。</li>
+    <li><b>默认档位</b>：世界时钟 = X 英雄（每面板至多 1 个置首行）；时间与日期 = M（6×2）；倒数日/年度进度/引言 = S（3×2）。</li>
+    <li><b>事务与性能</b>：秒数走既有局部补丁通道（T-6935），动效只动 transform/opacity；数字全部 tabular-nums。</li>
+    <li><b>验收基线</b>：每张卡挂明暗双主题对比度采样点；三端收缩 = 侧栏 2 列（S/M 各占一列宽）、手机 2 列、L/X 降级为 M。</li>
+  </ol>
+</section>
+
+<!-- ============ 批次①组件规格卡 ============ -->
+
+<section class="screen">
+  <h2>瓦片演示 <span>默认档位 × 默认材质（时间与日期 M / 世界时钟 X / 引言·倒数日·年度进度 S）</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="d-tile d-xl mat-dark">
+        <div class="theader">世界时钟<span class="sp"></span><span class="tchip">4 城市</span></div>
+        <div class="hero-date num">9 月 28 日 星期一 · 晴</div>
+        <div class="hero-time num">21:36<span class="sec num">48</span></div>
+        <div class="hero-cities num">
+          <span class="city"><span class="cdot" style="background:#f6c945"></span><span class="cn">伦敦</span><br><span class="ct">14:36</span></span>
+          <span class="city"><span class="cdot" style="background:#f6c945"></span><span class="cn">纽约</span><br><span class="ct">09:36</span></span>
+          <span class="city"><span class="cdot" style="background:#8a93a8"></span><span class="cn">东京</span><br><span class="ct">22:36</span></span>
+          <span class="city"><span class="cdot" style="background:#3d5afe"></span><span class="cn">悉尼</span><br><span class="ct">23:36</span></span>
+        </div>
+      </div>
+      <div class="d-tile d-m mat-dark">
+        <div class="theader">时间与日期</div>
+        <div class="bignum num" style="font-size:30px;margin-top:8px;">21:36</div>
+        <div class="sub num">9/28 周一 · 农历八月十七</div>
+      </div>
+      <div class="d-tile d-m mat-vibrant" style="background:linear-gradient(165deg,#3f74d4,#8fc3ee);color:#fff;">
+        <div class="theader" style="color:rgb(255 255 255 / 78%)">近期天气 <span class="sp"></span><span class="tchip">15 分钟前</span></div>
+        <div class="bignum num" style="color:#fff;font-size:28px;margin-top:4px;">23°</div>
+        <div class="sub" style="color:rgb(255 255 255 / 72%)">多云转晴</div>
+      </div>
+      <div class="d-tile d-s mat-accent">
+        <div class="theader">倒数日</div>
+        <div class="bignum num" style="font-size:30px;margin-top:6px;">3<small>天</small></div>
+        <div class="sub">距离 v0.41 发布</div>
+      </div>
+      <div class="d-tile d-s mat-plain">
+        <div class="theader">年度进度</div>
+        <div class="bignum num" style="font-size:30px;margin-top:6px;color:var(--b3-theme-on-background)">73<small>%</small></div>
+        <div class="bar"><i style="width:73%"></i></div>
+      </div>
+      <div class="d-tile d-s mat-dark">
+        <div class="theader">每日引言</div>
+        <div class="quote-txt" style="font-size:13px;margin-top:8px;">简单是可靠的最高境界。</div>
+        <div class="quote-by">— Joe Armstrong</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ① 时间与日期 -->
+
+<section class="spec-card">
+  <h3>时间与日期 <span class="tag">dark · M(6×2)</span></h3>
+  <div class="spec-grid">
+    <div class="k">内容布局（各档位）</div><div class="v">S：星期 + 日期 + 农历（单行时刻）；M（默认）：加秒数与干支；L/X：不适用（该组件声明上限 M）</div>
+    <div class="k">状态呈现</div><div class="v">恒 ready（内核时间源，无网络）；无缓存语义</div>
+    <div class="k">微标头</div><div class="v">「时间与日期」识别名；无状态 chip</div>
+    <div class="k">三端收缩</div><div class="v">侧栏 S=1 列宽；手机 S=半宽；不提供 X</div>
+    <div class="k">验收要点</div><div class="v">数字 tabular-nums；秒数走 T-6935 局部补丁；明暗采样 ≥ AA</div>
+  </div>
+</section>
+
+<!-- ② 世界时钟 -->
+<section class="spec-card">
+  <h3>世界时钟 <span class="tag">dark · X(12×3) 英雄位</span></h3>
+  <div class="spec-grid">
+    <div class="k">内容布局（各档位）</div><div class="v">X（默认）：日期行 + 56px 大时刻 + 秒 + 城市行（≤4 城，昼夜圆点）；M：时刻 + 城市摘要单行；L：双列城市（≤8 城）；S：仅本地时刻</div>
+    <div class="k">状态呈现</div><div class="v">恒 ready；城市数 chip；夏令时城市加 warning 色点</div>
+    <div class="k">微标头</div><div class="v">「世界时钟」；X 档置首行，每面板至多 1 个（Slice 3 约束强制）</div>
+    <div class="k">三端收缩</div><div class="v">侧栏降级 M（城市 ≤2）；手机 M（时刻 + 单城市摘要）；X 仅桌面</div>
+    <div class="k">验收要点</div><div class="v">昼夜圆点区分度不依赖颜色（加「昼/夜」文字 title）；离线城市表数据不外发</div>
+  </div>
+</section>
+
+<!-- ③ 每日引言 -->
+<section class="spec-card">
+  <h3>每日引言 <span class="tag">dark · S(3×2)</span></h3>
+  <div class="spec-grid">
+    <div class="k">内容布局（各档位）</div><div class="v">S（默认）：引言 ≤3 行截断省略 + 作者；M：引言 + 日期角标；L/X：不适用</div>
+    <div class="k">状态呈现</div><div class="v">恒 ready（内置语料，日更）；无网络请求</div>
+    <div class="k">微标头</div><div class="v">「每日引言」；无 chip</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（S）；侧栏/手机同款</div>
+    <div class="k">验收要点</div><div class="v">长引言必须省略号截断（不换页）；引号排版衬线可选</div>
+  </div>
+</section>
+
+<!-- ④ 倒数日 -->
+<section class="spec-card">
+  <h3>倒数日 <span class="tag">accent · S(3×2)</span></h3>
+  <div class="spec-grid">
+    <div class="k">内容布局（各档位）</div><div class="v">S（默认）：大数字天数 + 目标名；M：加目标日期行；L：加里程碑列表（≤3 条）</div>
+    <div class="k">状态呈现</div><div class="v">已过期 = 天数负值 + error 色 chip「已过期」；当天 = chip「就是今天」</div>
+    <div class="k">微标头</div><div class="v">「倒数日」；无 chip（目标名在正文）</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（S）；侧栏/手机同款</div>
+    <div class="k">验收要点</div><div class="v">负天数显示「已过 N 天」语义；双模式（倒数/正数）沿用既有配置</div>
+  </div>
+</section>
+
+<!-- ⑤ 年度进度 -->
+<section class="spec-card">
+  <h3>年度进度 <span class="tag">plain · S(3×2)</span></h3>
+  <div class="spec-grid">
+    <div class="k">内容布局（各档位）</div><div class="v">S（默认）：百分比大数字 + 进度条 + 剩余天数；M：加年/月/周四刻度行；L：不适用</div>
+    <div class="k">状态呈现</div><div class="v">恒 ready；无网络</div>
+    <div class="k">微标头</div><div class="v">「年度进度」；无 chip</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（S）</div>
+    <div class="k">验收要点</div><div class="v">进度条轨道/填充对比度采样；跨年瞬间（12-31→01-01）数值正确</div>
+  </div>
+</section>
+
+<!-- ============ 批次①总表 ============ -->
+<section class="screen">
+  <h2>批次①规格总表 <span>实现对照：resolveHomeTileMaterial 目录 + HOME_TILE_DEFAULT_SIZES 默认档</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>支持档</th><th>事务/性能</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">时间与日期（external-local-time）</td><td>dark</td><td class="num">M</td><td class="num">S/M</td><td>秒数局部补丁</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">世界时钟（external-world-clock）</td><td>dark</td><td class="num">X</td><td class="num">S/M/L/X</td><td>秒数局部补丁</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">每日引言（external-quote-daily）</td><td>dark</td><td class="num">S</td><td class="num">S/M</td><td>日更一次</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">倒数日（countdown）</td><td>accent</td><td class="num">S</td><td class="num">S/M/L</td><td>本地日期计算</td></tr>
+        <tr><td style="padding:8px 14px;">年度进度（year-progress）</td><td>plain</td><td class="num">S</td><td class="num">S/M</td><td>本地日期计算</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
