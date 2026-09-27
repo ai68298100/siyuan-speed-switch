@@ -144,9 +144,10 @@ module.exports = (env, argv) => {
             filename: "[name].js",
             // T-6861：工作室按需加载，但 chunk 名称必须稳定，才能被
             // plugin.json 的发布资源契约精确登记并参与包体审计。这个 chunk
-            // 保留在发布包的 dist/ 子路径，运行时基址由 index.ts 从当前脚本 URL
-            // 设置，因此请求路径和 E2E/发布包的真实布局一致。
+            // 保留在发布包的 dist/ 子路径。思源以内联方式执行插件入口，
+            // document.currentScript 不可靠，须明确指定插件资源基址。
             chunkFilename: "dist/snippet-studio.js",
+            publicPath: `/plugins/${pluginManifest.name}/`,
             path: path.resolve(__dirname),
             libraryTarget: "commonjs2",
             library: {

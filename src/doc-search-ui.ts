@@ -969,11 +969,11 @@ export function collectOpenRootIds(this: DocSearchUiHost): Set<string> {
     }
 
     // ==================== T-6839 常驻预览窗格 ====================
-    // 桌面端：文档结果区右分栏，行焦点（↑/↓/Tab）同步预览（大纲 ≤12 + 首段 ≤600 字）。
-    // 零新增端点：getDocOutline 与 /api/query/sql 均在 KERNEL_ENDPOINTS 白名单；
+    // 桌面端：文档结果区右分栏，行焦点（↑/↓/Tab）同步预览（大纲 ≤12 + 正文 ≤900 字）。
+    // 零新增端点：getDocOutline 与 getDoc 均在 KERNEL_ENDPOINTS 白名单；
     // 300ms debounce（Raycast/Spotlight 谱系共识）+ 代际计数丢弃过期回包；
     // 全库结果与已开页签共用窗格；手机端与窄容器不挂载。
-    // rootId 经 BLOCK_ID_RE 锚定校验（^[0-9]{14}-[0-9a-z]+$）后才可入 SQL 字面量。
+    // rootId 经 BLOCK_ID_RE 锚定校验（^[0-9]{14}-[0-9a-z]+$）后才可请求内核文档。
 
 const DOC_PREVIEW_DEBOUNCE_MS = 300;
 const DOC_PREVIEW_MIN_WIDTH = 680;
@@ -1044,6 +1044,31 @@ function previewBodyOf(pane: HTMLElement): HTMLElement {
         return pane.querySelector<HTMLElement>(".sw__doc-preview-body") || pane;
     }
 
+function extractDocPreviewBlocks(html: unknown): Array<{content: string; kind: string}> {
+        if (typeof html !== "string" || !html) return [];
+        // Template content stays detached: read text from host block markup, never mount its HTML.
+        const template = document.createElement("template");
+        template.innerHTML = html.slice(0, 128000);
+        const blocks: Array<{content: string; kind: string}> = [];
+        const add = (node: Element | null, kind: string) => {
+            const content = node?.textContent?.replace(/\u200b/g, "").trim() || "";
+            if (content) blocks.push({content, kind});
+        };
+        const kinds: Record<string, string> = {NodeHeading: "heading", NodeParagraph: "paragraph",
+            NodeCodeBlock: "code", NodeBlockquote: "quote"};
+        for (const node of template.content.children) {
+            if (blocks.length >= 12) break;
+            const kind = kinds[node.getAttribute("data-type") || ""];
+            if (kind) add(node.querySelector('[contenteditable="true"]'), kind);
+            else if (node.getAttribute("data-type") === "NodeList") {
+                node.querySelectorAll('[data-type="NodeListItem"]').forEach((item) => {
+                    if (blocks.length < 12) add(item.querySelector('[contenteditable="true"]'), "list");
+                });
+            }
+        }
+        return blocks;
+    }
+
 function setDocPreviewHint(this: DocSearchUiHost, pane: HTMLElement, text: string): void {
         const body = previewBodyOf(pane);
         body.textContent = "";
@@ -1082,30 +1107,30 @@ function scheduleDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, i
         docPreviewTimers.set(scrollElement, window.setTimeout(() => {
             docPreviewTimers.delete(scrollElement);
             if (!item.isConnected) return;
-            void loadDocPreview.call(this, scrollElement, rootId, generation);
+            const title = item.querySelector<HTMLElement>(".sw__doc-title, .sw__title")?.textContent?.trim() || "";
+            void loadDocPreview.call(this, scrollElement, rootId, generation, title);
         }, DOC_PREVIEW_DEBOUNCE_MS));
     }
 
-async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, rootId: string, generation: number): Promise<void> {
+async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement, rootId: string, generation: number, title: string): Promise<void> {
         const pane = docPreviewPanes.get(scrollElement);
         if (!pane || !pane.isConnected) return;
         setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewLoading);
         setDocPreviewStatus(pane, "loading", this.i18n.docSearchPreviewStatusLoading);
         // 两个白名单端点并行取数；fetchKernelJson 自带超时与非 2xx → null
-        const [outlinePayload, rowsPayload] = await Promise.all([
+        const [outlinePayload, docPayload] = await Promise.all([
             // 审查轮 P-D 实证：preview:false 恒返回空，true 才携带嵌套大纲树
             this.fetchKernelJson("/api/outline/getDocOutline", {id: rootId, preview: true}),
-            this.fetchKernelJson("/api/query/sql", {stmt:
-                "SELECT content FROM blocks WHERE root_id = '" + rootId + "' AND type = 'p' AND content <> '' ORDER BY id LIMIT 3"}),
+            this.fetchKernelJson("/api/filetree/getDoc", {id: rootId, mode: 0, size: 12}),
         ].map((request: Promise<any>): Promise<any> => request.catch((): null => null)));
         if (!pane.isConnected) return;
         if ((docPreviewGenerations.get(scrollElement) || 0) !== generation) return;
-        const failed = [outlinePayload, rowsPayload].some(payload =>
-            !payload || payload.code !== 0 || !Array.isArray(payload.data));
+        const failed = !outlinePayload || outlinePayload.code !== 0 || !Array.isArray(outlinePayload.data)
+            || !docPayload || docPayload.code !== 0 || typeof docPayload.data?.content !== "string";
         setDocPreviewStatus(pane, failed ? "error" : "ready", failed
             ? this.i18n.docSearchPreviewFailed : this.i18n.docSearchPreviewStatusReady);
         const outline = Array.isArray(outlinePayload?.data) ? outlinePayload.data : [];
-        const rows = Array.isArray(rowsPayload?.data) ? rowsPayload.data : [];
+        const rows = extractDocPreviewBlocks(docPayload?.data?.content);
         const snapshot = buildDocPreviewSnapshot(outline, rows);
         const body = previewBodyOf(pane);
         body.textContent = "";
@@ -1114,23 +1139,59 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
                 ? this.i18n.docSearchPreviewFailed : this.i18n.docSearchPreviewNoContent);
             return;
         }
-        if (snapshot.outline.length > 0) {
-            const list = document.createElement("div");
+        const documentTitle = document.createElement("h3");
+        documentTitle.className = "sw__doc-preview-title";
+        documentTitle.textContent = title || this.i18n.docSearchPreview;
+        body.appendChild(documentTitle);
+        if (snapshot.items.length > 0) {
+            const section = document.createElement("section");
+            section.className = "sw__doc-preview-section";
+            const label = document.createElement("h4");
+            label.className = "sw__doc-preview-section-title";
+            label.textContent = this.i18n.docSearchPreviewContent;
+            section.appendChild(label);
+            snapshot.items.forEach((item: {kind: string; text: string}) => {
+                if (item.kind === "list") {
+                    let list = section.lastElementChild;
+                    if (!list?.classList.contains("sw__doc-preview-content-list")) {
+                        list = document.createElement("ul");
+                        list.className = "sw__doc-preview-content-list";
+                        section.appendChild(list);
+                    }
+                    const line = document.createElement("li");
+                    line.textContent = item.text;
+                    list.appendChild(line);
+                    return;
+                }
+                const tag = item.kind === "heading" ? "h5" : item.kind === "quote" ? "blockquote"
+                    : item.kind === "code" ? "pre" : "p";
+                const block = document.createElement(tag);
+                block.className = `sw__doc-preview-block sw__doc-preview-block--${item.kind}`;
+                if (item.kind === "paragraph") block.classList.add("sw__doc-preview-excerpt");
+                block.textContent = item.text;
+                section.appendChild(block);
+            });
+            body.appendChild(section);
+        }
+        const headings = snapshot.outline.filter((entry: {name: string}, index: number) =>
+            index !== 0 || entry.name !== title || snapshot.outline.length === 1);
+        if (headings.length > 0) {
+            const section = document.createElement("section");
+            section.className = "sw__doc-preview-section";
+            const label = document.createElement("h4");
+            label.className = "sw__doc-preview-section-title";
+            label.textContent = this.i18n.docSearchPreviewOutline;
+            const list = document.createElement("ul");
             list.className = "sw__doc-preview-outline";
-            snapshot.outline.forEach((entry: {name: string; level: number}) => {
-                const line = document.createElement("div");
+            headings.forEach((entry: {name: string; level: number}) => {
+                const line = document.createElement("li");
                 line.className = "sw__doc-preview-heading";
                 line.style.paddingLeft = `${(entry.level - 1) * 10}px`;
                 line.textContent = entry.name;
                 list.appendChild(line);
             });
-            body.appendChild(list);
-        }
-        if (snapshot.excerpt) {
-            const excerpt = document.createElement("p");
-            excerpt.className = "sw__doc-preview-excerpt";
-            excerpt.textContent = snapshot.excerpt;
-            body.appendChild(excerpt);
+            section.append(label, list);
+            body.appendChild(section);
         }
     }
 

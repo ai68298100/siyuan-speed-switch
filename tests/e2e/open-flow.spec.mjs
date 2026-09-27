@@ -33,7 +33,7 @@ async function seedDocs(client) {
         notebook: notebookId,
         path: `/${DOC_TITLE}`,
         // T-6839：标题+段落形态让预览窗格有确定的大纲与摘要可断言
-        markdown: `# ${DOC_TITLE} 大纲锚\n\n${DOC_TITLE} 的内容首段`,
+        markdown: `# ${DOC_TITLE} 大纲锚\n\n${DOC_TITLE} 的内容首段\n\n${DOC_TITLE} 的第二段正文\n\n- 速切列表条目\n\n> 速切引用内容\n\n~~~js\nconst preview = 1;\n~~~`,
     });
     docARootId = String(docA || "");
     expect(docARootId.length).toBeGreaterThan(0);
@@ -82,6 +82,14 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
             // T-6839 常驻预览窗格：行焦点同步右栏预览（真实内核大纲/摘要取数）
             await expect(page.locator(".sw__doc-preview .sw__doc-preview-heading", {hasText: "大纲锚"}).first())
                 .toBeVisible({timeout: 15000});
+            await expect(page.locator(".sw__doc-preview-title")).toContainText(DOC_TITLE);
+            await expect(page.locator(".sw__doc-preview-excerpt")).toHaveText([
+                `${DOC_TITLE} 的内容首段`, `${DOC_TITLE} 的第二段正文`,
+            ]);
+            await expect(page.locator(".sw__doc-preview-content-list")).toContainText("速切列表条目");
+            await expect(page.locator(".sw__doc-preview-block--quote")).toContainText("速切引用内容");
+            await expect(page.locator(".sw__doc-preview-block--code")).toContainText("const preview = 1;");
+            await expect(page.locator(".sw__doc-preview-outline")).not.toContainText("&nbsp;");
             // T-6838：结果行 ↑/↓ 行导航——焦点行随方向键移动并跟随滚动
             const secondDoc = page.locator(".sw__doc-grid .sw__doc-item").nth(1);
             if (await secondDoc.count()) {

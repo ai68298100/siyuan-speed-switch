@@ -15,11 +15,11 @@ test("snippet studio lazy chunk has a stable published path and runtime base", (
     assert.equal(config.output.chunkFilename, "dist/snippet-studio.js");
 
     const manifest = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
+    assert.equal(config.output.publicPath, `/plugins/${manifest.name}/`);
     assert.ok(manifest.publish?.resources?.includes("dist/snippet-studio.js"));
 
     const entrySource = readSourceText(path.join(root, "src", "index.ts"));
-    assert.match(entrySource, /__webpack_public_path__/);
-    assert.match(entrySource, /document\.currentScript/);
+    assert.doesNotMatch(entrySource, /__webpack_public_path__|document\.currentScript/);
     const e2eInstaller = fs.readFileSync(path.join(root, "scripts", "e2e", "lib.mjs"), "utf8");
     assert.match(e2eInstaller, /lazyChunk/);
     assert.match(e2eInstaller, /path\.join\(lazyDir, "snippet-studio\.js"\)/);
@@ -28,7 +28,7 @@ test("snippet studio lazy chunk has a stable published path and runtime base", (
     if (fs.existsSync(bundle)) {
         const source = fs.readFileSync(bundle, "utf8");
         assert.match(source, /dist\/snippet-studio\.js/);
-        assert.match(source, /replace\(\/\[\^\/\]\*\$\//);
+        assert.ok(source.includes(config.output.publicPath), "built runtime must contain the plugin resource base");
     }
 
     const zip = path.join(root, "package.zip");

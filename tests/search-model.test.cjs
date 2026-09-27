@@ -1136,19 +1136,25 @@ test("doc preview snapshot: outline bounded to 12 with heading level projection 
     assert.deepEqual(fallback.outline, [{name: "其他", level: 1}]);
 });
 
-test("doc preview snapshot: excerpt bounded to 600 chars across paragraphs (T-6839)", () => {
+test("doc preview snapshot: excerpt bounded across separate paragraphs", () => {
     const long = "字".repeat(500);
     const snapshot = buildDocPreviewSnapshot([], [{content: long}, {content: "第二段"}, {content: "   "}]);
-    assert.equal(snapshot.excerpt.length, 504); // 500 + 空格 + 3；段落耗尽不补齐
-    assert.ok(snapshot.excerpt.startsWith("字"));
+    assert.equal(snapshot.items.map(item => item.text).join(" ").length, 504); // 500 + 空格 + 3
+    assert.ok(snapshot.items[0].text.startsWith("字"));
+    assert.deepEqual(snapshot.items.map(item => item.text), [long, "第二段"]);
+    assert.deepEqual(snapshot.items.map(item => item.kind), ["paragraph", "paragraph"]);
+    const capped = buildDocPreviewSnapshot([], [{content: "字".repeat(1000)}]);
+    assert.equal(capped.items[0].text.length, 900);
+    const rich = buildDocPreviewSnapshot([], [{kind: "heading", content: "Heading"}, {kind: "code", content: "line 1\nline 2"}]);
+    assert.deepEqual(rich.items, [{kind: "heading", text: "Heading"}, {kind: "code", text: "line 1\nline 2"}]);
     // 越界合并即截断（trim 去尾空格），不再吸收后续段
-    const bounded = buildDocPreviewSnapshot([], [{content: "ab"}, {content: "cd"}, {content: "ef"}], {excerptMax: 5});
-    assert.equal(bounded.excerpt, "ab cd");
+    const bounded = buildDocPreviewSnapshot([], [{content: "ab"}, {content: "cd"}, {content: "ef"}]);
+    assert.deepEqual(bounded.items.map(item => item.text), ["ab", "cd", "ef"]);
     assert.equal(snapshot.empty, false);
 });
 
 test("doc preview snapshot: empty outline and blocks yields empty flag (T-6839)", () => {
-    assert.deepEqual(buildDocPreviewSnapshot(null, null), {outline: [], excerpt: "", empty: true});
+    assert.deepEqual(buildDocPreviewSnapshot(null, null), {outline: [], items: [], empty: true});
     const blank = buildDocPreviewSnapshot([], [{content: "   "}]);
     assert.equal(blank.empty, true);
 });
@@ -1205,6 +1211,14 @@ test("doc preview snapshot: synthetic title dedupes when doc h1 repeats the name
     ];
     assert.equal(buildDocPreviewSnapshot(distinct, []).outline.length, 2);
     // 中间隔层级的不同名（首两项不同名）不动
+});
+
+test("doc preview snapshot: kernel heading entities become readable text", () => {
+    const snapshot = buildDocPreviewSnapshot([
+        {name: "Project&nbsp;notes &amp; decisions", type: "outline"},
+        {content: "A &lt; B &amp; C", subType: "h2"},
+    ], []);
+    assert.deepEqual(snapshot.outline.map(item => item.name), ["Project notes & decisions", "A < B & C"]);
 });
 
 // ---------- T-6883 页签卡更新时间徽标 ----------

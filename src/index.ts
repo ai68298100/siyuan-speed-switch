@@ -2,18 +2,6 @@ import {Plugin, Dialog, Menu, getFrontend, getAllTabs, getActiveTab, openTab, sh
 import type {IMenu, TEventBus, TPluginDataChangeReason} from "siyuan";
 import "./index.scss";
 
-// Webpack's automatic public path is derived from the source entry path. The
-// production build writes that entry under dist/ and the release archive
-// flattens it to the plugin root, so set the runtime base from the actual
-// script URL before a lazy chunk can be requested.
-declare let __webpack_public_path__: string;
-if (typeof document !== "undefined") {
-    const currentScript = document.currentScript as HTMLScriptElement | null;
-    const scriptUrl = typeof currentScript?.src === "string" ? currentScript.src : "";
-    if (scriptUrl) {
-        __webpack_public_path__ = scriptUrl.replace(/[^/]*$/, "");
-    }
-}
 import {logger} from "./logger";
 import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";

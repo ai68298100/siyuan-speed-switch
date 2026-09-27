@@ -1617,19 +1617,19 @@ function planDocViewportRestore(anchor, entries, scrollTop) {
 }
 
 // ==================== T-6839 常驻预览窗格 ====================
-// 纯投影：把大纲端点与首段 SQL 行收敛成有界快照。端点须 preview:true（false
+// 纯投影：把大纲端点与按原文顺序提取的正文块收敛成有界快照。大纲须 preview:true（false
 // 恒空），返回嵌套树：顶层项文本在 name（含合成的文档名项），blocks/children
 // 内子项文本在 content——两处都取；层级优先 depth+1，回退 type/subType 的
-// h1-h6 解析。段文本空白归一后按序拼接、截到 excerptMax；两者皆空返回
+// h1-h6 解析。正文保留块类型、归一空白（代码保留换行），总量限 900 字；两者皆空返回
 // empty=true，UI 层显示空态而不是空窗格。
 const DOC_PREVIEW_OUTLINE_MAX = 12;
-const DOC_PREVIEW_EXCERPT_MAX = 600;
+const DOC_PREVIEW_EXCERPT_MAX = 900;
 function flattenPreviewOutline(nodes, depth, out, limit) {
     if (!Array.isArray(nodes) || out.length >= limit) return;
     for (const node of nodes) {
         if (out.length >= limit) break;
         if (!node || typeof node !== "object") continue;
-        const name = String(node.name || node.content || "").replace(/\s+/g, " ").trim();
+        const name = decodePreviewEntities(String(node.name || node.content || "")).replace(/\s+/g, " ").trim();
         if (name) {
             let level = Number.isFinite(node.depth) ? Math.trunc(node.depth) + 1 : 0;
             if (level < 1 || level > 6) {
@@ -1643,26 +1643,33 @@ function flattenPreviewOutline(nodes, depth, out, limit) {
         flattenPreviewOutline(node.blocks || node.children, depth + 1, out, limit);
     }
 }
-function buildDocPreviewSnapshot(outline, blocks, options = {}) {
-    const outlineMax = Number.isFinite(options.outlineMax) ? options.outlineMax : DOC_PREVIEW_OUTLINE_MAX;
-    const excerptMax = Number.isFinite(options.excerptMax) ? options.excerptMax : DOC_PREVIEW_EXCERPT_MAX;
+function decodePreviewEntities(text) {
+    const named = {nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"'};
+    return text.replace(/&(nbsp|amp|lt|gt|quot);/g, (_, name) => named[name]);
+}
+function buildDocPreviewSnapshot(outline, blocks) {
     const outlineOut = [];
-    flattenPreviewOutline(outline, 0, outlineOut, outlineMax);
+    flattenPreviewOutline(outline, 0, outlineOut, DOC_PREVIEW_OUTLINE_MAX);
     const outlineEntries = dedupeSyntheticOutlineHeading(outlineOut);
-    let excerpt = "";
+    const items = [];
+    let used = 0;
     if (Array.isArray(blocks)) {
         for (const block of blocks) {
-            const text = String(block?.content || "").replace(/\s+/g, " ").trim();
+            const kind = block?.kind || "paragraph";
+            const text = String(block?.content || "")
+                .replace(kind === "code" ? /\n{3,}/g : /\s+/g, kind === "code" ? "\n\n" : " ")
+                .trim();
             if (!text) continue;
-            const merged = excerpt ? excerpt + " " + text : text;
-            if (merged.length >= excerptMax) {
-                excerpt = merged.slice(0, Math.max(0, excerptMax)).trim();
-                break;
-            }
-            excerpt = merged;
+            const remaining = Math.max(0, DOC_PREVIEW_EXCERPT_MAX - used - (items.length ? 1 : 0));
+            if (!remaining) break;
+            const part = text.slice(0, remaining).trim();
+            if (!part) break;
+            used += part.length + (items.length ? 1 : 0);
+            items.push({kind, text: part});
+            if (part.length < text.length) break;
         }
     }
-    return {outline: outlineEntries, excerpt, empty: outlineEntries.length === 0 && !excerpt};
+    return {outline: outlineEntries, items, empty: outlineEntries.length === 0 && items.length === 0};
 }
 
 // T-6844 合成名去重：内核大纲顶层首项是合成的文档名项（name=文档名），
