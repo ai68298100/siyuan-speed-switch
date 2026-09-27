@@ -172,10 +172,13 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 }
                 const ok = cells.filter((c) => c.dataset.swHealth === "ok").length;
                 const failed = cells.filter((c) => c.dataset.swHealth === "failed").length;
-                receipt.textContent = this.i18n.homeReceiptSummary
+                const pending = cells.length - ok - failed;
+                receipt.dataset.state = failed ? "error" : pending ? "loading" : "ready";
+                receipt.firstChild!.textContent = this.i18n.homeReceiptSummary
                     .replace("{ok}", String(ok))
                     .replace("{total}", String(cells.length))
-                    + (failed > 0 ? " · " + this.i18n.homeReceiptFailed.replace("{x}", String(failed)) : "");
+                    + (failed > 0 ? " · " + this.i18n.homeReceiptFailed.replace("{x}", String(failed)) : "")
+                    + (pending > 0 ? " · " + this.i18n.homeLoading + " " + pending : "");
             };
             panelEventCleanup?.();
             panelEventCleanup = null;
@@ -214,6 +217,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             const editToggle = document.createElement("button");
             editToggle.type = "button";
             editToggle.className = "b3-button b3-button--text";
+            editToggle.setAttribute("aria-pressed", String(editing));
             editToggle.textContent = editing ? this.i18n.homeDone : this.i18n.homeEditLayout;
             editToggle.addEventListener("click", () => {
                 editing = !editing;
@@ -299,19 +303,6 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 banner.append(bannerHint, bannerDone);
                 mountFragment.appendChild(banner);
             }
-
-            // 时间感知问候头：让面板更有"个人主页"温度
-            const now = new Date();
-            const hour = now.getHours();
-            const greeting = hour < 5 ? this.i18n.homeGreetingNight
-                : hour < 12 ? this.i18n.homeGreetingMorning
-                : hour < 14 ? this.i18n.homeGreetingNoon
-                : hour < 18 ? this.i18n.homeGreetingAfternoon
-                : this.i18n.homeGreetingEvening;
-            const greetingEl = document.createElement("div");
-            greetingEl.className = "sw-home__greeting";
-            greetingEl.textContent = `${greeting} · ${this.i18n.homeGreetingSuffix}`;
-            mountFragment.appendChild(greetingEl);
 
             const body = document.createElement("div");
             body.className = "sw-home__body";
@@ -472,6 +463,9 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     // T-6880（P2 第二批）：失败两通道——错误色边框（颜色）+ 文字 chip
                     // （attr() 渲染），并维护对象描述 aria 语义。
                     refresh: async (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => {
+                        cell.dataset.swHealth = "loading";
+                        updateCellDescription();
+                        updateWorkbenchReceipt();
                         const result = await controller.refresh(config, readOptions);
                         const ok = result?.ok === true;
                         cell.dataset.swHealth = ok ? "ok" : "failed";
@@ -770,19 +764,6 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 scheduleLife();
             }
 
-            // 提示条随内容滚动；快捷入口栏固定底端（图标展示，与第一面板同步配置）
-            const hint = document.createElement("div");
-            hint.className = "sw-home__hint";
-            const hintText = document.createElement("span");
-            hintText.textContent = this.i18n.homeHintText;
-            const hintLink = document.createElement("a");
-            hintLink.className = "sw-home__hint-link";
-            hintLink.href = "https://github.com/ai68298100/siyuan-speed-switch/blob/main/docs/widget-protocol.md";
-            hintLink.target = "_blank";
-            hintLink.rel = "noopener";
-            hintLink.textContent = this.i18n.homeHintLink;
-            hint.append(hintText, hintLink);
-            body.appendChild(hint);
             mountFragment.appendChild(body);
             root.appendChild(mountFragment);
 
@@ -795,6 +776,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             const receipt = document.createElement("div");
             receipt.className = "sw-home__receipt";
             receipt.setAttribute("role", "status");
+            receipt.appendChild(document.createElement("span"));
             root.appendChild(receipt);
             updateWorkbenchReceipt();
         };

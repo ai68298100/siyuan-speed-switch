@@ -498,8 +498,14 @@
     width: 100%;
 }
 
+.b3-dialog__container.sw-platform-dialog--workbench.sw-dialog--fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
 .sw-home__bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
@@ -527,6 +533,7 @@
 // 由 refresh 包装器写回 data-sw-health 后实时更新。
 .sw-home__receipt {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     flex: none;
@@ -536,6 +543,10 @@
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
+
+    > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    &[data-state="error"] > span { color: var(--b3-theme-error); }
+    &[data-state="loading"] > span { color: var(--b3-theme-on-surface); }
 }
 
 // 失败单元：错误色描边一眼可辨（内容区错误态仍由模块自身渲染）。
