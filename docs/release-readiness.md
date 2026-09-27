@@ -8,7 +8,7 @@ Current build: `dist/index.js` 1068726 bytes; `dist/index.css` 234984 bytes; `pa
 
 历史发布窗口：v0.33.0 已完成 tag、推送和 Release workflow；v0.36.0、v0.37.0、v0.38.0、v0.39.0 已发布；本轮目标为 v0.40.0。
 
-本轮 GitHub 发布：`v0.39.0` 标签指向 `3d7bb41`；Release workflow #36258062943 与 main CI #36258021305 均成功。远端资产 `package.zip` 为 504173 B；备份工作区真实内核 E2E 为 6 passed；双用户工作区（D:/小飞驴的SIYUAN、D:/思源测试）按远端资产各复制并校验 10/10 个条目（plugin.json 0.39.0），需重启思源生效。上一版 `v0.38.0` 标签指向 `8dc29c8`（Release workflow #36216017180、main CI #36216000386，资产 495598 B）。
+本轮 GitHub 发布：`v0.40.0` 标签指向 `793f0f1`；Release workflow #36283847585 与 main CI #36283844721 均成功，远端资产 `package.zip` 下载部署实测 0.40.0；备份工作区真实内核 E2E 为 9 spec 全绿；双用户工作区（D:/小飞驴的SIYUAN、D:/思源测试）按远端资产各复制并校验 10/10 个条目（plugin.json 0.40.0），需重启思源生效。上一版 `v0.39.0` 标签指向 `3d7bb41`（Release workflow #36258062943、main CI #36258021305，资产 504173 B）。
 
 | 检查项 | 状态 | 证据/剩余动作 |
 | --- | --- | --- |
