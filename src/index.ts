@@ -7161,15 +7161,25 @@ const updatedMap: {[rootId: string]: string} = {};
                 const entry = queue[index];
                 if (signal?.aborted) break;
                 let timeoutHandle: number | null = null;
+                // 单项超时必须 abort 底层请求归还并发通道：内核慢时挂起连接会拖慢
+                // 后续所有内核调用（僵尸请求模式，R12 审计）。fetch 只接受一个 signal，
+                // 批次取消经 abort 事件桥接进单项 controller。
+                const controller = typeof AbortController === "function" ? new AbortController() : null;
+                const onOuterAbort = () => controller?.abort();
+                if (signal?.aborted) controller?.abort();
+                signal?.addEventListener?.("abort", onOuterAbort, {once: true});
                 try {
                     const request = fetch("/api/filetree/getDoc", {
                         method: "POST",
                         headers: {"Content-Type": "application/json"},
                         body: JSON.stringify({id: entry.rootId, mode: 0, size: 1}),
-                        ...(signal ? {signal} : {}),
+                        ...(controller ? {signal: controller.signal} : {}),
                     });
                     const timeout = new Promise<null>((resolve) => {
-                        timeoutHandle = window.setTimeout(() => resolve(null), DOCUMENT_SET_PROBE_TIMEOUT_MS);
+                        timeoutHandle = window.setTimeout(() => {
+                            controller?.abort();
+                            resolve(null);
+                        }, DOCUMENT_SET_PROBE_TIMEOUT_MS);
                     });
                     const response = await Promise.race([request, timeout]);
                     if (!response) {
@@ -7182,6 +7192,7 @@ const updatedMap: {[rootId: string]: string} = {};
                     results[index] = "unknown";
                 } finally {
                     if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
+                    signal?.removeEventListener?.("abort", onOuterAbort);
                 }
             }
         };

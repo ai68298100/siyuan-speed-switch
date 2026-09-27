@@ -81,7 +81,7 @@ function extractSkinVars(css, skin) {
 }
 
 for (const skin of SKINS) {
-    test(`skin contrast (WCAG AA): ${skin} text and accent pairs meet their tiers`, () => {
+    test(`skin contrast (WCAG AA): ${skin} text and accent pairs meet their tiers`, (t) => {
         if (!fs.existsSync(CSS_PATH)) {
             t.skip("dist/index.css not built yet");
             return;

@@ -1675,3 +1675,20 @@ test('flick actions settings: visual binding card with per-direction selects (T-
     assert.ok(declaresIn(settingsScss, '.sw-floating-ball-settings__flick-grid', /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/),
         'the flick grid must be two columns');
 });
+
+test('document set probes abort the underlying request on per-item timeout (T-6927)', () => {
+    const indexSource = readSourceText(path.join(__dirname, '..', 'src', 'index.ts'));
+    const probeStart = indexSource.indexOf('private async probeDocumentSetEntries(');
+    assert.ok(probeStart > 0, 'the probe implementation must exist');
+    const probe = indexSource.slice(probeStart, probeStart + 2600);
+    assert.match(probe, /const controller = typeof AbortController === "function" \? new AbortController\(\) : null;/,
+        'each probe item must own an AbortController');
+    assert.match(probe, /\.\.\.\(controller \? \{signal: controller\.signal\} : \{\}\),/,
+        'the probe fetch must carry the per-item signal');
+    assert.match(probe, /timeoutHandle = window\.setTimeout\(\(\) => \{\s*controller\?\.abort\(\);\s*resolve\(null\);\s*\}, DOCUMENT_SET_PROBE_TIMEOUT_MS\);/,
+        'the per-item timeout must abort the request before resolving, or zombie connections pile up');
+    assert.match(probe, /signal\?\.addEventListener\?\.\("abort", onOuterAbort, \{once: true\}\);/,
+        'batch cancellation must bridge into the per-item controller');
+    assert.match(probe, /signal\?\.removeEventListener\?\.\("abort", onOuterAbort\);/,
+        'the abort bridge must be removed when the item settles');
+});
