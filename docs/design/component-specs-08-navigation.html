@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次⑧导航与历史类（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-wide { grid-column: span 8; grid-row: span 3; }
+.d-m { grid-column: span 6; grid-row: span 2; }
+.d-s { grid-column: span 4; grid-row: span 2; }
+.lf-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--b3-border-color); font-size: 12px; }
+.lf-row:last-child { border-bottom: none; }
+.lf-row .ic { width: 24px; height: 24px; border-radius: 6px; flex: none; display: inline-flex; align-items: center;
+  justify-content: center; background: var(--b3-theme-surface-lighter); font-size: 12px; }
+.lf-row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.lf-row .m { font-size: 10.5px; color: var(--b3-theme-on-surface-light); flex: none; }
+.tagcloud { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tagcloud .tg { padding: 2px 10px; border: 1px solid var(--b3-border-color); border-radius: 999px; font-size: 11px; }
+.spec-grid9 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px 16px 16px; }
+.mini { border: 1px solid var(--b3-border-color); border-radius: 12px; background: var(--b3-theme-surface); padding: 12px 14px; }
+.mini h4 { font-size: 12.5px; margin: 0 0 6px; font-weight: 700; }
+.mini h4 .tag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 9.5px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); font-weight: 600; }
+.mini p { margin: 3px 0; font-size: 11.5px; color: var(--b3-theme-on-surface-light); }
+.mini p b { color: var(--b3-theme-on-background); font-weight: 600; }
+@media (max-width: 800px) { .spec-grid9 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次⑧导航与历史类</h1>
+  <span class="meta">T-6971 · 2026-09-28 · 最近打开 / 置顶 / 收藏 / 标签 / 书签 / 文档集 / 指定文档 / 大纲 / 关系摘要（9 组件）</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>共享列表型规范（本批 9 组件中 7 个为列表型，一次定清）</h2>
+  <ol>
+    <li><b>行解剖</b>：24px 图标容器 + 标题（单行省略）+ meta（时间/计数，10.5px muted）；行 hairline 分隔；点击跳转目标文档。</li>
+    <li><b>数据边界</b>：全部本地 SQL 有界聚合（外层 LIMIT + truncated 传导，T-6478 纪律）；标题/路径展示前清洗；条目上限有界（≤8 首屏）。</li>
+    <li><b>状态</b>：loading 骨架 / ready / empty（「暂无 xxx」状态区，不渲染空图）/ error + 重试 + 保留旧值。</li>
+    <li><b>材质/档位</b>：全部 <b>plain</b>（信息型）；默认档逐组件登记（下卡），未声明的支持档用户可在编辑态改。</li>
+    <li><b>验收基线</b>：点击跳转幂等（重复点击不重复开页）；失效条目（文档已删）显示「已失效」而非静默消失；明暗采样 ≥ AA。</li>
+  </ol>
+</section>
+
+<!-- ============ 瓦片演示 ============ -->
+<section class="screen">
+  <h2>瓦片演示 <span>三例：最近打开 wide / 文档集 medium / 标签 small</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="tile d-wide">
+        <div class="theader">最近打开<span class="sp"></span><span class="tchip">8 条</span></div>
+        <div class="lf-row"><span class="ic">📄</span><span class="t">产品需求文档 v3</span><span class="m num">今天 14:20</span></div>
+        <div class="lf-row"><span class="ic">📄</span><span class="t">周会纪要 09-25</span><span class="m num">昨天 16:40</span></div>
+        <div class="lf-row"><span class="ic">📄</span><span class="t">竞品调研笔记</span><span class="m num">09-25</span></div>
+        <div class="lf-row"><span class="ic">📄</span><span class="t">发布检查清单</span><span class="m num">09-24</span></div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">文档集<span class="sp"></span><span class="tchip">3 个</span></div>
+        <div class="lf-row"><span class="ic">🗂</span><span class="t">v0.41 发布工作区</span><span class="m num">5 篇</span></div>
+        <div class="lf-row"><span class="ic">🗂</span><span class="t">竞品调研集</span><span class="m num">8 篇</span></div>
+        <div class="lf-row"><span class="ic">🗂</span><span class="t">每日周报模板</span><span class="m num">2 篇</span></div>
+      </div>
+      <div class="tile d-s">
+        <div class="theader">标签<span class="sp"></span><span class="tchip">8</span></div>
+        <div class="tagcloud"><span class="tg">工作 24</span><span class="tg">灵感 12</span><span class="tg">待办 8</span><span class="tg">调研 5</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9 组件迷你规格卡 ============ -->
+<section class="screen">
+  <h2>逐组件规格 <span>共享列表型规范之上，仅列差异</span></h2>
+  <div class="frame">
+    <div class="spec-grid9">
+      <div class="mini">
+        <h4>最近打开 <span class="tag">plain · wide</span></h4>
+        <p><b>布局</b>：行 ≤8（标题 + 打开时间）；点击打开文档。</p>
+        <p><b>差异</b>：时间相对化（今天/昨天/日期）；已关闭与仍开分区沿用历史入口语义。</p>
+        <p><b>验收</b>：跨日时间刷新；失效文档「已失效」不静默消失。</p>
+      </div>
+      <div class="mini">
+        <h4>置顶文档 <span class="tag">plain · medium</span></h4>
+        <p><b>布局</b>：行 ≤6（置顶顺序持久化）；置顶/取消置顶沿用卡片钉语义。</p>
+        <p><b>差异</b>：置顶上限 64（既有容量）；顺序拖拽仅编辑布局态。</p>
+        <p><b>验收</b>：取消置顶后列表即时重建；容量边界裁剪提示。</p>
+      </div>
+      <div class="mini">
+        <h4>收藏 <span class="tag">plain · medium</span></h4>
+        <p><b>布局</b>：组内行 ≤8（分组名 + 计数 chip）；点击打开，组管理在设置页。</p>
+        <p><b>差异</b>：与切换器收藏同数据源（不复制数据）。</p>
+        <p><b>验收</b>：分组变更即时同步；容量 512 上限沿用。</p>
+      </div>
+      <div class="mini">
+        <h4>标签 <span class="tag">plain · small</span></h4>
+        <p><b>布局</b>：标签胶囊云（名 + 计数），点击跳标签筛选。</p>
+        <p><b>差异</b>：计数排序；上限首屏 ≤12。</p>
+        <p><b>验收</b>：计数与真实命中一致；空标签不出现。</p>
+      </div>
+      <div class="mini">
+        <h4>书签 <span class="tag">plain · small</span></h4>
+        <p><b>布局</b>：书签行 ≤6（标题 + 块引用摘要 ≤1 行）。</p>
+        <p><b>差异</b>：点击跳块级定位（定位失败回退打开文档）。</p>
+        <p><b>验收</b>：块删除后降级为打开文档不报错。</p>
+      </div>
+      <div class="mini">
+        <h4>文档集 <span class="tag">plain · medium</span></h4>
+        <p><b>布局</b>：集行 ≤5（名称 + 篇数 + 更新时间）；动作 = 打开（受控恢复）。</p>
+        <p><b>差异</b>：复用文档集恢复管线（预检/回执/可逆），组件内不做管理动作。</p>
+        <p><b>验收</b>：恢复回执 restored/skipped/failed 语义沿用。</p>
+      </div>
+      <div class="mini">
+        <h4>指定文档 <span class="tag">plain · S</span></h4>
+        <p><b>布局</b>：单文档入口卡（图标 + 标题 + 打开）。</p>
+        <p><b>差异</b>：文档删除 = 失效占位 + 重新指定指引。</p>
+        <p><b>验收</b>：失效态不 crash 不空卡。</p>
+      </div>
+      <div class="mini">
+        <h4>当前文档大纲 <span class="tag">plain · wide/高</span></h4>
+        <p><b>布局</b>：标题树（层级缩进 ≤4 级）；点击滚动定位。</p>
+        <p><b>差异</b>：仅当前活动文档；无活动文档 = 空态。</p>
+        <p><b>验收</b>：大纲刷新防抖；点击定位不重排文档。</p>
+      </div>
+      <div class="mini">
+        <h4>文档关系摘要 <span class="tag">plain · medium</span></h4>
+        <p><b>布局</b>：反链/提及两组摘要（条数 chip + 条目 ≤3）。</p>
+        <p><b>差异</b>：有界投影沿用（T-6814）；点击直达关系目标。</p>
+        <p><b>验收</b>：无关系 = 空态；不泄露笔记正文。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 批次⑧总表 ============ -->
+<section class="screen">
+  <h2>批次⑧规格总表 <span>实现对照：全部 plain 材质 · 默认档逐组件登记 HOME_TILE_DEFAULT_SIZES</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>类型</th><th>事务/性能</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">最近打开（recent-documents）</td><td>plain</td><td class="num">wide</td><td>列表型</td><td>本地 SQL 有界</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">置顶文档（pinned-docs）</td><td>plain</td><td class="num">medium</td><td>列表型</td><td>置顶上限 64</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">收藏（favorites）</td><td>plain</td><td class="num">medium</td><td>列表型</td><td>与切换器同源</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">标签（tag-list）</td><td>plain</td><td class="num">small</td><td>胶囊云</td><td>计数真实命中</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">书签（bookmark-list）</td><td>plain</td><td class="num">small</td><td>列表型</td><td>块定位降级</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">文档集（document-sets）</td><td>plain</td><td class="num">medium</td><td>列表+动作</td><td>恢复管线复用</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">指定文档（fixed-document）</td><td>plain</td><td class="num">small</td><td>入口卡</td><td>失效占位</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">当前文档大纲（current-document-outline）</td><td>plain</td><td class="num">wide/高</td><td>树型</td><td>防抖刷新</td></tr>
+        <tr><td style="padding:8px 14px;">文档关系摘要（document-relations）</td><td>plain</td><td class="num">medium</td><td>双组摘要</td><td>有界投影（T-6814）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
