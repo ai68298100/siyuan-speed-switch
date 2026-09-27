@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次②日历与日程（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.sub { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-l { grid-column: span 6; grid-row: span 4; }
+.d-m { grid-column: span 6; grid-row: span 2; }
+.cal-head { display: flex; align-items: baseline; gap: 8px; margin: 8px 2px 6px; }
+.cal-head .m { font-size: 16px; font-weight: 700; }
+.cal-head .y { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal .wd { font-size: 9.5px; color: var(--b3-theme-on-surface-light); text-align: center; padding: 3px 0; }
+.cal .d { position: relative; aspect-ratio: 1.25; display: flex; align-items: center; justify-content: center;
+  font-size: 11.5px; border-radius: 8px; color: var(--b3-theme-on-background); }
+.cal .d.out { color: var(--b3-theme-on-surface-light); opacity: .45; }
+.cal .d.today { background: var(--b3-theme-primary); color: var(--b3-theme-on-primary); font-weight: 700; }
+.cal .d.ev::after { content: ""; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--b3-theme-primary); }
+.ical-list { margin-top: 8px; }
+.ical-row { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--b3-border-color); font-size: 12px; }
+.ical-row:last-child { border-bottom: none; }
+.ical-row .t { flex: 1; font-weight: 500; }
+.ical-row .when { font-size: 10.5px; color: var(--b3-theme-on-surface-light); flex: none; }
+.spec-card { border: 1px solid var(--b3-border-color); border-radius: 16px; background: var(--b3-theme-background);
+  margin: 0 auto 18px; max-width: 1180px; overflow: hidden; }
+.spec-card h3 { font-size: 13px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--b3-border-color); font-weight: 700; }
+.spec-card h3 .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.spec-grid > div { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--b3-border-color); }
+.spec-grid .k { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.spec-grid .v b { font-weight: 700; }
+@media (max-width: 800px) { .spec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次②日历与日程</h1>
+  <span class="meta">T-6971 · 2026-09-28 · 日历月视图（journal-calendar）/ iCal 日程（external-ical-events）</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>本批规格要点</h2>
+  <ol>
+    <li><b>材质</b>：两者均为 <b>plain</b>（信息型组件，阅读对比度优先）；不使用彩色渐变材质。</li>
+    <li><b>默认档位</b>：日历月视图 = <b>L(6×4)</b>（模块声明仅 L/X，内容密度决定下限）；iCal 日程 = <b>M(6×2)</b>。</li>
+    <li><b>既有契约沿用</b>：六周网格行数恒定（既有 Chromium 冒烟断言）；RRULE/TZID/EXDATE 展开语义沿用 T-6460/T-6462 门禁；今日跨日瞬间数值正确。</li>
+    <li><b>验收基线</b>：明暗双主题对比度采样；三端收缩 = 侧栏 2 列降级、手机单列/双列按既有列数配置。</li>
+  </ol>
+</section>
+
+<!-- ============ 瓦片演示 ============ -->
+<section class="screen">
+  <h2>瓦片演示 <span>默认档位 × 默认材质（日历月视图 L / iCal 日程 M）</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="tile d-l">
+        <div class="theader">日历月视图<span class="sp"></span><span class="tchip">26 篇日记</span></div>
+        <div class="cal-head"><span class="m">九月</span><span class="y num">2026</span></div>
+        <div class="cal">
+          <span class="wd">一</span><span class="wd">二</span><span class="wd">三</span><span class="wd">四</span><span class="wd">五</span><span class="wd">六</span><span class="wd">日</span>
+          <span class="d out num">31</span><span class="d num">1</span><span class="d num">2</span><span class="d num">3</span><span class="d num">4</span><span class="d ev num">5</span><span class="d num">6</span>
+          <span class="d num">7</span><span class="d num">8</span><span class="d num">9</span><span class="d num">10</span><span class="d num">11</span><span class="d ev num">12</span><span class="d num">13</span>
+          <span class="d num">14</span><span class="d num">15</span><span class="d num">16</span><span class="d num">17</span><span class="d num">18</span><span class="d num">19</span><span class="d num">20</span>
+          <span class="d num">21</span><span class="d num">22</span><span class="d num">23</span><span class="d num">24</span><span class="d num">25</span><span class="d num">26</span><span class="d today num">27</span>
+          <span class="d num">28</span><span class="d num">29</span><span class="d num">30</span><span class="d out num">1</span><span class="d out num">2</span><span class="d out num">3</span><span class="d out num">4</span>
+        </div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">iCal 日程<span class="sp"></span><span class="tchip">未来 7 天 · 3</span></div>
+        <div class="ical-list">
+          <div class="ical-row"><span class="t">周会：插件发版评审</span><span class="when num">周一 10:00</span></div>
+          <div class="ical-row"><span class="t">设计走查</span><span class="when num">周二 14:00</span></div>
+          <div class="ical-row"><span class="t">刷牙洗牙预约</span><span class="when num">周四 09:30</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 规格卡 ============ -->
+
+<section class="spec-card">
+  <h3>日历月视图 <span class="tag">plain · L(6×4)，声明上限 X</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">journal-calendar · sizes = [large, full]（内容密度决定下限，无 S/M）</div>
+    <div class="k">内容布局（L 默认）</div><div class="v">微标头（识别名 + 日记计数 chip）→ 月头（‹ 2026年9月 › 导航）→ 星期行 → 六周日期网格（今日主色圆、日记日主色点）→ 底部月统计（N 篇日记）</div>
+    <div class="k">内容布局（X）</div><div class="v">通栏放大：字号 +1 级、单元格留白加大、同结构；每面板至多 1 个 X（Slice 3 约束强制）</div>
+    <div class="k">状态呈现</div><div class="v">loading 骨架（沿用既有骨架行）；ready；当月无日记 = 状态区「暂无日记」；失败 = error + 重试，保留上月网格</div>
+    <div class="k">微标头</div><div class="v">「日历月视图」识别名 + 计数 chip；导航按钮在月头行内（‹ ›），不占工具栏</div>
+    <div class="k">三端收缩</div><div class="v">侧栏 2 列降级（单列月网格、隐藏农历行）；手机降级为 M 尺寸月网格（隐藏非当月日期）</div>
+    <div class="k">验收要点</div><div class="v">六周网格行数恒定（既有冒烟）；今日跨日瞬间（00:00）今日圈正确迁移；日记点 ≤1/日不叠加；明暗采样 ≥ AA</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>iCal 日程 <span class="tag">plain · M(6×2)，声明档位 M/W/L/X</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">external-ical-events · sizes = [medium, wide, large, full]（availability: external）</div>
+    <div class="k">内容布局（M 默认）</div><div class="v">微标头（识别名 + 「未来 7 天 · N」chip）→ 日程行 ≤5（标题 + 本地时间），行 hairline 分隔</div>
+    <div class="k">内容布局（W/L）</div><div class="v">W：加来源日历标注；L：条目 ≤8 + 地点行；X：不适用（列表流通栏价值低）</div>
+    <div class="k">状态呈现</div><div class="v">loading 骨架；ready；empty（窗口内无日程）状态区文案；error + 重试 + 缓存旧值标注（stale 语义）</div>
+    <div class="k">数据与隐私</div><div class="v">RRULE/TZID/EXDATE 展开走 T-6460/T-6462 既有门禁；时间渲染本地时区；URL/凭据不入展示与摘要</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（M）；侧栏同款；手机双列配置下占整行</div>
+    <div class="k">验收要点</div><div class="v">15 分钟刷新心跳沿用；展开上限有界（防 RRULE 爆炸）；跨时区日程显示源时区偏移标注</div>
+  </div>
+</section>
+
+<!-- ============ 批次②总表 ============ -->
+<section class="screen">
+  <h2>批次②规格总表 <span>实现对照：resolveHomeTileMaterial 目录 + HOME_TILE_DEFAULT_SIZES 默认档</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>支持档</th><th>事务/性能</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">日历月视图（journal-calendar）</td><td>plain</td><td class="num">L</td><td class="num">L/X</td><td>六周网格行数恒定；今日跨日正确</td></tr>
+        <tr><td style="padding:8px 14px;">iCal 日程（external-ical-events）</td><td>plain</td><td class="num">M</td><td class="num">M/W/L/X</td><td>15 分钟心跳；RRULE 展开有界</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
