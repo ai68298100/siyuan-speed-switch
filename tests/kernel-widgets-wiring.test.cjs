@@ -987,8 +987,8 @@ test('workbench edit banner and store pill actions (T-6874 RZ-4)', () => {
         'the banner must use its dedicated class');
     assert.match(secondPanelSource, /bannerHint\.textContent = this\.i18n\.homeEditingHint;/,
         'the banner hint must come from i18n');
-    assert.match(secondPanelSource, /editing = false;\s*\n\s*renderPanel\(\);/,
-        'the banner done button must exit edit mode and re-render');
+    assert.match(secondPanelSource, /editing = false;\s*\n\s*layoutHistory = null;\s*\n\s*renderPanel\(\);/,
+        'the banner done button must exit edit mode, release the layout history and re-render (T-6953)');
     // i18n 双语。
     const zh = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'zh-CN.json'));
     const en = readSourceText(path.join(__dirname, '..', 'src', 'i18n', 'en.json'));

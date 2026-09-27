@@ -11,6 +11,7 @@ import type {HomeSizeMode, HomeWidgetSize} from "./constants";
 import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries} from "./home-controller";
 import {resolveMobileHomeSize} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
+import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
 import {openHomeConfigForm} from "./home-config-form";
 import {openHomeWidgetStore} from "./home-store-ui";
 import {millisecondsToNextMinute, millisecondsToNextSecond} from "./local-time-model";
@@ -63,6 +64,11 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         let editing = this.workbenchResumeEditing === true;
         this.workbenchResumeEditing = false;
         const resumeEditToggleFocus = editing;
+        // T-6953：布局撤销/重做——编辑会话内历史（退出编辑即释放，不新增持久化真源）。
+        // layoutOpLabel 由各操作点在 renderPanel 前写入，作为压栈的操作名（按钮可读出）。
+        let layoutHistory: ReturnType<typeof createLayoutHistory> | null = null;
+        let layoutOpLabel = "";
+        let suppressLayoutHistoryPush = false;
         const viewport = {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX};
         // 组件面板独立尺寸模式：follow=跟随第一面板；adaptive=独立 90% 自适应；custom=固定尺寸；fullscreen=全屏
         const mode: HomeSizeMode = settings.homeSizeMode || "follow";
@@ -221,6 +227,11 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             editToggle.textContent = editing ? this.i18n.homeDone : this.i18n.homeEditLayout;
             editToggle.addEventListener("click", () => {
                 editing = !editing;
+                if (!editing) {
+                    // T-6953：退出编辑会话释放历史
+                    layoutHistory = null;
+                    layoutOpLabel = "";
+                }
                 renderPanel();
             });
             bar.appendChild(editToggle);
@@ -297,10 +308,66 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 bannerDone.className = "b3-button b3-button--text sw-home__edit-done";
                 bannerDone.textContent = this.i18n.homeDone;
                 bannerDone.addEventListener("click", () => {
+                    layoutOpLabel = "";
                     editing = false;
+                    layoutHistory = null;
                     renderPanel();
                 });
-                banner.append(bannerHint, bannerDone);
+                // T-6953：撤销/重做——按钮带可读操作名；应用时保留存活实例的最新配置
+                const applyLayoutSnapshot = (snapshot: any) => {
+                    const current = this.getHomeState();
+                    const next = reconcileLayoutSnapshot(snapshot, current);
+                    const known = new Set(this.homeRuntime.listModules(device).map((m: any) => m.moduleId));
+                    const gone = (next.instances as Array<any>).filter((inst: any) => !known.has(inst.moduleId));
+                    if (gone.length > 0) {
+                        const goneIds = new Set(gone.map((inst: any) => inst.instanceId));
+                        next.instances = (next.instances as Array<any>).filter((inst: any) => known.has(inst.moduleId));
+                        Object.keys(next.layouts).forEach((key) => {
+                            next.layouts[key] = (next.layouts[key] as Array<any>).filter((entry: any) => !goneIds.has(entry.instanceId));
+                        });
+                    }
+                    this.saveHomeState(next);
+                    if (gone.length > 0) {
+                        showMessage(this.i18n.homeHistoryProviderGone.replace("{x}", String(gone.length)));
+                    }
+                    suppressLayoutHistoryPush = true;
+                    renderPanel();
+                    suppressLayoutHistoryPush = false;
+                };
+                banner.appendChild(bannerHint);
+                if (layoutHistory && canUndoLayoutHistory(layoutHistory)) {
+                    const undoButton = document.createElement("button");
+                    undoButton.type = "button";
+                    undoButton.className = "b3-button b3-button--text sw-home__history";
+                    undoButton.textContent = this.i18n.homeUndo;
+                    const undoTarget = peekUndoLabel(layoutHistory) || this.i18n.homeHistoryUpdate;
+                    undoButton.setAttribute("aria-label", this.i18n.homeUndoLabel.replace("{x}", undoTarget));
+                    undoButton.title = this.i18n.homeUndoLabel.replace("{x}", undoTarget);
+                    undoButton.addEventListener("click", () => {
+                        const result = undoLayoutHistory(layoutHistory!);
+                        if (!result.snapshot) return;
+                        layoutHistory = result.history;
+                        applyLayoutSnapshot(result.snapshot);
+                    });
+                    banner.appendChild(undoButton);
+                }
+                if (layoutHistory && canRedoLayoutHistory(layoutHistory)) {
+                    const redoButton = document.createElement("button");
+                    redoButton.type = "button";
+                    redoButton.className = "b3-button b3-button--text sw-home__history";
+                    redoButton.textContent = this.i18n.homeRedo;
+                    const redoTarget = peekRedoLabel(layoutHistory) || this.i18n.homeHistoryUpdate;
+                    redoButton.setAttribute("aria-label", this.i18n.homeRedoLabel.replace("{x}", redoTarget));
+                    redoButton.title = this.i18n.homeRedoLabel.replace("{x}", redoTarget);
+                    redoButton.addEventListener("click", () => {
+                        const result = redoLayoutHistory(layoutHistory!);
+                        if (!result.snapshot) return;
+                        layoutHistory = result.history;
+                        applyLayoutSnapshot(result.snapshot);
+                    });
+                    banner.appendChild(redoButton);
+                }
+                banner.append(bannerDone);
                 mountFragment.appendChild(banner);
             }
 
@@ -514,6 +581,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                             list.splice(to, 0, moved);
                             next.layouts[device] = list;
                             this.saveHomeState(next);
+                            layoutOpLabel = this.i18n.homeHistoryMove;
                             renderPanel();
                         });
                     }
@@ -543,6 +611,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                         const configButton = tool(this.i18n.homeConfig, () => undefined);
                         configButton.addEventListener("click", () => {
                             openHomeConfigForm.call(this, inst, configSchema, () => {
+                                layoutOpLabel = this.i18n.homeHistoryConfig;
                                 renderPanel();
                             });
                         });
@@ -552,6 +621,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     sizeButton.addEventListener("click", () => {
                         this.openHomeSizeMenu(sizeButton, supported, sizeKey, (picked) => {
                             const preset2 = HOME_WIDGET_SIZES[picked as HomeWidgetSize] || HOME_WIDGET_SIZES.medium;
+                            layoutOpLabel = this.i18n.homeHistorySize;
                             persistLayout({size: picked, w: preset2.w, h: preset2.h});
                             renderPanel();
                         });
@@ -568,6 +638,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 list.splice(index - 1, 0, moved);
                                 next.layouts[device] = list;
                                 this.saveHomeState(next);
+                                layoutOpLabel = this.i18n.homeHistoryMove;
                                 renderPanel();
                             }
                         }),
@@ -580,11 +651,13 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                                 list.splice(index + 1, 0, moved);
                                 next.layouts[device] = list;
                                 this.saveHomeState(next);
+                                layoutOpLabel = this.i18n.homeHistoryMove;
                                 renderPanel();
                             }
                         }),
                         tool(this.i18n.homeRemove, () => {
                             this.removeHomeInstance(inst.instanceId);
+                            layoutOpLabel = this.i18n.homeHistoryRemove;
                             renderPanel();
                         }),
                     );
@@ -766,6 +839,18 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
 
             mountFragment.appendChild(body);
             root.appendChild(mountFragment);
+
+            // T-6953：编辑会话历史压栈——进入编辑建基线；此后每次渲染若状态有变则压入
+            //（去重防刷屏），操作名来自 layoutOpLabel；撤销/重做应用时抑制压栈；
+            // 刷新/读取不改变布局状态，不会污染历史。退出编辑整体释放。
+            if (editing) {
+                if (!layoutHistory) {
+                    layoutHistory = createLayoutHistory(layoutSnapshotOf(this.getHomeState()));
+                } else if (!suppressLayoutHistoryPush) {
+                    layoutHistory = pushLayoutHistory(layoutHistory, layoutSnapshotOf(this.getHomeState()), layoutOpLabel || this.i18n.homeHistoryUpdate);
+                }
+            }
+            layoutOpLabel = "";
 
             const quickHost = document.createElement("div");
             quickHost.className = "sw-home__quick-actions sw__quick-actions";
