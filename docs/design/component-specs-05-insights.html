@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次⑤统计洞察类（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.sub { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-l { grid-column: span 6; grid-row: span 4; }
+.d-m { grid-column: span 6; grid-row: span 2; }
+.gh-stats { display: flex; gap: 18px; margin-top: 10px; }
+.gh-stats .gs .n { font-size: 18px; font-weight: 700; }
+.gh-stats .gs .t { font-size: 10.5px; color: var(--b3-theme-on-surface-light); }
+.legend { display: flex; gap: 4px; align-items: center; margin-top: 8px; font-size: 10px; color: var(--b3-theme-on-surface-light); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; }
+.aw-rows { margin-top: 8px; }
+.aw-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; }
+.aw-row .n { flex: none; width: 90px; font-weight: 500; }
+.aw-row .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--b3-theme-surface-lighter); overflow: hidden; }
+.aw-row .bar i { display: block; height: 100%; background: var(--b3-theme-primary); }
+.aw-row .v { flex: none; font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.spec-card { border: 1px solid var(--b3-border-color); border-radius: 16px; background: var(--b3-theme-background);
+  margin: 0 auto 18px; max-width: 1180px; overflow: hidden; }
+.spec-card h3 { font-size: 13px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--b3-border-color); font-weight: 700; }
+.spec-card h3 .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.spec-grid > div { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--b3-border-color); }
+.spec-grid .k { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.spec-grid .v b { font-weight: 700; }
+@media (max-width: 800px) { .spec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次⑤统计洞察类</h1>
+  <span class="meta">T-6971 · 2026-09-28 · GitHub 贡献（external-github-contrib）/ 使用时长（external-activitywatch-time）</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>本批规格要点</h2>
+  <ol>
+    <li><b>材质</b>：两者均 <b>plain</b>（数据密集型，阅读对比度优先；不使用彩色渐变）。</li>
+    <li><b>默认档位</b>：GitHub 贡献 = <b>large(8×5)</b>；使用时长 = <b>large(8×5)</b>——均已在 HOME_TILE_DEFAULT_SIZES 登记（Slice 2），且都在各自 def.sizes 白名单内。</li>
+    <li><b>数据边界</b>：GitHub 仅按用户配置的用户名请求公开 API；ActivityWatch 仅访问本机回环服务（127.0.0.1:5600），数据只在本机。两者失败均保留旧值 + stale 标注，不误报成功。</li>
+    <li><b>验收基线</b>：色阶必须配文字图例；本机服务未运行 = blocked 占位（非 error）；明暗采样 ≥ AA。</li>
+  </ol>
+</section>
+
+<!-- ============ 瓦片演示 ============ -->
+<section class="screen">
+  <h2>瓦片演示 <span>默认档位 × 默认材质（GitHub 贡献 large / 使用时长 large）</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="tile d-l">
+        <div class="theader">GitHub 贡献<span class="sp"></span><span class="tchip">近 14 周</span></div>
+        <div class="gh-stats num">
+          <span class="gs"><span class="n">486</span><br><span class="t">今年贡献</span></span>
+          <span class="gs"><span class="n">14</span><br><span class="t">最长连续</span></span>
+          <span class="gs"><span class="n">6</span><br><span class="t">本周</span></span>
+        </div>
+        <div class="legend">少 <i style="background:var(--b3-theme-surface-lighter)"></i><i style="background:color-mix(in srgb, var(--b3-theme-primary) 22%, var(--b3-theme-surface-lighter))"></i><i style="background:color-mix(in srgb, var(--b3-theme-primary) 50%, var(--b3-theme-surface-lighter))"></i><i style="background:var(--b3-theme-primary)"></i> 多</div>
+      </div>
+      <div class="tile d-l">
+        <div class="theader">使用时长<span class="sp"></span><span class="tchip">今日 · 5h 12m</span></div>
+        <div class="aw-rows num">
+          <div class="aw-row"><span class="n">写作</span><span class="bar"><i style="width:72%"></i></span><span class="v">2h 48m</span></div>
+          <div class="aw-row"><span class="n">浏览资料</span><span class="bar"><i style="width:40%"></i></span><span class="v">1h 20m</span></div>
+          <div class="aw-row"><span class="n">沟通</span><span class="bar"><i style="width:22%"></i></span><span class="v">45m</span></div>
+        </div>
+        <div class="sub" style="margin-top:8px">ActivityWatch 本机服务 · 数据只在本机</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 规格卡 ============ -->
+
+<section class="spec-card">
+  <h3>GitHub 贡献 <span class="tag">plain · large(8×5)，声明档位 M/W/L/X</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">external-github-contrib · sizes = [medium, wide, large, full]（availability: external，只读）</div>
+    <div class="k">内容布局（large 默认）</div><div class="v">微标头（识别名 + 周期 chip）→ 热力网格（列=周，5 级色阶，格子渲染数量有界）→ 三统计（今年贡献 / 最长连续 / 本周）</div>
+    <div class="k">内容布局（各档位）</div><div class="v">medium：近 8 周网格 + 总贡献；wide：近 14 周 + 统计行；full：全年 + 图例（每面板至多 1 个 X 约束适用）</div>
+    <div class="k">状态呈现</div><div class="v">loading 骨架；ready；未配置用户名 = 配置引导态（非 error）；请求失败 = error + 重试 + 保留上次网格</div>
+    <div class="k">数据与隐私</div><div class="v">仅向 GitHub 公开 API 发送用户配置的用户名（有界缓存）；不发送笔记数据；用户名不在诊断摘要白名单</div>
+    <div class="k">三端收缩</div><div class="v">侧栏降级摘要（统计行，无网格）；手机降级为统计摘要；网格仅桌面 M+ 档</div>
+    <div class="k">验收要点</div><div class="v">5 级色阶每级配文字图例（色盲替代）；跨年网格周序正确；请求失败不产生幽灵命中；明暗采样 ≥ AA</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>使用时长 <span class="tag">plain · large(8×5)，仅桌面+侧栏，声明档位 M/W/L/X</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位 / 端侧</div><div class="v">external-activitywatch-time · sizes = [medium, wide, large, full]；supportedDevices = [desktop, sidebar]（手机如实不支持）</div>
+    <div class="k">内容布局（large 默认）</div><div class="v">微标头（识别名 + 今日时长 chip）→ 分类时长条形行 Top5（名称 + 有界条 + 时长）→ 底部数据来源说明</div>
+    <div class="k">内容布局（各档位）</div><div class="v">medium：今日总时长 + Top3；wide：今日 + 本周双行；full：通栏周视图（有界）</div>
+    <div class="k">状态呈现</div><div class="v">ActivityWatch 未运行 = <b>blocked</b> 占位「本机服务未运行」+ 安装说明（非 error，服务本就可选）；就绪 = ready；请求失败 = 保留旧值 + stale</div>
+    <div class="k">数据与隐私</div><div class="v">仅访问本机回环 127.0.0.1:5600，数据只在本机不外发；5 分钟缓存；窗口标题等明细不上屏</div>
+    <div class="k">三端收缩</div><div class="v">桌面 + 侧栏；手机无此组件（设备声明如实）</div>
+    <div class="k">验收要点</div><div class="v">时长格式 x h y m；分类名清洗截断（不泄露窗口标题原文）；无 AW 环境 = blocked 而非 error（B-007 环境）</div>
+  </div>
+</section>
+
+<!-- ============ 批次⑤总表 ============ -->
+<section class="screen">
+  <h2>批次⑤规格总表 <span>实现对照：resolveHomeTileMaterial 目录 + HOME_TILE_DEFAULT_SIZES 默认档</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>支持档</th><th>事务/性能</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">GitHub 贡献（external-github-contrib）</td><td>plain</td><td class="num">large</td><td class="num">M/W/L/X</td><td>公开 API 按用户名；有界缓存</td></tr>
+        <tr><td style="padding:8px 14px;">使用时长（external-activitywatch-time）</td><td>plain</td><td class="num">large</td><td class="num">M/W/L/X</td><td>本机回环；5 分钟缓存；未运行 = blocked</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
