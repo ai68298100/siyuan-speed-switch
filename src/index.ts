@@ -3275,7 +3275,7 @@ export default class SpeedSwitchPlugin extends Plugin {
         const width = window.innerWidth;
         const height = window.innerHeight;
         const dialog = new Dialog({
-            title: this.i18n.snippetStudioTitle,
+            title: "",
             content: '<div class="sw-snippet-studio-host"></div>',
             width: `${width}px`,
             height: `${height}px`,
