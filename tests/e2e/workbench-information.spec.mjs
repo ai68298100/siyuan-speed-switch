@@ -7,7 +7,7 @@ test("workbench keeps actions compact and exposes loading, failure and recovery"
     await page.evaluate(() => {
         const plugin = window.siyuan.ws.app.plugins.find(item => item.name === "siyuan-speed-switch");
         const fixture = window.__workbenchFixture = {mode: "pending", release: null};
-        const snapshot = {items: []};
+        const snapshot = {items: [{label: "Retained component content", value: "Ready"}]};
         for (const id of ["e2e-workbench-fast", "e2e-workbench-slow"]) {
             plugin.homeRuntime.registerAdapter({moduleId: id, title: id, supportedDevices: ["desktop"], sizes: ["small"],
                 read: () => id.endsWith("fast") ? snapshot : fixture.mode === "failed" ? Promise.reject(new Error("fixture failure"))
@@ -37,6 +37,8 @@ test("workbench keeps actions compact and exposes loading, failure and recovery"
     await refresh.click();
     await expect.soft(receipt, "failed receipt").toHaveAttribute("data-state", "error", {timeout: 300});
     await expect(receipt).toHaveText("1/2 widgets healthy · 1 failed");
+    await expect(root.locator('.sw-home__cell[data-module-id="e2e-workbench-slow"]')).toContainText("Retained component content");
+    await expect(root.locator('.sw-home__cell[data-module-id="e2e-workbench-slow"]')).toHaveAttribute("data-sw-health", "failed");
     await expect(refresh).toHaveAttribute("aria-busy", "false");
     await expect(refresh).toContainText("Retry");
     await page.evaluate(() => {window.__workbenchFixture.mode = "pending"; window.__workbenchFixture.release = null;});

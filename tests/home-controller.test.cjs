@@ -41,8 +41,12 @@ test("home controller falls back to a stale snapshot instead of an error page", 
     assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "fresh-item");
     failNext = true;
     const result = await controller.refresh();
-    assert.equal(result.ok, true);
+    assert.equal(result.ok, false);
     assert.equal(result.reason, "timeout");
+    assert.equal(countHomeRefreshFailures([result]), 1);
+    assert.equal(summarizeHomeRefreshFailures([result]).timeout, 1);
+    const entry = {moduleId: "digest"};
+    assert.deepEqual(selectHomeRefreshRetryEntries([entry], [result]), [entry]);
     // 失败但有过期好数据：展示旧数据 + 缓存标记，而非错误页
     assert.equal(container.querySelector("[data-status='error']") === null, true);
     assert.equal(container.querySelector(".sw__home-module-item-action").textContent, "stale-item");

@@ -239,7 +239,7 @@ function createHomeModuleController(options = {}) {
                 {collapsed: currentView?.collapsed === true},
             );
             render(view);
-            return {ok: stale ? true : result?.ok !== false, reason: result?.reason || "", view};
+            return {ok: result?.ok !== false, reason: result?.reason || "", view};
         } catch (error) {
             if (disposed || token !== generation) return {ok: false, reason: "stale", view: currentView};
             if (error?.message === "aborted") return {ok: false, reason: "aborted", view: currentView};
