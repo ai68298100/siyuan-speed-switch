@@ -3859,11 +3859,13 @@ const updatedMap: {[rootId: string]: string} = {};
         const keyword = searchInput.value.trim();
         scrollElement.dataset.swDocSearchQuery = keyword;
         const session = getDocSearchSession.call(this, scrollElement);
+        // 所有输入分支（含命令模式）均立即取消旧定时器/请求并使旧结果失效。
+        const version = beginSearch(session);
         const filters = this.docSearchState.filters.get(scrollElement) || {};
         // T-6802 查询运算符：解析一次，全链路共享（本地页签匹配 / 内核查询清洗 /
         // 统一索引分区 / 文档结果客户端预过滤）。发给内核的查询剔除排除项。
         const parsedQuery = parseSearchQuery(searchInput.value);
-        const kernelQuery = formatCleanQuery(parsedQuery);
+        const kernelQuery = keyword.startsWith(">") ? "" : formatCleanQuery(parsedQuery);
         this.docSearchState.parsedQueries.set(scrollElement, parsedQuery);
         const localTabCount = this.filterCards(scrollElement, searchInput.value, new Set(), filters, parsedQuery);
         updateDocSearchHealth.call(this, scrollElement, {
@@ -3892,10 +3894,6 @@ const updatedMap: {[rootId: string]: string} = {};
         this.renderWorkbench(scrollElement, keyword, onClose);
         // T-6809 过滤条：查询时在结果区顶部提供类型收窄 chips（纯展示层可见性）。
         this.applySearchChips(scrollElement, keyword);
-
-        // 每次输入都让上一轮请求失效。空关键词或缓存命中也必须递增序号；
-        // 否则较慢的旧请求返回后会覆盖当前界面。
-        const version = beginSearch(session);
 
         // 关键词为空：隐藏文档结果，恢复纯列表
         if (keyword === "" || kernelQuery === "") {

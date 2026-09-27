@@ -518,6 +518,9 @@ export function updateDocSearchHealth(this: DocSearchUiHost, scrollElement: HTML
     // Only coarse diagnostic labels enter DOM; contents stay in the session.
     scrollElement.dataset.swSearchState = snapshot.state;
     scrollElement.dataset.swSearchReasons = snapshot.reasons.join(" ");
+    // Cache hits and late source reports update health without rebuilding results.
+    const label = scrollElement.querySelector<HTMLElement>(".sw__doc-results > .sw__window-label");
+    if (label) appendDocSearchHealthBadge.call(this, label, scrollElement);
     return snapshot;
 }
 
@@ -633,11 +636,14 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
                 // before cache writes, diagnostics, errors or DOM changes.
                 if (!current()) return;
                 if (fallbackDocs === null) {
-                    const roots = await openedPromise;
+                    await openedPromise;
                     if (!current()) return;
                     report({state: "error", counts: {global: 0}, totalLatencyMs: elapsed(),
                         sources: {global: {status: "error", latencyMs: elapsed()}}});
-                    renderDocResults.call(this, scrollElement, roots.size ? null : [], onClose, "error");
+                    // 页签层已经由 filterCards 更新；全库层失败时保留它并追加错误回执，
+                    // 不再因命中本地内容而静默移除整个远程结果区。
+                    renderDocResults.call(this, scrollElement, [], onClose, "error", undefined,
+                        () => this.applySearch(scrollElement, searchInput, onClose));
                     return;
                 }
                 docs = fallbackDocs;
@@ -651,7 +657,8 @@ export async function runDocSearchFetch(this: DocSearchUiHost,
             if ((error as DOMException)?.name !== "AbortError" && current()) {
                 report({state: "error", totalLatencyMs: elapsed(), sources: {global: {status: "error"}}});
                 logger.warn("search docs fail", error);
-                renderDocResults.call(this, scrollElement, [], onClose, "error");
+                renderDocResults.call(this, scrollElement, [], onClose, "error", undefined,
+                    () => this.applySearch(scrollElement, searchInput, onClose));
             }
         } finally {
             // Results render immediately; retain cancellation until the slower
@@ -816,6 +823,7 @@ export function renderDocResults(this: DocSearchUiHost,
         onClose: IOverlayClose,
         state: DocSearchRenderState = "results",
         expandedCount = DOC_RESULT_LIMIT,
+        onRetry?: () => void,
     ) {
         // T-6825（fzf --track 语义）：任何重建前先记录视口内首个文档条目。
         // loading 清空期间锚点暂存，结果回来后按同一条目恢复视口位置。
@@ -828,7 +836,7 @@ export function renderDocResults(this: DocSearchUiHost,
         box.setAttribute("aria-busy", state === "loading" ? "true" : "false");
         if (state !== "results") {
             this.docSearchState.docAnchors.set(scrollElement, anchor);
-            appendDocSearchStatus.call(this, box, state);
+            appendDocSearchStatus.call(this, box, state, scrollElement, onClose, onRetry);
             return;
         }
         // 排除当前已打开的文档（上半部分已有对应卡片）；手机端 getAllTabs() 恒为空，需用 MobileTabs 数据源
@@ -849,7 +857,7 @@ export function renderDocResults(this: DocSearchUiHost,
 
         if (effectiveDocs.length === 0) {
             this.docSearchState.docAnchors.delete(scrollElement);
-            appendDocResultsEmpty.call(this, box);
+            appendDocResultsEmpty.call(this, box, scrollElement, onClose);
             return;
         }
 
@@ -871,7 +879,7 @@ export function renderDocResults(this: DocSearchUiHost,
         });
         if (grid.childElementCount === 0) {
             this.docSearchState.docAnchors.delete(scrollElement);
-            appendDocResultsEmpty.call(this, box);
+            appendDocResultsEmpty.call(this, box, scrollElement, onClose);
             return;
         }
         const label = box.querySelector<HTMLElement>(".sw__window-label");
@@ -946,6 +954,7 @@ export function ensureDocResultsBox(this: DocSearchUiHost, scrollElement: HTMLEl
         const label = document.createElement("div");
         label.className = "sw__window-label";
         label.textContent = this.i18n.docSearchResults;
+        appendDocSearchHealthBadge.call(this, label, scrollElement);
         box.innerHTML = "";
         box.appendChild(label);
         return box;
@@ -1125,14 +1134,47 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
         }
     }
 
-    // 空态：无可显示的搜索结果
-export function appendDocResultsEmpty(this: DocSearchUiHost, box: HTMLElement) {
+function appendDocStatusCopy(status: HTMLElement, titleText: string, hintText: string): void {
+        const copy = document.createElement("div");
+        copy.className = "sw__doc-status-copy";
+        const title = document.createElement("strong");
+        title.className = "sw__doc-status-title";
+        title.textContent = titleText;
+        const hint = document.createElement("span");
+        hint.className = "sw__doc-status-hint";
+        hint.textContent = hintText;
+        copy.append(title, hint);
+        status.appendChild(copy);
+    }
+
+function appendDocSearchHealthBadge(this: DocSearchUiHost, label: HTMLElement, scrollElement: HTMLElement): void {
+        const health = this.docSearchState.health.get(scrollElement);
+        const state = !health?.remote ? ""
+            : health.state === "error" ? "error" : health.state === "loading" ? "loading" : "";
+        const existing = label.querySelector<HTMLElement>(".sw__doc-health-status");
+        if (state && existing?.dataset.state === state) return;
+        existing?.remove();
+        if (!state) return;
+        const text = state === "error" ? this.i18n.docSearchHealthUnavailable : this.i18n.docSearchHealthLoading;
+        const badge = createPlatformStatus(label.ownerDocument || document, state, text);
+        badge.classList.add("sw__doc-health-status");
+        badge.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
+        label.appendChild(badge);
+    }
+
+    // 空态：无可显示的搜索结果；保留原生搜索出口，避免死路。
+export function appendDocResultsEmpty(this: DocSearchUiHost,
+        box: HTMLElement,
+        scrollElement: HTMLElement,
+        onClose: IOverlayClose,
+    ) {
         const empty = document.createElement("div");
         empty.className = "sw__doc-status sw__doc-status--empty";
         empty.setAttribute("role", "status");
         empty.setAttribute("aria-live", "polite");
-        empty.textContent = this.i18n.noDocResults;
+        appendDocStatusCopy(empty, this.i18n.noDocResults, this.i18n.docSearchEmptyHint);
         box.appendChild(empty);
+        appendDocResultsViewAll.call(this, box, scrollElement, onClose);
     }
 
 export function appendDocResultsViewAll(this: DocSearchUiHost, box: HTMLElement, scrollElement: HTMLElement, onClose: IOverlayClose) {
@@ -1155,20 +1197,45 @@ export function appendDocResultsViewAll(this: DocSearchUiHost, box: HTMLElement,
         box.appendChild(action);
     }
 
-export function appendDocSearchStatus(this: DocSearchUiHost, box: HTMLElement, state: Exclude<DocSearchRenderState, "results">) {
+export function appendDocSearchStatus(this: DocSearchUiHost,
+        box: HTMLElement,
+        state: Exclude<DocSearchRenderState, "results">,
+        scrollElement: HTMLElement,
+        onClose: IOverlayClose,
+        onRetry?: () => void,
+    ) {
         const status = document.createElement("div");
         status.className = `sw__doc-status sw__doc-status--${state}`;
         status.setAttribute("role", state === "error" ? "alert" : "status");
         status.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
         if (state === "loading") {
             status.innerHTML = '<svg class="sw__spin" aria-hidden="true"><use xlink:href="#iconRefresh"></use></svg>';
-            const text = document.createElement("span");
-            text.textContent = this.i18n.docSearchLoading;
-            status.appendChild(text);
+            appendDocStatusCopy(status, this.i18n.docSearchLoading, this.i18n.docSearchLoadingHint);
+            const skeleton = document.createElement("div");
+            skeleton.className = "sw__doc-status-skeleton";
+            skeleton.setAttribute("aria-hidden", "true");
+            ["is-wide", "is-medium", "is-short"].forEach((variant) => {
+                const line = document.createElement("span");
+                line.className = `sw__doc-status-skeleton-line ${variant}`;
+                skeleton.appendChild(line);
+            });
+            status.appendChild(skeleton);
         } else {
-            status.textContent = this.i18n.docSearchFailed;
+            appendDocStatusCopy(status, this.i18n.docSearchFailed, this.i18n.docSearchErrorHint);
         }
         box.appendChild(status);
+        if (state === "error") {
+            if (onRetry) {
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "sw__doc-retry b3-button b3-button--text";
+                retry.textContent = this.i18n.docSearchRetry;
+                retry.setAttribute("aria-label", this.i18n.docSearchRetry);
+                retry.addEventListener("click", onRetry);
+                box.appendChild(retry);
+            }
+            appendDocResultsViewAll.call(this, box, scrollElement, onClose);
+        }
     }
 
 export function docSearchResultId(this: DocSearchUiHost, doc: IDocSearchResult): string {

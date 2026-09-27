@@ -36,7 +36,7 @@ function makeRunner(overrides = {}) {
             return session;
         },
         overrides.renderDocResults || function (scrollElement, docs, onClose, mode) {
-            this.rendered.push({docs, mode: mode || "results"});
+            this.rendered.push({docs, mode: mode || "results", retry: arguments[5]});
         },
         overrides.updateDocSearchHealth || function (scrollElement, options) {
             this.healthReports.push(options);
@@ -73,6 +73,10 @@ function makeHost() {
         rendered: [],
         healthReports: [],
         disposed: 0,
+        retryCalls: 0,
+        applySearch() {
+            this.retryCalls += 1;
+        },
         filterCards() {
             this.filterCardsCalls += 1;
             return 2;
@@ -171,6 +175,24 @@ test("fetch: cache hit refreshes open-tab counts without a remote request", asyn
     assert.deepEqual(host.rendered, [], "缓存命中路径不得重复渲染");
     assert.equal(host.filterCardsCalls, 1, "缓存命中仍要刷新页签层");
     assert.equal(host.healthReports.some((report) => report.cacheHit === true), true, "健康快照必须标注 cacheHit");
+});
+
+test("fetch: global failure preserves opened-tab layer and exposes retry callback", async () => {
+    const runner = makeRunner({
+        canUseTitleSearch: () => false,
+        runOpenedDocumentContentSearch: () => Promise.resolve(new Set(["20260901000000-opened"])),
+        runFullTextSearchFallback: () => Promise.resolve(null),
+    });
+    const host = makeHost();
+    const scrollElement = surface();
+    const version = beginSearch(getDocSession(host, scrollElement));
+    await runner.call(host, scrollElement, input("offline"), "offline", version, () => {}, {}, "key:offline", "offline");
+    assert.equal(host.rendered.length, 1);
+    assert.deepEqual(host.rendered[0].docs, [], "远程失败必须保留错误态容器，不得移除本地层旁的回执");
+    assert.equal(host.rendered[0].mode, "error");
+    assert.equal(typeof host.rendered[0].retry, "function", "错误态必须提供重试回调");
+    host.rendered[0].retry();
+    assert.equal(host.retryCalls, 1, "重试回调必须重新进入搜索应用入口");
 });
 
 function getDocSession(host, scrollElement) {
