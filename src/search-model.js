@@ -1744,6 +1744,34 @@ function formatUpdatedBadge(updated, nowMs) {
     return {text: `${year}-${mmdd}`, fresh: false};
 }
 
+// T-6952：保存的搜索编辑——不可变更新一条条目。长度上限沿用 T-6827 保存时的
+// 归一（名称 40 / 查询 120 / 笔记本 64）；查询 trim 后为空属拒绝（空查询没有
+// 可固化语义）；显式传 notebook 空串 = 清除约束。原 ID 恒不变（悬浮球固定槽
+// 与工作台 chips 均按 ID 回读），其余条目与顺序原样保留。
+const SAVED_SEARCH_NAME_MAX = 40;
+const SAVED_SEARCH_QUERY_MAX = 120;
+const SAVED_SEARCH_NOTEBOOK_MAX = 64;
+
+function updateSavedSearchEntry(list, id, patch) {
+    if (!Array.isArray(list)) return {ok: false, reason: "not-found", list: [], entry: null};
+    const index = list.findIndex((item) => item && item.id === id);
+    if (index < 0) return {ok: false, reason: "not-found", list, entry: null};
+    const current = list[index];
+    const query = String(patch && patch.query !== undefined ? patch.query : current.query || "").trim();
+    if (!query) return {ok: false, reason: "empty-query", list, entry: null};
+    const rawName = String(patch && patch.name !== undefined ? patch.name : current.name || "").trim();
+    const name = (rawName || query).slice(0, SAVED_SEARCH_NAME_MAX);
+    const next = {...current, id: current.id, name, query: query.slice(0, SAVED_SEARCH_QUERY_MAX)};
+    if (patch && Object.prototype.hasOwnProperty.call(patch, "notebook")) {
+        const notebook = String(patch.notebook || "").trim();
+        if (notebook) next.notebook = notebook.slice(0, SAVED_SEARCH_NOTEBOOK_MAX);
+        else delete next.notebook;
+    }
+    const out = list.slice();
+    out[index] = next;
+    return {ok: true, list: out, entry: next};
+}
+
 module.exports = {
     DEFAULT_SEARCH_LIMITS,
     DEFAULT_SEARCH_PAGE_SIZE,
@@ -1792,4 +1820,8 @@ module.exports = {
     stripSnippetMarkup,
     buildDocPreviewSnapshot,
     formatUpdatedBadge,
+    SAVED_SEARCH_NAME_MAX,
+    SAVED_SEARCH_QUERY_MAX,
+    SAVED_SEARCH_NOTEBOOK_MAX,
+    updateSavedSearchEntry,
 };

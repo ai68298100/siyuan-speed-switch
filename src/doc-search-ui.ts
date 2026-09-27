@@ -2,11 +2,11 @@
 // 搜索方法群以 this 参数模式运行：调用方式 renderDocResults.call(host, ...)。
 // host 契约见 DocSearchUiHost；群内互调在本模块内直接 .call(this)，
 // 状态对象（sessions/filters/...）由 host.docSearchState 持有（R5a，D-381）。
-import {Menu, getAllTabs, openTab, showMessage} from "siyuan";
+import {Dialog, Menu, getAllTabs, openTab, showMessage} from "siyuan";
 import type {IMenu} from "siyuan";
 import {BLOCK_ID_RE, DOC_RESULT_LIMIT, DOC_SEARCH_CACHE_LIMIT, DOC_SEARCH_FETCH_LIMIT} from "./constants";
 import {createSearchSession, cacheSearchResult, disposeSearchSession} from "./search-session";
-import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId} from "./search-model";
+import {aggregateSearchResults, buildDocPreviewSnapshot, buildFullTextSearchRequest, buildKeywordHighlightSegments, buildNativeSearchTabConfig, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, matchesParsedQuery, normalizeSearchResult, pickDocViewportAnchor, planDocResultsPage, planDocViewportRestore, resolveDocSearchResultId, resolveSearchNotebookId, SAVED_SEARCH_NAME_MAX, SAVED_SEARCH_QUERY_MAX} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
 import {openDocumentOnDesktop} from "./document-actions";
 import {applyPreviewFind, clampScrollTop, clearPreviewFind, HIT_CLASS, nextHitIndex} from "./doc-preview-find";
@@ -39,6 +39,9 @@ export interface DocSearchUiHost {
     /** T-6827 保存的搜索 */
     getSavedSearches(): Array<{id: string; name: string; query: string; notebook?: string}>;
     saveCurrentSearch(query: string, filters: IDocSearchFilters): void;
+    /** T-6952 编辑保存的搜索：保 ID 归一更新，失败（不存在/空查询）返回 false */
+    updateSavedSearch(id: string, patch: {name?: string; query?: string; notebook?: string}): boolean;
+    updateSettings(patch: Record<string, unknown>): void;
     applySavedSearch(scrollElement: HTMLElement, saved: {id: string; query: string; notebook?: string}, onClose: IOverlayClose): void;
     /** T-6830 打开策略：复用已开页签 */
     reuseOpenTabsEnabled(): boolean;
@@ -367,6 +370,7 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                 })),
             });
             // T-6827 保存的搜索：已有保存项时提供快速应用子菜单
+            // T-6952：每条展开为 应用 / 编辑 / 删除——编辑保持原 ID，悬浮球固定槽照常回读
             const savedList = this.getSavedSearches();
             if (savedList.length > 0) {
                 menu.addItem({
@@ -376,7 +380,28 @@ export function bindDocSearchFilter(this: DocSearchUiHost,
                     submenu: savedList.map((saved) => ({
                         label: saved.name,
                         icon: "iconSearch",
-                        click: () => this.applySavedSearch(scrollElement, saved, onClose),
+                        submenu: [
+                            {
+                                label: this.i18n.searchSavedApply,
+                                icon: "iconPlay",
+                                click: () => this.applySavedSearch(scrollElement, saved, onClose),
+                            },
+                            {
+                                label: this.i18n.searchSavedEdit,
+                                icon: "iconEdit",
+                                click: () => openSavedSearchEditor.call(this, saved.id),
+                            },
+                            {
+                                label: this.i18n.searchSavedDelete,
+                                icon: "iconTrash",
+                                click: () => {
+                                    if (!window.confirm(String(this.i18n.searchSavedDeleteConfirm).replace("{x}", String(saved.name || "")))) return;
+                                    this.updateSettings({
+                                        savedSearches: this.getSavedSearches().filter((item) => item?.id !== saved.id),
+                                    });
+                                },
+                            },
+                        ],
                     })),
                 });
             }
@@ -431,6 +456,114 @@ export function applySavedSearchFilters(this: DocSearchUiHost, scrollElement: HT
         searchInput.value = query;
         this.applySearch(scrollElement, searchInput, onClose);
         searchInput.focus({preventScroll: true});
+    }
+
+/**
+ * T-6952：编辑保存的搜索——名称/查询/笔记本约束三字段；保存走宿主
+ * updateSavedSearch（纯模型归一，原 ID 恒不变），取消/Esc 零写入。
+ * 空查询禁用保存并提示；名称/查询超长显示截断提示（模型层仍按上限裁剪）。
+ */
+export function openSavedSearchEditor(this: DocSearchUiHost, id: string): void {
+        const saved = this.getSavedSearches().find((item) => item?.id === id);
+        if (!saved) return;
+        const dialog = new Dialog({
+            title: this.i18n.searchSavedEditTitle,
+            content: '<div class="sw-saved-search-editor"></div>',
+            width: this.isMobile ? "min(480px, 92vw)" : "420px",
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".sw-saved-search-editor");
+        if (!root) return;
+        const buildField = (label: string, value: string) => {
+            const wrap = document.createElement("div");
+            wrap.className = "sw-saved-search-editor__field";
+            const labelEl = document.createElement("span");
+            labelEl.className = "sw-saved-search-editor__label";
+            labelEl.textContent = label;
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "b3-text-field";
+            input.value = value;
+            input.setAttribute("aria-label", label);
+            wrap.append(labelEl, input);
+            return {wrap, input};
+        };
+        const nameField = buildField(this.i18n.searchSavedEditName, saved.name || "");
+        const queryField = buildField(this.i18n.searchSavedEditQuery, saved.query || "");
+        const notebookRow = document.createElement("div");
+        notebookRow.className = "sw-saved-search-editor__field";
+        const notebookLabel = document.createElement("span");
+        notebookLabel.className = "sw-saved-search-editor__label";
+        notebookLabel.textContent = this.i18n.searchSavedEditNotebook;
+        const notebookSelect = document.createElement("select");
+        notebookSelect.className = "b3-select";
+        notebookSelect.setAttribute("aria-label", this.i18n.searchSavedEditNotebook);
+        const anyOption = document.createElement("option");
+        anyOption.value = "";
+        anyOption.textContent = this.i18n.searchSavedEditNotebookAny;
+        notebookSelect.appendChild(anyOption);
+        notebookSelect.value = saved.notebook || "";
+        notebookRow.append(notebookLabel, notebookSelect);
+        // 笔记本选项异步填充；加载失败保留「不限」+ 现值，编辑不因枚举失败而不可用
+        void this.loadNotebooks().then((notebooks) => {
+            if (!notebookSelect.isConnected) return;
+            notebooks.forEach((notebook) => {
+                const option = document.createElement("option");
+                option.value = notebook.id;
+                option.textContent = notebook.name;
+                notebookSelect.appendChild(option);
+            });
+            notebookSelect.value = saved.notebook || "";
+        }).catch((): undefined => undefined);
+
+        const hint = document.createElement("div");
+        hint.className = "sw-saved-search-editor__hint";
+        hint.setAttribute("role", "status");
+        hint.setAttribute("aria-live", "polite");
+        const actions = document.createElement("div");
+        actions.className = "sw-saved-search-editor__actions";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "b3-button b3-button--cancel";
+        cancelBtn.textContent = this.i18n.cancel;
+        cancelBtn.addEventListener("click", () => dialog.destroy());
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "b3-button b3-button--text";
+        saveBtn.textContent = this.i18n.searchSavedSave;
+        const validate = () => {
+            const query = queryField.input.value.trim();
+            saveBtn.disabled = !query;
+            const notes: string[] = [];
+            if (!query) notes.push(this.i18n.searchSavedEditEmptyQuery);
+            if (query.length > SAVED_SEARCH_QUERY_MAX) {
+                notes.push(this.i18n.searchSavedEditTruncated.replace("{x}", String(SAVED_SEARCH_QUERY_MAX)));
+            }
+            if (nameField.input.value.trim().length > SAVED_SEARCH_NAME_MAX) {
+                notes.push(this.i18n.searchSavedEditTruncated.replace("{x}", String(SAVED_SEARCH_NAME_MAX)));
+            }
+            hint.textContent = notes.join(" ");
+        };
+        saveBtn.addEventListener("click", () => {
+            const ok = this.updateSavedSearch(id, {
+                name: nameField.input.value,
+                query: queryField.input.value,
+                notebook: notebookSelect.value,
+            });
+            if (ok) {
+                showMessage(this.i18n.searchSavedUpdated);
+                dialog.destroy();
+            }
+        });
+        queryField.input.addEventListener("input", validate);
+        nameField.input.addEventListener("input", validate);
+        actions.append(cancelBtn, saveBtn);
+        root.append(nameField.wrap, queryField.wrap, notebookRow, hint, actions);
+        validate();
+        try {
+            queryField.input.focus({preventScroll: true});
+        } catch (_) {
+            queryField.input.focus();
+        }
     }
 
 export function getDocSearchFilterCount(this: DocSearchUiHost, filters: IDocSearchFilters = {}): number {        return Number(Boolean(filters.notebook))
