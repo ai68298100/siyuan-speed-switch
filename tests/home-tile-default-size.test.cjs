@@ -28,3 +28,13 @@ test('default size: batch 1 clock-family presets (T-6971 spec cards)', () => {
     assert.equal(HOME_TILE_DEFAULT_SIZES.countdown, 'small', '倒数日默认 small');
     assert.equal(HOME_TILE_DEFAULT_SIZES['year-progress'], 'small', '年度进度默认 small');
 });
+
+test('default size: spec-card registration covers the major families (T-6971)', () => {
+    assert.equal(HOME_TILE_DEFAULT_SIZES['journal-calendar'], 'large', '批次②：日历月视图 L');
+    assert.equal(HOME_TILE_DEFAULT_SIZES['external-ical-events'], 'medium', '批次②：iCal 日程 M');
+    assert.equal(HOME_TILE_DEFAULT_SIZES['checkin-year-heatmap'], 'large', '批次④：打卡热力图 L');
+    assert.equal(HOME_TILE_DEFAULT_SIZES['database-table'], 'wide', '批次⑨：数据库表格 wide');
+    assert.equal(HOME_TILE_DEFAULT_SIZES['recent-daily-notes'], 'wide', '批次⑨：近期日记 wide');
+    const count = Object.keys(HOME_TILE_DEFAULT_SIZES).length;
+    assert.ok(count >= 40, `默认档登记应覆盖绝大多数组件（当前 ${count}）`);
+});
