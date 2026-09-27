@@ -1126,8 +1126,9 @@ test('workbench health receipt: per-cell health markers and aggregate receipt ba
     const homeWidgetsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_05-settings-widgets.scss'));
     // 健康记录：refresh 包装器把结果 ok 写回单元 data-sw-health 并触发聚合。
     // T-6880 起判定提升为 const ok = result?.ok === true（供对象描述复用）。
-    assert.match(secondPanelSource, /const ok = result\?\.ok === true;\s*\n\s*cell\.dataset\.swHealth = ok \? "ok" : "failed";/,
-        'the refresh wrapper must record per-cell health from the result');
+    // T-6954 起同一包装器记录最近尝试/成功时间（供健康详情与脱敏诊断）。
+    assert.match(secondPanelSource, /const ok = result\?\.ok === true;\s*\n\s*if \(ok\) health\.lastOkAt = health\.lastAttemptAt;\s*\n\s*else health\.lastFailReason = String\(result\?\.reason \|\| "failed"\);\s*\n\s*cell\.dataset\.swHealth = ok \? "ok" : "failed";/,
+        'the refresh wrapper must record per-cell health plus attempt/success times (T-6879/T-6954)');
     assert.match(secondPanelSource, /updateWorkbenchReceipt\(\);/,
         'the wrapper must refresh the receipt after each refresh');
     // 回执条：存在专用类、按 DOM 聚合、无单元时移除、i18n 模板插值。

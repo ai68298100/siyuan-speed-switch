@@ -542,6 +542,14 @@
     border-top: 1px solid var(--b3-border-color);
     background: var(--b3-theme-surface);
     color: var(--b3-theme-on-surface-light);
+
+    // T-6954：健康详情入口——回执条右缘的文字按钮
+    .sw-home__receipt-details {
+        flex: none;
+        margin-left: auto;
+        padding: 2px 8px;
+        font-size: 11px;
+    }
     font-size: 12px;
 
     > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -976,3 +984,59 @@
 // ==================== 手机切换器顶栏两行化 ====================
 // 行1 = 搜索 + 排序 + 关闭；行2 = 收藏 / 最近打开 / 设置（带文字，横向可滚动）。
 // 修复此前七个控件挤同一行导致的重叠拥挤问题。
+
+// ==================== T-6954：组件健康详情弹窗与定位强调 ====================
+// 回执条 → 详情：按 失败/加载中/正常 分组的行卡；定位后单元短暂描边强调。
+.sw-home-health {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 4px 2px 8px;
+}
+
+.sw-home-health__group {
+    margin: 6px 2px 6px;
+    padding-left: 10px;
+    border-left: 3px solid var(--b3-border-color);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--b3-theme-on-surface-light);
+
+    &--failed { border-left-color: var(--b3-theme-error); }
+    &--loading { border-left-color: var(--b3-theme-warning); }
+    &--ok { border-left-color: var(--b3-theme-success); }
+}
+
+.sw-home-health__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 9px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    margin-bottom: 6px;
+
+    &--failed { border-color: color-mix(in srgb, var(--b3-theme-error) 34%, transparent); }
+
+    .sw-home-health__info { flex: 1; min-width: 0; }
+    .sw-home-health__name { display: block; font-size: 12.5px; font-weight: 600; }
+    .sw-home-health__meta {
+        display: block;
+        margin-top: 2px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+    }
+    .sw-home-health__actions { display: flex; flex: none; gap: 4px; }
+}
+
+.sw-home-health__refresh { margin-top: 4px; }
+
+// 定位卡片：工作台单元短暂描边（1.6s 后由 JS 移除）
+.sw-home__cell--locate {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 2px;
+    border-radius: 10px;
+}

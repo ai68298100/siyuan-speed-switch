@@ -333,4 +333,61 @@ function selectHomeRefreshRetryEntries(entries, results) {
     });
 }
 
-module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries};
+// T-6954：健康详情与脱敏诊断。诊断白名单只有组件标识/类型、状态、错误分类和
+// 时间——错误 reason 必须命中白名单才原样展示，否则一律折叠为 "failed"，
+// 原始异常文本、响应正文、笔记标题、URL 参数与凭据永远不会进入摘要。
+const HOME_HEALTH_REASON_WHITELIST = ["timeout", "failed", "aborted", "disposed", "stale", "offline", "unavailable", "empty"];
+
+function classifyHomeHealthReason(reason) {
+    const value = typeof reason === "string" ? reason.trim().toLowerCase() : "";
+    return HOME_HEALTH_REASON_WHITELIST.includes(value) ? value : "failed";
+}
+
+// 输入为纯数据行（由调用方从控制器与单元 DOM 归一），按 失败/加载中/正常 分组。
+function buildHomeHealthReport(entries) {
+    const report = {failed: [], loading: [], ok: []};
+    if (!Array.isArray(entries)) return report;
+    entries.forEach((entry) => {
+        if (!entry || !entry.instanceId) return;
+        const health = entry.health === "ok" || entry.health === "failed" || entry.health === "loading" ? entry.health : "loading";
+        const row = {
+            instanceId: String(entry.instanceId),
+            moduleId: String(entry.moduleId || ""),
+            title: String(entry.title || entry.moduleId || ""),
+            health,
+            cached: entry.cached === true,
+            reasonClass: health === "failed" ? classifyHomeHealthReason(entry.reason) : "",
+            lastAttemptAt: Number.isFinite(entry.lastAttemptAt) ? entry.lastAttemptAt : null,
+            lastOkAt: Number.isFinite(entry.lastOkAt) ? entry.lastOkAt : null,
+        };
+        report[health].push(row);
+    });
+    return report;
+}
+
+function formatHealthTime(value, unknownLabel) {
+    if (!Number.isFinite(value) || value <= 0) return unknownLabel || "未知";
+    const date = new Date(value);
+    const pad2 = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+// 脱敏摘要：只从白名单字段拼装（绝不内插异常对象/响应/URL/凭据）；
+// 未归一化的行在此处补走白名单分类，保证错误原文永远不落摘要。
+function buildHomeDiagnosticSummary(row, labels) {
+    const l = labels || {};
+    const statusLabel = row.health === "failed" ? (l.failed || "失败")
+        : row.health === "loading" ? (l.loading || "加载中") : (l.ok || "正常");
+    const reasonClass = row.reasonClass || classifyHomeHealthReason(row.reason);
+    const lines = [
+        `${l.head || "组件诊断"}: ${row.title} (${row.moduleId})`,
+        `${l.instance || "实例"}: ${row.instanceId}`,
+        `${l.status || "状态"}: ${statusLabel}${reasonClass ? ` (${reasonClass})` : ""}`,
+        `${l.cached || "缓存"}: ${row.cached ? (l.cachedShown || "旧内容可见") : (l.noCache || "无")}`,
+        `${l.lastAttempt || "最近尝试"}: ${formatHealthTime(row.lastAttemptAt, l.unknown || "未知")}`,
+        `${l.lastOk || "最近成功"}: ${formatHealthTime(row.lastOkAt, l.unknown || "未知")}`,
+    ];
+    return lines.join("\n");
+}
+
+module.exports = {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, classifyHomeHealthReason, buildHomeHealthReport, formatHealthTime, buildHomeDiagnosticSummary};

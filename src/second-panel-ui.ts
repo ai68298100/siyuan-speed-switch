@@ -8,7 +8,7 @@ import {Dialog, showMessage} from "siyuan";
 import type {EventBus, TEventBus} from "siyuan";
 import {HOME_WIDGET_SIZES, PANEL_SCALE_DEFAULT, PANEL_SIZE_MIN_PX} from "./constants";
 import type {HomeSizeMode, HomeWidgetSize} from "./constants";
-import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries} from "./home-controller";
+import {createHomeModuleController, refreshHomeModules, countHomeRefreshFailures, summarizeHomeRefreshFailures, selectHomeRefreshRetryEntries, buildHomeHealthReport, buildHomeDiagnosticSummary, formatHealthTime} from "./home-controller";
 import {resolveMobileHomeSize} from "./home-model";
 import {createHomeRuntime} from "./home-runtime";
 import {createLayoutHistory, layoutSnapshotOf, pushLayoutHistory, undoLayoutHistory, redoLayoutHistory, canUndoLayoutHistory, canRedoLayoutHistory, peekUndoLabel, peekRedoLabel, reconcileLayoutSnapshot} from "./home-layout-history";
@@ -139,7 +139,8 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         if (this.isMobile) root.classList.add("sw-home--mobile");
         const device = this.isMobile ? "mobile" : "desktop";
         // 面板闭包持有当前渲染的控制器列表，工具栏"刷新全部"可跨渲染访问
-        const homeControllers: Array<{ moduleId: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement; clockSeconds?: boolean }> = [];
+        // T-6954：健康详情——控制器附带实例 ID 与可取得的成功/尝试时间（内存态，未知即缺省）
+        const homeControllers: Array<{ moduleId: string; instanceId?: string; refresh: (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => Promise<unknown>; dispose: () => void; cell: HTMLElement; clockSeconds?: boolean; health?: { lastAttemptAt?: number; lastOkAt?: number; lastFailReason?: string } }> = [];
         const homeRefreshTimers: number[] = [];
         let homeClockTimer = 0;
         let homeSecondsTimer = 0;
@@ -523,18 +524,24 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                     },
                 });
                 if (!controller) return;
+                const health: { lastAttemptAt?: number; lastOkAt?: number; lastFailReason?: string } = {};
                 controllers.push({
                     moduleId: inst.moduleId,
+                    instanceId: inst.instanceId,
+                    health,
                     // T-6879（T-6874b）：刷新结果回写单元健康标记（data-sw-health），
                     // 回执条据此聚合"ok/total 正常 · 失败 n"；失败单元描红边。
                     // T-6880（P2 第二批）：失败两通道——错误色边框（颜色）+ 文字 chip
                     // （attr() 渲染），并维护对象描述 aria 语义。
                     refresh: async (config?: Record<string, unknown>, readOptions?: Record<string, unknown>) => {
+                        health.lastAttemptAt = Date.now();
                         cell.dataset.swHealth = "loading";
                         updateCellDescription();
                         updateWorkbenchReceipt();
                         const result = await controller.refresh(config, readOptions);
                         const ok = result?.ok === true;
+                        if (ok) health.lastOkAt = health.lastAttemptAt;
+                        else health.lastFailReason = String(result?.reason || "failed");
                         cell.dataset.swHealth = ok ? "ok" : "failed";
                         if (ok) {
                             delete cell.dataset.swHealthText;
@@ -862,8 +869,163 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
             receipt.className = "sw-home__receipt";
             receipt.setAttribute("role", "status");
             receipt.appendChild(document.createElement("span"));
+            // T-6954：健康详情入口——从汇总到具体组件的明细路径（复用控制器结果，零新增探测）
+            const receiptDetails = document.createElement("button");
+            receiptDetails.type = "button";
+            receiptDetails.className = "b3-button b3-button--text sw-home__receipt-details";
+            receiptDetails.textContent = this.i18n.homeReceiptDetails;
+            receiptDetails.setAttribute("aria-label", this.i18n.homeHealthDetailsTitle);
+            receiptDetails.addEventListener("click", () => {
+                openHomeHealthDetails(receiptDetails);
+            });
+            receipt.appendChild(receiptDetails);
             root.appendChild(receipt);
             updateWorkbenchReceipt();
+
+        // T-6954：健康详情弹窗——按 失败/加载中/正常 分组；定位/单项重试/复制脱敏摘要；
+        // 只读控制器与单元 DOM 现状，不增加探测请求或自动重试频率。
+        const openHomeHealthDetails = (returnFocus: HTMLElement | null) => {
+            const diagLabels = {
+                head: this.i18n.homeHealthDetailsTitle,
+                instance: this.i18n.homeHealthInstance,
+                status: this.i18n.homeHealthStatus,
+                cached: this.i18n.homeHealthCached,
+                cachedShown: this.i18n.homeHealthCachedShown,
+                noCache: "——",
+                lastAttempt: this.i18n.homeHealthLastAttempt,
+                lastOk: this.i18n.homeHealthLastOk,
+                unknown: this.i18n.homeHealthUnknown,
+                failed: this.i18n.homeHealthGroupFailed,
+                loading: this.i18n.homeHealthGroupLoading,
+                ok: this.i18n.homeHealthGroupOk,
+            };
+            const dialog = new Dialog({
+                title: this.i18n.homeHealthDetailsTitle,
+                content: '<div class="sw-home-health"></div>',
+                width: this.isMobile ? "min(560px, 94vw)" : "520px",
+                destroyCallback: () => {
+                    if (returnFocus?.isConnected) {
+                        try {
+                            returnFocus.focus({preventScroll: true});
+                        } catch (_) {
+                            returnFocus.focus();
+                        }
+                    }
+                },
+            });
+            const listRoot = dialog.element.querySelector<HTMLElement>(".sw-home-health");
+            if (!listRoot) return;
+            const collectRows = () => homeControllers.map((entry) => {
+                const def = defs.get(entry.moduleId);
+                return {
+                    instanceId: entry.instanceId || entry.cell.dataset.swObjectId || "",
+                    moduleId: entry.moduleId,
+                    title: (def as any)?.title || entry.moduleId,
+                    health: (entry.cell.dataset.swHealth || "loading") as "ok" | "failed" | "loading",
+                    cached: this.homePanelSnapshots.has(entry.instanceId || ""),
+                    reason: entry.health?.lastFailReason || "",
+                    lastAttemptAt: entry.health?.lastAttemptAt,
+                    lastOkAt: entry.health?.lastOkAt,
+                };
+            });
+            const scrollCellIntoView = (cell: HTMLElement) => {
+                let scroller = cell.parentElement;
+                while (scroller && scroller.scrollHeight <= scroller.clientHeight + 4 && scroller !== root) {
+                    scroller = scroller.parentElement;
+                }
+                if (scroller && scroller !== root) {
+                    const scrollerRect = scroller.getBoundingClientRect();
+                    const cellRect = cell.getBoundingClientRect();
+                    scroller.scrollTop = Math.max(0, scroller.scrollTop + (cellRect.top - scrollerRect.top) - scrollerRect.height / 2);
+                }
+            };
+            const renderHealthList = () => {
+                const report = buildHomeHealthReport(collectRows());
+                listRoot.textContent = "";
+                const groupLabels: Record<string, string> = {
+                    failed: this.i18n.homeHealthGroupFailed,
+                    loading: this.i18n.homeHealthGroupLoading,
+                    ok: this.i18n.homeHealthGroupOk,
+                };
+                (["failed", "loading", "ok"] as const).forEach((group) => {
+                    const rows = report[group];
+                    if (rows.length === 0) return;
+                    const groupTitle = document.createElement("h4");
+                    groupTitle.className = `sw-home-health__group sw-home-health__group--${group}`;
+                    groupTitle.textContent = `${groupLabels[group]} · ${rows.length}`;
+                    listRoot.appendChild(groupTitle);
+                    rows.forEach((row) => {
+                        const line = document.createElement("div");
+                        line.className = `sw-home-health__row sw-home-health__row--${row.health}`;
+                        const info = document.createElement("div");
+                        info.className = "sw-home-health__info";
+                        const name = document.createElement("span");
+                        name.className = "sw-home-health__name";
+                        name.textContent = row.title;
+                        const meta = document.createElement("span");
+                        meta.className = "sw-home-health__meta";
+                        meta.textContent = [
+                            row.health === "failed" && row.reasonClass ? row.reasonClass : "",
+                            row.cached ? this.i18n.homeHealthCachedShown : "",
+                            `${this.i18n.homeHealthLastAttempt}: ${formatHealthTime(row.lastAttemptAt, this.i18n.homeHealthUnknown)}`,
+                            `${this.i18n.homeHealthLastOk}: ${formatHealthTime(row.lastOkAt, this.i18n.homeHealthUnknown)}`,
+                        ].filter(Boolean).join(" · ");
+                        info.append(name, meta);
+                        const actions = document.createElement("div");
+                        actions.className = "sw-home-health__actions";
+                        const smallButton = (label: string, onClick: () => void) => {
+                            const button = document.createElement("button");
+                            button.type = "button";
+                            button.className = "b3-button b3-button--text";
+                            button.textContent = label;
+                            button.setAttribute("aria-label", label);
+                            button.addEventListener("click", onClick);
+                            return button;
+                        };
+                        actions.appendChild(smallButton(this.i18n.homeHealthLocate, () => {
+                            dialog.destroy();
+                            const controller = homeControllers.find((c) => c.instanceId === row.instanceId);
+                            const cell = controller?.cell;
+                            if (!cell?.isConnected) return;
+                            scrollCellIntoView(cell);
+                            cell.classList.add("sw-home__cell--locate");
+                            try {
+                                cell.focus({preventScroll: true});
+                            } catch (_) {
+                                cell.focus();
+                            }
+                            window.setTimeout(() => cell.classList.remove("sw-home__cell--locate"), 1600);
+                        }));
+                        if (row.health !== "ok") {
+                            actions.appendChild(smallButton(this.i18n.homeHealthRetryOne, () => {
+                                const controller = homeControllers.find((c) => c.instanceId === row.instanceId);
+                                if (!controller) return;
+                                void controller.refresh(undefined, {force: true}).then(() => renderHealthList());
+                            }));
+                        }
+                        actions.appendChild(smallButton(this.i18n.homeHealthCopySummary, () => {
+                            const summary = buildHomeDiagnosticSummary(row, diagLabels);
+                            const copied = () => showMessage(this.i18n.homeHealthCopied);
+                            const failedToCopy = () => showMessage(this.i18n.homeHealthCopyFailed);
+                            if (navigator.clipboard?.writeText) {
+                                navigator.clipboard.writeText(summary).then(copied, failedToCopy);
+                            } else {
+                                failedToCopy();
+                            }
+                        }));
+                        line.appendChild(actions);
+                        listRoot.appendChild(line);
+                    });
+                });
+                const refreshListButton = document.createElement("button");
+                refreshListButton.type = "button";
+                refreshListButton.className = "b3-button b3-button--text sw-home-health__refresh";
+                refreshListButton.textContent = this.i18n.homeHealthRefreshList;
+                refreshListButton.addEventListener("click", () => renderHealthList());
+                listRoot.appendChild(refreshListButton);
+            };
+            renderHealthList();
+        };
         };
 
         const handleModuleChange = () => {
