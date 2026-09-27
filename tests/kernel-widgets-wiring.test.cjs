@@ -580,13 +580,15 @@ test('density wiring: body marker mounted on load, toggled from settings, remove
     assert.match(skins, /body\[data-sw-density="compact"\]/, '紧凑密度必须以 body 标记作用域生效');
 });
 
-test('config pack: export/import wiring with confirm and atomic validation (T-6824)', () => {
+test('config pack: export/import wiring with diff preview and per-group confirm (T-6824/T-6961)', () => {
     const settingsSections = readSourceText(path.join(__dirname, '..', 'src', 'settings-sections.ts'));
     const configPack = readSourceText(path.join(__dirname, '..', 'src', 'config-pack-model.js'));
     assert.match(settingsSections, /this\.exportConfigPack\(\)/, '设置页必须提供配置包导出');
-    assert.match(settingsSections, /this\.importConfigPack\(parsed\)/, '设置页必须提供配置包导入');
-    assert.match(settingsSections, /if \(!confirm\(this\.i18n\.configPackImportConfirm\)\) return;/,
-        '导入应用前必须经用户确认');
+    assert.match(settingsSections, /importConfigPack\(parsed, \{groups: chosen\}\)/, '设置页必须按勾选组提供配置包导入');
+    assert.match(settingsSections, /const normalized = normalizeConfigPackImport\(parsed\);/,
+        '导入应用前必须先归一校验');
+    assert.match(settingsSections, /openConfigPackDiffDialog\.call\(this, parsed, groups, signature,/,
+        '导入应用前必须经差异预览对话框（逐组确认，T-6961）');
     assert.match(configPack, /CONFIG_PACK_SETTINGS_KEYS = \[/, '可迁移键必须走白名单');
     assert.match(configPack, /payload\.app !== "siyuan-speed-switch"/, '外来包必须拒绝（来源校验）');
     assert.match(indexSource, /const normalized = normalizeDocumentSets\(result\.documentSets\);/,

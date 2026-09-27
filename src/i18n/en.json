@@ -482,7 +482,6 @@
   "openSettings": "Open LvSpeed Switch settings",
   "configPackExport": "Export config pack",
   "configPackImport": "Import config pack",
-  "configPackImportConfirm": "Importing overwrites matching settings and document sets. Continue?",
   "configPackImportDone": "Config pack imported",
   "configPackImportFailed": "Config pack import failed (invalid file or over limit)",
   "setSessionMark": "Mark current position",
@@ -1274,6 +1273,16 @@
   ,"snippetFindConfirm": "Confirm replacing {x}"
   ,"snippetFindNone": "No matches"
   ,"snippetFindDone": "Replaced {x}"
+  ,"configPackDiffTitle": "Import config pack"
+  ,"configPackGroupSettings": "Settings"
+  ,"configPackGroupDocumentSets": "Document sets"
+  ,"configPackActionAdd": "Add"
+  ,"configPackActionReplace": "Replace"
+  ,"configPackActionKeep": "Keep"
+  ,"configPackDiffNotice": "These groups will be merged into your current config (arrays replace as whole groups, no per-item merge). Confirm per group."
+  ,"configPackDiffStale": "Current state changed; the diff has been refreshed. Please confirm again."
+  ,"configPackApplySelected": "Apply selected groups"
+  ,"configPackApplyFailed": "Apply failed; current config preserved"
   ,"snippetScene": "Scene"
   ,"snippetSceneReading": "Reading document"
   ,"snippetSceneTable": "Tables & code"

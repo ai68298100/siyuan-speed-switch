@@ -5202,24 +5202,39 @@ const updatedMap: {[rootId: string]: string} = {};
     }
 
     /**
-     * 导入配置包：整体校验通过后才落盘（校验-提交两段式，任一环节失败零写入）。
-     * settings 深校验走既有 normalizeSettings；documentSets 深校验走既有
-     * normalizeDocumentSets 迁移门禁。返回 {ok, reason?} 供 UI 呈现失败原因。
+     * 导入配置包：整体校验通过后才落盘（校验-提交两段式）。T-6961：支持组粒度
+     * 应用（groups 缺省 = 全部可迁移组）；多 key 持久化非原子事务，写入异常如实
+     * 回执已应用范围，不虚报全部成功。settings 深校验走既有 normalizeSettings；
+     * documentSets 深校验走既有 normalizeDocumentSets 迁移门禁。
      */
-    public importConfigPack(payload: unknown): {ok: boolean; reason?: string} {
+    public importConfigPack(payload: unknown, options?: {groups?: string[]}): {ok: boolean; reason?: string; applied?: string[]} {
         const result = normalizeConfigPackImport(payload);
         if (!result.ok) return {ok: false, reason: result.reason};
+        const requested = Array.isArray(options?.groups) && options.groups.length > 0
+            ? options.groups
+            : ["settings", ...(result.documentSets ? ["documentSets"] : [])];
+        const selected = new Set(requested.filter((group) => group === "settings" || group === "documentSets"));
         let dsState: unknown = null;
-        if (result.documentSets) {
+        if (selected.has("documentSets") && result.documentSets) {
             const normalized = normalizeDocumentSets(result.documentSets);
             dsState = {schemaVersion: normalized.schemaVersion, sets: normalized.sets};
         }
-        this.updateSettings(result.settings);
-        if (result.documentSets) {
-            this.data[DOCUMENT_SETS_KEY] = dsState;
-            this.saveDataDebounced(DOCUMENT_SETS_KEY);
+        const applied: string[] = [];
+        try {
+            if (selected.has("settings")) {
+                this.updateSettings(result.settings);
+                applied.push("settings");
+            }
+            if (selected.has("documentSets") && result.documentSets) {
+                this.data[DOCUMENT_SETS_KEY] = dsState;
+                this.saveDataDebounced(DOCUMENT_SETS_KEY);
+                applied.push("documentSets");
+            }
+        } catch (error) {
+            logger.warn("config pack apply failed", error);
+            return {ok: false, reason: "apply-failed", applied};
         }
-        return {ok: true};
+        return {ok: true, applied};
     }
 
     // T-6827 保存的搜索：设置读取、保存（名称默认=查询文本，免去 Electron 不支持的

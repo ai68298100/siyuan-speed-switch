@@ -8,6 +8,7 @@ import {Dialog, getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
 import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
+import {diffConfigPackGroups, configPackBaselineSignature, normalizeConfigPackImport} from "./config-pack-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries, diffDocumentSetVersion} from "./document-sets";
 import {mountQuickActionPicker} from "./quick-actions-ui";
 import {appendQuickAction, sanitizeQuickActions} from "./quick-actions";
@@ -87,7 +88,7 @@ export interface SettingsSectionsHost {
     addFavoriteSmartGroup(name: string, tag: string, notebook?: string, updatedWithinDays?: number): boolean;
     getFavoriteNotebookOptions(): Promise<Array<{id: string; name: string}>>;
     exportConfigPack(): string;
-    importConfigPack(payload: unknown): {ok: boolean; reason?: string};
+    importConfigPack(payload: unknown, options?: {groups?: string[]}): {ok: boolean; reason?: string; applied?: string[]};
     removeFavoriteSmartGroup(name: string): void;
     getFavoriteTagOptions(): Promise<Array<{name: string; count: string | number}>>;
     getDocumentSetEssentials(): string[];
@@ -1515,10 +1516,20 @@ export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
             }
             const parsed = JSON.parse(await file.text());
             if (this.isUnloading) return;
-            if (!confirm(this.i18n.configPackImportConfirm)) return;
-            const result = this.importConfigPack(parsed);
-            showMessage(result.ok ? this.i18n.configPackImportDone : this.i18n.configPackImportFailed,
-                7000, result.ok ? undefined : "error");
+            // T-6961：先归一校验，再进入差异预览与分组勾选；取消零写入
+            const normalized = normalizeConfigPackImport(parsed);
+            if (!normalized.ok) {
+                showMessage(this.i18n.configPackImportFailed, 7000, "error");
+                return;
+            }
+            const current = {settings: this.getSettings(), documentSets: this.data[DOCUMENT_SETS_KEY] || null};
+            const groups = diffConfigPackGroups(normalized, current);
+            const signature = configPackBaselineSignature(current);
+            if (groups.length === 0) {
+                showMessage(this.i18n.configPackImportFailed, 7000, "error");
+                return;
+            }
+            openConfigPackDiffDialog.call(this, parsed, groups, signature, (): void => undefined);
         } catch {
             showMessage(this.i18n.configPackImportFailed, 7000, "error");
         } finally {
@@ -2590,4 +2601,109 @@ function openDocumentSetDiffDialog(this: SettingsSectionsHost, item: any, versio
     });
     actions.append(cancelBtn, rollbackBtn);
     root.appendChild(actions);
+}
+
+// T-6961：配置包导入差异预览——版本/包含范围/组级 新增·替换·保持 明细，整组勾选；
+// 确认时重验当前态签名（已变化则刷新差异要求重新确认，不应用旧预览）；应用经
+// 宿主 importConfigPack(groups) 组粒度落盘，写入异常如实回执已应用范围。
+function openConfigPackDiffDialog(this: SettingsSectionsHost, parsed: unknown, groups: Array<{id: string; action: string; rows: Array<any>}>, signature: string, onDone: () => void) {
+    const actionLabels: Record<string, string> = {
+        add: this.i18n.configPackActionAdd,
+        replace: this.i18n.configPackActionReplace,
+        keep: this.i18n.configPackActionKeep,
+    };
+    const groupLabels: Record<string, string> = {
+        settings: this.i18n.configPackGroupSettings,
+        documentSets: this.i18n.configPackGroupDocumentSets,
+    };
+    const dialog = new Dialog({
+        title: this.i18n.configPackDiffTitle,
+        content: '<div class="sw-config-pack-diff"></div>',
+        width: this.isMobile ? "min(560px, 94vw)" : "520px",
+    });
+    const root = dialog.element.querySelector<HTMLElement>(".sw-config-pack-diff");
+    if (!root) return;
+    const selected = new Set<string>();
+    const rebuild = (currentGroups: Array<{id: string; action: string; rows: Array<any>}>, currentSignature: string) => {
+        root.textContent = "";
+        selected.clear();
+        const meta = document.createElement("p");
+        meta.className = "sw-config-pack-diff__meta";
+        meta.textContent = this.i18n.configPackDiffNotice;
+        root.appendChild(meta);
+        currentGroups.forEach((group) => {
+            selected.add(group.id);
+            const card = document.createElement("div");
+            card.className = "sw-config-pack-diff__group";
+            const header = document.createElement("label");
+            header.className = "sw-config-pack-diff__group-header";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = true;
+            checkbox.addEventListener("change", () => {
+                if (checkbox.checked) selected.add(group.id); else selected.delete(group.id);
+                syncApplyButton();
+            });
+            const name = document.createElement("span");
+            name.className = "sw-config-pack-diff__group-name";
+            name.textContent = groupLabels[group.id] || group.id;
+            const actionBadge = document.createElement("span");
+            actionBadge.className = `sw-config-pack-diff__action is-${group.action}`;
+            actionBadge.textContent = actionLabels[group.action] || group.action;
+            header.append(checkbox, name, actionBadge);
+            card.appendChild(header);
+            group.rows.forEach((row) => {
+                const line = document.createElement("div");
+                line.className = `sw-config-pack-diff__row is-${row.kind}`;
+                line.textContent = `${row.key} · ${actionLabels[row.kind] || row.kind}`;
+                card.appendChild(line);
+            });
+            root.appendChild(card);
+        });
+        const stale = document.createElement("p");
+        stale.className = "sw-config-pack-diff__stale";
+        stale.hidden = true;
+        stale.setAttribute("role", "alert");
+        stale.textContent = this.i18n.configPackDiffStale;
+        root.appendChild(stale);
+        const actions = document.createElement("div");
+        actions.className = "sw-config-pack-diff__actions";
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "b3-button b3-button--cancel";
+        cancelBtn.textContent = this.i18n.cancel;
+        cancelBtn.addEventListener("click", () => dialog.destroy());
+        const applyBtn = document.createElement("button");
+        applyBtn.type = "button";
+        applyBtn.className = "b3-button b3-button--text";
+        applyBtn.textContent = this.i18n.configPackApplySelected;
+        const syncApplyButton = () => {
+            applyBtn.disabled = selected.size === 0;
+        };
+        applyBtn.addEventListener("click", () => {
+            // 并发防护：确认时当前态与预览基线不一致 → 刷新差异，要求重新确认
+            const current = {settings: this.getSettings(), documentSets: this.data[DOCUMENT_SETS_KEY] || null};
+            if (configPackBaselineSignature(current) !== currentSignature) {
+                stale.hidden = false;
+                const refreshed = diffConfigPackGroups(normalizeConfigPackImport(parsed), current);
+                rebuild(refreshed, currentSignature);
+                return;
+            }
+            const chosen = Array.from(selected);
+            const result = this.importConfigPack(parsed, {groups: chosen});
+            if (!result.ok) {
+                showMessage(this.i18n.configPackApplyFailed, 7000, "error");
+                dialog.destroy();
+                onDone();
+                return;
+            }
+            showMessage(this.i18n.configPackImportDone, 7000);
+            dialog.destroy();
+            onDone();
+        });
+        actions.append(cancelBtn, applyBtn);
+        root.appendChild(actions);
+        syncApplyButton();
+    };
+    rebuild(groups, signature);
 }
