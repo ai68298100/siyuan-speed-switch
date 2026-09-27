@@ -70,7 +70,7 @@
     }
     &__preview-section { display: flex; flex-direction: column; padding: 14px; }
     &__section-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; min-width: 0; margin-bottom: 10px; }
-    &__section-lead { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+    &__section-lead { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; }
     &__section-title { margin: 0; font-size: 14px; line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }
     &__editor-meta { color: var(--studio-on-surface); font-size: 11px; white-space: nowrap; }
     &__state-badge { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; padding: 4px 8px; border-radius: var(--studio-radius-pill); background: var(--studio-surface); color: var(--studio-on-surface); font-size: 11px; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -123,7 +123,7 @@
     &__consent { display: flex; align-items: flex-start; gap: 7px; color: var(--studio-on-surface); font-size: 11px; line-height: 1.6; }
     &__consent input { flex: 0 0 auto; margin-top: 4px; }
     &__ai-actions { display: flex; gap: 7px; flex-wrap: wrap; }
-    &__ai-result-panel { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1; }
+    &__ai-result-panel { display: flex; flex-direction: column; gap: 8px; min-height: 0; flex: 1 0 auto; }
     &__ai-empty { padding: 13px; border: 1px dashed var(--studio-line); border-radius: 10px; color: var(--studio-on-surface); font-size: 11px; line-height: 1.55; }
     &__ai-result { width: 100%; min-height: 160px; flex: 1; background: var(--b3-theme-background); }
     // T-6915（ADR 0083 D1）：候选 diff 面板——本地摘要行 + 行级对比。
@@ -167,6 +167,11 @@
 }
 
 .sw-snippet-studio-host { height: 100%; min-height: 0; }
+// The host writes pixel dimensions inline when opening; fullscreen must track resize.
+.b3-dialog__container.sw-dialog--snippet-studio.sw-dialog--fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+}
 .sw-dialog--snippet-studio .b3-dialog__body { padding: 0; overflow: hidden; }
 .sw-dialog--snippet-studio .b3-dialog__content { height: 100%; min-height: 0; }
 

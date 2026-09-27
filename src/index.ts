@@ -10698,7 +10698,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         scrollElement.addEventListener("keydown", (event) => {
             const target = event.target as HTMLElement;
             const key = event.key;
-            if (target.closest("button, input, select, textarea")) {
+            if (target.closest("button, input, select, textarea, .sw__doc-preview-body")) {
                 // T-6837/T-6838：焦点经 Tab 落在文档结果行（button）时数字直达与
                 // ↑/↓ 行导航仍须可用；其余控件（输入框/下拉等）照旧让路，不劫持按键
                 const plain = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
