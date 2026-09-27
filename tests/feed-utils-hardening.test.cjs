@@ -56,7 +56,7 @@ test('feed payload dedupes by href, falls back across data/items and marks cache
     const result = normalizeExternalFeedPayload(payload, "dailyhot", 8);
     assert.equal(result.items.length, 2, "重复键与无标题条目剔除");
     assert.equal(result.items[1].href, "", "无链接条目保留标题、href 为空串");
-    assert.equal(result.items[1].rank, 3, "rank 沿用上游原始名次而非过滤后位置（钉住现状）");
+    assert.equal(result.items[1].rank, 2, "rank 沿过滤后位置连续（T-6971 批次⑥规格：排名连续不跳号，取代旧'钉住现状'口径）");
     assert.equal(result.updatedAt, Date.parse("2026-09-17T00:00:00Z"));
     assert.equal(result.upstreamCached, true);
 });

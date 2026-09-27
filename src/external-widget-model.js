@@ -85,7 +85,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "MIT",
         privacy: "endpoint-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["medium", "wide", "large", "full"],
+        sizes: ["medium", "wide", "large"],
         description: "聚合微博、知乎、B站等热榜；默认公共服务不作为稳定性保证，支持用户自建地址",
     }),
     catalogEntry({
@@ -100,7 +100,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "MIT",
         privacy: "endpoint-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["medium", "wide", "large", "full"],
+        sizes: ["medium", "wide", "large"],
         description: "适合自部署后提供缓存和来源管理的新闻阅读组件",
     }),
     catalogEntry({
@@ -145,7 +145,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "Algolia HN API terms",
         privacy: "none",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["medium", "wide", "large", "full"],
+        sizes: ["medium", "wide", "large"],
         description: "读取免 Key 公开接口的 HN 首页标题、得分与评论数；固定端点白名单，30 分钟缓存",
     }),
     catalogEntry({
@@ -265,7 +265,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "AGPL-3.0",
         privacy: "endpoint-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["medium", "wide", "large", "full"],
+        sizes: ["medium", "wide", "large"],
         description: "读取用户自建 Miniflux 实例的未读列表；API Token 经请求头传递且不进入 URL、缓存或错误消息，需先在实例设置中生成 API 密钥",
     }),
     catalogEntry({
@@ -295,7 +295,7 @@ const EXTERNAL_WIDGET_CATALOG = Object.freeze([
         license: "用户自选订阅源",
         privacy: "endpoint-only",
         platforms: ["desktop", "sidebar", "mobile"],
-        sizes: ["medium", "wide", "large", "full"],
+        sizes: ["medium", "wide", "large"],
         description: "读取用户提供的 RSS/Atom 订阅地址，渲染最新文章列表；零凭据零实例，无需 API Key",
     }),
     catalogEntry({

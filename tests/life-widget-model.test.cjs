@@ -219,7 +219,8 @@ test("Hacker News snapshot builds a ranked list with meta", () => {
     assert.equal(snapshot.items[0].rank, 1);
     assert.equal(snapshot.items[0].label, "First story");
     assert.equal(snapshot.items[0].href, "https://example.com/a");
-    assert.match(snapshot.items[0].secondary, /分 120 · 评 45/);
+    assert.match(snapshot.items[0].secondary, /分 120/, "得分上屏");
+    assert.doesNotMatch(snapshot.items[0].secondary, /评 45/, "评论数不上屏（T-6971 批次⑥）");
 });
 test("Hacker News snapshot falls back to the discussion link", () => {
     const snapshot = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {}, {});
@@ -400,7 +401,7 @@ test("Miniflux snapshot lists unread with feed meta and the source row", () => {
     assert.equal(snapshot.title, "未读文章");
     assert.deepEqual(snapshot.stat, {value: "42", label: "未读"});
     assert.equal(snapshot.items[0].label, "文章一");
-    assert.equal(snapshot.items[0].value, "源A · 2026-09-16");
+    assert.equal(snapshot.items[0].secondary, "源A · 2026-09-16", "来源·日期走行 meta（T-6971 批次⑥）");
     assert.equal(snapshot.items[0].href, "https://a.example/x");
     assert.equal(snapshot.items[1].href, "http://b.example/y");
     assert.match(snapshot.items[2].label, /数据来源：Miniflux/);

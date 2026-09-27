@@ -1144,6 +1144,42 @@
 
 // ==================== T-6971 批次①时钟家族施工：数字排版 ====================
 // 规格卡验收：时刻/天数/计数等数字全部 tabular-nums（秒数跳动不抖动版面）。
-.sw-home__cell :is(.sw__home-stat-value, .sw__home-module-item-value, .sw__home-module-meta, [data-sw-row-value]) {
+// 批次⑥扩展：行 meta（得分/热度/来源时间）同规格——数字列对齐不抖动。
+.sw-home__cell :is(.sw__home-stat-value, .sw__home-module-item-value, .sw__home-module-meta, .sw__home-module-item-secondary, [data-sw-row-value]) {
     font-variant-numeric: tabular-nums;
+}
+
+// ==================== T-6971 批次⑥列表流家族施工：行解剖 ====================
+// 规格卡（五组件共享）：标题单行省略 + 来源·时间 meta 右侧 10.5px muted +
+// 行 hairline 分隔。以 cell 的 data-module-id 作用域到五个行流组件，
+// 不波及其它模块的列表行版式。
+.sw-home__cell:is([data-module-id="external-rss-subscription"], [data-module-id="external-rss-miniflux"], [data-module-id="external-hot-news-dailyhot"], [data-module-id="external-news-newsnow"], [data-module-id="external-news-hackernews"]) {
+    .sw__home-module-item + .sw__home-module-item {
+        border-top: 1px solid color-mix(in srgb, var(--b3-theme-on-surface-light) 18%, transparent);
+    }
+
+    .sw__home-module-item-action {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .sw__home-module-item-rank {
+        flex: 0 0 auto;
+    }
+
+    .sw__home-module-item-label {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .sw__home-module-item-secondary {
+        flex: 0 0 auto;
+        margin-left: auto;
+        font-size: 10.5px;
+        color: var(--b3-theme-on-surface-light);
+        white-space: nowrap;
+    }
 }

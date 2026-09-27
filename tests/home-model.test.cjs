@@ -70,7 +70,8 @@ test("user-endpoint feeds expose bounded opt-in configuration", () => {
         } else {
             assert.deepEqual(feed.configSchema.map((field) => field.key), ["endpoint", "limit", "showHot", "showTime", "showRank"]);
         }
-        assert.deepEqual(feed.sizes, ["medium", "wide", "large", "full"]);
+        // T-6971 批次⑥：行流家族档位恰为 M/W/L——full 英雄位不对行流声明
+        assert.deepEqual(feed.sizes, ["medium", "wide", "large"]);
     }
 });
 test("ActivityWatch module is desktop local-service only", () => {

@@ -405,15 +405,20 @@ function normalizeExternalFeedPayload(payload, provider, limit = 8) {
     const requested = Math.min(12, Math.max(3, Math.trunc(Number(limit)) || 8));
     const rawItems = Array.isArray(payload.data) ? payload.data : (Array.isArray(payload.items) ? payload.items : []);
     const seen = new Set();
+    // T-6971 批次⑥规格：同标题跨源去重（同一事件多源报道只保留首条）；
+    // `title:` 前缀避免标题与 URL/ID 键空间互撞。
     const items = rawItems.slice(0, 48).reduce((result, raw, index) => {
         const title = boundedText(raw?.title || raw?.name, 160);
         const href = normalizeExternalItemHref(raw?.url || raw?.mobileUrl || raw?.link);
         const key = href || boundedText(raw?.id, 96) || title;
-        if (!title || !key || seen.has(key) || result.length >= requested) return result;
+        if (!title || !key || seen.has(key) || seen.has(`title:${title}`) || result.length >= requested) return result;
         seen.add(key);
+        seen.add(`title:${title}`);
         const hot = typeof raw?.hot === "string" || Number.isFinite(Number(raw?.hot)) ? boundedText(String(raw.hot), 32) : "";
         const publishedAt = normalizeFeedTimestamp(raw?.pubDate || raw?.timestamp || raw?.date, 0);
-        result.push({title, href, hot, publishedAt, rank: index + 1});
+        // T-6971 批次⑥规格：排名按过滤后位置连续（不跳号）；上游原始名次经去重后
+        // 会呈现 1/3/7 的断裂观感，HN 构建器早已采用同口径。
+        result.push({title, href, hot, publishedAt, rank: result.length + 1});
         return result;
     }, []);
     const updatedAt = normalizeFeedTimestamp(payload.updateTime || payload.updatedTime, 0);
@@ -423,6 +428,19 @@ function normalizeExternalFeedPayload(payload, provider, limit = 8) {
         updatedAt,
         upstreamCached: payload.fromCache === true || payload.from === "cache" || payload.status === "cache",
     };
+}
+
+// T-6971 批次⑥列表流家族规格：条目上限首屏 ≤5，L 档 ≤8（来源行不计入，恒保留）。
+// 尺寸感知接口（协议 v2.3）传入当前型号；配置 limit 是用户意愿上限，档位 cap 是版面硬上界。
+const LISTFLOW_TIER_ITEM_CAPS = {large: 8};
+const LISTFLOW_DEFAULT_ITEM_CAP = 5;
+
+function capListflowRows(items, size) {
+    if (!Array.isArray(items) || items.length === 0) return Array.isArray(items) ? items.slice() : [];
+    const rows = items.slice();
+    const sourceRow = rows.length >= 2 ? rows.pop() : null;
+    const cap = LISTFLOW_TIER_ITEM_CAPS[String(size || "")] || LISTFLOW_DEFAULT_ITEM_CAP;
+    return [...rows.slice(0, cap), ...(sourceRow ? [sourceRow] : [])];
 }
 
 function buildExternalFeedSnapshot(envelope, config, provider, labels = {}) {
@@ -509,16 +527,22 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
     // T-6685 只看未读：seenLookup 判已读；展示后经 onSeen 回传展示键（宿主落盘）
     const identities = latestAll.map(rssItemKey);
     const seenLookup = typeof context.seenLookup === "function" ? context.seenLookup : null;
+    const isSeen = (index) => seenLookup ? seenLookup(identities[index]) === true : false;
+    // T-6971 批次⑥规格：未读计数 chip = 窗口内未标记已读的条目数
+    const unreadCount = identities.reduce((sum, _key, index) => sum + (isSeen(index) ? 0 : 1), 0);
     const latest = [];
     const visibleKeys = [];
     latestAll.forEach((item, index) => {
-        if (normalized.hideRead && seenLookup && seenLookup(identities[index])) return;
-        latest.push(item);
+        const read = isSeen(index);
+        if (normalized.hideRead && read) return;
+        latest.push({item, read});
         visibleKeys.push(identities[index]);
     });
     const pad = (n) => String(n).padStart(2, "0");
-    const feedLabel = normalized.showFeedTitle && parsed.feedTitle && parsed.feedTitle !== normalized.title ? parsed.feedTitle : "";
-    const items = latest.map((item, index) => {
+    // T-6971 批次⑥规格：来源名清洗截断 ≤20 字（行 meta 展示宽度有界）
+    const feedLabel = normalized.showFeedTitle && parsed.feedTitle && parsed.feedTitle !== normalized.title ? boundedText(parsed.feedTitle, 20) : "";
+    const readLabel = () => boundedText(labels.read, 8) || "已读";
+    const items = latest.map(({item, read}, index) => {
         const stamp = normalized.showDate && item.timestamp > 0
             ? (() => {
                 const d = new Date(item.timestamp);
@@ -527,7 +551,9 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
             : "";
         return {
             label: item.title,
-            value: [feedLabel, stamp].filter(Boolean).join(" · "),
+            value: "",
+            // T-6971 批次⑥规格：来源·日期·已读标注走 secondary（工作台行 meta 可见）
+            secondary: [feedLabel, stamp, read ? readLabel() : ""].filter(Boolean).join(" · "),
             href: /^https?:\/\//i.test(item.link) ? item.link : undefined,
             rank: normalized.showRank ? index + 1 : undefined,
         };
@@ -536,6 +562,7 @@ function buildRssSnapshot(feedText, config, labels = {}, now = Date.now(), statu
     items.push({label: `${boundedText(labels.source, 32) || "数据来源"}：RSS/Atom`, value: ""});
     return {
         title: normalized.title || parsed.feedTitle || boundedText(labels.title, 96) || "RSS 订阅",
+        stat: {value: String(unreadCount), label: boundedText(labels.unread, 24) || "未读"},
         items,
         emptyHint: "",
         updatedAt: now,
@@ -661,8 +688,9 @@ function buildGithubContribSnapshot(eventsText, config, labels = {}, now = Date.
     };
 }
 
-// Hacker News 首页快照：Algolia hits → 有界排序列表。标题/链接/得分/评论数全部
+// Hacker News 首页快照：Algolia hits → 有界排序列表。标题/链接/得分全部
 // 经 boundedText 清洗；无外链的文本帖回退到 HN 讨论页；条目去重且数量有界。
+// T-6971 批次⑥规格：评论数不上屏（保持行轻），meta 只保留得分与可选时间。
 function buildHackerNewsSnapshot(envelope, config, labels = {}) {
     const normalizedConfig = normalizeHackerNewsConfig(config);
     const hits = Array.isArray(envelope?.payload?.hits) ? envelope.payload.hits : [];
@@ -680,9 +708,8 @@ function buildHackerNewsSnapshot(envelope, config, labels = {}) {
         seen.add(hit.objectID);
         seen.add(title);
         const points = Math.max(0, Math.trunc(Number(hit.points)) || 0);
-        const comments = Math.max(0, Math.trunc(Number(hit.num_comments)) || 0);
         const parts = [];
-        if (normalizedConfig.showMeta) parts.push(`${boundedText(labels.points, 16) || "分"} ${points} · ${boundedText(labels.comments, 16) || "评"} ${comments}`);
+        if (normalizedConfig.showMeta) parts.push(`${boundedText(labels.points, 16) || "分"} ${points}`);
         const stamp = normalizedConfig.showTime ? formatFeedStamp(normalizeFeedTimestamp(hit.created_at_i, 0)) : "";
         if (stamp) parts.push(stamp);
         result.push({label: title, value: "", href, rank: result.length + 1, secondary: parts.join(" · "), publishedAt: normalizeFeedTimestamp(hit.created_at_i, 0)});
@@ -970,7 +997,8 @@ function normalizeMinifluxEntries(payload) {
             id,
             title,
             url,
-            feed: boundedText(raw.feed?.title, 64),
+            // T-6971 批次⑥规格：来源名清洗截断 ≤20 字（行 meta 展示宽度有界）
+            feed: boundedText(raw.feed?.title, 20),
             published: boundedText(typeof raw.published_at === "string" ? raw.published_at.slice(0, 10) : "", 10),
         });
     }
@@ -986,7 +1014,9 @@ function buildMinifluxSnapshot(envelope, config, labels = {}) {
             normalized.showFeed ? entry.feed : "",
             normalized.showDate ? entry.published : "",
         ].filter(Boolean).join(" · ");
-        return {label: entry.title, value: meta, href: entry.url || undefined, rank: normalized.showRank ? index + 1 : undefined};
+        // T-6971 批次⑥规格：来源·时间走 secondary（工作台行 meta 可见），
+        // value 仅为时钟族行内数值保留。
+        return {label: entry.title, value: "", href: entry.url || undefined, rank: normalized.showRank ? index + 1 : undefined, secondary: meta};
     });
     items.push({
         label: `${boundedText(labels.source, 32) || "数据来源"}：Miniflux`,
@@ -1167,6 +1197,9 @@ module.exports = {
     normalizeExternalItemHref,
     normalizeFeedTimestamp,
     normalizeExternalFeedPayload,
+    capListflowRows,
+    LISTFLOW_TIER_ITEM_CAPS,
+    LISTFLOW_DEFAULT_ITEM_CAP,
     buildExternalFeedSnapshot,
     normalizeHackerNewsConfig,
     HACKER_NEWS_BOARD_LABELS,

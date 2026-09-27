@@ -20,10 +20,10 @@ test("miniflux exposes server-side ordering and meta toggles", () => {
         {id: 7, title: "文章", url: "https://example.com/a", feed: {title: "订阅源"}, published_at: "2026-09-14T00:00:00Z"},
     ]}};
     const snapshot = model.buildMinifluxSnapshot(envelope, {endpoint: "https://rss.example.com", token: "t"}, {unread: "未读"});
-    assert.equal(snapshot.items[0].value, "订阅源 · 2026-09-14");
+    assert.equal(snapshot.items[0].secondary, "订阅源 · 2026-09-14", "来源·日期走行 meta（T-6971 批次⑥）");
     assert.equal(snapshot.items[0].rank, undefined, "未读列表序号默认关闭");
     const ranked = model.buildMinifluxSnapshot(envelope, {endpoint: "https://rss.example.com", token: "t", showRank: "是", showFeed: "否"}, {unread: "未读"});
-    assert.equal(ranked.items[0].value, "2026-09-14");
+    assert.equal(ranked.items[0].secondary, "2026-09-14");
     assert.equal(ranked.items[0].rank, 1);
 });
 

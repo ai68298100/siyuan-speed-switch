@@ -61,11 +61,11 @@ test("feed snapshot stamps reliable times and gates rank", () => {
     assert.equal(snapshot.items[0].rank, 1);
 });
 
-test("hacker news adds time stamps only on request", () => {
+test("hacker news adds time stamps only on request; comment count never renders (T-6971 batch 6)", () => {
     const standard = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {}, {points: "分", comments: "评"});
-    assert.equal(standard.items[0].secondary, "分 120 · 评 45");
+    assert.equal(standard.items[0].secondary, "分 120", "评论数不上屏（保持行轻）");
     const timed = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {showTime: "是"}, {points: "分", comments: "评"});
-    assert.match(timed.items[0].secondary, /^分 120 · 评 45 · \d{2}-\d{2} \d{2}:\d{2}$/);
+    assert.match(timed.items[0].secondary, /^分 120 · \d{2}-\d{2} \d{2}:\d{2}$/);
     const stampOnly = model.buildHackerNewsSnapshot(hackerNewsEnvelope, {showTime: "是", showMeta: "否"}, {});
     assert.match(stampOnly.items[0].secondary, /^\d{2}-\d{2} \d{2}:\d{2}$/);
     assert.equal(model.normalizeHackerNewsConfig({}).showTime, false);
@@ -75,12 +75,12 @@ test("hacker news adds time stamps only on request", () => {
 test("rss snapshot gates feed title, date and rank independently", () => {
     const text = rssFeedOf(rssItem("新文章", "https://example.com/1", "Mon, 07 Sep 2026 08:15:00 GMT"));
     const standard = model.buildRssSnapshot(text, {url: "https://example.com/feed"}, {source: "来源"}, 1725696000000);
-    assert.equal(standard.items[0].value, "示例订阅 · 2026-09-07");
+    assert.equal(standard.items[0].secondary, "示例订阅 · 2026-09-07", "来源·日期走行 meta（secondary）");
     assert.equal(standard.items[0].rank, undefined, "订阅序号默认关闭");
     const noTitle = model.buildRssSnapshot(text, {url: "https://example.com/feed", showFeedTitle: "否"}, {}, 1725696000000);
-    assert.equal(noTitle.items[0].value, "2026-09-07");
+    assert.equal(noTitle.items[0].secondary, "2026-09-07");
     const noDate = model.buildRssSnapshot(text, {url: "https://example.com/feed", showDate: "否"}, {}, 1725696000000);
-    assert.equal(noDate.items[0].value, "示例订阅", "关日期后来源名仍按配置显示");
+    assert.equal(noDate.items[0].secondary, "示例订阅", "关日期后来源名仍按配置显示");
     const ranked = model.buildRssSnapshot(
         rssFeedOf(rssItem("A", "https://example.com/1", "Mon, 07 Sep 2026 08:15:00 GMT"), rssItem("B", "https://example.com/2", "")),
         {url: "https://example.com/feed", showRank: "是"},

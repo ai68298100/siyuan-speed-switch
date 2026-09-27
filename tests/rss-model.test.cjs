@@ -227,9 +227,10 @@ test('buildRssSnapshot builds bounded list with title fallback chain', () => {
     assert.equal(snapshot.items[0].label, "新文章", "有日期条目排前");
     assert.equal(snapshot.items[0].href, undefined, "非 http(s) 链接必须丢弃");
     assert.equal(snapshot.items[1].href, "https://example.com/2");
-    assert.match(snapshot.items[1].value, /^示例订阅/);
+    assert.match(snapshot.items[1].secondary, /^示例订阅/, "来源名走行 meta secondary（T-6971 批次⑥）");
     assert.equal(snapshot.items[2].label, "来源：RSS/Atom");
     assert.equal(snapshot.sourceHealth, "stale");
+    assert.equal(snapshot.stat.value, "2", "未读计数 chip = 窗口内未标记已读条目数");
 
     const titled = buildRssSnapshot(text, {url: "https://example.com/feed", title: "我的源"}, {}, 0, "fresh");
     assert.equal(titled.title, "我的源", "用户配置标题优先");

@@ -114,7 +114,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showDates", label: "显示日期", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "showScore", label: "显示评分", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "external-hot-news-dailyhot", title: "热搜事件", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+    // T-6971 批次⑥：列表流家族行流组件不做英雄位（full），声明档位一律 M/W/L
+    {moduleId: "external-hot-news-dailyhot", title: "热搜事件", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "DailyHotApi 完整接口", type: "text", defaults: ""},
         {key: "apiBase", label: "基址（可选，填后按路由拼接口）", type: "text", defaults: ""},
         {key: "route", label: "热榜路由", type: "select", options: ["weibo", "zhihu", "bilibili", "baidu", "douyin", "douban-movie", "ithome", "36kr", "sspai", "v2ex"], defaults: "weibo"},
@@ -123,10 +124,10 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showTime", label: "显示时间", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示排名", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "external-news-hackernews", title: "Hacker News 热门", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-news-hackernews", title: "Hacker News 热门", icon: "iconGraph", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "board", label: "榜单（非首页榜单会在标题追加标注）", type: "select", options: ["首页", "最佳", "问答", "展示"], defaults: "首页"},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
-        {key: "showMeta", label: "显示得分与评论", type: "select", options: ["是", "否"], defaults: "是"},
+        {key: "showMeta", label: "显示得分", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showTime", label: "显示时间", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "external-status-uptimekuma", title: "服务状态", icon: "iconCloud", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
@@ -141,7 +142,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showDate", label: "显示牌价日期", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showInverse", label: "显示反向汇率", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
-    {moduleId: "external-rss-miniflux", title: "未读文章", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-rss-miniflux", title: "未读文章", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "Miniflux 实例地址", type: "text", defaults: ""},
         {key: "token", label: "API Token（设置 → API 密钥）", type: "secret", defaults: ""},
         {key: "categoryId", label: "分类筛选", type: "miniflux-category", defaults: ""},
@@ -151,7 +152,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showFeed", label: "显示来源", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
-    {moduleId: "external-rss-subscription", title: "RSS 订阅", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-rss-subscription", title: "RSS 订阅", icon: "iconRss", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "url", label: "RSS / Atom 订阅地址", type: "text", defaults: ""},
         {key: "title", label: "显示标题（可选，留空读 feed 自带标题）", type: "text", defaults: ""},
         {key: "maxItems", label: "条目上限", type: "number", min: 1, max: 30, defaults: 10},
@@ -179,7 +180,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showEstimate", label: "显示预计时间", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showSource", label: "显示数据来源行", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large", "full"], protocolVersion: 2, configSchema: [
+    {moduleId: "external-news-newsnow", title: "实时资讯", icon: "iconList", category: "siyuan", availability: "external", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "endpoint", label: "NewsNow 完整接口", type: "text", defaults: ""},
         {key: "limit", label: "条目上限", type: "number", min: 3, max: 12, defaults: 8},
         {key: "showHot", label: "显示热度", type: "select", options: ["是", "否"], defaults: "是"},
@@ -472,7 +473,9 @@ const HOME_TILE_DEFAULT_SIZES = {
     'external-local-time': 'small',
     'external-rss-subscription': 'wide',
     'external-rss-miniflux': 'wide',
-    'external-news-dailyhot': 'wide',
+    // T-6971 批次⑥修复：键名必须等于真实 moduleId（external-hot-news-dailyhot），
+    // 此前误写 external-news-dailyhot 导致默认档永远走回退而非 wide。
+    'external-hot-news-dailyhot': 'wide',
     'external-news-newsnow': 'wide',
     'external-news-hackernews': 'wide',
     'external-github-contrib': 'large',

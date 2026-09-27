@@ -7,7 +7,7 @@
 import {buildLocalTimeSnapshot, buildWorldClockSnapshot} from "./local-time-model";
 import {buildDailyQuoteSnapshot} from "./quote-model";
 import {buildBatterySnapshot} from "./battery-model";
-import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildAirQualitySnapshot, normalizeAirQualityConfig, buildAirQualityUrl, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildRssSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
+import {normalizeWeatherConfig, buildWeatherGeocodingUrl, normalizeWeatherLocation, buildWeatherForecastUrl, buildWeatherSnapshot, buildAirQualitySnapshot, normalizeAirQualityConfig, buildAirQualityUrl, buildBangumiSnapshot, normalizeFeedConfig, normalizeConfiguredFeedUrl, buildExternalFeedSnapshot, capListflowRows, buildActivityWatchRequest, buildActivityWatchSnapshot, normalizeHackerNewsConfig, buildHackerNewsSnapshot, normalizeUptimeKumaConfig, buildUptimeKumaSnapshot, buildUptimeKumaPageUrl, normalizeFrankfurterConfig, buildFrankfurterRequestUrl, buildFrankfurterSnapshot, normalizeMinifluxConfig, buildMinifluxRequestUrl, buildMinifluxSnapshot, normalizeIcalSubscriptionConfig, buildIcalSnapshot, buildRssSnapshot, buildGithubContribSnapshot} from "./life-widget-model";
 import {parseIcsEvents, upcomingIcalEvents} from "./ical-model";
 import {readCheckinBridge} from "./checkin-bridge-model";
 import {normalizeGithubContribConfig} from "./github-model";
@@ -166,7 +166,8 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 });
                 if (!snapshot) throw new Error("invalid_external_feed");
                 if (snapshot.items.length === 1) return {...snapshot, items: []};
-                return snapshot;
+                // T-6971 批次⑥：档位硬上界（首屏 ≤5，L 档 ≤8），来源行恒保留
+                return {...snapshot, items: capListflowRows(snapshot.items, context?.size)};
             }, {timeoutMs: 8500, cacheTtlMs: 30 * 60 * 1000});
         };
         registerExternalFeed("external-hot-news-dailyhot", "dailyhot", this.i18n.homeDailyHot, "iconGraph", this.i18n.homeDescDailyHot);
@@ -183,13 +184,13 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 const snapshot = buildHackerNewsSnapshot(envelope, normalized, {
                     title: this.i18n.homeHackerNews,
                     points: this.i18n.homeHackerNewsPoints,
-                    comments: this.i18n.homeHackerNewsComments,
                     source: this.i18n.homeFeedSource,
                     empty: this.i18n.homeFeedEmpty,
                 });
                 if (!snapshot) throw new Error("invalid_hackernews_front_page");
                 if (snapshot.items.length === 1) return {...snapshot, items: []};
-                return snapshot;
+                // T-6971 批次⑥：档位硬上界（首屏 ≤5，L 档 ≤8），来源行恒保留
+                return {...snapshot, items: capListflowRows(snapshot.items, context?.size)};
             } catch (error) {
                 if (error?.message === "aborted") throw error;
                 return {emptyHint: `${this.i18n.homeFeedEmpty} · ${this.i18n.homeRetry}`, items: []};
@@ -262,7 +263,8 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                     source: this.i18n.homeQuoteSource,
                 });
                 if (!snapshot) throw new Error("invalid_miniflux_entries");
-                return snapshot;
+                // T-6971 批次⑥：档位硬上界（首屏 ≤5，L 档 ≤8），来源行恒保留
+                return {...snapshot, items: capListflowRows(snapshot.items, context?.size)};
             } catch (error) {
                 if (error?.message === "aborted") throw error;
                 if (error?.message === "invalid_token") return {emptyHint: this.i18n.homeMinifluxConfigHint, items: []};
@@ -305,12 +307,17 @@ export function registerExternalHomeAdapters(this: HomeExternalAdapterHost, regi
                 // T-6685 已读状态（有界，宿主持久化）：只看未读时先过滤，
                 // 展示键回传宿主标记（下次刷新视为已读）
                 const seen = typeof this.rssReadState === "function" ? this.rssReadState() : {};
-                const snapshot = buildRssSnapshot(feed.text, normalized, {source: this.i18n.homeQuoteSource}, undefined, feed.status, {
+                const snapshot = buildRssSnapshot(feed.text, normalized, {
+                    source: this.i18n.homeQuoteSource,
+                    read: this.i18n.homeRssRead,
+                    unread: this.i18n.homeRssUnread,
+                }, undefined, feed.status, {
                     seenLookup: (key: string) => Object.prototype.hasOwnProperty.call(seen, key),
                     onSeen: (keys: string[]) => this.markRssItemsSeen?.(keys),
                 });
                 if (!snapshot) throw new Error("invalid_rss_payload");
-                return snapshot;
+                // T-6971 批次⑥：档位硬上界（首屏 ≤5，L 档 ≤8），来源行恒保留
+                return {...snapshot, items: capListflowRows(snapshot.items, context?.size)};
             } catch (error) {
                 if (error?.message === "aborted") throw error;
                 return {emptyHint: `${this.i18n.homeRssEmpty} · ${this.i18n.homeRetry}`, items: []};
