@@ -11,6 +11,7 @@ test('tile material catalog: explicit declarations win, everything else falls ba
     assert.equal(resolveHomeTileMaterial('external-air-quality'), 'vibrant');
     assert.equal(resolveHomeTileMaterial('checkin-streak'), 'accent');
     assert.equal(resolveHomeTileMaterial('writing-streak'), 'accent');
+    assert.equal(resolveHomeTileMaterial('countdown'), 'accent', '批次①规格卡：倒数日 accent');
     assert.equal(resolveHomeTileMaterial('database-list'), 'plain', '未声明组件回退 plain');
     assert.equal(resolveHomeTileMaterial(''), 'plain');
     assert.equal(resolveHomeTileMaterial('../../path-traversal'), 'plain', '路径样 moduleId 不得逃逸白名单');

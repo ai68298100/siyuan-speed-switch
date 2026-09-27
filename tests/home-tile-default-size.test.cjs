@@ -23,3 +23,8 @@ test('default size catalog keys stay within the seven-size vocabulary', () => {
         assert.ok(SIZES.includes(size), `非法档位键：${size}`);
     }
 });
+
+test('default size: batch 1 clock-family presets (T-6971 spec cards)', () => {
+    assert.equal(HOME_TILE_DEFAULT_SIZES.countdown, 'small', '倒数日默认 small');
+    assert.equal(HOME_TILE_DEFAULT_SIZES['year-progress'], 'small', '年度进度默认 small');
+});

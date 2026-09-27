@@ -455,6 +455,7 @@ const HOME_TILE_MATERIALS = {
     'external-air-quality': 'vibrant',
     'checkin-streak': 'accent',
     'writing-streak': 'accent',
+    countdown: 'accent',
 };
 
 // T-6969 Slice 2：每模块默认档位——添加组件时商店默认选中的档位（键 = 既有
@@ -464,6 +465,8 @@ const HOME_TILE_DEFAULT_SIZES = {
     'external-weather-open-meteo': 'wide',
     'external-air-quality': 'small',
     'external-quote-daily': 'small',
+    countdown: 'small',
+    'year-progress': 'small',
     'external-local-time': 'small',
     'external-rss-subscription': 'wide',
     'external-rss-miniflux': 'wide',
