@@ -302,6 +302,110 @@
         overscroll-behavior: contain;
     }
 
+    // T-6951：设置全局搜索——常驻面板滚动列顶部（sticky），结果卡片下推展开；
+    // 空查询隐藏结果即回到正常分组浏览。
+    .sw-settings__search {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        margin: -14px -18px 12px;
+        padding: 10px 18px;
+        background: var(--b3-theme-background);
+        border-bottom: 1px solid var(--b3-theme-surface-lighter);
+    }
+
+    .sw-settings__search-input {
+        width: 100%;
+        height: 30px;
+        padding: 0 10px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+        background: var(--b3-theme-surface, var(--b3-theme-background-light));
+        color: var(--b3-theme-on-background);
+        font-size: 12.5px;
+        box-sizing: border-box;
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 1px;
+        }
+    }
+
+    .sw-settings__search-results {
+        max-height: 240px;
+        margin-top: 8px;
+        padding: 4px;
+        overflow-y: auto;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 10px;
+        background: var(--b3-theme-surface, var(--b3-theme-background-light));
+        box-shadow: 0 8px 24px rgba(35, 42, 75, .08);
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .sw-settings__search-option {
+        display: block;
+        width: 100%;
+        padding: 7px 9px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        text-align: left;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--sw-settings-hover-bg);
+        }
+
+        &.is-active {
+            background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+        }
+
+        .sw-settings__search-option-title {
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+
+        .sw-settings__search-option-label {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 0 6px;
+            border: 1px solid var(--b3-border-color);
+            border-radius: 999px;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 10px;
+            line-height: 1.6;
+        }
+
+        .sw-settings__search-option-desc {
+            display: block;
+            margin-top: 2px;
+            overflow: hidden;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 11px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .sw-settings__search-note {
+        padding: 7px 9px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11.5px;
+    }
+
+    // 搜索定位后的短暂强调（1.8s 后由 JS 移除）
+    .sw-settings__item--locate {
+        border-radius: 8px;
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+        background: color-mix(in srgb, var(--b3-theme-primary) 8%, transparent);
+    }
+
     // 面板默认隐藏，仅激活显示
     .sw-settings__panel {
         display: none;
@@ -317,7 +421,6 @@
         &.is-active {
             display: block;
         }
-
         // 标签页内的分节标题沿用主色竖条语言
         > strong {
             display: inline-flex;

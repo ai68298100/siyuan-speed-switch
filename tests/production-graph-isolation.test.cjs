@@ -147,8 +147,10 @@ test('production graph size stays within the audited budget envelope', (t) => {
     // T-6950（2026-09-27 计划阶段 A）：doc-preview-find 预览内查找纯模块（DOM 安全
     // 命中标记/循环/滚动钳制）入图，实测 69；上限按同口径校准 68→69（先例 T-6814/
     // T-6869/T-6871），包体已同批复核（ADR 0089：压缩条目线 288→320 KiB）。
+    // T-6951（2026-09-27 计划阶段 A）：settings-search-model 设置全局搜索索引纯模块
+    // 入图，实测 70；上限按同口径校准 69→70，zip 余量 ~10 KiB 在案。
     // 包体复核：raw 1024 KiB 自律线、zip 硬上限与压缩条目线均独立审查（见 release-readiness 快照）。
     // 继续增长须复核 512 KiB 包体门禁（D-353）。
     t.diagnostic(`production import graph modules: ${graph.size}`);
-    assert.ok(graph.size <= 69, `production graph grew to ${graph.size} modules; audited ceiling is 69`);
+    assert.ok(graph.size <= 70, `production graph grew to ${graph.size} modules; audited ceiling is 70`);
 });

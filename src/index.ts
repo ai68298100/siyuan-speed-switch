@@ -74,6 +74,7 @@ import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, bui
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
+import {collectSettingsSearchEntries, searchSettingsIndex} from "./settings-search-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
@@ -2960,6 +2961,144 @@ export default class SpeedSwitchPlugin extends Plugin {
 
         root.appendChild(tabs);
         root.appendChild(panels);
+
+        // T-6951：设置全局搜索——面板全量预构建后对生产 DOM 扫描一次建索引
+        //（只收标题/描述/面板归属，不收 token 与用户值）；定位 = 切组 + 滚入视口 +
+        // 聚焦真实控件 + 短暂强调。空查询回正常分组浏览。
+        const searchWrap = document.createElement("div");
+        searchWrap.className = "sw-settings__search";
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.className = "sw-settings__search-input";
+        searchInput.placeholder = this.i18n.settingsSearch;
+        searchInput.setAttribute("aria-label", this.i18n.settingsSearch);
+        const searchResults = document.createElement("div");
+        searchResults.className = "sw-settings__search-results";
+        searchResults.setAttribute("role", "listbox");
+        searchResults.setAttribute("aria-label", this.i18n.settingsSearch);
+        searchResults.hidden = true;
+        searchWrap.append(searchInput, searchResults);
+        // 常驻面板滚动列顶部（sticky），tabs 栏保持原布局
+        panels.insertBefore(searchWrap, panels.firstChild);
+
+        const searchEntries = collectSettingsSearchEntries(panels, panelLabels);
+        let searchMatches: typeof searchEntries = [];
+        let searchSelected = -1;
+        const findSettingsScroller = (start: HTMLElement | null): HTMLElement | null => {
+            let el = start?.parentElement || null;
+            while (el && el !== document.body) {
+                const style = window.getComputedStyle(el);
+                if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 4) return el;
+                el = el.parentElement;
+            }
+            return null;
+        };
+        const locateSettingEntry = (entry: typeof searchEntries[number]) => {
+            clearSettingsSearchView();
+            searchInput.value = "";
+            activate(entry.key);
+            this.scheduleAnimationFrame(() => {
+                if (!entry.element?.isConnected || !root.isConnected) return;
+                const scroller = findSettingsScroller(entry.element);
+                if (scroller) {
+                    const itemRect = entry.element.getBoundingClientRect();
+                    const scrollerRect = scroller.getBoundingClientRect();
+                    const target = scroller.scrollTop + (itemRect.top - scrollerRect.top)
+                        - Math.max(24, scrollerRect.height * 0.2);
+                    scroller.scrollTop = Math.max(0, target);
+                }
+                entry.element.classList.add("sw-settings__item--locate");
+                const control = entry.element.querySelector(
+                    "button, input, select, textarea, [tabindex]:not([tabindex='-1'])") as HTMLElement | null;
+                try {
+                    control?.focus({preventScroll: true});
+                } catch (_) {
+                    control?.focus();
+                }
+                window.setTimeout(() => entry.element?.classList.remove("sw-settings__item--locate"), 1800);
+            });
+        };
+        const updateSettingsSearchSelection = () => {
+            const options = searchResults.querySelectorAll<HTMLElement>(".sw-settings__search-option");
+            options.forEach((option, index) => {
+                const active = index === searchSelected;
+                option.classList.toggle("is-active", active);
+                option.setAttribute("aria-selected", active ? "true" : "false");
+            });
+            const activeEl = options[searchSelected];
+            if (activeEl) {
+                const top = activeEl.offsetTop;
+                if (top < searchResults.scrollTop) searchResults.scrollTop = top;
+                else if (top + activeEl.offsetHeight > searchResults.scrollTop + searchResults.clientHeight) {
+                    searchResults.scrollTop = top + activeEl.offsetHeight - searchResults.clientHeight;
+                }
+            }
+        };
+        const renderSettingsSearchResults = () => {
+            const query = searchInput.value;
+            const {results, total} = searchSettingsIndex(searchEntries, query);
+            searchMatches = results;
+            searchSelected = results.length > 0 ? 0 : -1;
+            searchResults.textContent = "";
+            if (!query.trim()) {
+                searchResults.hidden = true;
+                return;
+            }
+            searchResults.hidden = false;
+            results.forEach((entry, index) => {
+                const option = document.createElement("button");
+                option.type = "button";
+                option.className = "sw-settings__search-option" + (index === searchSelected ? " is-active" : "");
+                option.setAttribute("role", "option");
+                option.setAttribute("aria-selected", index === searchSelected ? "true" : "false");
+                const label = document.createElement("span");
+                label.className = "sw-settings__search-option-label";
+                label.textContent = entry.label;
+                const title = document.createElement("span");
+                title.className = "sw-settings__search-option-title";
+                title.textContent = entry.title;
+                const desc = document.createElement("span");
+                desc.className = "sw-settings__search-option-desc";
+                desc.textContent = entry.description;
+                option.append(label, title, desc);
+                option.addEventListener("click", () => locateSettingEntry(entry));
+                searchResults.appendChild(option);
+            });
+            if (results.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "sw-settings__search-note";
+                empty.textContent = this.i18n.settingsSearchNoResults;
+                searchResults.appendChild(empty);
+            } else if (total > results.length) {
+                const more = document.createElement("div");
+                more.className = "sw-settings__search-note";
+                more.textContent = this.i18n.settingsSearchMore.replace("{x}", String(total - results.length));
+                searchResults.appendChild(more);
+            }
+        };
+        const clearSettingsSearchView = () => {
+            searchMatches = [];
+            searchSelected = -1;
+            searchResults.textContent = "";
+            searchResults.hidden = true;
+        };
+        searchInput.addEventListener("input", renderSettingsSearchResults);
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                event.preventDefault();
+                if (searchMatches.length === 0) return;
+                const delta = event.key === "ArrowDown" ? 1 : -1;
+                searchSelected = (searchSelected + delta + searchMatches.length) % searchMatches.length;
+                updateSettingsSearchSelection();
+            } else if (event.key === "Enter") {
+                event.preventDefault();
+                const entry = searchMatches[searchSelected >= 0 ? searchSelected : 0];
+                if (entry) locateSettingEntry(entry);
+            } else if (event.key === "Escape") {
+                searchInput.value = "";
+                clearSettingsSearchView();
+            }
+        });
 
         // 打开时直接跳转到上次所在的标签页（默认外观）；activate 内部会记录切换，下次进入保持
         const lastTab = initialPanel || this.getSettings().lastSettingsTab;
