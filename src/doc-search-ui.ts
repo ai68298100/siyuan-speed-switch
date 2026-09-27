@@ -996,6 +996,7 @@ export function mountDocPreviewPane(this: DocSearchUiHost, box: HTMLElement, scr
             header.textContent = this.i18n.docSearchPreview;
             const body = document.createElement("div");
             body.className = "sw__doc-preview-body";
+            body.tabIndex = 0;
             pane.append(header, body);
             setDocPreviewHint.call(this, pane, this.i18n.docSearchPreviewEmpty);
             docPreviewPanes.set(scrollElement, pane);

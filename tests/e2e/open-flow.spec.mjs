@@ -57,6 +57,12 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
     await removeLegacyNotebooks(client);
     await seedDocs(client);
     try {
+        // Newly created documents enter the kernel search index asynchronously.
+        await expect.poll(async () => {
+            const docs = await client.postChecked("/api/filetree/searchDocs", {k: DOC_TITLE});
+            return Array.isArray(docs) && docs.some(doc => doc.id === docARootId
+                || String(doc.path || "").includes(docARootId));
+        }, {timeout: 20000}).toBe(true);
         const pageErrors = [];
         page.on("pageerror", (error) => pageErrors.push(String(error.message || error)));
     page.on("console", (message) => { if (message.text().includes("[sw-dbg]")) console.log("[captured]", message.text()); });
@@ -90,6 +96,7 @@ test("真实内核：切换器搜索命中真实文档并单击打开真实页�
             await expect(page.locator(".sw__doc-preview-block--quote")).toContainText("速切引用内容");
             await expect(page.locator(".sw__doc-preview-block--code")).toContainText("const preview = 1;");
             await expect(page.locator(".sw__doc-preview-outline")).not.toContainText("&nbsp;");
+            await page.screenshot({path: ".artifacts/e2e/doc-preview-expanded.png"});
             // T-6838：结果行 ↑/↓ 行导航——焦点行随方向键移动并跟随滚动
             const secondDoc = page.locator(".sw__doc-grid .sw__doc-item").nth(1);
             if (await secondDoc.count()) {

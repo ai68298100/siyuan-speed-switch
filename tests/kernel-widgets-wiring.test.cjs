@@ -439,7 +439,7 @@ test('wave-2: preview hover trigger, sticky pane, synthetic dedupe, essentials r
     assert.match(docSearchUi, /box\.addEventListener\("mouseover"/,
         '预览窗格必须响应行悬停（与 focusin 共用 debounce 管线）');
     // T-6842 sticky 吸顶：grid 列布局 + sticky，旧 absolute 覆盖退场
-    assert.match(scss, /\.sw--with-preview \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) 260px;/,
+    assert.match(scss, /&\.sw--with-preview \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) clamp\(280px, 34%, 480px\);/,
         '预览布局必须转为网格两列（窗格独立成列）');
     assert.match(scss, /position: sticky;\s*top: 0;/, '窗格必须 sticky 吸顶（长列表滚动时仍在场）');
     assert.doesNotMatch(scss, /padding-right: 272px/, '旧 absolute 覆盖层的网格留白必须移除');
