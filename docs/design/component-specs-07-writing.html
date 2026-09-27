@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小驴雷切 · 组件规格卡批次⑦写作统计类（T-6971，2026-09-28）</title>
+<style>
+:root[data-theme="light"] {
+  --b3-theme-primary: #4285f4;
+  --b3-theme-on-primary: #ffffff;
+  --b3-theme-background: #ffffff;
+  --b3-theme-surface: #f6f7f9;
+  --b3-theme-surface-lighter: #eef0f4;
+  --b3-theme-on-background: #23252c;
+  --b3-theme-on-surface: #3c4048;
+  --b3-theme-on-surface-light: #767b8a;
+  --b3-border-color: #e2e4ea;
+  --b3-theme-success: #2d9865;
+  --b3-theme-warning: #d97917;
+  --b3-theme-error: #c04545;
+  --stage: #e7e9f0;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --b3-theme-primary: #6b9bf5;
+  --b3-theme-on-primary: #10131c;
+  --b3-theme-background: #1c1f26;
+  --b3-theme-surface: #252932;
+  --b3-theme-surface-lighter: #2e333e;
+  --b3-theme-on-background: #e4e6ec;
+  --b3-theme-on-surface: #c6cad4;
+  --b3-theme-on-surface-light: #8b90a0;
+  --b3-border-color: #383d49;
+  --b3-theme-success: #4cb887;
+  --b3-theme-warning: #e09943;
+  --b3-theme-error: #d66;
+  --stage: #14161c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px 64px; background: var(--stage); color: var(--b3-theme-on-background);
+  font: 13px/1.6 var(--b3-font-family, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif); }
+.proto-top { max-width: 1180px; margin: 0 auto 18px; display: flex; align-items: center; gap: 12px; }
+.proto-top h1 { font-size: 17px; margin: 0; }
+.proto-top .meta { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.proto-top button { margin-left: auto; border: 1px solid var(--b3-border-color); background: var(--b3-theme-surface);
+  color: var(--b3-theme-on-background); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-size: 12px; }
+.note { max-width: 1180px; margin: 0 auto 26px; background: var(--b3-theme-background); border: 1px solid var(--b3-border-color);
+  border-radius: 16px; padding: 16px 20px; }
+.note h2 { font-size: 13px; margin: 0 0 8px; }
+.note ol { margin: 0; padding-left: 20px; font-size: 12px; color: var(--b3-theme-on-surface-light); }
+.note li { margin: 3px 0; }
+.note b { color: var(--b3-theme-on-background); font-weight: 600; }
+.screen { max-width: 1180px; margin: 0 auto 34px; }
+.screen > h2 { font-size: 13px; margin: 0 0 10px; }
+.screen > h2 span { color: var(--b3-theme-on-surface-light); font-weight: 400; font-size: 11.5px; margin-left: 8px; }
+.frame { background: var(--b3-theme-background); border: 1px solid var(--b3-border-color); border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); overflow: hidden; }
+.tile { position: relative; border-radius: 18px; padding: 14px 16px; overflow: hidden;
+  background: var(--b3-theme-surface); border: 1px solid var(--b3-border-color);
+  box-shadow: 0 1px 2px rgb(51 58 83 / 6%), 0 10px 28px rgb(75 85 120 / 10%); }
+.theader { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; opacity: .72; }
+.theader .sp { flex: 1; }
+.tchip { display: inline-flex; align-items: center; height: 16px; padding: 0 7px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; background: rgb(127 127 127 / 14%); }
+.num { font-variant-numeric: tabular-nums; }
+.sub { font-size: 11px; color: var(--b3-theme-on-surface-light); }
+.demo-grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: 80px; gap: 14px; padding: 16px 18px 18px; }
+.d-wide { grid-column: span 8; grid-row: span 3; }
+.d-s { grid-column: span 3; grid-row: span 3; }
+.d-m { grid-column: span 6; grid-row: span 3; }
+.checkin-tile { background: linear-gradient(135deg, var(--b3-theme-primary), color-mix(in srgb, var(--b3-theme-primary) 58%, #101426));
+  color: var(--b3-theme-on-primary); border: none; }
+.checkin-tile .theader { color: color-mix(in srgb, var(--b3-theme-on-primary) 72%, transparent); }
+.checkin-tile .sub { color: color-mix(in srgb, var(--b3-theme-on-primary) 72%, transparent); }
+.bignum { font-size: 30px; font-weight: 700; line-height: 1.15; margin-top: 6px; }
+.bignum small { font-size: 13px; font-weight: 600; opacity: .75; margin-left: 2px; }
+.bar { height: 6px; border-radius: 3px; background: rgb(127 127 127 / 22%); margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 3px; background: var(--b3-theme-primary); }
+.months { display: flex; gap: 6px; align-items: flex-end; margin-top: 12px; height: 64px; }
+.months .mo { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; }
+.months .mo i { display: block; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--b3-theme-primary) 55%, var(--b3-theme-surface)); }
+.months .mo .ml { font-size: 9.5px; color: var(--b3-theme-on-surface-light); text-align: center; }
+.spec-card { border: 1px solid var(--b3-border-color); border-radius: 16px; background: var(--b3-theme-background);
+  margin: 0 auto 18px; max-width: 1180px; overflow: hidden; }
+.spec-card h3 { font-size: 13px; margin: 0; padding: 10px 16px; border-bottom: 1px solid var(--b3-border-color); font-weight: 700; }
+.spec-card h3 .tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 10px;
+  background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent); color: var(--b3-theme-primary); }
+.spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.spec-grid > div { padding: 10px 16px; font-size: 12px; border-bottom: 1px solid var(--b3-border-color); }
+.spec-grid .k { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.spec-grid .v b { font-weight: 700; }
+@media (max-width: 800px) { .spec-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="proto-top">
+  <h1>组件规格卡 · 批次⑦写作统计类</h1>
+  <span class="meta">T-6971 · 2026-09-28 · 今日写作 / 近期写作活跃度 / 写作打卡 / 笔记统计</span>
+  <button onclick="const r=document.documentElement;r.dataset.theme=r.dataset.theme==='light'?'dark':'light'">明 / 暗</button>
+</header>
+
+<section class="note">
+  <h2>本批规格要点</h2>
+  <ol>
+    <li><b>材质</b>：写作打卡/今日写作 = <b>accent</b>（强状态数值，本批提议扩展 HOME_TILE_MATERIALS：today-writing → accent）；近期写作活跃度/笔记统计 = <b>plain</b>。</li>
+    <li><b>数据口径</b>：字数统计为本地计算（基于块内容长度），零网络；跨日重置瞬间（00:00）数值正确迁移；无写作如实显示 0，不编造。</li>
+    <li><b>事务/性能</b>：数据随面板打开与刷新读取，无独立轮询；大库统计有界（既有 SQL 外层 LIMIT 纪律）。</li>
+    <li><b>验收基线</b>：明暗采样 ≥ AA；数字 tabular-nums；空数据 = 状态区文案，不渲染空图。</li>
+  </ol>
+</section>
+
+<!-- ============ 瓦片演示 ============ -->
+<section class="screen">
+  <h2>瓦片演示 <span>默认档位 × 默认材质（今日写作 S / 写作打卡 S / 近期写作活跃度 wide / 笔记统计 M）</span></h2>
+  <div class="frame">
+    <div class="demo-grid">
+      <div class="tile d-s checkin-tile">
+        <div class="theader">今日写作</div>
+        <div class="bignum num" style="font-size:28px;margin-top:6px;">1,284<small>字</small></div>
+        <div class="bar"><i style="width:64%"></i></div>
+        <div class="sub" style="color:color-mix(in srgb, var(--b3-theme-on-primary) 72%, transparent)">目标 2,000 字</div>
+      </div>
+      <div class="tile d-s checkin-tile">
+        <div class="theader">写作打卡</div>
+        <div class="bignum num" style="font-size:28px;margin-top:6px;">6<small>天</small></div>
+        <div class="sub num">连续写作 · 昨日 850 字</div>
+      </div>
+      <div class="tile d-wide">
+        <div class="theader">近期写作活跃度<span class="sp"></span><span class="tchip">近 12 个月</span></div>
+        <div class="months num">
+          <span class="mo"><i style="height:30%"></i><span class="ml">10</span></span>
+          <span class="mo"><i style="height:45%"></i><span class="ml">11</span></span>
+          <span class="mo"><i style="height:38%"></i><span class="ml">12</span></span>
+          <span class="mo"><i style="height:52%"></i><span class="ml">1</span></span>
+          <span class="mo"><i style="height:60%"></i><span class="ml">2</span></span>
+          <span class="mo"><i style="height:35%"></i><span class="ml">3</span></span>
+          <span class="mo"><i style="height:70%"></i><span class="ml">4</span></span>
+          <span class="mo"><i style="height:55%"></i><span class="ml">5</span></span>
+          <span class="mo"><i style="height:48%"></i><span class="ml">6</span></span>
+          <span class="mo"><i style="height:65%"></i><span class="ml">7</span></span>
+          <span class="mo"><i style="height:80%"></i><span class="ml">8</span></span>
+          <span class="mo"><i style="height:90%"></i><span class="ml">9</span></span>
+        </div>
+      </div>
+      <div class="tile d-m">
+        <div class="theader">笔记统计<span class="sp"></span><span class="tchip">14 个笔记本</span></div>
+        <div class="bignum num" style="font-size:28px;margin-top:4px;color:var(--b3-theme-on-background)">12,847<small>块</small></div>
+        <div class="sub num">文档 1,204 · 附件 318 · 标签 56</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 规格卡 ============ -->
+
+<section class="spec-card">
+  <h3>今日写作 <span class="tag">accent（提议扩展）· S(4×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">today-writing · 建议 sizes = [small, medium]（目标型组件，上限 M）</div>
+    <div class="k">内容布局（各档位）</div><div class="v">S（默认）：今日字数大数字 + 目标进度条 + 目标值；medium：加写作时长与最近编辑文档计数</div>
+    <div class="k">状态呈现</div><div class="v">ready；无写作 = 0 字如实显示（不隐藏组件不编造）；跨日重置瞬间数值正确迁移</div>
+    <div class="k">微标头</div><div class="v">「今日写作」；无 chip（无网络语义）</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（S）；侧栏/手机同款</div>
+    <div class="k">验收要点</div><div class="v">跨日零点重置正确；字数本地计算零网络；accent 白字对比度采样 ≥ AA</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>近期写作活跃度 <span class="tag">plain · wide(8×3)，声明档位 M/W/L</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">recent-writing-activity · sizes = [medium, wide, large]（12 个月回看 + 逐年分页，T-6461 口径）</div>
+    <div class="k">内容布局（wide 默认）</div><div class="v">微标头（识别名 + 年份 chip）→ 12 个月条形图（月标签 + 活跃高度）→ 底部年度合计行</div>
+    <div class="k">内容布局（各档位）</div><div class="v">medium：近 6 个月条形；large：12 个月 + 逐年分页（‹ ›）；X：不适用</div>
+    <div class="k">状态呈现</div><div class="v">loading 骨架；ready；empty = 状态区文案（不渲染空图）；error + 重试 + 保留旧图</div>
+    <div class="k">数据与隐私</div><div class="v">本地 SQL 有界聚合（外层 LIMIT 纪律）；逐年分页不逐月全量重查</div>
+    <div class="k">验收要点</div><div class="v">条形高度与数值线性对应；分页切换不闪空；明暗采样 ≥ AA</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>写作打卡 <span class="tag">accent（已登记）· S(4×3)</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">writing-streak · 建议 sizes = [small, medium]（材质已登记 accent）</div>
+    <div class="k">内容布局（各档位）</div><div class="v">S（默认）：连续写作天数大数字 + 昨日字数行；medium：加月历点阵（打卡日标记）</div>
+    <div class="k">状态呈现</div><div class="v">今日已写 = ready；今日未写 = warn「今日待写」；中断 = 连续天数如实重算</div>
+    <div class="k">微标头</div><div class="v">「写作打卡」；无 chip</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（S）</div>
+    <div class="k">验收要点</div><div class="v">连续天数跨月/跨年正确；当日 0 字不算打卡（口径与 T-6461 一致）；accent 白字对比度采样</div>
+  </div>
+</section>
+
+<section class="spec-card">
+  <h3>笔记统计 <span class="tag">plain · medium(4×4)，声明档位 M/W</span></h3>
+  <div class="spec-grid">
+    <div class="k">moduleId / 声明档位</div><div class="v">note-stats · sizes = [medium, wide]（建议口径）</div>
+    <div class="k">内容布局（medium 默认）</div><div class="v">微标头（识别名 + 笔记本数 chip）→ 块数大数字 → 附件/标签/文档三行明细</div>
+    <div class="k">状态呈现</div><div class="v">loading 骨架；ready；error + 重试 + 保留旧值</div>
+    <div class="k">数据与隐私</div><div class="v">本地 SQL 有界聚合（外层 LIMIT + truncated 传导，T-6478 纪律）；习惯强度分为纯前端半衰期公式（零新增 SQL）</div>
+    <div class="k">三端收缩</div><div class="v">三端一致（medium）；手机占整行</div>
+    <div class="k">验收要点</div><div class="v">数值格式化（千分位）；SQL 超时 → error + 重试不清空旧值；明暗采样 ≥ AA</div>
+  </div>
+</section>
+
+<!-- ============ 批次⑦总表 ============ -->
+<section class="screen">
+  <h2>批次⑦规格总表 <span>实现对照：resolveHomeTileMaterial 目录 + HOME_TILE_DEFAULT_SIZES 默认档</span></h2>
+  <div class="frame">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr style="text-align:left;color:var(--b3-theme-on-surface-light);border-bottom:1px solid var(--b3-border-color);">
+        <th style="padding:8px 14px;">组件（moduleId）</th><th>材质</th><th>默认档</th><th>支持档</th><th>事务/性能</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">今日写作（today-writing）</td><td>accent（提议扩展）</td><td class="num">small</td><td class="num">S/M</td><td>本地计算；跨日重置</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">近期写作活跃度（recent-writing-activity）</td><td>plain</td><td class="num">wide</td><td class="num">M/W/L</td><td>12 个月回看 + 逐年分页（T-6461 口径）</td></tr>
+        <tr style="border-bottom:1px solid var(--b3-border-color);"><td style="padding:8px 14px;">写作打卡（writing-streak）</td><td>accent（已登记）</td><td class="num">small</td><td class="num">S/M</td><td>当日 0 字不算打卡（T-6461 口径）</td></tr>
+        <tr><td style="padding:8px 14px;">笔记统计（note-stats）</td><td>plain</td><td class="num">medium</td><td class="num">M/W</td><td>SQL 有界聚合 + truncated 传导（T-6478）</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</body>
+</html>
