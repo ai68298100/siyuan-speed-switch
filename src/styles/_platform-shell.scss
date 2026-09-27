@@ -470,6 +470,10 @@
     .sw-platform-header__actions { margin-left: auto; }
     .sw-platform-context { align-items: flex-start; flex-wrap: wrap; }
     .sw-platform-context__actions { margin-left: 0; flex-basis: 100%; }
+    // 真机反馈（T-6970）：分段项 nowrap，皮肤选择这类长标签（融合主题（默认）/苹果风格 · 液态玻璃）
+    // 在手机宽度下互相挤压溢出、文字重叠。窄容器允许整项换行（flex-wrap），放不下的分段
+    // 落到第二行；宽容器（桌面 >640px）保持单行不受影响。
+    .sw-platform-seg { flex-wrap: wrap; row-gap: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

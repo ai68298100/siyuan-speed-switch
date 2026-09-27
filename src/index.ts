@@ -3,7 +3,7 @@ import type {IMenu, TEventBus, TPluginDataChangeReason} from "siyuan";
 import "./index.scss";
 
 import {logger} from "./logger";
-import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand} from "./util";
+import {clampNum, stableSortBy, normalizeSortBy, sortItems as sortItemsUtil, sortGroupItems as sortGroupItemsUtil, resolveQuickActionSurfaceState, groupFavoritesByGroup, groupTabsByMode, resolveIconFallback, resolveIconReference, normalizeCustomIcon, isImageIconReference, normalizeQuickActionText, buildTabGroupsByParent, resolveTabRootId, resolveFavoriteRootId, planGroupOpenFavorites, sanitizeDocIds, normalizeSqlResult, capMru, sanitizeFavorites, sanitizeOpenHistory, sanitizeStringList, isSuccessfulMobileTabsResult, clampOversizedIcons, normalizeThumbCache, isGlobalShortcutHostReady, safeRegisterPluginCommand, trimLeadingBlankThumbNodes, hasVisibleThumbContent} from "./util";
 import {createSearchSession, beginSearch, cacheSearchResult, disposeSearchSession} from "./search-session";
 import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, removeRecentEntry, recordRecentOpen, formatChangedWindowStart, updatedChangedWithin, entryChangedWithin, computeScrollRatio, planScrollRestore} from "./recent-closed";
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
@@ -10441,13 +10441,17 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         const source = this.getThumbSource(item.tab);
         thumb.innerHTML = "";
         if (source) {
-            this.applyThumbContent(thumb, source, title);
-            // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
-            if (rootId) {
-                const cache = this.getThumbCache();
-                this.setThumbCache(cache, rootId, title, source.innerHTML);
-                this.saveThumbCache(cache);
+            // 视觉空白的实时克隆不进缓存，回退 API 回源（T-6970 缩略图空框防护）
+            if (this.applyThumbContent(thumb, source, title)) {
+                // 实时 DOM 可用：刷新该文档的缓存快照（下次重启/后台未渲染时直接命中）
+                if (rootId) {
+                    const cache = this.getThumbCache();
+                    this.setThumbCache(cache, rootId, title, source.innerHTML);
+                    this.saveThumbCache(cache);
+                }
+                return;
             }
+            this.fillThumbByApi(item.tab, thumb);
             return;
         }
         // 无实时 DOM：尝试命中持久化缓存（跨重启/重置保留）
@@ -10532,12 +10536,16 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
                 const rootId = this.rootIdOf(item.tab);
                 const source = this.getThumbSource(item.tab);
                 thumb.innerHTML = "";
-                if (source) {
-                    this.applyThumbContent(thumb, source, title);
+                if (source && this.applyThumbContent(thumb, source, title)) {
                     if (rootId) {
                         this.setThumbCache(cache, rootId, title, source.innerHTML);
                         dirty = true;
                     }
+                    continue;
+                }
+                if (source) {
+                    // 空白克隆：回退缓存/API 路径（applyThumbContent 已就地放标题占位）
+                    this.fillThumbByApi(item.tab, thumb);
                     continue;
                 }
                 const cached = rootId ? cache[rootId] : undefined;
@@ -10563,8 +10571,18 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         this.scheduleAnimationFrame(runBatch);
     }
 
-    // 将克隆内容装进缩略图框并按宽度缩放
-    private applyThumbContent(thumb: HTMLElement, source: HTMLElement, title: string) {
+    // 将克隆内容装进缩略图框并按宽度缩放。返回 false 表示内容视觉空白（如整篇空段落），
+    // 已就地回退为标题占位——调用方应继续走 API 回源且不得把空白内容写入缓存（T-6970）。
+    private applyThumbContent(thumb: HTMLElement, source: HTMLElement, title: string): boolean {
+        // 真机反馈：日记等文档开头常见空段落，缩放后整框只剩空白；先裁掉前导空白块
+        trimLeadingBlankThumbNodes(source);
+        if (!hasVisibleThumbContent(source)) {
+            const placeholder = document.createElement("div");
+            placeholder.className = "sw__thumb-placeholder";
+            placeholder.textContent = title || thumb.parentElement?.getAttribute("data-tab-id") || "";
+            thumb.appendChild(placeholder);
+            return false;
+        }
         const content = document.createElement("div");
         content.className = "sw__thumb-content";
         content.appendChild(source);
@@ -10585,6 +10603,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
         };
         syncScale(0);
         content.setAttribute("aria-label", title);
+        return true;
     }
 
     // getDoc 回源并发闸门：视口懒渲染下仍可能同时暴露多张缺图卡片，
@@ -10641,7 +10660,10 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             wrap.className = "protyle-wysiwyg";
             wrap.innerHTML = html;
             thumb.innerHTML = "";
-            this.applyThumbContent(thumb, wrap, tab.title || "");
+            // 空白内容不进缓存（保留占位），下次打开仍会尝试回源（T-6970）
+            if (!this.applyThumbContent(thumb, wrap, tab.title || "")) {
+                return;
+            }
             // API 读取成功：写入缓存，下次（含重启后）直接命中
             const cache = this.getThumbCache();
             this.setThumbCache(cache, rootId, tab.title || "", html);
