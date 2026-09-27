@@ -1163,6 +1163,7 @@
   "snippetEnabled": "已启用",
   "snippetDisabled": "已停用",
   "snippetDraft": "草稿",
+  "snippetUnsaved": "未保存",
   "snippetMasterOff": "宿主总开关已关闭",
   "snippetDelete": "删除",
   "snippetExport": "导出",

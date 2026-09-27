@@ -1249,7 +1249,7 @@ test('snippet studio keeps safety boundaries visible as capability notes (T-6908
         'all five boundaries must be stated: sandboxed CSS preview, disabled JS execution, draft-only AI, AI context scope, native-only storage');
     assert.match(studioUi, /item\.dataset\.capability = capability;/,
         'each capability note must expose a stable data hook');
-    assert.match(studioUi, /details\.append\(detailsTitle, selection, description, capabilities,/,
+    assert.match(studioUi, /details\.append\(detailsTitle, selection, nameLabel, typeSelect, typeNote, state, commands, description, capabilities\);/,
         'capability notes must render inside the always-visible details panel');
     assert.match(studioScss, /&__capabilities \{ display: grid;[^}]*border: 1px dashed var\(--studio-line\)/,
         'the capability list must use the shared platform line token');

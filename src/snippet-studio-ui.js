@@ -93,6 +93,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetDisabled: locale.i18n.snippetDisabled,
         snippetDiscard: locale.i18n.snippetDiscard,
         snippetDraft: locale.i18n.snippetDraft,
+        snippetUnsaved: locale.i18n.snippetUnsaved,
         snippetEnable: locale.i18n.snippetEnable,
         snippetEnabled: locale.i18n.snippetEnabled,
         snippetExperimental: locale.i18n.snippetExperimental,
@@ -202,6 +203,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     titleLine.append(node("strong", "sw-studio__title", t("snippetStudioTitle")), node("span", "sw-studio__badge", t("snippetExperimental")));
     const headerContext = node("span", "sw-studio__header-context");
     const headerState = node("span", "sw-studio__state-badge");
+    headerState.setAttribute("role", "status");
+    headerState.setAttribute("aria-live", "polite");
+    headerState.setAttribute("aria-atomic", "true");
     heading.append(titleLine, headerContext);
     const headerActions = node("div", "sw-studio__header-actions");
     const backButton = action("snippetBack", onBack);
@@ -277,8 +281,8 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         setStatus(t("snippetSubmissionHint"), "ready");
     }, "is-quiet");
     const commands = node("div", "sw-studio__commands");
-    commands.append(saveButton, toggleButton, deleteButton, exportButton, submissionButton);
-    details.append(detailsTitle, selection, description, capabilities, nameLabel, typeSelect, typeNote, state, commands);
+    commands.append(toggleButton, deleteButton, exportButton, submissionButton);
+    details.append(detailsTitle, selection, nameLabel, typeSelect, typeNote, state, commands, description, capabilities);
     const editorSection = node("section", "sw-studio__editor-section");
     const editorBar = node("div", "sw-studio__section-bar");
     const editorLead = node("div", "sw-studio__section-lead");
@@ -510,7 +514,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     };
     const refresh = action("snippetRefresh", () => { if (canDiscard()) void load(true); });
     const footer = node("div", "sw-studio__footer");
-    footer.append(status, refresh);
+    footer.append(status, saveButton, refresh);
     root.replaceChildren(header, layout, footer);
     const preview = createSnippetPreview(previewContainer, {
         title: t("snippetPreview"),
@@ -553,8 +557,9 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const bytes = byteLength(draft.content);
         const lines = lineLength(draft.content);
         const shortName = draft.name.trim() || t("snippetNew");
-        const savedState = baseline ? baseline.enabled ? t("snippetEnabled") : t("snippetDisabled") : t("snippetDraft");
-        const stateClass = baseline ? baseline.enabled ? "is-ready" : "is-muted" : "is-draft";
+        const unsaved = dirty();
+        const savedState = unsaved ? t("snippetUnsaved") : baseline ? baseline.enabled ? t("snippetEnabled") : t("snippetDisabled") : t("snippetDraft");
+        const stateClass = unsaved ? "is-draft" : baseline ? baseline.enabled ? "is-ready" : "is-muted" : "is-draft";
         selectionName.textContent = shortName;
         selectionType.textContent = draft.type.toUpperCase();
         selectionStatus.textContent = savedState;

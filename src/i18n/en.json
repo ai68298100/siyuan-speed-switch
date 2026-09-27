@@ -1163,6 +1163,7 @@
   ,"snippetEnabled": "Enabled"
   ,"snippetDisabled": "Disabled"
   ,"snippetDraft": "Draft"
+  ,"snippetUnsaved": "Unsaved changes"
   ,"snippetMasterOff": "The host master switch is off"
   ,"snippetDelete": "Delete"
   ,"snippetExport": "Export"
