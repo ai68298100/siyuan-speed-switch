@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.40.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.41.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -330,11 +330,20 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.40.0` (released 2026-09-27; floating-ball double-click/long-press gestures, document-set active-doc restore with visitor preview, usercss variable resolution, split-open keyboard parity and real-device feedback fixes; Release assets are built automatically by the workflow).
+The current version is `v0.41.0` (released 2026-09-28; all 13 deepening features, workbench material × tier modernization, 58 component spec cards built to spec, store master-detail with batch mode, and mobile fixes; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.41.0 (2026-09-28)
+
+- **13 deepening features**: preview pinning and find-in-preview, layout undo/redo, widget health details, document-set diffs, three-way draft leave guard with draft undo/redo, conflict-copy keep, draft find/replace, CSS preview scenes, config-pack diff with per-group apply.
+- **Workbench modernization**: material × tier system (plain/accent/dark/vibrant + S/M/L/X hero), edit wiggle mode, view-state micro headers, 45 module default tiers.
+- **58 spec cards built to spec**: nine batches fully covered; six list-stream gaps fixed (HN comment counts off-screen, visible source-date row metas, same-title dedupe, continuous ranks, RSS heartbeat + read marks + unread chip, tier hard caps).
+- **Store rebuild S1**: left catalog + right detail master-detail, zero-button rows, six source chips, Ctrl+B batch mode, mobile bottom-sheet detail.
+- **Mobile fixes**: segmented controls wrap on narrow screens; thumbnail blank-frame guard.
+- **Verification**: full suite **6452/6452**; real-device/kernel acceptance still tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.40.0 (2026-09-27)
 
