@@ -392,7 +392,9 @@ test("storage usage section is wired to host measurement and registry", () => {
     const sections = readSourceText(path.join(__dirname, "..", "src", "settings-sections.ts"));
     assert.match(sections, /export function buildSettingsStorage\(this: SettingsSectionsHost\)/);
     assert.match(sections, /buildStorageUsageSummary\(entries\)/);
-    assert.match(sections, /THUMB_CACHE_KEY, label: "缩略图缓存"/);
+    // T-7004：注册表升级为分组双语结构——THUMB_CACHE_KEY 以常量入 STORAGE_KEY_GROUPS，
+    // 标签经静态映射走 i18n（旧硬编码中文 label 字段已移除）。
+    assert.match(sections, /\{key: THUMB_CACHE_KEY, labelKey: "storageKeyThumbCache"\}/);
     const indexSource2 = readSourceText(path.join(__dirname, "..", "src", "index.ts"));
     assert.match(indexSource2, /storage: \(\) => buildSettingsStorage\.call\(this\)/);
     assert.match(indexSource2, /storage: this\.i18n\.secStorage/);

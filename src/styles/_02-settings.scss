@@ -317,7 +317,8 @@
     .sw-settings__search-input {
         width: 100%;
         height: 30px;
-        padding: 0 10px;
+        // T-7002：右侧留出清空按钮位
+        padding: 0 30px 0 10px;
         border: 1px solid var(--b3-border-color);
         border-radius: 8px;
         background: var(--b3-theme-surface, var(--b3-theme-background-light));
@@ -329,6 +330,67 @@
             outline: 2px solid var(--b3-theme-primary);
             outline-offset: 1px;
         }
+    }
+
+    // T-7002：清空按钮叠在输入框右缘（有查询词才显示）；sticky 父容器即为定位上下文
+    .sw-settings__search-clear {
+        position: absolute;
+        top: 13px;
+        right: 24px;
+        z-index: 1;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+
+        &:hover {
+            background: var(--sw-settings-hover-bg);
+            color: var(--b3-theme-on-background);
+        }
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    // T-7002：分组过滤 chips——group + aria-pressed 语义独立于 listbox
+    .sw-settings__search-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .sw-settings__search-chip {
+        padding: 2px 10px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 999px;
+        background: var(--b3-theme-surface, var(--b3-theme-background-light));
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        line-height: 1.6;
+        cursor: pointer;
+
+        &.is-active {
+            border-color: var(--b3-theme-primary);
+            background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+            color: var(--b3-theme-on-background);
+        }
+    }
+
+    // T-7002：combobox 语义下的输入框——有 aria-expanded 时保留原生外观，仅补焦点环
+    .sw-settings__search-input[aria-expanded="true"] {
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 42%, var(--b3-border-color));
     }
 
     .sw-settings__search-results {
@@ -381,6 +443,18 @@
             line-height: 1.6;
         }
 
+        // T-7002：路径结果的二级归属徽标（面板 > 分组）
+        .sw-settings__search-option-group {
+            display: inline-block;
+            margin-left: 4px;
+            padding: 0 6px;
+            border: 1px dashed var(--b3-border-color);
+            border-radius: 999px;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 10px;
+            line-height: 1.6;
+        }
+
         .sw-settings__search-option-desc {
             display: block;
             margin-top: 2px;
@@ -396,6 +470,61 @@
         padding: 7px 9px;
         color: var(--b3-theme-on-surface-light);
         font-size: 11.5px;
+    }
+
+    // ===== T-7004 存储页：分组标题、用量进度条、schema 健康与缓存管理 =====
+    .sw-settings__storage-group {
+        margin: 10px 0 2px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .sw-settings__storage-cell {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 96px;
+    }
+
+    .sw-settings__storage-bytes {
+        color: var(--b3-theme-on-background);
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+    }
+
+    .sw-settings__usage-bar {
+        display: block;
+        width: 96px;
+        height: 4px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-on-surface-light) 16%, transparent);
+
+        i {
+            display: block;
+            min-width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: color-mix(in srgb, var(--b3-theme-primary) 62%, transparent);
+        }
+    }
+
+    .sw-settings__storage-schema {
+        &[data-state="ok"] { color: var(--b3-theme-on-background); }
+        &[data-state="missing"] { color: var(--b3-theme-on-surface-light); }
+        // 降级保护是「需要用户注意」而非失败：警示色 + 文字并存（不只靠颜色）
+        &[data-state="newer"] { color: var(--b3-theme-warning, #a76618); font-weight: 600; }
+    }
+
+    .sw-settings__storage-cache {
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px solid var(--b3-border-color);
+
+        .sw-settings__storage-note {
+            margin: 0 0 8px;
+        }
     }
 
     // 搜索定位后的短暂强调（1.8s 后由 JS 移除）

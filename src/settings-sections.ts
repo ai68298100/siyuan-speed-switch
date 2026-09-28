@@ -6,7 +6,7 @@
 // ISwSettings/IFavoriteItem 等类型经 import type 引用（编译期擦除，无运行时循环依赖）。
 import {Dialog, getAllTabs, openTab, showMessage} from "siyuan";
 import {logger} from "./logger";
-import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY} from "./constants";
+import {DIALOG_WIDTH_MIN_PX, DIALOG_WIDTH_MAX_PX, DIALOG_HEIGHT_MIN_PX, DIALOG_HEIGHT_MAX_PX, PANEL_SCALE_MIN, PANEL_SCALE_MAX, THUMB_HEIGHT_MIN_PX, THUMB_HEIGHT_MAX_PX, MOBILE_COLUMNS_SINGLE, MOBILE_COLUMNS_DOUBLE, MOBILE_COLUMNS_AUTO, DOCUMENT_SETS_KEY, DOCUMENT_SET_IMPORT_MAX_BYTES, QUICK_ACTIONS_MAX, MRU_KEY, HISTORY_KEY, CLOSED_HISTORY_KEY, PINNED_KEY, FAV_KEY, FAV_GROUPS_KEY, SETTINGS_KEY, QUICK_ACTIONS_KEY, QUICK_ACTIONS_DEFAULTS_KEY, HOME_STATE_KEY, THUMB_CACHE_KEY, FAV_COLLAPSED_KEY, RELATED_SWR_KEY, RSS_READ_KEY, SCHEMA_VERSION_KEY} from "./constants";
 import {formatStorageBytes, buildStorageUsageSummary} from "./settings-model";
 import {diffConfigPackGroups, configPackBaselineSignature, normalizeConfigPackImport} from "./config-pack-model";
 import {createDocumentSet, upsertDocumentSet, removeDocumentSet, rollbackDocumentSet, mergeDocumentSets, normalizeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, buildDocumentSetRestoreReport, documentSetRestoreReportToMarkdown, orderDocumentSetRestoreEntries, diffDocumentSetVersion} from "./document-sets";
@@ -122,6 +122,9 @@ export interface SettingsSectionsHost {
     saveDataDebounced(key: string): void;
     // T-6463 存储用量透明化
     measureStorageUsage(): Promise<Array<{key: string, bytes: number}>>;
+    // T-7004 存储健康：schema 版本戳读取（纯读）与缩略图缓存清空（可重建数据）
+    getStorageSchemaHealth(): {stored: number | null; current: number; downgradeFrom: number | null};
+    clearThumbCache(): void;
 }
     // ===== 设置页 · 外观：皮肤、缩略图列数与高度 =====
 export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
@@ -1528,20 +1531,50 @@ export function buildSettingsDocumentSets(this: SettingsSectionsHost, ): HTMLEle
     // 路径返回空列表而非错误"，因此无需为已删除的路径前缀设计专门分支。
 
 // ===== T-6463 设置页 · 存储用量：各持久化 key 的近似占用（Tabliss 显式化思路） =====
-const STORAGE_USAGE_KEYS: ReadonlyArray<{key: string, label: string}> = Object.freeze([
-    {key: MRU_KEY, label: "最近使用页签"},
-    {key: HISTORY_KEY, label: "最近打开文档"},
-    {key: CLOSED_HISTORY_KEY, label: "最近关闭文档"},
-    {key: PINNED_KEY, label: "置顶页签"},
-    {key: FAV_KEY, label: "收藏"},
-    {key: FAV_GROUPS_KEY, label: "收藏分组"},
-    {key: SETTINGS_KEY, label: "插件设置"},
-    {key: QUICK_ACTIONS_KEY, label: "快捷入口"},
-    {key: QUICK_ACTIONS_DEFAULTS_KEY, label: "快捷入口默认值标记"},
-    {key: DOCUMENT_SETS_KEY, label: "文档集"},
-    {key: HOME_STATE_KEY, label: "第二面板布局"},
-    {key: THUMB_CACHE_KEY, label: "缩略图缓存"},
-    {key: FAV_COLLAPSED_KEY, label: "收藏分组折叠状态"},
+// T-7004：登记面扩至全部 15 个持久化 key（原表缺 schema 版本戳/RSS 已读/关联投影），
+// 按语义分五组、标签走 i18n 双语键（原先硬编码中文，英文界面显示中文是既存缺口）。
+const STORAGE_KEY_GROUPS: ReadonlyArray<{labelKey: string, keys: ReadonlyArray<{key: string, labelKey: string}>}> = Object.freeze([
+    {
+        labelKey: "storageGroupWorkspace",
+        keys: [
+            {key: MRU_KEY, labelKey: "storageKeyMru"},
+            {key: HISTORY_KEY, labelKey: "storageKeyOpenHistory"},
+            {key: CLOSED_HISTORY_KEY, labelKey: "storageKeyClosedHistory"},
+            {key: PINNED_KEY, labelKey: "storageKeyPinned"},
+        ],
+    },
+    {
+        labelKey: "storageGroupFavorites",
+        keys: [
+            {key: FAV_KEY, labelKey: "storageKeyFavorites"},
+            {key: FAV_GROUPS_KEY, labelKey: "storageKeyFavGroups"},
+            {key: FAV_COLLAPSED_KEY, labelKey: "storageKeyFavCollapsed"},
+        ],
+    },
+    {
+        labelKey: "storageGroupPanels",
+        keys: [
+            {key: HOME_STATE_KEY, labelKey: "storageKeyHomeState"},
+            {key: THUMB_CACHE_KEY, labelKey: "storageKeyThumbCache"},
+            {key: RELATED_SWR_KEY, labelKey: "storageKeyRelatedSwr"},
+        ],
+    },
+    {
+        labelKey: "storageGroupConfig",
+        keys: [
+            {key: SETTINGS_KEY, labelKey: "storageKeySettings"},
+            {key: QUICK_ACTIONS_KEY, labelKey: "storageKeyQuickActions"},
+            {key: QUICK_ACTIONS_DEFAULTS_KEY, labelKey: "storageKeyQuickActionsDefaults"},
+            {key: DOCUMENT_SETS_KEY, labelKey: "storageKeyDocumentSets"},
+        ],
+    },
+    {
+        labelKey: "storageGroupSystem",
+        keys: [
+            {key: RSS_READ_KEY, labelKey: "storageKeyRssRead"},
+            {key: SCHEMA_VERSION_KEY, labelKey: "storageKeySchemaVersion"},
+        ],
+    },
 ]);
 
 export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
@@ -1623,12 +1656,117 @@ export function buildSettingsStorage(this: SettingsSectionsHost): HTMLElement {
             this.i18n.setStorageApprox || "近似 UTF-8 字节数",
             totalValue,
         ));
-        for (const row of summary.rows) {
-            const known = STORAGE_USAGE_KEYS.find((item) => item.key === row.key);
-            const value = document.createElement("span");
-            value.textContent = formatStorageBytes(row.bytes);
-            rows.appendChild(this.settingItem(known ? known.label : row.key, row.key, value));
+        // T-7004：分组渲染 + 用量进度条——条宽 = 占合计的百分比（合计为 0 时不画），
+        // aria-label 同时给出字节与占比（颜色之外必有文字）。
+        // T-7004：分组渲染 + 用量进度条——条宽 = 占合计的百分比（合计为 0 时不画），
+        // aria-label 同时给出字节与占比（颜色之外必有文字）。
+        const bytesByKey = new Map(summary.rows.map((row) => [row.key, row.bytes]));
+        const knownKeys = new Set<string>();
+        STORAGE_KEY_GROUPS.forEach((group) => group.keys.forEach((item) => knownKeys.add(item.key)));
+        // T-7004：标签静态映射——i18n key 必须静态字面量引用（动态方括号访问被
+        // 门禁禁止，且静态写法让死键扫描可见）；key→label 经映射表转换。
+        const storageLabels: Record<string, string> = {
+            storageGroupWorkspace: this.i18n.storageGroupWorkspace,
+            storageGroupFavorites: this.i18n.storageGroupFavorites,
+            storageGroupPanels: this.i18n.storageGroupPanels,
+            storageGroupConfig: this.i18n.storageGroupConfig,
+            storageGroupSystem: this.i18n.storageGroupSystem,
+            storageGroupOther: this.i18n.storageGroupOther,
+            storageKeyMru: this.i18n.storageKeyMru,
+            storageKeyOpenHistory: this.i18n.storageKeyOpenHistory,
+            storageKeyClosedHistory: this.i18n.storageKeyClosedHistory,
+            storageKeyPinned: this.i18n.storageKeyPinned,
+            storageKeyFavorites: this.i18n.storageKeyFavorites,
+            storageKeyFavGroups: this.i18n.storageKeyFavGroups,
+            storageKeyFavCollapsed: this.i18n.storageKeyFavCollapsed,
+            storageKeyHomeState: this.i18n.storageKeyHomeState,
+            storageKeyThumbCache: this.i18n.storageKeyThumbCache,
+            storageKeyRelatedSwr: this.i18n.storageKeyRelatedSwr,
+            storageKeySettings: this.i18n.storageKeySettings,
+            storageKeyQuickActions: this.i18n.storageKeyQuickActions,
+            storageKeyQuickActionsDefaults: this.i18n.storageKeyQuickActionsDefaults,
+            storageKeyDocumentSets: this.i18n.storageKeyDocumentSets,
+            storageKeyRssRead: this.i18n.storageKeyRssRead,
+            storageKeySchemaVersion: this.i18n.storageKeySchemaVersion,
+        };
+        for (const group of STORAGE_KEY_GROUPS) {
+            const heading = document.createElement("p");
+            heading.className = "sw-settings__storage-group";
+            heading.textContent = storageLabels[group.labelKey] || group.labelKey;
+            rows.appendChild(heading);
+            for (const item of group.keys) {
+                const bytes = bytesByKey.get(item.key) || 0;
+                const cell = document.createElement("span");
+                cell.className = "sw-settings__storage-cell";
+                const value = document.createElement("span");
+                value.className = "sw-settings__storage-bytes";
+                value.textContent = formatStorageBytes(bytes);
+                const bar = document.createElement("span");
+                bar.className = "sw-settings__usage-bar";
+                bar.setAttribute("aria-hidden", "true");
+                const fill = document.createElement("i");
+                if (summary.total > 0 && bytes > 0) {
+                    fill.style.width = `${Math.max(2, Math.min(100, Math.round(bytes / summary.total * 100)))}%`;
+                }
+                bar.appendChild(fill);
+                const percent = summary.total > 0 ? Math.round(bytes / summary.total * 100) : 0;
+                cell.setAttribute("aria-label", `${formatStorageBytes(bytes)}（${this.i18n.setStorageApprox}，${this.i18n.storageUsageShare.replace("{x}", String(percent))}）`);
+                cell.append(value, bar);
+                rows.appendChild(this.settingItem(storageLabels[item.labelKey] || item.labelKey, item.key, cell));
+            }
         }
+        // 未登记的 key（未来新增漏登记时诚实兜底，不静默丢弃）
+        const unknown = summary.rows.filter((row) => !knownKeys.has(row.key));
+        if (unknown.length > 0) {
+            const heading = document.createElement("p");
+            heading.className = "sw-settings__storage-group";
+            heading.textContent = this.i18n.storageGroupOther;
+            rows.appendChild(heading);
+            for (const row of unknown) {
+                const value = document.createElement("span");
+                value.textContent = formatStorageBytes(row.bytes);
+                rows.appendChild(this.settingItem(row.key, row.key, value));
+            }
+        }
+        // T-7004：存储结构健康——schema 版本戳（D-401）三态 + 降级证据，纯只读。
+        const health = this.getStorageSchemaHealth();
+        const schemaValue = document.createElement("span");
+        schemaValue.className = "sw-settings__storage-schema";
+        schemaValue.dataset.state = health.downgradeFrom || (health.stored !== null && health.stored > health.current)
+            ? "newer"
+            : health.stored === null ? "missing" : "ok";
+        schemaValue.textContent = schemaValue.dataset.state === "newer"
+            ? this.i18n.storageSchemaNewer
+                .replace("{stored}", String(health.downgradeFrom ?? health.stored ?? "?"))
+                .replace("{current}", String(health.current))
+            : schemaValue.dataset.state === "missing"
+                ? this.i18n.storageSchemaMissing.replace("{current}", String(health.current))
+                : this.i18n.storageSchemaOk
+                    .replace("{stored}", String(health.stored ?? health.current))
+                    .replace("{current}", String(health.current));
+        rows.appendChild(this.settingItem(this.i18n.storageSchemaTitle, this.i18n.storageSchemaTip, schemaValue));
+        // T-7004：缓存管理说明 + 缩略图缓存清空（可由回源重建；RSS 已读等用户数据不在范围）。
+        const cacheSection = document.createElement("div");
+        cacheSection.className = "sw-settings__storage-cache";
+        const cacheNote = document.createElement("p");
+        cacheNote.className = "sw-settings__storage-note";
+        cacheNote.textContent = this.i18n.storageCacheNote;
+        const cacheClear = document.createElement("button");
+        cacheClear.type = "button";
+        cacheClear.className = "b3-button b3-button--text";
+        cacheClear.textContent = this.i18n.storageCacheClear;
+        cacheClear.addEventListener("click", () => {
+            if (!confirm(this.i18n.storageCacheClearConfirm)) return;
+            this.clearThumbCache();
+            showMessage(this.i18n.storageCacheCleared);
+            void this.measureStorageUsage().then((nextEntries) => {
+                const nextTotal = nextEntries.reduce((sum, row) => sum + row.bytes, 0);
+                const totalEl = rows.querySelector("strong");
+                if (totalEl) totalEl.textContent = formatStorageBytes(nextTotal);
+            });
+        });
+        cacheSection.append(cacheNote, cacheClear);
+        root.appendChild(cacheSection);
         note.textContent = "";
     }).catch(() => {
         note.textContent = this.i18n.homeModuleError || "统计失败";

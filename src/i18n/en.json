@@ -715,6 +715,38 @@
   "secStorage": "Storage usage",
   "setStorageTotal": "Total",
   "setStorageApprox": "APPROXIMATE UTF-8 bytes",
+  "storageUsageShare": "~{x}% of total",
+  "storageGroupWorkspace": "Work context",
+  "storageGroupFavorites": "Favorites",
+  "storageGroupPanels": "Panels & widgets",
+  "storageGroupConfig": "Config & actions",
+  "storageGroupSystem": "Subscriptions & versioning",
+  "storageGroupOther": "Other",
+  "storageKeyMru": "Recently used tabs",
+  "storageKeyOpenHistory": "Recently opened documents",
+  "storageKeyClosedHistory": "Recently closed documents",
+  "storageKeyPinned": "Pinned tabs",
+  "storageKeyFavorites": "Favorites",
+  "storageKeyFavGroups": "Favorite groups",
+  "storageKeyFavCollapsed": "Favorite group collapse state",
+  "storageKeyHomeState": "Workbench layout",
+  "storageKeyThumbCache": "Thumbnail cache",
+  "storageKeyRelatedSwr": "Related content cache",
+  "storageKeySettings": "Plugin settings",
+  "storageKeyQuickActions": "Quick actions",
+  "storageKeyQuickActionsDefaults": "Quick actions defaults marker",
+  "storageKeyDocumentSets": "Document sets",
+  "storageKeyRssRead": "RSS read state",
+  "storageKeySchemaVersion": "Storage schema version stamp",
+  "storageSchemaTitle": "Storage schema health",
+  "storageSchemaTip": "Data structure version and migration channel status (read-only, no writes)",
+  "storageSchemaOk": "Version {stored} (current {current}); migration channel healthy",
+  "storageSchemaMissing": "Version stamp not written yet (appears after the first save; treating as current {current})",
+  "storageSchemaNewer": "Data comes from a newer version ({stored} > current {current}); downgrade protection active — do not overwrite the install folder",
+  "storageCacheNote": "Thumbnail and related-content caches carry bounded size/age limits and evict automatically; clearing below only affects rebuildable caches, never favorites or history.",
+  "storageCacheClear": "Clear thumbnail cache",
+  "storageCacheClearConfirm": "Clear the thumbnail cache? It rebuilds automatically when tabs are opened again.",
+  "storageCacheCleared": "Thumbnail cache cleared",
   "setStorageMeasuring": "Measuring…",
   "agentActionsEnabled": "Agent controlled actions",
   "agentActionsEnabledTip": "Disabling turns off controlled write/batch capabilities and the execution chain; read-only capabilities remain",
@@ -974,6 +1006,9 @@
   ,"docSearchPreviewFindClose": "Close find"
   ,"docSearchPreviewFindNoResults": "No matches"
   ,"settingsSearch": "Search settings…"
+  ,"settingsSearchClear": "Clear search"
+  ,"settingsSearchFilter": "Filter by group"
+  ,"settingsSearchFilterAll": "All"
   ,"settingsSearchNoResults": "No matching settings"
   ,"settingsSearchMore": "{x} more not shown"
   ,"snippetEnabledShort": "enabled"

@@ -74,7 +74,7 @@ import {buildSettingsAppearance, buildSettingsBehavior, buildSettingsPanels, bui
 import {normalizeHomeStoreQuery, resolveHomeStoreFilter, matchesHomeStoreCard, summarizeHomeStoreCards, buildHomeStoreSearchText, resolveHomeStorePreviewKind, resolveHomeStoreSourceInfo, resolveHomeStoreCardStatus, resolveHomeStoreCardA11y, sortHomeStoreCards, normalizeHomeStoreSort, matchesHomeStoreTokens, buildHomeStoreTabCounts, resolveHomeStoreStatusTone, resolveHomeStoreIntegrationTone, resolveHomeStoreCardTone, buildHomeStoreCardBadges, buildHomeStoreResultSummary, resolveHomeStoreDensityLabel, resolveHomeConfigKind, buildHomeConfigSections, resolveHomeConfigPlaceholder, resolveHomeConfigHint, summarizeHomeConfigDraft, resolveHomeConfigIntegration, normalizeHomeStoreInstallability, resolveHomeStoreInstallabilityReason, canHomeStoreInstall, resolveHomeStoreTouchTargetSize, resolveHomeStorePrimaryAction, resolveHomeStorePrimaryActionLabel, buildHomeStoreCardStateSummary, normalizeHomeStoreViewMode, resolveHomeStoreViewModeLabel, toggleHomeStoreSelection, buildHomeStoreSelectionSummary, resolveHomeStoreDependencyInfo, summarizeHomeStoreDependencies, buildHomeStoreDependencySummary} from "./home-store-model";
 import {millisecondsToNextMinute, buildYearProgressSnapshot, buildCountdownSnapshot} from "./local-time-model";
 import {mergeHolidayPayloads, holidayPresentation, normalizeMinifluxConfig} from "./life-widget-model";
-import {collectSettingsSearchEntries, searchSettingsIndex} from "./settings-search-model";
+import {collectSettingsSearchEntries, collectEntryGroups, searchSettingsIndex} from "./settings-search-model";
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
@@ -2042,6 +2042,26 @@ export default class SpeedSwitchPlugin extends Plugin {
         return Promise.all(PERSISTENT_KEYS.map((key) => measure(key, this.loadData(key))));
     }
 
+    // T-7004：存储结构健康（设置页存储标签消费）——stored=已落戳版本（缺失/损坏为
+    // null），current=插件当前版本，downgradeFrom=检出「数据来自更新版本」的原始值
+    // （D-401 降级保护证据，未覆写）。纯读取，不触发写入。
+    getStorageSchemaHealth(): {stored: number | null; current: number; downgradeFrom: number | null} {
+        const stored = this.data[SCHEMA_VERSION_KEY];
+        const valid = typeof stored === "number" && Number.isInteger(stored) && Number.isFinite(stored) && stored >= 1;
+        return {
+            stored: valid ? stored : null,
+            current: STORAGE_SCHEMA_VERSION,
+            downgradeFrom: this.storageSchemaDowngradeFrom,
+        };
+    }
+
+    // T-7004：清空缩略图缓存——只清 THUMB_CACHE_KEY（rootID → HTML 快照，可由
+    // 回源 API 重建）；RSS 已读与关联投影是用户语义数据，不在清空范围。
+    clearThumbCache() {
+        this.data[THUMB_CACHE_KEY] = {};
+        this.saveDataDebounced(THUMB_CACHE_KEY);
+    }
+
     private saveDataDebounced(key: string) {
         if (this.isUnloading) return;
         const timer = this.saveTimers.get(key);
@@ -2992,6 +3012,8 @@ export default class SpeedSwitchPlugin extends Plugin {
         // T-6951：设置全局搜索——面板全量预构建后对生产 DOM 扫描一次建索引
         //（只收标题/描述/面板归属，不收 token 与用户值）；定位 = 切组 + 滚入视口 +
         // 聚焦真实控件 + 短暂强调。空查询回正常分组浏览。
+        // T-7002：combobox 语义补全（aria-expanded/controls/activedescendant）、
+        // 清空按钮、分组 chips 过滤与 `/`·Ctrl+K 直达（见下方接线）。
         const searchWrap = document.createElement("div");
         searchWrap.className = "sw-settings__search";
         const searchInput = document.createElement("input");
@@ -2999,17 +3021,36 @@ export default class SpeedSwitchPlugin extends Plugin {
         searchInput.className = "sw-settings__search-input";
         searchInput.placeholder = this.i18n.settingsSearch;
         searchInput.setAttribute("aria-label", this.i18n.settingsSearch);
+        searchInput.setAttribute("role", "combobox");
+        searchInput.setAttribute("aria-autocomplete", "list");
+        searchInput.setAttribute("aria-expanded", "false");
+        searchInput.setAttribute("aria-controls", "sw-settings-search-results");
+        const searchClear = document.createElement("button");
+        searchClear.type = "button";
+        searchClear.className = "sw-settings__search-clear";
+        searchClear.textContent = "×";
+        searchClear.setAttribute("aria-label", this.i18n.settingsSearchClear);
+        searchClear.title = this.i18n.settingsSearchClear;
+        searchClear.hidden = true;
+        const searchChips = document.createElement("div");
+        searchChips.className = "sw-settings__search-chips";
+        searchChips.setAttribute("role", "group");
+        searchChips.setAttribute("aria-label", this.i18n.settingsSearchFilter);
+        searchChips.hidden = true;
         const searchResults = document.createElement("div");
         searchResults.className = "sw-settings__search-results";
+        searchResults.id = "sw-settings-search-results";
         searchResults.setAttribute("role", "listbox");
         searchResults.setAttribute("aria-label", this.i18n.settingsSearch);
         searchResults.hidden = true;
-        searchWrap.append(searchInput, searchResults);
+        searchWrap.append(searchInput, searchClear, searchChips, searchResults);
         // 常驻面板滚动列顶部（sticky），tabs 栏保持原布局
         panels.insertBefore(searchWrap, panels.firstChild);
 
         const searchEntries = collectSettingsSearchEntries(panels, panelLabels);
         let searchMatches: typeof searchEntries = [];
+        // T-7002：结果分组过滤 chips 的当前选中组（空串=全部）；查询变化即重置。
+        let searchGroupFilter = "";
         let searchSelected = -1;
         const findSettingsScroller = (start: HTMLElement | null): HTMLElement | null => {
             let el = start?.parentElement || null;
@@ -3052,7 +3093,10 @@ export default class SpeedSwitchPlugin extends Plugin {
                 option.classList.toggle("is-active", active);
                 option.setAttribute("aria-selected", active ? "true" : "false");
             });
+            // T-7002：combobox 的 activedescendant 必须跟随键盘选择（读屏播报当前项）。
             const activeEl = options[searchSelected];
+            if (activeEl?.id) searchInput.setAttribute("aria-activedescendant", activeEl.id);
+            else searchInput.removeAttribute("aria-activedescendant");
             if (activeEl) {
                 const top = activeEl.offsetTop;
                 if (top < searchResults.scrollTop) searchResults.scrollTop = top;
@@ -3065,32 +3109,42 @@ export default class SpeedSwitchPlugin extends Plugin {
             const query = searchInput.value;
             const {results, total} = searchSettingsIndex(searchEntries, query);
             searchMatches = results;
+            searchGroupFilter = "";
             searchSelected = results.length > 0 ? 0 : -1;
             searchResults.textContent = "";
+            searchChips.textContent = "";
+            searchClear.hidden = !query;
+            searchInput.setAttribute("aria-expanded", query.trim() ? "true" : "false");
             if (!query.trim()) {
+                searchChips.hidden = true;
                 searchResults.hidden = true;
+                searchInput.removeAttribute("aria-activedescendant");
                 return;
             }
             searchResults.hidden = false;
-            results.forEach((entry, index) => {
-                const option = document.createElement("button");
-                option.type = "button";
-                option.className = "sw-settings__search-option" + (index === searchSelected ? " is-active" : "");
-                option.setAttribute("role", "option");
-                option.setAttribute("aria-selected", index === searchSelected ? "true" : "false");
-                const label = document.createElement("span");
-                label.className = "sw-settings__search-option-label";
-                label.textContent = entry.label;
-                const title = document.createElement("span");
-                title.className = "sw-settings__search-option-title";
-                title.textContent = entry.title;
-                const desc = document.createElement("span");
-                desc.className = "sw-settings__search-option-desc";
-                desc.textContent = entry.description;
-                option.append(label, title, desc);
-                option.addEventListener("click", () => locateSettingEntry(entry));
-                searchResults.appendChild(option);
-            });
+            // T-7002：分组 chips——只在结果非空时出现，全部 + 结果内去重组（有界 6）。
+            const groups = collectEntryGroups(results, 6);
+            if (groups.length > 1) {
+                const makeChip = (label: string, value: string) => {
+                    const chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = "sw-settings__search-chip" + (value === searchGroupFilter ? " is-active" : "");
+                    chip.textContent = label;
+                    chip.dataset.group = value;
+                    chip.setAttribute("aria-pressed", String(value === searchGroupFilter));
+                    chip.addEventListener("click", () => {
+                        searchGroupFilter = searchGroupFilter === value ? "" : value;
+                        renderSettingsSearchResultOptions();
+                    });
+                    return chip;
+                };
+                searchChips.append(makeChip(this.i18n.settingsSearchFilterAll, ""));
+                groups.forEach((group) => searchChips.append(makeChip(group, group)));
+                searchChips.hidden = false;
+            } else {
+                searchChips.hidden = true;
+            }
+            renderSettingsSearchResultOptions();
             if (results.length === 0) {
                 const empty = document.createElement("div");
                 empty.className = "sw-settings__search-note";
@@ -3103,27 +3157,83 @@ export default class SpeedSwitchPlugin extends Plugin {
                 searchResults.appendChild(more);
             }
         };
+        // T-7002：选项装配独立成函数——分组 chips 切换只重画 listbox，不重跑索引。
+        // option id 稳定（索引序），供 combobox 的 aria-activedescendant 引用；
+        // 「路径结果」= 面板归属 + 分组标题两枚路径徽标 + 标题 + 描述。
+        const renderSettingsSearchResultOptions = () => {
+            const visible = searchGroupFilter
+                ? searchMatches.filter((entry) => entry.group === searchGroupFilter)
+                : searchMatches;
+            searchResults.textContent = "";
+            searchSelected = visible.length > 0 ? 0 : -1;
+            visible.forEach((entry, index) => {
+                const option = document.createElement("button");
+                option.type = "button";
+                option.className = "sw-settings__search-option" + (index === searchSelected ? " is-active" : "");
+                option.id = `sw-settings-search-option-${index}`;
+                option.setAttribute("role", "option");
+                option.setAttribute("aria-selected", index === searchSelected ? "true" : "false");
+                const label = document.createElement("span");
+                label.className = "sw-settings__search-option-label";
+                label.textContent = entry.label;
+                option.append(label);
+                if (entry.group) {
+                    const group = document.createElement("span");
+                    group.className = "sw-settings__search-option-group";
+                    group.textContent = entry.group;
+                    option.append(group);
+                }
+                const title = document.createElement("span");
+                title.className = "sw-settings__search-option-title";
+                title.textContent = entry.title;
+                const desc = document.createElement("span");
+                desc.className = "sw-settings__search-option-desc";
+                desc.textContent = entry.description;
+                option.append(title, desc);
+                option.addEventListener("click", () => locateSettingEntry(entry));
+                searchResults.appendChild(option);
+            });
+            updateSettingsSearchSelection();
+        };
         const clearSettingsSearchView = () => {
             searchMatches = [];
+            searchGroupFilter = "";
             searchSelected = -1;
             searchResults.textContent = "";
             searchResults.hidden = true;
+            searchChips.textContent = "";
+            searchChips.hidden = true;
+            searchClear.hidden = true;
+            searchInput.setAttribute("aria-expanded", "false");
+            searchInput.removeAttribute("aria-activedescendant");
         };
         searchInput.addEventListener("input", renderSettingsSearchResults);
+        // T-7002：清空按钮——清查询、收起结果、回焦搜索框（清空是显式动作，可键盘触达）。
+        searchClear.addEventListener("click", () => {
+            searchInput.value = "";
+            renderSettingsSearchResults();
+            searchInput.focus({preventScroll: true});
+        });
+        // 键盘导航/Enter 只在「当前可视结果集」（分组过滤后）上循环，不越过 chips。
+        const visibleSearchMatches = () => searchGroupFilter
+            ? searchMatches.filter((entry) => entry.group === searchGroupFilter)
+            : searchMatches;
         searchInput.addEventListener("keydown", (event) => {
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                 event.preventDefault();
-                if (searchMatches.length === 0) return;
+                const visible = visibleSearchMatches();
+                if (visible.length === 0) return;
                 const delta = event.key === "ArrowDown" ? 1 : -1;
-                searchSelected = (searchSelected + delta + searchMatches.length) % searchMatches.length;
+                searchSelected = (searchSelected + delta + visible.length) % visible.length;
                 updateSettingsSearchSelection();
             } else if (event.key === "Enter") {
                 event.preventDefault();
-                const entry = searchMatches[searchSelected >= 0 ? searchSelected : 0];
+                const visible = visibleSearchMatches();
+                const entry = visible[searchSelected >= 0 ? searchSelected : 0];
                 if (entry) locateSettingEntry(entry);
             } else if (event.key === "Escape") {
                 searchInput.value = "";
-                clearSettingsSearchView();
+                renderSettingsSearchResults();
             }
         });
 
@@ -3132,6 +3242,26 @@ export default class SpeedSwitchPlugin extends Plugin {
         const panelKeysArr: string[] = [...panelKeys];
         const initial = panelKeysArr.includes(lastTab) ? lastTab : panelKeys[0];
         activate(initial);
+        // T-7002：桌面端设置页首焦点落在搜索框（页面第一个可交互元素、跨组查找入口）；
+        // 移动端不自动聚焦——避免打开设置即弹出软键盘。
+        if (!this.isMobile) {
+            this.scheduleAnimationFrame(() => {
+                if (root.isConnected && searchInput.isConnected) searchInput.focus({preventScroll: true});
+            });
+        }
+        // T-7002：`/` 与 Ctrl/Cmd+K 直达搜索——只在设置页根容器内监听（不注册全局
+        // 命令、不抢宿主快捷键）；焦点已在输入框/其他可编辑控件内时不接管。
+        root.addEventListener("keydown", (event) => {
+            const target = event.target as HTMLElement | null;
+            const editable = target instanceof HTMLElement
+                && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+            const jump = event.key === "/" && !editable
+                || (event.ctrlKey || event.metaKey) && (event.key === "k" || event.key === "K");
+            if (!jump) return;
+            event.preventDefault();
+            searchInput.focus({preventScroll: true});
+            searchInput.select();
+        });
         // Only move the horizontal tab strip. scrollIntoView also scrolls
         // Dialog ancestors in Android WebView and can shift the entire settings
         // page off screen when opening the quick-action panel directly.

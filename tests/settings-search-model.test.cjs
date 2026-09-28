@@ -1,15 +1,22 @@
 // T-6951：设置全局搜索纯模型——DOM 扫描建索引、多词 AND、CJK、排序与有界结果。
+// T-7002：分组路径（group）入索引与匹配词、collectEntryGroups 分组 chips 纯函数。
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {JSDOM} = require('jsdom');
-const {DEFAULT_SEARCH_LIMIT, collectSettingsSearchEntries, entryMatchesQuery, searchSettingsIndex} = require('../src/settings-search-model.js');
+const {DEFAULT_SEARCH_LIMIT, collectSettingsSearchEntries, collectEntryGroups, entryMatchesQuery, searchSettingsIndex} = require('../src/settings-search-model.js');
 
 function buildPanels(doc) {
     doc.body.innerHTML = `
     <div id="panels">
       <div class="sw-settings__panel" data-panel="appearance">
-        <div class="sw-settings__item"><div class="sw-settings__item-title">界面皮肤</div><div class="sw-settings__item-desc">融合主题跟随思源当前主题；独立皮肤只作用于小驴速切</div><button>融合主题</button></div>
-        <div class="sw-settings__item"><div class="sw-settings__item-title">界面密度</div><div class="sw-settings__item-desc">舒适与紧凑两种显示密度</div><button>舒适</button></div>
+        <p class="sw-settings__group-title">主题</p>
+        <div class="sw-settings__group-card">
+          <div class="sw-settings__item"><div class="sw-settings__item-title">界面皮肤</div><div class="sw-settings__item-desc">融合主题跟随思源当前主题；独立皮肤只作用于小驴速切</div><button>融合主题</button></div>
+        </div>
+        <p class="sw-settings__group-title">显示密度</p>
+        <div class="sw-settings__group-card">
+          <div class="sw-settings__item"><div class="sw-settings__item-title">界面密度</div><div class="sw-settings__item-desc">舒适与紧凑两种显示密度</div><button>舒适</button></div>
+        </div>
         <div class="sw-settings__item"><div class="sw-settings__item-title">无描述条目</div></div>
       </div>
       <div class="sw-settings__panel" data-panel="storage">
@@ -33,6 +40,28 @@ test('collect scans every panel and keeps panel attribution and element referenc
     assert.ok(entries[0].description.includes('融合主题'));
     assert.ok(entries[0].element?.tagName === 'DIV', '保留真实控件容器引用供定位');
     assert.equal(entries[2].description, '', '缺描述的条目照常入索引');
+});
+
+test('collect captures the nearest group title as the entry path (T-7002)', () => {
+    const dom = new JSDOM('<!doctype html><body></body>');
+    const entries = collectSettingsSearchEntries(buildPanels(dom.window.document), LABELS);
+    assert.equal(entries[0].group, '主题', '皮肤条目归属「主题」组');
+    assert.equal(entries[1].group, '显示密度', '密度条目归属「显示密度」组');
+    assert.equal(entries[2].group, '显示密度', '组后的无组卡条目沿用最近组标题');
+    assert.equal(entries[3].group, '', '无组标题的面板诚实为空串');
+    // 分组路径进入匹配词：搜「密度」能命中组内条目
+    assert.equal(searchSettingsIndex(entries, '主题').results[0].title, '界面皮肤');
+    assert.ok(entryMatchesQuery(entries[1], ['显示密度']));
+});
+
+test('collectEntryGroups dedupes in first-seen order with a bound (T-7002)', () => {
+    const results = [
+        {group: '主题'}, {group: '显示密度'}, {group: '主题'}, {group: ''}, {group: '窗口'},
+    ];
+    assert.deepEqual(collectEntryGroups(results), ['主题', '显示密度', '窗口'], '去重保序、跳过空组');
+    assert.deepEqual(collectEntryGroups(results, 2), ['主题', '显示密度'], 'limit 截断');
+    assert.deepEqual(collectEntryGroups([]), []);
+    assert.deepEqual(collectEntryGroups([{group: '  '}]), []);
 });
 
 test('search matches CJK and latin case-insensitively with multi-token AND', () => {
