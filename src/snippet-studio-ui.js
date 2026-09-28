@@ -6,6 +6,26 @@ const {createSnippetStore} = require("./snippet-studio-host.js");
 const {createSnippetPreview} = require("./snippet-studio-preview.js");
 const {createSnippetAIClient} = require("./snippet-studio-ai.js");
 
+// T-6978：预览样例与探针文案共用一份构造——主编辑器实时预览与商店预览同源，
+// 新增样例/探针文案只改这里（labels 缺键回落到 preview 模块的中文兜底）。
+function previewLabels(t) {
+    return {
+        lang: t("snippetPreviewLang"), sample: t("snippetSample"), title: t("snippetSampleTitle"),
+        paragraph: t("snippetSampleParagraph"), quote: t("snippetSampleQuote"), section: t("snippetSampleSection"),
+        codeLabel: t("snippetSampleCode"), item: t("snippetSampleItem"), state: t("snippetSampleState"),
+        progress: t("snippetSampleProgress"), reading: t("snippetSampleReading"), ready: t("snippetSampleReady"),
+        writing: t("snippetSampleWriting"), draft: t("snippetSampleDraft"), button: t("snippetSampleButton"),
+        probeTitle: t("snippetProbeTitle"), probeNote: t("snippetProbeNote"),
+        probeH3: t("snippetProbeH3"), probeH4: t("snippetProbeH4"), probeH5: t("snippetProbeH5"), probeH6: t("snippetProbeH6"),
+        probeLinksLead: t("snippetProbeLinksLead"), probeLinksAnchor: t("snippetProbeLinksAnchor"),
+        probeListItem: t("snippetProbeListItem"), probeListItem2: t("snippetProbeListItem2"),
+        probeTaskDone: t("snippetProbeTaskDone"), probeTaskTodo: t("snippetProbeTaskTodo"),
+        probeImageAlt: t("snippetProbeImageAlt"), probeStrong: t("snippetProbeStrong"), probeEm: t("snippetProbeEm"),
+        probeMark: t("snippetProbeMark"), probeDel: t("snippetProbeDel"), probeU: t("snippetProbeU"), probeKbd: t("snippetProbeKbd"),
+        probeTagA: t("snippetProbeTagA"), probeTagB: t("snippetProbeTagB"), probeTagC: t("snippetProbeTagC"),
+    };
+}
+
 /** Experimental singleton view; native snippets remain the only saved copy. */
 function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = createSnippetStore({getSnippetSettings: () => getConfig()?.snippet}), ai = createSnippetAIClient(), session = {draft: null, baseline: null}, platform = null, onBack = () => {}, objectId = ""} = {}) {
     const doc = root.ownerDocument;
@@ -170,6 +190,28 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetSampleState: locale.i18n.snippetSampleState,
         snippetSampleTitle: locale.i18n.snippetSampleTitle,
         snippetSampleWriting: locale.i18n.snippetSampleWriting,
+        snippetProbeTitle: locale.i18n.snippetProbeTitle,
+        snippetProbeNote: locale.i18n.snippetProbeNote,
+        snippetProbeH3: locale.i18n.snippetProbeH3,
+        snippetProbeH4: locale.i18n.snippetProbeH4,
+        snippetProbeH5: locale.i18n.snippetProbeH5,
+        snippetProbeH6: locale.i18n.snippetProbeH6,
+        snippetProbeLinksLead: locale.i18n.snippetProbeLinksLead,
+        snippetProbeLinksAnchor: locale.i18n.snippetProbeLinksAnchor,
+        snippetProbeListItem: locale.i18n.snippetProbeListItem,
+        snippetProbeListItem2: locale.i18n.snippetProbeListItem2,
+        snippetProbeTaskDone: locale.i18n.snippetProbeTaskDone,
+        snippetProbeTaskTodo: locale.i18n.snippetProbeTaskTodo,
+        snippetProbeImageAlt: locale.i18n.snippetProbeImageAlt,
+        snippetProbeStrong: locale.i18n.snippetProbeStrong,
+        snippetProbeEm: locale.i18n.snippetProbeEm,
+        snippetProbeMark: locale.i18n.snippetProbeMark,
+        snippetProbeDel: locale.i18n.snippetProbeDel,
+        snippetProbeU: locale.i18n.snippetProbeU,
+        snippetProbeKbd: locale.i18n.snippetProbeKbd,
+        snippetProbeTagA: locale.i18n.snippetProbeTagA,
+        snippetProbeTagB: locale.i18n.snippetProbeTagB,
+        snippetProbeTagC: locale.i18n.snippetProbeTagC,
         snippetSave: locale.i18n.snippetSave,
         snippetSaveDisabled: locale.i18n.snippetSaveDisabled,
         snippetSaveFirst: locale.i18n.snippetSaveFirst,
@@ -625,7 +667,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
     root.replaceChildren(header, layout, footer);
     const preview = createSnippetPreview(previewContainer, {
         title: t("snippetPreview"),
-        labels: {lang: t("snippetPreviewLang"), sample: t("snippetSample"), title: t("snippetSampleTitle"), paragraph: t("snippetSampleParagraph"), quote: t("snippetSampleQuote"), section: t("snippetSampleSection"), codeLabel: t("snippetSampleCode"), item: t("snippetSampleItem"), state: t("snippetSampleState"), progress: t("snippetSampleProgress"), reading: t("snippetSampleReading"), ready: t("snippetSampleReady"), writing: t("snippetSampleWriting"), draft: t("snippetSampleDraft"), button: t("snippetSampleButton")},
+        labels: previewLabels(t),
         onReady: () => {
             if (disposed) return;
             previewShell.dataset.state = "ready";
