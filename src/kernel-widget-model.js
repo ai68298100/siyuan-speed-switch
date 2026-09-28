@@ -177,15 +177,63 @@ function buildInboxSnapshot(payload, config, labels = {}, now = Date.now(), stat
     return snapshot;
 }
 
+// ---------- T-6418 今日日记（只读探测，创建仍由点击动作负责） ----------
+function normalizeTodayJournalConfig(value) {
+    const source = value && typeof value === "object" ? value : {};
+    return {notebook: boundedText(source.notebook, 64)};
+}
+
+function buildTodayJournalSnapshot(payload, config, labels = {}, now = Date.now(), status = "fresh") {
+    const rows = Array.isArray(payload) ? payload : payload && Array.isArray(payload.data) ? payload.data : null;
+    if (!rows) return null;
+    const normalized = normalizeTodayJournalConfig(config);
+    const today = localDateKey(now);
+    const action = boundedText(labels.action, 128) || (normalized.notebook ? `action:journal:${normalized.notebook}` : "action:journal");
+    const entries = [];
+    const seen = new Set();
+    for (const row of rows) {
+        if (!row || typeof row !== "object") continue;
+        const id = boundedText(row.id || row.root_id || row.rootId, 64);
+        const title = boundedText(row.content || row.title, 128);
+        const attr = boundedText(row.daily_attr || row.dailyAttr, 64);
+        const titleDate = /^(20\d{2})-(\d{2})-(\d{2})(?:\b|$)/.exec(title);
+        const attrDate = /^custom-dailynote-(20\d{2})(\d{2})(\d{2})$/.exec(attr);
+        const date = attrDate ? `${attrDate[1]}${attrDate[2]}${attrDate[3]}` : titleDate ? `${titleDate[1]}${titleDate[2]}${titleDate[3]}` : "";
+        if (!/^\d{14}-[0-9a-z]+$/i.test(id) || date !== today || seen.has(id)) continue;
+        seen.add(id);
+        const characters = Math.max(0, Math.trunc(Number(row.characters ?? row.chars ?? row.word_count)) || 0);
+        entries.push({id, date, characters});
+    }
+    const entry = entries[0];
+    const items = entry
+        ? [{
+            label: formatDateKey(entry.date),
+            value: entry.id,
+            secondary: `${entry.characters.toLocaleString()} ${boundedText(labels.characters, 16) || "字"} · ${boundedText(labels.open, 32) || "打开今日日记"}`,
+        }]
+        : [{label: boundedText(labels.create, 64) || "创建今日日记", value: action}];
+    const snapshot = snapshotOf(
+        boundedText(labels.title, 64) || "今日日记",
+        items,
+        labels,
+        now,
+        status,
+        boundedText(labels.create, 64) || "创建今日日记",
+    );
+    if (entry) snapshot.stat = {value: String(entry.characters), label: boundedText(labels.characters, 16) || "字"};
+    return snapshot;
+}
+
 // ---------- T-6419 近期预约（attributes.custom-reservation） ----------
 function normalizeTodayReservationsConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const days = Math.trunc(Number(source.days));
-    const overdueDays = Math.trunc(Number(source.overdueDays));
     return {
         days: Number.isFinite(days) ? Math.min(14, Math.max(0, days)) : 3,
-        overdueDays: Number.isFinite(overdueDays) ? Math.min(14, Math.max(0, overdueDays)) : 0,
-        limit: clampLimit(source.limit, 8),
+        // Kept as a persisted compatibility key. The long-tail card deliberately
+        // excludes expired reservations, so legacy values cannot widen the query.
+        overdueDays: 0,
+        limit: Math.min(4, clampLimit(source.limit, 4)),
         notebook: boundedText(source.notebook, 64),
         query: boundedText(source.query, 64),
         sortBy: source.sortBy === "最近更新" ? "最近更新" : "预约时间",
@@ -206,7 +254,7 @@ function buildTodayReservationsSnapshot(rows, config, labels = {}, now = Date.no
         if (!row || typeof row !== "object") continue;
         const id = boundedText(row.id, 64);
         const date = boundedText(row.date, 8);
-        if (!/^\d{14}-[0-9a-z]+$/i.test(id) || !/^\d{8}$/.test(date) || seen.has(id)) continue;
+        if (!/^\d{14}-[0-9a-z]+$/i.test(id) || !/^\d{8}$/.test(date) || date < today || seen.has(id)) continue;
         const content = boundedText(row.content, 128) || id;
         const path = boundedText(row.hpath || row.hPath, 128);
         if (normalized.query && !`${content}\n${path}`.toLocaleLowerCase().includes(normalized.query.toLocaleLowerCase())) continue;
@@ -220,7 +268,6 @@ function buildTodayReservationsSnapshot(rows, config, labels = {}, now = Date.no
         const details = [];
         if (normalized.showDate) details.push(formatDateKey(entry.date));
         if (normalized.showStatus && entry.date === today) details.push(boundedText(labels.today, 24) || "今天");
-        else if (normalized.showStatus && entry.date < today) details.push(boundedText(labels.overdue, 24) || "已过期");
         if (normalized.showPath && entry.path) details.push(entry.path);
         return {
             label: entry.content,
@@ -1002,7 +1049,7 @@ function normalizeOnThisDayConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const years = Math.trunc(Number(source.yearRange));
     return {
-        limit: Math.min(20, Math.max(1, Math.trunc(Number(source.limit) || 8))),
+        limit: Math.min(3, Math.max(1, Math.trunc(Number(source.limit) || 3))),
         notebook: boundedText(source.notebook, 64),
         yearRange: Number.isFinite(years) ? Math.min(100, Math.max(1, years)) : 20,
         sortBy: source.sortBy === "最早年份" ? "最早年份" : "最近年份",
@@ -1050,7 +1097,7 @@ function normalizeRecentDailyNotesConfig(value) {
     const days = Math.trunc(Number(source.days));
     return {
         days: Number.isFinite(days) ? Math.min(60, Math.max(7, days)) : 14,
-        limit: Math.min(20, Math.max(1, Math.trunc(Number(source.limit) || 10))),
+        limit: Math.min(5, Math.max(1, Math.trunc(Number(source.limit) || 5))),
         notebook: boundedText(source.notebook, 64),
         sortBy: source.sortBy === "最近更新" ? "最近更新" : "日期",
         showPath: source.showPath !== "否" && source.showPath !== false,
@@ -1077,13 +1124,15 @@ function buildRecentDailyNotesSnapshot(rows, config, labels = {}, now = Date.now
         const date = /^(20\d{2}-\d{2}-\d{2})(?:\b|$)/.exec(title)?.[1] || "";
         if (!/^\d{14}-[0-9a-z]+$/i.test(id) || !date || date < fromKey || date > toDateKey || seen.has(id)) continue;
         seen.add(id);
-        entries.push({id, title, date, path: boundedText(row.hpath || row.hPath, 128), updated: boundedText(row.updated, 32), order});
+        const characters = Math.max(0, Math.trunc(Number(row.characters ?? row.chars ?? row.word_count)) || 0);
+        entries.push({id, title, date, path: boundedText(row.hpath || row.hPath, 128), updated: boundedText(row.updated, 32), characters, order});
     }
     entries.sort((left, right) => normalized.sortBy === "最近更新"
         ? right.updated.localeCompare(left.updated) || right.date.localeCompare(left.date) || left.order - right.order
         : right.date.localeCompare(left.date) || left.order - right.order);
     const items = entries.slice(0, normalized.limit).map((entry, index) => {
         const details = [];
+        details.push(`${entry.characters.toLocaleString()} 字`);
         if (normalized.showPath && entry.path) details.push(entry.path);
         if (normalized.showUpdated && /^\d{14}$/.test(entry.updated)) details.push(formatKernelTime(entry.updated));
         return {label: entry.title, value: entry.id, ...(details.length ? {secondary: details.join(" · ")} : {}), ...(normalized.showRank ? {rank: index + 1} : {})};
@@ -1144,6 +1193,7 @@ function buildJournalMonthlySnapshot(rows, config, labels = {}, now = Date.now()
             date: `${prefix}-${String(day).padStart(2, "0")}`,
             path: boundedText(row.hpath || row.hPath, 128),
             updated: boundedText(row.updated, 32),
+            characters: Math.max(0, Math.trunc(Number(row.characters ?? row.chars ?? row.word_count)) || 0),
             order,
         });
     }
@@ -1166,7 +1216,23 @@ function buildJournalMonthlySnapshot(rows, config, labels = {}, now = Date.now()
     );
     const reportedTotal = Math.trunc(Number(rows[0]?.total_count ?? rows[0]?.totalCount));
     const total = Number.isFinite(reportedTotal) && reportedTotal >= entries.length ? reportedTotal : entries.length;
-    snapshot.stat = {value: total > journalItems.length ? `${journalItems.length}/${total}` : String(total), label: boundedText(labels.stat, 32) || "篇日记"};
+    const characters = entries.reduce((sum, entry) => sum + entry.characters, 0);
+    const days = new Set(entries.map((entry) => entry.date));
+    let streak = 0;
+    const latestDate = [...days].sort().pop() || "";
+    if (latestDate) {
+        const cursor = new Date(`${latestDate}T00:00:00`);
+        while (days.has(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`)) {
+            streak += 1;
+            cursor.setDate(cursor.getDate() - 1);
+        }
+    }
+    const countValue = total > journalItems.length ? `${journalItems.length}/${total}` : String(total);
+    snapshot.stat = {
+        value: countValue,
+        label: `${boundedText(labels.stat, 20) || "篇日记"} · ${characters.toLocaleString()} ${boundedText(labels.characters, 12) || "字"} · ${boundedText(labels.streak, 12) || "连续"}${streak}`,
+    };
+    snapshot.monthStats = {count: total, characters, streak};
     return snapshot;
 }
 
@@ -1174,7 +1240,7 @@ function normalizeTodayTasksConfig(value) {
     const source = value && typeof value === "object" ? value : {};
     const days = Math.trunc(Number(source.days));
     return {
-        limit: clampLimit(source.limit, 8),
+        limit: Math.min(5, clampLimit(source.limit, 5)),
         allDocuments: source.allDocuments === "是" || source.allDocuments === true,
         notebook: boundedText(source.notebook, 64),
         showCompleted: source.showCompleted === "是" || source.showCompleted === true,
@@ -1271,6 +1337,7 @@ function buildFlashcardDueSnapshot(payload, config, labels = {}, now = Date.now(
     if (!detailMode && normalized.sortBy === "待复习数量") {
         entries.sort((left, right) => right.count - left.count || compareText(left.label, right.label) || left.order - right.order);
     }
+    const due = Math.max(0, Math.trunc(Number(payload.total)) || entries.reduce((sum, entry) => sum + (entry.count || 0), 0));
     const items = entries.slice(0, normalized.limit).map((entry, index) => detailMode ? {
         label: entry.label,
         value: entry.id,
@@ -1282,7 +1349,9 @@ function buildFlashcardDueSnapshot(payload, config, labels = {}, now = Date.now(
         count: entry.count,
         ...(normalized.showRank ? {rank: index + 1} : {}),
     });
-    const due = Math.max(0, Math.trunc(Number(payload.total)) || entries.reduce((sum, entry) => sum + (entry.count || 0), 0));
+    if (due > 0 && boundedText(labels.reviewAction, 64)) {
+        items.unshift({label: boundedText(labels.reviewAction, 64), value: "action:riffCard"});
+    }
     const snapshot = snapshotOf(boundedText(labels.title, 64) || "闪卡待复习", items, labels, now, status,
         detailMode ? (boundedText(labels.emptyCards, 96) || "这个笔记本没有待复习闪卡") : (boundedText(labels.emptyNotebooks, 96) || "暂无待复习闪卡"));
     snapshot.stat = {value: String(due), label: boundedText(labels.stat, 32) || "张待复习"};
@@ -1727,6 +1796,8 @@ module.exports = {
     buildPinnedDocsSnapshot,
     normalizeInboxConfig,
     buildInboxSnapshot,
+    normalizeTodayJournalConfig,
+    buildTodayJournalSnapshot,
     normalizeTodayReservationsConfig,
     buildTodayReservationsSnapshot,
     normalizeRecentUpdatesConfig,

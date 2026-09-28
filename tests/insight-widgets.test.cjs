@@ -31,7 +31,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     assert.equal(monthly.configSchema[0].max, 20);
     assert.equal(monthly.configSchema[1].type, "notebook");
     const onThisDay = byId.get("on-this-day");
-    assert.equal(onThisDay.configSchema[0].max, 20);
+    assert.equal(onThisDay.configSchema[0].max, 3);
     assert.equal(onThisDay.configSchema[1].type, "notebook");
     assert.deepEqual(onThisDay.configSchema.map((field) => field.key), ["limit", "notebook", "yearRange", "sortBy", "showYear", "showPath", "showRank"]);
     const clipped = byId.get("clipped-unread");

@@ -19,8 +19,8 @@ const DEFAULT_MODULES = Object.freeze([
     {moduleId: "today-journal", title: "今日日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "日记笔记本", type: "notebook"},
     ]},
-    {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "tall", "large", "full"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+    {moduleId: "today-tasks", title: "今日待办", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall", "large", "full"], protocolVersion: 2, configSchema: [
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 5, defaults: 5},
         {key: "allDocuments", label: "扫描全部文档", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "showCompleted", label: "显示已完成", type: "select", options: ["否", "是"], defaults: "否"},
@@ -234,7 +234,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
     {moduleId: "on-this-day", title: "往年今日", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "tall"], protocolVersion: 2, configSchema: [
-        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 8},
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 3, defaults: 3},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "yearRange", label: "回看年份", type: "number", min: 1, max: 100, defaults: 20},
         {key: "sortBy", label: "排序方式", type: "select", options: ["最近年份", "最早年份"], defaults: "最近年份"},
@@ -263,7 +263,7 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "recent-daily-notes", title: "近期日记", icon: "iconCalendar", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "回看天数", type: "number", min: 7, max: 60, defaults: 14},
-        {key: "limit", label: "条数上限", type: "number", min: 1, max: 20, defaults: 10},
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 5, defaults: 5},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "sortBy", label: "排序方式", type: "select", options: ["日期", "最近更新"], defaults: "日期"},
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
@@ -286,8 +286,8 @@ const DEFAULT_MODULES = Object.freeze([
     ]},
     {moduleId: "today-reservations", title: "近期预约", icon: "iconClock", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "days", label: "未来天数", type: "number", min: 0, max: 14, defaults: 3},
-        {key: "overdueDays", label: "包含过期天数", type: "number", min: 0, max: 14, defaults: 0},
-        {key: "limit", label: "条数上限", type: "number", min: 1, max: 12, defaults: 8},
+        {key: "overdueDays", label: "包含过期天数（已停用）", type: "number", min: 0, max: 0, defaults: 0},
+        {key: "limit", label: "条数上限", type: "number", min: 1, max: 4, defaults: 4},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "query", label: "筛选预约内容或路径", type: "text", defaults: ""},
         {key: "sortBy", label: "排序方式", type: "select", options: ["预约时间", "最近更新"], defaults: "预约时间"},

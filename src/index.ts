@@ -9,7 +9,7 @@ import {normalizeClosedEntries, buildRecentHistorySections, applyRecentEvent, re
 import {runStorageMigration, KEY_ORDER, STORAGE_SCHEMA_VERSION} from "./storage-migration";
 import {aggregateSearchResults, buildFullTextSearchRequest, buildNativeSearchTabConfig, buildOpenedDocumentScope, buildOpenedDocumentSearchRequests, buildSearchCacheKey, buildUnifiedSections, buildNavigationResultModel, buildSearchHealthSnapshot, canUseTitleSearch, extractSearchRecords, filterSearchDocuments as filterNativeSearchDocuments, formatCleanQuery, formatUpdatedBadge, isSemanticEmbeddingConfigured, matchesParsedQuery, matchesSearchDocumentFilters, normalizeSearchDocumentFilters, normalizeSearchResult, normalizeTitleSearchDocuments, parseSearchQuery, pinyinTitleHit, resolveSearchNotebookId, updateSavedSearchEntry} from "./search-model";
 import {MAX_PATH_ITEMS, buildPathFilterListRequest, normalizePathFilterProbeOutcome} from "./path-filter-model";
-import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
+import {buildPinnedDocsSnapshot, normalizePinnedDocsConfig, buildInboxSnapshot, normalizeInboxConfig, buildTodayJournalSnapshot, normalizeTodayJournalConfig, buildTodayReservationsSnapshot, normalizeTodayReservationsConfig, buildRecentUpdatesSnapshot, buildDataHealthSnapshot, buildHostRecentDocsSnapshot, buildDatabaseListSnapshot, normalizeDatabaseListConfig, buildSavedSearchesSnapshot, buildAvTableSnapshot, normalizeAvTableConfig, buildRandomReviewSnapshot, normalizeRandomReviewConfig, buildRecentEditsSnapshot, normalizeRecentEditsConfig, buildOutlineWidgetSnapshot, buildDocumentRelationsSnapshot, buildTagListSnapshot, buildBookmarkListSnapshot, buildClippedUnreadSnapshot, normalizeClippedUnreadConfig, buildOnThisDaySnapshot, normalizeOnThisDayConfig, buildRecentDailyNotesSnapshot, normalizeRecentDailyNotesConfig, buildJournalMonthlySnapshot, normalizeJournalMonthlyConfig, buildTodayTasksSnapshot, normalizeTodayTasksConfig, buildFlashcardDueSnapshot, normalizeFlashcardDueConfig, normalizeJournalCalendarConfig, normalizeNoteStatsConfig, buildNoteStatsSnapshot, normalizeTodayWritingConfig, buildTodayWritingSnapshot, normalizeRecentWritingActivityConfig, buildRecentWritingActivitySnapshot, normalizeWritingStreakConfig, buildWritingStreakSnapshot} from "./kernel-widget-model";
 import {favoriteDocumentIdsForProbe, buildFavoritesWidgetSnapshot, buildDocumentSetsWidgetSnapshot, normalizeFixedDocumentConfig, buildFixedDocumentSnapshot} from "./document-widget-model";
 import {
     sanitizeQuickActions,
@@ -5775,10 +5775,27 @@ const updatedMap: {[rootId: string]: string} = {};
                 sessionOnly: this.i18n.homeFavoritesSessionOnly,
             });
         }, {timeoutMs: 1200, cacheTtlMs: 0});
-        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", this.i18n.homeDescJournal, ["switch-protyle", "loaded-protyle"], (config) => {
+        register("today-journal", this.i18n.homeTodayJournal, "iconCalendar", this.i18n.homeDescJournal, ["switch-protyle", "loaded-protyle"], async (config) => {
+            const normalized = normalizeTodayJournalConfig(config);
             const notebook = normalizeAgentNotebookId(config.notebook);
-            return {items: [{label: this.i18n.homeTodayJournalOpen, value: notebook ? `action:journal:${notebook}` : "action:journal"}]};
-        }, {cacheTtlMs: 0});
+            const journalAction = notebook ? `action:journal:${notebook}` : "action:journal";
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            const compactToday = today.replace(/-/g, "");
+            const notebookScope = buildNotebookBoxScope(notebook, "d");
+            const json = await this.fetchKernelJson("/api/query/sql", {
+                stmt: `SELECT d.id, d.content, d.hpath, d.updated, a.name AS daily_attr, COALESCE((SELECT SUM(CASE WHEN c.type<>'d' THEN c.length ELSE 0 END) FROM blocks c WHERE c.root_id=d.id), 0) AS characters FROM blocks d LEFT JOIN attributes a ON a.block_id=d.id AND a.name='custom-dailynote-${compactToday}' WHERE d.type='d'${notebookScope} AND (d.content LIKE '${today}%' OR a.name IS NOT NULL) ORDER BY d.updated DESC LIMIT 4`,
+            });
+            const snapshot = buildTodayJournalSnapshot(json?.data, {...normalized, notebook}, {
+                title: this.i18n.homeTodayJournal,
+                open: this.i18n.homeTodayJournalOpen,
+                create: this.i18n.homeTodayJournalCreate,
+                characters: this.i18n.homeTodayJournalCharacters,
+                action: journalAction,
+            }, now.getTime());
+            if (!snapshot) throw new Error("invalid_today_journal");
+            return snapshot;
+        }, {timeoutMs: 1200, cacheTtlMs: 0});
         register("document-sets", this.i18n.homeDocumentSets, "iconLayout", this.i18n.homeDescDocSets, ["loaded-protyle", "destroy-protyle"], (config) =>
             buildDocumentSetsWidgetSnapshot(this.getDocumentSets(), config, {
                 title: this.i18n.homeDocumentSets,
@@ -5891,12 +5908,14 @@ const updatedMap: {[rootId: string]: string} = {};
             const notebook = normalizeAgentNotebookId(normalized.notebook);
             const notebookScope = buildNotebookBoxScope(notebook, "b");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT b.id, b.root_id, b.content, b.hpath, b.updated, a.name AS daily_attr, COUNT(*) OVER() AS total_count FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name BETWEEN '${attrPrefix}01' AND '${attrPrefix}${maxDay}' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR (b.content >= '${prefix}-01' AND b.content < '${nextPrefix}-01')) ORDER BY b.updated DESC LIMIT 48`,
+                stmt: `SELECT b.id, b.root_id, b.content, b.hpath, b.updated, a.name AS daily_attr, COALESCE((SELECT SUM(CASE WHEN c.type<>'d' THEN c.length ELSE 0 END) FROM blocks c WHERE c.root_id=b.id), 0) AS characters, COUNT(*) OVER() AS total_count FROM blocks b LEFT JOIN attributes a ON a.block_id=b.id AND a.name BETWEEN '${attrPrefix}01' AND '${attrPrefix}${maxDay}' WHERE b.type='d'${notebookScope} AND (a.name IS NOT NULL OR (b.content >= '${prefix}-01' AND b.content < '${nextPrefix}-01')) ORDER BY b.updated DESC LIMIT 48`,
             });
             const snapshot = buildJournalMonthlySnapshot(json?.data, {...normalized, notebook}, {
                 monthTitle: this.i18n.homeCalendarMonthFormat,
                 todayAction: this.i18n.homeTodayJournalOpen,
                 stat: this.i18n.homeStatMonthlyJournals,
+                characters: this.i18n.homeTodayJournalCharacters,
+                streak: this.i18n.homeMonthlyJournalStreak,
                 empty: this.i18n.homeJournalMonthlyEmpty,
             }, now.getTime());
             if (!snapshot) throw new Error("invalid_journal_monthly");
@@ -5990,6 +6009,7 @@ const updatedMap: {[rootId: string]: string} = {};
                     notebookName: notebookList.find((entry) => entry.id === notebookFilter)?.name || "",
                 }, normalized, {
                     title: this.i18n.homeFlashcardDue, stat: this.i18n.homeStatFlashcards,
+                    reviewAction: this.i18n.homeFlashcardReviewAction,
                     emptyCards: this.i18n.homeFlashcardEmpty,
                 });
                 if (!snapshot) throw new Error("invalid_flashcard_due");
@@ -6008,6 +6028,7 @@ const updatedMap: {[rootId: string]: string} = {};
             const total = counts.reduce((sum, entry) => sum + entry.count, 0);
             const snapshot = buildFlashcardDueSnapshot({mode: "notebooks", data: counts, total}, normalized, {
                 title: this.i18n.homeFlashcardDue, stat: this.i18n.homeStatFlashcards,
+                reviewAction: this.i18n.homeFlashcardReviewAction,
                 emptyNotebooks: this.i18n.homeFlashcardEmpty,
             });
             if (!snapshot) throw new Error("invalid_flashcard_due");
@@ -6226,7 +6247,7 @@ const updatedMap: {[rootId: string]: string} = {};
             const from = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
             const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT id, root_id, content, hpath, updated, COUNT(*) OVER() AS total_count FROM blocks WHERE type='d'${notebookScope} AND content GLOB '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' AND content >= '${from}' AND content < '${today}~' ORDER BY content DESC LIMIT 48`,
+                stmt: `SELECT id, root_id, content, hpath, updated, COALESCE((SELECT SUM(CASE WHEN c.type<>'d' THEN c.length ELSE 0 END) FROM blocks c WHERE c.root_id=blocks.id), 0) AS characters, COUNT(*) OVER() AS total_count FROM blocks WHERE type='d'${notebookScope} AND content GLOB '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' AND content >= '${from}' AND content < '${today}~' ORDER BY content DESC LIMIT 48`,
             });
             const snapshot = buildRecentDailyNotesSnapshot(json?.data, normalized, {
                 title: this.i18n.homeRecentDailyNotes, stat: this.i18n.homeStatRecentDaily, empty: this.i18n.homeRecentDailyEmpty,
@@ -6278,7 +6299,7 @@ const updatedMap: {[rootId: string]: string} = {};
             const normalized = normalizeTodayReservationsConfig(config);
             const notebookScope = buildNotebookBoxScope(normalized.notebook, "B");
             const json = await this.fetchKernelJson("/api/query/sql", {
-                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime','-${normalized.overdueDays} days')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
+                stmt: `SELECT B.id, B.content, B.hpath, B.updated, A.value AS date FROM blocks AS B INNER JOIN attributes AS A ON A.block_id=B.id AND A.name='custom-reservation' WHERE A.value >= strftime('%Y%m%d', datetime('now','localtime')) AND A.value <= strftime('%Y%m%d', datetime('now','localtime','+${normalized.days} days'))${notebookScope} ORDER BY A.value, B.updated DESC LIMIT 48`,
             });
             if (!Array.isArray(json?.data)) throw new Error("invalid_today_reservations");
             const snapshot = buildTodayReservationsSnapshot(json.data, normalized, {
@@ -6749,6 +6770,15 @@ const updatedMap: {[rootId: string]: string} = {};
         if (value === "action:journal" || journalNotebook) {
             close();
             this.openJournal(journalNotebook);
+            return;
+        }
+        if (value === "action:riffCard") {
+            close();
+            this.executeQuickAction({
+                id: "global-riff-card", label: this.i18n.quickGlobalRiffCard,
+                icon: "iconRiff", kind: "global", value: "riffCard",
+                targets: ["desktop"], order: 80, enabled: true,
+            } as IQuickAction, null, () => undefined);
             return;
         }
         const quickCapture = parseQuickCaptureAction(value);

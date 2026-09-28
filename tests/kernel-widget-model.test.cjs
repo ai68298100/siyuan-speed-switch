@@ -114,8 +114,8 @@ test('reservations project overdue and today status with filtering and stable so
     ]);
     assert.deepEqual(snapshot.stat, {value: '2', label: '预约'});
     const recent = model.buildTodayReservationsSnapshot(rows, {sortBy: '最近更新', showDate: '否', showPath: '否'}, {}, now);
-    assert.deepEqual(recent.items.map((item) => item.label), ['昨天回访', '今天提交', '明天检查']);
-    assert.equal(recent.items[0].secondary, '已过期');
+    assert.deepEqual(recent.items.map((item) => item.label), ['今天提交', '明天检查']);
+    assert.equal(recent.items[0].secondary, '今天');
 });
 
 // ---------- T-6323 最近更新 ----------
@@ -416,13 +416,13 @@ test('on-this-day projection excludes current and out-of-range years with stable
 
 test('recent daily notes projection excludes future dates and reports filtered totals', () => {
     const rows = [
-        {id: '20260918130200-dailyaaa', root_id: '20260918130200-dailyaaa', content: '2026-09-18', hpath: '/日记/2026-09-18', updated: '20260918100000', total_count: 2},
+        {id: '20260918130200-dailyaaa', root_id: '20260918130200-dailyaaa', content: '2026-09-18', hpath: '/日记/2026-09-18', updated: '20260918100000', characters: 120, total_count: 2},
         {id: '20260918130201-dailybbb', root_id: '20260918130201-dailybbb', content: '2026-09-17', hpath: '/日记/2026-09-17', updated: '20260917100000', total_count: 2},
         {id: '20260918130202-dailyccc', root_id: '20260918130202-dailyccc', content: '2026-09-19', updated: '20260919100000', total_count: 3},
     ];
     const snapshot = model.buildRecentDailyNotesSnapshot(rows, {days: 7, limit: 1, showUpdated: '是'}, {stat: '日记'}, Date.UTC(2026, 8, 18));
     assert.deepEqual(snapshot.items.map((item) => item.label), ['2026-09-18']);
-    assert.equal(snapshot.items[0].secondary, '/日记/2026-09-18 · 2026-09-18 10:00');
+    assert.equal(snapshot.items[0].secondary, '120 字 · /日记/2026-09-18 · 2026-09-18 10:00');
     assert.deepEqual(snapshot.stat, {value: '1/2', label: '日记'});
 });
 
@@ -437,7 +437,7 @@ test('monthly journal projection accepts official attributes, browses months, an
     const snapshot = model.buildJournalMonthlySnapshot(rows, {monthOffset: -1, limit: 1, showRank: '是'}, {monthTitle: '{year}年{month}月', stat: '篇日记'}, now);
     assert.equal(snapshot.title, '2026年8月');
     assert.deepEqual(snapshot.items, [{label: '2026-08-21 周记', value: '20260918140000-monthaaa', secondary: '/日记/八月', rank: 1}]);
-    assert.deepEqual(snapshot.stat, {value: '1/2', label: '篇日记'});
+    assert.deepEqual(snapshot.stat, {value: '1/2', label: '篇日记 · 0 字 · 连续1'});
     assert.equal(model.normalizeJournalMonthlyConfig({monthOffset: 99, limit: 99}).monthOffset, 24);
 });
 
@@ -615,10 +615,10 @@ test('navigation builders clamp limits to their spec-card row caps and tolerate 
     assert.equal(model.normalizeTagListConfig({limit: 99}).limit, 12);
     assert.equal(model.normalizeBookmarkListConfig({limit: 99}).limit, 6);
     assert.equal(model.normalizeClippedUnreadConfig({limit: 0}).limit, 1);
-    assert.equal(model.normalizeOnThisDayConfig({limit: 99}).limit, 20);
+    assert.equal(model.normalizeOnThisDayConfig({limit: 99}).limit, 3);
     assert.equal(model.normalizeRecentDailyNotesConfig({days: 99}).days, 60);
     assert.equal(model.normalizeJournalMonthlyConfig({limit: 99}).limit, 20);
-    assert.equal(model.normalizeTodayTasksConfig({limit: 99}).limit, 12);
+    assert.equal(model.normalizeTodayTasksConfig({limit: 99}).limit, 5);
     assert.equal(model.normalizeFlashcardDueConfig({limit: 99}).limit, 12);
     assert.equal(model.normalizeNoteStatsConfig({days: 0}).days, 7);
     assert.equal(model.normalizeRecentWritingActivityConfig({days: 999}).days, 366);
