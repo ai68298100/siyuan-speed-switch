@@ -8,6 +8,7 @@ Current build: `dist/index.js` 1122552 bytes; `dist/index.css` 271756 bytes; `pa
 
 历史发布窗口：v0.33.0 已完成 tag、推送和 Release workflow；v0.36.0~v0.41.0 已发布；本轮目标为 v0.42.0。
 
+本轮 GitHub 发布：`v0.42.0` 标签指向 `eef481a`（prepare 提交）；main 已推至远端（d907aba..eef481a，11 个提交，走 127.0.0.1:7897 代理）；Release workflow 由 tag 推送触发并自动创建 Release。发版门禁（本机 verify:release 全链）：tsc、可复现双构建 3/3、完整测试 6485/6485、release/quality/integration 三审计、四套冒烟全绿；发版前快照漂移门禁抓到 T-7007/T-7010 代码增长未刷 readiness 记录（documented 1121295 vs actual 1122552，越 1 KiB 带精确红），经 `pnpm run readiness:snapshot` 回写后复绿。CI/Release 编号因 GitHub API 限流未留痕，Release 页：https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.42.0 。
 本轮 GitHub 发布：`v0.41.0` 标签指向 `d25ceaf`（prepare 提交）；main 已推至远端（563673d..d25ceaf，51 个提交）；Release workflow 由 tag 推送触发并自动创建 Release，远端资产 `package.zip` 531,277 B 下载端点实测 200。发版门禁（本机 verify:release 全链）：tsc、可复现双构建 3/3、完整测试 6452/6452、release/quality/integration 三审计、四套冒烟全绿。CI run 编号因 API 限流未留痕，Release 页：https://github.com/ai68298100/siyuan-speed-switch/releases/tag/v0.41.0 。
 本轮 GitHub 发布：`v0.40.0` 标签指向 `793f0f1`；Release workflow #36283847585 与 main CI #36283844721 均成功，远端资产 `package.zip` 下载部署实测 0.40.0；备份工作区真实内核 E2E 为 9 spec 全绿；双用户工作区（D:/小飞驴的SIYUAN、D:/思源测试）按远端资产各复制并校验 10/10 个条目（plugin.json 0.40.0），需重启思源生效。上一版 `v0.39.0` 标签指向 `3d7bb41`（Release workflow #36258062943、main CI #36258021305，资产 504173 B）。
 
