@@ -830,6 +830,54 @@ test('platform surface context: singleton dialogs, FAB restore and workbench edi
         'studio lazy chunk failure must restore the switcher with a user-visible receipt');
 });
 
+// T-7012：平台外壳统一合同——query 透传、焦点来源捕获/恢复与设置互返。
+test('platform surface contract: query passthrough, focus restore and settings round-trip (T-7012)', () => {
+    const secondPanelSource = readSourceText(path.join(__dirname, '..', 'src', 'second-panel-ui.ts'));
+    const mobileSwitcherSource = readSourceText(path.join(__dirname, '..', 'src', 'mobile-switcher-ui.ts'));
+    const modelSource = readSourceText(path.join(__dirname, '..', 'src', 'platform-surface-model.js'));
+    // 入口词表：在用入口必须全部在册（缺席会被归 unknown 静默丢弃）。
+    for (const entry of ["topbar-context-menu", "plugin-command", "quick-action", "floating-ball"]) {
+        assert.ok(modelSource.includes(`"${entry}"`), `entry whitelist must cover "${entry}"`);
+    }
+    // query + 焦点来源透传：桌面切换器与 studio 的表面导航都要携带查询现场。
+    const navPassthrough = 'query: context?.query, ...(focusSource ? {focusSource} : {}),';
+    assert.ok(indexSource.split(navPassthrough).length - 1 >= 2,
+        'desktop switcher and studio navs must pass query + focusSource through');
+    assert.match(indexSource, /const focusSource = encodeSurfaceFocusSource\(dialog\.element\.ownerDocument\?\.activeElement \|\| null\);/,
+        'leaving a surface must capture the focus source before destroy');
+    assert.match(mobileSwitcherSource, /const focusSource = encodeSurfaceFocusSource\(dialog\.element\.ownerDocument\?\.activeElement \|\| null\);/,
+        'mobile chrome nav must capture the focus source too');
+    assert.match(mobileSwitcherSource, /query: context\?\.query, \.\.\.\(focusSource \? \{focusSource\} : \{\}\),/,
+        'mobile chrome nav must pass the query and focus source through');
+    // 工作台：focusSource 的 object:<id> 形式参与回跳目标解析；nav 透传 query。
+    assert.match(secondPanelSource, /\(context\?\.focusSource \|\| ""\)\.startsWith\("object:"\)/,
+        'workbench must honor the focusSource object target');
+    assert.match(secondPanelSource, /\.\.\.\(context\?\.query \? \{query: context\.query\} : \{\}\),/,
+        'workbench chrome nav must pass the query through');
+    // 片段 chips 打开实验室必须携带查询词（studio 上下文回执可见）。
+    assert.match(indexSource, /\{entry: "toolbar", objectId: item\.id, query: keyword\}/,
+        'snippet chips must carry the live query');
+    // 侧边栏 chrome 的表面导航必须记录入口（此前无 context 被丢弃）。
+    assert.match(indexSource, /this\.openPlatformSurface\(surface, "switcher", \{entry: "surface-nav"\}\);/,
+        'sidebar chrome nav must record the surface-nav entry');
+    // 返回焦点：切换器重开时按焦点来源恢复控件，找不到保留默认首焦点。
+    assert.match(indexSource, /const target = surfaceRoot \? resolveSurfaceFocusRestoreTarget\(surfaceRoot, context\.focusSource\) : null;/,
+        'switcher reopen must resolve the focus source');
+    assert.match(indexSource, /target\?\.focus\(\{preventScroll: true\}\);\s*\n\s*\}, 0\);/,
+        'focus restore must run after assembly in a macro task');
+    // 设置互返：openSetting 接受 returnTo，关闭后恢复来源表面；面板入口传参。
+    assert.match(indexSource, /openSetting\(initialPanel\?: string, returnTo\?: PlatformSurface \| null\)/,
+        'openSetting must accept the returnTo surface');
+    assert.match(indexSource, /const restoreSurface = normalizeSurfaceId\(returnTo \|\| "", ""\);/,
+        'the restore surface must go through the id whitelist');
+    assert.match(indexSource, /if \(restoreSurface && !this\.isUnloading\) \{[\s\S]{0,200}?this\.openPlatformSurface\(restoreSurface, "switcher", \{entry: "back"\}\);/,
+        'settings close must restore the originating surface behind the unload guard');
+    assert.match(indexSource, /this\.openSetting\(undefined, "switcher"\);/,
+        'the desktop switcher settings button must request restore');
+    assert.match(mobileSwitcherSource, /this\.openSetting\(undefined, "switcher"\);/,
+        'the mobile switcher settings button must request restore');
+});
+
 test('platform primitives: badge dot, kbd chip, segmented control, pill actions (T-6871 RZ-1)', () => {
     const {declaresIn} = require('./css-block-scan.cjs');
     const shell = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_platform-shell.scss'));
@@ -1096,9 +1144,9 @@ test('cross-surface snippet objects: query results and studio selection (T-6878/
     assert.match(ensure, /generation !== this\.snippetObjectsGeneration/, 'stale generations must be discarded');
     assert.match(ensure, /projectSnippetObjects\(payload, \{limit: 6\}\)/, 'the projection must be bounded to 6');
     assert.match(ensure, /snippetObjectsInFlight/, 'concurrent callers must share one in-flight fetch');
-    // 跨表面动作：查询结果携带 objectId 打开工作室定位片段（导航语义）。
-    assert.match(indexSource, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
-        'snippet chips must open the studio carrying the objectId');
+    // 跨表面动作：查询结果携带 objectId+query 打开工作室定位片段（导航语义，T-7012 加 query）。
+    assert.match(indexSource, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id, query: keyword\}\)/,
+        'snippet chips must open the studio carrying the objectId and the live query');
     assert.match(indexSource, /objectId: !context\?\.objectKind \|\| context\.objectKind === "snippet" \? context\.objectId \|\| "" : "",/,
         'the studio mount must receive snippet ids without mistaking a widget return id for a snippet');
     assert.match(indexSource, /objectId\?: string;/, 'the studio ambient module must declare objectId');
@@ -1440,8 +1488,8 @@ test('workbench widget objectId returns to the exact instance (T-6890)', () => {
         'focus within a widget must remember the instance before navigation moves focus');
     assert.match(secondPanelSource, /objectKind: "widget", objectId: lastFocusedWidgetId/,
         'workbench surface navigation must carry the selected widget');
-    assert.match(secondPanelSource, /cell\.dataset\.swObjectId === context\.objectId/,
-        'return must find the exact widget instance');
+    assert.match(secondPanelSource, /cell\.dataset\.swObjectId === focusObjectId/,
+        'return must find the exact widget instance (focusSource object:<id> included, T-7012)');
     assert.match(secondPanelSource, /targetWidget\.focus\(\{preventScroll: true\}\);/,
         'return must restore focus to the matched card');
     assert.match(indexSource, /entry: "back", objectKind: context\?\.objectKind, objectId: context\?\.objectId/,
@@ -1468,8 +1516,8 @@ test('query-time snippet section: cached single-flight projection into search re
         'the section must filter the cached projections (no refetch per keystroke)');
     assert.match(section, /scrollElement\.insertBefore\(box, docResults\);/,
         'the section must be inserted before the doc results');
-    assert.match(section, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
-        'search results retain the studio cross-surface action');
+    assert.match(section, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id, query: keyword\}\)/,
+        'search results retain the studio cross-surface action (with the live query, T-7012)');
     // 过滤条可见性语义：tabs/docs 选中时片段分区隐藏，unified 保留。
     const chipsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
     assert.match(chipsScss, /\[data-sw-chip="tabs"\]\s*\{\s*\.sw__unified, \.sw__snippet-results, \.sw__doc-results/,

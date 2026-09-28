@@ -12,6 +12,7 @@ import {clampOversizedIcons} from "./util";
 import {bindDocSearchFilter, disposeDocSearchSession, hasDocSearchFilter} from "./doc-search-ui";
 import {groupTabsByMode} from "./util";
 import {resolveSearchNotebookId} from "./search-model";
+import {encodeSurfaceFocusSource} from "./platform-surface-model";
 import {FAB_HIDE_DELAY_MS, THUMB_BATCH_MOBILE} from "./constants";
 import type {
     IFavoriteItem, IGroupedTab, IOverlayClose, ISwSettings, PlatformSurface, PlatformSurfaceChromeOptions, PlatformSurfaceContext, PlatformSurfaceLabels,
@@ -44,7 +45,7 @@ export interface MobileSwitcherUiHost {
     openGroupTabs(items: IFavoriteItem[]): Promise<number>;
     openJournal(preferredNotebook?: string): Promise<void>;
     openPlatformSurface?(surface: PlatformSurface, returnTo?: PlatformSurface, context?: PlatformSurfaceContext | null): void;
-    openSetting(initialPanel?: string): void;
+    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null): void;
     getPlatformSurfaceLabels?(): PlatformSurfaceLabels;
     mountPlatformChrome?(root: HTMLElement, options: PlatformSurfaceChromeOptions): HTMLElement;
     pinKeyOf(tab: Tab): string;
@@ -90,9 +91,12 @@ export function openMobileSwitcherDialog(this: MobileSwitcherUiHost, tabs: Tab[]
             const navigatePlatformSurface = this.openPlatformSurface
                 ? (surface: PlatformSurface) => {
                     if (!dialog.element.isConnected) return;
+                    // T-7012：导航离开前捕获焦点来源，配合 query 透传供返回后恢复现场。
+                    const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
                     dialog.destroy();
                     this.openPlatformSurface?.(surface, returnTo, {
                         entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
+                        query: context?.query, ...(focusSource ? {focusSource} : {}),
                     });
                 }
                 : undefined;
@@ -288,7 +292,8 @@ export function bindMobileSwitcherToolbarActions(this: MobileSwitcherUiHost,
         // 隐藏 FAB 推迟到按钮 click 处是因为 openSetting 可能也关闭原 dialog
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
-            this.openSetting();
+            // T-7012：设置从移动切换器打开，关闭后恢复切换器。
+            this.openSetting(undefined, "switcher");
         });
         dialog.element.querySelector(".sw__mobile-close-btn")?.addEventListener("click", () => dialog.destroy());
         // 顶栏日记按钮：打开/新建当日日记（关闭弹窗并恢复 FAB，未设默认日记本时首次点击弹出选择）

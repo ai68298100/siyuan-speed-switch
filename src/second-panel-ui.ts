@@ -104,7 +104,13 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         root.dataset.swSurface = "workbench";
         // 记录最后交互的组件实例。点击 SurfaceNav 后焦点已移到导航按钮，
         // 因此回跳目标必须在组件内部获得焦点时记住，不能在导航点击时读 activeElement。
-        let lastFocusedWidgetId = context?.objectKind === "widget" ? context.objectId || "" : "";
+        // T-7012：widget 对象与 focusSource 的 object:<id> 形式都可作为回跳目标。
+        const focusObjectId = context?.objectKind === "widget"
+            ? context.objectId || ""
+            : (context?.focusSource || "").startsWith("object:")
+                ? context.focusSource.slice("object:".length)
+                : "";
+        let lastFocusedWidgetId = focusObjectId;
         root.addEventListener("focusin", (event) => {
             const target = event.target as HTMLElement | null;
             const cell = target?.closest<HTMLElement>(".sw-home__cell");
@@ -120,6 +126,7 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
                 this.openPlatformSurface?.(surface, "workbench", {
                     entry: "surface-nav",
                     ...(lastFocusedWidgetId ? {objectKind: "widget", objectId: lastFocusedWidgetId} : {}),
+                    ...(context?.query ? {query: context.query} : {}),
                 });
             }
             : undefined;
@@ -1060,9 +1067,10 @@ export function openSecondPanel(this: SecondPanelUiHost, context?: PlatformSurfa
         };
         renderPanel();
         scheduleIconClamp();
-        const targetWidget = context?.objectKind === "widget" && context.objectId
+        // T-7012：widget 对象与 focusSource 的 object:<id> 形式都可作为回跳目标。
+        const targetWidget = focusObjectId
             ? Array.from(root.querySelectorAll<HTMLElement>(".sw-home__cell"))
-                .find((cell) => cell.dataset.swObjectId === context.objectId)
+                .find((cell) => cell.dataset.swObjectId === focusObjectId)
             : null;
         if (targetWidget) {
             targetWidget.focus({preventScroll: true});

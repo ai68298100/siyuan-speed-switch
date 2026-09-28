@@ -78,7 +78,7 @@ import {collectSettingsSearchEntries, searchSettingsIndex} from "./settings-sear
 import {loadHolidayYear, allowedLifeWidgetUrl, allowedActivityWatchUrl, clearLifeWidgetCaches, allowedIcalFeedUrl, loadIcalText, allowedMinifluxUrl, allowedMinifluxCategoriesUrl} from "./life-widget-network";
 import {normalizeDocumentSets, createDocumentSet, upsertDocumentSet, removeDocumentSet, mergeDocumentSets, planDocumentSetRestore, summarizeDocumentSetRestore, runDocumentSetRestore, pickNextDocumentSet, orderDocumentSetRestoreEntries} from "./document-sets";
 import {projectRelatedContent, isRelatedCacheHit, normalizeRelatedSwrStore, buildRelatedSwrStore} from "./related-content-model";
-import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects} from "./platform-surface-model";
+import {PLATFORM_SURFACE_IDS, normalizeSurfaceId, normalizeSurfaceContext, resolveSurfaceReturnTarget, encodeSurfaceFocusSource, resolveSurfaceFocusRestoreTarget, buildSurfaceContextCaption, projectSnippetObjects, filterSnippetObjects} from "./platform-surface-model";
 import {createPlatformKbd, createPlatformSegmented} from "./platform-dom";
 import {buildConfigPack, normalizeConfigPackImport} from "./config-pack-model";
 import {openDocumentOnMobile, openDocumentOnDesktop} from "./document-actions";
@@ -577,7 +577,8 @@ declare module "./search-model" {
 // second webpack shared chunk while the three surfaces use one DOM contract.
 export type PlatformSurface = "switcher" | "workbench" | "studio";
 // T-6869：一次跨表面打开的上下文（entry/objectId/query 有界，见 platform-surface-model）。
-export type PlatformSurfaceContext = {entry: string; objectKind?: string; objectId?: string; query?: string};
+// T-7012：focusSource 是关闭/返回后恢复焦点的描述符（object:<id> / search-input）。
+export type PlatformSurfaceContext = {entry: string; objectKind?: string; objectId?: string; query?: string; focusSource?: string};
 export interface PlatformSurfaceLabels {
     platformName: string;
     contextLabel: string;
@@ -2786,8 +2787,11 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 插件设置页（设置 → 插件 → 小驴速切 → 设置图标）
     // 布局：左侧标签栏（外观/行为/面板/收藏/手机端）+ 右侧分组面板，点击标签切换
-    openSetting(initialPanel?: string) {
+    // T-7012：returnTo 是打开设置时的平台表面；设置关闭后恢复该表面
+    // （不固定回切换器）。无面板来源的入口（顶栏/悬浮球/侧栏）不传，行为不变。
+    openSetting(initialPanel?: string, returnTo?: PlatformSurface | null) {
         const s = this.getSettings();
+        const restoreSurface = normalizeSurfaceId(returnTo || "", "");
         const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "floatingBall", "documentSets", "journal", "mobile", "storage"] as const;
         const panelLabels: Record<string, string> = {
             appearance: this.i18n.secAppearance,
@@ -2811,6 +2815,11 @@ export default class SpeedSwitchPlugin extends Plugin {
             destroyCallback: () => {
                 releaseSettingsDialog();
                 releaseSettingsFab();
+                // T-7012：设置互返——从平台表面打开时，关闭后恢复该表面；
+                // 面板重开走 openPlatformSurface 的单例守卫与 FAB 串行释放。
+                if (restoreSurface && !this.isUnloading) {
+                    this.openPlatformSurface(restoreSurface, "switcher", {entry: "back"});
+                }
             },
             // 桌面端独立采用 70% 视口自适应（不与第一面板的 panelScale 联动）；手机端按视口收缩，避免溢出屏幕
             width: this.isMobile ? "min(720px, 88vw)" : `${resolvePanelSize({...this.getSettings(), panelSizeMode: "adaptive", panelScale: SETTINGS_PANEL_SCALE}, {width: window.innerWidth, height: window.innerHeight, minWidth: PANEL_SIZE_MIN_PX, minHeight: PANEL_SIZE_MIN_PX}).width}px`,
@@ -3361,6 +3370,16 @@ export default class SpeedSwitchPlugin extends Plugin {
         const dialog = this.createSwitcherDialog(settings, fullscreen, switcherRelease, returnTo, context);
         // 工具栏、列表/回到顶部/缩略图懒加载 等子模块装配
         this.assembleSwitcherParts(dialog, settings, fullscreen, tabs, activeTab, switcherRelease, focusSearch, returnTo, context);
+        // T-7012：跨表面返回焦点——带焦点来源重开时，把焦点送回来源控件
+        // （对象行/搜索输入）；找不到保留装配默认首焦点，不强制回退。
+        if (context?.focusSource) {
+            window.setTimeout(() => {
+                if (!dialog.element.isConnected || this.isUnloading) return;
+                const surfaceRoot = dialog.element.querySelector<HTMLElement>('[data-sw-surface="switcher"]');
+                const target = surfaceRoot ? resolveSurfaceFocusRestoreTarget(surfaceRoot, context.focusSource) : null;
+                target?.focus({preventScroll: true});
+            }, 0);
+        }
     }
 
     // 构造桌面端切换器 Dialog（内容 HTML + 尺寸），外部只关心装配顺序，不关心 DOM 结构细节
@@ -3391,9 +3410,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                 closeLabel: this.i18n.close,
                 onNavigate: (surface) => {
                     if (this.isUnloading || !dialog.element.isConnected) return;
+                    // T-7012：导航离开前捕获焦点来源，配合 query 透传供返回后恢复现场。
+                    const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
                     dialog.destroy();
                     this.openPlatformSurface(surface, returnTo, {
                         entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
+                        query: context?.query, ...(focusSource ? {focusSource} : {}),
                     });
                 },
             });
@@ -3449,9 +3471,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                     mount: mountPlatformChrome,
                     onNavigate: (surface) => {
                         if (this.isUnloading || !dialog.element.isConnected) return;
+                        // T-7012：离开前捕获焦点来源并透传 query，供返回后恢复现场。
+                        const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
                         dialog.destroy();
                         this.openPlatformSurface(surface, returnTo, {
                             entry: "surface-nav", objectKind: context?.objectKind, objectId: context?.objectId,
+                            query: context?.query, ...(focusSource ? {focusSource} : {}),
                         });
                     },
                     onClose: () => {
@@ -3461,9 +3486,12 @@ export default class SpeedSwitchPlugin extends Plugin {
                 },
                 onBack: () => {
                     if (holder.controller && !holder.controller.canClose()) return;
+                    // T-7012：返回前捕获焦点来源（studio 内多为无描述符控件，空值诚实降级）。
+                    const focusSource = encodeSurfaceFocusSource(dialog.element.ownerDocument?.activeElement || null);
                     dialog.destroy();
                     if (!this.isUnloading) this.openPlatformSurface(returnTo, "switcher", {
                         entry: "back", objectKind: context?.objectKind, objectId: context?.objectId, query: context?.query,
+                        ...(focusSource ? {focusSource} : {}),
                     });
                 },
             });
@@ -3802,12 +3830,13 @@ const updatedMap: {[rootId: string]: string} = {};
     ) {
         dialog.element.querySelector(".sw__settings-btn")?.addEventListener("click", () => {
             dialog.destroy();
-            this.openSetting();
+            // T-7012：设置从切换器打开，关闭后恢复切换器。
+            this.openSetting(undefined, "switcher");
         });
         dialog.element.querySelector(".sw__snippet-studio-btn")?.addEventListener("click", () => {
             dialog.destroy();
             this.openSnippetStudio(returnTo, {
-                entry: "toolbar", objectKind: context?.objectKind, objectId: context?.objectId,
+                entry: "toolbar", objectKind: context?.objectKind, objectId: context?.objectId, query: context?.query,
             });
         });
         // 顶栏日记按钮：打开/新建当日日记（未设默认日记本时首次点击弹出选择）
@@ -5106,7 +5135,7 @@ const updatedMap: {[rootId: string]: string} = {};
                 copy.append(title, meta);
                 button.append(icon, copy);
                 button.addEventListener("click", () => {
-                    this.openPlatformSurface("studio", "switcher", {entry: "toolbar", objectId: item.id});
+                    this.openPlatformSurface("studio", "switcher", {entry: "toolbar", objectId: item.id, query: keyword});
                 });
                 grid.appendChild(button);
             });
@@ -12015,7 +12044,7 @@ private async waitForTabStates(ids: string[], shouldBeOpen: boolean, matchTabId 
             available: this.isMobile ? ["switcher", "workbench"] : ["switcher", "workbench", "studio"],
             onNavigate: (surface) => {
                 if (this.isUnloading || !element.isConnected) return;
-                this.openPlatformSurface(surface, "switcher");
+                this.openPlatformSurface(surface, "switcher", {entry: "surface-nav"});
             },
         });
         // T-6758: the sidebar host is created/replaced by SiYuan lazily.  Run

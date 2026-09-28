@@ -9,13 +9,18 @@ const PLATFORM_SURFACE_IDS = Object.freeze(["switcher", "workbench", "studio"]);
 const DEFAULT_SURFACE = "switcher";
 
 // 入口白名单：记录平台表面从哪里被打开（P3 跨表面对象/焦点恢复的元数据基础）。
+// T-7012：补齐实际在用的四个入口（此前归 unknown 被静默丢弃）；保留 breadcrumb/
+// external 作为已规划的预留位（R5-A 面包屑按钮、外部入口），不在册的入口词视为漂移。
 const PLATFORM_SURFACE_ENTRIES = Object.freeze([
-    "toolbar", "surface-nav", "fab", "back", "command", "breadcrumb", "external", "unknown",
+    "toolbar", "surface-nav", "fab", "back", "command", "plugin-command", "breadcrumb",
+    "external", "topbar-context-menu", "quick-action", "floating-ball", "unknown",
 ]);
 
 // 与 savedSearches 查询上限（120）一致；objectId 对齐文档集当前集 id 的清洗口径并放宽到 128。
 const SURFACE_QUERY_MAX = 120;
 const SURFACE_OBJECT_ID_MAX = 128;
+// T-7012 焦点来源描述符：`object:<data-sw-object-id>` 或 `search-input`，有界清洗。
+const SURFACE_FOCUS_SOURCE_MAX = 80;
 
 function cleanSurfaceText(value, max) {
     return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max) : "";
@@ -28,7 +33,9 @@ function normalizeSurfaceId(value, fallback = DEFAULT_SURFACE) {
 
 /**
  * 归一化一次跨表面打开的上下文：entry 不在白名单时归 unknown，
- * objectId/query 有界清洗；没有任何有效字段时返回 null（调用方不必挂空上下文）。
+ * objectId/query/focusSource 有界清洗；没有任何有效字段时返回 null
+ * （调用方不必挂空上下文）。T-7012：focusSource 是关闭/返回后恢复
+ * 焦点的描述符（`object:<id>` / `search-input`），仅作导航元数据。
  */
 function normalizeSurfaceContext(input) {
     if (!input || typeof input !== "object") return null;
@@ -36,8 +43,13 @@ function normalizeSurfaceContext(input) {
     const objectId = cleanSurfaceText(input.objectId, SURFACE_OBJECT_ID_MAX);
     const objectKind = PLATFORM_OBJECT_KINDS.includes(input.objectKind) ? input.objectKind : "";
     const query = cleanSurfaceText(input.query, SURFACE_QUERY_MAX);
-    if (entry === "unknown" && !objectId && !query) return null;
-    return {...(objectKind ? {objectKind} : {}), entry, objectId, query};
+    const focusSource = cleanSurfaceText(input.focusSource, SURFACE_FOCUS_SOURCE_MAX);
+    if (entry === "unknown" && !objectId && !query && !focusSource) return null;
+    return {
+        ...(objectKind ? {objectKind} : {}),
+        entry, objectId, query,
+        ...(focusSource ? {focusSource} : {}),
+    };
 }
 
 /**
@@ -50,6 +62,44 @@ function resolveSurfaceReturnTarget(lastSurface, available, fallback = DEFAULT_S
     if (!candidate) return fallback;
     const pool = Array.isArray(available) && available.length > 0 ? available : [fallback];
     return pool.includes(candidate) ? candidate : fallback;
+}
+
+/**
+ * T-7012：把一个 DOM 元素编码为跨表面可恢复的焦点来源描述符。
+ * 只识别两类稳定目标：带 data-sw-object-id 的对象行/卡片（工作台组件卡、
+ * 列表行），以及切换器搜索输入 `input.sw__search`；其余元素返回空串
+ * （诚实降级：返回链焦点恢复不猜目标）。非元素入参同样返回空串。
+ */
+function encodeSurfaceFocusSource(el) {
+    if (!el || typeof el !== "object" || typeof el.getAttribute !== "function") return "";
+    const objectId = cleanSurfaceText(el.getAttribute("data-sw-object-id") || "", SURFACE_OBJECT_ID_MAX);
+    if (objectId) return `object:${objectId}`;
+    if (typeof el.matches === "function" && el.matches("input.sw__search")) return "search-input";
+    return "";
+}
+
+/**
+ * T-7012：在重开的表面 DOM 里解析焦点来源描述符，返回应获焦的元素或 null。
+ * `search-input` 找搜索输入；`object:<id>` 遍历 data-sw-object-id 属性比对
+ * （不走选择器插值，id 不受 CSS 转义影响）。找不到返回 null，由调用方
+ * 保留各自的默认首焦点，不强制回退。
+ */
+function resolveSurfaceFocusRestoreTarget(root, encoded) {
+    const source = cleanSurfaceText(encoded, SURFACE_FOCUS_SOURCE_MAX);
+    if (!source || !root || typeof root.querySelector !== "function") return null;
+    if (source === "search-input") {
+        return root.querySelector("input.sw__search");
+    }
+    if (source.startsWith("object:")) {
+        const objectId = cleanSurfaceText(source.slice("object:".length), SURFACE_OBJECT_ID_MAX);
+        if (!objectId || typeof root.querySelectorAll !== "function") return null;
+        const candidates = root.querySelectorAll("[data-sw-object-id]");
+        for (const candidate of candidates) {
+            if (candidate.getAttribute("data-sw-object-id") === objectId) return candidate;
+        }
+        return null;
+    }
+    return null;
 }
 
 /** ContextBar 文案投影：对象位恒为表面名；提示位有查询现场时显示查询，否则用表面固定提示。 */
@@ -144,9 +194,12 @@ module.exports = {
     DEFAULT_SURFACE,
     SURFACE_QUERY_MAX,
     SURFACE_OBJECT_ID_MAX,
+    SURFACE_FOCUS_SOURCE_MAX,
     normalizeSurfaceId,
     normalizeSurfaceContext,
     resolveSurfaceReturnTarget,
+    encodeSurfaceFocusSource,
+    resolveSurfaceFocusRestoreTarget,
     buildSurfaceContextCaption,
     projectSnippetObjects,
     filterSnippetObjects,

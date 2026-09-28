@@ -6,9 +6,13 @@ const {
     PLATFORM_SURFACE_IDS,
     PLATFORM_SURFACE_ENTRIES,
     PLATFORM_OBJECT_KINDS,
+    DEFAULT_SURFACE,
+    SURFACE_FOCUS_SOURCE_MAX,
     normalizeSurfaceId,
     normalizeSurfaceContext,
     resolveSurfaceReturnTarget,
+    encodeSurfaceFocusSource,
+    resolveSurfaceFocusRestoreTarget,
     buildSurfaceContextCaption,
     projectSnippetObjects,
     filterSnippetObjects,
@@ -42,6 +46,70 @@ test("surface context: normalizes entry/objectId/query with bounds", () => {
         "控制字符清洗为空格",
     );
     assert.ok(PLATFORM_SURFACE_ENTRIES.includes("fab") && PLATFORM_SURFACE_ENTRIES.includes("surface-nav"));
+});
+
+// T-7012：入口词表必须覆盖全部实际调用点——在用词缺席会被归 unknown 静默丢弃。
+test("surface entries: whitelist covers every live call site and stays frozen (T-7012)", () => {
+    assert.equal(Object.isFrozen(PLATFORM_SURFACE_ENTRIES), true, "入口词表必须冻结");
+    for (const entry of ["toolbar", "surface-nav", "fab", "back", "unknown"]) {
+        assert.ok(PLATFORM_SURFACE_ENTRIES.includes(entry), `既有入口 ${entry} 必须保留`);
+    }
+    for (const entry of ["topbar-context-menu", "plugin-command", "quick-action", "floating-ball"]) {
+        assert.ok(PLATFORM_SURFACE_ENTRIES.includes(entry), `T-7012 补齐的在用入口 ${entry} 必须在册`);
+    }
+    // 预留位继续在册（R5-A 面包屑按钮、外部入口），防后续实现时误删。
+    for (const entry of ["command", "breadcrumb", "external"]) {
+        assert.ok(PLATFORM_SURFACE_ENTRIES.includes(entry), `预留入口 ${entry} 必须保留`);
+    }
+    assert.equal(normalizeSurfaceContext({entry: "quick-action"}).entry, "quick-action", "补齐的入口不再归 unknown");
+});
+
+// T-7012：focusSource 是关闭/返回后恢复焦点的导航元数据，走同一有界清洗。
+test("surface context: focusSource is bounded and keeps otherwise-empty contexts alive (T-7012)", () => {
+    const context = normalizeSurfaceContext({entry: "surface-nav", focusSource: " object:20260101120000-abc1234 "});
+    assert.deepEqual(context, {entry: "surface-nav", objectId: "", query: "", focusSource: "object:20260101120000-abc1234"});
+    assert.equal(normalizeSurfaceContext({focusSource: "x".repeat(200)}).focusSource.length, SURFACE_FOCUS_SOURCE_MAX, "焦点来源钳制");
+    assert.equal(
+        normalizeSurfaceContext({entry: "unknown", focusSource: "search-input"}).entry,
+        "unknown",
+        "入口非法仍归 unknown，但 focusSource 让上下文保留",
+    );
+    assert.deepEqual(
+        normalizeSurfaceContext({entry: "fab", focusSource: "  "}),
+        {entry: "fab", objectId: "", query: ""},
+        "空白焦点来源不进入上下文（合法 entry 本身保留）",
+    );
+    assert.equal(normalizeSurfaceContext({focusSource: "a\u0007b"}).focusSource, "a b", "控制字符清洗为空格");
+});
+
+// T-7012：焦点来源的编码与恢复是一对纯函数；只识别两类稳定目标，其余诚实返回空。
+test("surface focus source: encode and restore recognize object rows and the search input only (T-7012)", () => {
+    const objectRow = {getAttribute: (name) => (name === "data-sw-object-id" ? " 20260101120000-abc1234 " : null)};
+    const searchInput = {
+        getAttribute: () => null,
+        matches: (selector) => selector === "input.sw__search",
+    };
+    const plainButton = {getAttribute: () => null, matches: () => false};
+    assert.equal(encodeSurfaceFocusSource(objectRow), "object:20260101120000-abc1234", "对象行编码为 object:<id>");
+    assert.equal(encodeSurfaceFocusSource(searchInput), "search-input", "搜索输入编码为 search-input");
+    assert.equal(encodeSurfaceFocusSource(plainButton), "", "无稳定描述符的控件诚实返回空");
+    assert.equal(encodeSurfaceFocusSource(null), "", "非元素入参返回空串");
+
+    const cell = {getAttribute: (name) => (name === "data-sw-object-id" ? "card-2" : null)};
+    const root = {
+        querySelector: (selector) => (selector === "input.sw__search" ? searchInput : null),
+        querySelectorAll: (selector) => (selector === "[data-sw-object-id]" ? [cell, {getAttribute: () => "card-1"}] : []),
+    };
+    assert.equal(resolveSurfaceFocusRestoreTarget(root, "search-input"), searchInput, "search-input 恢复到搜索框");
+    assert.equal(resolveSurfaceFocusRestoreTarget(root, "object:card-2"), cell, "object:<id> 按属性值比对恢复");
+    assert.equal(resolveSurfaceFocusRestoreTarget(root, "object:card-9"), null, "目标消失返回 null（不强制回退）");
+    assert.equal(resolveSurfaceFocusRestoreTarget(root, "bogus"), null, "未知描述符不猜目标");
+    assert.equal(resolveSurfaceFocusRestoreTarget(null, "search-input"), null, "无根节点返回 null");
+    assert.equal(
+        resolveSurfaceFocusRestoreTarget(root, `object:${"id".repeat(200)}`),
+        null,
+        "超长 objectId 经清洗后不匹配任何行",
+    );
 });
 
 test("surface return target: restores last surface only while it stays available", () => {
