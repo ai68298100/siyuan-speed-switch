@@ -1,6 +1,6 @@
 # LvSpeed Switch
 
-[![Version](https://img.shields.io/badge/version-0.41.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
+[![Version](https://img.shields.io/badge/version-0.42.0-blue)](./plugin.json) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE) [![SiYuan](https://img.shields.io/badge/SiYuan-SiYuan_Note-ff5c67)](https://b3log.org/siyuan)
 
 LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**. One platform shell connects the switcher, workbench, snippet lab, and floating ball: find and preview content, inspect and arrange widgets, manage code snippets inside a safe boundary, and return to the last work surface from anywhere. Desktop, sidebar, and mobile share object, action, and status semantics while adapting their layouts to available space and input method.
 
@@ -36,7 +36,7 @@ LvSpeed Switch is SiYuan Note's **unified switching and work-context platform**.
 
 All four entrances share the platform header, context bar, status badges, action panel, and return semantics. The surfaces keep their distinct work modes: search and preview in the switcher, grid and layout in the workbench, editing and safety boundaries in the snippet lab, and fast touch-safe triggering in the floating ball.
 
-The snippet lab needs desktop width for its editor, preview, and properties areas, so mobile does not present a pretend editing screen. The switcher's right preview remains available in the wide desktop results area; expanding it to empty-query and opened-tab work contexts is tracked in roadmap task T-6895.
+The snippet lab needs desktop width for its editor, preview, and properties areas, so mobile does not present a pretend editing screen. The switcher's right preview covers the wide-desktop results area, the empty-query work context, and opened tabs; search results support `Alt` peek-open and `Ctrl+click / Ctrl+Enter` right-split open.
 
 ## Core Capabilities
 
@@ -76,7 +76,7 @@ Search requests use a 180 ms debounce, bounded in-memory cache, request-version 
 - **Command mode**: typing `>` lists executable actions only (built-ins + SiYuan host commands); filter by text and click to run.
 - **Marks**: command palette entries "Mark current position" and "Jump to latest mark" restore the exact scroll position (session scope).
 - **Multi-target quick capture**: switch between today journal and current document, preview the destination, controlled write with per-step failure reasons.
-- **Preview open**: `Alt+click` a search result to open a read-only preview tab before committing.
+- **Peek open**: `Alt+click` a search result to peek at it in a read-only preview tab before committing.
 - **Digit direct access**: the first nine visible cards carry digit badges; press the matching key to open.
 - **Document set version history**: overwrites keep the last 3 versions, roll back to any of them (reversible); Essentials receipts are part of the restore summary.
 - **Migratable config pack**: export/import a versioned pack of whitelisted settings + document sets; import validates everything then applies atomically.
@@ -330,11 +330,20 @@ pnpm verify:release
 
 It runs type checking, a production build, the reproducible two-build audit, the complete automated suite, the release/quality/integration audits, and the four UI smoke suites. The release workflow additionally enforces the `package.zip` allowlist, version metadata, remote-dependency checks, and the 512 KiB archive ceiling (a project self-discipline line) after building. Once the automated gates pass, confirm each item in a real SiYuan environment (desktop dialog, right sidebar, a real Android device, themes, lifecycle); the checklist lives in [`docs/acceptance-runbook.md`](docs/acceptance-runbook.md), and the candidate status and artifact matrix in [docs/release-readiness.md](docs/release-readiness.md).
 
-The current version is `v0.41.0` (released 2026-09-28; all 13 deepening features, workbench material × tier modernization, 58 component spec cards built to spec, store master-detail with batch mode, and mobile fixes; Release assets are built automatically by the workflow).
+The current version is `v0.42.0` (released 2026-09-29; unified platform shell contract, switcher card focus model, workbench rerender transaction, and settings component-panel grouping folded into the Panels tab; Release assets are built automatically by the workflow).
 
 ## Changelog
 
 Full history: [`docs/CHANGELOG.md`](docs/CHANGELOG.md) (中文完整历史)；English full history: [`docs/CHANGELOG.en-US.md`](docs/CHANGELOG.en-US.md); per-version notes also on [GitHub Releases](https://github.com/ai68298100/siyuan-speed-switch/releases). Recent releases:
+
+### v0.42.0 (2026-09-29)
+
+- **Unified platform shell contract (T-7012)**: the surface entry vocabulary now covers the topbar context menu, plugin commands, quick actions, and the floating ball (previously silently dropped); platform navigation carries the current query across the switcher, workbench, snippet lab, and mobile; focus origin is captured when leaving a surface and restored to the source object row or search box on return; closing Settings returns to the originating surface.
+- **Switcher card focus model (T-7007)**: tab cards are real keyboard focus targets (Tab-reachable, screen-reader named); arrow keys, hover, and attached actions share one focusin-driven visual focus and preview pipeline; filter chips become an honest `aria-pressed` button group.
+- **Workbench rerender transaction (T-7010)**: scroll position and focus are captured before full-panel rerenders and restored in place afterwards; the edit toggle, refresh-all, config save, and 14+ other triggers no longer jump to top.
+- **Settings IA (T-6998)**: component-panel tint and workbench size settings fold into a dedicated Panels-tab group (previously unreachable legacy builder content).
+- **History dropdown contract (T-7016)**: per-section counts, the first-8 cap, and "expand all" behavior are pinned by contract.
+- **Verification**: full suite **6485/6485**; real-device/kernel acceptance still tracked in [BLOCKERS.md](BLOCKERS.md).
 
 ### v0.41.0 (2026-09-28)
 

@@ -30,31 +30,19 @@
 - 工具普查：`node scripts/css-window-census.cjs`、`node scripts/css-assertion-injector.cjs`（探针 `\-` 转义 `-` 哨兵；工具须打印注入内容并点名未覆盖断言）。
 - **验证工具自身也会出缺陷，且缺陷型与产品代码同构**：负向验证脚本里 `for ... fails in results` 重新绑定了外层 `fails`，使"还原后全绿"误报 False——与 P1-1a 的 `renderMobileList` 影子绑定同类。**注入设计也必须能隔离目标分支**：200 KiB 会同时踩单文件与合计两条上限，须选只踩一条的量级（160 KiB）。
 
-## 当前状态（2026-09-17 下午·本会话实测）
-- **P3-1 已交付（T-6297，ADR 0054）**：GitHub 贡献格点热力图。新增第四个 `viewType: "heatmap"`，沿用 calendar/weekdays/media 分派机制。三个硬约束：条目硬顶 42→热力图 371（硬顶 400，列表/日历不变）、字段白名单补 `level` 透传（视图不重写阈值）、`keepEmptyItems` 保留周日对齐占位格。模型层 `layout:"grid"` 为加法式开关，周汇总路径保留。
-- **P3-3 已交付（T-6299，ADR 0056）**：语义搜索第三方法——查询语法/正则此前已在 method 菜单；语义用 `window.siyuan.config.ai.embedding`（enabled+apiKey 非空，内核 isEmbeddingEnabled 镜像，配置与端点同版本落地无需探针）做能力门，真时 UI 才出选项，三条请求路径透传 capabilities，缺失静默降级 keyword；未配置时内核静默返回空，宁缺毋滥。Agent `SEARCH_METHODS` 未扩。教训：网络探针须区分"请求失败"与"确认不存在"（curl 空体曾误判 0 命中）；zip 等长内容仍有 ±数字节时间戳噪声。
-- **P3-2 已交付（T-6298，ADR 0055）**：第三方插件端到端接入示例——不改产品代码，新增 `tests/widget-example-e2e.test.cjs`（6 项）：宿主 harness 镜像 `index.ts registerHomeModule` 簿记（注销句柄返回 void），把模板当真实第三方插件跑通 register→listModules→read→buildHomeModuleView→unregister，钉住 token 失效/幂等注销/缓存清除/open 绑定/无宿主安静降级。教训：断言层级必须对齐生产真实契约（宿主句柄 void，布尔断言只能落 runtime 层）；`normalizeHomeViewResult` 入参是完整 read 结果（从 source.snapshot.items 取数），传 snapshot 会静默得 0 条目。
-- **视图类型接入清单（下一个 viewType 直接照做）**：`home-model.js` 目录定义 viewType → `home-model.js` 与 `home-view.js` **两处白名单同步** → `home-view.js` 渲染分支 → 必要时调 `normalizeHomeViewResult`（条目上限/字段透传/空条目）→ 样式切片加类 → 契约测试 + 负向验证。
-- **P1-4 已交付（T-6296，ADR 0053）**：样式切片语义重命名 `_01-base-controls` … `_09-store-preview-polish`（序号前缀保留）。**切片是时间累积片段、单切片横跨多域**，只能"序号+主体内容"命名，不能按五个单域映射；跨域明细记在清单注释。`readStyleSource()` 数据驱动对改名透明，`dist/index.css` md5 不变即零漂移。
-- **P1-1b 已交付（T-6295，ADR 0052）**：`openSecondPanel`（601 行体）搬入新模块 `src/second-panel-ui.ts`（宽宿主接口 `SecondPanelUiHost`：9 状态字段 + 11 方法签名，纯读单入口故**改判**不先拆状态宿主）；`index.ts` **8702 → 8104 行**。类静态成员 `HOME_ACCENTS` 用转发字段 `homeAccents` 解决。599 行体换行归一逐字节相等（仅 2 处授权替换）；契约改指 9 个测试文件（每条实证，零人工裁定）；负向抽样 23/2 精确 FAIL 全 PASS；verify:release EXIT=0。生产图天花板 45→46。
-- **P1-1a 已交付（T-6291，ADR 0048）**：移动端切换器群 525 行搬入新模块 `src/mobile-switcher-ui.ts`，`index.ts` **9226 → 8701 行**。tsc 0 错误 / 5872 全绿 / smoke 70 / **verify:release 全链绿**。
-- **两条可直接复用的硬教训**：① `this.X(` → `X.call(this, ` 的机械替换，遇同作用域同名局部闭包会指向自身→运行时爆栈且 **tsc 零报错**，迁移脚本必须先做「影子绑定」扫描；② 契约同步不能只扫 `includes('...')`，还有**双引号字符串**与 **`match` 计数式**两种形式，务必分形式扫。
-- **P1-2 已交付（T-6292，ADR 0049）**：`src/index.scss` 6517 行拆为 `src/styles/` 的 tokens + 9 个**顺序切片**，本体退化为 12 行 `@use` 清单。**样式重构与 TS 重构方法论不同：CSS 顺序即层叠顺序，只能顺序切片，不能按域名聚类。**
-- **样式类重构的通用解法**：拆物理文件 + 在 `tests/source-scan.cjs` 用 `readStyleSource()` 合成逻辑视图（对 `src/index.scss` 返回按清单重组的内容）。既有 35 处样式断言一行未改。零漂移证据：重组后逐字节等于原文件 + `dist/index.css` md5 不变。
-- **该缺口已闭合（P1-3，T-6293，ADR 0050）**：新增 `tests/style-slice-coverage.test.cjs`，按切片动态求「独占锚点」（顶层选择器 + SCSS 变量声明）并要求其出现在组合视图中。复测：**逐个删除切片触发失败数 10/10 从 0 变为 1**。
-- **门禁设计套路（可复用）**：数据驱动（不硬编码清单）+ 非空自检（防正则失效恒绿）+ 下限用 `>=3` 这类不钉死进度的值 + 附「删除模拟」用例证明确实上膛。
-- 测试计数现为 **5894 项 / 174 文件**（改门禁后必须同步双语 README 与 release-readiness，无门禁保护必漂移）。
-- **P0-2 已交付（T-6294，ADR 0051）**：`TODO.md`/`DECISIONS.md`/`PROGRESS.md` 归档到 `docs/archive/`（md5 逐一一致、零漂移），根目录 Markdown **8 份 1031001 B → 5 份 110076 B（-89.3%）**。
-- **归档的关键风险在引用面不在搬运**：`AGENTS.md` 的自主开发协议明文依赖这三份文件，只挪目录会打断协议链。共 **7 处指令性引用**改写；**规则：指令性引用（写入/读取目标）必改，叙述性引用保持原样**（改=篡改历史）。另新增 `docs/archive/README.md`（归档政策＋**归档清单唯一事实源**，门禁解析它）与 `docs/acceptance-log.md`（承接验收摘要追加职责）。
-- 新增 `tests/root-doc-budget.test.cjs`（4 项）：数量 ≤8 / 单文件 ≤150 KiB / 合计 ≤300 KiB + 与归档清单**双向契约**（清单项须在 archive、根目录不得同名）+ 替代事实源存在性。上限依据见 ADR 0051。
-- **归档会外溢到既有门禁的扫描面**：`protocol-compat-claim` 扫 `docs/**`，三份账本归档后进入扫描面，带来 v0.16.17 x2 与 v0.7.0 x1，与活文档统一的 v0.16.16 x3 冲突 → 假红。处置：按前缀排除 `docs/archive/` + 补**「排除承重」自检**（归档区必须确实含被排除的声明，否则排除退化成可被无声删除的空操作）。
-- 新工作区自 GitHub 浅克隆，基线 `1d74efd release: v0.20.0`。tsc 0 错误、build 通过、测试 5872 项中 **5871 通过 1 失败**。
-- **该项已修复（T-6290，ADR 0047）**：自检改为自适应标定（`calibrateSelfCheckIterations` 放大至 ≥2ms）+ 比值断言 `heavy/light >= 1.5`。**全量已恢复 5872/5872 全绿**。
-- **负向验证挖出的通用教训**：`heavy > light` 这类"大于"断言在计时噪声下**零判别力**（等规模注入仍通过），必须用比值断言。同类计时门禁自查一遍。
-- 产物（2026-09-17 P3-3 收尾实测）：`dist/index.js` **633648 B**、`index.css` **146536 B**、`package.zip` **321219 B**；双语 README 与 release-readiness 已对齐。**注意"记录即失效"耦合**：README 被打进 `package.zip`，改 README 会改 zip，故快照必须在最后一次构建之后记。
-- 结构基线：`src/` 40 文件；`index.ts` 由最初 **9226 行**经 P1-1a/P1-1b 降至 **8104 行**；`index.scss` 已拆分完毕（P1-2）。
-- 交付 `docs/dev-plan-2026-09-17.md`（实测基线＋架构评价＋已完功能清单＋P0~P3 优先级）。本会话未改任何产品代码。
-- 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.20 vs v0.21）。
-- 已完结：T-6280~T-6289（窗口断言清零、iCal 与 GitHub 贡献双组件全链、性能门禁加固、worktree 收口、D-397 iCal 文本抓取缺陷修复）、分支/worktree 只剩 main、验收 Runbook。
-- v0.21 生活信息支线 iCal + GitHub 均已上线（GitHub 已由周汇总升级为格点热力图，P3-1/ADR 0054）。
-- 剩余（需用户）：真机验收解锁 T-103/T-1219/T-1220 链条；发布决策（push / v0.20 vs v0.21）。
+## 当前状态（2026-09-27，T-6928 会话校正；旧 09-17 基线已大幅过时）
+- **版本与计数**：v0.40.0 已发布（T-6926，跳过真机直接发）；测试 **6288 项**；任务号最新 **T-6929**；ADR 最新 **0084**；包体 zip 预算线 512 KiB（余 ~16 KiB）。当期账本 = `docs/dev-plan-2026-09-22.md`（09-18/09-19 为前序账本）。
+- **产品形态（T-6866 定案）**：统一切换与工作上下文平台 = 三表面（切换器 switcher / 工作台 workbench / 片段实验室 studio，桌面专属）+ 悬浮球（全局触发器，非第四表面）。平台外壳/表面导航已实现；默认全屏（ADR 0080）；RZ-1~RZ-6（T-6871~T-6876）细节批全部收口。
+- **UI 设计唯一事实源 = `docs/design-system-v1-2026-09-27.md`（T-6928，ADR 0084）**；组件画廊 `docs/design/design-system-gallery-2026-09-27.html`（管零件），R2 原型 `docs/design/platform-ui-redesign-r2-2026-09-26.html`（管整机）。做 UI 先读规范 §11 扩展指南。**原型审查报告 = `docs/design-review-2026-09-27.md`（T-6929，38 条建议按优先级排序，两处方向待用户裁决：设置第 11 标签、行级数字直达去留）**。
+- **生产 token 在 `src/styles/_platform-shell.scss`**：`--sw-platform-*` 全家桶（色彩纯 `--b3-*` 派生 + color-mix）+ 原语 action/status/kbd/seg/preview；动效常量在 `_00-tokens.scss`（120/160/200/260ms）。`rz-*` 是原型提案层类名，**不进生产**。
+- **设置页 = 10 个标签**（index.ts `panelKeys`：appearance/behavior/panels/favorites/quickActions/floatingBall/documentSets/journal/mobile/storage）；R2 探索的第 11 个"组件面板"标签未落地。
+- i18n 双语各约 1252 key。悬浮球已撤侧栏端（ADR 0072，只挂 desktop/mobile）。
+- 剩余（需用户/后置）：真机验收 B-004/B-005；皮肤首批色板渐进落地（ADR 0073，T-6796~T-6798）；T-6927 等修复随 v0.41.0 攒版。
+
+## 历史交付快照（2026-09-17 基线，细节见当日日志）
+- P3-1~P3-3（T-6297~T-6299）：热力图 viewType、第三方插件接入示例、语义搜索能力门。
+- P1-1a/1b（T-6291/T-6295）：`mobile-switcher-ui.ts`/`second-panel-ui.ts` 拆出，index.ts 9226→8104 行；教训：① 机械替换 `this.X(`→`X.call(this, ` 须先做影子绑定扫描（tsc 零报错但运行爆栈）；② 契约同步分形式扫（includes/双引号字符串/match 计数式）。
+- P1-2~P1-4（T-6292~T-6296）：index.scss 拆 9 顺序切片 + `readStyleSource()` 合成逻辑视图（CSS 顺序即层叠，只能顺序切片）；切片语义重命名。
+- 视图类型接入清单：`home-model.js` 定义 → home-model/home-view **两处白名单同步** → 渲染分支 → `normalizeHomeViewResult` → 样式切片 → 契约 + 负向验证。
+- P0-2（T-6294）：三根目录账本归档 docs/archive/（指令性引用必改、叙述性引用不改）；root-doc-budget 门禁。
+- 产物快照与 README 有"记录即失效"耦合（README 打进 zip，快照必须在最后一次构建之后记）。
