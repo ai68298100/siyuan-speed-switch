@@ -2076,9 +2076,19 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     private queueSave(key: string, value: unknown): Promise<void> {
         const previous = this.saveChains.get(key) || Promise.resolve();
+        // T-7003：记录落盘结果供设置页保存回执消费（失败不再只进日志）。
+        this.lastSaveOutcome[key] = "pending";
         const next = previous
             .then(() => this.saveData(key, value))
-            .catch((e) => logger.warn("save data fail", e));
+            .then(() => {
+                this.lastSaveOutcome[key] = "ok";
+                if (key === SETTINGS_KEY) this.notifySettingsSaveState();
+            })
+            .catch((e) => {
+                this.lastSaveOutcome[key] = "failed";
+                if (key === SETTINGS_KEY) this.notifySettingsSaveState();
+                logger.warn("save data fail", e);
+            });
         this.saveChains.set(key, next);
         void next.then(() => {
             if (this.saveChains.get(key) === next) {
@@ -2086,6 +2096,34 @@ export default class SpeedSwitchPlugin extends Plugin {
             }
         });
         return next;
+    }
+
+    // T-7003：保存状态广播（设置弹窗监听刷新回执；document 缺失时静默跳过）。
+    private notifySettingsSaveState() {
+        if (typeof document === "object" && document) {
+            document.dispatchEvent(new Event("sw-settings-save-state"));
+        }
+    }
+
+    // T-7003：保存失败后的手动重试——用当前内存值重新排队落盘（走同一串行链）。
+    retrySettingsSave() {
+        if (this.isUnloading) return;
+        void this.queueSave(SETTINGS_KEY, this.data[SETTINGS_KEY]);
+    }
+
+    // T-7003：分组恢复默认——keys 必须全部是已知默认设置字段（防止任意 key 注入），
+    // 经 updateSettings 应用（自动入撤销栈、触发皮肤/密度等派生刷新）。
+    resetSettingsToDefaults(keys: string[]): boolean {
+        const defaults = DEFAULT_SETTINGS as unknown as Record<string, unknown>;
+        const patch: Record<string, unknown> = {};
+        for (const key of keys) {
+            if (!Object.prototype.hasOwnProperty.call(defaults, key)) return false;
+            patch[key] = defaults[key];
+        }
+        if (Object.keys(patch).length === 0) return false;
+        this.updateSettings(patch as Partial<ISwSettings>);
+        this.settingsSceneReloader?.();
+        return true;
     }
 
     // 立即落盘全部待写数据（卸载时调用，避免丢失最近一次去抖窗口内的改动）
@@ -2116,6 +2154,18 @@ export default class SpeedSwitchPlugin extends Plugin {
 
     // 读取设置：与默认值合并，保证新增字段有默认值
     private settingsCache: ISwSettings | null = null;
+
+    // T-7003：设置页撤销钩子——设置弹窗打开期间由 openSetting 装配，updateSettings
+    // 在写盘前把「逆向补丁」交给它入撤销栈；弹窗销毁即置空，其他入口零开销。
+    private settingsUndoRecorder: ((inverse: Record<string, unknown>) => void) | null = null;
+    // T-7003：撤销应用自身不得再入栈（否则撤销被撤销项顶掉）。
+    private settingsUndoSuppress = false;
+    // T-7003：各 key 最近一次落盘结果（pending/ok/failed）——queueSave 失败此前只进
+    // 日志（静默失败），设置页据此显示保存回执；仅内存态，不持久化。
+    private lastSaveOutcome: Partial<Record<string, "pending" | "ok" | "failed">> = {};
+    // T-7003：设置弹窗装配的「带现场恢复的面板重渲染」钩子——分组恢复默认等批量
+    // 变更后由宿主侧触发，替换面板内容并复位滚动/焦点。
+    private settingsSceneReloader: (() => void) | null = null;
 
     // 设置对象记忆化：规范化成本虽小但调用频次高（渲染/绑定路径每次都会读取），
     // 命中缓存时零开销返回；updateSettings 写入后统一失效
@@ -2160,10 +2210,25 @@ export default class SpeedSwitchPlugin extends Plugin {
     }
 
     private updateSettings(patch: Partial<ISwSettings>) {
-        const settings = {...this.getSettings(), ...patch};
+        const previous = this.getSettings();
+        const settings = {...previous, ...patch};
         this.data[SETTINGS_KEY] = settings;
         this.settingsCache = null; // 设置已变更，下一次读取重新规范化
         this.saveDataDebounced(SETTINGS_KEY);
+        // T-7003：撤销栈——把「逆向补丁」（本次 patch 各 key 的变更前值）交给设置页
+        // 钩子；lastSettingsTab 是导航记忆不是用户变更，不入栈；撤销应用本身经
+        // settingsUndoSuppress 抑制。逆向值取自规范化后的当前设置，与任何保存同语义。
+        const patchKeys = Object.keys(patch).filter((key) => key !== "lastSettingsTab");
+        if (patchKeys.length > 0 && this.settingsUndoRecorder && !this.settingsUndoSuppress) {
+            const previousRecord = previous as unknown as Record<string, unknown>;
+            const inverse: Record<string, unknown> = {};
+            for (const key of patchKeys) inverse[key] = previousRecord[key];
+            this.settingsUndoRecorder(inverse);
+        }
+        if (patchKeys.length > 0 && typeof document === "object" && document) {
+            // T-7003：设置变更广播——外部入口改设置时，打开中的设置弹窗据此带现场重建。
+            document.dispatchEvent(new Event("sw-settings-updated"));
+        }
         if (Object.prototype.hasOwnProperty.call(patch, "skin")) {
             this.applySkin();
         }
@@ -2829,7 +2894,6 @@ export default class SpeedSwitchPlugin extends Plugin {
     // T-7012：returnTo 是打开设置时的平台表面；设置关闭后恢复该表面
     // （不固定回切换器）。无面板来源的入口（顶栏/悬浮球/侧栏）不传，行为不变。
     openSetting(initialPanel?: string, returnTo?: PlatformSurface | null) {
-        const s = this.getSettings();
         const restoreSurface = normalizeSurfaceId(returnTo || "", "");
         const panelKeys = ["appearance", "behavior", "panels", "favorites", "quickActions", "floatingBall", "documentSets", "journal", "mobile", "storage"] as const;
         const panelLabels: Record<string, string> = {
@@ -2848,12 +2912,18 @@ export default class SpeedSwitchPlugin extends Plugin {
         // T-6479：设置弹窗的 resize 监听释放改挂宿主 destroyCallback（不再覆写 dialog.destroy）。
         let releaseSettingsDialog: () => void = () => undefined;
         let releaseSettingsFab: () => void = () => undefined;
+        // T-7003：设置页回执/撤销/外部重建的监听器释放（openSetting 后段装配）
+        let releaseSettingsListeners: () => void = () => undefined;
         const dialog = new Dialog({
             title: this.i18n.settings,
             content: '<div class="sw-settings"></div>',
             destroyCallback: () => {
                 releaseSettingsDialog();
                 releaseSettingsFab();
+                releaseSettingsListeners();
+                // T-7003：弹窗销毁即摘除撤销/重建钩子，其他入口回归零开销
+                this.settingsUndoRecorder = null;
+                this.settingsSceneReloader = null;
                 // T-7012：设置互返——从平台表面打开时，关闭后恢复该表面；
                 // 面板重开走 openPlatformSurface 的单例守卫与 FAB 串行释放。
                 if (restoreSurface && !this.isUnloading) {
@@ -2956,15 +3026,15 @@ export default class SpeedSwitchPlugin extends Plugin {
         };
 
         const builders: Record<string, () => HTMLElement> = {
-            appearance: () => buildSettingsAppearance.call(this, s),
-            behavior: () => buildSettingsBehavior.call(this, s),
-            panels: () => buildSettingsPanels.call(this, s),
+            appearance: () => buildSettingsAppearance.call(this, this.getSettings()),
+            behavior: () => buildSettingsBehavior.call(this, this.getSettings()),
+            panels: () => buildSettingsPanels.call(this, this.getSettings()),
             favorites: () => buildSettingsFavorites.call(this, ),
             quickActions: () => buildSettingsQuickActions.call(this, ),
-            floatingBall: () => buildSettingsFloatingBall.call(this, s),
+            floatingBall: () => buildSettingsFloatingBall.call(this, this.getSettings()),
             documentSets: () => buildSettingsDocumentSets.call(this, ),
-            journal: () => buildSettingsJournal.call(this, s),
-            mobile: () => buildSettingsMobile.call(this, s),
+            journal: () => buildSettingsJournal.call(this, this.getSettings()),
+            mobile: () => buildSettingsMobile.call(this, this.getSettings()),
             storage: () => buildSettingsStorage.call(this),
         };
 
@@ -3242,6 +3312,109 @@ export default class SpeedSwitchPlugin extends Plugin {
         const panelKeysArr: string[] = [...panelKeys];
         const initial = panelKeysArr.includes(lastTab) ? lastTab : panelKeys[0];
         activate(initial);
+        // ==================== T-7003：保存回执 + 撤销 + 分组恢复默认 + 外部变更重建 ====================
+        // 状态栏（搜索框上方）：落盘结果三态（待写入/已保存/保存失败+重试）与撤销入口。
+        // 回执语义诚实：防抖期间显示「待写入」而非已保存；失败保留本地值并提供重试。
+        const statusbar = document.createElement("div");
+        statusbar.className = "sw-settings__statusbar";
+        const saveState = document.createElement("span");
+        saveState.className = "sw-settings__save-state";
+        saveState.setAttribute("role", "status");
+        saveState.setAttribute("aria-live", "polite");
+        const saveRetry = document.createElement("button");
+        saveRetry.type = "button";
+        saveRetry.className = "b3-button b3-button--text sw-settings__save-retry";
+        saveRetry.textContent = this.i18n.settingsSaveRetry;
+        saveRetry.setAttribute("aria-label", `${this.i18n.settingsSaveRetry} · ${this.i18n.settingsSaveFailed}`);
+        saveRetry.hidden = true;
+        saveRetry.addEventListener("click", () => this.retrySettingsSave());
+        const undoButton = document.createElement("button");
+        undoButton.type = "button";
+        undoButton.className = "b3-button b3-button--text sw-settings__undo";
+        undoButton.textContent = this.i18n.settingsUndo;
+        undoButton.setAttribute("aria-label", this.i18n.settingsUndo);
+        undoButton.title = this.i18n.settingsUndo;
+        undoButton.disabled = true;
+        statusbar.append(saveState, saveRetry, undoButton);
+        panels.insertBefore(statusbar, searchWrap);
+        const syncSaveState = () => {
+            const outcome = this.lastSaveOutcome[SETTINGS_KEY] || "idle";
+            saveState.textContent = outcome === "pending" ? this.i18n.settingsSavePending
+                : outcome === "failed" ? this.i18n.settingsSaveFailed
+                    : outcome === "ok" ? this.i18n.settingsSaveOk : "";
+            saveState.dataset.state = outcome;
+            saveRetry.hidden = outcome !== "failed";
+        };
+        document.addEventListener("sw-settings-save-state", syncSaveState);
+        syncSaveState();
+        // 带现场恢复的面板重渲染：替换当前激活面板内容后复位滚动，焦点按同位索引找回
+        // （设置项在重建前后顺序稳定）；找不到同位元素诚实放弃，不猜焦点。
+        const rebuildActivePanelPreservingScene = () => {
+            const activeTab = tabs.querySelector<HTMLElement>(".sw-settings__tab.is-active");
+            const key = activeTab?.dataset.panel || "";
+            const panelEl = panels.querySelector<HTMLElement>(`.sw-settings__panel[data-panel="${key}"]`);
+            if (!key || !panelEl) return;
+            const scrollCapture = {panels: panels.scrollTop, panel: panelEl.scrollTop};
+            const activeBefore = document.activeElement instanceof HTMLElement && panelEl.contains(document.activeElement)
+                ? document.activeElement : null;
+            const focusables = Array.from(panelEl.querySelectorAll<HTMLElement>("button, input, select, textarea, [tabindex]:not([tabindex='-1'])"));
+            const focusIndex = activeBefore ? focusables.indexOf(activeBefore) : -1;
+            panelEl.replaceChildren(builders[key]());
+            panels.scrollTop = scrollCapture.panels;
+            panelEl.scrollTop = scrollCapture.panel;
+            if (focusIndex >= 0) {
+                const nextFocusables = Array.from(panelEl.querySelectorAll<HTMLElement>("button, input, select, textarea, [tabindex]:not([tabindex='-1'])"));
+                nextFocusables[focusIndex]?.focus({preventScroll: true});
+            }
+        };
+        this.settingsSceneReloader = rebuildActivePanelPreservingScene;
+        // 撤销栈（会话级，最多 20 步）：updateSettings 把逆向补丁交给 recorder 入栈；
+        // 撤销应用经 settingsUndoSuppress 抑制再入栈，撤销后带现场重建。
+        const undoStack: Array<Record<string, unknown>> = [];
+        this.settingsUndoRecorder = (inverse) => {
+            if (this.settingsUndoSuppress) return;
+            undoStack.push(inverse);
+            if (undoStack.length > 20) undoStack.shift();
+            undoButton.disabled = false;
+            undoButton.setAttribute("aria-label", `${this.i18n.settingsUndo} (${undoStack.length})`);
+        };
+        undoButton.addEventListener("click", () => {
+            const inverse = undoStack.pop();
+            if (!inverse) return;
+            this.settingsUndoSuppress = true;
+            try {
+                this.updateSettings(inverse as Partial<ISwSettings>);
+            } finally {
+                this.settingsUndoSuppress = false;
+            }
+            undoButton.disabled = undoStack.length === 0;
+            if (undoStack.length === 0) undoButton.setAttribute("aria-label", this.i18n.settingsUndo);
+            showMessage(this.i18n.settingsUndoDone, 3000, "info");
+            rebuildActivePanelPreservingScene();
+        });
+        // 外部变更重建：设置弹窗未持有焦点（变更来自切换器/工作台/悬浮球等入口）时，
+        // 带现场重建当前面板保持显示真实；本页正在交互（焦点在弹窗内）时跳过——
+        // 逐控件编辑自含视觉状态，重建反而打断输入。防抖合并同批多次变更。
+        let externalRefreshTimer = 0;
+        const onSettingsUpdatedExternal = () => {
+            const active = document.activeElement;
+            if (active instanceof HTMLElement && root.contains(active)) return;
+            if (externalRefreshTimer) return;
+            externalRefreshTimer = window.setTimeout(() => {
+                externalRefreshTimer = 0;
+                if (!root.isConnected || this.isUnloading) return;
+                rebuildActivePanelPreservingScene();
+            }, 50);
+        };
+        document.addEventListener("sw-settings-updated", onSettingsUpdatedExternal);
+        releaseSettingsListeners = () => {
+            document.removeEventListener("sw-settings-save-state", syncSaveState);
+            document.removeEventListener("sw-settings-updated", onSettingsUpdatedExternal);
+            if (externalRefreshTimer) {
+                window.clearTimeout(externalRefreshTimer);
+                externalRefreshTimer = 0;
+            }
+        };
         // T-7002：桌面端设置页首焦点落在搜索框（页面第一个可交互元素、跨组查找入口）；
         // 移动端不自动聚焦——避免打开设置即弹出软键盘。
         if (!this.isMobile) {

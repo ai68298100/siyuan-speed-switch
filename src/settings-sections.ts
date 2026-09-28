@@ -125,14 +125,60 @@ export interface SettingsSectionsHost {
     // T-7004 存储健康：schema 版本戳读取（纯读）与缩略图缓存清空（可重建数据）
     getStorageSchemaHealth(): {stored: number | null; current: number; downgradeFrom: number | null};
     clearThumbCache(): void;
+    // T-7003 分组恢复默认：keys 全部命中已知默认字段才应用（经 updateSettings，自动入撤销栈）
+    resetSettingsToDefaults(keys: string[]): boolean;
 }
     // ===== 设置页 · 外观：皮肤、缩略图列数与高度 =====
+
+// T-7003：分组恢复默认注册表——groupTitleKey → 该组可控的设置 key（必须全部是
+// DEFAULT_SETTINGS 已知字段）。未登记的组不渲染重置按钮（宁缺勿滥，不猜组语义）。
+const SETTING_GROUP_DEFAULT_KEYS: Record<string, ReadonlyArray<string>> = {
+    settingsGroupTheme: ["skin"],
+    settingsGroupThumbnails: ["columns", "thumbHeight", "showCardUpdatedBadge"],
+    settingsGroupSortDensity: ["sortBy", "density"],
+    settingsGroupSearchOpen: ["pinyinMatch", "reuseOpenTabs"],
+    settingsGroupPanelWindows: ["panelSizeMode", "panelScale", "dialogWidth", "dialogHeight", "studioSizeMode", "studioWidth", "studioHeight"],
+    settingsGroupWorkbenchWindow: ["homeSizeMode", "homeWidth", "homeHeight", "homePalette"],
+    settingsGroupMobileLayout: ["mobileColumns"],
+};
+
+// T-7003：组标题行尾追加「恢复默认」小按钮（仅注册过的组）。恢复经宿主
+// resetSettingsToDefaults → updateSettings（自动入撤销栈 + 触发现场重渲染），
+// 所以不设二次确认——撤销即可回退。组标题经静态映射引用 i18n（动态方括号
+// 访问被门禁禁止）；本地对象上的动态索引不受限（storageLabels 同例）。
+function appendGroupResetButton(this: SettingsSectionsHost, title: HTMLElement, groupTitleKey: string): HTMLElement {
+    const keys = SETTING_GROUP_DEFAULT_KEYS[groupTitleKey];
+    if (!keys || keys.length === 0) return title;
+    const labels: Record<string, string> = {
+        settingsGroupTheme: this.i18n.settingsGroupTheme,
+        settingsGroupThumbnails: this.i18n.settingsGroupThumbnails,
+        settingsGroupSortDensity: this.i18n.settingsGroupSortDensity,
+        settingsGroupSearchOpen: this.i18n.settingsGroupSearchOpen,
+        settingsGroupPanelWindows: this.i18n.settingsGroupPanelWindows,
+        settingsGroupWorkbenchWindow: this.i18n.settingsGroupWorkbenchWindow,
+        settingsGroupMobileLayout: this.i18n.settingsGroupMobileLayout,
+    };
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sw-settings__group-reset";
+    button.textContent = this.i18n.settingGroupReset;
+    button.setAttribute("aria-label", `${this.i18n.settingGroupReset} · ${labels[groupTitleKey] || groupTitleKey}`);
+    button.title = button.getAttribute("aria-label") || "";
+    button.addEventListener("click", () => {
+        if (this.resetSettingsToDefaults([...keys])) {
+            showMessage(this.i18n.settingGroupResetDone, 3000, "info");
+        }
+    });
+    title.appendChild(button);
+    return title;
+}
+
 export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettings): HTMLElement {
         const wrapper = document.createElement("div");
         // T-6872（RZ-2）：标签页内按语义分组为多张卡片；2~4 个互斥取值改分段控件
         wrapper.append(
             // T-6796 皮肤：fusion=融合思源主题（默认），其余为独立皮肤
-            this.settingGroupTitle(this.i18n.settingsGroupTheme),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupTheme), "settingsGroupTheme"),
             this.settingGroupCard(
                 this.settingSegmented(this.i18n.skinLabel, this.i18n.skinTip, [
                     {value: "fusion", label: this.i18n.skinFusion},
@@ -143,7 +189,7 @@ export function buildSettingsAppearance(this: SettingsSectionsHost, s: ISwSettin
             ),
             // T-6999：切换器窗口尺寸已统一移入「面板」标签的“面板窗口”分组——
             // 外观页保留 皮肤 + 缩略图 两组，避免同一组尺寸字段在两个标签重复出现。
-            this.settingGroupTitle(this.i18n.settingsGroupThumbnails),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupThumbnails), "settingsGroupThumbnails"),
             this.settingGroupCard(
                 this.settingItem(this.i18n.setColumns, this.i18n.setColumnsTip,
                     this.select([{value: "0", label: this.i18n.columnsAuto}].concat(
@@ -174,7 +220,7 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
         ];
         // T-6872（RZ-2）：分组卡片；密度开关升级为 舒适/紧凑 分段（语义不变）
         wrapper.append(
-            this.settingGroupTitle(this.i18n.settingsGroupSortDensity),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupSortDensity), "settingsGroupSortDensity"),
             this.settingGroupCard(
                 this.settingItem(this.i18n.setSortBy, this.i18n.setSortByTip,
                     this.select(sortOptions, s.sortBy, (v) => this.updateSettings({sortBy: v as SortBy}))),
@@ -185,7 +231,7 @@ export function buildSettingsBehavior(this: SettingsSectionsHost, s: ISwSettings
                     this.updateSettings({density: v === "compact" ? "compact" : "comfortable"});
                 }),
             ),
-            this.settingGroupTitle(this.i18n.settingsGroupSearchOpen),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupSearchOpen), "settingsGroupSearchOpen"),
             this.settingGroupCard(
                 // T-6805 拼音辅助匹配：全拼/首字母匹配文档标题
                 this.settingItem(this.i18n.pinyinMatchLabel, this.i18n.pinyinMatchTip,
@@ -241,7 +287,7 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
         // buildSettingsHomePanel 的组件面板分组内。三组都带默认值提示与预览入口，
         // 提示明确「设置页自身保持独立自适应」，避免误解面板尺寸会联动设置窗口。
         const panelWindows = document.createElement("div");
-        panelWindows.append(this.settingGroupTitle(this.i18n.settingsGroupPanelWindows));
+        panelWindows.append(appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupPanelWindows), "settingsGroupPanelWindows"));
         const defaultHint = document.createElement("p");
         defaultHint.className = "sw-settings__tip sw-settings__panel-size-hint";
         defaultHint.textContent = this.i18n.panelSizeDefaultHint;
@@ -376,7 +422,7 @@ export function buildSettingsHomePanel(this: SettingsSectionsHost, s: ISwSetting
             this.settingGroupCard(
                 this.settingSegmented(this.i18n.setHomePalette, this.i18n.setHomePaletteTip, paletteOptions, s.homePalette, (v) => this.updateSettings({homePalette: v as HomePalette})),
             ),
-            this.settingGroupTitle(this.i18n.settingsGroupWorkbenchWindow),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupWorkbenchWindow), "settingsGroupWorkbenchWindow"),
             this.settingGroupCard(
                 this.settingSegmented(this.i18n.setHomeSizeMode, this.i18n.setHomeSizeModeTip, modeOptions, s.homeSizeMode, (v) => this.updateSettings({homeSizeMode: v as HomeSizeMode})),
                 // T-6999：默认值提示 + 预览入口（与切换器/实验室窗口组同构）
@@ -407,7 +453,7 @@ export function buildSettingsMobile(this: SettingsSectionsHost, s: ISwSettings):
         // T-6872（RZ-2）：分组卡片；列数枚举改分段（自动=竖屏单列、横屏双列）
         wrapper.append(
             panelNote,
-            this.settingGroupTitle(this.i18n.settingsGroupMobileLayout),
+            appendGroupResetButton.call(this, this.settingGroupTitle(this.i18n.settingsGroupMobileLayout), "settingsGroupMobileLayout"),
             this.settingGroupCard(
                 this.settingSegmented(this.i18n.mobileLayout, this.i18n.mobileLayoutTip, [
                     {value: String(MOBILE_COLUMNS_AUTO), label: this.i18n.mobileAuto},
