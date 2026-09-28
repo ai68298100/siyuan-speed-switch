@@ -74,7 +74,7 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showUpdated", label: "显示更新时间", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
-    {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, configSchema: [
+    {moduleId: "note-stats", title: "笔记统计", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "days", label: "趋势窗口（天）", type: "number", min: 7, max: 90, defaults: 7},
         {key: "primaryMetric", label: "主指标", type: "select", options: ["文档数", "估算字数"], defaults: "文档数"},
@@ -242,14 +242,15 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showPath", label: "显示文档路径", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showRank", label: "显示序号", type: "select", options: ["否", "是"], defaults: "否"},
     ]},
-    {moduleId: "today-writing", title: "今日写作", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["xs", "small", "medium"], protocolVersion: 2, configSchema: [
+    // T-6971 批次⑦：今日写作 = 目标型组件，上限 M（规格卡建议 S/M）
+    {moduleId: "today-writing", title: "今日写作", icon: "iconEdit", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "goal", label: "每日字符目标", type: "number", min: 0, max: 50000, defaults: 1000},
         {key: "showBlocks", label: "显示新增内容块", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showNewDocs", label: "显示新建文档", type: "select", options: ["是", "否"], defaults: "是"},
         {key: "showEditedDocs", label: "显示修订文档", type: "select", options: ["是", "否"], defaults: "是"},
     ]},
-    {moduleId: "recent-writing-activity", title: "近期写作活跃度", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, configSchema: [
+    {moduleId: "recent-writing-activity", title: "近期写作活跃度", icon: "iconChart", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["medium", "wide", "large"], protocolVersion: 2, configSchema: [
         {key: "days", label: "统计天数", type: "number", min: 7, max: 366, defaults: 14},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "metric", label: "统计指标", type: "select", options: ["内容块", "新增字符"], defaults: "内容块"},
@@ -303,7 +304,8 @@ const DEFAULT_MODULES = Object.freeze([
         {key: "showHolidays", label: "显示中国节假日", type: "select", options: ["否", "是"], defaults: "否"},
         {key: "notebook", label: "限定笔记本", type: "notebook"},
     ]},
-    {moduleId: "writing-streak", title: "写作打卡", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium", "wide"], protocolVersion: 2, viewType: "weekdays", configSchema: [
+    // T-6971 批次⑦：写作打卡 = 强状态数值组件，上限 M（规格卡建议 S/M）
+    {moduleId: "writing-streak", title: "写作打卡", icon: "iconCheck", category: "siyuan", supportedDevices: DEVICES, readOnly: true, sizes: ["small", "medium"], protocolVersion: 2, viewType: "weekdays", configSchema: [
         {key: "notebook", label: "限定笔记本", type: "notebook"},
         {key: "windowDays", label: "连续统计窗口（天）", type: "number", min: 30, max: 365, defaults: 90},
         {key: "metric", label: "达标指标", type: "select", options: ["新增字符", "内容块"], defaults: "新增字符"},
@@ -455,9 +457,11 @@ const HOME_TILE_MATERIALS = {
     'external-weather-open-meteo': 'vibrant',
     'external-air-quality': 'vibrant',
     'checkin-streak': 'accent',
-    'writing-streak': 'accent',
     'checkin-today': 'accent',
     'checkin-weekly': 'accent',
+    // T-6971 批次⑦：今日写作与写作打卡同为强状态数值组件 → accent（本批提议扩展落地）
+    'writing-streak': 'accent',
+    'today-writing': 'accent',
     countdown: 'accent',
 };
 
@@ -511,6 +515,11 @@ const HOME_TILE_DEFAULT_SIZES = {
     'external-fx-frankfurter': 'small',
     'external-status-uptimekuma': 'medium',
     'external-device-battery': 'small',
+    // T-6971 批次⑦：写作统计家族默认档（规格总表「实现对照」）
+    'today-writing': 'small',
+    'writing-streak': 'small',
+    'recent-writing-activity': 'wide',
+    'note-stats': 'medium',
 };
 
 // T-6969 Slice 3（ADR 0091）：X 英雄位约束——每面板至多 1 个 full 档；超出者

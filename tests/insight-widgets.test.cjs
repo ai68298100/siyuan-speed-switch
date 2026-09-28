@@ -9,7 +9,7 @@ test("insight-style widgets are registered with bounded sizes", () => {
     const byId = new Map(modules.map((m) => [m.moduleId, m]));
     const noteStats = byId.get("note-stats");
     assert.ok(noteStats, "note-stats registered");
-    assert.deepEqual(noteStats.sizes, ["small", "medium"]);
+    assert.deepEqual(noteStats.sizes, ["medium", "wide"], "T-6971 批次⑦规格卡：M/W");
     assert.deepEqual(noteStats.configSchema.map((field) => field.key), ["notebook", "days", "primaryMetric", "showTrend", "showStrength"]);
     assert.equal(noteStats.configSchema.find((field) => field.key === "days").max, 90);
     const yearProgress = byId.get("year-progress");
