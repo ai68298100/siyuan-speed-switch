@@ -245,6 +245,10 @@ export function buildSettingsPanels(this: SettingsSectionsHost, s: ISwSettings):
                 this.settingItem(this.i18n.setDocks, this.i18n.setDocksTip, buildSettingsDockToggles.call(this, s), true),
             ),
         );
+        // T-6998（ADR 0097）：遗留 homePanel 构建内容并入“面板”标签——保留 10 标签 IA，
+        // 组件面板调色与工作台窗口尺寸不再挂在不可达的 homePanel 死键上。
+        // 分组标题与分段控件复用既有双语键；设置搜索索引按生产 DOM 扫描，自动覆盖。
+        wrapper.appendChild(buildSettingsHomePanel.call(this, s));
         return wrapper;
     }
 
