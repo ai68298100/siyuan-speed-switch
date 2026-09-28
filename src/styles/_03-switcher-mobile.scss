@@ -96,6 +96,10 @@
 
     // ==================== 顶栏（弹窗最顶端，极简无背景，仅底部细分隔线） ====================
     .sw__toolbar {
+        // T-6979：收藏浮层位于顶栏内；顶栏须整体盖过后绘制的缩略图滚动层，
+        // 否则固定定位浮层的分组按钮会被卡片截获点击。
+        position: relative;
+        z-index: 3;
         flex: none;
         display: flex;
         flex-wrap: nowrap;
@@ -1416,6 +1420,25 @@
                 .sw__doc-preview-content-list {
                     padding-left: 18px;
                     list-style: disc;
+                }
+
+                .sw__doc-preview-task {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 7px;
+                    margin-left: -18px;
+                    list-style: none;
+
+                    input {
+                        flex: none;
+                        margin: 4px 0 0;
+                        accent-color: var(--b3-theme-primary);
+                    }
+
+                    .sw__doc-preview-task--done {
+                        color: var(--b3-theme-on-surface-light);
+                        text-decoration: line-through;
+                    }
                 }
             }
         }

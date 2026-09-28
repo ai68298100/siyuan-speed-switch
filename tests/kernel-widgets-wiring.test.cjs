@@ -1075,7 +1075,7 @@ test('surfaces default to fullscreen with optional sizes (T-6877, ADR 0080)', ()
         'the workbench keeps its follow/adaptive/custom/fullscreen options');
 });
 
-test('cross-surface snippet objects: workbench row and studio objectId selection (T-6878)', () => {
+test('cross-surface snippet objects: query results and studio selection (T-6878/T-6979)', () => {
     const {declaresIn} = require('./css-block-scan.cjs');
     const studioUi = readSourceText(path.join(__dirname, '..', 'src', 'snippet-studio-ui.js'));
     // 端点白名单 + 字面量分发双登记（安全扫描要求）。
@@ -1085,21 +1085,18 @@ test('cross-surface snippet objects: workbench row and studio objectId selection
         'getSnippet must have a literal fetch dispatch case');
     assert.match(indexSource, /import \{[^}]*projectSnippetObjects[^}]*} from "\.\/platform-surface-model"/,
         'index.ts must import the snippet object projection');
-    // 零态工作台片段行：骨架占位 + 惰性填充 + 会话缓存与竞态丢弃。
-    assert.match(indexSource, /snippetBox\.className = "sw__workbench-snippets";/,
-        'the workbench snippet row must exist');
-    assert.match(indexSource, /this\.fillSnippetObjects\(snippetBox\);/,
-        'the snippet row must be filled asynchronously');
-    const fill = indexSource.slice(indexSource.indexOf('private fillSnippetObjects'), indexSource.indexOf('private renderSnippetObjects'));
-    assert.match(fill, /this\.ensureSnippetObjects\(\)\.then\(\(items\) => \{\s*\n\s*if \(snippetBox\.isConnected\) this\.renderSnippetObjects\(snippetBox, items\);/,
-        'the workbench row must render through the shared single-flight loader');
-    // T-6881 起取数本体收敛到 ensureSnippetObjects（fill 只负责渲染）。
-    const ensure = indexSource.slice(indexSource.indexOf('private ensureSnippetObjects'), indexSource.indexOf('private renderSnippetObjects'));
+    // T-6979：空查询回执区不再混入无上下文的片段 chips。
+    assert.doesNotMatch(indexSource, /snippetBox\.className = "sw__workbench-snippets";/,
+        'zero-query workbench must not mount a snippet row');
+    assert.doesNotMatch(indexSource, /this\.fillSnippetObjects\(snippetBox\);/,
+        'zero-query workbench must not fetch snippets');
+    // T-6881 查询态仍复用有界单飞取数。
+    const ensure = indexSource.slice(indexSource.indexOf('private ensureSnippetObjects'), indexSource.indexOf('private renderSnippetSearchSection'));
     assert.match(ensure, /Date\.now\(\) - cached\.at < 60000/, 'the snippet cache must have a 60s TTL');
     assert.match(ensure, /generation !== this\.snippetObjectsGeneration/, 'stale generations must be discarded');
     assert.match(ensure, /projectSnippetObjects\(payload, \{limit: 6\}\)/, 'the projection must be bounded to 6');
     assert.match(ensure, /snippetObjectsInFlight/, 'concurrent callers must share one in-flight fetch');
-    // 跨表面动作：chip 携带 objectId 打开工作室定位片段（导航语义）。
+    // 跨表面动作：查询结果携带 objectId 打开工作室定位片段（导航语义）。
     assert.match(indexSource, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
         'snippet chips must open the studio carrying the objectId');
     assert.match(indexSource, /objectId: !context\?\.objectKind \|\| context\.objectKind === "snippet" \? context\.objectId \|\| "" : "",/,
@@ -1464,7 +1461,7 @@ test('query-time snippet section: cached single-flight projection into search re
     assert.match(indexSource, /this\.renderSnippetSearchSection\(scrollElement, keyword\);[\s\S]{0,200}?this\.renderWorkbench\(scrollElement, keyword, onClose\);/,
         'applySearch must render the snippet section before the workbench toggle');
     // 渲染器：骨架清理 + 关键词陈旧守卫 + 有界过滤 + 注入点在 doc-results 之前。
-    const section = indexSource.slice(indexSource.indexOf('private renderSnippetSearchSection'), indexSource.indexOf('private renderSnippetObjects'));
+    const section = indexSource.slice(indexSource.indexOf('private renderSnippetSearchSection'), indexSource.indexOf('    async openClipboardEntry'));
     assert.match(section, /scrollElement\.dataset\.swDocSearchQuery !== keyword/,
         'stale keywords must discard the pending render');
     assert.match(section, /filterSnippetObjects\(this\.snippetObjectsCache\?\.items \|\| \[\], keyword, 6\)/,
@@ -1472,7 +1469,7 @@ test('query-time snippet section: cached single-flight projection into search re
     assert.match(section, /scrollElement\.insertBefore\(box, docResults\);/,
         'the section must be inserted before the doc results');
     assert.match(section, /this\.openPlatformSurface\("studio", "switcher", \{entry: "toolbar", objectId: item\.id\}\)/,
-        'search chips share the workbench cross-surface action');
+        'search results retain the studio cross-surface action');
     // 过滤条可见性语义：tabs/docs 选中时片段分区隐藏，unified 保留。
     const chipsScss = readSourceText(path.join(__dirname, '..', 'src', 'styles', '_03-switcher-mobile.scss'));
     assert.match(chipsScss, /\[data-sw-chip="tabs"\]\s*\{\s*\.sw__unified, \.sw__snippet-results, \.sw__doc-results/,

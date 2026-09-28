@@ -1,5 +1,5 @@
 const {Dialog} = require("siyuan");
-const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, nextConflictCopyName, buildConflictCopyEntry} = require("./snippet-studio-model.js");
+const {BUILTIN_SNIPPETS, SNIPPET_CODE_MAX, parseSnippetImport, filterSnippetCatalog, buildUsercssHeader, hasUsercssHeader, createLeaveIntentCoordinator, createDraftHistory, pushDraftHistory, undoDraftHistory, redoDraftHistory, canUndoDraftHistory, canRedoDraftHistory, nextConflictCopyName, buildConflictCopyEntry, rememberRecentSnippet} = require("./snippet-studio-model.js");
 const {buildSnippetDiff, summarizeDiff, applyDiffHunks} = require("./snippet-diff.js");
 const {lintSnippet} = require("./snippet-lint.js");
 const {createSnippetStore} = require("./snippet-studio-host.js");
@@ -92,6 +92,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         snippetCategoryTable: locale.i18n.snippetCategoryTable,
         snippetCategoryTypography: locale.i18n.snippetCategoryTypography,
         snippetChoose: locale.i18n.snippetChoose,
+        snippetRecent: locale.i18n.snippetRecent,
         snippetClose: locale.i18n.snippetClose,
         snippetCode: locale.i18n.snippetCode,
         snippetBytes: locale.i18n.snippetBytes,
@@ -1054,6 +1055,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         hideAIDiffPanel();
         setAIStatus(t("snippetAIIdle"));
         baseline = native ? {...native} : null;
+        if (native?.id) session.recentIds = rememberRecentSnippet(session.recentIds, native.id);
         selectedSource = native ? "native" : value.source || "draft";
         draft = {id: native?.id || "", name: value.name || "", type: value.type || "css", content: value.content || "", enabled: native?.enabled === true};
         // T-6957：仅身份变化时重置草稿历史——保存（同 id choose）保留历史，
@@ -1224,6 +1226,19 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
         const sheet = node("section", "sw-studio__picker-sheet");
         const head = node("div", "sw-studio__section-bar");
         head.append(node("strong", "", t("snippetChoose")), action("snippetClose", closePicker));
+        const recentItems = (session.recentIds || []).map((id) => snippets.find((item) => item.id === id)).filter(Boolean);
+        const recent = node("div", "sw-studio__recent");
+        if (recentItems.length) {
+            recent.append(node("strong", "sw-studio__recent-label", t("snippetRecent")));
+            for (const item of recentItems) {
+                const button = action("snippetSelect", () => guardLeave(() => { choose(item, item); closePicker(); }));
+                button.className = "sw-studio__recent-item";
+                button.textContent = item.name;
+                button.title = item.name;
+                button.setAttribute("aria-pressed", String(item.id === baseline?.id));
+                recent.append(button);
+            }
+        }
         const filters = node("div", "sw-studio__filters");
         const query = node("input", "sw-studio__input");
         query.placeholder = t("snippetSearch");
@@ -1261,7 +1276,7 @@ function mountSnippetStudio(root, {i18n = {}, getConfig = () => ({}), store = cr
             more.hidden = found.length <= limit;
         };
         [query, source, language, category].forEach((input) => input.addEventListener("input", () => { limit = 40; render(); }));
-        sheet.append(head, filters, list, more);
+        sheet.append(head, recent, filters, list, more);
         picker.appendChild(sheet);
         root.appendChild(picker);
         const keydown = (event) => {

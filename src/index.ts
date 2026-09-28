@@ -719,7 +719,7 @@ declare module "./snippet-studio-ui" {
         getConfig?: () => unknown;
         store?: {read: () => Promise<unknown>; mutate: (baseline: unknown, action: string, draft?: unknown) => Promise<unknown>; dispose: () => void};
         ai?: {generate: (options?: Record<string, unknown>) => Promise<unknown>; cancel: () => void; dispose: () => void};
-        session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null};
+        session?: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]};
         objectId?: string;
         onBack?: () => void;
         platform?: {
@@ -966,7 +966,7 @@ interface IOpenHistoryEntry {
 export default class SpeedSwitchPlugin extends Plugin {
     private isMobile = false;
     private snippetStudioDialog: Dialog | null = null;
-    private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null} = {draft: null, baseline: null};
+    private snippetStudioSession: {draft: Record<string, unknown> | null; baseline: Record<string, unknown> | null; recentIds?: string[]} = {draft: null, baseline: null};
     // T-6869（P1-c）：平台会话级路由状态——最近表面供悬浮球恢复（无持久化，
     // 新会话回落切换器），三个表面 Dialog 各自单例守卫，防止热键/悬浮球连点叠窗。
     private lastPlatformSurface: PlatformSurface = "switcher";
@@ -5017,36 +5017,13 @@ const updatedMap: {[rootId: string]: string} = {};
             void this.fillRelatedContent(relatedBox, activeRootId, onClose);
         }
 
-        // T-6878（P2 跨表面对象第一批）：片段实验室对象行——原生片段投影为有界
-        // 对象 chips（惰性 getSnippet + 60s 会话缓存 + 竞态丢弃）。单击携带
-        // objectId 打开片段实验室并定位该片段；空清单/失败时整行不出现。
-        if (!this.isMobile) {
-            const snippetBox = document.createElement("div");
-            snippetBox.className = "sw__workbench-snippets";
-            const snippetSkeleton = document.createElement("div");
-            snippetSkeleton.className = "sw__workbench-row-label sw__workbench-snippets--loading";
-            snippetSkeleton.textContent = this.i18n.workbenchSnippets;
-            snippetSkeleton.setAttribute("aria-busy", "true");
-            snippetBox.appendChild(snippetSkeleton);
-            box.appendChild(snippetBox);
-            this.fillSnippetObjects(snippetBox);
-        }
+        // T-6979：无查询态的回执区只保留当前文档相关内容；片段对象
+        // 仍可通过查询态分区及片段实验室内部选择器访问。
 
         // P3：工作台渲染到停靠坞（滚动流外），不随页签滚动
         dock.textContent = "";
         dock.appendChild(box);
         dock.classList.remove("fn__none");
-    }
-
-    // T-6878（P2）：片段对象行填充——骨架占位由调用方先行挂载，取数完成后
-    // 就地渲染或整行移除；取数本体走 ensureSnippetObjects（60s 缓存 + 单飞）。
-    private fillSnippetObjects(snippetBox: HTMLElement) {
-        void this.ensureSnippetObjects().then((items) => {
-            if (snippetBox.isConnected) this.renderSnippetObjects(snippetBox, items);
-        }).catch((error) => {
-            logger.warn("snippet objects load fail", error);
-            snippetBox.remove();
-        });
     }
 
     // T-6878/T-6881：片段对象取数唯一入口——60s 会话缓存命中直接返回；
@@ -5137,33 +5114,6 @@ const updatedMap: {[rootId: string]: string} = {};
         });
     }
 
-    private renderSnippetObjects(snippetBox: HTMLElement, items: Array<{id: string; name: string; type: string; enabled: boolean; lines: number}>) {
-        if (!items.length) {
-            snippetBox.remove();
-            return;
-        }
-        snippetBox.textContent = "";
-        const label = document.createElement("div");
-        label.className = "sw__workbench-row-label";
-        label.textContent = this.i18n.workbenchSnippets;
-        snippetBox.appendChild(label);
-        const row = document.createElement("div");
-        row.className = "sw__workbench-row";
-        items.forEach((item) => {
-            const chip = document.createElement("button");
-            chip.type = "button";
-            chip.className = "sw__workbench-chip";
-            chip.textContent = item.name;
-            chip.title = `${item.type.toUpperCase()} · ${item.lines} ${this.i18n.unitLines}${item.enabled ? " · " + this.i18n.snippetEnabledShort : ""}`;
-            // 跨表面对象动作：携带 objectId 打开片段实验室并定位该片段
-            // （安全导航动作，sideEffect=navigation；无写入）。
-            chip.addEventListener("click", () => {
-                this.openPlatformSurface("studio", "switcher", {entry: "toolbar", objectId: item.id});
-            });
-            row.appendChild(chip);
-        });
-        snippetBox.appendChild(row);
-    }
 
     // T-6821 深链接/剪贴板入口：读剪贴板 → 思源块链接（siyuan://blocks/<id>）
     // 确认后打开；普通文本预填进快速捕获（目标选择照常）。消毒、来源标记、

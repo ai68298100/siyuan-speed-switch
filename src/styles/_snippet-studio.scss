@@ -150,6 +150,11 @@
     &__picker { position: absolute; inset: 0; background: rgb(15 20 30 / 36%); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 10; padding: 20px; }
     &__picker-sheet { width: min(900px, 100%); max-height: calc(100% - 4px); overflow: hidden; display: flex; flex-direction: column; padding: 18px; background: var(--b3-theme-background); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-lg); box-shadow: var(--studio-shadow-card); }
     &__filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+    &__recent { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 9px; }
+    &__recent:empty { display: none; }
+    &__recent-label { color: var(--studio-on-surface); font-size: 11px; margin-right: 2px; }
+    &__recent-item { max-width: 160px; min-height: 30px; padding: 4px 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-pill); background: var(--studio-surface); color: inherit; cursor: pointer; font: inherit; font-size: 11px; }
+    &__recent-item:hover, &__recent-item[aria-pressed="true"] { border-color: var(--studio-accent); color: var(--studio-accent); }
     &__filters > input { flex: 1; min-width: 150px; }
     &__catalog { overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; min-height: 0; }
     &__catalog-item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; text-align: left; padding: 13px; border: 1px solid var(--studio-line); border-radius: 11px; background: var(--b3-theme-background); color: inherit; cursor: pointer; font: inherit; transition: border-color $sw-dur-fast $sw-ease, background $sw-dur-fast $sw-ease; }

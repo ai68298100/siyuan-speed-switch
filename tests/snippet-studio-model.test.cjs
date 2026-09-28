@@ -5,13 +5,21 @@ const assert = require("node:assert/strict");
 const {
     SNIPPET_CODE_MAX, parseSnippetImport, readNativeSnippetResponse,
     buildSnippetMutation, projectSnippetListForWire, BUILTIN_SNIPPETS, filterSnippetCatalog,
-    buildUsercssHeader, stripUsercssHeader, hasUsercssHeader, resolveUsercssVariables,
+    buildUsercssHeader, stripUsercssHeader, hasUsercssHeader, resolveUsercssVariables, rememberRecentSnippet,
 } = require("../src/snippet-studio-model.js");
 
 const native = (suffix = "aaaaaaa", overrides = {}) => ({
     id: `20260925120000-${suffix}`, name: "Local CSS", type: "css", content: "p { color: red; }", enabled: false, ...overrides,
 });
 const response = (snippets) => ({code: 0, data: {snippets}});
+
+test("recent snippet selection stays bounded, deduplicated and in session order (T-6979)", () => {
+    let recent = [];
+    for (const id of ["a", "b", "c", "d", "e", "f", "g", "c"]) recent = rememberRecentSnippet(recent, id);
+    assert.deepEqual(recent, ["c", "g", "f", "e", "d", "b"]);
+    assert.deepEqual(rememberRecentSnippet(recent, ""), recent);
+    assert.deepEqual(rememberRecentSnippet(null, "a"), ["a"]);
+});
 
 test("snippet import: CSS/JS files become disabled drafts without executing code", () => {
     assert.deepEqual(parseSnippetImport("C:\\drafts\\Spacious.CSS", "\uFEFFp { margin: 1em; }"), {

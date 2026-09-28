@@ -1222,6 +1222,7 @@
   "snippetSubmission": "生成投稿包",
   "snippetSubmissionHint": "已生成本地、未审核的投稿包。",
   "snippetChoose": "选择片段",
+  "snippetRecent": "最近片段",
   "snippetClose": "关闭",
   "snippetImport": "导入禁用草稿",
   "snippetNew": "新建",

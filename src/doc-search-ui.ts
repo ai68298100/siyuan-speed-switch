@@ -1419,15 +1419,15 @@ function previewBodyOf(pane: HTMLElement): HTMLElement {
         return pane.querySelector<HTMLElement>(".sw__doc-preview-body") || pane;
     }
 
-function extractDocPreviewBlocks(html: unknown): Array<{content: string; kind: string}> {
+function extractDocPreviewBlocks(html: unknown): Array<{content: string; kind: string; checked?: boolean}> {
         if (typeof html !== "string" || !html) return [];
         // Template content stays detached: read text from host block markup, never mount its HTML.
         const template = document.createElement("template");
         template.innerHTML = html.slice(0, 128000);
-        const blocks: Array<{content: string; kind: string}> = [];
-        const add = (node: Element | null, kind: string) => {
+        const blocks: Array<{content: string; kind: string; checked?: boolean}> = [];
+        const add = (node: Element | null, kind: string, checked?: boolean) => {
             const content = node?.textContent?.replace(/\u200b/g, "").trim() || "";
-            if (content) blocks.push({content, kind});
+            if (content) blocks.push(kind === "task" ? {content, kind, checked: checked === true} : {content, kind});
         };
         const kinds: Record<string, string> = {NodeHeading: "heading", NodeParagraph: "paragraph",
             NodeCodeBlock: "code", NodeBlockquote: "quote"};
@@ -1436,8 +1436,22 @@ function extractDocPreviewBlocks(html: unknown): Array<{content: string; kind: s
             const kind = kinds[node.getAttribute("data-type") || ""];
             if (kind) add(node.querySelector('[contenteditable="true"]'), kind);
             else if (node.getAttribute("data-type") === "NodeList") {
-                node.querySelectorAll('[data-type="NodeListItem"]').forEach((item) => {
-                    if (blocks.length < 12) add(item.querySelector('[contenteditable="true"]'), "list");
+                node.querySelectorAll('[data-type="NodeListItem"], [data-type="NodeTaskListItem"]').forEach((item) => {
+                    if (blocks.length >= 12) return;
+                    const textNode = item.querySelector('[contenteditable="true"]');
+                    const task = node.getAttribute("data-subtype") === "t"
+                        || item.getAttribute("data-subtype") === "t"
+                        || item.getAttribute("data-type") === "NodeTaskListItem";
+                    if (!task) { add(textNode, "list"); return; }
+                    const marker = item.getAttribute("data-task") ?? item.getAttribute("data-done")
+                        ?? item.getAttribute("data-marker");
+                    const prefix = textNode?.textContent?.trim().match(/^\[([ xX])\]\s*/);
+                    const checked = marker !== null
+                        ? /^(?:x|true|1|\[x\])$/i.test(marker.trim())
+                        : item.querySelector('input[type="checkbox"]')?.hasAttribute("checked") === true
+                            || prefix?.[1]?.toLowerCase() === "x";
+                    const text = textNode?.textContent?.replace(/^\s*\[[ xX]\]\s*/, "") || "";
+                    if (text.trim()) blocks.push({content: text.trim(), kind: "task", checked});
                 });
             }
         }
@@ -1527,8 +1541,8 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
             label.className = "sw__doc-preview-section-title";
             label.textContent = this.i18n.docSearchPreviewContent;
             section.appendChild(label);
-            snapshot.items.forEach((item: {kind: string; text: string}) => {
-                if (item.kind === "list") {
+            snapshot.items.forEach((item: {kind: string; text: string; checked?: boolean}) => {
+                if (item.kind === "list" || item.kind === "task") {
                     let list = section.lastElementChild;
                     if (!list?.classList.contains("sw__doc-preview-content-list")) {
                         list = document.createElement("ul");
@@ -1536,7 +1550,20 @@ async function loadDocPreview(this: DocSearchUiHost, scrollElement: HTMLElement,
                         section.appendChild(list);
                     }
                     const line = document.createElement("li");
-                    line.textContent = item.text;
+                    if (item.kind === "task") {
+                        line.className = "sw__doc-preview-task";
+                        const checkbox = document.createElement("input");
+                        checkbox.type = "checkbox";
+                        checkbox.disabled = true;
+                        checkbox.checked = item.checked === true;
+                        checkbox.setAttribute("aria-label", item.text);
+                        const copy = document.createElement("span");
+                        copy.textContent = item.text;
+                        if (checkbox.checked) copy.className = "sw__doc-preview-task--done";
+                        line.append(checkbox, copy);
+                    } else {
+                        line.textContent = item.text;
+                    }
                     list.appendChild(line);
                     return;
                 }

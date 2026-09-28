@@ -1159,6 +1159,19 @@ test("doc preview snapshot: empty outline and blocks yields empty flag (T-6839)"
     assert.equal(blank.empty, true);
 });
 
+test("doc preview snapshot keeps task completion while bounding excerpts (T-6979)", () => {
+    const snapshot = buildDocPreviewSnapshot([], [
+        {kind: "task", content: "待处理事项", checked: false},
+        {kind: "task", content: "已完成事项", checked: true},
+        {kind: "list", content: "普通项目"},
+    ]);
+    assert.deepEqual(snapshot.items, [
+        {kind: "task", text: "待处理事项", checked: false},
+        {kind: "task", text: "已完成事项", checked: true},
+        {kind: "list", text: "普通项目"},
+    ]);
+});
+
 test("doc preview snapshot: nested outline trees flatten with depth levels (T-6839)", () => {
     // getDocOutline 实际返回嵌套树（子标题在 blocks/children）
     const tree = [

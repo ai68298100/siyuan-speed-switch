@@ -1665,7 +1665,7 @@ function buildDocPreviewSnapshot(outline, blocks) {
             const part = text.slice(0, remaining).trim();
             if (!part) break;
             used += part.length + (items.length ? 1 : 0);
-            items.push({kind, text: part});
+            items.push(kind === "task" ? {kind, text: part, checked: block?.checked === true} : {kind, text: part});
             if (part.length < text.length) break;
         }
     }

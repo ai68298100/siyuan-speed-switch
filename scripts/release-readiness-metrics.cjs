@@ -15,7 +15,10 @@
 // meaningful dead weight (CSS is not on the raw line; tree-shaking covers JS);
 // hard ceilings unchanged and the compressed-entry line (288 KiB) needs its
 // own audit when crossed.
-const RAW_BUNDLE_BUDGET_BYTES = 1088 * 1024;
+// ADR 0092 (2026-09-28): v0.41.0 raw entry is 1,113,051 B, leaving only
+// 1,061 B on the 1088 KiB line before the T-6979 switcher fixes. Reduction
+// audit: no removable entry dead weight; keep archive/compressed ceilings.
+const RAW_BUNDLE_BUDGET_BYTES = 1120 * 1024;
 // ADR 0090 (2026-09-28): recalibrated the archive ceiling 512 -> 544 KiB after
 // the 2026-09-27 plan Phases A/B and C-head (T-6949 preview pin, T-6950 find in
 // preview, T-6951 settings search, T-6952 saved-search edit, T-6953 layout

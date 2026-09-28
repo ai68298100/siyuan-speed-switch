@@ -103,11 +103,11 @@ test("second-round schemas land in semantic sections and stay bounded", () => {
     }
 });
 
-test("ADR 0077 recalibrates the raw bundle self-discipline line for the navigation-context batches", () => {
+test("ADR 0092 recalibrates the raw bundle self-discipline line before T-6979", () => {
     const gate = readSourceText(path.join(__dirname, "host", "release-quality.test.cjs"));
     assert.match(gate, /metrics\.RAW_BUNDLE_BUDGET_BYTES/);
-    // T-6882（ADR 0081）：1024 -> 1088 KiB（统一平台战役后校准）；历史断言保留。
-    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1088 * 1024);
+    // ADR 0081 是历史基线；当前线由 ADR 0092 校准至 1120 KiB。
+    assert.equal(releaseMetrics.RAW_BUNDLE_BUDGET_BYTES, 1120 * 1024);
     // 校准日期备注本身就在注释里——按门禁清单 D-395 例外用原始文本断言注释
     const gateRaw = fs.readFileSync(path.join(__dirname, "host", "release-quality.test.cjs"), "utf8");
     assert.match(gateRaw, /2026-09-23 \(ADR 0074\)/);
@@ -119,6 +119,8 @@ test("ADR 0077 recalibrates the raw bundle self-discipline line for the navigati
     const adr81 = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0081-raw-bundle-line-recalibration.md"), "utf8");
     assert.match(adr81, /1088 KiB/);
     assert.match(adr81, /512 KiB/);
+    const adr92 = fs.readFileSync(path.join(__dirname, "..", "docs", "adr", "0092-raw-bundle-line-recalibration.md"), "utf8");
+    assert.match(adr92, /1120 KiB/);
     const zh = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "zh-CN.json"), "utf8"));
     const en = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "src", "i18n", "en.json"), "utf8"));
     assert.equal(zh.homeCountdownElapsed, "已经 {n} 天");

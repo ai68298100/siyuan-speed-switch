@@ -81,6 +81,24 @@ test('preview projects rich host blocks as inert text in document order', async 
         assert.equal(section.querySelector('script'), null);
     } finally {f.dom.window.close();}
 });
+test('preview renders task lists with inert checked states and preserves ordinary bullets (T-6979)', async () => {
+    const html = '<div data-type="NodeList" data-subtype="t">'
+        + '<div data-type="NodeListItem" data-subtype="t" data-task=" "><div contenteditable="true">[ ] Pending task</div></div>'
+        + '<div data-type="NodeTaskListItem" data-task="X"><input type="checkbox" checked><div contenteditable="true">[x] Done task</div></div>'
+        + '<div data-type="NodeListItem" data-done="true"><div contenteditable="true">Another done task</div></div></div>'
+        + '<div data-type="NodeList"><div data-type="NodeListItem"><div contenteditable="true">Ordinary bullet</div></div></div>';
+    const f = fixture(url => Promise.resolve(url.includes('Outline') ? {code: 0, data: []} : {code: 0, data: {content: html}}));
+    try {
+        f.schedule(); await f.flush();
+        const tasks = [...f.box.querySelectorAll('.sw__doc-preview-task')];
+        assert.deepEqual(tasks.map(li => li.textContent), ['Pending task', 'Done task', 'Another done task']);
+        assert.deepEqual(tasks.map(li => li.querySelector('input').checked), [false, true, true]);
+        assert.ok(tasks.every(li => li.querySelector('input').disabled));
+        assert.equal(tasks[1].querySelector('.sw__doc-preview-task--done').textContent, 'Done task');
+        const ordinary = [...f.box.querySelectorAll('.sw__doc-preview-content-list li')].find(li => li.textContent === 'Ordinary bullet');
+        assert.ok(ordinary && !ordinary.querySelector('input'));
+    } finally {f.dom.window.close();}
+});
 test('preview distinguishes empty success, partial failure, malformed and rejected responses', async () => {
     for (const mode of ['empty', 'partial', 'malformed', 'deleted', 'rejected']) {
         const f = fixture(url => {

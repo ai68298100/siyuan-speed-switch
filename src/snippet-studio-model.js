@@ -432,6 +432,12 @@ function buildConflictCopyEntry(latestList, draft, newId) {
     };
 }
 
+// T-6979：实验室会话内的最近原生片段，只记 ID，不复制正文或写入存储。
+function rememberRecentSnippet(ids, id, limit = 6) {
+    if (typeof id !== "string" || !id) return Array.isArray(ids) ? ids.slice(0, limit) : [];
+    return [id, ...(Array.isArray(ids) ? ids : []).filter((entry) => typeof entry === "string" && entry !== id)].slice(0, limit);
+}
+
 // T-6959：草稿内纯文本查找与替换。字面匹配（无正则）、不区分大小写、
 // 左起不重叠顺序命中；命中数封顶 1000 防超大文本刷屏；替换逐段拼装，
 // 绝不使用字符串替换的正则形态。
@@ -484,6 +490,7 @@ module.exports = {
     CONFLICT_COPY_NAME_MAX,
     nextConflictCopyName,
     buildConflictCopyEntry,
+    rememberRecentSnippet,
     DRAFT_FIND_MATCH_CAP,
     findDraftMatches,
     replaceDraftMatches,
